@@ -97,8 +97,10 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 from enm.slownik_komunikatow import opis_elementu
 from enm.tor_pola import szyna_raportowa, wezel_elektryczny
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
+from werdykt import DanaPrzyjeta
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
@@ -163,6 +165,9 @@ class WejscieNastawZBiegow:
     zacisk_zabezpieczenia: Zacisk
     #: Skąd zacisk: z modelu (przypięcie zabezpieczenia do wyłącznika) albo ze wskazania.
     zrodlo_zacisku: ZrodloZacisku
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte prądów zwarciowych wejścia — punkt
+    #: w sieci nN liczonej z wartością roboczą tolerancji napięcia (znacznik wiersza biegu).
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 
 
 def linie_kandydujace(snapshot: dict[str, Any] | None) -> list[DaneLinii]:
@@ -337,15 +342,34 @@ def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> di
     }
 
 
+def _wiersz_w_wezle(raw_result: dict[str, Any] | None, graph_node_id: str) -> dict[str, Any]:
+    """Wiersz wyniku zwarcia w podanym węźle grafu (pusty, gdy bieg go nie niesie)."""
+    for wiersz in (raw_result or {}).get("results") or []:
+        if isinstance(wiersz, dict) and wiersz.get("fault_node_id") == graph_node_id:
+            return wiersz
+    return {}
+
+
 def _prad_zwarciowy_w_wezle(raw_result: dict[str, Any] | None, graph_node_id: str) -> float | None:
     """`ikss_a` zwarcia w podanym węźle grafu — z zamrożonych wierszy biegu."""
-    for wiersz in (raw_result or {}).get("results") or []:
-        if not isinstance(wiersz, dict):
-            continue
-        if wiersz.get("fault_node_id") != graph_node_id:
-            continue
-        return _opcjonalna_liczba(wiersz.get("ikss_a"))
-    return None
+    return _opcjonalna_liczba(_wiersz_w_wezle(raw_result, graph_node_id).get("ikss_a"))
+
+
+def _dane_przyjete_punktow(
+    snapshot: dict[str, Any] | None, punkty: list[tuple[dict[str, Any] | None, str, str]]
+) -> tuple[DanaPrzyjeta, ...]:
+    """Dane przyjęte prądów wejścia nastaw: każdy szynowy punkt (raz) w sieci nN liczonej z
+    wartością roboczą tolerancji (znacznik TEGO SAMEGO wiersza, z którego czytany jest prąd —
+    `_wiersz_w_wezle`, jedno źródło). Kolejność deterministyczna: kolejność punktów wejścia."""
+    szyny: list[str] = []
+    for raw_result, graf, szyna_ref in punkty:
+        robocza = bool(_wiersz_w_wezle(raw_result, graf).get("tolerancja_nn_robocza"))
+        if robocza and szyna_ref not in szyny:
+            szyny.append(szyna_ref)
+    return tuple(
+        dana_przyjeta_tolerancji_nn(miejsce_pl=opis_elementu(snapshot, ref, "szyna"))
+        for ref in szyny
+    )
 
 
 def zbuduj_wejscie_nastaw(
@@ -561,8 +585,21 @@ def zbuduj_wejscie_nastaw(
         spz_pause_s=spz_pause_s,
     )
 
+    dane_przyjete = _dane_przyjete_punktow(
+        kotwica.snapshot,
+        [
+            (kotwica_wynik, graf_poczatku, rozstrzygniecie.szyna_zacisku_ref),
+            (kotwica_wynik, graf_konca, rozstrzygniecie.szyna_przeciwna_ref),
+            (kotwica_wynik, graf_nastepnej, next_bus_id),
+            (wariant_3f_cmin.raw_result, graf_poczatku, rozstrzygniecie.szyna_zacisku_ref),
+            (wariant_3f_cmin.raw_result, graf_konca, rozstrzygniecie.szyna_przeciwna_ref),
+            (wariant_2f_cmin.raw_result, graf_konca, rozstrzygniecie.szyna_przeciwna_ref),
+        ],
+    )
+
     return WejscieNastawZBiegow(
         engine_input=engine_input,
+        dane_przyjete=dane_przyjete,
         # Nazwa modelu z nagłówka migawki kotwicy albo opis braku — nigdy identyfikator
         # projektu (karta #144).
         project_name=nazwa_projektu_z_migawki(kotwica.snapshot),

@@ -342,6 +342,14 @@ export interface ZalozenieBieguSlad {
    * z t_b roboczym, z t_b i jego źródłem); brak = założenie bez listy punktów.
    */
   punkty?: CzasTbPunktuZalozenia[];
+  /**
+   * Pole modelu, którego deklaracja zastąpiłaby wartość roboczą (karta
+   * TOLERANCJA-NN-WARTOSC-ROBOCZA: `lv_voltage_tolerance`) — tylko gdy założenie ma
+   * element, na którym deklarację można położyć; brak = brak akcji „Zmień wartość”.
+   */
+  parametr?: string;
+  /** Rodzaj elementu w modelu (`Transformer` albo `Source`) — razem z `parametr`. */
+  element_type?: string;
 }
 
 /**

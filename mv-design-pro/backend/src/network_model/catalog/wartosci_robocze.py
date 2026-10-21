@@ -18,14 +18,29 @@ Moduł to DANE, nie fizyka: jedyna relacja liczbowa to relacja normowa I_p = 2,5
 (IEC 62271-1:2017 p. 5.7) — przepisanie wartości znamionowej z normy, nie obliczenie skutków
 zwarcia. Nie importuje warstw wyższych (model sieci, analizy, werdykt).
 
-RODZINA: aparat SN (``APARAT_SN``) — pierwsza rodzina mechanizmu.
+RODZINY:
+  * aparat SN (``APARAT_SN``) — pierwsza rodzina mechanizmu;
+  * sieć nN — tolerancja napięcia (``lv_voltage_tolerance``, karta TOLERANCJA-NN-WARTOSC-ROBOCZA):
+    wiersz nN tabeli 1 IEC 60909-0 (+6 % → c 1,05/0,95; +10 % → c 1,10/0,90). Brak deklaracji
+    na elementach zasilających sieć nN nie blokuje zwarć — propozycją jest klasa +10 %,
+    zachowawcza w OBU kierunkach (największy I″k,max i najmniejszy I″k,min).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
+
+from network_model.core.voltage_factor import (
+    ETYKIETA_TOLERANCJI_NN,
+    TOLERANCJE_NAPIECIA_NN,
+    TolerancjaNapieciaNn,
+    c_wiersza_nn,
+)
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
+from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
+from werdykt.proweniencja import FieldQuality
 
 RodzajZrodla = Literal["PROFIL_URZADZENIA", "NORMA", "ZALOZENIE_INZYNIERSKIE"]
 PochodzenieWartosci = Literal["KATALOG", "PROJEKTANT", "PROPOZYCJA"]
@@ -553,3 +568,237 @@ def blad_wartosci_projektanta(parametr: object, wartosc: object) -> str | None:
             f"{opis.jednostka}."
         )
     return None
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: sieć nN — tolerancja napięcia (wiersz nN tabeli 1 IEC 60909-0)
+# ---------------------------------------------------------------------------
+
+#: Nośnik deklaracji na elemencie zasilającym sieć nN (``Transformer``/``Source``).
+PARAMETR_TOLERANCJA_NN = "lv_voltage_tolerance"
+
+#: Wartość robocza tolerancji sieci nN — JEDNO miejsce. Klasa +10 % daje c_max 1,10 i c_min
+#: 0,90: największy prąd zwarciowy maksymalny (zdolność wyłączania, wytrzymałość) i najmniejszy
+#: minimalny (czułość zabezpieczeń, samoczynne wyłączenie) — strona bezpieczna obu ocen.
+TOLERANCJA_NN_ROBOCZA: TolerancjaNapieciaNn = "PLUS_10"
+
+#: Pochodzenie tolerancji sieci nN: deklaracja projektanta na elemencie zasilającym albo
+#: propozycja rejestru (wartość robocza).
+PochodzenieTolerancjiNn = Literal["DEKLARACJA", "PROPOZYCJA"]
+
+#: Powód propozycji: żaden element zasilający nie deklaruje tolerancji, deklaracje elementów
+#: jednej sieci nN są sprzeczne albo sieć nN nie ma elementu zasilającego (transformatora ani
+#: źródła sieciowego), na którym deklaracja mogłaby leżeć.
+PowodPropozycjiTolerancjiNn = Literal[
+    "BRAK_DEKLARACJI", "DEKLARACJE_SPRZECZNE", "BRAK_ZASILAJACEGO"
+]
+
+_POWOD_PROPOZYCJI_TOLERANCJI_PL: Mapping[PowodPropozycjiTolerancjiNn, str] = {
+    "BRAK_DEKLARACJI": "żaden element zasilający sieć nN nie deklaruje tolerancji napięcia",
+    "DEKLARACJE_SPRZECZNE": (
+        "elementy zasilające jedną sieć nN deklarują różne tolerancje napięcia, a jedna sieć "
+        "nN ma jedną tolerancję"
+    ),
+    "BRAK_ZASILAJACEGO": (
+        "sieć nN nie ma transformatora ani źródła sieciowego, na którym leżałaby deklaracja "
+        "tolerancji napięcia"
+    ),
+}
+
+
+def _liczba_c(wartosc: float) -> str:
+    return f"{wartosc:.2f}".replace(".", ",")
+
+
+def opis_c_klasy_nn_pl(tolerancja: TolerancjaNapieciaNn) -> str:
+    """c_max/c_min klasy tolerancji jednym zwrotem — liczby z JEDYNEJ tabeli (``voltage_factor``)."""
+    c_max, c_min = c_wiersza_nn(tolerancja)
+    return f"c_max {_liczba_c(c_max)}, c_min {_liczba_c(c_min)}"
+
+
+def _procent_pl(wartosc: float) -> str:
+    return f"{wartosc:.1f}".replace(".", ",")
+
+
+_INNA_KLASA: TolerancjaNapieciaNn = next(
+    t for t in TOLERANCJE_NAPIECIA_NN if t != TOLERANCJA_NN_ROBOCZA
+)
+_C_ROBOCZE = c_wiersza_nn(TOLERANCJA_NN_ROBOCZA)
+_C_INNE = c_wiersza_nn(_INNA_KLASA)
+#: Względna różnica prądu maksymalnego i minimalnego sieci drugiej klasy wobec wartości roboczej
+#: (I″k ∝ c przy tej samej impedancji) — wpływ założenia podany liczbą, nie przymiotnikiem.
+_ROZNICA_MAX_PCT = abs(_C_INNE[0] / _C_ROBOCZE[0] - 1.0) * 100.0
+_ROZNICA_MIN_PCT = abs(_C_INNE[1] / _C_ROBOCZE[1] - 1.0) * 100.0
+
+_ODNIESIENIE_TOLERANCJI_NN = (
+    f"IEC 60909-0:2016 tabela 1 — sieć nN o tolerancji {ETYKIETA_TOLERANCJI_NN[TOLERANCJA_NN_ROBOCZA]}: "
+    f"{opis_c_klasy_nn_pl(TOLERANCJA_NN_ROBOCZA)} (sieć {ETYKIETA_TOLERANCJI_NN[_INNA_KLASA]}: "
+    f"{opis_c_klasy_nn_pl(_INNA_KLASA)})"
+)
+
+
+@dataclass(frozen=True)
+class PropozycjaTolerancjiNn:
+    """Propozycja wartości roboczej tolerancji sieci nN: klasa, źródło, uzasadnienie i wpływ."""
+
+    wartosc: TolerancjaNapieciaNn
+    rodzaj_zrodla: RodzajZrodla
+    odniesienie: str
+    uzasadnienie_pl: str
+    wplyw_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parametr": PARAMETR_TOLERANCJA_NN,
+            "nazwa_pl": "tolerancja napięcia sieci nN",
+            "wartosc": self.wartosc,
+            "etykieta": ETYKIETA_TOLERANCJI_NN[self.wartosc],
+            "rodzaj_zrodla": self.rodzaj_zrodla,
+            "odniesienie": self.odniesienie,
+            "uzasadnienie_pl": self.uzasadnienie_pl,
+            "wplyw_pl": self.wplyw_pl,
+        }
+
+
+#: Propozycja tolerancji sieci nN — jedyna instancja (determinizm brzmienia).
+PROPOZYCJA_TOLERANCJI_NN = PropozycjaTolerancjiNn(
+    wartosc=TOLERANCJA_NN_ROBOCZA,
+    rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+    odniesienie=_ODNIESIENIE_TOLERANCJI_NN,
+    uzasadnienie_pl=(
+        f"Przyjęto klasę {ETYKIETA_TOLERANCJI_NN[TOLERANCJA_NN_ROBOCZA]} "
+        f"({opis_c_klasy_nn_pl(TOLERANCJA_NN_ROBOCZA)}) — wybór zachowawczy w obu kierunkach: "
+        "największy prąd zwarciowy maksymalny i najmniejszy minimalny spośród klas tabeli 1"
+    ),
+    wplyw_pl=(
+        "prądy zwarciowe w sieci nN liczone są z wartością roboczą zamiast deklaracji "
+        f"projektanta; sieć o tolerancji {ETYKIETA_TOLERANCJI_NN[_INNA_KLASA]} ma prąd "
+        f"maksymalny mniejszy o {_procent_pl(_ROZNICA_MAX_PCT)} %, a minimalny większy o "
+        f"{_procent_pl(_ROZNICA_MIN_PCT)} % — ocena jest wynikiem obliczeniowym na danej "
+        "przyjętej, nie potwierdzonym dowodem zgodności"
+    ),
+)
+
+
+@dataclass(frozen=True)
+class TolerancjaNnRozstrzygnieta:
+    """Tolerancja sieci nN po rozstrzygnięciu pierwszeństwa: klasa + pochodzenie (+ powód)."""
+
+    wartosc: TolerancjaNapieciaNn
+    pochodzenie: PochodzenieTolerancjiNn
+    powod_propozycji: PowodPropozycjiTolerancjiNn | None = None
+
+    @property
+    def robocza(self) -> bool:
+        """Wartość robocza = propozycja rejestru (deklaracja projektanta jest daną sieci)."""
+        return self.pochodzenie == "PROPOZYCJA"
+
+    def opis_zrodla_pl(self) -> str:
+        """Źródło + odniesienie + wpływ jednym zdaniem (``DanaPrzyjeta.powod_pl``, założenie)."""
+        etykieta = ETYKIETA_TOLERANCJI_NN[self.wartosc]
+        if not self.robocza:
+            return f"tolerancja {etykieta} zadeklarowana przez projektanta na elemencie zasilającym"
+        p = PROPOZYCJA_TOLERANCJI_NN
+        # Powód propozycji zna rozstrzygnięcie wyspy; wiersz wyniku niesie sam znacznik
+        # wartości roboczej (powód stoi w założeniu biegu) — wtedy zdanie bez powodu.
+        powod = (
+            f" — {_POWOD_PROPOZYCJI_TOLERANCJI_PL[self.powod_propozycji]}"
+            if self.powod_propozycji is not None
+            else ""
+        )
+        return (
+            f"wartość robocza tolerancji {etykieta} (założenie inżynierskie: "
+            f"{p.odniesienie}){powod}. {p.uzasadnienie_pl}. Wpływ: {p.wplyw_pl}."
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parametr": PARAMETR_TOLERANCJA_NN,
+            "wartosc": self.wartosc,
+            "etykieta": ETYKIETA_TOLERANCJI_NN[self.wartosc],
+            "pochodzenie": self.pochodzenie,
+            "wartosc_robocza": self.robocza,
+            "powod_propozycji": self.powod_propozycji,
+            "propozycja": PROPOZYCJA_TOLERANCJI_NN.to_dict() if self.robocza else None,
+            "opis_zrodla_pl": self.opis_zrodla_pl(),
+        }
+
+
+def rozstrzygnij_tolerancje_nn(
+    deklaracje: Sequence[TolerancjaNapieciaNn | None],
+) -> TolerancjaNnRozstrzygnieta:
+    """Tolerancja sieci nN z deklaracji jej elementów zasilających — JEDNO miejsce pierwszeństwa.
+
+    Deklaracja projektanta > wartość robocza. Sieć nN ma jedną tolerancję, więc jedna zgodna
+    deklaracja (przy pozostałych elementach bez deklaracji) rozstrzyga sieć. Wartość robocza,
+    gdy deklaracji nie ma, gdy deklaracje są sprzeczne (żadna nie ma pierwszeństwa nad drugą)
+    albo gdy sieć nie ma elementu zasilającego. Wartość spoza słownika tabeli 1 jest błędem
+    PROGRAMU (kontrakty modelu i żądań przyjmują wyłącznie słownik), nie odmową dziedziny.
+    """
+    for deklaracja in deklaracje:
+        if deklaracja is not None and deklaracja not in TOLERANCJE_NAPIECIA_NN:
+            raise ValueError(
+                f"Tolerancja napięcia sieci nN {deklaracja!r} spoza słownika tabeli 1 "
+                f"IEC 60909-0 ({', '.join(TOLERANCJE_NAPIECIA_NN)})."
+            )
+    if not deklaracje:
+        return TolerancjaNnRozstrzygnieta(
+            TOLERANCJA_NN_ROBOCZA, "PROPOZYCJA", powod_propozycji="BRAK_ZASILAJACEGO"
+        )
+    zadeklarowane = {d for d in deklaracje if d is not None}
+    if not zadeklarowane:
+        return TolerancjaNnRozstrzygnieta(
+            TOLERANCJA_NN_ROBOCZA, "PROPOZYCJA", powod_propozycji="BRAK_DEKLARACJI"
+        )
+    if len(zadeklarowane) > 1:
+        return TolerancjaNnRozstrzygnieta(
+            TOLERANCJA_NN_ROBOCZA, "PROPOZYCJA", powod_propozycji="DEKLARACJE_SPRZECZNE"
+        )
+    return TolerancjaNnRozstrzygnieta(next(iter(zadeklarowane)), "DEKLARACJA")
+
+
+def tolerancja_nn_napiecia(
+    voltage_kv: float, deklaracja: TolerancjaNapieciaNn | None
+) -> TolerancjaNnRozstrzygnieta | None:
+    """Klasa tolerancji dla napięcia z ŻĄDANIA bez modelu (podgląd źródła, pakiet dowodowy).
+
+    Ta sama reguła pierwszeństwa co bieg (deklaracja wołającego > wartość robocza rejestru),
+    jeden element deklarujący. ``None`` poza pasmem nN — tabela 1 ma tam jeden wiersz, więc
+    tolerancja nie ma znaczenia (predykat pasma ``w_pasmie_nn``, wspólny z ``c_for_node``).
+    """
+    if not w_pasmie_nn(voltage_kv):
+        return None
+    return rozstrzygnij_tolerancje_nn((deklaracja,))
+
+
+#: Klasa tolerancji jako liczba (procent napięcia znamionowego sieci nN) — wartość danej
+#: przyjętej werdyktu (``Wielkosc`` z jednostką), nie wartość c.
+_PROCENT_TOLERANCJI_NN: Mapping[TolerancjaNapieciaNn, float] = {"PLUS_6": 6.0, "PLUS_10": 10.0}
+
+#: Wartość robocza bez powodu wyspy — wiersz wyniku niesie sam znacznik
+#: (``tolerancja_nn_robocza``); powód stoi w założeniu biegu ``fault.c_tolerancja_nn_robocza``.
+TOLERANCJA_NN_ROBOCZA_WIERSZA = TolerancjaNnRozstrzygnieta(TOLERANCJA_NN_ROBOCZA, "PROPOZYCJA")
+
+
+def dana_przyjeta_tolerancji_nn(
+    *, miejsce_pl: str, rozstrzygniecie: TolerancjaNnRozstrzygnieta = TOLERANCJA_NN_ROBOCZA_WIERSZA
+) -> DanaPrzyjeta:
+    """Wartość robocza tolerancji sieci nN jako dana przyjęta werdyktu (§3c pkt 4).
+
+    JEDNO tłumaczenie dla każdego werdyktu, który używa prądów zwarciowych sieci nN liczonej
+    z wartością roboczą (wytrzymałość aparatury, zabezpieczenia nadprądowe, samoczynne
+    wyłączenie TN/TT/IT, dobór aparatów nN): ``ESTIMATED`` + źródło, odniesienie i wpływ, więc
+    stan danych ``UNVALIDATED_INPUT`` i kompletność ``NIEPELNY``. Deklaracja projektanta nie
+    jest daną przyjętą — wywołanie dla niej to błąd PROGRAMU wołającego (``AssertionError``).
+    """
+    if not rozstrzygniecie.robocza:
+        raise AssertionError(
+            "Tolerancja zadeklarowana przez projektanta nie jest daną przyjętą — wołający "
+            "dokłada daną przyjętą wyłącznie dla wartości roboczej."
+        )
+    return DanaPrzyjeta(
+        nazwa_pl=f"tolerancja napięcia sieci nN ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=_PROCENT_TOLERANCJI_NN[rozstrzygniecie.wartosc], jednostka="%"),
+        powod_pl=rozstrzygniecie.opis_zrodla_pl(),
+        jakosc=FieldQuality.ESTIMATED,
+    )

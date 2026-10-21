@@ -7,7 +7,9 @@ U_dotyk ≥ 0, determinizm, kontrakt ``to_dict`` (klucz ``tt_it`` tylko dla TT/I
 
 Partia integracji 11 (scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK): c pętli TT/IT pochodzi z
 JEDYNEGO źródła (``voltage_factor.c_for_node`` przez ``wspolczynniki_c_petli``) — iloczyn cech
-{TT, IT} × {tolerancja sieci nN +6 %, +10 %, brak → odmowa ``fault.c_tolerancja_nn_brak``}.
+{TT, IT} × {tolerancja sieci nN +6 %, +10 %, wartość robocza +10 % (karta
+TOLERANCJA-NN-WARTOSC-ROBOCZA — podstawa c i znacznik wyniku), nierozstrzygnięta → błąd
+programu wołającego}.
 Oczekiwane c czytane z tabeli, nie zaszyte w teście.
 """
 
@@ -19,9 +21,7 @@ import math
 
 import pytest
 from network_model.core.voltage_factor import (
-    KOD_TOLERANCJA_NN_BRAK,
     TOLERANCJE_NAPIECIA_NN,
-    OdmowaToleranciiNnError,
     c_for_node,
     zrodlo_c_z_tabeli,
 )
@@ -91,6 +91,7 @@ def _wejscie(
     powrot: LoopImpedanceComponent | None = None,
     upstream: LoopImpedanceComponent | None = _UP,
     tolerancja: str | None = "PLUS_6",
+    robocza: bool = False,
 ) -> FaultLoopInput:
     if powrot is None:
         powrot = _ZERO if uklad is NetworkType.TT else _PE
@@ -105,6 +106,7 @@ def _wejscie(
         protection_arrangement=ProtectionArrangement.NONE,
         dane_tt_it=dane,
         tolerancja_nn=tolerancja,  # type: ignore[arg-type]
+        tolerancja_nn_robocza=robocza,
     )
 
 
@@ -309,11 +311,25 @@ class TestPetlaIT:
 
 class TestWspolczynnikCTtIt:
     @pytest.mark.parametrize("uklad", [NetworkType.TT, NetworkType.IT])
-    def test_brak_tolerancji_sieci_nn_odmowa_nazwana(self, uklad) -> None:
+    def test_nierozstrzygnieta_tolerancja_to_blad_programu(self, uklad) -> None:
         dane = _dane_tt() if uklad is NetworkType.TT else _dane_it()
-        with pytest.raises(OdmowaToleranciiNnError) as blad:
+        with pytest.raises(ValueError) as blad:
             compute_fault_loop(_wejscie(uklad, dane, tolerancja=None))
-        assert blad.value.kod == KOD_TOLERANCJA_NN_BRAK
+        assert not isinstance(blad.value, OdmowaDanychError)
+
+    @pytest.mark.parametrize("uklad", [NetworkType.TT, NetworkType.IT])
+    def test_wartosc_robocza_ten_sam_prad_inna_podstawa(self, uklad) -> None:
+        """Wartość robocza +10 % liczy TO SAMO co deklaracja +10 % (te same c, prądy, ślad
+        liczbowy), a różni się wyłącznie podstawą c i znacznikiem wyniku."""
+        dane = _dane_tt() if uklad is NetworkType.TT else _dane_it()
+        deklaracja = compute_fault_loop(_wejscie(uklad, dane, tolerancja="PLUS_10"))
+        robocza = compute_fault_loop(_wejscie(uklad, dane, tolerancja="PLUS_10", robocza=True))
+        assert (robocza.ik_min_a, robocza.ik_max_a) == (deklaracja.ik_min_a, deklaracja.ik_max_a)
+        assert robocza.tt_it == deklaracja.tt_it
+        assert "wartość robocza" in robocza.c_zrodlo_min
+        assert "wartość robocza" in robocza.c_zrodlo_max
+        assert "wartość robocza" not in deklaracja.c_zrodlo_min
+        assert robocza.tolerancja_nn_robocza and not deklaracja.tolerancja_nn_robocza
 
     @pytest.mark.parametrize("uklad", [NetworkType.TT, NetworkType.IT])
     def test_tolerancja_plus_10_zmniejsza_ik_min_i_zwieksza_ik_max(self, uklad) -> None:

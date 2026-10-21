@@ -13,12 +13,15 @@ puste, brak grupy połączeń, grupa bez lokalnego uziemienia nN, Pk sprzeczne z
 układ {TN-S, TT, IT}. Strażnik AST pilnuje, że żaden `message_pl` modułów emitujących kody
 ELIG nie czyta identyfikatora elementu.
 
-Partia integracji 11 (scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK): blokada
-`ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING` weszła z treścią „Transformator 'tr-…'" i listą
-identyfikatorów szyn — strażnik AST jej nie widział, bo treść szła do `message_pl` przez
-parametr funkcji pomocniczej (pozycyjnie), a lista szyn kończyła się na `_refs`. Blokada
-nazywa teraz elementy nazwą z modelu (trzy powody braku tolerancji × {z nazwą, bez nazwy}),
-a strażnik czyta KAŻDY f-napis modułu blokad (identyfikator: `ref_id`, `*_ref`, `*_refs`).
+Partia integracji 11 (scalenie karty WSPOLCZYNNIK-C-JEDEN-NOSNIK): dawna blokada braku
+tolerancji sieci nN weszła z treścią „Transformator 'tr-…'" i listą identyfikatorów szyn —
+strażnik AST jej nie widział, bo treść szła do `message_pl` przez parametr funkcji pomocniczej
+(pozycyjnie), a lista szyn kończyła się na `_refs`; strażnik czyta odtąd KAŻDY f-napis modułu
+blokad (identyfikator: `ref_id`, `*_ref`, `*_refs`). Karta TOLERANCJA-NN-WARTOSC-ROBOCZA
+(zasada nr 4, V12K-351) skasowała tę blokadę: brak deklaracji liczy się na wartości roboczej,
+a ta sama własność — element nazwany nazwą z modelu, nigdy identyfikatorem — przechodzi na
+założenie biegu `fault.c_tolerancja_nn_robocza` (cztery powody wartości roboczej × {z nazwą,
+bez nazwy}); macierz gotowości nie ma żadnej blokady tolerancji.
 """
 
 from __future__ import annotations
@@ -294,38 +297,6 @@ MIEJSCA: dict[str, tuple[str, AnalysisType, Uszkodzenie, tuple[str, str, str], o
         None,
         REF_KABEL,
     ),
-    "transformator_bez_tolerancji_nn": (
-        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
-        AnalysisType.SC_3F,
-        lambda m: _zmien(m, "transformers", REF_TRAFO, lv_voltage_tolerance=None),
-        ("transformers", REF_TRAFO, "Transformator"),
-        None,
-        REF_TRAFO,
-    ),
-    "zrodlo_nn_bez_tolerancji_nn": (
-        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
-        AnalysisType.SC_3F,
-        lambda m: _ze_zrodlem_nn(m, None),
-        ("sources", REF_ZRODLO_NN, "Źródło sieciowe"),
-        None,
-        REF_ZRODLO_NN,
-    ),
-    "tolerancje_sprzeczne_transformator": (
-        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
-        AnalysisType.SC_3F,
-        lambda m: _ze_zrodlem_nn(m, "PLUS_6"),
-        ("transformers", REF_TRAFO, "Transformator"),
-        ("sources", REF_ZRODLO_NN, "Źródło sieciowe"),
-        REF_TRAFO,
-    ),
-    "tolerancje_sprzeczne_zrodlo": (
-        "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING",
-        AnalysisType.SC_3F,
-        lambda m: _ze_zrodlem_nn(m, "PLUS_6"),
-        ("sources", REF_ZRODLO_NN, "Źródło sieciowe"),
-        ("transformers", REF_TRAFO, "Transformator"),
-        REF_ZRODLO_NN,
-    ),
     "odcinek_nn_bez_zyly_powrotnej": (
         "ELIG_FLNN_MISSING_RETURN_CONDUCTOR",
         AnalysisType.FAULT_LOOP_NN,
@@ -377,41 +348,92 @@ def test_blokada_nazywa_element_nazwa_z_modelu_nigdy_identyfikatorem(
     assert blokady[0].fix_action.element_ref == element_ref
 
 
+def _z_osobna_szyna_nn(enm: EnergyNetworkModel, nazwa: str) -> EnergyNetworkModel:
+    szyna = Bus(ref_id=REF_SZYNA_NN_OSOBNA, name=nazwa, voltage_kv=0.4)
+    return enm.model_copy(update={"buses": [*enm.buses, szyna]})
+
+
+#: Powód wartości roboczej → (uszkodzenie modelu, elementy nazwane w treści założenia,
+#: `element_ref` założenia). Ta sama klasa miejsc, co dawna blokada (transformator bez
+#: deklaracji, źródło nN bez deklaracji, deklaracje sprzeczne, wyspa bez elementu
+#: zasilającego) — teraz bez blokady, z nazwanym założeniem biegu.
+POWODY_WARTOSCI_ROBOCZEJ: dict[
+    str,
+    tuple[
+        Callable[[EnergyNetworkModel, bool], EnergyNetworkModel],
+        tuple[tuple[str, str, str], ...],
+        str,
+    ],
+] = {
+    "transformator_bez_deklaracji": (
+        lambda m, _n: _zmien(m, "transformers", REF_TRAFO, lv_voltage_tolerance=None),
+        (("transformers", REF_TRAFO, "transformator"),),
+        REF_TRAFO,
+    ),
+    # Źródło nN bez deklaracji obok transformatora bez deklaracji — deklaracja któregokolwiek
+    # elementu wyspy rozstrzyga klasę (pierwszeństwo deklaracji), więc wartość robocza
+    # zachodzi tylko, gdy nie deklaruje żaden; założenie nazywa oba elementy zasilające.
+    "zrodlo_nn_bez_deklaracji": (
+        lambda m, _n: _ze_zrodlem_nn(
+            _zmien(m, "transformers", REF_TRAFO, lv_voltage_tolerance=None), None
+        ),
+        (("transformers", REF_TRAFO, "transformator"), ("sources", REF_ZRODLO_NN, "źródło")),
+        REF_TRAFO,
+    ),
+    "deklaracje_sprzeczne": (
+        lambda m, _n: _ze_zrodlem_nn(m, "PLUS_6"),
+        (("transformers", REF_TRAFO, "transformator"), ("sources", REF_ZRODLO_NN, "źródło")),
+        REF_TRAFO,
+    ),
+    "wyspa_bez_zasilajacego": (
+        lambda m, nazwane: _z_osobna_szyna_nn(m, "Rozdzielnia nN wydzielona" if nazwane else ""),
+        (("buses", REF_SZYNA_NN_OSOBNA, "szyny"),),
+        REF_SZYNA_NN_OSOBNA,
+    ),
+}
+
+
 @pytest.mark.parametrize("nazwane", [True, False], ids=["z_nazwa", "bez_nazwy"])
-def test_blokada_wyspy_nn_bez_zasilajacego_nazywa_szyne(nazwane: bool) -> None:
-    """Trzeci powód braku tolerancji (wyspa nN bez transformatora i źródła): treść nazywa
-    szynę wyspy nazwą z modelu; akcji naprawczej brak (nie ma elementu, na którym zapisać
-    deklarację), identyfikator tylko w `element_ref`."""
-    szyna = Bus(
-        ref_id=REF_SZYNA_NN_OSOBNA,
-        name="Rozdzielnia nN wydzielona" if nazwane else "",
-        voltage_kv=0.4,
-    )
-    enm = _enm().model_copy(update={"buses": [*_enm().buses, szyna]})
-    blokady = [
-        b
-        for b in _blokady(enm, AnalysisType.SC_3F)
-        if b.code == "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING"
-    ]
-    assert len(blokady) == 1, [(b.code, b.element_ref) for b in blokady]
-    tresc = blokady[0].message_pl
-    assert blokady[0].element_ref == REF_SZYNA_NN_OSOBNA
-    assert blokady[0].fix_action is None
-    oczekiwany = "szyna „Rozdzielnia nN wydzielona”" if nazwane else "szyna bez nazwy"
-    assert oczekiwany in tresc, tresc
+@pytest.mark.parametrize("powod", sorted(POWODY_WARTOSCI_ROBOCZEJ))
+def test_wartosc_robocza_tolerancji_bez_blokady_zalozenie_nazywa_element(
+    powod: str, nazwane: bool
+) -> None:
+    """Brak/sprzeczność deklaracji tolerancji sieci nN nie daje ŻADNEJ blokady gotowości
+    zwarć; założenie biegu nazywa element nazwą z modelu (albo „bez nazwy”), identyfikator
+    zostaje wyłącznie w `element_ref`."""
+    from enm.tolerancja_nn import KOD_TOLERANCJA_NN_ROBOCZA, zalozenia_tolerancji_nn
+
+    uszkodz, elementy, element_ref = POWODY_WARTOSCI_ROBOCZEJ[powod]
+    enm = uszkodz(_enm(), nazwane)
+    if not nazwane:
+        enm = _bez_nazw(enm, *elementy)
+    kody = [b.code for b in _blokady(enm, AnalysisType.SC_3F)]
+    assert not [k for k in kody if "TOLERANCE" in k or "tolerancja" in k], kody
+    (zalozenie,) = zalozenia_tolerancji_nn(enm, "MAX")
+    assert zalozenie["code"] == KOD_TOLERANCJA_NN_ROBOCZA
+    assert zalozenie["element_ref"] == element_ref
+    tresc = zalozenie["message_pl"]
+    for kolekcja, ref, slowo in elementy:
+        nazwa = _nazwa(enm, kolekcja, ref)
+        oczekiwany = nazwa if nazwa else "bez nazwy"
+        assert oczekiwany in tresc, (oczekiwany, tresc)
+        assert slowo in tresc, (slowo, tresc)
     assert not [ref for ref in WSZYSTKIE_REFY if ref in tresc], tresc
-    assert "_" not in tresc, tresc
+    assert "None" not in tresc, tresc
 
 
 @pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10"])
-def test_tolerancja_zadeklarowana_zgodnie_bez_blokady(tolerancja: str) -> None:
-    """Predykat parami: zgodne deklaracje transformatora i źródła nN — brak blokady."""
+def test_tolerancja_zadeklarowana_zgodnie_bez_zalozenia(tolerancja: str) -> None:
+    """Predykat parami: zgodne deklaracje transformatora i źródła nN — brak założenia
+    wartości roboczej (i brak jakiejkolwiek blokady tolerancji)."""
+    from enm.tolerancja_nn import zalozenia_tolerancji_nn
+
     enm = _ze_zrodlem_nn(
         _zmien(_enm(), "transformers", REF_TRAFO, lv_voltage_tolerance=tolerancja), tolerancja
     )
-    assert "ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING" not in [
-        b.code for b in _blokady(enm, AnalysisType.SC_3F)
-    ]
+    assert zalozenia_tolerancji_nn(enm, "MAX") == ()
+    kody = [b.code for b in _blokady(enm, AnalysisType.SC_3F)]
+    assert not [k for k in kody if "TOLERANCE" in k or "tolerancja" in k], kody
 
 
 # ---------------------------------------------------------------------------
@@ -621,3 +643,17 @@ def test_sprzeczne_uziemienie_transformatora_to_blokada_stacji_nie_awaria_macier
     assert "ELIG_FLNN_MISSING_TRANSFORMER_LOOP_DATA" in [
         b.code for b in _blokady(enm, AnalysisType.SWZ_NN)
     ]
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10"])
+def test_jedna_deklaracja_wyspy_rozstrzyga_bez_zalozenia(tolerancja: str) -> None:
+    """Pierwszeństwo deklaracji: transformator deklaruje, źródło nN tej samej wyspy nie —
+    klasa wyspy z deklaracji, bez wartości roboczej i bez założenia biegu."""
+    from enm.tolerancja_nn import wyspy_nn, zalozenia_tolerancji_nn
+
+    enm = _ze_zrodlem_nn(
+        _zmien(_enm(), "transformers", REF_TRAFO, lv_voltage_tolerance=tolerancja), None
+    )
+    assert zalozenia_tolerancji_nn(enm, "MAX") == ()
+    (wyspa,) = wyspy_nn(enm)
+    assert wyspa.tolerancja == tolerancja and not wyspa.robocza

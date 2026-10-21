@@ -313,7 +313,7 @@ class OvercurrentCoordinationAnalyzer:
                         f"{najmniejszy.nazwa_punktu_pl}, bieg minimalny) wobec progu "
                         f"{_liczba(stopien.prog_pierwotny_a, 1)} A ({stopien.etykieta_pl}) — "
                         f"iloraz czułości {_liczba(iloraz, 2)}; wymagany co najmniej "
-                        f"{_liczba(wymagany, 2)}."
+                        f"{_liczba(wymagany, 2)}.{_dopisek_danych_przyjetych(najmniejszy)}"
                     ),
                     punkt_ref=najmniejszy.punkt_ref,
                     nazwa_punktu_pl=najmniejszy.nazwa_punktu_pl,
@@ -609,6 +609,20 @@ def _opis_stopnia(stopien: Any) -> str:
     )
 
 
+def _dopisek_danych_przyjetych(ocena: OcenaPunktu) -> str:
+    """Zdanie o danych przyjętych prądu punktu (karta TOLERANCJA-NN-WARTOSC-ROBOCZA): punkt w
+    sieci nN liczonej z wartością roboczą tolerancji — sprawdzenie stoi na danej przyjętej
+    rekordu oceny punktu (jedno źródło: ``OcenaPunktu.ocena.dowod.status_danych``)."""
+    dane = ocena.ocena.dowod.status_danych.dane_przyjete
+    if not dane:
+        return ""
+    nazwy = "; ".join(d.nazwa_pl for d in dane)
+    return (
+        f" Prąd punktu liczony z daną przyjętą (wartość robocza): {nazwy} — sprawdzenie na "
+        "danej przyjętej, nie potwierdzony dowód."
+    )
+
+
 def _indeks(wynik: WynikOceny) -> dict[tuple[str, str], OcenaPunktu]:
     return {(o.urzadzenie_ref, o.punkt_ref): o for o in wynik.oceny}
 
@@ -627,6 +641,7 @@ def _porownanie(
     miejsce = f"Przy zwarciu w punkcie {pod.nazwa_punktu_pl}"
 
     def sprawdzenie(margines: float | None, stan: StanPary, zdanie: str) -> SelectivityCheck:
+        zdanie = f"{zdanie}{_dopisek_danych_przyjetych(pod)}"
         return SelectivityCheck(
             upstream_device_id=para.nadrzedne_ref,
             downstream_device_id=para.podrzedne_ref,

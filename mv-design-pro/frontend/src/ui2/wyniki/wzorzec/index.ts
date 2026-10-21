@@ -49,6 +49,7 @@ export type {
   EkranAnalizyProps,
   NaglowekAnalizy,
   WierszZalozenia,
+  AkcjaZalozenia,
   WartoscKomorki,
   DefinicjaKolumny,
   WierszTabeli,

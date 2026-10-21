@@ -130,6 +130,7 @@ from application.analyses.nn_device_selection import (
     wybierz_aparat_dla_obwodu_nn,
 )
 from application.analyses.swz.service import build_swz_view
+from application.analyses.swz.werdykt import dane_przyjete_znacznika_petli
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.proof_engine.lv_circuit_verification_binding import (
     resolve_urzadzenie_ochronne,
@@ -151,9 +152,10 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
-from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
@@ -166,6 +168,7 @@ from network_model.solvers.conductor_thermal_withstand import (
 )
 from network_model.solvers.protection_lv_curves import FUSE_GG_IF_MULTIPLIER, MCCB_I2_MULTIPLIER
 from solver_input.uklad_sieci_nn import uklad_tn
+from werdykt import DanaPrzyjeta
 
 # Rodzaje gałęzi rozpoznawane jako „aparat" u początku odpływu — DOKŁADNIE ten
 # sam zestaw co `EkranSwzNn.tsx::TYPY_APARATU` (frontend nN STUDIO), żeby
@@ -187,8 +190,23 @@ _GAMMA_MS_PER_M: dict[str, float] = {"CU": 58.0, "AL": 35.0}
 # =============================================================================
 
 
-def _wartosc(wartosc: Any, zrodlo_pl: str) -> dict[str, Any]:
-    return {"status": "OK", "wartosc": wartosc, "zrodlo_pl": zrodlo_pl, "reason_pl": None}
+def _wartosc(
+    wartosc: Any, zrodlo_pl: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
+) -> dict[str, Any]:
+    """Sekcja z wartością; ``dane_przyjete`` (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — dane, na
+    których stoi wartość (prąd zwarciowy sieci nN liczonej z wartością roboczą tolerancji):
+    źródło je nazywa, a sekcja niesie je listą — WYŁĄCZNIE gdy są."""
+    if not dane_przyjete:
+        return {"status": "OK", "wartosc": wartosc, "zrodlo_pl": zrodlo_pl, "reason_pl": None}
+    nazwy = "; ".join(d.nazwa_pl for d in dane_przyjete)
+    return {
+        "status": "OK",
+        "wartosc": wartosc,
+        "zrodlo_pl": f"{zrodlo_pl} — dana przyjęta (wartość robocza): {nazwy}",
+        "reason_pl": None,
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [d.model_dump(mode="json") for d in dane_przyjete],
+    }
 
 
 def _brak(reason_pl: str) -> dict[str, Any]:
@@ -199,12 +217,17 @@ def _nie_dotyczy(reason_pl: str) -> dict[str, Any]:
     return {"status": "nie dotyczy", "wartosc": None, "zrodlo_pl": None, "reason_pl": reason_pl}
 
 
-def _ik_min_tt_it(widok: dict[str, Any], system: str) -> dict[str, Any]:
-    """Sekcja `ik_min` z widoku SWZ TT/IT: prąd doziemny minimalny albo odmowa nazwana kodem."""
+def _ik_min_tt_it(widok: dict[str, Any], system: str, punkt_pl: str) -> dict[str, Any]:
+    """Sekcja `ik_min` z widoku SWZ TT/IT: prąd doziemny minimalny albo odmowa nazwana kodem.
+
+    Pętla doziemna sieci nN liczonej z wartością roboczą tolerancji (znacznik wyniku pętli,
+    karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — I_d min stoi na danej przyjętej, jak Ik1_min TN."""
     if widok.get("status") == "OK":
+        petla = widok["fault_loop_min_scenario"]
         return _wartosc(
-            widok["fault_loop_min_scenario"]["ik_min_a"],
+            petla["ik_min_a"],
             f"pętla doziemna IEC 60364-4-41 układ {system} (I_d min, scenariusz MIN)",
+            dane_przyjete_znacznika_petli(bool(petla.get("tolerancja_nn_robocza")), punkt_pl),
         )
     return {
         **_brak(widok.get("reason_pl") or f"Pętla doziemna układu {system} niedostępna."),
@@ -443,14 +466,21 @@ def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do
     return None
 
 
-def _ik_z_biegu_zwarciowego(run: CanonicalRun, bus_ref: str) -> tuple[float | None, float | None]:
-    """(ikss_ka, ith_ka) w punkcie ``bus_ref`` z biegu IEC 60909 (REUSE
-    build_short_circuit_results). ``(None, None)`` gdy punkt nie występuje
-    w wyniku tego biegu (uczciwy brak, nie 0)."""
+def _ik_z_biegu_zwarciowego(
+    run: CanonicalRun, bus_ref: str
+) -> tuple[float | None, float | None, bool]:
+    """(ikss_ka, ith_ka, tolerancja_nn_robocza) w punkcie ``bus_ref`` z biegu IEC 60909
+    (REUSE build_short_circuit_results). ``(None, None, False)`` gdy punkt nie występuje
+    w wyniku tego biegu (uczciwy brak, nie 0). Trzeci element — znacznik wiersza: punkt
+    w sieci nN liczonej z wartością roboczą tolerancji (karta TOLERANCJA-NN-WARTOSC-ROBOCZA)."""
     for row in build_short_circuit_results(run).get("rows", []):
         if row.get("element_id") == bus_ref:
-            return row.get("ikss_ka"), row.get("ith_ka")
-    return None, None
+            return (
+                row.get("ikss_ka"),
+                row.get("ith_ka"),
+                bool(row.get("tolerancja_nn_robocza")),
+            )
+    return None, None, False
 
 
 # =============================================================================
@@ -510,7 +540,11 @@ def _delta_u_dla_trasy(
 
 
 def _i2t_dla_kabla(
-    cable: Cable, *, ith_ka: float | None, fault_duration_s: float | None
+    cable: Cable,
+    *,
+    ith_ka: float | None,
+    fault_duration_s: float | None,
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
 ) -> dict[str, Any]:
     if ith_ka is None:
         return _brak(
@@ -552,6 +586,7 @@ def _i2t_dla_kabla(
             "prad_dopuszczalny_a": wynik.admissible_current_a,
         },
         "IEC 60949 / IEC 60364-4-43 §434 (I²t<=k²S², check_conductor_thermal_withstand)",
+        dane_przyjete,
     )
 
 
@@ -770,20 +805,36 @@ def _build_row(
     ikss_ka: float | None = None
     ith_ka: float | None = None
     zrodlo_ik_max_pl = ""
+    dane_ik_max: tuple[DanaPrzyjeta, ...] = ()
     if short_circuit_run is not None:
-        ikss_ka, ith_ka = _ik_z_biegu_zwarciowego(short_circuit_run, worst_bus_ref)
+        ikss_ka, ith_ka, ik_roboczy = _ik_z_biegu_zwarciowego(short_circuit_run, worst_bus_ref)
         zrodlo_ik_max_pl = f"bieg zwarciowy IEC 60909 ({short_circuit_run.id})"
+        if ik_roboczy:
+            dane_ik_max = (
+                dana_przyjeta_tolerancji_nn(
+                    miejsce_pl=f"punkt zwarcia {nazwa_po_identyfikatorze(worst_bus_ref, enm)}"
+                ),
+            )
+    # Dane przyjęte Ik1_min (pętla z wartością roboczą tolerancji) — z wyniku doboru.
+    dane_ik1_min: tuple[DanaPrzyjeta, ...] = tuple(
+        DanaPrzyjeta.model_validate(d)
+        for d in (dobor_wejscie or {}).get("dane_przyjete_ik1_min", [])
+    )
     ik_max_sekcja = (
-        _wartosc(ikss_ka, zrodlo_ik_max_pl)
+        _wartosc(ikss_ka, zrodlo_ik_max_pl, dane_ik_max)
         if ikss_ka is not None
         else _brak("Brak biegu zwarciowego IEC 60909 (parametr short_circuit_run_id) dla punktu.")
     )
     if dobor_wejscie is not None:
         ik_min_sekcja = _wartosc(
-            dobor_wejscie["ik1_min_a"], "pętla zwarcia IEC 60364-4-41 (Ik1_min, scenariusz MIN)"
+            dobor_wejscie["ik1_min_a"],
+            "pętla zwarcia IEC 60364-4-41 (Ik1_min, scenariusz MIN)",
+            dane_ik1_min,
         )
     elif widok_tt_it is not None:
-        ik_min_sekcja = _ik_min_tt_it(widok_tt_it, system or "")
+        ik_min_sekcja = _ik_min_tt_it(
+            widok_tt_it, system or "", nazwa_po_identyfikatorze(worst_bus_ref, enm)
+        )
     elif dobor_status == "nie dotyczy":
         ik_min_sekcja = _nie_dotyczy(dobor_reason or "")
     else:
@@ -914,6 +965,8 @@ def _build_row(
                     ik_max_ka=ikss_ka,
                     ik1_min_a=dobor_wejscie["ik1_min_a"],
                     u0_v=dobor_wejscie["u0_v"],
+                    dane_przyjete_ik_max=dane_ik_max,
+                    dane_przyjete_ik1_min=dane_ik1_min,
                 )
                 kr_i = next(k for k in ocena.kryteria if k.nazwa == "Ib<=In<=Iz′")
                 kr_ii = next(k for k in ocena.kryteria if k.nazwa == "I2<=1,45·Iz′")
@@ -943,6 +996,7 @@ def _build_row(
                     _wartosc(
                         {"status": kr_swz.status.value, "wartosci": kr_swz.wartosci},
                         kr_swz.uzasadnienie_pl,
+                        kr_swz.dane_przyjete,
                     )
                     if kr_swz.status.value != "nierozstrzygalne"
                     else _nierozstrzygalne(kr_swz.uzasadnienie_pl)
@@ -957,7 +1011,12 @@ def _build_row(
 
     # --- I²t --------------------------------------------------------------
     i2t_sekcja = (
-        _i2t_dla_kabla(kabel_decydujacy, ith_ka=ith_ka, fault_duration_s=fault_duration_s)
+        _i2t_dla_kabla(
+            kabel_decydujacy,
+            ith_ka=ith_ka,
+            fault_duration_s=fault_duration_s,
+            dane_przyjete=dane_ik_max,
+        )
         if kable
         else _brak(route_error or "Brak kabla decydującego na trasie.")
     )

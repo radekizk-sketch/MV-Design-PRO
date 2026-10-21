@@ -66,7 +66,11 @@ from application.analyses.fault_loop.service import (
     uklad_nn_transformatora,
 )
 from application.analyses.swz.service import przedmiot_obwodu_nn
-from application.analyses.swz.werdykt import AparatZabezpieczajacy, ocen_swz
+from application.analyses.swz.werdykt import (
+    AparatZabezpieczajacy,
+    dane_przyjete_petli,
+    ocen_swz,
+)
 from application.analyses.swz.werdykt_tt_it import SwzTtItWynik, ocen_swz_tt_it
 from application.proof_engine.packs.lv_circuit_verification import (
     KIND_FUSE_SWITCH,
@@ -261,7 +265,7 @@ def _petla_zwarcia_min(
 
     # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
-    odmowa = odmowa_analizy_nn({}, trafo, enm=enm)
+    odmowa = odmowa_analizy_nn({}, trafo)
     if odmowa is not None:
         return (
             None,
@@ -468,7 +472,16 @@ def zbuduj_wejscie_dowodu_obwodu_nn(
             # nastawy w `urzadzenie.ii_a` (patrz `resolve_urzadzenie_ochronne`).
             ii_a=urzadzenie.ii_a if urzadzenie.kind == KIND_MCCB else None,
         )
-        swz = ocen_swz(ik1_min_a=petla.fault_loop.ik_min_a, u0_v=petla.u0_v, aparat=aparat_swz)
+        swz = ocen_swz(
+            ik1_min_a=petla.fault_loop.ik_min_a,
+            u0_v=petla.u0_v,
+            aparat=aparat_swz,
+            # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: Ik1_min z c wartości roboczej tolerancji nN
+            # — przyczyna werdyktu w dowodzie nazywa daną przyjętą.
+            dane_przyjete=dane_przyjete_petli(
+                petla.fault_loop, nazwa_po_identyfikatorze(bus_ref, enm)
+            ),
+        )
         pola_swz = {
             "swz_status": swz.status.value,
             "swz_przyczyna_pl": swz.przyczyna_pl,

@@ -91,11 +91,13 @@ class FaultLoopBuildRequest:
     # (wołający z warstwy aplikacji buduje DTO, nie woła solvera z parametrami — guard
     # `no_direct_fault_params_guard`).
     dane_tt_it: DaneTtIt | None = None
-    # Tolerancja napięcia sieci nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — z nośnika
-    # (`Transformer.lv_voltage_tolerance` / `Source.lv_voltage_tolerance`) przez
-    # `enm.tolerancja_nn`. Pole WYMAGANE (bez domyślnej): wołający podaje ją jawnie,
-    # `None` = brak deklaracji → odmowa solvera `fault.c_tolerancja_nn_brak`.
+    # Klasa tolerancji napięcia sieci nN (karty WSPOLCZYNNIK-C-JEDEN-NOSNIK i
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA) — deklaracja z nośnika (`Transformer.lv_voltage_tolerance`
+    # / `Source.lv_voltage_tolerance`) przez `enm.tolerancja_nn` albo wartość robocza rejestru.
+    # Pole WYMAGANE (bez domyślnej): wołający podaje rozstrzygniętą klasę jawnie.
     tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
+    # Klasa wyżej jest wartością roboczą — przekazywane 1:1 do `FaultLoopInput`.
+    tolerancja_nn_robocza: bool = field(default=False, kw_only=True)
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
@@ -151,6 +153,7 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
         protection_arrangement=request.protection_arrangement,
         dane_tt_it=request.dane_tt_it,
         tolerancja_nn=request.tolerancja_nn,
+        tolerancja_nn_robocza=request.tolerancja_nn_robocza,
     )
 
 

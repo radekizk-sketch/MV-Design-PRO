@@ -17,6 +17,8 @@
  * Uczciwe stany (zero fabrykacji, zero fizyki — wyłącznie odczyt/prezentacja):
  * - `blad === true` → błąd pobrania (HTTP/sieć), rozpoznany OSOBNO od „brak
  *   danych" — komunikat błędu, nie cisza,
+ * - `ladowanie === true` → pobieranie w toku — komunikat pobierania, nie „starszy
+ *   wynik bez śladu" (dawniej `trace === null` w trakcie pobierania brał ten komunikat),
  * - `trace === null` → starszy wynik bez kolumny śladu (kontrakt addytywny) —
  *   komunikat, nie pusta lista i nie ukrycie sekcji bez informacji,
  * - `trace.length === 0` → policzono, ale ten punkt nie ma wkładu prądu od
@@ -42,6 +44,8 @@ export interface SladPodzialuPraduProps {
   trace: TraceStep[] | null;
   /** Błąd pobrania (HTTP/sieć) z dostawcy, rozpoznany osobno od „brak danych". */
   blad: boolean;
+  /** Pobieranie danych punktu w toku — osobno od „brak danych" i od błędu. */
+  ladowanie: boolean;
   trybZaawansowania: AdvancementMode;
 }
 
@@ -49,6 +53,7 @@ export function SladPodzialuPradu({
   punktNazwa,
   trace,
   blad,
+  ladowanie,
   trybZaawansowania,
 }: SladPodzialuPraduProps) {
   const kroki = trace ? mapujKroki(trace) : [];
@@ -69,6 +74,10 @@ export function SladPodzialuPradu({
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.sladRozplywuBlad}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.sladRozplywuBladOpis}</p>
         </div>
+      ) : ladowanie ? (
+        <p className="mvd-zwarcia-wklady-brak-desc" data-testid="mvd-zwarcia-slad-rozplywu-ladowanie">
+          {ZWARCIA_STRINGS.sladRozplywuLadowanie}
+        </p>
       ) : trace === null ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-slad-rozplywu-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.sladRozplywuNiedostepny}</p>

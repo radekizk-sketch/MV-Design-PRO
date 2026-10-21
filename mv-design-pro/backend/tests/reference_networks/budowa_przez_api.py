@@ -103,7 +103,7 @@ class KlientBudowy:
                 "insert_at_ratio": ratio,
                 # Tolerancja napięcia sieci nN stacji — dana projektanta z kreatora (blok
                 # `nn_earthing`, wiersz nN tabeli 1 IEC 60909-0); bez niej zwarcie w sieci nN
-                # jest odmową `fault.c_tolerancja_nn_brak`.
+                # liczy się na wartości roboczej +10 % (założenie `fault.c_tolerancja_nn_robocza`).
                 "params_override": {"nn_earthing": {"lv_voltage_tolerance": "PLUS_6"}},
                 "catalog_profile": None,
             },

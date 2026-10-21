@@ -30,22 +30,3 @@ class GridShortCircuitSource:
     node_id: str = field(default="")
     z_ohm: complex = field(default=0j)
     in_service: bool = field(default=True)
-
-
-@dataclass(frozen=True)
-class OdmowaImpedancjiZrodla:
-    """Źródło sieciowe, którego Z_Q nie da się wyznaczyć — odmowa ODROCZONA do konsumenta Z_Q.
-
-    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: Z_Q = c·U_nQ²/S''_kQ (IEC 60909-0 eq. 6) wymaga c z
-    tabeli 1, a c węzła nN — tolerancji sieci nN (``enm.tolerancja_nn``). Źródło przyłączone
-    do szyny nN bez tej deklaracji nie ma impedancji, ale MA węzeł przyłączenia: rozpływ mocy
-    (szyna bilansująca, bez Z_Q) liczy się bez niego, a każde obliczenie, które czyta Z_Q
-    (``NetworkGraph.get_grid_sc_sources`` — macierz zwarciowa, dynamika), dostaje odmowę
-    ``fault.c_tolerancja_nn_brak`` z tym komunikatem. Węzeł zostaje węzłem odniesienia
-    topologii (``NetworkGraph.wezly_zrodel_sieciowych``) — brak danej nie zmienia sieci.
-    """
-
-    id: str
-    name: str
-    node_id: str
-    komunikat_pl: str

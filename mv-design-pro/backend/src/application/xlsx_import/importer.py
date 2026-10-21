@@ -22,7 +22,8 @@ Format arkusza (uzgodniony z operatorami sieci):
                                  nN zasilanej z transformatora: PLUS_6 (+6 %) albo PLUS_10
                                  (+10 %), wiersz nN tabeli 1 IEC 60909-0; tylko dla strony LV
                                  w paśmie nN; puste = brak deklaracji, a zwarcie w sieci nN
-                                 jest odmową `fault.c_tolerancja_nn_brak` z akcją naprawczą]
+                                 liczy wartość roboczą rejestru z założeniem biegu
+                                 `fault.c_tolerancja_nn_robocza` i akcją zmiany wartości]
 - Arkusz "Źródła"   (opcjonalny): id, szyna, typ, RX_ratio + (Sk_MVA i/lub Ik_kA — co
                                  najmniej jedna z tych dwu kolumn scenariusza MAX) [opcjonalnie
                                  scenariusz MIN wg IEC 60909-0:2016 §6.2.1 eq. 6 z c_min —

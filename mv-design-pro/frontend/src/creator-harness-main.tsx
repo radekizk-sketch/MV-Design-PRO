@@ -99,6 +99,32 @@ import zwarciaWynikiScenyZwarcia from './harness-fixtures/generated/zwarcia_wyni
 import zwarciaWkladyScenyZwarcia from './harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json';
 import zwarciaRozplywScenyZwarcia from './harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json';
 import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo_scena_zwarcia.json';
+// Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: scena „zwarcia-tolerancja-robocza" — komplet czterech
+// odpowiedzi ekranu zwarć z REALNEGO biegu na sieci złotej BEZ deklaracji tolerancji sieci nN
+// (`eksport_fixtur_harnessu.py::zwarcia_*_scena_tolerancja_robocza`): wszystkie sekcje ekranu
+// liczone na tej samej wartości roboczej (+10 %), żadna z liczbami biegu z deklaracją +6 %.
+import zwarciaWynikiScenyRoboczej from './harness-fixtures/generated/zwarcia_wyniki_scena_tolerancja_robocza.json';
+import zwarciaWkladyScenyRoboczej from './harness-fixtures/generated/zwarcia_wklady_scena_tolerancja_robocza.json';
+import zwarciaRozplywScenyRoboczej from './harness-fixtures/generated/zwarcia_rozplyw_scena_tolerancja_robocza.json';
+import zwarciaPasmoScenyRoboczej from './harness-fixtures/generated/zwarcia_pasmo_scena_tolerancja_robocza.json';
+// Model, na którym policzono bieg sceny roboczej (transformator SN/nN bez deklaracji
+// tolerancji) — zasiew mostu nazw wyników i formularza „Zmień wartość".
+import zwarciaMigawkaScenyRoboczej from './harness-fixtures/generated/zwarcia_migawka_scena_tolerancja_robocza.json';
+const SCENA_ZWARC_ROBOCZA =
+  new URLSearchParams(window.location.search).get('creator') === 'zwarcia-tolerancja-robocza';
+const ZWARCIA_SCENY = SCENA_ZWARC_ROBOCZA
+  ? {
+      wyniki: zwarciaWynikiScenyRoboczej,
+      wklady: zwarciaWkladyScenyRoboczej,
+      rozplyw: zwarciaRozplywScenyRoboczej,
+      pasmo: zwarciaPasmoScenyRoboczej,
+    }
+  : {
+      wyniki: zwarciaWynikiScenyZwarcia,
+      wklady: zwarciaWkladyScenyZwarcia,
+      rozplyw: zwarciaRozplywScenyZwarcia,
+      pasmo: zwarciaPasmoScenyZwarcia,
+    };
 // HARNESS-RESZTA (2026-09-16): scena "wyniki-stan-fazowy" (E-31) karmiona
 // WYLACZNIE wynikiem REALNEGO biegu backendu (phase_state_sn na sieci zlotej,
 // `eksport_fixtur_harnessu.py` — ta sama funkcja, ktora woła koncowka
@@ -405,6 +431,7 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // kotwicy realnego backendu (`*.run_id`/`*.context.run_id`), nie ręczne id.
   'zwarcia-rozplyw': zwarciaWynikiScenyZwarcia.run_id,
   zwarcia: zwarciaWynikiScenyZwarcia.run_id,
+  'zwarcia-tolerancja-robocza': zwarciaWynikiScenyRoboczej.run_id,
   rozplyw: rozplywScenyWynik.run_id,
   walidacja: walidacjaScenyWynik.context.run_id,
   estymacja: estymacjaScenyWynik.analysis_id,
@@ -916,7 +943,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // liczb fizycznych. `fault_node_id` z ciala zadania POST, jak w realnym
     // kliencie (`zwarcia/api.ts::fetchWkladyZwarciowe`).
     const cialoWkladow = JSON.parse(String(init?.body ?? '{}')) as { fault_node_id?: string };
-    const wklady = (zwarciaWkladyScenyZwarcia as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
+    const wklady = (ZWARCIA_SCENY.wklady as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
     if (wklady) return jsonOK(wklady);
   }
   if (url.includes('/results/short-circuit/rozplyw')) {
@@ -926,14 +953,14 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`,
     // jak dotychczasowa scena Z-3 — bez zadnej recznej liczby.
     const targetId = new URL(url, location.origin).searchParams.get('target_id');
-    if (targetId === zwarciaRozplywScenyZwarcia.target_id) return jsonOK(zwarciaRozplywScenyZwarcia);
+    if (targetId === ZWARCIA_SCENY.rozplyw.target_id) return jsonOK(ZWARCIA_SCENY.rozplyw);
   }
   if (url.includes('/results/short-circuit/pasmo')) {
     // Pasmo MIN/MAX zwarcia (karta W3-G3, aneks D7) — TEN SAM bieg kotwicy;
     // strona MIN `obliczony_na_zadanie` (bez wlasnego run_id) — realny ksztalt
     // `dobierz_pasmo_min_max_zwarcia` (`eksport_fixtur_harnessu.py::
     // zwarcia_pasmo_scena_zwarcia`).
-    return jsonOK(zwarciaPasmoScenyZwarcia);
+    return jsonOK(ZWARCIA_SCENY.pasmo);
   }
   if (url.includes('/power-flow-runs')) {
     // HARNESS-RESZTA-2: lista zakonczonych przebiegow rozplywu projektu sceny
@@ -1475,6 +1502,7 @@ const MIGAWKA_MODELU_SCENY: Readonly<Record<string, unknown>> = {
   rozplyw: sieckZlotaScenyMigawka,
   zwarcia: sieckZlotaScenyMigawka,
   'zwarcia-rozplyw': sieckZlotaScenyMigawka,
+  'zwarcia-tolerancja-robocza': zwarciaMigawkaScenyRoboczej,
   'odbior-zgodnosc': sieckZlotaScenyMigawka,
   estymacja: sieckZlotaScenyMigawka,
   'wyniki-stan-fazowy': sieckZlotaScenyMigawka,
@@ -1640,6 +1668,15 @@ if (creator === 'arcflash') {
   useResultsInspectorStore.setState({
     shortCircuitResults: zwarciaWynikiScenyZwarcia,
     selectedRunId: zwarciaWynikiScenyZwarcia.run_id,
+  } as never);
+} else if (creator === 'zwarcia-tolerancja-robocza') {
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): bieg na sieci złotej bez
+  // deklaracji tolerancji sieci nN — sekcja „Założenia" pokazuje założenie
+  // `fault.c_tolerancja_nn_robocza` ze znacznikiem „wartość robocza" i akcją „Zmień wartość",
+  // bilans punktu nN — podstawę c „(wartość robocza)". Zero ręcznie wpisanych liczb.
+  useResultsInspectorStore.setState({
+    shortCircuitResults: ZWARCIA_SCENY.wyniki,
+    selectedRunId: ZWARCIA_SCENY.wyniki.run_id,
   } as never);
 } else if (creator === 'zwarcia-rozplyw') {
   // Karta Z-3 (dowody wizualne pkt 7 karty właściciela): sekcja „Rozpływ
@@ -2002,12 +2039,13 @@ if (creator === 'arcflash') {
     value: '0.55',
   });
 } else if (creator === 'edycja-tolerancja-nn') {
-  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: formularz edycji parametrów otwarty z AKCJI
-  // NAPRAWCZEJ bramki ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING — kontekst niesie wyłącznie
-  // element i `required` z `payload_hint` (klucz parametru wybiera formularz sam).
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: formularz edycji parametrów otwarty akcją „Zmień
+  // wartość" założenia biegu `fault.c_tolerancja_nn_robocza` (ekran wyników zwarć) — ten sam
+  // kontekst co `zmianaTolerancjiNn.ts`: element zasilający, jego rodzaj i pole parametru.
   useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
     element_ref: 'TR-1',
-    required: 'lv_voltage_tolerance',
+    element_type: 'TransformerBranch',
+    field: 'lv_voltage_tolerance',
   });
 } else if (creator === 'cieplna') {
   // K3-B3: wariant NIEAKTUALNY znacznika świeżości — migawka w rew. 2, a
@@ -2106,6 +2144,8 @@ function Harness() {
   else if (creator === 'rozplyw')
     node = <EkranRozplywu trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia')
+    node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+  else if (creator === 'zwarcia-tolerancja-robocza')
     node = <EkranZwarc trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-rozplyw')
     // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie

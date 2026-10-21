@@ -27,6 +27,7 @@ import { SladZrodelSieciowych } from './SladZrodelSieciowych';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
+import { useZmienTolerancjeNn } from './zmianaTolerancjiNn';
 import { useSwiezoscNaglowka } from '../../freshness';
 import { otworzEdycjeCzasuTb } from '../../spaces/obliczenia/scenariusze/zadanieCzasuTb';
 import {
@@ -71,6 +72,9 @@ export function EkranZwarc({
   const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
   // Zasada nr 4 (V12K-351): wartość robocza aparatu → kreator edycji parametrów aparatu.
   const zmienWartoscAparatu = useZmienWartoscAparatu();
+  // Zasada nr 4: sieć nN liczona na wartości roboczej tolerancji → kreator edycji pola
+  // deklaracji elementu zasilającego (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+  const zmienTolerancjeNn = useZmienTolerancjeNn();
   // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku zwarciowego prowadzi
   // WPROST do uruchomienia przebiegu zwarciowego (ten sam tor co „Oblicz").
   const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
@@ -117,20 +121,25 @@ export function EkranZwarc({
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0];
   const nazwaAktywnego = nazwaPunktuZwarcia(wierszAktywny, nazwaObiektu);
   const wkladyAktywne =
-    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane?.wklady ?? null;
+    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane.dane?.wklady ?? null;
   // Wywod {tekst, latex} z backendu (zasada KaTeX) — tylko od realnego dostawcy;
   // przy wkladach z props (testy/nadpisanie) wywodu brak (zero fabrykacji).
-  const wywodWkladow = wklady ? [] : wkladyPobrane?.wywod ?? [];
+  const wywodWkladow = wklady ? [] : wkladyPobrane.dane?.wywod ?? [];
   // ZWARCIA-PRO F3: wywod sekcyjny + checklista walidacji IEC (addytywne pola
   // odpowiedzi contributions) — takze wylacznie od realnego dostawcy.
-  const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane?.wywodSekcje ?? [];
-  const walidacjaIecWkladow = wklady ? [] : wkladyPobrane?.walidacjaIec ?? [];
+  const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane.dane?.wywodSekcje ?? [];
+  const walidacjaIecWkladow = wklady ? [] : wkladyPobrane.dane?.walidacjaIec ?? [];
 
   return (
     <div data-testid="mvd-zwarcia-ekran">
       <EkranAnalizy
         naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
-        zalozenia={naZalozeniaZwarc(wynik.konfiguracja_biegu, wynik.zalozenia, (ref) => nazwaObiektu(ref))}
+        zalozenia={naZalozeniaZwarc(
+          wynik.konfiguracja_biegu,
+          wynik.zalozenia,
+          (ref) => nazwaObiektu(ref),
+          zmienTolerancjeNn,
+        )}
         kolumny={KOLUMNY_ZWARC}
         wiersze={naWierszeZwarc(rows, nazwaObiektu)}
         wykres={<WykresZwarc rows={rows} />}
@@ -198,6 +207,8 @@ export function EkranZwarc({
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
         flows={rozplyw.flows}
+        blad={rozplyw.blad}
+        ladowanie={rozplyw.ladowanie}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />
@@ -208,12 +219,15 @@ export function EkranZwarc({
         punktNazwa={nazwaAktywnego}
         trace={rozplyw.trace}
         blad={rozplyw.blad}
+        ladowanie={rozplyw.ladowanie}
         trybZaawansowania={trybZaawansowania}
       />
 
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}
         wklady={wkladyAktywne}
+        blad={!wklady && wkladyPobrane.blad}
+        ladowanie={!wklady && wkladyPobrane.ladowanie}
         wywod={wywodWkladow}
         wywodSekcje={wywodSekcjeWkladow}
         walidacjaIec={walidacjaIecWkladow}

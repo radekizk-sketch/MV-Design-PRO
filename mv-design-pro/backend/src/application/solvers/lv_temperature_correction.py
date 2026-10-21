@@ -150,8 +150,6 @@ def build_min_scenario_graph(graph: NetworkGraph) -> MinScenarioGraphResult:
         decorated.add_asynchronous_machine_source(silnik)
     for zrodlo_sieciowe in graph.grid_sc_sources.values():
         decorated.add_grid_sc_source(zrodlo_sieciowe)
-    for odmowa in graph.odmowy_impedancji_zrodel.values():
-        decorated.add_odmowa_impedancji_zrodla(odmowa)
     for station in graph.stations.values():
         decorated.add_station(station)
 

@@ -100,7 +100,11 @@ export const ZWARCIA_STRINGS = {
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
   walidacjaTytul: 'Walidacja metody IEC 60909',
   wkladyNiedostepneOpis:
-    'Nie udało się pobrać rozbicia maszynowego dla tego punktu (brak migawki modelu albo błąd pobierania). Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+    'Brak migawki modelu albo parametrów biegu potrzebnych do rozbicia maszynowego tego punktu. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+  wkladyBlad: 'Nie udało się pobrać wkładów do zwarcia.',
+  wkladyBladOpis:
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
+  wkladyLadowanie: 'Pobieranie wkładów do zwarcia dla tego punktu…',
   wkladyBrakPunktow: 'Brak punktów zwarcia do wyboru.',
 
   // Sekcja wkładów — filtr, wykres udziałów, szczegół źródła (karta W-A F2)
@@ -132,6 +136,10 @@ export const ZWARCIA_STRINGS = {
   rozplywNiedostepny: 'Rozpływ gałęziowy niedostępny w tym przebiegu.',
   rozplywNiedostepnyOpis:
     'Starszy wynik nie niesie wkładów gałęziowych. Uruchom ponownie obliczenie zwarciowe, aby je uzyskać.',
+  rozplywBlad: 'Nie udało się pobrać rozpływu prądu zwarciowego.',
+  rozplywBladOpis:
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
+  rozplywLadowanie: 'Pobieranie rozpływu prądu zwarciowego dla tego punktu…',
   rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
   rozplywBrakWkladowOpis:
     'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
@@ -147,6 +155,7 @@ export const ZWARCIA_STRINGS = {
   sladRozplywuPusty: 'Brak kroków podziału dla tego punktu zwarcia.',
   sladRozplywuPustyOpis:
     'Rozpływ policzony, ale ślad obliczeń dokumentuje wyłącznie podział prądu od sieci zastępczej (Thevenina) — ten punkt zwarcia nie ma wkładu z tego źródła.',
+  sladRozplywuLadowanie: 'Pobieranie śladu podziału prądu zwarciowego dla tego punktu…',
   sladRozplywuBlad: 'Nie udało się pobrać śladu podziału prądu zwarciowego.',
   sladRozplywuBladOpis:
     'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',
@@ -220,6 +229,13 @@ export const ZWARCIA_STRINGS = {
   // scenariusz po polsku; kod gotowości założenia nie jest tekstem dla projektanta.
   zalozenieEtykieta: (nazwaZrodla: string) => `Źródło ${nazwaZrodla}`,
   zalozenieUwaga: (scenariuszPL: string) => `Scenariusz ${scenariuszPL}`,
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): założenie
+  // `fault.c_tolerancja_nn_robocza` dotyczy sieci nN (element zasilający albo jej szyna),
+  // nie źródła — etykieta nazywa tolerancję i element z modelu; treść (co przyjęto, dla
+  // jakich węzłów, dlaczego) wprost z backendu. Znacznik i akcja — dyskretnie, obok.
+  zalozenieTolerancjiNn: (nazwaElementu: string) => `Tolerancja napięcia sieci nN — ${nazwaElementu}`,
+  znacznikWartosciRoboczej: 'wartość robocza',
+  zmienWartosc: 'Zmień wartość',
 
   // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
   pokazNaSchemacie: 'Pokaż na schemacie',

@@ -27,12 +27,11 @@ from network_model.catalog import (
 )
 from network_model.catalog.types import TransformerType
 from network_model.core.voltage_factor import (
-    OdmowaToleranciiNnError,
     TolerancjaNapieciaNn,
     c_for_node,
 )
 from network_model.ir_fields import wymagany_float
-from network_model.nazwy import jest_nazwa, nazwa_nadana
+from network_model.nazwy import jest_nazwa
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
@@ -775,11 +774,11 @@ class TransformerBranch(Branch):
     # V12K-045: canonical tap-changer state (single source of truth). None keeps
     # the legacy tap_position/tap_step_percent behaviour byte-for-byte.
     tap_changer: TapChanger | None = None
-    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN po stronie dolnej
-    # ("PLUS_6"/"PLUS_10") — kopia `enm.Transformer.lv_voltage_tolerance` (jedyny nośnik).
-    # c_max strony dolnej we wzorze K_T (IEC 60909-0 eq. 12a) czyta ją przez `c_for_node`;
-    # None przy stronie dolnej nN = odmowa nazwana (nigdy wiersz +6 % po cichu). Nie
-    # serializowane — ścieżka kanoniczna odbudowuje graf z ENM.
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: klasa tolerancji napięcia sieci nN po stronie dolnej
+    # ("PLUS_6"/"PLUS_10") — klasa WYSPY nN strony dolnej z `enm.tolerancja_nn` (deklaracja
+    # albo wartość robocza rejestru, karta TOLERANCJA-NN-WARTOSC-ROBOCZA). c_max strony dolnej
+    # we wzorze K_T (IEC 60909-0 eq. 12a) czyta ją przez `c_for_node`. Nie serializowane —
+    # ścieżka kanoniczna odbudowuje graf z ENM.
     tolerancja_nn_dolna: TolerancjaNapieciaNn | None = None
 
     @classmethod
@@ -977,22 +976,19 @@ class TransformerBranch(Branch):
         Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
         source of truth for c across the codebase — see
         ``network_model.core.voltage_factor.c_for_node``) with the declared tolerance
-        of the nN system on the LV side (``tolerancja_nn_dolna``; karta
-        WSPOLCZYNNIK-C-JEDEN-NOSNIK — an nN LV side without it is refused).
+        class of the nN system on the LV side (``tolerancja_nn_dolna``; karty
+        WSPOLCZYNNIK-C-JEDEN-NOSNIK i TOLERANCJA-NN-WARTOSC-ROBOCZA — the mapper always
+        resolves it for an nN LV side: declaration or working value).
 
         Returns:
             Maximum voltage factor c.
         """
         self._validate_short_circuit_inputs()
-        try:
-            return c_for_node(
-                self.voltage_lv_kv,
-                "MAX",
-                tolerancja_nn=self.tolerancja_nn_dolna,
-            )
-        except OdmowaToleranciiNnError as odmowa:
-            # Partia integracji 11: odmowa K_T nazywa transformator (nazwa z mapowania ENM).
-            raise odmowa.dotyczy(nazwa_nadana(self.name) or "Transformator bez nazwy") from odmowa
+        return c_for_node(
+            self.voltage_lv_kv,
+            "MAX",
+            tolerancja_nn=self.tolerancja_nn_dolna,
+        )
 
     def get_relative_reactance_xt(self) -> float:
         """

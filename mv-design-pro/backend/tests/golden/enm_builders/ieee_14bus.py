@@ -162,7 +162,8 @@ def build_ieee_14bus_enm() -> BenchmarkEnm:
         catalog_ref="bench_ieee14bus_br19",
         lv_bus_ref=bus_map["B8"],
         # Drugi transformator zasilający tę samą sieć nN deklaruje TĘ SAMĄ tolerancję — wyspa
-        # z elementem bez deklaracji albo ze sprzecznymi deklaracjami to odmowa zwarcia.
+        # ze sprzecznymi deklaracjami liczyłaby się na wartości roboczej +10 % (karta
+        # TOLERANCJA-NN-WARTOSC-ROBOCZA), a benchmark trzyma wiersz +6 % tabeli 1.
         lv_voltage_tolerance="PLUS_6",
     )
 

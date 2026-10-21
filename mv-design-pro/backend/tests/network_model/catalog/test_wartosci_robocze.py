@@ -288,3 +288,91 @@ def test_spelnia_na_wartosci_roboczej_daje_brak_dowodu_na_poziomie_wymagania() -
     w_zwalidowane = f.wymaganie([na_zwalidowanych], sposob="OBLICZENIE")
     assert w_robocze.status_maszynowy == "BRAK_DOWODU"
     assert w_zwalidowane.status_maszynowy == "SPELNIA"
+
+
+# =============================================================================
+# Tolerancja napięcia sieci nN (karta TOLERANCJA-NN-WARTOSC-ROBOCZA): pierwszeństwo
+# deklaracji nad wartością roboczą — JEDNO miejsce rozstrzygnięcia, iloczyn deklaracji
+# elementów zasilających sieci × (klasa, pochodzenie, powód propozycji).
+# =============================================================================
+
+_ROZSTRZYGNIECIA_NN = [
+    ((), ("PLUS_10", True, "BRAK_ZASILAJACEGO")),
+    ((None,), ("PLUS_10", True, "BRAK_DEKLARACJI")),
+    ((None, None), ("PLUS_10", True, "BRAK_DEKLARACJI")),
+    (("PLUS_6",), ("PLUS_6", False, None)),
+    (("PLUS_10",), ("PLUS_10", False, None)),
+    (("PLUS_6", None), ("PLUS_6", False, None)),
+    ((None, "PLUS_10"), ("PLUS_10", False, None)),
+    (("PLUS_6", "PLUS_6"), ("PLUS_6", False, None)),
+    (("PLUS_6", "PLUS_10"), ("PLUS_10", True, "DEKLARACJE_SPRZECZNE")),
+    (("PLUS_10", None, "PLUS_6"), ("PLUS_10", True, "DEKLARACJE_SPRZECZNE")),
+]
+
+
+@pytest.mark.parametrize(("deklaracje", "oczekiwane"), _ROZSTRZYGNIECIA_NN)
+def test_rozstrzygniecie_tolerancji_nn_deklaracja_przed_wartoscia_robocza(
+    deklaracje: tuple, oczekiwane: tuple
+) -> None:
+    from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
+
+    wynik = rozstrzygnij_tolerancje_nn(deklaracje)
+    assert (wynik.wartosc, wynik.robocza, wynik.powod_propozycji) == oczekiwane
+    slownik = wynik.to_dict()
+    assert slownik["parametr"] == "lv_voltage_tolerance"
+    assert slownik["wartosc_robocza"] is wynik.robocza
+    assert (slownik["propozycja"] is not None) is wynik.robocza
+    opis = wynik.opis_zrodla_pl()
+    if wynik.robocza:
+        assert opis.startswith("wartość robocza tolerancji +10 % (założenie inżynierskie")
+        assert "IEC 60909-0:2016 tabela 1" in opis
+        assert "Wpływ:" in opis
+    else:
+        assert "zadeklarowana przez projektanta" in opis
+
+
+def test_rozstrzygniecie_tolerancji_spoza_slownika_to_blad_programu() -> None:
+    from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
+    from network_model.odmowa_danych import OdmowaDanychError
+
+    with pytest.raises(ValueError) as blad:
+        rozstrzygnij_tolerancje_nn(("PLUS_7",))  # type: ignore[arg-type]
+    assert not isinstance(blad.value, OdmowaDanychError)
+
+
+@pytest.mark.parametrize(
+    ("napiecie_kv", "deklaracja", "oczekiwane"),
+    [
+        (0.4, None, ("PLUS_10", True)),
+        (0.4, "PLUS_6", ("PLUS_6", False)),
+        (0.4, "PLUS_10", ("PLUS_10", False)),
+        (0.23, None, ("PLUS_10", True)),
+        (15.0, None, None),
+        (15.0, "PLUS_6", None),
+        (110.0, None, None),
+    ],
+)
+def test_tolerancja_napiecia_zadania_tylko_w_pasmie_nn(
+    napiecie_kv: float, deklaracja: str | None, oczekiwane: tuple | None
+) -> None:
+    """Żądanie bez modelu (podgląd źródła, pakiet dowodowy): ta sama reguła pierwszeństwa;
+    poza pasmem nN tabela 1 ma jeden wiersz — brak rozstrzygnięcia (``None``)."""
+    from network_model.catalog.wartosci_robocze import tolerancja_nn_napiecia
+
+    wynik = tolerancja_nn_napiecia(napiecie_kv, deklaracja)  # type: ignore[arg-type]
+    assert (None if wynik is None else (wynik.wartosc, wynik.robocza)) == oczekiwane
+
+
+def test_propozycja_tolerancji_nn_wplyw_liczbowo_z_tabeli_1() -> None:
+    """Zdanie wpływu propozycji podaje różnicę prądów między klasami z tabeli 1 IEC 60909-0:
+    I_max(+6 %)/I_max(+10 %) = 1,05/1,10 → −4,5 %; I_min(+6 %)/I_min(+10 %) = 0,95/0,90 →
+    +5,6 % (ta sama impedancja, prąd proporcjonalny do c)."""
+    from network_model.catalog.wartosci_robocze import PROPOZYCJA_TOLERANCJI_NN
+
+    assert PROPOZYCJA_TOLERANCJI_NN.wartosc == "PLUS_10"
+    assert PROPOZYCJA_TOLERANCJI_NN.rodzaj_zrodla == "ZALOZENIE_INZYNIERSKIE"
+    assert f"{abs(1.05 / 1.10 - 1.0) * 100.0:.1f}" == "4.5"
+    assert f"{abs(0.95 / 0.90 - 1.0) * 100.0:.1f}" == "5.6"
+    assert "mniejszy o 4,5 %" in PROPOZYCJA_TOLERANCJI_NN.wplyw_pl
+    assert "większy o 5,6 %" in PROPOZYCJA_TOLERANCJI_NN.wplyw_pl
+    assert "c_max 1,10, c_min 0,90" in PROPOZYCJA_TOLERANCJI_NN.odniesienie

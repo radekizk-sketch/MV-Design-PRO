@@ -65,6 +65,7 @@ from application.ncrfg_compliance import (
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.nazwy import nazwa_nadana
 from network_model.reporting.czcionki import zarejestruj_czcionki
@@ -281,15 +282,49 @@ def _zwarcia_sekcja(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
     """Zbuduj sekcję zwarć w punkcie przyłączenia z wiersza wyniku zwarciowego."""
     row = _sc_row_for_bus(sc_run, bus_ref)
     assert row is not None  # gwarantowane przez bramkę braków
+    nazwa_wezla = nazwa_nadana(row.get("target_name")) or opis_bez_nazwy("buses")
     return {
         "bus_ref": bus_ref,
-        "nazwa_wezla": nazwa_nadana(row.get("target_name")) or opis_bez_nazwy("buses"),
+        "nazwa_wezla": nazwa_wezla,
         "ik_ss_ka": row.get("ikss_ka"),
         "sk_mva": row.get("sk_mva"),
         "ip_ka": row.get("ip_ka"),
         "ith_ka": row.get("ith_ka"),
         "rodzaj_zwarcia": row.get("fault_type"),
+        # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: węzeł w sieci nN liczonej z wartością roboczą
+        # tolerancji napięcia — prądy stoją na danej przyjętej; addytywnie, WYŁĄCZNIE gdy są.
+        **(
+            {
+                "dane_przyjete": [
+                    dana_przyjeta_tolerancji_nn(
+                        miejsce_pl=f"węzeł przyłączenia: {nazwa_wezla}"
+                    ).model_dump(mode="json")
+                ]
+            }
+            if row.get("tolerancja_nn_robocza")
+            else {}
+        ),
     }
+
+
+def _wiersze_zwarc(zwarcia: dict[str, Any]) -> list[tuple[str, str]]:
+    """Wiersze tabeli zwarć w punkcie przyłączenia — JEDNE dla DOCX i PDF.
+
+    Dana przyjęta (wartość robocza tolerancji sieci nN) dokłada wiersz z nazwą i powodem —
+    wniosek nie podaje prądu na wartości roboczej jako liczby bez zastrzeżenia."""
+    wiersze = [
+        ("Węzeł", str(zwarcia["nazwa_wezla"])),
+        ("Początkowy prąd zwarciowy Ik'' [kA]", _fmt(zwarcia["ik_ss_ka"])),
+        ("Moc zwarciowa S_k'' [MVA]", _fmt(zwarcia["sk_mva"])),
+        ("Prąd udarowy ip [kA]", _fmt(zwarcia["ip_ka"])),
+        ("Prąd cieplny Ith [kA]", _fmt(zwarcia["ith_ka"])),
+        ("Rodzaj zwarcia", zwarcia["rodzaj_zwarcia"] or "—"),
+    ]
+    for dana in zwarcia.get("dane_przyjete") or []:
+        wiersze.append(
+            ("Dana przyjęta (wartość robocza)", f"{dana['nazwa_pl']}: {dana['powod_pl']}")
+        )
+    return wiersze
 
 
 def _zgodnosc_sekcja(zgodnosc: NcRfgCaseComplianceResponse) -> dict[str, Any]:
@@ -487,14 +522,7 @@ def render_wniosek_osd_docx(view: dict[str, Any]) -> bytes:
     hdr[1].text = "Wartość"
     hdr[0].paragraphs[0].runs[0].bold = True
     hdr[1].paragraphs[0].runs[0].bold = True
-    wiersze = [
-        ("Węzeł", zwarcia["nazwa_wezla"]),
-        ("Początkowy prąd zwarciowy Ik'' [kA]", _fmt(zwarcia["ik_ss_ka"])),
-        ("Moc zwarciowa S_k'' [MVA]", _fmt(zwarcia["sk_mva"])),
-        ("Prąd udarowy ip [kA]", _fmt(zwarcia["ip_ka"])),
-        ("Prąd cieplny Ith [kA]", _fmt(zwarcia["ith_ka"])),
-        ("Rodzaj zwarcia", zwarcia["rodzaj_zwarcia"] or "—"),
-    ]
+    wiersze = _wiersze_zwarc(zwarcia)
     for etykieta, wartosc in wiersze:
         row = tabela.add_row().cells
         row[0].text = str(etykieta)
@@ -619,14 +647,7 @@ def render_wniosek_pdf(view: dict[str, Any]) -> bytes:
     # Sekcja 2 — zwarcia w punkcie przyłączenia (tabela).
     zwarcia = view["zwarcia_punkt_przylaczenia"]
     para("2. Zwarcia w punkcie przyłączenia", size=12, bold=True)
-    wiersze = [
-        ("Węzeł", zwarcia["nazwa_wezla"]),
-        ("Początkowy prąd zwarciowy Ik'' [kA]", _fmt(zwarcia["ik_ss_ka"])),
-        ("Moc zwarciowa S_k'' [MVA]", _fmt(zwarcia["sk_mva"])),
-        ("Prąd udarowy ip [kA]", _fmt(zwarcia["ip_ka"])),
-        ("Prąd cieplny Ith [kA]", _fmt(zwarcia["ith_ka"])),
-        ("Rodzaj zwarcia", zwarcia["rodzaj_zwarcia"] or "—"),
-    ]
+    wiersze = _wiersze_zwarc(zwarcia)
     label_col = content_width * 0.6
     for etykieta, wartosc in wiersze:
         ensure(line_height)

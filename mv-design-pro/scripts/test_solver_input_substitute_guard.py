@@ -1885,7 +1885,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # biegow (`ib_ka_a/b`, `i_dc_ka_a/b`, `tb_s_a/b`, `delta_ib_ka`, `delta_ib_percent`,
     # `delta_i_dc_ka`, `delta_i_dc_percent`, `delta_tb_s`, `delta_tb_percent`,
     # `tb_pochodzenie_a/b`, `tb_wartosc_robocza_a/b`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4273." in wyjscie, wyjscie
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (2026-10-21, przeniesiona na czubek partii 13):
+    # POMIAR guardem = 4277 (4273 bazy + 4); roznica zbiorow `contract_fields()`
+    # wzgledem 6eb958fbb:
+    # +4 (`dane_przyjete_ik1_min` — dane przyjete Ik1_min doboru aparatu nN,
+    # `powod_propozycji` i `rozstrzygniecie` — rozstrzygniecie tolerancji sieci nN per wyspa,
+    # `tolerancja_nn_robocza` — znacznik wiersza wyniku SC), -0.
+    assert "Pol kontraktow wejsciowych: 4277." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

@@ -12,8 +12,12 @@
  *  - karta_przypadku             — sekcja „Założenia" z notką o nośniku c (bez dawnych pól c),
  *  - ekran_zwarc                 — Założenia (c biegu) i Bilans IEC z „Podstawą współczynnika c",
  *  - tolerancja_nn_kreator       — kreator stacji, krok „Uziemienie i punkt neutralny",
- *  - akcja_naprawcza_tolerancja  — formularz parametrów otwarty z akcji naprawczej bramki
- *                                  ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING.
+ *  - ekran_zwarc_wartosc_robocza — karta TOLERANCJA-NN-WARTOSC-ROBOCZA: bieg na sieci bez
+ *                                  deklaracji tolerancji sieci nN — założenie z dyskretnym
+ *                                  znacznikiem „wartość robocza" i akcją „Zmień wartość",
+ *                                  bilans punktu nN z podstawą c „(wartość robocza)",
+ *  - zmiana_tolerancji_nn        — formularz parametrów otwarty akcją „Zmień wartość" tego
+ *                                  założenia (pole deklaracji tolerancji transformatora).
  * Werdykt wizualny wystawia właściciel (B-02) — spec dostarcza wyłącznie zrzuty.
  */
 import { test, expect, type Page } from '@playwright/test';
@@ -44,13 +48,24 @@ const ZWARCIA_WYNIKI = JSON.parse(
   ),
 ) as { rows: { target_id: string; c_zrodlo: string | null }[] };
 const WIERSZ_NN = ZWARCIA_WYNIKI.rows.find((w) => (w.c_zrodlo ?? '').includes('pasmo nN'))!;
+/** Ten sam punkt nN z biegu na wartości roboczej (sieć bez deklaracji tolerancji). */
+const ZWARCIA_WYNIKI_ROBOCZE = JSON.parse(
+  fs.readFileSync(
+    path.resolve(_dirname, '../src/harness-fixtures/generated/zwarcia_wyniki_scena_tolerancja_robocza.json'),
+    'utf-8',
+  ),
+) as { rows: { target_id: string; c_zrodlo: string | null }[] };
+const WIERSZ_NN_ROBOCZY = ZWARCIA_WYNIKI_ROBOCZE.rows.find((w) =>
+  (w.c_zrodlo ?? '').includes('(wartość robocza)'),
+)!;
 
 const SCENY = [
   'panel_scenariuszy',
   'karta_przypadku',
   'ekran_zwarc',
   'tolerancja_nn_kreator',
-  'akcja_naprawcza_tolerancja',
+  'ekran_zwarc_wartosc_robocza',
+  'zmiana_tolerancji_nn',
 ] as const;
 type Scena = (typeof SCENY)[number];
 
@@ -59,7 +74,8 @@ const CREATOR: Record<Scena, string> = {
   karta_przypadku: 'karta-przypadku',
   ekran_zwarc: 'zwarcia',
   tolerancja_nn_kreator: 'stacja',
-  akcja_naprawcza_tolerancja: 'edycja-tolerancja-nn',
+  ekran_zwarc_wartosc_robocza: 'zwarcia-tolerancja-robocza',
+  zmiana_tolerancji_nn: 'edycja-tolerancja-nn',
 };
 
 async function prowadzScene(page: Page, scena: Scena): Promise<void> {
@@ -106,8 +122,24 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await tolerancja.selectOption('PLUS_10');
     await page.getByTestId('mvd-kreator-stacja-uklad-nn').selectOption('TN-S');
     await tolerancja.scrollIntoViewIfNeeded();
+  } else if (scena === 'ekran_zwarc_wartosc_robocza') {
+    await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible();
+    const zalozenia = page.getByTestId('mvd-wyn-zalozenia');
+    await expect(zalozenia).toContainText('Tolerancja napięcia sieci nN');
+    await expect(zalozenia.getByTestId('mvd-wyn-zalozenie-znacznik')).toHaveText('wartość robocza');
+    await expect(zalozenia.getByRole('button', { name: 'Zmień wartość' })).toBeVisible();
+    // Punkt nN biegu na wartości roboczej → bilans pokazuje podstawę c „(wartość robocza)".
+    await page
+      .getByTestId('mvd-wyn-tabela')
+      .first()
+      .getByText(nazwaElementu('siec_zlota_scena_migawka', WIERSZ_NN_ROBOCZY.target_id), { exact: true })
+      .first()
+      .click();
+    const bilans = page.getByTestId('mvd-zwarcia-bilans');
+    await expect(bilans).toContainText(WIERSZ_NN_ROBOCZY.c_zrodlo!);
+    await zalozenia.scrollIntoViewIfNeeded();
   } else {
-    // Akcja naprawcza otwiera formularz z kluczem `lv_voltage_tolerance` — pole wartości
+    // „Zmień wartość" otwiera formularz z kluczem `lv_voltage_tolerance` — pole wartości
     // jest listą tolerancji (słownik kontraktu), nie wolnym tekstem.
     await expect(page.locator('input[value="lv_voltage_tolerance"]').first()).toBeVisible();
     const lista = page.locator('select').filter({ has: page.locator('option[value="PLUS_6"]') }).first();

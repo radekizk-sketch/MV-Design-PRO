@@ -59,11 +59,11 @@ def _build_bus_payloads(
     Karta P0.3: each bus of a SHORT-CIRCUIT payload carries the IEC 60909-0 Table 1
     voltage factor c for ITS OWN voltage band, nN tolerance and the requested scenario
     (c_factor_iec60909) — one shared source of truth
-    (network_model.core.voltage_factor.c_for_node, through enm.tolerancja_nn.dobierz_c_wezla,
-    which names the bus in a missing-tolerance refusal). Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
-    c is a short-circuit quantity, so a load-flow payload (``z_c=False``) carries
-    ``None`` — the load flow never reads c, and an nN bus without a declared tolerance
-    must not block a calculation that does not need it.
+    (network_model.core.voltage_factor.c_for_node, through enm.tolerancja_nn.dobierz_c_wezla:
+    the tolerance class of the bus's nN island — the designer's declaration or the working
+    value of the register, karta TOLERANCJA-NN-WARTOSC-ROBOCZA). Karta
+    WSPOLCZYNNIK-C-JEDEN-NOSNIK: c is a short-circuit quantity, so a load-flow payload
+    (``z_c=False``) carries ``None`` — the load flow never reads c.
     """
     payloads: list[BusPayload] = []
     for node in sorted(graph.nodes.values(), key=lambda n: n.id):

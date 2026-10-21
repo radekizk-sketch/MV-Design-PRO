@@ -8,8 +8,6 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
-import { resolveFixActionSurface } from '../../../../types/fixActionSurface';
-import { buildFixActionOperationContext } from '../../../../ui/shared/fixActionSurfaceRuntime';
 import { ETYKIETA_PL_TOLERANCJI_NN } from '../../../../types/uziemienie';
 
 const closeFormMock = vi.fn();
@@ -350,26 +348,21 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     });
   });
 
-  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — akcja naprawcza bramki zwarć prowadzi DO POLA.
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): brak deklaracji tolerancji
+  // sieci nN nie blokuje zwarć — bieg liczy na wartości roboczej, a akcja „Zmień wartość”
+  // założenia `fault.c_tolerancja_nn_robocza` otwiera ten formularz W POLU deklaracji.
   // Iloczyn cech: {transformator, źródło na szynie nN} × {+6 %, +10 %}; kontekst formularza
-  // budowany TĄ SAMĄ ścieżką co klik akcji naprawczej (resolveFixActionSurface →
-  // buildFixActionOperationContext), wybór wartości natywnym `selectOptions`.
+  // to DOKŁADNIE ten, który buduje `useZmienTolerancjeNn` (`zmianaTolerancjiNn.ts`, kontrakt
+  // przypięty w `zwarcia/__tests__/zmianaTolerancjiNn.test.tsx`), wybór wartości natywnym
+  // `selectOptions`, zapis natywnym klikiem.
   describe.each([
-    ['transformator', 'tr-nn-1', 'TransformerModal'],
-    ['źródło na szynie nN', 'src-nn-1', 'SourceModal'],
-  ] as const)('tolerancja napięcia sieci nN — %s', (_, ref, modal) => {
+    ['transformator', 'tr-nn-1', 'TransformerBranch'],
+    ['źródło na szynie nN', 'src-nn-1', 'Source'],
+  ] as const)('tolerancja napięcia sieci nN — %s', (_, ref, typ) => {
     it.each(['PLUS_6', 'PLUS_10'] as const)(
-      'akcja naprawcza otwiera pole lv_voltage_tolerance; wybór %s trafia do parameters',
+      '„Zmień wartość” otwiera pole lv_voltage_tolerance; wybór %s trafia do parameters',
       async (tolerancja) => {
-        const surface = resolveFixActionSurface({
-          code: 'ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING',
-          action_type: 'OPEN_MODAL',
-          element_ref: ref,
-          modal_type: modal,
-          payload_hint: { required: 'lv_voltage_tolerance' },
-        });
-        expect(surface.operation).toBe('update_element_parameters');
-        context = buildFixActionOperationContext(surface, null);
+        context = { element_ref: ref, element_type: typ, field: 'lv_voltage_tolerance' };
         executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: ref } });
         render(<KreatorEdycjiParametrow />);
 

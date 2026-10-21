@@ -42,17 +42,16 @@ from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
 from enm.slownik_komunikatow import etykieta_parametru, opis_obiektu
-from enm.tolerancja_nn import tolerancje_wezlow_nn
+from enm.tolerancja_nn import wyspy_wezlow_nn
 from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
     build_transformer_zero_seq_model,
 )
-from network_model.core.graph import NetworkGraph
-from network_model.core.voltage_factor import (
-    KOD_TOLERANCJA_NN_BRAK,
-    OdmowaToleranciiNnError,
-    TolerancjaNapieciaNn,
+from network_model.catalog.wartosci_robocze import (
+    TolerancjaNnRozstrzygnieta,
+    rozstrzygnij_tolerancje_nn,
 )
+from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import S_BASE_MVA
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v, napiecie_fazowe_v
@@ -310,7 +309,6 @@ def restrict_graph_to_island_of(graph: NetworkGraph, node_id: str) -> bool:
         graph.synchronous_machine_sources,
         graph.asynchronous_machine_sources,
         graph.grid_sc_sources,
-        graph.odmowy_impedancji_zrodel,
     ):
         for element_id in sorted(
             element_id
@@ -350,10 +348,6 @@ def compute_upstream_hv_thevenin(
 
     try:
         builder, z_bus = build_zbus(graph)
-    except OdmowaToleranciiNnError:
-        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć zwarciowa (K_T transformatorów nN, Z_Q
-        # źródeł nN) wymaga tolerancji sieci nN — brak danej, nie osobliwość sieci.
-        return None, [BRAK_TOLERANCJI_NN]
     except (ValueError, ZeroDivisionError):
         return None, ["upstream_network_singular"]
 
@@ -632,58 +626,32 @@ def odmowa_pasma_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, An
     }
 
 
-#: Brak danej analiz nN: tolerancja napięcia sieci nN (wiersz nN tabeli 1 IEC 60909-0) —
-#: nazwa pola nośnika (`Transformer.lv_voltage_tolerance` / `Source.lv_voltage_tolerance`).
-BRAK_TOLERANCJI_NN = "lv_voltage_tolerance"
-
-
 def tolerancja_sieci_nn_transformatora(
     enm: EnergyNetworkModel, trafo: Transformer
-) -> TolerancjaNapieciaNn | None:
-    """Tolerancja sieci nN zasilanej z transformatora — JEDEN predykat (`enm.tolerancja_nn`).
+) -> TolerancjaNnRozstrzygnieta:
+    """Klasa tolerancji sieci nN zasilanej z transformatora — JEDEN predykat (`enm.tolerancja_nn`).
 
     Czytana dla szyny strony dolnej: punkt zwarcia trasy pętli leży w tej samej wyspie nN
-    (trasa prowadzi od transformatora gałęziami nN). Dzielona przez bramkę wejścia
-    (``odmowa_tolerancji_nn``) i obliczenie (``oblicz_petle_na_trasie``) — warunek wejścia i
-    dane obliczenia z jednego źródła.
+    (trasa prowadzi od transformatora gałęziami nN). Zawsze ustalona (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA): deklaracja projektanta albo wartość robocza rejestru —
+    brak deklaracji nie blokuje pętli. Szyna strony dolnej spoza pasma nN (napięcie szyny
+    rozbieżne z napięciem strony dolnej transformatora) nie należy do żadnej wyspy nN — klasę
+    rozstrzyga wtedy ta sama reguła rejestru z deklaracji samego transformatora.
     """
-    return tolerancje_wezlow_nn(enm).get(trafo.lv_bus_ref)
+    wyspa = wyspy_wezlow_nn(enm).get(trafo.lv_bus_ref)
+    if wyspa is not None:
+        return wyspa.rozstrzygniecie
+    return rozstrzygnij_tolerancje_nn((trafo.lv_voltage_tolerance,))
 
 
-def odmowa_tolerancji_nn(
-    context: dict[str, Any], enm: EnergyNetworkModel, trafo: Transformer
-) -> dict[str, Any] | None:
-    """Odmowa NAZWANA, gdy sieć nN transformatora nie ma tolerancji napięcia (+6 % / +10 %).
+def odmowa_analizy_nn(context: dict[str, Any], trafo: Transformer) -> dict[str, Any] | None:
+    """Jedno wejście odmów analiz nN: pasmo strony dolnej i układ sieci.
 
-    I_k,min pętli = c_min·U_0/|Z_s| (IEC 60364-4-41 z c tabeli 1 IEC 60909-0): c_min sieci
-    +10 % (0,90) jest o 5,26 % mniejszy niż +6 % (0,95) — przyjęcie wiersza +6 % dla sieci
-    +10 % zawyżałoby I_k,min o 5,56 %, czyli po stronie niebezpiecznej dla samoczynnego
-    wyłączenia. Brak danej = brak obliczenia, nigdy wiersz domyślny.
+    Tolerancja napięcia sieci nN nie jest odmową (karta TOLERANCJA-NN-WARTOSC-ROBOCZA, zasada
+    nr 4): brak deklaracji daje wartość roboczą rejestru, nazwaną w podstawie c pętli.
     """
-    if tolerancja_sieci_nn_transformatora(enm, trafo) is not None:
-        return None
-    return {
-        **context,
-        "status": "brak danych",
-        "kod_odmowy": KOD_TOLERANCJA_NN_BRAK,
-        "missing_data": [BRAK_TOLERANCJI_NN],
-        "reason_pl": (
-            f"Sieć nN zasilana z: {opis_obiektu(trafo, 'Transformator')} nie ma "
-            "zadeklarowanej tolerancji napięcia (+6 % albo +10 %) na każdym elemencie, który ją "
-            "zasila, albo deklaracje są sprzeczne — współczynnika c (IEC 60909-0, tabela 1) dla "
-            "pętli zwarcia nie da się dobrać, więc I_k,min nie jest liczony."
-        ),
-    }
-
-
-def odmowa_analizy_nn(
-    context: dict[str, Any], trafo: Transformer, *, enm: EnergyNetworkModel
-) -> dict[str, Any] | None:
-    """Jedno wejście odmów analiz nN: pasmo strony dolnej, układ sieci, tolerancja sieci nN."""
-    return (
-        odmowa_pasma_nn(context, trafo)
-        or odmowa_ukladu_nn(context, uklad_nn_transformatora(trafo))
-        or odmowa_tolerancji_nn(context, enm, trafo)
+    return odmowa_pasma_nn(context, trafo) or odmowa_ukladu_nn(
+        context, uklad_nn_transformatora(trafo)
     )
 
 
@@ -733,6 +701,7 @@ def oblicz_petle_na_trasie(
     nN — dotąd każdy z czterech modułów składał `FaultLoopBuildRequest` osobno, z własną
     kopią etykiety transformatora.
     """
+    tolerancja = tolerancja_sieci_nn_transformatora(enm, trafo)
     request = FaultLoopBuildRequest(
         fault_node_id=fault_node_id,
         u_nom_v=u_phase_v,
@@ -751,9 +720,10 @@ def oblicz_petle_na_trasie(
         phase_label=phase_component.label,
         return_label=return_component.label,
         dane_tt_it=dane_tt_it,
-        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_min/c_max pętli z tolerancji sieci nN — ten sam
-        # predykat co bramka wejścia (`odmowa_tolerancji_nn`).
-        tolerancja_nn=tolerancja_sieci_nn_transformatora(enm, trafo),
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_min/c_max pętli z klasy tolerancji sieci nN
+        # (deklaracja albo wartość robocza — karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+        tolerancja_nn=tolerancja.wartosc,
+        tolerancja_nn_robocza=tolerancja.robocza,
     )
     return compute_fault_loop(build_fault_loop_input(request))
 
@@ -797,7 +767,7 @@ def build_station_fault_loop_view(
 
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_analizy_nn(context, trafo, enm=enm)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return odmowa
     assert system is not None
@@ -905,7 +875,7 @@ def build_fault_loop_view_at_point(
 
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_analizy_nn(context, trafo, enm=enm)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return odmowa
     assert system is not None
@@ -1035,7 +1005,7 @@ def build_feeder_fault_loop_view_for_transformer(
 
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_analizy_nn(context, trafo, enm=enm)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return {**odmowa, "feeders": []}
     assert system is not None
