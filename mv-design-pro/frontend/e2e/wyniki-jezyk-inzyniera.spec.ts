@@ -563,6 +563,7 @@ const SCENY: Record<string, Prowadzenie> = {
     }
   },
   zwarcia: zwykla,
+  'zwarcia-tolerancja-robocza': zwykla,
   'zwarcia-rozplyw': zwykla,
   porownanie: async (page, pomiar) => {
     await page.getByTestId('mvd-por-select-a').selectOption(POROWNANIE_PF.run_a_id);

@@ -46,6 +46,7 @@ from tests.ci.tolerancja_fikstur import (
     HEX_SKROTU,
     PASMO_BEZWYMIAROWYCH,
     POLA_BEZWYMIAROWE_OGRANICZONE,
+    POLA_LIST_WPISOW_ROZPLYWU,
     POLA_SKROTOW_NIEPRZENOSNYCH,
     POLA_TEKSTU_Z_LICZBAMI,
     RTOL_FIXTUR,
@@ -183,6 +184,37 @@ def test_tekst_sladu_porownywany_po_strukturze_i_liczbach() -> None:
     assert roznice_z_tolerancja({"tekst": f"bieg {uuid_a}"}, {"tekst": f"bieg {uuid_b}"}) != []
     # Ten sam napis pod kluczem SPOZA listy — porównywany dokładnie.
     assert roznice_z_tolerancja({"opis": sesja}, {"opis": runner}) != []
+
+
+def _wklad(prad_ka: float) -> dict[str, object]:
+    return {"branch_id": "tr_sn_nn", "source_id": "THEVENIN_GRID", "i_ka": prad_ka}
+
+
+def _slad(prad_a: float) -> dict[str, object]:
+    return {"key": "thevenin_flow_x", "result": {"fraction": 0.0, "i_contrib_a": prad_a}}
+
+
+@pytest.mark.parametrize(
+    "pole,wpis", [("branch_contributions", _wklad), ("branch_flow_trace", _slad)]
+)
+@pytest.mark.parametrize("szum_po_stronie_fikstury", [True, False])
+def test_wpisy_rozplywu_w_pasmie_zera_nie_wchodza_do_porownania(
+    pole: str, wpis: object, szum_po_stronie_fikstury: bool
+) -> None:
+    """Iloczyn cech: {wkład gałęzi, ślad podziału} × {szum po stronie fikstury, po stronie
+    backendu} × {wpis szumu (1,4e-17), wpis realny (0,002)}. Solver buduje te listy progiem
+    `<= 0`, więc wpis o prądzie 1e-17 jest obecny na jednej maszynie, a na drugiej nie —
+    długość listy nie może wywracać porównania; brak wpisu o prądzie REALNYM nadal tak."""
+    stale = [wpis(81.9)]  # type: ignore[operator]
+    szum = [*stale, wpis(1.4e-17)]  # type: ignore[operator]
+    realny = [*stale, wpis(0.002)]  # type: ignore[operator]
+    a, b = (szum, stale) if szum_po_stronie_fikstury else (stale, szum)
+    assert roznice_z_tolerancja({pole: a}, {pole: b}) == []
+    a, b = (realny, stale) if szum_po_stronie_fikstury else (stale, realny)
+    assert roznice_z_tolerancja({pole: a}, {pole: b}) != []
+    # klasa zamknięta: ta sama lista pod INNYM kluczem nadal porównywana długością
+    assert roznice_z_tolerancja({"inne": szum}, {"inne": stale}) != []
+    assert POLA_LIST_WPISOW_ROZPLYWU == {"branch_contributions", "branch_flow_trace"}
 
 
 def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
