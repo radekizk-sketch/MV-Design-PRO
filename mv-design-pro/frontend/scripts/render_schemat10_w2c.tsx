@@ -27,6 +27,9 @@ import type {
   MiniBlockBayDescriptor,
 } from '../src/ui/sld/v2/renderer/MiniBlockRmuRenderer';
 import { stationBlockHeight, type StationMeasureInput } from '../src/ui/sld/v3/layout/measure';
+import { resolveLabels } from '../src/ui/sld/v3/layout/labels';
+import { planSceneLabels, plannedLabelCollisions, plannedLabelObstacleCollisions } from '../src/ui/sld/v3/canvas/labelLegibility';
+import { LABEL_TYPOGRAPHY } from '../src/ui/sld/v3/core/text';
 import { computeBands } from '../src/ui/sld/v3/layout/bands';
 import { computeColumns, type ComputeColumnsInput } from '../src/ui/sld/v3/layout/columns';
 import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../src/ui/sld/v3/layout/segments';
@@ -61,11 +64,11 @@ function dev(
 }
 
 /** Pole źródłowe SN (bay_role OZE) — stos [DS,CB,CT,VT,DS,ES,SA,CABLE_HEAD]. */
-function ozeBay(id: string): MiniBlockBayDescriptor {
+function ozeBay(id: string, kind: 'pv' | 'bess' = 'pv'): MiniBlockBayDescriptor {
   return {
     bayRef: id,
-    fieldRole: FIELD_ROLE.DER_PV,
-    designation: 'PV',
+    fieldRole: kind === 'bess' ? FIELD_ROLE.DER_BESS : FIELD_ROLE.DER_PV,
+    designation: kind === 'bess' ? 'BESS' : 'PV',
     hasMissingRequiredDevice: false,
     primaryDevices: [
       dev(`${id}/ds1`, 'DS', 'UPSTREAM', { designation: 'Q1' }),
@@ -145,7 +148,7 @@ const station2: StationMeasureInput = {
 // Przypadek 7: dwa DER (PV + BESS) różnych topologii na wspólnej szynie SN.
 const station7: StationMeasureInput = {
   id: 'w2c-7', name: 'Stacja W2c-7 (PV + BESS, wspólna szyna SN)', stationCode: 'S-7', transformerRatedKva: null,
-  stationTypeLabel: 'stacja źródłowa SN', snBays: [ozeBay('w2c-7/a/field'), ozeBay('w2c-7/b/field')],
+  stationTypeLabel: 'stacja źródłowa SN', snBays: [ozeBay('w2c-7/a/field', 'pv'), ozeBay('w2c-7/b/field', 'bess')],
   derSources: [
     chainSource('w2c-7/a/converter', 'pv', 'w2c-7/a/field', 'w2c-7/a/block_tr', 'w2c-7/a/lv_bus', 'multi-feeder'),
     chainSource('w2c-7/b/converter', 'bess', 'w2c-7/b/field', 'w2c-7/b/block_tr', 'w2c-7/b/lv_bus', 'single-bus'),
@@ -165,6 +168,7 @@ const comp8 = composeStation(buildComposeInput(station8));
 
 const PANEL_W = 620;
 const PANEL_H = 700;
+const w2cRejections: string[] = [];
 
 /** Kolor odcinka wg semantyki ownerRef (dowód rozróżnialności toru). */
 function segColor(ownerRef: string): string {
@@ -176,9 +180,44 @@ function segColor(ownerRef: string): string {
   return '#8FA8BE';
 }
 
+
+/** W2c: etykiety i pasmo nazw z tego samego kontraktu co kanwa SLD v3.
+ * Poprzednio DER miał współrzędne świata, a opis stacji stałą Y panelu;
+ * dwie niezależne geometrie nakładały teksty i maskowały błąd w dowodzie.
+ * Utrata etykiety tożsamości albo kolizja powoduje FAIL, nie obraz PASS.
+ */
 function renderComposition(comp: StationComposition, cx: number, cy: number, title: string, subtitle: string): string {
-  const xs = [...comp.symbols.flatMap((s) => [s.x, s.x + SYMBOL_DEFS[s.symbolId].width]), ...comp.segments.flatMap((s) => s.points.map((p) => p.x))];
-  const ys = [...comp.symbols.flatMap((s) => [s.y, s.y + SYMBOL_DEFS[s.symbolId].height]), ...comp.segments.flatMap((s) => s.points.map((p) => p.y))];
+  const labels = resolveLabels({
+    stationNameBands: [comp.labels.stationName],
+    portCaptions: comp.labels.portCaptions,
+    simpleAnchored: [...comp.labels.apparatus, ...comp.labels.der, ...comp.labels.busbar, ...comp.labels.protection],
+  });
+  const symbols = comp.symbols.map((element) => {
+    const def = SYMBOL_DEFS[element.symbolId];
+    return { x: element.x, y: element.y, width: def.width, height: def.height };
+  });
+  // Wyrocznia uwzględnia nie tylko symbol, ale też każdy rzeczywisty odcinek toru.
+  const wireRects = comp.segments.flatMap((segment) => segment.points.slice(1).map((end, index) => {
+    const start = segment.points[index];
+    const tolerance = 1;
+    return {
+      x: Math.min(start.x, end.x) - tolerance,
+      y: Math.min(start.y, end.y) - tolerance,
+      width: Math.abs(end.x - start.x) + 2 * tolerance,
+      height: Math.abs(end.y - start.y) + 2 * tolerance,
+    };
+  }));
+  const obstacles = [...symbols, ...wireRects];
+  const xs = [
+    ...symbols.flatMap((rect) => [rect.x, rect.x + rect.width]),
+    ...comp.segments.flatMap((seg) => seg.points.map((point) => point.x)),
+    ...labels.flatMap((label) => [label.rect.x, label.rect.x + label.rect.width]),
+  ];
+  const ys = [
+    ...symbols.flatMap((rect) => [rect.y, rect.y + rect.height]),
+    ...comp.segments.flatMap((seg) => seg.points.map((point) => point.y)),
+    ...labels.flatMap((label) => [label.rect.y, label.rect.y + label.rect.height]),
+  ];
   const minX = Math.min(...xs);
   const minY = Math.min(...ys);
   const nativeW = Math.max(...xs) - minX;
@@ -188,55 +227,62 @@ function renderComposition(comp: StationComposition, cx: number, cy: number, tit
   const SCALE = Math.min(3, availW / nativeW, availH / nativeH);
   const gx = cx + (PANEL_W - nativeW * SCALE) / 2 - minX * SCALE;
   const gy = cy + 92 - minY * SCALE;
-
-  const segs = comp.segments
-    .map((seg) => {
-      const pts = seg.points.map((p) => `${p.x * SCALE},${p.y * SCALE}`).join(' ');
-      const isTrunk = seg.ownerRef.endsWith('#sn-bus') || seg.ownerRef.endsWith('#lv-bus') || seg.ownerRef.includes('mv_cable');
-      return `<polyline points="${pts}" fill="none" stroke="${segColor(seg.ownerRef)}" stroke-width="${isTrunk ? 3 : 2}"/>`;
-    })
-    .join('');
-
-  const syms = comp.symbols
-    .map((s) => {
-      const Glyph = SYMBOL_GLYPHS[s.symbolId];
-      return `<g transform="translate(${s.x * SCALE},${s.y * SCALE}) scale(${SCALE})">${renderToStaticMarkup(
-        <Glyph x={0} y={0} state={s.state as 'closed' | 'open' | 'unknown' | undefined} stroke="#E8EEF4" />,
-      )}</g>`;
-    })
-    .join('');
-
-  const derLabels = comp.labels.der
-    .map(
-      (l) =>
-        `<text x="${l.anchor.x * SCALE}" y="${(l.anchor.y + GRID) * SCALE + 12}" text-anchor="middle" ` +
-        `font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="600" fill="#E8A94C">${l.text}</text>`,
-    )
-    .join('');
-
-  const busbarLabels = comp.labels.busbar
-    .map(
-      (l) =>
-        `<text x="${(l.anchor.x - GRID) * SCALE}" y="${l.anchor.y * SCALE + 4}" text-anchor="end" ` +
-        `font-family="Inter, system-ui, sans-serif" font-size="11" fill="#39C0A8">${l.text}</text>`,
-    )
-    .join('');
-
-  const bandRows = comp.labels.stationName.rows
-    .map(
-      (r, i) =>
-        `<text x="${cx + PANEL_W / 2}" y="${cy + PANEL_H - 84 + i * 18}" text-anchor="middle" ` +
-        `font-family="Inter, system-ui, sans-serif" font-size="12" fill="#9FB3C8">${r.text}</text>`,
-    )
-    .join('');
-
-  return (
-    `<rect x="${cx + 8}" y="${cy + 8}" width="${PANEL_W - 16}" height="${PANEL_H - 16}" rx="12" fill="#111C28" stroke="#25384A"/>` +
-    `<text x="${cx + PANEL_W / 2}" y="${cy + 38}" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="17" font-weight="700" fill="#E8EEF4">${title}</text>` +
-    `<text x="${cx + PANEL_W / 2}" y="${cy + 62}" text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-size="12" fill="#9FB3C8">${subtitle}</text>` +
-    `<g transform="translate(${gx},${gy})">${segs}${syms}${derLabels}${busbarLabels}</g>` +
-    bandRows
+  const labelPlan = planSceneLabels(
+    labels, obstacles, SCALE,
+    { width: Math.ceil(Math.max(...xs) + GRID), height: Math.ceil(Math.max(...ys) + GRID) },
   );
+  const collisions = plannedLabelCollisions(labelPlan);
+  const symbolCollisions = plannedLabelObstacleCollisions(labelPlan, obstacles);
+  if (collisions.length || symbolCollisions.length || labelPlan.droppedIdentity.length) {
+    w2cRejections.push('W2c ' + comp.stationId + ': etykiety-kolizje=' + collisions.length +
+      ', etykiety-symbole=' + symbolCollisions.length +
+      ' [' + symbolCollisions.join(', ') + ']' +
+      ', utracone-tożsamości=' + labelPlan.droppedIdentity.length);
+  }
+  const xml = (value: string): string => value.replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const segs = comp.segments.map((seg) => {
+    const points = seg.points.map((p) => (p.x * SCALE) + ',' + (p.y * SCALE)).join(' ');
+    const trunk = seg.ownerRef.endsWith('#sn-bus') || seg.ownerRef.endsWith('#lv-bus') || seg.ownerRef.includes('mv_cable');
+    return '<polyline points="' + points + '" fill="none" stroke="' + segColor(seg.ownerRef) +
+      '" stroke-width="' + (trunk ? 3 : 2) + '"/>';
+  }).join('');
+  const glyphs = comp.symbols.map((symbol) => {
+    const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
+    const svg = renderToStaticMarkup(
+      <Glyph x={0} y={0} state={symbol.state as 'closed' | 'open' | 'unknown' | undefined} stroke="#E8EEF4" />,
+    );
+    return '<g transform="translate(' + (symbol.x * SCALE) + ',' + (symbol.y * SCALE) +
+      ') scale(' + SCALE + ')">' + svg + '</g>';
+  }).join('');
+  const captions = labelPlan.drawn.map((planned) => {
+    const x = planned.rect.x + planned.rect.width / 2;
+    const y = planned.rect.y + planned.rect.height / 2;
+    const kind = planned.label.ownerKind;
+    const color = kind === 'der' ? '#E8A94C' : kind === 'busbar-voltage' ? '#39C0A8' : '#C0D0DE';
+    const transform = planned.label.rotated
+      ? ' transform="rotate(-90 ' + (x * SCALE) + ' ' + (y * SCALE) + ')"' : '';
+    return '<text data-owner-ref="' + xml(planned.label.ownerRef) +
+      '" x="' + (x * SCALE) + '" y="' + (y * SCALE) +
+      '" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif"' +
+      ' font-size="' + (planned.fontSize * SCALE) +
+      '" font-weight="' + LABEL_TYPOGRAPHY[planned.label.labelClass].fontWeight +
+      '" fill="' + color + '"' + transform + '>' + xml(planned.text) + '</text>';
+  }).join('');
+  const rejected = w2cRejections.some((issue) => issue.startsWith('W2c ' + comp.stationId + ':'));
+  const warning = rejected ? '<text x="' + (cx + PANEL_W / 2) + '" y="' + (cy + 88) +
+    '" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#FF5E5E">' +
+    'NIEZGODNE: KOLIZJE NA SCHEMACIE — PATRZ RAPORT CI</text>' : '';
+  return '<rect x="' + (cx + 8) + '" y="' + (cy + 8) +
+    '" width="' + (PANEL_W - 16) + '" height="' + (PANEL_H - 16) +
+    '" rx="12" fill="#111C28" stroke="#25384A"/>' +
+    '<text x="' + (cx + PANEL_W / 2) + '" y="' + (cy + 38) +
+    '" text-anchor="middle" font-family="sans-serif" font-size="17" font-weight="700" fill="#E8EEF4">' +
+    xml(title) + '</text>' + warning +
+    '<text x="' + (cx + PANEL_W / 2) + '" y="' + (cy + 62) +
+    '" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#9FB3C8">' +
+    xml(subtitle) + '</text>' +
+    '<g transform="translate(' + gx + ',' + gy + ')">' + segs + glyphs + captions + '</g>';
 }
 
 const WIDTH = PANEL_W * 3 + 80;
@@ -260,3 +306,7 @@ const svg =
 
 writeFileSync(`${OUT}/w2c-l2-tor-sn.svg`, svg);
 console.log('wrote', `${OUT}/w2c-l2-tor-sn.svg`);
+if (w2cRejections.length > 0) {
+  for (const issue of w2cRejections) console.error('[FAIL]', issue);
+  process.exitCode = 1; // SVG diagnostyczny istnieje, ale NIGDY nie otrzymuje PASS.
+}
