@@ -662,7 +662,7 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
         expect.objectContaining({ id: 'st-created', type: 'Station' }),
       );
     });
-    expect(centerSldOnElementMock).toHaveBeenCalledWith('st-created');
+    expect(centerSldOnElementMock).toHaveBeenCalledWith('st-created', 'kotwicz');
     expect(navigateToSldMock).toHaveBeenCalled();
   });
 

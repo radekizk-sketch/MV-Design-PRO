@@ -11,7 +11,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { KATEGORIE_OBIEKTOW, obiektyModeluDoIndeksu } from '../obiektyModelu';
-import { zaznaczElementModelu } from '../../shell/zaznaczElementModelu';
+import { pokazElementNaSchemacie, zaznaczElementModelu } from '../../shell/zaznaczElementModelu';
+import { useShellStore } from '../../shell/useShellStore';
 import { subskrybuj } from '../../events';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../../ui/selection/store';
@@ -111,7 +112,7 @@ describe('zaznaczElementModelu — ref × obecność w migawce', () => {
     zaznaczElementModelu('BUS-1', 'panel-dolny');
     const stan = useSelectionStore.getState();
     expect(stan.selectedElement?.id).toBe('BUS-1');
-    expect(stan.sldCenterOnElement).toBe('BUS-1');
+    expect(stan.sldWskazanie?.ref).toBe('BUS-1');
     expect(zdarzenia).toEqual([{ obiektId: 'BUS-1', zrodlo: 'panel-dolny' }]);
   });
 
@@ -119,7 +120,48 @@ describe('zaznaczElementModelu — ref × obecność w migawce', () => {
     zaznaczElementModelu('USUNIETY-9', 'wyszukiwarka');
     const stan = useSelectionStore.getState();
     expect(stan.selectedElement).toBeNull();
-    expect(stan.sldCenterOnElement).toBeNull();
+    expect(stan.sldWskazanie).toBeNull();
     expect(zdarzenia).toEqual([{ obiektId: 'USUNIETY-9', zrodlo: 'wyszukiwarka' }]);
+  });
+});
+
+/*
+ * K2 (W5-UI-14, §0.6): „pokaż problem na schemacie" — klik problemu w gotowości
+ * albo w zakładkach panelu dolnego. Iloczyn: ref {w migawce, nieobecny} ×
+ * przestrzeń wyjściowa {gotowość} × powtórzenie tego samego refu (nowy numer
+ * wskazania, więc schemat kadruje ponownie).
+ */
+describe('pokazElementNaSchemacie — zaznaczenie, kadr i przejście do schematu', () => {
+  const initialSnapshot = useSnapshotStore.getState();
+  const initialSelection = useSelectionStore.getState();
+
+  beforeEach(() => {
+    useSnapshotStore.setState({ ...initialSnapshot, snapshot: model() } as never, true);
+    useSelectionStore.setState(initialSelection, true);
+    useShellStore.getState().setActiveSpace('gotowosc');
+  });
+  afterEach(() => {
+    useSnapshotStore.setState(initialSnapshot, true);
+  });
+
+  it('ref w migawce: zaznacza, wskazuje w trybie „kadruj" i przełącza na schemat', () => {
+    expect(pokazElementNaSchemacie('ST-1', 'panel-gotowosci')).toBe(true);
+    const stan = useSelectionStore.getState();
+    expect(stan.selectedElement?.id).toBe('ST-1');
+    expect(stan.sldWskazanie).toMatchObject({ ref: 'ST-1', tryb: 'kadruj' });
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('ten sam ref drugi raz: NOWY numer wskazania (schemat kadruje ponownie)', () => {
+    pokazElementNaSchemacie('ST-1', 'panel-dolny');
+    const pierwszy = useSelectionStore.getState().sldWskazanie!.seq;
+    pokazElementNaSchemacie('ST-1', 'panel-dolny');
+    expect(useSelectionStore.getState().sldWskazanie!.seq).toBe(pierwszy + 1);
+  });
+
+  it('ref nieobecny: przestrzeń bez zmian, brak wskazania', () => {
+    expect(pokazElementNaSchemacie('USUNIETY-9', 'panel-gotowosci')).toBe(false);
+    expect(useShellStore.getState().activeSpace).toBe('gotowosc');
+    expect(useSelectionStore.getState().sldWskazanie).toBeNull();
   });
 });

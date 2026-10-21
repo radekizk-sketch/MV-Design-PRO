@@ -6,7 +6,7 @@
  * aplikacja, oba motywy. Kadry:
  *  1. `schemat` — przestrzeń „Schemat (SLD)" po „Dopasuj widok": rysunek i drzewo panelu
  *     „Schemat i topologia" (sekcja „Stacje SN/nN" z rodzajem przy każdej stacji);
- *  2. `stacja` — rysunek przybliżony kółkiem na „Stacji Klonowej" (podpis rodzaju pod nazwą);
+ *  2. `stacja` — kadr „Stacji Klonowej" dwuklikiem w jej nazwę (karta K2; podpis rodzaju pod nazwą);
  *  3. `gotowosc` — lista gotowości z ostrzeżeniami o deklaracji rodzaju (tylko etap „po":
  *     przed kartą walidator nie znał tej niezgodności).
  * Etap w nazwie pliku z `ETYKIETA_ETAP` (`przed` — drzewo bazy karty, `po` — po karcie).
@@ -18,13 +18,19 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { STACJE, stanAplikacji, zbudujSiecEtykietyStacji } from './etykietaStacjiSiec';
+import { katalogZrzutow } from './katalogZrzutow';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 // `E2E_KATALOG_ZRZUTOW` kieruje kadry do katalogu materiału oceny innej karty (np. zrzuty „po”
 // karty W5-B w `docs/audit/visual/w5b/po`) bez nadpisywania materiału tej karty.
-const OUTPUT_DIR = process.env.E2E_KATALOG_ZRZUTOW
-  ? path.resolve(process.env.E2E_KATALOG_ZRZUTOW)
-  : path.resolve(_dirname, '../../docs/audit/visual/etykieta-stacji');
+// Zapis do drzewa repo wyłącznie z `ZRZUTY_DO_DOKUMENTACJI=1` (`katalogZrzutow`) — wcześniej
+// spec pisał stałą ścieżką do `docs/audit/visual/etykieta-stacji`, czyli każdy bieg brudził
+// śledzone pliki (strażnik drzewa `e2e/straznikDrzewa.ts` kończył bieg błędem).
+const OUTPUT_DIR = katalogZrzutow(
+  process.env.E2E_KATALOG_ZRZUTOW
+    ? path.resolve(process.env.E2E_KATALOG_ZRZUTOW)
+    : path.resolve(_dirname, '../../docs/audit/visual/etykieta-stacji'),
+);
 const ETAP = process.env.ETYKIETA_ETAP === 'przed' ? 'przed' : 'po';
 const MOTYWY = ['light', 'dark'] as const;
 
@@ -65,35 +71,20 @@ test.describe('rodzaj stacji — zrzuty dowodowe', () => {
         `${wiersze.map((w) => w.replace(/\s+/g, ' ').trim()).join('\n')}\n`,
       );
 
-      // Przybliżenie kółkiem nad stacją z polem odgałęźnym, aż podpis rodzaju stanie na
-      // rysunku. Kotwica: podpis stacji (kod S01 na przeglądzie — stacja jest pierwsza
-      // w magistrali), wyznaczona RAZ; kamera przybliża do kursora, więc stacja zostaje pod nim.
+      // Kadr stacji z polem odgałęźnym NATYWNIE (karta K2): dwuklik w uchwyt nazwy stacji
+      // kadruje CAŁĄ stację na poziomie ≥ L1 — wcześniej przybliżenie kółkiem nad podpisem,
+      // którego wynik zależał od kroku kółka i ucinał sąsiadów.
       const ref = siec.stacje[STACJE.odgalezna];
-      const etykiety = page.locator(`[data-testid="sld-v3-labels"] g[data-owner-ref^="${ref}"]`);
-      const kotwica = (await etykiety.count()) > 0
-        ? etykiety.first()
-        : page.locator('[data-testid="sld-v3-labels"] text', { hasText: /^S01$/ }).first();
-      const box = await kotwica.boundingBox();
-      expect(box).not.toBeNull();
-      await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
-      for (let krok = 0; krok < 24; krok++) {
-        const teksty = await etykiety.locator('text').allTextContents();
-        if (teksty.some((t) => t.trim().startsWith('stacja '))) break;
-        await page.mouse.wheel(0, -200);
-        await page.waitForTimeout(200);
-      }
-      // Kadr: oddal drobnymi krokami, dopóki podpis rodzaju zostaje na rysunku (blok stacji
-      // i sąsiednie odcinki w kadrze, nie sam podpis).
-      for (let krok = 0; krok < 12; krok++) {
-        await page.mouse.wheel(0, 60);
-        await page.waitForTimeout(150);
-        const teksty = await etykiety.locator('text').allTextContents();
-        if (!teksty.some((t) => t.trim().startsWith('stacja '))) {
-          await page.mouse.wheel(0, -60);
-          await page.waitForTimeout(150);
-          break;
-        }
-      }
+      const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${ref}#name-row"]`).first();
+      await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
+      await uchwyt.dblclick();
+      await expect(page.getByTestId('sld-v3-sciezka-kadru')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('svg[data-testid="sld-canvas-v3"]')).not.toHaveAttribute('data-scene-lod', '0');
+      // Podpis rodzaju stacji stoi na rysunku w kadrze stacji.
+      const etykiety = page.locator(`[data-testid="sld-v3-labels"] g[data-owner-ref^="${ref}"] text`);
+      await expect
+        .poll(async () => (await etykiety.allTextContents()).some((t) => t.trim().startsWith('stacja ')), { timeout: 10000 })
+        .toBe(true);
       await page.waitForTimeout(400);
       await page.screenshot({ path: path.join(OUTPUT_DIR, `rodzaj_stacji_${ETAP}_stacja_${motyw}.png`) });
 

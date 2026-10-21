@@ -34,7 +34,6 @@ import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
-import { useShellStore } from '../shell/useShellStore';
 import { LegacySurface } from './LegacySurface';
 
 /** Strona nieznanej trasy — PRZENIESIONA z App.tsx (kasacja ramy E1.7c). */
@@ -68,21 +67,6 @@ function ScenariuszeZwarcioweTrasa() {
     <div className="flex flex-col h-full">
       <FaultScenariosPanel studyCaseId={activeCaseId} />
       <FaultScenarioModal />
-    </div>
-  );
-}
-
-/**
- * Trasa `#sld` — kanwa schematu. KD-4 (luka L-1): tryb pracy kanwy (edycja /
- * podgląd) jest JEDNĄ prawdą powłoki, więc jawna trasa schematu honoruje go
- * tak samo jak przestrzeń „Schemat" (inaczej ten sam widok miałby dwa różne
- * zachowania zależnie od tego, jak się do niego weszło).
- */
-function SldTrasaSchematu() {
-  const podglad = useShellStore((state) => state.podgladSchematu);
-  return (
-    <div data-testid="workspace-surface-main" className="mvd-legacy-host">
-      <SldCanvasV3Workspace readOnly={podglad} />
     </div>
   );
 }
@@ -136,9 +120,16 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
     );
   }
   // Jawna trasa schematu — kanwa SLD niezależnie od przestrzeni (parytet
-  // starego wejścia: '#sld' zawsze renderował środowisko schematu).
+  // starego wejścia: '#sld' zawsze renderował środowisko schematu). TEN SAM
+  // element co przestrzeń „Schemat" (`LegacySurface`): wybór przestrzeni
+  // ustawia trasę `#sld` (`mostTrasyPrzestrzeni` → `navigateToNetworkBuild`)
+  // dopiero po pierwszym renderze, więc dwa różne komponenty na tym samym
+  // miejscu montowały warsztat schematu DWA razy — drugi montaż gubił stan
+  // warsztatu (pomiar e2e K2: wskazanie z „Gotowości" wykadrowało stację
+  // w pierwszym montażu, a po zmianie trasy widok wracał do sieci bez ścieżki
+  // kontekstu). Tryb pracy kanwy (edycja/podgląd) czyta `LegacySld`.
   if (route === ROUTES.SLD.hash) {
-    return <SldTrasaSchematu />;
+    return <LegacySurface space="schemat" />;
   }
   if (getRouteByHash(route) === null && !isAnalysisRouteAlias(route)) {
     return <UnknownRoutePage route={route} />;

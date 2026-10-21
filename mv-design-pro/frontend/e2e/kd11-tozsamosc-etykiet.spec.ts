@@ -257,7 +257,17 @@ test('po „Dopasuj widok" rysunek z rozwinietym GPZ niesie podpisy tozsamosci (
   await page.waitForTimeout(1000);
   await expect(canvas).not.toHaveAttribute('data-scene-lod', '0');
   await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
-  await page.keyboard.press('Escape'); // zdejmij selekcję (panele nie zasłaniają kadru)
+  // Zdjęcie selekcji realną ścieżką (K11-A): klik w blok otwiera też szufladę
+  // szczegółów, więc PIERWSZY Escape zamyka szufladę, a DRUGI zdejmuje selekcję
+  // (kolejność jak w `sld-first-uklad.spec.ts`). Jeden Escape zostawiał GPZ
+  // zaznaczony — od karty K2 „Dopasuj widok" kadruje zakres pracy (zaznaczenie),
+  // więc niezdjęta selekcja zmieniała kadr, który ten spec mierzy.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  // Dowód zdjęcia selekcji: adres bez parametru zaznaczenia (`sel`). Panel
+  // prawy NIE jest tu sygnałem — stacja ma własną powierzchnię konfiguratora,
+  // która zostaje otwarta po odznaczeniu (inaczej niż karta selekcji transformatora).
+  await expect(page).not.toHaveURL(/[?&]sel=/, { timeout: 10000 });
   await page.waitForTimeout(500);
 
   /** Sprawdza JEDEN kadr: tożsamość każdej stacji z modelu jest na rysunku,

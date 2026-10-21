@@ -189,7 +189,7 @@ describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () =>
 
 describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () => {
   beforeEach(() => {
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null });
   });
 
@@ -210,7 +210,7 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
     fireEvent.click(within(wierszNapiecia).getByTestId('mvd-wyn-popraw'));
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toMatchObject({ id: 'bus-B', type: 'Bus' });
-    expect(sel.sldCenterOnElement).toBe('bus-B');
+    expect(sel.sldWskazanie?.ref).toBe('bus-B');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
@@ -245,7 +245,7 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
       type: 'Bus',
     });
     // Schemat nie jest celem tej akcji — bez odroczonego zoomu SLD.
-    expect(sel.sldCenterOnElement).toBeNull();
+    expect(sel.sldWskazanie).toBeNull();
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(useShellStore.getState().wynikiTab).toBe('kompensacja');
     // R2-B: deep-link niesie ref węzła przekroczenia — okno „Dobór kompensacji"
@@ -274,7 +274,7 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
 
 describe('SekcjaWalidacji — klik NATYWNY na wierszu (karta TODO-UI2 p.6, poprawka KLASA NIE INSTANCJA)', () => {
   beforeEach(() => {
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
   });
 
   // `KLUCZ_WIERSZA_WALIDACJI` jest KOMPOZYTEM tabeli (`check_type::target_id::

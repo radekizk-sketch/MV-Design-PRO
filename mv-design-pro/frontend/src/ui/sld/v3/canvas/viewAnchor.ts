@@ -47,50 +47,117 @@ import { SYMBOL_DEFS } from '../symbols/defs';
 /** Prostokąty kotwicy dla wszystkich trzech poziomów szczegółu. */
 export type AnchorBoxByLod = Readonly<Record<SceneLod, BoundingBox>>;
 
-/** Czy obiekt rysunku o `ownerRef` należy do elementu modelu `ref`. */
-function nalezyDo(ownerRef: string | undefined | null, ref: string): boolean {
+/**
+ * KLUCZE PRZYNALEŻNOŚCI obiektu rysunku o `ownerRef` — wszystkie refy, do których
+ * obiekt NALEŻY według konwencji kompozytu `ref#sufiks` (`compose/station.ts`,
+ * `compose/gpz.ts`, `layout/labels.ts`): sam `ownerRef` oraz każdy jego prefiks
+ * odcięty przed znakiem `#`. Przykład: `stn/A/station#name-row-0` należy do
+ * `stn/A/station#name-row-0` i do `stn/A/station`.
+ *
+ * JEDNO źródło relacji „obiekt należy do elementu" (karta K2, rozstrzygnięcie §0.1):
+ * czyta je zarówno kotwica widoku (`prostokatElementuWScenie`), jak i zakres kadru
+ * (`zakresKadru.ts`). Dwie niezależne reguły dopasowania byłyby predykatami, które
+ * „dziś się zgadzają" (CLAUDE.md, reguła KLASA pkt 3).
+ */
+export function kluczePrzynaleznosci(ownerRef: string | undefined | null): readonly string[] {
+  if (!ownerRef) return [];
+  const klucze: string[] = [];
+  let indeks = ownerRef.indexOf('#');
+  while (indeks > 0) {
+    klucze.push(ownerRef.slice(0, indeks));
+    indeks = ownerRef.indexOf('#', indeks + 1);
+  }
+  klucze.push(ownerRef);
+  return klucze;
+}
+
+/** Czy obiekt rysunku o `ownerRef` należy do elementu modelu `ref` (ta sama
+ *  relacja co `kluczePrzynaleznosci`, w postaci predykatu). */
+export function nalezyDo(ownerRef: string | undefined | null, ref: string): boolean {
   return !!ownerRef && (ownerRef === ref || ownerRef.startsWith(`${ref}#`));
 }
 
 /**
- * Prostokąt (w układzie SCENY) obejmujący wszystko, co rysunek maluje dla
- * elementu `ref`: symbole, odcinki i etykiety. `null` = tego refu nie ma na
- * rysunku tego poziomu.
+ * INDEKS PRZYNALEŻNOŚCI sceny: klucz przynależności → prostokąt (układ SCENY)
+ * obejmujący wszystko, co rysunek maluje dla tego klucza — symbole, odcinki
+ * i etykiety. Budowany JEDNYM przejściem po scenie i pamiętany per obiekt sceny
+ * (`WeakMap`: scena jest niezmienna, a jej utrata zwalnia indeks).
  *
  * Etykiety wchodzą do prostokąta świadomie — podpis jest częścią rysunku
  * (kontrakt kadru KD-7, `__tests__/kadrTresci.contract.test.tsx`), a stacja bez
  * widocznej nazwy nie jest „w kadrze" w sensie użytecznym dla projektanta.
  */
-export function prostokatElementuWScenie(scene: SceneV3, ref: string): BoundingBox | null {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  const obejmij = (x: number, y: number): void => {
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  };
+export type IndeksPrzynaleznosci = ReadonlyMap<string, BoundingBox>;
 
+const INDEKSY = new WeakMap<SceneV3, IndeksPrzynaleznosci>();
+
+export function indeksPrzynaleznosci(scene: SceneV3): IndeksPrzynaleznosci {
+  const zapamietany = INDEKSY.get(scene);
+  if (zapamietany) return zapamietany;
+  const pudla = new Map<string, { minX: number; minY: number; maxX: number; maxY: number }>();
+  const obejmij = (ownerRef: string | undefined | null, x0: number, y0: number, x1: number, y1: number): void => {
+    for (const klucz of kluczePrzynaleznosci(ownerRef)) {
+      const pudlo = pudla.get(klucz);
+      if (pudlo) {
+        pudlo.minX = Math.min(pudlo.minX, x0);
+        pudlo.minY = Math.min(pudlo.minY, y0);
+        pudlo.maxX = Math.max(pudlo.maxX, x1);
+        pudlo.maxY = Math.max(pudlo.maxY, y1);
+      } else {
+        pudla.set(klucz, { minX: x0, minY: y0, maxX: x1, maxY: y1 });
+      }
+    }
+  };
   for (const symbol of scene.symbols) {
-    if (!nalezyDo(symbol.meta?.ownerRef, ref)) continue;
     const def = SYMBOL_DEFS[symbol.symbolId];
-    obejmij(symbol.x, symbol.y);
-    obejmij(symbol.x + def.width, symbol.y + def.height);
+    obejmij(symbol.meta?.ownerRef, symbol.x, symbol.y, symbol.x + def.width, symbol.y + def.height);
   }
   for (const segment of scene.segments) {
-    if (!nalezyDo(segment.meta?.ownerRef, ref)) continue;
-    for (const punkt of segment.points) obejmij(punkt.x, punkt.y);
+    for (const punkt of segment.points) obejmij(segment.meta?.ownerRef, punkt.x, punkt.y, punkt.x, punkt.y);
   }
   for (const label of scene.labels) {
-    if (!nalezyDo(label.ownerRef, ref)) continue;
-    obejmij(label.rect.x, label.rect.y);
-    obejmij(label.rect.x + label.rect.width, label.rect.y + label.rect.height);
+    obejmij(
+      label.ownerRef,
+      label.rect.x,
+      label.rect.y,
+      label.rect.x + label.rect.width,
+      label.rect.y + label.rect.height,
+    );
   }
+  INDEKSY.set(scene, pudla);
+  return pudla;
+}
 
-  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
-  return { minX, minY, maxX, maxY };
+/** Suma prostokątów `pudla` (`null` dla pustej listy). */
+export function sumaProstokatow(pudla: readonly (BoundingBox | null | undefined)[]): BoundingBox | null {
+  let wynik: BoundingBox | null = null;
+  for (const pudlo of pudla) {
+    if (!pudlo) continue;
+    wynik = wynik
+      ? {
+          minX: Math.min(wynik.minX, pudlo.minX),
+          minY: Math.min(wynik.minY, pudlo.minY),
+          maxX: Math.max(wynik.maxX, pudlo.maxX),
+          maxY: Math.max(wynik.maxY, pudlo.maxY),
+        }
+      : pudlo;
+  }
+  return wynik;
+}
+
+/**
+ * Prostokąt (w układzie SCENY) obejmujący wszystko, co rysunek maluje dla
+ * elementu `ref`: symbole, odcinki i etykiety. `null` = tego refu nie ma na
+ * rysunku tego poziomu. Odczyt z indeksu przynależności (jedno przejście sceny).
+ */
+export function prostokatElementuWScenie(scene: SceneV3, ref: string): BoundingBox | null {
+  return indeksPrzynaleznosci(scene).get(ref) ?? null;
+}
+
+/** Prostokąt SUMY elementów `refy` na rysunku sceny (`null`: żaden nie narysowany). */
+export function prostokatRefowWScenie(scene: SceneV3, refy: readonly string[]): BoundingBox | null {
+  const indeks = indeksPrzynaleznosci(scene);
+  return sumaProstokatow(refy.map((ref) => indeks.get(ref)));
 }
 
 /**

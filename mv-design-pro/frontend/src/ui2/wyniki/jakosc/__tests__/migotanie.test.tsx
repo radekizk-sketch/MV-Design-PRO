@@ -126,7 +126,7 @@ describe('SekcjaMigotania — stany', () => {
   });
 
   it('przekroczenie migotania → „Popraw" zaznacza węzeł (Bus) i przechodzi do „Schemat" (F-E6.2)', async () => {
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki' });
     mockedMigotanie.mockResolvedValue(MIGOTANIE_FIXTURE);
     render(<SekcjaMigotania {...propsMigotanie()} />);
@@ -136,7 +136,7 @@ describe('SekcjaMigotania — stany', () => {
     fireEvent.click(within(wiersz).getByTestId('mvd-wyn-popraw'));
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toMatchObject({ id: 'bus-oze-2', type: 'Bus' });
-    expect(sel.sldCenterOnElement).toBe('bus-oze-2');
+    expect(sel.sldWskazanie?.ref).toBe('bus-oze-2');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 });

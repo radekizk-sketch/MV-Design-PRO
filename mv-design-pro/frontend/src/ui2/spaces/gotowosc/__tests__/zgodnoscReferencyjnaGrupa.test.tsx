@@ -157,7 +157,7 @@ describe('PanelGotowosci — ostrzeżenia referencyjne na żywo', () => {
     render(<PanelGotowosci {...p} />);
     fireEvent.click(screen.getByRole('button', { name: GOTOWOSC_STRINGS.napraw }));
     expect(p.onAkcjaNaprawcza).toHaveBeenCalledTimes(1);
-    const problem = p.onAkcjaNaprawcza.mock.calls[0][0];
+    const problem = vi.mocked(p.onAkcjaNaprawcza).mock.calls[0][0];
     expect(problem.code).toBe('reference.bays.missing_required_apparatus');
     expect(problem.cel).toBe('zgodnoscReferencyjna');
     expect(problem.fixAction?.modal_type).toBe('BayModal');

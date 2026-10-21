@@ -14,7 +14,8 @@
  *     ścieżka sygnału, dla spójności z kartą E15.1).
  *   Emituje: `selekcja` — POŚREDNIO, przez prop `onSelekcja` (wzorzec z
  *     `ui2/AppRoot.tsx`: każda przestrzeń woła prop, integrator wywołuje
- *     `emituj({ typ: 'selekcja', obiektId, zrodlo: 'panel-gotowosci' })` —
+ *     `pokazElementNaSchemacie(ref, 'panel-gotowosci')` — zaznaczenie, zdarzenie
+ *     `selekcja`, przejście na schemat i kadr elementu, karta K2 W5-UI-14 —
  *     ta karta nie importuje `ui2/events` do zapisu, aby nie dublować
  *     odpowiedzialności integracyjnej).
  *   Rewizja: ND — gotowość nie jest daną pochodną z osobną rewizją

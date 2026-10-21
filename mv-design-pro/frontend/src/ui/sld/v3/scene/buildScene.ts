@@ -282,6 +282,18 @@ export interface SceneV3Meta {
    *  nie „które". Wejście `branchPointCoverageGaps` („stacja za punktem odgałęźnym
    *  narysowana"). */
   readonly drawnStationIds: readonly string[];
+  /**
+   * K2 (UI-04, nawigacja „poprzednia/następna stacja"): stacje narysowane w
+   * PORZĄDKU OBCHODU RYSUNKU — GPZ, odgałęzienia z pól GPZ, potem ciąg główny
+   * w kolejności magistrali, a każde odgałęzienie ZARAZ po stacji (albo punkcie
+   * odgałęźnym za stacją), z której schodzi, w kolejności własnych stacji.
+   * Porządek pochodzi z tych samych biegów i tego samego węzła-origin
+   * (`branchRunChannelOwnerRef`), z których scena rysuje zejścia — nie z
+   * sortowania refów ani geometrii. Stacja narysowana, a nieosiągnięta tym
+   * obchodem (np. bieg bez rozwiązanego origin), trafia na koniec, posortowana —
+   * lista zawsze obejmuje WSZYSTKIE `drawnStationIds` (test `porzadekStacji`).
+   */
+  readonly stationTraversalOrder: readonly string[];
   /** ODG-RYSUNEK: refy PUNKTÓW ODGAŁĘŹNYCH narysowanych na torze magistrali
    *  (symbol + rozcięcie toru) — posortowane; puste dla sieci bez punktów. */
   readonly drawnBranchPointRefs: readonly string[];
@@ -2199,6 +2211,51 @@ interface ShelfPlacement {
   readonly priorContentBottom: number;
 }
 
+/**
+ * K2: porządek obchodu stacji rysunku (patrz `SceneV3Meta.stationTraversalOrder`).
+ * Biegi bez origin (feedery z pól GPZ) i biegi, których origin jest GPZ, idą
+ * zaraz po GPZ. Kolejność biegów = kolejność `branchRuns` (ta sama, w której
+ * scena je rysuje). Odwiedzone stacje nie powtarzają się (ochrona przed cyklem).
+ */
+export function porzadekObchoduStacji(
+  gpzId: string | null,
+  ciagGlowny: readonly string[],
+  biegi: readonly { readonly id: string; readonly originRef: string | null }[],
+  stacjeBiegu: ReadonlyMap<string, readonly string[]>,
+  narysowane: ReadonlySet<string>,
+): string[] {
+  const biegiWgOrigin = new Map<string, string[]>();
+  const KORZEN = gpzId ?? '';
+  for (const bieg of biegi) {
+    if (!stacjeBiegu.has(bieg.id)) continue;
+    const klucz = bieg.originRef == null || bieg.originRef === gpzId ? KORZEN : bieg.originRef;
+    const lista = biegiWgOrigin.get(klucz);
+    if (lista) lista.push(bieg.id);
+    else biegiWgOrigin.set(klucz, [bieg.id]);
+  }
+  const porzadek: string[] = [];
+  const odwiedzone = new Set<string>();
+  const odgalezienia = (origin: string): void => {
+    for (const runId of biegiWgOrigin.get(origin) ?? []) {
+      for (const stacja of stacjeBiegu.get(runId) ?? []) odwiedz(stacja);
+    }
+  };
+  const odwiedz = (stacja: string): void => {
+    if (odwiedzone.has(stacja)) return;
+    odwiedzone.add(stacja);
+    porzadek.push(stacja);
+    odgalezienia(stacja);
+  };
+  if (gpzId != null) {
+    odwiedzone.add(gpzId);
+    porzadek.push(gpzId);
+  }
+  odgalezienia(KORZEN);
+  for (const stacja of ciagGlowny) odwiedz(stacja);
+  for (const stacja of [...narysowane].sort()) odwiedz(stacja);
+  return porzadek;
+}
+
 /** SCHEMAT-10 S7.6 (V12K-137, karta KOMPRESJA, Z1): diagnostyka JEDNEGO umieszczenia
  *  lateralu w packerze — do audytu świateł pionowych (raport §6, test kompresji).
  *  Wszystkie liczby z realnie policzonej geometrii, deterministyczne. */
@@ -3533,6 +3590,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // (uzupełniane też w sekcji 6, laterale) — patrz sprawdzenie po sekcji 6
   // niżej („DER, którego connectionRef nie rozwiązuje się do stacji sceny").
   const drawnStationIds = new Set<string>();
+  /** K2: stacje narysowane per bieg odgałęzienia/feedera (kolejność rysunku). */
+  const stacjeBieguRysunku = new Map<string, string[]>();
+  const dopiszStacjeBiegu = (runId: string, stationId: string): void => {
+    const lista = stacjeBieguRysunku.get(runId);
+    if (lista) lista.push(stationId);
+    else stacjeBieguRysunku.set(runId, [stationId]);
+  };
   /** WSZYSTKIE stacje ciągu głównego, w kolejności ciągu — sklejone ze
    *  wszystkich wierszy arkusza (S9-1). Konsumenci poza sekcją 5/6 (meta,
    *  pokrycie DER, wyrocznie) widzą dokładnie to, co przed łamaniem. */
@@ -4273,6 +4337,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const composed = composeRowStation(measureInput, props, col, feederLayout.busAxisY, feederLayout.blockTopY, lod, stopNotes, edgeDomainByRef);
         feederRow.push({ id: measureInput.id, composed });
         drawnStationIds.add(measureInput.id);
+        dopiszStacjeBiegu(run.id, measureInput.id);
         allSymbols.push(...composed.symbols);
         allSegments.push(...composed.segments);
         stationNameBands.push(composed.stationNameOwner);
@@ -4604,6 +4669,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const composed = composeRowStation(measureInput, props, col, layout.busAxisY, layout.blockTopY, lod, stopNotes, edgeDomainByRef);
       lateralRow.push({ id: measureInput.id, composed });
       drawnStationIds.add(measureInput.id);
+      dopiszStacjeBiegu(run.id, measureInput.id);
       allSymbols.push(...composed.symbols);
       allSegments.push(...composed.segments);
       stationNameBands.push(composed.stationNameOwner);
@@ -5220,6 +5286,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       sheetRowBands,
       lateralRunIds,
       drawnStationIds: [...drawnStationIds].sort(),
+      stationTraversalOrder: porzadekObchoduStacji(
+        gpzData?.id ?? null,
+        mainRow.map((r) => r.id),
+        branchRuns.map((run) => ({ id: run.id, originRef: branchRunChannelOwnerRef(run) })),
+        stacjeBieguRysunku,
+        drawnStationIds,
+      ),
       drawnBranchPointRefs: [...drawnBranchPointRefs].sort(),
       stopNotes,
       sources: allSources,

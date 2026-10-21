@@ -441,7 +441,17 @@ POMIJANE_KATALOGI = {
 #: baner nastepnego kroku, pasek metryk). Zero nowych bledow (bledy nowych testow karty
 #: naprawione przed commitem). Zostaja dwa zastane TS2339 w `ui2/spaces/gotowosc/__tests__`
 #: (obszar poza granica karty K1).
-BUDZET_BLEDOW_POZA_BRAMKA = 55
+#: Karta K2 KADROWANIE-NAWIGACJA (2026-10-21, pomiar `tsc` zbioru pomiarowego guarda na drzewie
+#: karty, listy bledow porownane linia po linii przed i po poprawce): baza 55, drzewo karty przed
+#: poprawka 61 (+6 bledow nowych testow karty: TS2339 `Array.prototype.at` spoza `lib` ES2020 x5
+#: w `zakresKadru.test.ts`, TS2345 literalnego typu okna w `camera.kadr.test.ts`) -> 49. Szesc
+#: bledow karty naprawionych u zrodla oraz szesc zastanych w modulach, ktorych karta dotyka:
+#: TS2322 `'menu'` w `toolbarLayout.contract.test.ts`, TS2769 `reduce` bez typu akumulatora
+#: w `kotwicaJednoZrodlo.contract.test.ts`, TS2345 etykieta bez `labelRole` w
+#: `sldCanvasV3.test.tsx`, TS2459 `PreviewSymbol` importowany z `buildScene` zamiast
+#: z `compose/preview` w `buildScene.lvPortal.test.ts`, oba TS2339 `.mock` na typie unii
+#: w `ui2/spaces/gotowosc/__tests__` (`vi.mocked`). Zero nowych bledow.
+BUDZET_BLEDOW_POZA_BRAMKA = 49
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”
 #: przez dopisanie komentarza zamiast naprawy. Pomiar 2026-08-08: 35 wystąpień,

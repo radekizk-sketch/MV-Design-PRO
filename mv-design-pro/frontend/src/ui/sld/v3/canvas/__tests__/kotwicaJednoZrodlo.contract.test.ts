@@ -148,7 +148,7 @@ describe('A — uchwyt nie awansuje do kontenera', () => {
 
   it('zapadka: sceny referencyjne NIE są puste (inaczej wyrocznia nie mierzy niczego)', () => {
     for (const { nazwa, enm } of SIECI) {
-      const razem = LODY.reduce((suma, lod) => suma + buildSceneV3(enm, lod).labels.length, 0);
+      const razem = LODY.reduce<number>((suma, lod) => suma + buildSceneV3(enm, lod).labels.length, 0);
       expect(razem, `${nazwa}: zbyt mało etykiet, próg z pomiaru`).toBeGreaterThanOrEqual(MIN_ETYKIET_NA_SIEC);
     }
   });

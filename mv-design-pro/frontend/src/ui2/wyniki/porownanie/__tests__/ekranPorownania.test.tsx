@@ -326,7 +326,7 @@ describe('EkranPorownania — dowody kolumn A/B (R3-C)', () => {
 
 describe('EkranPorownania — wskazanie elementu (F-K4, znalezisko Z4)', () => {
   it('szyna z istotną różnicą prowadzi do elementu w modelu (akcja inspekcyjna)', async () => {
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
     render(<EkranPorownania {...props()} />);
     await wykonajPorownanie();
@@ -362,7 +362,7 @@ describe('EkranPorownania — wskazanie elementu (F-K4, znalezisko Z4)', () => {
         ),
       }),
     );
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
     render(<EkranPorownania {...props()} />);
     await wykonajPorownanie();

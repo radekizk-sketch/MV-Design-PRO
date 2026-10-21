@@ -24,7 +24,7 @@ import {
 } from '../toolbarLayout';
 
 function prostokaty(layout: CanvasToolbarLayout): readonly { x: number; width: number; id: string }[] {
-  const out = layout.slots.map((s) => ({ x: s.x, width: s.width, id: s.id }));
+  const out: { x: number; width: number; id: string }[] = layout.slots.map((s) => ({ x: s.x, width: s.width, id: s.id }));
   if (layout.menuSlot) out.push({ x: layout.menuSlot.x, width: layout.menuSlot.width, id: 'menu' });
   return out;
 }

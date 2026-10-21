@@ -16,17 +16,22 @@
  *    parametrów TEGO źródła z kluczem `sk3_min_mva` i kursorem w polu wartości;
  * 4. wpis poprawnej wartości i zapis zdejmują blokadę.
  *
- * Zrzuty (oba motywy) trafiają do `docs/audit/visual/C-12/` z przedrostkiem
- * `C12_ZRZUT_PREFIKS` (domyślnie `po`; bieg na bazie przed kartą: `przed`).
+ * Zrzuty (oba motywy) są przeznaczone dla `docs/audit/visual/C-12/` z przedrostkiem
+ * `C12_ZRZUT_PREFIKS` (domyślnie `po`; bieg na bazie przed kartą: `przed`). Katalog
+ * rozstrzyga `katalogZrzutow` (jedno źródło, karta SZYBKIE-TESTY): zwykły bieg pisze pod
+ * `test-results/zrzuty-dokumentacji/`, a do drzewa dokumentacji wyłącznie bieg
+ * z `ZRZUTY_DO_DOKUMENTACJI=1` — wcześniej spec pisał wprost do `docs/` i każdy bieg
+ * nadpisywał dwa śledzone zrzuty (strażnik drzewa kończył bieg błędem).
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
 
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
-const KATALOG_ZRZUTOW = path.resolve(_dirname, '../../docs/audit/visual/C-12');
+const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/C-12'));
 const PRZEDROSTEK_ZRZUTOW = process.env.C12_ZRZUT_PREFIKS ?? 'po';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
@@ -39,7 +44,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    sources?: Array<{ ref_id: string }>;
+    sources?: Array<{ ref_id: string; name?: string }>;
   };
   readiness?: {
     blockers?: Array<{ code: string; element_ref?: string | null; canonical_code?: string }>;
@@ -170,6 +175,11 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
   }
   const zrodlo = op?.snapshot?.sources?.[0]?.ref_id;
   expect(zrodlo).toBeTruthy();
+  // Formularz podpisuje element NAZWĄ z migawki, nie identyfikatorem maszynowym (karta
+  // ETYKIETA-STACJI-PRZELOTOWEJ, naprawa W043) — asercja „formularz TEGO elementu"
+  // porównuje więc nazwę z tej samej migawki, z której pochodzi ref.
+  const nazwaZrodla = op?.snapshot?.sources?.[0]?.name;
+  expect(nazwaZrodla).toBeTruthy();
 
   // Błąd danych: S''kQmin (400 MVA) większa od S''kQmax (250 MVA).
   const poBledzie = await executeDomainOp(request, seed.caseId, 'update_element_parameters', {
@@ -203,7 +213,8 @@ test('klik „Napraw…" w wierszu problemu otwiera formularz operacji z fokusem
   // Formularz operacji domenowej dla TEGO elementu, z fokusem na brakującym polu.
   const formularz = page.getByTestId('mvd-kreator-edycja');
   await expect(formularz).toBeVisible({ timeout: 20000 });
-  await expect(formularz.getByTestId('mvd-kreator-edycja-element')).toContainText(zrodlo as string);
+  await expect(formularz.getByTestId('mvd-kreator-edycja-element')).toContainText(nazwaZrodla as string);
+  await expect(formularz.getByTestId('mvd-kreator-edycja-element')).not.toContainText(zrodlo as string);
   await expect(page.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('sk3_min_mva');
   await expect(page.getByTestId('mvd-kreator-edycja-wartosc-0')).toBeFocused();
 

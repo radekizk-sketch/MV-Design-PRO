@@ -215,7 +215,7 @@ beforeEach(() => {
   useAppStateStore.setState({ activeCaseId: CASE, activeProjectId: PROJEKT });
   useSnapshotStore.setState({ snapshot: migawka } as never);
   useExecutionRunsStore.setState({ runs: [] } as never);
-  useSelectionStore.setState({ selectedElements: [], sldCenterOnElement: null } as never);
+  useSelectionStore.setState({ selectedElements: [], sldWskazanie: null } as never);
 });
 
 afterEach(() => {
@@ -658,7 +658,7 @@ describe('EkranDynamiki — wynik bez werdyktu i przeglądarka przebiegów', () 
       type: 'LineBranch',
       name: NAZWA_ODCINKA,
     });
-    expect(useSelectionStore.getState().sldCenterOnElement).toBe(ODCINEK);
+    expect(useSelectionStore.getState().sldWskazanie?.ref).toBe(ODCINEK);
     expect(useShellStore.getState().activeSpace).toBe('schemat');
 
     act(() => {

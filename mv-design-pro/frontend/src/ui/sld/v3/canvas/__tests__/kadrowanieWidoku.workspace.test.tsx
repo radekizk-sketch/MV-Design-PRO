@@ -1,0 +1,604 @@
+/**
+ * K2 (UI-04, §0.2–0.7) — KADROWANIE w zamontowanym warsztacie schematu.
+ *
+ * Ścieżka NATYWNA (Zero-Debt §5): dwuklik i klik w REALNE obszary trafienia
+ * (`data-hit-for`), klik w przyciski doku, klawisze na `window` — kamera jest
+ * stanem wewnętrznym kanwy, więc kontrakt mierzy `viewBox` i `data-scene-lod`.
+ *
+ * ILOCZYN CECH:
+ *  - wejście polecenia: dwuklik stacji · „Dopasuj widok" · menu „Dopasuj do…" ·
+ *    klawisze F / Shift+F / Alt+← · poziom mini-ścieżki · poprzednia/następna
+ *    stacja · wskazanie ze sklepu (przed i po montażu) · „Cały arkusz";
+ *  - zaznaczenie: brak · jedno pole · element nienarysowany;
+ *  - tor zasilania: drogi pewne i warunkowe · brak drogi · błąd HTTP · brak przypadku;
+ *  - historia: kadr → „Wstecz" przywraca DOKŁADNIE poprzedni viewBox i ścieżkę;
+ *  - zasłona szuflady: przy kadrze (kadr ponawia się) × bez kadru (obiekt
+ *    szuflady odsłonięty) × obiekt już widoczny (widok bez zmian);
+ *  - gest wielokliku: drugi klik w inny uchwyt · tło · węzeł nie-uchwyt · poza kanwą;
+ *  - klawisze w polu edycji — ignorowane.
+ */
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+
+import type { EnergyNetworkModel } from '../../../../../types/enm';
+import type { TorElementuOdpowiedz } from '../../../../../ui2/adapters/topologiaZasilenia';
+import { useAppStateStore } from '../../../../app-state';
+import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
+import { useSelectionStore } from '../../../../selection';
+import { useSnapshotStore } from '../../../../topology/snapshotStore';
+import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
+import { SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX } from '../../../v2/canvas/SldDetailDrawer';
+import { sceneBoxToCameraWorld } from '../SldCanvasV3';
+import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { opisToru } from '../useKadrowanieWidoku';
+import { prostokatRefowWScenie } from '../viewAnchor';
+import { prostokatyZakresu, zakresCelu } from '../zakresKadru';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const enm = (
+  JSON.parse(
+    readFileSync(resolve(here, '../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json'), 'utf8'),
+  ) as { enm: EnergyNetworkModel }
+).enm;
+const sceny = { 0: buildSceneV3(enm, 0), 1: buildSceneV3(enm, 1), 2: buildSceneV3(enm, 2) } as const;
+const porzadek = sceny[2].meta.stationTraversalOrder;
+const nazwa = (ref: string) => enm.substations.find((s) => s.ref_id === ref)?.name ?? ref;
+
+/** Stacja ciągu głównego z polami SN (trzecia w porządku magistrali). */
+const STACJA = sceny[2].meta.mainTrunkStationIds[2];
+const POLE = enm.bays.find((b) => b.substation_ref === STACJA && b.ref_id.includes('/sn_field/'))!;
+
+beforeEach(() => {
+  if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
+  if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
+  useSnapshotStore.getState().reset();
+  useSelectionStore.getState().clearSelection();
+  useSnapshotStore.setState({ snapshot: enm });
+  useAppStateStore.setState({ activeCaseId: 'case-k2' });
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  useRawResultOverlayStore.getState().clear();
+  useSelectionStore.getState().clearSelection();
+  useAppStateStore.setState({ activeCaseId: null });
+});
+
+const kanwa = (c: HTMLElement) => c.querySelector('[data-testid="sld-canvas-v3"]')!;
+const viewBox = (c: HTMLElement) => kanwa(c).getAttribute('viewBox');
+const poziom = (c: HTMLElement) => Number(kanwa(c).getAttribute('data-scene-lod')) as SceneLod;
+const etykietySciezki = () =>
+  within(screen.getByTestId('sld-v3-sciezka-kadru'))
+    .getAllByTestId(/^sld-v3-sciezka-\d+$/)
+    .map((el) => el.textContent);
+
+function uchwyt(container: HTMLElement, scene: SceneV3, predykat: (s: SceneV3['symbols'][number]) => boolean): Element {
+  const index = scene.symbols.findIndex(predykat);
+  expect(index).toBeGreaterThanOrEqual(0);
+  const testId = scene.symbols[index].meta?.testId ?? `sld-v3-symbol-${index}`;
+  const el = container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+  if (!el) throw new Error(`brak obszaru trafienia dla ${testId}`);
+  return el;
+}
+
+function dwuklikStacji(container: HTMLElement, ref: string): void {
+  const lod = poziom(container);
+  fireEvent.doubleClick(
+    uchwyt(container, sceny[lod], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref),
+  );
+}
+
+function otworzMenu(): HTMLElement {
+  fireEvent.click(screen.getByTestId('sld-v3-dopasuj-do-toggle'));
+  return screen.getByTestId('sld-v3-dopasuj-do-menu');
+}
+
+describe('dwuklik stacji, mini-ścieżka, historia kadrów', () => {
+  it('dwuklik w stację (L0) → kadr stacji na L ≥ 1 i ścieżka „Sieć › stacja"; „Wstecz" i Alt+← przywracają kadr', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    expect(poziom(container)).toBe(0);
+    const kadrSieci = viewBox(container);
+    expect(screen.getByTestId('sld-v3-poprzedni-widok')).toBeDisabled();
+
+    dwuklikStacji(container, STACJA);
+    expect(poziom(container)).toBeGreaterThanOrEqual(1);
+    const kadrStacji = viewBox(container);
+    expect(kadrStacji).not.toBe(kadrSieci);
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+
+    fireEvent.click(screen.getByTestId('sld-v3-poprzedni-widok'));
+    expect(viewBox(container)).toBe(kadrSieci);
+    expect(poziom(container)).toBe(0);
+    expect(screen.queryByTestId('sld-v3-sciezka-kadru')).toBeNull();
+
+    dwuklikStacji(container, STACJA);
+    expect(viewBox(container)).toBe(kadrStacji);
+    fireEvent.keyDown(window, { key: 'ArrowLeft', altKey: true });
+    expect(viewBox(container)).toBe(kadrSieci);
+  });
+
+  it('rozwinięcie zwiniętego GPZ klikiem (KD-5) jest poleceniem widoku: „Wstecz" wraca do kadru sieci', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const kadrSieci = viewBox(container);
+    fireEvent.click(uchwyt(container, sceny[0], (s) => s.symbolId === 'gpzCollapsed'));
+    expect(poziom(container)).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId('sld-v3-poprzedni-widok')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('sld-v3-poprzedni-widok'));
+    expect(viewBox(container)).toBe(kadrSieci);
+  });
+
+  it('klik w poziom „Sieć" ścieżki wraca do kadru sieci; poprzednia/następna stacja w porządku obchodu rysunku', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    dwuklikStacji(container, STACJA);
+    const i = porzadek.indexOf(STACJA);
+    expect(screen.getByTestId('sld-v3-stacja-licznik').textContent).toBe(`${i + 1}/${porzadek.length}`);
+
+    fireEvent.click(screen.getByTestId('sld-v3-stacja-nastepna'));
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(porzadek[i + 1])]);
+    fireEvent.click(screen.getByTestId('sld-v3-stacja-poprzednia'));
+    fireEvent.click(screen.getByTestId('sld-v3-stacja-poprzednia'));
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(porzadek[i - 1])]);
+
+    fireEvent.click(screen.getByTestId('sld-v3-sciezka-0'));
+    expect(screen.queryByTestId('sld-v3-sciezka-kadru')).toBeNull();
+    expect(poziom(container)).toBe(0);
+  });
+
+  it('pierwsza stacja obchodu (GPZ): „poprzednia" nieaktywna z opisem', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    dwuklikStacji(container, porzadek[0]);
+    expect(screen.getByTestId('sld-v3-stacja-poprzednia')).toBeDisabled();
+    expect(screen.getByTestId('sld-v3-stacja-poprzednia')).toHaveAttribute('title', 'To pierwsza stacja rysunku');
+    expect(screen.getByTestId('sld-v3-stacja-nastepna')).not.toBeDisabled();
+  });
+});
+
+/**
+ * K2 — CEL GESTU WIELOKLIKU. W żywej aplikacji pierwszy klik w stację otwiera
+ * inspektor powłoki, kanwa się zwęża, a rysunek przesuwa (zmierzone: 183 px przy
+ * oknie 1600 px), więc drugi klik i `dblclick` przeglądarka wysyła do obiektu,
+ * który przesunął się pod kursor. jsdom nie ma układu, dlatego test odtwarza
+ * DOKŁADNIE sekwencję przeglądarki: `click` (detail 1) w cel, potem `click`
+ * (detail 2) i `dblclick` (detail 2) w INNY węzeł.
+ * Iloczyn: początek gestu {uchwyt stacji · tło kanwy · węzeł kanwy bez uchwytu ·
+ * węzeł poza kanwą} × drugi węzeł {inny uchwyt · ten sam uchwyt · węzeł poza kanwą}
+ * × zdarzenie {drugi klik · dwuklik}.
+ */
+describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kliku', () => {
+  const inny = () => porzadek.find((r) => r !== STACJA && r !== sceny[2].meta.gpzId)!;
+  const stacjaL0 = (c: HTMLElement, ref: string) =>
+    uchwyt(c, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref);
+  const zaznaczone = () => useSelectionStore.getState().selectedElements.map((e) => e.id);
+
+  it('pierwszy klik w stację, drugi klik i dwuklik w przesunięty pod kursor węzeł sąsiada → kadr i zaznaczenie TEJ stacji', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
+    expect(zaznaczone()).toEqual([STACJA]);
+    const sasiad = stacjaL0(container, inny());
+    fireEvent.click(sasiad, { detail: 2 });
+    expect(zaznaczone()).toEqual([STACJA]);
+    fireEvent.doubleClick(sasiad, { detail: 2 });
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    expect(poziom(container)).toBeGreaterThanOrEqual(1);
+  });
+
+  it('drugi klik i dwuklik w NIEDOSTĘPNĄ akcję szuflady otwartej pierwszym klikiem → kadr stacji; akcja nie jest `disabled` (inaczej przeglądarka nie wysłałaby zdarzeń)', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
+    const szuflada = screen.getByTestId('sld-v2-detail-drawer');
+    const niedostepna = szuflada.querySelector('[data-testid^="sld-v2-detail-drawer-action-"][data-disabled="true"]');
+    expect(niedostepna, 'szuflada stacji bez wyników ma akcję niedostępną').not.toBeNull();
+    expect(niedostepna).not.toBeDisabled();
+    expect(niedostepna).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(niedostepna!, { detail: 2 });
+    fireEvent.doubleClick(niedostepna!, { detail: 2 });
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    expect(screen.queryByTestId('sld-v2-detail-drawer')).toBeNull();
+  });
+
+  it('gest otwarty na TLE: drugi klik i dwuklik w uchwyt stacji, który przesunął się pod kursor, nie zaznaczają ani nie kadrują', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const kadrSieci = viewBox(container);
+    fireEvent.click(kanwa(container), { detail: 1 });
+    const cel = stacjaL0(container, STACJA);
+    fireEvent.click(cel, { detail: 2 });
+    fireEvent.doubleClick(cel, { detail: 2 });
+    expect(zaznaczone()).toEqual([]);
+    expect(screen.queryByTestId('sld-v3-sciezka-kadru')).toBeNull();
+    expect(viewBox(container)).toBe(kadrSieci);
+  });
+
+  it('gest otwarty na węźle bez uchwytu (treść nad rysunkiem): zdarzenia idą zwykłą drogą do węzła pod kursorem', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const bezUchwytu = container.querySelector('[data-testid="sld-v3-rysunek"]')!;
+    expect(bezUchwytu.closest('[data-hit-for]')).toBeNull();
+    fireEvent.click(bezUchwytu, { detail: 1 });
+    const cel = stacjaL0(container, STACJA);
+    fireEvent.click(cel, { detail: 2 });
+    expect(zaznaczone()).toEqual([STACJA]);
+    fireEvent.doubleClick(cel, { detail: 2 });
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+  });
+
+  it('drugi klik i dwuklik w węzeł POZA kanwą (szuflada otwarta pod kursorem) → węzeł nie dostaje kliku, stacja jest kadrowana', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const przyciskSzuflady = document.createElement('button');
+    const klikSzuflady = vi.fn();
+    przyciskSzuflady.addEventListener('click', klikSzuflady);
+    document.body.appendChild(przyciskSzuflady);
+    try {
+      fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
+      fireEvent.click(przyciskSzuflady, { detail: 2 });
+      fireEvent.doubleClick(przyciskSzuflady, { detail: 2 });
+      expect(klikSzuflady).not.toHaveBeenCalled();
+      expect(zaznaczone()).toEqual([STACJA]);
+      expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    } finally {
+      przyciskSzuflady.remove();
+    }
+  });
+
+  it('gest otwarty POZA kanwą: drugi klik i dwuklik w uchwyt stacji idą zwykłą drogą (kanwa nie przejmuje cudzego gestu)', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const zewnatrz = document.createElement('div');
+    document.body.appendChild(zewnatrz);
+    try {
+      fireEvent.click(zewnatrz, { detail: 1 });
+      const cel = stacjaL0(container, STACJA);
+      fireEvent.click(cel, { detail: 2 });
+      expect(zaznaczone()).toEqual([STACJA]);
+      fireEvent.doubleClick(cel, { detail: 2 });
+      expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    } finally {
+      zewnatrz.remove();
+    }
+  });
+
+  it('cel bez zmian (rysunek nie drgnął): drugi klik i dwuklik w ten sam uchwyt działają zwykłą drogą', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const cel = stacjaL0(container, STACJA);
+    fireEvent.click(cel, { detail: 1 });
+    fireEvent.click(cel, { detail: 2 });
+    fireEvent.doubleClick(cel, { detail: 2 });
+    expect(zaznaczone()).toEqual([STACJA]);
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+  });
+});
+
+/**
+ * K2 — ZASŁONY prostokąta bezpiecznego. Szuflada szczegółów otwiera się klikiem
+ * obiektu (także PIERWSZYM klikiem dwukliku stacji) i leży NAD prawą częścią
+ * kanwy. Pomiar e2e przed poprawką (1440×900): kadr stacji leżał w połowie pod
+ * szufladą. Iloczyn: szuflada {otwarta przed kadrem · zamknięta po kadrze}
+ * × mierzony prostokąt stacji względem pasa szuflady.
+ */
+describe('zasłony kadru: szuflada szczegółów', () => {
+  const SZEROKOSC = 1200;
+  const WYSOKOSC = 800;
+  /** Prostokąt stacji w pikselach ekranu kanwy (z viewBox i geometrii sceny). */
+  function stacjaNaEkranie(container: HTMLElement) {
+    const [x, y, w, h] = viewBox(container)!.split(' ').map(Number);
+    const wynik = zakresCelu('stacja', enm, [STACJA], sceny[2]);
+    if (!wynik.dostepny) throw new Error(wynik.przyczyna);
+    const box = prostokatyZakresu(sceny, wynik.zakres, sceneBoxToCameraWorld).celByLod[poziom(container)]!;
+    const k = SZEROKOSC / w;
+    expect(WYSOKOSC / h).toBeCloseTo(k, 6);
+    return { left: (box.minX - x) * k, right: (box.maxX - x) * k, top: (box.minY - y) * k, bottom: (box.maxY - y) * k };
+  }
+
+  it('dwuklik stacji zamyka szufladę otwartą pierwszym klikiem gestu i kadruje na całej kanwie; klik otwiera szufladę — kadr ponawia się NA LEWO od niej; zamknięcie przywraca kadr pełny', () => {
+    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC} height={WYSOKOSC} />);
+    const cel = uchwyt(container, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === STACJA);
+    fireEvent.click(cel, { detail: 1 });
+    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
+    fireEvent.doubleClick(cel, { detail: 2 });
+    expect(screen.queryByTestId('sld-v2-detail-drawer')).toBeNull();
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    const kadrPelny = viewBox(container);
+    const pelny = stacjaNaEkranie(container);
+    expect(pelny.left).toBeGreaterThanOrEqual(-1e-6);
+    expect(pelny.right).toBeLessThanOrEqual(SZEROKOSC + 1e-6);
+
+    // Pojedynczy klik w pole stacji (już na poziomie wnętrza) otwiera szufladę —
+    // zasłonę prawego pasa: kadr stacji ponawia się na obszarze widocznym.
+    const lod = poziom(container);
+    fireEvent.click(uchwyt(container, sceny[lod], (s) => s.meta?.ownerRef === POLE.ref_id), { detail: 1 });
+    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
+    const zSzuflada = stacjaNaEkranie(container);
+    expect(zSzuflada.left).toBeGreaterThanOrEqual(-1e-6);
+    expect(zSzuflada.right).toBeLessThanOrEqual(SZEROKOSC - SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX + 1e-6);
+    expect((zSzuflada.left + zSzuflada.right) / 2).toBeLessThan((pelny.left + pelny.right) / 2);
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+
+    fireEvent.click(screen.getByTestId('sld-v2-detail-drawer-close'));
+    expect(screen.queryByTestId('sld-v2-detail-drawer')).toBeNull();
+    expect(viewBox(container)).toBe(kadrPelny);
+  });
+});
+
+describe('zasłona szuflady bez kadru: obiekt szuflady nie chowa się pod nią', () => {
+  const SZEROKOSC = 1200;
+  const WYSOKOSC = 800;
+  function naEkranie(container: HTMLElement, ref: string) {
+    const [x, , w] = viewBox(container)!.split(' ').map(Number);
+    const box = sceneBoxToCameraWorld(prostokatRefowWScenie(sceny[poziom(container)], [ref])!);
+    const k = SZEROKOSC / w;
+    return { left: (box.minX - x) * k, right: (box.maxX - x) * k };
+  }
+
+  it('klik stacji leżącej w pasie szuflady (widok sieci) przesuwa rysunek: stacja na lewo od szuflady, skala bez zmian', () => {
+    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC} height={WYSOKOSC} />);
+    const granica = SZEROKOSC - SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX;
+    // Stacja, której rysunek w widoku sieci wchodzi w pas przyszłej szuflady.
+    const kandydat = porzadek.find((ref) => {
+      if (ref === sceny[2].meta.gpzId) return false;
+      const e = naEkranie(container, ref);
+      return e.right > granica && e.left < SZEROKOSC && e.right - e.left < granica - 80;
+    });
+    expect(kandydat, 'fikstura ma stację w pasie szuflady').toBeTruthy();
+    const ref = kandydat!;
+    const [, , szerokoscPrzed] = viewBox(container)!.split(' ').map(Number);
+    fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
+      detail: 1,
+    });
+    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
+    const po = naEkranie(container, ref);
+    expect(po.right).toBeLessThanOrEqual(granica - 40 + 1e-6);
+    expect(po.left).toBeGreaterThanOrEqual(-1e-6);
+    expect(viewBox(container)!.split(' ').map(Number)[2]).toBeCloseTo(szerokoscPrzed, 9);
+  });
+
+  it('klik stacji widocznej w całości na lewo od pasa szuflady: widok bez zmian', () => {
+    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC} height={WYSOKOSC} />);
+    const granica = SZEROKOSC - SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX;
+    // GPZ pominięty: klik w zwinięty blok GPZ rozwija go (KD-5) — to polecenie widoku.
+    const ref = porzadek.find((r) => {
+      if (r === sceny[2].meta.gpzId) return false;
+      const e = naEkranie(container, r);
+      return e.left >= 40 && e.right <= granica - 40;
+    });
+    expect(ref, 'fikstura ma stację na lewo od pasa szuflady').toBeTruthy();
+    const przed = viewBox(container);
+    fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
+      detail: 1,
+    });
+    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
+    expect(viewBox(container)).toBe(przed);
+  });
+});
+
+describe('„Dopasuj widok", menu „Dopasuj do…" i klawisze', () => {
+  it('bez zaznaczenia: menu pokazuje cele niedostępne Z PRZYCZYNĄ; sieć i magistrala aktywne', () => {
+    render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const menu = otworzMenu();
+    for (const cel of ['zaznaczenie', 'stacja', 'sekcja', 'pole', 'tor']) {
+      expect(within(menu).getByTestId(`sld-v3-dopasuj-do-${cel}`)).toBeDisabled();
+      expect(within(menu).getByTestId(`sld-v3-dopasuj-do-${cel}-przyczyna`).textContent!.length).toBeGreaterThan(20);
+    }
+    expect(within(menu).getByTestId('sld-v3-dopasuj-do-siec')).not.toBeDisabled();
+    expect(within(menu).getByTestId('sld-v3-dopasuj-do-magistrala')).not.toBeDisabled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByTestId('sld-v3-dopasuj-do-menu')).toBeNull();
+  });
+
+  it('zaznaczenie pola natywnym klikiem → „Dopasuj widok" kadruje POLE (ścieżka Sieć › stacja › pole), Shift+F wraca do sieci', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const kadrSieci = viewBox(container);
+    dwuklikStacji(container, STACJA);
+    const lod = poziom(container);
+    fireEvent.click(uchwyt(container, sceny[lod], (s) => s.meta?.ownerRef === POLE.ref_id));
+    expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([POLE.ref_id]);
+    const kadrStacji = viewBox(container);
+
+    fireEvent.click(screen.getByTestId('sld-v3-fit-view'));
+    expect(viewBox(container)).not.toBe(kadrStacji);
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA), POLE.name]);
+
+    // Poziom stacji ze ścieżki: ten sam kadr co dwuklik.
+    fireEvent.click(screen.getByTestId('sld-v3-sciezka-1'));
+    expect(viewBox(container)).toBe(kadrStacji);
+
+    // Klik pola otworzył szufladę szczegółów — zasłonę kadru (kadr sieci przy
+    // otwartej szufladzie jest węższy, patrz „zasłony kadru"). Po jej zamknięciu
+    // Shift+F daje DOKŁADNIE kadr sieci z chwili montażu.
+    fireEvent.click(screen.getByTestId('sld-v2-detail-drawer-close'));
+    fireEvent.keyDown(window, { key: 'F', shiftKey: true });
+    expect(viewBox(container)).toBe(kadrSieci);
+    // F z zaznaczeniem — znów kadr pola.
+    fireEvent.keyDown(window, { key: 'f' });
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA), POLE.name]);
+  });
+
+  it('menu: „Sekcja szyn" i „Stacja" dla zaznaczonego pola kadrują sekcję i stację', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    act(() => useSelectionStore.getState().selectElement({ id: POLE.ref_id, type: 'BaySN', name: POLE.name }));
+    fireEvent.click(within(otworzMenu()).getByTestId('sld-v3-dopasuj-do-sekcja'));
+    const sciezkaSekcji = etykietySciezki();
+    expect(sciezkaSekcji.slice(0, 2)).toEqual(['Sieć', nazwa(STACJA)]);
+    expect(sciezkaSekcji[2]).toMatch(/^Szyna SN/);
+    const kadrSekcji = viewBox(container);
+    fireEvent.click(within(otworzMenu()).getByTestId('sld-v3-dopasuj-do-stacja'));
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    expect(viewBox(container)).not.toBe(kadrSekcji);
+  });
+
+  it('klawisze w polu edycji NIE kadrują', () => {
+    const { container } = render(
+      <>
+        <input data-testid="pole-edycji" />
+        <SldCanvasV3Workspace width={1200} height={800} />
+      </>,
+    );
+    act(() => useSelectionStore.getState().selectElement({ id: POLE.ref_id, type: 'BaySN', name: POLE.name }));
+    const przed = viewBox(container);
+    fireEvent.keyDown(screen.getByTestId('pole-edycji'), { key: 'f' });
+    fireEvent.keyDown(screen.getByTestId('pole-edycji'), { key: 'ArrowLeft', altKey: true });
+    expect(viewBox(container)).toBe(przed);
+  });
+});
+
+describe('wskazanie ze sklepu selekcji', () => {
+  it('wskazanie wydane, gdy schematu NIE było (przełączenie przestrzeni) — obsłużone raz po montażu', () => {
+    act(() => useSelectionStore.getState().centerSldOnElement(STACJA));
+    const { container, rerender } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    expect(poziom(container)).toBeGreaterThanOrEqual(1);
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    fireEvent.click(screen.getByTestId('sld-v3-fit-sheet'));
+    const poArkuszu = viewBox(container);
+    rerender(<SldCanvasV3Workspace width={1200} height={800} />);
+    expect(viewBox(container)).toBe(poArkuszu);
+  });
+
+  it('wskazanie elementu nienarysowanego: kamera stoi, komunikat mówi dlaczego', () => {
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    const przed = viewBox(container);
+    act(() => useSelectionStore.getState().centerSldOnElement('seg/nie-ma/segment'));
+    expect(viewBox(container)).toBe(przed);
+    expect(screen.getByTestId('sld-v3-komunikat-kadru-tekst').textContent).toMatch(/nie jest narysowany/);
+  });
+});
+
+describe('tor zasilania (odpowiedź backendu, bez wyróżnienia na kanwie)', () => {
+  const elementToru = (ref: string, stacja: string | null) => ({
+    ref_id: ref,
+    rodzaj: 'pole' as const,
+    typ: null,
+    nazwa: ref,
+    stan_lacznika: null,
+    pole_ref: null,
+    stacja_ref: stacja,
+  });
+  const tor = (nadpisz: Partial<TorElementuOdpowiedz>): TorElementuOdpowiedz => ({
+    case_id: 'case-k2',
+    enm_revision: 1,
+    enm_hash: 'h',
+    podstawa: 'topologia_laczeniowa',
+    opis_podstawy: 'Topologia łączeniowa modelu (stany łączników), nie wynik obliczeń.',
+    element: { ref_id: POLE.ref_id, rodzaj: 'pole', typ: null, nazwa: POLE.name },
+    stan: 'zasilany',
+    status: 'rozstrzygniety',
+    przyczyny: [],
+    drogi: [],
+    drogi_obciete: false,
+    sasiedztwo: {
+      kierunek_ustalony: true,
+      poprzednie: [],
+      nastepne: [],
+      pola_wejsciowe: [],
+      pola_wyjsciowe: [],
+      pole: null,
+      stacja: null,
+      przekladniki: [],
+      zabezpieczenia: [],
+    },
+    ...nadpisz,
+  });
+  const odpowiedz = (status: number, body: unknown) =>
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })));
+
+  it('drogi pewna i warunkowa: kadr obejmuje sumę dróg, tekst podaje liczby, łączniki nieustalone i podstawę', async () => {
+    const gpzPole = enm.bays.find((b) => b.substation_ref === sceny[2].meta.gpzId)!;
+    odpowiedz(
+      200,
+      tor({
+        status: 'nierozstrzygniety',
+        drogi: [
+          { zrodlo_ref: 'src/A', pewna: true, elementy: [elementToru(gpzPole.ref_id, null)], laczniki_nieustalone: [] },
+          { zrodlo_ref: 'src/B', pewna: false, elementy: [elementToru(POLE.ref_id, STACJA)], laczniki_nieustalone: ['Q7'] },
+        ],
+      }),
+    );
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    act(() => useSelectionStore.getState().selectElement({ id: POLE.ref_id, type: 'BaySN', name: POLE.name }));
+    const przed = viewBox(container);
+    fireEvent.click(within(otworzMenu()).getByTestId('sld-v3-dopasuj-do-tor'));
+    await waitFor(() => expect(screen.getByTestId('sld-v3-komunikat-kadru')).toBeInTheDocument());
+    expect(fetch).toHaveBeenCalledWith(
+      `/api/cases/case-k2/enm/topologia/tor?element_ref=${encodeURIComponent(POLE.ref_id)}`,
+    );
+    const tekst = screen.getByTestId('sld-v3-komunikat-kadru-tekst').textContent!;
+    expect(tekst).toContain('dróg 2 (pewnych 1, warunkowych 1)');
+    expect(tekst).toContain('tor nierozstrzygnięty');
+    expect(tekst).toContain('Topologia łączeniowa modelu');
+    expect(screen.getByTestId('sld-v3-komunikat-kadru-szczegoly').textContent).toContain(
+      'Droga warunkowa od źródła src/B — łączniki o nieustalonym stanie: Q7.',
+    );
+    expect(screen.getByTestId('sld-v3-komunikat-kadru')).toHaveAttribute('data-rodzaj', 'ostrzezenie');
+    expect(viewBox(container)).not.toBe(przed);
+    expect(etykietySciezki()).toEqual(['Sieć', `Tor zasilania: ${POLE.name}`]);
+  });
+
+  // Rodzaj komunikatu WYŁĄCZNIE ze statusu backendu (kontrakt werdyktu wyjaśnialnego):
+  // iloczyn status × obecność dróg warunkowych × obcięcie listy — front nie liczy
+  // własnego progu (dawny warunek `warunkowe.length > 0` był drugą klasyfikacją).
+  it.each([
+    ['rozstrzygniety', [true], false, 'informacja'],
+    ['rozstrzygniety', [true, true], false, 'informacja'],
+    ['nierozstrzygniety', [true, false], false, 'ostrzezenie'],
+    ['nierozstrzygniety', [true], true, 'ostrzezenie'],
+    ['brak_drogi', [], false, 'ostrzezenie'],
+  ] as const)('opisToru: status %s, drogi pewne %j, obcięte %s → rodzaj %s', (status, pewnosc, obciete, rodzaj) => {
+    const opis = opisToru(
+      tor({
+        status,
+        drogi_obciete: obciete,
+        drogi: pewnosc.map((pewna, i) => ({ zrodlo_ref: `src/${i}`, pewna, elementy: [], laczniki_nieustalone: [] })),
+      }),
+    );
+    expect(opis.rodzaj).toBe(rodzaj);
+    expect(opis.tekst).toContain(POLE.name);
+    if (status === 'brak_drogi') expect(opis.tekst).toContain('brak drogi od źródła sieciowego');
+    else expect(opis.tekst).toContain(`dróg ${pewnosc.length} (pewnych ${pewnosc.filter(Boolean).length}`);
+    expect(opis.tekst.includes('tor nierozstrzygnięty')).toBe(status === 'nierozstrzygniety');
+    if (obciete) expect(opis.szczegoly.join(' ')).toContain('Lista dróg jest obcięta');
+  });
+
+  it('brak drogi: kamera stoi, komunikat z przyczynami backendu', async () => {
+    odpowiedz(
+      200,
+      tor({
+        stan: 'niezasilany',
+        status: 'brak_drogi',
+        przyczyny: [{ kod: 'LACZNIK_OTWARTY', opis: 'Łącznik Q3 otwarty odcina pole od źródła.', elementy: ['Q3'] }],
+      }),
+    );
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    act(() => useSelectionStore.getState().selectElement({ id: POLE.ref_id, type: 'BaySN', name: POLE.name }));
+    const przed = viewBox(container);
+    fireEvent.click(within(otworzMenu()).getByTestId('sld-v3-dopasuj-do-tor'));
+    await waitFor(() => expect(screen.getByTestId('sld-v3-komunikat-kadru')).toBeInTheDocument());
+    expect(screen.getByTestId('sld-v3-komunikat-kadru-tekst').textContent).toContain('brak drogi od źródła sieciowego');
+    expect(screen.getByTestId('sld-v3-komunikat-kadru-szczegoly').textContent).toContain('Łącznik Q3 otwarty');
+    expect(screen.getByTestId('sld-v3-komunikat-kadru')).toHaveAttribute('data-rodzaj', 'ostrzezenie');
+    expect(viewBox(container)).toBe(przed);
+  });
+
+  it('błąd HTTP: komunikat błędu z kodem, kamera stoi; zamknięcie komunikatu', async () => {
+    odpowiedz(500, { detail: 'awaria' });
+    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+    act(() => useSelectionStore.getState().selectElement({ id: POLE.ref_id, type: 'BaySN', name: POLE.name }));
+    const przed = viewBox(container);
+    fireEvent.click(within(otworzMenu()).getByTestId('sld-v3-dopasuj-do-tor'));
+    await waitFor(() => expect(screen.getByTestId('sld-v3-komunikat-kadru')).toHaveAttribute('data-rodzaj', 'blad'));
+    expect(screen.getByTestId('sld-v3-komunikat-kadru-tekst').textContent).toContain('HTTP 500');
+    expect(viewBox(container)).toBe(przed);
+    fireEvent.click(screen.getByTestId('sld-v3-komunikat-kadru-zamknij'));
+    expect(screen.queryByTestId('sld-v3-komunikat-kadru')).toBeNull();
+  });
+
+  it('brak aktywnego przypadku: „Tor zasilania" nieaktywny z przyczyną, bez żądania', () => {
+    useAppStateStore.setState({ activeCaseId: null });
+    const spy = vi.fn();
+    vi.stubGlobal('fetch', spy);
+    render(<SldCanvasV3Workspace width={1200} height={800} />);
+    act(() => useSelectionStore.getState().selectElement({ id: POLE.ref_id, type: 'BaySN', name: POLE.name }));
+    const menu = otworzMenu();
+    expect(within(menu).getByTestId('sld-v3-dopasuj-do-tor')).toBeDisabled();
+    expect(within(menu).getByTestId('sld-v3-dopasuj-do-tor-przyczyna').textContent).toMatch(/przypadku obliczeniowego/);
+    expect(spy).not.toHaveBeenCalled();
+  });
+});

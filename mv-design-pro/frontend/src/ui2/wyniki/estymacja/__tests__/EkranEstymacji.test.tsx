@@ -233,7 +233,7 @@ describe('EkranEstymacji — pętla decyzji (F-K4, znalezisko Z4)', () => {
   it('odrzucony pomiar (LNR ponad progiem) prowadzi do SZYNY pomiaru w modelu', async () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokEstymacjiFixture());
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
     render(<EkranEstymacji szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
     await screen.findByTestId('mvd-est-edytor');

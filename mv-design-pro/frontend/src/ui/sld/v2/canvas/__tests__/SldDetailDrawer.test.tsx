@@ -457,6 +457,17 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     cleanup();
   });
 
+  it('przycisk konfiguracji transformatora bez konfiguratora: `aria-disabled` z powodem, przyjmuje zdarzenia (gest kanwy), nic nie robi', () => {
+    const { container } = render(<SldDetailDrawer open data={STATION_DATA} onClose={vi.fn()} />);
+    fireEvent.click(container.querySelector('[data-testid="sld-v2-detail-drawer-tab-transformator"]') as Element);
+    const przycisk = container.querySelector('[data-testid="drawer-tr-open-config"]') as HTMLButtonElement;
+    expect(przycisk).toHaveAttribute('aria-disabled', 'true');
+    expect(przycisk).not.toBeDisabled();
+    expect(przycisk.title).toBe('Brak aktywnego konfiguratora stacji');
+    expect(() => fireEvent.click(przycisk)).not.toThrow();
+    cleanup();
+  });
+
   it('station tab "rozdzielnica" lista bays z baysSpec', () => {
     const data: SldDetailDrawerData = {
       ...STATION_DATA,
@@ -1419,6 +1430,11 @@ describe('SldDetailDrawer — right-side detail panel', () => {
     expect(showResults).toBeTruthy();
     expect(deleteStation).toBeTruthy();
     expect(deleteStation.getAttribute('data-disabled')).toBe('true');
+    // K2: niedostępność przez `aria-disabled` (przycisk przyjmuje zdarzenia —
+    // gest wielokliku kanwy nie ginie w nim), klik nadal nic nie robi.
+    expect(deleteStation).toHaveAttribute('aria-disabled', 'true');
+    expect(deleteStation).not.toBeDisabled();
+    expect(showResults).not.toHaveAttribute('aria-disabled');
     expect(deleteStation.title).toBe('Brak aktywnego zakresu obliczeń.');
     fireEvent.click(showResults);
     fireEvent.click(deleteStation);

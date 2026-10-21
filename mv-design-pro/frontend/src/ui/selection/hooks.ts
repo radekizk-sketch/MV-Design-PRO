@@ -1,115 +1,16 @@
 /**
- * Selection hooks for SLD, tree and inspector synchronization.
+ * Zaznaczenie z dowolnej powierzchni (wyniki, dowód, schemat) — jeden hook.
+ *
+ * K2: usunięte martwe hooki `useSldSelection`, `useTreeSelection`,
+ * `useSelectionSync`, `usePropertyGridSelection` i `useContextMenuState` (zero
+ * konsumentów poza re-eksportami; `useSelectionSync` był jedynym, nigdy
+ * niemontowanym czytelnikiem `sldCenterOnElement`). Wskazanie elementu na
+ * schemacie czyta przestrzeń schematu (`SldCanvasV3Workspace`, `sldWskazanie`).
  */
 
-import { useCallback, useEffect } from 'react';
-import { normalizeOperatingMode } from '../operatingMode';
+import { useCallback } from 'react';
 import type { ElementType } from '../types';
 import { useSelectionStore } from './store';
-
-export function useSldSelection() {
-  const { selectElement, selectedElement } = useSelectionStore();
-
-  const handleSldClick = useCallback(
-    (elementId: string, elementType: ElementType, elementName: string) => {
-      selectElement({ id: elementId, type: elementType, name: elementName });
-    },
-    [selectElement]
-  );
-
-  const handleSldEmptyClick = useCallback(() => {
-    selectElement(null);
-  }, [selectElement]);
-
-  const handleSldDoubleClick = useCallback(
-    (elementId: string, elementType: ElementType, elementName: string) => {
-      selectElement({ id: elementId, type: elementType, name: elementName });
-    },
-    [selectElement]
-  );
-
-  return {
-    selectedElement,
-    handleSldClick,
-    handleSldEmptyClick,
-    handleSldDoubleClick,
-  };
-}
-
-export function useTreeSelection() {
-  const { selectElement, centerSldOnElement, expandTreeNode, selectedElement } =
-    useSelectionStore();
-
-  const handleTreeClick = useCallback(
-    (elementId: string, elementType: ElementType, elementName: string) => {
-      selectElement({ id: elementId, type: elementType, name: elementName });
-      centerSldOnElement(elementId);
-    },
-    [centerSldOnElement, selectElement]
-  );
-
-  const expandToElement = useCallback(
-    (path: string[]) => {
-      path.forEach((nodeId) => expandTreeNode(nodeId));
-    },
-    [expandTreeNode]
-  );
-
-  return {
-    selectedElement,
-    handleTreeClick,
-    expandToElement,
-  };
-}
-
-export function useSelectionSync(options: {
-  onSldCenterRequest?: (elementId: string) => void;
-  onTreeExpandRequest?: (elementId: string) => void;
-}) {
-  const { selectedElement, sldCenterOnElement } = useSelectionStore();
-
-  useEffect(() => {
-    if (sldCenterOnElement && options.onSldCenterRequest) {
-      options.onSldCenterRequest(sldCenterOnElement);
-    }
-  }, [options.onSldCenterRequest, sldCenterOnElement]);
-
-  useEffect(() => {
-    if (selectedElement && options.onTreeExpandRequest) {
-      options.onTreeExpandRequest(selectedElement.id);
-    }
-  }, [options.onTreeExpandRequest, selectedElement]);
-
-  return { selectedElement };
-}
-
-export function usePropertyGridSelection() {
-  const { selectedElement, mode, resultStatus, propertyGridOpen, togglePropertyGrid } =
-    useSelectionStore();
-  const runtimeMode = normalizeOperatingMode(mode);
-
-  return {
-    selectedElement,
-    mode: runtimeMode,
-    resultStatus,
-    propertyGridOpen,
-    togglePropertyGrid,
-    isReadOnly: runtimeMode === 'RESULT_VIEW',
-  };
-}
-
-export function useContextMenuState() {
-  const { selectedElement, mode } = useSelectionStore();
-  const runtimeMode = normalizeOperatingMode(mode);
-
-  return {
-    selectedElement,
-    mode: runtimeMode,
-    isEditMode: runtimeMode === 'MODEL_EDIT',
-    isCaseConfigMode: false,
-    isResultMode: runtimeMode === 'RESULT_VIEW',
-  };
-}
 
 export function useGlobalSelectionSync() {
   const {

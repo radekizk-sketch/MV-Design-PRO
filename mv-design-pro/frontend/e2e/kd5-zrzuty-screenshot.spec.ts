@@ -218,8 +218,16 @@ test.describe('kd5:zrzuty', () => {
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
       // Klik w blok to TAKZE selekcja (element GPZ), wiec otwiera panele
       // elementu — na zrzucie „po rozwinieciu" chcemy zobaczyc SCHEMAT, nie
-      // panele. Zdejmujemy selekcje realna sciezka uzytkownika (Escape).
+      // panele. Zdejmujemy selekcje realna sciezka uzytkownika (K11-A): klik
+      // otwiera tez szuflade szczegolow, wiec PIERWSZY Escape zamyka szuflade,
+      // a DRUGI zdejmuje selekcje (jak `sld-first-uklad.spec.ts`; jeden Escape
+      // zostawial GPZ zaznaczony, z podswietleniem na zrzucie).
       await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      // Dowód zdjęcia selekcji: adres bez parametru zaznaczenia (`sel`). Panel
+      // prawy NIE jest tu sygnałem — stacja ma własną powierzchnię konfiguratora,
+      // która zostaje otwarta po odznaczeniu (inaczej niż karta selekcji transformatora).
+      await expect(page).not.toHaveURL(/[?&]sel=/, { timeout: 10000 });
       // Panele elementu gasna z animacja — czekamy, zeby zrzut pokazal SCHEMAT,
       // a nie klatke posrednia zanikania.
       await page.waitForTimeout(1200);

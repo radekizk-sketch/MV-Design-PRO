@@ -43,14 +43,20 @@ export interface CanvasToolbarGroup {
  * `px-2` = 16 px obudowy; odstęp wewnętrzny 4 px), zaokrąglone w górę do 4 px:
  *  - drzewo  „▸ Drzewo układu" ................................ 111 → 116
  *  - układy  etykieta + 3 przyciski PV/BESS/FW (＋ … ) ......... 476 → 480
- *  - widok   „⌖ Dopasuj widok" + „Cały arkusz" + „▸ Legenda (N)"
- *            + „▸ Nawigator" .................................. 398 → 400
+ *  - widok   „⌖ Dopasuj widok" (15 zn. → 109) + rozwijacz „▾" menu
+ *            „Dopasuj do…" (1 → 23) + „← Wstecz" (8 → 66, polecenie
+ *            „Poprzedni widok") + „Cały arkusz" (11 → 85)
+ *            + „▸ Legenda (NN)" (14 → 103) + „▸ Nawigator" (11 → 85)
+ *            + 5 odstępów po 4 px (karta K2: polecenia kadru i historii
+ *            kadrów w tym samym doku widoku; menu jako przycisk dzielony
+ *            przy „Dopasuj widok", żeby dok widoku nie zwijał się na
+ *            kanwie 800 px) ............................................ 491 → 492
  *  - eksport „↓ SVG" + menu formatów + „Dołącz legendę" ....... 314 → 320
  */
 export const CANVAS_TOOLBAR_GROUPS: readonly CanvasToolbarGroup[] = [
   { id: 'drzewo', label: 'Drzewo układu', minWidth: 116, rank: 4 },
   { id: 'uklady', label: 'Układy PV/BESS/FW', minWidth: 480, rank: 2 },
-  { id: 'widok', label: 'Widok', minWidth: 400, rank: 3 },
+  { id: 'widok', label: 'Widok', minWidth: 492, rank: 3 },
   { id: 'eksport', label: 'Eksport', minWidth: 320, rank: 1 },
 ];
 
@@ -99,6 +105,20 @@ export const SLD_CANVAS_DOCK_INSETS: {
   bottom: TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX,
   left: 0,
 };
+
+/**
+ * K2 (UI-04, „bez utraty kontekstu"): MINI-ŚCIEŻKA KONTEKSTU kadru („Sieć ›
+ * Stacja S3 › Pole F02") — rząd pod pasem narzędzi (`left-3`, odstęp 6 px od
+ * pasa). Widoczna wyłącznie, gdy trwa kadr podzbioru; wtedy jej pas jest
+ * ZASŁONĄ stanową, którą kanwa odejmuje od prostokąta bezpiecznego (jak panel
+ * boczny), więc cel kadru nie chowa się pod ścieżką.
+ */
+export const SCIEZKA_KADRU_TOP_PX = TOOLBAR_EDGE_PX + TOOLBAR_ROW_HEIGHT_PX + 6;
+export const SCIEZKA_KADRU_INSET_PX = TOOLBAR_ROW_HEIGHT_PX + 6;
+
+/** K2: szerokość panelu komunikatu kadru (tor zasilania) przy prawej krawędzi
+ *  kanwy [px] — zasłona stanowa prawego pasa, gdy komunikat jest widoczny. */
+export const KOMUNIKAT_KADRU_WIDTH_PX = 360;
 
 /** S9-8: maksymalna szerokość panelu bocznego „wnętrze stacji" [px] — TA SAMA
  *  liczba, którą niesie klasa panelu (`max-w-[min(760px,calc(100%-1.5rem))]`,

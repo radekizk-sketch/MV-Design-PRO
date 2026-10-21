@@ -162,7 +162,7 @@ describe('useSelekcjaPoOperacji', () => {
       type: 'TransformerBranch',
       name: 'TR SN/nN',
     });
-    expect(centerSldOnElementMock).toHaveBeenCalledWith('tr-1');
+    expect(centerSldOnElementMock).toHaveBeenCalledWith('tr-1', 'kotwicz');
     expect(navigateToSldMock).toHaveBeenCalled();
   });
 

@@ -27,7 +27,8 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Generator, Transformer } from '../../../../../types/enm';
 import { lvPortalOwnerRef } from '../../compose/station';
 import { buildStacjaBFixture, STACJA_B_REFS } from '../../electrical/__tests__/fixtures/stacjaB';
-import { buildSceneV3, sourceCoverageGaps, type PreviewSymbol, type SceneLod, type SceneV3 } from '../buildScene';
+import type { PreviewSymbol } from '../../compose/preview';
+import { buildSceneV3, sourceCoverageGaps, type SceneLod, type SceneV3 } from '../buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(

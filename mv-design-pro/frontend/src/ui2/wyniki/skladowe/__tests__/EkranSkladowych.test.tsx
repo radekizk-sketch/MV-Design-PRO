@@ -330,7 +330,7 @@ describe('EkranSkladowych — wskazanie elementu (F-K4, znalezisko Z4)', () => {
   beforeEach(() => {
     mockFetchSkladowych();
     useExecutionRunsStore.setState({ runs: [RUN_1F, RUN_3F] });
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
   });
 
   it('akcja jest INSPEKCYJNA („Pokaż na schemacie"), bo ekran nie ma kryterium naruszenia', async () => {

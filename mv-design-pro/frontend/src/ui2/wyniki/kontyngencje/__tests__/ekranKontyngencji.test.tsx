@@ -75,7 +75,7 @@ async function zakresGotowy() {
 beforeEach(() => {
   useAppStateStore.setState({ activeRunId: null });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
-  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
 });
 
 afterEach(() => {

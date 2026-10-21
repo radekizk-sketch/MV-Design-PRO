@@ -20,6 +20,24 @@ import type {
   SelectedElement,
 } from '../types';
 
+/**
+ * K2 (UI-04, rozstrzygnięcie §0.5): tryb wskazania elementu na schemacie.
+ *  - `'kadruj'` — polecenie „pokaż mi to" (wyniki, gotowość, drzewo, wyszukiwanie):
+ *    kamera KADRUJE element i może przybliżyć (`camera.ts`, akcja `'kadruj'`);
+ *  - `'kotwicz'` — skutek uboczny operacji domenowej (kreator po zapisie): kamera
+ *    tylko przenosi kadr, skala projektanta nigdy nie rośnie (akcja `'kotwicz'`).
+ */
+export type TrybWskazaniaSld = 'kadruj' | 'kotwicz';
+
+/** Wskazanie elementu na schemacie. `seq` rośnie przy KAŻDYM wywołaniu
+ *  `centerSldOnElement` — także dla tego samego refu — więc ponowne wskazanie
+ *  kadruje ponownie (dawny licznik lokalny kanwy liczył tylko ZMIANY refu). */
+export interface WskazanieSld {
+  readonly ref: string;
+  readonly seq: number;
+  readonly tryb: TrybWskazaniaSld;
+}
+
 interface SelectionState {
   selectedElements: SelectedElement[];
   selectedElement: SelectedElement | null;
@@ -27,7 +45,18 @@ interface SelectionState {
   resultStatus: ResultStatus;
   propertyGridOpen: boolean;
   treeExpandedNodes: Set<string>;
-  sldCenterOnElement: string | null;
+  /** K2: bieżące wskazanie (ref + numer sekwencji + tryb); `null` = brak.
+   *  Zastępuje dawne pole `sldCenterOnElement` (sam ref, bez numeru — ponowne
+   *  wskazanie tego samego elementu było niewidoczne dla schematu). */
+  sldWskazanie: WskazanieSld | null;
+  /** K2: ostatni numer sekwencji nadany wskazaniu — NIGDY nie maleje (także po
+   *  `clearSelection`), więc numer obsłużony przez schemat jest porównywalny. */
+  sldWskazanieSeq: number;
+  /** K2: numer ostatniego wskazania OBSŁUŻONEGO przez schemat. Przestrzeń
+   *  schematu może być odmontowana w chwili wskazania (klik w wynikach albo
+   *  w gotowości przełącza przestrzeń); po zamontowaniu obsługuje wskazanie
+   *  o numerze większym niż obsłużony — dokładnie raz. */
+  sldWskazanieObsluzone: number;
   selectElement: (element: SelectedElement | null) => void;
   selectElements: (elements: SelectedElement[]) => void;
   toggleElement: (element: SelectedElement) => void;
@@ -39,7 +68,8 @@ interface SelectionState {
   togglePropertyGrid: (open?: boolean) => void;
   expandTreeNode: (nodeId: string) => void;
   collapseTreeNode: (nodeId: string) => void;
-  centerSldOnElement: (elementId: string | null) => void;
+  centerSldOnElement: (elementId: string | null, tryb?: TrybWskazaniaSld) => void;
+  potwierdzWskazanieSld: (seq: number) => void;
   clearSelection: () => void;
 }
 
@@ -52,7 +82,9 @@ export const useSelectionStore = create<SelectionState>()(
       resultStatus: 'NONE',
       propertyGridOpen: false,
       treeExpandedNodes: new Set<string>(),
-      sldCenterOnElement: null,
+      sldWskazanie: null,
+      sldWskazanieSeq: 0,
+      sldWskazanieObsluzone: 0,
 
       selectElement: (element) =>
         set((state) => ({
@@ -153,13 +185,21 @@ export const useSelectionStore = create<SelectionState>()(
           return { treeExpandedNodes: expanded };
         }),
 
-      centerSldOnElement: (elementId) => set(() => ({ sldCenterOnElement: elementId })),
+      centerSldOnElement: (elementId, tryb = 'kadruj') =>
+        set((state) => {
+          if (!elementId) return { sldWskazanie: null };
+          const seq = state.sldWskazanieSeq + 1;
+          return { sldWskazanie: { ref: elementId, seq, tryb }, sldWskazanieSeq: seq };
+        }),
+
+      potwierdzWskazanieSld: (seq) =>
+        set((state) => (seq > state.sldWskazanieObsluzone ? { sldWskazanieObsluzone: seq } : {})),
 
       clearSelection: () =>
         set(() => ({
           selectedElements: [],
           selectedElement: null,
-          sldCenterOnElement: null,
+          sldWskazanie: null,
         })),
     }),
     {

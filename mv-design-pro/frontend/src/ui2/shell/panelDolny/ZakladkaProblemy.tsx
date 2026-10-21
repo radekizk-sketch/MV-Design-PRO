@@ -66,7 +66,7 @@ export function ZakladkaProblemy({ onWybierzElement }: KontekstPaneluDolnego) {
                 type="button"
                 className="mvd-dolny-wiersz"
                 onClick={() => onWybierzElement(ref)}
-                title="Zaznacz element na schemacie i w inspektorze"
+                title="Pokaż element na schemacie (przejście do schematu i kadr) oraz w inspektorze"
                 data-testid={`mvd-problem-${indeks}`}
               >
                 {tresc}

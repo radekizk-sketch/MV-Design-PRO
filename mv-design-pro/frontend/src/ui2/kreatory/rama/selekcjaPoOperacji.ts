@@ -119,7 +119,8 @@ export function useSelekcjaPoOperacjiBezNawigacji(): (
       const typ = mapujTypElementu(typZeWskazania, fallback.type);
       selectElement({ id: ref, type: typ, name: fallback.name });
       if (response?.selection_hint?.zoom_to !== false) {
-        centerSldOnElement(ref);
+        // K2: skutek uboczny zapisu — kamera KOTWICZY (skala projektanta nie rośnie).
+        centerSldOnElement(ref, 'kotwicz');
       }
     },
     [centerSldOnElement, selectElement],
@@ -152,7 +153,8 @@ export function useSelekcjaPoOperacji(): (
         const typ = mapujTypElementu(typZeWskazania, fallback.type);
         selectElement({ id: ref, type: typ, name: fallback.name });
         if (response?.selection_hint?.zoom_to !== false) {
-          centerSldOnElement(ref);
+          // K2: skutek uboczny zapisu — kamera KOTWICZY (skala projektanta nie rośnie).
+          centerSldOnElement(ref, 'kotwicz');
         }
       }
       navigateToSld();

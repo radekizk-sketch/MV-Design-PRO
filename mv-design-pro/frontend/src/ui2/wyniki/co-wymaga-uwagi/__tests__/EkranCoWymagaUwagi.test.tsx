@@ -19,7 +19,7 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
   beforeEach(() => {
     usePowerFlowResultsStore.getState().reset();
     useExecutionRunsStore.setState({ runs: [] } as never);
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki' });
   });
 
@@ -114,7 +114,7 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
 
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toMatchObject({ id: 'SZ-ST2', type: 'Bus' });
-    expect(sel.sldCenterOnElement).toBe('SZ-ST2');
+    expect(sel.sldWskazanie?.ref).toBe('SZ-ST2');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 });

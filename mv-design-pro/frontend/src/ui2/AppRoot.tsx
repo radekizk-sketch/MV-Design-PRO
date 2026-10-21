@@ -26,7 +26,7 @@ import { useBackendHealth } from './shell/backendHealth';
 import { useEtykietaOstatniegoPrzebiegu } from './shell/shellStatus';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
-import { zaznaczElementModelu } from './shell/zaznaczElementModelu';
+import { pokazElementNaSchemacie, zaznaczElementModelu } from './shell/zaznaczElementModelu';
 import { useThemeModeStore } from './theme/themeMode';
 import { obiektyModeluDoIndeksu } from './search/obiektyModelu';
 import { PrzelacznikPodgladu } from './spaces/schemat';
@@ -398,7 +398,7 @@ export function AppRoot() {
       onPrzegladZbiorczy={() => setPrzegladOtwarty(true)}
       onHistoria={otworzHistorie}
       onZacznijBudowe={zacznijBudowe}
-      onWybierzElement={(ref) => zaznaczElementModelu(ref, 'panel-dolny')}
+      onWybierzElement={(ref) => pokazElementNaSchemacie(ref, 'panel-dolny')}
       onPokazWynikiBiegu={pokazWynikiBiegu}
       onOtworzDowodBiegu={otworzDowodBiegu}
       onOpenVariants={() => wykonajAkcjeMenu('variants')}
@@ -447,9 +447,7 @@ export function AppRoot() {
           gotowosc={
             <PanelGotowosci
               szczegolyAudytowe={szczegolyAudytowe}
-              onSelekcja={(elementRef) =>
-                emituj({ typ: 'selekcja', obiektId: elementRef, zrodlo: 'panel-gotowosci' })
-              }
+              onSelekcja={(elementRef) => pokazElementNaSchemacie(elementRef, 'panel-gotowosci')}
               onAkcjaNaprawcza={wykonajAkcjeNaprawcza}
             />
           }

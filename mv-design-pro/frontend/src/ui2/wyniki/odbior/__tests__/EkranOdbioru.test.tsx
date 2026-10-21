@@ -170,7 +170,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
 
   it('pomiar U poza tolerancją → „Popraw" zaznacza węzeł (Bus) i przechodzi do „Schemat"', async () => {
     ustawPrzebieg();
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki' });
     const bazowy = widokZgodnosciFixture();
     // Wariant: napięcie na BUS-1 poza tolerancją (werdykt steruje ostrzeżeniem adaptera).
@@ -186,7 +186,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
     fireEvent.click(screen.getByTestId('mvd-wyn-popraw'));
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toMatchObject({ id: 'BUS-1', type: 'Bus' });
-    expect(sel.sldCenterOnElement).toBe('BUS-1');
+    expect(sel.sldWskazanie?.ref).toBe('BUS-1');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 

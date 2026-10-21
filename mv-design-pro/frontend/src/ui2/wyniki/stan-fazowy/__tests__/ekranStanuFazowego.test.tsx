@@ -486,7 +486,7 @@ describe('EkranStanuFazowego — pętla decyzji (F-K4, znalezisko Z4)', () => {
 
     const sel = useSelectionStore.getState();
     expect(sel.selectedElement).toEqual({ id: 'BUS-SN-01', type: 'Bus', name: 'BUS-SN-01' });
-    expect(sel.sldCenterOnElement).toBe('BUS-SN-01');
+    expect(sel.sldWskazanie?.ref).toBe('BUS-SN-01');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 

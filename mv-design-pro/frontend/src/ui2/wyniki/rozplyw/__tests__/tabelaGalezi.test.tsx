@@ -36,7 +36,7 @@ function props(over: Partial<Parameters<typeof TabelaGalezi>[0]> = {}) {
 beforeEach(() => {
   usePowerFlowResultsStore.getState().reset();
   // Realne store'y pętli decyzji (jak `wzorzec/__tests__/usePoprawWModelu.test.tsx`).
-  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
   useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   // Domyślnie: walidacja NIEDOSTĘPNA (odrzucenie) — tabela działa jak przed
   // kartą R3-A; testy werdyktu nadpisują na odpowiedź z fixtury.

@@ -546,7 +546,7 @@ describe('EkranZbieznosci — wskazanie transformatora (F-K4, znalezisko Z4)', (
     const user = userEvent.setup();
     ustawKompletnyKontekst();
     mockFetchPrzebiegu(wynikFixture(), sladFixture());
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     render(<EkranZbieznosci />);
 
     const model = await screen.findByTestId('mvd-zbieznosc-model-tabela');

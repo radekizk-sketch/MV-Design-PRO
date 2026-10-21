@@ -105,7 +105,10 @@ import {
 } from '../../../sld-overlay/sldDeltaOverlayStore';
 import type { ShortCircuitFlowOverlayInput } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { buildSldDataFromSnapshot, type SldDataPayload } from '../../v2/canvas/enmToSldAdapter';
-import { SldDetailDrawer, type SldDetailDrawerAction, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from '../../v2/canvas/SldDetailDrawer';
+import {
+  SldDetailDrawer,
+  SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX,
+  type SldDetailDrawerAction, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from '../../v2/canvas/SldDetailDrawer';
 import { DerPersistenceApiError, postDerGeneratorConfig } from '../../v2/canvas/derPersistenceApi';
 import { notify } from '../../../notifications/store';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
@@ -179,7 +182,8 @@ import {
 } from './minimap';
 import { SldMinimapPanel } from './SldMinimapPanel';
 import type { V3Rect } from '../core/grid';
-import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import { SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import { scenaSld } from '../scene/scenaSld';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
@@ -198,10 +202,17 @@ import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
 // KD-8 poz. 2: deterministyczny układ JEDNEJ warstwy narzędzi kanwy.
 import {
   isToolbarGroupExpanded,
+  KOMUNIKAT_KADRU_WIDTH_PX,
   layoutCanvasToolbar,
+  SCIEZKA_KADRU_INSET_PX,
+  SCIEZKA_KADRU_TOP_PX,
   SLD_CANVAS_DOCK_INSETS,
   type CanvasToolbarGroupId,
 } from './toolbarLayout';
+// K2 (UI-04): kadrowanie zakresu pracy, historia kadrów, mini-ścieżka kontekstu.
+import { useKadrowanieWidoku } from './useKadrowanieWidoku';
+import { KLASA_PRZYCISKU_DOKU, MenuDopasujDo, PanelKomunikatuKadru, PasekKontekstuKadru } from './KontekstKadru';
+import { zakresCelu } from './zakresKadru';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 import {
   buildFaultFlowOverlayFromScene,
@@ -580,7 +591,7 @@ export function buildEnergizationOverlay(snapshot: EnergyNetworkModel): SldV3Ove
   // wpisu jest neutralne. Kanwa preferuje `energizedByOwnerRef`.
   const energizedByOwnerRef: Record<string, boolean> = {};
   for (const lod of ALL_SCENE_LODS) {
-    const scene = buildSceneV3(snapshot, lod);
+    const scene = scenaSld(snapshot, lod);
     scene.symbols.forEach((symbol) => {
       const meta = symbol.meta;
       if (!meta?.ownerRef || !meta.elementKind || !OVERLAY_ELIGIBLE_KINDS.has(meta.elementKind)) return;
@@ -638,7 +649,7 @@ export function buildFlowOverlayForSnapshot(
   const orientation = orientedSegmentRefs(snapshot);
   const merged: Record<string, SegmentFlowOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFlowOverlayFromScene(buildSceneV3(snapshot, lod), payload, orientation));
+    Object.assign(merged, buildFlowOverlayFromScene(scenaSld(snapshot, lod), payload, orientation));
   }
   return merged;
 }
@@ -670,7 +681,7 @@ export function buildOltcOverlayForSnapshot(
   if (!payload) return {};
   const merged: Record<string, TransformerOltcOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildOltcOverlayFromScene(buildSceneV3(snapshot, lod), payload));
+    Object.assign(merged, buildOltcOverlayFromScene(scenaSld(snapshot, lod), payload));
   }
   return merged;
 }
@@ -708,7 +719,7 @@ export function buildResultLabelsForSnapshot(
   for (const lod of ALL_SCENE_LODS) {
     Object.assign(
       merged,
-      buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs, comparison, bridge),
+      buildResultLabelsFromScene(scenaSld(snapshot, lod), payload, trustedRefs, comparison, bridge),
     );
   }
   return merged;
@@ -760,13 +771,13 @@ export function buildFaultFlowOverlayForSnapshot(
   // „from"), więc zachowanie tej gałęzi jest niezmienione.
   const orientation = new Map(orientedSegmentRefs(snapshot));
   const richestLod = ALL_SCENE_LODS[ALL_SCENE_LODS.length - 1];
-  const chainRefs = multiHopFaultFlowSegmentRefs(buildSceneV3(snapshot, richestLod), snapshot);
+  const chainRefs = multiHopFaultFlowSegmentRefs(scenaSld(snapshot, richestLod), snapshot);
   for (const ref of chainRefs) {
     if (!orientation.has(ref)) orientation.set(ref, true);
   }
   const merged: Record<string, SegmentFaultFlowOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, orientation));
+    Object.assign(merged, buildFaultFlowOverlayFromScene(scenaSld(snapshot, lod), input, orientation));
   }
   return merged;
 }
@@ -2115,7 +2126,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `activeLod`; treść memo bez zmian.
   const activeLod: SceneLod = lodOverride ?? cameraState?.lod ?? 2;
   const activeLodScene = useMemo<SceneV3 | null>(
-    () => (snapshot ? buildSceneV3(snapshot, activeLod) : null),
+    () => (snapshot ? scenaSld(snapshot, activeLod) : null),
     [snapshot, activeLod],
   );
   const legendEntries = useMemo<readonly SheetLegendEntry[]>(
@@ -2129,7 +2140,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // MINIMAPA (nawigator) — projekcja TEJ SAMEJ sceny, interakcja WYŁĄCZNIE na
   // kamerze.
   //
-  // Scena nawigatora: `buildSceneV3(snapshot, 0)` — poziom NAJZGRUBSZY (stacje
+  // Scena nawigatora: `scenaSld(snapshot, 0)` — poziom NAJZGRUBSZY (stacje
   // jako mini-RMU + magistrala + laterale), ten sam builder co kanwa, czysty i
   // memoizowany na `snapshot` (wzorzec `buildEnergizationOverlay` wyżej w tym
   // pliku). Zero drugiej prawdy geometrii: nawigator nie zna ENM.
@@ -2150,27 +2161,81 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     if (!wskazanie) return null;
     return { kandydaci: wskazanie.kandydaci, przenosKadr: wskazanie.przenosKadr };
   }, [selectionHint, lastChanges]);
-  // B-2 (klasa poboczna „pokaż to na schemacie"): `sldCenterOnElement` ze
-  // sklepu selekcji — kanał, którym 18 powierzchni (wyniki, bramka gotowości,
-  // drzewo danych, panel kontekstu, kreatory) wskazuje element do pokazania.
-  // Do tej karty NIKT go nie czytał (jedyny czytelnik `useSelectionSync` nie
-  // jest nigdzie montowany), więc wskazania ginęły. `seq` liczy ZMIANY
-  // wskazania; ograniczenie zastane, nazwane wprost: powtórne wskazanie TEGO
-  // SAMEGO refu nie zmienia wartości w sklepie, więc nie wywołuje ponownego
-  // kadrowania (kontrakt sklepu selekcji, nietykany tą kartą).
-  const sldCenterOnElement = useSelectionStore((state) => state.sldCenterOnElement);
-  const licznikPokazania = useRef(0);
-  const pokazElement = useMemo(() => {
-    if (!sldCenterOnElement) return null;
-    licznikPokazania.current += 1;
-    return { ref: sldCenterOnElement, seq: licznikPokazania.current };
-  }, [sldCenterOnElement]);
+  // B-2 / K2 (§0.5): WSKAZANIE „pokaż to na schemacie" ze sklepu selekcji —
+  // kanał, którym powierzchnie (wyniki, gotowość, drzewo, panel kontekstu,
+  // kreatory) wskazują element. Numer sekwencji nadaje SKLEP przy każdym
+  // wywołaniu (także dla tego samego refu), więc ponowne wskazanie kadruje
+  // ponownie; obsłużony numer też żyje w sklepie, bo przestrzeń schematu może
+  // być odmontowana w chwili wskazania (klik w gotowości przełącza przestrzeń)
+  // — po zamontowaniu wskazanie jest obsługiwane dokładnie raz. Tryb „kotwicz"
+  // (skutek zapisu w kreatorze) idzie dawną ścieżką kotwicy, tryb „kadruj"
+  // (polecenie projektanta) — akcją kadru z przybliżeniem.
+  const sldWskazanie = useSelectionStore((state) => state.sldWskazanie);
+  const sldWskazanieObsluzone = useSelectionStore((state) => state.sldWskazanieObsluzone);
+  const [pokazElement, setPokazElement] = useState<{ readonly ref: string; readonly seq: number } | null>(null);
+  const zaznaczoneElementy = useSelectionStore((state) => state.selectedElements);
+  const zaznaczenieRefy = useMemo(() => zaznaczoneElementy.map((element) => element.id), [zaznaczoneElementy]);
+  const kadrowanie = useKadrowanieWidoku({
+    snapshot,
+    kamera: cameraState,
+    zaznaczenie: zaznaczenieRefy,
+    caseId: activeCaseId,
+  });
+  const { kadrujCel, dopasujZakres, poprzedniWidok } = kadrowanie;
+  useEffect(() => {
+    if (!snapshot || !sldWskazanie || sldWskazanie.seq <= sldWskazanieObsluzone) return;
+    useSelectionStore.getState().potwierdzWskazanieSld(sldWskazanie.seq);
+    if (sldWskazanie.tryb === 'kotwicz') {
+      setPokazElement({ ref: sldWskazanie.ref, seq: sldWskazanie.seq });
+      return;
+    }
+    kadrujCel('zaznaczenie', [sldWskazanie.ref]);
+  }, [snapshot, sldWskazanie, sldWskazanieObsluzone, kadrujCel]);
+  // Kadr całej sieci przywraca cel fitu „treść" (refit po zmianie sieci albo
+  // poziomu szczegółu celuje wtedy w sieć, nie w arkusz).
+  useEffect(() => {
+    if (kadrowanie.zadanieKadru?.zakres.cel === 'siec') setFitTarget('tresc');
+  }, [kadrowanie.zadanieKadru]);
+  // K2 skróty: F — zakres pracy (zaznaczenie albo sieć), Shift+F — cała sieć,
+  // Alt+← — poprzedni widok. Pomijane w polach edycji i w drzewie (wyszukiwanie
+  // po literze), z Ctrl/Cmd oraz przy autopowtórzeniu klawisza.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.repeat) return;
+      const cel = event.target;
+      if (
+        cel instanceof HTMLElement &&
+        cel.closest('input, textarea, select, [contenteditable="true"], [role="tree"], [role="dialog"]')
+      ) {
+        return;
+      }
+      if (event.altKey) {
+        if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          poprzedniWidok();
+        }
+        return;
+      }
+      if (event.key === 'f' || event.key === 'F') {
+        event.preventDefault();
+        if (event.shiftKey) kadrujCel('siec', []);
+        else dopasujZakres();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [kadrujCel, dopasujZakres, poprzedniWidok]);
+  const stacjeNawigacji = useMemo(() => {
+    const nazwy = new Map((snapshot?.substations ?? []).map((st) => [st.ref_id, st.name]));
+    return kadrowanie.stacjeObchodu.map((ref) => ({ ref, nazwa: nazwy.get(ref) ?? ref }));
+  }, [snapshot, kadrowanie.stacjeObchodu]);
+  const sciezkaWidoczna = kadrowanie.sciezka.length >= 2;
   const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);
   // Scena nawigatora liczona TYLKO gdy panel jest rozwinięty — zwinięty
   // nawigator nie kosztuje ani jednego przebiegu buildera (memo przeliczane
   // przy zmianie sieci, nie per-klatkę).
   const minimapScene = useMemo<SceneV3 | null>(
-    () => (snapshot && minimapOpen ? buildSceneV3(snapshot, 0) : null),
+    () => (snapshot && minimapOpen ? scenaSld(snapshot, 0) : null),
     [snapshot, minimapOpen],
   );
   const minimapProjection = useMemo<MinimapProjection | null>(
@@ -2434,7 +2499,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     lassoStartRef.current = null;
     if (activeRect && snapshot && cameraState) {
       const lod = lodOverride ?? cameraState.lod;
-      const scene = buildSceneV3(snapshot, lod);
+      const scene = scenaSld(snapshot, lod);
       const hits = symbolsInLassoRect(scene, activeRect, cameraState.transform);
       // Zaznaczenie WIELOKROTNE (spec §10.1 F12-B pkt 5: „jeżeli store ma API
       // multi-select, użyj go") — `useSelectionStore.selectElements` istnieje
@@ -2468,29 +2533,67 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     Math.max(0, size.width - 24),
   );
   const lvDomainPortalHeight = Math.max(240, size.height - 24);
-  const effectiveCanvasInsets = useMemo(
-    () =>
-      lvDomainPortalOpen
-        ? {
-            ...SLD_CANVAS_DOCK_INSETS,
-            right:
-              SLD_CANVAS_DOCK_INSETS.right +
-              lvDomainPortalWidth,
-          }
-        : SLD_CANVAS_DOCK_INSETS,
-    [lvDomainPortalOpen, lvDomainPortalWidth],
+  // K2: zasłony STANOWE prostokąta bezpiecznego — szuflada szczegółów (prawo,
+  // otwierana klikiem obiektu, także pierwszym klikiem dwukliku stacji), panel
+  // portalu nN (prawo), mini-ścieżka kontekstu kadru (pas pod paskiem narzędzi)
+  // i panel komunikatu kadru (prawo, na lewo od szuflady/portalu). Szuflada
+  // i portal są zakotwiczone przy tej samej prawej krawędzi i nakładają się,
+  // więc zasłaniają pas o szerokości WIĘKSZEGO z nich, nie sumy. Pomiar e2e
+  // przed tą zasłoną (okno 1440×900): kadr stacji leżał w połowie pod szufladą
+  // (stacja 302–1031 px, szuflada od 666 px). Bez zasłon — referencja stała
+  // (`SLD_CANVAS_DOCK_INSETS`).
+  const komunikatKadruWidoczny = kadrowanie.komunikat !== null;
+  const szufladaOtwarta = detailDrawerData !== null;
+  const prawaZaslonaPx = Math.max(
+    szufladaOtwarta ? SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX : 0,
+    lvDomainPortalOpen ? lvDomainPortalWidth : 0,
   );
+  // Obiekty, których dotyczą zasłony prawego pasa: element szuflady i stacja
+  // portalu nN — kanwa odsłania je przy otwarciu zasłony (`odslonRefy`).
+  const odslonRefy = useMemo(
+    () =>
+      [
+        ...(szufladaOtwarta && detailDrawerData?.elementId ? [detailDrawerData.elementId] : []),
+        ...(lvDomainPortalOpen && lvDomainStationRef ? [lvDomainStationRef] : []),
+      ],
+    [szufladaOtwarta, detailDrawerData?.elementId, lvDomainPortalOpen, lvDomainStationRef],
+  );
+  const effectiveCanvasInsets = useMemo(() => {
+    if (prawaZaslonaPx === 0 && !sciezkaWidoczna && !komunikatKadruWidoczny) return SLD_CANVAS_DOCK_INSETS;
+    return {
+      ...SLD_CANVAS_DOCK_INSETS,
+      top: SLD_CANVAS_DOCK_INSETS.top + (sciezkaWidoczna ? SCIEZKA_KADRU_INSET_PX : 0),
+      right:
+        SLD_CANVAS_DOCK_INSETS.right +
+        prawaZaslonaPx +
+        (komunikatKadruWidoczny ? KOMUNIKAT_KADRU_WIDTH_PX + 12 : 0),
+    };
+  }, [prawaZaslonaPx, sciezkaWidoczna, komunikatKadruWidoczny]);
+  // K2 (§0.3): DWUKLIK STACJI — na KAŻDYM poziomie szczegółu — kadruje stację
+  // z jej wnętrzem (poziom ≥ 1, stacja w centrum, sąsiedzi poza kadrem, jeśli
+  // się da). Dwuklik w dowolny element należący do stacji (pole, aparat, szyna,
+  // podpis) kadruje TĘ stację; poza stacją dwuklik nie robi nic. Wejście do
+  // projekcji nN zostaje przy symbolu portalu na zacisku nN transformatora
+  // (`handleElementClick`, od L1) — dawny dwuklik bloku L0 → portal ustąpił
+  // kadrowi stacji, z którego portal jest o jeden klik (zmiana świadoma,
+  // przypięta testem `lvDomainPortal.test.tsx`).
   const handleElementDoubleClick = useCallback(
     (testId: string, meta?: SldElementClickMeta) => {
-      // WYŁĄCZNIE L0 (blok zwinięty = jeden obiekt, zacisk nN i portal nie
-      // mają na tym LOD własnej geometrii). Od L1 jedynym wejściem do projekcji
-      // nN jest klik w symbol portalu (`handleElementClick`) — dwuklik w stację
-      // NIE otwiera portalu (przypięte testem `lvDomainPortal.test.tsx`).
-      if (activeLod !== 0 || meta?.elementKind !== 'station') return;
+      if (!snapshot) return;
       const id = meta?.ownerRef ?? elementIdFromTestId(testId);
-      setLvDomainStationRef(id);
+      if (!zakresCelu('stacja', snapshot, [id], scenaSld(snapshot, 2)).dostepny) return;
+      // Dwuklik = WEJŚCIE do stacji: kadr dostaje całą kanwę. Szufladę
+      // szczegółów otworzył pierwszy klik TEGO SAMEGO gestu (klik zaznacza), a nie
+      // zamiar projektanta — zostawiona zabierałaby 392 px z prawej. Pomiar e2e
+      // K2 (okno 1440×900): kanwa 796 px, z szufladą widoczne 404 px — stacja
+      // przelotowa nie mieściła się z sąsiadami poza kadrem i zajmowała mniej niż
+      // połowę mniejszego wymiaru kanwy. Dane stacji zostają w inspektorze, a
+      // szuflada wraca pojedynczym klikiem (wtedy kadr ponawia się na węższym
+      // obszarze — `effectiveCanvasInsets`).
+      setDetailDrawerData(null);
+      kadrujCel('stacja', [id]);
     },
-    [activeLod],
+    [snapshot, kadrujCel],
   );
 
   const handleElementClick = useCallback(
@@ -2754,21 +2857,41 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     widok: (
       <>
         <div className="flex items-center gap-1">
+          {/* K2 (§0.2): „Dopasuj widok" = ZAKRES BIEŻĄCEJ PRACY — zaznaczenie
+              (pojedyncze albo wielokrotne); bez zaznaczenia cała sieć. */}
           <button
             type="button"
-            onClick={() => {
-              setFitTarget('tresc');
-              setFitSignal((s) => s + 1);
-            }}
+            onClick={dopasujZakres}
             data-testid="sld-v3-fit-view"
-            title="Dopasuj widok do sieci"
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+            title={
+              zaznaczenieRefy.length > 0
+                ? `Dopasuj widok do zaznaczenia (${zaznaczenieRefy.length}) — klawisz F; Shift+F: cała sieć`
+                : 'Dopasuj widok do całej sieci (brak zaznaczenia) — klawisz F; Shift+F: cała sieć'
+            }
+            className={KLASA_PRZYCISKU_DOKU}
           >
             ⌖ Dopasuj widok
+          </button>
+          <MenuDopasujDo dostepnosc={kadrowanie.dostepnosc} onWybierz={(cel) => kadrujCel(cel)} torWToku={kadrowanie.torWToku} />
+          <button
+            type="button"
+            onClick={poprzedniWidok}
+            disabled={kadrowanie.historia.length === 0}
+            data-testid="sld-v3-poprzedni-widok"
+            aria-label="Poprzedni widok"
+            title={
+              kadrowanie.historia.length === 0
+                ? 'Poprzedni widok — brak wcześniejszego kadru (historia powstaje przy poleceniach widoku)'
+                : `Poprzedni widok — Alt+← (w historii: ${kadrowanie.historia.length})`
+            }
+            className={KLASA_PRZYCISKU_DOKU}
+          >
+            ← Wstecz
           </button>
           <button
             type="button"
             onClick={() => {
+              kadrowanie.zapamietajPrzedPoleceniem();
               setFitTarget('arkusz');
               setFitSignal((s) => s + 1);
             }}
@@ -2864,6 +2987,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           height={size.height}
           overlay={overlay}
           onElementClick={handleElementClick}
+          onPrzedPoleceniemWidoku={kadrowanie.zapamietajPrzedPoleceniem}
           onElementDoubleClick={handleElementDoubleClick}
           onElementContextMenu={handleElementContextMenu}
           lodOverride={lodOverride}
@@ -2876,9 +3000,36 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           centerRequest={centerRequest}
           viewAnchor={viewAnchor}
           pokazElement={pokazElement}
+          zadanieKadru={kadrowanie.zadanieKadru}
+          przywrocenieKamery={kadrowanie.przywrocenieKamery}
           safeInsets={effectiveCanvasInsets}
+          odslonRefy={odslonRefy}
         />
       ) : null}
+
+      {/* K2 (§0.4): mini-ścieżka kontekstu kadru — klikalne poziomy (Sieć ›
+          Stacja › Sekcja › Pole) i nawigacja po stacjach w porządku obchodu
+          rysunku (magistrala, odgałęzienie zaraz po swojej stacji). Pas jest
+          zasłoną prostokąta bezpiecznego (`effectiveCanvasInsets`). */}
+      {snapshot && sciezkaWidoczna && (
+        <div className="pointer-events-none absolute left-3 z-20 flex" style={{ top: SCIEZKA_KADRU_TOP_PX }}>
+          <PasekKontekstuKadru
+            sciezka={kadrowanie.sciezka}
+            onPoziom={kadrowanie.kadrujPoziom}
+            stacje={stacjeNawigacji}
+            indeksStacji={kadrowanie.indeksStacji}
+            onStacja={(ref) => kadrujCel('stacja', [ref])}
+          />
+        </div>
+      )}
+      {kadrowanie.komunikat && (
+        <div
+          className="pointer-events-none absolute z-20 flex"
+          style={{ top: SCIEZKA_KADRU_TOP_PX, right: 12 + prawaZaslonaPx, width: KOMUNIKAT_KADRU_WIDTH_PX }}
+        >
+          <PanelKomunikatuKadru komunikat={kadrowanie.komunikat} onZamknij={kadrowanie.zamknijKomunikat} />
+        </div>
+      )}
 
       {/* F12-B pkt 5: nakładka lasso screen-space. `pointer-events` AUTO
           WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte

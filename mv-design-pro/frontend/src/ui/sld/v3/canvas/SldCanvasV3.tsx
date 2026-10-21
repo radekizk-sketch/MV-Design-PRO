@@ -24,13 +24,13 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
-  buildSceneV3,
   sceneObstacleRects,
   sheetRowBandsOf,
   SCENE_LOD_LABELS_PL,
   type SceneLod,
   type SceneV3,
 } from '../scene/buildScene';
+import { scenyWszystkichPoziomow } from '../scene/scenaSld';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
@@ -81,7 +81,8 @@ import {
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
-import { kotwicaWidoku } from './viewAnchor';
+import { kotwicaWidoku, prostokatRefowWScenie } from './viewAnchor';
+import { prostokatyZakresu, type ZakresKadru } from './zakresKadru';
 // Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
 // matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
 // nie arkusza (V12K-222).
@@ -253,6 +254,13 @@ export interface SldCanvasV3Props {
    */
   readonly safeInsets?: SafeInsets;
   /**
+   * K2: refy obiektu, którego dotyczy zasłona wołającego (element otwartej
+   * szuflady szczegółów, stacja portalu nN). Przy zmianie zasłon kanwa poza
+   * kadrem przesuwa rysunek tak, żeby ten obiekt nie schował się pod zasłoną
+   * (`camera.ts` `odslonietyStan`). Ref bez rysunku na poziomie — bez skutku.
+   */
+  readonly odslonRefy?: readonly string[];
+  /**
    * S9-7 (znalezisko UBOCZNE, Zero-Debt) — MOTYW RYSUNKU podany WPROST przez
    * wołającego. Brak = motyw z powłoki (`useThemeModeStore`), czyli zachowanie
    * ekranowe bez zmian.
@@ -407,6 +415,28 @@ export interface SldCanvasV3Props {
    *  identyczny z `fitSignal`/`centerRequest`. Ref nierozwiązywalny na
    *  rysunku ⇒ kamera NIETKNIĘTA (uczciwie: nie ma czego pokazać). */
   readonly pokazElement?: { readonly ref: string; readonly seq: number } | null;
+  /** K2 (UI-04): ŻĄDANIE KADRU zakresu pracy — stacji, sekcji szyn, pola,
+   *  magistrali, toru zasilania albo zaznaczenia (`zakresKadru.ts`). Kanwa
+   *  zamienia zakres na prostokąty trzech poziomów szczegółu (indeks
+   *  przynależności sceny) i wykonuje akcję kamery `'kadruj'`, która — inaczej
+   *  niż kotwica edycji — MOŻE przybliżyć. Cel `siec` kadruje treść sieci (ten
+   *  sam refit co „Dopasuj widok" bez zaznaczenia). `seq` odróżnia kolejne
+   *  żądania (wzorzec `fitSignal`). Zakres nienarysowany na żadnym poziomie ≥
+   *  `minLod` ⇒ kamera NIETKNIĘTA. */
+  readonly zadanieKadru?: { readonly zakres: ZakresKadru; readonly seq: number } | null;
+  /** K2 („Poprzedni widok"): przywrócenie stanu kamery z historii kadrów
+   *  wołającego (`historiaKadrow.ts`). `seq` jak wyżej. */
+  readonly przywrocenieKamery?: {
+    readonly transform: ViewportTransform;
+    readonly lod: SceneLod;
+    readonly seq: number;
+  } | null;
+  /** K2 („Poprzedni widok"): wołane TUŻ PRZED poleceniem widoku, które kanwa
+   *  wykonuje sama — rozwinięcie zwiniętego bloku GPZ klikiem (KD-5). Wołający
+   *  odkłada wtedy bieżący kadr do historii, więc „Wstecz" wraca także sprzed
+   *  rozwinięcia (bez tego dwuklik w zwinięty GPZ zapisywał w historii kadr PO
+   *  rozwinięciu, a widok sieci był nieosiągalny). */
+  readonly onPrzedPoleceniemWidoku?: () => void;
   /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
    *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
    *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
@@ -526,6 +556,28 @@ function SceneSymbolNode(props: {
       />
     </g>
   );
+}
+
+/**
+ * Cel zdarzenia myszy dla gestu wielokliku kanwy (K2): uchwyt obiektu
+ * (`data-hit-for`), tło (zdarzenie na samym `<svg>`), inny węzeł kanwy bez
+ * uchwytu (np. wiersz rozwiniętego skupiska wyników — obsługuje kliki sam)
+ * albo węzeł POZA kanwą (np. szuflada, która otworzyła się pod kursorem).
+ */
+type CelGestu =
+  | { readonly rodzaj: 'uchwyt'; readonly testId: string }
+  | { readonly rodzaj: 'tlo' }
+  | { readonly rodzaj: 'inny' }
+  | { readonly rodzaj: 'zewnatrz' };
+function celZdarzenia(target: EventTarget | null, svg: SVGSVGElement): CelGestu {
+  if (target === svg) return { rodzaj: 'tlo' };
+  if (!(target instanceof Node) || !svg.contains(target)) return { rodzaj: 'zewnatrz' };
+  const testId = target instanceof Element ? target.closest('[data-hit-for]')?.getAttribute('data-hit-for') : null;
+  return testId ? { rodzaj: 'uchwyt', testId } : { rodzaj: 'inny' };
+}
+function tenSamCel(a: CelGestu, b: CelGestu): boolean {
+  if (a.rodzaj === 'uchwyt') return b.rodzaj === 'uchwyt' && b.testId === a.testId;
+  return a.rodzaj === b.rodzaj;
 }
 
 /**
@@ -2390,8 +2442,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // wywołanych kamerą (`camera.ts` `applyLodScaleMapping`). Koszt: liczymy 3
   // scen(y) zamiast 1 — akceptowalne (fixtura 53 stacje ≈ setki węzłów/LOD,
   // memoizowane po `snapshot`, przeliczane tylko przy zmianie sieci).
+  // K2: sceny z WSPÓLNEJ pamięci podręcznej migawki (`scene/scenaSld.ts`) —
+  // przestrzeń robocza rozstrzyga zakres kadru na tych samych obiektach sceny.
   const sceneByLod = useMemo<Readonly<Record<SceneLod, SceneV3>>>(
-    () => ({ 0: buildSceneV3(snapshot, 0), 1: buildSceneV3(snapshot, 1), 2: buildSceneV3(snapshot, 2) }),
+    () => scenyWszystkichPoziomow(snapshot),
     [snapshot],
   );
   const lodBboxes = useMemo<Readonly<Record<SceneLod, BoundingBox>>>(
@@ -2555,12 +2609,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
   }, [fitSignal]);
 
-  // B-2 (klasa poboczna): „pokaż ten element na schemacie" z innej powierzchni.
-  // Pomiar 2026-08-07: 18 miejsc produkcyjnych wołało `centerSldOnElement`, a
-  // jedynym czytelnikiem był hook `useSelectionSync`, którego NIC nie montuje —
-  // wskazanie ginęło (DOSTAWCA BEZ KLIENTA). Kamera używa tu DOKŁADNIE tej samej
-  // maszynerii co po operacji domenowej, więc „pokaż na schemacie" i „zapisano
-  // element" zachowują się tak samo (jedna klasa, jedno zachowanie).
+  // B-2 (klasa poboczna): wskazanie elementu w trybie „kotwicz" (skutek zapisu
+  // w kreatorze, wybór w drzewie). Pomiar 2026-08-07: 18 miejsc produkcyjnych
+  // wołało `centerSldOnElement`, a jedynym czytelnikiem był niemontowany hook
+  // (usunięty w karcie K2) — wskazanie ginęło (DOSTAWCA BEZ KLIENTA). Kamera
+  // używa tu DOKŁADNIE tej samej maszynerii co po operacji domenowej. Wskazanie
+  // w trybie „kadruj" (wyniki, gotowość) idzie żądaniem `zadanieKadru` niżej.
   useEffect(() => {
     const ref = props.pokazElement?.ref;
     if (!ref) return;
@@ -2578,6 +2632,41 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     // dyscyplina co `fitSignal`/`centerRequest`).
   }, [props.pokazElement?.seq]);
 
+  // K2 (UI-04): KADR zakresu pracy. Prostokąty celu i sąsiadów czytane z
+  // indeksu przynależności scen (jedno przejście sceny, `viewAnchor.ts`),
+  // przeliczone do świata kamery tym samym mostkiem co cel fitu. Punkt fokusu
+  // GPZ (`gpzFocusPoint`) NIE wchodzi do kadru podzbioru — dotyczy wyłącznie
+  // kadru całej sieci.
+  useEffect(() => {
+    const zadanie = props.zadanieKadru;
+    if (!zadanie) return;
+    if (zadanie.zakres.cel === 'siec') {
+      const trescSieci = sceneBoxToCameraWorld(contentBboxByLod[fitTargetLod] ?? lodBboxes[fitTargetLod]);
+      dispatch({ type: 'refit', bbox: trescSieci, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
+      return;
+    }
+    const { celByLod, przeszkodyByLod, tuszEtykiet } = prostokatyZakresu(sceneByLod, zadanie.zakres, sceneBoxToCameraWorld);
+    dispatch({
+      type: 'kadruj',
+      anchorByLod: celByLod,
+      minLod: zadanie.zakres.minLod,
+      przeszkodyByLod,
+      tuszEtykiet,
+      lodBboxes,
+      viewportSize,
+      safeInsets: effectiveSafeInsets,
+      wymuszonyLod: lodOverride,
+    });
+    // Zależność wyłącznie od `seq` (dyscyplina `fitSignal`/`centerRequest`).
+  }, [props.zadanieKadru?.seq]);
+
+  // K2: „Poprzedni widok" — przywrócenie transformu i poziomu z historii.
+  useEffect(() => {
+    const wpis = props.przywrocenieKamery;
+    if (!wpis) return;
+    dispatch({ type: 'przywroc', transform: wpis.transform, lod: wpis.lod });
+  }, [props.przywrocenieKamery?.seq]);
+
   // K11-B: przeniesienie kadru z minimapy — CZYSTA translacja kamery (skala i
   // LOD nietknięte). Efekt reaguje WYŁĄCZNIE na `seq` (wzorzec `fitSignal`),
   // żeby powtórzone wskazanie tego samego punktu też przeniosło kadr; brak
@@ -2591,16 +2680,28 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
 
   // (k3) 'resize' gdy zmienia się TYLKO viewport (width/height) — świat ten
   // sam, kamera zachowuje pan/zoom użytkownika i tylko dostosowuje punkt
-  // centrowania do nowego rozmiaru (`camera.ts` `applyResize`). Efekt pomija
-  // pierwsze wywołanie po mouncie (stan startowy już poprawny).
+  // centrowania do nowego rozmiaru (`camera.ts` `applyResize`). K2: ta sama
+  // akcja, gdy zmieniają się ZASŁONY prostokąta bezpiecznego (szuflada
+  // szczegółów, portal nN, mini-ścieżka, komunikat kadru) — trwający kadr
+  // podąża za obszarem widocznym, a poza kadrem obiekt zasłony (`odslonRefy`)
+  // zostaje odsłonięty. Klucz zasłon jest liczbowy, więc nowy obiekt o tych
+  // samych wartościach nie wyzwala akcji. Efekt pomija pierwsze wywołanie po
+  // mouncie (stan startowy już poprawny).
+  const kluczZaslon = `${effectiveSafeInsets.top}|${effectiveSafeInsets.right}|${effectiveSafeInsets.bottom}|${effectiveSafeInsets.left}`;
   const skippedInitialResize = useRef(false);
   useEffect(() => {
     if (!skippedInitialResize.current) {
       skippedInitialResize.current = true;
       return;
     }
-    dispatch({ type: 'resize', viewportSize });
-  }, [width, height]);
+    const refy = props.odslonRefy ?? [];
+    const naPoziomie = (lod: SceneLod): BoundingBox | null => {
+      const box = refy.length > 0 ? prostokatRefowWScenie(sceneByLod[lod], refy) : null;
+      return box ? sceneBoxToCameraWorld(box) : null;
+    };
+    const odslon = refy.length > 0 ? { 0: naPoziomie(0), 1: naPoziomie(1), 2: naPoziomie(2) } : undefined;
+    dispatch({ type: 'resize', viewportSize, safeInsets: effectiveSafeInsets, odslon });
+  }, [width, height, kluczZaslon]);
 
   const effectiveLod: SceneLod = lodOverride ?? camera.lod;
   const scene = sceneByLod[effectiveLod];
@@ -3044,9 +3145,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
    * Bramka `camera.lod !== 0`: rozwijamy WYŁĄCZNIE z poziomu przeglądowego —
    * drugi człon dwukliku (kamera jest już na L1) nie doda kolejnego skoku.
    */
+  const onPrzedPoleceniemWidoku = props.onPrzedPoleceniemWidoku;
   const expandCollapsedBlock = useCallback(
     (symbol: PreviewSymbol) => {
       if (camera.lod !== 0) return;
+      onPrzedPoleceniemWidoku?.();
       const def = SYMBOL_DEFS[symbol.symbolId];
       // KD-7: środek symbolu to współrzędna SCENY — kamera centruje w świecie
       // arkusza (`scenePointToCameraWorld`).
@@ -3064,7 +3167,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         dispatch({ type: 'zoom', cursor: { x: viewportSize.width / 2, y: viewportSize.height / 2 }, factor });
       }
     },
-    [camera, viewportSize],
+    [camera, viewportSize, onPrzedPoleceniemWidoku],
   );
 
   /** Karta S9-4: JEDYNY uchwyt lewego kliku na kanwie. Rozstrzyga po `testId`
@@ -3123,6 +3226,66 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     },
     [onElementDoubleClick, metaZTrafienia],
   );
+
+  // K2 — CEL GESTU WIELOKLIKU = obiekt pod PIERWSZYM klikiem gestu.
+  //
+  // Defekt zmierzony natywnym dwuklikiem w żywej aplikacji (e2e na realnym
+  // backendzie): pierwszy klik w stację zaznacza ją, powłoka otwiera inspektor
+  // po prawej, kanwa zwęża się (1600 px okna: z 1322 do 956 px), kamera
+  // ('resize', k3) przenosi środek — rysunek przesuwa się o 183 px — a szuflada
+  // stacji otwiera się NAD kanwą, często dokładnie pod kursorem. Drugi klik
+  // i `dblclick` trafiały więc w INNY obiekt, w tło albo w szufladę (tam leży
+  // m.in. „Usuń stację"): dwuklik stacji nie kadrował stacji. Testy jsdom tego
+  // nie widziały (zdarzenia wysyłane wprost w węzeł, bez układu) — przypina to
+  // spec natywny `k2-kadrowanie-nawigacja`.
+  //
+  // Reguła (jedno źródło prawdy dla OBU zdarzeń gestu): klik z `detail ≤ 1`
+  // otwiera gest i zapisuje jego cel; gest jest kanwy tylko wtedy, gdy zaczął
+  // się na uchwycie albo na tle TEJ kanwy. Drugi klik (`detail ≥ 2`)
+  // i `dblclick` (`detail ≥ 2`) idą do celu gestu, a nie do tego, co
+  // przesunęło się albo otworzyło pod kursorem — słuchacz na `window` w fazie
+  // przechwytywania zatrzymuje zdarzenie, zanim dotrze do szuflady. `detail`
+  // liczy przeglądarka wg ustawień systemu (czas, odległość), więc kanwa nie
+  // ma własnego progu. Gdy cel się nie zmienił, zdarzenie idzie zwykłą drogą.
+  // Przeglądarka nie wysyła `click`/`dblclick` do przycisku `disabled` —
+  // dlatego niedostępne przyciski szuflady mają `aria-disabled`
+  // (`SldDetailDrawer`), inaczej drugi klik ginąłby, zanim tu dotrze.
+  const celGestuRef = useRef<CelGestu | null>(null);
+  const gestRef = useRef({ handleHitClick, handleHitDoubleClick, onBackgroundClick, onElementDoubleClick });
+  gestRef.current = { handleHitClick, handleHitDoubleClick, onBackgroundClick, onElementDoubleClick };
+  useEffect(() => {
+    const przekierowanie = (event: MouseEvent): CelGestu | null => {
+      const svg = svgRef.current;
+      const cel = celGestuRef.current;
+      if (!svg || event.detail < 2 || !cel || (cel.rodzaj !== 'uchwyt' && cel.rodzaj !== 'tlo')) return null;
+      if (tenSamCel(cel, celZdarzenia(event.target, svg))) return null;
+      event.stopPropagation();
+      event.preventDefault();
+      return cel;
+    };
+    const naKlik = (event: MouseEvent): void => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      if (event.detail <= 1) {
+        celGestuRef.current = celZdarzenia(event.target, svg);
+        return;
+      }
+      const cel = przekierowanie(event);
+      if (cel?.rodzaj === 'uchwyt') gestRef.current.handleHitClick(cel.testId);
+      else if (cel?.rodzaj === 'tlo') gestRef.current.onBackgroundClick?.();
+    };
+    const naDwuklik = (event: MouseEvent): void => {
+      const cel = przekierowanie(event);
+      // Tło nie ma akcji dwukliku — gest otwarty na tle kończy się niczym.
+      if (cel?.rodzaj === 'uchwyt' && gestRef.current.onElementDoubleClick) gestRef.current.handleHitDoubleClick(cel.testId);
+    };
+    window.addEventListener('click', naKlik, true);
+    window.addEventListener('dblclick', naDwuklik, true);
+    return () => {
+      window.removeEventListener('click', naKlik, true);
+      window.removeEventListener('dblclick', naDwuklik, true);
+    };
+  }, []);
 
   /** Czy kanwa ma wołającego, który cokolwiek zrobi z klikiem — steruje
    *  WYŁĄCZNIE kursorem (kształt uchwytu jest niezmienny, bo kamera KD-5

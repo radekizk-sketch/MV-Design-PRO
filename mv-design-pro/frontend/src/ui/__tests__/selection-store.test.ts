@@ -173,7 +173,7 @@ describe('Selection Store', () => {
       store.centerSldOnElement('bus-123');
 
       const state = useSelectionStore.getState();
-      expect(state.sldCenterOnElement).toBe('bus-123');
+      expect(state.sldWskazanie?.ref).toBe('bus-123');
     });
 
     it('should clear center request', () => {
@@ -183,7 +183,7 @@ describe('Selection Store', () => {
       store.centerSldOnElement(null);
 
       const state = useSelectionStore.getState();
-      expect(state.sldCenterOnElement).toBeNull();
+      expect(state.sldWskazanie).toBeNull();
     });
 
     it('should clear center request on clearSelection', () => {
@@ -195,7 +195,7 @@ describe('Selection Store', () => {
       store.clearSelection();
 
       const state = useSelectionStore.getState();
-      expect(state.sldCenterOnElement).toBeNull();
+      expect(state.sldWskazanie).toBeNull();
     });
   });
 });

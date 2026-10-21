@@ -49,6 +49,7 @@ import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArro
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
 import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
+import { LABEL_ROLE_BY_OWNER_KIND } from '../../layout/labels';
 import { HIGHLIGHT_COLOR, STATE_COLOR, VOLTAGE_COLOR } from '../../theme/colorTokens';
 
 afterEach(() => cleanup());
@@ -551,6 +552,7 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
     const blockerLabel = {
       ownerRef: 'r1-blocker',
       ownerKind: 'segment-span' as const,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
       labelClass: 't2' as const,
       text: 'r1-blocker',
       slotIndex: 1 as const,

@@ -5,7 +5,8 @@
  *    zacisku nN transformatora — klik/dwuklik w transformator NIE otwiera
  *    projekcji;
  *  · L0: blok stacji jest jednym zwiniętym obiektem (zacisk i portal nie mają
- *    geometrii) — wejściem jest dwuklik w blok; pojedynczy klik NIE otwiera;
+ *    geometrii) — dwuklik w blok kadruje stację na L ≥ 1 (karta K2), gdzie
+ *    wejściem jest portal; pojedynczy klik NIE otwiera;
  *  · portal pobiera DOKŁADNIE jedno żądanie atomowej projekcji v1 stacji
  *    wskazanej przez `lvPortalStationRef` symbolu (tożsamość z meta, nie z
  *    parsowania refu);
@@ -166,16 +167,46 @@ describe('SldCanvasV3Workspace — portal domeny nN na zacisku nN (L1/L2)', () =
   });
 });
 
-describe('SldCanvasV3Workspace — L0: blok zwinięty stacji jako wejście do projekcji nN', () => {
-  it('dwuklik w blok stacji (L0) otwiera portal tej stacji', async () => {
+describe('SldCanvasV3Workspace — L0: blok zwinięty stacji, dwuklik i wejście do projekcji nN', () => {
+  // K2 (UI-04, §0.3) — ZMIANA ŚWIADOMA: dawniej dwuklik w blok stacji na L0
+  // otwierał od razu portal nN. Karta K2 nadaje dwuklikowi w stację jedno
+  // znaczenie na KAŻDYM poziomie: „otwórz wnętrze stacji bez utraty kontekstu"
+  // — kadr stacji na poziomie ≥ L1 (pola, aparaty, transformator, zacisk nN).
+  // Intencja dawnego testu zostaje: projekcja nN stacji jest osiągalna z kanwy
+  // SN, teraz przez symbol portalu (`lvPortal`) w kadrze stacji — tym samym
+  // jedynym wejściem, które obowiązuje od L1.
+  it('dwuklik w blok stacji (L0) kadruje stację na L ≥ 1, a portal nN tej stacji jest osiągalny z kadru', async () => {
     const scene = buildSceneV3(enm, 0);
-    const stationIndex = indexOf(scene, (s) => s.meta?.elementKind === 'station');
+    const scene2 = buildSceneV3(enm, 2);
+    // Stacja z portalem nN (ma transformator SN/nN) — żeby wejście było sprawdzalne.
+    const stacjeZPortalem = new Set(
+      scene2.symbols.filter((s) => s.meta?.elementKind === 'lvPortal').map((s) => s.meta?.lvPortalStationRef),
+    );
+    const stationIndex = indexOf(
+      scene,
+      (s) => s.meta?.elementKind === 'station' && stacjeZPortalem.has(s.meta?.ownerRef),
+    );
     const stationRef = scene.symbols[stationIndex].meta?.ownerRef;
     expect(stationRef).toBeTruthy();
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={0} />);
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    const kanwa = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    expect(kanwa.getAttribute('data-scene-lod')).toBe('0');
     fireEvent.doubleClick(uchwyt(container, scene, stationIndex));
 
+    const poziom = Number(kanwa.getAttribute('data-scene-lod'));
+    expect(poziom).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByTestId('lv-domain-portal-drawer')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    // Mini-ścieżka kontekstu: Sieć › <stacja>.
+    expect(screen.getByTestId('sld-v3-sciezka-kadru')).toBeInTheDocument();
+
+    const scenaPoziomu = buildSceneV3(enm, poziom as 1 | 2);
+    const portalIndex = indexOf(
+      scenaPoziomu,
+      (s) => s.meta?.elementKind === 'lvPortal' && s.meta?.lvPortalStationRef === stationRef,
+    );
+    fireEvent.click(uchwyt(container, scenaPoziomu, portalIndex));
     expect(screen.getByTestId('lv-domain-portal')).toHaveAttribute('data-station-ref', stationRef!);
     expect(await screen.findByTestId('lv-domain-view-root')).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledTimes(1);

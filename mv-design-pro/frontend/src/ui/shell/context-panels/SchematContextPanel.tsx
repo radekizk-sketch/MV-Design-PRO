@@ -272,7 +272,9 @@ export function SchematContextPanel() {
 
   const handleTreeSelect = (row: TreeRowSpec) => {
     selectElement({ id: row.id, type: row.target.elementType, name: row.label });
-    centerSldOnElement(row.id);
+    // K2: wybór w drzewie PRZENOSI kadr na element (kotwica — skala projektanta
+    // zostaje); kadr z przybliżeniem daje jawne „Dopasuj widok" (F).
+    centerSldOnElement(row.id, 'kotwicz');
     if (row.target.elementType === 'LineBranch') {
       clearRouteManagedSurface();
       return;
@@ -340,7 +342,8 @@ export function SchematContextPanel() {
         type: designGuidance.target.elementType,
         name: designGuidance.target.label,
       });
-      centerSldOnElement(designGuidance.target.ref);
+      // K2: wskazanie następnego kroku przenosi kadr bez przybliżania (kotwica).
+      centerSldOnElement(designGuidance.target.ref, 'kotwicz');
       const operation = 'operation' in designGuidance.target
         ? designGuidance.target.operation
         : null;

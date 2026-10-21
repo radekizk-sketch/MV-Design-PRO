@@ -105,7 +105,9 @@ describe('KreatorSlupaOdgaleznego — realna ścieżka', () => {
     });
     expect(closeFormMock).toHaveBeenCalled();
     expect(selectElementMock).toHaveBeenCalledWith(expect.objectContaining({ id: 'bp/9', type: 'BranchPole' }));
-    expect(centerMock).toHaveBeenCalledWith('bp/9');
+    // K2: operacja kreatora KOTWICZY kamerę przy utworzonym obiekcie (tryb 'kotwicz' —
+    // kamera zostaje przy pracy projektanta), a nie kadruje go jak wskazanie z wyników.
+    expect(centerMock).toHaveBeenCalledWith('bp/9', 'kotwicz');
   });
 
   it('panel teorii renderuje wzory przez KaTeX (math-rendered)', async () => {

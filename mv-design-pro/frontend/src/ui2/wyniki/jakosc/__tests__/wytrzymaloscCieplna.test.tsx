@@ -167,7 +167,7 @@ function odpowiedzOk(body: unknown) {
 beforeEach(() => {
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
-  useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
 });
 
 afterEach(() => {

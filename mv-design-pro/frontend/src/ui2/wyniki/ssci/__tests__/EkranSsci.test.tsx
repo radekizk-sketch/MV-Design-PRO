@@ -156,7 +156,7 @@ describe('EkranSsci — pętla decyzji bez werdyktu (F-K4 odwrócona)', () => {
   ] as const)('%s → brak przycisku decyzji', async (_opis, fixture) => {
     ustawFetch(fixture());
     aktywujPrzypadek();
-    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
     render(<EkranSsci szczegolyAudytowe={false} />);
     fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));

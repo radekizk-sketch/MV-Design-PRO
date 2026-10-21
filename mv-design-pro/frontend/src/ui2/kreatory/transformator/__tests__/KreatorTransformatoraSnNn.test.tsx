@@ -190,7 +190,7 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
         expect.objectContaining({ id: 'tr-created', type: 'TransformerBranch' }),
       );
     });
-    expect(centerSldOnElementMock).toHaveBeenCalledWith('tr-created');
+    expect(centerSldOnElementMock).toHaveBeenCalledWith('tr-created', 'kotwicz');
     expect(navigateToSldMock).toHaveBeenCalled();
   });
 

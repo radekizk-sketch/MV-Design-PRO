@@ -228,11 +228,15 @@ export interface SldDetailDrawerAction {
   readonly onClick: () => void;
 }
 
+/** Szerokość szuflady [px] — eksportowana, bo szuflada leży NAD kanwą i warsztat schematu
+ *  odejmuje ją od prostokąta bezpiecznego kamery (karta K2: kadr nie chowa się pod szufladą). */
+export const SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX = 392;
+
 export interface SldDetailDrawerProps {
   readonly open: boolean;
   readonly data: SldDetailDrawerData | null;
   readonly onClose: () => void;
-  /** Width [px]. Default 360. */
+  /** Szerokość [px]; domyślnie `SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX`. */
   readonly width?: number;
   /** K30-87: optional save handler — gdy podany, renderuje "Zapisz" CTA w
    *  footer. Brak handler → footer ukryty. */
@@ -675,7 +679,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
     open,
     data,
     onClose,
-    width = 392,
+    width = SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX,
     onSave,
     onOpenFullView,
     onOpenConfiguration,
@@ -1080,6 +1084,13 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
           )}
           {actions.map((action) => {
             const disabled = Boolean(action.disabledReasonPl);
+            // `aria-disabled`, nie `disabled`: szuflada otwiera się klikiem NAD
+            // kanwą, często pod kursorem. Przeglądarka nie wysyła `click`
+            // ani `dblclick` do przycisku `disabled`, więc drugi klik dwukliku
+            // stacji ginął w nieaktywnym „Pokaż wyniki" (pomiar e2e K2), zanim
+            // kanwa mogła przekierować gest do obiektu pierwszego kliku.
+            // Przycisk niedostępny nadal nic nie robi (`onClick` pusty), ma
+            // powód w `title` i stan dla czytników ekranu.
             return (
               <button
                 type="button"
@@ -1087,7 +1098,7 @@ export function SldDetailDrawer(props: SldDetailDrawerProps): JSX.Element | null
                 data-testid={`sld-v2-detail-drawer-action-${action.id}`}
                 data-disabled={disabled ? 'true' : 'false'}
                 onClick={disabled ? undefined : action.onClick}
-                disabled={disabled}
+                aria-disabled={disabled || undefined}
                 title={action.disabledReasonPl ?? action.labelPl}
                 style={drawerActionButtonStyle(accent, action.group, disabled)}
               >
@@ -1441,7 +1452,9 @@ function TransformerStationPanel({
           type="button"
           data-testid="drawer-tr-open-config"
           onClick={onOpenConfiguration}
-          disabled={!onOpenConfiguration}
+          // `aria-disabled` z tego samego powodu co akcje szuflady wyżej (gest
+          // wielokliku kanwy nie może ginąć w przycisku `disabled`).
+          aria-disabled={!onOpenConfiguration || undefined}
           title={onOpenConfiguration ? 'Otwórz kartę Transformator w konfiguratorze stacji' : 'Brak aktywnego konfiguratora stacji'}
           style={{
             border: '1px solid var(--mvd-info)',

@@ -235,7 +235,17 @@ test.describe('kd11:zrzuty', () => {
       await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
       await page.waitForTimeout(1200);
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
+      // Zdjęcie selekcji realną ścieżką (K11-A): klik w blok otwiera też szufladę
+      // szczegółów, więc PIERWSZY Escape zamyka szufladę, a DRUGI zdejmuje selekcję
+      // (kolejność jak w `sld-first-uklad.spec.ts`). Jeden Escape zostawiał GPZ
+      // zaznaczony — od karty K2 „Dopasuj widok" kadruje zakres pracy (zaznaczenie),
+      // więc niezdjęta selekcja zmieniała kadr, który ten spec mierzy.
       await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      // Dowód zdjęcia selekcji: adres bez parametru zaznaczenia (`sel`). Panel
+      // prawy NIE jest tu sygnałem — stacja ma własną powierzchnię konfiguratora,
+      // która zostaje otwarta po odznaczeniu (inaczej niż karta selekcji transformatora).
+      await expect(page).not.toHaveURL(/[?&]sel=/, { timeout: 10000 });
       await page.waitForTimeout(800);
 
       // (3) KADR ROZWINIĘCIA — DOKŁADNIE ten sam kadr, co zrzuty odbioru KD-8

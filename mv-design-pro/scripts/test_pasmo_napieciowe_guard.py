@@ -101,6 +101,13 @@ def test_ts_porownanie_napiecia_z_literalem_granicy(
         "if (bus.voltage_kv > STATION_LV_VOLTAGE_LIMIT_KV) {}\n",
         "const s = `U=${vf.u_kv.toFixed(vf.un_kv < 1 ? 3 : 2)} kV`;\n",
         "const k = (b) => (side === 'hv' ? b.voltage_kv >= 60 : b.voltage_kv < 60);\n",
+        # Operand w nawiasie z wartością domyślną (karta K2): łańcuch z wywołaniem w środku,
+        # obie strony porównania, `??` i `||`, wiele trafień w jednej linii.
+        "const sn = (ix.szyny.get(b)?.voltage_kv ?? 0) >= 1;\n",
+        "const sn = 1 <= (bus?.voltage_kv ?? 0);\n",
+        "const nn = (b.voltage_kv || 0) < 1;\n",
+        "const f = (b) => ((ix.szyny.get(b)?.voltage_kv ?? 0) >= 1) === jestSn;\n",
+        "const s = `Szyna ${(szyna?.voltage_kv ?? 0) >= 1 ? 'SN' : 'nN'}`;\n",
     ],
 )
 def test_ts_lokalne_kopie_i_wyrazenia_szablonu(kod: str) -> None:
@@ -122,6 +129,10 @@ def test_ts_lokalne_kopie_i_wyrazenia_szablonu(kod: str) -> None:
         "const s = `napięcie voltage_kv < 1 kV`;\n",
         "const x = wPasmieNn(bus.voltage_kv);\n",
         "const LV_BUS_GAP = 110;\n",
+        "const x = (nnVoltageLevels.length ?? 0) > 1;\n",
+        "const x = (kva ?? 0) >= 1000;\n",
+        "const x = (a.width ?? 0) >= 1;\n",
+        "const x = powyzejPasmaNn(ix.szyny.get(b)?.voltage_kv);\n",
     ],
 )
 def test_ts_formy_spoza_klasy(kod: str) -> None:
@@ -156,3 +167,15 @@ def test_repozytorium_bez_naruszen() -> None:
 
 def test_main_kod_wyjscia_zero() -> None:
     assert guard.main() == 0
+
+
+def test_ts_dluga_linia_bez_wykladniczego_cofania() -> None:
+    """Skan linii z długim łańcuchem bez porównania kończy się w ułamku sekundy — pierwsza
+    wersja wzorca operandu w nawiasie (`(X+ Y?)+`) cofała się wykładniczo i guard nie kończył
+    biegu na drzewie repozytorium (pomiar karty K2, 2026-10-21)."""
+    import time
+
+    linia = "const x = (" + "a.b(c)." * 400 + "d ?? 0);\n"
+    start = time.perf_counter()
+    assert guard.skanuj_ts(linia) == []
+    assert time.perf_counter() - start < 1.0

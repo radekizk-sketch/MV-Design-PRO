@@ -198,7 +198,7 @@ describe('EkranZwarc — „Pokaż na schemacie" (pkt 6) + overlay rozpływu (pk
       type: 'Bus',
       name: 'Szyna GPZ 15 kV',
     });
-    expect(selekcja.sldCenterOnElement).toBe('EL-GPZ');
+    expect(selekcja.sldWskazanie?.ref).toBe('EL-GPZ');
 
     // Overlay rozpływu w produkcyjnym store: znacznik punktu + gałęzie wiersza.
     const overlay = useOverlayStore.getState().overlay;
