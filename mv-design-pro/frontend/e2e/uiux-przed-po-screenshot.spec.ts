@@ -24,7 +24,7 @@ import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { katalogZrzutow, KORZEN_REPO } from './katalogZrzutow';
-import { otworzAplikacje, siecKadrow } from './siecKadrow';
+import { otworzAplikacje, siecKadrow } from './siecKadrowStacji';
 
 const ETAP = process.env.UIUX_ETAP === 'przed' ? 'przed' : 'po';
 const KATALOG = katalogZrzutow(path.join(KORZEN_REPO, 'mv-design-pro/docs/uiux/zrzuty/przed-po', ETAP));

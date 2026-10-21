@@ -156,7 +156,16 @@ export async function siecKadrow(request: APIRequestContext) {
 export async function otworzAplikacje(
   page: Page,
   seed: { projectId: string; projectName: string; caseId: string; caseName: string },
+  okno: { width: number; height: number } = { width: 1600, height: 1000 },
+  motywStartowy?: 'dark_scada' | 'light_technical',
 ): Promise<void> {
+  if (motywStartowy) {
+    // Motyw startowy z utrwalonej preferencji użytkownika (ten sam magazyn, który zapisuje
+    // przełącznik menu „Widok”) — warunek identyczny dla drzewa „przed” i „po”.
+    await page.addInitScript((m) => {
+      localStorage.setItem('mvd-theme-mode', JSON.stringify({ state: { mode: m }, version: 0 }));
+    }, motywStartowy);
+  }
   await page.addInitScript((s) => {
     localStorage.setItem(
       'mv-design-app-state',
@@ -179,7 +188,7 @@ export async function otworzAplikacje(
       }),
     );
   }, seed);
-  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.setViewportSize(okno);
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 60000 });
   await expect(page.getByTestId('sld-canvas-v3')).toBeVisible({ timeout: 60000 });
