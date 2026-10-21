@@ -23,7 +23,6 @@ import type {
   BayControlMode,
   BayDeviceState,
   BayPrimaryDevice,
-  BayPrimaryPlacement,
   BayRuntimeState,
   BaySwitchState,
   Cable,
@@ -88,7 +87,13 @@ import type {
   GpzCouplerDescriptor,
   GpzSectionDescriptor,
 } from '../renderer/GpzSwitchgearRenderer';
-import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
+import {
+  ENM_BAY_ROLE_TO_FIELD_ROLE,
+  FIELD_ROLE,
+  orderByPrimaryPlacement,
+  PRIMARY_DEVICE_PLACEMENT_ORDER,
+  type FieldRole,
+} from '../domain/apparatusContracts';
 import { buildSupplyPathHighlight, type SupplyPathHighlight } from './SupplyPathHighlighter';
 import {
   buildPowerFlowIndex,
@@ -4427,10 +4432,11 @@ function trojstan(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null;
 }
 
-/** Dozwolone położenia aparatu (lustro `BayPrimaryPlacement`, ENM). */
-const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>([
-  'UPSTREAM', 'MIDSTREAM', 'DOWNSTREAM', 'OFF_PATH', 'GROUND_BRANCH',
-]);
+/** Dozwolone położenia aparatu (lustro `BayPrimaryPlacement`, ENM) — klucze
+ *  TEJ SAMEJ tabeli, która ustala porządek fizyczny (`PRIMARY_DEVICE_PLACEMENT_ORDER`). */
+const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>(
+  Object.keys(PRIMARY_DEVICE_PLACEMENT_ORDER),
+);
 
 /**
  * W1 (RECENZJA_L2 §1/§12.1, V12K-145): parsuje DEFENSYWNIE listę aparatów
@@ -4716,14 +4722,6 @@ export type BayWithOptionalPrimaryDevices = Bay & {
   readonly primary_devices?: readonly BayPrimaryDevice[];
 };
 
-const PRIMARY_DEVICE_PLACEMENT_ORDER: Readonly<Record<BayPrimaryPlacement, number>> = {
-  UPSTREAM: 0,
-  MIDSTREAM: 1,
-  DOWNSTREAM: 2,
-  OFF_PATH: 3,
-  GROUND_BRANCH: 4,
-};
-
 function simplifyPrimaryDeviceSwitchState(
   actualState: BayDeviceState | null | undefined,
 ): 'closed' | 'open' | 'unknown' {
@@ -4758,14 +4756,8 @@ export function projectBayPrimaryDevices(
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
   if (!devices || devices.length === 0) return undefined;
-  return devices
-    .map((device, sourceIndex) => ({ device, sourceIndex }))
-    .sort((a, b) => {
-      const placementDelta =
-        PRIMARY_DEVICE_PLACEMENT_ORDER[a.device.placement] - PRIMARY_DEVICE_PLACEMENT_ORDER[b.device.placement];
-      return placementDelta !== 0 ? placementDelta : a.sourceIndex - b.sourceIndex;
-    })
-    .map(({ device }): BayPrimaryDeviceView => ({
+  return orderByPrimaryPlacement(devices)
+    .map((device): BayPrimaryDeviceView => ({
       kind: device.kind,
       placement: device.placement,
       sectionSide: device.section_side ?? null,

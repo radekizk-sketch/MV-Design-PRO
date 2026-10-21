@@ -151,6 +151,53 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npm run accept:sld-v3
 
+      # W2c: scena produkcyjna (fixtura ENM toru DER-SN -> buildSceneV3) i plan
+      # etykiet kanwy przy kazdej skali, przy ktorej LOD jest aktywny w kamerze
+      # (LABEL_PLAN_PRODUCTION_SCALES). FAIL dla kolizji, porzuconej tozsamosci,
+      # napisu poza arkuszem i braku identyfikatora aparatu bocznego na L2.
+      - name: Run W2c label-plan evidence (PV + BESS + TR)
+        working-directory: mv-design-pro/frontend
+        run: |
+          mkdir -p "$RUNNER_TEMP/sld-w2c"
+          CANON_OUT="$RUNNER_TEMP/sld-w2c" npx vite-node scripts/render_schemat10_w2c.tsx
+
+      - name: Prepare Chromium for W2c technical raster evidence
+        if: always()
+        working-directory: mv-design-pro/frontend
+        run: npx playwright install chromium
+
+      - name: Render W2c technical comparison SVG to PNG
+        if: always()
+        working-directory: mv-design-pro/frontend
+        run: |
+          if test -f "$RUNNER_TEMP/sld-w2c/w2c-l2-tor-sn.svg"; then
+            CANON_OUT="$RUNNER_TEMP/sld-w2c" node scripts/rasterize.mjs
+          else
+            echo 'Brak SVG do zrzutu; etap W2c nie utworzył diagnostycznej sceny'
+          fi
+
+      - name: Upload W2c evidence (SVG and PNG)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sld-w2c-visual-evidence
+          path: ${{ runner.temp }}/sld-w2c/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Render operator L1 using production ENM energization overlay
+        if: always()
+        working-directory: mv-design-pro/frontend
+        run: npx vite-node scripts/sld_v3_render_roles.mjs
+
+      - name: Upload production SLD V3 role renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sld-v3-role-evidence
+          path: mv-design-pro/docs/sld/renders/v3/*.png
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
