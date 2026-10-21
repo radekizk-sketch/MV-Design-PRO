@@ -171,15 +171,15 @@ class UnitVerifier:
             "inputs": {"i_p": "kA"},
             "output": "kA",
         },
-        # Maszyny wirujące — prąd wyłączeniowy z zanikiem (§6.6)
+        # Maszyny wirujące — prąd wyłączeniowy z zanikiem (IEC 60909-0:2016 rozdz. 9)
         "EQ_SC3F_011": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {"I_k''": "kA", "I_r": "kA"},
+            "inputs": {"I_k''": "kA", "I_r": "kA", "t_min": "s"},
             "output": "—",
         },
         "EQ_SC3F_012": {
             "rule": "— (bezwymiarowy)",
-            "inputs": {"m": "MW"},
+            "inputs": {"m": "MW", "t_min": "s"},
             "output": "—",
         },
         "EQ_SC3F_013": {

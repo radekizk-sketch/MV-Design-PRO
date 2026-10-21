@@ -109,10 +109,14 @@ from network_model.pochodne import (
     v_na_kv,
 )
 from network_model.solvers.machine_sc_iec60909 import (
+    REGULA_BEZ_ZANIKU,
+    REGULA_INTERPOLACJA,
+    REGULA_PONIZEJ_ZAKRESU,
+    REGULA_POWYZEJ_ZAKRESU,
     MachinePartialContribution,
     MachineShortCircuitResult,
-    wspolczynniki_krzywej_mu,
-    wspolczynniki_krzywej_q,
+    SladKrzywejZaniku,
+    WezelKrzywejZaniku,
 )
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     SC1AsymmetricalQuantities,
@@ -882,7 +886,7 @@ class ProofGenerator:
         steps.append(step_sk)
 
         # =====================================================================
-        # Sekcja maszynowa (IEC 60909 §6.6) — per-maszyna μ / q / i_b, gdy sieć
+        # Sekcja maszynowa (IEC 60909-0:2016 rozdz. 9) — per-maszyna μ / q / i_b, gdy sieć
         # zawiera maszyny wirujące. Synchroniczne: μ + i_b (q = 1, krok q pominięty);
         # asynchroniczne / DFIG: μ + q + i_b. Kolejność = deterministyczna z solvera.
         # =====================================================================
@@ -890,13 +894,14 @@ class ProofGenerator:
         ib_machines_ka: float | None = None
         wynik_maszyn = data.machine_result
         if wynik_maszyn is not None and wynik_maszyn.contributions:
-            t_min_s = wynik_maszyn.t_min_s
             for machine in wynik_maszyn.contributions:
                 step_number += 1
-                steps.append(cls._create_sc3f_step_machine_mu(step_number, machine, t_min_s))
-                if not machine.is_synchronous_machine:
+                steps.append(cls._create_sc3f_step_machine_mu(step_number, machine))
+                if machine.slad_q is not None:
                     step_number += 1
-                    steps.append(cls._create_sc3f_step_machine_q(step_number, machine, t_min_s))
+                    steps.append(
+                        cls._create_sc3f_step_machine_q(step_number, machine, machine.slad_q)
+                    )
                 step_number += 1
                 steps.append(cls._create_sc3f_step_machine_ib(step_number, machine))
             ib_machines_ka = a_na_ka(wynik_maszyn.ib_machines_a)
@@ -1969,33 +1974,80 @@ class ProofGenerator:
             },
         )
 
-    # --- Maszyny wirujące: zanik prądu wyłączeniowego μ / q / i_b (§6.6) ----------
+    # --- Maszyny wirujące: zanik prądu wyłączeniowego μ / q / i_b (rozdz. 9) ---------
+    @staticmethod
+    def _podstawienie_wezla_krzywej(
+        slad: SladKrzywejZaniku, wezel: WezelKrzywejZaniku, symbol: str
+    ) -> str:
+        """Podstawienie krzywej jednego węzła normy — liczby wyłącznie ze śladu solvera."""
+        if slad.wielkosc == "mu":
+            a, b, c = wezel.wspolczynniki
+            tekst = f"{symbol} = {a} + {b} \\cdot e^{{-{c} \\cdot {slad.argument:.3f}}}"
+        else:
+            a, b = wezel.wspolczynniki
+            tekst = f"{symbol} = {a} + {b} \\cdot \\ln({slad.argument:.4f})"
+        tekst += f" = {wezel.wartosc_surowa:.4f}"
+        if abs(wezel.wartosc_surowa - wezel.wartosc) > 5e-4:
+            tekst += f" \\rightarrow {wezel.wartosc:.4f}\\ (0 \\leq {symbol} \\leq 1)"
+        return tekst
+
+    @classmethod
+    def _podstawienie_krzywej_zaniku(cls, slad: SladKrzywejZaniku) -> str:
+        """Podstawienie kroku μ albo q z śladu `SladKrzywejZaniku` (karta MU-INTERPOLACJA).
+
+        Dowód NIE liczy krzywych: węzły, ich wartości, waga interpolacji i wynik pochodzą
+        z jednej funkcji solvera (`machine_sc_iec60909.slad_mu` / `slad_q`).
+        """
+        symbol = "\\mu" if slad.wielkosc == "mu" else "q"
+        dolny, gorny = slad.wezel_dolny, slad.wezel_gorny
+        if slad.regula == REGULA_BEZ_ZANIKU or dolny is None or gorny is None:
+            if slad.wielkosc == "mu":
+                return (
+                    f"\\mu = 1 \\quad (I_k''/I_r = {slad.argument:.3f} \\leq 2,\\ "
+                    f"\\text{{z dala od generatora}})"
+                )
+            return "q = 1 \\quad (m \\leq 0)"
+        if slad.regula != REGULA_INTERPOLACJA:
+            podstawienie = cls._podstawienie_wezla_krzywej(slad, dolny, symbol)
+            if slad.regula == REGULA_PONIZEJ_ZAKRESU:
+                podstawienie += (
+                    f" \\quad (t_{{min}} = {slad.t_min_s:.3f}\\,\\mathrm{{s}} < "
+                    f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}}:\\ \\text{{krzywa }}"
+                    f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}})"
+                )
+            elif slad.regula == REGULA_POWYZEJ_ZAKRESU:
+                podstawienie += (
+                    f" \\quad (t_{{min}} = {slad.t_min_s:.3f}\\,\\mathrm{{s}} \\geq "
+                    f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}}:\\ \\text{{krzywa }}"
+                    f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}})"
+                )
+            return podstawienie
+        s_1 = f"{symbol}_{{{dolny.t_min_s:.2f}}}"
+        s_2 = f"{symbol}_{{{gorny.t_min_s:.2f}}}"
+        return (
+            f"{cls._podstawienie_wezla_krzywej(slad, dolny, s_1)};\\quad "
+            f"{cls._podstawienie_wezla_krzywej(slad, gorny, s_2)};\\quad "
+            f"{symbol} = {s_1} + \\frac{{{slad.t_min_s:.3f} - {dolny.t_min_s:.2f}}}"
+            f"{{{gorny.t_min_s:.2f} - {dolny.t_min_s:.2f}}} \\left({s_2} - {s_1}\\right)"
+            f" = {dolny.wartosc:.4f} + {slad.waga:.4f} \\cdot "
+            f"({gorny.wartosc:.4f} - {dolny.wartosc:.4f}) = {slad.wynik:.4f}"
+            f" \\quad (\\text{{interpolacja liniowa między krzywymi normy}})"
+        )
+
     @classmethod
     def _create_sc3f_step_machine_mu(
         cls,
         step_number: int,
         machine: MachinePartialContribution,
-        t_min_s: float,
     ) -> ProofStep:
-        """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
+        """Krok maszynowy: współczynnik zanikania μ (IEC 60909-0:2016 rozdz. 9) ze śladu."""
         mu = machine.mu
         equation = EQ_SC3F_011
-        ratio = machine.ratio_ik_ir
+        slad = machine.slad_mu
         # Krotność z prądów NA ZACISKACH maszyny (ten sam poziom napięcia co I_r) — karta
         # SC-IB-ITH-ZRODLA; udział w miejscu zwarcia niesie krok i_b maszyny.
         ikss_p = a_na_ka(machine.ikss_zaciski_a)
         ir = a_na_ka(machine.ir_a)
-        if ratio <= 2.0:
-            substitution = (
-                f"\\mu = 1 \\quad (I_k''/I_r = {ratio:.3f} \\leq 2,\\ "
-                f"\\text{{z dala od generatora}})"
-            )
-        else:
-            a, b, c = wspolczynniki_krzywej_mu(t_min_s)
-            raw = a + b * math.exp(-c * ratio)
-            substitution = f"\\mu = {a} + {b} \\cdot e^{{-{c} \\cdot {ratio:.3f}}} = {raw:.4f}"
-            if abs(raw - mu) > 5e-4:
-                substitution += f" \\rightarrow {mu:.4f}\\ (0 \\leq \\mu \\leq 1)"
         return ProofStep(
             step_id=ProofStep.generate_step_id("SC3F", step_number),
             step_number=step_number,
@@ -2004,13 +2056,19 @@ class ProofGenerator:
             input_values=(
                 ProofValue.create("I_k''", ikss_p, "kA", "ikss_zaciski_ka"),
                 ProofValue.create("I_r", ir, "kA", "ir_ka"),
+                ProofValue.create("t_{min}", slad.t_min_s, "s", "t_min_s"),
             ),
-            substitution_latex=substitution,
+            substitution_latex=cls._podstawienie_krzywej_zaniku(slad),
             result=ProofValue.create("\\mu", mu, "—", "mu_factor"),
             unit_check=UnitVerifier.verify_equation(
-                equation.equation_id, {"I_k''": "kA", "I_r": "kA"}, "—"
+                equation.equation_id, {"I_k''": "kA", "I_r": "kA", "t_min": "s"}, "—"
             ),
-            source_keys={"I_k''": "ikss_zaciski_ka", "I_r": "ir_ka", "μ": "mu_factor"},
+            source_keys={
+                "I_k''": "ikss_zaciski_ka",
+                "I_r": "ir_ka",
+                "t_min": "t_min_s",
+                "μ": "mu_factor",
+            },
         )
 
     @classmethod
@@ -2018,30 +2076,27 @@ class ProofGenerator:
         cls,
         step_number: int,
         machine: MachinePartialContribution,
-        t_min_s: float,
+        slad: SladKrzywejZaniku,
     ) -> ProofStep:
-        """Krok maszynowy: dodatkowy współczynnik zanikania q dla maszyny asynchronicznej (§6.6.3)."""
+        """Krok maszynowy: dodatkowy współczynnik zanikania q maszyny asynchronicznej
+        (IEC 60909-0:2016 rozdz. 9) ze śladu."""
         q = machine.q
         equation = EQ_SC3F_012
-        m_val = machine.p_per_pole_mw
-        if m_val <= 0.0:
-            substitution = "q = 1 \\quad (m \\leq 0)"
-        else:
-            a, b = wspolczynniki_krzywej_q(t_min_s)
-            raw = a + b * math.log(m_val)
-            substitution = f"q = {a} + {b} \\cdot \\ln({m_val:.4f}) = {raw:.4f}"
-            if abs(raw - q) > 5e-4:
-                substitution += f" \\rightarrow {q:.4f}\\ (q \\leq 1)"
         return ProofStep(
             step_id=ProofStep.generate_step_id("SC3F", step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} — {machine.source_name}",
             equation=equation,
-            input_values=(ProofValue.create("m", m_val, "MW", "p_per_pole_mw"),),
-            substitution_latex=substitution,
+            input_values=(
+                ProofValue.create("m", machine.p_per_pole_mw, "MW", "p_per_pole_mw"),
+                ProofValue.create("t_{min}", slad.t_min_s, "s", "t_min_s"),
+            ),
+            substitution_latex=cls._podstawienie_krzywej_zaniku(slad),
             result=ProofValue.create("q", q, "—", "q_factor"),
-            unit_check=UnitVerifier.verify_equation(equation.equation_id, {"m": "MW"}, "—"),
-            source_keys={"m": "p_per_pole_mw", "q": "q_factor"},
+            unit_check=UnitVerifier.verify_equation(
+                equation.equation_id, {"m": "MW", "t_min": "s"}, "—"
+            ),
+            source_keys={"m": "p_per_pole_mw", "t_min": "t_min_s", "q": "q_factor"},
         )
 
     @classmethod
@@ -2050,7 +2105,7 @@ class ProofGenerator:
         step_number: int,
         machine: MachinePartialContribution,
     ) -> ProofStep:
-        """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
+        """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (IEC 60909-0:2016 rozdz. 9)."""
         mu, q = machine.mu, machine.q
         equation = EQ_SC3F_013
         ikss_p = a_na_ka(machine.ikss_partial_a)

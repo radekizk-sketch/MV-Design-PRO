@@ -1885,7 +1885,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # biegow (`ib_ka_a/b`, `i_dc_ka_a/b`, `tb_s_a/b`, `delta_ib_ka`, `delta_ib_percent`,
     # `delta_i_dc_ka`, `delta_i_dc_percent`, `delta_tb_s`, `delta_tb_percent`,
     # `tb_pochodzenie_a/b`, `tb_wartosc_robocza_a/b`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4273." in wyjscie, wyjscie
+    # Karta MU-INTERPOLACJA (2026-10-21): 4273 -> 4280 — POMIAR `contract_fields()` na bazie
+    # karty `6eb958fbb` (`git archive`: 4273, pin zgodny) i na drzewie karty (4280). Roznica
+    # zbiorow +7, -0: slad krzywych zaniku μ i q (`slad_mu`, `slad_q` wkladu maszyny; wezly
+    # `wezel_dolny`, `wezel_gorny` z `wartosc_surowa`; `waga` interpolacji; `argument` =
+    # I″k/I_r albo m). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4280." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

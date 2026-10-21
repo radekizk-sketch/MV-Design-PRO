@@ -233,7 +233,7 @@ describe('GATE J — SC contribution is IBG (bounded current), NOT a machine', (
 
 // ---------------------------------------------------------------------------
 // GATE J′ — rotating-machine SC contribution: the FULL machine model (not IBG).
-//   biogaz (synchroniczna, §6.3 Z″ + μ §6.6) · wiatr async (Z_M §6.7 + μ·q §6.6.3)
+//   biogaz (synchroniczna, §6.3 Z″ + μ rozdz. 9) · wiatr async (Z_M §6.7 + μ·q rozdz. 9)
 // ---------------------------------------------------------------------------
 
 describe('GATE J′ — rotating machines: machine-typed SC contribution (not IBG)', () => {
