@@ -15,7 +15,7 @@
  * ZERO fizyki — ekran czyta gotowe werdykty.
  */
 
-import { useRejestrPrzekroczen, type Przekroczenie } from './model';
+import { useRejestrPrzekroczen, wniosekPustejListy, type Przekroczenie } from './model';
 import {
   PrzyciskAkcjiStanu,
   akcjaNaprawcza,
@@ -30,7 +30,10 @@ import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
 import './coWymagaUwagi.css';
 
 export function EkranCoWymagaUwagi() {
-  const { przekroczenia, maPrzebieg, brakKryteriowNapiec } = useRejestrPrzekroczen();
+  const rejestr = useRejestrPrzekroczen();
+  const { przekroczenia } = rejestr;
+  // Jeden wniosek stanu zerowego z jednego źródła (`wniosekPustejListy`).
+  const wniosek = wniosekPustejListy(rejestr);
   const poprawWModelu = usePoprawWModelu();
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   // K6 / H-5: stan zerowy „brak przebiegu" uruchamia bieg rozpływu — to on
@@ -53,7 +56,7 @@ export function EkranCoWymagaUwagi() {
         <p className="mvd-cwu-cel">{T.cel}</p>
       </header>
 
-      {!maPrzebieg && (
+      {wniosek === 'brak_przebiegu' && (
         <div className="mvd-cwu-pusty" data-testid="mvd-cwu-brak-przebiegu">
           <p className="mvd-cwu-pusty-glowny">{T.brakPrzebiegu}</p>
           <p className="mvd-cwu-pusty-krok">{T.brakPrzebieguKrok}</p>
@@ -61,7 +64,21 @@ export function EkranCoWymagaUwagi() {
         </div>
       )}
 
-      {maPrzebieg && przekroczenia.length === 0 && brakKryteriowNapiec && (
+      {wniosek === 'ocena_wczytywanie' && (
+        <div className="mvd-cwu-pusty" data-testid="mvd-cwu-ocena-wczytywanie" aria-busy="true">
+          <p className="mvd-cwu-pusty-glowny">{T.ocenaWczytywanie}</p>
+          <p className="mvd-cwu-pusty-krok">{T.ocenaWczytywanieKrok}</p>
+        </div>
+      )}
+
+      {wniosek === 'ocena_blad' && (
+        <div className="mvd-cwu-pusty" data-testid="mvd-cwu-ocena-blad" role="alert">
+          <p className="mvd-cwu-pusty-glowny">{T.ocenaBlad}</p>
+          <p className="mvd-cwu-pusty-krok">{T.ocenaBladKrok}</p>
+        </div>
+      )}
+
+      {wniosek === 'brak_kryteriow' && (
         <div className="mvd-cwu-pusty" data-testid="mvd-cwu-brak-kryteriow">
           <p className="mvd-cwu-pusty-glowny">{T.brakKryteriow}</p>
           <p className="mvd-cwu-pusty-krok">{T.brakKryteriowKrok}</p>
@@ -69,7 +86,7 @@ export function EkranCoWymagaUwagi() {
         </div>
       )}
 
-      {maPrzebieg && przekroczenia.length === 0 && !brakKryteriowNapiec && (
+      {wniosek === 'w_normie' && (
         <div className="mvd-cwu-pusty mvd-cwu-ok" data-testid="mvd-cwu-w-normie">
           <p className="mvd-cwu-pusty-glowny">{T.siecWNormie}</p>
           <p className="mvd-cwu-pusty-krok">{T.siecWNormieKrok}</p>
@@ -85,6 +102,18 @@ export function EkranCoWymagaUwagi() {
           <p className="mvd-cwu-podsumowanie" data-testid="mvd-cwu-podsumowanie">
             {T.podsumowanie(przekroczenia.length)}
           </p>
+          {/* Lista z samego rozpływu, gdy werdykt projektowy jeszcze się czyta albo
+              się nie wczytał — jawnie NIEPEŁNA (bez kryteriów z biegów i modelu). */}
+          {rejestr.odczytOceny !== null && (
+            <p
+              className="mvd-cwu-pusty-krok"
+              data-testid="mvd-cwu-lista-niepelna"
+              data-odczyt={rejestr.odczytOceny}
+              aria-busy={rejestr.odczytOceny === 'wczytywanie'}
+            >
+              {rejestr.odczytOceny === 'wczytywanie' ? T.listaNiepelnaWczytywanie : T.listaNiepelnaBlad}
+            </p>
+          )}
           <ul className="mvd-cwu-lista" data-testid="mvd-cwu-lista">
             {przekroczenia.map((p) => (
               <li key={p.klucz} className="mvd-cwu-pozycja" data-testid="mvd-cwu-pozycja">

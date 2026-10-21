@@ -168,6 +168,62 @@ describe('KreatorStudium — krok 2 (parametry źródła)', () => {
 // Krok 3 — analizy
 // ---------------------------------------------------------------------------
 
+/**
+ * Iloczyn cech: katalog kroku 2 {konwertery → typ, NC RfG → operator} × stan odczytu
+ * {wczytywanie, blad, gotowe-pusty, gotowe}. Odczyt w toku i odczyt nieudany to NIE „brak
+ * typu katalogowego" / „brak operatorów w katalogu" (KONTRAKT_WERDYKTU_WYJASNIALNEGO).
+ */
+type OdczytTestowy = 'wczytywanie' | 'blad' | 'pusty' | 'gotowe';
+
+function ustawKatalogNcRfg(odczyt: OdczytTestowy): void {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const sciezka = new URL(url, 'http://localhost').pathname;
+      if (sciezka !== '/api/ncrfg-tests/catalog') return atrapaNcRfg(url);
+      if (odczyt === 'wczytywanie') return new Promise<Response>(() => {});
+      if (odczyt === 'blad') return new Response('{"detail":"awaria"}', { status: 500 });
+      const katalog = katalogStudiumFixture();
+      const cialo = odczyt === 'pusty' ? { ...katalog, operators: [] } : katalog;
+      return new Response(JSON.stringify(cialo), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }),
+  );
+}
+
+function ustawKonwertery(odczyt: OdczytTestowy): void {
+  if (odczyt === 'wczytywanie') pobierzKonwertery.mockReturnValue(new Promise(() => {}));
+  else if (odczyt === 'blad') pobierzKonwertery.mockRejectedValue(new Error('awaria'));
+  else if (odczyt === 'pusty') pobierzKonwertery.mockResolvedValue([]);
+}
+
+const KATALOGI_KROKU2 = [
+  { nazwa: 'konwertery', prefiks: 'mvd-studium-typ', ustaw: ustawKonwertery, wybor: 'mvd-studium-typ' },
+  { nazwa: 'operatorzy NC RfG', prefiks: 'mvd-studium-operator', ustaw: ustawKatalogNcRfg, wybor: 'mvd-studium-operator' },
+] as const;
+const STANY_ODCZYTU: readonly OdczytTestowy[] = ['wczytywanie', 'blad', 'pusty', 'gotowe'];
+
+describe('KreatorStudium — krok 2: stan odczytu katalogów ≠ brak pozycji', () => {
+  it.each(KATALOGI_KROKU2.flatMap((k) => STANY_ODCZYTU.map((odczyt) => ({ k, odczyt }))))(
+    '$k.nazwa × $odczyt',
+    async ({ k, odczyt }) => {
+      ustawGotowyRozplyw();
+      k.ustaw(odczyt);
+      render(<KreatorStudium szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
+      await userEvent.click(screen.getByTestId('mvd-studium-krok-2'));
+      const oczekiwany =
+        odczyt === 'gotowe' ? k.wybor : odczyt === 'pusty' ? `${k.prefiks}-brak` : `${k.prefiks}-${odczyt}`;
+      const el = await screen.findByTestId(oczekiwany);
+      if (odczyt === 'wczytywanie') expect(el).toHaveAttribute('aria-busy', 'true');
+      if (odczyt === 'blad') expect(el).toHaveAttribute('role', 'alert');
+      for (const inny of ['brak', 'wczytywanie', 'blad']) {
+        const testid = `${k.prefiks}-${inny}`;
+        if (testid !== oczekiwany) expect(screen.queryByTestId(testid)).toBeNull();
+      }
+      if (odczyt !== 'gotowe') expect(screen.queryByTestId(k.wybor)).toBeNull();
+    },
+  );
+});
+
 describe('KreatorStudium — krok 3 (analizy)', () => {
   it('bez zakończonego rozpływu pokazuje instrukcję, bez wywołania analiz', async () => {
     useSnapshotStore.setState({ snapshot: snapshotFixture() });

@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { EkranKrzywych } from '../EkranKrzywych';
+import { KRZYWE_STRINGS } from '../strings';
 import {
   katalogNcRfgFixture,
   rekordyKonwerterowFixture,
@@ -355,6 +356,60 @@ describe('EkranKrzywych — przypisanie krzywych do modułu DER (K5-B / H-3 pkt 
       expect(screen.getByTestId('mvd-krzywe-wiazania-lvrt')).toHaveTextContent('0.05 pu');
       expect(screen.getByTestId('mvd-krzywe-wiazania-hvrt')).toHaveTextContent('1.30 pu');
     });
+
+    useStationDerStore.getState().reset();
+    useAppStateStore.setState({ activeProjectId: null, activeCaseId: null } as never);
+  });
+
+  /**
+   * Iloczyn: stan krzywej ride-through modułu {wczytywanie, blad, brak_profilu, spoza_katalogu,
+   * gotowe} × pola {LVRT, HVRT}. Odczyt katalogu w toku / nieudany i profil spoza katalogu NIE są
+   * „brakiem profilu operatora" (KONTRAKT_WERDYKTU_WYJASNIALNEGO).
+   */
+  it.each([
+    { stan: 'wczytywanie', profil: 'pse', tekst: KRZYWE_STRINGS.wiazaniaKrzyweWczytywanie },
+    { stan: 'blad', profil: 'pse', tekst: KRZYWE_STRINGS.wiazaniaKrzyweBlad },
+    { stan: 'brak_profilu', profil: null, tekst: KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora },
+    { stan: 'spoza_katalogu', profil: 'nieznany', tekst: KRZYWE_STRINGS.wiazaniaProfilSpozaKatalogu },
+    { stan: 'gotowe', profil: 'pse', tekst: '0.05 pu' },
+  ] as const)('krzywe LVRT/HVRT × stan $stan', async ({ stan, profil, tekst }) => {
+    const operatorPse = {
+      operator_id: 'pse',
+      operator_name_pl: 'PSE',
+      last_revision: '2024-Q4',
+      reactive_power: { q_range_pct_pn_min: -0.33, q_range_pct_pn_max: 0.33, cos_phi_min: 0.95, voltage_control_modes: [] },
+      ride_through: {
+        lvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+        hvrt: [{ time_s: 0, voltage_pu: 0.05 }],
+      },
+    };
+    if (stan === 'wczytywanie') fetchNcRfgOperatorsSekcjaMock.mockReturnValue(new Promise(() => {}));
+    else if (stan === 'blad') fetchNcRfgOperatorsSekcjaMock.mockRejectedValue(new Error('awaria katalogu'));
+    else fetchNcRfgOperatorsSekcjaMock.mockResolvedValue([operatorPse]);
+    const { useStationDerStore, useAppStateStore } = await przygotujModulIWynik();
+    if (profil !== null) {
+      useStationDerStore.getState().updateDerProfiles('der-1', { nc_rfg_profile_ref: profil });
+    }
+    await userEvent.selectOptions(screen.getByTestId('mvd-krzywe-wiazania-modul'), 'der-1');
+    for (const pole of ['lvrt', 'hvrt']) {
+      await vi.waitFor(() => {
+        const el = screen.getByTestId(`mvd-krzywe-wiazania-${pole}`);
+        expect(el).toHaveAttribute('data-stan', stan);
+        expect(el).toHaveTextContent(tekst);
+      });
+      const el = screen.getByTestId(`mvd-krzywe-wiazania-${pole}`);
+      if (stan === 'wczytywanie') expect(el).toHaveAttribute('aria-busy', 'true');
+      else expect(el).not.toHaveAttribute('aria-busy');
+      if (stan !== 'brak_profilu') {
+        expect(el).not.toHaveTextContent(KRZYWE_STRINGS.wiazaniaBrakProfiluOperatora);
+      }
+    }
+    const bladKatalogu = screen.queryByTestId('mvd-krzywe-wiazania-blad-katalogu');
+    if (stan === 'blad') expect(bladKatalogu).toHaveTextContent('awaria katalogu');
+    else expect(bladKatalogu).toBeNull();
+    if (stan === 'wczytywanie' || stan === 'blad') {
+      expect(screen.getByTestId('mvd-krzywe-wiazania-pf')).toBeDisabled();
+    }
 
     useStationDerStore.getState().reset();
     useAppStateStore.setState({ activeProjectId: null, activeCaseId: null } as never);

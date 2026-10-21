@@ -178,6 +178,39 @@ describe('EkranObszaruPQ — nakładka krzywej producenta (kryterium 2)', () => 
   });
 });
 
+/**
+ * Iloczyn: stan odczytu katalogu konwerterów {wczytywanie, blad, gotowe} × wybór nakładki.
+ * Odczyt w toku / nieudany to nie cicha lista „— bez nakładki —" (KONTRAKT_WERDYKTU_WYJASNIALNEGO).
+ */
+describe('EkranObszaruPQ — stan odczytu katalogu nakładki ≠ brak typów', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it.each(['wczytywanie', 'blad', 'gotowe'] as const)('katalog konwerterów × %s', async (odczyt) => {
+    if (odczyt === 'wczytywanie') pobierzKonwertery.mockReturnValue(new Promise(() => {}));
+    if (odczyt === 'blad') pobierzKonwertery.mockRejectedValue(new Error('awaria'));
+    render(<EkranObszaruPQ szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
+    const wybor = screen.getByTestId('mvd-obszar-typ');
+    if (odczyt === 'gotowe') {
+      await screen.findByRole('option', { name: /Sungrow/ });
+      expect(wybor).toHaveAttribute('data-odczyt', 'gotowe');
+      expect(wybor).toBeEnabled();
+      expect(screen.queryByTestId('mvd-obszar-typ-wczytywanie')).toBeNull();
+      expect(screen.queryByTestId('mvd-obszar-typ-blad')).toBeNull();
+      return;
+    }
+    const nota = await screen.findByTestId(`mvd-obszar-typ-${odczyt}`);
+    if (odczyt === 'wczytywanie') expect(nota).toHaveAttribute('aria-busy', 'true');
+    else expect(nota).toHaveAttribute('role', 'alert');
+    expect(wybor).toHaveAttribute('data-odczyt', odczyt);
+    expect(wybor).toBeDisabled();
+    const przeciwny = odczyt === 'wczytywanie' ? 'blad' : 'wczytywanie';
+    expect(screen.queryByTestId(`mvd-obszar-typ-${przeciwny}`)).toBeNull();
+    // Bieg obszaru pozostaje dostępny (nakładka jest opcjonalna).
+    fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
+    expect(screen.getByTestId('mvd-obszar-oblicz')).toBeEnabled();
+  });
+});
+
 describe('EkranObszaruPQ — tryb ekspercki (identyfikatory)', () => {
   beforeEach(ustawGotowyRozplyw);
 

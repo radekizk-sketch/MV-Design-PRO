@@ -81,6 +81,9 @@ describe('GeneratorRaportu — okno składania raportu (ui2)', () => {
     // jsdom nie ma createObjectURL — pobranie pliku jest efektem ubocznym klienta.
     Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
     Object.defineProperty(window.URL, 'revokeObjectURL', { value: () => undefined, writable: true });
+    // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+    // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -270,6 +273,9 @@ describe('GeneratorRaportu — brama dokumentacji wykonawczej', () => {
     useShellStore.setState({ activeSpace: 'dokumentacja' });
     Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
     Object.defineProperty(window.URL, 'revokeObjectURL', { value: () => undefined, writable: true });
+    // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+    // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -357,6 +363,9 @@ describe('GeneratorRaportu — brama eksportu wywodu', () => {
     useShellStore.setState({ activeSpace: 'dokumentacja' });
     Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
     Object.defineProperty(window.URL, 'revokeObjectURL', { value: () => undefined, writable: true });
+    // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+    // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
 
   afterEach(() => {

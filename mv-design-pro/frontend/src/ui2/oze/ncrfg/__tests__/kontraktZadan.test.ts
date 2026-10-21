@@ -287,7 +287,7 @@ function formularzPelny(bazowy: FormularzModulu): FormularzModulu {
 }
 
 function modulyZFormularzem(pelny: boolean): WejscieModuluNcRfg[] {
-  return zbudujModuly(DERY_SCENY, wejsciaSceny as unknown as WejsciaPrzypadkuNcRfg).map((opis) => {
+  return zbudujModuly(DERY_SCENY, { stan: 'gotowe', wejscia: wejsciaSceny as unknown as WejsciaPrzypadkuNcRfg }).map((opis) => {
     const wynik = zbudujWejscieModulu(
       pelny ? { ...opis, formularz: formularzPelny(opis.formularz) } : opis,
       OPERATOR_SCENY,

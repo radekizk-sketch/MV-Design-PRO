@@ -15,8 +15,9 @@
  * `PowerFlowBranchResult` (FROZEN) nie niesie obciążenia — werdykt KONSUMUJEMY
  * z istniejącego endpointu walidacji energetycznej (`fetchWalidacjaEnergetyczna`,
  * reuse klienta `jakosc/api.ts` — bez duplikacji). Pobranie on-demand po
- * `runId` (wzorzec `useZasobJakosci` z `EkranJakosci`); brak odpowiedzi →
- * kolumna z kreskami, tabela działa jak dotąd (uczciwie, bez werdyktu).
+ * `runId` (wzorzec `useZasobJakosci` z `EkranJakosci`); odczyt w toku / błąd →
+ * stan odczytu w komórkach i nota pod tabelą (odczyt ≠ brak pozycji), brak
+ * pozycji → kreska bez werdyktu.
  */
 
 import { useEffect, useState } from 'react';
@@ -33,39 +34,42 @@ import {
   naSumeStratGalezi,
   naWierszeGalezi,
   naZalozeniaRozplywu,
+  pozycjaObciazenia,
   useWynikRozplywu,
-  type PozycjaObciazenia,
+  type StanObciazen,
 } from './adapters/rozplywAdapter';
 
 /**
  * Pobiera walidację energetyczną przebiegu i buduje mapę `branch_id` → pozycja
- * obciążalności (R3-A). Uczciwe stany: brak `runId`, trwające pobieranie lub
- * błąd/brak odpowiedzi → `null` (kolumna „Obciążenie" pokazuje kreski, bez
- * werdyktu i bez przycisku decyzji). Błąd celowo NIE ustawia stanu — mapa
- * pozostaje `null` z inicjalizacji/resetu, a tabela działa jak przed kartą.
+ * obciążalności (R3-A). Stany rozłączne (`StanObciazen`): brak `runId` →
+ * `niezlecony`; zapytanie w toku → `wczytywanie`; błąd → `blad`; odpowiedź →
+ * `gotowe` z mapą. Wpis należy do przebiegu, z którego powstał: zmiana `runId`
+ * natychmiast wraca do `wczytywanie` (werdykty innego biegu nie przeciekają).
  */
-export function useWalidacjaObciazen(
-  runId: string | null,
-): ReadonlyMap<string, PozycjaObciazenia> | null {
-  const [mapa, setMapa] = useState<ReadonlyMap<string, PozycjaObciazenia> | null>(null);
+export function useWalidacjaObciazen(runId: string | null): StanObciazen {
+  const [wpis, setWpis] = useState<{ readonly runId: string; readonly stan: StanObciazen } | null>(
+    null,
+  );
 
   useEffect(() => {
-    setMapa(null); // reset przy zmianie przebiegu (stale werdykty nie przeciekają)
     if (!runId) return;
     let anulowane = false;
     fetchWalidacjaEnergetyczna(runId)
       .then((odpowiedz) => {
-        if (!anulowane) setMapa(naMapeObciazen(odpowiedz.items));
+        if (!anulowane)
+          setWpis({ runId, stan: { odczyt: 'gotowe', mapa: naMapeObciazen(odpowiedz.items) } });
       })
       .catch(() => {
-        // Brak odpowiedzi walidacji → uczciwie bez werdyktu (mapa pozostaje null).
+        // Błąd ROZPOZNANY (stan `blad`) — nie wchłonięty w „brak pozycji" (kreski).
+        if (!anulowane) setWpis({ runId, stan: { odczyt: 'blad' } });
       });
     return () => {
       anulowane = true;
     };
   }, [runId]);
 
-  return mapa;
+  if (!runId) return { odczyt: 'niezlecony' };
+  return wpis?.runId === runId ? wpis.stan : { odczyt: 'wczytywanie' };
 }
 
 export interface TabelaGaleziProps {
@@ -127,7 +131,7 @@ export function TabelaGalezi({
         // tabeli). Gałąź bez pozycji walidacji → `undefined` (zero zgadywania
         // Line vs Transformer bez realnych danych).
         typElementuWiersza={(ref) => {
-          const poz = obciazenia?.get(ref);
+          const poz = pozycjaObciazenia(obciazenia, ref);
           return poz ? typElementuWalidacji(poz.checkType) ?? undefined : undefined;
         }}
         // K1 / F-E6.3 + R3-A: rodzaj i typ elementu z REALNEGO `check_type`
@@ -138,16 +142,29 @@ export function TabelaGalezi({
         // walidacji, więc wiersz z przyciskiem ma zawsze pozycję w mapie;
         // defensywny fallback = dotychczasowa akcja gałęzi liniowej (1:1).
         onPoprawWModelu={(ref) => {
-          const poz = obciazenia?.get(ref);
+          const poz = pozycjaObciazenia(obciazenia, ref);
           const typ = poz ? typElementuWalidacji(poz.checkType) : null;
           const rodzaj = poz ? rodzajPrzekroczeniaWalidacji(poz.checkType) : null;
           poprawWModelu(ref, typ ?? 'LineBranch', nazwaObiektu(ref), rodzaj ?? 'obciazalnosc-galezi');
         }}
         rodzajWiersza={(ref) => {
-          const poz = obciazenia?.get(ref);
+          const poz = pozycjaObciazenia(obciazenia, ref);
           return poz ? rodzajPrzekroczeniaWalidacji(poz.checkType) ?? undefined : undefined;
         }}
       />
+      {obciazenia.odczyt === 'wczytywanie' || obciazenia.odczyt === 'blad' ? (
+        <p
+          className="mvd-rozplyw-pusty-desc"
+          data-testid="mvd-rozplyw-obciazenia-odczyt"
+          data-odczyt={obciazenia.odczyt}
+          aria-busy={obciazenia.odczyt === 'wczytywanie'}
+          role={obciazenia.odczyt === 'blad' ? 'alert' : undefined}
+        >
+          {obciazenia.odczyt === 'wczytywanie'
+            ? ROZPLYW_STRINGS.obciazeniaWczytywanieNota
+            : ROZPLYW_STRINGS.obciazeniaBladNota}
+        </p>
+      ) : null}
       {suma && (
         <div className="mvd-rozplyw-suma-strat" data-testid="mvd-rozplyw-suma-strat">
           <span className="mvd-rozplyw-suma-etykieta">{ROZPLYW_STRINGS.sumaStrat}</span>

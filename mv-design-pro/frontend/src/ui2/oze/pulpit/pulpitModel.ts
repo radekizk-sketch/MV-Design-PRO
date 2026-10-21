@@ -44,6 +44,25 @@ import type {
  * powód odrzucenia tabliczki, rekordy wymagań profilu albo powód pominięcia przez serwer.
  * Bez statusu modułu i bez liczników (kontrakt V2 ich nie ma).
  */
+/**
+ * Stan odczytu oceny zatwierdzonego modelu (jedno źródło prawdy dla listy modułów i sekcji
+ * zgodności). `niezlecona` — brak przypadku albo operatora: ocena nie może zostać zlecona;
+ * `wczytywanie` — zapytanie w toku (≠ brak oceny); `blad` — odczyt nieudany (≠ brak oceny);
+ * `wczytana` — ocena jest, moduł bez wyniku jest wtedy rzeczywiście poza oceną modelu.
+ */
+export type StanOcenyModelu = 'niezlecona' | 'wczytywanie' | 'blad' | 'wczytana';
+
+export function stanOcenyModelu(
+  zlecalna: boolean,
+  ocenaJest: boolean,
+  bladOdczytu: boolean,
+): StanOcenyModelu {
+  if (!zlecalna) return 'niezlecona';
+  if (ocenaJest) return 'wczytana';
+  if (bladOdczytu) return 'blad';
+  return 'wczytywanie';
+}
+
 export interface PozycjaModulu {
   readonly derRef: string;
   readonly nazwa: string;

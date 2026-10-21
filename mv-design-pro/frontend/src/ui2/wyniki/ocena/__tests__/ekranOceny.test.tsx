@@ -15,7 +15,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -116,6 +116,19 @@ describe('EkranOceny — realna ścieżka danych', () => {
     odblokuj(odpowiedzOk(FIXTURA_OCENA));
     await waitFor(() => expect(screen.getByTestId('mvd-ocena-podsumowanie')).toBeTruthy());
     expect(screen.queryByTestId('mvd-ocena-ladowanie')).toBeNull();
+  });
+
+  it('zmiana przypadku: w czasie odczytu NIE wisi ocena poprzedniego przypadku — tylko stan odczytu', async () => {
+    fetchMock.mockResolvedValueOnce(odpowiedzOk(FIXTURA_OCENA));
+    render(<EkranOceny />);
+    await waitFor(() => expect(screen.getByTestId('mvd-ocena-podsumowanie')).toBeTruthy());
+    let odblokuj: (odpowiedz: Response) => void = () => undefined;
+    fetchMock.mockReturnValueOnce(new Promise<Response>((resolve) => { odblokuj = resolve; }));
+    act(() => useAppStateStore.setState({ activeCaseId: 'inny-przypadek' }));
+    expect(screen.getByTestId('mvd-ocena-ladowanie')).toHaveTextContent(T.ladowanie);
+    expect(screen.queryByTestId('mvd-ocena-podsumowanie')).toBeNull();
+    odblokuj(odpowiedzOk(FIXTURA_OCENA));
+    await waitFor(() => expect(screen.getByTestId('mvd-ocena-podsumowanie')).toBeTruthy());
   });
 
   it('błąd końcówki → komunikat, bez udawania oceny', async () => {

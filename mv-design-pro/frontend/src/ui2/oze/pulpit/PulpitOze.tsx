@@ -18,7 +18,7 @@
  * liczników. Operator nigdy nie jest zgadywany (`ncrfg/operator.ts`).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
@@ -35,14 +35,26 @@ import type { ZgodnoscPrzypadkuNcRfg } from '../ncrfg/typy';
 import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
 import { KartaModulu } from './KartaModulu';
-import { zbudujPozycje, type PozycjaModulu } from './pulpitModel';
+import {
+  stanOcenyModelu,
+  zbudujPozycje,
+  type PozycjaModulu,
+  type StanOcenyModelu,
+} from './pulpitModel';
 import { PULPIT_STRINGS } from './strings';
 
 import '../macierz/macierz.css';
 import './pulpit.css';
 
 /** Opis pozycji listy: typ modułu z klasyfikacji backendu albo nazwany stan jego braku. */
-function opisKlasyPozycji(pozycja: PozycjaModulu, ocenaWczytana: boolean): string {
+const OPIS_BEZ_WYNIKU: Readonly<Record<StanOcenyModelu, string>> = {
+  niezlecona: PULPIT_STRINGS.listaBezOceny,
+  wczytywanie: PULPIT_STRINGS.listaWczytywanie,
+  blad: PULPIT_STRINGS.listaBladOceny,
+  wczytana: PULPIT_STRINGS.listaPozaOcena,
+};
+
+function opisKlasyPozycji(pozycja: PozycjaModulu, stanOceny: StanOcenyModelu): string {
   if (pozycja.wynik !== null) {
     const modul = pozycja.wynik.klasyfikacja.modul;
     return modul !== null
@@ -50,7 +62,7 @@ function opisKlasyPozycji(pozycja: PozycjaModulu, ocenaWczytana: boolean): strin
       : PULPIT_STRINGS.listaPonizejProgu;
   }
   if (pozycja.pominietyPowodPl !== null) return pozycja.pominietyPowodPl;
-  return ocenaWczytana ? PULPIT_STRINGS.listaPozaOcena : PULPIT_STRINGS.listaBezOceny;
+  return OPIS_BEZ_WYNIKU[stanOceny];
 }
 
 /** Dowód certyfikatu pozycji listy: numer dokumentu z wykazu, odrzucenie tabliczki albo brak. */
@@ -98,6 +110,7 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
   const [zgodnosc, setZgodnosc] = useState<ZgodnoscPrzypadkuNcRfg | null>(null);
   const [ladowanie, setLadowanie] = useState(false);
   const [bladOceny, setBladOceny] = useState<string | null>(null);
+  const numerZapytania = useRef(0);
 
   const [wybranyModul, setWybranyModul] = useState<string>('');
   // Wyróżnienie moduł→węzeł (P47b): klik modułu podświetla wiersze jego węzła
@@ -123,25 +136,35 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
 
   const zaladujOcene = useCallback(async (): Promise<void> => {
     if (!caseId || operatorId === null) return;
+    // Odpowiedź spóźniona (po zmianie przypadku/operatora albo nowszym odświeżeniu) nie
+    // nadpisuje stanu bieżącego zapytania.
+    const numer = ++numerZapytania.current;
     setLadowanie(true);
     setBladOceny(null);
     try {
-      setZgodnosc(await pobierzZgodnoscPrzypadkuNcRfg(caseId, operatorId));
+      const wynik = await pobierzZgodnoscPrzypadkuNcRfg(caseId, operatorId);
+      if (numer === numerZapytania.current) setZgodnosc(wynik);
     } catch (err) {
+      if (numer !== numerZapytania.current) return;
       setZgodnosc(null);
       setBladOceny(err instanceof Error ? err.message : PULPIT_STRINGS.bladOceny);
     } finally {
-      setLadowanie(false);
+      if (numer === numerZapytania.current) setLadowanie(false);
     }
   }, [caseId, operatorId]);
 
   // Zmiana przypadku albo operatora unieważnia poprzednią ocenę i wczytuje ocenę bieżącą.
   useEffect(() => {
     setZgodnosc(null);
+    setBladOceny(null);
     void zaladujOcene();
   }, [zaladujOcene]);
 
-  const ocenaWczytana = zgodnosc !== null;
+  const stanOceny = stanOcenyModelu(
+    Boolean(caseId) && operatorId !== null,
+    zgodnosc !== null,
+    bladOceny !== null,
+  );
   const bieg = zgodnosc?.bieg ?? null;
   const pozycje = useMemo(() => zbudujPozycje(opisy, zgodnosc), [opisy, zgodnosc]);
   const opisWybrany = opisy.find((o) => o.derRef === wybranyModul) ?? opisy[0] ?? null;
@@ -174,6 +197,7 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
             <WyborOperatora
               zModelu={zModelu}
               operatorzy={katalog?.operators ?? null}
+              bladKatalogu={bladKatalogu}
               wybor={operatorWybor}
               onWybor={ustawOperator}
               etykieta={PULPIT_STRINGS.operator}
@@ -265,7 +289,7 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
                   className="mvd-oze-pulpit-poz-klasa"
                   data-testid={`mvd-oze-pulpit-poz-klasa-${poz.derRef}`}
                 >
-                  {opisKlasyPozycji(poz, ocenaWczytana)}
+                  {opisKlasyPozycji(poz, stanOceny)}
                 </span>
                 <DowodPozycji pozycja={poz} />
                 {poz.ocena && poz.ocena.wymagania.length > 0 ? (
@@ -294,7 +318,7 @@ export function PulpitOze({ szczegolyAudytowe, onNawiguj }: PulpitOzeProps): JSX
                 opis={opisWybrany}
                 der={derWybrany}
                 pozycja={pozycjaWybrana}
-                ocenaWczytana={ocenaWczytana}
+                stanOceny={stanOceny}
                 szczegolyAudytowe={szczegolyAudytowe}
                 onNawiguj={onNawiguj}
                 wyroznionyModul={wyroznionyModul}

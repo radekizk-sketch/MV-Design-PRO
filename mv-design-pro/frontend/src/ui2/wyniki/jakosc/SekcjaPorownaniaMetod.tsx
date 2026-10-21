@@ -54,6 +54,9 @@ type StanOdkrycia =
   | { faza: 'brakFd'; nr: WynikBieguMetody }
   | { faza: 'brakNr'; fd: WynikBieguMetody }
   | { faza: 'blad' }
+  /** Para NR/FD niekompletna, a ślad części biegów NIE został odczytany — nie wiadomo,
+   * czy brakująca metoda istnieje (błąd odczytu ≠ brak biegu). */
+  | { faza: 'bladOdczytuSladow'; nieodczytane: number; razem: number }
   | { faza: 'gotowe'; nr: WynikBieguMetody; fd: WynikBieguMetody; porownanie: PowerFlowComparisonResult };
 
 function StanMetod({
@@ -111,6 +114,7 @@ export function SekcjaPorownaniaMetod({ szczegolyAudytowe, onOtworzDowod }: Sekc
       }
       let nr: WynikBieguMetody | null = null;
       let fd: WynikBieguMetody | null = null;
+      let nieodczytane = 0;
       for (const run of kandydaci) {
         if (nr && fd) break;
         try {
@@ -118,8 +122,10 @@ export function SekcjaPorownaniaMetod({ szczegolyAudytowe, onOtworzDowod }: Sekc
           if (!nr && slad.solver_method === 'newton-raphson') nr = { run, slad };
           if (!fd && slad.solver_method === 'fast-decoupled') fd = { run, slad };
         } catch {
-          // Bieg bez dostępnego śladu (np. skasowany w międzyczasie) — pomijamy
-          // kandydata, nie przerywamy odkrycia pozostałych.
+          // Ślad nieodczytany — odkrycie trwa dalej po pozostałych kandydatach,
+          // ale błąd jest LICZONY: bez kompletu pary nie wolno wnioskować „brak
+          // biegu metodą X" z biegu, którego śladu nie przeczytano.
+          nieodczytane += 1;
         }
       }
       if (anulowane) return;
@@ -130,6 +136,10 @@ export function SekcjaPorownaniaMetod({ szczegolyAudytowe, onOtworzDowod }: Sekc
         } catch {
           if (!anulowane) setStan({ faza: 'blad' });
         }
+        return;
+      }
+      if (nieodczytane > 0) {
+        setStan({ faza: 'bladOdczytuSladow', nieodczytane, razem: kandydaci.length });
         return;
       }
       if (nr && !fd) {
@@ -210,6 +220,15 @@ export function SekcjaPorownaniaMetod({ szczegolyAudytowe, onOtworzDowod }: Sekc
           opis={T.metodyBladOpis}
           wariant="blad"
           testid="mvd-jakosc-metody-blad"
+        />
+      )}
+
+      {stan.faza === 'bladOdczytuSladow' && (
+        <StanMetod
+          tytul={T.metodyBladOdczytuSladow(stan.nieodczytane, stan.razem)}
+          opis={T.metodyBladOdczytuSladowOpis}
+          wariant="blad"
+          testid="mvd-jakosc-metody-blad-odczytu"
         />
       )}
 

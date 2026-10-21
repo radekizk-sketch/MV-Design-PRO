@@ -33,7 +33,6 @@ import { ListaRekordowWymagan, NaglowekModuluNcRfg, OpisDokumentuWarstwy } from 
 import { operatorEfektywny, operatorZModelu } from '../ncrfg/operator';
 import type {
   BrakiCertyfikatu,
-  WejsciaPrzypadkuNcRfg,
   WejscieModuluNcRfg,
   WidokCertyfikatu,
   ZadanieCertyfikatu,
@@ -47,6 +46,7 @@ import { SzczegolWerdyktu, nazwaRodzajuTwierdzenia } from './SzczegolWerdyktu';
 import {
   etykietyObecne,
   mapujMacierz,
+  modulGotowy,
   ocenaWymaganModulu,
   wynikModulu,
   zbudujModuly,
@@ -55,8 +55,10 @@ import {
   type BledyFormularza,
   type FormularzModulu,
   type OpisModulu,
+  type StanWejscModelu,
 } from './macierzModel';
 import {
+  ETYKIETY_OCZEKIWANIA,
   MACIERZ_STRINGS,
   formatMoc,
   formatNapiecie,
@@ -90,13 +92,6 @@ export interface MacierzNcRfgProps {
   readonly onPreselekcjaSkonsumowana?: () => void;
 }
 
-/** Stan odczytu wejść modułów z zatwierdzonego modelu przypadku (`GET …/wejscia`). */
-type StanWejscModelu =
-  | { readonly stan: 'brak' }
-  | { readonly stan: 'ladowanie' }
-  | { readonly stan: 'gotowe'; readonly wejscia: WejsciaPrzypadkuNcRfg }
-  | { readonly stan: 'blad'; readonly komunikat: string };
-
 export function MacierzNcRfg({
   szczegolyAudytowe,
   preselekcjaModulu = null,
@@ -129,8 +124,7 @@ export function MacierzNcRfg({
   // Formularz wstępny biegu „co-jeśli" = wejścia modułów złożone z ZATWIERDZONEGO modelu
   // przypadku przez most backendu (jeden odczyt; klient niczego z modelu nie wyprowadza sam).
   const [stanWejsc, setStanWejsc] = useState<StanWejscModelu>({ stan: 'brak' });
-  const wejsciaModelu = stanWejsc.stan === 'gotowe' ? stanWejsc.wejscia : null;
-  const opisyBazowe = useMemo(() => zbudujModuly(ders, wejsciaModelu), [ders, wejsciaModelu]);
+  const opisyBazowe = useMemo(() => zbudujModuly(ders, stanWejsc), [ders, stanWejsc]);
   const nazwyModulow = useMemo(
     () => Object.fromEntries(opisyBazowe.map((opis) => [opis.derRef, opis.nazwa])),
     [opisyBazowe],
@@ -163,7 +157,7 @@ export function MacierzNcRfg({
       return;
     }
     let aktualny = true;
-    setStanWejsc({ stan: 'ladowanie' });
+    setStanWejsc({ stan: 'wczytywanie' });
     pobierzWejsciaPrzypadkuNcRfg(aktywnyPrzypadek, operatorId).then(
       (wejscia) => {
         if (aktualny) setStanWejsc({ stan: 'gotowe', wejscia });
@@ -229,7 +223,7 @@ export function MacierzNcRfg({
       )
     : wiersze;
 
-  const gotoweDoBiegu = opisy.filter((o) => o.powodBlokady === null);
+  const gotoweDoBiegu = opisy.filter(modulGotowy);
   const powodBlokadyBiegu =
     opisy.length === 0
       ? MACIERZ_STRINGS.brakModulow
@@ -237,7 +231,7 @@ export function MacierzNcRfg({
         ? MACIERZ_STRINGS.brakPrzypadkuWejsc
         : operatorId === null
           ? MACIERZ_STRINGS.brakOperatora
-          : stanWejsc.stan === 'ladowanie'
+          : stanWejsc.stan === 'wczytywanie'
             ? MACIERZ_STRINGS.wczytywanieWejsc
             : stanWejsc.stan === 'blad'
               ? MACIERZ_STRINGS.bladWejsc
@@ -362,6 +356,7 @@ export function MacierzNcRfg({
             <WyborOperatora
               zModelu={zModelu}
               operatorzy={katalog?.operators ?? null}
+              bladKatalogu={bladKatalogu}
               wybor={operatorWybor}
               onWybor={ustawOperator}
               etykieta={MACIERZ_STRINGS.operator}
@@ -550,8 +545,26 @@ export function MacierzNcRfg({
               <tbody>
                 {wierszeWidoczne.length === 0 ? (
                   <tr>
-                    <td colSpan={opisy.length + 1} className="mvd-oze-komorka-pusta">
-                      {MACIERZ_STRINGS.brakBieguOpis}
+                    {/* Katalog testów jeszcze nieodczytany (albo odczyt nieudany): pusta
+                        lista definicji to stan ODCZYTU, nie „brak biegu" (odczyt ≠ brak). */}
+                    <td
+                      colSpan={opisy.length + 1}
+                      className="mvd-oze-komorka-pusta"
+                      data-testid="mvd-oze-macierz-pusta"
+                      data-stan={
+                        wynik === null && katalog === null
+                          ? bladKatalogu
+                            ? 'blad_katalogu'
+                            : 'wczytywanie_katalogu'
+                          : 'brak_biegu'
+                      }
+                      aria-busy={wynik === null && katalog === null && !bladKatalogu}
+                    >
+                      {wynik === null && katalog === null
+                        ? bladKatalogu
+                          ? MACIERZ_STRINGS.katalogTestowBlad
+                          : MACIERZ_STRINGS.katalogTestowWczytywanie
+                        : MACIERZ_STRINGS.brakBieguOpis}
                     </td>
                   </tr>
                 ) : (
@@ -601,6 +614,18 @@ export function MacierzNcRfg({
                                 />
                               </button>
                             )
+                          ) : komorka.stan === 'oczekiwanie_wejsc' ? (
+                            <span
+                              className="mvd-oze-komorka-pusta"
+                              data-testid={
+                                komorka.oczekiwanie === 'wczytywanie_wejsc'
+                                  ? 'mvd-oze-komorka-wczytywanie'
+                                  : 'mvd-oze-komorka-blad-odczytu'
+                              }
+                              aria-busy={komorka.oczekiwanie === 'wczytywanie_wejsc'}
+                            >
+                              {ETYKIETY_OCZEKIWANIA[komorka.oczekiwanie]}
+                            </span>
                           ) : komorka.stan === 'brak_danych_modul' ? (
                             <button
                               type="button"

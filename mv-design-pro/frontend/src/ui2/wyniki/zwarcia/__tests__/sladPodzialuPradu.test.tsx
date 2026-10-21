@@ -48,7 +48,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={trace}
-        blad={false}
+        odczyt="gotowe"
         szczegolyAudytowe
       />,
     );
@@ -98,7 +98,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={realnyTrace()}
-        blad={false}
+        odczyt="gotowe"
         szczegolyAudytowe={false}
       />,
     );
@@ -117,7 +117,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
-        blad={false}
+        odczyt="gotowe"
         szczegolyAudytowe={false}
       />,
     );
@@ -133,7 +133,7 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
 
   it('trace === [] (policzono, brak wkładu Thevenina) → stan uczciwy ODRĘBNY od null', () => {
     render(
-      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} blad={false} szczegolyAudytowe={false} />,
+      <SladPodzialuPradu punktNazwa="Szyna ST1" trace={[]} odczyt="gotowe" szczegolyAudytowe={false} />,
     );
     const sekcja = screen.getByTestId('mvd-zwarcia-slad-rozplywu');
     expect(within(sekcja).getByTestId('mvd-zwarcia-slad-rozplywu-pusty')).toBeInTheDocument();
@@ -141,12 +141,12 @@ describe('SladPodzialuPradu — renderowanie kroków (component, karta WB-ROZPLY
     expect(within(sekcja).queryByTestId('mvd-zwarcia-slad-rozplywu-brak')).not.toBeInTheDocument();
   });
 
-  it('(W4d) blad === true → komunikat błędu, NIE cisza i NIE stan „niedostępny" starszego wyniku', () => {
+  it('(W4d) odczyt „blad" → komunikat błędu, NIE cisza i NIE stan „niedostępny" starszego wyniku', () => {
     render(
       <SladPodzialuPradu
         punktNazwa="Szyna GPZ 15 kV"
         trace={null}
-        blad
+        odczyt="blad"
         szczegolyAudytowe={false}
       />,
     );

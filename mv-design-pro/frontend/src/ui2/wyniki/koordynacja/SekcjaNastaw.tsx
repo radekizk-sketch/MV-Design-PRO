@@ -145,6 +145,12 @@ function TabelaDopasowania({ dopasowanie }: { dopasowanie: DopasowanieAparatu })
   );
 }
 
+/** Stan odczytu katalogu aparatów zabezpieczeniowych (sekcja dopasowania). */
+type StanAparatow =
+  | { readonly odczyt: 'wczytywanie' }
+  | { readonly odczyt: 'blad'; readonly komunikat: string }
+  | { readonly odczyt: 'gotowe'; readonly lista: readonly AparatKatalogu[] };
+
 export function SekcjaNastaw({ caseId }: { caseId: string }) {
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
@@ -166,7 +172,8 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
   const [odpowiedz, setOdpowiedz] = useState<OdpowiedzNastaw | null>(null);
   const [bladWyniku, setBladWyniku] = useState<string | null>(null);
 
-  const [aparaty, setAparaty] = useState<readonly AparatKatalogu[]>([]);
+  // Katalog aparatów — stany ODCZYTU rozłączne (odczyt w toku / błąd ≠ pusty katalog).
+  const [aparaty, setAparaty] = useState<StanAparatow>({ odczyt: 'wczytywanie' });
   const [deviceId, setDeviceId] = useState<string>('');
   const [fazaDopasowania, setFazaDopasowania] = useState<FazaDopasowania>('idle');
   const [dopasowanie, setDopasowanie] = useState<DopasowanieAparatu | null>(null);
@@ -227,11 +234,13 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
     const controller = new AbortController();
     fetchAparatyKatalogu({ signal: controller.signal })
       .then((lista) => {
-        if (!controller.signal.aborted) setAparaty(lista);
+        if (!controller.signal.aborted) setAparaty({ odczyt: 'gotowe', lista });
       })
-      .catch(() => {
-        // Lista aparatów jest wzbogaceniem sekcji dopasowania — jej brak nie
-        // wywraca nastaw, sekcja dopasowania po prostu nie ma czego zaoferować.
+      .catch((e: unknown) => {
+        // Lista aparatów jest wzbogaceniem sekcji dopasowania — jej błąd nie
+        // wywraca nastaw, ale jest JAWNY (błąd odczytu ≠ katalog bez aparatów).
+        if (!controller.signal.aborted)
+          setAparaty({ odczyt: 'blad', komunikat: e instanceof Error ? e.message : T.nastawyBlad });
       });
     return () => controller.abort();
   }, []);
@@ -627,20 +636,36 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
               <section className="mvd-koordynacja-dopasowanie" data-testid="mvd-koordynacja-dopasowanie">
                 <h4>{T.nastawyDopasowanieTytul}</h4>
                 <p>{T.nastawyDopasowanieOpis}</p>
-                <label htmlFor="mvd-nastawy-aparat">{T.nastawyWybierzAparat}</label>
-                <select
-                  id="mvd-nastawy-aparat"
-                  data-testid="mvd-koordynacja-dopasowanie-select-aparat"
-                  value={deviceId}
-                  onChange={(e) => void dopasujAparat(e.target.value)}
-                >
-                  <option value="">{T.nastawyWybierzAparatPlaceholder}</option>
-                  {aparaty.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name_pl}
-                    </option>
-                  ))}
-                </select>
+                {aparaty.odczyt === 'wczytywanie' ? (
+                  <p data-testid="mvd-koordynacja-dopasowanie-aparaty-wczytywanie" aria-busy="true">
+                    {T.nastawyAparatyWczytywanie}
+                  </p>
+                ) : aparaty.odczyt === 'blad' ? (
+                  <p data-testid="mvd-koordynacja-dopasowanie-aparaty-blad" data-tone="bad" role="alert">
+                    {T.nastawyAparatyBlad}: {aparaty.komunikat}
+                  </p>
+                ) : aparaty.lista.length === 0 ? (
+                  <p data-testid="mvd-koordynacja-dopasowanie-aparaty-brak" data-tone="idle">
+                    {T.nastawyAparatyBrak}
+                  </p>
+                ) : (
+                  <>
+                    <label htmlFor="mvd-nastawy-aparat">{T.nastawyWybierzAparat}</label>
+                    <select
+                      id="mvd-nastawy-aparat"
+                      data-testid="mvd-koordynacja-dopasowanie-select-aparat"
+                      value={deviceId}
+                      onChange={(e) => void dopasujAparat(e.target.value)}
+                    >
+                      <option value="">{T.nastawyWybierzAparatPlaceholder}</option>
+                      {aparaty.lista.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name_pl}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
 
                 {fazaDopasowania === 'liczenie' ? <p>{T.nastawyLiczenie}</p> : null}
                 {fazaDopasowania === 'blad' ? (

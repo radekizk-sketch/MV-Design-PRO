@@ -173,6 +173,7 @@ function nazwyWierszy(): string[] {
   return screen.getAllByTestId('mvd-wyn-wiersz').map((tr) => tr.querySelector('td')?.textContent ?? '');
 }
 
+let klikPobrania: { mockRestore: () => void } | null = null;
 beforeEach(() => {
   localStorage.clear();
   useSnapshotStore.setState(initialSnapshot, true);
@@ -184,10 +185,14 @@ beforeEach(() => {
   // jsdom nie ma URL.createObjectURL — pobranie pliku zapisuje go przez kotwicę.
   URL.createObjectURL = vi.fn(() => 'blob:x');
   URL.revokeObjectURL = vi.fn();
+  // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+  // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+  klikPobrania = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  klikPobrania?.mockRestore();
 });
 
 describe('Zakładka Wyniki — brak biegu', () => {

@@ -540,10 +540,45 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
+  it('blad pobrania -> stan BLEDU odczytu, nie "dane niedostepne" (blad != brak danych)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
-    expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
+    const sekcja = screen.getByTestId('mvd-zwarcia-wklady');
+    expect(await within(sekcja).findByTestId('mvd-zwarcia-wklady-blad')).toBeInTheDocument();
+    expect(within(sekcja).getByText(ZWARCIA_STRINGS.wkladyBlad)).toBeInTheDocument();
+    expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
+    expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-wczytywanie')).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('odczyt w toku -> stan WCZYTYWANIA, nie "dane niedostepne"; po odpowiedzi tabela', async () => {
+    let zwolnij: (odp: unknown) => void = () => undefined;
+    const wstrzymane = new Promise((r) => {
+      zwolnij = r;
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: RequestInfo | URL) =>
+        String(url).includes('/api/proof/sc3f/contributions')
+          ? wstrzymane
+          : Promise.resolve({ ok: false, status: 404 }),
+      ),
+    );
+    await renderEkranZwarc(<EkranZwarc szczegolyAudytowe={false} onOtworzDowod={() => undefined} />);
+    const sekcja = screen.getByTestId('mvd-zwarcia-wklady');
+    const wczytywanie = within(sekcja).getByTestId('mvd-zwarcia-wklady-wczytywanie');
+    expect(wczytywanie).toHaveAttribute('aria-busy', 'true');
+    expect(wczytywanie).toHaveTextContent(ZWARCIA_STRINGS.wkladyWczytywanie);
+    expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
+    expect(within(sekcja).queryByText(ZWARCIA_STRINGS.wkladyNiedostepne)).not.toBeInTheDocument();
+    zwolnij({
+      ok: true,
+      json: async () => ({
+        contributions: [{ source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 }],
+      }),
+    });
+    expect(await within(sekcja).findByTestId('mvd-wyn-tabela')).toBeInTheDocument();
+    expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-wczytywanie')).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 

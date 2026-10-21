@@ -88,6 +88,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
   const ders = useStationDerStore((state) => selectAllDers(state));
   const zModelu = useMemo(() => operatorZModelu(ders), [ders]);
   const katalog = useNcRfgStore((s) => s.katalog);
+  const bladKatalogu = useNcRfgStore((s) => s.bladKatalogu);
   const operatorWybor = useNcRfgStore((s) => s.operatorWybor);
   const ustawOperator = useNcRfgStore((s) => s.ustawOperator);
   const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
@@ -356,6 +357,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
           <WyborOperatora
             zModelu={zModelu}
             operatorzy={katalog?.operators ?? null}
+            bladKatalogu={bladKatalogu}
             wybor={operatorWybor}
             onWybor={(wybor) => {
               ustawOperator(wybor);

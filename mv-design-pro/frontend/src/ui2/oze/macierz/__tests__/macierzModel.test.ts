@@ -13,6 +13,7 @@ import {
   POLA_ZDOLNOSCI_TROJSTANOWYCH,
   etykietyObecne,
   mapujMacierz,
+  modulGotowy,
   ocenaWymaganModulu,
   rozwiazNapiecieKv,
   wynikModulu,
@@ -47,7 +48,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
   const wejscia = wejsciaFixture();
 
   it('moduły sceny: kolejność modelu, moc i napięcie z modelu, formularz złożony z powrotem = wejście mostu 1:1', () => {
-    const moduly = zbudujModuly(deryScenyMacierz(), wejscia);
+    const moduly = zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejscia });
     expect(moduly.map((m) => [m.derRef, m.powodBlokady])).toEqual(
       zadanieBieguFixture().modules.map((m) => [m.der_ref, null]),
     );
@@ -60,7 +61,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
   });
 
   it('pola liczone przez most z danych generatora (statyzm, martwa strefa, zakres Q, Q(U), FRT) — wypełnione „z modelu"', () => {
-    const pv = zbudujModuly(deryScenyMacierz(), wejscia).find((m) => m.rodzaj === 'PV')!;
+    const pv = zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejscia }).find((m) => m.rodzaj === 'PV')!;
     const f = pv.formularz;
     expect([f.liczby.droop_percent, f.pochodzenieLiczb.droop_percent]).toEqual(['5', 'model']);
     expect([f.liczby.dead_band_hz, f.pochodzenieLiczb.dead_band_hz]).toEqual(['0.2', 'model']);
@@ -75,7 +76,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
   });
 
   it('pochodzenie każdego pola formularza = członkostwo w `pola_z_modelu` (iloczyn: moduł × pole)', () => {
-    for (const opis of zbudujModuly(deryScenyMacierz(), wejscia)) {
+    for (const opis of zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejscia })) {
       const zModelu = new Set(wejscia.pola_z_modelu[opis.derRef]);
       const f = opis.formularz;
       for (const pole of POLA_ZDOLNOSCI) {
@@ -97,7 +98,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
       const wartosc = 0.5;
       const [zDana] = zbudujModuly(
         [derFixture({ id: 'x' })],
-        wejsciaZ({ moduly: [{ derRef: 'x', pola: { [pole]: wartosc }, zModelu: ['der_ref', pole] }] }),
+        { stan: 'gotowe', wejscia: wejsciaZ({ moduly: [{ derRef: 'x', pola: { [pole]: wartosc }, zModelu: ['der_ref', pole] }] }) },
       );
       expect([zDana.formularz.liczby[pole], zDana.formularz.pochodzenieLiczb[pole]]).toEqual(['0.5', 'model']);
       // Formularz bez edycji składa się z powrotem w wejście mostu — wartość modelu 1:1.
@@ -106,7 +107,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
 
       const [bezDanej] = zbudujModuly(
         [derFixture({ id: 'x' })],
-        wejsciaZ({ moduly: [{ derRef: 'x', pola: { [pole]: null }, zModelu: ['der_ref'] }] }),
+        { stan: 'gotowe', wejscia: wejsciaZ({ moduly: [{ derRef: 'x', pola: { [pole]: null }, zModelu: ['der_ref'] }] }) },
       );
       expect([bezDanej.formularz.liczby[pole], bezDanej.formularz.pochodzenieLiczb[pole]]).toEqual([
         '',
@@ -116,7 +117,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
   );
 
   it('flagi trójstanowe z modelu: scena niesie tak × nie × niezadeklarowane; niezadeklarowane NIGDY `false`', () => {
-    const moduly = zbudujModuly(deryScenyMacierz(), wejscia);
+    const moduly = zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejscia });
     const stany = new Set<boolean | null>();
     for (const opis of moduly) {
       for (const pole of POLA_ZDOLNOSCI_TROJSTANOWYCH) {
@@ -131,7 +132,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
   it('data umowy, art. 4, nastawy i wymaganie programu z wejścia modelu (rekord syntetyczny)', () => {
     const [opis] = zbudujModuly(
       [derFixture({ id: 'x' })],
-      wejsciaZ({
+      { stan: 'gotowe', wejscia: wejsciaZ({
         moduly: [
           {
             derRef: 'x',
@@ -145,7 +146,7 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
             zModelu: ['der_ref', 'modul_istniejacy', 'data_umowy_przylaczeniowej', 'black_start_required'],
           },
         ],
-      }),
+      }) },
     );
     expect(opis.formularz.dataUmowy).toBe('2019-04-27');
     expect(opis.formularz.pochodzenieDatyUmowy).toBe('model');
@@ -166,12 +167,12 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
   });
 
   it.each([
-    ['wejścia niewczytane', null, 'brak_wejscia_modelu'],
+    ['odczyt wejść niezlecony (brak przypadku albo operatora)', null, 'brak_wejscia_modelu'],
     ['DER pominięty przez most — brak napięcia', wejsciaZ({ pominiete: [{ derRef: 'x', powod: 'brak_napiecia' }] }), 'brak_napiecia'],
     ['DER pominięty przez most — brak mocy', wejsciaZ({ pominiete: [{ derRef: 'x', powod: 'brak_mocy' }] }), 'brak_mocy'],
     ['DER spoza wejść modelu', wejsciaZ({ moduly: [{ derRef: 'inny' }] }), 'brak_wejscia_modelu'],
   ] as const)('%s → jawna blokada %s, formularz bez wejścia (nic z modelu)', (_opis, zrodlo, powod) => {
-    const [opis] = zbudujModuly([derFixture({ id: 'x' })], zrodlo);
+    const [opis] = zbudujModuly([derFixture({ id: 'x' })], zrodlo === null ? { stan: 'brak' } : { stan: 'gotowe', wejscia: zrodlo });
     expect(opis.powodBlokady).toBe(powod);
     expect(opis.wejscieModelu).toBeNull();
     for (const pole of POLA_ZDOLNOSCI) {
@@ -187,10 +188,68 @@ describe('zbudujModuly — kolumny z modelu, formularz wstępny z wejść mostu 
   it('blokada wyłącznie z mostu: DER bez napięcia w migawce, ale objęty wejściem modelu — nie jest blokowany przez klienta', () => {
     const [opis] = zbudujModuly(
       [derFixture({ id: 'x', connection_voltage_kv: null })],
-      wejsciaZ({ moduly: [{ derRef: 'x' }] }),
+      { stan: 'gotowe', wejscia: wejsciaZ({ moduly: [{ derRef: 'x' }] }) },
     );
     expect(opis.napiecieKv).toBeNull();
     expect(opis.powodBlokady).toBeNull();
+  });
+});
+
+/**
+ * Iloczyn cech: stan odczytu wejść {brak, wczytywanie, blad, gotowe} × pozycja modułu w moście
+ * {objęty, pominięty, spoza} × dwa moduły o różnych pozycjach jednocześnie. Wyrocznia niezależna
+ * od implementacji: odczyt w toku / nieudany → oczekiwanie bez blokady i bez wejścia (≠ brak
+ * danych); odczyt niezlecony → brak wejścia modelu; gotowe → pozycja z mostu.
+ */
+describe('zbudujModuly × stan odczytu wejść × pozycja w moście — oczekiwanie ≠ brak', () => {
+  type Pozycja = 'objety' | 'pominiety' | 'spoza';
+  const POZYCJE: readonly Pozycja[] = ['objety', 'pominiety', 'spoza'];
+  const STANY = ['brak', 'wczytywanie', 'blad', 'gotowe'] as const;
+  const wejsciaDla = (a: Pozycja, b: Pozycja) => {
+    const moduly = (['a', 'b'] as const)
+      .filter((id, i) => [a, b][i] === 'objety')
+      .map((derRef) => ({ derRef }));
+    const pominiete = (['a', 'b'] as const)
+      .filter((id, i) => [a, b][i] === 'pominiety')
+      .map((derRef) => ({ derRef, powod: 'brak_mocy' as const }));
+    return wejsciaZ({ moduly, pominiete });
+  };
+  const przypadki = STANY.flatMap((stan) =>
+    POZYCJE.flatMap((a) => POZYCJE.map((b) => ({ stan, a, b }))),
+  );
+
+  it.each(przypadki)('odczyt $stan × moduł A $a × moduł B $b', ({ stan, a, b }) => {
+    const odczyt =
+      stan === 'gotowe'
+        ? { stan, wejscia: wejsciaDla(a, b) }
+        : stan === 'blad'
+          ? { stan, komunikat: 'awaria' }
+          : { stan };
+    const opisy = zbudujModuly([derFixture({ id: 'a' }), derFixture({ id: 'b' })], odczyt);
+    expect(opisy.map((o) => o.derRef)).toEqual(['a', 'b']);
+    opisy.forEach((opis, i) => {
+      const pozycja = [a, b][i];
+      const oczekiwanie =
+        stan === 'wczytywanie' ? 'wczytywanie_wejsc' : stan === 'blad' ? 'blad_odczytu_wejsc' : null;
+      const powod =
+        stan === 'wczytywanie' || stan === 'blad'
+          ? null
+          : stan === 'brak'
+            ? 'brak_wejscia_modelu'
+            : pozycja === 'objety'
+              ? null
+              : pozycja === 'pominiety'
+                ? 'brak_mocy'
+                : 'brak_wejscia_modelu';
+      expect(opis.oczekiwanie).toBe(oczekiwanie);
+      expect(opis.powodBlokady).toBe(powod);
+      expect(opis.wejscieModelu === null).toBe(!(stan === 'gotowe' && pozycja === 'objety'));
+      expect(modulGotowy(opis)).toBe(stan === 'gotowe' && pozycja === 'objety');
+      const wejscie = zbudujWejscieModulu(opis, 'enea');
+      if (oczekiwanie !== null) expect(wejscie).toEqual({ stan: 'oczekiwanie', oczekiwanie });
+      else if (powod !== null) expect(wejscie).toEqual({ stan: 'zablokowany', powod });
+      else expect(wejscie.stan).not.toBe('zablokowany');
+    });
   });
 });
 
@@ -199,7 +258,7 @@ function zFormularzem(opis: OpisModulu, zmiany: Partial<OpisModulu['formularz']>
 }
 
 describe('zbudujWejscieModulu — dokładnie pola kontraktu', () => {
-  const [bess, pv] = zbudujModuly(deryScenyMacierz(), wejsciaFixture());
+  const [bess, pv] = zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejsciaFixture() });
 
   it('formularz wstępny → wejście = ciało fixtury (pola puste = null, operator z argumentu)', () => {
     expect([bess, pv].map((o) => zbudujWejscieModulu(o, 'enea'))).toEqual(
@@ -259,8 +318,8 @@ describe('mapujMacierz — komórka = rekord oceny testu', () => {
   const katalog = katalogFixture();
   const bieg = biegFixture();
   const moduly = [
-    ...zbudujModuly(deryScenyMacierz(), wejsciaFixture()),
-    ...zbudujModuly([derFixture({ id: 'fw-bez-napiecia', der_kind: 'FW', connection_voltage_kv: null })], null),
+    ...zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejsciaFixture() }),
+    ...zbudujModuly([derFixture({ id: 'fw-bez-napiecia', der_kind: 'FW', connection_voltage_kv: null })], { stan: 'brak' }),
   ];
 
   it('przed biegiem: wiersze = katalog testów, komórki „brak biegu" / „brak danych modułu"', () => {

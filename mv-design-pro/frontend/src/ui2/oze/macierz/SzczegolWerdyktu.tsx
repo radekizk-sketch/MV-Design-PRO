@@ -17,7 +17,7 @@ import type { ClaimKind } from '../../wyniki/wzorzec/werdykt';
 import type { DefinicjaTestuNcRfg, KrokSladuNcRfg } from '../ncrfg/typy';
 import type { KomorkaMacierzy } from './macierzModel';
 import { SladTestu } from './SladTestu';
-import { ETYKIETY_BLOKADY, MACIERZ_STRINGS, opiszMetryke } from './strings';
+import { ETYKIETY_BLOKADY, MACIERZ_STRINGS, OPISY_OCZEKIWANIA, opiszMetryke } from './strings';
 
 /** Rodzaj twierdzenia testu — opis słowny (lustro `proweniencja.ClaimKind.label_pl`). */
 export function nazwaRodzajuTwierdzenia(rodzaj: ClaimKind): string {
@@ -65,6 +65,10 @@ export function SzczegolWerdyktu({
       {!komorka ? (
         <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-szczegol-pusty">
           {MACIERZ_STRINGS.szczegolWybierz}
+        </p>
+      ) : komorka.stan === 'oczekiwanie_wejsc' ? (
+        <p className="mvd-oze-panel-etyk" data-testid="mvd-oze-szczegol-oczekiwanie">
+          {OPISY_OCZEKIWANIA[komorka.oczekiwanie]}
         </p>
       ) : komorka.stan === 'brak_danych_modul' ? (
         <div className="mvd-oze-blokada" data-testid="mvd-oze-szczegol-blokada">

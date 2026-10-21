@@ -14,6 +14,9 @@ import {
   naWierszeGalezi,
   naWierszeSzyn,
   naZalozeniaRozplywu,
+  pozycjaObciazenia,
+  type PozycjaObciazenia,
+  type StanObciazen,
 } from '../adapters/rozplywAdapter';
 import { fmtPU, fmtTolerancja, napiecePozaZakresem, ROZPLYW_STRINGS } from '../strings';
 import {
@@ -23,6 +26,13 @@ import {
   powerFlowResultFixture,
   walidacjaItemFixture,
 } from './fixtures';
+
+/** Stany odczytu walidacji obciążalności (R3-A) — jawne, bez domyślnego parametru. */
+const NIEZLECONY: StanObciazen = { odczyt: 'niezlecony' };
+const gotowe = (mapa: ReadonlyMap<string, PozycjaObciazenia>): StanObciazen => ({ odczyt: 'gotowe', mapa });
+/** Komórka z JEDNEJ pozycji w stanie `gotowe` (pozycja pod kluczem gałęzi `X`). */
+const komorka = (poz: PozycjaObciazenia | undefined) =>
+  komorkaObciazenia(gotowe(poz ? new Map([['X', poz]]) : new Map()), 'X');
 
 /** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
 const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
@@ -166,7 +176,7 @@ describe('KOLUMNY_SZYN — deklaratywne kolumny z jednostkami (jednostki zawsze)
 
 describe('naWierszeGalezi — projekcja PowerFlowBranchResult → wiersze wzorca (karta E8.3, fixture 1:1)', () => {
   it('mapuje wszystkie pola wiersza gałęzi z formatem PL (przecinek dziesiętny)', () => {
-    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA);
+    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA, NIEZLECONY);
     expect(w[KLUCZ_GALAZ]).toEqual({ wartosc: 'nazwa L-1' });
     expect(w[KLUCZ_ID_GALEZI]).toEqual({ wartosc: 'L-1' });
     expect(w.pPoczatek).toEqual({ wartosc: '10,500', sortKey: 10.5, dowodRef: 'L-1' });
@@ -176,13 +186,13 @@ describe('naWierszeGalezi — projekcja PowerFlowBranchResult → wiersze wzorca
   });
 
   it('straty prezentowane w kW/kvar (skalowanie MW/Mvar ×1000, nie fizyka)', () => {
-    const [w] = naWierszeGalezi([branchResultFixture({ losses_p_mw: 0.1, losses_q_mvar: 0.1 })], NAZWA);
+    const [w] = naWierszeGalezi([branchResultFixture({ losses_p_mw: 0.1, losses_q_mvar: 0.1 })], NAZWA, NIEZLECONY);
     expect(w.stratyP).toEqual({ wartosc: '100,00', sortKey: 100, dowodRef: 'L-1' });
     expect(w.stratyQ).toEqual({ wartosc: '100,00', sortKey: 100, dowodRef: 'L-1' });
   });
 
   it('K3/C1: każda wielkość wynikowa gałęzi niesie dowodRef = branch_id (2× klik → dowód WHITE BOX)', () => {
-    const [w] = naWierszeGalezi([branchResultFixture({ branch_id: 'CBL-SN-09' })], NAZWA);
+    const [w] = naWierszeGalezi([branchResultFixture({ branch_id: 'CBL-SN-09' })], NAZWA, NIEZLECONY);
     const liczbowe = ['pPoczatek', 'qPoczatek', 'pKoniec', 'qKoniec', 'stratyP', 'stratyQ'] as const;
     for (const klucz of liczbowe) {
       expect(w[klucz].dowodRef).toBe('CBL-SN-09');
@@ -191,23 +201,23 @@ describe('naWierszeGalezi — projekcja PowerFlowBranchResult → wiersze wzorca
   });
 
   it('karta #145: gałąź nazwana mostem nazw, branch_id zostaje kluczem wiersza (nie tekstem)', () => {
-    const [w] = naWierszeGalezi([branchResultFixture({ branch_id: 'CBL-SN-04' })], NAZWA);
+    const [w] = naWierszeGalezi([branchResultFixture({ branch_id: 'CBL-SN-04' })], NAZWA, NIEZLECONY);
     expect(w[KLUCZ_GALAZ].wartosc).toBe('nazwa CBL-SN-04');
     expect(w[KLUCZ_ID_GALEZI].wartosc).toBe('CBL-SN-04');
   });
 
   it('zachowuje kolejność gałęzi ze źródła (bez własnego sortowania)', () => {
-    const wiersze = naWierszeGalezi(powerFlowResultFixture().branch_results, NAZWA);
+    const wiersze = naWierszeGalezi(powerFlowResultFixture().branch_results, NAZWA, NIEZLECONY);
     expect(wiersze.map((w) => w[KLUCZ_ID_GALEZI].wartosc)).toEqual(['L-1', 'L-2']);
   });
 
   it('jest deterministyczne: to samo wejście → identyczne wyjście', () => {
     const wejscie = powerFlowResultFixture().branch_results;
-    expect(naWierszeGalezi(wejscie, NAZWA)).toEqual(naWierszeGalezi(wejscie, NAZWA));
+    expect(naWierszeGalezi(wejscie, NAZWA, NIEZLECONY)).toEqual(naWierszeGalezi(wejscie, NAZWA, NIEZLECONY));
   });
 
   it('pusta lista gałęzi → pusta lista wierszy (uczciwy stan pusty)', () => {
-    expect(naWierszeGalezi([], NAZWA)).toEqual([]);
+    expect(naWierszeGalezi([], NAZWA, NIEZLECONY)).toEqual([]);
   });
 });
 
@@ -246,67 +256,67 @@ describe('naMapeObciazen — pozycje walidacji → mapa branch_id → obciążal
 
 describe('komorkaObciazenia — pozycja walidacji → komórka „Obciążenie [%]" (R3-A)', () => {
   it('brak pozycji dla gałęzi → kreska bez werdyktu i bez sortKey (uczciwie)', () => {
-    expect(komorkaObciazenia(undefined)).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
+    expect(komorka(undefined)).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
   });
 
   it('PASS → wartość PL (przecinek, 1 miejsce) + sortKey liczbowy, bez ostrzeżenia', () => {
     expect(
-      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: 65.0, status: 'PASS' }),
+      komorka({ checkType: 'BRANCH_LOADING', observedValue: 65.0, status: 'PASS' }),
     ).toEqual({ wartosc: '65,0', sortKey: 65.0 });
   });
 
   it('WARNING i FAIL → tag ostrzeżenia WYŁĄCZNIE z werdyktu backendu', () => {
     expect(
-      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: 92.0, status: 'WARNING' }),
+      komorka({ checkType: 'BRANCH_LOADING', observedValue: 92.0, status: 'WARNING' }),
     ).toEqual({ wartosc: '92,0', sortKey: 92.0, ostrzezenie: true });
     expect(
-      komorkaObciazenia({ checkType: 'TRANSFORMER_LOADING', observedValue: 104.0, status: 'FAIL' }),
+      komorka({ checkType: 'TRANSFORMER_LOADING', observedValue: 104.0, status: 'FAIL' }),
     ).toEqual({ wartosc: '104,0', sortKey: 104.0, ostrzezenie: true });
   });
 
   it('pozycja bez wartości (NOT_COMPUTED) → kreska bez werdyktu', () => {
     expect(
-      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: null, status: 'NOT_COMPUTED' }),
+      komorka({ checkType: 'BRANCH_LOADING', observedValue: null, status: 'NOT_COMPUTED' }),
     ).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
   });
 
   it('pozycja bez wartości z werdyktem FAIL → kreska Z werdyktem (werdykt backendu zachowany)', () => {
     expect(
-      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: null, status: 'FAIL' }),
+      komorka({ checkType: 'BRANCH_LOADING', observedValue: null, status: 'FAIL' }),
     ).toEqual({ wartosc: ROZPLYW_STRINGS.kreska, ostrzezenie: true });
   });
 });
 
 describe('naWierszeGalezi + obciążenia — kolumna werdyktu obciążalności (R3-A)', () => {
   it('bez mapy walidacji: komórka obciążenia = kreska (tabela działa jak dotąd)', () => {
-    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA);
+    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA, NIEZLECONY);
     expect(w[KLUCZ_OBCIAZENIE]).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
-    const [w2] = naWierszeGalezi([branchResultFixture()], NAZWA, null);
+    const [w2] = naWierszeGalezi([branchResultFixture()], NAZWA, NIEZLECONY);
     expect(w2[KLUCZ_OBCIAZENIE]).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
   });
 
   it('z mapą walidacji: wartość PL, sortKey liczbowy i werdykt z backendu', () => {
     const mapa = naMapeObciazen([walidacjaItemFixture()]);
-    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA, mapa);
+    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA, gotowe(mapa));
     expect(w[KLUCZ_OBCIAZENIE]).toEqual({ wartosc: '92,0', sortKey: 92.0, ostrzezenie: true });
   });
 
   it('gałąź bez pozycji walidacji w mapie → kreska bez werdyktu', () => {
     const mapa = naMapeObciazen([walidacjaItemFixture()]); // tylko L-1
-    const wiersze = naWierszeGalezi(powerFlowResultFixture().branch_results, NAZWA, mapa);
+    const wiersze = naWierszeGalezi(powerFlowResultFixture().branch_results, NAZWA, gotowe(mapa));
     expect(wiersze[1][KLUCZ_OBCIAZENIE]).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
   });
 
   it('komórka obciążenia NIE niesie dowodRef (wartość buildera walidacji, nie śladu solvera — K3/R2-A)', () => {
     const mapa = naMapeObciazen([walidacjaItemFixture()]);
-    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA, mapa);
+    const [w] = naWierszeGalezi([branchResultFixture()], NAZWA, gotowe(mapa));
     expect(w[KLUCZ_OBCIAZENIE].dowodRef).toBeUndefined();
   });
 
   it('jest deterministyczne z mapą: to samo wejście → identyczne wyjście', () => {
     const wejscie = powerFlowResultFixture().branch_results;
     const mapa = naMapeObciazen([walidacjaItemFixture(), walidacjaItemFixture({ target_id: 'L-2', status: 'PASS', observed_value: 65.0 })]);
-    expect(naWierszeGalezi(wejscie, NAZWA, mapa)).toEqual(naWierszeGalezi(wejscie, NAZWA, mapa));
+    expect(naWierszeGalezi(wejscie, NAZWA, gotowe(mapa))).toEqual(naWierszeGalezi(wejscie, NAZWA, gotowe(mapa)));
   });
 });
 
@@ -346,5 +356,28 @@ describe('KOLUMNY_GALEZI — deklaratywne kolumny z jednostkami (jednostki zawsz
     const stratyQ = KOLUMNY_GALEZI.find((k) => k.klucz === 'stratyQ');
     expect(stratyP?.jednostka).toBe(ROZPLYW_STRINGS.jednKW);
     expect(stratyQ?.jednostka).toBe(ROZPLYW_STRINGS.jednKvar);
+  });
+});
+
+describe('komorkaObciazenia — iloczyn {stan odczytu} × {pozycja w mapie} (odczyt ≠ brak pozycji)', () => {
+  const POZ: PozycjaObciazenia = { checkType: 'BRANCH_LOADING', observedValue: 92.0, status: 'WARNING' };
+  const PRZYPADKI: readonly { stan: StanObciazen; maPozycje: boolean; oczekiwana: unknown }[] = [
+    { stan: NIEZLECONY, maPozycje: false, oczekiwana: { wartosc: ROZPLYW_STRINGS.kreska } },
+    { stan: { odczyt: 'wczytywanie' }, maPozycje: false, oczekiwana: { wartosc: ROZPLYW_STRINGS.obciazenieWczytywanie } },
+    { stan: { odczyt: 'blad' }, maPozycje: false, oczekiwana: { wartosc: ROZPLYW_STRINGS.obciazenieBladOdczytu } },
+    { stan: gotowe(new Map()), maPozycje: false, oczekiwana: { wartosc: ROZPLYW_STRINGS.kreska } },
+    { stan: gotowe(new Map([['X', POZ]])), maPozycje: true, oczekiwana: { wartosc: '92,0', sortKey: 92.0, ostrzezenie: true } },
+  ];
+  it.each(PRZYPADKI)('odczyt $stan.odczyt × pozycja $maPozycje', ({ stan, oczekiwana }) => {
+    expect(komorkaObciazenia(stan, 'X')).toEqual(oczekiwana);
+  });
+
+  it('odczyt w toku i błąd odczytu NIGDY nie dają kreski braku pozycji ani werdyktu', () => {
+    for (const stan of [{ odczyt: 'wczytywanie' }, { odczyt: 'blad' }] as const) {
+      const k = komorkaObciazenia(stan, 'X');
+      expect(k.wartosc).not.toBe(ROZPLYW_STRINGS.kreska);
+      expect(k.ostrzezenie).toBeUndefined();
+      expect(pozycjaObciazenia(stan, 'X')).toBeUndefined();
+    }
   });
 });

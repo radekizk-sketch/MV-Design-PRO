@@ -726,8 +726,8 @@ python scripts/smoke_local.sh                     # Local smoke test
   aktualizuj tę listę, inaczej wróci fikcja):
   - `sld/v2/geometry/__tests__/layoutEngine.substrate.test.ts`
   - `sld/v2/geometry/__tests__/portAnchoredGeometry.substrate.test.ts`
-  - `sld/v2/__tests__/{ViewportController,LodPolicy,renderers}.test.ts(x)` (StationInternalView.test.tsx
-    usunięty w `08ccf7c9`; martwy krok workflowa zdjęty 2026-09-02 — M0-1, pilnuje `verification_phantom_paths_guard`)
+  - `sld/v2/__tests__/{ViewportController,LodPolicy}.test.ts` (StationInternalView.test.tsx
+    usunięty w `08ccf7c9`, renderers.test.tsx razem z martwymi rendererami v2 2026-10-21; martwy krok workflowa zdjęty 2026-09-02 — M0-1, pilnuje `verification_phantom_paths_guard`)
   - `sld/v2/command/__tests__/SldCommandService.test.ts` · `sld/v2/core/__tests__/ports.test.ts`
   - `sld/v3/scene/__tests__/{lodContinuity,buildScene.sheetRows,buildScene.gpzCollapsed,busbarLabelClearance}.test.ts`
   - `sld/v3/canvas/__tests__/{minSymbolSize,kadrTresci,toolbarLayout,tozsamoscEtykiet}.contract.test.ts(x)`
@@ -785,8 +785,8 @@ The system is fully functional with:
 - Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
 - 10 792 backend test functions (`grep -rn "def test_" backend/tests --include=*.py`, 2026-09-30,
   partia integracji 5 z DETERMINIZM-KATA-FAZORA); 12 716 frontend tests in 879 files (full
-  vitest run, 2026-09-30, łańcuch partii 5); 102 guard scripts + 58 guard self-test files
-  (`ls scripts/*_guard.py scripts/*_guards.py`, `ls scripts/test_*guard*.py`) — full backend regression
+  vitest run, 2026-09-30, łańcuch partii 5); 168 guard scripts + 66 guard self-test files
+  (`ls scripts/*_guard.py scripts/*_guards.py`, `ls scripts/test_*guard*.py`, pomiar 2026-10-21) — full backend regression
   `-m "not pandapower and not andes"`: **26 608 passed** (2026-09-29, łańcuch partii 5 na `e233886a`;
   `backend/src` identyczny z `3840e239`; rdzeń dynamiki po poprawce determinizmu — testy celowane w wierszu
   partii 5 rejestru planu A/B §7)

@@ -170,6 +170,50 @@ describe('SekcjaPorownaniaMetod — walidacja krzyżowa NR↔FD', () => {
     expect(mockedTrace).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { opis: 'NR odczytany, drugi bieg nieodczytany', sciezki: ['nr', 'blad'] as const, nieodczytane: 1 },
+    { opis: 'FD odczytany, drugi bieg nieodczytany', sciezki: ['fd', 'blad'] as const, nieodczytane: 1 },
+    { opis: 'żaden ślad nieodczytany', sciezki: ['blad', 'blad'] as const, nieodczytane: 2 },
+  ])('$opis → błąd ODCZYTU śladów, NIE „brak biegu NR/FD" ani „brak rozpływu"', async ({ sciezki, nieodczytane }) => {
+    useExecutionRunsStore.setState({
+      runs: [bieg('r-1', '2026-09-10T10:00:00Z'), bieg('r-2', '2026-09-10T11:00:00Z')],
+    } as never);
+    // Kandydaci od najnowszego: r-2, potem r-1 — kolejność wywołań = kolejność `sciezki`.
+    for (const sciezka of sciezki) {
+      if (sciezka === 'blad') mockedTrace.mockRejectedValueOnce(new Error('HTTP 500'));
+      else mockedTrace.mockResolvedValueOnce(slad(sciezka === 'nr' ? 'newton-raphson' : 'fast-decoupled'));
+    }
+
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
+
+    const stan = await screen.findByTestId('mvd-jakosc-metody-blad-odczytu');
+    expect(stan).toHaveTextContent(`${nieodczytane} z 2`);
+    for (const inny of ['mvd-jakosc-metody-brak', 'mvd-jakosc-metody-brak-fd', 'mvd-jakosc-metody-brak-nr']) {
+      expect(screen.queryByTestId(inny)).not.toBeInTheDocument();
+    }
+    expect(mockedComparison).not.toHaveBeenCalled();
+  });
+
+  it('ślad jednego biegu nieodczytany, ale para NR+FD skompletowana z pozostałych → porównanie (błąd nie blokuje dowodu)', async () => {
+    useExecutionRunsStore.setState({
+      runs: [
+        bieg('nr-1', '2026-09-10T09:00:00Z'),
+        bieg('fd-1', '2026-09-10T10:00:00Z'),
+        bieg('zly-1', '2026-09-10T11:00:00Z'),
+      ],
+    } as never);
+    mockedTrace
+      .mockRejectedValueOnce(new Error('HTTP 500'))
+      .mockResolvedValueOnce(slad('fast-decoupled'))
+      .mockResolvedValueOnce(slad('newton-raphson'));
+    mockedComparison.mockResolvedValue(porownanie());
+
+    render(<SekcjaPorownaniaMetod szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
+
+    await waitFor(() => expect(T('mvd-jakosc-metody-podsumowanie')).toBeInTheDocument());
+    expect(screen.queryByTestId('mvd-jakosc-metody-blad-odczytu')).not.toBeInTheDocument();
+  });
+
   it('tylko bieg NR: stan „brak FD", akcja Uruchom FD wysyła solver_method fast-decoupled', async () => {
     useExecutionRunsStore.setState({
       runs: [bieg('nr-1', '2026-09-10T10:00:00Z')],

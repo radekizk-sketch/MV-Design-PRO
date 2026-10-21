@@ -33,6 +33,10 @@ export const OBSZAR_STRINGS = {
   paramNakladka: 'Nakładka krzywej producenta',
   paramNakladkaOpis: 'Opcjonalnie: typ falownika z katalogu — jego krzywa zdolności P–Q.',
   paramNakladkaBrak: '— bez nakładki —',
+  paramNakladkaWczytywanie: 'Trwa odczyt katalogu konwerterów — lista typów z krzywą P–Q w drodze.',
+  paramNakladkaBlad:
+    'Odczyt katalogu konwerterów nie powiódł się — dostępność krzywych producenta jest nieznana ' +
+    '(to nie jest brak typów); obszar P–Q policzysz bez nakładki.',
   przyciskOblicz: 'Wyznacz obszar P–Q',
   przyciskPrzelicz: 'Przelicz',
 

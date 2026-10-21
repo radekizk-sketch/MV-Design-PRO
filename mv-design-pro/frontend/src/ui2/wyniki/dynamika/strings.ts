@@ -90,6 +90,8 @@ export const DYNAMIKA_STRINGS = {
     'Rodzaje zdarzeń i ich pola pochodzą z kontraktu scenariusza dynamicznego — lista zmienia się razem z możliwościami obliczeń.',
   scenariuszZapisany: 'Scenariusz zapisany',
   scenariuszNowy: 'Nowy scenariusz',
+  scenariuszeWczytywanie: 'Odczyt zapisanych scenariuszy przypadku…',
+  scenariuszeBlad: 'Nie udało się odczytać zapisanych scenariuszy przypadku — to nie jest brak scenariuszy',
   scenariuszNazwa: 'Nazwa scenariusza',
   scenariuszZapisz: 'Zapisz scenariusz',
   scenariuszZapisuje: 'Zapisywanie scenariusza…',

@@ -87,6 +87,14 @@ export const KRZYWE_STRINGS = {
   // już przypisanego modułowi, nie niezależnym wyborem.
   wiazaniaBrakProfiluOperatora:
     'Moduł nie ma jeszcze przypisanego profilu operatora NC RfG — krzywa LVRT/HVRT nieznana.',
+  wiazaniaKrzyweWczytywanie: 'Trwa odczyt katalogu profili operatorów NC RfG…',
+  wiazaniaKrzyweBlad:
+    'Odczyt katalogu profili operatorów nie powiódł się — krzywa LVRT/HVRT modułu nieznana ' +
+    '(to nie jest brak profilu).',
+  wiazaniaProfilSpozaKatalogu:
+    'Profil operatora przypisany modułowi nie występuje w katalogu NC RfG — krzywa LVRT/HVRT ' +
+    'nieznana; przypisz profil z katalogu w kreatorze modułu.',
+  wiazaniaBladKatalogu: 'Nie udało się wczytać katalogu krzywych i profili operatorów',
   wiazaniaBezZmiany: '— bez zmiany —',
   wiazaniaZapisz: 'Zapisz krzywe w wiązaniach modułu',
   wiazaniaZadnaZmiana: 'Wybierz krzywą P(f) do zapisania.',

@@ -16,7 +16,7 @@
  *    dokumentuje wyłącznie rodzinę Thevenina — punkt może mieć wkłady
  *    falownikowe bez śladu, albo starszy zapis bez kolumny śladu przy
  *    obecnych wkładach),
- *  - błąd pobrania (HTTP/sieć) → `blad: true` ROZPOZNANY, nie cisza (karta
+ *  - błąd pobrania (HTTP/sieć) → `odczyt: 'blad'` ROZPOZNANY, nie cisza (karta
  *    WB-ROZPLYW, W4d) — różne od „brak danych" (flaga fałszywa).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -67,7 +67,7 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
   it('dane inline w wierszu mają pierwszeństwo — flows wprost, trace null, zero wołań API', () => {
     const wiersz = shortCircuitRowFixture({ branch_contributions: [FLOW] });
     const { result } = renderHook(() => useRozplywZwarciowy('run-1', wiersz));
-    expect(result.current).toEqual({ flows: [FLOW], trace: null, blad: false });
+    expect(result.current).toEqual({ flows: [FLOW], trace: null, odczyt: 'gotowe' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -86,9 +86,10 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
     const { result } = renderHook(() =>
       useRozplywZwarciowy('run-1', wierszNaZadanie({ target_id: 'gpz/a/b' })),
     );
-    expect(result.current).toEqual({ flows: null, trace: null, blad: false });
+    // Odczyt w toku ≠ brak danych starszego wyniku (KONTRAKT_WERDYKTU_WYJASNIALNEGO).
+    expect(result.current).toEqual({ flows: null, trace: null, odczyt: 'wczytywanie' });
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: [FLOW], trace: [TRACE_STEP], blad: false }),
+      expect(result.current).toEqual({ flows: [FLOW], trace: [TRACE_STEP], odczyt: 'gotowe' }),
     );
     expect(fetchMock).toHaveBeenCalledTimes(1);
     // Ref węzła ENM zawiera ukośniki — MUSI iść parametrem zapytania (zakodowany).
@@ -111,7 +112,7 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
     );
     const { result } = renderHook(() => useRozplywZwarciowy('run-1', wierszNaZadanie()));
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: [], trace: [], blad: false }),
+      expect(result.current).toEqual({ flows: [], trace: [], odczyt: 'gotowe' }),
     );
   });
 
@@ -131,7 +132,7 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
     );
     const { result } = renderHook(() => useRozplywZwarciowy('run-1', wierszNaZadanie()));
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: [FLOW], trace: [], blad: false }),
+      expect(result.current).toEqual({ flows: [FLOW], trace: [], odczyt: 'gotowe' }),
     );
   });
 
@@ -149,7 +150,7 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
     );
     const { result } = renderHook(() => useRozplywZwarciowy('run-1', wierszNaZadanie()));
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: [FLOW], trace: null, blad: false }),
+      expect(result.current).toEqual({ flows: [FLOW], trace: null, odczyt: 'gotowe' }),
     );
   });
 
@@ -159,24 +160,24 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
       branch_contributions_available: undefined,
     });
     const { result } = renderHook(() => useRozplywZwarciowy('run-1', wiersz));
-    expect(result.current).toEqual({ flows: null, trace: null, blad: false });
+    expect(result.current).toEqual({ flows: null, trace: null, odczyt: 'gotowe' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('błąd pobrania (HTTP) → blad: true ROZPOZNANY, różny od „brak danych" (karta WB-ROZPLYW, W4d)', async () => {
+  it('błąd pobrania (HTTP) → odczyt „blad" ROZPOZNANY, różny od „brak danych" (karta WB-ROZPLYW, W4d)', async () => {
     fetchMock.mockResolvedValue(new Response('awaria', { status: 500 }));
     const { result } = renderHook(() => useRozplywZwarciowy('run-1', wierszNaZadanie()));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: null, trace: null, blad: true }),
+      expect(result.current).toEqual({ flows: null, trace: null, odczyt: 'blad' }),
     );
   });
 
-  it('błąd sieci (fetch odrzucony) → blad: true, bez wyjątku nieobsłużonego', async () => {
+  it('błąd sieci (fetch odrzucony) → odczyt „blad", bez wyjątku nieobsłużonego', async () => {
     fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
     const { result } = renderHook(() => useRozplywZwarciowy('run-1', wierszNaZadanie()));
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: null, trace: null, blad: true }),
+      expect(result.current).toEqual({ flows: null, trace: null, odczyt: 'blad' }),
     );
   });
 
@@ -200,14 +201,42 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
       { initialProps: { punkt: 'node-1' } },
     );
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: [FLOW], trace: [TRACE_STEP], blad: false }),
+      expect(result.current).toEqual({ flows: [FLOW], trace: [TRACE_STEP], odczyt: 'gotowe' }),
     );
     rerender({ punkt: 'node-2' });
-    await waitFor(() => expect(result.current).toEqual({ flows: [], trace: [], blad: false }));
+    await waitFor(() => expect(result.current).toEqual({ flows: [], trace: [], odczyt: 'gotowe' }));
     rerender({ punkt: 'node-1' });
     await waitFor(() =>
-      expect(result.current).toEqual({ flows: [FLOW], trace: [TRACE_STEP], blad: false }),
+      expect(result.current).toEqual({ flows: [FLOW], trace: [TRACE_STEP], odczyt: 'gotowe' }),
     );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('cache per przebieg × punkt: ten sam punkt NOWEGO przebiegu pobiera ponownie (zero przecieku)', async () => {
+    fetchMock.mockImplementation((url: RequestInfo | URL) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            run_id: 'x',
+            target_id: 'node-1',
+            branch_contributions: String(url).includes('run-2') ? [] : [FLOW],
+            branch_flow_trace: String(url).includes('run-2') ? [] : [TRACE_STEP],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+    const { result, rerender } = renderHook(
+      ({ runId }: { runId: string }) => useRozplywZwarciowy(runId, wierszNaZadanie({ target_id: 'node-1' })),
+      { initialProps: { runId: 'run-1' } },
+    );
+    await waitFor(() =>
+      expect(result.current).toEqual({ flows: [FLOW], trace: [TRACE_STEP], odczyt: 'gotowe' }),
+    );
+    rerender({ runId: 'run-2' });
+    // Nowy przebieg: najpierw stan odczytu (nie dane poprzedniego biegu), potem jego dane.
+    expect(result.current).toEqual({ flows: null, trace: null, odczyt: 'wczytywanie' });
+    await waitFor(() => expect(result.current).toEqual({ flows: [], trace: [], odczyt: 'gotowe' }));
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -356,6 +356,9 @@ export function EkranOceny({ szczegolyAudytowe = false, onOtworzDowod }: EkranOc
     let anulowane = false;
     setLadowanie(true);
     setBlad(null);
+    // Werdykt POPRZEDNIEGO przypadku znika natychmiast: w czasie odczytu ekran
+    // pokazuje stan odczytu, nie ocenę innego zakresu (odczyt w toku ≠ dane).
+    setDane(null);
     fetchOcenaTechniczna(activeCaseId)
       .then((odpowiedz) => {
         if (anulowane) return;

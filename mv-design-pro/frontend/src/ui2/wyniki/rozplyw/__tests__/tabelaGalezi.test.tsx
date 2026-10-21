@@ -178,14 +178,36 @@ describe('TabelaGalezi — werdykt obciążalności z walidacji energetycznej (R
     expect(within(wiersze[0]).getByText('L-2')).toBeInTheDocument(); // 65,0 < 92,0
   });
 
-  it('brak odpowiedzi walidacji → komórki „—", bez werdyktu i bez przycisku decyzji', async () => {
+  it('błąd odczytu walidacji → komórki „odczyt nieudany" + nota (błąd ≠ brak pozycji), bez werdyktu i decyzji', async () => {
     // Domyślny mock z beforeEach: odrzucenie (walidacja niedostępna).
     render(<TabelaGalezi {...props()} />);
     await waitFor(() => expect(mockedWalidacja).toHaveBeenCalledTimes(1));
-    // Obie gałęzie: kreska w kolumnie obciążenia (uczciwie, bez zgadywania).
-    expect(screen.getAllByText(ROZPLYW_STRINGS.kreska)).toHaveLength(2);
+    expect(await screen.findAllByText(ROZPLYW_STRINGS.obciazenieBladOdczytu)).toHaveLength(2);
+    expect(screen.queryByText(ROZPLYW_STRINGS.kreska)).not.toBeInTheDocument();
+    const nota = screen.getByTestId('mvd-rozplyw-obciazenia-odczyt');
+    expect(nota).toHaveAttribute('data-odczyt', 'blad');
+    expect(nota).toHaveTextContent(ROZPLYW_STRINGS.obciazeniaBladNota);
     expect(screen.queryByTestId('mvd-wyn-popraw')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-tag-ostrzezenie')).not.toBeInTheDocument();
+  });
+
+  it('odczyt walidacji w toku → komórki „odczyt…" + nota (odczyt ≠ brak pozycji); po odpowiedzi werdykt', async () => {
+    let zwolnij: (v: Awaited<ReturnType<typeof walidacjaResponseFixture>>) => void = () => undefined;
+    mockedWalidacja.mockReturnValue(
+      new Promise((r) => {
+        zwolnij = r;
+      }) as never,
+    );
+    render(<TabelaGalezi {...props()} />);
+    expect(screen.getAllByText(ROZPLYW_STRINGS.obciazenieWczytywanie)).toHaveLength(2);
+    expect(screen.queryByText(ROZPLYW_STRINGS.kreska)).not.toBeInTheDocument();
+    const nota = screen.getByTestId('mvd-rozplyw-obciazenia-odczyt');
+    expect(nota).toHaveAttribute('data-odczyt', 'wczytywanie');
+    expect(nota).toHaveAttribute('aria-busy', 'true');
+    zwolnij(walidacjaResponseFixture());
+    expect(await screen.findByText('92,0')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-rozplyw-obciazenia-odczyt')).not.toBeInTheDocument();
+    expect(screen.queryByText(ROZPLYW_STRINGS.obciazenieWczytywanie)).not.toBeInTheDocument();
   });
 
   it('klik „Popraw w modelu" na przeciążonej gałęzi → selekcja LineBranch + przestrzeń „Schemat" (realne store\'y)', async () => {
