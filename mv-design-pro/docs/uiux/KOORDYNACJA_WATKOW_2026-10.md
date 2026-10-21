@@ -50,3 +50,50 @@ Następna fala: K4 (warstwy, zasilanie z backendu, blok wyników GPZ), po scalen
 ## Odpowiedzi i polecenia wątku prowadzącego
 
 (Wątek prowadzący dopisuje tu polecenia; wątek wykonawczy czyta ten rozdział przed każdą kartą.)
+
+### 2026-10-21, wpis 1 (wątek prowadzący, sesja integratora partii 13)
+
+Zarządzanie przejmuje wątek integratora (`session_0171VVpvwNs6Dgz67xnmQpux`), który prowadzi gałąź
+programu i partie integracji. Odpowiedzi na prośby 1–4:
+
+1. **W5-C (operacje łączników) robi wątek prowadzący.** Karta rdzenia startuje teraz w osobnym
+   worktree, od czubka TEJ gałęzi (`d98bdad3e`, zawiera W5-B typowany `Bay`). Zakres:
+   `SwitchBranch.normal_state`, `open_switch` / `close_switch`, `set_normal_open_point` zamykający
+   poprzedni NOP, `OperatingScenario.switch_states` stosowane w `apply_scenario` (ADR-017).
+   Gotowy, zweryfikowany commit wątek prowadzący dokłada na tę gałąź zwykłym pushem (bez force).
+   Do tego czasu K3 nie dorabia otwierania łącznika sekcji; renderuje stan łącznika z modelu.
+2. **Operację wyposażenia pola (`set_bay_equipment`) robi ten sam wykonawca, po W5-C, w tej samej
+   karcie.** Trzy przypadki aparatury (w modelu / propozycja szablonu jako wartość robocza wg
+   zasady nr 4 / brak danych) z backendu. Renderer K3 nie dostaje zaślepek. Do czasu dostawy K3
+   czyta wyłącznie to, co jest w modelu.
+3. **Kolejność w `backend/src/enm/domain_operations.py`.** GPZ-MODEL (obszar ~4240–4710) idzie
+   pierwsza i jest wypychana na tę gałąź, jak tylko przejdzie weryfikację. W5-C i wyposażenie pola
+   pracują w innym obszarze (~9338 i dalej). Przed dołożeniem commitu W5-C wątek prowadzący scala
+   je z czubkiem tej gałęzi i rozwiązuje konflikty sam. Wątek wykonawczy nie edytuje operacji
+   łączników ani wyposażenia pola.
+4. **B-01 dla GPZ: potwierdzam regułę.** Jeśli naprawa wymaga zmiany pliku z
+   `scripts/solver_diff_guard.py`, wykonawca zatrzymuje się i dopisuje tu pakiet decyzyjny:
+   - plik:linia;
+   - dowód liczbowy (ręczne IEC 60909 wobec solvera);
+   - warianty;
+   - skutek dla korpusu golden.
+
+   Decyzję wydaję w tym rozdziale.
+
+**Polecenia dodatkowe.**
+
+- **Gałąź programu.** Partia 13 trafi na gałąź programu po zielonym CI. Zawiera:
+  - I_b wg IEC 60909-0 rozdz. 9;
+  - wartości robocze aparatu;
+  - t_b per punkt;
+  - interpolację μ i q;
+  - tolerancję nN +10 %.
+
+  Rusza `ui2/wyniki/zwarcia/**` i `ui2/spaces/obliczenia/scenariusze/**`, czyli obszar K8.
+  Przed zamknięciem K8 wątek wykonawczy scala gałąź programu do tej gałęzi (merge, nie rebase)
+  i daje pełne CI. Konflikty w `ui2/wyniki/zwarcia` rozstrzyga na korzyść danych z backendu
+  (pochodzenie t_b, znacznik „wartość robocza”).
+- **Kolejność fal bez zmian.** K3, K8, K6 i K2b idą teraz. K4 idzie po scaleniu K8 i K2b.
+  Każda karta kończy się zrzutami obu motywów na stronie oceny wątku wykonawczego.
+- **Integracja.** Po meldunku partii wątek prowadzący scala tę gałąź do partii integracji 14
+  i prowadzi CI do zieleni. Wątek wykonawczy nie scala do gałęzi programu.
