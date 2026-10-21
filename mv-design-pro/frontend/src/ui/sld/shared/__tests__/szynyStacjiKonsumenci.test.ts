@@ -2,7 +2,7 @@
  * KARTA SZYNY-STACJI-LUSTRO — konsumenci JEDNEJ reguły przynależności szyny do stacji.
  *
  * Do tej karty rysunek pytał o przynależność dwiema połówkami reguły: agregat odbioru,
- * szuflada i kompletność rysunku znały szyny za aparatami pól nN, ale nie zaciski pól SN;
+ * dawny panel szczegółów kanwy i kompletność rysunku znały szyny za aparatami pól nN, ale nie zaciski pól SN;
  * przypisanie odcinka do stacji znało zaciski pól SN, ale nie szyny za aparatami. Model z
  * API (`gpzFeeder`, backend `tests/reference_networks/fikstury_enm_sld.py`) ma OBA rodzaje
  * szyn w każdej stacji, więc każdy konsument jest tu sprawdzany na KAŻDYM rodzaju szyny.
@@ -11,8 +11,8 @@
  * zacisk pola SN, zacisk wyłącznika głównego nN (strona dolna transformatora), szyna
  * odpływu nN, szyna odpływu INNEJ stacji, szyna obca, szyna za ŁAŃCUCHEM aparatów
  * podrozdzielnicy (`nnBoardDemo`)} × konsument {przypisanie szyny do
- * stacji (menu, transformator, odbiór, punkt przyłączenia OZE, punkt zwarcia), odbiory
- * szuflady, tabliczka „Odbiór ΣP", kompletność rysunku, pokrycie warstwy wynikowej}.
+ * stacji (menu, transformator, odbiór, punkt przyłączenia OZE, punkt zwarcia), strona nN
+ * szyn stacji (`stationSideBusRefs`), tabliczka „Odbiór ΣP", kompletność rysunku, pokrycie warstwy wynikowej}.
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -26,11 +26,10 @@ import { snPointKindForBus } from '../../../network-build/station-der/zModelu';
 import { stacjeDlaPunktu } from '../../../../ui2/wyniki/zwarcia/aparatura/model';
 import { stacjaSzyn, szynyStacji } from '../../../shared/szynyStacji';
 import { polaNnStacji } from '../../../shared/polaStacji';
-import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
 import { resultPointsInStationNnBoard } from '../../v3/canvas/resultRefBridge';
 import { buildSceneV3 } from '../../v3/scene/buildScene';
 import { kompletnoscRysunku } from '../../v3/scene/kompletnoscRysunku';
-import { buildStationDetailDrawerData } from '../detailDrawerData';
+import { stationSideBusRefs } from '../stationBusResolution';
 import { stationRefOfBusOrSource } from '../sldActionExecutor';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -109,41 +108,38 @@ describe('przypisanie szyny do stacji — każdy konsument × każdy rodzaj szyn
   });
 });
 
-describe('rysunek — tabliczka, szuflada, kompletność i pokrycie wyników na jednej regule', () => {
-  const sldData = buildSldDataFromSnapshot(enm, enm.logical_views ?? null, null);
-
-  it('szuflada S01 wymienia odbiory strony nN stacji (szyny odpływów), a nie odbiory S02', () => {
-    const dane = buildStationDetailDrawerData(enm, sldData, null, s01.ref_id);
-    const odbiory = dane?.nnSpec?.loads?.map((l) => l.id) ?? [];
+describe('rysunek — tabliczka, strona nN, kompletność i pokrycie wyników na jednej regule', () => {
+  it('odbiory S01 (szyny odpływów) należą do S01, a nie do S02', () => {
     const szynyS01 = szynyStacji(enm, s01);
-    const oczekiwane = (enm.loads ?? []).filter((l) => szynyS01.has(l.bus_ref)).map((l) => l.ref_id);
+    const szynyS02 = szynyStacji(enm, s02);
+    const oczekiwane = (enm.loads ?? []).filter((l) => szynyS01.has(l.bus_ref));
     expect(oczekiwane.length).toBeGreaterThan(0);
-    expect([...odbiory].sort()).toEqual([...oczekiwane].sort());
+    for (const odbior of oczekiwane) expect(szynyS02.has(odbior.bus_ref)).toBe(false);
   });
 
-  it('odbiór na zacisku pola SN należy do stacji, ale NIE do strony nN szuflady (strona z pasma)', () => {
+  it('odbiór na zacisku pola SN należy do stacji, ale NIE do jej strony nN (strona z pasma)', () => {
     const { zaciskSn } = rodzajeSzyn(s01);
     const model = zOdbiorem(zaciskSn, 'load/na-zacisku-sn');
-    const dane = buildStationDetailDrawerData(model, buildSldDataFromSnapshot(model, model.logical_views ?? null, null), null, s01.ref_id);
-    expect(dane?.nnSpec?.loads?.some((l) => l.id === 'load/na-zacisku-sn')).toBe(false);
+    const busByRef = new Map((model.buses ?? []).map((bus) => [bus.ref_id, bus]));
+    expect(szynyStacji(model, s01).has(zaciskSn)).toBe(true);
+    expect(stationSideBusRefs(model, s01, busByRef, 'nn').includes(zaciskSn)).toBe(false);
     const raport = kompletnoscRysunku(buildSceneV3(model, 2), model);
     const pozycja = raport.pozycje.find((p) => p.ref === 'load/na-zacisku-sn');
     expect(pozycja?.kategoria).toBe('agregat-odbioru-stacji');
   });
 
-  it('odbiór na zacisku wyłącznika głównego nN (strona dolna transformatora) liczy się w szufladzie i kompletności', () => {
+  it('odbiór na zacisku wyłącznika głównego nN (strona dolna transformatora) liczy się po stronie nN i w kompletności', () => {
     const { zaciskWylacznikaNn } = rodzajeSzyn(s01);
     const model = zOdbiorem(zaciskWylacznikaNn, 'load/na-zacisku-nn');
-    const dane = buildStationDetailDrawerData(model, buildSldDataFromSnapshot(model, model.logical_views ?? null, null), null, s01.ref_id);
-    expect(dane?.nnSpec?.loads?.some((l) => l.id === 'load/na-zacisku-nn')).toBe(true);
+    const busByRef = new Map((model.buses ?? []).map((bus) => [bus.ref_id, bus]));
+    expect(stationSideBusRefs(model, s01, busByRef, 'nn').includes(zaciskWylacznikaNn)).toBe(true);
     const raport = kompletnoscRysunku(buildSceneV3(model, 2), model);
     expect(raport.pozycje.find((p) => p.ref === 'load/na-zacisku-nn')?.kategoria).toBe('agregat-odbioru-stacji');
   });
 
-  it('odbiór na szynie podrozdzielnicy spoza modelu nie trafia do szuflady S01', () => {
+  it('odbiór na szynie podrozdzielnicy spoza modelu nie należy do szyn S01', () => {
     const model = zOdbiorem('nn/podrozdzielnica/board_bus', 'load/podrozdzielnica');
-    const dane = buildStationDetailDrawerData(model, buildSldDataFromSnapshot(model, model.logical_views ?? null, null), null, s01.ref_id);
-    expect(dane?.nnSpec?.loads?.some((l) => l.id === 'load/podrozdzielnica')).toBe(false);
+    expect(szynyStacji(model, s01).has('nn/podrozdzielnica/board_bus')).toBe(false);
   });
 
   it('tabliczka sceny: każda stacja z odbiorem na szynie odpływu niesie „Odbiór ΣP" i strzałkę odbioru', () => {

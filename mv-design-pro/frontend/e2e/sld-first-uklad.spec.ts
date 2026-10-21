@@ -327,9 +327,8 @@ test('inspektor za zawartością: selekcja rozwija, Escape zdejmuje i zwija (bra
   const skalaPoSelekcji = await skalaKamery();
   expect(Math.abs(skalaPoSelekcji - skalaPrzedSelekcja)).toBeLessThan(1e-6);
 
-  // Zdjęcie selekcji: Escape (K11-A — kanoniczny gest; pierwszy zamyka
-  // szufladę szczegółów otwartą klikiem, drugi zdejmuje selekcję i URL).
-  await page.keyboard.press('Escape');
+  // Zdjęcie selekcji: JEDEN Escape (K11-A — kanoniczny gest; UI-02b: klik nie
+  // otwiera już panelu szczegółów nad kanwą, więc nie ma czego zamykać najpierw).
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('mvd-inspector')).toHaveAttribute('hidden', '', {
     timeout: 10000,

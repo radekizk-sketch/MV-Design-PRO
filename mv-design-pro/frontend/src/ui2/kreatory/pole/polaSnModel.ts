@@ -111,7 +111,7 @@ const ROLE_KOLEJNOSC: readonly RolaPola[] = ['OUT', 'IN', 'FEEDER', 'TR', 'COUPL
  * operacji domenowej `add_sn_bay` (backend), `label` to polskie nazewnictwo UI.
  * Kody backendu (IN/OUT/FEEDER/TR…) NIE są terminologią UI — do prezentacji służy wyłącznie
  * `label`. (V12K-057 popr.: zakaz surowych kodów w UI.) Nazwa roli pochodzi z kanonu
- * słownictwa ról pól (`FIELD_ROLE_LABEL_PL`, karta #141) — ta sama co na schemacie, w szufladzie
+ * słownictwa ról pól (`FIELD_ROLE_LABEL_PL`, karta #141) — ta sama co na schemacie, w inspektorze
  * i w nazwie pola nadanej przez backend (`enm.rola_pola_sn`), nie z drugiej listy.
  */
 export const ROLE_OPCJE: ReadonlyArray<{ value: RolaPola; label: string }> = ROLE_KOLEJNOSC.map(

@@ -19,11 +19,10 @@
  *    odcinek (koniec ciągu), pole SN, aparat pola (głowica / inny aparat), ZK SN i słup
  *    rozgałęźny (bez pozycji kontynuacji — nie ma czego bramkować);
  *  - stan pól liniowych: wolne jedno / wolne kilka / zajęte wszystkie / brak pól;
- *  - droga wejścia: menu kanwy (natywny prawy klik i rejestr menu), szuflada (ta sama
- *    funkcja dostępności co menu, `SldCanvasV3Workspace.detailDrawerActions`),
+ *  - droga wejścia: menu kanwy (natywny prawy klik i rejestr menu), pasek działań
+ *    inspektora (ta sama funkcja dostępności co menu, `akcjeElementu.kontekstDostepnosciAkcji`),
  *    wykonawca akcji (klik w pozycję), konfigurator stacji (przycisk „Kontynuuj ciąg SN
- *    ze stacji"), karta techniczna inspektora (przyciski „Kontynuuj ciąg SN ze stacji" /
- *    „Wyprowadź magistralę SN"). Panel kontekstowy schematu podaje zacisk startowy jawnie
+ *    ze stacji"), karta techniczna inspektora (bez kopii pozycji paska — UI-02b). Panel kontekstowy schematu podaje zacisk startowy jawnie
  *    (`SchematContextPanel`: pole GPZ albo otwarty zacisk z widoków logicznych), więc nie
  *    ma w nim stanu „pozycja bez startu".
  *
@@ -257,7 +256,7 @@ const PRZYPADKI: readonly Przypadek[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Uprząż: wykonawca akcji wołany natywnym klikiem (kontrakt menu i szuflady)
+// Uprząż: wykonawca akcji wołany natywnym klikiem (kontrakt menu i paska działań inspektora)
 // ---------------------------------------------------------------------------
 
 function Wykonawca({ p }: { p: Przypadek }) {
@@ -450,38 +449,49 @@ describe('S95-START — natywny prawy klik w etykietę stacji na kanwie', () => 
   });
 });
 
-describe('S95-START — karta techniczna inspektora czyta TO SAMO rozstrzygnięcie startu', () => {
+/**
+ * UI-02b JEDEN-INSPEKTOR: kontynuacja ciągu z inspektora jest pozycją paska działań (ten sam
+ * rejestr i ta sama funkcja dostępności co menu kanwy), a karta techniczna jej NIE powtarza —
+ * każda operacja występuje w inspektorze dokładnie raz. Intencja dawnego testu przycisku karty
+ * technicznej zachowana: dostępność w inspektorze ⇔ punkt startu ⇔ kreator z punktem startu.
+ */
+describe('S95-START — pasek działań inspektora czyta TO SAMO rozstrzygnięcie startu', () => {
   const KARTY: ReadonlyArray<{
     nazwa: string;
     rodzaj: 'stacja_na_odcinku' | 'gpz_z_zaciskami';
     ref: string;
-    etykieta: string;
+    etykietaKarty: string;
   }> = [
-    { nazwa: 'stacja SN/nN', rodzaj: 'stacja_na_odcinku', ref: STACJA_REF, etykieta: 'Kontynuuj ciąg SN ze stacji' },
+    { nazwa: 'stacja SN/nN', rodzaj: 'stacja_na_odcinku', ref: STACJA_REF, etykietaKarty: 'Kontynuuj ciąg SN ze stacji' },
     {
       nazwa: 'GPZ',
       rodzaj: 'gpz_z_zaciskami',
       ref: gpz(scena('gpz_z_zaciskami', 'wolne_kilka').snapshot).ref_id,
-      etykieta: 'Wyprowadź magistralę SN',
+      etykietaKarty: 'Wyprowadź magistralę SN',
     },
   ];
 
   it.each(KARTY.flatMap((karta) => STANY.map((stan) => ({ ...karta, stan }))))(
-    '$nazwa × $stan: przycisk karty ⇔ pozycja menu kanwy ⇔ kreator',
-    async ({ rodzaj, ref, etykieta, stan }) => {
+    '$nazwa × $stan: pozycja paska ⇔ pozycja menu kanwy ⇔ kreator, karta techniczna bez kopii',
+    async ({ ref, rodzaj, etykietaKarty, stan }) => {
       const { snapshot: enm, logical_views: widoki } = scena(rodzaj, stan);
       useSnapshotStore.setState({ snapshot: enm, logicalViews: widoki });
       useSelectionStore.getState().selectElement({ id: ref, type: 'Station', name: 'Stacja' });
       renderWithQueryClient(<InspectorEngineeringView />);
       const host = await screen.findByTestId('tech-card-host');
-      const przycisk = within(host).getByRole('button', { name: etykieta }) as HTMLButtonElement;
-      expect(przycisk.disabled).toBe(!OCZEKIWANA[stan]);
-      expect(resolveTrunkStartAvailability(enm, widoki, 'station', ref)?.['continue-trunk']).toBe(!przycisk.disabled);
-      if (przycisk.disabled) {
-        expect(przycisk.getAttribute('title')).toBe(powodBrakuStartuCiagu('station'));
+      expect(within(host).queryByRole('button', { name: etykietaKarty })).toBeNull();
+      const pasek = screen.getByTestId('inspektor-dzialania');
+      const pozycja = within(pasek).getByTestId('inspektor-akcja-continue-trunk');
+      const niedostepna = pozycja.getAttribute('aria-disabled') === 'true';
+      expect(niedostepna).toBe(!OCZEKIWANA[stan]);
+      expect(resolveTrunkStartAvailability(enm, widoki, 'station', ref)?.['continue-trunk']).toBe(!niedostepna);
+      if (niedostepna) {
+        expect(pozycja.getAttribute('title')).toBe(powodBrakuStartuCiagu('station'));
+        await userEvent.click(pozycja);
+        expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
         return;
       }
-      await userEvent.click(przycisk);
+      await userEvent.click(pozycja);
       const kontekst = useNetworkBuildStore.getState().activeSurface?.routeState.payload?.context as
         | Record<string, unknown>
         | undefined;

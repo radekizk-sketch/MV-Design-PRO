@@ -2249,8 +2249,13 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         ("NOT_COORDINATED", "coordinationResults"),
         "E68",
     ),
+    # Karta UI-02b JEDEN-INSPEKTOR: szuflada szczegolow kanwy skasowana — jej dane i widok
+    # przejal prawy inspektor (dane: daneElementuKanwy.ts, widok: PanelElementuKanwy.tsx).
+    # Stare sciezki nie wracaja, a zakazane wzorce E70 pilnowane sa w nastepcach.
+    _fe_sciezka("ui/sld/v2/canvas/SldDetailDrawer.tsx", "E70"),
+    _fe_sciezka("ui/sld/shared/detailDrawerData.ts", "E70"),
     *_fe_wzorzec(
-        "ui/sld/v2/canvas/SldDetailDrawer.tsx",
+        "ui/network-build/inspektor-elementu/PanelElementuKanwy.tsx",
         (
             "drawer-cable-spadek",
             "Klasa zgodności",
@@ -2260,7 +2265,7 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "E70",
     ),
     *_fe_wzorzec(
-        "ui/sld/shared/detailDrawerData.ts",
+        "ui/sld/shared/daneElementuKanwy.ts",
         ("maxVoltageDropPct", "maxLoadingPct", "computeLfDerivedMetrics"),
         "E70",
     ),
@@ -2486,7 +2491,10 @@ PAKIET_L_WPISY: tuple[WpisPakietuL, ...] = (
         "D2",
     ),
     *_fe_wzorzec("ui/sld/v2/canvas/enmToSldAdapter.ts", ("deriveNcRfgModule",), "D2"),
-    *_fe_wzorzec("ui/sld/v2/canvas/SldDetailDrawer.tsx", ("ncRfgModule: 'A'",), "D2"),
+    *_fe_wzorzec(
+        "ui/network-build/inspektor-elementu/FormularzSzkicuDer.tsx", ("ncRfgModule: 'A'",), "D2"
+    ),
+    *_fe_wzorzec("ui/sld/shared/daneElementuKanwy.ts", ("ncRfgModule: 'A'",), "D2"),
     *_fe_wzorzec(
         "ui2/oze/ncrfg/typy.ts",
         (

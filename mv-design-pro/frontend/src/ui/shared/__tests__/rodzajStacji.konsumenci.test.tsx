@@ -4,7 +4,7 @@
  * Iloczyn cech (reguła KLASA §2): {deklaracja `station_type`: zgodna z topologią, niezgodna,
  * brak rodzaju (`mv_lv`), funkcja (`customer`), wartość nieznana, brak pola} × {konsument:
  * schemat L0/L1/L2, drzewo panelu „Schemat", tożsamość publiczna (karta stacji, wyszukiwarka,
- * inspektor legacy, przegląd masowy), karta techniczna, inspektor ui2, panel procesu, szuflada,
+ * inspektor legacy, przegląd masowy), karta techniczna, inspektor ui2, panel procesu,
  * konfigurator stacji}. Model: fikstura B-2 z trzema stacjami, z których KAŻDA ma pola WE, WY,
  * ODG i TR (3 pola liniowe ⇒ odgałęźna) — dokładnie sytuacja kadru karty, w której schemat
  * mówił „odgałęźna", a drzewo „przelotowa". Podmiana deklaracji NIE może zmienić żadnego
@@ -39,7 +39,6 @@ import { StationConfigBasicCard } from '../../network-build/station-configurator
 import { stationPublicIdentity } from '../publicTechnicalLabels';
 import {
   NAZWA_RODZAJU_STACJI_PL,
-  opisRozdzielnicyStacjiPl,
   rodzajStacji,
   ukladRozdzielnicyStacjiPl,
 } from '../rodzajStacji';
@@ -83,7 +82,7 @@ describe('rodzaj stacji — każdy konsument czyta jedną regułę (iloczyn dekl
     const model = zDeklaracja(deklaracja);
     const nazwa = `deklaracja ${deklaracja ?? 'brak pola'}`;
 
-    it(`${nazwa}: tożsamość publiczna, karta techniczna, szuflada, inspektor ui2, panel procesu`, () => {
+    it(`${nazwa}: tożsamość publiczna, karta techniczna, inspektor ui2, panel procesu`, () => {
       for (const stacja of model.substations.filter((s) => s.station_type !== 'gpz')) {
         expect(stationPublicIdentity(model, stacja).typeLabel).toBe('Stacja odgałęźna');
         const karta = buildTechCardSubject(model, { id: stacja.ref_id, type: 'Station', name: stacja.name } as never);
@@ -91,9 +90,6 @@ describe('rodzaj stacji — każdy konsument czyta jedną regułę (iloczyn dekl
         expect(pola.find((p) => p.key === 'typ_stacji')?.value).toBe('Stacja odgałęźna');
         expect(pola.find((p) => p.key === 'uklad')?.value).toBe('Układ odgałęźny SN');
         expect(ukladRozdzielnicyStacjiPl(model, stacja)).toBe('Układ odgałęźny SN');
-        expect(opisRozdzielnicyStacjiPl(model, stacja)).toBe(
-          'Rozdzielnica SN: układ odgałęźny SN — rozdzielnica SN ma 3 pola liniowe.',
-        );
         const inspektor = mapowanieObiektuInspektora(model, stacja.id);
         const wiersze = inspektor?.wlasciwosci.flatMap((sekcja) => sekcja.wiersze) ?? [];
         expect(wiersze.find((w) => w.etykieta === 'Rodzaj stacji')?.wartosc.wartosc).toBe('Stacja odgałęźna');

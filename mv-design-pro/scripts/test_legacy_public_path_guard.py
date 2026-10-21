@@ -2313,16 +2313,19 @@ def test_pakiet_l_liczba_wpisow_z_pomiaru() -> None:
     # Karta GPZ-PARYTET (2026-10-21): +4 wpisy wiersza E73 inwentarza (2 sciezki + 2 definicje:
     # `GpzOperatorHeader.tsx`, `GpzCanonicalRenderer.tsx`) — domkniecie czesci E73 pominietej
     # w Pakiecie L, wiec wpisy licza sie do "L".
+    # Karta UI-02b JEDEN-INSPEKTOR (2026-10-21): +2 sciezki E70 (skasowana szuflada
+    # `SldDetailDrawer.tsx` i `detailDrawerData.ts` nie wracaja) do "L"; wzorzec D2
+    # `ncRfgModule: 'A'` pilnowany w dwoch nastepcach szuflady zamiast jednego (+1 do "D2").
     assert liczby == {
-        "L": 248,
+        "L": 250,
         "BC": 50,
-        "D2": 85,
+        "D2": 86,
         "1B1A": 9,
         "H0": 1,
         "135": 4,
         "P0": 49,
     }
-    assert len(guard.PAKIET_L_WPISY) == 248 + 50 + 85 + 9 + 1 + 4 + 49
+    assert len(guard.PAKIET_L_WPISY) == 250 + 50 + 86 + 9 + 1 + 4 + 49
 
 
 def test_pakiet_l_entries_are_well_formed() -> None:

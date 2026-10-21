@@ -227,7 +227,7 @@ function WynikPokrycia({
 // `lvrt_curve_ref`/`hvrt_curve_ref` są tożsamościowo związane z
 // `nc_rfg_profile_ref` już przypisanym modułowi (ten sam operator) — ten
 // ekran je pokazuje jako dowód White Box, nie oferuje wyboru niespójnego z
-// profilem. Zmiana operatora dzieje się w kreatorze DER / szufladzie SLD.
+// profilem. Zmiana operatora dzieje się w kreatorze DER / formularzu PV/BESS/FW inspektora.
 // ---------------------------------------------------------------------------
 
 function SekcjaWiazanKrzywych() {

@@ -504,7 +504,7 @@ function buildBranchPointSubject(
 }
 
 /** Etykiety PL trybu regulacji mocy biernej (`generator.meta.control_mode`) — duplikat
- *  świadomy wobec `ui/sld/shared/detailDrawerData.ts::CONTROL_MODE_LABEL_PL` (ten sam
+ *  świadomy wobec `ui/sld/shared/daneElementuKanwy.ts::CONTROL_MODE_LABEL_PL` (ten sam
  *  wzorzec co `derKindPublicName`/tamta mapa: moduł prezentacji nie importuje z innego
  *  poddrzewa `ui/` dla 5-wierszowej tabeli etykiet; wartości 1:1 z kontraktem backendu
  *  `meta.control_mode`, `ui2/kreatory/zrodlo-oze/zrodloOzeModel.ts::REGULACJA_OPCJE`). */

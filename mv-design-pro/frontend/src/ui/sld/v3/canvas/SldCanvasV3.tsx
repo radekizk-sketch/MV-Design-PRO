@@ -99,6 +99,7 @@ import { resultLabelLinesForLod, RESULT_LABEL_TREND_GLYPH, type ResultLabelLod }
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
+import { rolaSymboluLacznika, type RolaSymboluLacznika } from '../../v2/model/stanAparatowPola';
 import { isLayerVisible, layerIdForElementMeta, type CanvasLayerVisibility } from './layers';
 import {
   bridgePointsForPolyline,
@@ -205,10 +206,16 @@ export interface SldElementClickMeta {
   /** S9-10 (dług `S9-4-DLUG-INSPEKTOR`): REALNY ref ENM POJEDYNCZEGO aparatu
    *  (`PreviewElementMeta.deviceRef` — `BayPrimaryDevice.device_ref`,
    *  WYŁĄCZNIE ścieżka danych). Rozróżnia aparaty JEDNEGO pola dzielące
-   *  `ownerRef`; konsument: `SldCanvasV3Workspace` → budowniczy szuflady
-   *  (`buildDetailDrawerDataForKind('apparatus', deviceRef, …)`).
+   *  `ownerRef`; konsument: `SldCanvasV3Workspace` → kontekst kliknięcia
+   *  prawego inspektora → `buildDaneElementuKanwy('apparatus', …, deviceRef)`.
    *  `undefined` dla stosu konwencji i elementów nie-aparatowych. */
   readonly deviceRef?: string;
+  /** UI-02b: rola klikniętego symbolu ŁĄCZNIKA pola BEZ refu pojedynczego aparatu (stos
+   *  z konwencji: glif rysuje agregat pola `cbState`/`dsState`/`esState`). Z TEJ SAMEJ
+   *  tabeli (`rolaSymboluLacznika`), którą kompozycja wybiera agregat glifu — inspektor
+   *  pokazuje położenie tego agregatu, nie „brak stanu". `undefined` dla symbolu z
+   *  `deviceRef` (stan per aparat), symbolu bez stanu i obiektów nie-aparatowych. */
+  readonly rolaLacznika?: RolaSymboluLacznika;
   /** K5-A: KANONICZNY Bus ref szyny (segmenty `elementKind==='bus'` GPZ —
    *  `meta.busResultRef`, ADAPTER-BUSREF). `ownerRef` szyn to kompozyt sceny
    *  (`${sectionId}#bus-primary` itd.) — operacje domenowe (np.
@@ -254,8 +261,8 @@ export interface SldCanvasV3Props {
    */
   readonly safeInsets?: SafeInsets;
   /**
-   * K2: refy obiektu, którego dotyczy zasłona wołającego (element otwartej
-   * szuflady szczegółów, stacja portalu nN). Przy zmianie zasłon kanwa poza
+   * K2: refy obiektu, którego dotyczy zasłona wołającego (stacja portalu nN).
+   * Przy zmianie zasłon kanwa poza
    * kadrem przesuwa rysunek tak, żeby ten obiekt nie schował się pod zasłoną
    * (`camera.ts` `odslonietyStan`). Ref bez rysunku na poziomie — bez skutku.
    */
@@ -350,8 +357,8 @@ export interface SldCanvasV3Props {
    *  — klik w blok liczbowy (lub w wiersz członka agregatu „+N wyniki”) woła
    *  wołającego z `ownerRef` właściciela + jego klasą. Wołający
    *  (`SldCanvasV3Workspace`) prowadzi to TĄ SAMĄ ścieżką co klik w element
-   *  (`handleElementClick`: selekcja + istniejący panel wyników elementu —
-   *  `SldDetailDrawer`); kanwa NIE otwiera własnego panelu (reuse, zero nowej
+   *  (`handleElementClick`: selekcja + sekcja „Wyniki" prawego inspektora
+   *  powłoki); kanwa NIE otwiera własnego panelu (reuse, zero nowej
    *  ścieżki danych). Brak propa = etykiety nieklikalne (kanwa jak dziś). */
   readonly onResultLabelActivate?: (ownerRef: string, kind: ResultLabelKind) => void;
   /** F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): wywoływany przy KAŻDEJ
@@ -562,7 +569,7 @@ function SceneSymbolNode(props: {
  * Cel zdarzenia myszy dla gestu wielokliku kanwy (K2): uchwyt obiektu
  * (`data-hit-for`), tło (zdarzenie na samym `<svg>`), inny węzeł kanwy bez
  * uchwytu (np. wiersz rozwiniętego skupiska wyników — obsługuje kliki sam)
- * albo węzeł POZA kanwą (np. szuflada, która otworzyła się pod kursorem).
+ * albo węzeł POZA kanwą (np. panel, który otworzył się pod kursorem).
  */
 type CelGestu =
   | { readonly rodzaj: 'uchwyt'; readonly testId: string }
@@ -711,7 +718,7 @@ function SceneSegmentNode(props: {
   // naprawą (sieć referencyjna 52 stacji): 4 chybienia na 110 odcinków szynowych
   // — 100 % szyn GPZ bez stanu energizacji, mimo poprawnego wpisu pod refem
   // rysunkowym. Kanoniczny `busResultRef` pozostaje kluczem WARSTWY WYNIKOWEJ
-  // (`resultLabels`) i szuflady szczegółów — tam mapy są kluczowane refem MODELU.
+  // (`resultLabels`) i sekcji „Wyniki" inspektora — tam mapy są kluczowane refem MODELU.
   const segOwnerRef = segment.meta?.ownerRef;
   const energizedSeg = segOwnerRef != null
     ? overlay?.energizedByOwnerRef?.[segOwnerRef] ?? overlay?.energizedByTestId[testId]
@@ -2681,8 +2688,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // (k3) 'resize' gdy zmienia się TYLKO viewport (width/height) — świat ten
   // sam, kamera zachowuje pan/zoom użytkownika i tylko dostosowuje punkt
   // centrowania do nowego rozmiaru (`camera.ts` `applyResize`). K2: ta sama
-  // akcja, gdy zmieniają się ZASŁONY prostokąta bezpiecznego (szuflada
-  // szczegółów, portal nN, mini-ścieżka, komunikat kadru) — trwający kadr
+  // akcja, gdy zmieniają się ZASŁONY prostokąta bezpiecznego (portal nN,
+  // mini-ścieżka, komunikat kadru) — trwający kadr
   // podąża za obszarem widocznym, a poza kadrem obiekt zasłony (`odslonRefy`)
   // zostaje odsłonięty. Klucz zasłon jest liczbowy, więc nowy obiekt o tych
   // samych wartościach nie wyzwala akcji. Efekt pomija pierwsze wywołanie po
@@ -3009,6 +3016,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref pojedynczego aparatu ze
         // sceny (ścieżka danych) — inspektor rozróżnia aparaty jednego pola.
         deviceRef: symbol.meta?.deviceRef,
+        rolaLacznika:
+          symbol.meta?.elementKind === 'apparatus' && !symbol.meta.deviceRef
+            ? rolaSymboluLacznika(symbol.symbolId)
+            : undefined,
         // PORTAL nN: stacja, której projekcję nN otwiera klik w portal.
         lvPortalStationRef: symbol.meta?.lvPortalStationRef,
       });
@@ -3232,10 +3243,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // Defekt zmierzony natywnym dwuklikiem w żywej aplikacji (e2e na realnym
   // backendzie): pierwszy klik w stację zaznacza ją, powłoka otwiera inspektor
   // po prawej, kanwa zwęża się (1600 px okna: z 1322 do 956 px), kamera
-  // ('resize', k3) przenosi środek — rysunek przesuwa się o 183 px — a szuflada
-  // stacji otwiera się NAD kanwą, często dokładnie pod kursorem. Drugi klik
-  // i `dblclick` trafiały więc w INNY obiekt, w tło albo w szufladę (tam leży
-  // m.in. „Usuń stację"): dwuklik stacji nie kadrował stacji. Testy jsdom tego
+  // ('resize', k3) przenosi środek — rysunek przesuwa się o 183 px — a dawny
+  // panel szczegółów stacji otwierał się NAD kanwą, często dokładnie pod
+  // kursorem. Drugi klik i `dblclick` trafiały więc w INNY obiekt, w tło albo
+  // w ten panel (leżało tam m.in. „Usuń stację"): dwuklik stacji nie kadrował
+  // stacji (UI-02b skasował panel nad kanwą; przesunięcie rysunku przy zwężeniu
+  // kanwy zostaje). Testy jsdom tego
   // nie widziały (zdarzenia wysyłane wprost w węzeł, bez układu) — przypina to
   // spec natywny `k2-kadrowanie-nawigacja`.
   //
@@ -3244,12 +3257,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // się na uchwycie albo na tle TEJ kanwy. Drugi klik (`detail ≥ 2`)
   // i `dblclick` (`detail ≥ 2`) idą do celu gestu, a nie do tego, co
   // przesunęło się albo otworzyło pod kursorem — słuchacz na `window` w fazie
-  // przechwytywania zatrzymuje zdarzenie, zanim dotrze do szuflady. `detail`
+  // przechwytywania zatrzymuje zdarzenie, zanim dotrze do innego węzła. `detail`
   // liczy przeglądarka wg ustawień systemu (czas, odległość), więc kanwa nie
   // ma własnego progu. Gdy cel się nie zmienił, zdarzenie idzie zwykłą drogą.
   // Przeglądarka nie wysyła `click`/`dblclick` do przycisku `disabled` —
-  // dlatego niedostępne przyciski szuflady mają `aria-disabled`
-  // (`SldDetailDrawer`), inaczej drugi klik ginąłby, zanim tu dotrze.
+  // dlatego niedostępne przyciski paska działań inspektora mają `aria-disabled`
+  // z widoczną przyczyną (`PanelElementuKanwy`), inaczej klik ginąłby bez śladu.
   const celGestuRef = useRef<CelGestu | null>(null);
   const gestRef = useRef({ handleHitClick, handleHitDoubleClick, onBackgroundClick, onElementDoubleClick });
   gestRef.current = { handleHitClick, handleHitDoubleClick, onBackgroundClick, onElementDoubleClick };

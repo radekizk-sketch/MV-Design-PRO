@@ -12,8 +12,9 @@
  *  - zaznaczenie: brak · jedno pole · element nienarysowany;
  *  - tor zasilania: drogi pewne i warunkowe · brak drogi · błąd HTTP · brak przypadku;
  *  - historia: kadr → „Wstecz" przywraca DOKŁADNIE poprzedni viewBox i ścieżkę;
- *  - zasłona szuflady: przy kadrze (kadr ponawia się) × bez kadru (obiekt
- *    szuflady odsłonięty) × obiekt już widoczny (widok bez zmian);
+ *  - klik obiektu (UI-02b): kanwa nie dostaje zasłony prawego pasa — przy kadrze
+ *    (kadr bez zmian) × bez kadru (obiekt w pasie dawnej szuflady, widok bez zmian);
+ *    szczegóły i działania obiektu są w inspektorze powłoki, POZA kanwą;
  *  - gest wielokliku: drugi klik w inny uchwyt · tło · węzeł nie-uchwyt · poza kanwą;
  *  - klawisze w polu edycji — ignorowane.
  */
@@ -30,7 +31,7 @@ import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverl
 import { useSelectionStore } from '../../../../selection';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../../scene/buildScene';
-import { SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX } from '../../../v2/canvas/SldDetailDrawer';
+import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
 import { sceneBoxToCameraWorld } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { opisToru } from '../useKadrowanieWidoku';
@@ -186,18 +187,24 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
     expect(poziom(container)).toBeGreaterThanOrEqual(1);
   });
 
-  it('drugi klik i dwuklik w NIEDOSTĘPNĄ akcję szuflady otwartej pierwszym klikiem → kadr stacji; akcja nie jest `disabled` (inaczej przeglądarka nie wysłałaby zdarzeń)', () => {
-    const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
+  it('drugi klik i dwuklik w NIEDOSTĘPNĄ akcję paska inspektora odsłoniętego pierwszym klikiem → kadr stacji; akcja nie jest `disabled` (inaczej przeglądarka nie wysłałaby zdarzeń)', () => {
+    const { container } = render(
+      <>
+        <SldCanvasV3Workspace width={1200} height={800} />
+        <InspektorKanwyTestowy />
+      </>,
+    );
     fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
-    const szuflada = screen.getByTestId('sld-v2-detail-drawer');
-    const niedostepna = szuflada.querySelector('[data-testid^="sld-v2-detail-drawer-action-"][data-disabled="true"]');
-    expect(niedostepna, 'szuflada stacji bez wyników ma akcję niedostępną').not.toBeNull();
+    const pasek = screen.getByTestId('inspektor-dzialania');
+    const niedostepna = pasek.querySelector('[data-testid^="inspektor-akcja-"][data-disabled="true"]');
+    expect(niedostepna, 'stacja bez wyników ma w pasku akcję niedostępną').not.toBeNull();
     expect(niedostepna).not.toBeDisabled();
     expect(niedostepna).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(niedostepna!, { detail: 2 });
     fireEvent.doubleClick(niedostepna!, { detail: 2 });
     expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
-    expect(screen.queryByTestId('sld-v2-detail-drawer')).toBeNull();
+    // Inspektor zostaje (jest poza kanwą i nie zasłania kadru) — wskazuje TĘ stację.
+    expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', STACJA);
   });
 
   it('gest otwarty na TLE: drugi klik i dwuklik w uchwyt stacji, który przesunął się pod kursor, nie zaznaczają ani nie kadrują', () => {
@@ -224,21 +231,21 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
     expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
   });
 
-  it('drugi klik i dwuklik w węzeł POZA kanwą (szuflada otwarta pod kursorem) → węzeł nie dostaje kliku, stacja jest kadrowana', () => {
+  it('drugi klik i dwuklik w węzeł POZA kanwą (panel, który przesunął się pod kursor) → węzeł nie dostaje kliku, stacja jest kadrowana', () => {
     const { container } = render(<SldCanvasV3Workspace width={1200} height={800} />);
-    const przyciskSzuflady = document.createElement('button');
-    const klikSzuflady = vi.fn();
-    przyciskSzuflady.addEventListener('click', klikSzuflady);
-    document.body.appendChild(przyciskSzuflady);
+    const przyciskPanelu = document.createElement('button');
+    const klikPanelu = vi.fn();
+    przyciskPanelu.addEventListener('click', klikPanelu);
+    document.body.appendChild(przyciskPanelu);
     try {
       fireEvent.click(stacjaL0(container, STACJA), { detail: 1 });
-      fireEvent.click(przyciskSzuflady, { detail: 2 });
-      fireEvent.doubleClick(przyciskSzuflady, { detail: 2 });
-      expect(klikSzuflady).not.toHaveBeenCalled();
+      fireEvent.click(przyciskPanelu, { detail: 2 });
+      fireEvent.doubleClick(przyciskPanelu, { detail: 2 });
+      expect(klikPanelu).not.toHaveBeenCalled();
       expect(zaznaczone()).toEqual([STACJA]);
       expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
     } finally {
-      przyciskSzuflady.remove();
+      przyciskPanelu.remove();
     }
   });
 
@@ -270,13 +277,16 @@ describe('gest wielokliku: drugi klik i dwuklik trafiają do celu PIERWSZEGO kli
 });
 
 /**
- * K2 — ZASŁONY prostokąta bezpiecznego. Szuflada szczegółów otwiera się klikiem
- * obiektu (także PIERWSZYM klikiem dwukliku stacji) i leży NAD prawą częścią
- * kanwy. Pomiar e2e przed poprawką (1440×900): kadr stacji leżał w połowie pod
- * szufladą. Iloczyn: szuflada {otwarta przed kadrem · zamknięta po kadrze}
- * × mierzony prostokąt stacji względem pasa szuflady.
+ * UI-02b JEDEN-INSPEKTOR × K2 — klik obiektu NIE zasłania kanwy. Dawna szuflada
+ * szczegółów (392 px) otwierała się klikiem nad prawym pasem kanwy; kadr ponawiał się
+ * na lewo od niej, a obiekt w pasie był przesuwany. Szczegóły są teraz w inspektorze
+ * powłoki poza kanwą, więc klik nie zmienia prostokąta bezpiecznego: kadr i widok
+ * zostają bez zmian. Iloczyn: kadr {trwający (dwuklik stacji) · brak (widok sieci)}
+ * × obiekt {pole stacji · stacja w pasie dawnej szuflady · stacja na lewo od pasa}.
  */
-describe('zasłony kadru: szuflada szczegółów', () => {
+const DAWNA_SZEROKOSC_SZUFLADY_PX = 392;
+
+describe('klik obiektu bez zasłony kanwy: kadr i widok bez zmian', () => {
   const SZEROKOSC = 1200;
   const WYSOKOSC = 800;
   /** Prostokąt stacji w pikselach ekranu kanwy (z viewBox i geometrii sceny). */
@@ -289,84 +299,72 @@ describe('zasłony kadru: szuflada szczegółów', () => {
     expect(WYSOKOSC / h).toBeCloseTo(k, 6);
     return { left: (box.minX - x) * k, right: (box.maxX - x) * k, top: (box.minY - y) * k, bottom: (box.maxY - y) * k };
   }
-
-  it('dwuklik stacji zamyka szufladę otwartą pierwszym klikiem gestu i kadruje na całej kanwie; klik otwiera szufladę — kadr ponawia się NA LEWO od niej; zamknięcie przywraca kadr pełny', () => {
-    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC} height={WYSOKOSC} />);
-    const cel = uchwyt(container, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === STACJA);
-    fireEvent.click(cel, { detail: 1 });
-    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
-    fireEvent.doubleClick(cel, { detail: 2 });
-    expect(screen.queryByTestId('sld-v2-detail-drawer')).toBeNull();
-    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
-    const kadrPelny = viewBox(container);
-    const pelny = stacjaNaEkranie(container);
-    expect(pelny.left).toBeGreaterThanOrEqual(-1e-6);
-    expect(pelny.right).toBeLessThanOrEqual(SZEROKOSC + 1e-6);
-
-    // Pojedynczy klik w pole stacji (już na poziomie wnętrza) otwiera szufladę —
-    // zasłonę prawego pasa: kadr stacji ponawia się na obszarze widocznym.
-    const lod = poziom(container);
-    fireEvent.click(uchwyt(container, sceny[lod], (s) => s.meta?.ownerRef === POLE.ref_id), { detail: 1 });
-    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
-    const zSzuflada = stacjaNaEkranie(container);
-    expect(zSzuflada.left).toBeGreaterThanOrEqual(-1e-6);
-    expect(zSzuflada.right).toBeLessThanOrEqual(SZEROKOSC - SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX + 1e-6);
-    expect((zSzuflada.left + zSzuflada.right) / 2).toBeLessThan((pelny.left + pelny.right) / 2);
-    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
-
-    fireEvent.click(screen.getByTestId('sld-v2-detail-drawer-close'));
-    expect(screen.queryByTestId('sld-v2-detail-drawer')).toBeNull();
-    expect(viewBox(container)).toBe(kadrPelny);
-  });
-});
-
-describe('zasłona szuflady bez kadru: obiekt szuflady nie chowa się pod nią', () => {
-  const SZEROKOSC = 1200;
-  const WYSOKOSC = 800;
   function naEkranie(container: HTMLElement, ref: string) {
     const [x, , w] = viewBox(container)!.split(' ').map(Number);
     const box = sceneBoxToCameraWorld(prostokatRefowWScenie(sceny[poziom(container)], [ref])!);
     const k = SZEROKOSC / w;
     return { left: (box.minX - x) * k, right: (box.maxX - x) * k };
   }
+  const renderZInspektorem = () =>
+    render(
+      <>
+        <SldCanvasV3Workspace width={SZEROKOSC} height={WYSOKOSC} />
+        <InspektorKanwyTestowy />
+      </>,
+    );
 
-  it('klik stacji leżącej w pasie szuflady (widok sieci) przesuwa rysunek: stacja na lewo od szuflady, skala bez zmian', () => {
-    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC} height={WYSOKOSC} />);
-    const granica = SZEROKOSC - SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX;
-    // Stacja, której rysunek w widoku sieci wchodzi w pas przyszłej szuflady.
-    const kandydat = porzadek.find((ref) => {
-      if (ref === sceny[2].meta.gpzId) return false;
-      const e = naEkranie(container, ref);
+  it('dwuklik stacji kadruje na całej kanwie; klik pola w kadrze pokazuje pole w inspektorze, a kadr zostaje DOKŁADNIE ten sam', () => {
+    const { container } = renderZInspektorem();
+    const cel = uchwyt(container, sceny[0], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === STACJA);
+    fireEvent.click(cel, { detail: 1 });
+    expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', STACJA);
+    fireEvent.doubleClick(cel, { detail: 2 });
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+    const kadrPelny = viewBox(container);
+    const pelny = stacjaNaEkranie(container);
+    expect(pelny.left).toBeGreaterThanOrEqual(-1e-6);
+    expect(pelny.right).toBeLessThanOrEqual(SZEROKOSC + 1e-6);
+
+    const lod = poziom(container);
+    fireEvent.click(uchwyt(container, sceny[lod], (s) => s.meta?.ownerRef === POLE.ref_id), { detail: 1 });
+    expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([POLE.ref_id]);
+    expect(screen.getByTestId('inspektor-element-kanwy')).toBeInTheDocument();
+    expect(viewBox(container)).toBe(kadrPelny);
+    expect(etykietySciezki()).toEqual(['Sieć', nazwa(STACJA)]);
+  });
+
+  it('klik stacji leżącej w pasie dawnej szuflady (widok sieci): rysunek się nie przesuwa — nic jej nie zasłania', () => {
+    const { container } = renderZInspektorem();
+    const granica = SZEROKOSC - DAWNA_SZEROKOSC_SZUFLADY_PX;
+    const ref = porzadek.find((r) => {
+      if (r === sceny[2].meta.gpzId) return false;
+      const e = naEkranie(container, r);
       return e.right > granica && e.left < SZEROKOSC && e.right - e.left < granica - 80;
     });
-    expect(kandydat, 'fikstura ma stację w pasie szuflady').toBeTruthy();
-    const ref = kandydat!;
-    const [, , szerokoscPrzed] = viewBox(container)!.split(' ').map(Number);
+    expect(ref, 'fikstura ma stację w pasie dawnej szuflady').toBeTruthy();
+    const przed = viewBox(container);
     fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
       detail: 1,
     });
-    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
-    const po = naEkranie(container, ref);
-    expect(po.right).toBeLessThanOrEqual(granica - 40 + 1e-6);
-    expect(po.left).toBeGreaterThanOrEqual(-1e-6);
-    expect(viewBox(container)!.split(' ').map(Number)[2]).toBeCloseTo(szerokoscPrzed, 9);
+    expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);
+    expect(viewBox(container)).toBe(przed);
   });
 
-  it('klik stacji widocznej w całości na lewo od pasa szuflady: widok bez zmian', () => {
-    const { container } = render(<SldCanvasV3Workspace width={SZEROKOSC} height={WYSOKOSC} />);
-    const granica = SZEROKOSC - SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX;
+  it('klik stacji widocznej na lewo od pasa: widok bez zmian', () => {
+    const { container } = renderZInspektorem();
+    const granica = SZEROKOSC - DAWNA_SZEROKOSC_SZUFLADY_PX;
     // GPZ pominięty: klik w zwinięty blok GPZ rozwija go (KD-5) — to polecenie widoku.
     const ref = porzadek.find((r) => {
       if (r === sceny[2].meta.gpzId) return false;
       const e = naEkranie(container, r);
       return e.left >= 40 && e.right <= granica - 40;
     });
-    expect(ref, 'fikstura ma stację na lewo od pasa szuflady').toBeTruthy();
+    expect(ref, 'fikstura ma stację na lewo od pasa').toBeTruthy();
     const przed = viewBox(container);
     fireEvent.click(uchwyt(container, sceny[poziom(container)], (s) => s.meta?.elementKind === 'station' && s.meta?.ownerRef === ref), {
       detail: 1,
     });
-    expect(screen.getByTestId('sld-v2-detail-drawer')).toBeInTheDocument();
+    expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-element-id', ref!);
     expect(viewBox(container)).toBe(przed);
   });
 });
@@ -402,10 +400,8 @@ describe('„Dopasuj widok", menu „Dopasuj do…" i klawisze', () => {
     fireEvent.click(screen.getByTestId('sld-v3-sciezka-1'));
     expect(viewBox(container)).toBe(kadrStacji);
 
-    // Klik pola otworzył szufladę szczegółów — zasłonę kadru (kadr sieci przy
-    // otwartej szufladzie jest węższy, patrz „zasłony kadru"). Po jej zamknięciu
+    // Klik pola nie zasłania kanwy (UI-02b: szczegóły w inspektorze powłoki), więc
     // Shift+F daje DOKŁADNIE kadr sieci z chwili montażu.
-    fireEvent.click(screen.getByTestId('sld-v2-detail-drawer-close'));
     fireEvent.keyDown(window, { key: 'F', shiftKey: true });
     expect(viewBox(container)).toBe(kadrSieci);
     // F z zaznaczeniem — znów kadr pola.

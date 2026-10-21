@@ -23,6 +23,7 @@ import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { publicTechnicalLabel } from '../../shared/publicTechnicalLabels';
 import type { Branch, BranchPointSN, EnergyNetworkModel } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
 
 interface SurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -331,6 +332,9 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
 
 export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
   const ref = surface.entityRef ?? null;
+  // UI-02b JEDEN-INSPEKTOR: odgałęzienie, które pasek działań inspektora nad tym oknem
+  // pokazuje dla tego słupa (ta sama pozycja rejestru), nie jest dublowane.
+  const odgalezienieWPasku = useDzialaniaPaskaNadOknem(ref).has('start-branch');
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
@@ -414,7 +418,7 @@ export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
               Port odgałęźny jest zajęty: {branchSegmentLabel}. Kontynuuj konfigurację odcinka
               odgałęźnego albo jego zakończenia.
             </p>
-          ) : (
+          ) : odgalezienieWPasku ? null : (
             <button
               type="button"
               disabled={!branchSourceRef}

@@ -1175,7 +1175,8 @@ export interface Bay extends ENMElement {
    *  pending_command) — lustro `backend/src/enm/models.py::Bay.runtime_state`
    *  (`enm_contract_parity_guard`). Produkt NIE MA zapisującego tego pola (żadna operacja
    *  domenowa go nie ustawia); backend czyta je jako drugie źródło po rekordzie aparatu
-   *  (`enm.interlock_rules.runtime_state_record`), tak samo szuflada SLD. Schemat SLD go NIE
+   *  (`enm.interlock_rules.runtime_state_record`), tak samo inspektor obiektu kanwy
+   *  (`sld/shared/daneElementuKanwy.ts`, sekcja stanu aparatu). Schemat SLD go NIE
    *  czyta (GPZ-PARYTET cz. 2, pkt 2): stan łączników na kanwie idzie ze `status` gałęzi
    *  łączeniowych pola i rekordów aparatów (`ui/sld/v2/model/stanAparatowPola.ts`).
    *  Definicja typu BayRuntimeState niżej. */

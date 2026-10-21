@@ -3,7 +3,7 @@
  * (REBUILD_PLAN_V3 §F8 „Feature-flag cutoveru"). Analogiczny do
  * `v2/canvas/SldWorkspaceContainer.tsx` (pomiar rozmiaru kontenera, ENM ze
  * WSPÓLNEGO store'a — zero shadow-modelu), ale MINIMALNY: v3 nie ma jeszcze
- * CAD-edycji/drawer/context-menu/DER-palety (spec §10 inwentarz — poza
+ * CAD-edycji/context-menu/DER-palety (spec §10 inwentarz — poza
  * zakresem F8a, to F8b+ pełna migracja funkcjonalna).
  *
  * F8b-1 (REBUILD_PLAN_V3 §F8b, zadanie „parytet funkcjonalny v3 przed
@@ -89,7 +89,6 @@ import {
   useRawResultOverlayStore,
   type RawOverlayPayload,
 } from '../../../sld-overlay/rawResultOverlayStore';
-import { wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 // Karta S-B (ZWARCIA-PRO pkt 7): kanał KIERUNKU rozpływu prądu zwarciowego —
 // zasilany przez ekran zwarć (`ui2/wyniki/zwarcia/pokazNaSchemacie.ts`,
 // `loadFaultFlow` PO `loadOverlay`), czyszczony automatycznie przy podmianie
@@ -104,21 +103,14 @@ import {
   useSldDeltaOverlayStore,
 } from '../../../sld-overlay/sldDeltaOverlayStore';
 import type { ShortCircuitFlowOverlayInput } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
-import { buildSldDataFromSnapshot, type SldDataPayload } from '../../v2/canvas/enmToSldAdapter';
-import {
-  SldDetailDrawer,
-  SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX,
-  type SldDetailDrawerAction, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from '../../v2/canvas/SldDetailDrawer';
-import { DerPersistenceApiError, postDerGeneratorConfig } from '../../v2/canvas/derPersistenceApi';
 import { notify } from '../../../notifications/store';
-import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { useDerDragDrop, DerPaletteButton, type DerDragKind } from '../../v2/canvas/useDerDragDrop';
 import {
   SldContextMenuController,
   type SldContextMenuRequest,
   type SldMenuContext,
 } from '../../../context-menu/SldContextMenuController';
-import { getMenuActions, type SldElementKindForMenu } from '../../v2/command/SldCommandService';
+import type { SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import {
   buildCanvasModelIndex,
   resolveCanvasMenuSubject,
@@ -126,23 +118,11 @@ import {
   KLASY_UCHWYTU,
   type CanvasMenuSubject,
 } from './canvasMenuSubject';
-import { stacjaPola } from '../../../shared/polaStacji';
-import { selectStationDistributionTransformers } from '../../../shared/transformatoryStacji';
 import { useMeasuredSize } from '../../shared/useMeasuredSize';
-import {
-  buildDerDropDetailDrawerData,
-  buildDetailDrawerDataForKind,
-  buildStationDetailDrawerData,
-  findSubstationByRef,
-  mapKindToMenuKind,
-} from '../../shared/detailDrawerData';
-import {
-  DRAWER_ACTION_LABEL_PL,
-  parseGpzApparatusSelectionId,
-  resolveBranchStartAvailability,
-  resolveTrunkStartAvailability,
-  useSldActionExecutor,
-} from '../../shared/sldActionExecutor';
+import { resolveTransformerRefForOwnerRef } from '../../shared/daneElementuKanwy';
+import { kontekstDostepnosciAkcji } from '../../shared/akcjeElementu';
+import { useKontekstElementuKanwy } from '../../shared/kontekstElementuKanwy';
+import { useSldActionExecutor } from '../../shared/sldActionExecutor';
 // F12-B (spec §10.1 ARCH-4, plan §F12): sześć ostatnich osiągalnych funkcji
 // kontenera v2 bez odpowiednika v3 — patrz sekcja montażu na dole pliku dla
 // szczegółowego mapowania na punkty F12-B 1-6.
@@ -393,170 +373,6 @@ export function elementTypeForKind(kind: PreviewElementKind | undefined): Elemen
  * Tabela `derSubtypeMenuKind` (podtyp DER → kategoria) przeniesiona 1:1 do
  * `canvasMenuSubject.menuKindDer` — jedno miejsce rozstrzygania kategorii.
  */
-
-/**
- * F11.4-B / ARCH-4 (spec §10.1 „pełna migracja budowniczych danych drawera"):
- * `elementKind` v3 → `kind` przyjmowany przez `buildDetailDrawerDataForKind`
- * (`shared/detailDrawerData.ts` — TA SAMA wartość co v2 `onSelectElement`
- * `kind`). JAWNA, zamknięta tabela; `undefined` = drawer się NIE otwiera dla
- * tego `elementKind` (bez zgadywania).
- *  - 'station' → 'station' (dopasowanie wprost, działa od F8c pkt 2).
- *  - 'source' → 'gpz' (sieć zewnętrzna — v2 `kind==='gpz'` mapuje na TEN SAM
- *    drawer 'station' przez `mapKindToDrawerKind`; `ownerRef` dla `source`
- *    to `Source.id` ENM, INNY namespace niż `Substation.ref_id` — gdy
- *    budowniczy nie znajdzie pasującej stacji, zwraca `null` (uczciwy brak,
- *    NIE crash) zgodnie z regułą tej funkcji).
- *  - 'segment' → 'cable_segment_sn' (realny drawer `cable_run` przez
- *    `buildCableRunDetailDrawerData`; v3 nie rozróżnia dziś kabel/napowietrzna
- *    — ta sama niepewność co domyślne zachowanie v2 opisane przy
- *    `elementKindForMenu` wyżej).
- *  - 'bus' → 'section' — `mapKindToDrawerKind('section')` nie rozpoznaje
- *    tego `kind` (zwraca `null`), TAK SAMO jak w v2 (v2 nigdy nie miał
- *    dedykowanego drawera sekcji/szyny) — jawna tabela zamiast pominięcia
- *    kategorii, żeby przyszły drawer sekcji zadziałał tu bez zmian w v3.
- *  - 'transformer'/'apparatus' → OBSŁUGIWANE OSOBNO w
- *    `buildDetailDrawerDataForElementKind` (nie tą tabelą) — `meta.ownerRef`
- *    dla tych `elementKind` w kompozycji stacji to BAY ref, NIE ref
- *    konkretnego urządzenia/transformatora (`compose/station.ts`, linia
- *    `ownerRef: s.bayRef ?? s.sourceRef` — scena v3 nie niesie osobnego
- *    identyfikatora per symbol). Budowniczy `buildStationBranchDetailDrawerData`
- *    przyjmuje `id` jako ref DOMENOWY; surowe przekazanie bayRef
- *    prowadziłoby do arbitralnego doboru `stationContext`
- *    (`sldData.stations[0]`, fallback ostatniego wyboru poprawny w v2 —
- *    tam `id` zawsze rozwiązywalny — ale NIE w v3). Dlatego transformer/
- *    apparatus mają DEDYKOWANĄ ścieżkę rozwiązywania stacji-właściciela
- *    poniżej zamiast wpisu w tej tabeli.
- *  - 'der' → `undefined` (poza przepływem drop-z-palety, gdzie `derKind`
- *    jest ZNANY z akcji użytkownika — `buildDerDropDetailDrawerData` wyżej).
- *    DER-MENU-V3 (Karta SLD-P) domknęła kanał danych rodzaju DER dla MENU
- *    (`meta.derKind` niesie TERAZ realny `SldSourceView.kind`, patrz
- *    `elementKindForMenu` wyżej), ale NIE dla drawera: drawer typu `'der'`
- *    w `SldDetailDrawer.tsx` (domyślne `data?.derKind ?? 'PV'`, ok. linii 421)
- *    to FORMULARZ TWORZENIA nowego DER (przepływ dropu), a nie panel
- *    ISTNIEJĄCEGO źródła — nie istnieje builder danych drawera dla
- *    klikniętego, już obecnego DER (odpowiednik `buildStationDetailDrawerData`
- *    dla stacji). Domyślne „PV" jest więc domyślną wartością FORMULARZA
- *    kreacji (gdzie `derKind` i tak zawsze pochodzi z akcji dropu), NIE
- *    fabrykacją rodzaju istniejącego DER — v3 nie otwiera dziś drawera dla
- *    klika w istniejący DER. Zbudowanie takiego panelu (z `meta.derKind`
- *    jako realnym rodzajem) to ODRĘBNY dostawca poza zakresem menu (raport
- *    DER-MENU-V3, jawny dług), nie luka domykalna tym samym kanałem.
- *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
- *    domenowy).
- */
-function elementKindForDrawer(kind: PreviewElementKind | undefined): string | undefined {
-  switch (kind) {
-    case 'station':
-      return 'station';
-    case 'source':
-      return 'gpz';
-    case 'segment':
-      return 'cable_segment_sn';
-    case 'bus':
-      return 'section';
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Rozwiązuje `Substation.ref_id` właściciela pola z `bayRef`, którą `apparatus` niesie jako
- * `meta.ownerRef` w kompozycji STACJI i GPZ (`compose/station.ts`, `compose/gpz.ts`). Jedna
- * reguła stacji pola `stacjaPola` (dawniej: `Bay.substation_ref`, a w zapasie wzorzec refu
- * `stn/⟨id⟩`, bez pól GPZ — breadcrumb aparatu GPZ spadał na `sldData.stations[0]`).
- */
-function stationRefForBayOwner(snapshot: EnergyNetworkModel | null, bayRef: string): string | null {
-  // SZYNY-STACJI-LUSTRO (commit 2): stacja pola z DANYCH (`stacjaPola`: `substation_ref`
-  // rekordu `bays` — także GPZ; karta W5-B), nie z gramatyki refu `stn/⟨id⟩`.
-  return snapshot ? stacjaPola(snapshot, bayRef) : null;
-}
-
-/**
- * Dla `elementKind==='transformer'`: `ownerRef` → REALNY ref transformatora.
- * DWIE ścieżki (zweryfikowane empirycznie na `sldSubstrate52s.enm.json`):
- *  1. GPZ (`compose/gpz.ts` `gpzSymbolToPreview`): `ownerRef` = `GpzElementMeta.
- *     transformerRef` (fallback po `sourceRef`/`bayRef`, oba nieustawione dla
- *     symbolu transformatora) — TO JUŻ jest realny ref transformatora w
- *     `snapshot.transformers` (dopasowanie WPROST, bez rozwiązywania stacji).
- *  2. Stacja (`compose/station.ts`: `ownerRef: s.bayRef ?? s.sourceRef`) —
- *     `ownerRef` to BAY ref (scena nie niesie osobnego refu transformatora
- *     per symbol) — rozwiązanie: bay→stacja (`stationRefForBayOwner`)
- *     →pierwszy transformator dystrybucyjny stacji
- *     (`selectStationDistributionTransformers`, TA SAMA funkcja, której
- *     budowniczy współdzielony używa dla gałęzi 'station'/'transformer' —
- *     jedna prawda o wyborze transformatora, zero nowej heurystyki).
- * Próba (1) PRZED (2) — jeśli `ownerRef` już jest realnym refem
- * transformatora, rozwiązywanie przez bay jest zbędne (i zawiodłoby, bo
- * `ownerRef` GPZ nie jest bay-em). `null`, gdy ŻADNA ścieżka nie rozwiąże —
- * wołający NIE otwiera wtedy drawera (uczciwy brak).
- */
-function resolveTransformerRefForOwnerRef(snapshot: EnergyNetworkModel | null, ownerRef: string): string | null {
-  const directMatch = (snapshot?.transformers ?? []).find(
-    (t) => t.ref_id === ownerRef || t.id === ownerRef,
-  );
-  if (directMatch) return directMatch.ref_id ?? directMatch.id ?? ownerRef;
-
-  const stationRef = stationRefForBayOwner(snapshot, ownerRef);
-  if (!stationRef) return null;
-  const station = findSubstationByRef(snapshot, stationRef);
-  const tr = selectStationDistributionTransformers(snapshot, station)[0];
-  return tr?.ref_id ?? tr?.id ?? null;
-}
-
-/**
- * Dyspozytor otwierania drawera dla `handleElementClick` — spina
- * `elementKindForDrawer` (station/gpz/segment/bus) z DEDYKOWANYMI ścieżkami
- * transformer/apparatus (rozwiązywanie refu/stacji-właściciela z `ownerRef`,
- * patrz funkcje wyżej). `null` = drawer się NIE otwiera.
- *
- * `apparatus`: S9-10 (dług `S9-4-DLUG-INSPEKTOR` SPŁACONY) — scena v3 niesie
- * TERAZ ref POJEDYNCZEGO urządzenia (`PreviewElementMeta.deviceRef`,
- * WYŁĄCZNIE ścieżka danych `apparatusSource==='dane'`), a klik przenosi go w
- * `SldElementClickMeta.deviceRef`. Budowniczy dostaje wtedy REF URZĄDZENIA
- * (nie pola), więc `apparatusState`/`parentBayLabel`/`globalId` rozwiązują
- * się per-aparat. Aparat BEZ `deviceRef` (stos konwencji §12.4) zachowuje
- * dotychczasową ścieżkę po `bayRef` — uczciwy brak rozdzielczości, NIE
- * fabrykowany ref. `stationCode`/
- * `parentStationLabel` w budowniczym współdzielonym spadłyby na arbitralny
- * `sldData.stations[0]` (fallback v2, tam martwy, bo `id` tam zawsze
- * rozwiązywalny — tu NIE) — KORYGOWANE tu dla aparatu stacji i GPZ, stacja pola
- * z danych (`stationRefForBayOwner` → `stacjaPola`: rekord `bays`). Pole nieznane w danych ⇒ brak korekty (drawer się otwiera, `label` poprawny).
- */
-function buildDetailDrawerDataForElementKind(
-  snapshot: EnergyNetworkModel | null,
-  sldData: SldDataPayload,
-  overlayPayload: RawOverlayPayload | null,
-  elementKind: PreviewElementKind | undefined,
-  id: string,
-  deviceRef: string | undefined,
-): SldDetailDrawerData | null {
-  if (elementKind === 'station') {
-    return buildStationDetailDrawerData(snapshot, sldData, overlayPayload, id);
-  }
-  if (elementKind === 'transformer') {
-    const transformerRef = resolveTransformerRefForOwnerRef(snapshot, id);
-    if (!transformerRef) return null;
-    return buildDetailDrawerDataForKind('transformer', transformerRef, { snapshot, sldData, overlayPayload });
-  }
-  if (elementKind === 'apparatus') {
-    // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): gdy klik niesie ref POJEDYNCZEGO
-    // urządzenia (ścieżka danych), budowniczy dostaje JEGO, nie ref pola —
-    // dwa aparaty jednego pola przestają dzielić jedną treść inspektora.
-    // Korekta stacji-właściciela liczy się nadal z refu POLA (`id`), bo
-    // relacja `Bay.substation_ref` jest zakotwiczona w polu.
-    const apparatusRef = deviceRef ?? id;
-    const apparatusDrawerData = buildDetailDrawerDataForKind('apparatus', apparatusRef, { snapshot, sldData, overlayPayload });
-    if (!apparatusDrawerData) return null;
-    const stationRef = stationRefForBayOwner(snapshot, id);
-    const correctedStationCode = stationRef
-      ? sldData.stations.find((s) => s.id === stationRef)?.stationCode ?? apparatusDrawerData.stationCode
-      : apparatusDrawerData.stationCode;
-    return { ...apparatusDrawerData, stationCode: correctedStationCode };
-  }
-  const drawerKind = elementKindForDrawer(elementKind);
-  if (!drawerKind) return null;
-  return buildDetailDrawerDataForKind(drawerKind, id, { snapshot, sldData, overlayPayload });
-}
 
 const ALL_SCENE_LODS: readonly SceneLod[] = [0, 1, 2];
 
@@ -1487,10 +1303,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // Dane: TA SAMA instancja ENM co v2 (`SldWorkspaceContainer` czyta z tego
   // samego store'a) — zero shadow-modelu (Core Rule #3).
   const snapshot = useSnapshotStore((state) => state.snapshot);
-  // F8c pkt 2: `logicalViews` — TEN SAM pole store'a co v2 (`useSnapshotStore`
-  // WSPÓLNY), wymagany przez `buildSldDataFromSnapshot` (poniżej) dla
-  // `sldData.stations[].*` (fallbacki drawera stacji, patrz `shared/
-  // detailDrawerData.ts::buildStationDetailDrawerData`).
+  // F8c pkt 2: `logicalViews` — TO SAMO pole store'a co v2 (`useSnapshotStore`
+  // WSPÓLNY), wymagane przez rozstrzyganie punktów startu ciągu i odgałęzienia
+  // (`kontekstDostepnosciAkcji`) i przez paletę zakresu pracy.
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   // B-2 (audyt §4.3): WSKAZANIE ostatniej operacji domenowej — kotwica widoku
   // kamery po zmianie modelu. Oba pola ustawia store w JEDNYM zapisie razem z
@@ -1693,31 +1508,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance, gpzWyniki],
   );
 
-  // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
-  // jawnie WSPÓŁDZIELONY per REBUILD_PLAN_V3 §F8c), wołany z DWOMA
-  // argumentami (`snapshot`, `logicalViews`) — TA SAMA sygnatura co produkcyjne
-  // wywołanie w `SldWorkspaceContainer.tsx` (bez `powerFlow` companion, patrz
-  // nagłówek pliku — martwe w v2 dziś z tego samego powodu). Używany
-  // WYŁĄCZNIE jako źródło fallbacków drawera stacji (`buildStationDetailDrawerData`).
-  const sldData = useMemo(() => buildSldDataFromSnapshot(snapshot, logicalViews), [snapshot, logicalViews]);
-
-  // F8c pkt 2: drawer szczegółów — stan LOKALNY (DODATEK do selekcji
-  // globalnej, patrz `handleElementClick` niżej). Zamknięcie: przycisk/Escape
-  // WEWNĄTRZ `SldDetailDrawer` (K30-88, zachowanie reużyte bez zmian).
-  const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
-  const closeDetailDrawer = useCallback(() => setDetailDrawerData(null), []);
-
   // K11-A (dyrektywa SLD-first): Escape ZDEJMUJE selekcję — kanoniczny gest
   // odznaczenia (dotąd nie istniał ŻADEN: inspektor raz otwarty nie miał drogi
-  // powrotu do stanu „bez zaznaczenia"). Kolejność zamykania: szuflada
-  // szczegółów i menu kontekstowe mają WŁASNE obsługi Escape — tu działamy
-  // wyłącznie, gdy nic nadrzędnego nie jest otwarte. Czyszczenie MUSI objąć
+  // powrotu do stanu „bez zaznaczenia"). Menu kontekstowe ma WŁASNĄ obsługę
+  // Escape. Czyszczenie MUSI objąć
   // też URL (ta sama para co orkiestracja nawigacji) — inaczej synchronizacja
   // adresu natychmiast przywraca selekcję z hasha.
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== 'Escape') return;
-      if (detailDrawerData !== null) return;
       const store = useSelectionStore.getState();
       if (store.selectedElements.length === 0) return;
       store.clearSelection();
@@ -1725,13 +1524,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [detailDrawerData]);
-  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
+  }, []);
   // S9-6: nazwa projektu i przypadku do tabliczki rysunkowej oraz do nazwy
   // pliku — REALNE dane powłoki (`app-state`), nie parametry wołającego.
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
-  const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
 
   // -------------------------------------------------------------------------
   // S9-13 (audyt W-8): PORÓWNANIE A/B Z KANWY. Lista przebiegów z ISTNIEJĄCEGO
@@ -1803,82 +1600,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [activeCaseId],
   );
 
-  // Parytet K30-87/F12-C (luka wykryta adaptacją e2e critical-der-config,
-  // 2026-07-17): v3 montował drawer BEZ handlera zapisu — CTA „Zapisz" w
-  // ogóle się nie renderowało, więc konfiguracja DER z palety była ślepą
-  // uliczką. Handler przeniesiony 1:1 z historycznego SldWorkspaceContainer
-  // (v2, skasowany w F12-C): POST generatora przez WSPÓŁDZIELONE
-  // `derPersistenceApi`, snapshot z odpowiedzi wprost do store'a (jedna
-  // prawda modelu), zamknięcie drawera po sukcesie, błędy przez `notify`.
-  const handleDetailDrawerSave = useCallback(async (payload: SldDetailDrawerSavePayload) => {
-    const label = detailDrawerData?.label ?? payload.elementId ?? '—';
-
-    if (payload.kind !== 'der') {
-      closeDetailDrawer();
-      return;
-    }
-    if (!activeProjectId || !activeCaseId) {
-      notify('Nie można zapisać DER: wybierz aktywny projekt i przypadek.', 'error');
-      return;
-    }
-    if (!payload.elementId || !payload.derConfig) {
-      notify('Nie można zapisać DER: wskaż stację i dane formularza.', 'error');
-      return;
-    }
-
-    try {
-      const response = await postDerGeneratorConfig(activeProjectId, activeCaseId, {
-        station_ref: payload.elementId,
-        der_kind: payload.derConfig.derKind,
-        power_mw: payload.derConfig.powerMw,
-        connection_variant: payload.derConfig.connectionVariant,
-        catalog_ref: payload.derConfig.inverterCatalogRef,
-        source_name: `${payload.derConfig.derKind} ${label}`,
-        quantity: 1,
-        nc_rfg_module: payload.derConfig.ncRfgModule,
-      });
-      setSnapshot(response);
-      notify(`Zapisano konfigurację DER: ${label}.`, 'success');
-      closeDetailDrawer();
-    } catch (error) {
-      const message = error instanceof DerPersistenceApiError
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : 'Nie udało się zapisać konfiguracji DER.';
-      notify(message, 'error');
-    }
-  }, [activeCaseId, activeProjectId, closeDetailDrawer, detailDrawerData, setSnapshot]);
-
-  // Parytet K30-91/F12-C (ta sama luka co onSave — drawer montowany bez CTA
-  // „Otwórz konfigurację"): przejście z drawera do pełnej powierzchni
-  // konfiguracyjnej, przeniesione 1:1 z historycznego SldWorkspaceContainer
-  // (cable_run → E-12 konfigurator odcinka SN; węzeł → E-14/E-15).
-  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
-  const openDetailConfiguration = useCallback(() => {
-    if (!detailDrawerData?.elementId) return;
-    if (detailDrawerData.kind === 'cable_run') {
-      openRouteSurface('E-12', {
-        entityRef: detailDrawerData.elementId,
-        entityType: 'segment',
-        subjectKind: 'helper_context',
-        payload: { defaultCard: 'trasa' },
-      });
-      setDetailDrawerData(null);
-      return;
-    }
-    if (detailDrawerData.kind === 'node') {
-      const screenCode = detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'E-15' : 'E-14';
-      openRouteSurface(screenCode, {
-        entityRef: detailDrawerData.elementId,
-        entityType: detailDrawerData.nodeSpec?.nodeKind === 'branch_pole' ? 'branch_pole' : 'zksn',
-        subjectKind: 'helper_context',
-      });
-      setDetailDrawerData(null);
-    }
-  }, [detailDrawerData, openRouteSurface]);
-  const canOpenDetailConfiguration = detailDrawerData?.kind === 'cable_run' || detailDrawerData?.kind === 'node';
-
   // F8c pkt 3 / KARTA S9-5: menu kontekstowe — stan LOKALNY trzyma ŻĄDANIE i
   // TEMAT (`CanvasMenuSubject`) razem, bo to JEDEN predykat o obiekcie:
   // kategoria menu, ref operacji i kontekst dostępności akcji muszą pochodzić
@@ -1929,52 +1650,17 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     },
     [modelIndex],
   );
-  // K5-A + S9-5: kontekst dostępności akcji menu liczony z TEMATU (jedno
-  // źródło prawdy o obiekcie), nie z ponownego dopasowania `elementId`.
-  // Dla stacji sprawdzamy realne FK `substation.bus_refs` → szyna nN
-  // (pasmo nN, `wPasmieNn`); bez stacji = `undefined` (brak danych, zero zgadywania).
-  const contextMenuAvailability = useMemo<SldMenuContext | undefined>(() => {
-    if (!contextSubject) return undefined;
-    // Karta S9-5 → S95-START (predykaty PARAMI): pozycje kontynuacji ciągu SN są
-    // dostępne tylko wtedy, gdy kontekst operacji ma PUNKT STARTU — liczone TYM
-    // SAMYM rozstrzygnięciem, które wykonawca poda kreatorowi magistrali
-    // (`resolveTrunkStartAvailability` → `buildSldOperationContext`), dla KAŻDEJ
-    // kotwicy tematu (GPZ, szyna, stacja, odcinek, pole, aparat), nie tylko GPZ.
-    const trunkStartAvailable = resolveTrunkStartAvailability(
-      snapshot,
-      logicalViews,
-      contextSubject.menuKind,
-      contextSubject.modelRef,
-    );
-    // S9-10 (ta sama klasa, predykaty PARAMI): „Rozpocznij odgałęzienie"
-    // bramkowane TYM SAMYM resolverem, którego użyje kreator odgałęzienia
-    // (`resolveBranchStartAvailability`) — dla KAŻDEJ kotwicy tematu, która ma
-    // tę pozycję w menu (zrodlo/szyna/stacja).
-    const branchStartAvailable = resolveBranchStartAvailability(
-      snapshot,
-      logicalViews,
-      contextSubject.menuKind,
-      contextSubject.modelRef,
-    );
-    if (contextSubject.kotwica !== 'stacja') {
-      return { trunkStartAvailable, branchStartAvailable };
-    }
-    const station = (snapshot?.substations ?? []).find(
-      (candidate) => candidate.ref_id === contextSubject.modelRef || candidate.id === contextSubject.modelRef,
-    );
-    if (!station) return { trunkStartAvailable, branchStartAvailable };
-    const hasNnBus = (station.bus_refs ?? []).some((busRef) => {
-      const bus = (snapshot?.buses ?? []).find(
-        (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
-      );
-      return bus != null && wPasmieNn(bus.voltage_kv);
-    });
-    return {
-      stationHasNnBus: hasNnBus,
-      trunkStartAvailable,
-      branchStartAvailable,
-    };
-  }, [contextSubject, logicalViews, snapshot]);
+  // K5-A + S9-5 + UI-02b: kontekst dostępności akcji menu liczony z TEMATU (jedno
+  // źródło prawdy o obiekcie) funkcją WSPÓLNĄ z paskiem działań inspektora
+  // (`shared/akcjeElementu.ts::kontekstDostepnosciAkcji`) — menu kanwy i inspektor
+  // nie mogą dać różnych list dla tego samego obiektu (predykaty parami).
+  const contextMenuAvailability = useMemo<SldMenuContext | undefined>(
+    () =>
+      contextSubject
+        ? kontekstDostepnosciAkcji(snapshot, logicalViews, contextSubject, activeCaseResultStatus)
+        : undefined,
+    [activeCaseResultStatus, contextSubject, logicalViews, snapshot],
+  );
   // F11.4-B / ARCH-3 (spec §10.1: „wykonawca akcji domenowych na v3: BRAMKA
   // REALNA, wdrażana"): `onAction` woła TEN SAM wykonawca co v2
   // (`useSldActionExecutor`, `shared/sldActionExecutor.ts`) — nawigacja
@@ -1991,42 +1677,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     },
     [handleAction, closeContextMenu],
   );
-
-  // F11.4-B / ARCH-3: akcje drawera — TEN SAM wzorzec co v2
-  // (`SldWorkspaceContainer.detailDrawerActions`): `getMenuActions` +
-  // `DRAWER_ACTION_LABEL_PL` WSPÓŁDZIELONE (`shared/sldActionExecutor.ts`),
-  // wykonawca `handleAction` wyżej — obie strony czytają jedną prawdę.
-  const detailDrawerActions = useMemo<SldDetailDrawerAction[]>(() => {
-    if (!detailDrawerData?.elementId) return [];
-    const menuKind = mapKindToMenuKind(detailDrawerData.menuKind ?? detailDrawerData.kind ?? '');
-    if (!menuKind) return [];
-    const apparatusKind = parseGpzApparatusSelectionId(detailDrawerData.elementId)?.apparatusKind;
-    return getMenuActions(menuKind, {
-      hasResults: activeCaseResultStatus === 'FRESH',
-      apparatusKind,
-      // S9-10 (predykaty parami): akcje szuflady czytają TĘ SAMĄ prawdę o
-      // punkcie startu odgałęzienia co menu kanwy i kreator.
-      branchStartAvailable: resolveBranchStartAvailability(
-        snapshot,
-        logicalViews,
-        menuKind,
-        detailDrawerData.elementId,
-      ),
-      // S95-START: szuflada czyta TĘ SAMĄ prawdę o punkcie startu ciągu co menu kanwy.
-      trunkStartAvailable: resolveTrunkStartAvailability(
-        snapshot,
-        logicalViews,
-        menuKind,
-        detailDrawerData.elementId,
-      ),
-    }).map((action) => ({
-      id: action.id,
-      labelPl: DRAWER_ACTION_LABEL_PL[action.id] ?? action.labelPl,
-      group: action.group,
-      disabledReasonPl: action.disabled ? action.disabledReasonPl ?? 'Akcja niedostępna dla bieżącego obiektu.' : undefined,
-      onClick: () => handleAction(action.id, menuKind, detailDrawerData.elementId),
-    }));
-  }, [activeCaseResultStatus, detailDrawerData, handleAction, logicalViews, snapshot]);
 
   // F8c pkt 4: paleta DER — hook + przycisk RENDER-AGNOSTYCZNE (v2
   // `useDerDragDrop`/`DerPaletteButton`, zero zmian), reużyte wprost.
@@ -2533,30 +2183,18 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     Math.max(0, size.width - 24),
   );
   const lvDomainPortalHeight = Math.max(240, size.height - 24);
-  // K2: zasłony STANOWE prostokąta bezpiecznego — szuflada szczegółów (prawo,
-  // otwierana klikiem obiektu, także pierwszym klikiem dwukliku stacji), panel
-  // portalu nN (prawo), mini-ścieżka kontekstu kadru (pas pod paskiem narzędzi)
-  // i panel komunikatu kadru (prawo, na lewo od szuflady/portalu). Szuflada
-  // i portal są zakotwiczone przy tej samej prawej krawędzi i nakładają się,
-  // więc zasłaniają pas o szerokości WIĘKSZEGO z nich, nie sumy. Pomiar e2e
-  // przed tą zasłoną (okno 1440×900): kadr stacji leżał w połowie pod szufladą
-  // (stacja 302–1031 px, szuflada od 666 px). Bez zasłon — referencja stała
-  // (`SLD_CANVAS_DOCK_INSETS`).
+  // K2: zasłony STANOWE prostokąta bezpiecznego — panel portalu nN (prawo),
+  // mini-ścieżka kontekstu kadru (pas pod paskiem narzędzi) i panel komunikatu
+  // kadru (prawo, na lewo od portalu). Kanwa nie ma własnego panelu szczegółów
+  // (UI-02b: szczegóły obiektu są wyłącznie w prawym inspektorze powłoki, poza
+  // kanwą). Bez zasłon — referencja stała (`SLD_CANVAS_DOCK_INSETS`).
   const komunikatKadruWidoczny = kadrowanie.komunikat !== null;
-  const szufladaOtwarta = detailDrawerData !== null;
-  const prawaZaslonaPx = Math.max(
-    szufladaOtwarta ? SZEROKOSC_SZUFLADY_SZCZEGOLOW_PX : 0,
-    lvDomainPortalOpen ? lvDomainPortalWidth : 0,
-  );
-  // Obiekty, których dotyczą zasłony prawego pasa: element szuflady i stacja
-  // portalu nN — kanwa odsłania je przy otwarciu zasłony (`odslonRefy`).
+  const prawaZaslonaPx = lvDomainPortalOpen ? lvDomainPortalWidth : 0;
+  // Obiekt, którego dotyczy zasłona prawego pasa: stacja portalu nN — kanwa
+  // odsłania ją przy otwarciu zasłony (`odslonRefy`).
   const odslonRefy = useMemo(
-    () =>
-      [
-        ...(szufladaOtwarta && detailDrawerData?.elementId ? [detailDrawerData.elementId] : []),
-        ...(lvDomainPortalOpen && lvDomainStationRef ? [lvDomainStationRef] : []),
-      ],
-    [szufladaOtwarta, detailDrawerData?.elementId, lvDomainPortalOpen, lvDomainStationRef],
+    () => (lvDomainPortalOpen && lvDomainStationRef ? [lvDomainStationRef] : []),
+    [lvDomainPortalOpen, lvDomainStationRef],
   );
   const effectiveCanvasInsets = useMemo(() => {
     if (prawaZaslonaPx === 0 && !sciezkaWidoczna && !komunikatKadruWidoczny) return SLD_CANVAS_DOCK_INSETS;
@@ -2569,6 +2207,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         (komunikatKadruWidoczny ? KOMUNIKAT_KADRU_WIDTH_PX + 12 : 0),
     };
   }, [prawaZaslonaPx, sciezkaWidoczna, komunikatKadruWidoczny]);
+  // UI-02b §0.3: klik elementu odsłania prawy inspektor aktywnej przestrzeni, jeśli
+  // był zwinięty (`useInspektorZaZawartoscia` rozwija go tylko przy ZMIANIE treści,
+  // a ponowny klik tego samego obiektu nie zmienia sygnału).
+  const odslonInspektor = useCallback(() => {
+    const shell = useShellStore.getState();
+    shell.setRightCollapsed(shell.activeSpace, false);
+  }, []);
   // K2 (§0.3): DWUKLIK STACJI — na KAŻDYM poziomie szczegółu — kadruje stację
   // z jej wnętrzem (poziom ≥ 1, stacja w centrum, sąsiedzi poza kadrem, jeśli
   // się da). Dwuklik w dowolny element należący do stacji (pole, aparat, szyna,
@@ -2582,15 +2227,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       if (!snapshot) return;
       const id = meta?.ownerRef ?? elementIdFromTestId(testId);
       if (!zakresCelu('stacja', snapshot, [id], scenaSld(snapshot, 2)).dostepny) return;
-      // Dwuklik = WEJŚCIE do stacji: kadr dostaje całą kanwę. Szufladę
-      // szczegółów otworzył pierwszy klik TEGO SAMEGO gestu (klik zaznacza), a nie
-      // zamiar projektanta — zostawiona zabierałaby 392 px z prawej. Pomiar e2e
-      // K2 (okno 1440×900): kanwa 796 px, z szufladą widoczne 404 px — stacja
-      // przelotowa nie mieściła się z sąsiadami poza kadrem i zajmowała mniej niż
-      // połowę mniejszego wymiaru kanwy. Dane stacji zostają w inspektorze, a
-      // szuflada wraca pojedynczym klikiem (wtedy kadr ponawia się na węższym
-      // obszarze — `effectiveCanvasInsets`).
-      setDetailDrawerData(null);
+      // Dwuklik = WEJŚCIE do stacji: kadr dostaje całą kanwę (pierwszy klik
+      // tego gestu zaznacza stację i odsłania jej dane w inspektorze powłoki).
       kadrujCel('stacja', [id]);
     },
     [snapshot, kadrujCel],
@@ -2598,18 +2236,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
 
   const handleElementClick = useCallback(
     (testId: string, meta?: SldElementClickMeta) => {
-      // Normalizacja tożsamości ODCINKA: scena adresuje KAWAŁKI przęsła
-      // sufiksami tras (`seg/⟨id⟩/segment_L`, `…/branch_segment_R_L` —
-      // `incomingSegmentRef`), ale kontrakty domenowe (drawer, E-12,
-      // wyniki) operują refem kanonicznym `seg/⟨id⟩/segment`. Bez tej
-      // normalizacji klik w kawałek otwierał drawer z refem, którego API
-      // nie zna (luka wykryta adaptacją e2e sld-editor-real-backend-flex).
+      // Tożsamość klikniętego obiektu: `ownerRef` sceny (dla odcinka — ref REALNEJ
+      // gałęzi ENM, także połówki `_L`/`_R` po cięciu; uzasadnienie i pomiar przy
+      // wyliczeniu `id` niżej), a bez meta — ref z identyfikatora testowego.
       const rawId = meta?.ownerRef ?? elementIdFromTestId(testId);
 
       // KARTA KLIK-ETYKIETA-KOTWICA — RODZAJ I REF KLIKNIĘTEGO OBIEKTU Z JEDNEGO
       // ŹRÓDŁA (kotwicy modelu), TYM SAMYM wywołaniem, którym rozstrzyga je menu.
       //
-      // Trzy konsumenty niżej (normalizacja refu przęsła, zrzut układu OZE na
+      // Trzy konsumenty niżej (wyznaczenie refu selekcji, zrzut układu OZE na
       // stację, rozwiązanie realnego refu transformatora) pytały o rodzaj obiektu
       // `meta.elementKind`, czyli tabelę `hitAreas.LABEL_OWNER_ELEMENT_KIND`.
       // Dla trafienia w UCHWYT (etykieta, znacznik wyniku) ta tabela nie jest
@@ -2621,11 +2256,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       //    §16-v3 niżej („selekcja transformatora niesie REALNY ref") była
       //    nieprawdziwa dla uchwytu — a jednocześnie (b) przy uzbrojonej palecie
       //    OZE odpalał się `derDrag.dropOnStation()` Z REFEM TRANSFORMATORA
-      //    (`dropOnStation` nie weryfikuje niczego, a `buildDerDropDetailDrawerData`
+      //    (`dropOnStation` nie weryfikuje niczego, a `buildDaneSzkicuDer`
       //    nie znajdując stacji pokazywał jako nazwę SUFIKS RYSUNKOWY
       //    „wn_sn#label#name-row-0");
       //  * napis nazwy STACJI (266 etykiet) trafiał do `dropOnStation` z refem
-      //    KOMPOZYTOWYM `…/station#name-row-0`, więc szuflada OZE też pokazywała
+      //    KOMPOZYTOWYM `…/station#name-row-0`, więc formularz OZE też pokazywał
       //    sufiks rysunkowy zamiast kodu stacji.
       // Dla uchwytu rodzaj i ref pochodzą więc TERAZ z kotwicy modelu; obiekty
       // rysujące SIEBIE (symbol, kreska) zachowują dotychczasową ścieżkę — ich
@@ -2653,17 +2288,36 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           ? undefined
           : ELEMENT_KIND_KOTWICY[kotwicaUchwytu]
         : meta?.elementKind;
-      // Ref modelu uchwytu jest już KANONICZNY (zweryfikowany w snapshocie przez
-      // `resolveCanvasMenuSubject`), więc NIE przechodzi normalizacji sufiksu
-      // trasy: `seg/⟨id⟩/segment_L` i `seg/⟨id⟩/segment` to DWA różne, realne
-      // rekordy `Branch` w modelu — obcięcie zweryfikowanego refu byłoby podmianą
-      // obiektu. Normalizacja dotyczy wyłącznie refu RYSUNKOWEGO (ścieżka symbolu/
-      // kreski), po to powstała.
+      // Ref uchwytu (napisu) — z kotwicy modelu (`resolveCanvasMenuSubject`); ref
+      // obiektu rysującego siebie (symbol, kreska odcinka) — jego `ownerRef` WPROST.
+      // Przyrostki `_L`/`_R` refu odcinka to REALNE połówki gałęzi ENM po cięciu
+      // łącznikiem albo stacją (`enmToSldAdapter.ts::expandSegmentRefToBranches` rysuje
+      // rzeczywiste gałęzie), a nie sufiksy rysunku: dawne obcinanie ich w selekcji
+      // dawało ref NIEISTNIEJĄCY w modelu (sieć referencyjna 52 stacji: 71 z 88
+      // odcinków), który synchronizacja selekcji natychmiast czyściła — klik w odcinek
+      // był martwy, a prawy inspektor go nie pokazywał (karta UI-02b, pomiar 2026-10-21).
       const id = uchwyt
         ? (tematUchwytu?.stan === 'temat' ? tematUchwytu.temat.modelRef : rawId)
-        : elementKind === 'segment'
-          ? rawId.replace(/_(?:[LR]_)*[LR]$/, '')
-          : rawId;
+        : rawId;
+
+      // UI-02b: TEMAT obiektu dla paska działań inspektora — TO SAMO wywołanie
+      // (`resolveCanvasMenuSubject`, to samo wejście z meta), którym rozstrzyga
+      // menu kontekstowe; uchwyt ma temat policzony już wyżej (jedno wywołanie).
+      const tematKliku = (): CanvasMenuSubject | null => {
+        if (uchwyt) return tematUchwytu?.stan === 'temat' ? tematUchwytu.temat : null;
+        if (!meta?.ownerRef) return null;
+        const wynik = resolveCanvasMenuSubject(
+          {
+            klasa: meta.klasa,
+            ownerRef: meta.ownerRef,
+            elementKind: meta.elementKind,
+            derKind: meta.derKind,
+            busRef: meta.busRef,
+          },
+          modelIndex,
+        );
+        return wynik.stan === 'temat' ? wynik.temat : null;
+      };
 
       // F8c pkt 4: drag DER uzbrojony — klik w STACJĘ „zrzuca" (jak v2
       // K30-78: `if (kind === 'station' && derDrag.state)`); klik gdziekolwiek
@@ -2680,9 +2334,23 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         if (elementKind === 'station') {
           const dropResult = derDrag.dropOnStation(id);
           if (dropResult) {
-            // F11.4-B: `buildDerDropDetailDrawerData` — WSPÓŁDZIELONA z v2
-            // (dawniej zduplikowana tu, patrz nagłówek modułu współdzielonego).
-            setDetailDrawerData(buildDerDropDetailDrawerData(snapshot, sldData, id, dropResult.kind));
+            // UI-02b: upuszczenie układu OZE zaznacza stację i zapisuje SZKIC DER —
+            // formularz konfiguracji z zapisem do backendu otwiera prawy inspektor
+            // tej stacji (`FormularzSzkicuDer`); kanwa nie ma własnego panelu.
+            const typStacji = elementTypeForKind('station');
+            selectElement(
+              typStacji ? { id, type: typStacji, name: id } : { id, type: 'DescriptiveElement', name: id },
+            );
+            const kontekstKanwy = useKontekstElementuKanwy.getState();
+            kontekstKanwy.ustawKontekst({
+              selekcjaId: id,
+              elementKind: 'station',
+              ref: id,
+              temat: tematKliku(),
+              tylkoOdczyt: props.readOnly ?? false,
+            });
+            kontekstKanwy.ustawSzkicDer({ stationRef: id, derKind: dropResult.kind });
+            odslonInspektor();
           }
         } else {
           derDrag.cancel();
@@ -2693,7 +2361,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // PORTAL nN: klik w symbol portalu na zacisku nN otwiera projekcję nN
       // stacji — tożsamość stacji z meta symbolu (`lvPortalStationRef`,
       // `compose/station.ts`), nie z parsowania `ownerRef`. Portal nie jest
-      // obiektem modelu: zero selekcji, zero szuflady, zero menu.
+      // obiektem modelu: zero selekcji, zero kontekstu inspektora, zero menu.
       if (elementKind === 'lvPortal') {
         if (meta?.lvPortalStationRef) setLvDomainStationRef(meta.lvPortalStationRef);
         return;
@@ -2701,7 +2369,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
 
       const type = elementTypeForKind(elementKind);
       // §16-v3/adaptacja flex: selekcja TRANSFORMATORA niesie REALNY ref
-      // transformatora (ta sama rozdzielczość, której używa drawer —
+      // transformatora (ta sama rozdzielczość, której używa panel elementu —
       // `resolveTransformerRefForOwnerRef`), nie bay-ref symbolu — inspektor
       // inżynierski (`InspectorEngineeringView`, selekcja globalna) rozwiązuje
       // element po ref_id; bay-ref pokazywałby pusty/obcy panel.
@@ -2713,57 +2381,27 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         elementKind === 'transformer'
           ? resolveTransformerRefForOwnerRef(snapshot, id) ?? id
           : id;
+      const selekcjaId = type ? selectId : id;
       selectElement(type ? { id: selectId, type, name: selectId } : { id, type: 'DescriptiveElement', name: id });
 
-      // F11.4-B / ARCH-4 (spec §10.1 „pełna migracja budowniczych danych
-      // drawera"): otwieranie drawera rozszerzone POZA stację —
-      // `elementKindForDrawer` niżej mapuje `elementKind` v3 na `kind`
-      // budowniczego współdzielonego. Brak dopasowania/`null` z budowniczego
-      // = drawer się NIE otwiera (uczciwy brak, bez crasha, bez zgadywania) —
-      // jeśli już otwarty dla innego elementu, zostaje (spójne z v2:
-      // `handleSelectElement` też nie zamyka drawera na niezmapowany `kind`).
-      let drawerData = buildDetailDrawerDataForElementKind(
-        snapshot,
-        sldData,
-        rawOverlayPayload,
+      // UI-02b JEDEN-INSPEKTOR: kanwa NIE otwiera własnego panelu szczegółów.
+      // Klik zapisuje, JAK kanwa zaadresowała obiekt (rodzaj sceny, ref właściciela,
+      // ref urządzenia, temat menu) pod kluczem id selekcji — prawy inspektor
+      // powłoki buduje z tego dane, wyniki i pasek działań — i odsłania inspektor,
+      // jeśli był zwinięty. Ref kompozytowy rysunku (`…#sn-bus`) rozwiązuje sam
+      // inspektor z kotwicy tematu (`useStanPaneluElementu`).
+      useKontekstElementuKanwy.getState().ustawKontekst({
+        selekcjaId,
         elementKind,
-        id,
-        meta?.deviceRef,
-      );
-      // S9-10 (dług `S9-4-DLUG-INSPEKTOR`, ogniwo etykiet): ref KOMPOZYTOWY
-      // (`…#sn-bus` itd.) nie rozwiązuje się w budowniczych — panel się nie
-      // otwierał. Kotwicę modelu rozstrzyga TEN SAM moduł, który robi to dla
-      // menu kontekstowego (`resolveCanvasMenuSubject` — jedno źródło prawdy;
-      // ślepe zdejmowanie sufiksu byłoby fabrykacją, patrz rejestr). Ścieżka
-      // jest WYŁĄCZNIE zapasowa dla obiektów rysujących SIEBIE (kreska szyny
-      // stacji): UCHWYTY (etykieta, znacznik wyniku) mają kotwicę policzoną już
-      // na wejściu, jednym wywołaniem dla wszystkich trzech konsumentów
-      // (KARTA KLIK-ETYKIETA-KOTWICA), więc drugi raz jej nie liczymy.
-      if (!drawerData && !uchwyt && meta?.ownerRef) {
-        const wynik = resolveCanvasMenuSubject(
-          {
-            klasa: meta.klasa,
-            ownerRef: meta.ownerRef,
-            elementKind: meta.elementKind,
-            derKind: meta.derKind,
-            busRef: meta.busRef,
-          },
-          modelIndex,
-        );
-        if (wynik.stan === 'temat') {
-          drawerData = buildDetailDrawerDataForElementKind(
-            snapshot,
-            sldData,
-            rawOverlayPayload,
-            ELEMENT_KIND_KOTWICY[wynik.temat.kotwica],
-            wynik.temat.modelRef,
-            meta?.deviceRef,
-          );
-        }
-      }
-      if (drawerData) setDetailDrawerData(drawerData);
+        ref: id,
+        deviceRef: meta?.deviceRef,
+        rolaLacznika: meta?.rolaLacznika,
+        temat: tematKliku(),
+        tylkoOdczyt: props.readOnly ?? false,
+      });
+      odslonInspektor();
     },
-    [derDrag, modelIndex, rawOverlayPayload, selectElement, sldData, snapshot],
+    [derDrag, modelIndex, odslonInspektor, props.readOnly, selectElement, snapshot],
   );
 
   /**
@@ -2771,8 +2409,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
    * arkusz CZYŚCI zaznaczenie. Ta sama para operacji, co wyjście klawiszem
    * Escape wyżej (`clearSelection` + `updateUrlWithSelection(null)`) — inaczej
    * synchronizacja adresu natychmiast przywróciłaby selekcję z hasha.
-   * Szuflada szczegółów ma własne wyjście (przycisk/Escape) i NIE jest tu
-   * zamykana: klik w tło to porzucenie WSKAZANIA, nie zamknięcie panelu.
+   * Klik w tło to porzucenie WSKAZANIA — inspektor powłoki wraca do stanu
+   * „bez zaznaczenia".
    */
   const handleBackgroundClick = useCallback(() => {
     const store = useSelectionStore.getState();
@@ -2783,7 +2421,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
 
   // R3 (wym. 6): AKTYWACJA etykiety wynikowej — klik w blok liczbowy prowadzony
   // TĄ SAMĄ ścieżką co klik w element (`handleElementClick`: selekcja +
-  // istniejący panel wyników `SldDetailDrawer`). Klasa etykiety
+  // kontekst kliknięcia dla prawego inspektora, sekcja „Wyniki"). Klasa etykiety
   // (`ResultLabelKind`) mapuje 1:1 na `elementKind` sceny — zero nowego panelu,
   // zero nowej ścieżki danych (reuse). Deep-link do White Box/proof: brak
   // działającej ścieżki z v3 kanwy (kanwa czyta payload wynikowy, nie ślad
@@ -3117,15 +2755,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           </div>
         </div>
       )}
-
-      <SldDetailDrawer
-        open={detailDrawerData !== null}
-        data={detailDrawerData}
-        onClose={closeDetailDrawer}
-        onSave={handleDetailDrawerSave}
-        onOpenConfiguration={canOpenDetailConfiguration ? openDetailConfiguration : undefined}
-        actions={detailDrawerActions}
-      />
 
       <SldContextMenuController
         request={contextRequest}

@@ -1,7 +1,8 @@
 /**
  * Model widoku SLD — kształt danych wyjściowych adaptera ENM → SLD
  * (`canvas/enmToSldAdapter.ts` `SldDataPayload`), czytany przez scenę kanwy v3
- * (`ui/sld/v3/scene/buildScene.ts`), szufladę szczegółów i drzewo hierarchii.
+ * (`ui/sld/v3/scene/buildScene.ts`), inspektor obiektu kanwy (`sld/shared/daneElementuKanwy.ts`)
+ * i drzewo hierarchii.
  *
  * GPZ-PARYTET cz. 2 (pkt 4): typy przeniesione z martwych rendererów v2
  * (`v2/renderer/{StationOnRun,Gpz,Section,Der,Connection}Renderer.tsx`,
@@ -38,14 +39,10 @@ export interface StationOnRunViewModel {
   readonly lod?: LodLevel;
   readonly snBays?: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer?: boolean;
-  readonly transformerRefs?: readonly string[];
   /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z OBOMA
    *  końcami topologicznymi (`Transformer.hv_bus_ref`/`lv_bus_ref`) — 0..N od
-   *  początku, każda z własnym refem i własnym przypisaniem do sekcji szyn.
-   *  `transformerRefs` wyżej to TA SAMA lista zredukowana do samych refów
-   *  (`selectStationTransformerUnits`, jedno źródło prawdy) — konsumenci
-   *  potrzebujący wyłącznie tożsamości (szuflada szczegółów, renderery v2)
-   *  zostają przy niej bez zmian. */
+   *  początku, każda z własnym refem i własnym przypisaniem do sekcji szyn
+   *  (`selectStationTransformerUnits`, jedno źródło prawdy). */
   readonly transformerUnits?: readonly StationTransformerUnit[];
   readonly transformerRatedKva?: number | null;
   readonly nnFeedersCount?: number;
@@ -59,20 +56,6 @@ export interface StationOnRunViewModel {
   /** Krótki kod stacji (S01, S15, S29...) wyświetlany jako prominent badge.
    *  K30-4: zastępuje regex extraction z name (backend gubi name_pl). */
   readonly stationCode?: string | null;
-  /** K30-7: switching state per connection column (CB position).
-   *  Indeks per connectionColumns(): 0 = WE, 1 = WY, 2 = ODG (per topologicalType).
-   *  - 'closed' (default): polygon filled green = pole pod napięciem
-   *  - 'open': polygon stroke-only = wyłączone, brak napięcia
-   *  - 'unknown': polygon filled grey with neutral hatch = stan do weryfikacji
-   *  Domyślnie wszystko 'closed' (back-compat z testami).
-   */
-  readonly switchStateByColumn?: ReadonlyArray<'closed' | 'open' | 'unknown'>;
-  /** K30-8: alarm summary indicator — gdy stacja ma WARNING/IMPORTANT/CRITICAL
-   *  z overlay (np. SC_3F Ik" > threshold), pokazuj alarm icon przy code badge.
-   *  Wartość: 'critical' (red triangle), 'important' (orange), 'warning' (amber).
-   *  null/undefined = brak alarmu (no overlay icon).
-   */
-  readonly alarmSeverity?: 'warning' | 'important' | 'critical' | null;
   /** K30-15.3: peak load attached to station's LV side [kW].
    *  Wartość >0 → 'L' badge widoczny pod transformer pokazujący poziom odbioru
    *  (Eksploatacyjny diff vs station bez load = ZKSN-only). */

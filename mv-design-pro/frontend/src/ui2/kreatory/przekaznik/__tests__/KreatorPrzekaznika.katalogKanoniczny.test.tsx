@@ -7,7 +7,7 @@
  * KANONICZNY MV (`fetchMvProtectionDeviceTypes`, przestrzeń `ZABEZPIECZENIE`,
  * 12 pozycji) — picker oferował wybór, który operacja i tak odrzucała
  * (fabrykacja wyboru). Ten plik mockuje ZAPYTANIE (`fetch`), nie listę opcji —
- * wzorzec identyczny jak `ui/sld/v2/canvas/__tests__/SldDetailDrawer.test.tsx`
+ * wzorzec identyczny jak `ui/network-build/inspektor-elementu/__tests__/FormularzSzkicuDer.test.tsx`
  * (katalog DER) i `ui/catalog/__tests__/converterTypesPtpiree.test.ts` — żeby
  * realnie przejść przez `fetchMvProtectionDeviceTypes` → `fetchCatalogJson` →
  * `fetch`, a nie przez zaślepkę modułu, która ukryłaby błędny endpoint.

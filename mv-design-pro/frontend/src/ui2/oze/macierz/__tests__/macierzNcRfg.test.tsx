@@ -127,7 +127,14 @@ describe('macierz przed biegiem — wiersze z katalogu, operator z modelu, proce
     const pierwszy = screen.getAllByTestId('mvd-oze-wiersz')[0];
     expect(pierwszy).toHaveTextContent(katalogFixture().tests[0].procedure_basis_pl);
     expect(pierwszy).toHaveTextContent(MACIERZ_STRINGS.rodzajTwierdzenia);
-    expect(screen.getAllByTestId('mvd-oze-komorka-brak-biegu').length).toBeGreaterThan(0);
+    // Komórki „brak biegu" dopiero po wczytaniu wejść modelu przypadku (`zbudujModuly`:
+    // przed odpowiedzią wejść moduł jest zablokowany „brak wejścia modelu"). Dawne
+    // natychmiastowe sprawdzenie zależało od kolejności odpowiedzi katalogu i wejść —
+    // pod obciążeniem puli procesów odpowiedź katalogu przychodziła pierwsza (test
+    // migający, zmierzony w bramce vitest karty UI-02b).
+    await waitFor(() =>
+      expect(screen.getAllByTestId('mvd-oze-komorka-brak-biegu').length).toBeGreaterThan(0),
+    );
     expect(screen.getByTestId('mvd-oze-operator')).toHaveAttribute('data-zrodlo', 'model');
     expect(screen.getByTestId('mvd-oze-operator-wartosc')).toHaveTextContent('Enea');
     expect(screen.getByTestId('mvd-oze-wersja-procedury')).toHaveTextContent(katalogFixture().procedure_version.tytul);

@@ -172,8 +172,7 @@ describe('resultPointsHiddenByModel — deklaracja modelu „tego nie rysujemy"'
  * ILOCZYN CECH predykatu „punkt w rozdzielnicy nN stacji": rodzaj szyny {szyna
  * odpływu nN tej stacji, szyna nN stacji, szyna SN stacji, szyna GPZ, mufa} ×
  * stan deklaracji {pole nN stacji wskazuje aparat (`equipment_refs`), rekord pola usunięty,
- * gałąź wychodząca z obcej szyny}. Źródło prawdy wspólne z agregatem odbioru i
- * szufladą: lustro backendu `szynyStacji` złożone ze stroną nN (`stationSideBusRefs`,
+ * gałąź wychodząca z obcej szyny}. Źródło prawdy wspólne z agregatem odbioru: lustro backendu `szynyStacji` złożone ze stroną nN (`stationSideBusRefs`,
  * karta SZYNY-STACJI-LUSTRO) — zbiory nie mogą się rozjechać.
  */
 describe('resultPointsInStationNnBoard — szyny odpływów nN stacji (poza schematem SN)', () => {

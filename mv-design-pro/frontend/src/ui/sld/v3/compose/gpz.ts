@@ -99,6 +99,7 @@ import type {
   CanonicalGpzProps,
 } from '../../v2/canvas/canonicalGpzModel';
 import type { BayPrimaryDeviceView } from '../../v2/model/widokPolStacji';
+import { rolaSymboluLacznika, stanRoliSymbolu } from '../../v2/model/stanAparatowPola';
 
 // ---------------------------------------------------------------------------
 // Meta — atrybuty data-* potrzebne wyrocznaim migrowanym z v2 (§8).
@@ -851,6 +852,18 @@ function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): 
   return state;
 }
 
+/**
+ * Stan symbolu łącznika pola GPZ z agregatów pola (`cbState`/`dsState`/`esState`) — rola
+ * symbolu z JEDNEJ tabeli `rolaSymboluLacznika` (tę samą czyta inspektor klikniętego
+ * symbolu). Uziemnik nieobecny w polu (`'absent'`) nie ma stanu rysunku.
+ */
+function stanSymboluPolaGpz(symbolId: SymbolId, bay: CanonicalGpzBay): SwitchState | undefined {
+  const rola = rolaSymboluLacznika(symbolId);
+  if (!rola) return undefined;
+  if (rola === 'es') return switchStateOrUndefined(bay.esState);
+  return stanRoliSymbolu(rola, { cbState: bay.cbState, dsState: bay.dsState });
+}
+
 
 
 /** F13.1 (spec §21.1/§21.2, D3-8/D3-10): tabliczka danych systemu — „Sk″ 250
@@ -953,7 +966,7 @@ export function composeGpz(
           centerX,
           topY,
           (_i, id) => `gpz-canonical-hv-bay-${bay.bayRef}-${id}`,
-          (_i, id) => (id === 'breaker' ? bay.cbState : id === 'disconnector' ? bay.dsState : undefined),
+          (_i, id) => stanSymboluPolaGpz(id, bay),
           { sectionId: hvSection.sectionId, bayRef: bay.bayRef },
         );
         symbols.push(...stack.instances);
@@ -1127,12 +1140,7 @@ export function composeGpz(
         field.centerX,
         topY,
         (_i, id) => `gpz-canonical-bay-${field.bay.bayRef}-${id}`,
-        (_i, id) => {
-          if (id === 'breaker') return field.bay.cbState;
-          if (id === 'disconnector') return field.bay.dsState;
-          if (id === 'earthSwitch') return switchStateOrUndefined(field.bay.esState);
-          return undefined;
-        },
+        (_i, id) => stanSymboluPolaGpz(id, field.bay),
         { sectionId: layout.section.sectionId, bayRef: field.bay.bayRef },
         deviceItems,
       );

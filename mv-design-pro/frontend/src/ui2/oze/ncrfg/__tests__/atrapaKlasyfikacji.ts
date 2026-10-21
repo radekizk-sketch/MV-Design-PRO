@@ -1,7 +1,7 @@
 /**
  * Atrapa końcówki `GET /api/ncrfg-tests/modul` dla testów ekranów (karta AB-1a Pakiet D2;
  * decyzja zarządcy nr 1). Dwie gwarancje zamiast dawnych trzech ręcznych kopii progów
- * (`klasyfikujModulNcRfgDlaTestu` w testach kreatora DER i szuflady SLD):
+ * (`klasyfikujModulNcRfgDlaTestu` w testach kreatora DER i dawnego panelu szczegółów kanwy):
  *
  * 1. KSZTAŁT ZAPYTANIA z migawki OpenAPI: parametry zapytania = dokładnie `parameters`
  *    końcówki (`p_max_kw`, `napiecie_kv`, oba wymagane) — inny klucz (np. dawny klucz mocy w MW)

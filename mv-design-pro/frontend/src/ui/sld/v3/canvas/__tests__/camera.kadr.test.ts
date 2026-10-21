@@ -290,21 +290,22 @@ describe("akcja 'kadruj' — cykl życia kadru", () => {
     wKadrze(anchor[poResize.lod], poResize, BEZ_ZASLON, mniejsza);
   });
 
-  // K2: zmiana ZASŁON (szuflada szczegółów otwarta/zamknięta nad kanwą) przy tym
+  // K2: zmiana ZASŁON (portal rozdzielnicy nN otwarty/zamknięty nad kanwą — jedyna
+  // zasłona kanwy po UI-02b) przy tym
   // samym rozmiarze kanwy ponawia kadr w nowym prostokącie bezpiecznym; akcja bez
   // zasłon zachowuje zasłony kadru. Iloczyn: zasłona {dochodzi · znika · bez zmian}.
   it('zmiana zasłon przy tym samym rozmiarze kanwy PONAWIA kadr w nowym prostokącie bezpiecznym', () => {
     const anchor = cel(1200);
     const po = cameraReducer(stan(0.2, 0), kadr(anchor));
-    const szuflada: SafeInsets = { top: 0, right: 392, bottom: 0, left: 0 };
-    const zSzuflada = cameraReducer(po, { type: 'resize', viewportSize: VIEWPORT, safeInsets: szuflada });
-    wKadrze(anchor[zSzuflada.lod], zSzuflada, szuflada);
-    expect(zSzuflada.transform).not.toEqual(po.transform);
+    const portal: SafeInsets = { top: 0, right: 392, bottom: 0, left: 0 };
+    const zPortalem = cameraReducer(po, { type: 'resize', viewportSize: VIEWPORT, safeInsets: portal });
+    wKadrze(anchor[zPortalem.lod], zPortalem, portal);
+    expect(zPortalem.transform).not.toEqual(po.transform);
     // Ta sama akcja bez zasłon nie gubi zasłony kadru (kadr pamięta swoje zasłony).
-    const bezZmian = cameraReducer(zSzuflada, { type: 'resize', viewportSize: VIEWPORT });
-    expect(bezZmian.transform).toEqual(zSzuflada.transform);
-    // Szuflada zamknięta: kadr wraca DOKŁADNIE do kadru bez zasłon.
-    const poZamknieciu = cameraReducer(zSzuflada, { type: 'resize', viewportSize: VIEWPORT, safeInsets: BEZ_ZASLON });
+    const bezZmian = cameraReducer(zPortalem, { type: 'resize', viewportSize: VIEWPORT });
+    expect(bezZmian.transform).toEqual(zPortalem.transform);
+    // Portal zamknięty: kadr wraca DOKŁADNIE do kadru bez zasłon.
+    const poZamknieciu = cameraReducer(zPortalem, { type: 'resize', viewportSize: VIEWPORT, safeInsets: BEZ_ZASLON });
     expect(poZamknieciu.transform).toEqual(cameraReducer(stan(0.2, 0), kadr(anchor, { safeInsets: BEZ_ZASLON })).transform);
   });
 

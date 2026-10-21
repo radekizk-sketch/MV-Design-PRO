@@ -69,7 +69,7 @@
  * `OwnerKind` etykiety jest STRUKTURALNIE NIEZDOLNY do niesienia rodzaju obiektu:
  * jeden rodzaj `'station-name'` obsługuje wiersz nazwy STACJI, TRANSFORMATORA i
  * ŹRÓDŁA (pomiar: 266 / 4 / 3 etykiety). Dlatego rodzaj obiektu dla WSZYSTKICH
- * konsumentów (menu, szuflada, selekcja) pochodzi TERAZ z kotwicy modelu, a
+ * konsumentów (menu, panel elementu inspektora, selekcja) pochodzi TERAZ z kotwicy modelu, a
  * `LABEL_OWNER_ELEMENT_KIND` jest wyłącznie tym, czym uczciwie jest —
  * KATEGORIĄ RYSUNKOWĄ trafienia (patrz jej nagłówek po zmianie).
  *
@@ -112,7 +112,7 @@ export type MenuAnchorKind =
  * elementu rysunku". Czytają ją OBA końce pary (reguła KLASA pkt 3):
  *  - WEJŚCIE — bramka przejścia stacja→szyna w `resolveCanvasMenuSubject`
  *    (`input.elementKind === ELEMENT_KIND_KOTWICY.szyna`);
- *  - WYJŚCIE — kategoria elementu podawana budowniczym szuflady i selekcji
+ *  - WYJŚCIE — kategoria elementu podawana budowniczym panelu elementu i selekcji
  *    (`SldCanvasV3Workspace`, dawna lokalna tabela `ELEMENT_KIND_KOTWICY`).
  *
  * Tabela ZAMKNIĘTA (`satisfies`) i ODWRACALNA — jej injektywność jest

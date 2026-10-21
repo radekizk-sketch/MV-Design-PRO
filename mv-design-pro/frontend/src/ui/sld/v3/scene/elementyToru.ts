@@ -27,6 +27,7 @@ import type { PreviewSegment, PreviewSymbol } from '../compose/preview';
 import type { SimpleAnchoredOwnerInput } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { stanStatusuGalezi, TYPY_GALEZI_LACZNIKA_TORU } from '../../v2/model/stanAparatowPola';
 
 export interface WynikElementowToru {
   /** Pełna lista odcinków sceny po zmianach (przerwy pod łącznikami, powiązania,
@@ -51,7 +52,6 @@ type Galaz = {
 };
 
 const TYPY_ODCINKA = new Set(['cable', 'line_overhead']);
-const TYPY_LACZNIKA = new Set(['switch', 'breaker']);
 
 const rowne = (a: RouteVertex, b: RouteVertex): boolean => a.x === b.x && a.y === b.y;
 
@@ -130,7 +130,7 @@ export function elementyToru(
 
   // -- (1) Łączniki na torze: gałąź switch/breaker między dwoma końcami odcinków.
   for (const galaz of galezie) {
-    if (!TYPY_LACZNIKA.has(galaz.type) || galaz.meta?.render_on_sld === false) continue;
+    if (!TYPY_GALEZI_LACZNIKA_TORU.has(galaz.type) || galaz.meta?.render_on_sld === false) continue;
     const a = punktSzyny(galaz.from_bus_ref);
     const b = punktSzyny(galaz.to_bus_ref);
     if (a == null && b == null) continue; // łącznik poza torem SN (pole stacji, nN) — nie ta klasa.
@@ -149,7 +149,7 @@ export function elementyToru(
     const def = SYMBOL_DEFS[symbolId];
     const x = snapToGrid(a.x - def.width / 2);
     const y = snapToGrid(a.y - def.height / 2);
-    const stan = galaz.status === 'open' ? 'open' : galaz.status === 'closed' ? 'closed' : 'unknown';
+    const stan = stanStatusuGalezi(galaz.status);
     symbols.push({
       symbolId,
       x,

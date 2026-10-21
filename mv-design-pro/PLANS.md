@@ -1165,7 +1165,9 @@ Pozostałe duże luki (zachowane jako P0/P1 per § 4.0):
 - Explicit „Wstaw GPZ" first-step CTA dla pustego projektu — propozycja w §6.1
 - Backend POST endpoint dla DER config save (K30-NEXT-1)
 - E2E `critical-der-config.spec.ts` (K30-NEXT-2)
-- SldDetailDrawer form validation (react-hook-form + zod) (K30-NEXT-3)
+- Walidacja formularza DER (react-hook-form + zod) (K30-NEXT-3) — od karty UI-02b JEDEN-INSPEKTOR
+  (2026-10-21) formularz żyje w prawym inspektorze (`ui/network-build/inspektor-elementu/FormularzSzkicuDer.tsx`),
+  szuflada `SldDetailDrawer` skasowana
 
 Rekomendacja dla następnej sesji: krótka, low-risk, high-impact 5-pakiet (§6.1) ~14 OD.
 

@@ -39,6 +39,7 @@ import {
 } from '../../network-build/station-der';
 import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
+import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
 import { stationSnBays } from '../../network-build/stationSnFields';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
@@ -618,6 +619,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const stationRef = surface.entityRef ?? null;
+  // UI-02b JEDEN-INSPEKTOR: gdy nad tym oknem pasek działań inspektora pokazuje tę samą
+  // pozycję rejestru dla tej stacji, okno nie dubluje jej własnym przyciskiem.
+  const dzialaniaPaska = useDzialaniaPaskaNadOknem(stationRef);
+  const ciagWPasku = dzialaniaPaska.has('continue-trunk');
+  const odgalezienieWPasku = dzialaniaPaska.has('start-branch');
   const localDers = useStationDerStore((state) =>
     stationRef ? selectDersOfStation(state, stationRef) : [],
   );
@@ -1247,6 +1253,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
                 NIE niosą własnych barw (rodzaj układu rozróżnia etykieta, nie
                 kolor obrysu). Stan nieaktywny ma zawsze tę samą klasę. */}
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {!ciagWPasku && (
               <button
                 type="button"
                 onClick={handleContinueTrunk}
@@ -1258,6 +1265,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               >
                 Kontynuuj ciąg SN ze stacji
               </button>
+              )}
+              {!odgalezienieWPasku && (
               <button
                 type="button"
                 onClick={handleStartBranch}
@@ -1269,6 +1278,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               >
                 Rozpocznij odgałęzienie
               </button>
+              )}
               <button
                 type="button"
                 onClick={() => handleAddDer('PV')}
@@ -1300,15 +1310,15 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
                 Dodaj FW
               </button>
             </div>
-            {(continuationBlockReason || branchBlockReason) && (
+            {((continuationBlockReason && !ciagWPasku) || (branchBlockReason && !odgalezienieWPasku)) && (
               <div
                 className="max-w-xl rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-3 py-2 text-[11px] leading-relaxed text-sygnal-blokada-tusz"
                 data-testid="station-network-action-blockers"
               >
-                {continuationBlockReason && (
+                {continuationBlockReason && !ciagWPasku && (
                   <div data-testid="station-continue-trunk-reason">{continuationBlockReason}</div>
                 )}
-                {branchBlockReason && (
+                {branchBlockReason && !odgalezienieWPasku && (
                   <div data-testid="station-start-branch-reason">{branchBlockReason}</div>
                 )}
               </div>

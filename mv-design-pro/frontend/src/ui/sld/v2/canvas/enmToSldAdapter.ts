@@ -3189,7 +3189,6 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         nnVoltageLevelsCount: 1,
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
-        transformerRefs: stationSldDetails.transformerRefs,
         // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
         transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
@@ -3197,7 +3196,6 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         derBadges: stationSldDetails.derBadges,
         totalLoadKw: stationSldDetails.totalLoadKw,
         totalGenerationKw: stationSldDetails.totalGenerationKw,
-        alarmSeverity: stationSldDetails.alarmSeverity,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
         nnVoltageKv: stationSldDetails.nnVoltageKv,
         aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
@@ -3241,7 +3239,6 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         nnVoltageLevelsCount: 1,
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
-        transformerRefs: stationSldDetails.transformerRefs,
         // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
         transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
@@ -3249,7 +3246,6 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         derBadges: stationSldDetails.derBadges,
         totalLoadKw: stationSldDetails.totalLoadKw,
         totalGenerationKw: stationSldDetails.totalGenerationKw,
-        alarmSeverity: stationSldDetails.alarmSeverity,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
         nnVoltageKv: stationSldDetails.nnVoltageKv,
         aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
@@ -3279,7 +3275,6 @@ interface StationMiniBlockDetails {
   readonly totalLoadKw: number;
   /** K30-15.3: zsumowana DER generation [kW] (sum of enm.generators.p_mw na tej stacji). */
   readonly totalGenerationKw: number;
-  readonly alarmSeverity: 'warning' | 'important' | 'critical' | null;
   /** K30-37: napięcie głównej szyny SN stacji [kV] — najwyższe voltage_kv
    *  spośród buses zakotwiczonych do tej stacji. Renderer dobiera tint koloru
    *  szyny zgodnie z konwencją dyspozytorską (WN/SN/nN). */
@@ -3382,8 +3377,9 @@ function buildStationMiniBlockDetails(
   const nnBusRefs = new Set<string>();
   // SZYNY-STACJI-LUSTRO: szyny stacji z jednego lustra backendu `szynyStacji` (szyny
   // główne, zaciski pól SN, oba końce aparatów pól nN) — jedno źródło dla agregatu
-  // odbioru, mocy odbioru, szuflady szczegółów i reguły kompletności rysunku; strona nN
-  // z tej samej złożonej reguły co szuflada (`stationSideBusRefs`).
+  // odbioru, mocy odbioru, inspektora i reguły kompletności rysunku; strona nN
+  // z tej samej złożonej reguły co mostek refów wyników kanwy (`stationSideBusRefs`,
+  // `resultPointsInStationNnBoard`).
   for (const busRef of szynyStacji(snapshot, station)) {
     if (busByRef.has(busRef)) stationBusRefs.add(busRef);
   }
@@ -3418,7 +3414,6 @@ function buildStationMiniBlockDetails(
       )
       .reduce((acc, g) => acc + (g.p_mw ?? 0) * 1000, 0)
   );
-  const alarmSeverity = transformerCapacityAlarm(transformerRatedKva, totalGenerationKw);
   return {
     snBays,
     transformerRefs,
@@ -3432,7 +3427,6 @@ function buildStationMiniBlockDetails(
     transformerRatedKva,
     totalLoadKw,
     totalGenerationKw,
-    alarmSeverity,
     mainBusVoltageKv,
     nnVoltageKv,
     aggregatedLvLoad,
@@ -3463,15 +3457,6 @@ function inferEarthingScheme(
  * stacją. Industrial SLD pokazuje vector group per IEC 60076-1 (np. Dyn5,
  * Yd11). Brak vector_group → null (no badge rendered).
  */
-function transformerCapacityAlarm(
-  transformerRatedKva: number | null,
-  stationOwnedGenerationKw: number,
-): 'critical' | null {
-  if (transformerRatedKva === null || stationOwnedGenerationKw <= 0) return null;
-  const requiredKva = stationOwnedGenerationKw / 0.9;
-  return requiredKva > transformerRatedKva + 1e-6 ? 'critical' : null;
-}
-
 function inferTransformerVectorGroup(
   snapshot: EnergyNetworkModel,
   transformerRefs: readonly string[],

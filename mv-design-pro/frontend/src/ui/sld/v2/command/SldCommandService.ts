@@ -207,14 +207,14 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
 };
 
 /** S9-10: powód blokady „Rozpocznij odgałęzienie" — jeden tekst dla menu kanwy,
- *  szuflady i karty technicznej inspektora. */
+ *  paska działań i karty technicznej inspektora. */
 export const POWOD_BRAKU_STARTU_ODGALEZIENIA_PL =
   'Brak wolnego pola odgałęźnego SN z wolnym zaciskiem. Najpierw dodaj pole odgałęźne w rozdzielni.';
 
 /**
  * KARTA S95-START: uczciwy powód blokady pozycji kontynuacji ciągu SN — po polsku, bez
  * identyfikatorów, z nazwaniem, co projektant może zrobić. Ten sam tekst pokazuje menu
- * kanwy, szuflada i wykonawca akcji (gdy akcja przyjdzie inną drogą niż menu).
+ * kanwy, pasek działań inspektora i wykonawca akcji (gdy akcja przyjdzie inną drogą niż menu).
  */
 export function powodBrakuStartuCiagu(kind: SldElementKindForMenu): string {
   switch (kind) {

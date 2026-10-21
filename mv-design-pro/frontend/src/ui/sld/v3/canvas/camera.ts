@@ -324,15 +324,15 @@ export type CameraAction =
   | { readonly type: 'center'; readonly worldPoint: { readonly x: number; readonly y: number } }
   /** k3: zmiana width/height PO MOUNCIE — zachowuje centrum świata i skalę,
    *  dostosowuje WYŁĄCZNIE viewport (patrz `applyResize`). K2: także zmiana
-   *  ZASŁON prostokąta bezpiecznego (`safeInsets` — szuflada szczegółów, portal
-   *  nN, mini-ścieżka, komunikat kadru): trwający kadr jest ponawiany na nowym
+   *  ZASŁON prostokąta bezpiecznego (`safeInsets` — portal nN, mini-ścieżka,
+   *  komunikat kadru): trwający kadr jest ponawiany na nowym
    *  obszarze, żeby cel nie znikał pod panelem otwartym nad kanwą. */
   | {
       readonly type: 'resize';
       readonly viewportSize: { readonly width: number; readonly height: number };
       readonly safeInsets?: SafeInsets;
-      /** K2: prostokąt obiektu, którego zasłona dotyczy (element szuflady
-       *  szczegółów, stacja portalu nN), na każdym poziomie — poza kadrem
+      /** K2: prostokąt obiektu, którego zasłona dotyczy (stacja portalu
+       *  nN), na każdym poziomie — poza kadrem
        *  kamera przesuwa rysunek o najmniejszy wektor, żeby obiekt nie
        *  schował się pod zasłoną (`odslonietyStan`). */
       readonly odslon?: Readonly<Record<SceneLod, BoundingBox | null>>;
@@ -497,11 +497,11 @@ function applyResize(
 }
 
 /**
- * K2 — ODSŁONIĘCIE obiektu po otwarciu zasłony. Szuflada szczegółów otwiera się
- * pojedynczym klikiem NAD prawym pasem kanwy — także nad obiektem, którego
- * dotyczy. Pomiar e2e K2 (okno 1440×900, widok sieci): napis stacji
- * przelotowej w x = 679 px, szuflada od 666 px — szuflada zasłaniała własny
- * obiekt. To samo dotyczy portalu nN (stacja pod panelem portalu).
+ * K2 — ODSŁONIĘCIE obiektu po otwarciu zasłony. Panel portalu nN otwiera się NAD
+ * prawym pasem kanwy — także nad stacją, której dotyczy. Pomiar e2e K2 (okno
+ * 1440×900, widok sieci) na dawnym panelu szczegółów nad kanwą (skasowany w UI-02b):
+ * napis stacji przelotowej w x = 679 px, panel od 666 px — panel zasłaniał własny
+ * obiekt.
  *
  * Reguła: obiekt, którego dotyczy zasłona, ląduje w prostokącie bezpiecznym
  * (z oddechem kadru) przy NAJMNIEJSZYM przesunięciu; skala i poziom zostają
@@ -933,7 +933,7 @@ function ulozenieKadru(
  *     braku rozwiązania kadr z pkt 3 (cel w centrum).
  *  5. **Kadr podąża za rozmiarem kanwy** — stan pamięta akcję (`kadr`), a
  *     'resize' ponawia ją na nowym viewporcie i na nowych zasłonach
- *     (szuflada, portal nN), dopóki projektant nie ruszy kamery.
+ *     (portal nN, mini-ścieżka, komunikat kadru), dopóki projektant nie ruszy kamery.
  *  6. **Kadr obejmuje NARYSOWANE etykiety** — tusz pisma powiększonego przy
  *     skali kadru (`zTuszemEtykiet`), także u przeszkód.
  */

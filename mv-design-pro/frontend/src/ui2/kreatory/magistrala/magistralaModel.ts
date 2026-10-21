@@ -224,7 +224,7 @@ function tekstKontekstu(value: unknown): string {
 /**
  * KARTA S95-START — JEDNO odczytanie punktu startu ciągu z kontekstu operacji
  * `continue_trunk_segment_sn`. Czytają je: kreator magistrali (czy zapis jest możliwy),
- * pozycje menu kanwy i szuflady (czy pozycja jest aktywna), konfigurator stacji (czy
+ * pozycje menu kanwy i paska działań inspektora (czy pozycja jest aktywna), konfigurator stacji (czy
  * przycisk „Kontynuuj ciąg SN ze stacji" jest aktywny). Wcześniej każde z tych miejsc
  * miało własną listę kluczy — i menu stacji nie pytało w ogóle, więc pozycja była
  * aktywna, a kreator otwierał się z „Brak miejsca startu ciągu".

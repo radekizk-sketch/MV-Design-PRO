@@ -23,6 +23,7 @@ import { useSelectionStore } from '../../selection/store';
 import { isTerrainSnSegment } from '../../shared/enmVisibility';
 import { segmentPublicIdentity, stationPublicIdentity } from '../../shared/publicTechnicalLabels';
 import { szynyStacji } from '../../shared/szynyStacji';
+import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
 import type { Branch, Bus, EnergyNetworkModel, Substation } from '../../../types/enm';
 
 type SegmentCardId = 'identification' | 'catalog' | 'route' | 'rating';
@@ -369,6 +370,9 @@ interface SnSegmentSurfaceProps {
 export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
   const { surface } = props;
   const segmentRef = surface.entityRef ?? null;
+  // UI-02b JEDEN-INSPEKTOR: dokończenie odcinka, które pasek działań inspektora nad tym
+  // oknem pokazuje dla tego samego odcinka (ta sama pozycja rejestru), nie jest dublowane.
+  const dzialaniaPaska = useDzialaniaPaskaNadOknem(segmentRef);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const activeCaseId = useActiveCaseId();
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
@@ -581,6 +585,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
           {endpointStatus.isFree && (
             <>
               <div className="mt-2 grid gap-2 sm:grid-cols-3">
+                {!dzialaniaPaska.has('insert-station') && (
                 <button
                   type="button"
                   data-testid="segment-action-append-station"
@@ -589,7 +594,8 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                 >
                   Zakończ stacją SN/nN
                 </button>
-                {isCableSegment && (
+                )}
+                {isCableSegment && !dzialaniaPaska.has('insert-zksn') && (
                   <button
                     type="button"
                     data-testid="segment-action-append-zksn"
@@ -604,7 +610,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                     Zakończ ZK SN
                   </button>
                 )}
-                {isOverheadSegment && (
+                {isOverheadSegment && !dzialaniaPaska.has('insert-pole') && (
                   <button
                     type="button"
                     data-testid="segment-action-append-branch-pole"

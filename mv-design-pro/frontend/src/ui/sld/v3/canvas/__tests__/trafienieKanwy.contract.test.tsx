@@ -34,6 +34,7 @@ import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/bui
 import { planSceneLabels } from '../labelLegibility';
 import { sheetSizeFor } from '../../sheet/outline';
 import { SldCanvasV3 } from '../SldCanvasV3';
+import { rolaSymboluLacznika } from '../../../v2/model/stanAparatowPola';
 import {
   HIT_ATTR,
   MIN_HIT_SCREEN_PX,
@@ -243,6 +244,11 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
       // wzbogacenie co prawy klik od S9-5) — wołający rozwiązuje po niej
       // kompozytowe refy etykiet tym samym tematem co menu.
       klasa: 'aparat',
+      // UI-02b: symbol łącznika stosu bez refu aparatu niesie ROLĘ (agregat pola, który
+      // rysuje glif) — z tej samej tabeli co kompozycja (`rolaSymboluLacznika`).
+      deviceRef: undefined,
+      lvPortalStationRef: undefined,
+      rolaLacznika: rolaSymboluLacznika(aparat.symbolId),
     });
   });
 

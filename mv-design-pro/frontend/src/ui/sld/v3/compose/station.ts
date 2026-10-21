@@ -105,6 +105,7 @@ import {
 } from '../layout/labels';
 import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
+import { rolaSymboluLacznika, stanRoliSymbolu } from '../../v2/model/stanAparatowPola';
 import { fieldCaptionAt, isLineLikeRole } from './directions';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import {
@@ -170,14 +171,12 @@ export { apparatusSymbolsForRole, stackFootprint };
  * je niesie poprawnie. Udokumentowane zamiast nowego pola.
  */
 function apparatusStateFor(symbolId: SymbolId, bay: MiniBlockBayDescriptor): SwitchState | undefined {
-  if (symbolId === 'breaker') return bay.cbState;
-  if (symbolId === 'disconnector') return bay.dsState;
-  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik konwencji RMU —
-  // agregat `dsState` (jeden łącznik główny pola; osobny agregat per kind
-  // byłby polem-atrapą, patrz uzasadnienie `fuseSwitch` wyżej).
-  if (symbolId === 'loadBreakSwitch') return bay.dsState;
-  if (symbolId === 'earthSwitch') return bay.esState;
-  return undefined;
+  // Rola symbolu z JEDNEJ tabeli (`rolaSymboluLacznika`), którą czyta też inspektor
+  // klikniętego symbolu. Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik
+  // konwencji RMU — agregat `dsState` (jeden łącznik główny pola; osobny agregat per
+  // kind byłby polem-atrapą, patrz uzasadnienie `fuseSwitch` wyżej).
+  const rola = rolaSymboluLacznika(symbolId);
+  return rola ? stanRoliSymbolu(rola, bay) : undefined;
 }
 
 /** Jeden aparat gotowy do rysowania w stosie — symbol + stan + (dla ścieżki

@@ -875,29 +875,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
 
     expect(r.stations[0].totalGenerationKw).toBe(185);
-    expect(r.stations[0].alarmSeverity).toBeNull();
     expect(r.stations[0].transformerRatedKva).toBe(250);
-    expect(r.stations[0].transformerRefs).toEqual(['tr-1']);
+    expect(r.stations[0].transformerUnits?.map((u) => u.ref)).toEqual(['tr-1']);
     expect(r.ders.find((der) => der.id === 'PV-BLOCK')?.nominalPowerKw).toBe(1000);
-  });
-
-  it('alarmuje stacje, gdy DER nN przekracza moc pozorna transformatora stacji', () => {
-    const snap = buildEmptySnapshot();
-    snap.substations = [
-      { id: 'st', ref_id: 'ST-PV', name: 'Stacja PV', tags: [], meta: {}, station_type: 'inline', bus_refs: ['bus-nn'], transformer_refs: ['tr-1'] } as never,
-    ];
-    snap.transformers = [
-      { id: 'tr-1', ref_id: 'tr-1', name: 'TR stacji', hv_bus_ref: 'bus-sn', lv_bus_ref: 'bus-nn', sn_mva: 0.25, uhv_kv: 15, ulv_kv: 0.4, tags: [], meta: {} } as never,
-    ];
-    attachMainRun(snap, ['ST-PV'], 'run-pv-overload');
-    snap.generators = [
-      { id: 'pv-nn', ref_id: 'PV-NN', name: 'PV nN', tags: [], meta: {}, bus_ref: 'bus-nn', p_mw: 0.5, q_mvar: 0, gen_type: 'pv_inverter', station_ref: 'ST-PV', connection_variant: 'nn_side' } as never,
-    ];
-
-    const r = buildSldDataFromSnapshot(snap, null);
-
-    expect(r.stations[0].totalGenerationKw).toBe(500);
-    expect(r.stations[0].alarmSeverity).toBe('critical');
   });
 
   it('PV po stronie nN rozpoznaje stację z generator.meta.station_ref', () => {
