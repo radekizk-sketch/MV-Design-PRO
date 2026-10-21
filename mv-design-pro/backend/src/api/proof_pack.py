@@ -22,6 +22,7 @@ from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.core.czas_wylaczenia import (
     CZAS_TB_ROBOCZY_S,
     POCHODZENIE_TB_PROJEKTANT,
+    CzasWylaczeniaTb,
     czas_tb_z_danych,
 )
 from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
@@ -295,13 +296,18 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     }
 
 
-def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
+def _wywod_sekcje_wkladow(result: Any, zrodlo_tb: CzasWylaczeniaTb | None) -> list[dict[str, Any]]:
     """Wywod sekcyjny wkladow (ZWARCIA-PRO F3 pkt 8) — ADDYTYWNIE obok `wywod`.
 
     Ta sama tresc co plaska lista `_wywod_wkladow`, pogrupowana w sekcje
     {tytul, kroki, norma}: „Dane wejściowe i model" (naglowek), per maszyna
     „Wkład: {nazwa}" (kroki solvera), „Suma wkładów i reguły" (suma + regula 5%).
     Czysty formatter: ZERO arytmetyki poza skala A -> kA (prezentacja).
+
+    ``zrodlo_tb`` — t_min = t_b punktu NIEPOCHODZĄCY ze scenariusza projektanta (pola
+    lokalne albo wartość robocza; karta TB-WARTOSC-ROBOCZA): nagłówek niesie wtedy zdanie
+    źródła z nośnika (ten sam warunek co pole odpowiedzi ``t_min_zrodlo``). ``None`` = t_b
+    scenariusza — nagłówek bez zdania źródła.
     """
     naglowek: list[dict[str, Any]] = [
         {
@@ -323,6 +329,10 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
                 ),
                 "latex": None,
             }
+        )
+    if zrodlo_tb is not None:
+        naglowek.append(
+            {"tekst": f"Czas t_min (= t_b punktu zwarcia): {zrodlo_tb.opis_pl}", "latex": None}
         )
     z_f = result.white_box.get("z_f_ohm")
     if z_f is not None:
@@ -555,7 +565,10 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     # surowego sladu WHITE BOX solvera — bez zmiany istniejacych pol.
     # ZWARCIA-PRO F3 (pkt 8-10): wywod_sekcje (ta sama tresc pogrupowana),
     # walidacja_iec (checklista metody) i input_hash — rowniez addytywnie.
-    sekcje = _wywod_sekcje_wkladow(result)
+    # Karta TB-WARTOSC-ROBOCZA: JEDEN predykat pochodzenia t_min dla zdania wywodu
+    # i pola odpowiedzi `t_min_zrodlo` (predykaty parami).
+    zrodlo_tb = punkt.czas_tb if punkt.czas_tb.pochodzenie != POCHODZENIE_TB_PROJEKTANT else None
+    sekcje = _wywod_sekcje_wkladow(result, zrodlo_tb)
     input_hash = _input_hash_wkladow(payload)
     return {
         **result.to_dict(),
@@ -568,11 +581,7 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
         "c_zrodlo": punkt.dobor_c.zrodlo,
         # Karta TB-WARTOSC-ROBOCZA (addytywnie): pochodzenie t_min = t_b punktu, gdy nie
         # pochodzi z żądania (scenariusza) — pola lokalne albo wartość robocza.
-        **(
-            {"t_min_zrodlo": punkt.czas_tb.to_dict()}
-            if punkt.czas_tb.pochodzenie != POCHODZENIE_TB_PROJEKTANT
-            else {}
-        ),
+        **({"t_min_zrodlo": zrodlo_tb.to_dict()} if zrodlo_tb is not None else {}),
     }
 
 

@@ -427,10 +427,16 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
     splaszczone.extend(sekcje[1]["kroki"])
     splaszczone.extend(sekcje[2]["kroki"])
     assert splaszczone == dane["wywod"]
-    # Kompatybilnosc struktury plaskiej listy (jak przed F3).
+    # Kompatybilnosc struktury plaskiej listy (jak przed F3). Karta TB-WARTOSC-ROBOCZA:
+    # zadanie bez t_min (siec bez pol) -> t_min = wartosc robocza punktu, wiec naglowek
+    # niesie zdanie zrodla t_min miedzy punktem zwarcia a pierwsza maszyna.
     assert dane["wywod"][0]["tekst"].startswith("Model: IEC 60909")
     assert dane["wywod"][1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
-    assert dane["wywod"][2]["tekst"] == "— Agregat —"
+    assert dane["wywod"][2]["tekst"].startswith(
+        "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza"
+    )
+    assert dane["t_min_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
+    assert dane["wywod"][3]["tekst"] == "— Agregat —"
     assert dane["wywod"][-2]["tekst"].startswith("Suma wkładów maszyn")
     assert "Reguła małych silników" in dane["wywod"][-1]["tekst"]
 
