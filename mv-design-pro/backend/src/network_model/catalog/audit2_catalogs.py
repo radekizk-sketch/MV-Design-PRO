@@ -1369,9 +1369,17 @@ def ocen_wytrzymalosc_aparatu(
     stacji ma w MODELU. Kopiowanie porównania do warstwy aplikacji zrobiłoby
     drugą fizykę — jest jedna, tutaj.
 
-    KRYTERIA (IEC 60909 / IEC 62271-1):
+    KRYTERIA (IEC 62271-1 / IEC 60865-1):
       dynamiczne:  i_p ≤ I_dyn
-      cieplne:     I_th ≤ I_th_zn · √(t_zn / t_wyl)
+      cieplne:     I_th ≤ I_th_zn                   dla t_wyl ≤ t_zn
+                   I_th ≤ I_th_zn · √(t_zn / t_wyl)  dla t_wyl ≥ t_zn
+
+    Przeliczenie prądu krótkotrwałego na czas wyłączenia działa WYŁĄCZNIE w dół
+    (IEC 60865-1, wytrzymałość cieplna urządzeń elektrycznych): aparat sprawdzony
+    próbą I_th_zn przez t_zn nie jest przez to sprawdzony prądem większym przy
+    czasie krótszym. Dawniej limit rósł jak √(t_zn/t_wyl) także dla t_wyl < t_zn
+    (aparat 25 kA/1 s „wytrzymywał” 56 kA przy 0,2 s), a ograniczenie czasu od dołu
+    do 0,01 s tylko przycinało ten wzrost — karta WYTRZYMALOSC-PRAD-POLA.
 
     BRAK DANEJ NIE JEST WERDYKTEM: nieznane znamiona albo nieznany czas
     wyłączenia dają ``None`` przy odpowiednim kryterium (a nie ``False``) —
@@ -1396,7 +1404,11 @@ def ocen_wytrzymalosc_aparatu(
         and t_clearing_s is not None
         and t_clearing_s > 0
     ):
-        i_th_effective = i_th_ka * math.sqrt(i_th_duration_s / max(t_clearing_s, 0.01))
+        i_th_effective = (
+            i_th_ka
+            if t_clearing_s <= i_th_duration_s
+            else i_th_ka * math.sqrt(i_th_duration_s / t_clearing_s)
+        )
         i_th_ok = i_th_effective >= i_thermal_calculated_ka
         util_th = (i_thermal_calculated_ka / i_th_effective) * 100
 

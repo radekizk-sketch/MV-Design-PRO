@@ -131,7 +131,8 @@ export const KOORDYNACJA_STRINGS = {
   ocenaTytul: 'Ocena zabezpieczeń na biegu zwarciowym',
   ocenaOpis: 'Każde zabezpieczenie nadprądowe z modelu oceniane w punktach zwarcia swojej '
     + 'strefy: prąd przekaźnika z rozpływu zwarciowego, próg i czas z nastaw (charakterystyki '
-    + 'IEC 60255), wiarygodność względem granicy dokładności przekładnika. Nastawy edytujesz '
+    + 'IEC 60255), wiarygodność względem granicy nasycenia przekładnika (z obciążenia obwodu '
+    + 'wtórnego). Nastawy edytujesz '
     + 'na ekranie „Zabezpieczenia i automatyka".',
   ocenaWariant: 'Bieg zwarciowy',
   ocenaWariantMax: 'wariant maksymalny',

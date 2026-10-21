@@ -120,7 +120,11 @@ def test_czasy_zgodne_ze_wzorem_normy_dla_kazdej_oceny(
         t, stopien = _czas_normy(nastawy[ocena["nazwa_urzadzenia_pl"]], ocena["i_fault_a"])
         assert ocena["t_trip_s"] == pytest.approx(t, abs=1e-6)
         assert ocena["stopien_decydujacy"] == stopien
-        assert ocena["wiarygodnosc"] == "WIARYGODNY"
+        # Przekładniki G08 nie mają zapisanego obwodu wtórnego — jądro nasycenia nie ma
+        # podstawy, więc wiarygodność jest NIEUSTALONA z nazwanym kodem, nigdy WIARYGODNY
+        # z samej klasy 5P20 (karta CT-JEDEN-WERDYKT).
+        assert ocena["wiarygodnosc"] == "NIEUSTALONA"
+        assert "ct.secondary_circuit_missing" in ocena["nasycenie_ct"]["readiness_codes"]
         # Rekord werdyktu wyjaśnialnego: status, zdanie po polsku i dowód obliczenia.
         assert ocena["ocena"]["status_maszynowy"]
         assert ocena["ocena"]["wyjasnienie"]["zdanie_pl"]

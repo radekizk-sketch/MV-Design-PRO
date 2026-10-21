@@ -14,7 +14,8 @@ Testy są ILOCZYNEM CECH (reguła KLASA, NIE INSTANCJA):
   × strefa {jednoznaczna, pierścień zamknięty, aparat poza torem, aparat otwarty, aparat
   nieobecny} × rodzaj aparatu przekaźnika {wyłącznik, reklozer, bezpiecznik, odłącznik,
   rozłącznik},
-- wiarygodność {prąd w granicy ALF, powyżej ALF, klasa pomiarowa}.
+- wiarygodność bez obwodu wtórnego {klasa zabezpieczeniowa, pomiarowa} (pełny iloczyn cech
+  nasycenia przekładnika: ``test_nasycenie_ct_jeden_werdykt.py``).
 
 Wartości oczekiwane pochodzą z rachunku ręcznego (w komentarzu), nie z uruchomienia kodu.
 """
@@ -46,12 +47,9 @@ from application.analyses.protection.ocena_nadpradowa import (
     KOD_STREFA_NIEJEDNOZNACZNA,
     KOD_WEJSCIE_NIEZGODNE,
     KRZYWE_IEC,
-    NIEWIARYGODNY,
     POMINIETE_BEZ_FUNKCJI_NADPRADOWYCH,
     POMINIETE_WYLACZONE,
     WIARYGODNOSC_NIEUSTALONA,
-    WIARYGODNY,
-    alf_z_klasy,
     czas_stopnia,
     ocen_zabezpieczenia,
     prad_roboczy_przekaznika,
@@ -585,29 +583,23 @@ def test_punkt_innego_poziomu_napiecia_nazwany_i_nieoceniany() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_alf_z_klasy_przekladnika() -> None:
-    assert alf_z_klasy("5P20") == 20.0
-    assert alf_z_klasy("10P10") == 10.0
-    assert alf_z_klasy("5PR20") == 20.0
-    assert alf_z_klasy("0.5") is None
-    assert alf_z_klasy(None) is None
-
-
 @pytest.mark.parametrize(
     ("klasa", "oczekiwana"),
-    [("5P20", WIARYGODNY), ("5P10", NIEWIARYGODNY), ("0.5", WIARYGODNOSC_NIEUSTALONA)],
+    [("5P20", WIARYGODNOSC_NIEUSTALONA), ("0.5", WIARYGODNOSC_NIEUSTALONA)],
 )
-def test_wiarygodnosc_wg_granicy_dokladnosci_przekladnika(klasa: str, oczekiwana: str) -> None:
-    """Zwarcie w B2: 9000 A. ALF·I1n: 5P20 → 12 000 A (w granicy), 5P10 → 6000 A (nasycenie).
-    Wynik niewiarygodny nie niesie marginesu liczbowego — nigdy liczba bez podstawy."""
+def test_wiarygodnosc_bez_obwodu_wtornego_jest_nieustalona(klasa: str, oczekiwana: str) -> None:
+    """Przekładnik bez zapisanego obwodu wtórnego: jądro nasycenia nie ma podstawy (kod
+    ``ct.secondary_circuit_missing``), więc wiarygodność jest NIEUSTALONA — nigdy granica
+    ``ALF·I₁n`` bez obciążenia wtórnego (karta CT-JEDEN-WERDYKT; dawniej 5P20 → WIARYGODNY,
+    5P10 → NIEWIARYGODNY z samej klasy). Margines liczbowy zostaje (M = 9000/240 = 37,5 →
+    3650 %) — brak oceny nasycenia nie unieważnia krotności. Pełny iloczyn cech nasycenia:
+    ``test_nasycenie_ct_jeden_werdykt.py``."""
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51()]), ct=_ct("ct", klasa=klasa)))
     punkt_b2 = next(o for o in wynik.oceny if o.punkt_ref == B2)
     assert punkt_b2.wiarygodnosc == oczekiwana
-    if oczekiwana == NIEWIARYGODNY:
-        assert punkt_b2.margines_procent is None
-    else:
-        # M = 9000/240 = 37,5 → (M − 1)·100 = 3650 %
-        assert punkt_b2.margines_procent == pytest.approx(3650.0)
+    assert punkt_b2.nasycenie_ct is not None
+    assert "ct.secondary_circuit_missing" in punkt_b2.nasycenie_ct["readiness_codes"]
+    assert punkt_b2.margines_procent == pytest.approx(3650.0)
 
 
 def test_rekord_werdyktu_niesie_kryterium_wynik_limit_i_dowod() -> None:

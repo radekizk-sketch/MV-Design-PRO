@@ -132,14 +132,19 @@ export interface ProtectionComparisonRow {
   wiarygodnosc_b: WiarygodnoscOceny;
 }
 
-/** Stan wiarygodności oceny urządzenia w punkcie (backend `ocena_nadpradowa`). */
+/**
+ * Stan wiarygodności oceny urządzenia w punkcie (backend `ocena_nadpradowa`) — werdykt
+ * nasycenia przekładnika z jądra `ct_burden_saturation` (ALF_eff z obciążenia obwodu
+ * wtórnego). `NIEUSTALONA` = brak danej jądra (np. obwód wtórny niezapisany); przyczyna
+ * jest w `wiarygodnosc_powod_pl`, nigdy w etykiecie.
+ */
 export type WiarygodnoscOceny = 'WIARYGODNY' | 'NIEWIARYGODNY' | 'NIEUSTALONA' | '';
 
 /** Etykiety PL stanu wiarygodności — pusty napis (brak oceny w biegu) to kreska. */
 export const WIARYGODNOSC_PL: Record<WiarygodnoscOceny, string> = {
   WIARYGODNY: 'wiarygodny',
-  NIEWIARYGODNY: 'niewiarygodny (poza dokładnością przekładnika)',
-  NIEUSTALONA: 'nieustalona (przekładnik bez granicy dokładności)',
+  NIEWIARYGODNY: 'niewiarygodny (rdzeń przekładnika nasyca się)',
+  NIEUSTALONA: 'nieustalona (nasycenia przekładnika nie sprawdzono)',
   '': '—',
 };
 

@@ -16090,40 +16090,11 @@
     "type": "object"
    },
    "WytrzymaloscAparaturyRequestModel": {
-    "description": "Prądy punktu zwarcia z WYNIKU biegu + stacja, w której ten punkt leży.",
+    "description": "Stacja + ZAPISANY bieg zwarciowy, z którego biorą się prądy KAŻDEGO pola.\n\nKarta WYTRZYMALOSC-PRAD-POLA: dawniej żądanie niosło jedną liczbę ``ik_ka`` /\n``i_peak_ka`` / ``i_thermal_ka`` dla całej stacji, więc pole innej sekcji albo strony\nnN dostawało cudzy prąd i cudzy czas wyłączenia. Liczby z żądania zniknęły — prąd\npola to wiersz biegu dla punktu zabudowy tego pola.",
     "properties": {
-     "i_peak_ka": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "I Peak Ka"
-     },
-     "i_thermal_ka": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "I Thermal Ka"
-     },
-     "ik_ka": {
-      "anyOf": [
-       {
-        "type": "number"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Ik Ka"
+     "short_circuit_run_id": {
+      "title": "Short Circuit Run Id",
+      "type": "string"
      },
      "station_ref": {
       "title": "Station Ref",
@@ -16131,7 +16102,8 @@
      }
     },
     "required": [
-     "station_ref"
+     "station_ref",
+     "short_circuit_run_id"
     ],
     "title": "WytrzymaloscAparaturyRequestModel",
     "type": "object"
@@ -20519,7 +20491,7 @@
   },
   "/api/cases/{case_id}/enm/wytrzymalosc-aparatury": {
    "post": {
-    "description": "Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).\n\nAparaty biorą się z MODELU (pozycja katalogu APARAT_SN wskazana na polu),\na zapisana konfiguracja stacji pozostaje nadrzędna tam, gdzie istnieje —\nkażdy wiersz niesie jawne ``zrodlo``. Fizyka porównania siedzi w jądrze\nwerdyktu K7-B; ten endpoint tylko zestawia źródła danych.",
+    "description": "Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).\n\nAparaty biorą się z MODELU (pozycja katalogu APARAT_SN wskazana na polu),\na zapisana konfiguracja stacji pozostaje nadrzędna tam, gdzie istnieje —\nkażdy wiersz niesie jawne ``zrodlo``. Prądy pola i czas wyłączenia pola liczone są\nz wiersza zapisanego biegu zwarciowego dla punktu zabudowy TEGO pola. Fizyka\nporównania siedzi w jądrze werdyktu K7-B; ten endpoint tylko zestawia źródła danych.",
     "operationId": "post_wytrzymalosc_aparatury_api_cases__case_id__enm_wytrzymalosc_aparatury_post",
     "parameters": [
      {

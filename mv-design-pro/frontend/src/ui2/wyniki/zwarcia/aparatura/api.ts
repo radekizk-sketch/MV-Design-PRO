@@ -11,7 +11,15 @@
  * Backend czyta pola stacji i pozycje katalogu APARAT_SN z modelu, nakłada
  * zapisaną konfigurację tam, gdzie istnieje, i zwraca gotowe werdykty ze
  * ŹRÓDŁEM każdego wiersza. Prezentacja nic nie porównuje i nic nie skaluje.
+ *
+ * PRĄDY PER POLE (karta WYTRZYMALOSC-PRAD-POLA): zapytanie niesie stację i ZAPISANY bieg
+ * zwarciowy, nie liczby. Prąd każdego pola backend bierze z wiersza tego biegu dla punktu
+ * zabudowy pola — dawniej jedna liczba z wybranego punktu szła do wszystkich pól stacji,
+ * więc pole innej sekcji dostawało cudzy prąd i cudzy czas wyłączenia. Każdy wiersz
+ * niesie dwa rekordy werdyktu wyjaśnialnego (dynamiczny i cieplny).
  */
+
+import type { OcenaKryterium } from '../../wzorzec/werdykt';
 
 /** Znamiona wytrzymałości pozycji katalogowej — każda liczba z pochodzeniem. */
 export interface ZnamionaWytrzymalosci {
@@ -31,6 +39,17 @@ export interface CzasWylaczeniaPola {
   readonly czas_wlasny_wylacznika_s: number | null;
   readonly zalozenia_pl: readonly string[];
   readonly kody_gotowosci: readonly string[];
+}
+
+/** Prądy zwarcia w punkcie zabudowy pola — wiersz zapisanego biegu (`null` = brak, z powodem). */
+export interface PradyPola {
+  readonly punkt_ref: string | null;
+  readonly punkt_nazwa: string | null;
+  readonly ik_ka: number | null;
+  readonly ip_ka: number | null;
+  readonly ith_ka: number | null;
+  readonly kody_gotowosci: readonly string[];
+  readonly powod_pl: string | null;
 }
 
 /** Werdykt jądra K7-B. `null` w kryterium = brak podstawy, NIE ocena negatywna. */
@@ -57,8 +76,11 @@ export interface PoleWytrzymalosci {
   readonly aparat_catalog_ref: string;
   readonly aparat_etykieta: string | null;
   readonly znamiona: ZnamionaWytrzymalosci | null;
+  readonly prady_pola: PradyPola;
   readonly czas_wylaczenia: CzasWylaczeniaPola;
   readonly werdykt: WerdyktWytrzymalosci | null;
+  /** Rekordy K: kryterium dynamiczne i cieplne (puste dla aparatu spoza katalogu). */
+  readonly oceny: readonly OcenaKryterium[];
   readonly komunikat_pl: string;
   readonly kody_gotowosci: readonly string[];
 }
@@ -67,16 +89,15 @@ export interface WidokWytrzymalosciAparatury {
   readonly stacja_ref: string;
   readonly stacja_nazwa: string | null;
   readonly status: string;
+  readonly bieg_zwarciowy_ref: string;
   readonly pola: readonly PoleWytrzymalosci[];
   readonly kody_gotowosci: readonly string[];
 }
 
 export interface ZapytanieWytrzymalosci {
   readonly station_ref: string;
-  readonly i_peak_ka: number | null;
-  readonly i_thermal_ka: number | null;
-  /** Prąd początkowy — potrzebny do czasu z charakterystyki zabezpieczenia. */
-  readonly ik_ka: number | null;
+  /** Zapisany bieg zwarciowy (scenariusz MAX) — źródło prądów KAŻDEGO pola. */
+  readonly short_circuit_run_id: string;
 }
 
 export async function pobierzWytrzymaloscAparatury(
@@ -91,7 +112,13 @@ export async function pobierzWytrzymaloscAparatury(
       body: JSON.stringify(zapytanie),
     },
   );
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.ok) {
+    // Odmowa backendu niesie powód po polsku (np. bieg scenariusza MIN) — pokazujemy go.
+    const tresc = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+    throw new Error(
+      typeof tresc?.detail === 'string' ? tresc.detail : `HTTP ${response.status}`,
+    );
+  }
   return (await response.json()) as WidokWytrzymalosciAparatury;
 }
 

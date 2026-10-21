@@ -48,9 +48,9 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    buses?: Array<{ ref_id: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     substations?: Array<{
       ref_id: string;
       meta?: {

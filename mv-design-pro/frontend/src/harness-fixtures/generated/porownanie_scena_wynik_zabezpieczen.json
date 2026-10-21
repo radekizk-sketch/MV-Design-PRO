@@ -24,8 +24,8 @@
       "nazwa_punktu_pl": "Stacja S03",
       "krotnosc_m_a": 3.59294556565,
       "krotnosc_m_b": 3.05466243717,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
@@ -47,8 +47,8 @@
       "nazwa_punktu_pl": "Stacja S02",
       "krotnosc_m_a": 3.65323139083,
       "krotnosc_m_b": 3.1081187452,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
@@ -70,8 +70,8 @@
       "nazwa_punktu_pl": "Stacja S04",
       "krotnosc_m_a": 3.56289228239,
       "krotnosc_m_b": 3.02832925226,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
@@ -93,8 +93,8 @@
       "nazwa_punktu_pl": "Stacja S01",
       "krotnosc_m_a": 3.77388565909,
       "krotnosc_m_b": 3.21807288197,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
@@ -116,8 +116,8 @@
       "nazwa_punktu_pl": "Stacja S03",
       "krotnosc_m_a": 4.79039135608,
       "krotnosc_m_b": 4.07239298306,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
@@ -139,8 +139,8 @@
       "nazwa_punktu_pl": "Stacja S02",
       "krotnosc_m_a": 4.8707690547,
       "krotnosc_m_b": 4.14365948082,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
@@ -162,8 +162,8 @@
       "nazwa_punktu_pl": "Stacja S04",
       "krotnosc_m_a": 4.75032200748,
       "krotnosc_m_b": 4.03728629628,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     }
   ],
   "ranking": [

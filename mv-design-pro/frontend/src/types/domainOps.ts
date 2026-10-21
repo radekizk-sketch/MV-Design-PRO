@@ -71,6 +71,10 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_ct',
   'add_vt',
   'add_relay',
+  // Karta CT-JEDEN-WERDYKT: zapis obwodu wtórnego ISTNIEJĄCEGO przekładnika (edytor nastaw
+  // zabezpieczenia) — operacja w V2_CANONICAL_OPS backendu od W3-B; bez wpisu tutaj sekcja
+  // obwodu byłaby martwa (assertCanonicalOpName), a wiarygodność punktu oceny nieustalona.
+  'set_measurement_secondary_circuit',
   // Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu.
   'update_protection_settings',
   // Warunki przyłączenia OSD (nagłówek modelu, krok E1 flow projektanta)

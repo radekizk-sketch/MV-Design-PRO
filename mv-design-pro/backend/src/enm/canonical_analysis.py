@@ -2197,6 +2197,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             stopnie=o.stopnie,
             bilans_pradu=o.bilans_pradu,
             ocena=o.ocena.model_dump(mode="json"),
+            nasycenie_ct=o.nasycenie_ct,
         )
         for o in wynik.oceny
     )
@@ -2255,6 +2256,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
                     "t_zadzialania_s": ocena.t_zadzialania_s,
                     "wiarygodnosc": ocena.wiarygodnosc,
                     "wiarygodnosc_powod_pl": ocena.wiarygodnosc_powod_pl,
+                    "nasycenie_ct": ocena.nasycenie_ct,
                 },
             )
         )
@@ -4061,6 +4063,15 @@ def build_short_circuit_rozplyw(
                 "branch_flow_trace": slad,
             }
     raise BrakZasobuError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
+
+
+def scenariusz_biegu_zwarciowego(run: CanonicalRun) -> str | None:
+    """Scenariusz zapisanego biegu zwarciowego ('MAX'/'MIN'; ``None`` = nierozpoznany).
+
+    Jedno odczytanie opcji biegu dla konsumentów spoza modułu (wytrzymałość aparatury
+    wymaga scenariusza MAX) — ta sama reguła co dobór pary MAX/MIN niżej.
+    """
+    return _scenariusz_z_opcji(run.options)
 
 
 def _scenariusz_z_opcji(options: Mapping[str, Any]) -> str | None:

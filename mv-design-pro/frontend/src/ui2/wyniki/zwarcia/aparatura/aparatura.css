@@ -212,3 +212,13 @@
 .mvd-apar-czas-zalozenie {
   font-style: italic;
 }
+
+/* Rekordy werdyktu K pola (dynamiczny, cieplny) — blok na pełną szerokość wiersza, karty
+   obok siebie od 320 px, pod sobą na wąskim ekranie. */
+.mvd-apar-oceny {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}

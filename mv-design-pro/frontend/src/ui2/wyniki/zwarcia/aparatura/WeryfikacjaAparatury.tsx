@@ -12,6 +12,11 @@
  * pozostaje nadrzędna tam, gdzie inżynier jej użył (każdy wiersz mówi, skąd
  * wziął aparat).
  *
+ * PRĄDY PER POLE (karta WYTRZYMALOSC-PRAD-POLA): do końcówki jedzie stacja i ZAPISANY bieg,
+ * nie liczby wybranego punktu. Każdy wiersz pokazuje prądy SWOJEGO punktu zabudowy oraz dwa
+ * rekordy werdyktu wyjaśnialnego (dynamiczny, cieplny) jedyną kartą werdyktu — status zawsze
+ * z wynikiem, limitem, marginesem i przyczyną braku.
+ *
  * ZERO FIZYKI W PREZENTACJI: ten plik nic nie porównuje i nie skaluje — składa
  * wejścia i pokazuje `message_pl` backendu. Trzy stany werdyktu (wytrzymuje /
  * nie wytrzymuje / NIEUSTALONE) są odwzorowane 1:1 z sekcji K7-B: „nieustalone"
@@ -24,6 +29,7 @@ import './aparatura.css';
 import { useAppStateStore } from '../../../../ui/app-state';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { KartaWerdyktu } from '../../wzorzec';
 import { fmtCzas, fmtKA } from '../strings';
 import { pobierzWytrzymaloscAparatury, znacznikWerdyktu, type PoleWytrzymalosci } from './api';
 import {
@@ -41,8 +47,10 @@ type Stan =
   | { readonly rodzaj: 'blad'; readonly komunikat: string };
 
 export interface WeryfikacjaAparaturyProps {
-  /** Wiersz WYNIKU wybranego punktu zwarcia (źródło prądów). */
+  /** Wiersz WYNIKU wybranego punktu zwarcia — wskazuje stację (prądy pól niesie bieg). */
   readonly wiersz: ShortCircuitRow;
+  /** Zapisany bieg zwarciowy ekranu — źródło prądów KAŻDEGO pola po stronie backendu. */
+  readonly runId: string | null;
   /** Nazwa punktu w języku ekranu (nagłówek sekcji). */
   readonly punktNazwa: string;
   /** Przejście do konfiguracji stacji (akcja naprawcza stanu zerowego). */
@@ -52,6 +60,39 @@ export interface WeryfikacjaAparaturyProps {
 /** Etykieta źródła aparatu — inżynier musi wiedzieć, co ocenia. */
 function opisZrodla(pole: PoleWytrzymalosci): string {
   return pole.zrodlo === 'model' ? T.zrodloModel : T.zrodloKonfiguracja;
+}
+
+/** Prąd z backendu albo uczciwa kreska. */
+function kiloampery(wartosc: number | null): string {
+  return wartosc === null ? T.kreska : `${fmtKA(wartosc)} ${T.jednKA}`;
+}
+
+/** Prądy pola z wiersza biegu dla JEGO punktu zabudowy (albo powód braku z backendu). */
+function PradyPola({ pole }: { readonly pole: PoleWytrzymalosci }) {
+  const prady = pole.prady_pola;
+  return (
+    <div
+      className="mvd-apar-czas"
+      data-testid={`mvd-zwarcia-aparatura-prady-${pole.pole}`}
+      data-punkt-ref={prady.punkt_ref ?? ''}
+    >
+      <dl className="mvd-apar-czas-pola">
+        <div>
+          <dt>{T.pradyPunkt}</dt>
+          <dd>{prady.punkt_nazwa ?? T.kreska}</dd>
+        </div>
+        <div>
+          <dt>{T.pradyIp}</dt>
+          <dd className="mvd-num">{kiloampery(prady.ip_ka)}</dd>
+        </div>
+        <div>
+          <dt>{T.pradyIth}</dt>
+          <dd className="mvd-num">{kiloampery(prady.ith_ka)}</dd>
+        </div>
+      </dl>
+      {prady.powod_pl !== null && <p className="mvd-apar-czas-powod">{prady.powod_pl}</p>}
+    </div>
+  );
 }
 
 /** Sekunda z backendu albo uczciwa kreska (prezentacja NIC nie dolicza). */
@@ -108,6 +149,7 @@ function RozbicieCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
 
 export function WeryfikacjaAparatury({
   wiersz,
+  runId,
   punktNazwa,
   onOtworzKonfiguracjeStacji,
 }: WeryfikacjaAparaturyProps) {
@@ -117,41 +159,31 @@ export function WeryfikacjaAparatury({
   const [powod, setPowod] = useState<PowodBrakuPodstawy | null>(null);
 
   const stacje = stacjeDlaPunktu(snapshot, wiersz);
-  const ipKA = wiersz.ip_ka;
-  const ithKA = wiersz.ith_ka;
 
-  // Zmiana punktu zwarcia unieważnia poprzedni werdykt (inaczej ekran
-  // pokazywałby ocenę aparatury INNEGO punktu — najgroźniejszy rodzaj kłamstwa).
+  // Zmiana punktu zwarcia albo biegu unieważnia poprzedni werdykt (inaczej ekran
+  // pokazywałby ocenę aparatury INNEGO punktu albo innego biegu).
   useEffect(() => {
     setStan({ rodzaj: 'nieuruchomiona' });
     setPowod(null);
-  }, [wiersz.target_id]);
+  }, [wiersz.target_id, runId]);
 
   const sprawdz = async () => {
     setStan({ rodzaj: 'pracuje' });
     try {
       const zebrane: PoleWytrzymalosci[] = [];
-      if (caseId) {
+      if (caseId && runId) {
         for (const stationRef of stacje) {
+          // ZAPISANY BIEG, nie liczby: prąd każdego pola backend bierze z wiersza tego
+          // biegu dla punktu zabudowy pola.
           const widok = await pobierzWytrzymaloscAparatury(caseId, {
             station_ref: stationRef,
-            // PRĄDY Z BIEGU — nie z zapisu konfiguracji (tam siedzą liczby,
-            // którymi konfigurator dobierał aparat; tutaj sprawdzamy je wynikiem
-            // solvera).
-            i_peak_ka: ipKA,
-            i_thermal_ka: ithKA,
-            ik_ka: wiersz.ik_ka ?? null,
+            short_circuit_run_id: runId,
           });
           zebrane.push(...widok.pola);
         }
       }
 
-      const brak = powodBrakuPodstawy({
-        ipKA,
-        ithKA,
-        stacje,
-        liczbaPol: zebrane.length,
-      });
+      const brak = powodBrakuPodstawy({ runId, stacje, liczbaPol: zebrane.length });
       setPowod(brak);
       setStan({ rodzaj: 'gotowe', wiersze: brak === null ? zebrane : [] });
     } catch (error) {
@@ -163,8 +195,8 @@ export function WeryfikacjaAparatury({
   };
 
   const komunikatBraku = (p: PowodBrakuPodstawy): string =>
-    p === 'brak-pradow'
-      ? T.brakPradow
+    p === 'brak-biegu'
+      ? T.brakBiegu
       : p === 'punkt-poza-stacja'
         ? T.punktPozaStacja
         : T.brakAparatury;
@@ -197,16 +229,9 @@ export function WeryfikacjaAparatury({
 
       <dl className="mvd-apar-wejscia" data-testid="mvd-zwarcia-aparatura-wejscia">
         <div>
-          <dt>{T.wejscieIp}</dt>
-          <dd className="mvd-num" data-testid="mvd-zwarcia-aparatura-ip">
-            {ipKA === null ? T.kreska : `${fmtKA(ipKA)} ${T.jednKA}`}
-            <span className="mvd-apar-zrodlo">{T.zrodloPradow}</span>
-          </dd>
-        </div>
-        <div>
-          <dt>{T.wejscieIth}</dt>
-          <dd className="mvd-num" data-testid="mvd-zwarcia-aparatura-ith">
-            {ithKA === null ? T.kreska : `${fmtKA(ithKA)} ${T.jednKA}`}
+          <dt>{T.wejsciePrady}</dt>
+          <dd data-testid="mvd-zwarcia-aparatura-prady">
+            {runId === null ? T.kreska : T.wejsciePradyOpis}
             <span className="mvd-apar-zrodlo">{T.zrodloPradow}</span>
           </dd>
         </div>
@@ -275,7 +300,15 @@ export function WeryfikacjaAparatury({
                 {opisZrodla(w)}
                 {w.aparat_etykieta ? ` · ${w.aparat_etykieta}` : ''}
               </span>
+              <PradyPola pole={w} />
               <RozbicieCzasu pole={w} />
+              {/* Rekordy K w JEDNYM bloku na całą szerokość wiersza — jako luźne elementy
+                  wiersza flex kurczyły się do szerokości kilku znaków (zrzut KD-6). */}
+              <div className="mvd-apar-oceny" data-testid={`mvd-zwarcia-aparatura-oceny-${w.pole}`}>
+                {w.oceny.map((ocena) => (
+                  <KartaWerdyktu key={ocena.kryterium_id} rekord={ocena} />
+                ))}
+              </div>
             </li>
           ))}
         </ul>

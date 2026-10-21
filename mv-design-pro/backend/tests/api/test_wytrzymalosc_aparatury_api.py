@@ -4,14 +4,20 @@ Sieć powstaje operacjami domenowymi (jedyna produkcyjna droga budowy modelu),
 a stacja jest wstawiana z JAWNIE wskazaną pozycją katalogu APARAT_SN — dokładnie
 tak, jak robi to kreator. Żaden aparat nie jest tu wstrzykiwany „na skróty",
 więc test dowodzi, że werdykt naprawdę bierze się z modelu.
+
+Karta WYTRZYMALOSC-PRAD-POLA: żądanie niesie stację i ZAPISANY bieg zwarciowy (nie liczby);
+prąd każdego pola to wiersz biegu dla jego punktu zabudowy. Bieg jest liczony produkcyjnym
+torem (``create_run`` + ``execute_run`` — ten sam, który uruchamia ekran wyników).
 """
 
 from __future__ import annotations
 
 from typing import Any
+from uuid import UUID, uuid4
 
 import pytest
 from api.main import app
+from enm.canonical_analysis import build_short_circuit_results, create_run, execute_run
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
@@ -126,7 +132,15 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
             "segment_id": segmenty[-1],
             "station_type": "B",
             "insert_at": {"value": 0.5},
-            "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+            "station": {
+                "sn_voltage_kv": 15.0,
+                "nn_voltage_kv": 0.4,
+                # Bieg zwarciowy liczy też sieć nN stacji — tabela 1 IEC 60909-0 wymaga jej
+                # zadeklarowanej tolerancji napięcia; odbiór potrzeb własnych pozwala policzyć
+                # rozpływ (bieg innego rodzaju w teście odrzucenia).
+                "station_auxiliary": {"active_power_kw": 10.0, "cos_phi": 0.95},
+                "nn_earthing": {"lv_system": "TN-S", "lv_voltage_tolerance": "PLUS_6"},
+            },
             "sn_fields": [pole_in, "OUT"],
             "transformer": {
                 "create": True,
@@ -143,19 +157,57 @@ def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: boo
     return str(stacje[0]["ref_id"])
 
 
-def test_werdykty_powstaja_z_modelu_bez_zadnej_konfiguracji(klient: TestClient):
-    """SEDNO: żadnego zapisu konfiguracji — a pola stacji dostają werdykt."""
+def _bieg(
+    klient: TestClient,
+    case_id: str,
+    *,
+    analysis_type: str = "short_circuit_sn",
+    options: dict[str, Any] | None = None,
+) -> str:
+    """Zapisany bieg liczony produkcyjnym torem; zwraca jego identyfikator."""
+    from application.twin_key import klucz_twin_dla_przypadku
+
+    klucz = klucz_twin_dla_przypadku(case_id, klient.app.state.uow_factory)
+    run = execute_run(
+        create_run(
+            case_id=case_id, klucz_twin=klucz, analysis_type=analysis_type, options=options
+        ).id
+    )
+    assert run.status == "FINISHED", run.error_message
+    return str(run.id)
+
+
+def _wytrzymalosc(klient: TestClient, case_id: str, station_ref: str, run_id: str) -> Any:
+    return klient.post(
+        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
+        json={"station_ref": station_ref, "short_circuit_run_id": run_id},
+    )
+
+
+def _ocena(pole: dict[str, Any], rodzaj: str) -> dict[str, Any]:
+    return next(o for o in pole["oceny"] if o["kryterium_id"].endswith(f".{rodzaj}"))
+
+
+def test_werdykty_powstaja_z_modelu_i_pradow_pola_z_biegu(klient: TestClient):
+    """SEDNO: żadnego zapisu konfiguracji i żadnej liczby w żądaniu — a pola stacji dostają
+    werdykt przy prądach z wiersza biegu dla SWOJEGO punktu zabudowy."""
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id)
+    run_id = _bieg(klient, case_id)
 
-    odp = klient.post(
-        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
-        json={"station_ref": station_ref, "i_peak_ka": 10.0, "i_thermal_ka": 4.0},
-    )
+    odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
     assert odp.status_code == 200, odp.text
     widok = odp.json()
 
+    from enm.canonical_analysis import get_run
+
+    wiersze = {
+        w["element_id"]: w
+        for w in build_short_circuit_results(get_run(UUID(run_id)))["rows"]
+        if w["fault_type"] == "3F"
+    }
     assert widok["status"] == "OK"
+    assert widok["bieg_zwarciowy_ref"] == run_id
     assert widok["pola"], "Stacja z aparatami w modelu musi dać wiersze werdyktu"
     assert {p["zrodlo"] for p in widok["pola"]} == {"model"}
     for pole in widok["pola"]:
@@ -164,18 +216,21 @@ def test_werdykty_powstaja_z_modelu_bez_zadnej_konfiguracji(klient: TestClient):
         assert pole["znamiona"]["i_th_ka"] is not None
         assert pole["znamiona"]["i_th_pochodzenie"] == "producent"
         assert pole["znamiona"]["i_dyn_pochodzenie"] == "derived_iec62271"
-        # Prąd udarowy 10 kA < I_dyn ⇒ kryterium dynamiczne rozstrzygnięte.
+        # Prądy pola = wiersz biegu dla punktu zabudowy pola (nie liczba z żądania).
+        wiersz = wiersze[pole["prady_pola"]["punkt_ref"]]
+        assert pole["prady_pola"]["ip_ka"] == wiersz["ip_ka"]
+        assert pole["prady_pola"]["ith_ka"] == wiersz["ith_ka"]
         assert pole["werdykt"]["i_dyn_ok"] is True
+        assert _ocena(pole, "dynamiczna")["status_maszynowy"] == "SPELNIA"
 
 
 def test_koncowka_jest_deterministyczna(klient: TestClient):
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id)
-    zapytanie = {"station_ref": station_ref, "i_peak_ka": 10.0, "i_thermal_ka": 4.0}
+    run_id = _bieg(klient, case_id)
 
-    sciezka = f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury"
-    pierwsza_odp = klient.post(sciezka, json=zapytanie)
-    druga_odp = klient.post(sciezka, json=zapytanie)
+    pierwsza_odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
+    druga_odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
     # Przypina status PRZED porownaniem cial — dwie identyczne odpowiedzi
     # bledu (np. 404 tlumaczenia case_id) rownie chetnie przeszlyby ten
     # test (test maskujacy defekt).
@@ -188,75 +243,82 @@ def test_koncowka_jest_deterministyczna(klient: TestClient):
 def test_stacja_spoza_modelu_nie_udaje_pustej(klient: TestClient):
     case_id = _nowy_przypadek(klient)
     _stacja_z_polami(klient, case_id)
+    run_id = _bieg(klient, case_id)
 
-    odp = klient.post(
-        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
-        json={"station_ref": "nie-ma-takiej", "i_peak_ka": 10.0, "i_thermal_ka": 4.0},
-    )
+    odp = _wytrzymalosc(klient, case_id, "nie-ma-takiej", run_id)
     assert odp.status_code == 200
     widok = odp.json()
     assert widok["status"] == "brak danych"
     assert widok["kody_gotowosci"] == ["aparatura.stacja_nieznana"]
 
 
-def test_brak_pradow_z_biegu_daje_jawny_kod_gotowosci(klient: TestClient):
+def test_zadanie_bez_biegu_jest_odrzucane(klient: TestClient):
+    """Liczby z żądania zniknęły — bez biegu nie ma czego oceniać (422, nie werdykt)."""
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id)
 
     odp = klient.post(
         f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
-        json={"station_ref": station_ref},
+        json={"station_ref": station_ref, "i_peak_ka": 10.0, "i_thermal_ka": 4.0, "ik_ka": 8.0},
     )
-    assert odp.status_code == 200
-    widok = odp.json()
-    assert widok["status"] == "brak danych"
-    assert widok["kody_gotowosci"] == ["aparatura.brak_pradow_biegu"]
+    assert odp.status_code == 422
 
 
-def test_czas_wylaczenia_pochodzi_z_nastaw_pola_i_niesie_rozbicie(klient: TestClient):
-    """KD-6 poz. 3: czas kryterium cieplnego wyprowadzony z NASTAW, nie wpisany ręcznie."""
+@pytest.mark.parametrize(
+    ("bieg", "kod"),
+    [
+        (lambda klient, case_id: "nie-uuid", 422),
+        (lambda klient, case_id: str(uuid4()), 404),
+        (lambda klient, case_id: _bieg(klient, case_id, analysis_type="PF"), 422),
+        (lambda klient, case_id: _bieg(klient, case_id, options={"scenario": "min"}), 422),
+    ],
+    ids=["niepoprawny_uuid", "bieg_nieistniejacy", "bieg_rozplywu", "scenariusz_min"],
+)
+def test_bieg_niewlasciwy_jest_odrzucany(klient: TestClient, bieg: Any, kod: int):
+    """Scenariusz MIN zaniżyłby prąd i dał werdykt optymistyczny — wytrzymałość ocenia
+    się przy prądzie maksymalnym."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id)
+
+    odp = _wytrzymalosc(klient, case_id, station_ref, bieg(klient, case_id))
+    assert odp.status_code == kod, odp.text
+
+
+def test_czas_z_nastaw_pola_bez_czasu_wlasnego_daje_brak_podstawy(klient: TestClient):
+    """KD-6 poz. 3 + karta WYTRZYMALOSC-PRAD-POLA: człon nastawczy wyprowadzony z NASTAW przy
+    prądzie TEGO pola, ale katalog wyłącznika nie niesie czasu własnego — czasu wyłączenia
+    nie ma, a kryterium cieplne ma BRAK_PODSTAWY z przyczyną (dawniej SPEŁNIA na 0,3 s)."""
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
 
-    odp = klient.post(
-        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
-        json={
-            "station_ref": station_ref,
-            "i_peak_ka": 10.0,
-            "i_thermal_ka": 4.0,
-            "ik_ka": 8.0,
-        },
-    )
+    odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
     assert odp.status_code == 200, odp.text
     widok = odp.json()
 
     z_nastaw = [p for p in widok["pola"] if p["czas_wylaczenia"]["zrodlo"] == "nastawy_pola"]
-    assert z_nastaw, "Pole z nastawami musi dostać czas wyprowadzony z charakterystyki"
-    czas = z_nastaw[0]["czas_wylaczenia"]
-    # WHITE BOX: oba człony osobno + ślad nastawy, z której czas powstał.
+    assert z_nastaw, "Pole z nastawami musi dostać człon wyprowadzony z charakterystyki"
+    pole = z_nastaw[0]
+    czas = pole["czas_wylaczenia"]
+    # WHITE BOX: człon i ślad nastawy, prąd = Ik″ punktu zabudowy TEGO pola.
     assert czas["czlon_nastawczy_s"] == 0.3
-    assert czas["t_clearing_s"] == 0.3
-    assert czas["czas_wlasny_wylacznika_s"] is None
-    assert czas["zalozenia_pl"], "Brak czasu własnego MUSI być powiedziany wprost"
     assert czas["funkcja"] == "overcurrent_51"
-    assert czas["prad_zwarciowy_a"] == 8000.0
-    # Czas domyka kryterium cieplne, które bez niego zostawało nierozstrzygnięte.
-    assert z_nastaw[0]["werdykt"]["i_th_ok"] is True
+    assert czas["prad_zwarciowy_a"] == pytest.approx(pole["prady_pola"]["ik_ka"] * 1000.0)
+    assert czas["t_clearing_s"] is None
+    assert czas["czas_wlasny_wylacznika_s"] is None
+    assert "aparatura.brak_czasu_wlasnego_wylacznika" in pole["kody_gotowosci"]
+    assert pole["werdykt"]["i_th_ok"] is None
+    cieplna = _ocena(pole, "cieplna")
+    assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
+    assert cieplna["wyjasnienie"]["czego_brakuje"]
 
 
 def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient: TestClient):
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id)
+    run_id = _bieg(klient, case_id)
 
-    odp = klient.post(
-        f"/api/cases/{case_id}/enm/wytrzymalosc-aparatury",
-        json={
-            "station_ref": station_ref,
-            "i_peak_ka": 10.0,
-            "i_thermal_ka": 4.0,
-            "ik_ka": 8.0,
-        },
-    )
+    odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
     assert odp.status_code == 200, odp.text
     widok = odp.json()
 
@@ -267,3 +329,4 @@ def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient:
         # Kryterium dynamiczne rozstrzygnięte MIMO braku czasu.
         assert pole["werdykt"]["i_dyn_ok"] is True
         assert pole["werdykt"]["i_th_ok"] is None
+        assert _ocena(pole, "cieplna")["status_maszynowy"] == "BRAK_PODSTAWY"

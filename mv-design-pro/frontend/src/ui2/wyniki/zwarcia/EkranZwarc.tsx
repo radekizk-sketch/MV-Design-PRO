@@ -176,10 +176,11 @@ export function EkranZwarc({
 
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
 
-      {/* Ogniwo łańcucha: prądy TEGO punktu → końcówka walidacji wytrzymałości
-          aparatury (ta sama, którą karta K7-B wpięła w konfigurator stacji). */}
+      {/* Ogniwo łańcucha: stacja TEGO punktu + zapisany bieg → werdykty wytrzymałości
+          aparatury wszystkich pól stacji, każde przy prądzie swojego punktu zabudowy. */}
       <WeryfikacjaAparatury
         wiersz={wierszAktywny}
+        runId={runId}
         punktNazwa={nazwaAktywnego}
         onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
       />

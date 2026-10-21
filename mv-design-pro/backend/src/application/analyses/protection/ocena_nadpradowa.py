@@ -41,9 +41,8 @@ identyfikatorze — ten sam model i ten sam bieg dają te same bajty wyniku.
 from __future__ import annotations
 
 import math
-import re
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from application.analyses.prad_zwarciowy_galezi import prad_netto_galezi_z_wkladow
@@ -59,6 +58,7 @@ from application.analyses.protection.catalog.zakresy import (
 from application.analyses.protection.catalog.zakresy import (
     wartosc_w_jednostce_zakresu as wartosc_w_jednostce_zakresu_katalogu,
 )
+from domain.readiness_bridge import opis_kanoniczny
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.mapping import ref_to_graph_id
 from enm.models import (
@@ -79,6 +79,15 @@ from network_model.pochodne import (
     prad_pierwotny_z_wtornego_a,
     prad_wtorny_z_pierwotnego_a,
 )
+from network_model.solvers.equipment_checks.ct_burden_saturation import (
+    READINESS_CT_WINDING_RESISTANCE_MISSING,
+    CtBurdenInput,
+    CtBurdenResult,
+    CtDeviceBurden,
+    alf_z_klasy,
+    check_ct_burden_saturation,
+)
+from network_model.solvers.equipment_checks.slad import STATUS_FAIL, STATUS_PASS
 from network_model.solvers.protection_iec60255 import (
     IEC60255_CURVE_FORMULAS_LATEX,
     IEC60255_CURVE_PARAMS,
@@ -212,10 +221,6 @@ ETYKIETY_KRZYWYCH_PL: dict[str, str] = {
 #: Aparaty, które PRZERYWAJĄ prąd zwarciowy — tylko one mogą być wykonawcą zabezpieczenia.
 _APARATY_WYLACZAJACE = frozenset({SwitchType.BREAKER, SwitchType.RECLOSER})
 
-#: Klasa zabezpieczeniowa przekładnika wg IEC 61869-2 (5P20, 10P10, 5PR20...): liczba po P
-#: (albo PR) to współczynnik granicy dokładności ALF.
-_KLASA_ZABEZPIECZENIOWA = re.compile(r"^\s*(5|10)\s*P\s*R?\s*(\d+(?:[.,]\d+)?)\s*$", re.IGNORECASE)
-
 #: Zdolność w rejestrze dowodowym (``solver_input.provenance``).
 ZDOLNOSC_OCENY = "zabezpieczenia.ocena_nadpradowa"
 
@@ -288,6 +293,11 @@ class NastawyUrzadzenia:
     przekladnia_a: tuple[float, float] | None
     klasa_ct: str | None
     alf: float | None
+    #: Wejście JĄDRA nasycenia CT (``ct_burden_saturation``, IEC 61869-2 § 5.6) bez
+    #: wymaganego ALF — ten dopisuje ``wiarygodnosc_punktu`` z prądu punktu. Dane z modelu
+    #: (``Measurement.rating`` + ``Measurement.obwod_wtorny``) i z pozycji katalogu CT
+    #: (``rct_ohm``); brak przekładnika = ``None``. Karta CT-JEDEN-WERDYKT.
+    wejscie_nasycenia: CtBurdenInput | None
     pozycja_katalogu: str | None
     zakresy: dict[str, Any] | None
     stopnie: tuple[StopienNastaw, ...]
@@ -307,6 +317,7 @@ class NastawyUrzadzenia:
             "przekladnia_a": list(self.przekladnia_a) if self.przekladnia_a else None,
             "klasa_ct": self.klasa_ct,
             "alf": self.alf,
+            "obwod_wtorny_ct": _opis_wejscia_nasycenia(self.wejscie_nasycenia),
             "pozycja_katalogu": self.pozycja_katalogu,
             "zakresy": self.zakresy,
             "stopnie": [s.to_dict() for s in self.stopnie],
@@ -352,6 +363,9 @@ class OcenaPunktu:
     margines_procent: float | None
     wiarygodnosc: str
     wiarygodnosc_powod_pl: str
+    #: Wynik jądra nasycenia CT w tym punkcie (ALF_eff, granica, zapas, ślad) — jeden
+    #: werdykt nasycenia w repo (karta CT-JEDEN-WERDYKT).
+    nasycenie_ct: dict[str, Any] | None
     stopnie: tuple[dict[str, Any], ...]
     bilans_pradu: dict[str, Any]
     ocena: OcenaKryterium
@@ -373,6 +387,7 @@ class OcenaPunktu:
             "margines_procent": self.margines_procent,
             "wiarygodnosc": self.wiarygodnosc,
             "wiarygodnosc_powod_pl": self.wiarygodnosc_powod_pl,
+            "nasycenie_ct": self.nasycenie_ct,
             "stopnie": list(self.stopnie),
             "bilans_pradu": self.bilans_pradu,
             "ocena": self.ocena.model_dump(mode="json"),
@@ -433,20 +448,6 @@ class WynikOceny:
 # ---------------------------------------------------------------------------
 # 1. Nastawy z modelu
 # ---------------------------------------------------------------------------
-
-
-def alf_z_klasy(klasa: str | None) -> float | None:
-    """Współczynnik granicy dokładności ALF z klasy zabezpieczeniowej CT (IEC 61869-2).
-
-    ``5P20`` → 20, ``10P10`` → 10, ``5PR20`` → 20. Klasa pomiarowa (``0.5``, ``0.2S``) albo brak
-    klasy → ``None``: granica odwzorowania prądu zwarciowego jest nieustalona.
-    """
-    if not klasa:
-        return None
-    dopasowanie = _KLASA_ZABEZPIECZENIOWA.match(klasa)
-    if dopasowanie is None:
-        return None
-    return float(dopasowanie.group(2).replace(",", "."))
 
 
 def _przekladnik(
@@ -825,6 +826,10 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
             stopnie.append(stopien)
 
     klasa = ct.rating.accuracy_class if ct is not None else None
+    wejscie = _wejscie_nasycenia(enm, ct) if ct is not None and not braki_ct else None
+    # ALF w kontrakcie nastaw jest liczbą zmiennoprzecinkową; jądro i ``alf_z_klasy`` niosą
+    # go jako int — jedna postać wyjścia niezależnie od źródła (stabilna odpowiedź JSON).
+    alf_ct = wejscie.alf if wejscie is not None else alf_z_klasy(klasa)
     return NastawyUrzadzenia(
         urzadzenie_ref=assignment.ref_id,
         nazwa_pl=nazwa,
@@ -836,13 +841,66 @@ def rozwiaz_nastawy(enm: EnergyNetworkModel, assignment: ProtectionAssignment) -
             else None
         ),
         klasa_ct=klasa,
-        alf=alf_z_klasy(klasa),
+        alf=float(alf_ct) if alf_ct is not None else None,
+        wejscie_nasycenia=wejscie,
         pozycja_katalogu=assignment.catalog_ref,
         zakresy=_zakresy_katalogu(zdolnosc) if zdolnosc is not None else None,
         stopnie=tuple(stopnie),
         braki=tuple(braki),
         funkcje_nieoceniane=nieoceniane,
     )
+
+
+def _wejscie_nasycenia(enm: EnergyNetworkModel, ct: Measurement) -> CtBurdenInput:
+    """Wejście jądra nasycenia CT z modelu — fakty bez liczenia (wzorzec W3-B).
+
+    Źródła (jedno na wielkość, zero wartości zastępczych):
+      - prąd znamionowy wtórny ``I2n`` — przekładnia przekładnika w modelu;
+      - moc znamionowa ``Sn`` — ``Measurement.rating.burden_va``;
+      - ``ALF`` — z klasy zabezpieczeniowej przekładnika w modelu (``5P10`` → 10) tym samym
+        wyprowadzeniem, którego używa jądro; klasa pomiarowa albo brak klasy → ``None``;
+      - obwód wtórny (długość, przekrój, aparaty, styki) — ``Measurement.obwod_wtorny``;
+      - rezystancja uzwojenia wtórnego ``Rct`` — WYŁĄCZNIE z pozycji katalogu CT, z którą
+        przekładnik jest związany (dana producencka; model jej nie niesie).
+    Każdy brak zamienia jądro w nazwany kod gotowości (``ct.*``), nigdy w ``ALF·I₁n``.
+    """
+    obwod = ct.obwod_wtorny
+    rct_ohm: float | None = None
+    if ct.catalog_ref:
+        pozycja = katalog_dla_modelu(enm).get_ct_type(ct.catalog_ref)
+        rct_ohm = pozycja.rct_ohm if pozycja is not None else None
+    return CtBurdenInput(
+        i2n_a=ct.rating.ratio_secondary,
+        sn_va=ct.rating.burden_va,
+        alf=alf_z_klasy(ct.rating.accuracy_class),
+        dlugosc_przewodu_m=obwod.dlugosc_przewodu_m if obwod is not None else None,
+        przekroj_przewodu_mm2=obwod.przekroj_przewodu_mm2 if obwod is not None else None,
+        obciazenia_aparatow=(
+            tuple(CtDeviceBurden(nazwa=a.nazwa, moc_va=a.moc_va) for a in obwod.obciazenia_aparatow)
+            if obwod is not None
+            else ()
+        ),
+        rct_ohm=rct_ohm,
+        moc_stykow_va=obwod.moc_stykow_va if obwod is not None else None,
+    )
+
+
+def _opis_wejscia_nasycenia(wejscie: CtBurdenInput | None) -> dict[str, Any] | None:
+    """Dane wejściowe jądra nasycenia w odpowiedzi (WHITE BOX: czym policzono werdykt)."""
+    if wejscie is None:
+        return None
+    return {
+        "i2n_a": wejscie.i2n_a,
+        "sn_va": wejscie.sn_va,
+        "alf": float(wejscie.alf) if wejscie.alf is not None else None,
+        "rct_ohm": wejscie.rct_ohm,
+        "dlugosc_przewodu_m": wejscie.dlugosc_przewodu_m,
+        "przekroj_przewodu_mm2": wejscie.przekroj_przewodu_mm2,
+        "obciazenia_aparatow": [
+            {"nazwa": a.nazwa, "moc_va": a.moc_va} for a in wejscie.obciazenia_aparatow
+        ],
+        "moc_stykow_va": wejscie.moc_stykow_va,
+    }
 
 
 def _braki_kompletnosci(nastawa: ProtectionSetting, nazwa: str) -> list[PozycjaGotowosci]:
@@ -1700,34 +1758,127 @@ def odmowa_rekord(
 # ---------------------------------------------------------------------------
 
 
-def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> tuple[str, str]:
-    """Czy przekładnik odwzorowuje prąd przekaźnikowi (granica dokładności ALF, IEC 61869-2).
+@dataclass(frozen=True)
+class WiarygodnoscPunktu:
+    """Wiarygodność punktu wobec nasycenia przekładnika — etykieta, zdanie, ślad jądra.
 
-    Prąd pierwotny powyżej ALF·I₁n nasyca rdzeń zabezpieczeniowy: prąd wtórny nie jest
-    proporcjonalny, więc czas z charakterystyki i margines są niewiarygodne. Klasa bez ALF
-    (pomiarowa albo nieznana) → wiarygodność nieustalona, nazwana w zakresie ważności.
+    Nośnik pośredni, nie rekord wyniku: ``wiarygodnosc`` i ``powod_pl`` trafiają do
+    ``OcenaPunktu`` (pola o tych samych nazwach) i do rekordu K ``ocena_punktu_rekord``.
     """
-    if nastawy.przekladnia_a is None:
-        return WIARYGODNOSC_NIEUSTALONA, "przekładnia przekładnika nieustalona"
+
+    wiarygodnosc: str
+    powod_pl: str
+    #: Wynik jądra ``ct_burden_saturation`` (WHITE BOX) z granicą prądu nasycenia; ``None``,
+    #: gdy jądro nie mogło być wołane (przekładnia nieustalona).
+    nasycenie: dict[str, Any] | None
+
+
+def _opis_nasycenia(wynik: CtBurdenResult, *, alf_wymagany: float, i1n_a: float) -> dict[str, Any]:
+    granica = wynik.alf_efektywny * i1n_a if wynik.alf_efektywny is not None else None
+    return {
+        "status": wynik.status,
+        "status_nasycenia": wynik.status_nasycenia,
+        "status_obciazenia": wynik.status_obciazenia,
+        "alf_efektywny": wynik.alf_efektywny,
+        "alf_wymagany": alf_wymagany,
+        "zapas_alf": wynik.zapas_alf,
+        # Prezentacja granicy ALF_eff jądra w amperach strony pierwotnej (przy jakim prądzie
+        # rdzeń się nasyca) — NIE werdykt: status pochodzi wyłącznie z ``status_nasycenia``.
+        "granica_nasycenia_a": granica,
+        "wariant_alf": wynik.wariant_alf,
+        "moc_obliczeniowa_va": wynik.moc_obliczeniowa_va,
+        "moc_wewnetrzna_va": wynik.moc_wewnetrzna_va,
+        "readiness_codes": list(wynik.readiness_codes),
+        "formula_ref": wynik.formula_ref,
+        "assumptions": list(wynik.assumptions),
+        "white_box_trace": list(wynik.white_box_trace),
+    }
+
+
+def _dane_jadra_pl(wejscie: CtBurdenInput, wynik: CtBurdenResult) -> str:
+    """Z czego jądro policzyło ALF_eff — zdanie, które mówi, DLACZEGO rdzeń się nasyca."""
+    czesci = [
+        f"ALF {_liczba(float(wejscie.alf))}" if wejscie.alf is not None else "ALF nieznany",
+        f"S_n {_liczba(float(wejscie.sn_va))} VA" if wejscie.sn_va is not None else "",
+        (
+            f"obciążenie obwodu wtórnego S_2obl {_liczba(wynik.moc_obliczeniowa_va)} VA"
+            if wynik.moc_obliczeniowa_va is not None
+            else ""
+        ),
+    ]
+    if wynik.moc_wewnetrzna_va is not None and wejscie.rct_ohm is not None:
+        czesci.append(
+            f"moc uzwojenia S_w {_liczba(wynik.moc_wewnetrzna_va)} VA "
+            f"z R_ct {_liczba(wejscie.rct_ohm)} Ω"
+        )
+    else:
+        czesci.append("wariant uproszczony bez R_ct — katalog nie niesie rezystancji uzwojenia")
+    return ", ".join(c for c in czesci if c)
+
+
+def wiarygodnosc_punktu(nastawy: NastawyUrzadzenia, prad_a: float) -> WiarygodnoscPunktu:
+    """Czy przekładnik odwzorowuje prąd przekaźnikowi — JEDEN werdykt nasycenia w repo.
+
+    Delegacja do jądra ``ct_burden_saturation`` (IEC 61869-2 § 5.6, karta CT-JEDEN-WERDYKT):
+    efektywny współczynnik ``ALF_eff = ALF·(S_n + S_w)/(S_2obl + S_w)`` uwzględnia
+    rzeczywiste obciążenie obwodu wtórnego i rezystancję uzwojenia; wymagany
+    ``ALF_wym = I/I₁n`` to krotność prądu punktu względem prądu znamionowego pierwotnego.
+    Status = ``status_nasycenia`` jądra: PASS → wiarygodny, FAIL → niewiarygodny (rdzeń
+    nasyca się, czas i margines bez podstawy), brak danej → nieustalona z nazwanym kodem
+    gotowości jądra. Granica ``ALF·I₁n`` bez obciążenia wtórnego nie jest tu liczona.
+    """
+    wejscie = nastawy.wejscie_nasycenia
+    if nastawy.przekladnia_a is None or wejscie is None:
+        return WiarygodnoscPunktu(
+            wiarygodnosc=WIARYGODNOSC_NIEUSTALONA,
+            powod_pl="przekładnia przekładnika nieustalona — nasycenia nie sprawdzono",
+            nasycenie=None,
+        )
     i1n = nastawy.przekladnia_a[0]
-    if nastawy.alf is None:
-        return (
-            WIARYGODNOSC_NIEUSTALONA,
-            f"klasa przekładnika ({nastawy.klasa_ct or 'nieznana'}) nie jest klasą "
-            "zabezpieczeniową z granicą dokładności — nasycenia przekładnika nie sprawdzono",
+    alf_wymagany = prad_a / i1n
+    wynik = check_ct_burden_saturation(replace(wejscie, alf_wymagany=alf_wymagany))
+    nasycenie = _opis_nasycenia(wynik, alf_wymagany=alf_wymagany, i1n_a=i1n)
+    if wynik.status_nasycenia in (STATUS_PASS, STATUS_FAIL):
+        assert wynik.alf_efektywny is not None and wynik.zapas_alf is not None
+        granica = nasycenie["granica_nasycenia_a"]
+        dane = _dane_jadra_pl(wejscie, wynik)
+        uzasadnienie = (
+            f"ALF_eff = {_liczba(wynik.alf_efektywny)} ({dane}); wymagane ALF_wym = I/I₁n = "
+            f"{_liczba(prad_a)}/{_liczba(i1n)} = {_liczba(alf_wymagany)}; zapas ALF_eff − "
+            f"ALF_wym = {_liczba(wynik.zapas_alf)}"
         )
-    granica = nastawy.alf * i1n
-    if prad_a > granica:
-        return (
-            NIEWIARYGODNY,
-            f"prąd {_liczba(prad_a)} A przekracza granicę dokładności przekładnika "
-            f"ALF·I₁n = {_liczba(nastawy.alf)}·{_liczba(i1n)} A = {_liczba(granica)} A — "
-            "rdzeń nasyca się, czas zadziałania i margines są niewiarygodne",
+        if wynik.status_nasycenia == STATUS_FAIL:
+            return WiarygodnoscPunktu(
+                wiarygodnosc=NIEWIARYGODNY,
+                powod_pl=(
+                    f"prąd {_liczba(prad_a)} A przekracza granicę nasycenia przekładnika "
+                    f"ALF_eff·I₁n = {_liczba(granica)} A ({uzasadnienie}) — rdzeń nasyca się, "
+                    "czas zadziałania i margines są niewiarygodne"
+                ),
+                nasycenie=nasycenie,
+            )
+        return WiarygodnoscPunktu(
+            wiarygodnosc=WIARYGODNY,
+            powod_pl=(
+                f"prąd {_liczba(prad_a)} A nie przekracza granicy nasycenia przekładnika "
+                f"ALF_eff·I₁n = {_liczba(granica)} A ({uzasadnienie})"
+            ),
+            nasycenie=nasycenie,
         )
-    return (
-        WIARYGODNY,
-        f"prąd {_liczba(prad_a)} A w granicy dokładności przekładnika "
-        f"ALF·I₁n = {_liczba(granica)} A",
+    braki = [
+        opis["canonical_message_pl"] if (opis := opis_kanoniczny(kod)) is not None else kod
+        for kod in wynik.readiness_codes
+        if kod != READINESS_CT_WINDING_RESISTANCE_MISSING
+    ]
+    if wejscie.alf is None and nastawy.klasa_ct:
+        braki.append(
+            f"klasa przekładnika {nastawy.klasa_ct} nie jest klasą zabezpieczeniową "
+            "z granicą dokładności (ALF)"
+        )
+    return WiarygodnoscPunktu(
+        wiarygodnosc=WIARYGODNOSC_NIEUSTALONA,
+        powod_pl="nasycenia przekładnika nie sprawdzono — " + "; ".join(braki),
+        nasycenie=nasycenie,
     )
 
 
@@ -1915,7 +2066,8 @@ def _ocena_punktu(
         if decydujacy is not None
         else najczulszy
     )
-    wiarygodnosc, powod = wiarygodnosc_punktu(nastawy, prad)
+    ocena_ct = wiarygodnosc_punktu(nastawy, prad)
+    wiarygodnosc, powod = ocena_ct.wiarygodnosc, ocena_ct.powod_pl
     krotnosc = prad / stopien_odn.prog_pierwotny_a
     margines = None if wiarygodnosc == NIEWIARYGODNY else round((krotnosc - 1.0) * 100.0, 2)
     return OcenaPunktu(
@@ -1934,6 +2086,7 @@ def _ocena_punktu(
         margines_procent=margines,
         wiarygodnosc=wiarygodnosc,
         wiarygodnosc_powod_pl=powod,
+        nasycenie_ct=ocena_ct.nasycenie,
         stopnie=tuple(slady),
         bilans_pradu=bilans,
         ocena=ocena_punktu_rekord(
@@ -1974,7 +2127,6 @@ __all__ = [
     "StopienNastaw",
     "StrefaUrzadzenia",
     "WynikOceny",
-    "alf_z_klasy",
     "czas_stopnia",
     "czas_urzadzenia",
     "ocen_zabezpieczenia",
@@ -1983,5 +2135,6 @@ __all__ = [
     "rozwiaz_nastawy",
     "strefa_urzadzenia",
     "urzadzenia_nadpradowe",
+    "WiarygodnoscPunktu",
     "wiarygodnosc_punktu",
 ]
