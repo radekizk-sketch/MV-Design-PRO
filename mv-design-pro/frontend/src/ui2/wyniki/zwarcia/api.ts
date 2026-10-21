@@ -98,44 +98,74 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
 }
 
 /**
+ * Stan ODCZYTU danych jednego punktu zwarcia (wkłady albo rozpływ gałęziowy) —
+ * wspólny dla obu dostawców per punkt. `wczytywanie` i `blad` to stany zapytania,
+ * NIE stany danych: sekcja nie wolno w nich pokazać „dane niedostępne w tym
+ * przebiegu" (KONTRAKT_WERDYKTU_WYJASNIALNEGO — odczyt w toku ≠ brak danych,
+ * błąd odczytu ≠ brak danych). `gotowe` = odczyt zakończony albo niepotrzebny
+ * (dane w polu wiersza, starszy wynik bez flagi dostępności).
+ */
+export type OdczytPunktuZwarcia = 'gotowe' | 'wczytywanie' | 'blad';
+
+/** Stan dostawcy wkładów dla punktu — rozłączne stany, jedna dana pochodna. */
+export type StanWkladowZwarciowych =
+  /** Brak punktu albo brak migawki modelu — nie ma czego pobrać (uczciwy brak). */
+  | { readonly odczyt: 'niezlecony' }
+  | { readonly odczyt: 'wczytywanie' }
+  | { readonly odczyt: 'blad' }
+  | { readonly odczyt: 'gotowe'; readonly dane: WkladyZWywodem };
+
+/**
  * Hook dostawcy wkładów dla aktywnego punktu zwarcia. Pobiera na zmianę punktu,
- * cache per punkt na życie ekranu (deterministyczny snapshot → deterministyczna
- * odpowiedź). Stany uczciwe: `null` = dane niedostępne (brak snapshotu / błąd /
- * w trakcie pobierania — istniejący stan „dane niedostępne" sekcji), `[]` =
- * sieć bez maszyn wirujących (backend zwraca pustą listę deterministycznie).
+ * cache per punkt W OBRĘBIE JEDNEJ migawki modelu (zmiana migawki unieważnia
+ * cache — wkłady liczone są z bieżącej migawki, więc wpis innej migawki byłby
+ * wynikiem innej sieci). Stany rozłączne (`StanWkladowZwarciowych`):
+ * `niezlecony` = brak punktu/migawki, `wczytywanie` = zapytanie w toku, `blad` =
+ * błąd pobrania (HTTP/sieć), `gotowe` = odpowiedź (`wklady: []` = sieć bez maszyn
+ * wirujących — backend zwraca pustą listę deterministycznie).
  * `punkt = null` wyłącza pobieranie (dostawca zewnętrzny przez props ma pierwszeństwo).
  */
-export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null {
+export function useWkladyZwarciowe(punkt: string | null): StanWkladowZwarciowych {
   const snapshot = useSnapshotStore((s) => s.snapshot);
-  const [cache, setCache] = useState<Record<string, WkladyZWywodem>>({});
+  const [cache, setCache] = useState<{
+    readonly zrodlo: EnergyNetworkModel | null;
+    readonly wpisy: Readonly<Record<string, WkladyZWywodem | 'blad'>>;
+  }>({ zrodlo: null, wpisy: {} });
+  const wpisy = cache.zrodlo === snapshot ? cache.wpisy : null;
 
   useEffect(() => {
     if (!punkt || !snapshot) return;
-    if (cache[punkt]) return;
+    if (wpisy && punkt in wpisy) return;
     let anulowane = false;
+    const zapisz = (wpis: WkladyZWywodem | 'blad') =>
+      setCache((c) => ({
+        zrodlo: snapshot,
+        wpisy: { ...(c.zrodlo === snapshot ? c.wpisy : {}), [punkt]: wpis },
+      }));
     fetchWkladyZwarciowe(snapshot, punkt)
       .then((odpowiedz) => {
         if (!anulowane)
-          setCache((c) => ({
-            ...c,
-            [punkt]: {
-              wklady: naWklady(odpowiedz),
-              wywod: odpowiedz.wywod ?? [],
-              wywodSekcje: odpowiedz.wywod_sekcje ?? [],
-              walidacjaIec: odpowiedz.walidacja_iec ?? [],
-            },
-          }));
+          zapisz({
+            wklady: naWklady(odpowiedz),
+            wywod: odpowiedz.wywod ?? [],
+            wywodSekcje: odpowiedz.wywod_sekcje ?? [],
+            walidacjaIec: odpowiedz.walidacja_iec ?? [],
+          });
       })
       .catch(() => {
-        // Błąd pobrania → pozycja bez wpisu → sekcja pokazuje „dane niedostępne".
+        // Błąd pobrania ROZPOZNANY (stan `blad`), nie wchłonięty w „dane niedostępne".
+        if (!anulowane) zapisz('blad');
       });
     return () => {
       anulowane = true;
     };
-  }, [punkt, snapshot, cache]);
+  }, [punkt, snapshot, wpisy]);
 
-  if (!punkt) return null;
-  return cache[punkt] ?? null;
+  if (!punkt || !snapshot) return { odczyt: 'niezlecony' };
+  const wpis = wpisy?.[punkt];
+  if (wpis === undefined) return { odczyt: 'wczytywanie' };
+  if (wpis === 'blad') return { odczyt: 'blad' };
+  return { odczyt: 'gotowe', dane: wpis };
 }
 
 // ---------------------------------------------------------------------------
@@ -190,8 +220,11 @@ interface WpisRozplywu {
 export interface RozplywZeSladem {
   readonly flows: ShortCircuitBranchFlow[] | null;
   readonly trace: TraceStep[] | null;
-  /** Błąd pobrania (HTTP/sieć) rozpoznany OSOBNO od „brak danych" — uczciwy stan, nie cisza. */
-  readonly blad: boolean;
+  /**
+   * Stan odczytu punktu: `wczytywanie` i `blad` rozpoznane OSOBNO od „brak danych"
+   * (`flows`/`trace` `null` starszego wyniku) — uczciwy stan, nie cisza.
+   */
+  readonly odczyt: OdczytPunktuZwarcia;
 }
 
 /**
@@ -208,10 +241,11 @@ export interface RozplywZeSladem {
  *   wołania; `trace` niedostępny tą ścieżką (`ShortCircuitRow` nie niesie
  *   śladu) → `null`,
  * - flaga dostępności nieprawdziwa → `flows`/`trace` `null` (starszy wynik —
- *   kreska), `blad: false`,
- * - pobieranie w toku → `flows`/`trace` `null`, `blad: false` (jak dotąd),
- * - błąd pobrania (HTTP/sieć) → `blad: true`, `flows`/`trace` `null` — sekcja
- *   śladu pokazuje KOMUNIKAT BŁĘDU, nie ciszę (karta WB-ROZPLYW, W4d),
+ *   kreska), `odczyt: 'gotowe'`,
+ * - pobieranie w toku → `flows`/`trace` `null`, `odczyt: 'wczytywanie'` — sekcje
+ *   pokazują stan odczytu, NIE „niedostępny w tym przebiegu" (odczyt w toku ≠ brak),
+ * - błąd pobrania (HTTP/sieć) → `odczyt: 'blad'`, `flows`/`trace` `null` — obie
+ *   sekcje pokazują KOMUNIKAT BŁĘDU, nie ciszę (karta WB-ROZPLYW, W4d),
  * - odpowiedź: `branch_contributions` `[]` = policzono, brak prądu w gałęziach;
  *   `branch_flow_trace` `[]` = policzono, brak kroków podziału Thevenina dla
  *   tego punktu (ślad dokumentuje WYŁĄCZNIE tę rodzinę wkładu — niezależne od
@@ -223,17 +257,20 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
   const inline = row?.branch_contributions ?? null;
   const dostepny = row?.branch_contributions_available === true;
   const punkt = row?.target_id ?? null;
+  // Klucz = przebieg × punkt: wpis należy do biegu, z którego powstał (ten sam
+  // punkt innego biegu to inny rozpływ — zero przecieku między przebiegami).
+  const klucz = runId && punkt ? `${runId}::${punkt}` : null;
 
   useEffect(() => {
-    if (!runId || !punkt || inline !== null || !dostepny) return;
-    if (punkt in cache) return;
+    if (!runId || !punkt || !klucz || inline !== null || !dostepny) return;
+    if (klucz in cache) return;
     let anulowane = false;
     fetchRozplywZwarciowy(runId, punkt)
       .then((odpowiedz) => {
         if (!anulowane)
           setCache((c) => ({
             ...c,
-            [punkt]: {
+            [klucz]: {
               flows: [...(odpowiedz.branch_contributions ?? [])],
               trace: odpowiedz.branch_flow_trace ? [...odpowiedz.branch_flow_trace] : null,
             },
@@ -242,18 +279,19 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
       .catch(() => {
         // Błąd pobrania (HTTP/sieć) — ROZPOZNANY, nie po cichu wchłonięty w
         // „brak danych": sekcja śladu (karta WB-ROZPLYW) pokazuje komunikat błędu.
-        if (!anulowane) setCache((c) => ({ ...c, [punkt]: 'blad' }));
+        if (!anulowane) setCache((c) => ({ ...c, [klucz]: 'blad' }));
       });
     return () => {
       anulowane = true;
     };
-  }, [runId, punkt, inline, dostepny, cache]);
+  }, [runId, punkt, klucz, inline, dostepny, cache]);
 
-  if (inline !== null) return { flows: inline, trace: null, blad: false };
-  if (!punkt || !dostepny) return { flows: null, trace: null, blad: false };
-  const wpis = cache[punkt];
-  if (wpis === 'blad') return { flows: null, trace: null, blad: true };
-  return { flows: wpis?.flows ?? null, trace: wpis?.trace ?? null, blad: false };
+  if (inline !== null) return { flows: inline, trace: null, odczyt: 'gotowe' };
+  if (!klucz || !dostepny) return { flows: null, trace: null, odczyt: 'gotowe' };
+  const wpis = cache[klucz];
+  if (wpis === undefined) return { flows: null, trace: null, odczyt: 'wczytywanie' };
+  if (wpis === 'blad') return { flows: null, trace: null, odczyt: 'blad' };
+  return { flows: wpis.flows, trace: wpis.trace, odczyt: 'gotowe' };
 }
 
 // ---------------------------------------------------------------------------

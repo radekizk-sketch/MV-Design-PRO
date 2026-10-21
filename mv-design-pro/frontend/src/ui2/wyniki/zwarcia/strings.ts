@@ -75,7 +75,12 @@ export const ZWARCIA_STRINGS = {
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
   walidacjaTytul: 'Walidacja metody IEC 60909',
   wkladyNiedostepneOpis:
-    'Nie udało się pobrać rozbicia maszynowego dla tego punktu (brak migawki modelu albo błąd pobierania). Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+    'Rozbicie maszynowe wymaga migawki modelu sieci — bez niej serwer nie ma z czego go policzyć. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+  // Stany ODCZYTU (odczyt w toku ≠ brak danych, błąd odczytu ≠ brak danych).
+  wkladyWczytywanie: 'Odczyt rozbicia maszynowego dla tego punktu…',
+  wkladyBlad: 'Nie udało się pobrać rozbicia maszynowego dla tego punktu.',
+  wkladyBladOpis:
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń) — to nie jest brak wkładów w sieci. Wybierz punkt ponownie albo odśwież przebieg.',
   wkladyBrakPunktow: 'Brak punktów zwarcia do wyboru.',
 
   // Sekcja wkładów — filtr, wykres udziałów, szczegół źródła (karta W-A F2)
@@ -107,6 +112,10 @@ export const ZWARCIA_STRINGS = {
   rozplywNiedostepny: 'Rozpływ gałęziowy niedostępny w tym przebiegu.',
   rozplywNiedostepnyOpis:
     'Starszy wynik nie niesie wkładów gałęziowych. Uruchom ponownie obliczenie zwarciowe, aby je uzyskać.',
+  rozplywWczytywanie: 'Odczyt rozpływu gałęziowego dla tego punktu…',
+  rozplywBlad: 'Nie udało się pobrać rozpływu gałęziowego dla tego punktu.',
+  rozplywBladOpis:
+    'Błąd pobrania z serwera (połączenie albo usługa obliczeń) — to nie jest brak rozpływu w przebiegu. Wybierz punkt ponownie albo odśwież przebieg.',
   rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
   rozplywBrakWkladowOpis:
     'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
@@ -122,6 +131,7 @@ export const ZWARCIA_STRINGS = {
   sladRozplywuPusty: 'Brak kroków podziału dla tego punktu zwarcia.',
   sladRozplywuPustyOpis:
     'Rozpływ policzony, ale ślad obliczeń dokumentuje wyłącznie podział prądu od sieci zastępczej (Thevenina) — ten punkt zwarcia nie ma wkładu z tego źródła.',
+  sladRozplywuWczytywanie: 'Odczyt śladu podziału prądu zwarciowego dla tego punktu…',
   sladRozplywuBlad: 'Nie udało się pobrać śladu podziału prądu zwarciowego.',
   sladRozplywuBladOpis:
     'Błąd pobrania z serwera (połączenie albo usługa obliczeń). Spróbuj ponownie później albo odśwież przebieg.',

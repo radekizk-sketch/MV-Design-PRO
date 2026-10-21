@@ -275,6 +275,10 @@ export const JAKOSC_STRINGS = {
   metodyBrakNr: 'Brak przebiegu metodą Newtona–Raphsona (NR)',
   metodyBrakNrOpis:
     'Bieg metodą FD jest gotowy, ale referencją walidacji krzyżowej jest zawsze NR. Uruchom przypadek metodą NR.',
+  metodyBladOdczytuSladow: (nieodczytane: number, razem: number) =>
+    `Nie udało się odczytać śladu obliczeń ${nieodczytane} z ${razem} biegów rozpływu`,
+  metodyBladOdczytuSladowOpis:
+    'Bez tych śladów nie da się stwierdzić, czy istnieje bieg metodą Newtona-Raphsona i metodą rozprzężoną — to nie jest brak biegu. Odśwież ekran albo sprawdź połączenie z serwerem.',
   metodyBlad: 'Nie udało się porównać biegów NR i FD',
   metodyBladOpis: 'Spróbuj ponownie lub sprawdź, czy oba przebiegi mają zapisany wynik.',
   metodyLadowanie: 'Wyszukiwanie biegów NR/FD i porównywanie wyników…',

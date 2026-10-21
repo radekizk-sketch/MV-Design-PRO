@@ -14,7 +14,7 @@ import { SekcjaAdekwatnosciQ } from './SekcjaAdekwatnosciQ';
 import { SekcjaMagazynu } from './SekcjaMagazynu';
 import { SekcjaSilySieci } from './SekcjaSilySieci';
 import { SekcjaZgodnosci } from './SekcjaZgodnosci';
-import { daneModulu, type PozycjaModulu } from './pulpitModel';
+import { daneModulu, type PozycjaModulu, type StanOcenyModelu } from './pulpitModel';
 import { ETYKIETY_STRONY, PULPIT_STRINGS } from './strings';
 
 export interface KartaModuluProps {
@@ -22,8 +22,8 @@ export interface KartaModuluProps {
   readonly der: StationDerConnection;
   /** Pozycja modułu (wynik modułu i rekordy wymagań z oceny zatwierdzonego modelu). */
   readonly pozycja: PozycjaModulu;
-  /** Czy ocena modelu jest wczytana (stan zerowy sekcji zgodności). */
-  readonly ocenaWczytana: boolean;
+  /** Stan odczytu oceny modelu (stan zerowy sekcji zgodności). */
+  readonly stanOceny: StanOcenyModelu;
   /** Tryb ekspercki odsłania identyfikatory katalogowe. */
   readonly szczegolyAudytowe: boolean;
   /** Nawigacja do dokumentacji modułu (implementacja poza tą kartą). */
@@ -36,7 +36,7 @@ export function KartaModulu({
   opis,
   der,
   pozycja,
-  ocenaWczytana,
+  stanOceny,
   szczegolyAudytowe,
   onNawiguj,
   wyroznionyModul = null,
@@ -92,7 +92,7 @@ export function KartaModulu({
       </section>
 
       {/* Sekcja 2 — zgodność NC RfG. */}
-      <SekcjaZgodnosci pozycja={pozycja} ocenaWczytana={ocenaWczytana} />
+      <SekcjaZgodnosci pozycja={pozycja} stanOceny={stanOceny} />
 
       {/* Sekcja 3 — praca magazynu (BESS z katalogu konwerterów). */}
       <SekcjaMagazynu der={der} szczegolyAudytowe={szczegolyAudytowe} />

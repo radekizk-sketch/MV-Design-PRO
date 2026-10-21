@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SekcjaBilansuCtVt } from '../SekcjaBilansuCtVt';
 import { SekcjaStarzeniaKabla, SekcjaStratTransformatora } from '../SekcjaKartyKatalogu';
-import { komunikatyKodow } from '../rejestrGotowosci';
+import { komunikatyKodow, zdanieKodowBezRejestru } from '../rejestrGotowosci';
 import type {
   BilansCtOdpowiedz,
   BilansVtOdpowiedz,
@@ -351,7 +351,24 @@ describe('komunikatyKodow', () => {
     expect(komunikatyKodow(['a.b', 'nie.ma.takiego'], rejestr)).toEqual(['Zdanie kanonu']);
   });
 
-  it('bez rejestru nie pokazuje niczego (identyfikator nie jest tekstem)', () => {
-    expect(komunikatyKodow(['a.b'], null)).toEqual([]);
+  it('rejestr nieodczytany + kody → zdanie o LICZBIE ograniczeń, bez identyfikatora (odczyt ≠ brak ograniczeń)', () => {
+    const wynik = komunikatyKodow(['a.b', 'c.d'], null);
+    expect(wynik).toEqual([zdanieKodowBezRejestru(2)]);
+    // Identyfikator kodu produkcyjnego nie jest tekstem dla inżyniera.
+    expect(wynik.join(' ')).not.toContain('a.b');
+    expect(wynik.join(' ')).not.toContain('c.d');
+  });
+
+  it.each([
+    { rejestr: 'nieodczytany', kody: [] as string[], oczekiwane: [] as string[] },
+    { rejestr: 'odczytany', kody: [] as string[], oczekiwane: [] as string[] },
+    { rejestr: 'odczytany', kody: ['a.b'], oczekiwane: ['Zdanie kanonu'] },
+    { rejestr: 'nieodczytany', kody: ['a.b'], oczekiwane: [zdanieKodowBezRejestru(1)] },
+  ])('iloczyn: rejestr $rejestr × kodów $kody.length', ({ rejestr, kody, oczekiwane }) => {
+    const mapa =
+      rejestr === 'odczytany'
+        ? new Map([['a.b', { code: 'a.b', message_pl: 'Zdanie kanonu', level: 'WARNING' }]])
+        : null;
+    expect(komunikatyKodow(kody, mapa)).toEqual(oczekiwane);
   });
 });

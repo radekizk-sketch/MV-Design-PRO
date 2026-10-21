@@ -27,6 +27,7 @@ import {
   type PozycjaWalidacji,
   type SekcjaWywodu,
 } from '../wzorzec';
+import type { OdczytPunktuZwarcia } from './api';
 import { ZWARCIA_STRINGS } from './strings';
 import { WykresUdzialowChart } from './WykresUdzialowChart';
 import {
@@ -42,8 +43,13 @@ import {
 export interface WkladyZwarcioweProps {
   /** Nazwa wybranego punktu zwarcia (nagłówek sekcji, pierwszy plan). */
   punktNazwa: string;
-  /** Wkłady źródeł dla wybranego punktu; `null` = dane niedostępne w przebiegu. */
+  /** Wkłady źródeł dla wybranego punktu; `null` = dane niedostępne (brak migawki modelu). */
   wklady: WkladZwarciowy[] | null;
+  /**
+   * Stan odczytu dostawcy (`useWkladyZwarciowe`) — rozstrzyga PRZED `wklady`:
+   * `wczytywanie`/`blad` to stany zapytania, nie „dane niedostępne".
+   */
+  odczyt: OdczytPunktuZwarcia;
   /**
    * Wywód {tekst, latex} z backendu (zasada KaTeX 2026-07-22) — ślad obliczeń
    * na żądanie pod tabelą wkładów. Pusta lista → przycisk śladu nie renderuje się.
@@ -105,6 +111,7 @@ function SzczegolWkladuPanel({ wklad }: { wklad: WkladZwarciowy }) {
 export function WkladyZwarciowe({
   punktNazwa,
   wklady,
+  odczyt,
   wywod = [],
   wywodSekcje = [],
   walidacjaIec = [],
@@ -135,7 +142,20 @@ export function WkladyZwarciowe({
         {': '}
         <span className="mvd-zwarcia-wklady-punkt">{punktNazwa}</span>
       </h3>
-      {wklady === null ? (
+      {odczyt === 'wczytywanie' ? (
+        <p
+          className="mvd-zwarcia-wklady-brak-desc"
+          data-testid="mvd-zwarcia-wklady-wczytywanie"
+          aria-busy="true"
+        >
+          {ZWARCIA_STRINGS.wkladyWczytywanie}
+        </p>
+      ) : odczyt === 'blad' ? (
+        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-wklady-blad" role="alert">
+          <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladyBlad}</p>
+          <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.wkladyBladOpis}</p>
+        </div>
+      ) : wklady === null ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-wklady-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladyNiedostepne}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.wkladyNiedostepneOpis}</p>

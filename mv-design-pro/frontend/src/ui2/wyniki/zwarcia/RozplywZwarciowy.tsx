@@ -9,6 +9,9 @@
  * nazwane mostem nazw wyników (karta #145).
  *
  * Uczciwe stany (zero fabrykacji):
+ * - `odczyt === 'wczytywanie'` → zapytanie w toku — stan odczytu, NIE „niedostępny
+ *   w tym przebiegu" (odczyt w toku ≠ brak danych),
+ * - `odczyt === 'blad'` → błąd pobrania — komunikat błędu (błąd ≠ brak danych),
  * - `flows === null` → starszy wynik bez pola (kontrakt addytywny) — komunikat,
  * - `flows.length === 0` → policzono, brak prądu w gałęziach (sieć bez źródła
  *   zastępczego i bez falowników zasilających zwarcie).
@@ -17,6 +20,7 @@
 
 import type { ShortCircuitBranchFlow } from '../../../ui/results-inspector/types';
 import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
+import type { OdczytPunktuZwarcia } from './api';
 import { ZWARCIA_STRINGS } from './strings';
 import { KLUCZ_ROZPLYW, KOLUMNY_ROZPLYWU, naWierszeRozplywu } from './zwarciaModel';
 
@@ -25,6 +29,8 @@ export interface RozplywZwarciowyProps {
   punktNazwa: string;
   /** Wpisy rozpływu z wiersza kanonicznego; `null` = starszy wynik bez pola. */
   flows: ShortCircuitBranchFlow[] | null;
+  /** Stan odczytu dostawcy (`useRozplywZwarciowy`) — rozstrzyga przed `flows`. */
+  odczyt: OdczytPunktuZwarcia;
   szczegolyAudytowe: boolean;
   onOtworzDowod: (ref: string) => void;
 }
@@ -32,6 +38,7 @@ export interface RozplywZwarciowyProps {
 export function RozplywZwarciowy({
   punktNazwa,
   flows,
+  odczyt,
   szczegolyAudytowe,
   onOtworzDowod,
 }: RozplywZwarciowyProps) {
@@ -47,7 +54,20 @@ export function RozplywZwarciowy({
         {': '}
         <span className="mvd-zwarcia-wklady-punkt">{punktNazwa}</span>
       </h3>
-      {flows === null ? (
+      {odczyt === 'wczytywanie' ? (
+        <p
+          className="mvd-zwarcia-wklady-brak-desc"
+          data-testid="mvd-zwarcia-rozplyw-wczytywanie"
+          aria-busy="true"
+        >
+          {ZWARCIA_STRINGS.rozplywWczytywanie}
+        </p>
+      ) : odczyt === 'blad' ? (
+        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-rozplyw-blad" role="alert">
+          <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.rozplywBlad}</p>
+          <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.rozplywBladOpis}</p>
+        </div>
+      ) : flows === null ? (
         <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-rozplyw-brak">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.rozplywNiedostepny}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.rozplywNiedostepnyOpis}</p>

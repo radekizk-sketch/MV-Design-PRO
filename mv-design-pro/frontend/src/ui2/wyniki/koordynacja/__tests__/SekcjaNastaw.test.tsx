@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Mock } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -494,5 +494,55 @@ describe('SekcjaNastaw — dopasowanie do aparatu', () => {
     expect(screen.getByTestId('mvd-koordynacja-dopasowanie-werdykt').textContent).toBe(
       T.nastawyDopasowanieZgodny,
     );
+  });
+});
+
+describe('SekcjaNastaw — katalog aparatów: odczyt w toku / błąd / pusty / lista (odczyt ≠ pusty katalog)', () => {
+  type Wariant = 'wczytywanie' | 'blad' | 'pusty' | 'lista';
+  const TESTID: Record<Wariant, string> = {
+    wczytywanie: 'mvd-koordynacja-dopasowanie-aparaty-wczytywanie',
+    blad: 'mvd-koordynacja-dopasowanie-aparaty-blad',
+    pusty: 'mvd-koordynacja-dopasowanie-aparaty-brak',
+    lista: 'mvd-koordynacja-dopasowanie-select-aparat',
+  };
+
+  function mockKatalogu(wariant: Wariant) {
+    fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) {
+        return { ok: true, status: 200, json: async () => DOSTEPNOSC_OK } as Response;
+      }
+      if (url.includes('/nastawy')) {
+        return { ok: true, status: 200, json: async () => WYNIK_NASTAW } as Response;
+      }
+      if (url.includes('/api/catalog/protection/device-types')) {
+        if (wariant === 'wczytywanie') return new Promise<Response>(() => undefined);
+        if (wariant === 'blad') return { ok: false, status: 500, json: async () => ({}) } as Response;
+        return { ok: true, status: 200, json: async () => (wariant === 'pusty' ? [] : APARATY) } as Response;
+      }
+      throw new Error(`Niespodziewane wywołanie fetch: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+  }
+
+  it.each(['wczytywanie', 'blad', 'pusty', 'lista'] as const)('katalog %s → własny, rozłączny stan sekcji', async (wariant) => {
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    mockKatalogu(wariant);
+    const user = userEvent.setup();
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.click(screen.getByLabelText('Zacisk początkowy — szyna GPZ SN'));
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
+    await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
+    const sekcja = await screen.findByTestId('mvd-koordynacja-dopasowanie');
+    expect(await within(sekcja).findByTestId(TESTID[wariant])).toBeInTheDocument();
+    for (const inny of Object.keys(TESTID) as Wariant[]) {
+      if (inny !== wariant) expect(within(sekcja).queryByTestId(TESTID[inny])).not.toBeInTheDocument();
+    }
+    if (wariant === 'wczytywanie') {
+      expect(within(sekcja).getByTestId(TESTID.wczytywanie)).toHaveAttribute('aria-busy', 'true');
+    }
   });
 });

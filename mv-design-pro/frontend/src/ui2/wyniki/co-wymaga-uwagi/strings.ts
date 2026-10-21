@@ -20,6 +20,17 @@ export const CO_WYMAGA_UWAGI_STRINGS = {
     'Brak podstaw do oceny napięć — zapisany wynik rozpływu nie niesie kryteriów napięciowych.',
   brakKryteriowKrok:
     'Uruchom rozpływ mocy ponownie: bieg zapisze kryteria napięciowe z modelu i rejestr przekroczeń będzie miał podstawę.',
+  // Odczyt werdyktu projektowego przypadku (odczyt w toku / błąd ≠ „sieć w normie").
+  ocenaWczytywanie: 'Odczyt oceny technicznej przypadku…',
+  ocenaWczytywanieKrok:
+    'Rejestr czeka na kryteria projektowe backendu (obciążenia, wytrzymałość, prąd zwarciowy, bilans Q) — bez nich pusta lista nie jest wnioskiem.',
+  ocenaBlad: 'Nie udało się odczytać oceny technicznej przypadku.',
+  ocenaBladKrok:
+    'Rejestr nie zawiera kryteriów projektowych z biegów i modelu — to NIE jest „sieć w normie". Odśwież ekran albo uruchom obliczenie ponownie.',
+  listaNiepelnaWczytywanie:
+    'Lista z rozpływu mocy — trwa odczyt oceny technicznej przypadku; pozycje kryteriów projektowych dołączą po odczycie.',
+  listaNiepelnaBlad:
+    'Lista NIEPEŁNA — ocena techniczna przypadku nie została odczytana; brak pozycji kryteriów projektowych z biegów i modelu.',
   siecWNormie: 'Sieć w normie — brak przekroczeń w zakończonych analizach.',
   siecWNormieKrok: 'Możesz domknąć dokumentację lub porównać warianty.',
   // Źródła analiz

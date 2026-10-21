@@ -16,11 +16,11 @@ import { biegFixture, derFixture, deryScenyMacierz, wejsciaFixture, wejsciaZ } f
 
 const BIEG = biegFixture();
 const MODULY = [
-  ...zbudujModuly(deryScenyMacierz(), wejsciaFixture()),
+  ...zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejsciaFixture() }),
   // DER pominięty przez most modelu (brak napięcia szyny) — powód blokady z serwera.
   ...zbudujModuly(
     [derFixture({ id: 'zz-bez-napiecia', connection_voltage_kv: null })],
-    wejsciaZ({ pominiete: [{ derRef: 'zz-bez-napiecia', powod: 'brak_napiecia' }] }),
+    { stan: 'gotowe', wejscia: wejsciaZ({ pominiete: [{ derRef: 'zz-bez-napiecia', powod: 'brak_napiecia' }] }) },
   ),
 ];
 const WIERSZE = mapujMacierz(BIEG.test_catalog, BIEG, MODULY);

@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EkranBadanOltc } from '../EkranBadanOltc';
+import { zdanieKodowBezRejestru } from '../../../kryteria/rejestrGotowosci';
 
 const createRunMock = vi.fn();
 const executeRunMock = vi.fn();
@@ -319,6 +320,31 @@ describe('EkranBadanOltc — realna ścieżka', () => {
     const braki = await screen.findByTestId('mvd-oltc-profil-braki');
     expect(braki.textContent).toContain('pasma nieczułości regulatora');
     expect(braki.textContent).not.toContain('oltc.deadband_missing');
+  });
+
+  it.each([
+    { opis: 'odczyt rejestru w toku', klient: () => new Promise<never>(() => undefined) },
+    { opis: 'odczyt rejestru nieudany', klient: () => Promise.reject(new Error('HTTP 500')) },
+  ])('profil z kodami gotowości, $opis → zdanie o ograniczeniach, NIE wynik „bez zastrzeżeń"', async ({ klient }) => {
+    const user = userEvent.setup();
+    getRunResultsMock.mockResolvedValue({
+      global_results: {
+        oltc_annual_profile: {
+          steps: [
+            { index: 0, label: 'Dzień', load_scale: 1.0, positions: { TR1: 0 }, switch_count: 0, controlled_bus_kv: { TR1: 13.807 }, within_deadband: {} },
+          ],
+          total_switch_count: 0,
+          steps_outside_deadband: null,
+          readiness_codes: ['oltc.target_voltage_missing'],
+        },
+      },
+    });
+    render(<EkranBadanOltc klientRejestru={klient} />);
+    await user.selectOptions(screen.getByTestId('mvd-oltc-rodzaj'), 'annual_profile');
+    await user.click(screen.getByTestId('mvd-oltc-uruchom'));
+    const braki = await screen.findByTestId('mvd-oltc-profil-braki');
+    expect(braki.textContent).toBe(zdanieKodowBezRejestru(1));
+    expect(braki.textContent).not.toContain('oltc.target_voltage_missing');
   });
 
   it('profil dobowy bez nastawy regulatora: kreska w kolumnie i zdanie o brakującym napięciu', async () => {

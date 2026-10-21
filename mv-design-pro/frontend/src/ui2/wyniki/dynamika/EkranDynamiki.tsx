@@ -49,7 +49,13 @@ import {
   uruchomBiegDynamiki,
   zapiszScenariuszDynamiki,
 } from './api';
-import { EdytorScenariusza, FormularzNastaw, TEKSTY_WALIDACJI, type ElementyModelu } from './EdytorScenariusza';
+import {
+  EdytorScenariusza,
+  FormularzNastaw,
+  TEKSTY_WALIDACJI,
+  type ElementyModelu,
+  type StanScenariuszy,
+} from './EdytorScenariusza';
 import {
   fmtLiczba,
   pustyFormularz,
@@ -58,7 +64,6 @@ import {
   type BladFormularza,
   type GotowoscDynamiki,
   type OpisScenariusza,
-  type ScenariuszDynamiki,
   type WartoscFormularza,
   type WynikDynamiki,
 } from './model';
@@ -99,7 +104,13 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
 
   const [opis, setOpis] = useState<Wczytanie<OpisScenariusza>>({ stan: 'laduje' });
   const [gotowosc, setGotowosc] = useState<Wczytanie<GotowoscDynamiki>>({ stan: 'laduje' });
-  const [scenariusze, setScenariusze] = useState<ScenariuszDynamiki[]>([]);
+  // Zapisane scenariusze przypadku — stan ODCZYTU związany z przypadkiem, z którego
+  // pochodzi (odczyt w toku / błąd ≠ „brak zapisanych scenariuszy").
+  const [scenariuszeWpis, setScenariuszeWpis] = useState<{
+    readonly caseId: string;
+    readonly stan: StanScenariuszy;
+  } | null>(null);
+  const [odswiezenieScenariuszy, setOdswiezenieScenariuszy] = useState(0);
   const [scenariuszId, setScenariuszId] = useState<string | null>(null);
   const [pfRunId, setPfRunId] = useState('');
   const [nastawy, setNastawy] = useState<{ [pole: string]: WartoscFormularza }>({});
@@ -150,12 +161,20 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
     if (!caseId) return;
     let aktywne = true;
     fetchScenariuszeDynamiki(caseId)
-      .then((dane) => aktywne && setScenariusze(dane.scenariusze))
-      .catch(() => aktywne && setScenariusze([]));
+      .then((dane) => {
+        if (aktywne) setScenariuszeWpis({ caseId, stan: { odczyt: 'gotowe', lista: dane.scenariusze } });
+      })
+      .catch((blad: unknown) => {
+        if (aktywne) setScenariuszeWpis({ caseId, stan: { odczyt: 'blad', komunikat: komunikat(blad) } });
+      });
     return () => {
       aktywne = false;
     };
-  }, [caseId]);
+  }, [caseId, odswiezenieScenariuszy]);
+
+  const stanScenariuszy: StanScenariuszy =
+    caseId && scenariuszeWpis?.caseId === caseId ? scenariuszeWpis.stan : { odczyt: 'wczytywanie' };
+
 
   // Punkt pracy: wybór ważny wyłącznie, gdy rozpływ dalej należy do tej migawki.
   const biegiRozplywu = gotowosc.stan === 'gotowe' ? gotowosc.dane.biegi_rozplywu : [];
@@ -277,13 +296,25 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
     async (zadanie: Parameters<typeof zapiszScenariuszDynamiki>[1]) => {
       if (!caseId) return;
       const zapisany = await zapiszScenariuszDynamiki(caseId, zadanie);
-      setScenariusze((lista) => [
-        ...lista.filter((s) => s.scenario_id !== zapisany.scenario_id),
-        zapisany,
-      ]);
+      const listaOdczytana =
+        scenariuszeWpis?.caseId === caseId && scenariuszeWpis.stan.odczyt === 'gotowe';
+      setScenariuszeWpis((wpis) =>
+        wpis?.caseId === caseId && wpis.stan.odczyt === 'gotowe'
+          ? {
+              caseId,
+              stan: {
+                odczyt: 'gotowe',
+                lista: [...wpis.stan.lista.filter((s) => s.scenario_id !== zapisany.scenario_id), zapisany],
+              },
+            }
+          : wpis,
+      );
+      // Lista nieodczytana (w toku / błąd) — zapis nie może udawać pełnej listy z
+      // jednym scenariuszem: ponowny odczyt listy przypadku z serwera.
+      if (!listaOdczytana) setOdswiezenieScenariuszy((n) => n + 1);
       setScenariuszId(zapisany.scenario_id);
     },
-    [caseId],
+    [caseId, scenariuszeWpis],
   );
 
   const uruchomBieg = useCallback(async () => {
@@ -459,7 +490,7 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
         <>
           <EdytorScenariusza
             opis={opis.dane}
-            scenariusze={scenariusze}
+            odczytScenariuszy={stanScenariuszy}
             wybranyId={scenariuszId}
             elementy={elementyModelu}
             onWybierz={setScenariuszId}

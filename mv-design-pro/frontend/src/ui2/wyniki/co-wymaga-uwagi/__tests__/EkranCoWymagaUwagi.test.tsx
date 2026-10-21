@@ -3,8 +3,8 @@
  * zerowe (brak przebiegu ≠ sieć w normie), lista przekroczeń oraz REALNA akcja
  * „Popraw w modelu" (pętla F-E6.1: selekcja + przejście do przestrzeni „Schemat").
  */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { EkranCoWymagaUwagi } from '../EkranCoWymagaUwagi';
@@ -13,6 +13,7 @@ import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/stor
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
+import { useAppStateStore } from '../../../../ui/app-state';
 import { busResultFixture, powerFlowResultFixture } from '../../rozplyw/__tests__/fixtures';
 
 describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
@@ -21,6 +22,7 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
     useExecutionRunsStore.setState({ runs: [] } as never);
     useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
     useShellStore.setState({ activeSpace: 'wyniki' });
+    useAppStateStore.setState({ activeCaseId: null } as never);
   });
 
   it('brak przebiegu → uczciwy stan zerowy z następnym krokiem (nie „sieć w normie")', () => {
@@ -116,5 +118,83 @@ describe('EkranCoWymagaUwagi — skonsolidowany rejestr przekroczeń', () => {
     expect(sel.selectedElement).toMatchObject({ id: 'SZ-ST2', type: 'Bus' });
     expect(sel.sldWskazanie?.ref).toBe('SZ-ST2');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+});
+
+/** Odpowiedź werdyktu projektowego bez pozycji (nic nie naruszone). */
+const WERDYKT_PUSTY = {
+  werdykt: 'SPELNIONE',
+  case_id: 'case-1',
+  model_hash: 'hash',
+  pozycje: [],
+  zrodla: [],
+  podsumowanie: { spelnione: 0, naruszone: 0, niejednoznaczne: 0, niesprawdzone: 0, nie_dotyczy: 0, razem: 0 },
+  zakres_poza_automatem: [],
+  ocena: { oceniono: 0, spelnia: 0, nie_spelnia: 0, niejednoznaczny: 0, brak_podstaw: 0 },
+  grupy: [],
+};
+
+describe('EkranCoWymagaUwagi — odczyt oceny technicznej w toku/nieudany ≠ „sieć w normie"', () => {
+  beforeEach(() => {
+    usePowerFlowResultsStore.getState().reset();
+    useExecutionRunsStore.setState({ runs: [] } as never);
+    useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    useAppStateStore.setState({ activeCaseId: null } as never);
+  });
+
+  function przebiegBezPrzekroczen(): void {
+    usePowerFlowResultsStore.setState({
+      results: powerFlowResultFixture({ bus_results: [busResultFixture({ v_pu: 1.0 })] }),
+    });
+  }
+
+  it('odczyt w toku → stan neutralny „odczyt oceny", NIE „sieć w normie"; po odczycie — w normie', async () => {
+    let zwolnij: (odp: unknown) => void = () => undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise((r) => {
+            zwolnij = r;
+          }),
+      ),
+    );
+    przebiegBezPrzekroczen();
+    render(<EkranCoWymagaUwagi />);
+    const stan = screen.getByTestId('mvd-cwu-ocena-wczytywanie');
+    expect(stan).toHaveAttribute('aria-busy', 'true');
+    expect(stan).toHaveTextContent(T.ocenaWczytywanie);
+    expect(screen.queryByTestId('mvd-cwu-w-normie')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-cwu-brak-kryteriow')).not.toBeInTheDocument();
+    zwolnij({ ok: true, json: async () => WERDYKT_PUSTY });
+    expect(await screen.findByTestId('mvd-cwu-w-normie')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-cwu-ocena-wczytywanie')).not.toBeInTheDocument();
+  });
+
+  it('błąd odczytu → komunikat błędu, NIE „sieć w normie"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'awaria' }));
+    przebiegBezPrzekroczen();
+    render(<EkranCoWymagaUwagi />);
+    const stan = await screen.findByTestId('mvd-cwu-ocena-blad');
+    expect(stan).toHaveAttribute('role', 'alert');
+    expect(stan).toHaveTextContent(T.ocenaBlad);
+    expect(screen.queryByTestId('mvd-cwu-w-normie')).not.toBeInTheDocument();
+  });
+
+  it('lista z rozpływu przy odczycie w toku/nieudanym jest jawnie NIEPEŁNA', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'awaria' }));
+    usePowerFlowResultsStore.setState({
+      results: powerFlowResultFixture({ bus_results: [busResultFixture({ bus_id: 'B', v_pu: 0.94 })] }),
+    });
+    render(<EkranCoWymagaUwagi />);
+    expect(screen.getByTestId('mvd-cwu-lista-niepelna')).toHaveAttribute('data-odczyt', 'wczytywanie');
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-cwu-lista-niepelna')).toHaveAttribute('data-odczyt', 'blad'),
+    );
+    expect(screen.getByTestId('mvd-cwu-lista-niepelna')).toHaveTextContent(T.listaNiepelnaBlad);
   });
 });

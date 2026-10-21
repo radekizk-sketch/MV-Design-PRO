@@ -45,7 +45,7 @@ describe('fixtury scen D2 opisują dokładnie żądania ekranu', () => {
     // Para: wejścia policzono dla operatora z modelu sceny i dla modułów zasianych w scenie.
     expect(wejscia.operator_id).toBe(operator);
     expect(wejscia.modules.map((m) => m.der_ref).sort()).toEqual(ders.map((d) => d.id).sort());
-    const modules = zbudujModuly(ders, wejscia).map((opis) => {
+    const modules = zbudujModuly(ders, { stan: 'gotowe', wejscia }).map((opis) => {
       const wynik = zbudujWejscieModulu(opis, operator);
       if (wynik.stan !== 'ok') throw new Error(`${opis.derRef}: ${JSON.stringify(wynik)}`);
       return wynik.wejscie;

@@ -99,13 +99,18 @@ async function zbuduj(uzytkownik: ReturnType<typeof userEvent.setup>, busRef: st
   await uzytkownik.click(przycisk);
 }
 
+let klikPobrania: { mockRestore: () => void } | null = null;
 beforeEach(() => {
   useNcRfgStore.getState().reset();
+  // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+  // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+  klikPobrania = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 });
 
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  klikPobrania?.mockRestore();
   useStationDerStore.setState({ ders: {} });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useSnapshotStore.setState({ snapshot: null } as never);

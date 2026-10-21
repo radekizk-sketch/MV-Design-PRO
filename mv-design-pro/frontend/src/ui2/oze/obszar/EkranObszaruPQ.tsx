@@ -403,6 +403,10 @@ export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszar
 
   // Katalog typów falowników — do opcjonalnej nakładki krzywej producenta.
   const [rekordy, setRekordy] = useState<RekordKonwertera[]>([]);
+  // Stan odczytu katalogu konwerterów: wczytywanie i błąd ≠ „brak typów z krzywą".
+  const [odczytRekordow, setOdczytRekordow] = useState<'wczytywanie' | 'blad' | 'gotowe'>(
+    'wczytywanie',
+  );
   const [wybranyTyp, setWybranyTyp] = useState('');
 
   const [zapytanie, setZapytanie] = useState<ZapytanieObszaruPQ | null>(null);
@@ -414,15 +418,20 @@ export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszar
     return rekord?.pq_curve;
   }, [rekordy, wybranyTyp]);
 
-  // Wczytanie katalogu konwerterów (raz, przy montażu); błąd → brak nakładki.
+  // Wczytanie katalogu konwerterów (raz, przy montażu); błąd nazwany jawnie przy wyborze
+  // nakładki (bieg obszaru pozostaje dostępny — nakładka jest opcjonalna).
   useEffect(() => {
     let anulowane = false;
     pobierzKonwertery()
       .then((dane) => {
-        if (!anulowane) setRekordy(dane);
+        if (anulowane) return;
+        setRekordy(dane);
+        setOdczytRekordow('gotowe');
       })
       .catch(() => {
-        if (!anulowane) setRekordy([]);
+        if (anulowane) return;
+        setRekordy([]);
+        setOdczytRekordow('blad');
       });
     return () => {
       anulowane = true;
@@ -575,6 +584,9 @@ export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszar
                 value={wybranyTyp}
                 onChange={(e) => setWybranyTyp(e.target.value)}
                 data-testid="mvd-obszar-typ"
+                data-odczyt={odczytRekordow}
+                disabled={odczytRekordow !== 'gotowe'}
+                aria-busy={odczytRekordow === 'wczytywanie' ? true : undefined}
               >
                 <option value="">{OBSZAR_STRINGS.paramNakladkaBrak}</option>
                 {opcjeTypow.map((t) => (
@@ -583,6 +595,19 @@ export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszar
                   </option>
                 ))}
               </select>
+              {odczytRekordow === 'wczytywanie' ? (
+                <p
+                  className="mvd-obszar-param-opis"
+                  data-testid="mvd-obszar-typ-wczytywanie"
+                  aria-busy="true"
+                >
+                  {OBSZAR_STRINGS.paramNakladkaWczytywanie}
+                </p>
+              ) : odczytRekordow === 'blad' ? (
+                <p className="mvd-obszar-param-opis" data-testid="mvd-obszar-typ-blad" role="alert">
+                  {OBSZAR_STRINGS.paramNakladkaBlad}
+                </p>
+              ) : null}
               <p className="mvd-obszar-param-opis">{OBSZAR_STRINGS.paramNakladkaOpis}</p>
             </div>
 

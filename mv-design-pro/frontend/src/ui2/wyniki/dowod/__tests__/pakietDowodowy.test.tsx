@@ -137,6 +137,9 @@ beforeEach(() => {
     revokeObjectURL: vi.fn(),
   });
   useAppStateStore.setState({ activeCaseResultStatus: 'FRESH' });
+  // jsdom nie implementuje nawigacji kotwicy pobrania (`a[download].click()`): klik przechwycony
+  // na granicy przeglądarki, bez szumu „Not implemented: navigation".
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 });
 
 afterEach(() => {

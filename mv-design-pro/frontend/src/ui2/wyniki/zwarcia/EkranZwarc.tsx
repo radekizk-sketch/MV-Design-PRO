@@ -81,7 +81,12 @@ export function EkranZwarc({
   // R3-B (K3-G3): realny dostawca wkładów — rozbicie maszynowe z backendu
   // (endpoint SC3F contributions). Props `wklady` (test/nadpisanie) ma
   // pierwszeństwo — wtedy hook nie pobiera (punkt=null).
-  const wkladyPobrane = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
+  const stanWkladow = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
+  const wkladyPobrane = stanWkladow.odczyt === 'gotowe' ? stanWkladow.dane : null;
+  // Wkłady z props (testy/nadpisanie) są gotowe z definicji; od dostawcy —
+  // `wczytywanie`/`blad` przechodzą do sekcji jako stan odczytu (≠ brak danych).
+  const odczytWkladow =
+    wklady || stanWkladow.odczyt === 'niezlecony' ? 'gotowe' : stanWkladow.odczyt;
 
   // V12K-281 (K13): rozpływ gałęziowy wybranego punktu NA ŻĄDANIE — wiersze
   // zbiorcze nie niosą już rozpływu (odpowiedź 730 MB dla 50 stacji); dane
@@ -178,6 +183,7 @@ export function EkranZwarc({
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
         flows={rozplyw.flows}
+        odczyt={rozplyw.odczyt}
         szczegolyAudytowe={szczegolyAudytowe}
         onOtworzDowod={onOtworzDowod}
       />
@@ -187,13 +193,14 @@ export function EkranZwarc({
       <SladPodzialuPradu
         punktNazwa={nazwaAktywnego}
         trace={rozplyw.trace}
-        blad={rozplyw.blad}
+        odczyt={rozplyw.odczyt}
         szczegolyAudytowe={szczegolyAudytowe}
       />
 
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}
         wklady={wkladyAktywne}
+        odczyt={odczytWkladow}
         wywod={wywodWkladow}
         wywodSekcje={wywodSekcjeWkladow}
         walidacjaIec={walidacjaIecWkladow}

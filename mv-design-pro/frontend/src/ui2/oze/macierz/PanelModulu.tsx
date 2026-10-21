@@ -20,6 +20,7 @@ import { POLA_NASTAW } from '../ncrfg/typy';
 import {
   POLA_ZDOLNOSCI,
   jestZdolnosciaTrojstanowa,
+  modulGotowy,
   type BledyFormularza,
   type FormularzModulu,
   type OpisModulu,
@@ -31,6 +32,7 @@ import {
   ETYKIETY_POCHODZENIA,
   ETYKIETY_ZDOLNOSCI,
   MACIERZ_STRINGS,
+  OPISY_OCZEKIWANIA,
   formatMoc,
   formatNapiecie,
 } from './strings';
@@ -89,13 +91,23 @@ export function PanelModulu({
         </div>
       </div>
 
+      {opis.oczekiwanie ? (
+        <p
+          className="mvd-oze-panel-etyk"
+          data-testid="mvd-oze-panel-oczekiwanie"
+          data-oczekiwanie={opis.oczekiwanie}
+          aria-busy={opis.oczekiwanie === 'wczytywanie_wejsc'}
+        >
+          {OPISY_OCZEKIWANIA[opis.oczekiwanie]}
+        </p>
+      ) : null}
       {opis.powodBlokady ? (
         <div className="mvd-oze-blokada" data-testid="mvd-oze-panel-blokada">
           {OPIS_BLOKADY[opis.powodBlokady]}
           <div style={{ marginTop: 4, fontWeight: 600 }}>{ETYKIETY_BLOKADY[opis.powodBlokady]}</div>
         </div>
       ) : null}
-      {opis.powodBlokady === null ? (
+      {modulGotowy(opis) ? (
         <FormularzPanelu f={f} bledy={bledy} onZmienFormularz={onZmienFormularz} />
       ) : null}
     </section>

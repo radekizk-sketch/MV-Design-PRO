@@ -25,7 +25,7 @@ import {
 import { ETYKIETY_POCHODZENIA, MACIERZ_STRINGS } from '../strings';
 import { derFixture, deryScenyMacierz, wejsciaFixture, wejsciaZ } from './fixtures';
 
-const PV = zbudujModuly(deryScenyMacierz(), wejsciaFixture())[1];
+const PV = zbudujModuly(deryScenyMacierz(), { stan: 'gotowe', wejscia: wejsciaFixture() })[1];
 
 function Sterowany({ onZmiana, bledy = {} }: { onZmiana: (f: FormularzModulu) => void; bledy?: BledyFormularza }) {
   const [formularz, setFormularz] = useState(PV.formularz);
@@ -151,7 +151,7 @@ describe('PanelModulu — kontrolki = pola kontraktu', () => {
     ['brak_mocy', wejsciaZ({ pominiete: [{ derRef: 'x', powod: 'brak_mocy' }] }), MACIERZ_STRINGS.brakMocy],
     ['brak_wejscia_modelu', null, MACIERZ_STRINGS.brakWejsciaModelu],
   ] as const)('moduł zablokowany (%s) → jawny powód, bez formularza bez zastosowania', (_powod, wejscia, tekst) => {
-    const [opis] = zbudujModuly([derFixture({ id: 'x' })], wejscia);
+    const [opis] = zbudujModuly([derFixture({ id: 'x' })], { stan: 'gotowe', wejscia: wejscia });
     render(<PanelModulu opis={opis} formularz={opis.formularz} bledy={{}} onZmienFormularz={vi.fn()} />);
     expect(screen.getByTestId('mvd-oze-panel-blokada')).toHaveTextContent(tekst);
     expect(screen.queryByTestId('mvd-oze-param-cos_phi_min')).toBeNull();

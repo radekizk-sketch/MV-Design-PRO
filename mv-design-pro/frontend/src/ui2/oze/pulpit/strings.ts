@@ -34,6 +34,8 @@ export const PULPIT_STRINGS = {
   listaPonizejProgu: 'poniżej progu istotności',
   listaBezOceny: 'ocena modelu niewczytana',
   listaPozaOcena: 'moduł poza oceną modelu',
+  listaWczytywanie: 'ocena modelu w trakcie odczytu…',
+  listaBladOceny: 'odczyt oceny modelu nieudany',
   listaDowod: 'certyfikat',
   listaOdrzucony: 'tabliczka certyfikatu odrzucona',
   listaBrakDowodu: 'brak dowodu certyfikatu w modelu',
@@ -64,6 +66,10 @@ export const PULPIT_STRINGS = {
   zgodnoscPozaOcena:
     'Moduł nie jest objęty oceną zatwierdzonego modelu — model przypadku go nie zawiera; ' +
     'zatwierdź zmiany modelu i odśwież ocenę.',
+  zgodnoscWczytywanie: 'Trwa odczyt oceny zgodności zatwierdzonego modelu…',
+  zgodnoscBladOceny:
+    'Odczyt oceny zgodności modelu nie powiódł się — stan zgodności modułu jest nieznany ' +
+    '(to nie jest brak wymagań); odśwież ocenę.',
   zgodnoscPominiety: 'Serwer pominął moduł w ocenie modelu',
   zgodnoscWymagania: 'Wymagania profilu operatora (rekordy oceny)',
 

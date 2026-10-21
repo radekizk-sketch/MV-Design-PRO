@@ -193,6 +193,11 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
     if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    // Pobranie pliku = klik w kotwicę z `download`; jsdom nie implementuje nawigacji, więc
+    // klik jest przechwycony i policzony (dowód, że oba pobrania doszły do zapisu pliku).
+    const klikPobrania = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
 
     await przeprowadzBieg();
     fireEvent.click(screen.getByTestId('mvd-studium-dok-przycisk'));
@@ -206,6 +211,7 @@ describe('KreatorStudium — dokument studium (żądanie i podgląd)', () => {
     fireEvent.click(screen.getByTestId('mvd-studium-dok-pobierz-pdf'));
     await waitFor(() => expect(pobierzDokumentPdf).toHaveBeenCalledTimes(1));
     expect(pobierzDokumentPdf.mock.calls[0][1]).toBe('case-oze-1');
+    await waitFor(() => expect(klikPobrania).toHaveBeenCalledTimes(2));
   });
 
   it('brak nazwy projektu w aplikacji → nazwa_projektu ma polski zastępnik', async () => {

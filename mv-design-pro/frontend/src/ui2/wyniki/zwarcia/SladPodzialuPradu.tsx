@@ -15,7 +15,9 @@
  * Ta sekcja NIE buduje drugiego renderera kroku.
  *
  * Uczciwe stany (zero fabrykacji, zero fizyki — wyłącznie odczyt/prezentacja):
- * - `blad === true` → błąd pobrania (HTTP/sieć), rozpoznany OSOBNO od „brak
+ * - `odczyt === 'wczytywanie'` → zapytanie w toku — stan odczytu, NIE „ślad
+ *   niedostępny" starszego wyniku (odczyt w toku ≠ brak danych),
+ * - `odczyt === 'blad'` → błąd pobrania (HTTP/sieć), rozpoznany OSOBNO od „brak
  *   danych" — komunikat błędu, nie cisza,
  * - `trace === null` → starszy wynik bez kolumny śladu (kontrakt addytywny) —
  *   komunikat, nie pusta lista i nie ukrycie sekcji bez informacji,
@@ -32,6 +34,7 @@ import '../dowod/dowod.css';
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
 import { KrokDowodu, mapujKroki } from '../dowod';
+import type { OdczytPunktuZwarcia } from './api';
 import { ZWARCIA_STRINGS } from './strings';
 
 export interface SladPodzialuPraduProps {
@@ -39,15 +42,15 @@ export interface SladPodzialuPraduProps {
   punktNazwa: string;
   /** Kroki śladu podziału Thevenina (TH-1); `null` = starszy wynik bez śladu. */
   trace: TraceStep[] | null;
-  /** Błąd pobrania (HTTP/sieć) z dostawcy, rozpoznany osobno od „brak danych". */
-  blad: boolean;
+  /** Stan odczytu z dostawcy — `wczytywanie`/`blad` rozpoznane osobno od „brak danych". */
+  odczyt: OdczytPunktuZwarcia;
   szczegolyAudytowe: boolean;
 }
 
 export function SladPodzialuPradu({
   punktNazwa,
   trace,
-  blad,
+  odczyt,
   szczegolyAudytowe,
 }: SladPodzialuPraduProps) {
   const kroki = trace ? mapujKroki(trace) : [];
@@ -63,8 +66,16 @@ export function SladPodzialuPradu({
         {': '}
         <span className="mvd-zwarcia-wklady-punkt">{punktNazwa}</span>
       </h3>
-      {blad ? (
-        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-slad-rozplywu-blad">
+      {odczyt === 'wczytywanie' ? (
+        <p
+          className="mvd-zwarcia-wklady-brak-desc"
+          data-testid="mvd-zwarcia-slad-rozplywu-wczytywanie"
+          aria-busy="true"
+        >
+          {ZWARCIA_STRINGS.sladRozplywuWczytywanie}
+        </p>
+      ) : odczyt === 'blad' ? (
+        <div className="mvd-zwarcia-wklady-brak" data-testid="mvd-zwarcia-slad-rozplywu-blad" role="alert">
           <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.sladRozplywuBlad}</p>
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.sladRozplywuBladOpis}</p>
         </div>

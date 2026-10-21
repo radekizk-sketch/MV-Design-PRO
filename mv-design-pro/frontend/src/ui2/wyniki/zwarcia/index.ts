@@ -68,6 +68,8 @@ export type {
   PasmoZwarciaOdpowiedz,
   StronaPasmaOdpowiedz,
   StanPasmaZwarcia,
+  OdczytPunktuZwarcia,
+  StanWkladowZwarciowych,
 } from './api';
 export {
   ZWARCIA_STRINGS,
