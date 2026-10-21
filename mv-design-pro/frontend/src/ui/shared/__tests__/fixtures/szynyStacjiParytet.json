@@ -7172,6 +7172,40 @@
         "zaciski_pol": {}
       }
     },
+    "src/harness-fixtures/generated/zwarcia_migawka_scena_tolerancja_robocza.json": {
+      "": {
+        "punkty_przylaczenia_rekordow_pol": {},
+        "szyny": {
+          "sub_b": [
+            "bus_nn",
+            "bus_sn_b"
+          ],
+          "sub_gpz": [
+            "bus_hv",
+            "bus_sn_main"
+          ]
+        },
+        "szyny_glowne": {
+          "sub_b": {
+            "bus_nn": "bus_nn",
+            "bus_sn_b": "bus_sn_b"
+          },
+          "sub_gpz": {
+            "bus_hv": "bus_hv",
+            "bus_sn_main": "bus_sn_main"
+          }
+        },
+        "transformatory": {
+          "sub_b": [
+            "tr_sn_nn"
+          ],
+          "sub_gpz": [
+            "tr_hv_sn"
+          ]
+        },
+        "zaciski_pol": {}
+      }
+    },
     "src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json": {
       "/enm": {
         "punkty_przylaczenia_rekordow_pol": {},
