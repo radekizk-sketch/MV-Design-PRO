@@ -134,6 +134,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "catalog.duplicate_id",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "catalog.element_missing",
       "fix_navigation": {
         "panel": "inspector",
@@ -247,6 +256,15 @@
     {
       "area": "CATALOGS",
       "code": "catalog.ref_required",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.type_incomplete",
       "fix_navigation": {
         "modal": "CatalogPicker",
         "panel": "inspector",
@@ -1329,7 +1347,7 @@
       }
     }
   ],
-  "count": 156,
+  "count": 158,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

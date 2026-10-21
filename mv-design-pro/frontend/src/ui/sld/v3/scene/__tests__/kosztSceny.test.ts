@@ -418,6 +418,13 @@ interface OdciskiLod {
  * czterech transformatorów (pozycja, S_n, u_k, straty) i wynik rozpływu substratu — zmienia
  * to scenę i etykiety L1/L2; L0 bez zmian.
  * Dawniej budowniczy dokładał magazyn mimo przekroczenia mocy transformatora.
+ *
+ * AKTUALIZACJA ŚWIADOMA (partia integracji 12, 2026-10-21) — trzy odciski SCENY sieci
+ * podwojonej (L0/L1/L2); declutter i plany bez zmian, sieć referencyjna bez zmian. Przyczyna
+ * WYŁĄCZNIE w treści komunikatów niezmienników elektrycznych (`electrical/invariants.ts`,
+ * `terminalGraph.ts`, partia 10: odmowy bez identyfikatorów — nazwa elementu zamiast
+ * `ref`), które scena niesie; sieć podwojona ma naruszenia niezmienników, referencyjna nie.
+ * Sonda: oba pliki przywrócone do stanu sprzed partii 10 → 8 z 8 testów tego pliku zielone.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
@@ -463,7 +470,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
   ],
   podwojona: [
     {
-      scena: 'b59d59a2c47da25a63edbcb8f758cfb2',
+      scena: '4303d8c421380f1784fc13d179729982',
       declutter: '4f488776de89329b8735c9fd2989656a',
       plany: [
         '06b04c6ddf7dcf58f8433e9ea72ff59c',
@@ -476,7 +483,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '7c63f839d89579c47111b4d07616b886',
+      scena: '12d96c448dbbf96d16d8e70b6d2095da',
       declutter: 'b2ccb3ef57c6b6e7b0575297b0770e53',
       plany: [
         'e791a2f4fed507b51ed9572ec838b435',
@@ -489,7 +496,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '95a7fdd8d2d49e0ccd3a96f7d0c5505f',
+      scena: 'edd857f0ed5c650afb44fceb64f315aa',
       declutter: 'ffa61e5df7ad3f6b47efbcc195a31a3a',
       plany: [
         '91cd1c0d8ea2e0ffd92c39524b6332a7',

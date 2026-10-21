@@ -2217,6 +2217,37 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # normatywną (ta sama zasada, co w `domain/readiness_bridge.py`).
     # Kompletność przypina test klasy `tests/domain/test_rejestr_kodow_bram_katalogowych.py`
     # (skan AST kodu bram), więc nowy kod bramy bez wpisu zapala regresję.
+    "catalog.type_incomplete": ReadinessCodeSpec(
+        code="catalog.type_incomplete",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Rekord przekształtnika w katalogu nie niesie wymaganej wielkości znamionowej "
+            "(moc pozorna, moc czynna maksymalna albo pojemność energetyczna) — typu falownika "
+            "nie wyprowadzono; uzupełnij rekord z karty producenta"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.duplicate_id": ReadinessCodeSpec(
+        code="catalog.duplicate_id",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Karta widmowa występuje w katalogu więcej niż raz — katalog nie wskazuje "
+            "jednoznacznie danych; usuń powtórzoną kartę"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
     "catalog.item_not_found": ReadinessCodeSpec(
         code="catalog.item_not_found",
         area=ReadinessArea.CATALOGS,
