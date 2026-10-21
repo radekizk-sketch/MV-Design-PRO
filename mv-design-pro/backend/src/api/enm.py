@@ -40,6 +40,7 @@ from api.domain_ops_policy import (
     validate_and_materialize_catalog_binding,
 )
 from api.klucz_twin_dep import KluczTwin
+from api.odmowa_http import OdmowaHttpError
 from application.analyses.fault_loop.service import (
     build_fault_loop_view_at_point,
     build_feeder_fault_loop_view,
@@ -442,7 +443,7 @@ def get_lv_domain_projection_v1(
             run=run,
         )
     except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+        raise OdmowaHttpError(exc, status_code=409) from exc
 
 
 @router.get("/{case_id}/enm/lv-domain/{station_ref:path}/upstream-equivalent")

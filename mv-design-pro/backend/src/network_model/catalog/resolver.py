@@ -117,13 +117,26 @@ class ResolvedTransformerParams:
     source: ParameterSource
 
 
+#: Rodzaj aparatu (`equipment_type` resolvera) → dopełniacz w zdaniu odmowy.
+RODZAJE_APARATU_PL: dict[str, str] = {
+    "Cable": "kabla",
+    "Line": "linii napowietrznej",
+    "Transformer": "transformatora",
+}
+
+
 class TypeNotFoundError(OdmowaDanychError):
-    """Raised when type_ref points to non-existent catalog entry."""
+    """Typ katalogowy wskazany przez element nie istnieje w katalogu.
+
+    Treść po polsku i bez identyfikatora typu (partia integracji 10,
+    `scripts/odmowa_bez_identyfikatora_guard.py`): wskazania typu nie ma w katalogu, więc nie ma
+    też jego nazwy; identyfikator zostaje w polu `type_ref`.
+    """
 
     def __init__(self, type_ref: str, equipment_type: str):
         super().__init__(
-            f"{equipment_type} type_ref '{type_ref}' not found in catalog. "
-            f"Check that the type exists and is correctly spelled."
+            f"Typ katalogowy {RODZAJE_APARATU_PL[equipment_type]} wskazany w elemencie nie "
+            "istnieje w katalogu — przypisz typ z katalogu ponownie."
         )
         self.type_ref = type_ref
         self.equipment_type = equipment_type

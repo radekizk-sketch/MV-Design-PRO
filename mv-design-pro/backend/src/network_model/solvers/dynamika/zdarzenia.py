@@ -241,6 +241,18 @@ def _wpis(
     )
 
 
+#: Rodzina elementu wskazywanego przez zdarzenie (klucz kodu `KontekstHarmonogramu.sprawdz`)
+#: → słowo dla projektanta. Domknięta: nowa rodzina bez słowa to `KeyError` w teście.
+_RODZINY_PL: dict[str, str] = {
+    "wezel": "węzeł",
+    "galaz": "gałąź",
+    "urzadzenie": "urządzenie",
+    "odsprzeg": "odsprzęgnięcie",
+    "odbior": "odbiór",
+    "zrodlo": "źródło",
+}
+
+
 @dataclass(frozen=True)
 class KontekstHarmonogramu:
     """Elementy modelu, wobec ktorych waliduje sie referencje zdarzen (jedno miejsce)."""
@@ -276,9 +288,13 @@ class KontekstHarmonogramu:
 
     def sprawdz(self, ref: str, zbior: frozenset[str] | set[str], rodzina: str) -> None:
         if ref not in zbior:
+            # Element spoza modelu nie ma nazwy, którą warstwa aplikacji mogłaby wstawić za
+            # identyfikator — treść nazywa rodzaj, identyfikator zostaje w polu `ref`
+            # (partia integracji 10, `scripts/odmowa_bez_identyfikatora_guard.py`).
             raise OdmowaDynamiki(
                 KOD_ZDARZENIE_BEZ_ELEMENTU,
-                f"Zdarzenie wskazuje {rodzina} {ref!r}, którego model nie ma",
+                f"Zdarzenie wskazuje element rodzaju „{_RODZINY_PL[rodzina]}”, którego model "
+                "nie ma",
                 ref=ref,
                 rodzina=rodzina,
             )

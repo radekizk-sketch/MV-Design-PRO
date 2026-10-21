@@ -55,6 +55,7 @@ from application.analyses.sekcja_zgodnosci_ncrfg import (
     sekcje_modulow,
     wiersze_sekcji,
 )
+from application.autorytet_biegu_zwarciowego import blokady_zakresu_biegu
 from application.ncrfg_compliance import (
     BrakWymaganiaModulu,
     NcRfgCaseComplianceResponse,
@@ -64,6 +65,7 @@ from application.ncrfg_compliance import (
 )
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.nazwy_elementow import opis_bez_nazwy
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.nazwy import nazwa_nadana
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
@@ -204,6 +206,10 @@ def zbierz_braki_wniosku(
             "Zwarcia w punkcie przyłączenia: przebieg zwarciowy nie jest zakończony "
             f"(stan: {stan_przebiegu_pl(sc_run.status)})."
         )
+    elif blokady := blokady_zakresu_biegu(sc_run, ZdolnoscMiarodajna.REGULATORY_EVIDENCE):
+        # Karta OD-14: S''_k w punkcie przyłączenia wniosku to wielkość zwarcia METALICZNEGO —
+        # bieg przez impedancję przejścia Z_f jest poza zakresem (SI-117).
+        braki.extend(f"Zwarcia w punkcie przyłączenia: {b.komunikat_pl}" for b in blokady)
     elif _sc_row_for_bus(sc_run, bus_ref) is None:
         braki.append(
             "Zwarcia w punkcie przyłączenia: węzeł przyłączenia wskazany we wniosku nie "

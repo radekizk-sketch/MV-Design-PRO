@@ -702,6 +702,17 @@
       "title": "Arkusz",
       "type": "string"
      },
+     "kod": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Kod"
+     },
      "kolumna": {
       "anyOf": [
        {
@@ -2908,21 +2919,9 @@
     "type": "object"
    },
    "CreateFaultScenarioRequest": {
+    "additionalProperties": false,
     "description": "Request to create a new fault scenario (v1 + v2).",
     "properties": {
-     "arc_params": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Parametry łuku (zarezerwowane — nieobsługiwane w v2)",
-      "title": "Arc Params"
-     },
      "config": {
       "$ref": "#/components/schemas/ShortCircuitConfigRequest",
       "description": "Konfiguracja obliczeń (scenariusz MAX/MIN wymagany)"
@@ -2951,7 +2950,7 @@
       "title": "Fault Mode"
      },
      "fault_type": {
-      "description": "Typ zwarcia: SC_3F, SC_2F, SC_1F",
+      "description": "Typ zwarcia: SC_3F, SC_2F, SC_1F, SC_2F_G",
       "title": "Fault Type",
       "type": "string"
      },
@@ -2963,19 +2962,6 @@
       "description": "Nazwa scenariusza zwarcia (PL)",
       "title": "Name",
       "type": "string"
-     },
-     "z0_bus_data": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Dane impedancji zerowej (wymagane dla SC_1F)",
-      "title": "Z0 Bus Data"
      }
     },
     "required": [
@@ -5037,27 +5023,31 @@
     "type": "string"
    },
    "FaultImpedanceRequest": {
-    "description": "Fault impedance Zf — explicit R + X in Ohms (v2, PR-25).",
+    "additionalProperties": false,
+    "description": "Impedancja przejścia w miejscu zwarcia Z_f = R_f + jX_f [Ω] (karta OD-14).\n\nReguły R_f ≥ 0 i X_f ≥ 0 egzekwuje domena (`domain.fault_scenario.FaultImpedance`) —\njedno źródło z rdzeniem IEC 60909; naruszenie wraca jako odmowa nazwana 422 z kodem.",
     "properties": {
-     "r_ohm": {
-      "description": "Rezystancja zwarcia [Ω]",
-      "title": "R Ohm",
-      "type": "number"
+     "r_f_ohm": {
+      "description": "Rezystancja przejścia R_f w miejscu zwarcia [Ω], R_f ≥ 0",
+      "title": "R F Ohm",
+      "type": "number",
+      "x-unit": "Ω"
      },
-     "x_ohm": {
-      "description": "Reaktancja zwarcia [Ω]",
-      "title": "X Ohm",
-      "type": "number"
+     "x_f_ohm": {
+      "description": "Reaktancja przejścia X_f w miejscu zwarcia [Ω], X_f ≥ 0",
+      "title": "X F Ohm",
+      "type": "number",
+      "x-unit": "Ω"
      }
     },
     "required": [
-     "r_ohm",
-     "x_ohm"
+     "r_f_ohm",
+     "x_f_ohm"
     ],
     "title": "FaultImpedanceRequest",
     "type": "object"
    },
    "FaultLocationRequest": {
+    "additionalProperties": false,
     "description": "Fault location in the network.",
     "properties": {
      "element_ref": {
@@ -5305,18 +5295,6 @@
       "title": "Analysis Type",
       "type": "string"
      },
-     "arc_params": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Arc Params"
-     },
      "config": {
       "additionalProperties": true,
       "title": "Config",
@@ -5341,10 +5319,6 @@
        }
       ],
       "title": "Fault Impedance"
-     },
-     "fault_impedance_type": {
-      "title": "Fault Impedance Type",
-      "type": "string"
      },
      "fault_mode": {
       "default": "METALLIC",
@@ -5379,18 +5353,6 @@
      "updated_at": {
       "title": "Updated At",
       "type": "string"
-     },
-     "z0_bus_data": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Z0 Bus Data"
      }
     },
     "required": [
@@ -5401,7 +5363,6 @@
      "fault_type",
      "location",
      "config",
-     "fault_impedance_type",
      "created_at",
      "updated_at",
      "content_hash",
@@ -13112,6 +13073,17 @@
       "title": "Case Name",
       "type": "string"
      },
+     "fault_impedance": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FaultImpedanceRequest"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+     },
      "fault_node_id": {
       "title": "Fault Node Id",
       "type": "string"
@@ -13205,6 +13177,17 @@
      "case_name": {
       "title": "Case Name",
       "type": "string"
+     },
+     "fault_impedance": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FaultImpedanceRequest"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
      },
      "fault_node_id": {
       "title": "Fault Node Id",
@@ -13345,6 +13328,17 @@
     "additionalProperties": false,
     "description": "Zadanie wkladow zwarciowych per punkt (R3-B / K3-G3, FLOW EKSPERT+).\n\nKanoniczny snapshot ENM + punkt zwarcia — fizyka (rozbicie maszynowe\nmu/q/i_b, IEC 60909-0:2016 §6.6) liczona po stronie serwera przez ten sam\nsolver co pakiet dowodowy SC3F (`compute_machine_contributions`).\nZERO fizyki w UI; odpowiedz JSON zawiera slad WHITE BOX solvera.",
     "properties": {
+     "fault_impedance": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/FaultImpedanceRequest"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+     },
      "fault_node_id": {
       "title": "Fault Node Id",
       "type": "string"
@@ -15011,21 +15005,9 @@
     "type": "object"
    },
    "UpdateFaultScenarioRequest": {
+    "additionalProperties": false,
     "description": "Request to update an existing fault scenario (v1 + v2).",
     "properties": {
-     "arc_params": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Parametry łuku (zarezerwowane — nieobsługiwane)",
-      "title": "Arc Params"
-     },
      "config": {
       "anyOf": [
        {
@@ -15094,19 +15076,6 @@
       ],
       "description": "Nowa nazwa scenariusza",
       "title": "Name"
-     },
-     "z0_bus_data": {
-      "anyOf": [
-       {
-        "additionalProperties": true,
-        "type": "object"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Nowe dane impedancji zerowej",
-      "title": "Z0 Bus Data"
      }
     },
     "title": "UpdateFaultScenarioRequest",
@@ -24083,7 +24052,7 @@
     ]
    },
    "post": {
-    "description": "Utwórz nowy scenariusz zwarcia.\n\nWaliduje invarianty: nazwa wymagana, SC_1F wymaga z0_bus_data,\nBRANCH wymaga pozycji w (0,1), BUS nie może mieć pozycji.",
+    "description": "Utwórz nowy scenariusz zwarcia.\n\nWaliduje invarianty: nazwa wymagana, BRANCH wymaga pozycji w (0,1), BUS nie może mieć\npozycji, tryb IMPEDANCE wymaga dopuszczalnej Z_f. Impedancje Z0/Z2 pochodzą z modelu sieci\n(brama gotowości ENM w kwalifikowalności i przy tworzeniu biegu), nie ze scenariusza.",
     "operationId": "create_fault_scenario_api_execution_study_cases__case_id__fault_scenarios_post",
     "parameters": [
      {

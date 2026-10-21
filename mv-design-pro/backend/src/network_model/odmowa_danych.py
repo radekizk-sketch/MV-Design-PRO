@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 __all__ = [
+    "RODZAJ_ELEMENT",
     "RODZAJ_GALAZ",
     "RODZAJ_WEZEL",
     "OdmowaDanychError",
@@ -38,6 +39,11 @@ __all__ = [
 #: Rodzaj elementu grafu sieci w odwołaniu rekordu odmowy (węzeł grafu, gałąź grafu).
 RODZAJ_WEZEL = "wezel"
 RODZAJ_GALAZ = "galaz"
+#: Element MODELU sieci (ENM) — odwołanie niesie `ref_id` elementu migawki, nie identyfikator
+#: grafu (graf solvera ma własne identyfikatory, `enm/assembler._graph_id_from_ref`). Rdzenie
+#: liczące wprost z danych modelu (pętla zwarcia nN, pętla TT/IT, V12.6) odwołują się tym
+#: rodzajem; nazwę składa `enm/zdania_odmow_rdzenia.nazwy_w_odmowach_modelu`.
+RODZAJ_ELEMENT = "element"
 
 
 class OdmowaDanychError(ValueError):

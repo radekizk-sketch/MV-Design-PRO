@@ -36,7 +36,7 @@ from enm.models import EnergyNetworkModel
 from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
-from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana, odmowa_rdzenia_b01
 from network_model.solvers.state_estimation_wls import (
     Measurement,
     MeasurementSet,
@@ -237,8 +237,10 @@ def _parse_measurements(
 
         bus_i_ref = str(raw.get("bus_ref") or raw.get("bus_i_ref") or "")
         if bus_i_ref not in node_id_to_index:
-            raise OdmowaDanychError(
-                f"Pomiar odnosi się do nieistniejącego węzła bus_ref={bus_i_ref!r}."
+            raise OdmowaNazwana(
+                "Pomiar odnosi się do węzła, którego nie ma w modelu sieci.",
+                kod="estymacja.pomiar_wezla_spoza_modelu",
+                dane={"element_ref": bus_i_ref},
             )
         bus_i = node_id_to_index[bus_i_ref]
 
@@ -248,8 +250,11 @@ def _parse_measurements(
         if bus_j_ref_raw is not None and str(bus_j_ref_raw) != "":
             bus_j_ref = str(bus_j_ref_raw)
             if bus_j_ref not in node_id_to_index:
-                raise OdmowaDanychError(
-                    f"Pomiar odnosi się do nieistniejącego węzła bus_j_ref={bus_j_ref!r}."
+                raise OdmowaNazwana(
+                    "Pomiar przepływu odnosi się do węzła końcowego, którego nie ma w modelu "
+                    "sieci.",
+                    kod="estymacja.pomiar_wezla_spoza_modelu",
+                    dane={"element_ref": bus_j_ref},
                 )
             bus_j = node_id_to_index[bus_j_ref]
 

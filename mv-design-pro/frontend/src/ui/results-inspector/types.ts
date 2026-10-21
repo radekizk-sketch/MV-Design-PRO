@@ -369,6 +369,20 @@ export interface KonfiguracjaBieguZwarcia {
    * MINIMALNY na szynie 15 kV nie różni się progiem `c >= 1` od maksymalnego.
    */
   scenariusz?: 'MAX' | 'MIN' | null;
+  /**
+   * Karta OD-14 (partia integracji 10): impedancja przejścia Z_f ZAPISANA na biegu
+   * (`raw_result.impedancja_zwarcia`, `api/canonical_run_views.py::build_konfiguracja_biegu_zwarcia`).
+   * Pole obecne WYŁĄCZNIE dla biegu przez Z_f ≠ 0 — bieg metaliczny (także tryb IMPEDANCE
+   * z Z_f = 0) go nie ma. Wynik takiego biegu jest poza zakresem IEC 60909.
+   */
+  impedancja_przejscia?: ImpedancjaPrzejsciaBiegu;
+}
+
+/** Z_f = R_f + jX_f [Ω] biegu zwarciowego przez impedancję przejścia (karta OD-14). */
+export interface ImpedancjaPrzejsciaBiegu {
+  r_f_ohm: number;
+  x_f_ohm: number;
+  poza_zakresem_iec60909: true;
 }
 
 /**

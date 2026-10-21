@@ -13,7 +13,7 @@ sieci zasilającej.
 
 ILOCZYN CECH: {węzeł zwarcia, koperta wejścia, transformator K_T, maszyna K_G c_max, maszyna
 K_G podstawa, źródło nN Z_Q w biegu, transformator w biegu MAX i MIN} × {deklaracja: brak,
-wartość spoza tabeli — tam, gdzie obiekt przyjmuje dowolną wartość} × {treść: kod, nazwa
+wartość spoza tabeli — tam, gdzie obiekt przyjmuje dowolną wartość} × {kod w polu odmowy (nie w treści), nazwa
 elementu, brak identyfikatora, brak „None"}.
 """
 
@@ -51,12 +51,21 @@ def _czysty_stan():
 
 
 def _sprawdz_tresc(tresc: str, *, nazwa: str, identyfikatory: tuple[str, ...]) -> None:
-    assert KOD_TOLERANCJA_NN_BRAK in tresc, tresc
+    # Postać strukturalna partii 10 (scalenie partii 10 i 11): kod w polu `kod` odmowy
+    # nazwanej, nigdy w treści zdania dla projektanta (także w komunikacie biegu FAILED).
+    assert KOD_TOLERANCJA_NN_BRAK not in tresc, tresc
     assert f"Dotyczy: {nazwa}." in tresc, tresc
     assert "None" not in tresc, tresc
     assert "otrzymano" not in tresc, tresc
     for identyfikator in identyfikatory:
         assert identyfikator not in tresc, (identyfikator, tresc)
+
+
+def _sprawdz_odmowe(
+    odmowa: OdmowaToleranciiNnError, *, nazwa: str, identyfikatory: tuple[str, ...]
+) -> None:
+    assert odmowa.kod == KOD_TOLERANCJA_NN_BRAK
+    _sprawdz_tresc(str(odmowa), nazwa=nazwa, identyfikatory=identyfikatory)
 
 
 @pytest.mark.parametrize("deklaracja", _DEKLARACJE_BEZ_WIERSZA)
@@ -66,7 +75,7 @@ def test_wezel_zwarcia_nazywa_szyne(deklaracja: str | None, scenariusz: str) -> 
     wezel = dataclasses.replace(graf.nodes[ref_to_graph_id(N2)], tolerancja_nn=deklaracja)
     with pytest.raises(OdmowaToleranciiNnError) as blad:
         dobierz_c_wezla(wezel, scenariusz)  # type: ignore[arg-type]
-    _sprawdz_tresc(str(blad.value), nazwa="Szyna nN", identyfikatory=(N2, wezel.id))
+    _sprawdz_odmowe(blad.value, nazwa="Szyna nN", identyfikatory=(N2, wezel.id))
     if deklaracja is not None:
         assert f"„{deklaracja}”" in str(blad.value)
 
@@ -79,6 +88,7 @@ def test_koperta_wejscia_solvera_nazywa_szyne(scenariusz: str) -> None:
     # Kolejność szyn w kopercie: po identyfikatorze grafu — pierwsza szyna nN odmawia.
     nazwy_nn = {"Szyna nN", "Koniec obwodu nN"}
     tresc = str(blad.value)
+    assert blad.value.kod == KOD_TOLERANCJA_NN_BRAK
     assert any(f"Dotyczy: {nazwa}." in tresc for nazwa in nazwy_nn), tresc
     _sprawdz_tresc(
         tresc,
@@ -96,8 +106,8 @@ def test_k_t_nazywa_transformator(deklaracja: str | None) -> None:
     galaz = dataclasses.replace(galaz, tolerancja_nn_dolna=deklaracja)
     with pytest.raises(OdmowaToleranciiNnError) as blad:
         galaz.get_kt_correction_factor()
-    _sprawdz_tresc(
-        str(blad.value), nazwa="TR 15/0,4 kV 630 kVA Dyn11", identyfikatory=("TR1", galaz.id)
+    _sprawdz_odmowe(
+        blad.value, nazwa="TR 15/0,4 kV 630 kVA Dyn11", identyfikatory=("TR1", galaz.id)
     )
 
 
@@ -107,7 +117,7 @@ def test_k_g_nazywa_maszyne(odczyt: str) -> None:
     (maszyna,) = graf.get_synchronous_machine_sources()
     with pytest.raises(OdmowaToleranciiNnError) as blad:
         getattr(maszyna, odczyt)
-    _sprawdz_tresc(str(blad.value), nazwa="Agregat", identyfikatory=("GEN",))
+    _sprawdz_odmowe(blad.value, nazwa="Agregat", identyfikatory=("GEN",))
 
 
 def test_k_g_wartosc_spoza_tabeli_nazywa_maszyne() -> None:
@@ -116,7 +126,7 @@ def test_k_g_wartosc_spoza_tabeli_nazywa_maszyne() -> None:
     maszyna = dataclasses.replace(maszyna, tolerancja_nn="PLUS_7")  # type: ignore[arg-type]
     with pytest.raises(OdmowaToleranciiNnError) as blad:
         _ = maszyna.c_max
-    _sprawdz_tresc(str(blad.value), nazwa="Agregat", identyfikatory=("GEN",))
+    _sprawdz_odmowe(blad.value, nazwa="Agregat", identyfikatory=("GEN",))
 
 
 @pytest.mark.parametrize("scenariusz", ["max", "min"])

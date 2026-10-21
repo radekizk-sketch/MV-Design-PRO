@@ -20,6 +20,12 @@ IEC 60909-0:2016:
 - 2F:   Z_k = Z1 + Z2;                 I″k2  = c·Un / |Z_k|     (eq. 23)
 - 2F-Z: Z_k = Z1 + Z2·Z0/(Z2+Z0);      I″k2E = c·Un / |Z_k|
 - κ = 1.02 + 0.98·e^(−3·R/X); i_p = κ·√2·I″k; I_dyn = i_p; I_th = I″k·√(m+n)
+
+Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10): impedancja pętli
+z JEDNEGO źródła wzorów rdzenia (`short_circuit_core.impedancja_petli_zwarcia` — do tej karty
+ten moduł miał własną kopię trzech wzorów pętli, drugą ścieżkę tej samej fizyki), prądy
+składowe z tym samym torem zerowym Z_0 + 3·Z_f co pętla. Bez Z_f każde wyrażenie i kolejność
+działań jak przed kartą — goldeny bit w bit.
 """
 
 from __future__ import annotations
@@ -27,7 +33,13 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.core.impedancja_przejscia import (
+    OPISY_ODMOW_IMPEDANCJI,
+    impedancja_przejscia_obliczeniowa,
+    kod_odmowy_impedancji,
+)
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
+from network_model.solvers.short_circuit_core import ShortCircuitType, impedancja_petli_zwarcia
 
 _FAULT_TYPE_MAPPING = {
     "ONE_PHASE_TO_GROUND": "SC1FZ",
@@ -36,6 +48,13 @@ _FAULT_TYPE_MAPPING = {
     "SC1FZ": "SC1FZ",
     "SC2F": "SC2F",
     "SC2FZ": "SC2FZ",
+}
+
+#: Postać kanoniczna typu SC1 → rodzaj zwarcia rdzenia (jedno źródło wzorów pętli).
+_RODZAJ_RDZENIA: dict[str, ShortCircuitType] = {
+    "SC1FZ": ShortCircuitType.SINGLE_PHASE_GROUND,
+    "SC2F": ShortCircuitType.TWO_PHASE,
+    "SC2FZ": ShortCircuitType.TWO_PHASE_GROUND,
 }
 
 #: Operator Fortescue ``a = e^{j120°}`` transformacji składowych symetrycznych.
@@ -80,6 +99,9 @@ class SC1AsymmetricalQuantities:
     ip_ka: float
     idyn_ka: float
     ith_ka: float
+    #: Karta OD-14: impedancja przejścia Z_f [Ω], z którą policzono pętlę; None = zwarcie
+    #: metaliczne IEC 60909 (wielkości bit w bit jak przed kartą).
+    z_f_ohm: complex | None = None
 
 
 def normalize_sc1_fault_type(fault_type: str) -> str:
@@ -89,23 +111,28 @@ def normalize_sc1_fault_type(fault_type: str) -> str:
     return _FAULT_TYPE_MAPPING[fault_type]
 
 
+def _tor_zerowy(z0: complex, z_f: complex | None) -> complex:
+    """Impedancja toru składowej zerowej: Z_0, a przy impedancji przejścia Z_0 + 3·Z_f."""
+    return z0 if z_f is None else z0 + 3.0 * z_f
+
+
 def _compute_equiv_impedance(
     *,
     fault_type: str,
     z1: complex,
     z2: complex,
     z0: complex,
+    z_f: complex | None = None,
 ) -> complex:
-    if fault_type == "SC1FZ":
-        return z1 + z2 + z0
-    if fault_type == "SC2F":
-        return z1 + z2
-    if fault_type == "SC2FZ":
-        denominator = z2 + z0
-        if denominator == 0:
-            raise OdmowaDanychError("Z2 + Z0 = 0; cannot compute 2F–Z equivalent impedance")
-        return z1 + (z2 * z0) / denominator
-    raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+    rodzaj = _RODZAJ_RDZENIA.get(fault_type)
+    if rodzaj is None:
+        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
+    if fault_type == "SC2FZ" and z2 + _tor_zerowy(z0, z_f) == 0:
+        raise OdmowaDanychError(
+            "Suma impedancji składowej przeciwnej i toru składowej zerowej jest równa zeru — "
+            "impedancji zastępczej zwarcia dwufazowego z ziemią nie da się wyznaczyć."
+        )
+    return impedancja_petli_zwarcia(rodzaj, z1=z1, z2=z2, z0=z0, z_f=z_f)
 
 
 def _compute_sequence_currents(
@@ -115,19 +142,27 @@ def _compute_sequence_currents(
     z_equiv: complex,
     z2: complex,
     z0: complex,
+    z_f: complex | None = None,
 ) -> tuple[complex, complex, complex]:
     if z_equiv == 0:
-        raise OdmowaDanychError("Z_k = 0; cannot compute sequence currents")
+        raise OdmowaDanychError(
+            "Impedancja zastępcza pętli zwarcia jest równa zeru — prądów składowych nie da się "
+            "wyznaczyć."
+        )
     i1 = u_prefault_kv / z_equiv
     if fault_type == "SC1FZ":
         return i1, i1, i1
     if fault_type == "SC2F":
         return i1, -i1, 0.0
     if fault_type == "SC2FZ":
-        denominator = z2 + z0
+        z0_toru = _tor_zerowy(z0, z_f)
+        denominator = z2 + z0_toru
         if denominator == 0:
-            raise OdmowaDanychError("Z2 + Z0 = 0; cannot compute 2F–Z sequence currents")
-        i2 = -(z0 / denominator) * i1
+            raise OdmowaDanychError(
+                "Suma impedancji składowej przeciwnej i toru składowej zerowej jest równa "
+                "zeru — prądów składowych zwarcia dwufazowego z ziemią nie da się wyznaczyć."
+            )
+        i2 = -(z0_toru / denominator) * i1
         i0 = -(z2 / denominator) * i1
         return i1, i2, i0
     raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
@@ -164,7 +199,10 @@ def _compute_ikss(
     """
     z_abs = abs(z_equiv)
     if z_abs == 0:
-        raise OdmowaDanychError("Z_k = 0; cannot compute I″k")
+        raise OdmowaDanychError(
+            "Impedancja zastępcza pętli zwarcia jest równa zeru — prądu I″k nie da się "
+            "wyznaczyć."
+        )
     if fault_type == "SC1FZ":
         return math.sqrt(3.0) * c_factor * u_n_kv / z_abs
     return c_factor * u_n_kv / z_abs
@@ -182,19 +220,35 @@ def compute_sc1_asymmetrical_quantities(
     a_operator: complex,
     m_factor: float = 1.0,
     n_factor: float = 0.0,
+    z_f_ohm: complex | None = None,
 ) -> SC1AsymmetricalQuantities:
     """Liczy komplet wielkości zwarciowych SC1 (1F-Z / 2F / 2F-Z).
 
     Jedyne miejsce fizyki toru dowodowego SC1 (NOT-A-SOLVER: proof engine
     dostaje ten wynik i wyłącznie formatuje kroki dowodu).
+
+    ``z_f_ohm`` — impedancja przejścia w miejscu zwarcia (karta OD-14): pętla z wzorów rdzenia
+    (2F: Z_1 + Z_2 + Z_f; 1F-Z: Z_1 + Z_2 + Z_0 + 3Z_f; 2F-Z: tor zerowy Z_0 + 3Z_f), prądy
+    składowe 2F-Z z tym samym torem zerowym. Wynik poza zakresem IEC 60909.
     """
     normalized = normalize_sc1_fault_type(fault_type)
+    if z_f_ohm is not None:
+        # Ta sama reguła danych i normalizacja Z_f = 0 → metaliczne co rdzeń IEC 60909.
+        kod = kod_odmowy_impedancji(float(z_f_ohm.real), float(z_f_ohm.imag))
+        if kod is not None:
+            raise OdmowaNazwana(
+                OPISY_ODMOW_IMPEDANCJI[kod],
+                kod=kod,
+                dane={"r_f_ohm": float(z_f_ohm.real), "x_f_ohm": float(z_f_ohm.imag)},
+            )
+        z_f_ohm = impedancja_przejscia_obliczeniowa(float(z_f_ohm.real), float(z_f_ohm.imag))
 
     z_equiv = _compute_equiv_impedance(
         fault_type=normalized,
         z1=z1_ohm,
         z2=z2_ohm,
         z0=z0_ohm,
+        z_f=z_f_ohm,
     )
 
     i1, i2, i0 = _compute_sequence_currents(
@@ -203,6 +257,7 @@ def compute_sc1_asymmetrical_quantities(
         z_equiv=z_equiv,
         z2=z2_ohm,
         z0=z0_ohm,
+        z_f=z_f_ohm,
     )
 
     ia, ib, ic = _compute_phase_currents(
@@ -245,4 +300,5 @@ def compute_sc1_asymmetrical_quantities(
         ip_ka=ip_ka,
         idyn_ka=idyn_ka,
         ith_ka=ith_ka,
+        z_f_ohm=z_f_ohm,
     )

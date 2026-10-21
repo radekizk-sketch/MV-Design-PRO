@@ -3413,3 +3413,50 @@ def test_guard_rejects_queue_service_in_compose(tmp_path, monkeypatch, usluga) -
     assert any(
         "[resurrected-service]" in n and f"usługa {usluga} " in n for n in naruszenia
     ), naruszenia
+
+
+# ---------------------------------------------------------------------------
+# Partia integracji 10 (2026-10-16) — fasada `curve_calculator.py` bez konsumenta
+# skasowana. Iniekcje: plik odtworzony × definicja pod inna sciezka × stan czysty
+# i zywe drzewo repozytorium.
+# ---------------------------------------------------------------------------
+
+
+def test_partia10_czysty_stan_bez_naruszen(tmp_path, monkeypatch) -> None:
+    _patch_scl_cim(monkeypatch, tmp_path)
+    assert guard.check_partia10_kasacja_resurrection() == []
+
+
+def test_partia10_zywe_drzewo_bez_naruszen() -> None:
+    assert guard.check_partia10_kasacja_resurrection() == []
+
+
+@pytest.mark.parametrize("sciezka", guard.PARTIA10_SKASOWANE_SCIEZKI_BACKEND)
+def test_partia10_odtworzony_plik_jest_naruszeniem(tmp_path, monkeypatch, sciezka) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    plik = backend_src / sciezka
+    plik.parent.mkdir(parents=True, exist_ok=True)
+    plik.write_text('"""Pusta fasada."""\n', encoding="utf-8")
+
+    violations = guard.check_partia10_kasacja_resurrection()
+
+    assert any("[resurrected-module]" in v and sciezka in v for v in violations)
+
+
+@pytest.mark.parametrize("nazwa", sorted(guard.PARTIA10_SKASOWANE_DEFINICJE_BACKEND))
+def test_partia10_definicja_pod_inna_sciezka_jest_naruszeniem(tmp_path, monkeypatch, nazwa) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    (backend_src / "gdzies").mkdir()
+    (backend_src / "gdzies" / "nowy.py").write_text(f"class {nazwa}:\n    pass\n")
+
+    violations = guard.check_partia10_kasacja_resurrection()
+
+    assert any("[resurrected-definition]" in v and nazwa in v for v in violations)
+
+
+def test_partia10_nazwa_w_komentarzu_nie_jest_definicja(tmp_path, monkeypatch) -> None:
+    _, backend_src = _patch_scl_cim(monkeypatch, tmp_path)
+    (backend_src / "opis.py").write_text(
+        '"""Dawne `calculate_curve_points` skasowane."""\n# CurveDefinition\nX = "CurveStandard"\n'
+    )
+    assert guard.check_partia10_kasacja_resurrection() == []

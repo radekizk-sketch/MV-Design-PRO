@@ -26,7 +26,7 @@ import {
   type PolaWspolczynnikaC,
 } from './wspolczynnikC';
 
-const FAULT_TYPES: FaultTypeValue[] = ['SC_3F', 'SC_2F', 'SC_1F'];
+const FAULT_TYPES = Object.keys(FAULT_TYPE_LABELS) as FaultTypeValue[];
 const FAULT_MODES: FaultModeValue[] = ['METALLIC', 'IMPEDANCE'];
 const LOCATION_TYPES: LocationType[] = ['NODE', 'BRANCH_POINT'];
 
@@ -62,8 +62,8 @@ export function FaultScenarioModal() {
       setLocationType(editingScenario.location.location_type);
       setAlpha(editingScenario.location.position != null ? String(editingScenario.location.position) : '');
       setFaultMode(editingScenario.fault_mode ?? 'METALLIC');
-      setROhm(editingScenario.fault_impedance?.r_ohm != null ? String(editingScenario.fault_impedance.r_ohm) : '');
-      setXOhm(editingScenario.fault_impedance?.x_ohm != null ? String(editingScenario.fault_impedance.x_ohm) : '');
+      setROhm(editingScenario.fault_impedance != null ? String(editingScenario.fault_impedance.r_f_ohm) : '');
+      setXOhm(editingScenario.fault_impedance != null ? String(editingScenario.fault_impedance.x_f_ohm) : '');
       setPolaC(polaCZKonfiguracji(editingScenario.config));
       setCzasTk(String(editingScenario.config?.thermal_time_seconds ?? 1));
     } else {
@@ -97,7 +97,7 @@ export function FaultScenarioModal() {
       const r = parseFloat(rOhm);
       const x = parseFloat(xOhm);
       if (isNaN(r) || isNaN(x)) {
-        setValidationError('Impedancja zwarcia (R i X) jest wymagana dla trybu impedancyjnego');
+        setValidationError('Impedancja przejścia Z_f (R_f i X_f) jest wymagana dla trybu impedancyjnego');
         return;
       }
     }
@@ -121,7 +121,7 @@ export function FaultScenarioModal() {
 
     const position = locationType === 'BRANCH_POINT' ? parseFloat(alpha) : null;
     const faultImpedance = faultMode === 'IMPEDANCE'
-      ? { r_ohm: parseFloat(rOhm), x_ohm: parseFloat(xOhm) }
+      ? { r_f_ohm: parseFloat(rOhm), x_f_ohm: parseFloat(xOhm) }
       : undefined;
 
     try {
@@ -204,21 +204,21 @@ export function FaultScenarioModal() {
           {/* Impedancja zwarcia Zf (v2) — aktywne tylko dla IMPEDANCE */}
           {faultMode === 'IMPEDANCE' && (
             <div className="p-3 rounded border border-amber-200 bg-amber-50">
-              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja zwarcia Zf</label>
+              <label className="block text-xs font-medium text-amber-800 mb-2">Impedancja przejścia Z_f w miejscu zwarcia</label>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">R [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5">R_f [Ω]</label>
                   <input
-                    type="number" step="any" value={rOhm} onChange={(e) => setROhm(e.target.value)}
+                    type="number" step="any" min="0" value={rOhm} onChange={(e) => setROhm(e.target.value)}
                     placeholder="0.0"
                     className="w-full px-2 py-1.5 text-sm border border-amber-300 rounded focus:outline-none focus:border-amber-500"
                     data-testid="fault-scenario-r-ohm-input"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-xs text-amber-700 mb-0.5">X [Ω]</label>
+                  <label className="block text-xs text-amber-700 mb-0.5">X_f [Ω]</label>
                   <input
-                    type="number" step="any" value={xOhm} onChange={(e) => setXOhm(e.target.value)}
+                    type="number" step="any" min="0" value={xOhm} onChange={(e) => setXOhm(e.target.value)}
                     placeholder="0.0"
                     className="w-full px-2 py-1.5 text-sm border border-amber-300 rounded focus:outline-none focus:border-amber-500"
                     data-testid="fault-scenario-x-ohm-input"

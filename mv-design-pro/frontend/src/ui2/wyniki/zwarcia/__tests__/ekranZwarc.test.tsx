@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { EkranZwarc } from '../EkranZwarc';
 import { ZWARCIA_STRINGS } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
@@ -326,7 +326,13 @@ describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
 
 describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
   beforeEach(() => {
-    ustawWynik();
+    // Wynik z realnego backendu zawsze niesie `konfiguracja_biegu` (canonical_run_views:
+    // build_short_circuit_results_response) — z niej ekran bierze scenariusz i nadpisanie c,
+    // bez których końcówka wkładów odmawia 422 (karta WSPÓŁCZYNNIK-C).
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({ konfiguracja_biegu: konfiguracjaBieguFixture() }),
+      selectedRunId: 'sc-run-1',
+    });
     useSnapshotStore.setState({
       snapshot: { header: { name: 'Siec testowa' }, buses: [], branches: [], transformers: [], sources: [], loads: [], generators: [], substations: [], bays: [] },
     } as never);
@@ -365,6 +371,100 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     expect(JSON.parse(init.body as string).fault_node_id).toBe(
       shortCircuitResultsFixture().rows[0].target_id,
     );
+    vi.unstubAllGlobals();
+  });
+
+  // Karta WSPÓŁCZYNNIK-C (scalenie partii 10 i 11): końcówka wkładów wymaga scenariusza
+  // biegu i przyjmuje nadpisanie c z uzasadnieniem. Iloczyn: scenariusz {MAX, MIN} ×
+  // nadpisanie c {brak, z uzasadnieniem} × treść zapytania o wkłady.
+  it.each([
+    ['MAX', null],
+    ['MIN', null],
+    ['MAX', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }],
+    ['MIN', { wartosc: 0.95, uzasadnienie: 'Uzgodnienie z OSD' }],
+  ] as const)('bieg %s, nadpisanie %j -> zapytanie o wklady niesie parametry biegu', async (scen, nadp) => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({
+          scenariusz: scen,
+          c_factor: nadp
+            ? { tryb: 'nadpisanie', wartosc: nadp.wartosc, uzasadnienie: nadp.uzasadnienie }
+            : { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+        }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ contributions: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-zwarcia-wklady');
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([url]) => String(url).includes('/api/proof/sc3f/contributions')),
+      ).toBe(true),
+    );
+    const wywolanie = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/proof/sc3f/contributions'),
+    );
+    const cialo = JSON.parse((wywolanie![1] as RequestInit).body as string);
+    expect(cialo.scenariusz).toBe(scen);
+    expect(cialo.nadpisanie_c).toEqual(nadp);
+    expect(cialo).not.toHaveProperty('c_factor');
+    vi.unstubAllGlobals();
+  });
+
+  it('bieg bez zapisanego scenariusza -> brak zapytania o wklady, uczciwe "dane niedostepne"', async () => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture({ scenariusz: null }),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url).includes('/api/proof/sc3f/contributions')),
+    ).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  // Karta OD-14: wkłady źródeł biegu przez impedancję przejścia liczone z TĄ SAMĄ Z_f
+  // co bieg (`konfiguracja_biegu.impedancja_przejscia`), nie metalicznie. Iloczyn:
+  // {bieg metaliczny, bieg przez Z_f} × treść zapytania o wkłady.
+  it.each([
+    ['metaliczny', undefined, undefined],
+    [
+      'przez Z_f',
+      { r_f_ohm: 2, x_f_ohm: 0.5, poza_zakresem_iec60909: true as const },
+      { r_f_ohm: 2, x_f_ohm: 0.5 },
+    ],
+  ])('bieg %s -> zapytanie o wklady niesie fault_impedance tylko dla Z_f', async (_n, z, oczekiwana) => {
+    useResultsInspectorStore.setState({
+      shortCircuitResults: shortCircuitResultsFixture({
+        konfiguracja_biegu: konfiguracjaBieguFixture(z ? { impedancja_przejscia: z } : {}),
+      }),
+      selectedRunId: 'sc-run-1',
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        contributions: [{ source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await renderEkranZwarc(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-zwarcia-wklady');
+    const wywolanie = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/proof/sc3f/contributions'),
+    );
+    expect(wywolanie, 'brak zapytania o wklady zwarciowe').toBeDefined();
+    const cialo = JSON.parse((wywolanie![1] as RequestInit).body as string);
+    expect(cialo.fault_impedance).toEqual(oczekiwana);
     vi.unstubAllGlobals();
   });
 

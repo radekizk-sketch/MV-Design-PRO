@@ -21,6 +21,9 @@ export interface ZastrzezenieArkusza {
   readonly wiersz: number | null;
   readonly kolumna: string | null;
   readonly komunikat: string;
+  /** Kod blokady walidatora modelu (filtry, agregacja) — tylko dla zastrzeżeń walidatora;
+   *  kod nigdy nie stoi w `komunikat` (partia integracji 10). */
+  readonly kod?: string | null;
 }
 
 /** Liczby elementów MODELU zbudowanego z arkusza (kontrakt `PodsumowanieArkuszaModel`). */

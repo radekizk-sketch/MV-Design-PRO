@@ -44,7 +44,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 Scenario = Literal["MAX", "MIN"]
@@ -67,12 +67,16 @@ _TABELA_1_NN: dict[str, tuple[float, float]] = {
 _TABELA_1_SN_WN: tuple[float, float] = (1.10, 1.00)
 
 
-class OdmowaToleranciiNnError(OdmowaDanychError):
-    """Węzeł nN bez tolerancji napięcia sieci — niesie kod rejestru gotowości (``kod``)."""
+class OdmowaToleranciiNnError(OdmowaNazwana):
+    """Węzeł nN bez tolerancji napięcia sieci — odmowa nazwana z kodem rejestru gotowości.
+
+    Postać strukturalna partii integracji 10 (``OdmowaNazwana``): kod
+    ``fault.c_tolerancja_nn_brak`` w polu ``kod`` (handler 422 przenosi go do ciała
+    odpowiedzi obok ``detail``), treść to wyłącznie zdanie dla projektanta.
+    """
 
     def __init__(self, komunikat_pl: str) -> None:
-        super().__init__(f"{KOD_TOLERANCJA_NN_BRAK}: {komunikat_pl}")
-        self.kod = KOD_TOLERANCJA_NN_BRAK
+        super().__init__(komunikat_pl, kod=KOD_TOLERANCJA_NN_BRAK)
         self.komunikat_pl = komunikat_pl
 
     def dotyczy(self, nazwa: str) -> OdmowaToleranciiNnError:
@@ -148,12 +152,17 @@ KOD_NADPISANIE_BEZ_UZASADNIENIA = "fault.c_nadpisanie_bez_uzasadnienia"
 KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA = "fault.c_nadpisanie_wartosc_niepoprawna"
 
 
-class OdmowaNadpisaniaCError(OdmowaDanychError):
-    """Nadpisanie c odrzucone — niesie kod rejestru gotowości (``kod``) i komunikat PL."""
+class OdmowaNadpisaniaCError(OdmowaNazwana):
+    """Nadpisanie c odrzucone — odmowa nazwana z kodem rejestru gotowości w polu ``kod``.
 
-    def __init__(self, kod: str, komunikat_pl: str) -> None:
-        super().__init__(f"{kod}: {komunikat_pl}")
-        self.kod = kod
+    Postać strukturalna partii integracji 10: kod nie stoi w treści zdania (handler 422
+    przenosi ``kod`` i ``dane`` do ciała odpowiedzi obok ``detail``).
+    """
+
+    def __init__(
+        self, kod: str, komunikat_pl: str, *, dane: dict[str, object] | None = None
+    ) -> None:
+        super().__init__(komunikat_pl, kod=kod, dane=dane)
         self.komunikat_pl = komunikat_pl
 
 
@@ -206,8 +215,13 @@ def nadpisanie_c_z_danych(dane: Any) -> NadpisanieC | None:
     if not isinstance(dane, dict) or set(dane) != {"wartosc", "uzasadnienie"}:
         raise OdmowaNadpisaniaCError(
             KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA,
-            "Nadpisanie współczynnika c musi być obiektem `{wartosc, uzasadnienie}`; "
-            f"otrzymano {dane!r}.",
+            "Nadpisanie współczynnika c musi być obiektem z dokładnie dwoma polami: wartością "
+            "i uzasadnieniem.",
+            dane=(
+                {"otrzymane_pola": tuple(sorted(str(klucz) for klucz in dane))}
+                if isinstance(dane, dict)
+                else {"otrzymany_typ": type(dane).__name__}
+            ),
         )
     return NadpisanieC(wartosc=dane["wartosc"], uzasadnienie=dane["uzasadnienie"])
 

@@ -7,7 +7,6 @@ as a first-class domain object.
 INVARIANTS:
 - FaultScenario is IMMUTABLE (frozen dataclass)
 - content_hash = SHA-256 of canonical JSON (sorted keys)
-- SC_1F requires z0_bus_data (not None)
 - location_type="BRANCH" requires position in (0,1)
 - location_type="BUS" requires position = None
 - ZERO auto-completion — missing data means upstream gating failed
@@ -15,7 +14,6 @@ INVARIANTS:
 
 PR-24 EXTENSIONS:
 - name (PL, required) — user-facing scenario name
-- fault_impedance_type — metallic fault (METALLIC) as enum
 - created_at, updated_at — controlled by application layer (deterministic)
 - with_updates() — copy-on-write for immutable updates
 """
@@ -31,8 +29,13 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType
+from network_model.core.impedancja_przejscia import (
+    OPISY_ODMOW_IMPEDANCJI,
+    kod_odmowy_impedancji,
+)
 from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
 from network_model.nazwy import jest_nazwa
+from network_model.odmowa_danych import OdmowaNazwana
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -40,17 +43,18 @@ from network_model.nazwy import jest_nazwa
 
 
 class FaultType(StrEnum):
-    """Short-circuit fault types (IEC 60909)."""
+    """Short-circuit fault types (IEC 60909).
+
+    SC_2F_G (zwarcie dwufazowe z ziemią) dołożone w partii integracji 10 (karta OD-14): rdzeń
+    IEC 60909 liczył je od dawna (`ShortCircuitType.TWO_PHASE_GROUND`), bieg z opcji przyjmował
+    `SC_2F_G`, ale scenariusza tego rodzaju nie dało się zapisać (400) — kontrakt Z_f obejmuje
+    {3F, 2F, 1F, 2F+G}, więc scenariusz musi nieść wszystkie cztery rodzaje.
+    """
 
     SC_3F = "SC_3F"
     SC_2F = "SC_2F"
     SC_1F = "SC_1F"
-
-
-class FaultImpedanceType(StrEnum):
-    """Fault impedance type (v1: metallic only). Kept for backward compatibility."""
-
-    METALLIC = "METALLIC"
+    SC_2F_G = "SC_2F_G"
 
 
 class FaultMode(StrEnum):
@@ -69,6 +73,7 @@ FAULT_TYPE_TO_ANALYSIS: dict[FaultType, ExecutionAnalysisType] = {
     FaultType.SC_3F: ExecutionAnalysisType.SC_3F,
     FaultType.SC_2F: ExecutionAnalysisType.SC_2F,
     FaultType.SC_1F: ExecutionAnalysisType.SC_1F,
+    FaultType.SC_2F_G: ExecutionAnalysisType.SC_2F_G,
 }
 
 
@@ -86,23 +91,33 @@ class FaultScenarioValidationError(Exception):
 @dataclass(frozen=True)
 class FaultImpedance:
     """
-    Fault impedance Zf — explicit R + X in Ohms.
+    Impedancja przejścia w miejscu zwarcia Z_f = R_f + jX_f [Ω] (karta OD-14).
 
-    Canonical API format: {r_ohm: float, x_ohm: float}
-    Required when fault_mode = IMPEDANCE.
-    Forbidden when fault_mode = METALLIC.
-    No defaults. No auto-completion.
+    Kontrakt `docs/domain/KONTRAKT_SCENARIUSZY_ZWARCIOWYCH_TRYB_IMPEDANCE.md` §1: pola
+    `r_f_ohm`/`x_f_ohm` — JEDNA nazwa tej wielkości w repozytorium (ta sama co w zdarzeniach
+    dynamiki). Wymagana w trybie IMPEDANCE, zakazana w METALLIC; bez wartości domyślnych.
+    R_f ≥ 0 i X_f ≥ 0 — reguła z `network_model.core.impedancja_przejscia` (jedno źródło
+    z rdzeniem IEC 60909); naruszenie to odmowa nazwana (`OdmowaNazwana`, API 422).
     """
 
-    r_ohm: float
-    x_ohm: float
+    r_f_ohm: float
+    x_f_ohm: float
+
+    def __post_init__(self) -> None:
+        kod = kod_odmowy_impedancji(self.r_f_ohm, self.x_f_ohm)
+        if kod is not None:
+            raise OdmowaNazwana(
+                OPISY_ODMOW_IMPEDANCJI[kod],
+                kod=kod,
+                dane={"r_f_ohm": self.r_f_ohm, "x_f_ohm": self.x_f_ohm},
+            )
 
     def to_dict(self) -> dict[str, Any]:
-        return {"r_ohm": self.r_ohm, "x_ohm": self.x_ohm}
+        return {"r_f_ohm": self.r_f_ohm, "x_f_ohm": self.x_f_ohm}
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FaultImpedance:
-        return cls(r_ohm=data["r_ohm"], x_ohm=data["x_ohm"])
+        return cls(r_f_ohm=data["r_f_ohm"], x_f_ohm=data["x_f_ohm"])
 
 
 @dataclass(frozen=True)
@@ -222,21 +237,25 @@ class FaultScenario:
     INVARIANTS:
     - Immutable (frozen dataclass)
     - content_hash = SHA-256 of canonical JSON (sorted keys)
-    - SC_1F → z0_bus_data is required
     - location validated at construction
     - ZERO auto-completion
     - ZERO randomness
 
     PR-24 ADDITIONS:
     - name: User-facing Polish name (required)
-    - fault_impedance_type: METALLIC (v1)
     - created_at, updated_at: Application-controlled timestamps
     - with_updates(): Copy-on-write for immutable transitions
 
     PR-25 ADDITIONS (v2):
-    - fault_mode: METALLIC | IMPEDANCE (replaces conceptual role of fault_impedance_type)
-    - fault_impedance: Explicit Zf {r_ohm, x_ohm} (required for IMPEDANCE, forbidden for METALLIC)
-    - arc_params: Reserved for future arc modeling (unsupported in v2 → deterministic error)
+    - fault_mode: METALLIC | IMPEDANCE — JEDYNE pole trybu zwarcia (dawne `fault_impedance_type`,
+      zawsze METALLIC, skasowane w partii integracji 10: przy realnym trybie IMPEDANCE
+      byłoby drugą, sprzeczną prawdą o trybie)
+    - fault_impedance: Explicit Zf {r_f_ohm, x_f_ohm} (required for IMPEDANCE, forbidden for METALLIC)
+
+    Partia integracji 10 skasowała pola-fantomy `arc_params` (zawsze odrzucane) i `z0_bus_data`
+    (wymagane dla SC_1F, nigdy nie czytane przez żaden bieg): impedancja zerowa pochodzi z modelu
+    sieci (Z0 gałęzi i transformatorów), a jej brak rozstrzyga brama gotowości ENM
+    (`AnalysisAvailability.short_circuit_1f`), nie słownik w scenariuszu.
     """
 
     scenario_id: UUID
@@ -245,11 +264,8 @@ class FaultScenario:
     fault_type: FaultType
     location: FaultLocation
     config: ShortCircuitConfig
-    fault_impedance_type: FaultImpedanceType = FaultImpedanceType.METALLIC
     fault_mode: FaultMode = FaultMode.METALLIC
     fault_impedance: FaultImpedance | None = None
-    arc_params: dict[str, Any] | None = None
-    z0_bus_data: dict[str, Any] | None = None
     created_at: str = ""
     updated_at: str = ""
     content_hash: str = ""
@@ -266,11 +282,8 @@ class FaultScenario:
         fault_type: FaultType | None = None,
         location: FaultLocation | None = None,
         config: ShortCircuitConfig | None = None,
-        fault_impedance_type: FaultImpedanceType | None = None,
         fault_mode: FaultMode | None = None,
         fault_impedance: Any = _SENTINEL,
-        arc_params: Any = _SENTINEL,
-        z0_bus_data: Any = _SENTINEL,
         updated_at: str | None = None,
     ) -> FaultScenario:
         """Create a copy with updated fields (copy-on-write, immutable)."""
@@ -281,22 +294,11 @@ class FaultScenario:
             fault_type=fault_type if fault_type is not None else self.fault_type,
             location=location if location is not None else self.location,
             config=config if config is not None else self.config,
-            fault_impedance_type=(
-                fault_impedance_type
-                if fault_impedance_type is not None
-                else self.fault_impedance_type
-            ),
             fault_mode=(fault_mode if fault_mode is not None else self.fault_mode),
             fault_impedance=(
                 fault_impedance
                 if not isinstance(fault_impedance, _SentinelType)
                 else self.fault_impedance
-            ),
-            arc_params=(
-                arc_params if not isinstance(arc_params, _SentinelType) else self.arc_params
-            ),
-            z0_bus_data=(
-                z0_bus_data if not isinstance(z0_bus_data, _SentinelType) else self.z0_bus_data
             ),
             created_at=self.created_at,
             updated_at=updated_at if updated_at is not None else self.updated_at,
@@ -313,11 +315,8 @@ class FaultScenario:
             "fault_type": self.fault_type.value,
             "location": self.location.to_dict(),
             "config": self.config.to_dict(),
-            "fault_impedance_type": self.fault_impedance_type.value,
             "fault_mode": self.fault_mode.value,
             "fault_impedance": (self.fault_impedance.to_dict() if self.fault_impedance else None),
-            "arc_params": self.arc_params,
-            "z0_bus_data": self.z0_bus_data,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "content_hash": self.content_hash,
@@ -336,11 +335,8 @@ class FaultScenario:
             fault_type=FaultType(data["fault_type"]),
             location=FaultLocation.from_dict(data["location"]),
             config=ShortCircuitConfig.from_dict(data.get("config", {})),
-            fault_impedance_type=FaultImpedanceType(data.get("fault_impedance_type", "METALLIC")),
             fault_mode=FaultMode(data.get("fault_mode", "METALLIC")),
             fault_impedance=fault_impedance,
-            arc_params=data.get("arc_params"),
-            z0_bus_data=data.get("z0_bus_data"),
             created_at=data.get("created_at", ""),
             updated_at=data.get("updated_at", ""),
             content_hash=data.get("content_hash", ""),
@@ -358,7 +354,6 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
 
     v1 Rules:
     - name is required (non-empty)
-    - SC_1F requires z0_bus_data
     - location_type="BRANCH" requires position in (0,1)
     - location_type="BUS" requires position = None
     - config.scenariusz in (MAX, MIN), nadpisanie_c only with justification
@@ -370,7 +365,6 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
     - location_type="BRANCH_POINT" → position (alpha) must be in [0,1]
     - fault_mode=METALLIC → fault_impedance must be None
     - fault_mode=IMPEDANCE → fault_impedance is required
-    - arc_params must be None (unsupported in v2)
     """
     if not jest_nazwa(scenario.name):
         raise FaultScenarioValidationError("Nazwa scenariusza jest wymagana")
@@ -423,17 +417,6 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
             "Tryb impedancyjny (IMPEDANCE) wymaga jawnej impedancji zwarcia (fault_impedance)"
         )
 
-    # v2 arc_params — unsupported, deterministic rejection — PR-25
-    if scenario.arc_params is not None:
-        raise FaultScenarioValidationError(
-            "Parametry łuku (arc_params) nie są obsługiwane w bieżącej wersji"
-        )
-
-    if scenario.fault_type == FaultType.SC_1F and scenario.z0_bus_data is None:
-        raise FaultScenarioValidationError(
-            "Zwarcie jednofazowe (SC_1F) wymaga danych impedancji zerowej (z0_bus_data)"
-        )
-
     if scenario.config.thermal_time_seconds <= 0:
         raise FaultScenarioValidationError("Czas cieplny thermal_time_seconds musi być > 0")
 
@@ -447,23 +430,20 @@ def compute_scenario_content_hash(scenario: FaultScenario) -> str:
     """
     Compute deterministic SHA-256 of scenario content.
 
-    Hash covers: name, fault_type, location, config, fault_impedance_type,
-    fault_mode, fault_impedance, arc_params, z0_bus_data, analysis_type.
+    Hash covers: name, fault_type, location, config,
+    fault_mode, fault_impedance, analysis_type.
     Sorted keys for determinism. Compact separators. UTF-8 encoding.
     """
     content = {
         "analysis_type": scenario.analysis_type.value,
-        "arc_params": scenario.arc_params,
         "config": scenario.config.to_dict(),
         "fault_impedance": (
             scenario.fault_impedance.to_dict() if scenario.fault_impedance else None
         ),
-        "fault_impedance_type": scenario.fault_impedance_type.value,
         "fault_mode": scenario.fault_mode.value,
         "fault_type": scenario.fault_type.value,
         "location": scenario.location.to_dict(),
         "name": scenario.name,
-        "z0_bus_data": scenario.z0_bus_data,
     }
     payload = json.dumps(content, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -481,11 +461,8 @@ def new_fault_scenario(
     fault_type: FaultType,
     location: FaultLocation,
     config: ShortCircuitConfig,
-    fault_impedance_type: FaultImpedanceType = FaultImpedanceType.METALLIC,
     fault_mode: FaultMode = FaultMode.METALLIC,
     fault_impedance: FaultImpedance | None = None,
-    arc_params: dict[str, Any] | None = None,
-    z0_bus_data: dict[str, Any] | None = None,
 ) -> FaultScenario:
     """
     Create a new FaultScenario with computed content_hash.
@@ -498,11 +475,8 @@ def new_fault_scenario(
         fault_type: SC_3F, SC_2F, or SC_1F.
         location: Fault location (bus/branch/node/branch_point).
         config: Short-circuit config (scenariusz MAX/MIN required — no default c).
-        fault_impedance_type: METALLIC (v1 default, backward-compat).
         fault_mode: METALLIC or IMPEDANCE (v2).
         fault_impedance: Explicit Zf (required for IMPEDANCE, forbidden for METALLIC).
-        arc_params: Reserved — unsupported in v2 (must be None).
-        z0_bus_data: Zero-sequence impedance data (required for SC_1F).
 
     Returns:
         Validated FaultScenario with computed content_hash.
@@ -521,11 +495,8 @@ def new_fault_scenario(
         fault_type=fault_type,
         location=location,
         config=cfg,
-        fault_impedance_type=fault_impedance_type,
         fault_mode=fault_mode,
         fault_impedance=fault_impedance,
-        arc_params=arc_params,
-        z0_bus_data=z0_bus_data,
         created_at=now,
         updated_at=now,
         content_hash="",  # Placeholder
@@ -545,11 +516,8 @@ def new_fault_scenario(
         fault_type=scenario.fault_type,
         location=scenario.location,
         config=scenario.config,
-        fault_impedance_type=scenario.fault_impedance_type,
         fault_mode=scenario.fault_mode,
         fault_impedance=scenario.fault_impedance,
-        arc_params=scenario.arc_params,
-        z0_bus_data=scenario.z0_bus_data,
         created_at=scenario.created_at,
         updated_at=scenario.updated_at,
         content_hash=content_hash,

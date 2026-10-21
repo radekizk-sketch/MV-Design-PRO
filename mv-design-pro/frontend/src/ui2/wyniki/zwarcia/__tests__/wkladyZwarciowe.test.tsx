@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { WkladyZwarciowe } from '../WkladyZwarciowe';
+import { kluczWkladow, parametryWkladowZKonfiguracji, useWkladyZwarciowe } from '../api';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { ZWARCIA_STRINGS } from '../strings';
 import { wkladyFixture, wkladyZeSzczegolemFixture } from './fixtures';
 
@@ -127,5 +129,124 @@ describe('WkladyZwarciowe — wykres udziałów procentowych (karta W-A F2)', ()
     expect(screen.queryByTestId('mvd-zwarcia-wklady-filtr')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-zwarcia-wklady-wykres')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-tabela')).not.toBeInTheDocument();
+  });
+});
+
+// Karta OD-14 × karta WSPÓŁCZYNNIK-C: pamięć podręczna wkładów rozróżnia parametry biegu —
+// ten sam punkt z innym scenariuszem c, innym nadpisaniem c albo inną Z_f to INNE wkłady
+// (inaczej ekran pokazałby wkłady innego biegu). Iloczyn: scenariusz {MAX, MIN} ×
+// nadpisanie c {brak, A, B} × Z_f {brak, A, B} dla jednego punktu.
+describe('kluczWkladow — klucz pamięci wkładów zależy od parametrów biegu', () => {
+  const zf = (r: number, x: number) => ({ r_f_ohm: r, x_f_ohm: x, poza_zakresem_iec60909: true as const });
+  const nadpisania = [null, { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, { wartosc: 1.0, uzasadnienie: 'Uzgodnienie z OSD' }];
+  const impedancje = [undefined, zf(2, 0), zf(0, 2)];
+
+  it('iloczyn 2 × 3 × 3 daje 18 różnych kluczy; te same wartości → ten sam klucz', () => {
+    const klucze = new Set<string>();
+    for (const scenariusz of ['MAX', 'MIN'] as const)
+      for (const nadpisanieC of nadpisania)
+        for (const impedancja of impedancje)
+          klucze.add(
+            kluczWkladow('BUS-GPZ', impedancja ? { scenariusz, nadpisanieC, impedancja } : { scenariusz, nadpisanieC }),
+          );
+    expect(klucze.size).toBe(18);
+    expect(kluczWkladow('BUS-GPZ', { scenariusz: 'MAX', nadpisanieC: null, impedancja: zf(2, 0) })).toBe(
+      kluczWkladow('BUS-GPZ', { scenariusz: 'MAX', nadpisanieC: null, impedancja: zf(2, 0) }),
+    );
+  });
+});
+
+describe('parametryWkladowZKonfiguracji — odczyt konfiguracji zapisanej na biegu', () => {
+  const konf = (over: Record<string, unknown> = {}) =>
+    ({
+      c_factor: { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+      thermal_time_seconds: { wartosc: 1, pochodzenie: 'opcje_biegu' },
+      metoda: 'IEC 60909',
+      scenariusz: 'MIN',
+      ...over,
+    }) as never;
+
+  it('scenariusz biegu i brak nadpisania → parametry bez Z_f', () => {
+    expect(parametryWkladowZKonfiguracji(konf())).toEqual({ scenariusz: 'MIN', nadpisanieC: null });
+  });
+
+  it('nadpisanie z uzasadnieniem i Z_f biegu przechodzą 1:1', () => {
+    const z = { r_f_ohm: 2, x_f_ohm: 0.5, poza_zakresem_iec60909: true };
+    expect(
+      parametryWkladowZKonfiguracji(
+        konf({
+          scenariusz: 'MAX',
+          c_factor: { tryb: 'nadpisanie', wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
+          impedancja_przejscia: z,
+        }),
+      ),
+    ).toEqual({
+      scenariusz: 'MAX',
+      nadpisanieC: { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' },
+      impedancja: z,
+    });
+  });
+
+  it.each([
+    ['brak konfiguracji', undefined],
+    ['bieg bez zapisanego scenariusza', konf({ scenariusz: null })],
+    ['nadpisanie bez uzasadnienia', konf({ c_factor: { tryb: 'nadpisanie', wartosc: 1.05, uzasadnienie: null } })],
+  ])('%s → null (uczciwy brak, bez domyślnego MAX)', (_n, k) => {
+    expect(parametryWkladowZKonfiguracji(k)).toBeNull();
+  });
+});
+
+// Karta OD-14: odświeżenie wyniku biegu daje NOWY obiekt parametrów o tych samych wartościach —
+// hook nie może przez to ponawiać (i anulować) tego samego żądania. Iloczyn: {te same
+// parametry nowym obiektem, inna Z_f, inny scenariusz, inne nadpisanie c} × liczba żądań
+// i treść żądania (scenariusz i nadpisanie c jadą zawsze — końcówka bez nich odmawia 422).
+describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami, nie obiektem', () => {
+  it('te same parametry nowym obiektem → jedno żądanie; każda zmiana wartości → kolejne', async () => {
+    useSnapshotStore.setState({
+      snapshot: { header: { name: 'Siec' }, buses: [] },
+    } as never);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ contributions: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const zf = (r: number) => ({ r_f_ohm: r, x_f_ohm: 0, poza_zakresem_iec60909: true as const });
+    const par = (
+      r: number,
+      scenariusz: 'MAX' | 'MIN' = 'MAX',
+      nadpisanieC: { wartosc: number; uzasadnienie: string } | null = null,
+    ) => ({ scenariusz, nadpisanieC, impedancja: zf(r) });
+    const { rerender } = renderHook(({ p }) => useWkladyZwarciowe('BUS-GPZ', p), {
+      initialProps: { p: par(2) },
+    });
+    rerender({ p: par(2) });
+    rerender({ p: par(2) });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    rerender({ p: par(3) });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    rerender({ p: par(3, 'MIN') });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    rerender({ p: par(3, 'MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }) });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4));
+    const ciala = fetchMock.mock.calls.map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(ciala.map((c) => [c.scenariusz, c.nadpisanie_c, c.fault_impedance])).toEqual([
+      ['MAX', null, { r_f_ohm: 2, x_f_ohm: 0 }],
+      ['MAX', null, { r_f_ohm: 3, x_f_ohm: 0 }],
+      ['MIN', null, { r_f_ohm: 3, x_f_ohm: 0 }],
+      ['MIN', { wartosc: 1.05, uzasadnienie: 'Uzgodnienie z OSD' }, { r_f_ohm: 3, x_f_ohm: 0 }],
+    ]);
+    vi.unstubAllGlobals();
+  });
+
+  it('brak parametrów biegu → brak żądania i stan „dane niedostępne" (null)', async () => {
+    useSnapshotStore.setState({
+      snapshot: { header: { name: 'Siec' }, buses: [] },
+    } as never);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', null));
+    expect(result.current).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });

@@ -261,8 +261,11 @@ def test_voltage_factor_c_lv_bez_tolerancji_odmowa():
         pk_kw=120.0,
     )
 
-    with pytest.raises(OdmowaToleranciiNnError, match="fault.c_tolerancja_nn_brak"):
+    with pytest.raises(OdmowaToleranciiNnError) as blad:
         transformer.get_voltage_factor_c_max()
+    # Postać strukturalna (partia 10): kod w polu odmowy nazwanej, nie w treści.
+    assert blad.value.kod == "fault.c_tolerancja_nn_brak"
+    assert "fault.c_tolerancja_nn_brak" not in str(blad.value)
     with pytest.raises(OdmowaToleranciiNnError):
         transformer.get_kt_correction_factor()
 

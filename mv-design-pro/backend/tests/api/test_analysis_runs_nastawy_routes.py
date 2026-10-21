@@ -202,7 +202,9 @@ def test_nastawy_json_422_gdy_szyna_poza_kandydatami(client: TestClient) -> None
     assert response.status_code == 422
     detail = response.json()["detail"]
     assert detail["kod"] is None
-    assert "b-nieznana" in detail["powod_pl"]
+    # Partia integracji 10: wskazanie spoza migawki = jawny brak, nie identyfikator.
+    assert detail["powod_pl"].startswith("Szyna spoza modelu nie jest kandydatem")
+    assert "b-nieznana" not in detail["powod_pl"]
 
 
 def test_nastawy_dopasowanie_json(client: TestClient) -> None:

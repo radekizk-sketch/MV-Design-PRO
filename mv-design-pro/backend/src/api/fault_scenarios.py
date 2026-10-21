@@ -33,6 +33,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from api.klucz_twin_dep import klucz_twin_z_sciezki
+from api.odmowa_http import OdmowaHttpError
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
     FaultScenarioHasRunsError,
@@ -97,8 +98,16 @@ def _payload_scenariusza(
 # =============================================================================
 
 
+#: Żądania scenariusza zwarciowego odrzucają pola, których backend nie czyta (partia integracji
+#: 10): dawne `z0_bus_data` i `arc_params` przyjmowano i ignorowano (fantom) — klient wysyłający
+#: pole spoza kontraktu dostaje 422, a nie cichą zgodę.
+_BEZ_POL_NIEZNANYCH = ConfigDict(extra="forbid")
+
+
 class FaultLocationRequest(BaseModel):
     """Fault location in the network."""
+
+    model_config = _BEZ_POL_NIEZNANYCH
 
     element_ref: str = Field(..., description="Identyfikator elementu sieci")
     location_type: str = Field(..., description="Typ lokalizacji: BUS lub BRANCH")
@@ -108,10 +117,24 @@ class FaultLocationRequest(BaseModel):
 
 
 class FaultImpedanceRequest(BaseModel):
-    """Fault impedance Zf — explicit R + X in Ohms (v2, PR-25)."""
+    """Impedancja przejścia w miejscu zwarcia Z_f = R_f + jX_f [Ω] (karta OD-14).
 
-    r_ohm: float = Field(..., description="Rezystancja zwarcia [Ω]")
-    x_ohm: float = Field(..., description="Reaktancja zwarcia [Ω]")
+    Reguły R_f ≥ 0 i X_f ≥ 0 egzekwuje domena (`domain.fault_scenario.FaultImpedance`) —
+    jedno źródło z rdzeniem IEC 60909; naruszenie wraca jako odmowa nazwana 422 z kodem.
+    """
+
+    model_config = _BEZ_POL_NIEZNANYCH
+
+    r_f_ohm: float = Field(
+        ...,
+        description="Rezystancja przejścia R_f w miejscu zwarcia [Ω], R_f ≥ 0",
+        json_schema_extra={"x-unit": "Ω"},
+    )
+    x_f_ohm: float = Field(
+        ...,
+        description="Reaktancja przejścia X_f w miejscu zwarcia [Ω], X_f ≥ 0",
+        json_schema_extra={"x-unit": "Ω"},
+    )
 
 
 class NadpisanieCRequest(BaseModel):
@@ -122,7 +145,7 @@ class NadpisanieCRequest(BaseModel):
     kod odmowy (`fault.c_nadpisanie_bez_uzasadnienia`) dla API, opcji biegu i magazynu.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = _BEZ_POL_NIEZNANYCH
 
     wartosc: float = Field(..., description="Wartość współczynnika napięciowego c")
     uzasadnienie: str = Field(..., description="Uzasadnienie inżyniera (wymagane)")
@@ -135,7 +158,7 @@ class ShortCircuitConfigRequest(BaseModel):
     backend PER WĘZEŁ z pasma jego napięcia. Klucz `c_factor` nie istnieje (extra=forbid).
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = _BEZ_POL_NIEZNANYCH
 
     scenariusz: Literal["MAX", "MIN"] = Field(
         ..., description="Scenariusz zwarciowy: MAX (Ik''max) albo MIN (Ik''min)"
@@ -159,8 +182,10 @@ class ShortCircuitConfigRequest(BaseModel):
 class CreateFaultScenarioRequest(BaseModel):
     """Request to create a new fault scenario (v1 + v2)."""
 
+    model_config = _BEZ_POL_NIEZNANYCH
+
     name: str = Field(..., description="Nazwa scenariusza zwarcia (PL)")
-    fault_type: str = Field(..., description="Typ zwarcia: SC_3F, SC_2F, SC_1F")
+    fault_type: str = Field(..., description="Typ zwarcia: SC_3F, SC_2F, SC_1F, SC_2F_G")
     location: FaultLocationRequest = Field(..., description="Lokalizacja zwarcia")
     config: ShortCircuitConfigRequest = Field(
         ..., description="Konfiguracja obliczeń (scenariusz MAX/MIN wymagany)"
@@ -171,16 +196,12 @@ class CreateFaultScenarioRequest(BaseModel):
     fault_impedance: FaultImpedanceRequest | None = Field(
         None, description="Impedancja zwarcia Zf [Ω] (wymagane dla IMPEDANCE)"
     )
-    arc_params: dict[str, Any] | None = Field(
-        None, description="Parametry łuku (zarezerwowane — nieobsługiwane w v2)"
-    )
-    z0_bus_data: dict[str, Any] | None = Field(
-        None, description="Dane impedancji zerowej (wymagane dla SC_1F)"
-    )
 
 
 class UpdateFaultScenarioRequest(BaseModel):
     """Request to update an existing fault scenario (v1 + v2)."""
+
+    model_config = _BEZ_POL_NIEZNANYCH
 
     name: str | None = Field(None, description="Nowa nazwa scenariusza")
     fault_type: str | None = Field(None, description="Nowy typ zwarcia")
@@ -190,10 +211,6 @@ class UpdateFaultScenarioRequest(BaseModel):
     fault_impedance: FaultImpedanceRequest | None = Field(
         None, description="Nowa impedancja zwarcia Zf [Ω]"
     )
-    arc_params: dict[str, Any] | None = Field(
-        None, description="Parametry łuku (zarezerwowane — nieobsługiwane)"
-    )
-    z0_bus_data: dict[str, Any] | None = Field(None, description="Nowe dane impedancji zerowej")
 
 
 class FaultScenarioResponse(BaseModel):
@@ -206,11 +223,8 @@ class FaultScenarioResponse(BaseModel):
     fault_type: str
     location: dict[str, Any]
     config: dict[str, Any]
-    fault_impedance_type: str
     fault_mode: str = "METALLIC"
     fault_impedance: dict[str, Any] | None = None
-    arc_params: dict[str, Any] | None = None
-    z0_bus_data: dict[str, Any] | None = None
     created_at: str
     updated_at: str
     content_hash: str
@@ -313,8 +327,9 @@ def create_fault_scenario(
     """
     Utwórz nowy scenariusz zwarcia.
 
-    Waliduje invarianty: nazwa wymagana, SC_1F wymaga z0_bus_data,
-    BRANCH wymaga pozycji w (0,1), BUS nie może mieć pozycji.
+    Waliduje invarianty: nazwa wymagana, BRANCH wymaga pozycji w (0,1), BUS nie może mieć
+    pozycji, tryb IMPEDANCE wymaga dopuszczalnej Z_f. Impedancje Z0/Z2 pochodzą z modelu sieci
+    (brama gotowości ENM w kwalifikowalności i przy tworzeniu biegu), nie ze scenariusza.
     """
     parsed_case_id = _parse_uuid(case_id, "case_id")
     _parse_fault_type(request.fault_type)
@@ -333,10 +348,7 @@ def create_fault_scenario(
 
     fault_impedance_dict = None
     if request.fault_impedance is not None:
-        fault_impedance_dict = {
-            "r_ohm": request.fault_impedance.r_ohm,
-            "x_ohm": request.fault_impedance.x_ohm,
-        }
+        fault_impedance_dict = request.fault_impedance.model_dump()
 
     try:
         scenario = service.create_scenario(
@@ -348,8 +360,6 @@ def create_fault_scenario(
             config=config_dict,
             fault_mode=request.fault_mode,
             fault_impedance=fault_impedance_dict,
-            arc_params=request.arc_params,
-            z0_bus_data=request.z0_bus_data,
         )
         return _payload_scenariusza(service, klucz, scenario.scenario_id)
     except FaultScenarioValidationError as exc:
@@ -444,10 +454,7 @@ def update_fault_scenario(
 
     fault_impedance_dict = None
     if request.fault_impedance is not None:
-        fault_impedance_dict = {
-            "r_ohm": request.fault_impedance.r_ohm,
-            "x_ohm": request.fault_impedance.x_ohm,
-        }
+        fault_impedance_dict = request.fault_impedance.model_dump()
 
     try:
         klucz = _wymagany_klucz(parsed_id)
@@ -460,8 +467,6 @@ def update_fault_scenario(
             config=config_dict,
             fault_mode=fault_mode_str,
             fault_impedance=fault_impedance_dict,
-            arc_params=request.arc_params,
-            z0_bus_data=request.z0_bus_data,
         )
         return _payload_scenariusza(service, klucz, parsed_id)
     except FaultScenarioNotFoundError as exc:
@@ -591,16 +596,6 @@ def create_run_from_scenario(
             detail="Analiza zablokowana: " + "; ".join(blocker_msgs),
         )
 
-    supported_fault_types = {"SC_3F", "SC_1F", "SC_2F", "SC_2F_G"}
-    if scenario.fault_type.value not in supported_fault_types:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "Scenariusz zwarciowy ma typ poza kanonicznym zakresem SC_3F, "
-                "SC_1F, SC_2F i SC_2F_G."
-            ),
-        )
-
     # JEDNO źródło budowy wejścia solvera ze scenariusza — wspólne ze ścieżką
     # serii przebiegów (karta BATCH-ROUTER, reguła KLASA, NIE INSTANCJA).
     solver_input: dict[str, Any] = solver_input_for_scenario(scenario)
@@ -638,10 +633,7 @@ def create_run_from_scenario(
         }
 
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
     # Dawny `except Exception` → HTTPException 500 z treścią wyjątku (karta #151) chował
     # ślad: HTTPException nie trafia do dziennika. Błąd programu idzie teraz do
     # globalnego handlera (`api/exception_handlers.py`): 500 + pełny ślad w dzienniku.

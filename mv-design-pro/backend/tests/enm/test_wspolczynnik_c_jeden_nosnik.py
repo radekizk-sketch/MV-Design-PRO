@@ -168,7 +168,9 @@ def test_nadpisanie_bez_uzasadnienia_odmowa_w_biegu(scenariusz: str, lokalizacja
         opcje["location"] = {"element_ref": _LOKALIZACJE[lokalizacja], "location_type": "BUS"}
     wynik = _bieg(opcje)
     assert wynik.status == "FAILED"
-    assert KOD_NADPISANIE_BEZ_UZASADNIENIA in (wynik.error_message or "")
+    # Postać strukturalna partii 10: kod w polu odmowy, komunikat biegu = samo zdanie.
+    assert "wymaga uzasadnienia" in (wynik.error_message or ""), wynik.error_message
+    assert KOD_NADPISANIE_BEZ_UZASADNIENIA not in (wynik.error_message or "")
 
 
 def test_dawny_klucz_c_factor_jest_odmowa_bez_warstwy_zgodnosci() -> None:

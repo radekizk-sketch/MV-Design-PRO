@@ -14,6 +14,8 @@ import { useEffect, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
 import type {
+  ImpedancjaPrzejsciaBiegu,
+  KonfiguracjaBieguZwarcia,
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
@@ -60,15 +62,68 @@ export interface WkladyZWywodem {
   readonly walidacjaIec: readonly PozycjaWalidacji[];
 }
 
-/** Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny). */
+/**
+ * Parametry biegu, z którymi backend liczy wkłady punktu — ZAPISANE na biegu wyświetlanym
+ * na ekranie (`konfiguracja_biegu` odpowiedzi wyników), nigdy z aktywnego przypadku.
+ *
+ * Karta WSPÓŁCZYNNIK-C (O-59): końcówka wkładów dobiera c z tabeli 1 IEC 60909-0 dla
+ * pasma węzła i scenariusza OGLĄDANEGO biegu (`scenariusz` wymagany, `nadpisanie_c`
+ * z uzasadnieniem) — żądanie bez scenariusza jest odmową 422. Karta OD-14: `impedancja`
+ * = Z_f biegu przez impedancję przejścia (brak = bieg metaliczny).
+ */
+export interface ParametryWkladowBiegu {
+  readonly scenariusz: 'MAX' | 'MIN';
+  readonly nadpisanieC: { readonly wartosc: number; readonly uzasadnienie: string } | null;
+  readonly impedancja?: ImpedancjaPrzejsciaBiegu;
+}
+
+/**
+ * Parametry wkładów z konfiguracji ZAPISANEJ na biegu — sam odczyt, bez fizyki.
+ *
+ * `null` (uczciwy brak, sekcja „dane niedostępne"): bieg nie zapisał scenariusza
+ * (starszy artefakt) albo zapisał nadpisanie c bez wartości lub uzasadnienia — wtedy
+ * wkładów TEGO biegu nie da się odtworzyć, a domyślne „MAX" byłoby domysłem.
+ */
+export function parametryWkladowZKonfiguracji(
+  konfiguracja: KonfiguracjaBieguZwarcia | null | undefined,
+): ParametryWkladowBiegu | null {
+  const scenariusz = konfiguracja?.scenariusz;
+  if (!konfiguracja || (scenariusz !== 'MAX' && scenariusz !== 'MIN')) return null;
+  const c = konfiguracja.c_factor;
+  let nadpisanieC: ParametryWkladowBiegu['nadpisanieC'] = null;
+  if (c?.tryb === 'nadpisanie') {
+    if (c.wartosc === null || c.uzasadnienie === null) return null;
+    nadpisanieC = { wartosc: c.wartosc, uzasadnienie: c.uzasadnienie };
+  }
+  return konfiguracja.impedancja_przejscia
+    ? { scenariusz, nadpisanieC, impedancja: konfiguracja.impedancja_przejscia }
+    : { scenariusz, nadpisanieC };
+}
+
+/**
+ * Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny) z parametrami biegu.
+ *
+ * Pole `fault_impedance` występuje WYŁĄCZNIE dla biegu przez Z_f (karta OD-14) — żądanie
+ * biegu metalicznego go nie niesie.
+ */
 export async function fetchWkladyZwarciowe(
   snapshot: EnergyNetworkModel,
   faultNodeRef: string,
+  parametry: ParametryWkladowBiegu,
 ): Promise<WkladyOdpowiedz> {
+  const { impedancja } = parametry;
   const response = await fetch('/api/proof/sc3f/contributions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ snapshot, fault_node_id: faultNodeRef }),
+    body: JSON.stringify({
+      snapshot,
+      fault_node_id: faultNodeRef,
+      scenariusz: parametry.scenariusz,
+      nadpisanie_c: parametry.nadpisanieC,
+      ...(impedancja
+        ? { fault_impedance: { r_f_ohm: impedancja.r_f_ohm, x_f_ohm: impedancja.x_f_ohm } }
+        : {}),
+    }),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as WkladyOdpowiedz;
@@ -98,27 +153,52 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
 }
 
 /**
- * Hook dostawcy wkładów dla aktywnego punktu zwarcia. Pobiera na zmianę punktu,
- * cache per punkt na życie ekranu (deterministyczny snapshot → deterministyczna
- * odpowiedź). Stany uczciwe: `null` = dane niedostępne (brak snapshotu / błąd /
- * w trakcie pobierania — istniejący stan „dane niedostępne" sekcji), `[]` =
- * sieć bez maszyn wirujących (backend zwraca pustą listę deterministycznie).
- * `punkt = null` wyłącza pobieranie (dostawca zewnętrzny przez props ma pierwszeństwo).
+ * Hook dostawcy wkładów dla aktywnego punktu zwarcia. Pobiera na zmianę punktu
+ * albo parametrów biegu, cache per (punkt × parametry biegu) na życie ekranu
+ * (deterministyczny snapshot → deterministyczna odpowiedź). Stany uczciwe: `null` =
+ * dane niedostępne (brak snapshotu / brak parametrów biegu / błąd / w trakcie
+ * pobierania — istniejący stan „dane niedostępne" sekcji), `[]` = sieć bez maszyn
+ * wirujących (backend zwraca pustą listę deterministycznie). `punkt = null` wyłącza
+ * pobieranie (dostawca zewnętrzny przez props ma pierwszeństwo).
  */
-export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null {
+export function useWkladyZwarciowe(
+  punkt: string | null,
+  parametry: ParametryWkladowBiegu | null,
+): WkladyZWywodem | null {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const [cache, setCache] = useState<Record<string, WkladyZWywodem>>({});
+  // Klucz pamięci podręcznej = punkt × scenariusz × nadpisanie c × Z_f biegu: ten sam
+  // punkt dwóch biegów o innym c albo innej Z_f to dwa różne wyniki wkładów.
+  const klucz = punkt === null || parametry === null ? null : kluczWkladow(punkt, parametry);
+  // Zależności efektu to WARTOŚCI parametrów, nie obiekt: każde odświeżenie wyniku biegu
+  // daje nowy obiekt konfiguracji o tych samych wartościach — zależność od obiektu
+  // anulowała pobieranie w toku i ponawiała to samo żądanie (karta OD-14).
+  const scenariusz = parametry?.scenariusz;
+  const cWartosc = parametry?.nadpisanieC?.wartosc;
+  const cUzasadnienie = parametry?.nadpisanieC?.uzasadnienie;
+  const rF = parametry?.impedancja?.r_f_ohm;
+  const xF = parametry?.impedancja?.x_f_ohm;
 
   useEffect(() => {
-    if (!punkt || !snapshot) return;
-    if (cache[punkt]) return;
+    if (!punkt || !snapshot || klucz === null || scenariusz === undefined) return;
+    if (cache[klucz]) return;
     let anulowane = false;
-    fetchWkladyZwarciowe(snapshot, punkt)
+    const parametryZadania: ParametryWkladowBiegu = {
+      scenariusz,
+      nadpisanieC:
+        cWartosc === undefined || cUzasadnienie === undefined
+          ? null
+          : { wartosc: cWartosc, uzasadnienie: cUzasadnienie },
+      ...(rF === undefined || xF === undefined
+        ? {}
+        : { impedancja: { r_f_ohm: rF, x_f_ohm: xF, poza_zakresem_iec60909: true as const } }),
+    };
+    fetchWkladyZwarciowe(snapshot, punkt, parametryZadania)
       .then((odpowiedz) => {
         if (!anulowane)
           setCache((c) => ({
             ...c,
-            [punkt]: {
+            [klucz]: {
               wklady: naWklady(odpowiedz),
               wywod: odpowiedz.wywod ?? [],
               wywodSekcje: odpowiedz.wywod_sekcje ?? [],
@@ -132,10 +212,21 @@ export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null 
     return () => {
       anulowane = true;
     };
-  }, [punkt, snapshot, cache]);
+  }, [punkt, snapshot, cache, klucz, scenariusz, cWartosc, cUzasadnienie, rF, xF]);
 
-  if (!punkt) return null;
-  return cache[punkt] ?? null;
+  if (klucz === null) return null;
+  return cache[klucz] ?? null;
+}
+
+/** Klucz wkładów punktu dla parametrów biegu (bez fizyki — sam zapis wartości). */
+export function kluczWkladow(punkt: string, parametry: ParametryWkladowBiegu): string {
+  const c = parametry.nadpisanieC
+    ? `|c:${parametry.nadpisanieC.wartosc}:${parametry.nadpisanieC.uzasadnienie}`
+    : '';
+  const zf = parametry.impedancja
+    ? `|zf:${parametry.impedancja.r_f_ohm}:${parametry.impedancja.x_f_ohm}`
+    : '';
+  return `${punkt}|${parametry.scenariusz}${c}${zf}`;
 }
 
 // ---------------------------------------------------------------------------

@@ -196,9 +196,14 @@ class TestCreateRunFromScenario:
         assert data["scenario_id"] == sid
         assert data["analysis_type"] == "SC_3F"
 
-    def test_create_run_sc2f_blocked(self):
-        """SC_2F without Z2 should be blocked by eligibility."""
-        scenario = _create_scenario(name="Run test 2F", fault_type="SC_2F")
+    @pytest.mark.parametrize("fault_type", ["SC_3F", "SC_2F", "SC_1F"])
+    def test_create_run_bez_modelu_zablokowany(self, fault_type):
+        """Model bez źródła i gałęzi blokuje bieg KAŻDEGO typu zwarcia — brama modelu.
+
+        Partia integracji 10: dawna blokada „SC_2F bez Z2" czytała fantomowe `z0_bus_data`
+        scenariusza; teraz blokadę daje walidacja ENM (ta sama co w `create_run`).
+        """
+        scenario = _create_scenario(name=f"Run test {fault_type}", fault_type=fault_type)
         sid = scenario["scenario_id"]
 
         response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
@@ -222,13 +227,40 @@ class TestGoldenFixture:
         eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
         assert eligibility["status"] == "ELIGIBLE"
 
-    def test_golden_sc2f_ineligible(self):
+    def test_golden_sc2f_eligible_i_bieg_powstaje(self):
+        """2F liczy się z modelu (Z2 = Z1 elementów biernych) — kwalifikuje się i bieg powstaje.
+
+        Dawna blokada „brak Z2" czytała fantomowe `z0_bus_data` scenariusza (partia 10).
+        """
         _seed_valid_enm(CASE_ID)
         scenario = _create_scenario(name="Golden 2F", fault_type="SC_2F", element_ref="bus-main")
         sid = scenario["scenario_id"]
         eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
+        assert eligibility["status"] == "ELIGIBLE", eligibility
+        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        assert response.status_code == 201, response.text
+
+    def test_golden_sc1f_model_bez_z0_ta_sama_blokada_w_kwalifikowalnosci_i_biegu(self):
+        """Predykaty parami: kwalifikowalność i `create_run` odmawiają TYM SAMYM kodem.
+
+        Kabel modelu nie ma Z0 (ostrzeżenie walidatora) — zwarcie doziemne nie jest dostępne.
+        Kwalifikowalność zwraca blokadę z kodem bramy modelu i elementem, a bieg utworzony
+        z pominięciem kwalifikowalności (opcje wprost) odmawia tym samym kodem.
+        """
+        from enm.canonical_analysis import KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ
+
+        _seed_valid_enm(CASE_ID)
+        scenario = _create_scenario(name="Golden 1F", fault_type="SC_1F", element_ref="bus-main")
+        sid = scenario["scenario_id"]
+        eligibility = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility").json()
         assert eligibility["status"] == "INELIGIBLE"
-        assert any("Z2" in blocker["message_pl"] for blocker in eligibility["blockers"])
+        kody = [b["code"] for b in eligibility["blockers"]]
+        assert kody == [KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ]
+        assert eligibility["blockers"][0]["element_ref"] == "branch-1"
+
+        response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
+        assert response.status_code == 409
+        assert "zablokowana" in response.json()["detail"].lower()
 
     def test_golden_sc3f_run_creates(self):
         _seed_valid_enm(CASE_ID)

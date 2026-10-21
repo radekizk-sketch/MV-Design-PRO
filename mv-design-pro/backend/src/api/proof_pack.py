@@ -8,14 +8,18 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from api.fault_scenarios import FaultImpedanceRequest
+from api.odmowa_http import OdmowaHttpError
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
 )
 from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FProofPack
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
+from enm.assembler import impedancja_zwarcia_z_opcji
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.core.voltage_factor import (
     NadpisanieC,
     Scenario,
@@ -41,6 +45,24 @@ class NadpisanieCZadanie(BaseModel):
 
 def _nadpisanie(zadanie: NadpisanieCZadanie | None) -> NadpisanieC | None:
     return nadpisanie_c_z_danych(zadanie.model_dump() if zadanie is not None else None)
+
+
+#: Opis pola Z_f żądań pakietów i wkładów (karta OD-14) — jedno zdanie dla trzech żądań.
+_OPIS_IMPEDANCJI_PRZEJSCIA = (
+    "Impedancja przejścia Z_f biegu, którego dotyczy dowód albo wkłady (karta OD-14). "
+    "Brak = zwarcie metaliczne IEC 60909; Z_f ≠ 0 = wynik poza zakresem IEC 60909."
+)
+
+
+def _z_f_z_zadania(impedancja: FaultImpedanceRequest | None) -> complex | None:
+    """Z_f żądania — TA SAMA reguła danych i normalizacja co opcja biegu (assembler).
+
+    Pakiet i wkłady liczone z inną regułą niż bieg opisywałyby inny prąd niż ten na ekranie
+    wyników; niedopuszczalna para wraca odmową nazwaną (422 z `kod` i `dane`).
+    """
+    if impedancja is None:
+        return None
+    return impedancja_zwarcia_z_opcji({KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA: impedancja.model_dump()})
 
 
 class SCAsymmetricalPackRequest(BaseModel):
@@ -74,6 +96,9 @@ class SCAsymmetricalPackRequest(BaseModel):
     tk_s: float = 1.0
     m_factor: float = 1.0
     n_factor: float = 0.0
+    fault_impedance: FaultImpedanceRequest | None = Field(
+        default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
+    )
 
 
 @router.get("/{project_id}/{case_id}/{run_id}/pack")
@@ -135,6 +160,7 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
         tk_s=payload.tk_s,
         m_factor=payload.m_factor,
         n_factor=payload.n_factor,
+        z_f_ohm=_z_f_z_zadania(payload.fault_impedance),
     )
     packs = SCAsymmetricalProofPack.generate_zip(pack_input, context)
     content = SCAsymmetricalProofPack.zbuduj_zip_zbiorczy(packs)
@@ -164,6 +190,9 @@ class SC3FPackRequest(BaseModel):
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
     tk_s: float = Field(1.0, description="Czas trwania zwarcia t_k [s]")
+    fault_impedance: FaultImpedanceRequest | None = Field(
+        default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
+    )
 
 
 class SCContributionsRequest(BaseModel):
@@ -184,6 +213,9 @@ class SCContributionsRequest(BaseModel):
     scenariusz: Scenario
     nadpisanie_c: NadpisanieCZadanie | None = None
     t_min_s: float = 0.10
+    fault_impedance: FaultImpedanceRequest | None = Field(
+        default=None, description=_OPIS_IMPEDANCJI_PRZEJSCIA
+    )
 
 
 # Odwolania normowe sekcji wywodu (ZWARCIA-PRO F3 pkt 8).
@@ -274,6 +306,19 @@ def _wywod_sekcje_wkladow(result: Any) -> list[dict[str, Any]]:
                 "latex": None,
             }
         )
+    z_f = result.white_box.get("z_f_ohm")
+    if z_f is not None:
+        naglowek.append(
+            {
+                "tekst": (
+                    "Zwarcie przez impedancję przejścia Z_f = "
+                    f"{_liczba_pl(z_f['re'], 3)} + j{_liczba_pl(z_f['im'], 3)} Ω: w mianowniku "
+                    "prądów częściowych stoi pętla Z_kk + Z_f. Wynik poza zakresem IEC 60909-0 "
+                    "(norma definiuje zwarcie metaliczne)."
+                ),
+                "latex": r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk} + Z_f|\,|Z_m|}\,I_{\mathrm{base}}",
+            }
+        )
     sekcje: list[dict[str, Any]] = [
         {"tytul": "Dane wejściowe i model", "kroki": naglowek, "norma": _NORMA_IEC_60909},
     ]
@@ -345,6 +390,25 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
         )
     if async_a is not None and limit_a is not None:
         regula_wartosc += f" (suma I″k,M = {_ka_pl(async_a)} kA, próg = {_ka_pl(limit_a)} kA)"
+    z_f = wb.get("z_f_ohm")
+    zakres: list[dict[str, str]] = (
+        []
+        if z_f is None
+        else [
+            {
+                # Karta OD-14 §3: Z_f ≠ 0 wyprowadza wynik poza zakres normy — pozycja mówi
+                # to wprost, z wartością Z_f; nie jest oceną zgodności, tylko zakresem metody.
+                "pozycja_pl": "Zakres ważności normy",
+                "wartosc_pl": (
+                    "zwarcie przez impedancję przejścia Z_f = "
+                    f"{_liczba_pl(z_f['re'], 3)} + j{_liczba_pl(z_f['im'], 3)} Ω — poza "
+                    "zakresem IEC 60909-0 (norma definiuje zwarcie metaliczne); wynik nie jest "
+                    "podstawą doboru aparatury ani wytrzymałości zwarciowej"
+                ),
+                "status": "INFO",
+            }
+        ]
+    )
     return [
         {
             "pozycja_pl": "Norma bazowa metody",
@@ -380,6 +444,7 @@ def _walidacja_iec(result: Any, input_hash: str) -> list[dict[str, str]]:
             "wartosc_pl": "dane wejściowe mają odcisk — to samo wejście daje ten sam wynik",
             "status": "PASS" if input_hash else "FAIL",
         },
+        *zakres,
     ]
 
 
@@ -394,6 +459,13 @@ def _input_hash_wkladow(payload: SCContributionsRequest) -> str:
                 payload.nadpisanie_c.model_dump() if payload.nadpisanie_c is not None else None
             ),
             "t_min_s": payload.t_min_s,
+            # Karta OD-14: Z_f w odcisku WYŁĄCZNIE gdy podana — odcisk żądania bez Z_f
+            # identyczny jak przed kartą.
+            **(
+                {"fault_impedance": payload.fault_impedance.model_dump()}
+                if payload.fault_impedance is not None
+                else {}
+            ),
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -411,8 +483,10 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     """
     from application.solvers.short_circuit_binding import graf_i_dobor_c_punktu
     from enm.models import EnergyNetworkModel
+    from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
     from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 
+    z_f_ohm = _z_f_z_zadania(payload.fault_impedance)
     # Migawka pochodzi z żądania: niezgodność z kontraktem ENM to odmowa danych projektanta,
     # walidowana osobno, żeby `ValidationError` z głębi obliczeń (model budowany przez
     # program) nie był przebierany za błąd danych (karta ODMOWA-DANYCH-422).
@@ -432,19 +506,24 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
             scenariusz=payload.scenariusz,
             nadpisanie_c=_nadpisanie(payload.nadpisanie_c),
         )
-        result = compute_machine_contributions(
-            punkt.graf,
-            punkt.fault_node_id,
-            c_factor=punkt.dobor_c.wartosc,
-            t_min_s=payload.t_min_s,
-        )
+        # Partia integracji 10: odmowa strukturalna rdzenia wychodzi ze zdaniem z nazwami
+        # elementów grafu (identyfikator węzła zostaje w rekordach odmowy).
+        with nazwy_w_odmowach_rdzenia(punkt.graf):
+            result = compute_machine_contributions(
+                punkt.graf,
+                punkt.fault_node_id,
+                c_factor=punkt.dobor_c.wartosc,
+                t_min_s=payload.t_min_s,
+                z_f_ohm=z_f_ohm,
+            )
     # Karta ODMOWA-DANYCH-422: 422 wyłącznie dla nazwanej odmowy danych (brak węzła
     # zwarcia w indeksie Z-bus, element bez szyny, osobliwa sieć); każdy inny `ValueError`
     # i dawny `KeyError` (karta #151) to błąd programu — 500 i pełny ślad.
     except OdmowaDanychError as exc:
-        raise HTTPException(
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się wyznaczyć wkładów zwarciowych: {exc}",
+            prefiks="Nie udało się wyznaczyć wkładów zwarciowych",
         ) from exc
     # Addytywnie: wywod prezentacyjny {tekst, latex} (zasada KaTeX) obok
     # surowego sladu WHITE BOX solvera — bez zmiany istniejacych pol.
@@ -488,6 +567,7 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
         scenariusz=payload.scenariusz,
         nadpisanie_c=_nadpisanie(payload.nadpisanie_c),
         tk_s=payload.tk_s,
+        z_f_ohm=_z_f_z_zadania(payload.fault_impedance),
     )
     from enm.models import EnergyNetworkModel
 
@@ -501,9 +581,10 @@ def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
     try:
         content = SC3FProofPack.generate_zip(pack_input, context)
     except OdmowaDanychError as exc:  # jak wyżej: inny wyjątek = błąd programu
-        raise HTTPException(
+        raise OdmowaHttpError(
+            exc,
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {exc}",
+            prefiks="Nie udało się zbudować pakietu dowodowego SC3F",
         ) from exc
     headers = {
         "Content-Disposition": (

@@ -591,6 +591,37 @@ def test_miejsce_zdanie_komunikatu(przypadek: str) -> None:
 
 
 @pytest.mark.parametrize("przypadek", sorted(WARTOSCI))
+@pytest.mark.parametrize(
+    "ref", ["stn-y", "", None], ids=["inny_identyfikator", "pusty", "brak_wskazania"]
+)
+@pytest.mark.parametrize("postac", ["slownik", "obiekt_modelu", "brak_migawki"])
+def test_zdanie_komunikatu_element_spoza_modelu_to_nie_element_bez_nazwy(
+    przypadek: str, ref: object, postac: str
+) -> None:
+    """Partia integracji 10 — iloczyn: nazwa elementu obecnego w migawce (każdy przypadek
+    `WARTOSCI`) × wskazanie elementu NIEOBECNEGO {inny identyfikator, pusty, brak} × postać
+    migawki {słownik, obiekt modelu, brak migawki}. Element spoza migawki to jawny brak
+    („Stacja spoza modelu"), nigdy „Stacja bez nazwy" (fałszywy stan danych) i nigdy
+    identyfikator."""
+    from types import SimpleNamespace
+
+    from enm.models import Substation
+
+    wartosc, _oczekiwana = WARTOSCI[przypadek]
+    if postac == "slownik":
+        model: object = {"substations": [_element(wartosc)]}
+    elif postac == "obiekt_modelu":
+        nazwa = wartosc if isinstance(wartosc, str) else ""
+        obiekt = Substation(ref_id="stn-x", name=nazwa, station_type="mv_lv", bus_refs=[])
+        model = SimpleNamespace(substations=[obiekt])
+    else:
+        model = None
+    zdanie = slownik.opis_elementu(model, ref, "Stacja")
+    assert zdanie == "Stacja spoza modelu"
+    assert "stn-y" not in zdanie
+
+
+@pytest.mark.parametrize("przypadek", sorted(WARTOSCI))
 def test_miejsce_nazwa_pozycji_katalogu(przypadek: str) -> None:
     """Nazwa pozycji katalogu: rekord-słownik (`name`, `name_pl`) i typ katalogu (obiekt) —
     nigdy identyfikator pozycji, także gdy nazwa jest mu równa."""

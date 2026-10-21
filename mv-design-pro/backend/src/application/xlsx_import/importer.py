@@ -114,14 +114,20 @@ class BladArkusza:
     komunikat: str
     wiersz: int | None = None
     kolumna: str | None = None
+    #: Kod maszynowy zastrzeżenia (np. kod walidatora modelu) — w POLU, nigdy w `komunikat`
+    #: (partia integracji 10). `None` dla zastrzeżeń parsera bez kodu; klucz pomijany.
+    kod: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "arkusz": self.arkusz,
             "wiersz": self.wiersz,
             "kolumna": self.kolumna,
             "komunikat": self.komunikat,
         }
+        if self.kod is not None:
+            wynik["kod"] = self.kod
+        return wynik
 
     def jako_tekst(self) -> str:
         czesci = [f"Arkusz '{self.arkusz}'"]

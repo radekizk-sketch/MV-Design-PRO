@@ -46,9 +46,11 @@ from typing import Any
 from application.analyses.grid_strength import resolve_n_parallel
 from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
 from enm.nazwy_elementow import nazwa_po_identyfikatorze, zbuduj_indeks_nazw
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
@@ -397,6 +399,9 @@ def build_migotanie_view(run: CanonicalRun) -> dict[str, Any]:
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
+    # Karta OD-14: wynik zwarcia przez impedancję przejścia Z_f poza zakresem tej
+    # zdolności — odmowa SI-117 (jedno źródło: `blokady_zakresu_biegu`).
+    wymagaj_zakresu_biegu(run, ZdolnoscMiarodajna.REGULATORY_EVIDENCE)
 
     snapshot = run.snapshot or {}
     ibg_by_bus = _ibg_by_bus(snapshot)

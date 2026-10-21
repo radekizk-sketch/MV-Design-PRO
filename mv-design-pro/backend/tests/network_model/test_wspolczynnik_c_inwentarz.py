@@ -183,13 +183,8 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         "network_model/solvers/v126_academic.py",
         "if 0.90 <= voltage <= 1.10 and kryterium_pradowe:",
     ): (2, "pasmo napięcia ±10 % U_n hosting capacity"),
-    (
-        "protection/curves/curve_calculator.py",
-        "current_range: tuple[float, float] = (1.1, 20.0),",
-    ): (
-        1,
-        "zakres krotności prądu krzywej zabezpieczenia",
-    ),
+    # Fasada `protection/curves/curve_calculator.py` skasowana w partii integracji 10 —
+    # jej literał zakresu krotności zniknął razem z plikiem (zostaje w `iec_curves.py`).
     ("protection/curves/iec_curves.py", "current_range: tuple[float, float] = (1.1, 20.0),"): (
         1,
         "zakres krotności prądu krzywej IEC 60255",

@@ -36,7 +36,13 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import (
+    RODZAJ_ELEMENT,
+    OdmowaDanychError,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
     FaultLoopResult,
@@ -61,6 +67,19 @@ RODZAJ_PRADU_IT_PL = (
 )
 
 
+#: Kod odmowy danych odcinka sieci IT (pole `kod` rekordu odmowy rdzenia).
+KOD_ODCINEK_IT_DANE = "petla_tt_it.odcinek_dane"
+
+#: Dana pętli TT/IT → (symbol, opis po polsku) — JEDNO źródło słów odmów `DaneTtIt`
+#: i `_wymagana`; klucz pola nie trafia do treści (partia integracji 10).
+OPISY_DANYCH_TT_IT: dict[str, tuple[str, str]] = {
+    "r_a_ohm": ("R_A", "rezystancja uziomu instalacji odbiorczej"),
+    "r_b_ohm": ("R_B", "rezystancja uziomu punktu neutralnego transformatora"),
+    "i_delta_n_a": ("I_Δn", "prąd różnicowy znamionowy wyłącznika RCD"),
+    "czestotliwosc_hz": ("f", "częstotliwość sieci"),
+}
+
+
 @dataclass(frozen=True)
 class PojemnoscDoziemnaOdcinka:
     """Pojemność doziemna JEDNEGO odcinka sieci IT — dane SUROWE z modelu.
@@ -77,19 +96,33 @@ class PojemnoscDoziemnaOdcinka:
     n_parallel: int = 1
 
     def __post_init__(self) -> None:
+        # Partia integracji 10: odmowa strukturalna (odcinek w odwołaniu `RODZAJ_ELEMENT`,
+        # treść bez identyfikatora i kluczy pól; nazwę dokłada `enm/zdania_odmow_rdzenia`).
         if self.b0_siemens_per_km < 0.0:
-            raise OdmowaDanychError(
-                f"Odcinek '{self.branch_ref}': b0_siemens_per_km musi być ≥ 0, "
-                f"otrzymano {self.b0_siemens_per_km}."
+            raise self._odmowa(
+                "Susceptancja zerowa b_0 odcinka sieci IT nie może być ujemna, otrzymano "
+                f"{self.b0_siemens_per_km} S/km."
             )
         if self.length_km <= 0.0:
-            raise OdmowaDanychError(
-                f"Odcinek '{self.branch_ref}': length_km musi być > 0, otrzymano {self.length_km}."
+            raise self._odmowa(
+                f"Długość odcinka sieci IT musi być dodatnia, otrzymano {self.length_km} km."
             )
         if self.n_parallel < 1:
-            raise OdmowaDanychError(
-                f"Odcinek '{self.branch_ref}': n_parallel musi być ≥ 1, otrzymano {self.n_parallel}."
+            raise self._odmowa(
+                "Liczba torów równoległych odcinka sieci IT musi wynosić co najmniej 1, "
+                f"otrzymano {self.n_parallel}."
             )
+
+    def _odmowa(self, tresc: str) -> OdmowaWejsciaRdzenia:
+        return OdmowaWejsciaRdzenia(
+            [
+                RekordOdmowy(
+                    KOD_ODCINEK_IT_DANE,
+                    tresc,
+                    (OdwolanieElementu(RODZAJ_ELEMENT, self.branch_ref),),
+                )
+            ]
+        )
 
 
 @dataclass(frozen=True)
@@ -117,8 +150,10 @@ class DaneTtIt:
             ("czestotliwosc_hz", self.czestotliwosc_hz),
         ):
             if wartosc is not None and (not math.isfinite(wartosc) or wartosc <= 0.0):
+                symbol, opis = OPISY_DANYCH_TT_IT[nazwa]
                 raise OdmowaDanychError(
-                    f"Dane pętli TT/IT: '{nazwa}' musi być skończone i > 0, otrzymano {wartosc}."
+                    f"Dane pętli TT/IT: {opis} {symbol} musi być liczbą skończoną i dodatnią, "
+                    f"otrzymano {wartosc}."
                 )
 
 
@@ -169,11 +204,12 @@ def _skladowa_zerowa(component: LoopImpedanceComponent) -> bool:
     return component.r_ohm == 0.0 and component.x_ohm == 0.0
 
 
-def _wymagana(dane: DaneTtIt, nazwa: str, uklad: NetworkType, opis_pl: str) -> float:
+def _wymagana(dane: DaneTtIt, nazwa: str, uklad: NetworkType) -> float:
     wartosc = getattr(dane, nazwa)
     if wartosc is None:
+        symbol, opis = OPISY_DANYCH_TT_IT[nazwa]
         raise OdmowaDanychError(
-            f"Układ {uklad.value}: brak danej '{nazwa}' ({opis_pl}) — pętla zwarcia doziemnego "
+            f"Układ {uklad.value}: brak danej {symbol} ({opis}) — pętla zwarcia doziemnego "
             "nie jest liczona bez niej; brak nie jest zastępowany żadną wartością."
         )
     return float(wartosc)
@@ -186,13 +222,9 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
             "Układ TT: brak danych pętli doziemnej (R_A, R_B, I_Δn) — pętla nie jest liczona."
         )
     dane = data.dane_tt_it
-    r_a = _wymagana(dane, "r_a_ohm", NetworkType.TT, "rezystancja uziomu instalacji odbiorczej")
-    r_b = _wymagana(
-        dane, "r_b_ohm", NetworkType.TT, "rezystancja uziomu punktu neutralnego transformatora"
-    )
-    i_delta_n = _wymagana(
-        dane, "i_delta_n_a", NetworkType.TT, "prąd różnicowy znamionowy wyłącznika RCD"
-    )
+    r_a = _wymagana(dane, "r_a_ohm", NetworkType.TT)
+    r_b = _wymagana(dane, "r_b_ohm", NetworkType.TT)
+    i_delta_n = _wymagana(dane, "i_delta_n_a", NetworkType.TT)
     if not _skladowa_zerowa(data.return_conductor):
         raise OdmowaDanychError(
             "Układ TT: przewód powrotny PE/PEN kabla nie jest drogą powrotu prądu zwarcia "
@@ -282,7 +314,7 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
             "Układ IT: brak pojemności doziemnych odcinków sieci (b_0 kabli) — prąd pierwszego "
             "zwarcia doziemnego nie jest liczony bez nich."
         )
-    f_hz = _wymagana(dane, "czestotliwosc_hz", NetworkType.IT, "częstotliwość sieci")
+    f_hz = _wymagana(dane, "czestotliwosc_hz", NetworkType.IT)
 
     trace: list[dict[str, Any]] = []
     # Pierwsze zwarcie: susceptancja doziemna całej sieci IT (tory równoległe sumują się).

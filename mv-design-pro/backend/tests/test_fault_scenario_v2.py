@@ -7,7 +7,7 @@ Tests:
 - NODE / BRANCH_POINT location types
 - Validation rules for v2 fields
 - Hash determinism with v2 fields
-- arc_params rejection
+- phantom fields (arc_params, z0_bus_data) removed (partia integracji 10)
 - Backward compatibility (v1 data still works)
 - Serialization round-trip for v2
 - Eligibility gating for v2 (IMPEDANCE, BRANCH_POINT)
@@ -39,7 +39,6 @@ def _make_v2_scenario(
     position: float | None = None,
     fault_mode: FaultMode = FaultMode.METALLIC,
     fault_impedance: FaultImpedance | None = None,
-    arc_params: dict | None = None,
 ) -> FaultScenario:
     """Helper: create a v2 test scenario."""
     return new_fault_scenario(
@@ -53,7 +52,6 @@ def _make_v2_scenario(
         ),
         fault_mode=fault_mode,
         fault_impedance=fault_impedance,
-        arc_params=arc_params,
         config=ShortCircuitConfig(scenariusz="MAX"),
     )
 
@@ -90,27 +88,27 @@ class TestFaultImpedance:
     """Tests for FaultImpedance frozen dataclass."""
 
     def test_creation(self):
-        fi = FaultImpedance(r_ohm=1.5, x_ohm=3.0)
-        assert fi.r_ohm == 1.5
-        assert fi.x_ohm == 3.0
+        fi = FaultImpedance(r_f_ohm=1.5, x_f_ohm=3.0)
+        assert fi.r_f_ohm == 1.5
+        assert fi.x_f_ohm == 3.0
 
     def test_frozen(self):
-        fi = FaultImpedance(r_ohm=1.0, x_ohm=2.0)
+        fi = FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0)
         with pytest.raises(AttributeError):
-            fi.r_ohm = 5.0  # type: ignore[misc]
+            fi.r_f_ohm = 5.0  # type: ignore[misc]
 
     def test_to_dict(self):
-        fi = FaultImpedance(r_ohm=0.5, x_ohm=1.2)
+        fi = FaultImpedance(r_f_ohm=0.5, x_f_ohm=1.2)
         d = fi.to_dict()
-        assert d == {"r_ohm": 0.5, "x_ohm": 1.2}
+        assert d == {"r_f_ohm": 0.5, "x_f_ohm": 1.2}
 
     def test_from_dict(self):
-        fi = FaultImpedance.from_dict({"r_ohm": 0.5, "x_ohm": 1.2})
-        assert fi.r_ohm == 0.5
-        assert fi.x_ohm == 1.2
+        fi = FaultImpedance.from_dict({"r_f_ohm": 0.5, "x_f_ohm": 1.2})
+        assert fi.r_f_ohm == 0.5
+        assert fi.x_f_ohm == 1.2
 
     def test_round_trip(self):
-        original = FaultImpedance(r_ohm=2.3, x_ohm=4.6)
+        original = FaultImpedance(r_f_ohm=2.3, x_f_ohm=4.6)
         restored = FaultImpedance.from_dict(original.to_dict())
         assert restored == original
 
@@ -228,19 +226,19 @@ class TestFaultModeValidation:
         with pytest.raises(FaultScenarioValidationError, match="metaliczny"):
             _make_v2_scenario(
                 fault_mode=FaultMode.METALLIC,
-                fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+                fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
             )
 
     def test_impedance_with_impedance_ok(self):
         """IMPEDANCE mode with explicit fault_impedance is valid."""
         s = _make_v2_scenario(
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=0.5, x_ohm=1.5),
+            fault_impedance=FaultImpedance(r_f_ohm=0.5, x_f_ohm=1.5),
         )
         assert s.fault_mode == FaultMode.IMPEDANCE
         assert s.fault_impedance is not None
-        assert s.fault_impedance.r_ohm == 0.5
-        assert s.fault_impedance.x_ohm == 1.5
+        assert s.fault_impedance.r_f_ohm == 0.5
+        assert s.fault_impedance.x_f_ohm == 1.5
 
     def test_impedance_without_impedance_fails(self):
         """IMPEDANCE mode without fault_impedance → error (fault.impedance_missing)."""
@@ -252,21 +250,32 @@ class TestFaultModeValidation:
 
 
 # ============================================================================
-# arc_params rejection (v2)
+# Pola-fantomy skasowane (partia integracji 10)
 # ============================================================================
 
 
-class TestArcParamsRejection:
-    """arc_params must be None in v2 — deterministic rejection."""
+class TestPolaFantomySkasowane:
+    """`arc_params` (zawsze odrzucane) i `z0_bus_data` (nigdy nie czytane) nie istnieją.
 
-    def test_arc_params_none_ok(self):
-        s = _make_v2_scenario(arc_params=None)
-        assert s.arc_params is None
+    Intencja dawnego testu odrzucenia `arc_params`: scenariusz nie niesie parametrów łuku,
+    których nikt nie liczy. Odtąd pole w ogóle nie istnieje w domenie, a żądanie API z tym
+    polem dostaje 422 (`tests/test_fault_scenarios_api.py`).
+    """
 
-    def test_arc_params_not_none_fails(self):
-        """Non-None arc_params → validation error (fault.arc_params_unsupported)."""
-        with pytest.raises(FaultScenarioValidationError, match="łuku"):
-            _make_v2_scenario(arc_params={"voltage_v": 100, "length_m": 0.5})
+    def test_domena_nie_przyjmuje_pol_fantomow(self):
+        for pole in ("arc_params", "z0_bus_data"):
+            with pytest.raises(TypeError):
+                new_fault_scenario(
+                    study_case_id=FIXED_CASE_ID,
+                    name="Fantom",
+                    fault_type=FaultType.SC_3F,
+                    location=FaultLocation(element_ref="bus-1", location_type="NODE"),
+                    **{pole: {}},
+                )
+
+    def test_slownik_scenariusza_bez_pol_fantomow(self):
+        s = _make_v2_scenario()
+        assert not {"arc_params", "z0_bus_data"} & set(s.to_dict())
 
 
 # ============================================================================
@@ -282,12 +291,12 @@ class TestV2HashDeterminism:
         s1 = _make_v2_scenario(
             name="Impedancja test",
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
         )
         s2 = _make_v2_scenario(
             name="Impedancja test",
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
         )
         assert compute_scenario_content_hash(s1) == compute_scenario_content_hash(s2)
 
@@ -296,7 +305,7 @@ class TestV2HashDeterminism:
         s1 = _make_v2_scenario(fault_mode=FaultMode.METALLIC)
         s2 = _make_v2_scenario(
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
         )
         assert compute_scenario_content_hash(s1) != compute_scenario_content_hash(s2)
 
@@ -304,11 +313,11 @@ class TestV2HashDeterminism:
         """Different fault_impedance → different hash."""
         s1 = _make_v2_scenario(
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
         )
         s2 = _make_v2_scenario(
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=3.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=3.0),
         )
         assert compute_scenario_content_hash(s1) != compute_scenario_content_hash(s2)
 
@@ -351,7 +360,6 @@ class TestV2BackwardCompat:
         )
         assert s.fault_mode == FaultMode.METALLIC
         assert s.fault_impedance is None
-        assert s.arc_params is None
 
     def test_v1_branch_scenario_still_works(self):
         """BRANCH location (v1) still valid."""
@@ -386,7 +394,6 @@ class TestV2BackwardCompat:
         s = FaultScenario.from_dict(v1_data)
         assert s.fault_mode == FaultMode.METALLIC
         assert s.fault_impedance is None
-        assert s.arc_params is None
 
 
 # ============================================================================
@@ -413,16 +420,16 @@ class TestV2Serialization:
         original = _make_v2_scenario(
             name="Roundtrip impedancyjny",
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=0.8, x_ohm=1.6),
+            fault_impedance=FaultImpedance(r_f_ohm=0.8, x_f_ohm=1.6),
         )
         data = original.to_dict()
         restored = FaultScenario.from_dict(data)
         assert restored.fault_mode == FaultMode.IMPEDANCE
         assert restored.fault_impedance is not None
-        assert restored.fault_impedance.r_ohm == 0.8
-        assert restored.fault_impedance.x_ohm == 1.6
+        assert restored.fault_impedance.r_f_ohm == 0.8
+        assert restored.fault_impedance.x_f_ohm == 1.6
         assert data["fault_mode"] == "IMPEDANCE"
-        assert data["fault_impedance"] == {"r_ohm": 0.8, "x_ohm": 1.6}
+        assert data["fault_impedance"] == {"r_f_ohm": 0.8, "x_f_ohm": 1.6}
 
     def test_branch_point_round_trip(self):
         original = _make_v2_scenario(
@@ -456,7 +463,7 @@ class TestV2CopyOnWrite:
         s = _make_v2_scenario(fault_mode=FaultMode.METALLIC)
         updated = s.with_updates(
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
         )
         assert updated.fault_mode == FaultMode.IMPEDANCE
         assert updated.fault_impedance is not None
@@ -465,20 +472,20 @@ class TestV2CopyOnWrite:
     def test_update_fault_impedance(self):
         s = _make_v2_scenario(
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
         )
         updated = s.with_updates(
-            fault_impedance=FaultImpedance(r_ohm=3.0, x_ohm=6.0),
+            fault_impedance=FaultImpedance(r_f_ohm=3.0, x_f_ohm=6.0),
         )
-        assert updated.fault_impedance.r_ohm == 3.0  # type: ignore[union-attr]
-        assert updated.fault_impedance.x_ohm == 6.0  # type: ignore[union-attr]
+        assert updated.fault_impedance.r_f_ohm == 3.0  # type: ignore[union-attr]
+        assert updated.fault_impedance.x_f_ohm == 6.0  # type: ignore[union-attr]
 
     def test_update_preserves_v2_fields(self):
         s = _make_v2_scenario(
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
         )
         updated = s.with_updates(name="Nowa nazwa")
         assert updated.fault_mode == FaultMode.IMPEDANCE
         assert updated.fault_impedance is not None
-        assert updated.fault_impedance.r_ohm == 1.0
+        assert updated.fault_impedance.r_f_ohm == 1.0

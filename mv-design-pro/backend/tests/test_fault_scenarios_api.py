@@ -119,14 +119,17 @@ class TestWspolczynnikCKontrakt:
             }
         )
         assert resp.status_code == 422
-        assert "fault.c_nadpisanie_bez_uzasadnienia" in resp.text
+        # Odmowa nazwana (partia 10): kod w polu `kod`, zdanie w `detail` bez kodu.
+        assert resp.json()["kod"] == "fault.c_nadpisanie_bez_uzasadnienia"
+        assert "fault.c_" not in resp.json()["detail"]
 
     def test_nadpisanie_niedodatnie_to_422_z_kodem(self):
         resp = self._post(
             {"scenariusz": "MAX", "nadpisanie_c": {"wartosc": 0, "uzasadnienie": "x"}}
         )
         assert resp.status_code == 422
-        assert "fault.c_nadpisanie_wartosc_niepoprawna" in resp.text
+        assert resp.json()["kod"] == "fault.c_nadpisanie_wartosc_niepoprawna"
+        assert "fault.c_" not in resp.json()["detail"]
 
 
 class TestCreateScenario:
@@ -135,7 +138,10 @@ class TestCreateScenario:
         assert data["name"] == "Mój scenariusz"
         assert data["fault_type"] == "SC_3F"
         assert data["analysis_type"] == "SC_3F"
-        assert data["fault_impedance_type"] == "METALLIC"
+        assert data["fault_mode"] == "METALLIC"
+        # Partia 10: dawne pole `fault_impedance_type` (zawsze METALLIC) skasowane — tryb
+        # zwarcia niesie WYŁĄCZNIE `fault_mode` (jedna prawda o trybie).
+        assert "fault_impedance_type" not in data
         assert data["content_hash"] != ""
         assert data["created_at"] != ""
         assert data["updated_at"] != ""
@@ -246,24 +252,26 @@ class TestSldOverlay:
 
 
 class TestEligibility:
-    def test_get_eligibility_sc3f(self):
-        created = _create_scenario(case_id=CASE_ID, fault_type="SC_3F")
-        sid = created["scenario_id"]
-        resp = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["status"] == "ELIGIBLE"
-        assert data["blockers"] == []
+    @pytest.mark.parametrize("fault_type", ["SC_3F", "SC_2F", "SC_1F"])
+    def test_get_eligibility_pusty_model_blokada_walidacji(self, fault_type):
+        """Pusty model (bez źródła) — blokady walidacji ENM, te same dla KAŻDEGO typu zwarcia.
 
-    def test_get_eligibility_sc2f_ineligible(self):
-        created = _create_scenario(case_id=CASE_ID, fault_type="SC_2F")
+        Partia integracji 10: kwalifikowalność czyta tę samą ocenę modelu co `create_run`
+        (`enm.canonical_analysis.ocen_model_biegu`). Dawniej SC_3F na pustym modelu dostawał
+        „kwalifikuje się", a bieg był odrzucany; SC_2F dostawał blokadę „brak Z2" z fantomowego
+        `z0_bus_data`, którego żaden bieg nie czytał.
+        """
+        from enm.canonical_analysis import KOD_MODEL_NIE_PRZESZEDL_WALIDACJI
+
+        created = _create_scenario(case_id=CASE_ID, fault_type=fault_type)
         sid = created["scenario_id"]
         resp = client.get(f"{BASE_URL}/fault-scenarios/{sid}/eligibility")
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "INELIGIBLE"
-        assert len(data["blockers"]) >= 1
-        assert any("Z2" in b["message_pl"] for b in data["blockers"])
+        assert data["blockers"]
+        assert {b["code"] for b in data["blockers"]} == {KOD_MODEL_NIE_PRZESZEDL_WALIDACJI}
+        assert not any("Z2" in b["message_pl"] for b in data["blockers"])
 
     def test_get_eligibility_branch_point_blocked(self):
         """(e) Lokalizacja BRANCH_POINT — BLOCKER z kodem kanonu (karta C6-PERSIST)."""

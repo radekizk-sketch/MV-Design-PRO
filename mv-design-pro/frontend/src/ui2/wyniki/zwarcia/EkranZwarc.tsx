@@ -16,7 +16,7 @@ import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
-import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
+import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { PasmoMinMax } from './PasmoMinMax';
@@ -82,7 +82,15 @@ export function EkranZwarc({
   // R3-B (K3-G3): realny dostawca wkładów — rozbicie maszynowe z backendu
   // (endpoint SC3F contributions). Props `wklady` (test/nadpisanie) ma
   // pierwszeństwo — wtedy hook nie pobiera (punkt=null).
-  const wkladyPobrane = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
+  // Karta OD-14: wkłady biegu przez impedancję przejścia liczą tę samą pętlę (Z_f z
+  // konfiguracji ZAPISANEJ na biegu), inaczej sekcja wkładów pokazałaby prądy metaliczne
+  // obok tabeli biegu przez Z_f.
+  // Karta WSPÓŁCZYNNIK-C: wkłady liczone ze scenariuszem i nadpisaniem c TEGO biegu
+  // (końcówka dobiera c z tabeli 1 dla pasma węzła; bez scenariusza odmawia 422).
+  const wkladyPobrane = useWkladyZwarciowe(
+    wklady ? null : aktywnyPunkt,
+    parametryWkladowZKonfiguracji(wynik?.konfiguracja_biegu),
+  );
 
   // V12K-281 (K13): rozpływ gałęziowy wybranego punktu NA ŻĄDANIE — wiersze
   // zbiorcze nie niosą już rozpływu (odpowiedź 730 MB dla 50 stacji); dane

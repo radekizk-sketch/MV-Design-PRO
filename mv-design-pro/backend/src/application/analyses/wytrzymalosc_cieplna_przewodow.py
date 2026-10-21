@@ -77,6 +77,7 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     podsumowanie_czasow,
     slad_czasu,
 )
+from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from application.twin_key import klucz_twin_dla_przypadku
 from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import CanonicalRun, pobierz_rozplyw_biegu
@@ -90,6 +91,7 @@ from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import resolve_thermal_params
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.conductor_thermal_withstand import (
     CONDUCTOR_KIND_BARE,
@@ -537,6 +539,9 @@ def _odtworz_wynik_zwarciowy(
             f"Przebieg nie jest zakończony (stan: {stan_przebiegu_pl(run.status)}); "
             "wynik zwarciowy nie jest dostępny."
         )
+    # Karta OD-14: wynik zwarcia przez impedancję przejścia Z_f poza zakresem tej
+    # zdolności — odmowa SI-117 (jedno źródło: `blokady_zakresu_biegu`).
+    wymagaj_zakresu_biegu(run, ZdolnoscMiarodajna.SC_WITHSTAND_EVIDENCE)
 
     # `raw_result["results"]` jest LISTA wierszy (canonical_analysis.py:1015), nie mapa.
     wiersze = (run.raw_result or {}).get("results") or []

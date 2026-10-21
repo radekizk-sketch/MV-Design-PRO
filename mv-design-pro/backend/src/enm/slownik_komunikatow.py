@@ -28,12 +28,13 @@ import re
 from collections.abc import Iterable
 
 from network_model.catalog.types import etykieta_pola_katalogu_pl, nazwa_kategorii_katalogu_pl
-from network_model.nazwy import nazwa_nadana
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from pydantic import ValidationError
 
 from .nazwy_elementow import (
+    SPOZA_MODELU,
+    element_po_identyfikatorze,
     nazwa_nadana_elementu,
-    nazwa_nadana_po_identyfikatorze,
     nazwa_nadana_pozycji_katalogu,
 )
 
@@ -385,6 +386,7 @@ NAZWY_KOLEKCJI_PL: dict[str, str] = {
     "sources": "źródło zasilania",
     "loads": "odbiór",
     "generators": "wytwórca",
+    "shunt_capacitors": "bateria kondensatorów",
     "substations": "stacja",
     "bays": "pole rozdzielnicy",
     "junctions": "węzeł rozgałęźny",
@@ -577,16 +579,21 @@ def lista_pl(nazwy: Iterable[str], spojnik: str = "albo") -> str:
 
 
 def _zdanie(rodzaj: str, nazwa: str | None) -> str:
-    """„Szyna „Sekcja 1”" albo „Szyna bez nazwy" — słowo rodzaju + nazwa w cudzysłowie."""
-    return f"{rodzaj} „{nazwa}”" if nazwa is not None else f"{rodzaj} bez nazwy"
+    """„Szyna „Sekcja 1”" albo „Szyna bez nazwy" — reguła z liścia `network_model.nazwy`."""
+    return opis_rodzaju_i_nazwy(rodzaj, nazwa)
 
 
 def opis_elementu(enm: object, ref: object, rodzaj: str) -> str:
     """Rodzaj elementu + jego nazwa z modelu (``enm`` — migawka albo ``EnergyNetworkModel``).
 
-    Element nieobecny w migawce albo bez nazwy opisuje słowo rodzaju — nigdy identyfikator.
+    Element bez nazwy opisuje słowo rodzaju („Szyna bez nazwy"), element nieobecny w migawce
+    — jawny brak („Szyna spoza modelu"); nigdy identyfikator. Partia integracji 10: element
+    spoza modelu nie jest „bez nazwy" — to dwa różne stany danych i dwa różne zdania.
     """
-    return _zdanie(rodzaj, nazwa_nadana_po_identyfikatorze(enm, ref))
+    element = element_po_identyfikatorze(enm, ref)
+    if element is None:
+        return f"{rodzaj} {SPOZA_MODELU}"
+    return _zdanie(rodzaj, nazwa_nadana_elementu(element))
 
 
 def opis_obiektu(element: object, rodzaj: str) -> str:

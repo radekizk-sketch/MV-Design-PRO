@@ -72,7 +72,7 @@ from enm.canonical_analysis import (
 )
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 logger = logging.getLogger(__name__)
 
@@ -371,7 +371,11 @@ def build_pq_area_view(
     snapshot = run.snapshot or {}
     bus_names = _bus_index(snapshot)
     if bus_ref not in bus_names:
-        raise OdmowaDanychError(f"Wskazany węzeł nie istnieje w modelu: {bus_ref}.")
+        raise OdmowaNazwana(
+            "Wskazany węzeł nie istnieje w modelu.",
+            kod="obszar_pq.wezel_spoza_modelu",
+            dane={"element_ref": bus_ref},
+        )
 
     # JEDNA walidacja modelu bazowego na CAŁY widok (nie na scenariusz) —
     # `apply_scenario` przyjmuje obiekt `EnergyNetworkModel`, nie słownik migawki.

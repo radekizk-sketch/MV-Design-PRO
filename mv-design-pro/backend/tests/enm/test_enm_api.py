@@ -265,9 +265,14 @@ def _run_app(uow_factory) -> TestClient:
     `GET /api/analysis-runs/{run_id}/results/short-circuit` (+ `/trace` dla White Box).
     """
     from api.analysis_runs import router as analysis_runs_router
+    from api.exception_handlers import register_exception_handlers
     from api.execution_runs import router as execution_runs_router
 
     test_app = FastAPI()
+    # Partia integracji 10: odmowy danych idą do klienta przez handlery globalne
+    # (`OdmowaDanychError` → 422, `OdmowaHttpError` → status routera) — aplikacja testowa
+    # rejestruje je jak `api/main.py`, inaczej nie ćwiczy realnej ścieżki odpowiedzi.
+    register_exception_handlers(test_app)
     test_app.include_router(enm_router)
     # Ścieżki obu routerów są już pełne (`/api/execution/...`, `/api/analysis-runs/...`)
     # — ten sam wzorzec montażu co `api/main.py` (bez dodatkowego prefiksu).

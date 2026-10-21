@@ -18,6 +18,7 @@ export const SCENARIUSZE_STRINGS = {
   anuluj: 'Anuluj',
   zapisz: 'Zapisz scenariusz',
   uruchom: 'Uruchom',
+  uruchomWToku: 'Obliczanie…',
   usun: 'Usuń',
   usunPotwierdz: 'Potwierdź usunięcie',
 
@@ -27,8 +28,8 @@ export const SCENARIUSZE_STRINGS = {
   polaRodzajMiejsca: 'Rodzaj miejsca',
   polaPozycja: 'Pozycja na odcinku (0–1)',
   polaTryb: 'Tryb zwarcia',
-  polaRezystancja: 'R zwarcia [Ω]',
-  polaReaktancja: 'X zwarcia [Ω]',
+  polaRezystancja: 'Rezystancja przejścia R_f [Ω]',
+  polaReaktancja: 'Reaktancja przejścia X_f [Ω]',
   polaCzasCieplny: 'Czas trwania zwarcia t_k [s]',
   polaWklady: 'Licz wkłady gałęziowe',
 
@@ -38,6 +39,6 @@ export const SCENARIUSZE_STRINGS = {
   kolWspolczynnikC: 'Współczynnik c',
   kolAkcje: 'Akcje',
 
-  uruchomiono: 'Uruchomiono obliczenie scenariusza',
+  uruchomiono: 'Obliczono scenariusz (wyniki w przestrzeni „Wyniki i dowody")',
   bladFormularza: 'Uzupełnij nazwę i element, w którym ma wystąpić zwarcie.',
 } as const;

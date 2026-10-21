@@ -100,7 +100,9 @@ class EligibilityService:
     A. Global gate: readiness.ready == false -> all INELIGIBLE
     B. SC_3F: source + buses + catalog_ref + impedance
     C. SC_1F: SC_3F prereqs + Z0 on branches/sources
-    D. SC_2F: SC_3F prereqs + Z2 data
+    D. SC_2F: SC_3F prereqs — ta sama brama co bieg (`enm.canonical_analysis.ocen_model_biegu`
+       wymaga dla 2F wyłącznie zdolności `short_circuit_3f`; Z2 bierze rdzeń IEC 60909 z modelu
+       sieci). Dawne blokady „brak Z2” (gałęzie, źródła) skasowane przy scaleniu partii 10 i 11.
     E. LOAD_FLOW: source + buses + catalog_ref + loads/generators
     F. FAULT_LOOP_NN (karta G-22): SC_3F prereqs (upstream Thevenin dzieli
        Z-bus z SC_3F) + stacja SN/nN z układem uziemienia nN i transformatorem
@@ -266,15 +268,12 @@ class EligibilityService:
         self._check_source_sc_params(enm, blockers)
         self._check_tolerancja_nn(enm, blockers)
 
-        # D1: Z2 (negative sequence) data on branches
-        # Per IEC 60909, for overhead lines Z2 = Z1 is standard, but we
-        # require explicit data — no heuristics (Z2 != Z1 assumption).
-        # Currently the ENM branch model does not have explicit Z2 fields,
-        # so we emit CONTRACT_NOT_READY for all branches.
-        self._check_branch_z2(enm, blockers)
-
-        # D2: Z2 on sources
-        self._check_source_z2(enm, blockers)
+        # Brak bram „Z2": bieg 2F (`create_run` → `ocen_model_biegu`) wymaga tylko zdolności
+        # zwarcia trójfazowego, a rdzeń IEC 60909 składa Z2 z modelu sieci (elementy statyczne
+        # Z2 = Z1, maszyny z danych maszyny). Dawne blokady ELIG_SC2_CONTRACT_NOT_READY
+        # („udostępnione w przyszłej aktualizacji") i ELIG_SC2_MISSING_Z2 mówiły „nie da się",
+        # gdy bieg ze scenariusza liczył 2F — ta sama klasa fantomu, którą partia integracji 10
+        # usunęła z kwalifikowalności scenariusza (`check_scenario_eligibility`).
 
         return build_eligibility_result(
             analysis_type=AnalysisType.SC_2F,
@@ -863,56 +862,6 @@ class EligibilityService:
                         action_type="OPEN_MODAL",
                         modal_type="SourceModal",
                         payload_hint={"required": "neutral_grounding"},
-                    ),
-                )
-            )
-
-    # ------------------------------------------------------------------
-    # SC_2F specific checks
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _check_branch_z2(
-        enm: EnergyNetworkModel,
-        blockers: list[AnalysisEligibilityIssue],
-    ) -> None:
-        """Check Z2 (negative sequence) data availability on branches.
-
-        The ENM branch model does not yet have explicit Z2 fields.
-        Per the spec: no heuristics (do NOT assume Z2=Z1).
-        Emit CONTRACT_NOT_READY if any line/cable branches exist.
-        """
-        has_line_branches = any(isinstance(branch, OverheadLine | Cable) for branch in enm.branches)
-        if has_line_branches:
-            blockers.append(
-                AnalysisEligibilityIssue(
-                    code="ELIG_SC2_CONTRACT_NOT_READY",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        "Kontrakt solver-input nie zawiera pól składowej ujemnej (Z₂) "
-                        "dla gałęzi. Zwarcie dwufazowe wymaga rozszerzenia kontraktu danych. "
-                        "Zostanie udostępnione w przyszłej aktualizacji."
-                    ),
-                )
-            )
-
-    @staticmethod
-    def _check_source_z2(
-        enm: EnergyNetworkModel,
-        blockers: list[AnalysisEligibilityIssue],
-    ) -> None:
-        """Check Z2 data on sources.
-
-        Sources also lack explicit Z2 fields in current model.
-        """
-        if enm.sources:
-            blockers.append(
-                AnalysisEligibilityIssue(
-                    code="ELIG_SC2_MISSING_Z2",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        "Źródła nie posiadają danych składowej ujemnej (Z₂). "
-                        "Zwarcie dwufazowe wymaga parametrów Z₂ dla źródeł."
                     ),
                 )
             )

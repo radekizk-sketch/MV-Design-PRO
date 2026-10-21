@@ -271,6 +271,23 @@ function wierszCzasuCieplnego(
   };
 }
 
+/** Wiersz „Impedancja przejścia Z_f" — WYŁĄCZNIE dla biegu przez Z_f ≠ 0 (pole
+ * `impedancja_przejscia` konfiguracji biegu, karta OD-14); uwaga mówi wprost, że wynik
+ * jest poza zakresem IEC 60909. Bieg metaliczny → brak wiersza (nie „0 Ω"). */
+function wierszImpedancjiPrzejscia(
+  z: KonfiguracjaBieguZwarcia['impedancja_przejscia'],
+): WierszZalozenia[] {
+  if (z === undefined) return [];
+  return [
+    {
+      etykieta: ZWARCIA_STRINGS.zalImpedancjaPrzejscia,
+      wartosc: `${fmtOhm(z.r_f_ohm)} + j${fmtOhm(z.x_f_ohm)}`,
+      jednostka: ZWARCIA_STRINGS.jednOhm,
+      uwaga: ZWARCIA_STRINGS.zalImpedancjaPrzejsciaUwaga,
+    },
+  ];
+}
+
 /**
  * Buduje sekcję ZAŁOŻENIA (W-602). Metoda / współczynnik c / czas cieplny
  * pochodzą z `konfiguracja_biegu` odpowiedzi (`GET …/results/short-circuit`,
@@ -295,6 +312,7 @@ export function naZalozeniaZwarc(
     { etykieta: ZWARCIA_STRINGS.zalMetoda, wartosc: konfiguracja?.metoda ?? ZWARCIA_STRINGS.zalMetodaWartosc },
     wierszWspolczynnikaC(konfiguracja?.c_factor, konfiguracja?.scenariusz),
     wierszCzasuCieplnego(konfiguracja?.thermal_time_seconds),
+    ...wierszImpedancjiPrzejscia(konfiguracja?.impedancja_przejscia),
   ];
   const zZaZrodel: WierszZalozenia[] = (zalozeniaBiegu ?? []).map((z) => ({
     etykieta: ZWARCIA_STRINGS.zalozenieEtykieta(nazwa(z.element_ref)),

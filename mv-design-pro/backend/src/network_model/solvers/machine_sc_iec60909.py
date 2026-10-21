@@ -25,9 +25,23 @@ import math
 from dataclasses import dataclass, field
 
 from network_model.core.graph import NetworkGraph
+from network_model.core.impedancja_przejscia import (
+    OPISY_ODMOW_IMPEDANCJI,
+    impedancja_przejscia_obliczeniowa,
+    kod_odmowy_impedancji,
+)
 from network_model.core.ybus import S_BASE_MVA
-from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
-from network_model.solvers.short_circuit_core import build_zbus
+from network_model.odmowa_danych import (
+    RODZAJ_WEZEL,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+    odmowa_rdzenia_b01,
+)
+from network_model.solvers.short_circuit_core import (
+    build_zbus,
+    odmowa_wezla_zwarcia_spoza_grafu,
+)
 
 _SQRT3 = math.sqrt(3.0)
 
@@ -159,19 +173,53 @@ class MachineShortCircuitResult:
         }
 
 
+def _sprawdz_impedancje_przejscia(z_f_ohm: complex | None, fault_node_id: str) -> complex | None:
+    """Z_f wkładów maszyn — ta sama reguła danych i ta sama normalizacja Z_f = 0 → metaliczne
+    co rdzeń IEC 60909 (`network_model.core.impedancja_przejscia`, karta OD-14): wkłady
+    maszyn tego samego biegu nie mogą przyjąć danej, której rdzeń odmawia."""
+    if z_f_ohm is None:
+        return None
+    kod = kod_odmowy_impedancji(float(z_f_ohm.real), float(z_f_ohm.imag))
+    if kod is not None:
+        raise OdmowaWejsciaRdzenia(
+            [
+                RekordOdmowy(
+                    kod,
+                    OPISY_ODMOW_IMPEDANCJI[kod],
+                    (OdwolanieElementu(RODZAJ_WEZEL, fault_node_id),),
+                )
+            ]
+        )
+    return impedancja_przejscia_obliczeniowa(float(z_f_ohm.real), float(z_f_ohm.imag))
+
+
 def compute_machine_contributions(
     graph: NetworkGraph,
     fault_node_id: str,
     *,
     c_factor: float,
     t_min_s: float = 0.10,
+    z_f_ohm: complex | None = None,
 ) -> MachineShortCircuitResult:
     """Per-machine partial I″k + breaking current i_b (μ/q) for a 3-phase fault.
 
     Reads the frozen Z-bus (``build_zbus``) READ-ONLY. Returns an empty result (no
     machines) deterministically. Partial currents follow the superposition identity
     I_partial,m = c·Z_mk/(Z_kk·Z_m) referred to the fault-bus base.
+
+    ``z_f_ohm`` (karta OD-14, partia integracji 10): zwarcie trójfazowe przez impedancję
+    przejścia Z_f — ta sama superpozycja z pętlą Z_kk + Z_f w mianowniku (rozkład prądu
+    zwarciowego na źródła nie zależy od Z_f, zmienia się sam prąd w miejscu zwarcia). Wynik
+    poza zakresem IEC 60909; ``None`` = zwarcie metaliczne, bit w bit.
     """
+    # Reguła danych Z_f PRZED rozgałęzieniem „brak maszyn": niedopuszczalna Z_f jest odmową
+    # niezależnie od tego, czy sieć ma maszyny (ta sama dana, ta sama odmowa co rdzeń).
+    z_f_ohm = _sprawdz_impedancje_przejscia(z_f_ohm, fault_node_id)
+    slad_z_f: dict[str, object] = (
+        {"z_f_ohm": {"re": z_f_ohm.real, "im": z_f_ohm.imag}, "poza_zakresem_iec60909": True}
+        if z_f_ohm is not None
+        else {}
+    )
     sync = graph.get_synchronous_machine_sources()
     asyn = graph.get_asynchronous_machine_sources()
     if not sync and not asyn:
@@ -179,7 +227,10 @@ def compute_machine_contributions(
             fault_node_id=fault_node_id,
             c_factor=c_factor,
             t_min_s=t_min_s,
-            white_box={"note": "Brak maszyn wirujących — udział zerowy (model §6.6 nieaktywny)."},
+            white_box={
+                "note": "Brak maszyn wirujących — udział zerowy (model §6.6 nieaktywny).",
+                **slad_z_f,
+            },
         )
 
     # `build_zbus` jest rdzeniem B-01: osobliwa macierz Y (sieć bez drogi do odniesienia)
@@ -188,13 +239,16 @@ def compute_machine_contributions(
         builder, z_bus = build_zbus(graph)
     index = builder.node_id_to_index
     if fault_node_id not in index:
-        raise OdmowaDanychError(f"Fault node '{fault_node_id}' not in Z-bus index")
+        raise odmowa_wezla_zwarcia_spoza_grafu(fault_node_id)
     k = index[fault_node_id]
     z_kk = z_bus[k, k]
+    # Pętla zwarcia: Z_kk (metaliczne) albo Z_kk + Z_f (karta OD-14) w tej samej bazie pu.
+    z_f_pu = None if z_f_ohm is None else z_f_ohm / builder.get_zbase_ohm(fault_node_id)
+    z_petli = z_kk if z_f_pu is None else z_kk + z_f_pu
     vn_k_kv = graph.nodes[fault_node_id].voltage_level
     i_base_k = S_BASE_MVA * 1.0e3 / (_SQRT3 * vn_k_kv)  # A — fault-bus current base
     # Total I″k from the Z-bus (machines included): I_f_pu = c / Z_kk_pu.
-    ikss_total_a = (c_factor / abs(z_kk)) * i_base_k
+    ikss_total_a = (c_factor / abs(z_petli)) * i_base_k
 
     def partial_a(node_id: str, z_internal_ohm: complex) -> tuple[float, dict]:
         """Prad czesciowy maszyny + wartosci posrednie do wywodu WHITE BOX."""
@@ -203,12 +257,13 @@ def compute_machine_contributions(
             return 0.0, {}
         z_m_pu = z_internal_ohm / builder.get_zbase_ohm(node_id)
         z_mk = z_bus[m_idx, k]
-        i_pu = c_factor * z_mk / (z_kk * z_m_pu)
+        i_pu = c_factor * z_mk / (z_petli * z_m_pu)
         detale = {
             "z_mk_pu": abs(z_mk),
             "z_kk_pu": abs(z_kk),
             "z_m_pu": abs(z_m_pu),
             "i_base_a": i_base_k,
+            **({"z_petli_pu": abs(z_petli)} if z_f_pu is not None else {}),
         }
         return abs(i_pu) * i_base_k, detale
 
@@ -253,10 +308,21 @@ def compute_machine_contributions(
                         "na zaciskach równoważny c·Un/(√3·Z″))"
                     ),
                     "latex": (
-                        rf"I''_{{k,m}} = \frac{{c\,|Z_{{mk}}|}}{{|Z_{{kk}}|\,|Z_m|}}\,"
-                        rf"I_{{\mathrm{{base}}}} = "
-                        rf"\frac{{{c_factor:.2f} \cdot {detale['z_mk_pu']:.4f}}}"
-                        rf"{{{detale['z_kk_pu']:.4f} \cdot {detale['z_m_pu']:.4f}}}"
+                        (
+                            rf"I''_{{k,m}} = \frac{{c\,|Z_{{mk}}|}}{{|Z_{{kk}}|\,|Z_m|}}\,"
+                            rf"I_{{\mathrm{{base}}}} = "
+                            rf"\frac{{{c_factor:.2f} \cdot {detale['z_mk_pu']:.4f}}}"
+                            rf"{{{detale['z_kk_pu']:.4f} \cdot {detale['z_m_pu']:.4f}}}"
+                        )
+                        if "z_petli_pu" not in detale
+                        else (
+                            rf"I''_{{k,m}} = \frac{{c\,|Z_{{mk}}|}}{{|Z_{{kk}} + Z_f|\,|Z_m|}}\,"
+                            rf"I_{{\mathrm{{base}}}} = "
+                            rf"\frac{{{c_factor:.2f} \cdot {detale['z_mk_pu']:.4f}}}"
+                            rf"{{{detale['z_petli_pu']:.4f} \cdot {detale['z_m_pu']:.4f}}}"
+                        )
+                    )
+                    + (
                         rf" \cdot {detale['i_base_a']:.0f}\;\mathrm{{A}}"
                         rf" = {ip_ka:.3f}\;\mathrm{{kA}}"
                     ),
@@ -450,6 +516,7 @@ def compute_machine_contributions(
         # użyte w werdykcie `motors_negligible` powyżej (audyt 1:1).
         "ikss_async_machines_a": async_partial,
         "small_motor_limit_a": 0.05 * ikss_total_a,
+        **slad_z_f,
         "dfig_assumption": (
             "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny "
             "asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."

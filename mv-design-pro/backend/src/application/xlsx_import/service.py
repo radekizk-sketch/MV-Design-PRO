@@ -230,8 +230,9 @@ class XlsxImportService:
         blokady = [
             BladArkusza(
                 arkusz=ARKUSZ_MODELU,
+                kod=issue.code,
                 komunikat=(
-                    f"{issue.code}: {issue.message_pl}"
+                    issue.message_pl
                     + (
                         " (elementy: "
                         + ", ".join(

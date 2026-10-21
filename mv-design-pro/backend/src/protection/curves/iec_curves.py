@@ -19,8 +19,9 @@ CIENKIM ADAPTEREM — petla obliczeniowa (M^B, guard, TMS-skalowanie) zyje
 WYLACZNIE w `network_model.solvers.protection_iec60255.compute_idmt_generic`
 (JEDYNA implementacja formuly IEC w repozytorium). Publiczna powierzchnia
 tego modulu (nazwy, sygnatury, ksztalt `IECTrippingResult`) NIE ZMIENIA SIE —
-konsumenci (w tym `protection.curves.curve_calculator`, uzywany przez
-`application.analyses.protection.coordination`) dzialaja bez edycji.
+konsumenci (`application/protection_read_model.py`, testy tozsamosci krzywych)
+dzialaja bez edycji; fasada `curve_calculator.py` skasowana w partii integracji 10
+(zero konsumentow).
 Post-processing specyficzny dla tego adaptera (clamp do zakresu skonczonego,
 ``inf`` dla braku wyzwolenia, DT jako osobny parametr ``definite_time_s``)
 ZOSTAJE tutaj — to reprezentacja wyniku dla tego konsumenta, nie druga
@@ -240,7 +241,7 @@ def calculate_iec_tripping_time(
     # generycznego silnika `protection_iec60255.compute_idmt_generic` —
     # JEDYNA implementacja tego wzoru w repozytorium. ``denom_guard=1e-10``
     # zachowuje dotychczasowy epsilon TEGO adaptera (bez zmiany wynikow
-    # istniejacych wolajacych — `curve_calculator`, `coordination/**`).
+    # istniejacych wolajacych — `application/protection_read_model.py`).
     numerator = curve_params.a
     generic = compute_idmt_generic(
         i_fault_a=fault_current_a,

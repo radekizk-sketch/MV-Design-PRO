@@ -99,6 +99,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
     rozszerzenia_audit2: dict[str, Any] | None = None,
+    z_f_ohm: complex | None = None,
 ) -> Zwarcie1FZeSnapshotu:
     """FROZEN wynik zwarcia 1F ze snapshotu ENM — impedancje składowe Z1/Z2/Z0.
 
@@ -132,6 +133,7 @@ def wynik_zwarcia_1f_ze_snapshotu(
             c_factor=dobor_c.wartosc,
             tk_s=wejscie.tk_s,
             z0_bus=wejscie.z0_bus,
+            z_f_ohm=z_f_ohm,
         )
     return Zwarcie1FZeSnapshotu(wynik=wynik, dobor_c=dobor_c)
 
@@ -159,12 +161,17 @@ def zwarcie_3f_ze_snapshotu(
     nadpisanie_c: NadpisanieC | None,
     tk_s: float,
     rozszerzenia_audit2: dict[str, Any] | None = None,
+    z_f_ohm: complex | None = None,
 ) -> ZwarcieZeSnapshotu:
     """FROZEN wynik zwarcia 3F ze snapshotu ENM — dla pakietu dowodowego SC3F i wkładów.
 
     Bliźniak `wynik_zwarcia_1f_ze_snapshotu` (dług PACK-SC3F-WIAZANIE): pakiet ma
     OPISYWAĆ wynik, nie produkować go. Graf solvera i c z assemblera biegu
     (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); ``tb_s`` domyślne solvera jak w biegu.
+
+    `z_f_ohm` (karta OD-14): impedancja przejścia biegu, którego pakiet dowodowy powstaje —
+    dowód opisuje TEN SAM wynik co bieg (dawniej pakiet biegu przez Z_f przeliczałby zwarcie
+    metaliczne i podpisywał je jako dowód biegu). `None` = zwarcie metaliczne, bit w bit.
     """
     wejscie = _wejscie_pakietu(
         snapshot=snapshot,
@@ -182,6 +189,7 @@ def zwarcie_3f_ze_snapshotu(
             fault_node_id=fault_node_id,
             c_factor=dobor_c.wartosc,
             tk_s=wejscie.tk_s,
+            z_f_ohm=z_f_ohm,
         )
     return ZwarcieZeSnapshotu(wynik=wynik, graf=wejscie.solve_graph, dobor_c=dobor_c)
 

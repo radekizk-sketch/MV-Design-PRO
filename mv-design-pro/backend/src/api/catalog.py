@@ -16,6 +16,7 @@ from collections.abc import Callable
 from typing import Any, Literal
 
 from api.dependencies import get_uow_factory
+from api.odmowa_http import OdmowaHttpError
 from application.analyses.protection.catalog.catalog_store import (
     list_devices as list_analytical_protection_devices,
 )
@@ -911,10 +912,7 @@ def import_protection_library(
         return report
     except OdmowaDanychError as exc:
         # Conflicts or validation errors detected
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 
 
 # =============================================================================

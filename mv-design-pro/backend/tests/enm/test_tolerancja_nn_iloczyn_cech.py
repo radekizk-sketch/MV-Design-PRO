@@ -90,6 +90,10 @@ from tests.enm.test_canonical_sc_c_per_pasmo import (
     _build_mv_lv_enm,
 )
 
+#: Brzmienie odmowy braku tolerancji sieci nN (`voltage_factor.c_for_node`) — rozpoznanie
+#: odmowy w komunikacie biegu, w którym kod nie stoi (postać strukturalna partii 10).
+_ZDANIE_TOLERANCJI = "tabela 1 IEC 60909-0 rozróżnia sieci +6 %"
+
 _CASE = UUID("00000000-0000-0000-0000-0000000070c0")
 _UZASADNIENIE = "Uzgodnienie z OSD (pismo nr 12/2026): c·Un ≤ Um dla rozdzielnicy 17,5 kV"
 
@@ -246,7 +250,10 @@ def test_zwarcie_szyny_c_i_podstawa(deklaracja: str, pasmo: str, scenariusz: str
         # sieci nN odmawia zwarcia w całej sieci — także na szynie SN i także przy nadpisaniu c
         # (nadpisanie zastępuje c węzła zwarcia, nie c_max we wzorze K_T, IEC 60909-0 eq. 12a).
         assert wynik.status == "FAILED"
-        assert KOD_TOLERANCJA_NN_BRAK in (wynik.error_message or ""), wynik.error_message
+        # Komunikat biegu = zdanie odmowy nazwanej (kod w polu odmowy, nie w treści — postać
+        # strukturalna partii 10); zdanie rozpoznawalne po brzmieniu wiersza nN tabeli 1.
+        assert _ZDANIE_TOLERANCJI in (wynik.error_message or ""), wynik.error_message
+        assert KOD_TOLERANCJA_NN_BRAK not in (wynik.error_message or "")
         return
 
     assert wynik.status == "FINISHED", wynik.error_message
@@ -315,7 +322,8 @@ def test_wyspa_zrodla_nn_odtwarza_moc_zwarciowa_przylacza(scenariusz: str) -> No
 def test_wyspa_zrodla_nn_bez_deklaracji_odmawia() -> None:
     wynik = _wiersz(_enm_wyspy_zrodla_nn(None), "MAX", _NN_K, None)
     assert wynik.status == "FAILED"
-    assert KOD_TOLERANCJA_NN_BRAK in (wynik.error_message or "")
+    assert _ZDANIE_TOLERANCJI in (wynik.error_message or ""), wynik.error_message
+    assert KOD_TOLERANCJA_NN_BRAK not in (wynik.error_message or "")
 
 
 # ---------------------------------------------------------------------------
@@ -604,7 +612,9 @@ def test_api_petli_bez_albo_z_niepoprawna_tolerancja_odmawia(tolerancja: str | N
     odpowiedz = TestClient(app).post("/api/fault-loop/compute", json=_zadanie_api(tolerancja))
     if tolerancja is None:
         assert odpowiedz.status_code == 400
-        assert KOD_TOLERANCJA_NN_BRAK in odpowiedz.json()["detail"]
+        # Kod w polu `kod` ciała odpowiedzi (`api.odmowa_http.pola_odmowy`), nie w `detail`.
+        assert odpowiedz.json()["kod"] == KOD_TOLERANCJA_NN_BRAK
+        assert KOD_TOLERANCJA_NN_BRAK not in odpowiedz.json()["detail"]
     else:
         assert odpowiedz.status_code == 422
 

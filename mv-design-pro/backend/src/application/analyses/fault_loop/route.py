@@ -41,6 +41,8 @@ from enm.models import (
     liczba_torow,
 )
 from enm.nazwy_elementow import nazwa_elementu
+from enm.slownik_komunikatow import opis_elementu
+from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_elementow
 from network_model.core.topologia import przeglad_wszerz, sciezka_do
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_builder import RouteSegmentImpedance
@@ -95,7 +97,7 @@ def bfs_paths_from(enm: EnergyNetworkModel, root_bus_ref: str) -> dict[str, LvBu
     known_buses = {b.ref_id for b in enm.buses}
     if root_bus_ref not in known_buses:
         raise RouteExtractionError(
-            f"Szyna źródłowa '{root_bus_ref}' nie istnieje w modelu — brak trasy do policzenia."
+            "Szyna źródłowa trasy nie istnieje w modelu — brak trasy do policzenia."
         )
     adjacency = _closed_adjacency(enm)
 
@@ -125,8 +127,9 @@ def path_to_bus(enm: EnergyNetworkModel, root_bus_ref: str, target_bus_ref: str)
     path = paths.get(target_bus_ref)
     if path is None:
         raise RouteExtractionError(
-            f"Szyna '{target_bus_ref}' nie jest osiągalna z '{root_bus_ref}' w aktywnej "
-            "topologii nN (gałęzie zamknięte). Sprawdź stany łączników i ciągłość trasy."
+            f"{opis_elementu(enm, target_bus_ref, 'Szyna')} nie jest osiągalna z "
+            f"{opis_elementu(enm, root_bus_ref, 'szyny')} w aktywnej topologii nN (gałęzie "
+            "zamknięte). Sprawdź stany łączników i ciągłość trasy."
         )
     return path
 
@@ -150,6 +153,15 @@ def route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
     Linia napowietrzna (``OverheadLine``): NIEOBSŁUGIWANA na tej trasie —
     model nie niesie danych żyły powrotnej (P1, poza zakresem P0.6).
     """
+    # Partia integracji 10: odmowa danych odcinka z rdzenia (`RouteSegmentImpedance`) niesie
+    # odwołanie do gałęzi modelu — zdanie z nazwą gałęzi trasy składa granica zdań.
+    with nazwy_w_odmowach_elementow(
+        (branch.ref_id, nazwa_elementu(branch, "branches")) for branch in path.branches
+    ):
+        return _route_segments(path)
+
+
+def _route_segments(path: LvBusPath) -> list[RouteSegmentImpedance]:
     segments: list[RouteSegmentImpedance] = []
     for branch in path.branches:
         if isinstance(branch, Cable):

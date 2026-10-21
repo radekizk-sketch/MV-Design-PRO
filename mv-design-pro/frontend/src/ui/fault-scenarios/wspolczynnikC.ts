@@ -119,21 +119,21 @@ export function opisCScenariusza(config: ShortCircuitConfig | null | undefined):
 }
 
 /**
- * Komunikat błędu odpowiedzi backendu po polsku. `detail` bywa:
- *  - napisem „<kod>: <komunikat PL>" (odmowa domeny `OdmowaDanychError`, 422),
- *  - listą błędów walidacji schematu (pydantic, 422: `[{loc, msg, type}]`),
- *  - zwykłym napisem PL.
- * Znany kod c → brzmienie z `KOMUNIKAT_KODU_C`; reszta → komunikat bez kodu maszynowego.
+ * Komunikat błędu odpowiedzi backendu po polsku z CIAŁA odpowiedzi. Postać odmowy:
+ *  - odmowa nazwana (partia integracji 10, `api/odmowa_http.pola_odmowy`): `detail` to
+ *    zdanie PL bez kodu maszynowego, `kod` stoi w osobnym polu ciała — znany kod c →
+ *    brzmienie z `KOMUNIKAT_KODU_C` (to samo, które formularz pokazuje przed wysłaniem),
+ *    inny kod → zdanie z `detail`;
+ *  - lista błędów walidacji schematu (pydantic, 422: `detail: [{loc, msg, type}]`);
+ *  - zwykły napis PL w `detail`.
  */
-export function komunikatBleduApi(detail: unknown, zapasowy: string): string {
-  if (typeof detail === 'string' && detail.trim()) {
-    const dopasowanie = /^([a-z_]+\.[a-z0-9_.]+):\s*(.+)$/s.exec(detail.trim());
-    if (dopasowanie) {
-      const [, kod, tresc] = dopasowanie;
-      return KOMUNIKAT_KODU_C[kod] ?? tresc;
-    }
-    return detail;
-  }
+export function komunikatBleduApi(cialo: unknown, zapasowy: string): string {
+  const { detail, kod } = (cialo && typeof cialo === 'object' ? cialo : {}) as {
+    detail?: unknown;
+    kod?: unknown;
+  };
+  if (typeof kod === 'string' && KOMUNIKAT_KODU_C[kod]) return KOMUNIKAT_KODU_C[kod];
+  if (typeof detail === 'string' && detail.trim()) return detail;
   if (Array.isArray(detail) && detail.length > 0) {
     const opisy = detail.map((wpis) => {
       if (wpis && typeof wpis === 'object') {

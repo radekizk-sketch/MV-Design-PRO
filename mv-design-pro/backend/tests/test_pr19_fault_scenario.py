@@ -4,7 +4,7 @@ Tests for PR-19: Fault Scenario Domain Layer
 Test categories:
 1. Domain model invariants (FaultScenario, FaultLocation, ShortCircuitConfig)
 2. Content hash determinism
-3. Validation rules (SC_1F z0, BRANCH position, BUS no position)
+3. Validation rules (BRANCH position, BUS no position)
 4. FaultScenarioService CRUD
 5. Execution engine integration via execute_run_by_scenario
 6. API endpoint contracts
@@ -12,7 +12,7 @@ Test categories:
 
 INVARIANTS UNDER TEST:
 - ZERO randomness: identical content → identical content_hash
-- SC_1F requires z0_bus_data
+- SC_1F needs no scenario Z0 data (Z0 is model data, gated by the shared run gate)
 - BRANCH position in (0,1)
 - BUS position must be None
 - Deterministic sorting
@@ -87,17 +87,20 @@ class TestFaultScenarioDomain:
     """Test FaultScenario domain model invariants."""
 
     def test_fault_type_enum_values(self):
-        """FaultType has SC_3F, SC_2F, SC_1F."""
+        """FaultType has SC_3F, SC_2F, SC_1F, SC_2F_G (2F+G dołożone w partii integracji 10)."""
         assert FaultType.SC_3F.value == "SC_3F"
         assert FaultType.SC_2F.value == "SC_2F"
         assert FaultType.SC_1F.value == "SC_1F"
-        assert len(FaultType) == 3
+        assert FaultType.SC_2F_G.value == "SC_2F_G"
+        assert len(FaultType) == 4
 
     def test_fault_type_to_analysis_mapping(self):
         """FaultType maps correctly to ExecutionAnalysisType."""
         assert FAULT_TYPE_TO_ANALYSIS[FaultType.SC_3F] == ExecutionAnalysisType.SC_3F
         assert FAULT_TYPE_TO_ANALYSIS[FaultType.SC_2F] == ExecutionAnalysisType.SC_2F
         assert FAULT_TYPE_TO_ANALYSIS[FaultType.SC_1F] == ExecutionAnalysisType.SC_1F
+        assert FAULT_TYPE_TO_ANALYSIS[FaultType.SC_2F_G] == ExecutionAnalysisType.SC_2F_G
+        assert set(FAULT_TYPE_TO_ANALYSIS) == set(FaultType)
 
     def test_fault_location_bus(self):
         """BUS location has no position."""
@@ -314,29 +317,20 @@ class TestContentHashDeterminism:
 class TestValidation:
     """Test FaultScenario validation invariants."""
 
-    def test_sc_1f_requires_z0(self):
-        """SC_1F without z0_bus_data raises FaultScenarioValidationError."""
-        with pytest.raises(FaultScenarioValidationError, match="impedancji zerowej"):
-            new_fault_scenario(
-                study_case_id=MOCK_CASE_ID,
-                name=DEFAULT_NAME,
-                fault_type=FaultType.SC_1F,
-                location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
-                config=ShortCircuitConfig(scenariusz="MAX"),
-            )
+    def test_sc_1f_powstaje_bez_danych_z0_w_scenariuszu(self):
+        """SC_1F nie niesie Z0 w scenariuszu (partia integracji 10).
 
-    def test_sc_1f_with_z0_passes(self):
-        """SC_1F with z0_bus_data passes validation."""
+        Z0 pochodzi z modelu sieci; jego brak blokuje kwalifikowalność i bieg przez bramę
+        gotowości ENM (`enm.canonical_analysis.ocen_model_biegu`), nie walidacja scenariusza.
+        """
         scenario = new_fault_scenario(
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
             fault_type=FaultType.SC_1F,
             location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
-            z0_bus_data={"z0_11": 1.0},
             config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert scenario.fault_type == FaultType.SC_1F
-        assert scenario.z0_bus_data is not None
 
     def test_bus_with_position_raises(self):
         """BUS location with position raises."""
@@ -395,7 +389,7 @@ class TestValidation:
 
     def test_negative_c_factor_raises(self):
         """Ujemne nadpisanie c — odmowa z kodem (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK)."""
-        with pytest.raises(OdmowaNadpisaniaCError, match="fault.c_nadpisanie_wartosc_niepoprawna"):
+        with pytest.raises(OdmowaNadpisaniaCError) as blad:
             new_fault_scenario(
                 study_case_id=MOCK_CASE_ID,
                 name=DEFAULT_NAME,
@@ -406,6 +400,8 @@ class TestValidation:
                     nadpisanie_c=NadpisanieC(wartosc=-1.0, uzasadnienie="test"),
                 ),
             )
+        assert blad.value.kod == "fault.c_nadpisanie_wartosc_niepoprawna"
+        assert "fault.c_" not in str(blad.value)
 
     def test_zero_thermal_time_raises(self):
         """Zero thermal_time_seconds raises."""
@@ -418,8 +414,8 @@ class TestValidation:
                 config=ShortCircuitConfig(scenariusz="MAX", thermal_time_seconds=0.0),
             )
 
-    def test_sc_3f_no_z0_passes(self):
-        """SC_3F does not require z0_bus_data."""
+    def test_sc_3f_bez_pol_fantomow(self):
+        """SC_3F — słownik scenariusza bez skasowanych pól-fantomów."""
         scenario = new_fault_scenario(
             study_case_id=MOCK_CASE_ID,
             name=DEFAULT_NAME,
@@ -427,7 +423,7 @@ class TestValidation:
             location=FaultLocation(element_ref="B1", location_type="BUS"),
             config=ShortCircuitConfig(scenariusz="MAX"),
         )
-        assert scenario.z0_bus_data is None
+        assert not {"arc_params", "z0_bus_data"} & set(scenario.to_dict())
 
 
 # =============================================================================
@@ -805,8 +801,8 @@ class TestFaultScenarioApi:
         )
         assert response.status_code == 400
 
-    def test_create_scenario_sc1f_no_z0_returns_422(self, client):
-        """POST SC_1F without z0_bus_data returns 422."""
+    def test_create_scenario_sc1f_bez_z0_powstaje(self, client):
+        """POST SC_1F bez danych Z0 tworzy scenariusz (Z0 pochodzi z modelu sieci)."""
         case_id = self._nowy_przypadek(client)
         response = client.post(
             f"/api/execution/study-cases/{case_id}/fault-scenarios",
@@ -817,8 +813,27 @@ class TestFaultScenarioApi:
                 "config": {"scenariusz": "MAX"},
             },
         )
+        assert response.status_code == 201, response.text
+        assert "z0_bus_data" not in response.json()
+
+    @pytest.mark.parametrize("pole", ["z0_bus_data", "arc_params"])
+    def test_create_scenario_z_polem_fantomem_returns_422(self, client, pole):
+        """Pole, którego backend nie czyta, jest odrzucane (422), nie ignorowane po cichu."""
+        case_id = self._nowy_przypadek(client)
+        response = client.post(
+            f"/api/execution/study-cases/{case_id}/fault-scenarios",
+            json={
+                "name": DEFAULT_NAME,
+                "fault_type": "SC_1F",
+                "location": {"element_ref": "B1", "location_type": "BUS"},
+                "config": {"scenariusz": "MAX"},
+                pole: {"z0_11": 1.0},
+            },
+        )
+        # Konfiguracja poprawna (scenariusz MAX/MIN wymagany od karty WSPÓŁCZYNNIK-C), więc
+        # 422 wynika WYŁĄCZNIE z pola-fantomu, nie z braku konfiguracji.
         assert response.status_code == 422
-        assert "impedancji zerowej" in response.json()["detail"]
+        assert any(pole in str(blad.get("loc")) for blad in response.json()["detail"])
 
     def test_create_scenario_branch_no_position_returns_422(self, client):
         """POST BRANCH without position returns 422."""

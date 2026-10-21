@@ -6,7 +6,8 @@
  * Atrapa `fetch` jest wierna kontraktowi `backend/src/api/fault_scenarios.py`:
  *  - brak `config` albo `config.scenariusz` → 422 (tablica pydantic),
  *  - nieznany klucz w `config` (np. dawne `c_factor`) → 422 (`extra=forbid`),
- *  - nadpisanie bez uzasadnienia → 422 `fault.c_nadpisanie_bez_uzasadnienia: …`.
+ *  - nadpisanie bez uzasadnienia → 422 odmowy nazwanej: `detail` to zdanie PL bez kodu,
+ *    kod `fault.c_nadpisanie_bez_uzasadnienia` w osobnym polu `kod` (`api/odmowa_http`).
  * Iloczyn cech: {MAX, MIN} × {bez nadpisania, nadpisanie z uzasadnieniem, nadpisanie bez
  * uzasadnienia → blokada} × {tworzenie, edycja}. Interakcje natywne (userEvent).
  */
@@ -81,7 +82,9 @@ function odmowaBackendu(config: unknown, wymagany: boolean): Response | null {
   if (nad) {
     if (typeof nad.uzasadnienie !== 'string' || nad.uzasadnienie.trim() === '') {
       return odpowiedz(422, {
-        detail: 'fault.c_nadpisanie_bez_uzasadnienia: nadpisanie c wymaga uzasadnienia',
+        detail: 'Nadpisanie współczynnika napięciowego c wymaga uzasadnienia',
+        kod: 'fault.c_nadpisanie_bez_uzasadnienia',
+        dane: {},
       });
     }
   }
@@ -273,12 +276,14 @@ describe('FaultScenarioModal — nośnik współczynnika c (edycja)', () => {
 
   it('odmowa backendu z kodem domenowym pokazuje komunikat PL bez kodu', async () => {
     // Backend jest ostateczną bramą: gdyby walidacja okna przepuściła puste uzasadnienie
-    // (np. same spacje po stronie innego klienta), kod domenowy wraca jako tekst PL.
+    // (np. same spacje po stronie innego klienta), kod domenowy wraca w polu `kod` obok zdania PL.
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
         odpowiedz(422, {
-          detail: 'fault.c_nadpisanie_bez_uzasadnienia: nadpisanie c wymaga uzasadnienia',
+          detail: 'Nadpisanie współczynnika napięciowego c wymaga uzasadnienia',
+        kod: 'fault.c_nadpisanie_bez_uzasadnienia',
+        dane: {},
         }),
       ),
     );

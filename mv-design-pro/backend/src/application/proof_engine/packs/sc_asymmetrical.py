@@ -84,6 +84,10 @@ class SCAsymmetricalPackInput:
     m_factor: float = 1.0
     n_factor: float = 0.0
 
+    #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
+    #: zwarcie metaliczne IEC 60909 (dowody bit w bit jak przed kartą).
+    z_f_ohm: complex | None = None
+
 
 @dataclass(frozen=True)
 class SCAsymmetricalPackResult:
@@ -155,6 +159,7 @@ class SCAsymmetricalProofPack:
                 a_operator=data.a_operator,
                 m_factor=data.m_factor,
                 n_factor=data.n_factor,
+                z_f_ohm=data.z_f_ohm,
             )
             sc1_input = SC1Input(
                 project_name=data.project_name,
@@ -175,6 +180,9 @@ class SCAsymmetricalProofPack:
                 m_factor=data.m_factor,
                 n_factor=data.n_factor,
                 quantities=quantities,
+                # Z_f po regule solvera (Z_f = 0 → zwarcie metaliczne) — dowód opisuje TĘ
+                # impedancję, z którą liczono wielkości, nie surowe wejście pakietu.
+                z_f_ohm=quantities.z_f_ohm,
             )
             proofs[fault_type] = ProofGenerator.generate_sc1_proof(sc1_input, artifact_id)
 
@@ -229,6 +237,7 @@ class SCAsymmetricalProofPack:
         nadpisanie_c: NadpisanieC | None,
         tk_s: float,
         rozszerzenia_audit2: dict[str, Any] | None = None,
+        z_f_ohm: complex | None = None,
     ) -> SCAsymmetricalPackInput:
         """Zbuduj wejście pakietu z KANONICZNEGO SNAPSHOTU ENM (ZERO fizyki u klienta).
 
@@ -250,6 +259,10 @@ class SCAsymmetricalProofPack:
         tylko go opisuje, zgodnie z rolą Proof Engine (interpretacja, nie produkcja
         liczb). Wcześniejsza wersja liczyła to sama i zapalała
         ``no_direct_fault_params_guard``.
+
+        ``z_f_ohm`` (karta OD-14) — impedancja przejścia biegu: impedancje składowe Z1/Z2/Z0
+        sieci od niej nie zależą (wynik 1F liczony metalicznie daje te same Z1/Z2/Z0), więc
+        Z_f idzie wprost do wielkości dowodu (``compute_sc1_asymmetrical_quantities``).
         """
         from application.solvers.short_circuit_binding import wynik_zwarcia_1f_ze_snapshotu
         from network_model.solvers.short_circuit_asymmetrical_quantities import (
@@ -295,6 +308,7 @@ class SCAsymmetricalProofPack:
             # wyników solvera sprzed delty (m_factor=None) — bez zmyślania.
             m_factor=result.m_factor if result.m_factor is not None else 1.0,
             n_factor=result.n_factor if result.n_factor is not None else 0.0,
+            z_f_ohm=z_f_ohm,
         )
 
     @classmethod

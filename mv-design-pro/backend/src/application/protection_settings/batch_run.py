@@ -71,6 +71,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from application.autorytet_biegu_zwarciowego import blokady_zakresu_biegu
 from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.protection_settings.engine import (
     ProtectionSettingsEngine,
@@ -94,7 +95,9 @@ from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
+from enm.slownik_komunikatow import opis_elementu
 from enm.tor_pola import szyna_raportowa, wezel_elektryczny
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
@@ -379,6 +382,11 @@ def zbuduj_wejscie_nastaw(
             "Bieg zbiorczy nastaw wymaga jako kotwicy przebiegu zwarcia trójfazowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(kotwica.analysis_type)}."
         )
+    # Karta OD-14: kotwica ze zwarcia przez impedancję przejścia Z_f zaniżyłaby I_k max
+    # gałęzi maksymalnej (selektywność) — odmowa SI-117, ten sam predykat co dostępność
+    # pakietu nastaw (`pakiet_nastaw.dostepnosc_pakietu_nastaw`).
+    for blokada in blokady_zakresu_biegu(kotwica, ZdolnoscMiarodajna.PROTECTION):
+        raise BrakDanychNastawError(blokada.komunikat_pl, kod=blokada.kod)
     kotwica_wynik = kotwica.raw_result or {}
     if kotwica_wynik.get("short_circuit_type") != "3F":
         raise BrakDanychNastawError(
@@ -399,8 +407,9 @@ def zbuduj_wejscie_nastaw(
     )
     if linia is None:
         raise BrakDanychNastawError(
-            f"Element {line_id} nie jest linią ani kablem z kompletem danych "
-            "katalogowych (przekrój, materiał, prąd znamionowy) w migawce kotwicy."
+            f"{opis_elementu(kotwica.snapshot, line_id, 'Element')} nie jest linią ani kablem "
+            "z kompletem danych katalogowych (przekrój, materiał, prąd znamionowy) w migawce "
+            "kotwicy."
         )
 
     rozstrzygniecie = rozstrzygnij_zacisk(kotwica.snapshot, line_id, zacisk_zabezpieczenia)
@@ -409,11 +418,16 @@ def zbuduj_wejscie_nastaw(
 
     kandydaci = kandydaci_nastepnej_szyny(kotwica.snapshot, line_id, rozstrzygniecie.zacisk)
     if next_bus_id not in kandydaci:
-        opis_kandydatow = ", ".join(kandydaci) if kandydaci else "brak — linia bez gałęzi w dół"
+        opis_kandydatow = (
+            ", ".join(opis_elementu(kotwica.snapshot, ref, "szyna") for ref in kandydaci)
+            if kandydaci
+            else "brak — linia bez gałęzi w dół"
+        )
         raise BrakDanychNastawError(
-            f"Szyna {next_bus_id} nie jest kandydatem kolejnej strefy selektywności "
-            f"dla linii {line_id} (kandydaci: {opis_kandydatow}) — wybierz szynę z "
-            "listy kandydatów."
+            f"{opis_elementu(kotwica.snapshot, next_bus_id, 'Szyna')} nie jest kandydatem "
+            "kolejnej strefy selektywności dla "
+            f"{opis_elementu(kotwica.snapshot, line_id, 'linii')} (kandydaci: "
+            f"{opis_kandydatow}) — wybierz szynę z listy kandydatów."
         )
 
     graf_poczatku = _graf_punktu_zwarcia(kotwica.snapshot, rozstrzygniecie.szyna_zacisku_ref)
@@ -495,8 +509,7 @@ def zbuduj_wejscie_nastaw(
         wykonaj_bieg_w_pamieci(wariant_pf, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa rozplywu = odmowa z powodem
         raise BrakDanychNastawError(
-            f"Wariant rozpływu mocy migawki kotwicy przerwany błędem solvera: "
-            f"{type(exc).__name__}: {exc}"
+            f"Wariant rozpływu mocy migawki kotwicy przerwany odmową solvera: {exc}"
         ) from exc
     pf_wynik = wariant_pf.raw_result or {}
     if not bool((pf_wynik.get("result_v1") or {}).get("converged", False)):
@@ -507,9 +520,9 @@ def zbuduj_wejscie_nastaw(
     i_load_max_a = _prad_w_miejscu_zabezpieczenia(wariant_pf, linia, rozstrzygniecie.zacisk)
     if i_load_max_a is None:
         raise BrakDanychNastawError(
-            f"Wariant rozpływu mocy nie policzył prądu zacisku {rozstrzygniecie.zacisk} "
-            f"gałęzi {line_id} — chroniony odcinek nie jest częścią rozwiązanej wyspy "
-            "zasilanej."
+            f"Wariant rozpływu mocy nie policzył prądu na zacisku „{rozstrzygniecie.zacisk}” "
+            f"{opis_elementu(kotwica.snapshot, line_id, 'gałęzi')} — chroniony odcinek nie "
+            "jest częścią rozwiązanej wyspy zasilanej."
         )
 
     pf_solver_version = pf_wynik.get("solver_version")

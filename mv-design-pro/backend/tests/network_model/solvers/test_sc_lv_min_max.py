@@ -45,8 +45,11 @@ class TestCForNode:
     @pytest.mark.parametrize("tolerancja", [None, "PLUS_7", ""])
     def test_lv_band_without_tolerance_is_refused(self, tolerancja, scenario):
         """Węzeł nN bez (albo z nieznaną) tolerancją sieci: odmowa nazwana, nie wiersz +6 %."""
-        with pytest.raises(OdmowaToleranciiNnError, match="fault.c_tolerancja_nn_brak"):
+        with pytest.raises(OdmowaToleranciiNnError) as blad:
             c_for_node(0.4, scenario, tolerancja_nn=tolerancja)
+        # Postać strukturalna (partia 10): kod w polu odmowy nazwanej, nie w treści.
+        assert blad.value.kod == "fault.c_tolerancja_nn_brak"
+        assert "fault.c_tolerancja_nn_brak" not in str(blad.value)
 
     def test_boundary_at_exactly_1kv_is_lv_band(self):
         """1.0 kV itself is <=1.0 kV -> LV band (nN), not MV."""

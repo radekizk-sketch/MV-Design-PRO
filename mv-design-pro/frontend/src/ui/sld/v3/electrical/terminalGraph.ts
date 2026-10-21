@@ -148,6 +148,8 @@ export type UnresolvedReferenceOwnerKind =
 
 export interface UnresolvedReference {
   readonly ownerRef: string;
+  /** Nazwa elementu-właściciela z modelu (komunikat dla projektanta, partia integracji 10). */
+  readonly ownerName: string | null;
   readonly ownerKind: UnresolvedReferenceOwnerKind;
   readonly danglingBusRef: string;
 }
@@ -204,6 +206,7 @@ export function buildTerminalGraph(enm: EnergyNetworkModel): TerminalGraph {
     if (!fromKnown) {
       unresolvedReferences.push({
         ownerRef: branch.ref_id,
+        ownerName: branch.name ?? null,
         ownerKind: 'branch_from',
         danglingBusRef: branch.from_bus_ref,
       });
@@ -211,6 +214,7 @@ export function buildTerminalGraph(enm: EnergyNetworkModel): TerminalGraph {
     if (!toKnown) {
       unresolvedReferences.push({
         ownerRef: branch.ref_id,
+        ownerName: branch.name ?? null,
         ownerKind: 'branch_to',
         danglingBusRef: branch.to_bus_ref,
       });
@@ -240,6 +244,7 @@ export function buildTerminalGraph(enm: EnergyNetworkModel): TerminalGraph {
     if (!hv) {
       unresolvedReferences.push({
         ownerRef: tr.ref_id,
+        ownerName: tr.name ?? null,
         ownerKind: 'transformer_hv',
         danglingBusRef: tr.hv_bus_ref,
       });
@@ -247,6 +252,7 @@ export function buildTerminalGraph(enm: EnergyNetworkModel): TerminalGraph {
     if (!lv) {
       unresolvedReferences.push({
         ownerRef: tr.ref_id,
+        ownerName: tr.name ?? null,
         ownerKind: 'transformer_lv',
         danglingBusRef: tr.lv_bus_ref,
       });
@@ -258,21 +264,21 @@ export function buildTerminalGraph(enm: EnergyNetworkModel): TerminalGraph {
   const leaves: LeafTerminal[] = [];
   for (const load of (enm.loads ?? []) as readonly Load[]) {
     if (!nodes.has(load.bus_ref)) {
-      unresolvedReferences.push({ ownerRef: load.ref_id, ownerKind: 'load', danglingBusRef: load.bus_ref });
+      unresolvedReferences.push({ ownerRef: load.ref_id, ownerName: load.name ?? null, ownerKind: 'load', danglingBusRef: load.bus_ref });
       continue;
     }
     leaves.push({ ref: load.ref_id, name: load.name, kind: 'load', busRef: load.bus_ref });
   }
   for (const gen of (enm.generators ?? []) as readonly Generator[]) {
     if (!nodes.has(gen.bus_ref)) {
-      unresolvedReferences.push({ ownerRef: gen.ref_id, ownerKind: 'generator', danglingBusRef: gen.bus_ref });
+      unresolvedReferences.push({ ownerRef: gen.ref_id, ownerName: gen.name ?? null, ownerKind: 'generator', danglingBusRef: gen.bus_ref });
       continue;
     }
     leaves.push({ ref: gen.ref_id, name: gen.name, kind: 'generator', busRef: gen.bus_ref });
   }
   for (const src of (enm.sources ?? []) as readonly Source[]) {
     if (!nodes.has(src.bus_ref)) {
-      unresolvedReferences.push({ ownerRef: src.ref_id, ownerKind: 'source', danglingBusRef: src.bus_ref });
+      unresolvedReferences.push({ ownerRef: src.ref_id, ownerName: src.name ?? null, ownerKind: 'source', danglingBusRef: src.bus_ref });
       continue;
     }
     leaves.push({ ref: src.ref_id, name: src.name, kind: 'source', busRef: src.bus_ref });

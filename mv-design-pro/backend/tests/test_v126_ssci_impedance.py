@@ -24,8 +24,15 @@ from __future__ import annotations
 import cmath
 import math
 
+import pytest
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.solvers.v126_academic import V126AcademicSolver
+from network_model.odmowa_danych import RODZAJ_ELEMENT, OdmowaWejsciaRdzenia, OdwolanieElementu
+from network_model.solvers.v126_academic import (
+    KOD_SSCI_BRAK_POL_KARTY,
+    POLA_KARTY_ZCONV,
+    V126AcademicSolver,
+    _brakujace_pola_karty_zconv,
+)
 from solver_input.v126_contracts import (
     V126AcademicInput,
     V126AnalysisType,
@@ -169,10 +176,13 @@ def test_z_conv_negative_resistance_region_below_pll() -> None:
 
 def test_z_conv_requires_mandatory_card_fields() -> None:
     """Missing any of {current_loop_bandwidth_hz, pll_bandwidth_hz, filter_l_pu}
-    raises a clear error — no fabricated fallback value."""
+    raises a STRUCTURAL refusal — no fabricated fallback value.
+
+    Partia integracji 10: kod w rekordzie, odwołanie do przekształtnika jako elementu migawki
+    ENM, treść z polskim opisem pola — bez klucza pola kontraktu i bez identyfikatora."""
     solver = V126AcademicSolver()
     base = {"ref": "X", "bus_ref": "B", "rated_mva": 1.0, "rated_kv": 0.69}
-    for missing in ("current_loop_bandwidth_hz", "pll_bandwidth_hz", "filter_l_pu"):
+    for missing, opis in POLA_KARTY_ZCONV:
         kwargs = dict(
             base,
             current_loop_bandwidth_hz=900.0,
@@ -181,12 +191,35 @@ def test_z_conv_requires_mandatory_card_fields() -> None:
         )
         kwargs[missing] = None
         converter = V126ConverterInput(**kwargs)
-        try:
+        with pytest.raises(OdmowaWejsciaRdzenia) as odmowa:
             solver._z_conv_components(converter, 10.0, f_base_hz=_F_BASE_HZ)
-        except ValueError as exc:
-            assert missing in str(exc)
-        else:  # pragma: no cover - defensive
-            raise AssertionError(f"expected ValueError for missing {missing}")
+        (rekord,) = odmowa.value.rekordy
+        assert rekord.kod == KOD_SSCI_BRAK_POL_KARTY
+        assert rekord.odwolania == (OdwolanieElementu(RODZAJ_ELEMENT, "X"),)
+        assert opis in rekord.tresc
+        assert missing not in str(odmowa.value)
+        assert "X" not in rekord.tresc.replace("Z_conv", "")
+
+
+@pytest.mark.parametrize(("missing", "opis"), POLA_KARTY_ZCONV)
+def test_ssci_dane_niekompletne_bez_kluczy_pol_w_komunikacie(missing: str, opis: str) -> None:
+    """Ten sam predykat braku (`_brakujace_pola_karty_zconv`) co odmowa `_z_conv_components`
+    daje wynik „dane niekompletne" pełnego biegu SSCI: klucz pola zostaje w `missing_fields`
+    (dana maszynowa), komunikat i ślad niosą polski opis pola (partia integracji 10)."""
+    card = _reference_card()
+    model = _model_with_grid(card, fault_level_mva=4.0)
+    model.converters = [model.converters[0].model_copy(update={missing: None})]
+    assert _brakujace_pola_karty_zconv(model.converters[0]) == [missing]
+    result = V126AcademicSolver().run(V126AnalysisType.SSCI_IMPEDANCE, model)
+    wynik = result["result"]
+    assert wynik["status"] == "dane niekompletne"
+    assert wynik["missing_fields"] == [missing]
+    assert opis in wynik["message_pl"]
+    assert missing not in wynik["message_pl"]
+    (krok,) = (
+        k for k in result["white_box_trace"] if k["key"] == "ssci_impedance_missing_card_fields"
+    )
+    assert opis in krok["substitution"]
 
 
 # ---------------------------------------------------------------------------

@@ -292,7 +292,7 @@ def test_tolerancja_nn_zrodla_na_szynie_nn_i_transformatora_od_strony_lv(toleran
 
 
 @pytest.mark.parametrize(
-    ("graf", "fragment"),
+    ("graf", "operacja", "fragment"),
     [
         (
             GrafDoKompilacji(
@@ -309,7 +309,8 @@ def test_tolerancja_nn_zrodla_na_szynie_nn_i_transformatora_od_strony_lv(toleran
                 ),
                 zrodla=(_zrodlo("A"),),
             ),
-            "add_transformer_sn_nn: Tolerancję napięcia sieci nN deklaruje transformator",
+            "add_transformer_sn_nn",
+            "Tolerancję napięcia sieci nN deklaruje transformator",
         ),
         (
             GrafDoKompilacji(
@@ -319,12 +320,20 @@ def test_tolerancja_nn_zrodla_na_szynie_nn_i_transformatora_od_strony_lv(toleran
                 ),
                 zrodla=(_zrodlo("A", lv_voltage_tolerance="PLUS_6"),),
             ),
-            "add_grid_source_sn: Tolerancję napięcia sieci nN deklaruje źródło",
+            "add_grid_source_sn",
+            "Tolerancję napięcia sieci nN deklaruje źródło",
         ),
     ],
 )
-def test_tolerancja_nn_na_elemencie_bez_sieci_nn_to_odmowa_operacji(graf, fragment: str) -> None:
+def test_tolerancja_nn_na_elemencie_bez_sieci_nn_to_odmowa_operacji(
+    graf, operacja: str, fragment: str
+) -> None:
     """Ta sama odmowa co w kreatorze (predykat zapisu operacji domenowej): deklaracja na
-    elemencie, którego szyna nie leży w paśmie nN, nie wybierałaby wiersza tabeli 1."""
-    with pytest.raises(BenchmarkBuildError, match=fragment):
+    elemencie, którego szyna nie leży w paśmie nN, nie wybierałaby wiersza tabeli 1.
+
+    Partia integracji 10: nazwa operacji domenowej jest polem `operacja` odmowy, nie
+    przedrostkiem zdania dla projektanta."""
+    with pytest.raises(BenchmarkBuildError, match=fragment) as blad:
         kompiluj_graf(graf)
+    assert blad.value.operacja == operacja
+    assert operacja not in str(blad.value)

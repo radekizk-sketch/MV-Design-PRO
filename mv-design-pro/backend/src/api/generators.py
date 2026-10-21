@@ -1213,10 +1213,16 @@ def _prady_zwarciowe_szyny(
 
     if not isinstance(bus_ref, str):
         return None, None, None
+    from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
+
+    # Karta OD-14: reguły aparatury pola liczą prądem zwarcia METALICZNEGO — bieg przez
+    # impedancję przejścia Z_f (poza zakresem IEC 60909) nie jest źródłem Ik''/ip reguły.
     przebiegi = [
         run
         for run in list_runs_for_case(case_id)
-        if run.analysis_type == "short_circuit_sn" and run.status == "FINISHED"
+        if run.analysis_type == "short_circuit_sn"
+        and run.status == "FINISHED"
+        and bieg_w_zakresie_iec60909(run)
     ]
     for run in sorted(przebiegi, key=lambda r: r.created_at, reverse=True):
         for wiersz in build_short_circuit_results(run).get("rows", []):

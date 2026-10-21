@@ -365,18 +365,31 @@ class TestEligibilityServiceReadyNetwork:
         lf = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.LOAD_FLOW)
         assert lf.status == EligibilityStatus.ELIGIBLE
 
-    def test_sc2f_always_ineligible_contract_not_ready(self):
-        """SC_2F is INELIGIBLE because Z2 contract is not ready."""
-        enm = _ready_enm()
-        readiness = _validate_and_readiness(enm)
+    def test_sc2f_ma_te_sama_brame_co_sc3f_bez_fantomu_z2(self):
+        """SC_2F kwalifikuje się dokładnie wtedy, gdy SC_3F — ta sama brama co bieg.
 
+        Bieg 2F (`create_run` → `ocen_model_biegu`) wymaga tylko zdolności zwarcia
+        trójfazowego; Z2 składa rdzeń IEC 60909 z modelu. Dawna blokada „brak Z2"
+        mówiła „nie da się", gdy bieg ze scenariusza liczył 2F (scalenie partii 10 i 11).
+        Iloczyn: {model gotowy, model bez źródła} × {SC_3F, SC_2F}.
+        """
         service = EligibilityService()
-        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
-
+        gotowy = _ready_enm()
+        bez_zrodla = _ready_enm().model_copy(update={"sources": []})
+        for enm in (gotowy, bez_zrodla):
+            matrix = service.compute_matrix(
+                enm=enm, readiness=_validate_and_readiness(enm), case_id="case-1"
+            )
+            sc3f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_3F)
+            sc2f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_2F)
+            assert sc2f.status == sc3f.status
+            assert [b.code for b in sc2f.blockers] == [b.code for b in sc3f.blockers]
+            assert not any("Z2" in b.code or "SC2" in b.code for b in sc2f.blockers)
+        matrix = service.compute_matrix(
+            enm=gotowy, readiness=_validate_and_readiness(gotowy), case_id="case-1"
+        )
         sc2f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_2F)
-        assert sc2f.status == EligibilityStatus.INELIGIBLE
-        codes = [b.code for b in sc2f.blockers]
-        assert "ELIG_SC2_MISSING_Z2" in codes
+        assert sc2f.status == EligibilityStatus.ELIGIBLE
 
     def test_sc1f_ineligible_without_z0(self):
         """SC_1F needs Z0 on sources. Ready ENM source has no Z0."""

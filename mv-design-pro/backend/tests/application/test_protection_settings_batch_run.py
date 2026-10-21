@@ -432,14 +432,18 @@ def test_nadpisanie_c_kotwicy_nie_przechodzi_na_wariant_minimalny() -> None:
 
 
 def test_linia_nieznana_odmawia() -> None:
+    # Partia integracji 10: wskazanie spoza migawki opisane jawnym brakiem („spoza modelu"),
+    # nie identyfikatorem i nie fałszywym „bez nazwy".
     kotwica = _kotwica(_siec_promieniowa())
-    with pytest.raises(BrakDanychNastawError, match="ln_nieznana"):
+    with pytest.raises(BrakDanychNastawError) as exc:
         zbuduj_wejscie_nastaw(
             kotwica,
             line_id="ln_nieznana",
             next_bus_id="b_b",
             zacisk_zabezpieczenia="od",
         )
+    assert str(exc.value).startswith("Element spoza modelu nie jest linią ani kablem")
+    assert "ln_nieznana" not in str(exc.value)
 
 
 def test_linia_bez_danych_katalogowych_odmawia() -> None:
@@ -457,13 +461,15 @@ def test_linia_bez_danych_katalogowych_odmawia() -> None:
 
 def test_nastepna_szyna_spoza_migawki_odmawia() -> None:
     kotwica = _kotwica(_siec_promieniowa())
-    with pytest.raises(BrakDanychNastawError, match="b_nieznana"):
+    with pytest.raises(BrakDanychNastawError) as exc:
         zbuduj_wejscie_nastaw(
             kotwica,
             line_id="ln1",
             next_bus_id="b_nieznana",
             zacisk_zabezpieczenia="od",
         )
+    assert str(exc.value).startswith("Szyna spoza modelu nie jest kandydatem")
+    assert "b_nieznana" not in str(exc.value)
 
 
 def test_nastepna_szyna_bez_zwarcia_odmawia() -> None:

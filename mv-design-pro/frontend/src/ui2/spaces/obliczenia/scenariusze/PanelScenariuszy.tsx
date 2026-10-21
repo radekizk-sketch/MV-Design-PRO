@@ -35,6 +35,7 @@ import {
   type PolaWspolczynnikaC,
 } from '../../../../ui/fault-scenarios/wspolczynnikC';
 import { SCENARIUSZE_STRINGS as T } from './strings';
+import { uruchomScenariuszZwarciowy } from '../uruchomObliczenie';
 
 /**
  * Domyślny czas zwarcia t_k [s] — ta sama wartość, którą przyjmuje backend
@@ -80,13 +81,13 @@ export function PanelScenariuszy() {
   const setStudyCaseId = useFaultScenariosStore((s) => s.setStudyCaseId);
   const createScenario = useFaultScenariosStore((s) => s.createScenario);
   const deleteScenario = useFaultScenariosStore((s) => s.deleteScenario);
-  const createRun = useFaultScenariosStore((s) => s.createRun);
 
   const [formularzOtwarty, setFormularzOtwarty] = useState(false);
   const [formularz, setFormularz] = useState<FormularzScenariusza>(PUSTY_FORMULARZ);
   const [bladFormularza, setBladFormularza] = useState<string | null>(null);
   const [doUsuniecia, setDoUsuniecia] = useState<string | null>(null);
   const [komunikat, setKomunikat] = useState<string | null>(null);
+  const [wToku, setWToku] = useState<string | null>(null);
 
   useEffect(() => {
     setStudyCaseId(activeCaseId ?? null);
@@ -121,7 +122,7 @@ export function PanelScenariuszy() {
         config: konfiguracja.config,
         fault_mode: formularz.tryb,
         ...(formularz.tryb === 'IMPEDANCE'
-          ? { fault_impedance: { r_ohm: Number(formularz.rOhm), x_ohm: Number(formularz.xOhm) } }
+          ? { fault_impedance: { r_f_ohm: Number(formularz.rOhm), x_f_ohm: Number(formularz.xOhm) } }
           : {}),
       });
       setFormularz(PUSTY_FORMULARZ);
@@ -131,13 +132,19 @@ export function PanelScenariuszy() {
     }
   };
 
+  // Karta OD-14 (partia integracji 10): „Uruchom" WYKONUJE bieg ze scenariusza (utworzenie
+  // → wykonanie → stan końcowy → związanie z powłoką), wspólnym końcem z biegiem przypadku.
+  // Dawniej tworzył tylko bieg PENDING, którego nikt nie wykonywał — komunikat „uruchomiono"
+  // kłamał, a tryb IMPEDANCE nie miał drogi do ekranu wyników.
   const uruchom = async (scenarioId: string, nazwa: string) => {
     setKomunikat(null);
+    setWToku(scenarioId);
     try {
-      await createRun(scenarioId);
-      setKomunikat(`${T.uruchomiono}: ${nazwa}`);
-    } catch {
-      /* komunikat błędu żyje w store */
+      if (await uruchomScenariuszZwarciowy(scenarioId)) {
+        setKomunikat(`${T.uruchomiono}: ${nazwa}`);
+      }
+    } finally {
+      setWToku(null);
     }
   };
 
@@ -260,6 +267,7 @@ export function PanelScenariuszy() {
                 <input
                   type="number"
                   step="0.001"
+                  min="0"
                   data-testid="mvd-scenariusze-r"
                   value={formularz.rOhm}
                   onChange={(e) => setFormularz({ ...formularz, rOhm: e.target.value })}
@@ -270,6 +278,7 @@ export function PanelScenariuszy() {
                 <input
                   type="number"
                   step="0.001"
+                  min="0"
                   data-testid="mvd-scenariusze-x"
                   value={formularz.xOhm}
                   onChange={(e) => setFormularz({ ...formularz, xOhm: e.target.value })}
@@ -363,9 +372,11 @@ export function PanelScenariuszy() {
                     type="button"
                     className="mvd-scen-akcja"
                     data-testid={`mvd-scenariusze-uruchom-${s.scenario_id}`}
+                    disabled={wToku !== null}
+                    aria-busy={wToku === s.scenario_id}
                     onClick={() => void uruchom(s.scenario_id, s.name)}
                   >
-                    {T.uruchom}
+                    {wToku === s.scenario_id ? T.uruchomWToku : T.uruchom}
                   </button>
                   {doUsuniecia === s.scenario_id ? (
                     <button

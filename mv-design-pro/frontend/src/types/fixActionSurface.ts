@@ -152,9 +152,6 @@ function resolveOperationFromModalType(
     case 'BranchPointPortsModal':
     case 'InsertZksnForm':
     case 'StudyCaseSettings':
-    case 'Uzupełnij Z0':
-    case 'Uzupełnij Z2':
-    case 'Zmień tryb zwarcia':
       return 'update_element_parameters';
     case 'ProtectionBindingModal':
     case 'relay_settings':

@@ -34,11 +34,18 @@ from typing import Any
 from uuid import UUID
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
-from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    BlokadaAutorytetu,
+    ProweniencjaWynikuZwarciowego,
+    blokady_zakresu_waznosci,
+    wynik_poza_zakresem_iec60909,
+)
 from network_model.core.wiazanie_wyniku_zwarciowego import (
     WiazanieWynikuZwarciowego,
     wielkosci_do_odcisku,
 )
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
+from network_model.odmowa_danych import OdmowaNazwana
 from network_model.pochodne.jednostki import a_na_ka, v_na_kv
 
 #: Rodzaje biegu kanonicznego, którego artefakt niesie wielkości zwarciowe.
@@ -199,8 +206,42 @@ def _proweniencja_biegu(bieg: Any) -> ProweniencjaWynikuZwarciowego:
     S-2 albo sieć bez czynnych falowników — daje proweniencję MIARODAJNĄ z pustymi
     znacznikami (`ze_znacznikow(())`): brak falowników nie jest brakiem danych.
     """
-    znaczniki = (bieg.raw_result or {}).get("k_sc_znaczniki") or ()
-    return ProweniencjaWynikuZwarciowego.ze_znacznikow(znaczniki)
+    artefakt = bieg.raw_result or {}
+    znaczniki = artefakt.get("k_sc_znaczniki") or ()
+    return ProweniencjaWynikuZwarciowego.ze_znacznikow(
+        znaczniki, poza_zakresem_iec60909=wynik_poza_zakresem_iec60909(artefakt)
+    )
+
+
+def blokady_zakresu_biegu(bieg: Any, zdolnosc: ZdolnoscMiarodajna) -> tuple[BlokadaAutorytetu, ...]:
+    """Blokady zakresu ważności (SI-117, karta OD-14) zapisanego biegu dla zdolności.
+
+    Dla konsumentów biegu zwarciowego, którzy biorą bieg wskazany albo najnowszy (energia
+    łuku, siła sieci, migotanie, wniosek do OSD, wytrzymałość cieplna przewodów, nastawy,
+    werdykt projektowy, karta pola): JEDNO źródło decyzji „wolno użyć wyniku z Z_f" —
+    ta sama proweniencja i ta sama lista zdolności co bramka autorytetu.
+    """
+    return blokady_zakresu_waznosci(zdolnosc, _proweniencja_biegu(bieg))
+
+
+def wymagaj_zakresu_biegu(bieg: Any, zdolnosc: ZdolnoscMiarodajna) -> None:
+    """Odmowa nazwana (kod SI-117, API 422), gdy bieg z Z_f trafia do zdolności, której
+    kontrakt OD-14 go zabrania — dla konsumentów, których kontraktem błędu jest
+    `OdmowaDanychError`. Decyzja z `blokady_zakresu_biegu` (jedno źródło)."""
+    for blokada in blokady_zakresu_biegu(bieg, zdolnosc):
+        raise OdmowaNazwana(
+            blokada.komunikat_pl,
+            kod=blokada.kod,
+            dane={"zdolnosc": str(blokada.zdolnosc)},
+        )
+
+
+def bieg_w_zakresie_iec60909(bieg: Any) -> bool:
+    """Czy bieg zwarciowy jest zwarciem metalicznym (w zakresie IEC 60909) — dla selekcji
+    „najnowszego biegu zwarciowego" przez widoki, które same nie wybierają biegu (werdykt
+    projektowy, karta pola, reguły aparatury generatora). Ten sam predykat co proweniencja
+    (`wynik_poza_zakresem_iec60909`)."""
+    return not wynik_poza_zakresem_iec60909(bieg.raw_result)
 
 
 def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> WejscieZwarcioweZBiegu:
@@ -353,7 +394,10 @@ def wejscie_koordynacji_z_biegow(
     proweniencja_max = _proweniencja_biegu(bieg_max)
     proweniencja_min = _proweniencja_biegu(bieg_min)
     proweniencja_obu = ProweniencjaWynikuZwarciowego.ze_znacznikow(
-        tuple(proweniencja_max.znaczniki_k_sc) + tuple(proweniencja_min.znaczniki_k_sc)
+        tuple(proweniencja_max.znaczniki_k_sc) + tuple(proweniencja_min.znaczniki_k_sc),
+        poza_zakresem_iec60909=(
+            proweniencja_max.poza_zakresem_iec60909 or proweniencja_min.poza_zakresem_iec60909
+        ),
     )
 
     return WejscieKoordynacjiZBiegow(

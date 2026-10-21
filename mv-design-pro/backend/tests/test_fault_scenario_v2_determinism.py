@@ -65,7 +65,7 @@ class TestDeterminismProofIdenticalHash:
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-42", location_type="NODE"),
                 fault_mode=FaultMode.IMPEDANCE,
-                fault_impedance=FaultImpedance(r_ohm=1.5, x_ohm=3.0),
+                fault_impedance=FaultImpedance(r_f_ohm=1.5, x_f_ohm=3.0),
                 config=ShortCircuitConfig(scenariusz="MAX"),
             )
             hashes.add(compute_scenario_content_hash(s))
@@ -127,15 +127,12 @@ class TestDeterminismProofSortedKeys:
         # Manually build the canonical content dict (same as in compute_scenario_content_hash)
         content = {
             "analysis_type": s.analysis_type.value,
-            "arc_params": s.arc_params,
             "config": s.config.to_dict(),
             "fault_impedance": (s.fault_impedance.to_dict() if s.fault_impedance else None),
-            "fault_impedance_type": s.fault_impedance_type.value,
             "fault_mode": s.fault_mode.value,
             "fault_type": s.fault_type.value,
             "location": s.location.to_dict(),
             "name": s.name,
-            "z0_bus_data": s.z0_bus_data,
         }
         payload = json.dumps(content, sort_keys=True, separators=(",", ":"))
         expected_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -155,7 +152,7 @@ class TestDeterminismProofSortedKeys:
                 position=0.5,
             ),
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=2.0, x_ohm=4.0),
+            fault_impedance=FaultImpedance(r_f_ohm=2.0, x_f_ohm=4.0),
             config=ShortCircuitConfig(scenariusz="MAX"),
         )
         data = s.to_dict()
@@ -189,7 +186,7 @@ class TestV2FieldsInHash:
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
             config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(s_metallic) != compute_scenario_content_hash(
@@ -203,7 +200,7 @@ class TestV2FieldsInHash:
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.0, x_f_ohm=2.0),
             config=ShortCircuitConfig(scenariusz="MAX"),
         )
         s2 = new_fault_scenario(
@@ -212,7 +209,7 @@ class TestV2FieldsInHash:
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-1", location_type="NODE"),
             fault_mode=FaultMode.IMPEDANCE,
-            fault_impedance=FaultImpedance(r_ohm=1.1, x_ohm=2.0),
+            fault_impedance=FaultImpedance(r_f_ohm=1.1, x_f_ohm=2.0),
             config=ShortCircuitConfig(scenariusz="MAX"),
         )
         assert compute_scenario_content_hash(s1) != compute_scenario_content_hash(s2)
