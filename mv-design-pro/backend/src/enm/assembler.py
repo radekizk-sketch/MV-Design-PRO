@@ -57,6 +57,7 @@ from enm.nazwy_elementow import (
     zbuduj_indeks_nazw,
 )
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
+from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
 from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
@@ -1216,6 +1217,8 @@ def zloz_wejscie_zwarcia(
             if wpis.get("zalozenie")
         )
         + k_sc_zalozenia
+        # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: wyspy nN liczone z wartością roboczą tolerancji.
+        + zalozenia_tolerancji_nn(enm, scenario_c)
     )
     # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
     # migawki dołączonej do żądania) — `network_model.core.

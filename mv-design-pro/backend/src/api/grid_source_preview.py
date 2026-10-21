@@ -15,6 +15,10 @@ from domain.generator_validation import (
     moc_pozorna_z_nastawy_mva,
 )
 from fastapi import APIRouter, HTTPException
+from network_model.catalog.wartosci_robocze import (
+    TolerancjaNnRozstrzygnieta,
+    tolerancja_nn_napiecia,
+)
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, kv_na_v, moc_zwarciowa_z_pradu_mva
@@ -75,8 +79,9 @@ class GridSourcePreviewRequest(BaseModel):
     z0_z1_ratio: float | None = Field(default=None, gt=0)
     tk_s: float = Field(default=1.0, gt=0)
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja sieci nN dla U_nQ w paśmie nN
-    # (wiersz nN tabeli 1 IEC 60909-0); dla SN/WN bez znaczenia. Brak przy U_nQ nN = 422
-    # z kodem `fault.c_tolerancja_nn_brak`.
+    # (wiersz nN tabeli 1 IEC 60909-0); dla SN/WN bez znaczenia. Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA: brak przy U_nQ nN = wartość robocza rejestru
+    # (`wartosci_robocze.rozstrzygnij_tolerancje_nn`), nazwana w odpowiedzi (`tolerancja_nn`).
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
@@ -107,10 +112,20 @@ class GridSourcePreviewResponse(BaseModel):
     z1_ohm: ComplexOhmResponse
     z0_ohm: ComplexOhmResponse | None
     formula_ref: str
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (addytywnie): klasa tolerancji sieci nN użyta w c
+    #: dla U_nQ w paśmie nN (pochodzenie: deklaracja żądania albo wartość robocza rejestru,
+    #: zdanie źródła); ``None`` dla U_nQ SN/WN (jeden wiersz tabeli 1, tolerancja bez znaczenia).
+    tolerancja_nn: dict[str, Any] | None = None
     #: CV-4.3 K7: ``None`` = nie podano danych MIN (scenariusz MIN biegu liczony z danych
     #: MAX z jawnym założeniem ``source.sk_min_missing``). Nazwa ``scenariusz_min`` (nie
     #: ``min``): nazwy pól kontraktów trafiają do inwentarza guarda podstawień.
     scenariusz_min: GridSourcePreviewMinResponse | None = None
+
+
+def _klasa_tolerancji(
+    tolerancja: TolerancjaNnRozstrzygnieta | None,
+) -> TolerancjaNapieciaNn | None:
+    return tolerancja.wartosc if tolerancja is not None else None
 
 
 def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinResponse | None:
@@ -151,7 +166,9 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
             voltage_kv=request.voltage_kv,
             short_circuit_mode="SHORT_CIRCUIT_POWER",
             scenariusz="MIN",
-            tolerancja_nn=request.lv_voltage_tolerance,
+            tolerancja_nn=_klasa_tolerancji(
+                tolerancja_nn_napiecia(request.voltage_kv, request.lv_voltage_tolerance)
+            ),
             sk3_mva=sk_min_mva,
             rx_ratio=rx_min,
             zero_sequence_enabled=request.zero_sequence_enabled,
@@ -183,12 +200,13 @@ def _podglad_min(request: GridSourcePreviewRequest) -> GridSourcePreviewMinRespo
 def preview_grid_source_short_circuit(
     request: GridSourcePreviewRequest,
 ) -> GridSourcePreviewResponse:
+    tolerancja_nn = tolerancja_nn_napiecia(request.voltage_kv, request.lv_voltage_tolerance)
     result = compute_grid_source_preview(
         GridSourcePreviewInput(
             voltage_kv=request.voltage_kv,
             short_circuit_mode=request.short_circuit_mode,
             scenariusz="MAX",
-            tolerancja_nn=request.lv_voltage_tolerance,
+            tolerancja_nn=_klasa_tolerancji(tolerancja_nn),
             sk3_mva=request.sk3_mva,
             rx_ratio=request.rx_ratio,
             r_ohm=request.r_ohm,
@@ -216,6 +234,7 @@ def preview_grid_source_short_circuit(
             else None
         ),
         formula_ref=result.formula_ref,
+        tolerancja_nn=tolerancja_nn.to_dict() if tolerancja_nn is not None else None,
         scenariusz_min=blok_min,
     )
 

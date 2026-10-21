@@ -20,6 +20,7 @@ from typing import Any
 
 from api.odmowa_http import OdmowaHttpError
 from fastapi import APIRouter, HTTPException, status
+from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.fault_loop_builder import (
@@ -56,9 +57,10 @@ class FaultLoopComputeRequest(BaseModel):
     network_type: str = Field("TN-S", description="TN-S | TN-C-S | TN-C | TT | IT")
     protection_arrangement: str = Field("PE", description="PE | PEN | NONE")
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja napięcia sieci nN punktu
-    # zwarcia — wiersz nN tabeli 1 IEC 60909-0 (PLUS_6: c 1,05/0,95; PLUS_10: c 1,10/0,90).
-    # Żądanie bez modelu nie ma skąd jej wziąć, więc niesie ją wołający; brak = odmowa 400
-    # z kodem `fault.c_tolerancja_nn_brak`, nigdy wiersz domyślny.
+    # zwarcia — wiersz nN tabeli 1 IEC 60909-0 (PLUS_6 albo PLUS_10). Żądanie bez modelu
+    # niesie ją od wołającego; karta TOLERANCJA-NN-WARTOSC-ROBOCZA: brak = wartość robocza
+    # rejestru (`wartosci_robocze.rozstrzygnij_tolerancje_nn`), nazwana w odpowiedzi
+    # (`tolerancja_nn`) i w podstawie c — nigdy odmowa ani cicha domyślka.
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = Field(
         None, description="Tolerancja napięcia sieci nN: PLUS_6 | PLUS_10"
     )
@@ -81,6 +83,9 @@ class FaultLoopComputeResponse(BaseModel):
     c_zrodlo_min: str
     c_zrodlo_max: str
     white_box_trace: list[dict[str, Any]]
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (addytywnie): klasa tolerancji sieci nN użyta w c,
+    # jej pochodzenie (deklaracja żądania albo wartość robocza rejestru) i zdanie źródła.
+    tolerancja_nn: dict[str, Any]
 
 
 @router.post(
@@ -100,7 +105,8 @@ def compute_fault_loop_endpoint(
         I_k = c * U_n / |Z_loop|
 
     gdzie c_min/c_max z tabeli 1 IEC 60909-0 dla sieci nN o tolerancji z żądania
-    (``lv_voltage_tolerance``; jedyne źródło wartości: ``network_model.core.voltage_factor``).
+    (``lv_voltage_tolerance``; brak = wartość robocza rejestru ``wartosci_robocze``; jedyne
+    źródło wartości c: ``network_model.core.voltage_factor``).
 
     Zakres końcówki: TN-S, TN-C-S, TN-C. Układ TT/IT wymaga danych pętli doziemnej (R_A, R_B,
     I_Δn; pojemności doziemne), których żądanie nie niesie — odmowa nazwana solvera (400).
@@ -120,6 +126,7 @@ def compute_fault_loop_endpoint(
                 detail=f"Nieznany typ ochrony: '{request.protection_arrangement}'. Dozwolone: {list(pa_map.keys())}",
             )
 
+        tolerancja = rozstrzygnij_tolerancje_nn((request.lv_voltage_tolerance,))
         # Buduj FaultLoopInput przez fault_loop_builder
         build_req = FaultLoopBuildRequest(
             fault_node_id=request.fault_node_id,
@@ -148,11 +155,12 @@ def compute_fault_loop_endpoint(
                 if request.upstream_impedance
                 else FaultLoopBuildRequest.upstream_label
             ),
-            tolerancja_nn=request.lv_voltage_tolerance,
+            tolerancja_nn=tolerancja.wartosc,
+            tolerancja_nn_robocza=tolerancja.robocza,
         )
         fault_loop_input = build_fault_loop_input(build_req)
         result = compute_fault_loop(fault_loop_input)
-        return FaultLoopComputeResponse(**result.to_dict())
+        return FaultLoopComputeResponse(**result.to_dict(), tolerancja_nn=tolerancja.to_dict())
     except NotImplementedError as e:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(e)) from e
     except OdmowaDanychError as e:

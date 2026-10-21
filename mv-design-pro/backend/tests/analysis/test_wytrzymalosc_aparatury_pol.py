@@ -613,6 +613,38 @@ def test_ib_przy_tb_roboczym_to_dana_przyjeta_estimated(
     assert all(d["jakosc"] != "DATASHEET" for d in dane)
 
 
+@pytest.mark.parametrize("aparat", [WYLACZNIK, ROZLACZNIK])
+@pytest.mark.parametrize("tolerancja_robocza", [False, True], ids=["tol_dekl", "tol_robocza"])
+@pytest.mark.parametrize("tb_roboczy", [False, True], ids=["tb_projektanta", "tb_roboczy"])
+def test_wylaczanie_suma_danych_przyjetych_tb_i_tolerancji_nn(
+    tb_roboczy: bool, tolerancja_robocza: bool, aparat: str
+) -> None:
+    """Iloczyn {t_b roboczy / projektanta} × {tolerancja sieci nN robocza / zadeklarowana} ×
+    {aparat przerywający / NIE_DOTYCZY} (scalenie kart TB-WARTOSC-ROBOCZA i
+    TOLERANCJA-NN-WARTOSC-ROBOCZA). Rekord, który stoi na obu założeniach, niesie OBA w
+    ``dane_przyjete`` — suma w stałej kolejności: najpierw t_b, potem tolerancja nN. Flagi
+    pochodzą z jednego wiersza biegu (``tb_zrodlo`` i ``tolerancja_nn_robocza``); rekord
+    NIE_DOTYCZY niczego nie porównuje, więc nie stoi na żadnej danej przyjętej."""
+    zrodlo = _zrodlo_tb(czas_tb_roboczy(), maszyny=True) if tb_roboczy else None
+    prady = dataclasses.replace(
+        _prady_wyl(ik=22.0, ib=19.5, tb=0.1, un=15.0, tb_zrodlo=zrodlo),
+        tolerancja_nn_robocza=tolerancja_robocza,
+    )
+    ocena = _ocena(_pole_wyl(aparat, prady), "wylaczanie")
+    dane = ocena["dowod"]["status_danych"]["dane_przyjete"]
+    oczekiwane: list[str] = []
+    if aparat == WYLACZNIK:
+        oczekiwane += ["s"] if tb_roboczy else []
+        oczekiwane += ["%"] if tolerancja_robocza else []
+    assert [d["wartosc"]["jednostka"] for d in dane] == oczekiwane
+    if oczekiwane:
+        assert ocena["dowod"]["status_danych"]["stan"] == "UNVALIDATED_INPUT"
+        assert ocena["kompletnosc_dowodu"] == "NIEPELNY"
+    if "%" in oczekiwane:
+        assert dane[-1]["nazwa_pl"].startswith("tolerancja napięcia sieci nN (")
+    assert all(d["jakosc"] == "ESTIMATED" for d in dane)
+
+
 @pytest.mark.parametrize(
     "prady",
     [

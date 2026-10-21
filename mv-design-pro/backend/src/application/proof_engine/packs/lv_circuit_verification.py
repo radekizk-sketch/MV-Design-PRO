@@ -86,6 +86,7 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka
 from network_model.solvers.cable_ampacity_derating import (
@@ -1233,7 +1234,7 @@ class LVCircuitVerificationProofPack:
             key_results=key_results,
             unit_check_passed=unit_checks_passed,
             total_steps=len(steps),
-            warnings=(),
+            warnings=_ostrzezenia_danych_przyjetych(fl, data.nazwa_odcinka),
             overall_status=overall_status,
         )
 
@@ -1295,3 +1296,12 @@ def serialize_lv_circuit_verification_pack(document: ProofDocument) -> dict[str,
             "overall_status": document.summary.overall_status,
         },
     }
+
+
+def _ostrzezenia_danych_przyjetych(fl: FaultLoopResult, nazwa_odcinka: str) -> tuple[str, ...]:
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: c pętli z wartości roboczej tolerancji sieci nN —
+    dowód stoi na danej przyjętej (jedno tłumaczenie: `dana_przyjeta_tolerancji_nn`)."""
+    if not fl.tolerancja_nn_robocza:
+        return ()
+    dana = dana_przyjeta_tolerancji_nn(miejsce_pl=f"obwód „{nazwa_odcinka}”")
+    return (f"Prąd pętli liczony z daną przyjętą: {dana.nazwa_pl} — {dana.powod_pl}",)

@@ -1035,3 +1035,45 @@ def test_sc3f_t_b_pomiedzy_wezlami_mu_z_interpolacji_w_wywodzie_i_dowodzie(tmp_p
         assert slad["regula"] == "WEZEL" and slad["waga"] == 0.0
         assert "interpolacja" not in teksty
         assert krok_mu["substitution_latex"].startswith(r"\mu = 0.62 + 0.72")
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])
+def test_sc_asymmetrical_pack_nn_bez_deklaracji_na_wartosci_roboczej(tmp_path, tolerancja):
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: pakiet SC asymetryczny dla punktu nN bez
+    deklaracji tolerancji nie odmawia — c z wartości roboczej rejestru (+10 %), a podstawa c
+    w dowodzie mówi „(wartość robocza)”; deklaracja daje podstawę bez dopisku."""
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "snapshot_id": "snapshot-nn",
+        "project_name": "Projekt testowy",
+        "case_name": "Przypadek SC nN",
+        "fault_node_id": "B_NN",
+        "run_timestamp": "2026-02-06T10:00:00",
+        "solver_version": "1.0.0-test",
+        "u_n_kv": 0.4,
+        "scenariusz": "MAX",
+        "u_prefault_kv": 0.2309401,
+        "z1_re_ohm": 0.005,
+        "z1_im_ohm": 0.012,
+        "z2_re_ohm": 0.006,
+        "z2_im_ohm": 0.011,
+        "z0_re_ohm": 0.008,
+        "z0_im_ohm": 0.024,
+        "a_re": -0.5,
+        "a_im": 0.8660254038,
+        "tk_s": 1.0,
+    }
+    if tolerancja is not None:
+        payload["lv_voltage_tolerance"] = tolerancja
+    response = client.post("/api/proof/sc-asymmetrical/pack", json=payload)
+    assert response.status_code == 200, response.text
+    with zipfile.ZipFile(io.BytesIO(response.content)) as bundle:
+        with zipfile.ZipFile(io.BytesIO(bundle.read("pakiet_dowodowy/SC2F.zip"))) as nested:
+            dowod = nested.read("proof_pack/proof.json").decode("utf-8")
+    etykieta = {"PLUS_6": "+6 %", "PLUS_10": "+10 %", None: "+10 %"}[tolerancja]
+    dopisek = " (wartość robocza)" if tolerancja is None else ""
+    assert f"pasmo nN, tolerancja {etykieta}{dopisek}, MAX" in dowod
+    assert ("wartość robocza" in dowod) is (tolerancja is None)

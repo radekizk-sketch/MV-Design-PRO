@@ -89,9 +89,11 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.store import get_enm
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import resolve_thermal_params
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.conductor_thermal_withstand import (
     CONDUCTOR_KIND_BARE,
@@ -516,6 +518,30 @@ def _wymagane_pole_sc(payload: dict[str, Any], klucz: str) -> float:
     return float(wartosc)
 
 
+def _pierwszy_wiersz(run: CanonicalRun) -> dict[str, Any]:
+    """PIERWSZY wiersz wyniku przebiegu — JEDNA reguła wyboru dla wyniku i danych przyjętych."""
+    # `raw_result["results"]` jest LISTA wierszy (canonical_analysis.py:1015), nie mapa.
+    wiersze = (run.raw_result or {}).get("results") or []
+    if not wiersze:
+        raise OdmowaDanychError(
+            "Przebieg nie zawiera wiersza wyniku zwarciowego, "
+            "więc nie ma na czym oprzeć oceny cieplnej."
+        )
+    return dict(wiersze[0])
+
+
+def _dane_przyjete_biegu(run: CanonicalRun) -> dict[str, Any]:
+    """Dane przyjęte prądów oceny (karta TOLERANCJA-NN-WARTOSC-ROBOCZA): punkt zwarcia
+    w sieci nN liczonej z wartością roboczą tolerancji — wszystkie prądy gałęzi tego biegu
+    stoją na danej przyjętej. Pusty słownik, gdy znacznika nie ma (odpowiedź bez zmian)."""
+    wiersz = _pierwszy_wiersz(run)
+    if not wiersz.get("tolerancja_nn_robocza"):
+        return {}
+    punkt = opis_rodzaju_i_nazwy("szyna", nazwa_nadana(wiersz.get("target_name")))
+    dana = dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {punkt}")
+    return {"status_danych": "UNVALIDATED_INPUT", "dane_przyjete": [dana.model_dump(mode="json")]}
+
+
 def _odtworz_wynik_zwarciowy(
     run: CanonicalRun, uow_factory: Callable[[], Any] | None = None
 ) -> ShortCircuitResult:
@@ -543,14 +569,7 @@ def _odtworz_wynik_zwarciowy(
     # zdolności — odmowa SI-117 (jedno źródło: `blokady_zakresu_biegu`).
     wymagaj_zakresu_biegu(run, ZdolnoscMiarodajna.SC_WITHSTAND_EVIDENCE)
 
-    # `raw_result["results"]` jest LISTA wierszy (canonical_analysis.py:1015), nie mapa.
-    wiersze = (run.raw_result or {}).get("results") or []
-    if not wiersze:
-        raise OdmowaDanychError(
-            "Przebieg nie zawiera wiersza wyniku zwarciowego, "
-            "więc nie ma na czym oprzeć oceny cieplnej."
-        )
-    payload = wiersze[0]
+    payload = _pierwszy_wiersz(run)
 
     sc_result = ShortCircuitResult(
         short_circuit_type=ShortCircuitType(str(payload.get("short_circuit_type"))),
@@ -645,6 +664,7 @@ def build_wytrzymalosc_cieplna_view(
         # kazde kryterium musi dac sie odniesc do zapisu normy (uwaga 14).
         "normy": [dict(pozycja) for pozycja in STANDARD_REFS],
         "ocena": widok.to_dict(),
+        **_dane_przyjete_biegu(run),
     }
 
 

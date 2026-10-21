@@ -9,8 +9,8 @@ import pytest
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.core.voltage_factor import OdmowaToleranciiNnError
 from network_model.core.ybus import S_BASE_MVA, AdmittanceMatrixBuilder
+from network_model.odmowa_danych import OdmowaDanychError
 
 
 def create_pq_node(node_id: str) -> Node:
@@ -249,7 +249,11 @@ def test_voltage_factor_c_lv(tolerancja, c_max):
     assert transformer.get_voltage_factor_c_max() == c_max
 
 
-def test_voltage_factor_c_lv_bez_tolerancji_odmowa():
+def test_voltage_factor_c_lv_bez_rozstrzygnietej_tolerancji_to_blad_programu():
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: klasę tolerancji sieci nN strony dolnej rozstrzyga
+    mapowanie (deklaracja albo wartość robocza wyspy, `enm.tolerancja_nn`). Gałąź bez klasy
+    przy stronie dolnej nN to błąd PROGRAMU (``ValueError``), nie odmowa dziedziny — K_T i c
+    nigdy nie biorą wiersza tabeli po cichu."""
     transformer = create_transformer_branch(
         "T1",
         "A",
@@ -261,12 +265,10 @@ def test_voltage_factor_c_lv_bez_tolerancji_odmowa():
         pk_kw=120.0,
     )
 
-    with pytest.raises(OdmowaToleranciiNnError) as blad:
+    with pytest.raises(ValueError) as blad:
         transformer.get_voltage_factor_c_max()
-    # Postać strukturalna (partia 10): kod w polu odmowy nazwanej, nie w treści.
-    assert blad.value.kod == "fault.c_tolerancja_nn_brak"
-    assert "fault.c_tolerancja_nn_brak" not in str(blad.value)
-    with pytest.raises(OdmowaToleranciiNnError):
+    assert not isinstance(blad.value, OdmowaDanychError)
+    with pytest.raises(ValueError):
         transformer.get_kt_correction_factor()
 
 

@@ -266,7 +266,8 @@ def test_tolerancja_nn_trafia_na_transformator_w_obu_torach(tolerancja) -> None:
     wynik = kompiluj_graf(graf)
     model = _model(wynik)
     assert [t.lv_voltage_tolerance for t in model.transformers] == [tolerancja, tolerancja]
-    assert tolerancje_wezlow_nn(model)[wynik.bus_map["B3"]] == tolerancja
+    # Brak deklaracji = wartość robocza +10 % (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+    assert tolerancje_wezlow_nn(model)[wynik.bus_map["B3"]] == (tolerancja or "PLUS_10")
 
 
 @pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])
@@ -288,7 +289,8 @@ def test_tolerancja_nn_zrodla_na_szynie_nn_i_transformatora_od_strony_lv(toleran
     assert zrodlo.lv_voltage_tolerance == tolerancja
     assert trafo.lv_voltage_tolerance == tolerancja
     assert trafo.lv_bus_ref == wynik.bus_map["N"]
-    assert tolerancje_wezlow_nn(model)[wynik.bus_map["N"]] == tolerancja
+    # Brak deklaracji = wartość robocza +10 % (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+    assert tolerancje_wezlow_nn(model)[wynik.bus_map["N"]] == (tolerancja or "PLUS_10")
 
 
 @pytest.mark.parametrize(

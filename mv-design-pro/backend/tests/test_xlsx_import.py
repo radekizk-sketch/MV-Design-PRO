@@ -1130,11 +1130,10 @@ def _rodzaj_trafo(rodzaj: str) -> dict[str, str | None]:
 class TestTolerancjaSieciNnZArkusza:
     @pytest.mark.parametrize("rodzaj", ["tabliczka", "katalog"])
     @pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10"])
-    def test_deklaracja_z_arkusza_jest_tolerancja_wezla_nn_i_zdejmuje_blokade(
+    def test_deklaracja_z_arkusza_jest_tolerancja_wezla_nn_bez_wartosci_roboczej(
         self, serwis, test_db_session, tolerancja: str, rodzaj: str
     ):
-        from application.eligibility_service import EligibilityService
-        from enm.tolerancja_nn import tolerancje_wezlow_nn
+        from enm.tolerancja_nn import wyspy_wezlow_nn, zalozenia_tolerancji_nn
 
         wynik = serwis.importuj(
             arkusz_siec_sn(tolerancja_nn=tolerancja, **_rodzaj_trafo(rodzaj)), "Sieć"
@@ -1144,28 +1143,35 @@ class TestTolerancjaSieciNnZArkusza:
         [trafo] = model.transformers
         assert trafo.lv_voltage_tolerance == tolerancja
         szyna_nn = next(b.ref_id for b in model.buses if b.name == "Stacja 1 nN")
-        assert tolerancje_wezlow_nn(model)[szyna_nn] == tolerancja
-        blokery: list = []
-        EligibilityService._check_tolerancja_nn(model, blokery)
-        assert blokery == []
+        wyspa = wyspy_wezlow_nn(model)[szyna_nn]
+        assert wyspa.tolerancja == tolerancja and not wyspa.robocza
+        assert zalozenia_tolerancji_nn(model, "MAX") == ()
 
     @pytest.mark.parametrize("rodzaj", ["tabliczka", "katalog"])
-    def test_arkusz_bez_kolumny_daje_model_z_nazwana_blokada_zwarcia_nn(
+    def test_arkusz_bez_kolumny_daje_model_liczony_na_wartosci_roboczej(
         self, serwis, test_db_session, rodzaj: str
     ):
-        from application.eligibility_service import EligibilityService
+        """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: arkusz bez kolumny `tolerancja_nN` daje model
+        bez deklaracji — zwarcia sieci nN liczą się na wartości roboczej +10 %, a założenie
+        biegu wskazuje transformator z arkusza i pole deklaracji (dawniej: blokada)."""
+        from enm.tolerancja_nn import (
+            KOD_TOLERANCJA_NN_ROBOCZA,
+            wyspy_wezlow_nn,
+            zalozenia_tolerancji_nn,
+        )
 
         wynik = serwis.importuj(arkusz_siec_sn(tolerancja_nn=None, **_rodzaj_trafo(rodzaj)), "S")
         assert wynik.status == STATUS_ZAIMPORTOWANO, wynik.bledy
         model = _model_projektu(wynik.project_id or "")
         [trafo] = model.transformers
         assert trafo.lv_voltage_tolerance is None
-        blokery: list = []
-        EligibilityService._check_tolerancja_nn(model, blokery)
-        assert [(b.code, b.element_ref) for b in blokery] == [
-            ("ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING", trafo.ref_id)
-        ]
-        assert blokery[0].fix_action.modal_type == "TransformerModal"
+        szyna_nn = next(b.ref_id for b in model.buses if b.name == "Stacja 1 nN")
+        wyspa = wyspy_wezlow_nn(model)[szyna_nn]
+        assert wyspa.tolerancja == "PLUS_10" and wyspa.robocza
+        [zalozenie] = zalozenia_tolerancji_nn(model, "MAX")
+        assert zalozenie["code"] == KOD_TOLERANCJA_NN_ROBOCZA
+        assert zalozenie["element_ref"] == trafo.ref_id
+        assert zalozenie["parametr"] == "lv_voltage_tolerance"
 
     @pytest.mark.parametrize("rodzaj", ["tabliczka", "katalog"])
     @pytest.mark.parametrize("wartosc", ["PLUS_8", "+6 %", "plus_6"])
@@ -1230,14 +1236,17 @@ class TestTolerancjaSieciNnZArkusza:
     def test_deklaracja_zrodla_na_szynie_nn_trafia_do_modelu(
         self, serwis, test_db_session, tolerancja: str | None
     ):
-        from enm.tolerancja_nn import tolerancje_wezlow_nn
+        from enm.tolerancja_nn import wyspy_wezlow_nn
 
         wynik = serwis.importuj(self._arkusz_sieci_nn(tolerancja), "Sieć nN")
         assert wynik.status == STATUS_ZAIMPORTOWANO, wynik.bledy
         model = _model_projektu(wynik.project_id or "")
         [zrodlo] = model.sources
         assert zrodlo.lv_voltage_tolerance == tolerancja
-        assert tolerancje_wezlow_nn(model)[zrodlo.bus_ref] == tolerancja
+        # Brak deklaracji = wartość robocza +10 % (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+        wyspa = wyspy_wezlow_nn(model)[zrodlo.bus_ref]
+        assert wyspa.tolerancja == (tolerancja or "PLUS_10")
+        assert wyspa.robocza is (tolerancja is None)
 
     @pytest.mark.parametrize(
         ("tolerancja", "napiecie_kv"), [("PLUS_8", 0.4), ("+10 %", 0.4), ("PLUS_6", 15.0)]

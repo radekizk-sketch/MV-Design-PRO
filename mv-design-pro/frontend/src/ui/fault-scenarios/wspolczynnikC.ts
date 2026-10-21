@@ -32,7 +32,6 @@ export const DOMYSLNE_POLA_C: PolaWspolczynnikaC = {
 /** Kody odmów backendu (`network_model/core/voltage_factor.py`, rejestr gotowości). */
 export const KOD_NADPISANIE_BEZ_UZASADNIENIA = 'fault.c_nadpisanie_bez_uzasadnienia';
 export const KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA = 'fault.c_nadpisanie_wartosc_niepoprawna';
-export const KOD_TOLERANCJA_NN_BRAK = 'fault.c_tolerancja_nn_brak';
 
 /** Zdanie PL dla kodu odmowy — to samo brzmienie, które formularz pokazuje przed wysłaniem. */
 export const KOMUNIKAT_KODU_C: Readonly<Record<string, string>> = {
@@ -40,8 +39,6 @@ export const KOMUNIKAT_KODU_C: Readonly<Record<string, string>> = {
     'Nadpisanie współczynnika napięciowego c wymaga uzasadnienia — IEC 60909-0 dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu (np. uzgodnienie z operatorem, ograniczenie c·Un ≤ Um).',
   [KOD_NADPISANIE_WARTOSC_NIEPOPRAWNA]:
     'Wartość nadpisania współczynnika napięciowego c musi być skończoną liczbą dodatnią.',
-  [KOD_TOLERANCJA_NN_BRAK]:
-    'Sieć nN nie ma zadeklarowanej tolerancji napięcia (+6 % albo +10 %) — współczynnika c dla węzłów nN nie da się dobrać. Uzupełnij „Tolerancja napięcia sieci nN" w parametrach transformatora zasilającego.',
 };
 
 export type WynikNadpisaniaC =

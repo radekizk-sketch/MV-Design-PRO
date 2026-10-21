@@ -116,8 +116,9 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
                     "nn_voltage_kv": 0.4,
                 },
                 # Tolerancja sieci nN stacji (+6 %, wiersz nN tabeli 1 IEC 60909-0): wybiera c
-                # węzłów nN i c_max we wzorze K_T; bez niej zwarcie sieci to odmowa
-                # `fault.c_tolerancja_nn_brak` (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+                # węzłów nN i c_max we wzorze K_T; bez niej bieg liczy na wartości roboczej
+                # +10 % z założeniem `fault.c_tolerancja_nn_robocza` (karta
+                # TOLERANCJA-NN-WARTOSC-ROBOCZA) — sieć wzorcowa deklaruje klasę jawnie.
                 "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
                 "sn_fields": [
                     {"field_role": "LINIA_IN"},
@@ -208,8 +209,9 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
                     "nn_voltage_kv": 0.4,
                 },
                 # Tolerancja sieci nN stacji (+6 %, wiersz nN tabeli 1 IEC 60909-0): wybiera c
-                # węzłów nN i c_max we wzorze K_T; bez niej zwarcie sieci to odmowa
-                # `fault.c_tolerancja_nn_brak` (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+                # węzłów nN i c_max we wzorze K_T; bez niej bieg liczy na wartości roboczej
+                # +10 % z założeniem `fault.c_tolerancja_nn_robocza` (karta
+                # TOLERANCJA-NN-WARTOSC-ROBOCZA) — sieć wzorcowa deklaruje klasę jawnie.
                 "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
                 "sn_fields": [
                     {"field_role": "LINIA_IN"},

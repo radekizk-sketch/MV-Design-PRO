@@ -54,8 +54,9 @@ export const UKLADY_SIECI_NN: readonly UkladSieciNn[] = ['TN-S', 'TN-C-S', 'TN-C
 /**
  * Tolerancja napięcia sieci nN (`Transformer.lv_voltage_tolerance`, `Source.lv_voltage_tolerance`;
  * backend `network_model.core.voltage_factor.TOLERANCJE_NAPIECIA_NN`). Wybiera wiersz nN tabeli 1
- * IEC 60909-0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); brak deklaracji = bramka zwarć
- * `ELIG_SC_NN_VOLTAGE_TOLERANCE_MISSING` / kod gotowości `fault.c_tolerancja_nn_brak`.
+ * IEC 60909-0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK); brak deklaracji = wartość robocza rejestru
+ * (+10 %, karta TOLERANCJA-NN-WARTOSC-ROBOCZA) oznaczona założeniem biegu
+ * `fault.c_tolerancja_nn_robocza` — nie blokuje zwarć.
  */
 export type TolerancjaNapieciaNn = 'PLUS_6' | 'PLUS_10';
 

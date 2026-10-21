@@ -106,6 +106,9 @@ class WejscieZwarcioweZBiegu:
     wiazanie: WiazanieWynikuZwarciowego
     wielkosci: dict[str, Any]
     """Liczby zwarciowe Z ARTEFAKTU BIEGU — to ich wolno użyć, nie tych z żądania."""
+    tolerancja_nn_robocza: bool = False
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkt w sieci nN liczonej z wartością roboczą
+    tolerancji napięcia (znacznik wiersza biegu) — liczby stoją na danej przyjętej."""
 
     def niezgodnosci_z_echem(self, echo: Mapping[str, Any] | None) -> tuple[str, ...]:
         """Czym liczby przysłane przez konsumenta różnią się od liczb biegu.
@@ -290,6 +293,7 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> Wejs
         proweniencja=_proweniencja_biegu(bieg),
         wiazanie=wiazanie,
         wielkosci=wielkosci_do_odcisku(wiersz),
+        tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
     )
 
 

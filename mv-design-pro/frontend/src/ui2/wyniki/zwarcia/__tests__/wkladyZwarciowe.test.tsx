@@ -11,6 +11,8 @@ function renderuj(wklady = wkladyFixture()) {
     <WkladyZwarciowe
       punktNazwa="Szyna GPZ 15 kV"
       wklady={wklady}
+      blad={false}
+      ladowanie={false}
       trybZaawansowania="basic"
       onOtworzDowod={vi.fn()}
     />,
@@ -121,6 +123,8 @@ describe('WkladyZwarciowe — wykres udziałów procentowych (karta W-A F2)', ()
       <WkladyZwarciowe
         punktNazwa="Szyna GPZ 15 kV"
         wklady={null}
+        blad={false}
+        ladowanie={false}
         trybZaawansowania="basic"
         onOtworzDowod={vi.fn()}
       />,
@@ -129,6 +133,26 @@ describe('WkladyZwarciowe — wykres udziałów procentowych (karta W-A F2)', ()
     expect(screen.queryByTestId('mvd-zwarcia-wklady-filtr')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-zwarcia-wklady-wykres')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-wyn-tabela')).not.toBeInTheDocument();
+  });
+
+  // Iloczyn {błąd, pobieranie} × sekcja wkładów: każdy stan ma WŁASNY komunikat, żaden nie
+  // trafia w „dane niedostępne" (dawniej pobieranie mówiło „nie udało się pobrać").
+  it.each([
+    ['blad', 'mvd-zwarcia-wklady-blad', ZWARCIA_STRINGS.wkladyBlad],
+    ['ladowanie', 'mvd-zwarcia-wklady-ladowanie', ZWARCIA_STRINGS.wkladyLadowanie],
+  ] as const)('stan %s → własny komunikat, nie „dane niedostępne"', (stan, testId, tekst) => {
+    render(
+      <WkladyZwarciowe
+        punktNazwa="Szyna GPZ 15 kV"
+        wklady={null}
+        blad={stan === 'blad'}
+        ladowanie={stan === 'ladowanie'}
+        trybZaawansowania="basic"
+        onOtworzDowod={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId(testId)).toHaveTextContent(tekst);
+    expect(screen.queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
   });
 });
 
@@ -273,7 +297,52 @@ describe('useWkladyZwarciowe — parametry biegu w zależnościach wartościami,
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
     const { result } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', null));
-    expect(result.current).toBeNull();
+    expect(result.current).toEqual({ dane: null, ladowanie: false, blad: false });
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  const PARAMETRY = { scenariusz: 'MAX' as const, nadpisanieC: null, tMinS: null };
+
+  it('pobieranie → ladowanie; odpowiedź → dane (bez flag)', async () => {
+    useSnapshotStore.setState({
+      snapshot: { header: { name: 'Siec' }, buses: [] },
+    } as never);
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ contributions: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', PARAMETRY));
+    expect(result.current).toEqual({ dane: null, ladowanie: true, blad: false });
+    await waitFor(() => expect(result.current.dane?.wklady).toEqual([]));
+    expect(result.current.ladowanie).toBe(false);
+    expect(result.current.blad).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ['HTTP 500', () => Promise.resolve({ ok: false, status: 500, json: async () => ({}) })],
+    ['sieć', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ])('błąd pobrania (%s) → blad ROZPOZNANY, jedno żądanie (bez pętli ponowień)', async (_n, odp) => {
+    useSnapshotStore.setState({
+      snapshot: { header: { name: 'Siec' }, buses: [] },
+    } as never);
+    const fetchMock = vi.fn().mockImplementation(odp);
+    vi.stubGlobal('fetch', fetchMock);
+    const { result, rerender } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', PARAMETRY));
+    await waitFor(() => expect(result.current).toEqual({ dane: null, ladowanie: false, blad: true }));
+    rerender();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  it('brak migawki modelu → „dane niedostępne", nie wieczne pobieranie', () => {
+    useSnapshotStore.setState({ snapshot: null } as never);
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const { result } = renderHook(() => useWkladyZwarciowe('BUS-GPZ', PARAMETRY));
+    expect(result.current).toEqual({ dane: null, ladowanie: false, blad: false });
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });

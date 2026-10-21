@@ -43,7 +43,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import Any
 
@@ -70,9 +70,11 @@ from application.analyses.fault_loop.service import (
 from application.analyses.swz.werdykt import (
     AparatZabezpieczajacy,
     SwzStatus,
+    dane_przyjete_petli,
     ocen_swz,
 )
 from enm.models import EnergyNetworkModel
+from enm.nazwy_elementow import nazwa_po_identyfikatorze
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
 from network_model.catalog.lv_mccb_settings_iec60947_2 import (
     resolwuj_nastawy_mccb as resolwuj_nastawy_mccb_z_zakresow,
@@ -93,6 +95,7 @@ from network_model.solvers.protection_lv_curves import (
     compute_mccb_point,
 )
 from solver_input.uklad_sieci_nn import typ_sieci_solvera, uklad_tn
+from werdykt import DanaPrzyjeta
 
 from .swz.werdykt_tt_it import KOD_LIMIT_BRAK_TEKSTU_NORMY
 
@@ -219,14 +222,21 @@ class KryteriumWynik:
     status: KryteriumStatus
     uzasadnienie_pl: str
     wartosci: dict[str, Any] = field(default_factory=dict)
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte, na których stoi prąd zwarciowy
+    #: kryterium (wartość robocza tolerancji sieci nN) — w odpowiedzi WYŁĄCZNIE gdy są.
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "nazwa": self.nazwa,
             "status": self.status.value,
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "wartosci": self.wartosci,
         }
+        if self.dane_przyjete:
+            wynik["status_danych"] = "UNVALIDATED_INPUT"
+            wynik["dane_przyjete"] = [d.model_dump(mode="json") for d in self.dane_przyjete]
+        return wynik
 
 
 @dataclass(frozen=True)
@@ -253,9 +263,12 @@ class WynikDoboruAparatuNn:
     kandydaci: tuple[WynikKandydataNn, ...]
     rekomendacja: KandydatAparatuNn | None
     deterministic_signature: str = ""
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte Ik1_min (pętla liczona z wartością
+    #: roboczą tolerancji sieci nN) — w odpowiedzi WYŁĄCZNIE gdy są.
+    dane_przyjete_ik1_min: tuple[DanaPrzyjeta, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "ib_a": self.ib_a,
             "iz_prime_a": self.iz_prime_a,
             "ik_max_ka": self.ik_max_ka,
@@ -265,6 +278,11 @@ class WynikDoboruAparatuNn:
             "rekomendacja": self.rekomendacja.to_dict() if self.rekomendacja else None,
             "deterministic_signature": self.deterministic_signature,
         }
+        if self.dane_przyjete_ik1_min:
+            wynik["dane_przyjete_ik1_min"] = [
+                d.model_dump(mode="json") for d in self.dane_przyjete_ik1_min
+            ]
+        return wynik
 
 
 # =============================================================================
@@ -387,9 +405,42 @@ def _kryterium_i2(*, kandydat: KandydatAparatuNn, iz_prime_a: float) -> Kryteriu
 
 
 def _kryterium_zdolnosc_wylaczania(
+    *,
+    kandydat: KandydatAparatuNn,
+    ik_max_ka: float | None,
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
+) -> KryteriumWynik:
+    """(iii) Icu/Icn/Ic-warunkowy >= Ik″max w punkcie zabudowy.
+
+    ``dane_przyjete`` — dane, na których stoi Ik″max (punkt w sieci nN liczonej z wartością
+    roboczą tolerancji, karta TOLERANCJA-NN-WARTOSC-ROBOCZA): lista i zdanie uzasadnienia.
+    """
+    return _na_danych_przyjetych(
+        _kryterium_zdolnosc_wylaczania_bez_danych(kandydat=kandydat, ik_max_ka=ik_max_ka),
+        dane_przyjete,
+    )
+
+
+def _na_danych_przyjetych(
+    wynik: KryteriumWynik, dane_przyjete: tuple[DanaPrzyjeta, ...]
+) -> KryteriumWynik:
+    """Kryterium porównujące prąd z danymi przyjętymi nazywa je w uzasadnieniu i liście."""
+    if not dane_przyjete or wynik.wartosci.get("ik_max_ka") is None:
+        return wynik
+    nazwy = "; ".join(d.nazwa_pl for d in dane_przyjete)
+    return replace(
+        wynik,
+        uzasadnienie_pl=(
+            f"{wynik.uzasadnienie_pl} Ik″max liczony z daną przyjętą (wartość robocza): {nazwy} "
+            "— ocena na danej przyjętej, nie potwierdzony dowód zgodności."
+        ),
+        dane_przyjete=dane_przyjete,
+    )
+
+
+def _kryterium_zdolnosc_wylaczania_bez_danych(
     *, kandydat: KandydatAparatuNn, ik_max_ka: float | None
 ) -> KryteriumWynik:
-    """(iii) Icu/Icn/Ic-warunkowy >= Ik″max w punkcie zabudowy."""
     if ik_max_ka is None:
         return KryteriumWynik(
             nazwa="Zdolność wyłączania >= Ik″max",
@@ -435,7 +486,13 @@ _SWZ_STATUS_MAP: dict[SwzStatus, KryteriumStatus] = {
 }
 
 
-def _kryterium_swz(*, kandydat: KandydatAparatuNn, ik1_min_a: float, u0_v: float) -> KryteriumWynik:
+def _kryterium_swz(
+    *,
+    kandydat: KandydatAparatuNn,
+    ik1_min_a: float,
+    u0_v: float,
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
+) -> KryteriumWynik:
     """(iv) SWZ przy Ik_min — REUSE `application.analyses.swz.werdykt.ocen_swz`.
 
     Karta D1: `typ="MCCB"` ma teraz galaz w `ocen_swz` (Ia z nastawy Ii
@@ -454,12 +511,13 @@ def _kryterium_swz(*, kandydat: KandydatAparatuNn, ik1_min_a: float, u0_v: float
         klasa_mcb=kandydat.klasa_mcb,
         ii_a=kandydat.ii_a if kandydat.kind == KIND_MCCB else None,
     )
-    wynik = ocen_swz(ik1_min_a=ik1_min_a, u0_v=u0_v, aparat=aparat)
+    wynik = ocen_swz(ik1_min_a=ik1_min_a, u0_v=u0_v, aparat=aparat, dane_przyjete=dane_przyjete)
     return KryteriumWynik(
         nazwa="SWZ przy Ik_min",
         status=_SWZ_STATUS_MAP[wynik.status],
         uzasadnienie_pl=wynik.przyczyna_pl,
         wartosci=wynik.to_dict(),
+        dane_przyjete=wynik.dane_przyjete,
     )
 
 
@@ -491,12 +549,25 @@ def oceniaj_kandydata(
     ik_max_ka: float | None,
     ik1_min_a: float,
     u0_v: float,
+    dane_przyjete_ik_max: tuple[DanaPrzyjeta, ...] = (),
+    dane_przyjete_ik1_min: tuple[DanaPrzyjeta, ...] = (),
 ) -> WynikKandydataNn:
-    """Oceń JEDNEGO kandydata przeciw wszystkim czterem kryteriom (§0.5)."""
+    """Oceń JEDNEGO kandydata przeciw wszystkim czterem kryteriom (§0.5).
+
+    ``dane_przyjete_ik_max`` / ``dane_przyjete_ik1_min`` — dane przyjęte, na których stoją
+    prądy zwarciowe kryteriów (iii) i (iv) (wartość robocza tolerancji sieci nN).
+    """
     kryteria = (
         *oceniaj_przeciazenie_kandydata(kandydat=kandydat, ib_a=ib_a, iz_prime_a=iz_prime_a),
-        _kryterium_zdolnosc_wylaczania(kandydat=kandydat, ik_max_ka=ik_max_ka),
-        _kryterium_swz(kandydat=kandydat, ik1_min_a=ik1_min_a, u0_v=u0_v),
+        _kryterium_zdolnosc_wylaczania(
+            kandydat=kandydat, ik_max_ka=ik_max_ka, dane_przyjete=dane_przyjete_ik_max
+        ),
+        _kryterium_swz(
+            kandydat=kandydat,
+            ik1_min_a=ik1_min_a,
+            u0_v=u0_v,
+            dane_przyjete=dane_przyjete_ik1_min,
+        ),
     )
     kwalifikuje = all(k.status == KryteriumStatus.SPELNIA for k in kryteria)
     return WynikKandydataNn(kandydat=kandydat, kryteria=kryteria, kwalifikuje_sie=kwalifikuje)
@@ -510,6 +581,7 @@ def ocen_kandydatow_nn(
     ik1_min_a: float,
     u0_v: float,
     kandydaci: tuple[KandydatAparatuNn, ...],
+    dane_przyjete_ik1_min: tuple[DanaPrzyjeta, ...] = (),
 ) -> WynikDoboruAparatuNn:
     """Oceń WSZYSTKICH kandydatów i zwróć deterministyczny ranking.
 
@@ -537,6 +609,7 @@ def ocen_kandydatow_nn(
             ik_max_ka=ik_max_ka,
             ik1_min_a=ik1_min_a,
             u0_v=u0_v,
+            dane_przyjete_ik1_min=dane_przyjete_ik1_min,
         )
         for k in kandydaci
     ]
@@ -569,6 +642,7 @@ def ocen_kandydatow_nn(
         kandydaci=oceny_posortowane,
         rekomendacja=rekomendacja,
         deterministic_signature=signature,
+        dane_przyjete_ik1_min=dane_przyjete_ik1_min,
     )
 
 
@@ -706,30 +780,40 @@ def odmowa_doboru_nadpradowego_tt_it(system: str) -> tuple[str, str]:
     )
 
 
-def _ik1_min_i_u0(
-    enm: EnergyNetworkModel, station_ref: str, bus_ref: str
-) -> tuple[float | None, float | None, list[str], str | None, str | None]:
+@dataclass(frozen=True)
+class Ik1MinObwodu:
+    """Ik1_min [A] i U0 [V] obwodu albo nazwany brak; ``dane_przyjete`` — dane, na których
+    stoi Ik1_min (wartość robocza tolerancji sieci nN, karta TOLERANCJA-NN-WARTOSC-ROBOCZA)."""
+
+    ik1_min_a: float | None
+    u0_v: float | None
+    missing_data: list[str]
+    reason_pl: str | None
+    kod_odmowy: str | None
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
+
+
+def _ik1_min_i_u0(enm: EnergyNetworkModel, station_ref: str, bus_ref: str) -> Ik1MinObwodu:
     """Ik1_min [A] i U0 [V] dla obwodu (scenariusz MIN, ta sama fizyka co SWZ).
 
-    Zwraca ``(ik1_min_a, u0_v, missing_data, reason_pl, kod_odmowy)`` — pierwsze dwa
-    ``None`` przy braku danych, `missing_data`/`reason_pl` nazywają powód, a
-    ``kod_odmowy`` jest ustawiony dla odmowy nazwanej (strona dolna spoza pasma nN).
+    Pierwsze dwa pola ``None`` przy braku danych, `missing_data`/`reason_pl` nazywają powód,
+    a ``kod_odmowy`` jest ustawiony dla odmowy nazwanej (strona dolna spoza pasma nN).
     """
     station = _find_station(enm, station_ref)
     if station is None:
-        return None, None, ["station"], None, None
+        return Ik1MinObwodu(None, None, ["station"], None, None)
 
     # Transformator ZASILAJĄCY punkt (właściciel szyny po zamkniętych gałęziach),
     # nie „pierwszy transformator stacji" — klasa B-02 (stacja 2×TR, sekcja 2).
     trafo, transformer_missing = resolve_transformer_for_bus(enm, station, bus_ref)
     if trafo is None:
-        return None, None, transformer_missing, None, None
+        return Ik1MinObwodu(None, None, transformer_missing, None, None)
 
     # W5-A: układ sieci nN z transformatora zasilającego; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
-    odmowa = odmowa_analizy_nn({}, trafo, enm=enm)
+    odmowa = odmowa_analizy_nn({}, trafo)
     if odmowa is not None:
-        return (
+        return Ik1MinObwodu(
             None,
             None,
             list(odmowa.get("missing_data", [])),
@@ -739,21 +823,21 @@ def _ik1_min_i_u0(
     assert system is not None
     if not uklad_tn(system):
         reason_pl, kod = odmowa_doboru_nadpradowego_tt_it(system)
-        return None, None, [], reason_pl, kod
+        return Ik1MinObwodu(None, None, [], reason_pl, kod)
 
     z_tr, missing = _transformer_loop_impedance(trafo)
     if z_tr is None:
-        return None, None, missing, None, None
+        return Ik1MinObwodu(None, None, missing, None, None)
 
     upstream, upstream_missing = _upstream_thevenin_lv_component(enm, trafo)
     if upstream is None:
-        return None, None, upstream_missing, None, None
+        return Ik1MinObwodu(None, None, upstream_missing, None, None)
 
     try:
         path = path_to_bus(enm, trafo.lv_bus_ref, bus_ref)
         segments = route_segments_min_scenario(path)
     except RouteExtractionError as exc:
-        return None, None, ["route"], str(exc), None
+        return Ik1MinObwodu(None, None, ["route"], str(exc), None)
 
     phase_component, return_component = sum_phase_and_return_route(segments)
     net_type, protection = typ_sieci_solvera(system)
@@ -771,7 +855,14 @@ def _ik1_min_i_u0(
         phase_component=phase_component,
         return_component=return_component,
     )
-    return loop_result.ik_min_a, u_phase_v, [], None, None
+    return Ik1MinObwodu(
+        loop_result.ik_min_a,
+        u_phase_v,
+        [],
+        None,
+        None,
+        dane_przyjete_petli(loop_result, nazwa_po_identyfikatorze(bus_ref, enm)),
+    )
 
 
 def wybierz_aparat_dla_obwodu_nn(
@@ -799,7 +890,14 @@ def wybierz_aparat_dla_obwodu_nn(
     Ik1_min/U0 SĄ resolwowane tutaj (ta sama fizyka co SWZ, patrz
     `_ik1_min_i_u0`) — to JEDYNA wielkość niezależna od wyboru kandydata.
     """
-    ik1_min_a, u0_v, missing, reason_pl, kod_odmowy = _ik1_min_i_u0(enm, station_ref, bus_ref)
+    obwod = _ik1_min_i_u0(enm, station_ref, bus_ref)
+    ik1_min_a, u0_v, missing, reason_pl, kod_odmowy = (
+        obwod.ik1_min_a,
+        obwod.u0_v,
+        obwod.missing_data,
+        obwod.reason_pl,
+        obwod.kod_odmowy,
+    )
     if kod_odmowy is not None:
         return {
             "status": "nie dotyczy",
@@ -826,6 +924,7 @@ def wybierz_aparat_dla_obwodu_nn(
         ik1_min_a=ik1_min_a,
         u0_v=u0_v,
         kandydaci=kandydaci,
+        dane_przyjete_ik1_min=obwod.dane_przyjete,
     )
     return {
         "status": "OK",

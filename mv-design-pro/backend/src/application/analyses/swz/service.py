@@ -45,7 +45,7 @@ from network_model.solvers.fault_loop_builder import (
 from solver_input.uklad_sieci_nn import typ_sieci_solvera, uklad_tn
 from werdykt import Przedmiot
 
-from .werdykt import AparatZabezpieczajacy, ocen_swz
+from .werdykt import AparatZabezpieczajacy, dane_przyjete_petli, ocen_swz
 from .werdykt_tt_it import ocen_swz_tt_it
 
 
@@ -178,7 +178,7 @@ def build_swz_view(
     # W5-A: układ sieci nN z transformatora ZASILAJĄCEGO; brak/TT/IT = odmowa nazwana.
     system = uklad_nn_transformatora(trafo)
     context["network_system"] = system
-    odmowa = odmowa_analizy_nn(context, trafo, enm=enm)
+    odmowa = odmowa_analizy_nn(context, trafo)
     if odmowa is not None:
         return odmowa
     assert system is not None
@@ -262,7 +262,12 @@ def build_swz_view(
         }
 
     assert aparat is not None
-    swz = ocen_swz(ik1_min_a=loop_result.ik_min_a, u0_v=u_phase_v, aparat=aparat)
+    swz = ocen_swz(
+        ik1_min_a=loop_result.ik_min_a,
+        u0_v=u_phase_v,
+        aparat=aparat,
+        dane_przyjete=dane_przyjete_petli(loop_result, nazwa_po_identyfikatorze(bus_ref, enm)),
+    )
 
     return {
         **context,

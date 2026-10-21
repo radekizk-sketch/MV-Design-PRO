@@ -69,7 +69,8 @@ def _transformator(
             else None
         ),
         # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napiecia sieci nN (wiersz nN tabeli 1
-        # IEC 60909-0) niesie ten sam transformator; brak = odmowa `fault.c_tolerancja_nn_brak`.
+        # IEC 60909-0) niesie ten sam transformator; brak = wartość robocza +10 % z założeniem
+        # biegu `fault.c_tolerancja_nn_robocza` (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
         lv_voltage_tolerance=tolerancja,
     )
 

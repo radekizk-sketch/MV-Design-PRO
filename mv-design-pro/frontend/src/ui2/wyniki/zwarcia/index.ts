@@ -33,6 +33,7 @@ export {
   mapujWierszZwarcia,
   naWierszeZwarc,
   naZalozeniaZwarc,
+  KOD_TOLERANCJA_NN_ROBOCZA,
   naPozycjeSzczegoluWkladu,
   naSlupkiIkss,
   naSlupkiUdzialow,
@@ -78,3 +79,8 @@ export {
   fmtMVA,
   fmtProcent,
 } from './strings';
+export {
+  typSelekcjiZalozenia,
+  useZmienTolerancjeNn,
+  type CelZmianyZalozenia,
+} from './zmianaTolerancjiNn';

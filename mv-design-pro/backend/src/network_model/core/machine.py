@@ -21,12 +21,10 @@ import uuid
 from dataclasses import dataclass, field
 
 from network_model.core.voltage_factor import (
-    OdmowaToleranciiNnError,
     TolerancjaNapieciaNn,
     c_for_node,
     zrodlo_c_z_tabeli,
 )
-from network_model.nazwy import nazwa_nadana
 from network_model.pochodne import (
     impedancja_z_napiecia_i_pradu_ohm,
     kv_na_v,
@@ -87,11 +85,13 @@ class SynchronousMachineSource:
     un_kv: float | None = field(default=None)  # system nominal voltage U_n [kV]; default U_rG
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_max we wzorze K_G to c_max tabeli 1 IEC 60909-0 dla
     # U_n sieci, do której przyłączona jest maszyna — czytany z JEDYNEGO źródła tabeli
-    # (`voltage_factor.c_for_node`) z tolerancją sieci nN szyny maszyny (`enm.tolerancja_nn`,
-    # wpina mapper). Dawna domyślka c_max = 1,1 była wierszem SN także dla maszyny nN (+6 %:
-    # c_max 1,05) — K_G zawyżony o 4,8 %. Brak tolerancji przy maszynie nN = odmowa
-    # `fault.c_tolerancja_nn_brak` przy odczycie K_G (rozpływ mocy K_G nie czyta).
+    # (`voltage_factor.c_for_node`) z klasą tolerancji sieci nN szyny maszyny
+    # (`enm.tolerancja_nn`, wpina mapper). Dawna domyślka c_max = 1,1 była wierszem SN także dla
+    # maszyny nN (+6 %: c_max 1,05) — K_G zawyżony o 4,8 %.
     tolerancja_nn: TolerancjaNapieciaNn | None = field(default=None)
+    # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa wyżej jest wartością roboczą rejestru —
+    # podstawa c_max we wzorze K_G mówi to wprost (ta sama wyspa co węzeł maszyny).
+    tolerancja_nn_robocza: bool = field(default=False)
     r_over_x: float | None = field(default=None)  # R_G/X″d override; else IEC default
     in_service: bool = field(default=True)
 
@@ -120,26 +120,19 @@ class SynchronousMachineSource:
         return self.un_kv if self.un_kv is not None else self.ur_kv
 
     @property
-    def _nazwa_w_odmowie(self) -> str:
-        """Nazwa maszyny w odmowie braku tolerancji nN (nazwa z mapowania ENM)."""
-        return nazwa_nadana(self.name) or "Generator bez nazwy"
-
-    @property
     def c_max(self) -> float:
         """c_max tabeli 1 IEC 60909-0 dla U_n sieci maszyny (K_G, §6.6.1 eq. 18)."""
-        try:
-            return c_for_node(self._un_sieci_kv, "MAX", tolerancja_nn=self.tolerancja_nn)
-        except OdmowaToleranciiNnError as odmowa:
-            # Partia integracji 11: odmowa K_G nazywa maszynę (nazwa z mapowania ENM).
-            raise odmowa.dotyczy(self._nazwa_w_odmowie) from odmowa
+        return c_for_node(self._un_sieci_kv, "MAX", tolerancja_nn=self.tolerancja_nn)
 
     @property
     def c_max_zrodlo(self) -> str:
         """Podstawa c_max we wzorze K_G — brzmienie tabeli 1 (White Box)."""
-        try:
-            return zrodlo_c_z_tabeli(self._un_sieci_kv, "MAX", tolerancja_nn=self.tolerancja_nn)
-        except OdmowaToleranciiNnError as odmowa:
-            raise odmowa.dotyczy(self._nazwa_w_odmowie) from odmowa
+        return zrodlo_c_z_tabeli(
+            self._un_sieci_kv,
+            "MAX",
+            tolerancja_nn=self.tolerancja_nn,
+            tolerancja_nn_robocza=self.tolerancja_nn_robocza,
+        )
 
     @property
     def k_g(self) -> float:

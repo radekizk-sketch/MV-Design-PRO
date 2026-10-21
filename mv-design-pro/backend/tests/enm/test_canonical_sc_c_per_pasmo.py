@@ -84,7 +84,8 @@ def _build_mv_lv_enm(
 
     ``tolerancja`` — deklarowana tolerancja sieci nN na transformatorze (nośnik wiersza nN
     tabeli 1 IEC 60909-0). Domyślnie +6 % (1,05/0,95) — wartości przypięte w tym pliku
-    liczono dla tego wiersza; ``None`` buduje sieć bez deklaracji (odmowa zwarć)."""
+    liczono dla tego wiersza; ``None`` buduje sieć bez deklaracji — liczoną z wartością roboczą
+    rejestru (+10 %, karta TOLERANCJA-NN-WARTOSC-ROBOCZA), nie odmowę."""
     return EnergyNetworkModel(
         header=ENMHeader(name=name),
         buses=[
@@ -808,3 +809,167 @@ def test_kabel_bez_theta_k_bez_korekty_z_jawna_nota():
     assert nota_nn["corrected"] is False
     assert nota_nn["theta_k_c"] is None
     assert "brak" in nota_nn["reason"].lower()
+
+
+# =============================================================================
+# 10. Sonda liczbowa wartości roboczej tolerancji nN (karta TOLERANCJA-NN-WARTOSC-ROBOCZA)
+# =============================================================================
+#
+# Sieć jak w sekcji 9, transformator BEZ deklaracji tolerancji sieci nN: wyspa nN liczona z
+# wartością roboczą +10 % (IEC 60909-0 tab. 1: c_max 1,10, c_min 0,90 — wpisane RĘCZNIE, nie
+# z rejestru). Rachunek ręczny tą samą metodą sumowania impedancji co sekcja 9:
+#
+#   K_T(+10 %) = 0,95·1,10/(1+0,6·0,0586408588) = 1,0094818698
+#   Z_T = K_T·(r+jx)·(0,4²/0,63) = 0,0032555727 + j0,0150341292 Ω
+#   MAX: Z_N2 = Z_N1·(0,4/15)² + Z_T = 0,0036854455 + j0,0158768576 Ω
+#        I″k,max(N2) = 1,10·400/(√3·|Z_N2|) = 15 585,88 A
+#   MIN: źródło bez S″k,min — Z_Q z S″k i c_max SN (jak MAX); kabel SN z R_θ (θ_k 250 °C):
+#        R = 0,506·[1+0,004·(250−20)] = 0,97152 Ω; transformator bez korekty, K_T z c_max
+#        Z_N2 = 0,0040164820 + j0,0158768576 Ω
+#        I″k,min(N2) = 0,90·400/(√3·|Z_N2|) = 12 691,33 A
+
+_SONDA_ROBOCZA_IKSS_N2_A = {"MAX": 15585.88, "MIN": 12691.33}
+_SONDA_ROBOCZA_C_N2 = {"MAX": 1.10, "MIN": 0.90}
+
+
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+def test_sonda_reczna_wartosci_roboczej_tolerancji_nn(scenariusz: str):
+    """I″k szyny nN sieci bez deklaracji = rachunek ręczny dla c 1,10/0,90 (wartość robocza
+    +10 %), a wiersz nazywa wartość roboczą w podstawie c i znaczniku."""
+    wynik = _bieg_zwarciowy(
+        f"sonda-robocza-{scenariusz}",
+        _build_mv_lv_enm("Sieć MV+LV — wartość robocza", tolerancja=None),
+        {"scenario": scenariusz.lower()},
+    )
+    wiersz = _rows_by_node(wynik)[ref_to_graph_id(N2)]
+    assert wiersz["c_factor"] == pytest.approx(_SONDA_ROBOCZA_C_N2[scenariusz])
+    assert wiersz["ikss_a"] == pytest.approx(_SONDA_ROBOCZA_IKSS_N2_A[scenariusz], rel=1e-6)
+    assert wiersz["c_zrodlo"] == (
+        f"IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 % (wartość robocza), {scenariusz}"
+    )
+    assert wiersz["tolerancja_nn_robocza"] is True
+    # Szyna SN tej samej sieci: wiersz SN, bez znacznika (c węzła nie zależy od tolerancji nN).
+    assert "tolerancja_nn_robocza" not in _rows_by_node(wynik)[ref_to_graph_id(N1)]
+
+
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+def test_wartosc_robocza_rowna_deklaracji_plus_10_w_liczbach(scenariusz: str):
+    """Wartość robocza liczy DOKŁADNIE to, co deklaracja +10 % (te same prądy w każdym
+    węźle) — różni ją wyłącznie podstawa c, znacznik wiersza i założenie biegu."""
+    robocza = _bieg_zwarciowy(
+        f"robocza-{scenariusz}",
+        _build_mv_lv_enm("Sieć", tolerancja=None),
+        {"scenario": scenariusz.lower()},
+    )
+    reset_canonical_runs()
+    deklaracja = _bieg_zwarciowy(
+        f"deklaracja-{scenariusz}",
+        _build_mv_lv_enm("Sieć", tolerancja="PLUS_10"),
+        {"scenario": scenariusz.lower()},
+    )
+    w_rob, w_dek = _rows_by_node(robocza), _rows_by_node(deklaracja)
+    assert set(w_rob) == set(w_dek)
+    for wezel, wiersz in w_dek.items():
+        for pole in ("ikss_a", "ip_a", "ith_a", "c_factor"):
+            assert w_rob[wezel][pole] == wiersz[pole], (wezel, pole)
+    kody_rob = [z["code"] for z in robocza.raw_result.get("zalozenia", [])]
+    kody_dek = [z["code"] for z in deklaracja.raw_result.get("zalozenia", [])]
+    # Jedyna różnica list założeń to JEDNO założenie tolerancji roboczej. Pozycja nie jest
+    # kontraktem: założenia modelu (assembler: źródło, tolerancja nN) poprzedzają założenia
+    # konfiguracji biegu (np. `fault.czas_tb_wartosc_robocza`, karta TB-WARTOSC-ROBOCZA).
+    tolerancja = "fault.c_tolerancja_nn_robocza"
+    assert kody_rob.count(tolerancja) == 1, kody_rob
+    assert [kod for kod in kody_rob if kod != tolerancja] == kody_dek
+
+
+# ---------------------------------------------------------------------------
+# 11. Dwie wyspy nN, jedna zadeklarowana (karta TOLERANCJA-NN-WARTOSC-ROBOCZA)
+#
+# Iloczyn cech: {deklaracja wyspy A: +6 %, +10 %} × {wyspa B: brak deklaracji} × {MAX, MIN}.
+# Rozstrzygnięcie jest per wyspa galwaniczna: wartość robocza wyspy B nie przecieka do wyspy A
+# (wiersz, podstawa c, prąd), a założenie biegu jest JEDNO i nazywa transformator wyspy B.
+# ---------------------------------------------------------------------------
+
+N4 = "N4_SZYNA_NN_B"
+
+
+def _dwie_wyspy_nn(tolerancja_a: str, tolerancja_b: str | None) -> EnergyNetworkModel:
+    enm = _build_mv_lv_enm("Dwie wyspy nN", tolerancja=tolerancja_a)  # type: ignore[arg-type]
+    (tr1,) = enm.transformers
+    tr2 = tr1.model_copy(
+        update={
+            "ref_id": "TR2",
+            "name": "TR B 15/0,4 kV 630 kVA",
+            "lv_bus_ref": N4,
+            "lv_voltage_tolerance": tolerancja_b,
+        }
+    )
+    szyna_b = Bus(ref_id=N4, name="Szyna nN wyspy B", voltage_kv=_UN_LV_KV)
+    return enm.model_copy(update={"buses": [*enm.buses, szyna_b], "transformers": [tr1, tr2]})
+
+
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+@pytest.mark.parametrize("tolerancja_a", ["PLUS_6", "PLUS_10"])
+def test_dwie_wyspy_wartosc_robocza_tylko_w_wyspie_bez_deklaracji(
+    tolerancja_a: str, scenariusz: str
+):
+    opcje = {"scenario": scenariusz.lower()}
+    mieszana = _bieg_zwarciowy(
+        f"wyspy-{tolerancja_a}-{scenariusz}", _dwie_wyspy_nn(tolerancja_a, None), opcje
+    )
+    reset_canonical_runs()
+    zadeklarowana = _bieg_zwarciowy(
+        f"wyspy-dekl-{tolerancja_a}-{scenariusz}", _dwie_wyspy_nn(tolerancja_a, "PLUS_10"), opcje
+    )
+    w_mix, w_dek = _rows_by_node(mieszana), _rows_by_node(zadeklarowana)
+    # Wiersze bez odnośników dowodu związanych z identyfikatorem biegu (jedyna różnica tożsama).
+    s_mix, s_dek = _stripped_rows_by_node(mieszana), _stripped_rows_by_node(zadeklarowana)
+    etykieta_a = {"PLUS_6": "+6 %", "PLUS_10": "+10 %"}[tolerancja_a]
+    for ref in (N2, N3):
+        wiersz = w_mix[ref_to_graph_id(ref)]
+        assert "tolerancja_nn_robocza" not in wiersz, ref
+        assert wiersz["c_zrodlo"] == (
+            f"IEC 60909-0 tab. 1, pasmo nN, tolerancja {etykieta_a}, {scenariusz}"
+        )
+    wiersz_b = w_mix[ref_to_graph_id(N4)]
+    assert wiersz_b["tolerancja_nn_robocza"] is True
+    assert wiersz_b["c_zrodlo"] == (
+        f"IEC 60909-0 tab. 1, pasmo nN, tolerancja +10 % (wartość robocza), {scenariusz}"
+    )
+    # Liczby: wartość robocza wyspy B = deklaracja +10 %; wyspa A i szyny SN bez zmian.
+    assert set(w_mix) == set(w_dek)
+    for wezel, wiersz in w_dek.items():
+        for pole in ("ikss_a", "ip_a", "ith_a", "c_factor"):
+            assert w_mix[wezel][pole] == wiersz[pole], (wezel, pole)
+        if wezel != ref_to_graph_id(N4):
+            assert s_mix[wezel] == s_dek[wezel], wezel
+    zalozenia = [
+        z
+        for z in mieszana.raw_result.get("zalozenia", [])
+        if z["code"] == "fault.c_tolerancja_nn_robocza"
+    ]
+    assert [(z["element_ref"], z["scenariusz"]) for z in zalozenia] == [("TR2", scenariusz)]
+    assert "TR B 15/0,4 kV 630 kVA" in zalozenia[0]["message_pl"]
+    assert "Szyna nN wyspy B" in zalozenia[0]["message_pl"]
+    assert "TR 15/0,4 kV 630 kVA Dyn11" not in zalozenia[0]["message_pl"]
+    assert "fault.c_tolerancja_nn_robocza" not in {
+        z["code"] for z in zadeklarowana.raw_result.get("zalozenia", [])
+    }
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10"])
+def test_bieg_na_samych_deklaracjach_bez_sladu_wartosci_roboczej(tolerancja: str):
+    """Determinizm i addytywność: sieć z deklaracją nie niesie żadnego śladu karty — brak
+    klucza `tolerancja_nn_robocza` w wierszach, brak założenia, podstawa c bez dopisku — a dwa
+    biegi tego samego wejścia mają ten sam `input_hash` i te same wiersze."""
+    pierwszy = _bieg_zwarciowy(f"det-a-{tolerancja}", _dwie_wyspy_nn(tolerancja, tolerancja))
+    reset_canonical_runs()
+    drugi = _bieg_zwarciowy(f"det-a-{tolerancja}", _dwie_wyspy_nn(tolerancja, tolerancja))
+    assert pierwszy.input_hash == drugi.input_hash
+    assert _stripped_rows_by_node(pierwszy) == _stripped_rows_by_node(drugi)
+    for wiersz in _rows_by_node(pierwszy).values():
+        assert "tolerancja_nn_robocza" not in wiersz
+        assert "wartość robocza" not in (wiersz.get("c_zrodlo") or "")
+    assert "fault.c_tolerancja_nn_robocza" not in {
+        z["code"] for z in pierwszy.raw_result.get("zalozenia", [])
+    }

@@ -52,15 +52,15 @@ from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
-from enm.nazwy_elementow import NAZWA_ELEMENTU_BEZ_NAZWY, nazwa_nadana_po_identyfikatorze
-from enm.tolerancja_nn import tolerancje_wezlow_nn
+from enm.tolerancja_nn import wyspy_wezlow_nn
+from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
 from network_model.core.voltage_factor import (
-    OdmowaToleranciiNnError,
     c_for_node,
     zrodlo_c_z_tabeli,
 )
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka, kv_na_v, moc_zwarciowa_z_pradu_mva
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     build_zbus,
@@ -170,18 +170,29 @@ def _build_upstream_equivalent_snapshot_surowy(
             "transformer_ref": trafo.ref_id,
         }
 
-    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c szyny strony górnej z tabeli 1 z tolerancją sieci nN
-    # TEJ szyny (`enm.tolerancja_nn`; dla szyny SN bez znaczenia) — nigdy domyślka.
-    tolerancja_gornej = tolerancje_wezlow_nn(enm).get(trafo.hv_bus_ref)
-    try:
-        c_factor = c_for_node(trafo.uhv_kv, scenario, tolerancja_nn=tolerancja_gornej)
-        c_zrodlo = zrodlo_c_z_tabeli(trafo.uhv_kv, scenario, tolerancja_nn=tolerancja_gornej)
-    except OdmowaToleranciiNnError as odmowa:
-        # Partia integracji 11: odmowa nazywa szynę strony górnej (nazwa z modelu).
-        raise odmowa.dotyczy(
-            nazwa_nadana_po_identyfikatorze(enm, trafo.hv_bus_ref)
-            or NAZWA_ELEMENTU_BEZ_NAZWY["buses"]
-        ) from odmowa
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c szyny strony górnej z tabeli 1 z klasą tolerancji
+    # sieci nN TEJ szyny (`enm.tolerancja_nn`; dla szyny SN bez znaczenia). Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa zawsze ustalona — deklaracja wyspy albo wartość
+    # robocza rejestru (szyna strony górnej w paśmie nN spoza wysp modelu — napięcie szyny
+    # rozbieżne z napięciem transformatora — to sieć nN bez elementu zasilającego).
+    wyspa_gornej = wyspy_wezlow_nn(enm).get(trafo.hv_bus_ref)
+    rozstrzygniecie_gornej = (
+        wyspa_gornej.rozstrzygniecie
+        if wyspa_gornej is not None
+        else (rozstrzygnij_tolerancje_nn(()) if w_pasmie_nn(trafo.uhv_kv) else None)
+    )
+    tolerancja_gornej = (
+        rozstrzygniecie_gornej.wartosc if rozstrzygniecie_gornej is not None else None
+    )
+    c_factor = c_for_node(trafo.uhv_kv, scenario, tolerancja_nn=tolerancja_gornej)
+    c_zrodlo = zrodlo_c_z_tabeli(
+        trafo.uhv_kv,
+        scenario,
+        tolerancja_nn=tolerancja_gornej,
+        tolerancja_nn_robocza=(
+            rozstrzygniecie_gornej is not None and rozstrzygniecie_gornej.robocza
+        ),
+    )
     un_hv_v = kv_na_v(trafo.uhv_kv)
     ikss_a = compute_ikss(
         un_v=un_hv_v,

@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import pytest
 from domain.execution import compute_solver_input_hash
-from network_model.core.voltage_factor import OdmowaToleranciiNnError, c_for_node
+from network_model.core.voltage_factor import c_for_node
+from network_model.odmowa_danych import OdmowaDanychError
 
 # =============================================================================
 # 1. c_for_node — IEC 60909-0 Table 1 lookup
@@ -43,19 +44,19 @@ class TestCForNode:
 
     @pytest.mark.parametrize("scenario", ["MAX", "MIN"])
     @pytest.mark.parametrize("tolerancja", [None, "PLUS_7", ""])
-    def test_lv_band_without_tolerance_is_refused(self, tolerancja, scenario):
-        """Węzeł nN bez (albo z nieznaną) tolerancją sieci: odmowa nazwana, nie wiersz +6 %."""
-        with pytest.raises(OdmowaToleranciiNnError) as blad:
+    def test_lv_band_without_resolved_tolerance_is_program_error(self, tolerancja, scenario):
+        """Węzeł nN bez rozstrzygniętej (albo z nieznaną) klasą tolerancji: błąd PROGRAMU
+        wołającego (karta TOLERANCJA-NN-WARTOSC-ROBOCZA — klasę rozstrzyga `enm.tolerancja_nn`
+        albo rejestr wartości roboczych), nigdy wiersz tabeli po cichu ani odmowa dziedziny."""
+        with pytest.raises(ValueError) as blad:
             c_for_node(0.4, scenario, tolerancja_nn=tolerancja)
-        # Postać strukturalna (partia 10): kod w polu odmowy nazwanej, nie w treści.
-        assert blad.value.kod == "fault.c_tolerancja_nn_brak"
-        assert "fault.c_tolerancja_nn_brak" not in str(blad.value)
+        assert not isinstance(blad.value, OdmowaDanychError)
 
     def test_boundary_at_exactly_1kv_is_lv_band(self):
         """1.0 kV itself is <=1.0 kV -> LV band (nN), not MV."""
         assert c_for_node(1.0, "MAX", tolerancja_nn="PLUS_6") == 1.05
         assert c_for_node(1.0, "MIN", tolerancja_nn="PLUS_6") == 0.95
-        with pytest.raises(OdmowaToleranciiNnError):
+        with pytest.raises(ValueError):
             c_for_node(1.0, "MAX", tolerancja_nn=None)
 
     def test_just_above_boundary_is_mv_band(self):

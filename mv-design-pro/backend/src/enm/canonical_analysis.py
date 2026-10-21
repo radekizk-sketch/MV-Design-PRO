@@ -2682,6 +2682,15 @@ def _execute_short_circuit(
                 # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: podstawa c TEGO węzła (White Box) —
                 # „IEC 60909-0 tab. 1, pasmo SN, MAX" albo „nadpisanie ręczne: <powód>".
                 "c_zrodlo": dobor_c.zrodlo,
+                # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: węzeł sieci nN liczonej z wartością
+                # roboczą tolerancji (c węzła, K_T i K_G tej sieci) — addytywnie, WYŁĄCZNIE
+                # gdy prawda (wiersz sieci zadeklarowanej bez zmian). Konsumenci werdyktów
+                # niosą stąd daną przyjętą (`dane_przyjete`, jakość ESTIMATED).
+                **(
+                    {"tolerancja_nn_robocza": True}
+                    if wejscie.graph.nodes[node_id].tolerancja_nn_robocza
+                    else {}
+                ),
             }
         )
         if wejscie.impedancja_zwarcia is not None:
@@ -3870,6 +3879,7 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "kappa": item.get("kappa"),
         "c_factor": item.get("c_factor"),
         "c_zrodlo": item.get("c_zrodlo"),
+        **({"tolerancja_nn_robocza": True} if item.get("tolerancja_nn_robocza") else {}),
         "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),

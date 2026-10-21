@@ -5228,6 +5228,11 @@
       "title": "Protection Arrangement",
       "type": "string"
      },
+     "tolerancja_nn": {
+      "additionalProperties": true,
+      "title": "Tolerancja Nn",
+      "type": "object"
+     },
      "u_nom_v": {
       "title": "U Nom V",
       "type": "number"
@@ -5261,7 +5266,8 @@
      "c_max",
      "c_zrodlo_min",
      "c_zrodlo_max",
-     "white_box_trace"
+     "white_box_trace",
+     "tolerancja_nn"
     ],
     "title": "FaultLoopComputeResponse",
     "type": "object"
@@ -6050,6 +6056,18 @@
      "sk_mva": {
       "title": "Sk Mva",
       "type": "number"
+     },
+     "tolerancja_nn": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Tolerancja Nn"
      },
      "z0_ohm": {
       "anyOf": [
@@ -13498,7 +13516,7 @@
    },
    "SCContributionsRequest": {
     "additionalProperties": false,
-    "description": "Zadanie wkladow zwarciowych per punkt (R3-B / K3-G3, FLOW EKSPERT+).\n\nKanoniczny snapshot ENM + punkt zwarcia — fizyka (rozbicie maszynowe\nmu/q/i_b, IEC 60909-0:2016 §6.6) liczona po stronie serwera przez ten sam\nsolver co pakiet dowodowy SC3F (`compute_machine_contributions`).\nZERO fizyki w UI; odpowiedz JSON zawiera slad WHITE BOX solvera.",
+    "description": "Zadanie wkladow zwarciowych per punkt (R3-B / K3-G3, FLOW EKSPERT+).\n\nKanoniczny snapshot ENM + punkt zwarcia — fizyka (rozbicie maszynowe\nmu/q/i_b, IEC 60909-0:2016 rozdz. 9) liczona po stronie serwera przez ten sam\nsolver co pakiet dowodowy SC3F (`compute_machine_contributions`).\nZERO fizyki w UI; odpowiedz JSON zawiera slad WHITE BOX solvera.",
     "properties": {
      "fault_impedance": {
       "anyOf": [
@@ -24360,7 +24378,7 @@
   },
   "/api/fault-loop/compute": {
    "post": {
-    "description": "Oblicz impedancję pętli zwarcia po stronie nN.\n\nPer IEC 60364-4-41:\n    Z_loop = Z_phase + Z_return + Z_transformer (+ Z_upstream opcjonalne)\n    I_k = c * U_n / |Z_loop|\n\ngdzie c_min/c_max z tabeli 1 IEC 60909-0 dla sieci nN o tolerancji z żądania\n(``lv_voltage_tolerance``; jedyne źródło wartości: ``network_model.core.voltage_factor``).\n\nZakres końcówki: TN-S, TN-C-S, TN-C. Układ TT/IT wymaga danych pętli doziemnej (R_A, R_B,\nI_Δn; pojemności doziemne), których żądanie nie niesie — odmowa nazwana solvera (400).",
+    "description": "Oblicz impedancję pętli zwarcia po stronie nN.\n\nPer IEC 60364-4-41:\n    Z_loop = Z_phase + Z_return + Z_transformer (+ Z_upstream opcjonalne)\n    I_k = c * U_n / |Z_loop|\n\ngdzie c_min/c_max z tabeli 1 IEC 60909-0 dla sieci nN o tolerancji z żądania\n(``lv_voltage_tolerance``; brak = wartość robocza rejestru ``wartosci_robocze``; jedyne\nźródło wartości c: ``network_model.core.voltage_factor``).\n\nZakres końcówki: TN-S, TN-C-S, TN-C. Układ TT/IT wymaga danych pętli doziemnej (R_A, R_B,\nI_Δn; pojemności doziemne), których żądanie nie niesie — odmowa nazwana solvera (400).",
     "operationId": "compute_fault_loop_endpoint_api_fault_loop_compute_post",
     "requestBody": {
      "content": {

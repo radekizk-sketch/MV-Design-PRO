@@ -300,6 +300,7 @@ def zbuduj_pakiet_nastaw(
         delta_t_s=ei.delta_t_s,
         k_b=ei.k_b,
         k_bth=ei.k_bth,
+        dane_przyjete=wejscie.dane_przyjete,
     )
 
     context = ProofPackContext(
@@ -353,7 +354,7 @@ def zbuduj_odpowiedz_nastaw_json(
     except BrakDanychNastawError as exc:
         raise PakietNastawError(str(exc), kod=exc.kod) from exc
 
-    return {
+    odpowiedz: dict[str, Any] = {
         "wynik": nastawy.wynik.to_dict(),
         "wejscie": _proweniencja_wejscia(
             run,
@@ -364,6 +365,7 @@ def zbuduj_odpowiedz_nastaw_json(
         ),
         "dostepnosc_pakietu": True,
     }
+    return {**odpowiedz, **_dane_przyjete_odpowiedzi(nastawy)}
 
 
 def zbuduj_odpowiedz_dopasowania(
@@ -420,6 +422,21 @@ def zbuduj_odpowiedz_dopasowania(
             next_bus_id=next_bus_id,
             nazwa_przypadku=nazwa_przypadku,
         ),
+        **_dane_przyjete_odpowiedzi(nastawy),
+    }
+
+
+def _dane_przyjete_odpowiedzi(nastawy: Any) -> dict[str, Any]:
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: stan i lista danych przyjętych prądów wejścia —
+    addytywnie, WYŁĄCZNIE gdy prądy stoją na wartości roboczej tolerancji sieci nN (wspólne
+    dla odpowiedzi nastaw i dopasowania; proweniencja `_proweniencja_wejscia` nietknięta, bo
+    jej zawartość przypinają złote odciski parytetu scenariuszy)."""
+    dane = nastawy.wejscie.dane_przyjete
+    if not dane:
+        return {}
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [d.model_dump(mode="json") for d in dane],
     }
 
 

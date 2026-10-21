@@ -1215,8 +1215,8 @@ class DerBlockTransformerSpec(_FrozenBase):
     lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
     """Tolerancja napięcia sieci nN strony wtórnej (wiersz nN tabeli 1 IEC 60909-0:
     PLUS_6 → c 1,05/0,95; PLUS_10 → c 1,10/0,90) → ``Transformer.lv_voltage_tolerance``.
-    Brak = brak deklaracji (zwarcia w sieci z tym TR odmawiają kodem
-    ``fault.c_tolerancja_nn_brak``), nigdy domyślka."""
+    Brak = brak deklaracji: zwarcia w sieci z tym TR liczą wartość roboczą rejestru z
+    założeniem biegu ``fault.c_tolerancja_nn_robocza``, nigdy cicha domyślka."""
 
 
 class DerMvFieldConfigurationSpec(_FrozenBase):
