@@ -262,6 +262,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // DOKŁADNY (nie fallback prefiksu), żeby kod był tu widoczny i policzalny:
   // fallback grupuje milcząco, więc kod spoza rejestru wyglądałby jak obsłużony.
   'catalog.item_not_found': 'wspolne',
+  'catalog.type_incomplete': 'wspolne',
+  'catalog.duplicate_id': 'wspolne',
   'catalog.ref_missing': 'wspolne',
   'catalog.item_missing': 'wspolne',
   'catalog.item_id_missing': 'wspolne',

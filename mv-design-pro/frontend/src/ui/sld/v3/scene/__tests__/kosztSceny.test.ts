@@ -425,6 +425,12 @@ interface OdciskiLod {
  * `terminalGraph.ts`, partia 10: odmowy bez identyfikatorów — nazwa elementu zamiast
  * `ref`), które scena niesie; sieć podwojona ma naruszenia niezmienników, referencyjna nie.
  * Sonda: oba pliki przywrócone do stanu sprzed partii 10 → 8 z 8 testów tego pliku zielone.
+ *
+ * AKTUALIZACJA ŚWIADOMA (partia integracji 12, karta W2C-PLAN-ETYKIET, 2026-10-21) — 6 odcisków
+ * PLANU etykiet (obie sieci); odciski SCENY i DECLUTTERU bez zmian. Przyczyna WYŁĄCZNIE w
+ * `canvas/labelLegibility.ts` (`najlepszeDopasowanie`): plan próbuje pełnego tekstu po każdej
+ * stronie kotwicy, zanim skróci napis — dawniej skracał po stronie zadeklarowanej („TV1” →
+ * „T…”, czytane jak transformator). Sonda: ten plik sprzed karty → 8 z 8 testów zielone.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
@@ -449,7 +455,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
         '4b483d0146f0f9b872601ff9d8aeeafb',
         'b31c6fee256b9287e5275778739a4aaa',
         '229116bf9fc98b146a690e52328de0c5',
-        '987e2c255387528f4cdb973142439a9a',
+        'f4e407fb21825d19ae8d6013ef4f7f48',
         'f7506f785ea58af34c3b24802cc68366',
         'f7506f785ea58af34c3b24802cc68366',
       ],
@@ -461,8 +467,8 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
         '1b22b96d963d9765391b05963553d043',
         'e2f437ab7267999592214294b9ce8a56',
         'c772b7e3936f9f4c331b76674d43f327',
-        '45f98039c3d0394de39c67c1735acdfb',
-        '46bccad935fca1bc18e7b724e30a8a1a',
+        '0bc867586c16d00285ac148ecbbd19c5',
+        '7594523bba620130dc02f980fdeabf2d',
         '76af8b8bacf05059ac61b3b19ce85d9e',
         '76af8b8bacf05059ac61b3b19ce85d9e',
       ],
@@ -490,7 +496,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
         '0a8d9a2a41c93eacb09808d21c057340',
         'cf746819d46976764e97a7d45273cff1',
         'b1104d367bda5c9e70095d6235d9a504',
-        '3d72f0dc3304f288cffc206a8c781aee',
+        'eb062aa48deead19d927d32680fd0f13',
         '5532accf58fcd34c16619d9a80d27ca0',
         '5532accf58fcd34c16619d9a80d27ca0',
       ],
@@ -502,8 +508,8 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
         '91cd1c0d8ea2e0ffd92c39524b6332a7',
         '9a76d195b471e0b591e7c7a99eaa1f14',
         '5077fad1fada2faebff555feca0d63ee',
-        'b0d391decbacd1b16230500c45dfd4b2',
-        '6e14e5153ce1a90049e24efca892e815',
+        'c933e347ab5abe8bb49c7db2acde559c',
+        '6688be48987f1d370978971d383bf11c',
         '4b322b94556377c0a5cd125234dafbba',
         '4b322b94556377c0a5cd125234dafbba',
       ],

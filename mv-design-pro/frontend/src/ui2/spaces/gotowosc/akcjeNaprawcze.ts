@@ -335,6 +335,15 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'catalog.binding_version_missing': KATALOG,
   'catalog.binding_missing': KATALOG,
   'catalog.item_not_found': KATALOG,
+  // Rekord przekształtnika bez wielkości znamionowej: projektant wskazuje kompletną pozycję
+  // katalogu (typ falownika wyprowadza się dopiero z rekordu z mocą/pojemnością z karty).
+  'catalog.type_incomplete': KATALOG,
+  'catalog.duplicate_id': {
+    rodzaj: 'odmowa',
+    powodPl:
+      'Powtórzona karta widmowa jest wadą samego katalogu, nie modelu — usuwa ją opiekun ' +
+      'biblioteki typów w pliku katalogu; w modelu nie ma czego poprawić.',
+  },
   'catalog.ref_missing': KATALOG,
   'catalog.item_missing': KATALOG,
   'catalog.item_id_missing': KATALOG,
