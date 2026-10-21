@@ -217,7 +217,7 @@ export function etykietaStatusuZrodlaSzablonuPl(status: BayTemplateSourceStatus)
 /**
  * Rodzaj pola katalogu (`BayKind`) → rola kanoniczna pola + określenie rodzaju (karta #141).
  * Rodzaj z rolą kanonu bierze nazwę z kanonu słownictwa ról (`FIELD_ROLE_LABEL_PL`) — ten sam
- * termin co na schemacie, w kreatorze i w szufladzie; rodzaje sprzęgła dokładają określenie
+ * termin co na schemacie, w kreatorze i w inspektorze; rodzaje sprzęgła dokładają określenie
  * („Pole sprzęgła podłużnego”). Rodzaje bez roli kanonu (funkcje pomocnicze rozdzielnicy,
  * pole sekcyjne, wykonanie kablowe/napowietrzne bez kierunku, rezerwa) mają własną nazwę —
  * zgodnie z odwzorowaniem funkcji na rolę operacji w kreatorze stacji

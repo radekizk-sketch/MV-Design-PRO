@@ -1,6 +1,7 @@
 /**
  * enmToSldAdapter — adapter danych ENM → model widoku SLD czytany przez scenę kanwy
- * v3 (`ui/sld/v3/scene/buildScene.ts`), szufladę szczegółów i drzewo hierarchii.
+ * v3 (`ui/sld/v3/scene/buildScene.ts`), inspektor obiektu kanwy
+ * (`sld/shared/daneElementuKanwy.ts`) i drzewo hierarchii.
  *
  * Czysta, deterministyczna funkcja:
  *   buildSldDataFromSnapshot(snapshot, logicalViews, powerFlow?) → {
@@ -1550,7 +1551,6 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         topologicalType: stationTopologicalType(snapshot, sub),
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
-        transformerRefs: stationSldDetails.transformerRefs,
         // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
         transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
@@ -1589,7 +1589,6 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         topologicalType: stationTopologicalType(snapshot, sub),
         snBays: stationSldDetails.snBays,
         hasTransformer: stationSldDetails.hasTransformer,
-        transformerRefs: stationSldDetails.transformerRefs,
         // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
         transformerUnits: stationSldDetails.transformerUnits,
         transformerRatedKva: stationSldDetails.transformerRatedKva,
@@ -1680,7 +1679,8 @@ function buildStationMiniBlockDetails(
   // Zbiór refów WSZYSTKICH szyn nN stacji (agregat odbioru nN). To INNY predykat niż
   // wybór jednej szyny wyżej — pytanie brzmi „które szyny należą do strony nN", nie
   // „która jest szyną główną" — dlatego liczony osobno, świadomie. Strona nN z tej samej
-  // złożonej reguły co szuflada (`stationSideBusRefs`, SZYNY-STACJI-LUSTRO).
+  // złożonej reguły co mostek refów wyników kanwy (`stationSideBusRefs`,
+  // `resultPointsInStationNnBoard`, SZYNY-STACJI-LUSTRO).
   const nnBusRefs = new Set<string>();
   for (const busRef of stationSideBusRefs(snapshot, station, busByRef, 'nn')) {
     nnBusRefs.add(busRef);

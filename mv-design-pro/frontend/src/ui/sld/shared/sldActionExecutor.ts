@@ -16,8 +16,7 @@
  *     to prywatny helper `buildSldOperationContext`, nieeksportowany również
  *     tutaj), `ACTION_TO_SCREEN` (~700), `routeSurfaceLabelPl` (~728),
  *     `DELETE_ACTION_OBJECT_LABEL_PL` +
- *     `isSldDeleteAction` (~790-802), `DRAWER_ACTION_LABEL_PL` (~666, użyty
- *     przez oba kontenery przy wiązaniu akcji drawera z `getMenuActions`).
+ *     `isSldDeleteAction` (~790-802).
  *
  * Zależności hookowe `handleAction` są WYŁĄCZNIE store-poziomowe (zweryfikowane
  * względem architekta): `notify` (`notifications/store`), `toastBus`
@@ -29,10 +28,10 @@
  * niezależnie od tego, która wersja kanwy go woła.
  *
  * `parseGpzApparatusSelectionId`/`elementTypeForSldKind`/
- * `buildSldOperationContext`/`DRAWER_ACTION_LABEL_PL` są eksportowane, bo v2
- * nadal ich używa POZA `handleAction` (np. `describeGpzApparatus`,
- * `detailDrawerActions`, dopasowanie apparatus-selection w context-menu) —
- * v2 importuje je z powrotem stąd zamiast duplikować.
+ * `buildSldOperationContext` są eksportowane, bo czytają je także kontekst
+ * dostępności akcji (`akcjeElementu.ts` — wspólny dla menu kanwy i paska działań
+ * inspektora), karta techniczna inspektora i kanwa v3 — importują je stąd zamiast
+ * duplikować.
  */
 import { useCallback } from 'react';
 
@@ -205,47 +204,6 @@ export const DELETE_ACTION_OBJECT_LABEL_PL: Readonly<Record<string, string>> = {
 export function isSldDeleteAction(actionId: string): boolean {
   return Object.prototype.hasOwnProperty.call(DELETE_ACTION_OBJECT_LABEL_PL, actionId);
 }
-
-/** Etykiety PL akcji drawera — WSPÓLNE dla v2 (`SldWorkspaceContainer.
- *  detailDrawerActions`) i v3 (drawer wiring, ARCH-3), obie strony czytają tę
- *  samą tablicę zamiast dwóch niezależnych kopii. */
-export const DRAWER_ACTION_LABEL_PL: Readonly<Record<string, string>> = {
-  'open-source': 'Konfiguruj źródło GPZ',
-  'open-bay': 'Otwórz kartę pola',
-  'open-station-config': 'Konfiguruj stację',
-  'open-zksn-card': 'Otwórz kartę ZK SN',
-  'open-branch-pole-card': 'Otwórz kartę słupa',
-  'continue-trunk': 'Kontynuuj ciąg główny',
-  'continue-trunk-from-endpoint': 'Kontynuuj ciąg główny',
-  'start-branch': 'Rozpocznij odgałęzienie',
-  'add-source': 'Dodaj PV/BESS/FW',
-  'add-load': 'Dodaj odbiór nN',
-  // K5-A (H-4): nowe wejścia kreatorów z menu/drawera kanwy.
-  'add-compensator': 'Dodaj kompensator',
-  'add-arrester': 'Dodaj ogranicznik przepięć',
-  'add-genset': 'Dodaj agregat nN',
-  'add-ups': 'Dodaj UPS nN',
-  'insert-station': 'Zakończ odcinek stacją',
-  'insert-zksn': 'Zakończ odcinek w ZK SN',
-  'insert-pole': 'Zakończ odcinek słupem',
-  'conscious-split-on-segment': 'Podziel odcinek z podglądem',
-  'change-catalog': 'Zmień typ katalogowy',
-  'extend-trunk': 'Wyprowadź ciąg z portu',
-  'configure-equipment': 'Skonfiguruj aparaturę',
-  'configure-cts-vts': 'Skonfiguruj przekładniki',
-  'configure-protection': 'Skonfiguruj zabezpieczenia',
-  'show-results': 'Pokaż wyniki',
-  'show-readiness': 'Pokaż gotowość',
-  'show-rationale': 'Pokaż uzasadnienie',
-  'delete-bay': 'Usuń pole',
-  'delete-segment': 'Usuń odcinek',
-  'delete-station': 'Usuń stację',
-  'delete-zksn': 'Usuń ZK SN',
-  'delete-branch-pole': 'Usuń słup',
-  'delete-pv': 'Usuń PV',
-  'delete-bess': 'Usuń BESS',
-  'delete-fw': 'Usuń FW',
-};
 
 /** `id` w postaci `${bayRef}#${apparatusKind}` (konwencja GPZ canonical
  *  overlay, `SldWorkspaceContainer.buildGpzApparatusOverlayTargets`). */
@@ -499,7 +457,7 @@ export function resolveBranchStartAvailability(
     .fromRef.trim().length > 0;
 }
 
-/** Akcje menu/szuflady SLD → operacja domenowa formularza. */
+/** Akcje menu kanwy i paska działań inspektora → operacja domenowa formularza. */
 const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> = {
   'add-bay': 'add_sn_bay',
   'extend-trunk': 'continue_trunk_segment_sn',
@@ -530,6 +488,20 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
  */
 export function isTrunkContinuationAction(actionId: string): boolean {
   return opByAction[actionId] === 'continue_trunk_segment_sn';
+}
+
+/**
+ * UI-02b JEDEN-INSPEKTOR: operacja domenowa, do której prowadzi pozycja rejestru menu.
+ * Inspektor elementu pokazuje działania z rejestru (pasek działań) i NIE powtarza
+ * własnych skrótów do tej samej operacji (karta techniczna, szybkie operacje) — klucz
+ * porównania pochodzi z tej samej tablicy, z której wykonawca bierze operację.
+ * `add-source` stacji prowadzi do kreatora źródła przekształtnikowego (karta
+ * „Układy PV/BESS/FW" konfiguratora stacji, gałąź 1b wykonawcy). `null` = pozycja
+ * nawigacyjna albo usuwająca, bez formularza operacji.
+ */
+export function operacjaAkcjiMenu(actionId: string): NetworkBuildOperationName | null {
+  if (actionId === 'add-source') return 'add_converter_source';
+  return opByAction[actionId] ?? null;
 }
 
 export function buildSldOperationContext(

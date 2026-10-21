@@ -65,7 +65,7 @@ export function transformatorBlokowyDer(
 
 /**
  * Transformatory ROZDZIELCZE stacji — JEDNA reguła frontu (lustro backendu
- * `enm.pole_transformatorowe.transformatory_stacji`), czytana przez rysunek, szufladę,
+ * `enm.pole_transformatorowe.transformatory_stacji`), czytana przez rysunek, inspektor,
  * konfigurator stacji, kartę stacji i kreator źródła:
  *  1. transformator blokowy źródła DER (`transformatorBlokowyDer`) jest wykluczony — także
  *     wtedy, gdy stacja deklaruje go w `transformer_refs`;

@@ -231,7 +231,7 @@ export type PreviewElementKind =
   // (`canvas/hitAreas.ts` `punkt-odgalezny`) i własnym wpisem inwentarza.
   | 'branchPoint'
   // PORTAL DOMENY nN (LV Domain Projection po B-02): symbol `lvPortal` na zacisku
-  // nN transformatora stacji — NIE obiekt modelu (brak menu/szuflady), własny
+  // nN transformatora stacji — NIE obiekt modelu (brak menu i panelu elementu), własny
   // rodzaj trafienia (`canvas/hitAreas.ts` `portal-nn`); klik otwiera projekcję
   // nN stacji (`SldCanvasV3Workspace`).
   | 'lvPortal';
@@ -279,7 +279,7 @@ export interface PreviewElementMeta {
    *  `ComposedSymbolInstance.deviceRef` / `ComposedGpzSymbolInstance.
    *  deviceRef`). Rozróżnia DWA aparaty JEDNEGO pola, które dzielą
    *  `ownerRef` (= ref pola): klik niesie go do inspektora
-   *  (`SldElementClickMeta.deviceRef`), a budowniczy szuflady rozwiązuje
+   *  (`SldElementClickMeta.deviceRef`), a budowniczy panelu elementu rozwiązuje
    *  PO NIM stan aparatu/identyfikator globalny. `undefined` dla stosu
    *  konwencji (§12.4 — brak `device_ref`, zero fabrykacji refu) i dla
    *  elementów nie-aparatowych. `ownerRef` NIETKNIĘTY (nadal ref pola —

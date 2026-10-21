@@ -134,7 +134,7 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
   WIND: [],
 };
 
-/** Mockuje granicę `fetch` (wzorzec `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`). */
+/** Mockuje granicę `fetch` (wzorzec atrapy katalogu z `inspektor-elementu/__tests__/FormularzSzkicuDer.test.tsx`). */
 function mockDerWizardFetch(
   converters: Readonly<Partial<Record<ConverterKind, readonly ConverterFixture[]>>> = DEFAULT_CONVERTERS,
 ): void {

@@ -67,7 +67,7 @@ export const FORBIDDEN_RAW_DIRECTION_TOKENS = /\b(WE|WY|ODG)\b/;
  * `FieldRole` bez danych): „potrzeb własnych"/„inne technologiczne" NIE mają
  * odpowiednika w obecnym enumie — nie są zwracane.
  * SŁOWNICTWO (karta #141): nazwa roli pola pochodzi z kanonu słownictwa ról pól
- * (`FIELD_ROLE_LABEL_PL`) — to samo słowo co w kreatorze, szufladzie i nazwie
+ * (`FIELD_ROLE_LABEL_PL`) — to samo słowo co w kreatorze, inspektorze i nazwie
  * pola nadanej przez backend („pole sprzęgła", nie „sprzęgłowe"; pola DER to
  * „pole źródłowe PV/BESS/FW" z kanonu, nie osobne „generatorowe"). Wyjątkiem
  * jest klasa pól liniowych: spec §9 zakazuje na rysunku semantyki wejścia/wyjścia,
@@ -118,7 +118,7 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  * między sobą („pole liniowe" ×3 + „pole transformatorowe"). Recenzja NO-GO
  * 2026-07-17 pkt 9 rozstrzygnęła, że rysunek zostaje przy KRÓTKICH Q/QE/T
  * „w obrębie OPISANEGO pola", a identyfikator globalny (`S01.F01.Q2`) żyje w
- * inspektorze (`ui/sld/shared/detailDrawerData.ts`). Zrealizowana była tylko
+ * inspektorze (`ui/sld/shared/daneElementuKanwy.ts`). Zrealizowana była tylko
  * PIERWSZA połowa tej pary: oznaczniki skrócono, a pole nigdy nie dostało
  * OPISU, po którym dałoby się je wskazać — sama ROLA („pole liniowe") powtarza
  * się w rozdzielni tyle razy, ile jest pól tej roli. Reguła KLASA §3

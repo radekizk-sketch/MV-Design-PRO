@@ -10,7 +10,7 @@
  * zawsze kończyły w gałęzi błędu, a wybieralne identyfikatory (`pv_inv_*`,
  * `bess_pcs_*`) pochodziły z lokalnego pliku, nie z tego mocka. Teraz mock
  * granicy `fetch` odpowiada realnym kształtem `ConverterType[]` per `kind`
- * (wzorzec `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`), a
+ * (wzorzec atrapy katalogu z `inspektor-elementu/__tests__/FormularzSzkicuDer.test.tsx`), a
  * identyfikatory testowe zostały PRZENIESIONE z `catalogs.ts` (liczbowo bez
  * zmian — moc/napięcie/producent 1:1) do fikstur poniżej.
  */
@@ -206,7 +206,7 @@ const DEFAULT_CONVERTERS: Readonly<Record<ConverterKind, readonly ConverterFixtu
 
 /**
  * Mockuje granicę `fetch` — NIE listę opcji renderowaną przez kreator (wzorzec
- * `mockConverterCatalogFetch` z `SldDetailDrawer.test.tsx`). `/api/catalog/
+ * atrapy katalogu z `inspektor-elementu/__tests__/FormularzSzkicuDer.test.tsx`). `/api/catalog/
  * converter-types?kind=…` odpowiada fikstywnym `ConverterType[]`; bez `kind`
  * (poziomy napięcia nN) — unią WSZYSTKICH technologii. `/api/ncrfg-tests/*`,
  * `/api/catalog/bess-battery-types` odpowiadają realnym kształtem backendu;

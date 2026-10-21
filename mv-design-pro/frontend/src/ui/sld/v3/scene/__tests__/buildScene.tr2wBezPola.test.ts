@@ -437,8 +437,8 @@ describe('TR2W-BEZ-POLA T2 — stacja BEZ pola transformatorowego', () => {
     expect(obszary.filter((a) => a.tytul != null).every((a) => a.tytul === LV_PORTAL_TITLE_TEXT)).toBe(true);
   });
 
-  // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (szuflada
-  // szczegółów rozwiązuje rekord `Transformer` wprost), a nie w „nic".
+  // §0.C.9: klik w transformator bez pola trafia w REALNY ref ENM (inspektor
+  // obiektu kanwy rozwiązuje rekord `Transformer` wprost), a nie w „nic".
   it('L2: symbol niesie kategorię `transformer` i realny ownerRef — cel kliku istnieje', () => {
     const scene = buildSceneV3(enm, 2);
     const tr = transformatoryStacji(scene)[0];

@@ -1,7 +1,7 @@
 /**
  * KARTA S9-10 — spłata długu `S9-4-DLUG-INSPEKTOR`: klik w aparat niesie ref
  * POJEDYNCZEGO urządzenia (`SldElementClickMeta.deviceRef`), a inspektor
- * (szuflada szczegółów) pokazuje TEN aparat — dwa aparaty jednego pola
+ * (prawy inspektor, sekcje z kanwy) pokazuje TEN aparat — dwa aparaty jednego pola
  * przestają dawać jedną treść (audyt P-2: „inspektor pokazał jeden i ten sam
  * opis na 8 klików w różne obiekty").
  *
@@ -26,6 +26,7 @@ import { buildW1MatrixFixture } from '../../scene/__tests__/fixtures/w1MatrixVar
 import { HIT_ATTR } from '../hitAreas';
 import { SldCanvasV3 } from '../SldCanvasV3';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
+import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const gpzDataPathEnm = (
@@ -132,7 +133,7 @@ describe('S9-10 — klik w aparat niesie deviceRef (kanwa)', () => {
 });
 
 describe('S9-10 — inspektor pokazuje KLIKNIĘTY aparat (Workspace, realna ścieżka)', () => {
-  it('dwa aparaty jednego pola dają DWIE RÓŻNE treści szuflady (przed S9-10: jedna)', async () => {
+  it('dwa aparaty jednego pola dają DWIE RÓŻNE treści inspektora (przed S9-10: jedna)', async () => {
     const { enm } = buildW1MatrixFixture();
     const scene = buildSceneV3(enm, 2);
     const para = paraAparatowJednegoPola(scene);
@@ -140,20 +141,20 @@ describe('S9-10 — inspektor pokazuje KLIKNIĘTY aparat (Workspace, realna ści
 
     useSnapshotStore.setState({ snapshot: enm });
     const user = userEvent.setup();
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} lodOverride={2} /><InspektorKanwyTestowy /></>);
 
-    const trescSzuflady = (): string => {
-      const label = container.querySelector('[data-testid="sld-v2-detail-drawer-label"]');
-      expect(label, 'szuflada szczegółów otwarta po kliku w aparat').toBeTruthy();
+    const trescInspektora = (): string => {
+      const label = container.querySelector('[data-testid="inspektor-element-kanwy"]');
+      expect(label, 'inspektor pokazuje aparat po kliku').toBeTruthy();
       return label!.textContent ?? '';
     };
 
     await user.click(uchwytObrysu(container, para!.a.testId));
-    const trescA = trescSzuflady();
+    const trescA = trescInspektora();
     await user.click(uchwytObrysu(container, para!.b.testId));
-    const trescB = trescSzuflady();
+    const trescB = trescInspektora();
 
-    // Etykieta szuflady pochodzi z refu URZĄDZENIA (ogon refu), więc dwa
+    // Treść inspektora pochodzi z refu URZĄDZENIA (ogon refu), więc dwa
     // aparaty jednego pola MUSZĄ dać różne treści — dokładnie ta
     // rozróżnialność, której audyt P-2 nie zastał.
     expect(trescA).not.toBe(trescB);
@@ -167,24 +168,24 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
    * Rejestr (dług S9-4-DLUG-INSPEKTOR): „wszystkie 1137 etykiet niesie ref
    * KOMPOZYTOWY (…#name-row-N itd.) — budowniczy panelu szczegółów nie
    * rozwiązuje kompozytu i panel się NIE OTWIERA". Pomiar S9-10 potwierdził
-   * (klik w etykietę nazwy stacji → drawer null). Naprawa: kotwicę modelu
+   * (klik w etykietę nazwy stacji → panel null). Naprawa: kotwicę modelu
    * rozstrzyga TEN SAM moduł co menu kontekstowe (`resolveCanvasMenuSubject`,
    * jedno źródło prawdy) — ślepe zdejmowanie sufiksu byłoby fabrykacją
    * (podpis przęsła kotwiczy się na STACJI, nie na opisywanym odcinku).
    * Iloczyn cech: {właściciel etykiety: stacja, aparat} × {klik natywny}.
    */
-  it('etykieta NAZWY STACJI (ref kompozytowy #name-row) otwiera szufladę z treścią stacji', async () => {
+  it('etykieta NAZWY STACJI (ref kompozytowy #name-row) pokazuje w inspektorze treść stacji', async () => {
     useSnapshotStore.setState({ snapshot: substrateEnm });
     const user = userEvent.setup();
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} lodOverride={2} /><InspektorKanwyTestowy /></>);
     const etykieta = container.querySelector(
       `[${HIT_ATTR.role}="obrys"][${HIT_ATTR.klasa}="etykieta"][${HIT_ATTR.ownerRef}*="#name-row"]`,
     );
     expect(etykieta, 'kanwa ma uchwyt etykiety nazwy stacji').toBeTruthy();
     const wlascicielRef = (etykieta!.getAttribute(HIT_ATTR.ownerRef) ?? '').split('#')[0];
     await user.click(etykieta!);
-    const label = container.querySelector('[data-testid="sld-v2-detail-drawer-label"]');
-    expect(label, 'szuflada otwarta po kliku w etykietę (przed S9-10: null)').toBeTruthy();
+    const label = container.querySelector('[data-testid="inspektor-element-etykieta"]');
+    expect(label, 'inspektor pokazuje stację po kliku w etykietę (przed S9-10: null)').toBeTruthy();
     // Treść należy do WŁAŚCICIELA etykiety — stacji o refie sprzed sufiksu
     // (nazwa stacji z modelu, nie ogon kompozytu).
     const stacja = (substrateEnm.substations ?? []).find(
@@ -194,10 +195,10 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
     expect(label!.textContent ?? '').not.toBe('');
   });
 
-  it('etykieta APARATU otwiera szufladę (kotwica pola z tematu menu, nie ślepy sufiks)', async () => {
+  it('etykieta APARATU pokazuje aparat w inspektorze (kotwica pola z tematu menu, nie ślepy sufiks)', async () => {
     useSnapshotStore.setState({ snapshot: substrateEnm });
     const user = userEvent.setup();
-    const { container } = render(<SldCanvasV3Workspace width={1322} height={696} lodOverride={2} />);
+    const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} lodOverride={2} /><InspektorKanwyTestowy /></>);
     // PROPORCJE (2026-08-07): kadr dopasowania sieci 53 stacji ma skalę 0,101 —
     // na takim oddaleniu oznaczniki aparatu NIE SĄ rysowane (sufit proporcji:
     // napis trzykrotnie wyższy od symbolu, który opisuje, byłby szyldem, nie
@@ -215,7 +216,7 @@ describe('S9-10 — klik w ETYKIETĘ otwiera panel właściciela (drugie ogniwo 
     ).find((el) => (el.getAttribute(HIT_ATTR.ownerRef) ?? '').match(/\/sn_field\/\d+#/));
     expect(etykieta, 'kanwa ma etykietę zakotwiczoną w polu SN').toBeTruthy();
     await user.click(etykieta!);
-    const label = container.querySelector('[data-testid="sld-v2-detail-drawer-label"]');
-    expect(label, 'szuflada otwarta po kliku w etykietę aparatu').toBeTruthy();
+    const label = container.querySelector('[data-testid="inspektor-element-etykieta"]');
+    expect(label, 'inspektor pokazuje element po kliku w etykietę aparatu').toBeTruthy();
   });
 });

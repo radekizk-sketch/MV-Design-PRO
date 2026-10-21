@@ -248,10 +248,8 @@ test.describe('kd8:zrzuty', () => {
       await page.screenshot({ path: path.join(OUTPUT_DIR, `kd8-motyw-konfigurator-${id}.png`) });
 
       // (4) Sam SCHEMAT po rozwinięciu (selekcja zdjęta realną ścieżką, K11-A:
-      // PIERWSZY Escape zamyka szufladę szczegółów otwartą klikiem, DRUGI zdejmuje
-      // selekcję — jak `sld-first-uklad.spec.ts`; jeden Escape zostawiał GPZ
-      // zaznaczony, z podświetleniem na zrzucie).
-      await page.keyboard.press('Escape');
+      // jeden Escape zdejmuje selekcję — UI-02b: klik nie otwiera już panelu
+      // szczegółów nad kanwą).
       await page.keyboard.press('Escape');
       // Dowód zdjęcia selekcji: adres bez parametru zaznaczenia (`sel`). Panel
       // prawy NIE jest tu sygnałem — stacja ma własną powierzchnię konfiguratora,

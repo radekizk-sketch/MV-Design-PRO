@@ -2,8 +2,8 @@
  * K30-77 — useDerDragDrop: hook do drag-and-drop DER (PV/BESS/FW) onto stations.
  *
  * Goal: konfiguracja PV/FW/BESS end-to-end. User przeciąga DER ikon z
- * palette na station mini-block → opens SldDetailDrawer w DER tab z
- * pre-filled connection_variant.
+ * palette na station mini-block → stacja zostaje zaznaczona, a prawy inspektor
+ * pokazuje formularz konfiguracji DER (`FormularzSzkicuDer`, UI-02b).
  *
  * Hook zarządza:
  * - Drag start z palette (palette button → drag image)

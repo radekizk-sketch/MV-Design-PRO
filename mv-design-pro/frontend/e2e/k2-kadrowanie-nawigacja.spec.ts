@@ -4,8 +4,8 @@
  *
  * Co spec dowodzi (kryteria ukończenia karty):
  *  1. dwuklik stacji (cztery drogi budowy: przelotowa, sekcyjna, końcowa, odgałęźna) — stacja
- *     CAŁA w widocznej części kanwy (pod paskiem narzędzi i mini-ścieżką, na lewo od szuflady
- *     szczegółów, którą otwiera pierwszy klik dwukliku), jej większy wymiar ≥ 50 % mniejszego
+ *     CAŁA w widocznej części kanwy (pod paskiem narzędzi i mini-ścieżką, na lewo od portalu
+ *     nN, gdy jest otwarty; klik obiektu otwiera prawy inspektor POZA kanwą), jej większy wymiar ≥ 50 % mniejszego
  *     wymiaru widocznej kanwy, żaden sąsiad nie jest ucięty; mini-ścieżka „Sieć › stacja";
  *     poprzednia/następna stacja w porządku rysunku;
  *  2. pole z drzewa („Pola GPZ") + „Dopasuj widok" — kadr pola, ścieżka kończy się polem;
@@ -82,10 +82,11 @@ async function zmierzKadr(page: Page, enm: Enm, stacjaRef: string): Promise<Pomi
         const el = document.querySelector(`[data-testid="${id}"]`);
         if (el) gora = Math.max(gora, el.getBoundingClientRect().bottom);
       }
-      // Panele leżące NAD kanwą przy prawej krawędzi (szuflada szczegółów otwarta klikiem
-      // obiektu, portal nN) zasłaniają jej pas — obszar widoczny kończy się na ich lewej krawędzi.
+      // Panel leżący NAD kanwą przy prawej krawędzi (portal nN) zasłania jej pas — obszar
+      // widoczny kończy się na jego lewej krawędzi. Klik obiektu otwiera prawy inspektor,
+      // który leży OBOK kanwy (zwęża ją), a nie nad nią.
       let prawa = svg.right;
-      for (const id of ['sld-v2-detail-drawer', 'lv-domain-portal-drawer']) {
+      for (const id of ['lv-domain-portal-drawer']) {
         const el = document.querySelector(`[data-testid="${id}"]`);
         if (el) prawa = Math.min(prawa, el.getBoundingClientRect().left);
       }
@@ -203,7 +204,7 @@ for (const motyw of [
       expect(s.right, `${stacja.nazwa}: prawa krawędź w kadrze`).toBeLessThanOrEqual(pomiar.obszar.right + 0.5);
       expect(s.top, `${stacja.nazwa}: górna krawędź pod paskiem narzędzi i ścieżką`).toBeGreaterThanOrEqual(pomiar.obszar.top - 0.5);
       expect(s.bottom, `${stacja.nazwa}: dolna krawędź w kadrze`).toBeLessThanOrEqual(pomiar.obszar.bottom + 0.5);
-      // „Kanwa" = jej część WIDOCZNA (bez pasa pod szufladą szczegółów i pod paskiem narzędzi).
+      // „Kanwa" = jej część WIDOCZNA (bez pasa pod portalem nN i pod paskiem narzędzi).
       const mniejszyWymiarKanwy = Math.min(pomiar.obszar.right - pomiar.obszar.left, pomiar.obszar.bottom - pomiar.obszar.top);
       expect(Math.max(s.right - s.left, s.bottom - s.top), `${stacja.nazwa}: ≥ 50 % mniejszego wymiaru widocznej kanwy`).toBeGreaterThanOrEqual(
         0.5 * mniejszyWymiarKanwy,

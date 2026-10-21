@@ -102,6 +102,7 @@ import type {
   CanonicalGpzProps,
 } from '../../v2/canvas/canonicalGpzModel';
 import type { BayPrimaryDeviceView } from '../../v2/model/widokPolStacji';
+import { rolaSymboluLacznika, stanRoliSymbolu } from '../../v2/model/stanAparatowPola';
 
 // ---------------------------------------------------------------------------
 // Meta — atrybuty data-* potrzebne wyrocznaim migrowanym z v2 (§8).
@@ -907,19 +908,20 @@ function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): 
 }
 
 /**
- * Stan aparatu stosu pola z `CanonicalGpzBay` — JEDNA reguła dla pól sekcji i pól toru
- * transformatora (GPZ-PARYTET cz. 3 pkt 2). Pole toru bez `Bay` w modelu (`null`) = stan
- * nieznany (`'unknown'`), nigdy domyślnie zamknięty.
+ * Stan symbolu łącznika pola GPZ — JEDNA reguła dla pól sekcji i pól toru transformatora
+ * (GPZ-PARYTET cz. 3 pkt 2). Rola symbolu z JEDNEJ tabeli `rolaSymboluLacznika` (tę samą
+ * czyta inspektor klikniętego symbolu); symbol bez roli łącznika (np. przekładnik prądowy)
+ * nie ma stanu łączeniowego — ani z polem modelu, ani bez niego. Pole toru bez `Bay`
+ * w modelu (`null`) = stan łącznika nieznany (`'unknown'`), nigdy domyślnie zamknięty.
+ * Uziemnik nieobecny w polu (`'absent'`) nie ma stanu rysunku.
  */
 function stanAparatuPolaGpz(bay: CanonicalGpzBay | null, symbolId: SymbolId): SwitchState | undefined {
-  if (!bay) return symbolId === 'currentTransformer' ? undefined : 'unknown';
-  if (symbolId === 'breaker') return bay.cbState;
-  if (symbolId === 'disconnector') return bay.dsState;
-  if (symbolId === 'earthSwitch') return switchStateOrUndefined(bay.esState);
-  return undefined;
+  const rola = rolaSymboluLacznika(symbolId);
+  if (!rola) return undefined;
+  if (!bay) return 'unknown';
+  if (rola === 'es') return switchStateOrUndefined(bay.esState);
+  return stanRoliSymbolu(rola, { cbState: bay.cbState, dsState: bay.dsState });
 }
-
-
 
 /** F13.1 (spec §21.1/§21.2, D3-8/D3-10): tabliczka danych systemu — „Sk″ 250
  *  MVA · Ik″ 9,62 kA · 110 kV" — WYŁĄCZNIE człony, dla których ENM niesie
@@ -1021,7 +1023,7 @@ export function composeGpz(
           centerX,
           topY,
           (_i, id) => `gpz-canonical-hv-bay-${bay.bayRef}-${id}`,
-          (_i, id) => (id === 'breaker' ? bay.cbState : id === 'disconnector' ? bay.dsState : undefined),
+          (_i, id) => stanAparatuPolaGpz(bay, id),
           { sectionId: hvSection.sectionId, bayRef: bay.bayRef },
         );
         symbols.push(...stack.instances);

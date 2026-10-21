@@ -215,30 +215,32 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   // naprawy była wykrywalna.
   await stationL0.click({ force: true });
 
-  await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
-  await expect(page.getByTestId('drawer-der-type-select')).toHaveValue('PV');
-  // Typ przekształtnika wybiera się JAWNIE na zakładce „Falownik" z listy
-  // pobranej z katalogu backendu (wybór nie jest podstawiany; zapis z pustym
-  // wyborem jest blokowany i przełącza szufladę na tę zakładkę). Lista dla
-  // wariantu nN zawiera typy `un_kv` < 1 kV z `/api/catalog/converter-types`.
-  await page.getByTestId('sld-v2-detail-drawer-tab-inverter').click();
-  const inverterSelect = page.getByTestId('drawer-der-inverter-select');
+  // UI-02b JEDEN-INSPEKTOR: upuszczenie układu z palety na stację otwiera formularz
+  // w PRAWYM INSPEKTORZE (dawniej szuflada nad kanwą — skasowana). Intencja bez zmian:
+  // zapis z inspektora trafia realnym POST do backendu i zostaje w modelu przypadku.
+  const formularz = page.getByTestId('inspektor-der-formularz');
+  await expect(formularz).toBeVisible();
+  await expect(page.getByTestId('mvd-inspector')).toBeVisible();
+  await expect(formularz.getByTestId('inspektor-der-typ')).toHaveValue('PV');
+  // Typ przekształtnika wybiera się JAWNIE z listy pobranej z katalogu backendu (wybór
+  // nie jest podstawiany; zapis z pustym wyborem jest blokowany). Lista dla wariantu nN
+  // zawiera typy `un_kv` < 1 kV z `/api/catalog/converter-types`.
+  const inverterSelect = formularz.getByTestId('inspektor-der-przeksztaltnik');
   await expect(inverterSelect).toBeVisible();
   await expect(inverterSelect).toHaveValue('');
   await inverterSelect.selectOption('conv-pv-nn-0p5mw-0p4kv');
   await expect(inverterSelect).toHaveValue('conv-pv-nn-0p5mw-0p4kv');
-  await page.getByTestId('sld-v2-detail-drawer-tab-moc').click();
-  await page.getByTestId('drawer-der-power-input').fill('0.5');
+  await formularz.getByTestId('inspektor-der-moc').fill('0.5');
 
   const saveResponse = page.waitForResponse(
     (response) => response.url().includes(`/api/projects/${seed.projectId}/cases/${seed.caseId}/generators`)
       && response.request().method() === 'POST',
     { timeout: 15000 },
   );
-  await page.getByTestId('sld-v2-detail-drawer-save').click();
+  await formularz.getByTestId('inspektor-der-zapisz').click();
   const response = await saveResponse;
   expect(response.status()).toBe(201);
-  await expect(page.getByTestId('sld-v2-detail-drawer')).toHaveCount(0);
+  await expect(page.getByTestId('inspektor-der-formularz')).toHaveCount(0);
 
   const persistedResponse = await request.get(`${BACKEND_BASE}/api/cases/${seed.caseId}/enm`);
   expect(persistedResponse.ok()).toBeTruthy();

@@ -162,7 +162,7 @@ export function resultPointsHiddenByModel(snapshot: EnergyNetworkModel | null): 
  *  i pól źródeł. Należą do rozdzielnicy nN stacji, a nie do schematu SN — kanwa SN pokazuje
  *  stację jednym symbolem z szyną nN i agregatem odbioru. Zbiór z JEDNEGO złożenia reguł
  *  (SZYNY-STACJI-LUSTRO): strona nN szyn stacji (`stationSideBusRefs`, ta sama reguła co
- *  agregat odbioru i szuflada) minus `Substation.bus_refs`. Zaciski pól SN leżą po stronie
+ *  agregat odbioru i inspektor) minus `Substation.bus_refs`. Zaciski pól SN leżą po stronie
  *  SN, więc tu nie trafiają. Punkt wyniku na takiej szynie nie jest „zgubiony" — ma
  *  nazwany powód braku etykiety na schemacie SN. */
 export function resultPointsInStationNnBoard(snapshot: EnergyNetworkModel | null): ReadonlySet<string> {

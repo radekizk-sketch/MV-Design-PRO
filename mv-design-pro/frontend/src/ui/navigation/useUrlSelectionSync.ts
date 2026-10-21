@@ -18,7 +18,11 @@ import { useSelectionStore } from '../selection/store';
 import { canonicalizeSelectedElement } from '../shared/selectionResolution';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { SelectedElement } from '../types';
-import type { EntityTypeCode, WorkspaceSurfaceCode } from '../workspace/types';
+import type {
+  EntityTypeCode,
+  WorkspaceSurfaceCode,
+  WorkspaceSurfaceDescriptor,
+} from '../workspace/types';
 import { readSelectionFromUrl, updateUrlWithSelection } from './urlState';
 
 type CanonicalSelection = ReturnType<typeof canonicalizeSelectedElement>;
@@ -89,10 +93,22 @@ function openTechnicalSurfaceForSelection(
   });
 }
 
+/**
+ * Czy okno techniczne prawego panelu otworzyła synchronizacja selekcji (okno „idzie za
+ * selekcją"), a nie użytkownik jawnym działaniem. JEDNO źródło tego rozróżnienia: ta reguła
+ * podmiany okna i prawy inspektor (`ui2/legacy/LegacyInspektor.tsx`, który nad takim oknem
+ * pokazuje sekcje obiektu z kanwy — karta UI-02b).
+ */
+export function oknoOtwarteZSelekcji(
+  powierzchnia: Pick<WorkspaceSurfaceDescriptor, 'routeState'> | null | undefined,
+): boolean {
+  return powierzchnia?.routeState.payload?.source === 'url_selection';
+}
+
 /** Okno techniczne prawego panelu otwarte PRZEZ synchronizację selekcji (nie przez użytkownika). */
 function oknoZSelekcji(): { entityRef: string | null } | null {
   const aktywna = useNetworkBuildStore.getState().activeSurface;
-  if (!aktywna || aktywna.routeState.payload?.source !== 'url_selection') return null;
+  if (!aktywna || !oknoOtwarteZSelekcji(aktywna)) return null;
   return { entityRef: aktywna.entityRef ?? null };
 }
 

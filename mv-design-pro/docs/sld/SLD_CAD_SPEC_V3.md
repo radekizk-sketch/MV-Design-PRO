@@ -304,7 +304,9 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
 - **ARCH-4 — usunięcie ścieżki renderu v2: OTWARTE po domknięciu ARCH-3 i pełnej
   migracji budowniczych danych drawera** (jedyna pozostała OSIĄGALNA różnica
   funkcjonalna). Zakres kasacji wyznacza mapa importów (współdzielone moduły —
-  adapter elektryczny, SupplyPathHighlighter, SldDetailDrawer, useDerDragDrop,
+  adapter elektryczny, SupplyPathHighlighter, dane elementu kanwy `shared/daneElementuKanwy.ts`
+  (szuflada `SldDetailDrawer` skasowana kartą UI-02b JEDEN-INSPEKTOR 2026-10-21 — widok
+  elementu przejął prawy inspektor), useDerDragDrop,
   v2/command, matematyka ViewportController używana przez kamerę v3 — ZOSTAJĄ
   lub są przenoszone, nie kasowane).
 

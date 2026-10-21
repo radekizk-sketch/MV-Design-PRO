@@ -40,6 +40,37 @@ export interface StanyAparatowPola {
 
 type RolaLacznika = 'cb' | 'ds';
 
+/**
+ * Rola symbolu łącznika na schemacie: który agregat pola (`cbState`/`dsState`/`esState`)
+ * rysuje symbol BEZ refu pojedynczego aparatu (stos z konwencji, pole bez
+ * `primary_devices`). JEDNO źródło mapowania dla glifu (`v3/compose/station.ts`,
+ * `v3/compose/gpz.ts`) i dla inspektora obiektu kliknięcia (`sld/shared/daneElementuKanwy.ts`
+ * przez `SldElementClickMeta.rolaLacznika`) — rysunek i inspektor nie mogą przypisać temu
+ * samemu symbolowi różnych agregatów. Rozłącznik konwencji RMU rysuje łącznik główny pola,
+ * czyli agregat odłącznika/rozłącznika. Symbol bez stanu (bezpiecznik, przekładnik) ⇒
+ * `undefined`.
+ */
+export type RolaSymboluLacznika = 'cb' | 'ds' | 'es';
+
+const ROLA_SYMBOLU: Readonly<Record<string, RolaSymboluLacznika>> = {
+  breaker: 'cb',
+  disconnector: 'ds',
+  loadBreakSwitch: 'ds',
+  earthSwitch: 'es',
+};
+
+export function rolaSymboluLacznika(symbolId: string): RolaSymboluLacznika | undefined {
+  return ROLA_SYMBOLU[symbolId];
+}
+
+/** Agregat pola dla roli symbolu (`cb` → `cbState` itd.). */
+export function stanRoliSymbolu<T>(
+  rola: RolaSymboluLacznika,
+  stany: { readonly cbState?: T; readonly dsState?: T; readonly esState?: T },
+): T | undefined {
+  return rola === 'cb' ? stany.cbState : rola === 'ds' ? stany.dsState : stany.esState;
+}
+
 /** Rola symbolu pola dla typu gałęzi łączeniowej ENM (bezpiecznik nie ma stanu w symbolu). */
 const ROLA_TYPU_GALEZI: Readonly<Record<string, RolaLacznika>> = {
   breaker: 'cb',
@@ -59,10 +90,33 @@ function zgodny(stany: readonly StanLacznikaRysunku[]): StanLacznikaRysunku {
   return stany.every((s) => s === stany[0]) ? stany[0] : 'unknown';
 }
 
+/** Stan rysunku ze `status` gałęzi łączeniowej; brak albo inna wartość = `unknown`. */
+export function stanStatusuGalezi(status: string | null | undefined): StanLacznikaRysunku {
+  return status === 'closed' ? 'closed' : status === 'open' ? 'open' : 'unknown';
+}
+
+/**
+ * Typy gałęzi rysowanych jako łącznik NA TORZE ciągu SN (poza polem stacji,
+ * `v3/scene/elementyToru.ts`). Ten sam zbiór wybiera symbol toru i stan łącznika toru
+ * w inspektorze (`stanLacznikaToruZModelu`).
+ */
+export const TYPY_GALEZI_LACZNIKA_TORU: ReadonlySet<string> = new Set(['switch', 'breaker']);
+
+/**
+ * Stan łącznika TORU o refie `ref` (gałąź łączeniowa ciągu, bez pola stacji) — ten sam
+ * rachunek co glif toru: `status` gałęzi. Ref innej gałęzi albo nieznany ⇒ `undefined`.
+ */
+export function stanLacznikaToruZModelu(
+  ref: string,
+  galezieWgRef: ReadonlyMap<string, Branch>,
+): StanLacznikaRysunku | undefined {
+  const galaz = galezieWgRef.get(ref);
+  return galaz && TYPY_GALEZI_LACZNIKA_TORU.has(galaz.type) ? stanStatusuGalezi(galaz.status) : undefined;
+}
+
 /** Stan gałęzi łączeniowej po rozstrzygnięciu rekordami aparatów z nią powiązanych. */
 function stanGalezi(galaz: Branch, aparaty: readonly BayPrimaryDevice[]): StanLacznikaRysunku {
-  const zModelu: StanLacznikaRysunku =
-    galaz.status === 'closed' ? 'closed' : galaz.status === 'open' ? 'open' : 'unknown';
+  const zModelu = stanStatusuGalezi(galaz.status);
   for (const aparat of aparaty) {
     if (aparat.linked_ref !== galaz.ref_id || !aparat.switch_state) continue;
     if (stanRekordu(aparat.switch_state.actual_state) !== zModelu) return 'unknown';
@@ -84,6 +138,25 @@ export function stanAparatuZModelu(
   const galaz = aparat.linked_ref ? galezieWgRef.get(aparat.linked_ref) : undefined;
   if (galaz && ROLA_TYPU_GALEZI[galaz.type]) return stanGalezi(galaz, aparatyPola);
   return aparat.switch_state ? stanRekordu(aparat.switch_state.actual_state) : undefined;
+}
+
+/**
+ * Stan łącznika o refie `ref` w polu `bay` z modelu — wejście inspektora obiektu kanwy
+ * (`sld/shared/daneElementuKanwy.ts`), TEN SAM rachunek co glif kanwy, bez drugiej reguły:
+ * aparat pierwotny pola → `stanAparatuZModelu`; gałąź łączeniowa pola wskazana w
+ * `equipment_refs` (bez rekordu aparatu) → jej `status` rozstrzygnięty rekordami aparatów
+ * pola; inny ref (przekładnik, ref samego pola) → `undefined` (model nie niesie stanu).
+ */
+export function stanLacznikaPolaZModelu(
+  ref: string,
+  bay: Pick<Bay, 'equipment_refs' | 'primary_devices'>,
+  galezieWgRef: ReadonlyMap<string, Branch>,
+): StanLacznikaRysunku | undefined {
+  const aparaty = bay.primary_devices ?? [];
+  const aparat = aparaty.find((a) => a.device_ref === ref);
+  if (aparat) return stanAparatuZModelu(aparat, aparaty, galezieWgRef);
+  const galaz = (bay.equipment_refs ?? []).includes(ref) ? galezieWgRef.get(ref) : undefined;
+  return galaz && ROLA_TYPU_GALEZI[galaz.type] ? stanGalezi(galaz, aparaty) : undefined;
 }
 
 /**

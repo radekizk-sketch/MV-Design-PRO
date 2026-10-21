@@ -429,17 +429,3 @@ export function ukladRozdzielnicyStacjiPl(
   const wynik = stacja ? rodzajStacji(model, napis(stacja.ref_id)) : null;
   return wynik ? ukladRozdzielnicyPl(wynik.rodzaj) : 'Układ rozdzielnicy SN nieustalony — stacji brak w modelu';
 }
-
-/** Opis rozdzielnicy SN do szuflady: układ i przyczyna rodzaju (liczba pól, sprzęgło) — z danych
- *  stacji, bez wyliczania pól, których stacja nie ma (dawny opis z deklaracji wymieniał pola
- *  „typowe" dla rodzaju, np. pole transformatorowe w stacji bez niego). */
-export function opisRozdzielnicyStacjiPl(
-  model: ModelDlaRodzaju | null | undefined,
-  stacja: StacjaDlaRodzaju | null | undefined,
-): string {
-  if (stacja?.station_type === 'gpz') return 'Rozdzielnia SN GPZ: sekcje szyn z polami liniowymi i zasilającymi.';
-  if (stacja?.station_type === 'rozdzielnica_nn') return 'Rozdzielnica nN: sekcje szyn nN z odpływami.';
-  const wynik = stacja ? rodzajStacji(model, napis(stacja.ref_id)) : null;
-  if (!wynik) return 'Rozdzielnica SN: układ nieustalony — stacji brak w modelu.';
-  return `Rozdzielnica SN: ${ukladRozdzielnicyPl(wynik.rodzaj).replace(/^Układ/, 'układ')} — ${wynik.przyczynaPl}.`;
-}

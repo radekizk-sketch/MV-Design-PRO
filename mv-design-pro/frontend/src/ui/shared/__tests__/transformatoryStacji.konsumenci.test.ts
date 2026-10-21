@@ -2,7 +2,7 @@
  * SZYNY-STACJI-LUSTRO (commit 2) — reguła „transformatory stacji” × KONSUMENCI.
  * ILOCZYN CECH: transformator {na szynie głównej, na zacisku pola, blokowy przez wskazanie
  * źródła, blokowy przez rolę katalogową, na szynie obcej, zadeklarowany w stacji bez szyn}
- * × konsument {podsumowanie transformatorów budowy sieci, szuflada (stacja transformatora),
+ * × konsument {podsumowanie transformatorów budowy sieci, inspektor obiektu kanwy (stacja transformatora),
  * topologia SLD (transformatory stacji), karta i przegląd stacji (transformatory rozdzielcze)}.
  * Konsument „eksport CIM (kontener)” zniknął razem z klientowym eksporterem CIM (karta
  * KASACJA-SCL-I-CIM-KLIENT, decyzja K-14/D-41): model sieci eksportuje wyłącznie backend
@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel, Substation } from '../../../types/enm';
 import { selectTransformerSummaries } from '../../network-build/networkBuildStore';
 import { readTopologyFromENM } from '../../sld/core/topologyInputReader';
-import { stationRefForTransformerSelection } from '../../sld/shared/detailDrawerData';
+import { stationRefForTransformerSelection } from '../../sld/shared/daneElementuKanwy';
 import { selectStationDistributionTransformers, stationRefOfTransformer } from '../transformatoryStacji';
 
 const here = dirname(fileURLToPath(import.meta.url));

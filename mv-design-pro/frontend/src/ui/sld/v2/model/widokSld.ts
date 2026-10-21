@@ -1,7 +1,8 @@
 /**
  * Model widoku SLD — kształt danych wyjściowych adaptera ENM → SLD
  * (`canvas/enmToSldAdapter.ts` `SldDataPayload`), czytany przez scenę kanwy v3
- * (`ui/sld/v3/scene/buildScene.ts`), szufladę szczegółów i drzewo hierarchii.
+ * (`ui/sld/v3/scene/buildScene.ts`), inspektor obiektu kanwy (`sld/shared/daneElementuKanwy.ts`)
+ * i drzewo hierarchii.
  *
  * GPZ-PARYTET cz. 2 (pkt 4): typy przeniesione z martwych rendererów v2
  * (`v2/renderer/{StationOnRun,Gpz,Section,Der,Connection}Renderer.tsx`,
@@ -28,14 +29,10 @@ export interface StationOnRunViewModel {
   readonly topologicalType: 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna';
   readonly snBays?: readonly MiniBlockBayDescriptor[];
   readonly hasTransformer?: boolean;
-  readonly transformerRefs?: readonly string[];
   /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z OBOMA
    *  końcami topologicznymi (`Transformer.hv_bus_ref`/`lv_bus_ref`) — 0..N od
-   *  początku, każda z własnym refem i własnym przypisaniem do sekcji szyn.
-   *  `transformerRefs` wyżej to TA SAMA lista zredukowana do samych refów
-   *  (`selectStationTransformerUnits`, jedno źródło prawdy) — konsumenci
-   *  potrzebujący wyłącznie tożsamości (szuflada szczegółów)
-   *  zostają przy niej bez zmian. */
+   *  początku, każda z własnym refem i własnym przypisaniem do sekcji szyn
+   *  (`selectStationTransformerUnits`, jedno źródło prawdy). */
   readonly transformerUnits?: readonly StationTransformerUnit[];
   readonly transformerRatedKva?: number | null;
   /** Stacja jest punktem NMO (Normalnie Otwartym) — renderuje badge "NOP"

@@ -96,6 +96,10 @@ import {
   stationRefOfTransformer,
   transformatoryNalezaceDoStacji,
 } from '../shared/transformatoryStacji';
+import { operacjaAkcjiMenu } from '../sld/shared/sldActionExecutor';
+import { PanelElementuKanwy } from './inspektor-elementu/PanelElementuKanwy';
+import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
+import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
 
 // =============================================================================
 // Types
@@ -2637,6 +2641,19 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   // (patrz `dynamicModelLabel`/`buildAdvancedConverterSections` niżej) — zero
   // katalogu statycznego w tym module.
   const dynamicProfiles = useDerDynamicProfiles().data ?? [];
+  // UI-02b JEDEN-INSPEKTOR: sekcje przejęte z dawnej szuflady kanwy (działania z rejestru
+  // menu, wyniki elementu, węzeł SN, stan aparatu, szkic DER) — dla TEJ SAMEJ selekcji.
+  const stanPanelu = useStanPaneluElementu();
+  // Operacje już osiągalne z paska działań (ten sam rejestr co menu kanwy) — skróty karty
+  // technicznej i szybkich operacji do tej samej operacji nie są powtarzane.
+  const operacjeZPaska = useMemo(() => {
+    const zbior = new Set<string>();
+    for (const akcja of stanPanelu?.akcje ?? []) {
+      const op = operacjaAkcjiMenu(akcja.id);
+      if (op) zbior.add(op);
+    }
+    return zbior;
+  }, [stanPanelu?.akcje]);
 
   const elementId = selectedElements.length > 0 ? selectedElements[0].id : null;
   const selectedBaySnapshot = useMemo(
@@ -2800,13 +2817,16 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   );
   const techCardSubjectWithActions = useMemo(() => {
     if (!techCardSubject) return null;
-    const wiredActions = (techCardSubject.actions ?? []).map((action) => {
+    const wiredActions = (techCardSubject.actions ?? []).filter((action) => {
+      const commandMatch = /^open_operation:(.+)$/.exec(action.id);
+      return !(commandMatch && operacjeZPaska.has(commandMatch[1]));
+    }).map((action) => {
       const commandMatch = /^open_operation:(.+)$/.exec(action.id);
       if (!commandMatch) return action;
       const opName = commandMatch[1] as NetworkBuildOperationName;
       // KARTA S95-START (predykaty PARAMI, czwarta droga wejścia): „Kontynuuj ciąg SN"
       // karty technicznej czyta TO SAMO rozstrzygnięcie punktu startu co menu kanwy,
-      // szuflada i konfigurator stacji (`buildSldOperationContext`). Dotąd przycisk był
+      // pasek działań inspektora i konfigurator stacji (`buildSldOperationContext`). Dotąd przycisk był
       // zawsze aktywny, a dla stacji bez wolnego pola i GPZ z zajętym polem otwierał
       // kreator magistrali z trwale zablokowanym zapisem.
       const kontynuacja = opName === 'continue_trunk_segment_sn' && selectedElement
@@ -2880,15 +2900,18 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       };
     });
     return { ...techCardSubject, actions: wiredActions };
-  }, [logicalViews, openOperationForm, selectedElement, snapshot, techCardSubject]);
+  }, [logicalViews, openOperationForm, operacjeZPaska, selectedElement, snapshot, techCardSubject]);
 
-  if (!elementId || sections.length === 0) {
+  const szybkieOperacje = actions.filter((action) => !operacjeZPaska.has(action.op));
+  const panelKanwyMaTresc = panelMaTresc(stanPanelu);
+
+  if (!elementId || (sections.length === 0 && !panelKanwyMaTresc)) {
     return (
       <div className={clsx('flex flex-col h-full', className)} data-testid="inspector-engineering">
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center">
-            <p className="text-xs text-gray-500">Zaznacz element na SLD</p>
-            <p className="text-[10px] text-gray-400 mt-1">
+            <p className="text-[length:var(--mvd-font-size-data)] text-gray-500">Zaznacz element na SLD</p>
+            <p className="text-[length:var(--mvd-font-size-data)] text-gray-400 mt-1">
               aby zobaczyć szczegóły inżynierskie
             </p>
           </div>
@@ -2916,17 +2939,24 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
 
   return (
     <div className={clsx('flex flex-col h-full', className)} data-testid="inspector-engineering">
-      <div data-testid="sld-engineering-inspector-wrapper" className="flex min-h-0 flex-1 flex-col">
+      {/* JEDNO przewijanie całego ciała inspektora: nagłówek, sekcje obiektu z kanwy, dowód
+          obliczeń, karta techniczna i sekcje modelu mają NATURALNĄ wysokość. Dawny układ
+          (kolumna flex, w której przewijały się tylko sekcje) ściskał elementy rodzeństwa
+          poniżej ich treści, więc nakładały się i przechwytywały kliki (e2e
+          sld-editor-real-backend-flex, karta UI-02b). */}
+      <div data-testid="sld-engineering-inspector-wrapper" className="min-h-0 flex-1 overflow-y-auto">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
           <h3 className="text-sm font-semibold text-gray-800 truncate">{elementName}</h3>
         </div>
-        <p className="text-[10px] text-gray-500 mt-0.5">
+        <p className="text-[length:var(--mvd-font-size-data)] text-gray-500 mt-0.5">
           {headerSubtitle}
         </p>
       </div>
+
+      {stanPanelu && <PanelElementuKanwy stan={stanPanelu} />}
 
       <ElementCalculationProofPanel
         runId={activeRunId ?? null}
@@ -2950,7 +2980,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       {isSelectedSegment && (
         <div
           data-testid="sld-segment-inspector"
-          className="border-b border-gray-200 bg-white px-4 py-2 text-[10px] text-gray-700"
+          className="border-b border-gray-200 bg-white px-4 py-2 text-[length:var(--mvd-font-size-data)] text-gray-700"
         >
           <div className="font-semibold text-gray-800">Odcinek SN</div>
           <div>Oznaczenie: {publicTechnicalLabel(elementId, elementName)}</div>
@@ -2979,7 +3009,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       {selectedConverterRole && (
         <div
           data-testid="pv-inverter-engineering-actions"
-          className="border-b border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-700"
+          className="border-b border-slate-200 bg-white px-4 py-3 text-[length:var(--mvd-font-size-data)] text-slate-700"
         >
           <div className="mb-2 font-semibold text-slate-900">
             {converterSurfaceTitle(selectedConverterRole)}
@@ -3006,7 +3036,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
               Uzupełnij dane wejściowe
             </button>
           </div>
-          <div className="mt-2 text-[10px] leading-4 text-cyan-700">
+          <div className="mt-2 text-[length:var(--mvd-font-size-data)] leading-4 text-cyan-700">
             Karta obejmuje falownik z katalogu, PCC, tor SN/nN, NC RfG, Q(U), P(f),
             FRT/HVRT, rozpływ mocy, wkład zwarciowy i zabezpieczenia nN.
           </div>
@@ -3014,7 +3044,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       )}
 
       {/* Sections */}
-      <div className="flex-1 overflow-y-auto">
+      <div>
         {sections.map((section, index) => (
           <SectionBlock
             key={`${section.id}:${index}`}
@@ -3028,19 +3058,19 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         {selectedBayField && <BayWindowSchematic item={selectedBayField} />}
 
         {/* Quick actions */}
-        {actions.length > 0 && activeMode === 'MODEL_EDIT' && !techCardSubjectWithActions && (
+        {szybkieOperacje.length > 0 && activeMode === 'MODEL_EDIT' && !techCardSubjectWithActions && (
           <div className="px-4 py-3 border-t border-gray-200">
-            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            <h4 className="text-[length:var(--mvd-font-size-data)] font-semibold text-gray-500 mb-2">
               Operacje
             </h4>
             <div className="flex flex-wrap gap-1.5">
-              {actions.map((action) => (
+              {szybkieOperacje.map((action) => (
                 <button
                   key={action.id}
                   type="button"
                   onClick={() => handleAction(action)}
                   className={clsx(
-                    'px-2.5 py-1 text-[10px] font-medium rounded transition-colors',
+                    'px-2.5 py-1 text-[length:var(--mvd-font-size-data)] font-medium rounded transition-colors',
                     action.variant === 'primary'
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
                       : action.variant === 'danger'
@@ -3218,7 +3248,7 @@ export function SectionBlock({
       data-testid={`engineering-section-${sectionTestId(section)}`}
     >
       <div className="px-4 py-2">
-        <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+        <h4 className="text-[length:var(--mvd-font-size-data)] font-semibold text-gray-500 mb-1.5">
           {section.label}
         </h4>
         <div className="space-y-1">
@@ -3282,7 +3312,7 @@ function EngineeringField({
   }, [activeCaseId, editable, elementId, executeDomainOperation, field.key, field.value, value]);
 
   const valueClassName = clsx(
-    'text-[11px] font-medium text-right truncate max-w-[55%]',
+    'text-[length:var(--mvd-font-size-data)] font-medium text-right truncate max-w-[55%]',
     editable ? 'cursor-pointer rounded px-1 hover:bg-blue-50 focus:outline-none focus:ring-1 focus:ring-blue-400' : '',
     field.source === 'catalog' ? 'text-blue-700' : 'text-gray-800',
     field.source === 'calculated' ? 'text-green-700 italic' : '',
@@ -3295,7 +3325,7 @@ function EngineeringField({
       data-testid={`engineering-field-${field.key}`}
       className="flex items-baseline justify-between gap-2"
     >
-      <span className="text-[11px] text-gray-500 flex-shrink-0">{field.label}</span>
+      <span className="text-[length:var(--mvd-font-size-data)] text-gray-500 flex-shrink-0">{field.label}</span>
       {editing ? (
         <input
           value={value}
@@ -3309,7 +3339,7 @@ function EngineeringField({
               reset();
             }
           }}
-          className="max-w-[60%] rounded border border-blue-300 bg-white px-1.5 py-0.5 text-right text-[11px] font-medium text-gray-900 shadow-sm"
+          className="max-w-[60%] rounded border border-blue-300 bg-white px-1.5 py-0.5 text-right text-[length:var(--mvd-font-size-data)] font-medium text-gray-900 shadow-sm"
           autoFocus
         />
       ) : (

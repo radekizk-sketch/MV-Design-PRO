@@ -606,14 +606,14 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
 
     expect(r.stations[0].transformerRatedKva).toBe(250);
-    expect(r.stations[0].transformerRefs).toEqual(['tr-1']);
+    expect(r.stations[0].transformerUnits?.map((u) => u.ref)).toEqual(['tr-1']);
     expect(r.sources.find((zrodlo) => zrodlo.id === 'PV-BLOCK')).toMatchObject({ kind: 'pv', ratedPower: 1 });
   });
 
   // Kontrola mocy transformatora wobec źródeł to JEDNA reguła backendu (decyzja O-53,
   // `domain/generator_validation.py` `sprawdz_moc_transformatora`, kod
   // `converter.transformer_capacity_exceeded`). Dawny alarm adaptera liczył drugą, rozbieżną
-  // regułę we froncie (stałe cosφ 0,9, bez k_j i k_obc) — skasowany razem z odznaką szuflady.
+  // regułę we froncie (stałe cosφ 0,9, bez k_j i k_obc) — skasowany.
   it('adapter nie wystawia własnej oceny mocy transformatora stacji, nawet przy przekroczeniu', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [

@@ -322,11 +322,32 @@ test('UI-02 — panel dolny: stan przed biegiem, wyniki → zaznaczenie z zachow
   await expect(tabela.locator('tr[aria-selected="true"]')).toHaveCount(1);
   await expect(inspektor).toContainText(nazwaWiersza);
   await expect(kanwa).toBeVisible();
+  // Klik wiersza to polecenie projektanta „pokaż element" (K2, `centerSldOnElement` w trybie
+  // „kadruj"): kamera kadruje WSKAZANY element — może przybliżyć albo oddalić tyle, ile
+  // trzeba, żeby element zmieścił się w kadrze (zasada 1 kadru, `camera.ts`). Dawna asercja
+  // „skala nie rośnie o więcej niż 5%" pochodziła z trybu kotwicy sprzed K2 i padała, gdy
+  // pierwszym wierszem był GPZ wyższy od bieżącego kadru (pomiar UI-02b: skala 1,47 → 2,03 j./px
+  // przy kanwie 796×536 px — tyle wymaga blok GPZ ~700 j. wysokości z etykietami). Intencja
+  // bez zmian: bez skoku do widoku całej sieci (poziom szczegółu zostaje) i element wskazany
+  // wierszem jest w całości na kanwie.
+  await expect
+    .poll(async () => {
+      const kanwaBox = await kanwa.boundingBox();
+      const obrysy = await page
+        .locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${refWiersza}"]`)
+        .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().toJSON() as DOMRect));
+      if (!kanwaBox || obrysy.length === 0) return false;
+      return obrysy.every(
+        (r) =>
+          r.left >= kanwaBox.x - 1 &&
+          r.top >= kanwaBox.y - 1 &&
+          r.right <= kanwaBox.x + kanwaBox.width + 1 &&
+          r.bottom <= kanwaBox.y + kanwaBox.height + 1,
+      );
+    }, { message: 'element wskazany wierszem w całości na kanwie', timeout: 10000 })
+    .toBe(true);
   const kadrPoKliku = await kadr(kanwa);
-  expect(kadrPoKliku.lod, 'poziom szczegółu po kliku wiersza').toBe(kadrPrzed.lod);
-  expect(kadrPoKliku.skala, 'skala kamery po kliku wiersza (bez skoku do całej sieci)').toBeLessThanOrEqual(
-    kadrPrzed.skala * 1.05,
-  );
+  expect(kadrPoKliku.lod, 'poziom szczegółu po kliku wiersza (bez skoku do widoku całej sieci)').toBe(kadrPrzed.lod);
 
   // Filtr tekstowy zawęża do zaznaczonego elementu.
   await page.getByTestId('mvd-wyniki-filtr-tekst').fill(nazwaWiersza);

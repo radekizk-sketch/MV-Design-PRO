@@ -36,7 +36,7 @@ export interface RekordPola {
   readonly equipment_refs?: readonly string[];
 }
 
-/** Wycinek migawki czytany przez reguły pól (wyrocznie i szuflady niosą tylko część pól). */
+/** Wycinek migawki czytany przez reguły pól (wyrocznie i panele inspektora niosą tylko część pól). */
 export interface ModelPol<B extends RekordPola = Bay> {
   readonly bays?: readonly B[] | null;
   readonly buses?: readonly { readonly ref_id: string; readonly voltage_kv?: number | null }[] | null;

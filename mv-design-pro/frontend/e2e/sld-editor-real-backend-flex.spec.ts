@@ -178,9 +178,10 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
 async function openSegmentInspector(page: Page, segmentRef: string): Promise<void> {
   // Adaptacja v3 (F12-C, 2026-07-17): odcinek to <path data-owner-ref=…>
   // (dawne data-connection-ref+polyline były kontraktem v2); ścieżka
-  // użytkownika: klik w odcinek → drawer odcinka → „Otwórz konfigurację" →
-  // powierzchnia E-12 (`sld-segment-inspector`). Klikalność odcinka i CTA
-  // konfiguracji przywrócone w tej adaptacji (parytet F8c/K30-91).
+  // użytkownika: klik w odcinek → prawy inspektor (UI-02b: kanwa nie otwiera
+  // własnego panelu) → „Otwórz konfigurację odcinka (trasa)" → powierzchnia E-12
+  // (`sld-segment-inspector`). Intencja bez zmian: z kliknięcia odcinka do jego
+  // konfiguratora prowadzi jedna, realna ścieżka.
   // Prefix-match: kawałki przęsła niosą sufiksy tras (`_L`, `_R_L`) —
   // klik dowolnego kawałka normalizuje się do refu kanonicznego w workspace.
   const hitbox = page.locator(`path[data-owner-ref^="${segmentRef}"]`).first();
@@ -201,8 +202,10 @@ async function openSegmentInspector(page: Page, segmentRef: string): Promise<voi
   });
   await hitbox.click({ position: clickPos, force: true });
 
-  await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
-  await page.getByTestId('sld-v2-detail-drawer-open-configuration').click();
+  const otworzKonfiguracje = page.getByTestId('inspektor-otworz-konfiguracje');
+  await expect(otworzKonfiguracje).toBeVisible();
+  await expect(otworzKonfiguracje).toHaveText('Otwórz konfigurację odcinka (trasa)');
+  await otworzKonfiguracje.click();
 
   await expect(page.getByTestId('sld-segment-inspector')).toBeVisible();
   await expect(page.getByTestId('sld-segment-inspector')).toHaveAttribute(

@@ -119,18 +119,3 @@ export function getMetric(
   if (!el) return null;
   return el.metrics?.[metricCode] ?? null;
 }
-
-/**
- * Helper: formatuj wartość metryki do display string (np. "15.00 kV").
- */
-export function formatMetric(metric: RawMetricValue | null): string {
-  if (!metric || metric.value === null || metric.value === undefined) return '—';
-  const hint = metric.format_hint ?? 'fixed2';
-  const value = metric.value;
-  let formatted: string;
-  if (hint === 'fixed2') formatted = value.toFixed(2);
-  else if (hint === 'fixed1') formatted = value.toFixed(1);
-  else if (hint === 'fixed0') formatted = value.toFixed(0);
-  else formatted = String(value);
-  return `${formatted} ${metric.unit}`;
-}

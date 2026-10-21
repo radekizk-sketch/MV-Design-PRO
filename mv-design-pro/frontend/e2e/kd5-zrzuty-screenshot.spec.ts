@@ -218,11 +218,9 @@ test.describe('kd5:zrzuty', () => {
       await expect(symbole.locator('[data-symbol-canon="transformer2W"]').first()).toBeVisible();
       // Klik w blok to TAKZE selekcja (element GPZ), wiec otwiera panele
       // elementu — na zrzucie „po rozwinieciu" chcemy zobaczyc SCHEMAT, nie
-      // panele. Zdejmujemy selekcje realna sciezka uzytkownika (K11-A): klik
-      // otwiera tez szuflade szczegolow, wiec PIERWSZY Escape zamyka szuflade,
-      // a DRUGI zdejmuje selekcje (jak `sld-first-uklad.spec.ts`; jeden Escape
-      // zostawial GPZ zaznaczony, z podswietleniem na zrzucie).
-      await page.keyboard.press('Escape');
+      // panele. Zdejmujemy selekcje realna sciezka uzytkownika (K11-A): jeden
+      // Escape zdejmuje selekcje (UI-02b: klik nie otwiera juz panelu szczegolow
+      // nad kanwa, wiec nie ma czego zamykac pierwszym Escape).
       await page.keyboard.press('Escape');
       // Dowód zdjęcia selekcji: adres bez parametru zaznaczenia (`sel`). Panel
       // prawy NIE jest tu sygnałem — stacja ma własną powierzchnię konfiguratora,

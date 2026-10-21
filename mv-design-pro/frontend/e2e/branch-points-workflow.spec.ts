@@ -204,11 +204,17 @@ test.describe('Branch points workflow', () => {
     await reloadEditorPage(page);
     await selectSegmentInInspector(page, OVERHEAD_SEGMENT_NAME);
 
+    // UI-02b JEDEN-INSPEKTOR: działanie występuje w inspektorze RAZ — w pasku działań z
+    // rejestru menu kanwy (`inspektor-akcja-<id>`); karta techniczna nie dubluje pozycji paska.
+    // Linia napowietrzna: słup rozgałęźny jest, ZK SN (rodzina kablowa) — nie.
     const inspector = page.getByTestId('inspector-engineering');
-    await expect(inspector.getByRole('button', { name: /rozga/i })).toBeVisible();
-    await expect(inspector.getByRole('button', { name: /Wstaw ZKSN/i })).toHaveCount(0);
+    await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).toBeVisible();
+    await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(inspector.getByRole('button', { name: /rozga/i })).toHaveCount(1);
+    await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).toHaveCount(0);
+    await expect(inspector.getByRole('button', { name: /ZKSN|ZK SN/i })).toHaveCount(0);
 
-    await inspector.getByRole('button', { name: /rozga/i }).click();
+    await inspector.getByTestId('inspektor-akcja-insert-pole').click();
 
     // Przepisane na bieżący flow (karta K1/C, 2026-07-29): akcja otwiera dziś
     // kreator ui2 `KreatorSlupaOdgaleznego` (operationFormRegistry:
@@ -252,11 +258,16 @@ test.describe('Branch points workflow', () => {
     await reloadEditorPage(page);
     await selectSegmentInInspector(page, CABLE_SEGMENT_NAME);
 
+    // UI-02b: jedno działanie „ZK SN" — pozycja paska z rejestru menu kanwy; kabel nie ma
+    // słupa rozgałęźnego (rodzina linii napowietrznej).
     const inspector = page.getByTestId('inspector-engineering');
-    await expect(inspector.getByRole('button', { name: /Wstaw ZKSN/i })).toBeVisible();
+    await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).toBeVisible();
+    await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(inspector.getByRole('button', { name: /ZKSN|ZK SN/i })).toHaveCount(1);
+    await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).toHaveCount(0);
     await expect(inspector.getByRole('button', { name: /rozga/i })).toHaveCount(0);
 
-    await inspector.getByRole('button', { name: /Wstaw ZKSN/i }).click();
+    await inspector.getByTestId('inspektor-akcja-insert-zksn').click();
 
     // Przepisane na bieżący flow (karta K1/C, 2026-07-29): akcja otwiera dziś
     // kreator ui2 `KreatorZksn` (operationFormRegistry:
