@@ -508,7 +508,7 @@ def _wymagane_pole_sc(payload: dict[str, Any], klucz: str) -> float:
     """
     wartosc = payload.get(klucz)
     if wartosc is None:
-        raise ValueError(
+        raise AssertionError(
             "Zapis wyniku zwarciowego tego przebiegu nie ma jednej z wymaganych wielkości "
             f"({_WIELKOSCI_WIERSZA_PL.get(klucz, 'wielkość spoza słownika aplikacji')}) — "
             "zapis jest uszkodzony, ocena wytrzymałości cieplnej nie może się na nim oprzeć."
@@ -525,7 +525,7 @@ def _pole_sc_zalezne_od_tb(payload: dict[str, Any], klucz: str) -> float | None:
     (serializacja wyniku zawsze go niesie). Ocena cieplna I_b ani t_b nie używa.
     """
     if klucz not in payload:
-        raise ValueError(
+        raise AssertionError(
             "Zapis wyniku zwarciowego tego przebiegu nie ma jednej z wymaganych wielkości "
             f"({_WIELKOSCI_WIERSZA_PL.get(klucz, 'wielkość spoza słownika aplikacji')}) — "
             "zapis jest uszkodzony, ocena wytrzymałości cieplnej nie może się na nim oprzeć."

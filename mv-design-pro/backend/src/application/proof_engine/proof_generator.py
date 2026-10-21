@@ -226,7 +226,7 @@ class SC3FInput:
         skasowany; wynik bez m, n to odmowa, nie domysł.
         """
         if result.m_factor is None or result.n_factor is None:
-            raise ValueError(
+            raise AssertionError(
                 "Wynik zwarcia nie niesie współczynników cieplnych m, n, z którymi solver "
                 "policzył I_th — dowodu prądu cieplnego zastępczego nie da się złożyć."
             )
@@ -1978,7 +1978,7 @@ class ProofGenerator:
     ) -> ProofStep:
         """Krok maszynowy: współczynnik zanikania μ (§6.6.1)."""
         if machine.mu is None:
-            raise ValueError("Krok μ wymaga policzonego μ (sekcja maszynowa bez kompletu).")
+            raise AssertionError("Krok μ wymaga policzonego μ (sekcja maszynowa bez kompletu).")
         mu = machine.mu
         equation = EQ_SC3F_011
         ratio = machine.ratio_ik_ir
@@ -1993,7 +1993,7 @@ class ProofGenerator:
             )
         else:
             if t_min_s is None:
-                raise ValueError("Krok μ z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
+                raise AssertionError("Krok μ z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
             a, b, c = wspolczynniki_krzywej_mu(t_min_s)
             raw = a + b * math.exp(-c * ratio)
             substitution = f"\\mu = {a} + {b} \\cdot e^{{-{c} \\cdot {ratio:.3f}}} = {raw:.4f}"
@@ -2025,7 +2025,7 @@ class ProofGenerator:
     ) -> ProofStep:
         """Krok maszynowy: dodatkowy współczynnik zanikania q dla maszyny asynchronicznej (§6.6.3)."""
         if machine.q is None:
-            raise ValueError("Krok q wymaga policzonego q (sekcja maszynowa bez kompletu).")
+            raise AssertionError("Krok q wymaga policzonego q (sekcja maszynowa bez kompletu).")
         q = machine.q
         equation = EQ_SC3F_012
         m_val = machine.p_per_pole_mw
@@ -2033,7 +2033,7 @@ class ProofGenerator:
             substitution = "q = 1 \\quad (m \\leq 0)"
         else:
             if t_min_s is None:
-                raise ValueError("Krok q z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
+                raise AssertionError("Krok q z krzywej wymaga t_min (sekcja maszynowa bez kompletu).")
             a, b = wspolczynniki_krzywej_q(t_min_s)
             raw = a + b * math.log(m_val)
             substitution = f"q = {a} + {b} \\cdot \\ln({m_val:.4f}) = {raw:.4f}"
@@ -2059,7 +2059,7 @@ class ProofGenerator:
     ) -> ProofStep:
         """Krok maszynowy: prąd wyłączeniowy symetryczny i_b = μ·q·I″k (§6.6)."""
         if machine.mu is None or machine.q is None or machine.ib_a is None:
-            raise ValueError("Krok i_b wymaga policzonych μ, q i i_b (sekcja bez kompletu).")
+            raise AssertionError("Krok i_b wymaga policzonych μ, q i i_b (sekcja bez kompletu).")
         mu, q = machine.mu, machine.q
         equation = EQ_SC3F_013
         ikss_p = a_na_ka(machine.ikss_partial_a)
