@@ -17,7 +17,7 @@ import {
   fetchSwitchgearFamilies,
   getCatalogErrorMessage,
 } from '../../../ui/catalog/api';
-import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
+import type { MVApparatusType } from '../../../ui/catalog/types';
 import { resolveBusSnRef, resolveStationRef, stationLabel } from '../../../ui/network-build/forms/enmResolvers';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -108,7 +108,7 @@ export function KreatorPolaSn() {
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('pole');
 
-  const [typy, setTypy] = useState<MVApparatusCatalogType[]>([]);
+  const [typy, setTypy] = useState<MVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
   const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);

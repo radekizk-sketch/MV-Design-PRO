@@ -5,7 +5,8 @@ wytrzymałości aparatury (I_th ≤ I_th_zn·√(min(1, t_zn/t_wył))) potrzebuj
 wyłączenia. Do tej karty czas brał się WYŁĄCZNIE z liczby WPISANEJ RĘCZNIE w
 konfiguracji stacji — czyli werdykt cieplny opierał się na deklaracji
 projektanta, choć wyglądał jak wynik z modelu. Model tymczasem niesie nastawy
-zabezpieczeń pola, a katalog aparatu — jego czas własny.
+zabezpieczeń pola, a katalog aparatu — jego czas własny (albo, gdy karta go nie podaje,
+rejestr wartości roboczych — wartość robocza z jawnym źródłem).
 
 CO ROBI TEN MODUŁ: dla każdego pola stacji składa czas wyłączenia z DWÓCH
 członów, obu pochodzących z danych:
@@ -16,8 +17,10 @@ WARSTWA ANALIZ, NIE SOLVER: żaden wzór nie powstaje tutaj. Nastawy i czas czł
 nastawczego pochodzą z JEDNEJ ścieżki oceny nadprądowej
 (``protection/ocena_nadpradowa.py``: ``rozwiaz_nastawy`` — jednostka progu, przekładnia
 przekładnika, zakresy katalogu; ``czas_urzadzenia`` — rdzeń IEC 60255, najszybszy stopień,
-który ruszył), tak samo jak dla gałęzi — jedna reguła, nie dwie. Czas własny to odczyt
-pozycji katalogu APARAT_SN.
+który ruszył), tak samo jak dla gałęzi — jedna reguła, nie dwie. Czas własny pochodzi z
+JEDNEGO rozstrzygnięcia parametrów aparatu (``aparaty_pol.parametry_aparatu``: wartość
+projektanta na elemencie modelu > karta katalogowa APARAT_SN > propozycja rejestru wartości
+roboczych) — z pochodzeniem w odpowiedzi.
 
 PRĄD PER POLE (karta WYTRZYMALOSC-PRAD-POLA): prąd, przy którym sprawdzana jest
 charakterystyka, to prąd zwarcia trójfazowego w punkcie zabudowy TEGO pola, wzięty z wiersza
@@ -32,11 +35,14 @@ zwarcia (IEC 60909-0 § 4.7).
 ZERO HEURYSTYK I ZERO FABRYKACJI:
   - brak nastaw / brak prądu / prąd poniżej rozruchu ⇒ czas ``None`` z kodem
     gotowości i powodem po polsku (NIGDY wartość zastępcza),
-  - brak czasu własnego wyłącznika w karcie katalogowej ⇒ czas wyłączenia ``None`` z kodem
-    ``READINESS_BRAK_CZASU_WLASNEGO`` (człon nastawczy zostaje w odpowiedzi jako ślad).
-    Dawniej czas niósł wtedy SAM człon nastawczy, a werdykt cieplny powstawał na czasie
-    krótszym od rzeczywistego — czyli optymistycznie (karta WYTRZYMALOSC-PRAD-POLA).
-    Krótszy czas nie jest „przybliżeniem bezpiecznym": daje wyższy limit cieplny.
+  - brak czasu własnego wyłącznika w KARCIE katalogowej NIE blokuje czasu wyłączenia (zasada
+    nr 4, V12K-351): człon nastawczy powiększa wartość ROBOCZA czasu własnego (profil typowy
+    wyłącznika próżniowego SN z rejestru albo wartość nadana przez projektanta), a odpowiedź
+    niesie jej pochodzenie i zdanie o wpływie (``czas_wlasny``, ``zalozenia_pl``). Nigdy SAM
+    człon nastawczy — krótszy czas dawałby wyższy limit cieplny (karta WYTRZYMALOSC-PRAD-POLA).
+  - kod ``READINESS_BRAK_CZASU_WLASNEGO`` zostaje WYŁĄCZNIE dla braku MODELU: wyłącznik
+    otwierany przez zabezpieczenie nie leży w polu, jego pozycji nie ma w katalogu albo
+    zabezpieczenie otwiera aparat, który nie przerywa zwarcia (czas własny nie dotyczy).
   - czas własny pochodzi wyłącznie z pozycji katalogu WYŁĄCZNIKA, który to zabezpieczenie
     otwiera (``ProtectionAssignment.breaker_ref``) — nie z pierwszego aparatu pola, który
     akurat niesie liczbę (odłącznik nie wyłącza zwarcia).
@@ -51,12 +57,21 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
+from application.analyses.aparaty_pol import (
+    AparatPola,
+    aparaty_pol_stacji,
+    parametry_aparatu,
+    znajdz_stacje,
+)
 from application.analyses.protection.ocena_nadpradowa import czas_urzadzenia, rozwiaz_nastawy
 from application.field_read_model import collect_bays
 from enm.models import EnergyNetworkModel, ProtectionAssignment
 from enm.nazwy_elementow import nazwa_elementu
-from network_model.catalog import get_default_mv_catalog
+from network_model.catalog.wartosci_robocze import (
+    PARAMETR_CZAS_WLASNY,
+    WartoscRozstrzygnieta,
+    liczba_pl,
+)
 from network_model.pochodne import ka_na_a
 
 # ---------------------------------------------------------------------------
@@ -85,6 +100,7 @@ def _bez_czasu(kod: str, powod_pl: str, **slad: Any) -> dict[str, Any]:
         "powod_pl": powod_pl,
         "czlon_nastawczy_s": None,
         "czas_wlasny_wylacznika_s": None,
+        "czas_wlasny": None,
         "zalozenia_pl": [],
         "kody_gotowosci": [kod],
         **slad,
@@ -110,14 +126,21 @@ def _przypisanie_pola(
     return kandydaci[0]
 
 
-def _czas_wlasny_aparatu(catalog_ref: str | None) -> float | None:
-    """Czas własny wyłącznika z jego pozycji katalogu APARAT_SN (``None`` = brak danej)."""
-    if not catalog_ref:
-        return None
-    pozycja = get_default_mv_catalog().get_mv_apparatus_type(catalog_ref)
+def _czas_wlasny_aparatu(wylacznik: AparatPola) -> WartoscRozstrzygnieta | None:
+    """Czas własny wyłącznika z JEDNEGO rozstrzygnięcia (``None`` = pozycji nie ma w katalogu)."""
+    pozycja, parametry = parametry_aparatu(wylacznik)
     if pozycja is None:
         return None
-    return pozycja.break_time_s
+    return parametry[PARAMETR_CZAS_WLASNY]
+
+
+def _zalozenie_czasu_wlasnego(czas_wlasny: WartoscRozstrzygnieta) -> str:
+    """Zdanie komentarza obliczeń o czasie własnym przyjętym jako wartość robocza."""
+    assert czas_wlasny.wartosc is not None
+    return (
+        f"Czas własny wyłącznika {liczba_pl(czas_wlasny.wartosc)} s — "
+        f"{czas_wlasny.opis_zrodla_pl()}"
+    )
 
 
 def czasy_wylaczenia_pol_stacji(
@@ -223,21 +246,31 @@ def czasy_wylaczenia_pol_stacji(
 
         wylacznik = next((a for a in aparaty_pola if a.aparat_ref == wpis.breaker_ref), None)
         pozycja_ref = wylacznik.catalog_ref if wylacznik is not None else None
-        czas_wlasny = _czas_wlasny_aparatu(pozycja_ref)
+        czas_wlasny = _czas_wlasny_aparatu(wylacznik) if wylacznik is not None else None
         opis_czlonu = (
             f"Czas stopnia {decydujacy['etykieta_pl']} ({krzywa_txt}) zabezpieczenia "
             f"{nazwa_zabezpieczenia} przy prądzie {prad_a:.1f} A"
         )
-        if czas_wlasny is None:
-            # Czas wyłączenia = człon nastawczy + czas własny wyłącznika; bez drugiego członu
-            # czasu wyłączenia NIE MA (sam człon jest krótszy, więc dawałby wyższy limit
-            # cieplny — werdykt optymistyczny). Człon zostaje jako ślad.
-            powod_braku = (
-                f"Wyłącznik otwierany przez zabezpieczenie {nazwa_zabezpieczenia} nie leży "
-                "w tym polu, więc jego czasu własnego nie ma skąd odczytać"
-                if wylacznik is None
-                else f"Pozycja katalogu wyłącznika „{pozycja_ref}” nie niesie czasu własnego"
-            )
+        if czas_wlasny is None or czas_wlasny.wartosc is None:
+            # Brak MODELU (nie parametru urządzenia): wyłącznik poza polem, aparat spoza
+            # katalogu albo aparat, który nie przerywa zwarcia. Czas wyłączenia = człon
+            # nastawczy + czas własny wyłącznika; bez drugiego członu czasu NIE MA (sam człon
+            # jest krótszy, więc dawałby wyższy limit cieplny). Człon zostaje jako ślad.
+            if wylacznik is None:
+                powod_braku = (
+                    f"Wyłącznik otwierany przez zabezpieczenie {nazwa_zabezpieczenia} nie leży "
+                    "w tym polu, więc jego czasu własnego nie ma skąd odczytać"
+                )
+            elif czas_wlasny is None:
+                powod_braku = (
+                    f"Aparat otwierany przez zabezpieczenie {nazwa_zabezpieczenia} nie ma "
+                    f"pozycji „{pozycja_ref}” w katalogu aparatów SN"
+                )
+            else:
+                powod_braku = (
+                    f"Zabezpieczenie {nazwa_zabezpieczenia} otwiera aparat, który nie wyłącza "
+                    f"zwarcia: {czas_wlasny.powod_braku_pl}"
+                )
             wynik[bay.ref_id] = {
                 **_bez_czasu(
                     READINESS_BRAK_CZASU_WLASNEGO,
@@ -249,18 +282,26 @@ def czasy_wylaczenia_pol_stacji(
                 "zrodlo": ZRODLO_NASTAWY_POLA,
                 "czlon_nastawczy_s": czas_nastawy,
                 "czas_wlasny_pozycja_ref": pozycja_ref,
+                "czas_wlasny": czas_wlasny.to_dict() if czas_wlasny is not None else None,
                 "zalozenia_pl": [_ZALOZENIE_PRADU_POLA],
             }
             continue
 
+        zalozenia = [_ZALOZENIE_PRADU_POLA]
+        if czas_wlasny.robocza:
+            zalozenia.append(_zalozenie_czasu_wlasnego(czas_wlasny))
         wynik[bay.ref_id] = {
-            "t_clearing_s": round(czas_nastawy + czas_wlasny, 6),
+            "t_clearing_s": round(czas_nastawy + czas_wlasny.wartosc, 6),
             "zrodlo": ZRODLO_NASTAWY_POLA,
-            "powod_pl": f"{opis_czlonu} powiększony o czas własny wyłącznika.",
+            "powod_pl": (
+                f"{opis_czlonu} powiększony o czas własny wyłącznika"
+                + (" (wartość robocza)." if czas_wlasny.robocza else ".")
+            ),
             "czlon_nastawczy_s": czas_nastawy,
-            "czas_wlasny_wylacznika_s": czas_wlasny,
+            "czas_wlasny_wylacznika_s": czas_wlasny.wartosc,
             "czas_wlasny_pozycja_ref": pozycja_ref,
-            "zalozenia_pl": [_ZALOZENIE_PRADU_POLA],
+            "czas_wlasny": czas_wlasny.to_dict(),
+            "zalozenia_pl": zalozenia,
             "kody_gotowosci": [],
             **slad,
         }

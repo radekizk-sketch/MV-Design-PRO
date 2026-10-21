@@ -17,7 +17,7 @@ import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie, useNazwaObiektu } from '../wzorzec';
 import { parametryWkladowZKonfiguracji, useRozplywZwarciowy, useWkladyZwarciowe } from './api';
-import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
+import { useOtworzKonfiguracjeStacji, useZmienWartoscAparatu, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { PasmoMinMax } from './PasmoMinMax';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
@@ -68,6 +68,8 @@ export function EkranZwarc({
   const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
   // KD-4 (dług V12K-287): ogniwo „wynik zwarciowy → wytrzymałość aparatury".
   const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
+  // Zasada nr 4 (V12K-351): wartość robocza aparatu → kreator edycji parametrów aparatu.
+  const zmienWartoscAparatu = useZmienWartoscAparatu();
   // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku zwarciowego prowadzi
   // WPROST do uruchomienia przebiegu zwarciowego (ten sam tor co „Oblicz").
   const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
@@ -183,6 +185,7 @@ export function EkranZwarc({
         runId={runId}
         punktNazwa={nazwaAktywnego}
         onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
+        onZmienWartosc={zmienWartoscAparatu}
       />
 
       <RozplywZwarciowy

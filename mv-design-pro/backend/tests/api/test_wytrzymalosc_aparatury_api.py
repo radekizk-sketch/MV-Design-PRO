@@ -21,6 +21,7 @@ from enm.canonical_analysis import build_short_circuit_results, create_run, exec
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.store import reset_enm_store
 from fastapi.testclient import TestClient
+from network_model.catalog.repository import get_default_mv_catalog
 
 APARAT_POLA = "sw-cb-abb-vd4-17kv-630a"
 KABEL = "cable-tfk-yakxs-3x120"
@@ -215,13 +216,22 @@ def test_werdykty_powstaja_z_modelu_i_pradow_pola_z_biegu(klient: TestClient):
         # Znamiona z pozycji katalogu — z jawnym pochodzeniem każdej liczby.
         assert pole["znamiona"]["i_th_ka"] is not None
         assert pole["znamiona"]["i_th_pochodzenie"] == "producent"
-        assert pole["znamiona"]["i_dyn_pochodzenie"] == "derived_iec62271"
+        # Karta nie podaje I_dyn — wartość robocza z relacji normowej (V12K-351), jawnie
+        # oznaczona i niesiona jako dana przyjęta oceny dynamicznej (nigdy dana producenta).
+        assert pole["znamiona"]["i_dyn_pochodzenie"] == "wartosc_robocza"
+        assert pole["znamiona"]["wartosci"]["i_dyn_ka"]["pochodzenie"] == "PROPOZYCJA"
         # Prądy pola = wiersz biegu dla punktu zabudowy pola (nie liczba z żądania).
         wiersz = wiersze[pole["prady_pola"]["punkt_ref"]]
         assert pole["prady_pola"]["ip_ka"] == wiersz["ip_ka"]
         assert pole["prady_pola"]["ith_ka"] == wiersz["ith_ka"]
         assert pole["werdykt"]["i_dyn_ok"] is True
-        assert _ocena(pole, "dynamiczna")["status_maszynowy"] == "SPELNIA"
+        dynamiczna = _ocena(pole, "dynamiczna")
+        assert dynamiczna["status_maszynowy"] == "SPELNIA"
+        assert dynamiczna["kompletnosc_dowodu"] == "NIEPELNY"
+        assert dynamiczna["limit"]["podstawa"]["rodzaj"] != "KATALOG_PRODUCENTA"
+        dane = dynamiczna["dowod"]["status_danych"]["dane_przyjete"]
+        assert {d["jakosc"] for d in dane} == {"ESTIMATED"}
+        assert any("IEC 62271-1:2017 p. 5.7" in d["powod_pl"] for d in dane)
 
 
 @pytest.mark.parametrize("tb_s", [None, 0.1], ids=["bez_tb", "tb_0_1"])
@@ -321,33 +331,241 @@ def test_bieg_niewlasciwy_jest_odrzucany(klient: TestClient, bieg: Any, kod: int
     assert odp.status_code == kod, odp.text
 
 
-def test_czas_z_nastaw_pola_bez_czasu_wlasnego_daje_brak_podstawy(klient: TestClient):
-    """KD-6 poz. 3 + karta WYTRZYMALOSC-PRAD-POLA: człon nastawczy wyprowadzony z NASTAW przy
-    prądzie TEGO pola, ale katalog wyłącznika nie niesie czasu własnego — czasu wyłączenia
-    nie ma, a kryterium cieplne ma BRAK_PODSTAWY z przyczyną (dawniej SPEŁNIA na 0,3 s)."""
+def _pole_z_nastaw(widok: dict[str, Any]) -> dict[str, Any]:
+    z_nastaw = [p for p in widok["pola"] if p["czas_wylaczenia"]["zrodlo"] == "nastawy_pola"]
+    assert z_nastaw, "Pole z nastawami musi dostać człon wyprowadzony z charakterystyki"
+    return z_nastaw[0]
+
+
+def _dane_przyjete(ocena: dict[str, Any]) -> list[dict[str, Any]]:
+    return list(ocena["dowod"]["status_danych"]["dane_przyjete"] or [])
+
+
+def test_czas_z_nastaw_pola_z_czasem_wlasnym_roboczym(klient: TestClient):
+    """KD-6 poz. 3 + zasada nr 4 (V12K-351): człon nastawczy z NASTAW przy prądzie TEGO pola,
+    a karta wyłącznika nie podaje czasu własnego — system przyjmuje wartość roboczą 0,060 s
+    (profil urządzenia) i LICZY: T_k = 0,3 s + 0,06 s. Kryterium cieplne ma status z liczb,
+    ale kompletność NIEPEŁNĄ, a czas własny stoi w danych przyjętych z jakością ESTIMATED
+    (dawniej BRAK_PODSTAWY z kodem braku czasu własnego)."""
     case_id = _nowy_przypadek(klient)
     station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
     run_id = _bieg(klient, case_id)
 
     odp = _wytrzymalosc(klient, case_id, station_ref, run_id)
     assert odp.status_code == 200, odp.text
-    widok = odp.json()
-
-    z_nastaw = [p for p in widok["pola"] if p["czas_wylaczenia"]["zrodlo"] == "nastawy_pola"]
-    assert z_nastaw, "Pole z nastawami musi dostać człon wyprowadzony z charakterystyki"
-    pole = z_nastaw[0]
+    pole = _pole_z_nastaw(odp.json())
     czas = pole["czas_wylaczenia"]
     # WHITE BOX: człon i ślad nastawy, prąd = Ik″ punktu zabudowy TEGO pola.
     assert czas["czlon_nastawczy_s"] == 0.3
     assert czas["funkcja"] == "overcurrent_51"
     assert czas["prad_zwarciowy_a"] == pytest.approx(pole["prady_pola"]["ik_ka"] * 1000.0)
-    assert czas["t_clearing_s"] is None
-    assert czas["czas_wlasny_wylacznika_s"] is None
-    assert "aparatura.brak_czasu_wlasnego_wylacznika" in pole["kody_gotowosci"]
-    assert pole["werdykt"]["i_th_ok"] is None
+    assert czas["czas_wlasny_wylacznika_s"] == 0.06
+    assert czas["t_clearing_s"] == pytest.approx(0.36)
+    assert czas["czas_wlasny"]["pochodzenie"] == "PROPOZYCJA"
+    assert czas["czas_wlasny"]["propozycja"]["rodzaj_zrodla"] == "PROFIL_URZADZENIA"
+    assert "aparatura.brak_czasu_wlasnego_wylacznika" not in pole["kody_gotowosci"]
+    assert pole["werdykt"]["i_th_ok"] is True
+    assert "wartościach roboczych" in pole["komunikat_pl"]
     cieplna = _ocena(pole, "cieplna")
-    assert cieplna["status_maszynowy"] == "BRAK_PODSTAWY"
-    assert cieplna["wyjasnienie"]["czego_brakuje"]
+    assert cieplna["status_maszynowy"] == "SPELNIA"
+    assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
+    assert cieplna["limit"]["zakres_stosowalnosci_pl"].endswith("T_k = 0.36 s")
+    dane = _dane_przyjete(cieplna)
+    assert [d["wartosc"] for d in dane] == [{"wartosc": 0.06, "jednostka": "s"}]
+    assert dane[0]["jakosc"] == "ESTIMATED"
+    assert "czas własny" in dane[0]["nazwa_pl"]
+
+
+def _nadaj_wartosci(
+    klient: TestClient, case_id: str, aparat_ref: str, wpisy: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Wartości projektanta przez PRODUKCYJNĄ operację domenową (ta sama, którą wysyła kreator
+    edycji parametrów)."""
+    dane = _operacja(
+        klient,
+        case_id,
+        "update_element_parameters",
+        {"element_ref": aparat_ref, "parameters": {"overrides": wpisy}},
+    )
+    return next(b for b in dane["snapshot"]["branches"] if b["ref_id"] == aparat_ref)
+
+
+def test_wartosc_projektanta_zmienia_wynik_po_przeliczeniu(klient: TestClient):
+    """Projektant zmienia czas własny i prąd krótkotrwały na elemencie modelu — po
+    przeliczeniu T_k i status kryterium cieplnego wynikają z JEGO wartości (pierwszeństwo:
+    projektant > karta > propozycja), a zdjęcie wpisów przywraca kartę i propozycję."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+    przed = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_id).json())
+    aparat_ref = przed["aparat_ref"]
+    i_th_obliczony = przed["prady_pola"]["ith_ka"]
+    assert _ocena(przed, "cieplna")["status_maszynowy"] == "SPELNIA"
+
+    galaz = _nadaj_wartosci(
+        klient,
+        case_id,
+        aparat_ref,
+        [
+            # Kolejność wejścia odwrotna do kanonicznej — zapis normalizuje kolejność.
+            {"key": "i_th_ka", "value": 5, "reason": "  aparat istniejący, tabliczka 5 kA  "},
+            {"key": "break_time_s", "value": 0.1, "reason": "pomiar odbiorczy"},
+        ],
+    )
+    assert galaz["parameter_source"] == "OVERRIDE"
+    assert galaz["overrides"] == [
+        {"key": "break_time_s", "value": 0.1, "reason": "pomiar odbiorczy"},
+        {"key": "i_th_ka", "value": 5.0, "reason": "aparat istniejący, tabliczka 5 kA"},
+    ]
+    run_po = _bieg(klient, case_id)
+    po = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_po).json())
+    czas = po["czas_wylaczenia"]
+    assert czas["czas_wlasny"]["pochodzenie"] == "PROJEKTANT"
+    assert czas["t_clearing_s"] == pytest.approx(0.4)
+    assert po["znamiona"]["i_th_ka"] == 5.0
+    assert po["znamiona"]["i_th_pochodzenie"] == "projektant"
+    assert po["prady_pola"]["ith_ka"] == pytest.approx(i_th_obliczony)
+    assert i_th_obliczony > 5.0, "Dobór liczb testu: I_th pola musi przekroczyć 5 kA"
+    cieplna = _ocena(po, "cieplna")
+    assert cieplna["status_maszynowy"] == "NIE_SPELNIA"
+    assert cieplna["kompletnosc_dowodu"] == "NIEPELNY"
+    assert cieplna["limit"]["podstawa"]["rodzaj"] == "ZALOZENIE_PROJEKTOWE"
+    dane = {d["nazwa_pl"].split(" (")[0]: d for d in _dane_przyjete(cieplna)}
+    assert dane["prąd krótkotrwały wytrzymywany"]["wartosc"]["wartosc"] == 5.0
+    assert dane["czas własny wyłączania wyłącznika"]["wartosc"]["wartosc"] == 0.1
+    assert {d["jakosc"] for d in dane.values()} == {"ESTIMATED"}
+    assert "aparat istniejący, tabliczka 5 kA" in (
+        dane["prąd krótkotrwały wytrzymywany"]["powod_pl"]
+    )
+    assert po["werdykt"]["i_th_ok"] is False
+
+    # Zdjęcie wartości projektanta: karta i propozycja wracają, wiązanie katalogowe też.
+    galaz = _nadaj_wartosci(klient, case_id, aparat_ref, [])
+    assert galaz["overrides"] == []
+    assert galaz["parameter_source"] == "CATALOG"
+    run_zdjete = _bieg(klient, case_id)
+    zdjete = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_zdjete).json())
+    assert zdjete["czas_wylaczenia"]["t_clearing_s"] == pytest.approx(0.36)
+    assert zdjete["znamiona"]["i_th_pochodzenie"] == "producent"
+    assert _ocena(zdjete, "cieplna")["status_maszynowy"] == "SPELNIA"
+
+
+@pytest.mark.parametrize(
+    "wpisy",
+    [
+        [{"key": "break_time_s", "value": 0.0}],
+        [{"key": "break_time_s", "value": 0.5}],
+        [{"key": "i_th_ka", "value": "20"}],
+        [{"key": "i_th_ka", "value": True}],
+        [{"key": "u_m_kv", "value": 17.5}],
+        [{"key": "i_th_ka", "value": 20.0}, {"key": "i_th_ka", "value": 25.0}],
+        [{"key": "i_th_ka", "value": 20.0, "reason": 7}],
+        ["i_th_ka"],
+        {"key": "i_th_ka", "value": 20.0},
+    ],
+    ids=[
+        "czas_zero",
+        "czas_ponad_zakres",
+        "wartosc_tekstowa",
+        "wartosc_logiczna",
+        "parametr_spoza_rejestru",
+        "klucz_powtorzony",
+        "uzasadnienie_nietekstowe",
+        "wpis_nie_slownik",
+        "nie_lista",
+    ],
+)
+def test_wartosc_projektanta_spoza_kontraktu_jest_odmowa(klient: TestClient, wpisy: Any):
+    """Brama zapisu: wartość, której rejestr nie dopuszcza, nie wchodzi do modelu (model bez
+    zmian, kod błędu jawny)."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+    aparat_ref = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_id).json())[
+        "aparat_ref"
+    ]
+    odp = klient.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "update_element_parameters",
+                "payload": {"element_ref": aparat_ref, "parameters": {"overrides": wpisy}},
+            }
+        },
+    )
+    assert odp.status_code == 200, odp.text
+    wynik = odp.json()
+    assert wynik.get("error"), "Wartość spoza kontraktu musi być odmową"
+    assert wynik.get("error_code") == "params.override_invalid", wynik
+    model = klient.get(f"/api/cases/{case_id}/enm").json()
+    galaz = next(b for b in model["branches"] if b["ref_id"] == aparat_ref)
+    assert galaz["overrides"] == []
+    assert galaz["parameter_source"] != "OVERRIDE"
+
+
+def test_powrot_do_karty_przechodzi_brame_katalogowa_aparatu(klient: TestClient):
+    """Znacznik `parameter_source: CATALOG` po wyczyszczeniu wartości projektanta stawia
+    WYŁĄCZNIE brama katalogowa aparatu (inwentarz deklaracji katalogowych): pozycja, której
+    w katalogu nie ma, jest odmową, a model zostaje z wartościami projektanta."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+    aparat_ref = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_id).json())[
+        "aparat_ref"
+    ]
+    _nadaj_wartosci(klient, case_id, aparat_ref, [{"key": "i_th_ka", "value": 5.0}])
+    odp = klient.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "update_element_parameters",
+                "payload": {
+                    "element_ref": aparat_ref,
+                    "parameters": {"overrides": [], "catalog_ref": "APARAT-SPOZA-KATALOGU"},
+                },
+            }
+        },
+    )
+    assert odp.status_code == 200, odp.text
+    wynik = odp.json()
+    assert wynik.get("error_code") == "catalog.item_not_found", wynik
+    model = klient.get(f"/api/cases/{case_id}/enm").json()
+    galaz = next(b for b in model["branches"] if b["ref_id"] == aparat_ref)
+    assert galaz["parameter_source"] == "OVERRIDE"
+    assert [w["key"] for w in galaz["overrides"]] == ["i_th_ka"]
+
+
+@pytest.mark.parametrize("operacja", ["update_element_parameters", "assign_catalog_to_element"])
+def test_zmiana_pozycji_katalogu_zachowuje_wartosci_projektanta(klient: TestClient, operacja: str):
+    """Wartości projektanta należą do ELEMENTU: zmiana pozycji katalogu aparatu (oba tory
+    zapisu pozycji) ich nie kasuje, a znacznik zostaje OVERRIDE — inaczej walidator E010
+    zablokowałby model po zwykłej zmianie typu aparatu."""
+    case_id = _nowy_przypadek(klient)
+    station_ref = _stacja_z_polami(klient, case_id, z_zabezpieczeniem=True)
+    run_id = _bieg(klient, case_id)
+    aparat_ref = _pole_z_nastaw(_wytrzymalosc(klient, case_id, station_ref, run_id).json())[
+        "aparat_ref"
+    ]
+    przed = _nadaj_wartosci(klient, case_id, aparat_ref, [{"key": "i_th_ka", "value": 5.0}])
+    inna = next(
+        a.id
+        for a in get_default_mv_catalog().list_mv_apparatus_types()
+        if a.id != przed["catalog_ref"] and a.device_kind == "WYLACZNIK"
+    )
+    if operacja == "update_element_parameters":
+        payload: dict[str, Any] = {"element_ref": aparat_ref, "parameters": {"catalog_ref": inna}}
+    else:
+        payload = {
+            "element_ref": aparat_ref,
+            "catalog_item_id": inna,
+            "catalog_namespace": "APARAT_SN",
+        }
+    _operacja(klient, case_id, operacja, payload)
+    model = klient.get(f"/api/cases/{case_id}/enm").json()
+    galaz = next(b for b in model["branches"] if b["ref_id"] == aparat_ref)
+    assert galaz["catalog_ref"] == inna
+    assert galaz["parameter_source"] == "OVERRIDE"
+    assert [(w["key"], w["value"]) for w in galaz["overrides"]] == [("i_th_ka", 5.0)]
 
 
 def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient: TestClient):

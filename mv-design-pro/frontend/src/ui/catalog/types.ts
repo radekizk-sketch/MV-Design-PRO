@@ -246,14 +246,33 @@ export interface MVApparatusType extends CatalogType {
   i_n_a: number;
   breaking_capacity_ka?: number;
   making_capacity_ka?: number;
-  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
+  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — WYŁĄCZNIE dane karty, z pochodzeniem;
+   *  `null` = karta danej nie podaje (wartość roboczą niesie `wartosci_robocze`). */
   i_th_ka?: number | null;
   i_th_duration_s?: number | null;
   i_th_pochodzenie?: string | null;
   i_dyn_ka?: number | null;
   i_dyn_pochodzenie?: string | null;
-  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
+  /** Czas własny aparatu [s] — dana karty producenta (IEC 62271-100); `null` = brak w karcie. */
   break_time_s?: number | null;
+  /** Propozycje wartości roboczych dla parametrów, których karta nie podaje (zasada nr 4,
+   *  V12K-351) — `GET /api/catalog/mv-apparatus-types`; rejestr backendu jest jedynym źródłem. */
+  wartosci_robocze?: readonly PropozycjaWartosciRoboczej[];
+}
+
+/** Rodzaj źródła propozycji wartości roboczej (rejestr `network_model/catalog/wartosci_robocze.py`). */
+export type RodzajZrodlaWartosciRoboczej = 'PROFIL_URZADZENIA' | 'NORMA' | 'ZALOZENIE_INZYNIERSKIE';
+
+/** Propozycja wartości roboczej: liczba, jednostka, źródło, uzasadnienie i wpływ na ocenę. */
+export interface PropozycjaWartosciRoboczej {
+  readonly parametr: string;
+  readonly nazwa_pl: string;
+  readonly wartosc: number;
+  readonly jednostka: string;
+  readonly rodzaj_zrodla: RodzajZrodlaWartosciRoboczej;
+  readonly odniesienie: string;
+  readonly uzasadnienie_pl: string;
+  readonly wplyw_pl: string;
 }
 
 /**
@@ -527,22 +546,6 @@ export interface BranchPointCatalogType extends CatalogType {
   branch_ports_count: number;
   topology_role?: string;
   catalog_namespace?: 'mv_branch_points';
-}
-
-export interface MVApparatusCatalogType extends CatalogType {
-  device_kind: string;
-  u_n_kv: number;
-  i_n_a: number;
-  breaking_capacity_ka?: number;
-  making_capacity_ka?: number;
-  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
-  i_th_ka?: number | null;
-  i_th_duration_s?: number | null;
-  i_th_pochodzenie?: string | null;
-  i_dyn_ka?: number | null;
-  i_dyn_pochodzenie?: string | null;
-  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
-  break_time_s?: number | null;
 }
 
 /**

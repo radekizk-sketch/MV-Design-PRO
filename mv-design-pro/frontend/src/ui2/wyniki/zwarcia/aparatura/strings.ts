@@ -53,6 +53,17 @@ export const APARATURA_STRINGS = {
   czasNieustalony: 'nieustalone',
   czasZalozenie: 'Założenie:',
 
+  // Parametry aparatu użyte w ocenie (zasada nr 4, V12K-351): wartość, pochodzenie, źródło.
+  // Wartość robocza (propozycja albo projektant) to dana przyjęta — etykieta przy liczbie,
+  // źródło i wpływ obok; ten sam opis stoi w danych przyjętych rekordu kryterium.
+  parametryTytul: 'Parametry aparatu użyte w ocenie',
+  pochodzenieKatalog: 'karta katalogowa',
+  pochodzeniePropozycja: 'propozycja obliczenia',
+  pochodzenieProjektant: 'nadana przez projektanta',
+  pochodzenieBrak: 'brak danej',
+  etykietaRobocza: 'wartość robocza',
+  zmienWartosc: 'Zmień wartość',
+
   kreska: '—',
   jednKA: 'kA',
   jednS: 's',

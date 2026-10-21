@@ -154,20 +154,31 @@ def test_kazde_pole_dostaje_wlasny_prad_z_biegu() -> None:
 
 
 def test_werdykt_dynamiczny_powstaje_z_pozycji_katalogu_aparat_sn() -> None:
-    """I_dyn = 2,5 · Icw (20 kA) = 50 kA ⇒ prąd udarowy 12 kA mieści się — z wyjaśnieniem."""
+    """I_dyn = 2,5 · Icw (20 kA) = 50 kA ⇒ prąd udarowy 12 kA mieści się — z wyjaśnieniem.
+
+    Kanon V12K-351: 2,5·I_th to PROPOZYCJA wartości roboczej rejestru (NORMA, IEC 62271-1:2017
+    p. 5.7), nie dana karty — stoi w danych przyjętych, a dowód jest niepełny."""
     pole = _widok()["pola"][0]
 
     assert pole["znamiona"]["i_th_ka"] == 20.0
     assert pole["znamiona"]["i_th_pochodzenie"] == "producent"
     assert pole["znamiona"]["i_dyn_ka"] == 50.0
-    assert pole["znamiona"]["i_dyn_pochodzenie"] == "derived_iec62271"
+    assert pole["znamiona"]["i_dyn_pochodzenie"] == "wartosc_robocza"
+    assert pole["znamiona"]["wartosci"]["i_dyn_ka"]["pochodzenie"] == "PROPOZYCJA"
     assert pole["werdykt"]["i_dyn_ok"] is True
     ocena = _ocena(pole, "dynamiczna")
     assert ocena["status_maszynowy"] == "SPELNIA"
+    assert ocena["kompletnosc_dowodu"] == "NIEPELNY"
     assert ocena["limit"]["wartosc"] == {"wartosc": 50.0, "jednostka": "kA"}
-    # Znamię wyprowadzone z I_th: podstawa limitu to relacja normowa, nie karta producenta.
+    # Znamię z relacji normowej: podstawa limitu to norma, nie karta producenta.
     assert ocena["limit"]["podstawa"]["rodzaj"] == "NORMA"
-    assert "2,5" in ocena["limit"]["podstawa"]["jednostka_redakcyjna"]
+    assert ocena["limit"]["podstawa"]["jednostka_redakcyjna"] == "IEC 62271-1:2017 p. 5.7"
+    dane = ocena["dowod"]["status_danych"]["dane_przyjete"]
+    assert [(d["wartosc"], d["jakosc"]) for d in dane] == [
+        ({"wartosc": 50.0, "jednostka": "kA"}, "ESTIMATED")
+    ]
+    assert "IEC 62271-1:2017 p. 5.7" in dane[0]["powod_pl"]
+    assert "Wpływ" in dane[0]["powod_pl"]
     assert ocena["margines"] is not None
     assert ocena["wyjasnienie"]["zdanie_pl"]
 

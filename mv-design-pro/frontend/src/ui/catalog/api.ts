@@ -15,7 +15,7 @@ import type {
   LVApparatusType,
   LVRcdType,
   LVCableType,
-  MVApparatusCatalogType,
+  MVApparatusType,
   PVInverterCatalogType,
   PtpireeGeneratorCertificateCatalogType,
   ProtectionDeviceType,
@@ -68,7 +68,7 @@ export type CatalogListItem =
   | CableType
   | TransformerType
   | SwitchEquipmentType
-  | MVApparatusCatalogType
+  | MVApparatusType
   | LVApparatusType
   | LVRcdType
   | LVCableType
@@ -244,8 +244,8 @@ export async function fetchSwitchEquipmentTypes(): Promise<SwitchEquipmentType[]
   return fetchCatalogJson<SwitchEquipmentType[]>('/api/catalog/switch-equipment-types');
 }
 
-export async function fetchMvApparatusTypes(): Promise<MVApparatusCatalogType[]> {
-  return fetchCatalogJson<MVApparatusCatalogType[]>('/api/catalog/mv-apparatus-types');
+export async function fetchMvApparatusTypes(): Promise<MVApparatusType[]> {
+  return fetchCatalogJson<MVApparatusType[]>('/api/catalog/mv-apparatus-types');
 }
 
 export async function fetchLvApparatusTypes(): Promise<LVApparatusType[]> {

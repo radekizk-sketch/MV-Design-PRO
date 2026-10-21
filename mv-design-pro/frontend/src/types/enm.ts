@@ -137,7 +137,7 @@ export type CatalogSourceMode = 'KATALOG' | 'MIGRACJA' | 'EKSPERCKI_RECZNY';
 export interface ParameterOverride {
   key: string;
   value: number | string;
-  reason?: string;
+  reason?: string | null;
 }
 
 // ---------------------------------------------------------------------------

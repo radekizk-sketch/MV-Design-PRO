@@ -382,7 +382,8 @@ def complete_branch_catalog_materialization(
 
         branch.materialized_params = materialized
         branch.catalog_namespace = namespace
-        branch.parameter_source = "CATALOG"
+        # Wartości projektanta przeżywają uzupełnienie tabliczki (E010: OVERRIDE przy nadpisaniach).
+        branch.parameter_source = "OVERRIDE" if branch.overrides else "CATALOG"
         branch.source_mode = "KATALOG"
         _apply_materialized_branch_values(branch, materialized, enm.header.defaults.frequency_hz)
         changed = True

@@ -234,6 +234,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "set_dynamic_profile:profile": "Profil dynamiczny",
     "update_element_parameters:source_mode": "Pochodzenie parametrów",
     "update_element_parameters:catalog_namespace": "Kategoria katalogu",
+    "update_element_parameters:overrides": "Wartości parametrów nadane przez projektanta",
     "add_nn_distribution_board:voltage_kv": "Napięcie znamionowe",  # rozdzielnica-nn/strings.ts napiecie
     "vt_catalog_ref": "Przekładnik napięciowy (VT)",  # zrodlo-oze/strings.ts aparaturaVt
     "wymagany_cos_phi": "Wymagany cosφ (OSD)",  # ui2/spaces/projekt/strings.ts osdCosPhi
