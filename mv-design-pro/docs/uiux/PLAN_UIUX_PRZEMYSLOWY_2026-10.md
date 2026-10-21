@@ -184,3 +184,28 @@ oznaczenia) i rekordy aparatów.
 - **K9** — kryterium wspólne powyżej; 10 przypadków ponownego odbioru z analizy §3 (zrzut + operacja
   natywna + test), okna 1440×900 i 1920×1080, powłoka 1100×700 i 1180×780, oba motywy; iniekcje
   wchłaniania sąsiada, jednej szyny stacji D i wspólnej szyny WN muszą być czerwone (Z-20).
+
+**Rozstrzygnięcia właściciela 2026-10-21 (po analizie Z-01…Z-21; B-02 nadal odrzucone, bez zgody B-01).**
+- Szerokość inspektora (K1/K6): zwykły 340–420 px, domyślnie ok. 360 px; 560 px wyłącznie jako jawny,
+  odwracalny tryb szeroki dla tabel, konfiguratorów i analiz; nigdy samoczynnie po wybraniu obiektu.
+- Hierarchia ryzyka (do rozstrzygania zależności, nie nowa mapa): P0 wiarygodność elektryczna (GPZ ENM–SLD,
+  sekcje i sprzęgła, aparaty bez rekordów, wyniki niewłaściwego biegu); P1 ciągłość procesu (wyposażenie
+  pola, wariant NOP, tor OZE/BESS, zasilenie z backendu, powiązanie wyników z SLD); P2 jakość użytkowa
+  (kadr, kanwa, inspektor, czytelność). P2 nadal może blokować B-02.
+- GPZ: odrębna bramka poprawności modelu i wyników obliczeń, niezależna od odbioru wizualnego; przypadki
+  {1, 2 sekcje} × {1, kilka TR} × stany sprzęgła × {równoważnik SN, równoważnik 110 kV}, porównanie z
+  niezależnym rachunkiem (bilans P/Q, rozpływ przez TR, wkłady zwarciowe, działanie sprzęgła). Hipoteza
+  zaniżonego Ik″ i przeciążenia TR1 nieudowodniona do czasu obliczeń porównawczych. Ustalenie granicy:
+  poprawka w operacji budowania modelu (`enm/domain_operations.py`), pliki chronione
+  `scripts/solver_diff_guard.py` nietknięte — gdyby poprawny wynik wymagał toru chronionego, osobny
+  pakiet decyzyjny B-01.
+- Aparatura w polu — trzy przypadki: z modelu (symbol, oznaczenie, typ, stan), propozycja szablonu
+  (jawnie odróżniona), brak danych (bez domyślnego aparatu).
+- Wyniki (K8): kontekst per rodzina analiz z projektem, przypadkiem, biegiem, rodzajem, rewizją modelu,
+  wariantem, odciskiem wejścia i statusem; test odbiorowy: rozpływ A, zwarcie B, rozpływ C po zmianie.
+- Wariant NOP: rzeczywisty wariant stanów łączeniowych jednego modelu bazowego z weryfikacją elektryczną
+  (zasilanie, wyspy, praca wieloźródłowa, dopuszczalność połączenia sekcji); zakres backendowy należy do
+  karty W5-C (`OperatingScenario.switch_states`, `set_normal_open_point` — `KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`
+  §1 pkt 6), zależność funkcjonalna K8.
+- Kadr (K2): kryteria odporne na proporcje — kompletność celu, czytelność jego opisów, izolacja od sąsiadów,
+  rozróżnialność celów — zamiast stałych progów procentowych.
