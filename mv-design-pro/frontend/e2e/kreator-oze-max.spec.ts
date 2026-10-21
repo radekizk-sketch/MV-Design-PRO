@@ -16,6 +16,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import { czekajNaKoniecBiegu } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import { transformatoryStacjiSnNn } from './transformatoryStacji';
+import type { PozycjaBom } from '../src/ui2/kreatory/zrodlo-oze/podsumowanieApi';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -671,9 +672,8 @@ test('W10-2a: lista materiałowa toru DER-SN z doboru — nazwy typów z katalog
     timeout: 30000,
   });
   expect(bomResponse.ok(), await bomResponse.text()).toBeTruthy();
-  const bom = (await bomResponse.json()) as {
-    pozycje: Array<{ catalog_ref: string | null; typ_nazwa: string | null }>;
-  };
+  // Typ odpowiedzi z kontraktu klienta (jedno źródło), nie lokalna kopia pól.
+  const bom = (await bomResponse.json()) as { pozycje: readonly PozycjaBom[] };
   const pozycjeKatalogowe = bom.pozycje.filter((p) => p.catalog_ref && p.typ_nazwa);
   expect(pozycjeKatalogowe.length, 'tor DER-SN ma pozycje z katalogu').toBeGreaterThan(0);
 

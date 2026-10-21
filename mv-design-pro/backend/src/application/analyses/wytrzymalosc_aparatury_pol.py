@@ -444,7 +444,7 @@ def _ocena_dynamiczna(
                 run_id=run_id,
                 krok=f"{kryterium_id}:dynamiczna",
                 opis_pl=(
-                    f"i_p = {prady.ip_ka} kA (wiersz biegu, punkt {prady.punkt_ref}); "
+                    f"i_p = {prady.ip_ka} kA (wiersz biegu, punkt {prady.punkt_nazwa}); "
                     f"I_dyn = {i_dyn} kA (pochodzenie: {znamiona['i_dyn_pochodzenie']})"
                 ),
             ),
@@ -522,7 +522,7 @@ def _ocena_cieplna(
                 run_id=run_id,
                 krok=f"{kryterium_id}:cieplna",
                 opis_pl=(
-                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt {prady.punkt_ref}); "
+                    f"I_th = {prady.ith_ka} kA (wiersz biegu, punkt {prady.punkt_nazwa}); "
                     f"T_k = {t_k} s (źródło: {czas.get('zrodlo')}); limit = {limit_ka} kA"
                 ),
             ),

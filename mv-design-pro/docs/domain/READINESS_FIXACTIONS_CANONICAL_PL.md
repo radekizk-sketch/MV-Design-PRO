@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **156** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **158** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -84,6 +84,7 @@ Wszystkie **156** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.binding_required` | CATALOGS | 1 | BLOCKER | Element techniczny wymaga wiązania z katalogiem | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.binding_version_missing` | CATALOGS | 1 | BLOCKER | Brak wersji katalogu w wiązaniu elementu obliczeniowego | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.clear_forbidden` | CATALOGS | 1 | BLOCKER | Element techniczny nie może istnieć bez przypięcia katalogowego — zamiast czyścić wiązanie wskaż pozycję zastępczą | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.duplicate_id` | CATALOGS | 1 | BLOCKER | Karta widmowa występuje w katalogu więcej niż raz — katalog nie wskazuje jednoznacznie danych; usuń powtórzoną kartę | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.element_missing` | CATALOGS | 1 | BLOCKER | Przypisanie katalogu nie wskazało elementu modelu | panel: `inspector`, tab: `katalog` |
 | `catalog.element_not_found` | CATALOGS | 1 | BLOCKER | Element wskazany do przypisania katalogu nie istnieje w modelu | panel: `inspector`, tab: `katalog` |
 | `catalog.item_id_missing` | CATALOGS | 1 | BLOCKER | Brak identyfikatora rekordu katalogu w wiązaniu elementu | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
@@ -94,6 +95,7 @@ Wszystkie **156** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.namespace_required` | CATALOGS | 1 | BLOCKER | Nie da się ustalić kategorii katalogu dla elementu — bez kategorii nie ma czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia katalogowego | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.ref_missing` | CATALOGS | 1 | BLOCKER | Element nie ma wskazanej referencji katalogowej | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.ref_required` | CATALOGS | 1 | BLOCKER | Segment lub transformator wymaga referencji katalogowej przed utworzeniem | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.type_incomplete` | CATALOGS | 1 | BLOCKER | Rekord przekształtnika w katalogu nie niesie wymaganej wielkości znamionowej (moc pozorna, moc czynna maksymalna albo pojemność energetyczna) — typu falownika nie wyprowadzono; uzupełnij rekord z karty producenta | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.unknown_namespace` | CATALOGS | 1 | BLOCKER | Nieznana kategoria katalogu — brama nie dobiera kategorii za projektanta; wskaż kategorię, która istnieje w katalogu | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `import.catalog_mapping_required` | CATALOGS | 1 | BLOCKER | Import wymaga mapowania katalogowego: elementy bez przypisanego katalogu muszą zostać zmapowane przed dalszą edycją | panel: `catalog_mapper`, modal: `IMPORT_CATALOG_MAPPING` |
 | `nn.source.catalog_missing` | CATALOGS | 1 | BLOCKER | Źródło nN nie ma przypisanego katalogu urządzenia | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
@@ -219,21 +221,21 @@ Wszystkie **156** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 100 |
+| BLOCKER | 102 |
 | WARNING | 54 |
 | INFO | 2 |
-| **Razem** | **156** |
+| **Razem** | **158** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
 | TOPOLOGY | 6 |
-| CATALOGS | 47 |
+| CATALOGS | 49 |
 | STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 25 |
-| **Razem** | **156** |
+| **Razem** | **158** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 
