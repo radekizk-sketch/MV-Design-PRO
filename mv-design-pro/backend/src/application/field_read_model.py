@@ -5,6 +5,7 @@ from typing import Any, Literal
 from enm.canonical_analysis import list_runs_for_case
 from enm.interlock_rules import blokady_zamkniecia, runtime_state_record
 from enm.models import (
+    TRYBY_PRACY_ZRODLA,
     Bay,
     BayBaseModel,
     BayCanonicalModel,
@@ -949,9 +950,6 @@ def _resolve_integrity_status(
     return "po_migracji"
 
 
-_OPERATING_MODES = {"praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"}
-
-
 def _generator_operating_mode(generator: Generator) -> str:
     """F11.3 (dyrektywa D2, finał F9.6b): tryb pracy źródła z REALNEGO kanału
     danych — `Generator.meta['operating_mode']`, zapisywanego operacją
@@ -962,7 +960,7 @@ def _generator_operating_mode(generator: Generator) -> str:
     operating_mode`, semantyka modelu — nie zgadywanie read-modelu)."""
     meta = getattr(generator, "meta", None) or {}
     mode = meta.get("operating_mode")
-    if isinstance(mode, str) and mode in _OPERATING_MODES:
+    if isinstance(mode, str) and mode in TRYBY_PRACY_ZRODLA:
         return mode
     return "gotowosc"
 

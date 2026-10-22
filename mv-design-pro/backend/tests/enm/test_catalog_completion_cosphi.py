@@ -123,7 +123,6 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
             "field_apparatus_catalog_ref": CATALOG_FIELD_APPARATUS,
             "station": {"name": "Stacja S1", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
             "nn_block": {"outgoing_feeders_nn_count": liczba_odplywow_nn},
         },
     )

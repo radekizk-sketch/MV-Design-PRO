@@ -14,10 +14,9 @@ Routes:
                                               → drogi od źródeł do elementu + sąsiedztwo
   GET  /api/cases/{case_id}/enm/readiness    → ReadinessMatrix (SC/PF/PR)
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
-  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
-                                              → graf domeny nN (LOD L2, karta T5b)
-  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
-                                              → UpstreamEquivalentSnapshot (kotwica SN, karta T5b)
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/projection/v1
+                                              → LvDomainProjectionV1: graf domeny nN + kotwica SN
+                                                każdego transformatora + wynik + SWZ (atomowo)
   GET  /api/cases/{case_id}/enm/dziennik-zmian → wpisy dziennika PO wskazanej rewizji
   GET  /api/cases/{case_id}/enm/rewizje/{rewizja}
                                               → migawka modelu DOKLADNIE w tej rewizji
@@ -49,7 +48,6 @@ from application.analyses.fault_loop.service import (
     build_feeder_fault_loop_view,
     build_station_fault_loop_view,
 )
-from application.analyses.lv_domain.graph_view import build_lv_domain_view
 from application.analyses.lv_domain.projection_v1 import (
     LvDomainProjectionRunMismatch,
     LvDomainProjectionRunUnavailable,
@@ -57,9 +55,6 @@ from application.analyses.lv_domain.projection_v1 import (
 )
 from application.analyses.lv_domain.upstream_equivalent import (
     Scenario as UpstreamEquivalentScenario,
-)
-from application.analyses.lv_domain.upstream_equivalent import (
-    build_upstream_equivalent_snapshot,
 )
 from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
@@ -444,39 +439,6 @@ def get_fault_loop_feeders(case_id: str, klucz: KluczTwin, station_ref: str) -> 
     return build_feeder_fault_loop_view(enm, station_ref)
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref:path}/upstream-equivalent")
-def get_lv_domain_upstream_equivalent(
-    case_id: str,
-    klucz: KluczTwin,
-    station_ref: str,
-    scenario: UpstreamEquivalentScenario = "MAX",
-    transformer_ref: str | None = None,
-) -> dict[str, Any]:
-    """`UpstreamEquivalentSnapshot` — kotwica SN domeny nN (L2), karta T5b
-    §0 rozstrzygnięcie 1 (docs/nn/KONCEPCJA_LOD_NN_2026-08.md, werdykt
-    właściciela).
-
-    Immutable, deterministyczny (ten sam ENM + scenariusz + stan łączeniowy
-    → identyczny snapshot, w tym `calculation_run_id`). ZERO nowej fizyki —
-    Z1/Sk″/Ik″ w węźle HV transformatora liczone TĄ SAMĄ maszynerią co
-    pętla zwarcia nN (`application.analyses.fault_loop.service.
-    compute_upstream_hv_thevenin` + solver IEC 60909 `compute_ikss`).
-    `scenario` wybiera współczynnik napięciowy c wg IEC 60909-0 Tab.1
-    (MAX/MIN, ten sam wybór co bieg zwarciowy); `transformer_ref` opcjonalny
-    dla stacji wielotransformatorowych (domyślnie pierwszy transformator
-    stacji posortowany po ref_id — determinizm). Read-only; solver liczy
-    fizykę, ten endpoint tylko wyławia i zwraca.
-    """
-    enm = _get_enm(klucz)
-    return build_upstream_equivalent_snapshot(
-        enm,
-        case_id,
-        station_ref,
-        scenario=scenario,
-        transformer_ref=transformer_ref,
-    )
-
-
 # `:path` — ref stacji z ukośnikami (`stn/<ziarno>/station`); bez konwertera klient kodujący
 # ukośnik jako %2F dostawał 404 (serwer dekoduje ścieżkę przed dopasowaniem trasy).
 @router.get("/{case_id}/enm/lv-domain/{station_ref:path}/projection/v1")
@@ -510,25 +472,6 @@ def get_lv_domain_projection_v1(
         )
     except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-
-# Kolejność rejestracji jest częścią kontraktu: `{station_ref:path}` dopasowuje także ukośniki
-# (ref stacji z operacji ma postać `stn/<ziarno>/station`), więc trasa ogólna stoi PO trasach
-# z sufiksem — inaczej połknęłaby `/upstream-equivalent` i `/projection/v1`.
-@router.get("/{case_id}/enm/lv-domain/{station_ref:path}")
-def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
-    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
-    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
-
-    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
-    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
-    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
-    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
-    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
-    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
-    """
-    enm = _get_enm(klucz)
-    return build_lv_domain_view(enm, station_ref)
 
 
 @router.get("/{case_id}/enm/swz")

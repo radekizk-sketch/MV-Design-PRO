@@ -1860,7 +1860,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `equipment_assumed_data` (`BayBaseModel` — stan danych wyposazenia pola). Odpadly kopie
     # punktu podzialu `Corridor.no_point_ref` i `LineRun.nop_station_ref` (jedynym zrodlem jest
     # `SwitchBranch.normal_state`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4218." in wyjscie, wyjscie
+    # Karta MENU-KANON cz. 4 (2026-10-22): 4218 -> 4193 — POMIAR `contract_fields()` na drzewie karty i na HEAD
+    # (`git archive`), roznica zbiorow +0, −25: skasowany cien konfiguracji rozdzielnicy
+    # (`api/switchgear_config.py`, `domain/switchgear_config.py`) i modele ladunku `insert_at`
+    # trybu ANCHOR / kontraktu magistrali w `domain_ops_models`, ktorych zaden handler nie czytal.
+    assert "Pol kontraktow wejsciowych: 4193." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2103,7 +2107,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `d98bdad3e` (`git archive`): +3 `enm/{operacje_lacznikow,stan_normalny,
         # wyposazenie_pola}.py`, −1 `enm/domain_event_types.py` (martwy, zero importow),
         # +1 `api/scenariusze_laczeniowe.py`.
-        "Przeskanowano 577 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta MENU-KANON cz. 4 (2026-10-22): 577 -> 576 (−1 skasowany `api/switchgear_config.py`). POMIAR guardem.
+        "Przeskanowano 576 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2167,7 +2172,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # skasowana operacja `validate_selectivity`. Wykluczenia 13/31 -> 10/25 — wpisy liczby
     # urzadzen/sprawdzen koordynacji w `api/protection_coordination.py` i w raportach DOCX/PDF
     # zdjete (podsumowanie czytane bez wartosci zastepczych). POMIAR guardem.
-    assert "Zapadka dlugu (fizyczne): 51 plikow, suma 236." in wyjscie, wyjscie
+    # Karta MENU-KANON cz. 4 (2026-10-22): 51/236 -> 51/234 — enm −2: wpis `insert_at.value` (4) zdjety razem
+    # z jedna regula `wspolczynnik_podzialu` (odmowa zamiast wartosci zastepczej), +2 nowe
+    # odczyty liczby pol. POMIAR guardem.
+    assert "Zapadka dlugu (fizyczne): 51 plikow, suma 234." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2329,7 +2337,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta W5-C (2026-10-21): 66 -> 68 (+3 `enm/{operacje_lacznikow,stan_normalny,
         # wyposazenie_pola}.py`, −1 `enm/domain_event_types.py`); dlug/wykluczenia BEZ ZMIANY.
         # POMIAR guardem na drzewie karty i na bazie `d98bdad3e`.
-        "  enm: pliki_skanowane=68, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta MENU-KANON cz. 4 (2026-10-22): enm dlug 7/67 -> 7/65 (jw.). POMIAR guardem.
+        "  enm: pliki_skanowane=68, dlug=7 plikow/suma 65, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2426,7 +2435,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
-        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        # Karta MENU-KANON cz. 4 (2026-10-22): api 64 -> 63 (−1 `api/switchgear_config.py`). POMIAR guardem.
+        "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
         # Scalenie W5-B z integracja PR477-481 (2026-10-16): application 248, dlug 30/90; api
         # dlug 1/2 — POMIAR guardem na drzewie scalonym, identyczny z drzewem integracji
         # (rodzic 2; przypiete tam 247 / 29/89 / api 2/3 bylo nieaktualne wobec rejestru

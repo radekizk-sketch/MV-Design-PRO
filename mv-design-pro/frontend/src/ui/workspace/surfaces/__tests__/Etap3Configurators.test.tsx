@@ -142,7 +142,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
   });
 
   describe('StationConfiguratorSurface (E-13)', () => {
-    it('renderuje StationConfigurator z pełnym przepływem 17 kroków', () => {
+    it('renderuje StationConfigurator z pełnym przepływem 16 kroków', () => {
       render(<StationConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
       const cards = [
@@ -152,7 +152,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         'Aparatura SN',
         'Przekładniki prądowe',
         'Przekładniki napięciowe',
-        'Liczniki i telemechanika',
+        'Pola pomiarowe',
         'Transformator',
         'Uziemienie',
         'Strona nN',
@@ -160,7 +160,6 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         'Jakość energii',
         'Zabezpieczenia',
         'NC RfG i PTPiREE',
-        'SCADA i infrastruktura',
         'Analiza sieciowa',
         'Obliczenia i raport',
       ];

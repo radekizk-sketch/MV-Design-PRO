@@ -437,7 +437,6 @@ def test_pole_potrzeb_wlasnych_z_katalogu_nie_zmienia_rodzaju() -> None:
             "station_ref": stacja["ref_id"],
             "bus_ref": stacja["bus_refs"][0],
             "complete_bay_template_ref": szablon.template_ref,
-            "apparatus_catalog_ref": APARAT,
         },
     )
     nowe = [

@@ -2220,51 +2220,6 @@
     "title": "CableVoltageDropResponse",
     "type": "object"
    },
-   "CatalogBindingRequest": {
-    "properties": {
-     "catalog_id": {
-      "title": "Catalog Id",
-      "type": "string"
-     },
-     "catalog_name": {
-      "title": "Catalog Name",
-      "type": "string"
-     },
-     "catalog_version": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Catalog Version"
-     },
-     "device_id": {
-      "title": "Device Id",
-      "type": "string"
-     },
-     "manufacturer": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Manufacturer"
-     }
-    },
-    "required": [
-     "device_id",
-     "catalog_id",
-     "catalog_name"
-    ],
-    "title": "CatalogBindingRequest",
-    "type": "object"
-   },
    "CertyfikatZgodnosciRequest": {
     "additionalProperties": false,
     "description": "Wejście końcówki certyfikatu: identyfikacja projektu i operator (profil wymagań).\n\nDane modułów i certyfikaty urządzeń pochodzą WYŁĄCZNIE z zatwierdzonego modelu przypadku\n(``case_id`` w zapytaniu) — ciało żądania nie ma na nie pól.",
@@ -2707,65 +2662,6 @@
      "x_ohm"
     ],
     "title": "ComplexOhmResponse",
-    "type": "object"
-   },
-   "ConfigResponse": {
-    "properties": {
-     "canonical_hash": {
-      "title": "Canonical Hash",
-      "type": "string"
-     },
-     "catalog_bindings": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Catalog Bindings",
-      "type": "array"
-     },
-     "config_version": {
-      "title": "Config Version",
-      "type": "string"
-     },
-     "devices": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Devices",
-      "type": "array"
-     },
-     "fields": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Fields",
-      "type": "array"
-     },
-     "protection_bindings": {
-      "items": {
-       "additionalProperties": true,
-       "type": "object"
-      },
-      "title": "Protection Bindings",
-      "type": "array"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "config_version",
-     "station_id",
-     "fields",
-     "devices",
-     "catalog_bindings",
-     "protection_bindings",
-     "canonical_hash"
-    ],
-    "title": "ConfigResponse",
     "type": "object"
    },
    "CoordinationConfigRequest": {
@@ -4298,34 +4194,6 @@
     "title": "DerSelectionPreviewResponse",
     "type": "object"
    },
-   "DeviceConfigRequest": {
-    "properties": {
-     "aparat_type": {
-      "title": "Aparat Type",
-      "type": "string"
-     },
-     "device_id": {
-      "title": "Device Id",
-      "type": "string"
-     },
-     "device_type": {
-      "title": "Device Type",
-      "type": "string"
-     },
-     "field_id": {
-      "title": "Field Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "device_id",
-     "field_id",
-     "device_type",
-     "aparat_type"
-    ],
-    "title": "DeviceConfigRequest",
-    "type": "object"
-   },
    "DeviceRatingPayload": {
     "additionalProperties": false,
     "properties": {
@@ -5634,40 +5502,6 @@
     "title": "FieldChangeResponse",
     "type": "object"
    },
-   "FieldConfigRequest": {
-    "properties": {
-     "bus_section_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Bus Section Id"
-     },
-     "field_id": {
-      "title": "Field Id",
-      "type": "string"
-     },
-     "field_role": {
-      "title": "Field Role",
-      "type": "string"
-     },
-     "pole_type": {
-      "title": "Pole Type",
-      "type": "string"
-     }
-    },
-    "required": [
-     "field_id",
-     "pole_type",
-     "field_role"
-    ],
-    "title": "FieldConfigRequest",
-    "type": "object"
-   },
    "FieldQuality": {
     "description": "Data-quality provenance axis for a single card field.\n\nOrthogonal to ``solver_input.provenance.SourceKind`` (which records *where* a value came\nfrom in the pipeline). ``FieldQuality`` records *how trustworthy* the value is:\n\n- ``DATASHEET`` (karta techniczna): value taken from a manufacturer datasheet\n  / type-test report — fully trustworthy for the OSD package.\n- ``ESTIMATED`` (oszacowane): value is an engineering estimate without a real\n  source (e.g. a controller bandwidth assumed from technology defaults). It\n  MUST be tagged ``ESTIMATED`` — never ``DATASHEET`` — until a real source is\n  attached.\n- ``SYSTEM_DEFAULT`` (domyślne techniczne): value is a system/technical\n  default carried by the schema (the field is present but no real value has\n  been provided).\n\nParamount rule: \"no gaps\" means the schema is COMPLETE (every field present),\nNOT that every field is filled with a fabricated value. A value with no real\nsource is ``ESTIMATED`` (or ``SYSTEM_DEFAULT``), never ``DATASHEET``.",
     "enum": [
@@ -5677,56 +5511,6 @@
     ],
     "title": "FieldQuality",
     "type": "string"
-   },
-   "FixActionResponse": {
-    "properties": {
-     "action": {
-      "title": "Action",
-      "type": "string"
-     },
-     "code": {
-      "title": "Code",
-      "type": "string"
-     },
-     "device_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Device Id"
-     },
-     "field_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Field Id"
-     },
-     "message_pl": {
-      "title": "Message Pl",
-      "type": "string"
-     },
-     "station_id": {
-      "title": "Station Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "code",
-     "action",
-     "message_pl",
-     "station_id"
-    ],
-    "title": "FixActionResponse",
-    "type": "object"
    },
    "FixtureListResponse": {
     "description": "Response for fixture list.",
@@ -11104,24 +10888,6 @@
     "title": "ProjectUpdate",
     "type": "object"
    },
-   "ProtectionBindingRequest": {
-    "properties": {
-     "cb_device_id": {
-      "title": "Cb Device Id",
-      "type": "string"
-     },
-     "relay_device_id": {
-      "title": "Relay Device Id",
-      "type": "string"
-     }
-    },
-    "required": [
-     "relay_device_id",
-     "cb_device_id"
-    ],
-    "title": "ProtectionBindingRequest",
-    "type": "object"
-   },
    "ProtectionComparisonMetadataResponse": {
     "description": "Comparison metadata (without full results).",
     "properties": {
@@ -12538,44 +12304,6 @@
      "obecny_w"
     ],
     "title": "PunktZwarciowyDiffResponse",
-    "type": "object"
-   },
-   "PutConfigRequest": {
-    "properties": {
-     "catalog_bindings": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/CatalogBindingRequest"
-      },
-      "title": "Catalog Bindings",
-      "type": "array"
-     },
-     "devices": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/DeviceConfigRequest"
-      },
-      "title": "Devices",
-      "type": "array"
-     },
-     "fields": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/FieldConfigRequest"
-      },
-      "title": "Fields",
-      "type": "array"
-     },
-     "protection_bindings": {
-      "default": [],
-      "items": {
-       "$ref": "#/components/schemas/ProtectionBindingRequest"
-      },
-      "title": "Protection Bindings",
-      "type": "array"
-     }
-    },
-    "title": "PutConfigRequest",
     "type": "object"
    },
    "PutOverridesRequest": {
@@ -15861,6 +15589,33 @@
     "title": "ValidateOverridesRequest",
     "type": "object"
    },
+   "ValidateResponse": {
+    "description": "Validation response.",
+    "properties": {
+     "errors": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationErrorResponse"
+      },
+      "title": "Errors",
+      "type": "array"
+     },
+     "overrides_hash": {
+      "title": "Overrides Hash",
+      "type": "string"
+     },
+     "valid": {
+      "title": "Valid",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "valid",
+     "errors",
+     "overrides_hash"
+    ],
+    "title": "ValidateResponse",
+    "type": "object"
+   },
    "ValidationError": {
     "properties": {
      "loc": {
@@ -15916,62 +15671,6 @@
      "message"
     ],
     "title": "ValidationErrorResponse",
-    "type": "object"
-   },
-   "ValidationIssueResponse": {
-    "properties": {
-     "code": {
-      "title": "Code",
-      "type": "string"
-     },
-     "device_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Device Id"
-     },
-     "element_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Element Id"
-     },
-     "field_id": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Field Id"
-     },
-     "message_pl": {
-      "title": "Message Pl",
-      "type": "string"
-     },
-     "severity": {
-      "title": "Severity",
-      "type": "string"
-     }
-    },
-    "required": [
-     "code",
-     "severity",
-     "message_pl"
-    ],
-    "title": "ValidationIssueResponse",
     "type": "object"
    },
    "VtBurdenRequest": {
@@ -17317,67 +17016,6 @@
      "evidence_refs"
     ],
     "title": "RankingIssueResponse",
-    "type": "object"
-   },
-   "api__sld_overrides__ValidateResponse": {
-    "description": "Validation response.",
-    "properties": {
-     "errors": {
-      "items": {
-       "$ref": "#/components/schemas/ValidationErrorResponse"
-      },
-      "title": "Errors",
-      "type": "array"
-     },
-     "overrides_hash": {
-      "title": "Overrides Hash",
-      "type": "string"
-     },
-     "valid": {
-      "title": "Valid",
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "valid",
-     "errors",
-     "overrides_hash"
-    ],
-    "title": "ValidateResponse",
-    "type": "object"
-   },
-   "api__switchgear_config__ValidateResponse": {
-    "properties": {
-     "canonical_hash": {
-      "title": "Canonical Hash",
-      "type": "string"
-     },
-     "fix_actions": {
-      "items": {
-       "$ref": "#/components/schemas/FixActionResponse"
-      },
-      "title": "Fix Actions",
-      "type": "array"
-     },
-     "issues": {
-      "items": {
-       "$ref": "#/components/schemas/ValidationIssueResponse"
-      },
-      "title": "Issues",
-      "type": "array"
-     },
-     "valid": {
-      "title": "Valid",
-      "type": "boolean"
-     }
-    },
-    "required": [
-     "valid",
-     "issues",
-     "fix_actions",
-     "canonical_hash"
-    ],
-    "title": "ValidateResponse",
     "type": "object"
    }
   }
@@ -20368,60 +20006,6 @@
     ]
    }
   },
-  "/api/cases/{case_id}/enm/lv-domain/{station_ref}": {
-   "get": {
-    "description": "Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU\n(karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).\n\nGranica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator\njest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z\nWŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`\n(ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez\nwłasnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama\ndomena elektryczna. Read-only; zero fizyki (topologia, nie solver).",
-    "operationId": "get_lv_domain_view_api_cases__case_id__enm_lv_domain__station_ref__get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_ref",
-      "required": true,
-      "schema": {
-       "title": "Station Ref",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Lv Domain View Api Cases  Case Id  Enm Lv Domain  Station Ref  Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Lv Domain View",
-    "tags": [
-     "enm"
-    ]
-   }
-  },
   "/api/cases/{case_id}/enm/lv-domain/{station_ref}/projection/v1": {
    "get": {
     "description": "Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.\n\nJeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą\nsamą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak\ndaje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego\nprzypadku i być zakończony — nie ma cichego wyboru innego wyniku.",
@@ -20502,90 +20086,6 @@
      }
     },
     "summary": "Get Lv Domain Projection V1",
-    "tags": [
-     "enm"
-    ]
-   }
-  },
-  "/api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent": {
-   "get": {
-    "description": "`UpstreamEquivalentSnapshot` — kotwica SN domeny nN (L2), karta T5b\n§0 rozstrzygnięcie 1 (docs/nn/KONCEPCJA_LOD_NN_2026-08.md, werdykt\nwłaściciela).\n\nImmutable, deterministyczny (ten sam ENM + scenariusz + stan łączeniowy\n→ identyczny snapshot, w tym `calculation_run_id`). ZERO nowej fizyki —\nZ1/Sk″/Ik″ w węźle HV transformatora liczone TĄ SAMĄ maszynerią co\npętla zwarcia nN (`application.analyses.fault_loop.service.\ncompute_upstream_hv_thevenin` + solver IEC 60909 `compute_ikss`).\n`scenario` wybiera współczynnik napięciowy c wg IEC 60909-0 Tab.1\n(MAX/MIN, ten sam wybór co bieg zwarciowy); `transformer_ref` opcjonalny\ndla stacji wielotransformatorowych (domyślnie pierwszy transformator\nstacji posortowany po ref_id — determinizm). Read-only; solver liczy\nfizykę, ten endpoint tylko wyławia i zwraca.",
-    "operationId": "get_lv_domain_upstream_equivalent_api_cases__case_id__enm_lv_domain__station_ref__upstream_equivalent_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "case_id",
-      "required": true,
-      "schema": {
-       "title": "Case Id",
-       "type": "string"
-      }
-     },
-     {
-      "in": "path",
-      "name": "station_ref",
-      "required": true,
-      "schema": {
-       "title": "Station Ref",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "scenario",
-      "required": false,
-      "schema": {
-       "default": "MAX",
-       "enum": [
-        "MAX",
-        "MIN"
-       ],
-       "title": "Scenario",
-       "type": "string"
-      }
-     },
-     {
-      "in": "query",
-      "name": "transformer_ref",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Transformer Ref"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "additionalProperties": true,
-         "title": "Response Get Lv Domain Upstream Equivalent Api Cases  Case Id  Enm Lv Domain  Station Ref  Upstream Equivalent Get",
-         "type": "object"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Get Lv Domain Upstream Equivalent",
     "tags": [
      "enm"
     ]
@@ -32634,7 +32134,7 @@
       "content": {
        "application/json": {
         "schema": {
-         "$ref": "#/components/schemas/api__sld_overrides__ValidateResponse"
+         "$ref": "#/components/schemas/ValidateResponse"
         }
        }
       },
@@ -32654,153 +32154,6 @@
     "summary": "Validate Sld Overrides",
     "tags": [
      "sld-overrides"
-    ]
-   }
-  },
-  "/api/switchgear/{station_id}/config": {
-   "get": {
-    "description": "Pobierz konfiguracje rozdzielnicy (kanonizowana, z hashem).",
-    "operationId": "get_config_api_switchgear__station_id__config_get",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ConfigResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Pobierz konfiguracje rozdzielnicy",
-    "tags": [
-     "switchgear-config"
-    ]
-   },
-   "put": {
-    "description": "Zapisz konfiguracje rozdzielnicy (kanonizowana, deterministyczna).",
-    "operationId": "put_config_api_switchgear__station_id__config_put",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PutConfigRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ConfigResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Zapisz konfiguracje rozdzielnicy",
-    "tags": [
-     "switchgear-config"
-    ]
-   }
-  },
-  "/api/switchgear/{station_id}/validate": {
-   "post": {
-    "description": "Waliduj konfiguracje bez zapisu. Zwraca issues + fixActions.",
-    "operationId": "validate_config_api_switchgear__station_id__validate_post",
-    "parameters": [
-     {
-      "in": "path",
-      "name": "station_id",
-      "required": true,
-      "schema": {
-       "title": "Station Id",
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/PutConfigRequest"
-       }
-      }
-     },
-     "required": true
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/api__switchgear_config__ValidateResponse"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      },
-      "description": "Validation Error"
-     }
-    },
-    "summary": "Waliduj konfiguracje rozdzielnicy",
-    "tags": [
-     "switchgear-config"
     ]
    }
   },

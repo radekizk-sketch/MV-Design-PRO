@@ -483,7 +483,7 @@ class TestFullDesignPath:
             snapshot,
             "insert_station_on_segment_sn",
             {
-                "branch_ref": branch_ref,
+                "segment_id": branch_ref,
             },
         )
         # Albo sukces, albo error z powodu brakujących danych — nie crash

@@ -1607,6 +1607,12 @@ class BayScenarioState(BaseModel):
     source: Literal["bazowy", "wariant", "symulacja_przelaczen", "ruch"] = "bazowy"
 
 
+TrybPracyZrodla = Literal["praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"]
+# Jeden słownik trybu pracy źródła: zapis (`set_source_operating_mode`), odczyt
+# (`application/field_read_model._generator_operating_mode`) i pole modelu niżej.
+TRYBY_PRACY_ZRODLA: tuple[str, ...] = get_args(TrybPracyZrodla)
+
+
 class BaySourceEndpoint(BaseModel):
     source_kind: Literal["PV", "BESS", "FW"]
     inverter_ref: str | None = None
@@ -1615,9 +1621,7 @@ class BaySourceEndpoint(BaseModel):
     block_transformer_ref: str | None = None
     requires_vt: bool = False
     requires_synchrocheck: bool = False
-    operating_mode: Literal[
-        "praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"
-    ] = "gotowosc"
+    operating_mode: TrybPracyZrodla = "gotowosc"
 
 
 class BayBaseModel(BaseModel):

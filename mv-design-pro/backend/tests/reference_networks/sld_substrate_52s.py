@@ -388,7 +388,6 @@ def _add_station_load(
         enm_feeder,
         "add_nn_load",
         {
-            "station_ref": station_ref,
             "bus_nn_ref": nn_ref,
             "feeder_ref": feeder_ref,
             "active_power_kw": power_kw,

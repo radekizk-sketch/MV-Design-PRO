@@ -385,7 +385,6 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
         b.operacja(
             "add_nn_load",
             {
-                "station_ref": stacja["ref_id"],
                 "bus_nn_ref": szyna_nn,
                 "feeder_ref": odplywy[indeks]["ref_id"],
                 "catalog_binding": wiazanie("OBCIAZENIE", katalog),

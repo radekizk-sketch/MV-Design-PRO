@@ -7,11 +7,12 @@ export const ZRODLO_DYSP_STRINGS = {
   eyebrowUps: 'MODEL SIECI · UPS nN',
   celGenset:
     'Dodaj agregat prądotwórczy (zespół prądotwórczy) do rozdzielni nN — źródło rezerwowe/dyspozycyjne, '
-    + 'które podaje moc i wnosi prąd zwarciowy maszyny synchronicznej. Parametry z katalogu; aparat pola '
-    + 'przyłączeniowego dobierasz tu samo.',
+    + 'które podaje moc i wnosi prąd zwarciowy maszyny synchronicznej. Parametry z tabliczki znamionowej; '
+    + 'pole przyłączeniowe i jego aparat dobierasz tu samo.',
   celUps:
     'Dodaj zasilacz UPS do rozdzielni nN — źródło gwarantowane podtrzymujące odbiory krytyczne. Parametry '
-    + '(moc, czas podtrzymania, tryb) z katalogu; aparat pola przyłączeniowego dobierasz tu samo.',
+    + '(moc, czas podtrzymania, tryb) z tabliczki znamionowej; pole przyłączeniowe i jego aparat dobierasz '
+    + 'tu samo.',
   odznakaGenset: 'Nowy agregat nN',
   odznakaUps: 'Nowy UPS nN',
 
@@ -37,34 +38,19 @@ export const ZRODLO_DYSP_STRINGS = {
     'Na tej szynie nN nie ma jeszcze pola źródłowego dla agregatu/UPS — wybierz „Utwórz nowe pole '
     + 'przyłączeniowe", aby utworzyć je razem ze źródłem.',
 
-  aparat: 'Aparat pola',
-  aparatOpcje: [
-    { id: 'WYLACZNIK', etykieta: 'Wyłącznik' },
-    { id: 'ROZLACZNIK', etykieta: 'Rozłącznik' },
-    { id: 'BEZPIECZNIK', etykieta: 'Bezpiecznik' },
-  ],
-  aparatPomoc: 'Aparat łączeniowy pola przyłączeniowego źródła.',
-  stanNormalny: 'Stan normalny',
-  stanNormalnyOpcje: [
-    { id: 'ZAMKNIETY', etykieta: 'Zamknięty' },
-    { id: 'OTWARTY', etykieta: 'Otwarty' },
-  ],
   aparatKatalog: 'Typ aparatu z katalogu',
   aparatKatalogPlaceholder: '— (opcjonalnie) wybierz aparat nN —',
-  aparatKatalogPomoc: 'Opcjonalne powiązanie katalogowe aparatu pola (obciążalność, zdolność łączeniowa).',
+  aparatKatalogPomoc:
+    'Opcjonalne powiązanie katalogowe aparatu pola — pozycja katalogu niesie rodzaj aparatu, obciążalność '
+    + 'i zdolność łączeniową; napięcie pola wynika z szyny nN.',
   aparatKatalogBlad: 'Nie udało się pobrać katalogu aparatów nN.',
-  napiecieNn: 'Napięcie nN pola',
-  napiecieNnPomoc: 'Napięcie znamionowe pola przyłączeniowego [kV].',
   nazwaPola: 'Nazwa pola',
   nazwaPolaPlaceholder: 'np. Pole agregatu',
 
   // Parametry
-  katalogGenset: 'Katalog agregatu',
-  katalogUps: 'Katalog UPS',
-  katalogPlaceholder: '— wybierz z katalogu —',
-  katalogBladGenset: 'Nie udało się pobrać katalogu agregatów.',
-  katalogBladUps: 'Nie udało się pobrać katalogu UPS.',
-  katalogPomoc: 'Katalog wnosi parametry źródła i model zwarciowy — bez ręcznych impedancji.',
+  tabliczkaPomoc:
+    'Parametry z tabliczki znamionowej źródła — wprowadzasz je wprost; zmienisz je później we '
+    + 'właściwościach elementu modelu.',
   moc: 'Moc znamionowa',
   mocPomoc: 'Moc czynna znamionowa źródła [kW].',
   napiecie: 'Napięcie znamionowe',
@@ -117,7 +103,9 @@ export const ZRODLO_DYSP_STRINGS = {
   kontrolaTytul: 'Kontrola źródła',
   wierszSzyna: 'Szyna nN',
   wierszPole: 'Pole',
-  wierszKatalog: 'Katalog',
+  wierszAparat: 'Aparat pola',
+  wierszAparatBrak: 'Bez wskazania katalogowego',
+  wierszAparatIstniejace: 'Aparat istniejącego pola',
   wierszMoc: 'Moc',
 
   wstecz: '← Wstecz',
@@ -129,9 +117,9 @@ export const ZRODLO_DYSP_STRINGS = {
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem źródła.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać źródło.',
   // S9-5 (klasa: bramka enable bez sygnału gotowości, `karta_e2e_s95.md`) —
-  // katalog systemów źródła i aparatu nN ładuje się asynchronicznie; zapis
-  // bez niego byłby cichym no-op na pustym `catalog_item_id`, więc blokujemy JAWNIE.
-  katalogLadowanieStopka: 'Ładowanie katalogu agregatów/UPS i aparatu nN — zapis będzie dostępny po wczytaniu.',
+  // katalog aparatów nN ładuje się asynchronicznie; zapis przed wczytaniem
+  // pomijałby wybór aparatu pola, więc blokujemy JAWNIE.
+  katalogLadowanieStopka: 'Ładowanie katalogu aparatów nN — zapis będzie dostępny po wczytaniu.',
 
   // Panel teorii
   teoriaTytulGenset: 'Teoria: wkład zwarciowy maszyny synchronicznej (agregat)',
@@ -170,8 +158,6 @@ export function tekstyDla(kind: DispatchableKind) {
     eyebrow: genset ? T.eyebrowGenset : T.eyebrowUps,
     cel: genset ? T.celGenset : T.celUps,
     odznaka: genset ? T.odznakaGenset : T.odznakaUps,
-    katalog: genset ? T.katalogGenset : T.katalogUps,
-    katalogBlad: genset ? T.katalogBladGenset : T.katalogBladUps,
     zapisz: genset ? T.zapiszGenset : T.zapiszUps,
     downstreamOpis: genset ? T.downstreamOpisGenset : T.downstreamOpisUps,
     teoriaTytul: genset ? T.teoriaTytulGenset : T.teoriaTytulUps,

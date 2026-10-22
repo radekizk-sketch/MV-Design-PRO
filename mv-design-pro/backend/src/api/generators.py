@@ -606,8 +606,9 @@ def _build_domain_payload(
     if jest_nazwa(req.source_name):
         payload["source_name"] = nazwa_nadana(req.source_name)
 
-    if req.nc_rfg_module is not None:
-        payload["nc_rfg_module"] = req.nc_rfg_module
+    # `nc_rfg_module` NIE jedzie do operacji: handler go nie czyta (moduł wynika z
+    # klasyfikacji mocy i napięcia przyłączenia); deklarację klienta sprawdza wyłącznie
+    # `_weryfikuj_modul_ncrfg` (422 przy niezgodności).
     zadanie_json = req.model_dump(mode="json", exclude_none=True)
     payload.update(
         {pole: zadanie_json[pole] for pole in POLA_NC_RFG_GENERATORA if pole in zadanie_json}

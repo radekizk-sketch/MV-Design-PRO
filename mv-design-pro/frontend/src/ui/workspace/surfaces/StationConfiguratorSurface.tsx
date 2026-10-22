@@ -20,7 +20,6 @@ import {
 } from '../../network-build/station-configurator/StationConfigurator';
 import type { StationConfigBayRow } from '../../network-build/station-configurator/cards/StationConfigBaysCard';
 import type { StationConfigPortRow } from '../../network-build/station-configurator/cards/StationConfigTopologyCard';
-import type { ProtectionRow } from '../../network-build/station-configurator/cards/StationConfigProtectionCard';
 import type {
   StationConfigTransformerRow,
   StationTransformerCatalogOption,
@@ -42,6 +41,15 @@ import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
 import { stationSnBays } from '../../network-build/stationSnFields';
 import { przekladnikiStacji } from '../../network-build/station-configurator/przekladnikiStacji';
+import { przekaznikiStacji } from '../../network-build/station-configurator/przekaznikiStacji';
+import { polaPomiaroweStacji } from '../../network-build/station-configurator/polaPomiaroweStacji';
+import {
+  odbioryNnZGrafu,
+  rozdzielniceNnZGrafu,
+  type StanDanychNn,
+} from '../../network-build/station-configurator/stronaNnStacji';
+import { fetchLvDomainProjectionV1 } from '../../sld/v3/lv-domain/projectionApi';
+import type { LvDomainGraphView } from '../../sld/v3/lv-domain/types';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
@@ -120,18 +128,11 @@ function buildBaseStationProps(stationName: string, localConfig: StationLocalCon
     bays: { bays: [], hvFuses: [] },
     // Karta FAB-L: `tapChangers` nadpisane niżej danymi ze snapshotu audytu 2.
     transformer: { transformers: [], availableLvVoltages: [0.4], tapChangers: [] },
-    // Krok "Strona nN" zawiera rozdzielnice nN i odbiory techniczne.
-    nnSwitchgear: { switchgears: [], loads: [] },
     protection: {
-      relays: [],
-      automation: [],
-      interlocksConfigured: false,
-      controlMode: 'lokalne' as const,
       // Pakiet G: typ uziemienia synchronizowany z karty 1 (basic).
       mvNeutralGroundingType: mapGroundingRefToType(localConfig.mvNeutralGroundingRef),
       deviceWithstandRows: [],
     },
-    measurements: { cts: [], vts: [], metersCount: 0, telemetryCount: 0 },
     readiness: { items: [] },
   };
 }
@@ -583,7 +584,6 @@ const SUPPORTED_STATION_DEFAULT_CARDS = new Set<StationConfigCardId>([
   'power-quality',
   'protection',
   'nc-rfg',
-  'infrastructure',
   'network-analysis',
   'readiness',
   'topology',
@@ -772,20 +772,81 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     () => deriveStationBayRows(snapshot, station),
     [snapshot, station],
   );
+  // Pola SN stacji z oznaczeniem — JEDNA lista dla przekładników, przekaźników i pól pomiarowych.
+  const polaSnStacji = useMemo(
+    () =>
+      station
+        ? stationSnBays(snapshot, station).map((bay, index) => ({
+            bay,
+            oznaczenie: bayDesignation(bay, index),
+          }))
+        : [],
+    [snapshot, station],
+  );
   // Przekładniki CT/VT pól tej stacji wprost z modelu (karty „Przekładniki CT/VT”).
   const stationMeasurements = useMemo(
     () =>
       przekladnikiStacji(
         snapshot?.measurements ?? [],
-        station
-          ? stationSnBays(snapshot, station).map((bay, index) => ({
-              ref: bay.ref_id,
-              oznaczenie: bayDesignation(bay, index),
-            }))
-          : [],
+        polaSnStacji.map(({ bay, oznaczenie }) => ({ ref: bay.ref_id, oznaczenie })),
       ),
-    [snapshot, station],
+    [snapshot?.measurements, polaSnStacji],
   );
+  // Przekaźniki pól SN wprost z modelu (`Bay.protection_ref` → `ProtectionAssignment`).
+  const stationRelays = useMemo(
+    () =>
+      przekaznikiStacji(
+        snapshot?.protection_assignments ?? [],
+        polaSnStacji.map(({ bay, oznaczenie }) => ({ oznaczenie, protectionRef: bay.protection_ref })),
+      ),
+    [snapshot?.protection_assignments, polaSnStacji],
+  );
+  // Pola pomiarowe SN z deklaracją pomiaru (krok „Pola pomiarowe”).
+  const stationMeteringBays = useMemo(
+    () => polaPomiaroweStacji(polaSnStacji, snapshot?.measurements ?? []),
+    [snapshot?.measurements, polaSnStacji],
+  );
+  // Strona nN: atomowa projekcja domeny nN backendu (ten sam klient co portal nN). Zmiana
+  // migawki modelu odświeża projekcję — inaczej karta pokazywałaby model sprzed operacji.
+  const [grafNn, setGrafNn] = useState<LvDomainGraphView | null>(null);
+  const [stanDanychNn, setStanDanychNn] = useState<StanDanychNn>({ stan: 'brak_przypadku' });
+  const stationRefNn = station?.ref_id ?? null;
+  useEffect(() => {
+    if (!activeCaseId || !stationRefNn) {
+      setGrafNn(null);
+      setStanDanychNn({ stan: 'brak_przypadku' });
+      return;
+    }
+    const controller = new AbortController();
+    setStanDanychNn({ stan: 'ladowanie' });
+    fetchLvDomainProjectionV1({
+      caseId: activeCaseId,
+      stationRef: stationRefNn,
+      signal: controller.signal,
+    })
+      .then((projekcja) => {
+        setGrafNn(projekcja.graph);
+        setStanDanychNn(
+          projekcja.graph.status === 'OK'
+            ? { stan: 'gotowe' }
+            : {
+                stan: 'brak_domeny',
+                komunikatPl: projekcja.graph.reason_pl ?? 'Stacja nie ma domeny nN w modelu.',
+              },
+        );
+      })
+      .catch((reason: unknown) => {
+        if (controller.signal.aborted) return;
+        setGrafNn(null);
+        setStanDanychNn({
+          stan: 'blad',
+          komunikatPl: reason instanceof Error ? reason.message : 'Nie udało się pobrać domeny nN.',
+        });
+      });
+    return () => controller.abort();
+  }, [activeCaseId, stationRefNn, snapshot]);
+  const stationNnSwitchgears = useMemo(() => (grafNn ? rozdzielniceNnZGrafu(grafNn) : []), [grafNn]);
+  const stationNnLoads = useMemo(() => (grafNn ? odbioryNnZGrafu(grafNn) : []), [grafNn]);
   const stationTransformers = useMemo(
     () => deriveStationTransformerRows(snapshot, station),
     [snapshot, station],
@@ -1186,7 +1247,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       protection: {
         ...base.protection,
         // Phase 8: VT per-bay z audit2Config.bay_vts.
-        relays: (base.protection.relays as readonly ProtectionRow[]).map((r) => ({
+        relays: stationRelays.map((r) => ({
           ...r,
           vtCatalogRef: bayVts[r.bayDesignation] ?? null,
         })),
@@ -1205,10 +1266,15 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           });
         },
       },
+      nnSwitchgear: {
+        switchgears: stationNnSwitchgears,
+        loads: stationNnLoads,
+        stanDanych: stanDanychNn,
+      },
       measurements: {
-        ...base.measurements,
         cts: stationMeasurements.cts,
         vts: stationMeasurements.vts,
+        polaPomiarowe: stationMeteringBays,
       },
       derSources: {
         stationId: stationRef ?? 'unselected',
@@ -1227,6 +1293,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     rodzajKonfiguratora,
     stationBays,
     stationMeasurements,
+    stationRelays,
+    stationMeteringBays,
+    stationNnSwitchgears,
+    stationNnLoads,
+    stanDanychNn,
     stationTransformerCatalogOptions,
     stationLvVoltages,
     stationName,

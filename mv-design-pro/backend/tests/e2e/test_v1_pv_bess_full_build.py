@@ -281,7 +281,6 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
         enm,
         "add_nn_load",
         {
-            "station_ref": station_ref_1,
             "bus_nn_ref": nn_bus_st1,
             "feeder_ref": feeder_ref_st1,
             # API: handler oczekuje kW (active_power_kw / reactive_power_kvar),
@@ -305,7 +304,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "source_technology": "BESS",
             "connection_variant": "nn_side",
             "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
-            "name": "BESS-S1",
+            "source_name": "BESS-S1",
             "power_setpoint_mw": 0.05,
         },
     )
@@ -338,7 +337,7 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "source_technology": "PV",
             "connection_variant": "nn_side",
             "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
-            "name": "PV-S2",
+            "source_name": "PV-S2",
             "power_setpoint_mw": 0.05,
         },
     )
@@ -358,7 +357,6 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             # 2,2 MVA). Dawny „conv-fw-1.0mw-15kv" nie istniał, a payload deklarował
             # dla niego 0,4 kV — czyli tabliczkę sprzeczną z własnym identyfikatorem.
             "catalog_ref": "conv-wind-nn-2mw-0p4kv",
-            "name": "FW-S2",
             "source_name": "FW-S2",
             "power_setpoint_mw": 0.05,
         },

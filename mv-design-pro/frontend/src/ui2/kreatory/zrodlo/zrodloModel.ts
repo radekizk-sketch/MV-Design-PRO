@@ -66,7 +66,6 @@ export interface GridSourceFormData {
   short_circuit_mode: ManualSourceShortCircuitMode;
   r_ohm: number | null;
   x_ohm: number | null;
-  notes: string;
   catalog_ref: string | null;
   gpz_section_name: string;
   gpz_line_field_name: string;
@@ -134,7 +133,6 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   short_circuit_mode: 'SHORT_CIRCUIT_POWER',
   r_ohm: null,
   x_ohm: null,
-  notes: '',
   catalog_ref: null,
   gpz_section_name: 'Sekcja',
   gpz_line_field_name: 'Pole liniowe GPZ',

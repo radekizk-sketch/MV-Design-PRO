@@ -696,7 +696,7 @@ def _gpz_04kv() -> dict[str, Any]:
                 "rx_ratio": 0.1,
                 "skip_hv_transformer": True,
             },
-            "line_fields_count": 2,
+            "line_fields_per_section": 2,
             "source_name": "LV MAIN",
         },
     )

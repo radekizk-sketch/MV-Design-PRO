@@ -139,7 +139,7 @@ class TestGpzFeederDedicatedField:
     def test_feeder_uses_free_preconfigured_field(self):
         """GPZ z 2 polami (drugie WOLNE): feeder dostaje istniejące wolne pole —
         ŻADNE nowe pole nie powstaje."""
-        snapshot = _build_gpz_with_trunk(line_fields_count=2)
+        snapshot = _build_gpz_with_trunk(line_fields_per_section=2)
         fields_before = _gpz_line_fields(snapshot)
         assert len(fields_before) == 2
         occupied_ref = next(
@@ -223,7 +223,7 @@ class TestGpzFeederDedicatedField:
     def test_field_limit_exhausted_rejects_with_error(self):
         """Test NEGATYWNY (wyrocznia gryzie): limit pól sekcji wyczerpany ⇒
         operacja ODMAWIA (nigdy dwa kable z jednego pola)."""
-        snapshot = _build_gpz_with_trunk(line_fields_count=MAX_GPZ_LINE_FIELDS_PER_SECTION)
+        snapshot = _build_gpz_with_trunk(line_fields_per_section=MAX_GPZ_LINE_FIELDS_PER_SECTION)
         field_ref = _gpz_line_fields(snapshot)[0]["ref_id"]
         # Pole 0 zajęte przez magistralę ⇒ wolnych jest MAX-1; zapełnij je.
         for i in range(MAX_GPZ_LINE_FIELDS_PER_SECTION - 1):

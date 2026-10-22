@@ -116,7 +116,7 @@ from .katalog_projektu_karty import (
 )
 from .kopia_graniczna import kopia_graniczna_enm
 from .load_zip_model import KOD_BLEDU_ZIP, model_odbioru, zip_odbioru_z_payloadu
-from .models import liczba_torow
+from .models import TRYBY_PRACY_ZRODLA, liczba_torow
 from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import (
     nazwa_elementu,
@@ -150,6 +150,8 @@ from .rola_pola_sn import (
 )
 from .slownik_komunikatow import (
     NAZWY_KLAS_APARATU_NN_PL,
+    NAZWY_OSADZENIA_ZRODLA_PL,
+    NAZWY_TRYBOW_PRACY_ZRODLA_PL,
     NAZWY_WARIANTOW_PRZYLACZENIA_ZRODLA_PL,
     etykieta_parametru,
     lista_pl,
@@ -6679,6 +6681,75 @@ def _next_converter_source_sequence(
     return sequence
 
 
+def _pole_zrodla_dyspozycyjnego(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    bus_nn_ref: str,
+    rodzaj: str,
+    prefiks_kodu: str,
+) -> tuple[dict[str, Any], str | None, list[str], list[dict[str, Any]]] | dict[str, Any]:
+    """Pole przyłączeniowe agregatu/UPS nN — TA SAMA droga, co pole źródła przekształtnikowego.
+
+    ``placement`` z ładunku: ``NEW_FIELD`` tworzy pole źródłowe nN na szynie stacji (aparat
+    pola z ``source_field.catalog_binding``, przestrzeń APARAT_NN), ``EXISTING_FIELD`` wiąże
+    źródło z istniejącym polem ``existing_field_ref``; brak klucza — źródło wprost na szynie
+    (bez pola), jak przed wpięciem osadzenia. Kreator wysyłał te klucze od zawsze, a handler
+    ich nie czytał: wybór pola przepadał bez śladu w modelu.
+
+    Zwraca (kopia modelu, ref pola albo None, utworzone refy, zdarzenia) albo odpowiedź błędu.
+    """
+    placement = payload.get("placement")
+    if placement is None:
+        return kopia_graniczna_enm(enm), None, [], []
+    if placement not in NAZWY_OSADZENIA_ZRODLA_PL:
+        return _error_response(
+            "Osadzenie źródła musi wskazywać "
+            + lista_pl(NAZWY_OSADZENIA_ZRODLA_PL.values(), "albo")
+            + ".",
+            "params.invalid_value",
+        )
+    if placement == "NEW_FIELD":
+        source_field = payload.get("source_field")
+        blad_aparatu = _blad_aparatu_pola(
+            source_field.get("catalog_binding") if isinstance(source_field, dict) else None,
+            namespace=_PRZESTRZEN_APARATU_POLA_NN,
+            opis_pl="Aparat pola źródłowego nN",
+        )
+        if blad_aparatu is not None:
+            return blad_aparatu
+    new_enm = kopia_graniczna_enm(enm)
+    station_ref = payload.get("station_ref")
+    field_ref, created, events = _append_converter_field_if_needed(
+        new_enm,
+        station_ref=station_ref if isinstance(station_ref, str) else "",
+        bus_nn_ref=bus_nn_ref,
+        technology=rodzaj,
+        connection_variant="nn_side",
+        payload=payload,
+    )
+    if field_ref is None:
+        if placement == "EXISTING_FIELD":
+            return _error_response(
+                "Wskazane pole przyłączeniowe nie istnieje w modelu sieci.",
+                f"{prefiks_kodu}.field_not_found",
+            )
+        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+    return new_enm, field_ref, list(created or []), list(events or [])
+
+
+def _zdarzenia_ze_zrodlem(
+    zdarzenia_pola: list[dict[str, Any]], typ: str, element_ref: str
+) -> list[dict[str, Any]]:
+    """Zdarzenia pola (bez numeru) + zdarzenie źródła, numerowane kolejno od 1."""
+    wynik = [
+        {"event_seq": i, "event_type": z["event_type"], "element_id": z["element_id"]}
+        for i, z in enumerate(zdarzenia_pola, start=1)
+    ]
+    wynik.append({"event_seq": len(wynik) + 1, "event_type": typ, "element_id": element_ref})
+    return wynik
+
+
 def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj agregat prądotwórczy do rozdzielni nN."""
     bus_nn_ref = payload.get("bus_nn_ref")
@@ -6745,7 +6816,20 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     if un_kv:
         genset_meta["un_kv"] = float(un_kv)
 
-    new_enm = kopia_graniczna_enm(enm)
+    osadzenie = _pole_zrodla_dyspozycyjnego(
+        enm, payload, bus_nn_ref=bus_nn_ref, rodzaj="AGREGAT", prefiks_kodu="genset"
+    )
+    if isinstance(osadzenie, dict):
+        return osadzenie
+    new_enm, field_ref, created_ids, zdarzenia_pola = osadzenie
+    meta_agregatu: dict[str, Any] = {
+        "operation_mode": genset_spec.get("operation_mode"),
+        "source_kind": "GENSET",
+    }
+    if genset_spec.get("fuel_type") is not None:
+        meta_agregatu["fuel_type"] = genset_spec.get("fuel_type")
+    if field_ref is not None:
+        meta_agregatu["field_ref"] = field_ref
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": gen_ref,
@@ -6756,16 +6840,16 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
             "q_mvar": 0.0,
             "tags": [],
             "materialized_params": genset_meta,
-            "meta": {"operation_mode": genset_spec.get("operation_mode"), "source_kind": "GENSET"},
+            "meta": meta_agregatu,
         }
     )
 
     return _response(
         new_enm,
-        created=[gen_ref],
+        created=[*created_ids, gen_ref],
         selection_id=gen_ref,
         selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "GENSET_CREATED", "element_id": gen_ref}],
+        events=_zdarzenia_ze_zrodlem(zdarzenia_pola, "GENSET_CREATED", gen_ref),
     )
 
 
@@ -6809,7 +6893,21 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if un_kv:
         ups_meta["un_kv"] = float(un_kv)
 
-    new_enm = kopia_graniczna_enm(enm)
+    osadzenie = _pole_zrodla_dyspozycyjnego(
+        enm, payload, bus_nn_ref=bus_nn_ref, rodzaj="UPS", prefiks_kodu="ups"
+    )
+    if isinstance(osadzenie, dict):
+        return osadzenie
+    new_enm, field_ref, created_ids, zdarzenia_pola = osadzenie
+    meta_ups: dict[str, Any] = {
+        "backup_time_min": ups_spec.get("backup_time_min"),
+        "operation_mode": ups_spec.get("operation_mode"),
+        "source_kind": "UPS",
+    }
+    if ups_spec.get("battery_type") is not None:
+        meta_ups["battery_type"] = ups_spec.get("battery_type")
+    if field_ref is not None:
+        meta_ups["field_ref"] = field_ref
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": ups_ref,
@@ -6820,21 +6918,37 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "q_mvar": 0.0,
             "tags": [],
             "materialized_params": ups_meta,
-            "meta": {
-                "backup_time_min": ups_spec.get("backup_time_min"),
-                "operation_mode": ups_spec.get("operation_mode"),
-                "source_kind": "UPS",
-            },
+            "meta": meta_ups,
         }
     )
 
     return _response(
         new_enm,
-        created=[ups_ref],
+        created=[*created_ids, ups_ref],
         selection_id=ups_ref,
         selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "UPS_CREATED", "element_id": ups_ref}],
+        events=_zdarzenia_ze_zrodlem(zdarzenia_pola, "UPS_CREATED", ups_ref),
     )
+
+
+def odmowa_tabliczki_baterii(
+    rated_mvar: float, rated_kv: float, bus_voltage_kv: float
+) -> dict[str, Any] | None:
+    """JEDNA reguła tabliczki baterii kondensatorów — przy tworzeniu
+    (`add_shunt_compensator_sn`) i przy zmianie pozycji katalogu
+    (`assign_catalog_to_element`): dodatnia moc i napięcie, napięcie zgodne z szyną."""
+    if rated_mvar <= 0.0 or rated_kv <= 0.0:
+        return _error_response(
+            "Pozycja katalogowa baterii kondensatorów nie ma dodatniej mocy/napięcia znamionowego.",
+            "shunt.catalog_invalid",
+        )
+    if not _same_nominal_voltage(rated_kv, bus_voltage_kv, tolerance_kv=0.5):
+        return _error_response(
+            f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
+            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
+            "shunt.voltage_mismatch",
+        )
+    return None
 
 
 def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -6886,17 +7000,9 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     rated_mvar = float(catalog_type.rated_mvar)
     rated_kv = float(catalog_type.rated_kv)
-    if rated_mvar <= 0.0 or rated_kv <= 0.0:
-        return _error_response(
-            "Pozycja katalogowa baterii kondensatorów nie ma dodatniej mocy/napięcia znamionowego.",
-            "shunt.catalog_invalid",
-        )
-    if not _same_nominal_voltage(rated_kv, bus_voltage_kv, tolerance_kv=0.5):
-        return _error_response(
-            f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
-            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
-            "shunt.voltage_mismatch",
-        )
+    odmowa_tabliczki = odmowa_tabliczki_baterii(rated_mvar, rated_kv, bus_voltage_kv)
+    if odmowa_tabliczki is not None:
+        return odmowa_tabliczki
 
     status = "open" if str(payload.get("status") or "closed").lower() == "open" else "closed"
 
@@ -7431,6 +7537,16 @@ def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if not source_ref:
         return _error_response(
             "Nie wskazano źródła, którego tryb pracy ma zostać ustawiony.", "source.ref_missing"
+        )
+    # Słownik zapisu = słownik odczytu (`TRYBY_PRACY_ZRODLA`): wartość spoza niego read-model
+    # i SLD i tak odrzucają, więc zapis bez kontroli zostawiał w modelu daną, której żaden
+    # konsument nie widzi, a operacja meldowała sukces.
+    if mode not in TRYBY_PRACY_ZRODLA:
+        return _error_response(
+            "Tryb pracy źródła musi być jednym z: "
+            + lista_pl(NAZWY_TRYBOW_PRACY_ZRODLA_PL.values(), "albo")
+            + ".",
+            "params.invalid_value",
         )
 
     new_enm = kopia_graniczna_enm(enm)

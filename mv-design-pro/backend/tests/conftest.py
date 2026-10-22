@@ -4,6 +4,7 @@ import atexit
 import contextlib
 import importlib.util
 import inspect
+import logging
 import os
 import pwd
 import re
@@ -267,6 +268,44 @@ def _izolowana_baza_przebiegow(tmp_path, monkeypatch):
     wyczysc_cache()
     yield
     wyczysc_cache()
+
+
+class _ZapisyKluczySpozaKontraktu(logging.Handler):
+    """Zbiera wpisy dyspozytora operacji o kluczach ładunku spoza kontraktu operacji."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.zapisy: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        if getattr(record, "klucze_spoza_kontraktu", None):
+            self.zapisy.append(record.getMessage())
+
+
+@pytest.fixture(autouse=True)
+def _ladunek_operacji_w_kontrakcie(request):
+    """Klucz ładunku operacji domenowej spoza jej kontraktu = błąd testu.
+
+    DEFEKT, KTÓRY TO USUWA (pomiar 2026-10-22). Dyspozytor przyjmował każdy klucz
+    ładunku, a handler czytał tylko swoje — klucz spoza kontraktu przepadał bez śladu.
+    Kompilator grafu sieci i szablon GPZ wysyłały liczbę pól liniowych pod nazwą poziomu
+    sekcji (``line_fields_count``) zamiast ``line_fields_per_section``, więc GPZ dostawał
+    po cichu jedno pole; sonda wszystkich nadawców w testach znalazła 15 par
+    (operacja, klucz) wysyłanych, a nieczytanych. Dyspozytor melduje taki klucz w
+    dzienniku serwera (``execute_domain_operation``); ta fikstura zamienia wpis w błąd
+    testu, więc KAŻDY nadawca ćwiczony testami — kod produktu, budowniczowie sieci
+    referencyjnych, testy — wysyła wyłącznie klucze kontraktu. Test, który celowo
+    wysyła klucz spoza kontraktu, nosi znacznik ``ladunek_spoza_kontraktu``.
+    """
+    zapisy = _ZapisyKluczySpozaKontraktu()
+    dziennik = logging.getLogger("enm.domain_operations")
+    dziennik.addHandler(zapisy)
+    try:
+        yield zapisy.zapisy
+    finally:
+        dziennik.removeHandler(zapisy)
+    if zapisy.zapisy and request.node.get_closest_marker("ladunek_spoza_kontraktu") is None:
+        pytest.fail("\n".join(zapisy.zapisy), pytrace=False)
 
 
 # ---------------------------------------------------------------------------

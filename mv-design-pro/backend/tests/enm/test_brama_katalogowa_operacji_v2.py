@@ -438,7 +438,6 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def _payload_kompensator(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
-        "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
         "catalog_binding": {
             "catalog_namespace": "KOMPENSATOR_SN",

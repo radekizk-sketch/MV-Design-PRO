@@ -132,6 +132,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "hvrt_curve_ref": "Charakterystyka HVRT (przepięcie)",  # zrodlo-oze/strings.ts frtHvrt
     "ik3_min_ka": "Ik″min",  # zrodlo/strings.ts ik3Min
     "insert_station_on_segment_sn:insert_at": "Odległość stacji od początku odcinka [m]",  # stacja/strings.ts insertAt
+    "insert_at": "Położenie na odcinku",  # lacznik|slup-odgalezny|zksn/strings.ts polozenie
     "island_operation_capable": "Zdolność pracy wyspowej",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "island_operation_required": "Wymagana praca wyspowa",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "k_pf": "Wrażliwość częstotliwościowa P (k_pf)",  # odbior/strings.ts zipKPf
@@ -453,6 +454,24 @@ NAZWY_TRYBOW_STEROWANIA_ZACZEPAMI_PL: dict[str, str] = {
     "AUTOMATIC": "automatyczny (AVR)",
     "PROFILE": "profil dobowy",
     "REMOTE": "zdalny (SCADA)",
+}
+
+
+#: Tryb pracy źródła (``enm.models.TRYBY_PRACY_ZRODLA``, ``set_source_operating_mode``) →
+#: nazwa (ekran OSD: ``ui2/oze/osd/strings.ts`` ``tryb…``). Klucze = słownik modelu
+#: (``tests/enm/test_osadzenie_zrodla_dyspozycyjnego.py``).
+NAZWY_TRYBOW_PRACY_ZRODLA_PL: dict[str, str] = {
+    "praca_sieciowa": "praca sieciowa",
+    "ladowanie": "ładowanie",
+    "rozladowanie": "rozładowanie",
+    "gotowosc": "gotowość",
+    "odstawione": "odstawione",
+}
+
+#: Osadzenie agregatu/UPS nN (``placement``) → nazwa (kreator źródła dyspozycyjnego).
+NAZWY_OSADZENIA_ZRODLA_PL: dict[str, str] = {
+    "NEW_FIELD": "nowe pole przyłączeniowe",
+    "EXISTING_FIELD": "istniejące pole przyłączeniowe",
 }
 
 

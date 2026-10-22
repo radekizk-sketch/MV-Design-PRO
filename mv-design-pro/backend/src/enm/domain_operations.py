@@ -19,8 +19,9 @@ import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any, get_args
+from typing import Any, cast, get_args
 
+from domain.canonical_operations import klucze_spoza_kontraktu
 from domain.readiness_bridge import opis_kanoniczny
 from enm.assembler import czestotliwosc_studium_hz
 from network_model.catalog.audit2_catalogs import (
@@ -238,7 +239,7 @@ def _branch_point_public_label(branch_point: dict[str, Any]) -> str:
     )
 
 
-def _pozycja_normalna_portu(value: Any) -> tuple[str | None, bool]:
+def _pozycja_normalna_portu(value: object) -> tuple[str | None, bool]:
     """W5-C: pozycja normalna łączników portów odgałęźnych z ładunku ``switch_state``.
 
     Zwraca (pozycja, poprawna). Jawne ``"open"``/``"closed"`` → ta pozycja (i to samo
@@ -384,7 +385,7 @@ def _referenced_bus_refs(enm: dict[str, Any]) -> set[str]:
     """
     referenced: set[str] = set()
 
-    def dodaj(wartosc: Any) -> None:
+    def dodaj(wartosc: object) -> None:
         if isinstance(wartosc, str):
             referenced.add(wartosc)
 
@@ -441,6 +442,63 @@ def _remove_unreferenced_helper_topology_buses(enm: dict[str, Any]) -> dict[str,
 def _quantize_ratio(value: float, quantum: float = 1e-6) -> float:
     """Kwantyzacja wartości ratio dla stabilności deterministycznej."""
     return round(value / quantum) * quantum
+
+
+TRYBY_POZYCJI_PODZIALU = ("RATIO", "ODLEGLOSC_OD_POCZATKU_M")
+
+
+def wspolczynnik_podzialu(
+    insert_at: object, length_km: float, pole_pl: str, *, konce_odcinka: bool
+) -> float | str:
+    """Współczynnik podziału odcinka ``[0, 1]`` z ``insert_at`` albo komunikat odmowy.
+
+    JEDNA reguła wszystkich operacji wstawiających element w odcinek SN (stacja,
+    punkt rozgałęzienia, łącznik sekcyjny) — dotąd każda czytała ``insert_at`` inaczej:
+    stacja zamieniała tryb spoza słownika na środek odcinka, a odległość dłuższą niż
+    odcinek przyjmowała (ujemna długość drugiej połówki), punkt rozgałęzienia przycinał
+    po cichu do końców odcinka, łącznik sekcyjny nie sprawdzał niczego.
+
+    Brak ``insert_at`` = środek odcinka (0,5), brak ``mode`` = ``RATIO`` — jawne wartości
+    domyślne kontraktu. Odmowa (komunikat ``str``): ``insert_at`` nie jest słownikiem, tryb
+    spoza ``TRYBY_POZYCJI_PODZIALU``, brak ``value``, wartość nieliczbowa albo poza odcinkiem, tryb
+    odległości na odcinku bez długości. ``konce_odcinka`` — czy operacja przyjmuje koniec
+    odcinka (0 albo 1): punkt rozgałęzienia zamyka wtedy odcinek bez podziału, a stacja
+    przelotowa i łącznik sekcyjny dzieliłyby odcinek na połówkę o zerowej długości
+    (stacja na końcu odcinka to ``append_station_on_endpoint``). Wynik kwantowany
+    (``_quantize_ratio``).
+    """
+    if insert_at is None:
+        return 0.5
+    if not isinstance(insert_at, dict):
+        return f"Pole {pole_pl} musi wskazywać tryb i wartość pozycji na odcinku."
+    tryb = insert_at.get("mode", "RATIO")
+    if tryb not in TRYBY_POZYCJI_PODZIALU:
+        return (
+            f"Pole {pole_pl} przyjmuje pozycję jako ułamek długości odcinka albo "
+            "odległość od początku odcinka w metrach."
+        )
+    wartosc = insert_at.get("value")
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float) or wartosc != wartosc:
+        return f"Pole {pole_pl} wymaga wartości liczbowej."
+    if tryb == "RATIO":
+        wspolczynnik = float(wartosc)
+    else:
+        dlugosc_m = km_na_m(float(length_km))
+        if dlugosc_m <= 0.0:
+            return (
+                f"Odcinek nie ma długości — pole {pole_pl} nie może wskazać odległości "
+                "od początku odcinka; podaj ułamek długości."
+            )
+        wspolczynnik = float(wartosc) / dlugosc_m
+    if wspolczynnik < 0.0 or wspolczynnik > 1.0:
+        return f"Pole {pole_pl} wskazuje miejsce poza odcinkiem."
+    wspolczynnik = _quantize_ratio(wspolczynnik)
+    if not konce_odcinka and wspolczynnik in (0.0, 1.0):
+        return (
+            f"Pole {pole_pl} wskazuje koniec odcinka — element wstawia się wewnątrz odcinka, "
+            "tak aby obie części miały niezerową długość."
+        )
+    return wspolczynnik
 
 
 def _extract_catalog_binding_item_id(catalog_binding: object) -> str | None:
@@ -714,42 +772,42 @@ GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER = {
 
 
 def _read_gpz_line_fields_count(entry: dict[str, Any], payload: dict[str, Any]) -> int:
-    for source in (entry, payload):
-        for key in (
-            "line_fields_count",
-            "line_fields_per_section",
-            "gpz_line_fields_per_section",
-        ):
-            raw_value = source.get(key)
-            if raw_value is None:
-                continue
-            if isinstance(raw_value, bool):
-                return 0
-            if isinstance(raw_value, int):
-                return raw_value
-            if isinstance(raw_value, float):
-                return int(raw_value) if raw_value.is_integer() else 0
-            if isinstance(raw_value, str) and raw_value.strip().isdigit():
-                return int(raw_value.strip())
-            return 0
-    return 1
+    """Liczba pól liniowych sekcji: ``gpz_sections[i].line_fields_count``, a bez niej
+    wspólne dla sekcji ``line_fields_per_section`` ładunku (domyślnie 1). Jedna nazwa na
+    poziom — dawne synonimy (``gpz_line_fields_per_section``, krzyżowe nazwy poziomów)
+    nie miały nadawcy."""
+    raw_value = entry.get("line_fields_count")
+    if raw_value is None:
+        raw_value = payload.get("line_fields_per_section")
+    if raw_value is None:
+        return 1
+    if isinstance(raw_value, bool):
+        return 0
+    if isinstance(raw_value, int):
+        return raw_value
+    if isinstance(raw_value, float):
+        return int(raw_value) if raw_value.is_integer() else 0
+    if isinstance(raw_value, str) and raw_value.strip().isdigit():
+        return int(raw_value.strip())
+    return 0
 
 
 def _read_gpz_transformer_count(payload: dict[str, Any], sections_count: int) -> int:
-    for key in ("transformer_count", "transformers_count", "wn_sn_transformer_count"):
-        raw_value = payload.get(key)
-        if raw_value is None:
-            continue
-        if isinstance(raw_value, bool):
-            return 0
-        if isinstance(raw_value, int):
-            return raw_value
-        if isinstance(raw_value, float):
-            return int(raw_value) if raw_value.is_integer() else 0
-        if isinstance(raw_value, str) and raw_value.strip().isdigit():
-            return int(raw_value.strip())
+    """Liczba transformatorów WN/SN GPZ: ``transformer_count`` (nazwa wysyłana przez kreator
+    źródła GPZ). Dawne synonimy ``transformers_count`` / ``wn_sn_transformer_count`` nie miały
+    nadawcy (ta sama klasa co synonimy liczby pól liniowych sekcji)."""
+    raw_value = payload.get("transformer_count")
+    if raw_value is None:
+        return max(1, min(2, sections_count))
+    if isinstance(raw_value, bool):
         return 0
-    return max(1, min(2, sections_count))
+    if isinstance(raw_value, int):
+        return raw_value
+    if isinstance(raw_value, float):
+        return int(raw_value) if raw_value.is_integer() else 0
+    if isinstance(raw_value, str) and raw_value.strip().isdigit():
+        return int(raw_value.strip())
+    return 0
 
 
 def _resolve_gpz_wn_sn_transformer_catalog_ref(
@@ -916,6 +974,11 @@ def _resolve_catalog_ref(catalog_ref: object, catalog_binding: object) -> str | 
 
 
 #: Kolekcje, w których `_find_element` szuka elementu (kolejność = kolejność wyszukiwania).
+#: Każda kolekcja ENM, której elementy tworzy operacja domenowa, a które projektant usuwa,
+#: przemianowuje albo przepina na inny typ katalogu (`delete_element`,
+#: `update_element_parameters`, `assign_catalog_to_element`). Bateria kondensatorów SN
+#: (`add_shunt_compensator_sn`) była poza listą: „Usuń" meldował „element nie istnieje".
+#: Przypina `tests/enm/test_kolekcje_operacji_elementu.py`.
 KOLEKCJE_WYSZUKIWANIA_ELEMENTU: tuple[str, ...] = (
     "buses",
     "branches",
@@ -923,6 +986,7 @@ KOLEKCJE_WYSZUKIWANIA_ELEMENTU: tuple[str, ...] = (
     "sources",
     "loads",
     "generators",
+    "shunt_capacitors",
     "substations",
     "bays",
     "junctions",
@@ -3185,6 +3249,44 @@ def _validate_transformer_voltage_compatibility(
     return None
 
 
+#: Kategoria katalogu baterii kondensatorów SN — ta sama, z której materializuje
+#: `add_shunt_compensator_sn` (`get_shunt_capacitor_type`).
+KATEGORIA_KATALOGU_BATERII = "KOMPENSATOR_SN"
+
+
+def _zastosuj_tabliczke_baterii(
+    enm: dict[str, Any], bateria: dict[str, Any], tabliczka: dict[str, Any] | None
+) -> dict[str, Any] | None:
+    """Qn/Un/straty baterii z tabliczki pozycji katalogu przypisanej `assign_catalog_to_element`.
+
+    Ta sama reguła co przy tworzeniu (`odmowa_tabliczki_baterii`, wspólna z
+    `add_shunt_compensator_sn`). Odmowa = model bez zmian.
+    """
+    from enm.domain_operations_v2 import _bus_voltage_kv, odmowa_tabliczki_baterii
+
+    dane = tabliczka or {}
+    rated_mvar = dane.get("rated_mvar")
+    rated_kv = dane.get("rated_kv")
+    napiecie_szyny = _bus_voltage_kv(enm, str(bateria.get("bus_ref") or ""))
+    if (
+        not isinstance(rated_mvar, int | float)
+        or not isinstance(rated_kv, int | float)
+        or napiecie_szyny is None
+    ):
+        return _error_response(
+            "Pozycja katalogowa baterii kondensatorów nie ma mocy i napięcia znamionowego "
+            "albo szyna baterii nie ma napięcia znamionowego.",
+            "shunt.catalog_invalid",
+        )
+    odmowa = odmowa_tabliczki_baterii(float(rated_mvar), float(rated_kv), napiecie_szyny)
+    if odmowa is not None:
+        return odmowa
+    bateria["rated_mvar"] = float(rated_mvar)
+    bateria["rated_kv"] = float(rated_kv)
+    bateria.setdefault("meta", {})["loss_kw"] = dane.get("loss_kw")
+    return None
+
+
 def _element_requires_catalog(collection: str, element: dict[str, Any]) -> bool:
     """Określ, czy dany element techniczny może istnieć wyłącznie z katalogiem."""
     if collection in {
@@ -3195,6 +3297,9 @@ def _element_requires_catalog(collection: str, element: dict[str, Any]) -> bool:
         "loads",
         "measurements",
         "protection_assignments",
+        # Bateria kondensatorów jest katalog-first: Qn/Un pochodzą WYŁĄCZNIE z pozycji
+        # katalogu (`add_shunt_compensator_sn`), bez trybu ręcznego.
+        "shunt_capacitors",
     }:
         return True
 
@@ -4124,7 +4229,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     # Wiąże pola GPZ ze szablonami producenta; spływa do SLD (internal_layout),
     # oceny zgodności (Reference Engine) i widoku pola. Nie wchodzi do seeda
     # (determinizm istniejących payloadów zachowany).
-    def _opt_str(value: Any) -> str | None:
+    def _opt_str(value: object) -> str | None:
         return value.strip() if isinstance(value, str) and value.strip() else None
 
     gpz_switchgear_family_ref = _opt_str(payload.get("switchgear_family_ref"))
@@ -6936,23 +7041,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         or _unique_default_station_name(enm)
     )
 
-    # Validate insert_at
-    insert_mode = insert_at.get("mode", "RATIO")
-    insert_value = insert_at.get("value", 0.5)
-    if insert_mode == "RATIO":
-        insert_value = _quantize_ratio(float(insert_value))
-        if insert_value < 0.0 or insert_value > 1.0:
-            return _error_response(
-                f"Współczynnik podziału {insert_value} poza zakresem [0, 1].",
-                "station.insert.insert_at_invalid",
-            )
-    elif insert_mode == "ODLEGLOSC_OD_POCZATKU_M":
-        if float(insert_value) < 0:
-            return _error_response(
-                f"{pole('insert_at', 'insert_station_on_segment_sn')} nie może być ujemna.",
-                "station.insert.insert_at_invalid",
-            )
-
     # Napięcia — topologiczne dziedziczenie z segmentu, brak domyślnych
     sn_voltage_kv = station.get("sn_voltage_kv")
     nn_voltage_kv = station.get("nn_voltage_kv")
@@ -6985,6 +7073,23 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     from_bus_ref = segment.get("from_bus_ref")
     to_bus_ref = segment.get("to_bus_ref")
     length_km = segment.get("length_km", 1.0)
+
+    # Pozycja wstawienia — jedna reguła operacji wstawienia (`wspolczynnik_podzialu`).
+    split_ratio = wspolczynnik_podzialu(
+        payload.get("insert_at"),
+        float(length_km),
+        pole("insert_at", "insert_station_on_segment_sn"),
+        konce_odcinka=False,
+    )
+    if isinstance(split_ratio, str):
+        return _error_response(split_ratio, "station.insert.insert_at_invalid")
+    insert_mode = insert_at.get("mode", "RATIO")
+    # Ziarno identyfikatora: ułamek po kwantyzacji (= współczynnik reguły) albo metry w zapisie
+    # z ładunku (liczba sprawdzona przez `wspolczynnik_podzialu`; bez rzutowania na `float`,
+    # bo kanoniczny JSON ziarna odróżnia 100 od 100.0 — identyfikatory bez zmian).
+    insert_value: float = (
+        split_ratio if insert_mode == "RATIO" else cast(float, insert_at.get("value"))
+    )
     segment_catalog_binding = segment.get("catalog_binding")
     catalog_ref = _resolve_catalog_ref(segment.get("catalog_ref"), segment_catalog_binding)
     segment_catalog_version = (
@@ -7027,13 +7132,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     ev_seq = 0
 
     # --- Krok 2: Rozdzielenie segmentu na dwa ---
-    if insert_mode == "RATIO":
-        ratio = float(insert_value)
-    elif insert_mode == "ODLEGLOSC_OD_POCZATKU_M":
-        total_m = km_na_m(length_km)
-        ratio = float(insert_value) / total_m if total_m > 0 else 0.5
-    else:
-        ratio = 0.5
+    ratio = split_ratio
 
     left_length = length_km * ratio
     right_length = length_km * (1.0 - ratio)
@@ -7729,6 +7828,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             inserted_station_id=stn_id,
             insert_mode=insert_mode,
             insert_value=insert_value,
+            split_ratio=split_ratio,
             length_km=length_km,
             station_type=substation_semantic_type,
             created=created,
@@ -7747,6 +7847,7 @@ def _build_split_preview_metadata(
     inserted_station_id: str,
     insert_mode: str,
     insert_value: float,
+    split_ratio: float,
     length_km: float,
     station_type: str,
     created: list[str],
@@ -7768,18 +7869,7 @@ def _build_split_preview_metadata(
     catalog_ref = segment.get("catalog_ref")
     catalog_namespace = segment.get("catalog_namespace")
 
-    # Halves: split_ratio z insert_at
-    if insert_mode == "RATIO":
-        split_ratio = float(insert_value)
-    elif insert_mode == "ODLEGLOSC_OD_POCZATKU_M" and length_km > 0:
-        split_ratio = float(insert_value) / km_na_m(length_km)
-        if split_ratio < 0.0:
-            split_ratio = 0.0
-        if split_ratio > 1.0:
-            split_ratio = 1.0
-    else:
-        split_ratio = 0.5
-
+    # Połówki: `split_ratio` tej samej reguły co podział wykonany (`wspolczynnik_podzialu`).
     length_a_km = length_km * split_ratio
     length_b_km = length_km * (1.0 - split_ratio)
 
@@ -7991,10 +8081,14 @@ def _insert_branch_point_on_segment_sn(
         )
     insert_at = payload.get("insert_at", {"mode": "RATIO", "value": 0.5})
     length_km = float(segment.get("length_km", 0.0))
-    ratio = float(insert_at.get("value", 0.5))
-    if insert_at.get("mode") == "ODLEGLOSC_OD_POCZATKU_M":
-        ratio = float(insert_at.get("value", 0.0)) / km_na_m(length_km) if length_km > 0 else 0.5
-    ratio = _quantize_ratio(max(0.0, min(1.0, ratio)))
+    ratio = wspolczynnik_podzialu(
+        payload.get("insert_at"),
+        length_km,
+        pole("insert_at", f"insert_{branch_point_type}_on_segment_sn"),
+        konce_odcinka=True,
+    )
+    if isinstance(ratio, str):
+        return _error_response(ratio, "params.invalid_value")
 
     seed = _compute_seed(
         {
@@ -8618,7 +8712,6 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wstaw łącznik sekcyjny w odcinek SN."""
     segment_id = payload.get("segment_id")
-    insert_at = payload.get("insert_at", {"mode": "RATIO", "value": 0.5})
     switch_type = payload.get("switch_type", "ROZLACZNIK")
     # W5-C: pozycja normalna łącznika sekcyjnego — wyłącznie jawna. „closed" ustawia
     # `normal_state` i `status`; brak = łącznik zamknięty bez pozycji normalnej (dawny
@@ -8678,13 +8771,14 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     length_km = segment.get("length_km", 1.0)
     seg_type = segment.get("type", "cable")
 
-    insert_mode = insert_at.get("mode", "RATIO")
-    insert_value = float(insert_at.get("value", 0.5))
-    ratio = (
-        insert_value
-        if insert_mode == "RATIO"
-        else (insert_value / km_na_m(length_km) if length_km > 0 else 0.5)
+    ratio = wspolczynnik_podzialu(
+        payload.get("insert_at"),
+        float(length_km),
+        pole("insert_at", "insert_section_switch_sn"),
+        konce_odcinka=False,
     )
+    if isinstance(ratio, str):
+        return _error_response(ratio, "params.invalid_value")
 
     seed = _compute_seed(
         {
@@ -9770,6 +9864,13 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             or _extract_catalog_binding_namespace(catalog_binding)
             or _infer_catalog_namespace_for_element(target_element)
         )
+        if coll == "shunt_capacitors" and catalog_namespace != KATEGORIA_KATALOGU_BATERII:
+            return _error_response(
+                f"{opis_nazwy(target_element.get('name'), 'Bateria kondensatorów')}: kategoria "
+                f"katalogu {nazwa_kategorii_katalogu(catalog_namespace)} do niej nie pasuje — "
+                f"wskaż pozycję kategorii {nazwa_kategorii_katalogu(KATEGORIA_KATALOGU_BATERII)}.",
+                "catalog.namespace_mismatch",
+            )
         if coll == "branches" and not _namespace_pasuje_do_galezi(
             target_element, catalog_namespace
         ):
@@ -9863,6 +9964,10 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 )
             elif coll == "transformers":
                 _apply_materialized_transformer_fields(target_element, tabliczka_przypisania)
+        if coll == "shunt_capacitors":
+            odmowa_baterii = _zastosuj_tabliczke_baterii(enm, target_element, tabliczka_przypisania)
+            if odmowa_baterii is not None:
+                return odmowa_baterii
 
     # Decyzja O-53: nowy typ zmienia wejścia kontroli mocy (tabliczka źródła albo moc
     # transformatora) — każde źródło, którego one dotyczą, przechodzi tę samą kontrolę co
@@ -9994,7 +10099,7 @@ def _blad_stanu_lacznika_w_parametrach(
 
 #: Kolekcje z jawną listą dopuszczonych parametrów `update_element_parameters`.
 KOLEKCJE_Z_LISTA_PARAMETROW: frozenset[str] = frozenset(
-    {"branches", "transformers", "branch_points", "generators", "substations"}
+    {"branches", "transformers", "branch_points", "generators", "substations", "shunt_capacitors"}
 )
 
 #: Kolekcje bez listy dopuszczonych parametrów — zapis wolno dopuścić WYŁĄCZNIE dla pól
@@ -10242,6 +10347,10 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 # rodzaju niezgodna z topologią) zmienia deklarację — kontrola wartości niżej.
                 "station_type",
             },
+            # Bateria kondensatorów: nazwa i stan łącznika baterii (stały bank, `status`).
+            # Qn/Un zmienia WYŁĄCZNIE przypisanie innej pozycji katalogu
+            # (`assign_catalog_to_element`) — katalog-first, bez nadpisań ręcznych.
+            "shunt_capacitors": {"name", "status"},
         }
         illegal_keys = sorted(
             key
@@ -10256,6 +10365,14 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 f"{NAZWY_KOLEKCJI_PL.get(coll, 'element modelu')} — dozwolone są wyłącznie "
                 "parametry z listy dopuszczonej dla tego rodzaju elementu.",
                 "params.key_not_allowed",
+            )
+
+    if coll == "shunt_capacitors" and "status" in parameters:
+        if parameters["status"] not in ("closed", "open"):
+            return _error_response(
+                f"Pole {pole('parameters', 'update_element_parameters')}: stan baterii "
+                "kondensatorów przyjmuje wyłącznie wartość „załączona” albo „wyłączona”.",
+                "params.invalid_value",
             )
 
     # Deklaracja rodzaju stacji: zmiana wyłącznie w obrębie stacji SN/nN (deklaracja funkcji
@@ -10481,6 +10598,8 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             ("sources", ("bus_ref",)),
             ("loads", ("bus_ref",)),
             ("generators", ("bus_ref",)),
+            # Bateria na usuwanej szynie zostawała z odwołaniem do szyny, której nie ma.
+            ("shunt_capacitors", ("bus_ref",)),
         ]
         for dep_collection, dep_fields in dependent_collections:
             refs_to_delete: list[str] = []
@@ -12095,6 +12214,21 @@ def execute_domain_operation(
             "Nieznana operacja — system nie obsługuje żądanej zmiany modelu sieci.",
             "dispatcher.unknown_operation",
         )
+
+    # Klucz ładunku spoza kontraktu operacji przepada bez śladu (handler go nie czyta) —
+    # to błąd wołającego, jak nieznana nazwa operacji: trafia do dziennika serwera
+    # z listą kluczy. Testy backendu zamieniają ten wpis w błąd testu (`tests/conftest.py`,
+    # `_ladunek_operacji_w_kontrakcie`), więc każdy nadawca w backendzie i w testach
+    # wysyła wyłącznie klucze kontraktu.
+    if isinstance(payload, dict):
+        obce = klucze_spoza_kontraktu(canonical_name, payload)
+        if obce:
+            logger.warning(
+                "Ładunek operacji %r niesie klucze spoza kontraktu (handler ich nie czyta): %s",
+                canonical_name,
+                ", ".join(obce),
+                extra={"klucze_spoza_kontraktu": tuple(obce)},
+            )
 
     # Migracje zastanego zapisu (W5-A, W5-C) — TA SAMA lista co walidator modelu
     # (`migruj_zapis_zastany_slownika`): handler i odpowiedź nie widzą kluczy skasowanych.

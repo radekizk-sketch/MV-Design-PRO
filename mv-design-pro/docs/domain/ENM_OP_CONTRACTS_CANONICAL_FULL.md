@@ -1,831 +1,1728 @@
 ﻿# ENM_OP_CONTRACTS_CANONICAL_FULL
 
-## Dokument Wiazacy -- Kanoniczne Kontrakty Operacji Domenowych
+## Kanoniczne kontrakty operacji domenowych — widok rejestru
 
-| Pole              | Wartosc                                          |
-|-------------------|--------------------------------------------------|
-| Status            | **CANONICAL / NORMATIVE / BINDING**              |
-| Wersja            | 1.0.0                                            |
-| Data utworzenia    | 2026-02-17                                       |
-| Klasyfikacja      | Industrial (benchmark-grade)                  |
-| Warstwa           | Domain Layer (Application -> Domain -> Solver)   |
-| Referencja Pydantic | `backend/src/domain/domain_ops_models.py`      |
+| Pole | Wartość |
+|---|---|
+| Status | **BINDING** — widok rejestru operacji (nie osobne źródło prawdy) |
+| Wersja | 2.0.0 |
+| Data | 2026-10-22 |
+| Źródło prawdy | `backend/src/domain/canonical_operations.py` (`CANONICAL_OPERATIONS`, `REQUIRED_FIELD_ALIASES`) |
+| Handlery | `backend/src/enm/domain_operations.py::_HANDLERS`, `backend/src/enm/domain_operations_v2.py::ALL_V2_HANDLERS` |
+| Zdarzenia | `backend/src/enm/domain_ops_models.py::DOMAIN_EVENT_TYPES` |
+| Generator | `backend/tests/ci/dokument_operacji_enm.py` |
 
-> **REGULA**: Ten dokument jest JEDYNYM ZRODLEM PRAWDY dla nazw operacji domenowych,
-> kontraktow payload JSON oraz zdarzen domenowych.
-> Wszelkie inne dokumenty opisujace operacje traca waznosc w przypadku konfliktu.
-
----
-
-## Spis tresci
-
-1. [Kanoniczne nazwy operacji](#1-kanoniczne-nazwy-operacji)
-2. [Regula nazewnictwa V11](#2-regula-nazewnictwa-v11)
-3. [Przyklady payload JSON (16 kompletnych)](#3-przyklady-payload-json)
-4. [Referencja schematow JSON (Pydantic)](#4-referencja-schematow-json-pydantic)
-5. [Zdarzenia domenowe (Domain Events)](#5-zdarzenia-domenowe-domain-events)
+> **REGUŁA.** Ten dokument jest WIDOKIEM rejestru operacji. Bloki między znacznikami
+> `GENEROWANE:…:POCZATEK` / `GENEROWANE:…:KONIEC` powstają z kodu i nie są edytowane ręcznie —
+> test `backend/tests/ci/test_dokument_kontraktow_operacji.py` porównuje je z generatorem, a
+> przykłady wykonuje przez produkcyjną końcówkę API. Regeneracja (z katalogu `backend`):
+> `PYTHONPATH=src:. python -m tests.ci.dokument_operacji_enm --write`.
+> W razie rozjazdu z innym dokumentem rozstrzyga kod rejestru, nie tekst.
 
 ---
 
-## 1. Kanoniczne nazwy operacji
+## Spis treści
 
-### 1.1 Operacje SN (Siec Sredniego Napiecia)
-
-| Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
-|----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 1  | `add_grid_source_sn`              | Dodanie zrodla zasilania sieciowego (GPZ) do sieci SN          | Domain / NetworkModel     |
-| 2  | `continue_trunk_segment_sn`       | Kontynuacja segmentu magistrali SN (dodanie kolejnego odcinka) | Domain / NetworkModel     |
-| 3  | `insert_station_on_segment_sn`    | Wstawienie stacji na istniejacym segmencie SN (podzial)        | Domain / NetworkModel     |
-| 4  | `start_branch_segment_sn`         | Rozpoczecie nowego odgalezienia (branch) od magistrali SN      | Domain / NetworkModel     |
-| 5  | `insert_section_switch_sn`        | Wstawienie lacznika sekcyjnego na segmencie SN                 | Domain / NetworkModel     |
-| 6  | `connect_secondary_ring_sn`       | Zamkniecie pierscienia wtornego (polaczenie dwoch konc. ciag.) | Domain / NetworkModel     |
-| 7  | `set_normal_open_point`           | Ustawienie punktu normalnie otwartego (NOP) w pierścieniu      | Domain / NetworkModel     |
-
-### 1.2 Operacje Stacyjne i nN (niskie Napiecie)
-
-| Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
-|----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 8  | `add_transformer_sn_nn`           | Dodanie transformatora SN/nN w stacji                          | Domain / NetworkModel     |
-| 9  | `add_nn_outgoing_field`           | Dodanie pola odpływowego nN                                    | Domain / NetworkModel     |
-| 10 | `add_nn_outgoing_field`           | Dodanie pola nN w kontrakcie kanonicznym                       | Domain / NetworkModel     |
-| 11 | `add_nn_load`                     | Dodanie obciazenia na szynie nN                                | Domain / NetworkModel     |
-| 12 | `update_nn_bus_sections`          | Aktualizacja konfiguracji sekcji szyn nN                       | Domain / NetworkModel     |
-| 13 | `update_nn_coupler_state`         | Zmiana stanu lacznika szyn nN (otwarty/zamkniety)              | Domain / NetworkModel     |
-
-### 1.3 Operacje OZE w nN
-
-| Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
-|----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 14 | `add_converter_source`            | Dodanie źródła przekształtnikowego PV/BESS/FW na szynie nN     | Domain / NetworkModel     |
-| 15 | `add_converter_source`            | Dodanie źródła przekształtnikowego PV/BESS/FW na szynie nN     | Domain / NetworkModel     |
-| 16 | `add_genset_nn`                   | Dodanie zespolu pradotwórczego (agregat) na szynie nN          | Domain / NetworkModel     |
-| 17 | `add_ups_nn`                      | Dodanie zasilacza UPS na szynie nN                             | Domain / NetworkModel     |
-| 18 | `set_source_operating_mode`       | Ustawienie trybu pracy zrodla (generacja/kompensacja/isl.)     | Domain / NetworkModel     |
-| — | `set_dynamic_profile`             | USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351): dubel wiazania profilu dynamicznego — jedyna droga to `set_der_catalog_bindings` (ekran dynamiki) | — |
-
-### 1.4 Operacje Zabezpieczen (Protection)
-
-| Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
-|----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 20 | `add_ct`                          | Dodanie przekladnika pradowego (CT) w polu albo przy wylaczniku liniowym (`breaker_ref`) | Domain / NetworkModel     |
-| 21 | `add_vt`                          | Dodanie przekladnika napieciowego (VT)                         | Domain / NetworkModel     |
-| 22 | `add_relay`                       | Dodanie przekaznika zabezpieczeniowego (w polu albo przy wylaczniku liniowym) z nastawami albo z nazwanym brakiem nastaw | Domain / NetworkModel     |
-| 23 | `update_protection_settings` (karta BIEG-ZABEZPIECZEN-Z-MODELU, 2026-09-30) | Zapis nastaw zabezpieczenia w MODELU (`ProtectionAssignment.settings`, D-21); nastawy sprzeczne odrzucone kodem `relay.settings_invalid`, niekompletne przyjete (brak nazywa ocena) | Domain / NetworkModel     |
-| — | `update_relay_settings`, `link_relay_to_field`, `validate_selectivity` | USUNIETE (karta BIEG-ZABEZPIECZEN-Z-MODELU, 2026-09-30): zaslepki z odmowa i selektywnosc z kolejnosci listy (prad 10 × nastawa). Selektywnosc liczy koordynacja E-28 na urzadzeniach i nastawach z modelu (`POST /api/protection-coordination/projects/{id}/run`) | — |
-| — | `calculate_tcc_curve`             | USUNIETA (karta W3-A, 2026-09) — krzywe TCC niesie wynik koordynacji E-28 | — |
-| 26a | `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | Zapis/aktualizacja obwodu wtornego CT/VT na JUZ ISTNIEJACYM przekladniku -- jedyna droga edycji po utworzeniu (`update_element_parameters` odrzuca kolekcje `measurements`, patrz `LEGACY_FIELD_COLLECTIONS`) | Domain / NetworkModel |
-
-### 1.5 Operacje StudyCase (Przypadki obliczeniowe) -- USUNIETE (CV-3.2, 58e520ce)
-
-9 operacji (Nr 27-35: `create_study_case`, `set_case_switch_state`, `set_case_normal_state`,
-`set_case_source_mode`, `set_case_time_profile`, `run_short_circuit`, `run_power_flow`,
-`run_time_series_power_flow`, `compare_study_cases`) zapisywaly `study_cases[]` do dokumentu
-ENM -- zapis w proznie (`EnergyNetworkModel` nie ma takiego pola, ginal przy `model_validate`),
-0 konsumentow produkcyjnych (frontend nigdy nie znal tych nazw -- `domainOps.ts`). Usuniete
-procedura 7 krokow razem z definicjami w `enm/domain_operations_v2.py`, rejestrem
-`domain/canonical_operations.py`. Semantyka "stanu roboczego" (lacznik/zrodlo/N-1) zyje
-WYLACZNIE w `enm/scenariusze.py::OperatingScenario` (CV-3.1); bieg i porownanie biegow --
-`enm/canonical_analysis.py::create_run/execute_run` (patrz `tests/invariants/test_scenariusz_i_bieg.py`).
-Zywe operacje StudyCase (utworzenie/porownanie PRZYPADKU jako konfiguracji, nie fizyki) sa
-inna warstwa: `api/study_cases.py`, `domain/study_case.py` (C1).
-
-### 1.6 Operacje Uniwersalne
-
-Usuniecie elementu (takze nN: kabel, aparat, zacisk, odbior) to wylacznie `delete_element` — dawna `remove_nn_element` USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351) jako dubel. Operacje bez okna i ich sciezki uzytkownika klasyfikuje `scripts/dialog_completeness_guard.py` (KAZDA operacja `CANONICAL_OPERATIONS`).
-
-| Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
-|----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 36 | `assign_catalog_to_element`       | Przypisanie typu katalogowego do elementu sieci                | Domain / Catalog          |
-| 37 | `update_element_parameters`       | Aktualizacja parametrow elementu sieci                         | Domain / NetworkModel     |
-| — | `rename_element`                  | USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351): dubel `update_element_parameters` (pole `name`) | — |
-| — | `set_label`                       | USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351): dubel `update_element_parameters` (pole `label`) | — |
+1. [Źródło prawdy i pilnowanie spójności](#1-źródło-prawdy-i-pilnowanie-spójności)
+2. [Koperta wywołania i odpowiedź](#2-koperta-wywołania-i-odpowiedź)
+3. [Reguła nazewnictwa](#3-reguła-nazewnictwa)
+4. [Rejestr operacji](#4-rejestr-operacji)
+5. [Operacje usunięte i fikcyjne](#5-operacje-usunięte-i-fikcyjne)
+6. [Przykłady wykonane przez API](#6-przykłady-wykonane-przez-api)
+7. [Zdarzenia domenowe](#7-zdarzenia-domenowe)
+8. [Historia zmian](#8-historia-zmian)
 
 ---
 
-## 2. Regula nazewnictwa V11
+## 1. Źródło prawdy i pilnowanie spójności
 
-W aktywnej powierzchni V11 obowiazuja wylacznie nazwy kanoniczne operacji.
-Frontend, testy integracyjne, testy E2E i aktywna dokumentacja nie uzywaja
-aliasow historycznych ani alternatywnych nazw payloadow.
+Pola ładunku każdej operacji (`required_fields`, `optional_fields`, klucze zastępcze) są
+RÓWNE zbiorowi kluczy najwyższego poziomu ładunku, które czyta handler — przypina to test
+`backend/tests/ci/test_spec_operacji_rowna_odczytom_handlera.py` (analiza AST handlerów
+`enm/**`, przechodnio przez funkcje pomocnicze, z iniekcją pola fantomowego). Zbiór operacji
+rejestru jest równy zbiorowi handlerów w obu kierunkach (`scripts/canonical_ops_guard.py`).
+Operacja z oknem, ze ścieżką menu albo świadomie bez okna — klasyfikacja w
+`scripts/dialog_completeness_guard.py` (każda operacja rejestru).
 
-### Reguly nazewnictwa
+Test tego dokumentu (`backend/tests/ci/test_dokument_kontraktow_operacji.py`) pilnuje:
 
-1. Dispatcher operacji przyjmuje wyłącznie nazwy kanoniczne w aktywnej powierzchni V11.
-2. Dokumentacja aktywna opisuje wyłącznie nazwy kanoniczne.
-3. Nowy kod NIE MOZE uzywac aliasow ani alternatywnych identyfikatorow operacji.
-4. Zgodnosc historyczna, jesli jest potrzebna dla migracji, nie stanowi czesci kontraktu publicznego V11.
+- bloki generowane są równe generatorowi (rejestr, operacje usunięte, przykłady, zdarzenia);
+- każda operacja rejestru ma co najmniej jeden przykład, a przykład przechodzi przez
+  `POST /api/cases/{case_id}/enm/domain-ops` z wynikiem, który deklaruje (sukces albo nazwana
+  odmowa), i niesie wyłącznie pola zadeklarowane w rejestrze; każda operacja ma przykład
+  zakończony sukcesem poza `przepnij_element_na_pole` — akcją naprawczą modelu archiwalnego,
+  której przyczyny (element omijający pole) operacje budowy nie wytwarzają; jej sukces
+  przypina `backend/tests/enm/test_pola_w_torze.py`;
+- każda nazwa operacji wymieniona w dokumentach kontraktu operacji (ten dokument,
+  `docs/domain/KONTRAKTY_OPERACJI_I_SCHEMATY_JSON.md`, `docs/domain/OPERACJE_DOMENOWE_V1.md`,
+  `docs/ui/KONTRAKT_OPERACJI_ENM_OP.md`, `docs/catalog/CATALOG_FIRST_DOMAIN_OPERATIONS_SPEC.md`)
+  jest w rejestrze albo na liście operacji usuniętych,
+  a żadna operacja usunięta nie wróciła do rejestru;
+- pole w tabeli pól operacji dokumentów siostrzanych (wiersz pod nagłówkiem z nazwą operacji)
+  jest polem rejestru tej operacji.
 
----
-
-## 3. Przyklady payload JSON
-
-Kazdy przyklad zawiera kompletny obiekt JSON -- bez skrotow, bez "...", z realistycznymi danymi polskimi.
-
-### Przyklad 1: `add_grid_source_sn`
-
-```json
-{
-  "operation": "add_grid_source_sn",
-  "meta": {
-    "snapshot_in": "S0",
-    "idempotency_key": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-    "ui_click_id": "click_001",
-    "timestamp_utc": "2026-02-17T10:00:00Z"
-  },
-  "payload": {
-    "source_name": "GPZ Glowne",
-    "bus_name": "Szyna GPZ 15 kV",
-    "voltage_kv": 15.0,
-    "sk3_mva": 500.0,
-    "ik3_ka": 19.2,
-    "rx_ratio": 0.1
-  }
-}
-```
-
-### Przyklad 2: `continue_trunk_segment_sn`
-
-```json
-{
-  "operation": "continue_trunk_segment_sn",
-  "meta": {
-    "snapshot_in": "S1",
-    "idempotency_key": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
-    "ui_click_id": "click_002",
-    "timestamp_utc": "2026-02-17T10:01:00Z"
-  },
-  "payload": {
-    "from_bus_id": "bus-gpz-szyna-15kv",
-    "segment_name": "Kabel magistralny L1-01",
-    "cable_type_ref": "NA2XS(F)2Y_1x240_12/20kV",
-    "length_km": 2.35,
-    "new_bus_name": "Szyna RPZ Polnocna 15 kV",
-    "laying_method": "GROUND",
-    "parallel_count": 1
-  }
-}
-```
-
-### Przyklad 3: `insert_station_on_segment_sn`
-
-```json
-{
-  "operation": "insert_station_on_segment_sn",
-  "meta": {
-    "snapshot_in": "S2",
-    "idempotency_key": "c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
-    "ui_click_id": "click_003",
-    "timestamp_utc": "2026-02-17T10:02:00Z"
-  },
-  "payload": {
-    "segment_id": "branch-l1-01",
-    "station_name": "Stacja transformatorowa ST-01 Wschodnia",
-    "station_type": "TRAFO",
-    "split_distance_km": 1.10,
-    "voltage_level_kv": 15.0,
-    "new_bus_name": "Szyna SN ST-01",
-    "switch_type_upstream": "LOAD_SWITCH",
-    "switch_type_downstream": "LOAD_SWITCH"
-  }
-}
-```
-
-### Przyklad 4: `start_branch_segment_sn`
-
-```json
-{
-  "operation": "start_branch_segment_sn",
-  "meta": {
-    "snapshot_in": "S3",
-    "idempotency_key": "d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5",
-    "ui_click_id": "click_004",
-    "timestamp_utc": "2026-02-17T10:03:00Z"
-  },
-  "payload": {
-    "from_bus_id": "bus-rpz-polnocna-15kv",
-    "branch_name": "Odgalezienie OD-01 do ST-02",
-    "cable_type_ref": "NA2XS(F)2Y_1x150_12/20kV",
-    "length_km": 0.85,
-    "new_bus_name": "Szyna SN ST-02",
-    "laying_method": "GROUND",
-    "parallel_count": 1
-  }
-}
-```
-
-### Przyklad 5: `insert_section_switch_sn`
-
-```json
-{
-  "operation": "insert_section_switch_sn",
-  "meta": {
-    "snapshot_in": "S4",
-    "idempotency_key": "e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6",
-    "ui_click_id": "click_005",
-    "timestamp_utc": "2026-02-17T10:04:00Z"
-  },
-  "payload": {
-    "segment_id": "branch-l1-01-a",
-    "switch_name": "Lacznik sekcyjny LS-01",
-    "switch_type": "LOAD_SWITCH",
-    "rated_current_a": 630.0,
-    "rated_voltage_kv": 17.5,
-    "initial_state": "CLOSED",
-    "split_position_km": 0.55
-  }
-}
-```
-
-### Przyklad 6: `connect_secondary_ring_sn`
-
-```json
-{
-  "operation": "connect_secondary_ring_sn",
-  "meta": {
-    "snapshot_in": "S5",
-    "idempotency_key": "f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1",
-    "ui_click_id": "click_006",
-    "timestamp_utc": "2026-02-17T10:05:00Z"
-  },
-  "payload": {
-    "bus_a_id": "bus-st-02-sn",
-    "bus_b_id": "bus-rpz-zachodnia-15kv",
-    "ring_segment_name": "Segment zamykajacy pierscien R1",
-    "cable_type_ref": "NA2XS(F)2Y_1x240_12/20kV",
-    "length_km": 1.70,
-    "nop_switch_name": "Rozlacznik NOP pierscienia R1",
-    "nop_initial_state": "OPEN"
-  }
-}
-```
-
-### Przyklad 7: `set_normal_open_point`
-
-```json
-{
-  "operation": "set_normal_open_point",
-  "meta": {
-    "snapshot_in": "S6",
-    "idempotency_key": "0a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b",
-    "ui_click_id": "click_007",
-    "timestamp_utc": "2026-02-17T10:06:00Z"
-  },
-  "payload": {
-    "switch_id": "sw-nop-r1",
-    "is_nop": true,
-    "previous_nop_switch_id": null,
-    "auto_close_previous": true
-  }
-}
-```
-
-### Przyklad 8: `add_transformer_sn_nn`
-
-```json
-{
-  "operation": "add_transformer_sn_nn",
-  "meta": {
-    "snapshot_in": "S7",
-    "idempotency_key": "1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c",
-    "ui_click_id": "click_008",
-    "timestamp_utc": "2026-02-17T10:07:00Z"
-  },
-  "payload": {
-    "station_id": "station-st-01",
-    "sn_bus_id": "bus-st-01-sn",
-    "transformer_name": "Transformator TR1 ST-01",
-    "type_ref": "ONAN_630kVA_15/0.4kV_Dyn11",
-    "rated_power_mva": 0.63,
-    "voltage_hv_kv": 15.0,
-    "voltage_lv_kv": 0.4,
-    "uk_percent": 6.0,
-    "pk_kw": 6.5,
-    "i0_percent": 0.3,
-    "p0_kw": 1.1,
-    "vector_group": "Dyn11",
-    "tap_position": 0,
-    "nn_bus_name": "Szyna nN 0.4 kV TR1 ST-01"
-  }
-}
-```
-
-### Przyklad 9: `add_nn_load`
-
-```json
-{
-  "operation": "add_nn_load",
-  "meta": {
-    "snapshot_in": "S8",
-    "idempotency_key": "2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d",
-    "ui_click_id": "click_009",
-    "timestamp_utc": "2026-02-17T10:08:00Z"
-  },
-  "payload": {
-    "nn_bus_id": "bus-nn-tr1-st01-0.4kv",
-    "load_name": "Obciazenie budynku biurowego B1",
-    "active_power_kw": 120.0,
-    "reactive_power_kvar": 45.0,
-    "cos_phi": 0.936,
-    "load_type": "STATIC",
-    "voltage_dependency": "CONSTANT_POWER",
-    "field_id": "field-nn-odpl-01"
-  }
-}
-```
-
-### Przyklad 10: `add_converter_source`
-
-```json
-{
-  "operation": "add_converter_source",
-  "meta": {
-    "snapshot_in": "S9",
-    "idempotency_key": "3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e",
-    "ui_click_id": "click_010",
-    "timestamp_utc": "2026-02-17T10:09:00Z"
-  },
-  "payload": {
-    "nn_bus_id": "bus-nn-tr1-st01-0.4kv",
-    "inverter_name": "Falownik PV dach B1",
-    "converter_kind": "PV",
-    "type_ref": "SMA_Sunny_Tripower_50kW",
-    "pmax_kw": 49.9,
-    "sn_kva": 50.0,
-    "cos_phi_min": 0.90,
-    "cos_phi_max": 1.00,
-    "in_rated_a": 72.2,
-    "k_sc": 1.1,
-    "operating_mode": "MPPT",
-    "in_service": true
-  }
-}
-```
-
-### Przyklad 11: `add_converter_source`
-
-```json
-{
-  "operation": "add_converter_source",
-  "meta": {
-    "snapshot_in": "S10",
-    "idempotency_key": "4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f",
-    "ui_click_id": "click_011",
-    "timestamp_utc": "2026-02-17T10:10:00Z"
-  },
-  "payload": {
-    "nn_bus_id": "bus-nn-tr1-st01-0.4kv",
-    "inverter_name": "BESS magazyn energii ST-01",
-    "converter_kind": "BESS",
-    "type_ref": "BYD_HVS_10kWh_hybrid",
-    "pmax_kw": 10.0,
-    "sn_kva": 10.0,
-    "energy_capacity_kwh": 10.24,
-    "soc_initial_percent": 80.0,
-    "cos_phi_min": 0.85,
-    "cos_phi_max": 1.00,
-    "in_rated_a": 14.4,
-    "k_sc": 1.0,
-    "operating_mode": "GRID_SUPPORT",
-    "in_service": true
-  }
-}
-```
-
-### Przyklad 12: `add_relay`
-
-```json
-{
-  "operation": "add_relay",
-  "meta": {
-    "snapshot_in": "S11",
-    "idempotency_key": "5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a",
-    "ui_click_id": "click_012",
-    "timestamp_utc": "2026-02-17T10:11:00Z"
-  },
-  "payload": {
-    "breaker_ref": "sw/.../switch",
-    "ct_ref": "ct/.../measurement",
-    "relay_type": "NADPRADOWY",
-    "catalog_ref": "REF-OC-200",
-    "name": "Zabezpieczenie odejscia S01",
-    "settings": [
-      {"function_type": "overcurrent_51", "threshold_a": 1.5, "threshold_unit": "A_WTORNY",
-       "curve_type": "IEC_SI", "time_multiplier": 0.1},
-      {"function_type": "overcurrent_50", "threshold_a": 15.0, "threshold_unit": "A_WTORNY",
-       "curve_type": "DT", "time_delay_s": 0.1}
-    ]
-  }
-}
-```
-
-### Przyklad 16: `assign_catalog_to_element`
-
-```json
-{
-  "operation": "assign_catalog_to_element",
-  "meta": {
-    "snapshot_in": "S12",
-    "idempotency_key": "9d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e",
-    "ui_click_id": "click_016",
-    "timestamp_utc": "2026-02-17T10:15:00Z"
-  },
-  "payload": {
-    "element_id": "branch-l1-01",
-    "element_type": "CABLE",
-    "catalog_type_ref": "NA2XS(F)2Y_1x240_12/20kV",
-    "catalog_kind": "CableType",
-    "resolve_params": true,
-    "override_existing": false
-  }
-}
-```
+Modele Pydantic ładunków w `backend/src/enm/domain_ops_models.py` są opisem pomocniczym
+(strażnik parytetu kontraktu i testy kształtu) — kontraktem operacji jest rejestr i handler.
 
 ---
 
-## 4. Referencja schematow JSON (Pydantic)
+## 2. Koperta wywołania i odpowiedź
 
-Ponizej opisano wymagane pola payload dla kazdej operacji.
-Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.py`.
+Każda operacja domenowa idzie jedną końcówką `POST /api/cases/{case_id}/enm/domain-ops`
+(`backend/src/api/enm.py`, model `DomainOpEnvelopeModel`):
 
-### 4.1 Wspólna koperta (meta)
+| Pole | Typ | Opis |
+|---|---|---|
+| `project_id` | `string` | Identyfikator projektu. |
+| `snapshot_base_hash` | `string` | Skrót migawki, na której operację oparto (`header.hash_sha256` z `GET /api/cases/{case_id}/enm`). Inny niż bieżący → **HTTP 409** (kontrola współbieżności); pusty = bez kontroli. |
+| `operation.name` | `string` | Nazwa kanoniczna z rejestru (sekcja 4). Nazwa spoza rejestru (także operacji usuniętej, sekcja 5) kończy się odmową nazwaną `dispatcher.unknown_operation` bez zmiany modelu. |
+| `operation.idempotency_key` | `string` | Klucz idempotencji wywołania. |
+| `operation.payload` | `object` | Ładunek operacji — wyłącznie pola z sekcji 4. |
 
-| Pole              | Typ      | Wymagane | Opis                                                      |
-|-------------------|----------|----------|------------------------------------------------------------|
-| `snapshot_in`     | `string` | TAK      | ID snapshotu wejsciowego (stan sieci przed operacja)       |
-| `idempotency_key` | `string` | TAK      | Klucz idempotentnosci (64 znaki hex)                       |
-| `ui_click_id`     | `string` | NIE      | Identyfikator klikniecia UI (do audytu)                    |
-| `timestamp_utc`   | `string` | TAK      | Znacznik czasu ISO 8601 UTC                                |
+Przed operacją brama katalogowa (`api/domain_ops_policy.py::validate_and_materialize_catalog_binding`)
+rozstrzyga referencje katalogowe ładunku w katalogu modelu; referencja, której nie ma, kończy
+żądanie kodem **HTTP 422** (`catalog.item_not_found`) bez zmiany modelu.
 
-### 4.2 `add_grid_source_sn` -- AddGridSourceSNPayload
+Odpowiedź (HTTP 200) niesie:
 
-| Pole           | Typ      | Wymagane | Ograniczenia                    | Opis                              |
-|----------------|----------|----------|---------------------------------|-----------------------------------|
-| `source_name`  | `string` | TAK      | min 1, max 200 znakow           | Nazwa zrodla zasilania (GPZ)      |
-| `bus_name`     | `string` | TAK      | min 1, max 200 znakow           | Nazwa szyny GPZ                   |
-| `voltage_kv`   | `float`  | TAK      | > 0, typowo 6.0 / 10.0 / 15.0 / 20.0 / 30.0 | Napiecie znamionowe [kV] |
-| `sk3_mva`      | `float`  | TAK      | > 0                             | Moc zwarciowa trojfazowa scenariusza MAX [MVA] |
-| `ik3_ka`       | `float`  | TAK      | > 0                             | Prad zwarciowy trojfazowy scenariusza MAX [kA] |
-| `rx_ratio`     | `float`  | TAK      | > 0, typowo 0.05 -- 0.3         | Stosunek R/X zrodla (scenariusz MAX) |
-| `sk3_min_mva`  | `float`  | NIE      | > 0, jesli podane                | Minimalna moc zwarciowa trojfazowa -- scenariusz MIN [MVA] (CV-4.3 K7, IEC 60909-0:2016 §6.2.1 eq. 6 z c_min). Brak = scenariusz MIN liczony z impedancji dla `sk3_mva`/`ik3_ka` (scenariusz MAX) z jawnym zalozeniem `source.sk_min_missing` -- ZERO fabrykacji, zaden domyslny ulamek MAX |
-| `ik3_min_ka`   | `float`  | NIE      | > 0, jesli podane                 | Minimalny prad zwarciowy trojfazowy -- scenariusz MIN [kA] (alternatywa dla `sk3_min_mva`, tryb pradowy). `sk3_min_mva` i `ik3_min_ka` nie moga jednoczesnie przekraczac odpowiednio `sk3_mva`/`ik3_ka` -- operacja odrzuca sprzecznosc kodem `source.manual_equivalent_invalid` |
-| `rx_ratio_min` | `float`  | NIE      | > 0, jesli podane                 | Stosunek R/X dla scenariusza MIN. Bez `sk3_min_mva`/`ik3_min_ka` nie ma zastosowania (odrzucane -- scenariusz MIN bez wlasnej mocy zwarciowej liczy sie z danych MAX) |
-| `u_set_pu`     | `float`  | NIE      | 0,8 -- 1,2, jesli podane          | Napiecie zadane szyny bilansujacej [p.u. Un szyny] -- dana wejsciowa rozplywu mocy (MATPOWER `Vm` szyny slack / pandapower `ext_grid.vm_pu`). Brak = 1,0 p.u. (znamionowe, jawne zalozenie modelowe). Poza pasmem: `source.manual_equivalent_invalid` (operacja) / `sources.u_set_pu_out_of_range` (walidator, BLOCKER) |
-
-### 4.3 `continue_trunk_segment_sn` -- ContinueTrunkSegmentSNPayload
-
-| Pole              | Typ      | Wymagane | Ograniczenia            | Opis                                    |
-|-------------------|----------|----------|-------------------------|-----------------------------------------|
-| `from_bus_id`     | `string` | TAK      | musi istniec w modelu   | ID szyny startowej                      |
-| `segment_name`    | `string` | TAK      | min 1                   | Nazwa segmentu kabla/linii              |
-| `cable_type_ref`  | `string` | TAK      | musi istniec w katalogu | Referencja do typu kabla/linii          |
-| `length_km`       | `float`  | TAK      | > 0                     | Dlugosc segmentu [km]                   |
-| `new_bus_name`    | `string` | TAK      | min 1                   | Nazwa nowej szyny koncowej              |
-| `laying_method`   | `string` | NIE      | GROUND / DUCT / AIR     | Metoda ulozenia kabla                   |
-| `parallel_count`  | `int`    | NIE      | >= 1, domyslnie 1       | Liczba kabli rownoleglych               |
-
-### 4.4 `insert_station_on_segment_sn` -- InsertStationOnSegmentSNPayload
-
-| Pole                     | Typ      | Wymagane | Ograniczenia              | Opis                                    |
-|--------------------------|----------|----------|---------------------------|-----------------------------------------|
-| `segment_id`             | `string` | TAK      | musi istniec w modelu     | ID segmentu do podzialu                 |
-| `station_name`           | `string` | TAK      | min 1                     | Nazwa nowej stacji                      |
-| `station_type`           | `string` | TAK      | GPZ / RPZ / TRAFO / SWITCHING | Typ stacji                          |
-| `split_distance_km`      | `float`  | TAK      | > 0, < dlugosc segmentu   | Odleglosc podzialu od poczatku [km]     |
-| `voltage_level_kv`       | `float`  | TAK      | > 0                       | Poziom napiecia stacji [kV]             |
-| `new_bus_name`           | `string` | TAK      | min 1                     | Nazwa nowej szyny w stacji              |
-| `switch_type_upstream`   | `string` | NIE      | BREAKER / LOAD_SWITCH / DISCONNECTOR | Typ lacznika od strony zasilania |
-| `switch_type_downstream` | `string` | NIE      | BREAKER / LOAD_SWITCH / DISCONNECTOR | Typ lacznika od strony odbioru   |
-
-### 4.5 `start_branch_segment_sn` -- StartBranchSegmentSNPayload
-
-| Pole              | Typ      | Wymagane | Ograniczenia            | Opis                                    |
-|-------------------|----------|----------|-------------------------|-----------------------------------------|
-| `from_bus_id`     | `string` | TAK      | musi istniec w modelu   | ID szyny startowej odgalezienia         |
-| `branch_name`     | `string` | TAK      | min 1                   | Nazwa odgalezienia                      |
-| `cable_type_ref`  | `string` | TAK      | musi istniec w katalogu | Referencja do typu kabla/linii          |
-| `length_km`       | `float`  | TAK      | > 0                     | Dlugosc odgalezienia [km]               |
-| `new_bus_name`    | `string` | TAK      | min 1                   | Nazwa szyny koncowej odgalezienia       |
-| `laying_method`   | `string` | NIE      | GROUND / DUCT / AIR     | Metoda ulozenia kabla                   |
-| `parallel_count`  | `int`    | NIE      | >= 1, domyslnie 1       | Liczba kabli rownoleglych               |
-
-### 4.6 `insert_section_switch_sn` -- InsertSectionSwitchSNPayload
-
-| Pole                | Typ      | Wymagane | Ograniczenia            | Opis                                  |
-|---------------------|----------|----------|-------------------------|---------------------------------------|
-| `segment_id`        | `string` | TAK      | musi istniec w modelu   | ID segmentu                           |
-| `switch_name`       | `string` | TAK      | min 1                   | Nazwa lacznika sekcyjnego             |
-| `switch_type`       | `string` | TAK      | BREAKER / LOAD_SWITCH / DISCONNECTOR | Typ aparatu laczeniowego    |
-| `rated_current_a`   | `float`  | TAK      | > 0                     | Prad znamionowy [A]                   |
-| `rated_voltage_kv`  | `float`  | TAK      | > 0                     | Napiecie znamionowe [kV]              |
-| `initial_state`     | `string` | NIE      | OPEN / CLOSED, dom. CLOSED | Stan poczatkowy lacznika           |
-| `split_position_km` | `float`  | TAK      | > 0, < dlugosc segmentu | Pozycja podzialu na segmencie [km]    |
-
-### 4.7 `connect_secondary_ring_sn` -- ConnectSecondaryRingSNPayload
-
-| Pole                | Typ      | Wymagane | Ograniczenia            | Opis                                   |
-|---------------------|----------|----------|-------------------------|-----------------------------------------|
-| `bus_a_id`          | `string` | TAK      | musi istniec w modelu   | ID szyny A (koniec ciagu 1)             |
-| `bus_b_id`          | `string` | TAK      | musi istniec w modelu   | ID szyny B (koniec ciagu 2)             |
-| `ring_segment_name` | `string` | TAK      | min 1                   | Nazwa segmentu zamykajacego             |
-| `cable_type_ref`    | `string` | TAK      | musi istniec w katalogu | Referencja do typu kabla/linii          |
-| `length_km`         | `float`  | TAK      | > 0                     | Dlugosc segmentu zamykajacego [km]      |
-| `nop_switch_name`   | `string` | TAK      | min 1                   | Nazwa rozlacznika NOP                   |
-| `nop_initial_state` | `string` | NIE      | OPEN / CLOSED, dom. OPEN | Stan NOP (domyslnie otwarty)           |
-
-### 4.8 `set_normal_open_point` -- SetNormalOpenPointPayload
-
-| Pole                     | Typ      | Wymagane | Ograniczenia          | Opis                                    |
-|--------------------------|----------|----------|-----------------------|-----------------------------------------|
-| `switch_id`              | `string` | TAK      | musi istniec w modelu | ID lacznika do oznaczenia jako NOP      |
-| `is_nop`                 | `bool`   | TAK      |                       | Czy lacznik jest NOP (true/false)       |
-| `previous_nop_switch_id` | `string` | NIE      | musi istniec (jesli podane) | ID poprzedniego NOP do zamkniecia  |
-| `auto_close_previous`    | `bool`   | NIE      | domyslnie true        | Automatyczne zamkniecie poprzedniego NOP |
-
-### 4.9 `add_transformer_sn_nn` -- AddTransformerSNnNPayload
-
-Tabela spisana z kodu (`enm/domain_operations.py::add_transformer_sn_nn`, 2026-09-09) --
-poprzednia wersja opisywala nieistniejacy dialekt (`station_id`/`sn_bus_id`/`nn_bus_name`).
-Szyny: dokladnie JEDNA z pary {`hv_bus_ref`, `hv_voltage_kv`} i dokladnie JEDNA z pary
-{`lv_bus_ref`, `lv_voltage_kv`}; obie nowe naraz sa odrzucane (`transformer.buses_missing`),
-obie z pary naraz -- `transformer.hv_bus_ambiguous` / `transformer.lv_bus_ambiguous`.
-
-| Pole                                 | Typ      | Wymagane | Ograniczenia                          | Opis |
-|--------------------------------------|----------|----------|---------------------------------------|------|
-| `hv_bus_ref`                         | `string` | warunkowo | musi istniec w modelu                | Istniejaca szyna strony HV |
-| `hv_voltage_kv`                      | `float`  | warunkowo | > 0; wymaga `lv_bus_ref`             | NOWA szyna HV nad istniejaca szyna LV (2026-09-09; zaczep MATPOWER po stronie "from" zostaje na uzwojeniu HV, gdy budowa dochodzi od strony "to" -- blizniak IEEE case39) |
-| `lv_bus_ref`                         | `string` | warunkowo | musi istniec w modelu                | Istniejaca szyna strony LV |
-| `lv_voltage_kv`                      | `float`  | warunkowo | > 0; wymaga `hv_bus_ref`             | NOWA szyna LV (CV-4.3 K1) |
-| `transformer_catalog_ref`            | `string` | TAK*     | musi istniec w katalogu TRAFO_SN_NN   | Typ katalogowy (*albo `catalog_binding` / `catalog_ref`) |
-| `catalog_binding`                    | `object` | NIE      | kontrakt CatalogBinding               | Wiazanie katalogowe (alternatywa dla `transformer_catalog_ref`) |
-| `sn_mva` / `uk_percent` / `pk_kw`    | `float`  | NIE      | > 0 / > 0 / >= 0                      | Nadpisania tabliczki (materializacja katalogowa uzupelnia brakujace) |
-| `uhv_kv` / `ulv_kv`                  | `float`  | NIE      | > 0                                   | Napiecia znamionowe uzwojen; brak = napiecia szyn |
-| `transformer_regulation_type`        | `string` | NIE      | `DETC` / `OLTC`                       | Zaczep: staly / regulowany (`_build_gpz_tap_changer`) |
-| `transformer_regulated_winding`      | `string` | NIE      | `HV` / `LV`, dom. `HV`                | Uzwojenie z zaczepem |
-| `transformer_tap_neutral_position` / `transformer_tap_current_position` / `transformer_tap_min_position` / `transformer_tap_max_position` | `int` | NIE | min <= neutral <= max | Pozycje zaczepu |
-| `transformer_tap_step_percent`       | `float`  | NIE      | >= 0                                  | Krok zaczepu [%] |
-| `station_ref`                        | `string` | NIE      | musi istniec w modelu                 | Stacja, do ktorej nalezy transformator |
-
-### 4.10 `add_nn_load` -- AddNNLoadPayload
-
-| Pole                  | Typ      | Wymagane | Ograniczenia                    | Opis                              |
-|-----------------------|----------|----------|---------------------------------|-----------------------------------|
-| `nn_bus_id`           | `string` | TAK      | musi istniec w modelu           | ID szyny nN                       |
-| `load_name`           | `string` | TAK      | min 1                           | Nazwa obciazenia                  |
-| `active_power_kw`     | `float`  | TAK      | >= 0                            | Moc czynna [kW]                   |
-| `reactive_power_kvar` | `float`  | NIE      |                                 | Moc bierna [kvar]                 |
-| `cos_phi`             | `float`  | NIE      | 0 < cos_phi <= 1               | Wspolczynnik mocy                 |
-| `load_type`           | `string` | NIE      | STATIC / MOTOR / MIXED          | Typ obciazenia                    |
-| `voltage_dependency`  | `string` | NIE      | CONSTANT_POWER / CONSTANT_IMPEDANCE / CONSTANT_CURRENT | Zaleznosc napiecia |
-| `field_id`            | `string` | NIE      |                                 | ID pola odpływowego               |
-
-### 4.11 `add_converter_source` -- AddConverterSourcePayload
-
-| Pole              | Typ      | Wymagane | Ograniczenia            | Opis                                    |
-|-------------------|----------|----------|-------------------------|-----------------------------------------|
-| `nn_bus_id`       | `string` | TAK      | musi istniec w modelu   | ID szyny nN                             |
-| `inverter_name`   | `string` | TAK      | min 1                   | Nazwa falownika PV                      |
-| `converter_kind`  | `string` | TAK      | "PV"                    | Rodzaj przetwornika (staly: PV)         |
-| `type_ref`        | `string` | NIE      | musi istniec w katalogu | Referencja do typu falownika            |
-| `pmax_kw`         | `float`  | TAK      | > 0                     | Maksymalna moc czynna [kW]             |
-| `sn_kva`          | `float`  | TAK      | > 0                     | Moc pozorna znamionowa [kVA]            |
-| `cos_phi_min`     | `float`  | NIE      | > 0, <= 1               | Minimalny wspolczynnik mocy             |
-| `cos_phi_max`     | `float`  | NIE      | > 0, <= 1               | Maksymalny wspolczynnik mocy            |
-| `in_rated_a`      | `float`  | TAK      | > 0                     | Prad znamionowy [A]                     |
-| `k_sc`            | `float`  | NIE      | > 0, dom. 1.1           | Wspolczynnik pradu zwarciowego          |
-| `operating_mode`  | `string` | NIE      | MPPT / FIXED / OFF      | Tryb pracy                              |
-| `in_service`      | `bool`   | NIE      | dom. true               | Czy urzadzenie jest w pracy             |
-
-### 4.12 `add_converter_source` -- AddConverterSourcePayload
-
-| Pole                   | Typ      | Wymagane | Ograniczenia            | Opis                                  |
-|------------------------|----------|----------|-------------------------|---------------------------------------|
-| `nn_bus_id`            | `string` | TAK      | musi istniec w modelu   | ID szyny nN                           |
-| `inverter_name`        | `string` | TAK      | min 1                   | Nazwa falownika BESS                  |
-| `converter_kind`       | `string` | TAK      | "BESS"                  | Rodzaj przetwornika (staly: BESS)     |
-| `type_ref`             | `string` | NIE      | musi istniec w katalogu | Referencja do typu                    |
-| `pmax_kw`              | `float`  | TAK      | > 0                     | Maksymalna moc czynna [kW]           |
-| `sn_kva`               | `float`  | TAK      | > 0                     | Moc pozorna znamionowa [kVA]          |
-| `energy_capacity_kwh`  | `float`  | TAK      | > 0                     | Pojemnosc energetyczna [kWh]          |
-| `soc_initial_percent`  | `float`  | NIE      | 0--100, dom. 50         | Poczatkowy stan naladowania [%]       |
-| `cos_phi_min`          | `float`  | NIE      | > 0, <= 1               | Minimalny wspolczynnik mocy           |
-| `cos_phi_max`          | `float`  | NIE      | > 0, <= 1               | Maksymalny wspolczynnik mocy          |
-| `in_rated_a`           | `float`  | TAK      | > 0                     | Prad znamionowy [A]                   |
-| `k_sc`                 | `float`  | NIE      | > 0, dom. 1.0           | Wspolczynnik pradu zwarciowego        |
-| `operating_mode`       | `string` | NIE      | GRID_SUPPORT / ISLAND / PEAK_SHAVE / OFF | Tryb pracy              |
-| `in_service`           | `bool`   | NIE      | dom. true               | Czy urzadzenie jest w pracy           |
-
-### 4.13 `add_relay` -- payload (kod: `enm/domain_operations_v2.py::add_relay`)
-
-| Pole              | Typ      | Wymagane | Ograniczenia              | Opis                                    |
-|-------------------|----------|----------|---------------------------|-----------------------------------------|
-| `bay_ref` / `field_ref` | `string` | jedno z kotwic | musi istniec w modelu | Pole rozdzielcze zabezpieczenia |
-| `breaker_ref`     | `string` | jedno z kotwic | wylacznik liniowy POZA polem (`relay.breaker_in_field`, `relay.breaker_not_found`) | Wylacznik liniowy wstawiony `insert_section_switch_sn` |
-| `ct_ref`          | `string` | NIE      | przekladnik pradowy tego pola/wylacznika | Przekladnik zasilajacy przekaznik |
-| `relay_type`      | `string` | NIE      | typ przekaznika            | Rodzaj zabezpieczenia                    |
-| `catalog_ref`     | `string` | TAK      | brama katalogowa (katalog MV, przestrzen ZABEZPIECZENIE) | Pozycja katalogowa przekaznika |
-| `name`            | `string` | NIE      |                           | Nazwa zabezpieczenia                    |
-| `settings`        | `list`   | NIE      | lista `ProtectionSetting` | Nastawy stopni; brak pola = przypisanie z nazwanym brakiem nastaw |
-
-**Struktura wpisu `settings` (`enm/models.py::ProtectionSetting`)** — pola nieustawione sa brakiem,
-nie wartoscia domyslna:
-
-| Pole              | Typ      | Opis                                                            |
-|-------------------|----------|-----------------------------------------------------------------|
-| `function_type`   | `string` | `overcurrent_51`, `overcurrent_50`, funkcje ziemnozwarciowe, kierunkowe i LoM |
-| `threshold_a`     | `float`  | Prog rozruchowy                                                  |
-| `threshold_unit`  | `string` | `A_WTORNY` albo `A_PIERWOTNY` — strona przekladnika progu (PZ-09) |
-| `curve_type`      | `string` | `DT`, `IEC_SI`, `IEC_VI`, `IEC_EI`, `IEC_LI`, `IEEE_MI`, `IEEE_VI`, `IEEE_EI` |
-| `time_multiplier` | `float`  | TMS charakterystyki zaleznej (tylko przy krzywej zaleznej)      |
-| `time_delay_s`    | `float`  | Zwloka czasu niezaleznego (tylko przy `DT`)                     |
-
-`update_protection_settings`: `protection_ref` (przypisanie z modelu) i `settings` (pelna lista jak
-wyzej — zastepuje nastawy przypisania). Regula zapisu: `enm/nastawy_zabezpieczen.py::bledy_nastaw`.
-
-<!-- 4.14-4.16 (`create_study_case`/`run_short_circuit`/`run_power_flow` jako operacje C3
-     "study_cases[] w ENM") USUNIETE CV-3.2, 58e520ce -- patrz sekcja 1.5. -->
-
-### 4.17 `assign_catalog_to_element` -- AssignCatalogToElementPayload
-
-| Pole               | Typ      | Wymagane | Ograniczenia                           | Opis                                |
-|--------------------|----------|----------|----------------------------------------|-------------------------------------|
-| `element_id`       | `string` | TAK      | musi istniec w modelu                  | ID elementu sieci                   |
-| `element_type`     | `string` | TAK      | LINE / CABLE / TRANSFORMER / SWITCH / INVERTER | Typ elementu               |
-| `catalog_type_ref` | `string` | TAK      | musi istniec w katalogu                | Referencja do typu katalogowego     |
-| `catalog_kind`     | `string` | TAK      | LineType / CableType / TransformerType / SwitchEquipmentType / ConverterType | Rodzaj katalogu |
-| `resolve_params`   | `bool`   | NIE      | dom. true                              | Rozwiazanie parametrow z katalogu   |
-| `override_existing`| `bool`   | NIE      | dom. false                             | Nadpisanie istniejacego przypisania |
-
-### 4.18 Pozostale operacje -- referencja skrocona
-
-| Operacja                    | Klucze wymagane payload                                        | Model Pydantic                        |
-|-----------------------------|----------------------------------------------------------------|---------------------------------------|
-| `add_nn_outgoing_field`     | `station_id`, `nn_bus_id`, `field_name`, `cable_type_ref`, `length_km`, `load_bus_name` | AddNNOutgoingFieldPayload |
-| `add_nn_outgoing_field`     | `station_id`, `nn_bus_id`, `field_name`, `transformer_id`      | AddNNOutgoingFieldPayload             |
-| `update_nn_bus_sections`    | `station_id`, `nn_bus_id`, `section_count`, `coupler_states`   | UpdateNNBusSectionsPayload            |
-| `update_nn_coupler_state`   | `coupler_id`, `new_state`                                      | UpdateNNCouplerStatePayload           |
-| `add_genset_nn`             | `nn_bus_id`, `genset_name`, `rated_power_kva`, `voltage_kv`, `xd_percent` | AddGensetNNPayload          |
-| `add_ups_nn`                | `nn_bus_id`, `ups_name`, `rated_power_kva`, `battery_time_min`, `in_rated_a` | AddUPSNNPayload            |
-| `set_source_operating_mode` | `source_id`, `operating_mode`, `power_setpoint_kw`             | SetSourceOperatingModePayload         |
-| `add_ct`                    | `field_ref` albo `breaker_ref` (wylacznik liniowy poza polem), `catalog_ref`, `ratio_primary_a`, `ratio_secondary_a`, `accuracy_class` | `enm/domain_operations_v2.py::add_ct` |
-| `add_vt`                    | `field_id`, `vt_name`, `ratio_primary_kv`, `ratio_secondary_v`, `accuracy_class` | AddVTPayload              |
-| `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | `measurement_ref`, `obwod_wtorny` (`dlugosc_przewodu_m?`, `przekroj_przewodu_mm2?`, `obciazenia_aparatow?`, `moc_stykow_va?`), `vt_uzwojenie?` (WYLACZNIE gdy measurement jest VT) | `enm/models.py::ObwodWtorny` (patrz `Measurement.obwod_wtorny`) — realne pola operacji, nie schemat aspiracyjny jak sasiednie wiersze `add_ct`/`add_vt` powyzej (`field_id` -> realnie `field_ref`, patrz kod) |
-| `update_protection_settings` | `protection_ref`, `settings`                                  | `enm/domain_operations_v2.py::update_protection_settings` |
-| `set_case_switch_state`     | `case_id`, `switch_id`, `state`                                | SetCaseSwitchStatePayload             |
-| `set_case_normal_state`     | `case_id`                                                      | SetCaseNormalStatePayload             |
-| `set_case_source_mode`      | `case_id`, `source_id`, `mode`                                 | SetCaseSourceModePayload              |
-| `set_case_time_profile`     | `case_id`, `profile_id`, `time_point`                          | SetCaseTimeProfilePayload             |
-| `run_time_series_power_flow`| `case_id`, `profile_id`, `time_steps`, `solver_method`         | RunTimeSeriesPowerFlowPayload         |
-| `compare_study_cases`       | `case_a_id`, `case_b_id`                                       | CompareStudyCasesPayload              |
-| `update_element_parameters` | `element_id`, `parameters`                                     | UpdateElementParametersPayload        |
+| Pole | Opis |
+|---|---|
+| `snapshot` | Migawka modelu po operacji (przy odmowie `null`, model bez zmian). |
+| `changes` | `created_element_ids`, `updated_element_ids`, `deleted_element_ids`. |
+| `domain_events` | Zdarzenia `{event_seq, event_type, element_id}`; `event_type` z rejestru (sekcja 7). |
+| `selection_hint` | Element do zaznaczenia po operacji: `element_id`, `element_type`, `zoom_to` (albo `null`). |
+| `audit_trail` | Kroki operacji: `step`, `action`, `element_id`. |
+| `readiness`, `fix_actions` | Gotowość obliczeniowa po operacji (`ready`, `blockers`, `warnings`) i akcje naprawcze. |
+| `logical_views`, `materialized_params`, `layout`, `semantic_issues` | Widoki logiczne magistral, parametry zmaterializowane z katalogu, skrót układu, uwagi semantyczne. |
+| `error`, `error_code` | Odmowa nazwana: komunikat po polsku i kod (przy sukcesie nieobecne). |
+| `wyposazenie_pola` | Wyłącznie `set_bay_equipment`: stan danych wyposażenia pola i dane przyjęte. |
 
 ---
 
-## 5. Zdarzenia domenowe (Domain Events)
+## 3. Reguła nazewnictwa
 
-Kompletna lista zdarzen domenowych emitowanych przez system.
-Kazda operacja emituje jedno lub wiecej zdarzen domenowych.
-Zdarzenia sa niemutowalne (immutable), kolejkowane i przetwarzane asynchronicznie.
+1. Dispatcher operacji przyjmuje wyłącznie nazwy kanoniczne rejestru — bez aliasów nazw.
+2. Frontend (`frontend/src/types/domainOps.ts`), testy i dokumentacja używają wyłącznie nazw
+   kanonicznych.
+3. Klucz zastępczy pola wymaganego (sekcja 4, „albo”) jest częścią kontraktu handlera, nie
+   aliasem operacji.
+4. Operacja skasowana nie wraca pod starą nazwą bez decyzji zapisanej w sekcji 5.
 
-### 5.1 Enum DomainEvent
+---
 
-```python
-class DomainEvent(str, Enum):
-    # === Warstwa NetworkModel (SN) ===
-    SOURCE_CREATED = "SOURCE_CREATED"
-    BUS_CREATED = "BUS_CREATED"
-    SEGMENT_CREATED = "SEGMENT_CREATED"
-    SEGMENT_SPLIT = "SEGMENT_SPLIT"
-    CUT_NODE_CREATED = "CUT_NODE_CREATED"
-    STATION_CREATED = "STATION_CREATED"
-    PORTS_CREATED = "PORTS_CREATED"
-    FIELDS_CREATED_SN = "FIELDS_CREATED_SN"
-    DEVICES_CREATED_SN = "DEVICES_CREATED_SN"
+## 4. Rejestr operacji
 
-    # === Warstwa Protection ===
-    CT_CREATED = "CT_CREATED"
-    VT_CREATED = "VT_CREATED"
-    RELAY_CREATED = "RELAY_CREATED"
-    RELAY_SETTINGS_UPDATED = "RELAY_SETTINGS_UPDATED"
-    TCC_CURVE_COMPUTED = "TCC_CURVE_COMPUTED"
-    SELECTIVITY_VALIDATED = "SELECTIVITY_VALIDATED"
+<!-- GENEROWANE:rejestr-operacji:POCZATEK -->
+Rejestr liczy **50** operacji. Pole w nawiasie „albo” to klucz zastępczy (`REQUIRED_FIELD_ALIASES`): handler przyjmuje pole wymagane ALBO ten klucz. Nazwa z `{…}` to rodzina kluczy numerowanych. Kolumna „Tworzy” = `OperationSpec.creates_elements`.
 
-    # === Warstwa NetworkModel (nN / Trafo) ===
-    TR_CREATED = "TR_CREATED"
-    BUS_NN_CREATED = "BUS_NN_CREATED"
-    FIELDS_CREATED_NN = "FIELDS_CREATED_NN"
-    DEVICES_CREATED_NN = "DEVICES_CREATED_NN"
-    NN_SOURCE_CREATED = "NN_SOURCE_CREATED"
-    NN_LOAD_CREATED = "NN_LOAD_CREATED"
+### Sieć SN (`sn_network`, 22)
 
-    # === Warstwa Topologia / Pierscien ===
-    RING_CONNECTED = "RING_CONNECTED"
-    NOP_SET = "NOP_SET"
+| Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
+|---|---|---|---|---|---|
+| `add_generator_sn` | Dodanie generatora synchronicznego wprost na szynę SN/WN (bez przekształtnika) | `bus_ref`, `p_mw` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `control_mode`, `manual_params`, `name`, `q_max_mvar`, `q_min_mvar`, `q_mvar`, `source_name`, `u_set_pu` | tak | `enm/domain_operations_v2.py::add_generator_sn` |
+| `add_gpz_section` | Dodanie sekcji szyn GPZ (strona SN lub WN) do stacji GPZ | `substation_ref` | `bus_ref`, `line_field_name`, `name`, `order`, `section_id`, `side` | tak | `enm/domain_operations.py::add_gpz_section` |
+| `add_grid_source_sn` | Dodanie źródła zasilania sieciowego (GPZ) do sieci SN | `voltage_kv` | `catalog_binding`, `catalog_ref`, `gpz_coupler_name`, `gpz_line_field_apparatus`, `gpz_line_field_name`, `gpz_section_name`, `gpz_sections`, `grounding`, `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `line_fields_per_section`, `manual_equivalent`, `manufacturer_ref`, `name_pl`, `overrides`, `parameter_source`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `sections_count`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `solution_ref`, `source_id`, `source_mode`, `source_name`, `switchgear_family_ref`, `transformer_catalog_binding`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_count`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_sn_mva`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `transformer_{order}_name`, `u_set_pu`, `x0_ohm`, `x_ohm`, `z0_z1_ratio`, `zero_sequence` | tak | `enm/domain_operations.py::add_grid_source_sn` |
+| `add_load_sn` | Dodanie odbioru wprost na wskazaną szynę (bez pośredniej stacji SN/nN) | `bus_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `c_p`, `c_q`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection_type`, `cos_phi`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `p_mw`, `phases`, `q_mvar`, `reactive_power_kvar`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_load_sn` |
+| `add_shunt_compensator_sn` | Dodanie baterii kondensatorów (kompensatora bocznikowego) na szynę SN | — | `bus_nn_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `name`, `status` | tak | `enm/domain_operations_v2.py::add_shunt_compensator_sn` |
+| `add_sn_bay` | Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego RMU) z trybem próby (werdykt konfiguracji bez zapisu) | — | `apparatus_kind`, `bay_kind`, `bay_role`, `bay_template_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `complete_bay_template_ref`, `dry_run`, `earthing_role`, `existing_field_ref`, `factory_configuration_ref`, `factory_unit_index`, `field_name`, `field_ref`, `funkcja_pomiaru`, `gpz_section_id`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `station_ref`, `switchgear_family_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_sn_bay` |
+| `add_surge_arrester_sn` | Dodanie ogranicznika przepięć w polu SN | — | `bay_ref`, `bus_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `field_ref`, `station_ref` | tak | `enm/domain_operations_v2.py::add_surge_arrester_sn` |
+| `append_station_on_endpoint` | Dołączenie stacji na końcu istniejącego ciągu SN | — | `construction_type`, `designation`, `dry_run`, `endpoint_bus_ref`, `field_apparatus_catalog_ref`, `nn_block`, `nn_earthing`, `nn_voltage_kv`, `run_ref`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `switchgear`, `transformer` | tak | `enm/domain_operations.py::append_station_on_endpoint` |
+| `close_switch` | Zamknięcie łącznika w modelu bazowym (pozycja normalna bez zmian) | `switch_ref` | — | nie | `enm/operacje_lacznikow.py::close_switch` |
+| `connect_secondary_ring_sn` | Zamknięcie pierścienia wtórnego | `from_bus_ref`, `to_bus_ref` | `catalog_binding`, `dlugosc_m`, `ring_name`, `segment` | tak | `enm/domain_operations.py::connect_secondary_ring_sn` |
+| `continue_trunk_segment_sn` | Kontynuacja segmentu magistrali SN | — | `catalog_binding`, `dlugosc_m`, `field_ref`, `from_terminal_id`, `segment`, `terminal_id`, `trunk_id` | tak | `enm/domain_operations.py::continue_trunk_segment_sn` |
+| `delete_gpz_section` | Usunięcie sekcji szyn GPZ ze stacji | `substation_ref`, `section_id` | `side` | nie | `enm/domain_operations.py::delete_gpz_section` |
+| `insert_branch_pole_on_segment_sn` | Wstawienie słupa odgałęźnego na segmencie SN | `segment_id` (albo `segment_ref`) | `branch_ports_count`, `catalog_binding`, `catalog_namespace`, `catalog_ref`, `catalog_version`, `insert_at`, `materialized_params`, `name`, `source_mode`, `switch_state` | tak | `enm/domain_operations.py::insert_branch_pole_on_segment_sn` |
+| `insert_section_switch_sn` | Wstawienie łącznika sekcyjnego na segmencie SN | `segment_id` | `catalog_binding`, `catalog_ref`, `close_ref`, `insert_at`, `normal_state`, `switch_name`, `switch_type` | tak | `enm/domain_operations.py::insert_section_switch_sn` |
+| `insert_station_on_segment_sn` | Wstawienie stacji na istniejącym segmencie SN | `segment_id` (albo `segment_ref`) | `catalog_binding`, `construction_type`, `designation`, `dry_run`, `field_apparatus_catalog_ref`, `insert_at`, `name`, `name_pl`, `nn_block`, `nn_earthing`, `sn_fields`, `station`, `station_auxiliary`, `station_name`, `station_type`, `transformer` | tak | `enm/domain_operations.py::insert_station_on_segment_sn` |
+| `insert_zksn_on_segment_sn` | Wstawienie złącza kablowego SN (ZK-SN) na segmencie SN | `segment_id` (albo `segment_ref`) | `branch_ports_count`, `catalog_binding`, `catalog_namespace`, `catalog_ref`, `catalog_version`, `insert_at`, `materialized_params`, `name`, `source_mode`, `switch_state` | tak | `enm/domain_operations.py::insert_zksn_on_segment_sn` |
+| `open_switch` | Otwarcie łącznika w modelu bazowym (pozycja normalna bez zmian) | `switch_ref` | — | nie | `enm/operacje_lacznikow.py::open_switch` |
+| `przepnij_element_na_pole` | Przepięcie elementu (połówki odcinka, strony górnej transformatora) z szyny głównej stacji na zacisk pola, które mu służy — aparat pola w torze prądowym | `element_ref` | `field_ref` | nie | `enm/domain_operations.py::przepnij_element_na_pole` |
+| `set_bay_equipment` | Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu pola albo usunięcie wyposażenia | `bay_ref`, `mode` | `bay_template_ref`, `devices` | nie | `enm/wyposazenie_pola.py::set_bay_equipment` |
+| `set_normal_open_point` | Przeniesienie punktu normalnie otwartego (NOP) na wskazany łącznik — poprzedni punkt podziału tego samego pierścienia zostaje zamknięty | `switch_ref` | `close_ref` | nie | `enm/operacje_lacznikow.py::set_normal_open_point` |
+| `start_branch_segment_sn` | Rozpoczęcie nowego odgałęzienia od magistrali SN | — | `catalog_binding`, `dlugosc_m`, `from_bus_ref`, `from_ref`, `segment` | tak | `enm/domain_operations.py::start_branch_segment_sn` |
+| `update_gpz_section` | Aktualizacja sekcji szyn GPZ (nazwa, kolejność, sprzęgła) | `substation_ref`, `section_id` | `side`, `updates` | nie | `enm/domain_operations.py::update_gpz_section` |
 
-    # === Warstwa StudyCase ===
-    STUDY_CASE_CREATED = "STUDY_CASE_CREATED"
-    CASE_STATE_UPDATED = "CASE_STATE_UPDATED"
+### Stacja SN/nN i strona nN stacji (`station_nn`, 3)
 
-    # === Warstwa Analysis / Solver ===
-    ANALYSIS_RUN_STARTED = "ANALYSIS_RUN_STARTED"
-    ANALYSIS_RUN_COMPLETED = "ANALYSIS_RUN_COMPLETED"
-    RESULTS_MAPPED = "RESULTS_MAPPED"
+| Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
+|---|---|---|---|---|---|
+| `add_nn_load` | Dodanie obciążenia na szynie nN | `feeder_ref` | `a_p`, `a_q`, `active_power_kw`, `b_p`, `b_q`, `bus_nn_ref`, `c_p`, `c_q`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection_type`, `cos_phi`, `f0_hz`, `k_pf`, `k_qf`, `load_kind`, `load_name`, `phases`, `reactive_power_kvar`, `source_mode`, `v0_pu` | tak | `enm/domain_operations_v2.py::add_nn_load` |
+| `add_nn_outgoing_field` | Dodanie pola nN z jawną intencją odpływu albo pola źródłowego | `bus_nn_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `feeder_role`, `field_name`, `field_role`, `source_field_kind`, `station_ref`, `tags` | tak | `enm/domain_operations_v2.py::add_nn_outgoing_field` |
+| `add_transformer_sn_nn` | Dodanie transformatora SN/nN | — | `catalog_binding`, `hv_bus_ref`, `hv_voltage_kv`, `lv_bus_ref`, `lv_voltage_kv`, `pk_kw`, `sn_mva`, `station_ref`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv`, `uhv_kv`, `uk_percent`, `ulv_kv`, `vector_group` | tak | `enm/domain_operations.py::add_transformer_sn_nn` |
 
-    # === Warstwa Prezentacja / SLD ===
-    LOGICAL_VIEWS_UPDATED = "LOGICAL_VIEWS_UPDATED"
-    VIEW_GEOMETRY_UPDATED = "VIEW_GEOMETRY_UPDATED"
+### Źródła, wytwórcy i wiązania katalogowe (`oze_nn`, 7)
 
-    # === Warstwa Export ===
-    EXPORT_CREATED = "EXPORT_CREATED"
+| Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
+|---|---|---|---|---|---|
+| `add_converter_source` | Dodanie źródła przekształtnikowego PV, BESS lub FW | `source_technology`, `connection_variant` | `battery_catalog_ref`, `bess_mode`, `blocking_transformer_ref`, `bus_nn_ref`, `catalog_binding`, `catalog_ref`, `control_mode`, `cos_phi`, `data_umowy_przylaczeniowej`, `deklaracje_modulu`, `der_topology`, `existing_field_ref`, `frequency_droop_percent`, `has_hvrt_curve`, `has_lvrt_curve`, `lfsm_deadband_hz`, `loadability_pu`, `materialized_params`, `modul_istniejacy`, `mv_bus_ref`, `nastawy_zabezpieczen`, `placement`, `power_setpoint_mw`, `q_max_mvar`, `q_min_mvar`, `qu_deadband_high_pu`, `qu_deadband_low_pu`, `qu_slope_pu_per_pu`, `quantity`, `simultaneity_factor`, `soc_max_percent`, `soc_min_percent`, `source_field`, `source_name`, `station_ref`, `u_set_pu` | tak | `enm/domain_operations_v2.py::add_converter_source` |
+| `add_genset_nn` | Dodanie zespołu prądotwórczego na szynie nN | `bus_nn_ref`, `genset_spec` | `existing_field_ref`, `placement`, `source_field`, `station_ref` | tak | `enm/domain_operations_v2.py::add_genset_nn` |
+| `add_ups_nn` | Dodanie zasilacza UPS na szynie nN | `bus_nn_ref`, `ups_spec` | `existing_field_ref`, `placement`, `source_field`, `station_ref` | tak | `enm/domain_operations_v2.py::add_ups_nn` |
+| `dodaj_karte_widmowa_projektu` | Dodanie karty widmowej urządzenia do katalogu projektu | `karta` | — | nie | `enm/domain_operations_v2.py::dodaj_karte_widmowa_projektu` |
+| `set_der_catalog_bindings` | Wiązania katalogowe i profile zgodności wytwórcy (DER) | `generator_ref` (albo `source_ref`) | `bess_operation_mode_refs`, `ct_catalog_ref`, `dynamic_model_ref`, `hvrt_curve_ref`, `karty_widmowe_ref`, `lvrt_curve_ref`, `nc_rfg_profile_ref`, `pf_curve_ref`, `protection_catalog_ref`, `vt_catalog_ref` | nie | `enm/domain_operations_v2.py::set_der_catalog_bindings` |
+| `set_load_dynamic_binding` | Wiązanie odbioru z profilem modelu dynamicznego z katalogu | `load_ref`, `dynamic_model_ref` | — | nie | `enm/domain_operations_v2.py::set_load_dynamic_binding` |
+| `set_source_operating_mode` | Ustawienie trybu pracy źródła nN | `source_ref` (albo `element_ref`), `mode` | — | nie | `enm/domain_operations_v2.py::set_source_operating_mode` |
+
+### Przekładniki i zabezpieczenia (`protection`, 5)
+
+| Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
+|---|---|---|---|---|---|
+| `add_ct` | Dodanie przekładnika prądowego (CT) | — | `accuracy_class`, `bay_ref`, `breaker_ref`, `burden_va`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection`, `field_ref`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_a`, `ratio_secondary_a` | tak | `enm/domain_operations_v2.py::add_ct` |
+| `add_relay` | Dodanie przekaźnika zabezpieczeniowego | — | `bay_ref`, `breaker_ref`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `ct_ref`, `field_ref`, `name`, `protection`, `relay_type`, `settings`, `vt_ref` | tak | `enm/domain_operations_v2.py::add_relay` |
+| `add_vt` | Dodanie przekładnika napięciowego (VT) | `field_ref` (albo `bay_ref`) | `accuracy_class`, `burden_va`, `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_ref`, `connection`, `name`, `obwod_wtorny`, `purpose`, `ratio_primary_v`, `ratio_secondary_v`, `vt_uzwojenie` | tak | `enm/domain_operations_v2.py::add_vt` |
+| `set_measurement_secondary_circuit` | Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku | `measurement_ref` (albo `ref_id`), `obwod_wtorny` | `vt_uzwojenie` | nie | `enm/domain_operations_v2.py::set_measurement_secondary_circuit` |
+| `update_protection_settings` | Zapis nastaw zabezpieczenia w modelu sieci | `protection_ref`, `settings` | — | nie | `enm/domain_operations_v2.py::update_protection_settings` |
+
+### Operacje uniwersalne (`universal`, 5)
+
+| Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
+|---|---|---|---|---|---|
+| `assign_catalog_to_element` | Przypisanie typu katalogowego do elementu | `element_ref` | `catalog_binding`, `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref` | nie | `enm/domain_operations.py::assign_catalog_to_element` |
+| `delete_element` | Usunięcie elementu z modelu sieci | `element_ref` | — | nie | `enm/domain_operations.py::delete_element` |
+| `refresh_snapshot` | Odświeżenie koperty odpowiedzi bez modyfikacji modelu | — | — | nie | `enm/domain_operations.py::refresh_snapshot` |
+| `set_connection_conditions` | Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy) | — | `moc_przylaczeniowa_mw`, `tryb_pracy`, `wymagany_cos_phi` | nie | `enm/domain_operations_v2.py::set_connection_conditions` |
+| `update_element_parameters` | Aktualizacja parametrów elementu | `element_ref`, `parameters` | — | nie | `enm/domain_operations.py::update_element_parameters` |
+
+### Topologia sieci nN (`nn_network`, 8)
+
+| Operacja | Opis | Pola wymagane | Pola opcjonalne | Tworzy | Handler |
+|---|---|---|---|---|---|
+| `add_nn_cable_segment` | Dodanie odcinka kabla nN od szyny/pola do nowej lub istniejącej szyny nN | `from_bus_ref` (albo `from_ref`), `length_m` | `cable_laying_conditions`, `catalog_binding`, `catalog_ref`, `n_parallel`, `name`, `ref_id`, `screen_bonding`, `to_bus_name`, `to_bus_ref` | tak | `enm/domain_operations_v2.py::add_nn_cable_segment` |
+| `add_nn_distribution_board` | Dodanie podrozdzielnicy/rozdzielnicy nN (RGnN) z szyną główną | `voltage_kv` | `construction_type`, `designation`, `name`, `supply` | tak | `enm/domain_operations_v2.py::add_nn_distribution_board` |
+| `add_nn_section_coupler` | Dodanie nowej sekcji szyn i sprzęgła w rozdzielnicy nN (RGnN) | `station_ref` | `catalog_binding`, `catalog_ref`, `name` | tak | `enm/domain_operations_v2.py::add_nn_section_coupler` |
+| `add_nn_switch_device` | Dodanie aparatu (wyłącznik/rozłącznik/bezpiecznik) w torze nN | `from_bus_ref`, `to_bus_ref` | `catalog_binding`, `catalog_ref`, `device_class`, `name` | tak | `enm/domain_operations_v2.py::add_nn_switch_device` |
+| `copy_nn_feeder` | Kopia poddrzewa odpływu nN (od aparatu odpływowego w dół) | `feeder_apparatus_ref` | `name` | tak | `enm/domain_operations_v2.py::copy_nn_feeder` |
+| `merge_nn_segments` | Scalenie dwóch odcinków kabla nN tego samego typu przez szynę pośrednią | `segment_a_ref`, `segment_b_ref` | — | tak | `enm/domain_operations_v2.py::merge_nn_segments` |
+| `set_nn_cable_laying_conditions` | Zapis warunków ułożenia odcinka kabla nN (meta, bez fizyki) | `segment_ref`, `cable_laying_conditions` | — | nie | `enm/domain_operations_v2.py::set_nn_cable_laying_conditions` |
+| `split_nn_segment` | Rozcięcie odcinka kabla nN na dwa z nową szyną pośrednią | `segment_ref`, `split_at_m` | — | tak | `enm/domain_operations_v2.py::split_nn_segment` |
+<!-- GENEROWANE:rejestr-operacji:KONIEC -->
+
+---
+
+## 5. Operacje usunięte i fikcyjne
+
+Operacje, które wcześniejsze wersje dokumentów wymieniały, a których nie ma w rejestrze —
+z powodem i drogą zastępczą.
+
+<!-- GENEROWANE:operacje-usuniete:POCZATEK -->
+| Operacja | Powód |
+|---|---|
+| `add_sn_bay_from_catalog` | MENU-KANON (2026-10-22): dubel `add_sn_bay` (tryb próby `dry_run` przeniesiony) |
+| `calculate_tcc_curve` | W3-A (2026-09): krzywe TCC niesie wynik koordynacji zabezpieczeń |
+| `compare_study_cases` | CV-3.2 (58e520ce): porównanie przypadków to warstwa przypadków (`api/study_cases.py`) |
+| `create_study_case` | CV-3.2 (58e520ce): zapis `study_cases[]` do dokumentu ENM, którego model nie ma — przypadek obliczeniowy żyje w `api/study_cases.py` i `domain/study_case.py` |
+| `link_relay_to_field` | BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): przekaźnik wiąże z polem `add_relay` (`field_ref`) |
+| `remove_nn_element` | MENU-KANON (2026-10-22): dubel `delete_element` |
+| `rename_element` | MENU-KANON (2026-10-22): dubel `update_element_parameters` (pole `name`) |
+| `run_power_flow` | CV-3.2 (58e520ce): bieg obliczeń to `enm/canonical_analysis.py::create_run/execute_run` |
+| `run_short_circuit` | CV-3.2 (58e520ce): bieg obliczeń to `enm/canonical_analysis.py::create_run/execute_run` |
+| `run_time_series_power_flow` | CV-3.2 (58e520ce): zapis w próżnię, 0 konsumentów |
+| `set_case_normal_state` | CV-3.2 (58e520ce): stan roboczy to `enm/scenariusze.py::OperatingScenario` |
+| `set_case_source_mode` | CV-3.2 (58e520ce): tryb źródła w scenariuszu to `enm/scenariusze.py::OperatingScenario` |
+| `set_case_switch_state` | CV-3.2 (58e520ce): stan roboczy łączników to `enm/scenariusze.py::OperatingScenario` |
+| `set_case_time_profile` | CV-3.2 (58e520ce): zapis w próżnię, 0 konsumentów |
+| `set_dynamic_profile` | MENU-KANON (2026-10-22): zapis bez konsumenta — model dynamiczny wytwórcy wiąże `set_der_catalog_bindings` (`dynamic_model_ref`), odbioru `set_load_dynamic_binding` |
+| `set_label` | MENU-KANON (2026-10-22): dubel `update_element_parameters` (pole `label`) |
+| `update_nn_bus_sections` | nigdy nie istniała w kodzie (fikcja dokumentu) — sekcje nN buduje `add_nn_section_coupler` |
+| `update_nn_coupler_state` | nigdy nie istniała w kodzie (fikcja dokumentu) — stan łącznika zmieniają `open_switch` / `close_switch` |
+| `update_relay_settings` | BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): zaślepka z odmową — następca `update_protection_settings` |
+| `validate_selectivity` | BIEG-ZABEZPIECZEN-Z-MODELU (2026-09-30): selektywność z kolejności listy — liczy ją koordynacja zabezpieczeń na nastawach z modelu |
+<!-- GENEROWANE:operacje-usuniete:KONIEC -->
+
+---
+
+## 6. Przykłady wykonane przez API
+
+Łańcuch budowy sieci od pustego modelu: GPZ, magistrala z pierścieniem, stacje, punkty ciągu,
+pola, źródła, przekładniki i zabezpieczenia, sieć nN, operacje uniwersalne. Każdy krok jest
+wywołaniem `POST /api/cases/{case_id}/enm/domain-ops` (API aplikacji w procesie) na migawce po
+kroku poprzednim — identyfikatory w ładunkach są identyfikatorami, które operacje nadały
+deterministycznie. W kopercie `project_id` i `snapshot_base_hash` są pokazane jako znaczniki
+(w wywołaniu: identyfikator projektu i skrót bieżącej migawki). Skutek pochodzi z odpowiedzi
+API. Krok oznaczony „odmowa nazwana” pokazuje odmowę z kodem — model zostaje bez zmian.
+
+<!-- GENEROWANE:przyklady-operacji:POCZATEK -->
+#### 1. `add_grid_source_sn` — GPZ 110/15 kV z pozycji katalogu źródeł
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_grid_source_sn",
+    "idempotency_key": "przyklad-01",
+    "payload": {
+      "voltage_kv": 15.0,
+      "source_name": "GPZ Północ",
+      "sk3_mva": 300.0,
+      "rx_ratio": 0.1,
+      "catalog_binding": {
+        "catalog_namespace": "ZRODLO_SN",
+        "catalog_item_id": "src-gpz-15kv-300mva-rx010",
+        "catalog_item_version": "2024.1"
+      },
+      "hv_voltage_kv": 110.0,
+      "transformer_sn_mva": 25.0
+    }
+  }
+}
 ```
 
-### 5.2 Mapowanie operacji na zdarzenia
+Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED` ×2, `LOGICAL_VIEWS_UPDATED`, `SOURCE_CREATED`, `STATION_CREATED`, `TRANSFORMER_CREATED`; zaznaczenie: `gpz/699c3628e2bdfd1ca650543a594e9ac3/substation`.
 
-| Operacja kanoniczna                | Emitowane zdarzenia domenowe                                                |
-|------------------------------------|-----------------------------------------------------------------------------|
-| `add_grid_source_sn`              | `SOURCE_CREATED`, `BUS_CREATED`, `FIELDS_CREATED_SN`, `DEVICES_CREATED_SN` |
-| `continue_trunk_segment_sn`       | `SEGMENT_CREATED`, `BUS_CREATED`, `PORTS_CREATED`                          |
-| `insert_station_on_segment_sn`    | `SEGMENT_SPLIT`, `CUT_NODE_CREATED`, `STATION_CREATED`, `PORTS_CREATED`, `FIELDS_CREATED_SN`, `DEVICES_CREATED_SN` |
-| `start_branch_segment_sn`         | `SEGMENT_CREATED`, `BUS_CREATED`, `PORTS_CREATED`                          |
-| `insert_section_switch_sn`        | `SEGMENT_SPLIT`, `CUT_NODE_CREATED`, `DEVICES_CREATED_SN`                  |
-| `connect_secondary_ring_sn`       | `SEGMENT_CREATED`, `RING_CONNECTED`, `DEVICES_CREATED_SN`                  |
-| `set_normal_open_point`           | `NOP_SET`, `CASE_STATE_UPDATED`                                            |
-| `add_transformer_sn_nn`           | `TR_CREATED`, `BUS_NN_CREATED`, `FIELDS_CREATED_NN`                        |
-| `add_nn_outgoing_field`           | `FIELDS_CREATED_NN`, `SEGMENT_CREATED`, `BUS_CREATED`                      |
-| `add_nn_outgoing_field`           | `FIELDS_CREATED_NN`, `DEVICES_CREATED_NN`                                  |
-| `add_nn_load`                     | `NN_LOAD_CREATED`                                                          |
-| `update_nn_bus_sections`          | `BUS_NN_CREATED`, `DEVICES_CREATED_NN`                                     |
-| `update_nn_coupler_state`         | `CASE_STATE_UPDATED`                                                       |
-| `add_converter_source`            | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
-| `add_converter_source`            | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
-| `add_genset_nn`                   | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
-| `add_ups_nn`                      | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
-| `set_source_operating_mode`       | `CASE_STATE_UPDATED`                                                       |
-| `add_ct`                          | `CT_CREATED`                                                               |
-| `add_vt`                          | `VT_CREATED`                                                               |
-| `add_relay`                       | `RELAY_CREATED`                                                            |
-| `update_protection_settings`      | `RELAY_SETTINGS_UPDATED`                                                   |
-| `assign_catalog_to_element`       | `DEVICES_CREATED_SN` lub `DEVICES_CREATED_NN` (zaleznie od warstwy)        |
-| `update_element_parameters`       | `CASE_STATE_UPDATED`                                                       |
+#### 2. `continue_trunk_segment_sn` — pierwszy odcinek magistrali
 
-### 5.3 Zdarzenia wyzwalajace automatyczne akcje
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "continue_trunk_segment_sn",
+    "idempotency_key": "przyklad-02",
+    "payload": {
+      "segment": {
+        "rodzaj": "KABEL",
+        "dlugosc_m": 350,
+        "name": "Odcinek 1",
+        "catalog_binding": {
+          "catalog_namespace": "KABEL_SN",
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1"
+        }
+      }
+    }
+  }
+}
+```
 
-| Zdarzenie domenowe         | Automatyczna akcja                                                  |
-|----------------------------|---------------------------------------------------------------------|
-| `SOURCE_CREATED`           | Invalidacja wszystkich wynikow StudyCase -> OUTDATED                |
-| `SEGMENT_CREATED`          | Invalidacja wynikow, aktualizacja SLD auto-layout                  |
-| `SEGMENT_SPLIT`            | Invalidacja wynikow, przeliczenie topologii grafu                  |
-| `STATION_CREATED`          | Aktualizacja widokow logicznych (station tree)                     |
-| `TR_CREATED`               | Invalidacja wynikow, rozszerzenie grafu o szyne nN                 |
-| `NN_SOURCE_CREATED`        | Invalidacja wynikow (nowe zrodlo wplywajace na rozplyw mocy)       |
-| `NN_LOAD_CREATED`          | Invalidacja wynikow                                                |
-| `RING_CONNECTED`           | Invalidacja wynikow, walidacja topologii (cykl w grafie)           |
-| `NOP_SET`                  | Aktualizacja stanu pracy normalnej                                 |
-| `RELAY_CREATED`            | Walidacja pokrycia zabezpieczeniowego                              |
-| `RELAY_SETTINGS_UPDATED`   | Invalidacja wynikow TCC, ponowna walidacja selektywnosci           |
-| `ANALYSIS_RUN_COMPLETED`   | Oznaczenie StudyCase jako FRESH, publikacja wynikow                |
-| `EXPORT_CREATED`           | Logowanie audytowe (kto, kiedy, co wyeksportowano)                 |
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BRANCH_CREATED`, `BUS_CREATED`, `LOGICAL_VIEWS_UPDATED`; zaznaczenie: `bus/fde26ce612c7cc9c1d5f0411b5100d54/downstream`.
+
+#### 3. `continue_trunk_segment_sn` — drugi odcinek
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "continue_trunk_segment_sn",
+    "idempotency_key": "przyklad-03",
+    "payload": {
+      "segment": {
+        "rodzaj": "KABEL",
+        "dlugosc_m": 420,
+        "name": "Odcinek 2",
+        "catalog_binding": {
+          "catalog_namespace": "KABEL_SN",
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1"
+        }
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BRANCH_CREATED`, `BUS_CREATED`, `LOGICAL_VIEWS_UPDATED`; zaznaczenie: `bus/156cd6bb93e243cc59c96e85f99b6631/downstream`.
+
+#### 4. `continue_trunk_segment_sn` — trzeci odcinek
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "continue_trunk_segment_sn",
+    "idempotency_key": "przyklad-04",
+    "payload": {
+      "segment": {
+        "rodzaj": "KABEL",
+        "dlugosc_m": 300,
+        "name": "Odcinek 3",
+        "catalog_binding": {
+          "catalog_namespace": "KABEL_SN",
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1"
+        }
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BRANCH_CREATED`, `BUS_CREATED`, `LOGICAL_VIEWS_UPDATED`; zaznaczenie: `bus/cbe1be9d8e79464503ea6eb4d4953377/downstream`.
+
+#### 5. `continue_trunk_segment_sn` — czwarty odcinek
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "continue_trunk_segment_sn",
+    "idempotency_key": "przyklad-05",
+    "payload": {
+      "segment": {
+        "rodzaj": "KABEL",
+        "dlugosc_m": 280,
+        "name": "Odcinek 4",
+        "catalog_binding": {
+          "catalog_namespace": "KABEL_SN",
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1"
+        }
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BRANCH_CREATED`, `BUS_CREATED`, `LOGICAL_VIEWS_UPDATED`; zaznaczenie: `bus/8ce5dea454a451c8dc2c7d84a8e41eba/downstream`.
+
+#### 6. `insert_station_on_segment_sn` — stacja przelotowa typu B w połowie drugiego odcinka
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "insert_station_on_segment_sn",
+    "idempotency_key": "przyklad-06",
+    "payload": {
+      "segment_id": "seg/156cd6bb93e243cc59c96e85f99b6631/segment",
+      "insert_at": {
+        "mode": "RATIO",
+        "value": 0.5
+      },
+      "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "station": {
+        "station_type": "B",
+        "station_name": "Stacja S01",
+        "sn_voltage_kv": 15.0,
+        "nn_voltage_kv": 0.4
+      },
+      "nn_earthing": {
+        "lv_system": "TN-C-S"
+      },
+      "sn_fields": [
+        {
+          "field_role": "LINIA_IN"
+        },
+        {
+          "field_role": "LINIA_OUT"
+        },
+        {
+          "field_role": "MEASUREMENT"
+        },
+        {
+          "field_role": "TRANSFORMATOROWE"
+        }
+      ],
+      "transformer": {
+        "create": true,
+        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+      },
+      "nn_block": {
+        "outgoing_feeders_nn_count": 2
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 14, zmienione 0, usunięte 1; zdarzenia: `BUS_NN_CREATED`, `CUT_NODE_CREATED`, `DEVICES_CREATED_NN`, `DEVICES_CREATED_SN`, `FIELDS_CREATED_NN`, `FIELDS_CREATED_SN`, `LOGICAL_VIEWS_UPDATED`, `PORTS_CREATED`, `RECONNECTED_GRAPH`, `SEGMENT_SPLIT`, `STATION_CREATED`, `TR_CREATED`; zaznaczenie: `stn/01524d2cac166b45ccb95ed78dee5347/station`.
+
+#### 7. `insert_section_switch_sn` — rozłącznik sekcyjny w połowie trzeciego odcinka
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "insert_section_switch_sn",
+    "idempotency_key": "przyklad-07",
+    "payload": {
+      "segment_id": "seg/cbe1be9d8e79464503ea6eb4d4953377/segment",
+      "insert_at": {
+        "mode": "RATIO",
+        "value": 0.5
+      },
+      "switch_type": "ROZLACZNIK",
+      "switch_name": "Rozłącznik R1",
+      "catalog_binding": {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_item_id": "sw-ls-schneider-rm6-17kv-400a",
+        "catalog_item_version": "2024.1"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 5, zmienione 0, usunięte 1; zdarzenia: `SWITCH_INSERTED`; zaznaczenie: `sw/1c07212c287372722f9699f400b3b6cf/switch`.
+
+#### 8. `insert_zksn_on_segment_sn` — złącze kablowe SN (ZKSN) w połowie czwartego odcinka
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "insert_zksn_on_segment_sn",
+    "idempotency_key": "przyklad-08",
+    "payload": {
+      "segment_id": "seg/8ce5dea454a451c8dc2c7d84a8e41eba/segment",
+      "insert_at": {
+        "mode": "RATIO",
+        "value": 0.5
+      },
+      "catalog_binding": {
+        "catalog_namespace": "mv_branch_points",
+        "catalog_item_id": "ZKSN-2P-630A",
+        "catalog_item_version": "2024.1"
+      },
+      "switch_state": "closed",
+      "name": "ZKSN-1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 12, zmienione 0, usunięte 1; zdarzenia: `BRANCH_POINT_CREATED`; zaznaczenie: `bp/811059e3e2f5d62f30cf7aa9c502b9aa/zksn`.
+
+#### 9. `start_branch_segment_sn` — odgałęzienie napowietrzne od węzła za pierwszym odcinkiem
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "start_branch_segment_sn",
+    "idempotency_key": "przyklad-09",
+    "payload": {
+      "from_bus_ref": "bus/fde26ce612c7cc9c1d5f0411b5100d54/downstream",
+      "segment": {
+        "rodzaj": "LINIA_NAPOWIETRZNA",
+        "dlugosc_m": 900,
+        "name": "Odgałęzienie 1",
+        "catalog_binding": {
+          "catalog_namespace": "LINIA_SN",
+          "catalog_item_id": "line-base-al-st-70",
+          "catalog_item_version": "2024.1"
+        }
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 0; zdarzenia: `BRANCH_CREATED`, `BUS_CREATED`; zaznaczenie: `seg/a23025970632df99326678aca5e5de2f/branch_segment`.
+
+#### 10. `insert_branch_pole_on_segment_sn` — słup rozgałęźny w połowie odgałęzienia
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "insert_branch_pole_on_segment_sn",
+    "idempotency_key": "przyklad-10",
+    "payload": {
+      "segment_id": "seg/a23025970632df99326678aca5e5de2f/branch_segment",
+      "insert_at": {
+        "mode": "RATIO",
+        "value": 0.5
+      },
+      "catalog_binding": {
+        "catalog_namespace": "mv_branch_points",
+        "catalog_item_id": "SLUP-ODG-12",
+        "catalog_item_version": "2024.1"
+      },
+      "switch_state": "closed",
+      "name": "Słup S-1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 1; zdarzenia: `BRANCH_POINT_CREATED`; zaznaczenie: `bp/775f8958c010c37358204c32c2cd5c0e/branch_pole`.
+
+#### 11. `append_station_on_endpoint` — stacja końcowa na otwartym końcu odgałęzienia
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "append_station_on_endpoint",
+    "idempotency_key": "przyklad-11",
+    "payload": {
+      "endpoint_bus_ref": "bus/a23025970632df99326678aca5e5de2f/branch_end",
+      "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "station": {
+        "station_type": "A",
+        "station_name": "Stacja S02",
+        "sn_voltage_kv": 15.0,
+        "nn_voltage_kv": 0.4
+      },
+      "nn_earthing": {
+        "lv_system": "TN-C-S"
+      },
+      "transformer": {
+        "create": true,
+        "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 9, zmienione 0, usunięte 0; zdarzenia: `BUS_NN_CREATED`, `FIELDS_CREATED_SN` ×2, `STATION_APPENDED_ON_ENDPOINT`, `STATION_CREATED`, `TR_CREATED`; zaznaczenie: `sub/9a3869f6462cb53ca2c4fb2f531b9a25/substation`.
+
+#### 12. `connect_secondary_ring_sn` — zamknięcie pierścienia od szyny GPZ do końca magistrali
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "connect_secondary_ring_sn",
+    "idempotency_key": "przyklad-12",
+    "payload": {
+      "from_bus_ref": "gpz/699c3628e2bdfd1ca650543a594e9ac3/section/001/bus_sn",
+      "to_bus_ref": "bus/8ce5dea454a451c8dc2c7d84a8e41eba/downstream",
+      "ring_name": "Pierścień P1",
+      "segment": {
+        "rodzaj": "KABEL",
+        "dlugosc_m": 1500,
+        "catalog_binding": {
+          "catalog_namespace": "KABEL_SN",
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "2024.1"
+        }
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `RING_CONNECTED`; zaznaczenie: `seg/a07bc46116a5293ea3e62471e9ef72d3/ring_closure`.
+
+#### 13. `set_normal_open_point` — rozłącznik R1 punktem normalnie otwartym pierścienia
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_normal_open_point",
+    "idempotency_key": "przyklad-13",
+    "payload": {
+      "switch_ref": "sw/1c07212c287372722f9699f400b3b6cf/switch"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `NOP_SET`; zaznaczenie: `sw/1c07212c287372722f9699f400b3b6cf/switch`.
+
+#### 14. `close_switch` — zamknięcie rozłącznika R1 (stan łączeniowy)
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "close_switch",
+    "idempotency_key": "przyklad-14",
+    "payload": {
+      "switch_ref": "sw/1c07212c287372722f9699f400b3b6cf/switch"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `SWITCH_CLOSED`; zaznaczenie: `sw/1c07212c287372722f9699f400b3b6cf/switch`.
+
+#### 15. `open_switch` — ponowne otwarcie rozłącznika R1
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "open_switch",
+    "idempotency_key": "przyklad-15",
+    "payload": {
+      "switch_ref": "sw/1c07212c287372722f9699f400b3b6cf/switch"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `SWITCH_OPENED`; zaznaczenie: `sw/1c07212c287372722f9699f400b3b6cf/switch`.
+
+#### 16. `przepnij_element_na_pole` — akcja naprawcza modelu archiwalnego — odcinek zbudowany operacją już leży na polu
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "przepnij_element_na_pole",
+    "idempotency_key": "przyklad-16",
+    "payload": {
+      "element_ref": "seg/fde26ce612c7cc9c1d5f0411b5100d54/segment"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200, odmowa nazwana `tor.element_not_bypassing_field` — „Element „Odcinek 1” nie leży na szynie głównej stacji z pominięciem pola — nie ma czego przepinać.” Model bez zmian.
+
+#### 17. `add_gpz_section` — sekcja szyn WN GPZ na szynie 110 kV
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_gpz_section",
+    "idempotency_key": "przyklad-17",
+    "payload": {
+      "substation_ref": "gpz/699c3628e2bdfd1ca650543a594e9ac3/substation",
+      "side": "hv",
+      "section_id": "WN-1",
+      "bus_ref": "gpz/699c3628e2bdfd1ca650543a594e9ac3/transformer/001/bus_110",
+      "name": "Sekcja WN 1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `GPZ_SECTION_ADDED`; zaznaczenie: `gpz/699c3628e2bdfd1ca650543a594e9ac3/substation`.
+
+#### 18. `update_gpz_section` — zmiana nazwy sekcji WN
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "update_gpz_section",
+    "idempotency_key": "przyklad-18",
+    "payload": {
+      "substation_ref": "gpz/699c3628e2bdfd1ca650543a594e9ac3/substation",
+      "side": "hv",
+      "section_id": "WN-1",
+      "updates": {
+        "name": "Sekcja WN 1 (główna)"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `GPZ_SECTION_UPDATED`; zaznaczenie: `gpz/699c3628e2bdfd1ca650543a594e9ac3/substation`.
+
+#### 19. `delete_gpz_section` — usunięcie sekcji WN
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "delete_gpz_section",
+    "idempotency_key": "przyklad-19",
+    "payload": {
+      "substation_ref": "gpz/699c3628e2bdfd1ca650543a594e9ac3/substation",
+      "side": "hv",
+      "section_id": "WN-1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 1; zdarzenia: `GPZ_SECTION_DELETED`; zaznaczenie: `gpz/699c3628e2bdfd1ca650543a594e9ac3/substation`.
+
+#### 20. `add_sn_bay` — dodatkowe pole liniowe w rozdzielnicy SN stacji S01
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_sn_bay",
+    "idempotency_key": "przyklad-20",
+    "payload": {
+      "station_ref": "stn/01524d2cac166b45ccb95ed78dee5347/station",
+      "bus_ref": "stn/01524d2cac166b45ccb95ed78dee5347/sn_bus",
+      "bay_role": "OUT",
+      "field_name": "Pole liniowe L3",
+      "catalog_ref": "sw-cb-abb-vd4-17kv-630a"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 0; zdarzenia: `FIELDS_CREATED_SN`, `FIELD_DEVICE_CREATED_SN`, `FIELD_TERMINAL_CREATED_SN`; zaznaczenie: `sn/fa384bcb497c69b3e04606638c813794/bay`.
+
+#### 21. `set_bay_equipment` — wyposażenie nowego pola z szablonu pola liniowego
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_bay_equipment",
+    "idempotency_key": "przyklad-21",
+    "payload": {
+      "bay_ref": "sn/fa384bcb497c69b3e04606638c813794/bay",
+      "mode": "szablon",
+      "bay_template_ref": "bay_template_line_out"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `BAY_EQUIPMENT_SET`; zaznaczenie: `sn/fa384bcb497c69b3e04606638c813794/bay`.
+
+#### 22. `add_load_sn` — odbiór SN na węźle za pierwszym odcinkiem
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_load_sn",
+    "idempotency_key": "przyklad-22",
+    "payload": {
+      "bus_ref": "bus/fde26ce612c7cc9c1d5f0411b5100d54/downstream",
+      "p_mw": 0.4,
+      "q_mvar": 0.1,
+      "load_name": "Odbiór SN 1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `LOAD_SN_CREATED`; zaznaczenie: `load/9ed239f8488b67b6b57f7d55abb23954/sn`.
+
+#### 23. `add_generator_sn` — generator synchroniczny SN z tabliczką podaną ręcznie (katalog bez typu maszyny)
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_generator_sn",
+    "idempotency_key": "przyklad-23",
+    "payload": {
+      "bus_ref": "bus/cbe1be9d8e79464503ea6eb4d4953377/downstream",
+      "p_mw": 1.0,
+      "name": "Generator G1",
+      "manual_params": {
+        "rated_mva": 1.25,
+        "rated_kv": 15.0,
+        "q_min_mvar": -0.6,
+        "q_max_mvar": 0.75
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `GENERATOR_SN_CREATED`; zaznaczenie: `gen/18bb5c3eea2d9dd189d65bf2ff5178df/sn`.
+
+#### 24. `add_shunt_compensator_sn` — bateria kondensatorów SN z katalogu
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_shunt_compensator_sn",
+    "idempotency_key": "przyklad-24",
+    "payload": {
+      "bus_ref": "bus/cbe1be9d8e79464503ea6eb4d4953377/downstream",
+      "name": "Bateria K1",
+      "catalog_binding": {
+        "catalog_namespace": "KOMPENSATOR_SN",
+        "catalog_item_id": "KOMP_SN_1V2_15KV",
+        "catalog_item_version": "2024.1"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `SHUNT_COMPENSATOR_CREATED`; zaznaczenie: `shunt/c84b420ba39265762c7fa4a4360f263b/cap`.
+
+#### 25. `add_surge_arrester_sn` — ogranicznik przepięć w polu liniowym stacji S01
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_surge_arrester_sn",
+    "idempotency_key": "przyklad-25",
+    "payload": {
+      "station_ref": "stn/01524d2cac166b45ccb95ed78dee5347/station",
+      "field_ref": "stn/01524d2cac166b45ccb95ed78dee5347/sn_field/000",
+      "catalog_binding": {
+        "catalog_namespace": "OGRANICZNIK_SN",
+        "catalog_item_id": "arrester-abb-polim-d-24kv-10ka",
+        "catalog_item_version": "2024.1"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `SURGE_ARRESTER_CREATED`; zaznaczenie: `stn/01524d2cac166b45ccb95ed78dee5347/sn_field/000`.
+
+#### 26. `add_nn_outgoing_field` — pole odpływowe nN w stacji S01
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_outgoing_field",
+    "idempotency_key": "przyklad-26",
+    "payload": {
+      "station_ref": "stn/01524d2cac166b45ccb95ed78dee5347/station",
+      "bus_nn_ref": "stn/01524d2cac166b45ccb95ed78dee5347/nn_bus",
+      "field_name": "Odpływ nN 3"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `FIELDS_CREATED_NN`; zaznaczenie: `nn/ba89aff2fd3a27d119dfd0149b7847a6/outgoing`.
+
+#### 27. `add_nn_load` — odbiór nN z katalogu na nowym odpływie
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_load",
+    "idempotency_key": "przyklad-27",
+    "payload": {
+      "bus_nn_ref": "stn/01524d2cac166b45ccb95ed78dee5347/nn_bus",
+      "feeder_ref": "nn/ba89aff2fd3a27d119dfd0149b7847a6/outgoing",
+      "catalog_binding": {
+        "catalog_namespace": "OBCIAZENIE",
+        "catalog_item_id": "load_mieszk_15kw",
+        "catalog_item_version": "2024.1"
+      },
+      "cos_phi": 0.95,
+      "load_name": "Odbiór nN 1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `NN_LOAD_CREATED`; zaznaczenie: `nn/381b5ead9e43c45a8f2c9a35d4168b19/load`.
+
+#### 28. `add_converter_source` — źródło PV na szynie nN stacji S01
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_converter_source",
+    "idempotency_key": "przyklad-28",
+    "payload": {
+      "source_technology": "PV",
+      "connection_variant": "nn_side",
+      "station_ref": "stn/01524d2cac166b45ccb95ed78dee5347/station",
+      "bus_nn_ref": "stn/01524d2cac166b45ccb95ed78dee5347/nn_bus",
+      "catalog_binding": {
+        "catalog_namespace": "ZRODLO_NN_PV",
+        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
+        "catalog_item_version": "2024.1"
+      },
+      "power_setpoint_mw": 0.02,
+      "source_name": "PV S01"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `NN_SOURCE_FIELD_CREATED`, `PV_INVERTER_CREATED`; zaznaczenie: `nn/ba5e5a4dc51f56f6bff86d6bbdf90a29/source_field`.
+
+#### 29. `add_genset_nn` — agregat prądotwórczy w nowym polu źródłowym nN
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_genset_nn",
+    "idempotency_key": "przyklad-29",
+    "payload": {
+      "bus_nn_ref": "stn/01524d2cac166b45ccb95ed78dee5347/nn_bus",
+      "station_ref": "stn/01524d2cac166b45ccb95ed78dee5347/station",
+      "placement": "NEW_FIELD",
+      "source_field": {
+        "source_field_kind": "AGREGAT",
+        "field_name": "Pole agregatu"
+      },
+      "genset_spec": {
+        "rated_power_kw": 400.0,
+        "rated_voltage_kv": 0.4,
+        "power_factor": 0.8,
+        "operation_mode": "PRACA_AWARYJNA",
+        "fuel_type": "DIESEL"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `GENSET_CREATED`, `NN_SOURCE_FIELD_CREATED`; zaznaczenie: `gen/aa6acdb78ce1d3cb43d2afa3698262c5/genset`.
+
+#### 30. `add_ups_nn` — UPS wprost na szynie nN
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_ups_nn",
+    "idempotency_key": "przyklad-30",
+    "payload": {
+      "bus_nn_ref": "stn/01524d2cac166b45ccb95ed78dee5347/nn_bus",
+      "ups_spec": {
+        "rated_power_kw": 120.0,
+        "backup_time_min": 15.0,
+        "operation_mode": "ONLINE",
+        "battery_type": "VRLA"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `UPS_CREATED`; zaznaczenie: `ups/a7e8fdfce222756678471201c2aa874a/ups`.
+
+#### 31. `set_source_operating_mode` — tryb pracy agregatu
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_source_operating_mode",
+    "idempotency_key": "przyklad-31",
+    "payload": {
+      "source_ref": "gen/aa6acdb78ce1d3cb43d2afa3698262c5/genset",
+      "mode": "gotowosc"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: brak.
+
+#### 32. `dodaj_karte_widmowa_projektu` — karta widmowa projektu typu falownika PV
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "dodaj_karte_widmowa_projektu",
+    "idempotency_key": "przyklad-32",
+    "payload": {
+      "karta": {
+        "id": "karta-widmowa-pv-1",
+        "urzadzenie_ref": "conv-pv-nn-0p5mw-0p4kv",
+        "producent": "PRODUCENT",
+        "model_urzadzenia": "MODEL",
+        "modele": [
+          {
+            "ident": "m-1",
+            "rodzaj": "CURRENT_SPECTRUM",
+            "dziedzina": "HARMONIC_FREQUENCY_DOMAIN",
+            "f1_hz": 50.0,
+            "zakres_czestotliwosci": {
+              "f_min_hz": 0.0,
+              "f_max_hz": 2500.0
+            },
+            "skladowe": [
+              {
+                "f_hz": 250.0,
+                "amplituda": {
+                  "wartosc": 3.0,
+                  "jednostka": "%"
+                },
+                "faza_deg": null,
+                "faza_nieznana_powod_pl": "faza nieznana — karta nie podaje"
+              },
+              {
+                "f_hz": 350.0,
+                "amplituda": {
+                  "wartosc": 2.0,
+                  "jednostka": "%"
+                },
+                "faza_deg": null,
+                "faza_nieznana_powod_pl": "faza nieznana — karta nie podaje"
+              }
+            ],
+            "admitancja": null,
+            "impedancja": null,
+            "model_parametryczny": null,
+            "punkt_pracy": {
+              "baza_mocy": "S_N_URZADZENIA",
+              "p": {
+                "dolna": 0.0,
+                "gorna": 1.0,
+                "domkniecie_dolne": true,
+                "domkniecie_gorne": true
+              },
+              "q": null,
+              "u": null,
+              "soc": null,
+              "tryb": null,
+              "stacjonarny": true
+            },
+            "odniesienie_amplitudy": {
+              "rodzaj": "I_N_URZADZENIA",
+              "wartosc": null,
+              "pola_karty": [
+                "sn_mva",
+                "un_kv"
+              ]
+            },
+            "odniesienie_fazy": null,
+            "pomiar": null,
+            "pasmo_ref": null,
+            "podstawa": {
+              "rodzaj": "KATALOG_PRODUCENTA",
+              "dokument": "Raport R-1",
+              "wydanie": "2024-01",
+              "jednostka_redakcyjna": "tabela 3",
+              "status": "WSKAZANE",
+              "uwagi_pl": null
+            },
+            "wersja": "1",
+            "czestotliwosc_przelaczania_hz": null
+          }
+        ],
+        "dowody": [],
+        "podstawa": {
+          "rodzaj": "KATALOG_PRODUCENTA",
+          "dokument": "Raport R-1",
+          "wydanie": "2024-01",
+          "jednostka_redakcyjna": "tabela 3",
+          "status": "WSKAZANE",
+          "uwagi_pl": null
+        },
+        "wersja": "1",
+        "verification_status": "NIEWERYFIKOWANY",
+        "source_reference": "Raport R-1, tabela 3",
+        "catalog_status": "PROJEKTOWY_V1",
+        "contract_version": "2.0"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `CATALOG_ASSIGNED`; zaznaczenie: brak.
+
+#### 33. `set_der_catalog_bindings` — wiązanie źródła PV z kartą widmową projektu
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_der_catalog_bindings",
+    "idempotency_key": "przyklad-33",
+    "payload": {
+      "generator_ref": "pv/98df57c83129338b466ceca712cbd53f/converter",
+      "karty_widmowe_ref": [
+        "karta-widmowa-pv-1"
+      ]
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: `pv/98df57c83129338b466ceca712cbd53f/converter`.
+
+#### 34. `set_load_dynamic_binding` — profil modelu dynamicznego odbioru SN
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_load_dynamic_binding",
+    "idempotency_key": "przyklad-34",
+    "payload": {
+      "load_ref": "load/9ed239f8488b67b6b57f7d55abb23954/sn",
+      "dynamic_model_ref": "load_dyn_zagregowany_sn"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: `load/9ed239f8488b67b6b57f7d55abb23954/sn`.
+
+#### 35. `add_ct` — przekładnik prądowy w polu liniowym stacji S01
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_ct",
+    "idempotency_key": "przyklad-35",
+    "payload": {
+      "field_ref": "stn/01524d2cac166b45ccb95ed78dee5347/sn_field/000",
+      "catalog_binding": {
+        "catalog_namespace": "CT",
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": "2024.1"
+      },
+      "ratio_primary_a": 400.0,
+      "ratio_secondary_a": 5.0
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `CT_CREATED`; zaznaczenie: `ct/2469c74b955cd9f1c0204e3c36ddbe38/measurement`.
+
+#### 36. `add_vt` — przekładnik napięciowy w polu pomiarowym stacji S01
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_vt",
+    "idempotency_key": "przyklad-36",
+    "payload": {
+      "field_ref": "stn/01524d2cac166b45ccb95ed78dee5347/sn_field/002",
+      "catalog_binding": {
+        "catalog_namespace": "VT",
+        "catalog_item_id": "vt_15kv_100v_3p_abb",
+        "catalog_item_version": "2024.1"
+      },
+      "ratio_primary_v": 15000.0,
+      "ratio_secondary_v": 100.0
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `VT_CREATED`; zaznaczenie: `vt/e32d2d56c26eeb345431010a82ab049b/measurement`.
+
+#### 37. `set_measurement_secondary_circuit` — obwód wtórny przekładnika prądowego
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_measurement_secondary_circuit",
+    "idempotency_key": "przyklad-37",
+    "payload": {
+      "measurement_ref": "ct/2469c74b955cd9f1c0204e3c36ddbe38/measurement",
+      "obwod_wtorny": {
+        "dlugosc_przewodu_m": 25.0,
+        "przekroj_przewodu_mm2": 2.5
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `MEASUREMENT_SECONDARY_CIRCUIT_SET`; zaznaczenie: `ct/2469c74b955cd9f1c0204e3c36ddbe38/measurement`.
+
+#### 38. `add_relay` — zabezpieczenie nadprądowe pola liniowego z nastawami
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_relay",
+    "idempotency_key": "przyklad-38",
+    "payload": {
+      "field_ref": "stn/01524d2cac166b45ccb95ed78dee5347/sn_field/000",
+      "ct_ref": "ct/2469c74b955cd9f1c0204e3c36ddbe38/measurement",
+      "catalog_ref": "REF-OC-100",
+      "settings": [
+        {
+          "function_type": "overcurrent_51",
+          "threshold_a": 2.0,
+          "threshold_unit": "A_WTORNY",
+          "curve_type": "IEC_SI",
+          "time_multiplier": 0.3
+        },
+        {
+          "function_type": "overcurrent_50",
+          "threshold_a": 20.0,
+          "threshold_unit": "A_WTORNY",
+          "curve_type": "DT",
+          "time_delay_s": 0.4
+        }
+      ]
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_CREATED`; zaznaczenie: `relay/c516457324fcfa614347ccf0e4e9d239/assignment`.
+
+#### 39. `update_protection_settings` — zmiana nastaw (zwłoka członu zwarciowego 0,3 s)
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "update_protection_settings",
+    "idempotency_key": "przyklad-39",
+    "payload": {
+      "protection_ref": "relay/c516457324fcfa614347ccf0e4e9d239/assignment",
+      "settings": [
+        {
+          "function_type": "overcurrent_51",
+          "threshold_a": 2.0,
+          "threshold_unit": "A_WTORNY",
+          "curve_type": "IEC_SI",
+          "time_multiplier": 0.3
+        },
+        {
+          "function_type": "overcurrent_50",
+          "threshold_a": 20.0,
+          "threshold_unit": "A_WTORNY",
+          "curve_type": "DT",
+          "time_delay_s": 0.3
+        }
+      ]
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PROTECTION_SETTINGS_UPDATED`; zaznaczenie: `relay/c516457324fcfa614347ccf0e4e9d239/assignment`.
+
+#### 40. `add_nn_distribution_board` — rozdzielnica nN wolnostojąca
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_distribution_board",
+    "idempotency_key": "przyklad-40",
+    "payload": {
+      "voltage_kv": 0.4,
+      "name": "RGnN-1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `SUBSTATION_CREATED`; zaznaczenie: `nn/c25020028ba761efaf39ad8d1717ad5a/board`.
+
+#### 41. `add_transformer_sn_nn` — transformator SN/nN zasilający rozdzielnicę RGnN-1 z węzła za trzecim odcinkiem
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_transformer_sn_nn",
+    "idempotency_key": "przyklad-41",
+    "payload": {
+      "hv_bus_ref": "bus/cbe1be9d8e79464503ea6eb4d4953377/downstream",
+      "lv_bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+      "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `TRANSFORMER_CREATED`; zaznaczenie: `tr/2b8d6d71d697267ecd39b7e659e83c74/transformer`.
+
+#### 42. `add_nn_outgoing_field` — odpływ F1 rozdzielnicy RGnN-1 (aparat odpływu i zacisk odpływu)
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_outgoing_field",
+    "idempotency_key": "przyklad-42",
+    "payload": {
+      "station_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
+      "bus_nn_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+      "field_name": "Odpływ F1",
+      "catalog_ref": "cb_nn_630a"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `FIELDS_CREATED_NN`; zaznaczenie: `nn/bebdda0970ed470f0f3fe9628896b9e6/outgoing`.
+
+#### 43. `add_nn_cable_segment` — kabel nN z zacisku odpływu F1
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_cable_segment",
+    "idempotency_key": "przyklad-43",
+    "payload": {
+      "from_bus_ref": "nn/da470729eec76c081755f9dde7dcc1f0/feeder_bus",
+      "length_m": 80.0,
+      "catalog_ref": "kab_nn_4x120_al",
+      "name": "Kabel nN K1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `NN_CABLE_SEGMENT_CREATED`; zaznaczenie: `nn/55f7fa411878d7d44cee8664272d8683/cable`.
+
+#### 44. `add_nn_distribution_board` — podrozdzielnica RGnN-2
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_distribution_board",
+    "idempotency_key": "przyklad-44",
+    "payload": {
+      "voltage_kv": 0.4,
+      "name": "RGnN-2"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `SUBSTATION_CREATED`; zaznaczenie: `nn/a5f367b2ac8880036ad52060287b0d8e/board`.
+
+#### 45. `add_nn_switch_device` — bezpiecznik między końcem kabla K1 a szyną podrozdzielnicy RGnN-2
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_switch_device",
+    "idempotency_key": "przyklad-45",
+    "payload": {
+      "from_bus_ref": "nn/a4123adfdaaa269d3381db688ef11b44/cable_bus",
+      "to_bus_ref": "nn/a5f367b2ac8880036ad52060287b0d8e/board_bus",
+      "device_class": "fuse",
+      "catalog_ref": "cb_nn_630a",
+      "name": "Bezpiecznik złącza Z1"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 0; zdarzenia: `NN_SWITCH_DEVICE_CREATED`; zaznaczenie: `nn/ecd36c29d77863de5e0049fdd3c2b0a8/switch_device`.
+
+#### 46. `add_nn_section_coupler` — druga sekcja szyn rozdzielnicy RGnN-1 ze sprzęgłem
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "add_nn_section_coupler",
+    "idempotency_key": "przyklad-46",
+    "payload": {
+      "station_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
+      "catalog_ref": "cb_nn_630a"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 2, zmienione 0, usunięte 0; zdarzenia: `BUS_CREATED`, `NN_SECTION_COUPLER_CREATED`; zaznaczenie: `nn/0305362c25d978377161bddc379f8f3d/section_bus`.
+
+#### 47. `split_nn_segment` — podział kabla K1 w 30 m
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "split_nn_segment",
+    "idempotency_key": "przyklad-47",
+    "payload": {
+      "segment_ref": "nn/55f7fa411878d7d44cee8664272d8683/cable",
+      "split_at_m": 30.0
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 3, zmienione 0, usunięte 1; zdarzenia: `BRANCH_CREATED` ×2, `BUS_CREATED`, `SEGMENT_SPLIT`; zaznaczenie: `nn/267260b1b3f24b3939843ecd432a8d2f/split_bus`.
+
+#### 48. `set_nn_cable_laying_conditions` — warunki ułożenia pierwszej połówki kabla
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_nn_cable_laying_conditions",
+    "idempotency_key": "przyklad-48",
+    "payload": {
+      "segment_ref": "nn/267260b1b3f24b3939843ecd432a8d2f/split_left",
+      "cable_laying_conditions": {
+        "environment": "grunt",
+        "insulation": "XLPE",
+        "ambient_temperature_c": 20.0,
+        "circuit_count": 2,
+        "soil_thermal_resistivity_km_w": 1.5
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `NN_CABLE_LAYING_CONDITIONS_SET`; zaznaczenie: `nn/267260b1b3f24b3939843ecd432a8d2f/split_left`.
+
+#### 49. `merge_nn_segments` — scalenie połówek kabla
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "merge_nn_segments",
+    "idempotency_key": "przyklad-49",
+    "payload": {
+      "segment_a_ref": "nn/267260b1b3f24b3939843ecd432a8d2f/split_left",
+      "segment_b_ref": "nn/267260b1b3f24b3939843ecd432a8d2f/split_right"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 1, zmienione 0, usunięte 3; zdarzenia: `SEGMENTS_MERGED`; zaznaczenie: `nn/a596cb138b888ad43118e41761b716c5/merged`.
+
+#### 50. `copy_nn_feeder` — kopia odpływu F1 z kablem i bezpiecznikiem
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "copy_nn_feeder",
+    "idempotency_key": "przyklad-50",
+    "payload": {
+      "feeder_apparatus_ref": "nn/da470729eec76c081755f9dde7dcc1f0/feeder_device",
+      "name": "Odpływ F2"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 0; zdarzenia: `BRANCH_CREATED` ×3, `BUS_CREATED` ×3; zaznaczenie: `nn/a84872aea5829709f5e08383a185d1d6/copy_branch_1`.
+
+#### 51. `assign_catalog_to_element` — zmiana pozycji katalogu kabla pierwszego odcinka
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "assign_catalog_to_element",
+    "idempotency_key": "przyklad-51",
+    "payload": {
+      "element_ref": "seg/fde26ce612c7cc9c1d5f0411b5100d54/segment",
+      "catalog_binding": {
+        "catalog_namespace": "KABEL_SN",
+        "catalog_item_id": "cable-base-xlpe-al-3c-240",
+        "catalog_item_version": "2024.1"
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `CATALOG_ASSIGNED`; zaznaczenie: `seg/fde26ce612c7cc9c1d5f0411b5100d54/segment`.
+
+#### 52. `update_element_parameters` — zmiana nazwy i mocy odbioru SN
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "update_element_parameters",
+    "idempotency_key": "przyklad-52",
+    "payload": {
+      "element_ref": "load/9ed239f8488b67b6b57f7d55abb23954/sn",
+      "parameters": {
+        "name": "Odbiór przemysłowy",
+        "p_mw": 0.5
+      }
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: `load/9ed239f8488b67b6b57f7d55abb23954/sn`.
+
+#### 53. `set_connection_conditions` — warunki przyłączenia z dokumentu OSD
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "set_connection_conditions",
+    "idempotency_key": "przyklad-53",
+    "payload": {
+      "moc_przylaczeniowa_mw": 2.0,
+      "wymagany_cos_phi": 0.95,
+      "tryb_pracy": "praca równoległa z siecią"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 1, usunięte 0; zdarzenia: `PARAMETERS_UPDATED`; zaznaczenie: brak.
+
+#### 54. `refresh_snapshot` — odświeżenie migawki bez zmiany modelu
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "refresh_snapshot",
+    "idempotency_key": "przyklad-54",
+    "payload": {}
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 0; zdarzenia: brak; zaznaczenie: brak.
+
+#### 55. `delete_element` — usunięcie baterii kondensatorów
+
+```json
+{
+  "project_id": "<id projektu>",
+  "snapshot_base_hash": "<header.hash_sha256 migawki bazowej>",
+  "operation": {
+    "name": "delete_element",
+    "idempotency_key": "przyklad-55",
+    "payload": {
+      "element_ref": "shunt/c84b420ba39265762c7fa4a4360f263b/cap"
+    }
+  }
+}
+```
+
+Odpowiedź: HTTP 200; elementy utworzone 0, zmienione 0, usunięte 1; zdarzenia: `ELEMENT_DELETED`; zaznaczenie: brak.
+<!-- GENEROWANE:przyklady-operacji:KONIEC -->
 
 ---
 
-## Zalacznik A -- Reguly walidacji miedzyoperacyjnej
+## 7. Zdarzenia domenowe
 
-1. **Kolejnosc operacji**: `add_grid_source_sn` MUSI byc pierwsza operacja w projekcie.
-2. **Referencje szyn**: Kazda operacja tworzaca segment MUSI wskazywac na istniejaca szyne (`from_bus_id`).
-3. **Typy katalogowe**: Operacje z `type_ref` / `cable_type_ref` MUSZA odwolywac sie do istniejacego typu w katalogu.
-4. **Unikalnosc nazw**: Nazwy elementow w obrebie jednego typu MUSZA byc unikalne (np. dwie szyny nie moga miec tej samej nazwy).
-5. **NOP**: W kazdym pierścieniu moze byc dokladnie jeden NOP. Operacja `set_normal_open_point` automatycznie zamyka poprzedni NOP (jesli `auto_close_previous = true`).
-6. **Case immutability**: operacje przypadku obliczeniowego (C1: `api/study_cases.py`) modyfikuja WYLACZNIE dane przypadku, NIGDY modelu sieci (zgodnie z regula Case Immutability). Reguly 6-7 dawniej wskazywaly na 9 operacji `set_case_*`/`run_*` z sekcji 1.5 -- usuniete CV-3.2, intencja "case immutability" przechodzi na `api/study_cases.py`/`domain/study_case.py`.
-7. **Solver READ-ONLY**: zywe koncowki uruchomienia solvera (`api/enm.py::run_short_circuit/run_power_flow`, E2) NIE modyfikuja modelu sieci -- dzialaja na niemutowalnym snapshocie (`enm/canonical_analysis.py::create_run/execute_run`).
+Zdarzenie niesie `event_seq` (kolejność w odpowiedzi, od 1), `event_type` i `element_id`.
+Typ spoza rejestru jest błędem kontraktu (`backend/tests/enm/test_rejestr_zdarzen_domenowych.py`
+skanuje wszystkie emisje w handlerach).
+
+<!-- GENEROWANE:zdarzenia-domenowe:POCZATEK -->
+Rejestr `DOMAIN_EVENT_TYPES` liczy **65** typów:
+
+- `AUX_LOAD_CREATED`
+- `BAY_EQUIPMENT_SET`
+- `BESS_INVERTER_CREATED`
+- `BESS_SOURCE_CREATED`
+- `BRANCH_CREATED`
+- `BRANCH_POINT_CREATED`
+- `BUS_CREATED`
+- `BUS_NN_CREATED`
+- `CATALOG_ASSIGNED`
+- `CATALOG_CLEARED`
+- `CT_CREATED`
+- `CUT_NODE_CREATED`
+- `DEVICES_CREATED_NN`
+- `DEVICES_CREATED_SN`
+- `ELEMENT_DELETED`
+- `ELEMENT_REATTACHED_TO_FIELD`
+- `FIELDS_CREATED_NN`
+- `FIELDS_CREATED_SN`
+- `FIELD_DEVICE_CREATED_SN`
+- `FIELD_DEVICE_UPDATED_SN`
+- `FIELD_TERMINAL_CREATED_SN`
+- `FIELD_UPDATED_SN`
+- `FW_INVERTER_CREATED`
+- `FW_SOURCE_CREATED`
+- `GENERATOR_SN_CREATED`
+- `GENSET_CREATED`
+- `GPZ_LINE_FIELD_CREATED_SN`
+- `GPZ_SECTION_ADDED`
+- `GPZ_SECTION_DELETED`
+- `GPZ_SECTION_UPDATED`
+- `LOAD_SN_CREATED`
+- `LOGICAL_VIEWS_UPDATED`
+- `MEASUREMENT_SECONDARY_CIRCUIT_SET`
+- `NN_CABLE_LAYING_CONDITIONS_SET`
+- `NN_CABLE_SEGMENT_CREATED`
+- `NN_FEEDER_ELEMENT_COPIED`
+- `NN_LOAD_CREATED`
+- `NN_SECTION_COUPLER_CREATED`
+- `NN_SOURCE_FIELD_CREATED`
+- `NN_SWITCH_DEVICE_CREATED`
+- `NOP_CLEARED`
+- `NOP_SET`
+- `PARAMETERS_UPDATED`
+- `PORTS_CREATED`
+- `PROTECTION_CREATED`
+- `PROTECTION_SETTINGS_UPDATED`
+- `PV_INVERTER_CREATED`
+- `RECONNECTED_GRAPH`
+- `RING_CONNECTED`
+- `SEGMENTS_MERGED`
+- `SEGMENT_SPLIT`
+- `SHUNT_COMPENSATOR_CREATED`
+- `SOURCE_CREATED`
+- `STATION_APPENDED_ON_ENDPOINT`
+- `STATION_CREATED`
+- `SUBSTATION_CREATED`
+- `SURGE_ARRESTER_CREATED`
+- `SWITCH_CLOSED`
+- `SWITCH_INSERTED`
+- `SWITCH_OPENED`
+- `TAP_CHANGER_SET`
+- `TRANSFORMER_CREATED`
+- `TR_CREATED`
+- `UPS_CREATED`
+- `VT_CREATED`
+<!-- GENEROWANE:zdarzenia-domenowe:KONIEC -->
 
 ---
 
-## Zalacznik B -- Mapowanie do modeli backendowych
+## 8. Historia zmian
 
-| Koncept                  | Plik zrodlowy backend                                   | Klasa / Typ                    |
-|--------------------------|----------------------------------------------------------|---------------------------------|
-| Bus (Szyna)              | `network_model/core/node.py`                             | `Node` (alias `Bus`)           |
-| Branch (Segment/Odcinek) | `network_model/core/branch.py`                           | `Branch`, `LineBranch`, `TransformerBranch` |
-| Switch (Lacznik)         | `network_model/core/switch.py`                           | `Switch`                        |
-| Station (Stacja)         | `network_model/core/station.py`                          | `Station`                       |
-| InverterSource (Falownik)| `network_model/core/inverter.py`                         | `InverterSource`                |
-| StudyCase                | `domain/study_case.py`                                   | `StudyCase`, `StudyCaseConfig`  |
-| ProtectionDevice         | `domain/protection_device.py`                            | `ProtectionDevice`              |
-| CableType                | `network_model/catalog/types.py`                         | `CableType`                     |
-| LineType                 | `network_model/catalog/types.py`                         | `LineType`                      |
-| TransformerType          | `network_model/catalog/types.py`                         | `TransformerType`               |
-| ConverterType            | `network_model/catalog/types.py`                         | `ConverterType`                 |
-| SwitchEquipmentType      | `network_model/catalog/types.py`                         | `SwitchEquipmentType`           |
-| ActionEnvelope           | `network_model/core/action_envelope.py`                  | `ActionEnvelope`                |
-| NetworkSnapshot          | `network_model/core/snapshot.py`                         | `NetworkSnapshot`               |
-| NetworkGraph             | `network_model/core/graph.py`                            | `NetworkGraph`                  |
-| Source                   | `domain/sources.py`                                      | `Source`                        |
-| Project                  | `domain/models.py`                                       | `Project`                       |
-
----
-
-> **KONIEC DOKUMENTU WIAZACEGO**
->
-> Wszelkie zmiany w tym dokumencie wymagaja przegladu architektonicznego
-> i aktualizacji numeru wersji. Dokument ten jest referencja wiazaca
-> dla implementacji backendu, frontendu, AI agentow oraz dokumentacji.
-
+| Wersja | Data | Zmiana |
+|---|---|---|
+| 1.0.0 | 2026-02-17 | Dokument pisany ręcznie (nazwy, przykłady, schematy, zdarzenia). |
+| 2.0.0 | 2026-10-22 | Dokument przepisany jako widok rejestru (karta MENU-KANON, V12K-351): wersja 1.0.0 opisywała część operacji (niektóre dwukrotnie), wymieniała operacje skasowane i fikcyjne, miała przykłady z polami, których żaden handler nie czyta, odsyłała do nieistniejącego modułu Pydantic i opisywała fikcyjny enum zdarzeń. Bloki generowane z kodu, przykłady wykonywane przez API, test spójności z iniekcjami. |

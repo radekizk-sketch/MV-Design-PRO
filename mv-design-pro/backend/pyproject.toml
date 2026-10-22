@@ -182,5 +182,6 @@ markers = [
     "integration: tests requiring database/persistence (P13b governance)",
     "determinism: tests verifying deterministic output (same input = same output)",
     "pandapower: walidacja krzyzowa z pandapower - wymaga izolowanego srodowiska z scipy<1.17",
+    "ladunek_spoza_kontraktu: test celowo wysyla klucz ladunku operacji spoza jej kontraktu (czujnik w tests/conftest.py nie zamienia wpisu dziennika w blad testu)",
     "andes: wyrocznia zewnetrzna dynamiki ANDES - wymaga izolowanego srodowiska, ANDES nie wchodzi do zaleznosci produkcyjnych (karta W6-2)",
 ]

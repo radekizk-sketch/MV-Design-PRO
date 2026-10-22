@@ -8,7 +8,17 @@
  * dokładności w modelu jest jawnym brakiem, nie domysłem.
  */
 import type { Measurement } from '../../../types/enm';
-import type { MeasurementRow } from './cards/StationConfigMeasurementsCard';
+
+/** Wiersz przekładnika CT/VT pola stacji (kroki „Przekładniki prądowe/napięciowe”). */
+export interface MeasurementRow {
+  readonly id: string;
+  readonly bayDesignation: string;
+  readonly kind: 'CT' | 'VT';
+  readonly ratioPrimary: number;
+  readonly ratioSecondary: number;
+  readonly accuracyClassPl: string;
+  readonly burdenVa: number | null;
+}
 
 export interface PoleStacji {
   readonly ref: string;

@@ -294,33 +294,19 @@ class CatalogBindingPayload(_FrozenBase):
 # ===========================================================================
 
 
-class AnchorValue(_FrozenBase):
-    """Wartość kotwicząca — pozycja względem istniejącego elementu.
-
-    Używana gdy mode='ANCHOR' w InsertAt.
-    """
-
-    anchor_id: str
-    """Identyfikator elementu kotwiczącego."""
-
-    offset_m: float
-    """Przesunięcie od kotwicy w metrach."""
-
-
 class InsertAt(_FrozenBase):
     """Kanoniczny model pozycji wstawienia elementu na segmencie.
 
-    Trzy tryby:
+    Dwa tryby (``TRYBY_POZYCJI_PODZIALU``, reguła ``wspolczynnik_podzialu`` handlerów):
     - RATIO: pozycja jako ułamek długości segmentu (0.0–1.0)
     - ODLEGLOSC_OD_POCZATKU_M: odległość od początku segmentu w metrach
-    - ANCHOR: pozycja względem istniejącego elementu (AnchorValue)
     """
 
-    mode: Literal["RATIO", "ODLEGLOSC_OD_POCZATKU_M", "ANCHOR"]
+    mode: Literal["RATIO", "ODLEGLOSC_OD_POCZATKU_M"]
     """Tryb określania pozycji wstawienia."""
 
-    value: float | AnchorValue
-    """Wartość pozycji — float dla RATIO/ODLEGLOSC, AnchorValue dla ANCHOR."""
+    value: float
+    """Wartość pozycji — ułamek albo metry, zależnie od trybu."""
 
 
 # ===========================================================================

@@ -233,7 +233,7 @@ def _zastosuj_gpz_pod_blokada(
         "sections_count": _GPZ_SECTIONS_COUNT,
         "transformer_count": transformer_count,
         "transformer_catalog_ref": transformer_ref,
-        "line_fields_count": line_fields_per_section,
+        "line_fields_per_section": line_fields_per_section,
         "gpz_line_field_apparatus": {
             "catalog_ref": apparatus_ref,
             "apparatus_kind": "BREAKER",
@@ -486,7 +486,6 @@ def _zastosuj_szablon_pod_blokada(
                 enm_dict=enm_dict,
                 op_name="add_nn_load",
                 payload={
-                    "station_ref": station_ref,
                     "bus_nn_ref": nn_bus_ref,
                     "feeder_ref": feeder_ref,
                     "catalog_ref": load_catalog_ref,

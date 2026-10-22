@@ -176,7 +176,7 @@ def dodaj_zrodlo_slack(
                 "skip_hv_transformer": True,
                 **({"u_set_pu": u_set_pu} if u_set_pu is not None else {}),
             },
-            "line_fields_count": max(line_fields_count, 1),
+            "line_fields_per_section": max(line_fields_count, 1),
             "source_name": source_name,
         },
     )

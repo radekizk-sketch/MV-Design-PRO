@@ -2,15 +2,16 @@
  * Kreator „Źródło dyspozycyjne nN (agregat / UPS)" — ui2, kreatory/rama.
  *
  * Wspólny kreator dla operacji `add_genset_nn` i `add_ups_nn` (rodzaj z op).
- * Katalog-first (SYSTEM_ZRODLOWY + APARAT_NN). Zapis = operacja domenowa. ZERO
- * fizyki w UI (kontrakt payloadu bez zmian względem legacy AddDispatchableSourceForm).
+ * Aparat pola z katalogu APARAT_NN; parametry źródła z tabliczki (katalogu agregatów/UPS
+ * nie ma — ZASADA NR 4). Zapis = operacja domenowa; ładunek = odczyty handlera
+ * (`zrodloDyspozycyjneModel.zbudujPayload`). ZERO fizyki w UI.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchLvApparatusTypes, fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
-import type { LVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
+import { fetchLvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
+import type { LVApparatusType } from '../../../ui/catalog/types';
 import {
   listNnBusOptions,
   listNnSourceFieldOptions,
@@ -46,8 +47,6 @@ import {
   type BladPola,
   type GensetFuelType,
   type GensetOperationMode,
-  type NNSwitchKind,
-  type NNSwitchState,
   type SourcePlacement,
   type UpsBatteryType,
   type UpsOperationMode,
@@ -86,13 +85,11 @@ export function KreatorZrodloDyspozycyjne() {
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('pole');
 
-  const [zrodloKatalog, setZrodloKatalog] = useState<SourceSystemCatalogType[]>([]);
   const [aparatKatalog, setAparatKatalog] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
-  // ładowania OBU katalogów (system źródła + aparat nN), niezależny od
-  // długości tablic (katalog pusty PO wczytaniu wygląda inaczej niż katalog
-  // W TRAKCIE wczytywania).
+  // ładowania katalogu aparatów nN, niezależny od długości tablicy (katalog
+  // pusty PO wczytaniu wygląda inaczej niż katalog W TRAKCIE wczytywania).
   const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   // Ustal szynę, gdy kontekst/model dostarczy domyślną dopiero po montażu.
@@ -105,15 +102,13 @@ export function KreatorZrodloDyspozycyjne() {
     let active = true;
     setBladKatalogu(null);
     setKatalogLadowanie(true);
-    Promise.all([fetchSourceSystemTypes(), fetchLvApparatusTypes()])
-      .then(([src, lv]) => {
+    fetchLvApparatusTypes()
+      .then((lv) => {
         if (!active) return;
-        setZrodloKatalog(Array.isArray(src) ? src : []);
         setAparatKatalog(Array.isArray(lv) ? lv : []);
       })
       .catch((e: unknown) => {
         if (!active) return;
-        setZrodloKatalog([]);
         setAparatKatalog([]);
         setBladKatalogu(getCatalogErrorMessage(e));
       })
@@ -147,22 +142,17 @@ export function KreatorZrodloDyspozycyjne() {
     () => fieldOptions.map((f) => ({ id: f.ref_id, etykieta: f.name })),
     [fieldOptions],
   );
-  const opcjeZrodla = useMemo(
-    () =>
-      zrodloKatalog.map((s) => ({
-        id: s.id,
-        etykieta: `${s.name} · ${s.voltage_rating_kv} kV · Sk'' ${s.sk3_mva} MVA`,
-      })),
-    [zrodloKatalog],
-  );
   const opcjeAparatu = useMemo(
     () => aparatKatalog.map((a) => ({ id: a.id, etykieta: `${a.name} · ${a.u_n_kv} kV · ${a.i_n_a} A` })),
     [aparatKatalog],
   );
 
-  const params = useMemo(
-    () => (dane.catalog_item_id ? zrodloKatalog.find((s) => s.id === dane.catalog_item_id) ?? null : null),
-    [dane.catalog_item_id, zrodloKatalog],
+  const aparatWybrany = useMemo(
+    () =>
+      dane.new_field_switch_catalog_ref
+        ? aparatKatalog.find((a) => a.id === dane.new_field_switch_catalog_ref) ?? null
+        : null,
+    [dane.new_field_switch_catalog_ref, aparatKatalog],
   );
 
   const isNewField = dane.placement === 'NEW_FIELD';
@@ -221,19 +211,13 @@ export function KreatorZrodloDyspozycyjne() {
     },
     {
       etykieta: T.wierszPole,
-      stan: isNewField
-        ? dane.new_field_switch_kind && dane.new_field_voltage_nn_kv
-          ? 'kompletne'
-          : 'brak'
-        : dane.existing_field_ref
-          ? 'kompletne'
-          : 'brak',
+      stan: isNewField || dane.existing_field_ref ? 'kompletne' : 'brak',
       wartosc: isNewField ? 'Nowe pole' : dane.existing_field_ref ? 'Istniejące' : 'Do wyboru',
     },
     {
-      etykieta: T.wierszKatalog,
-      stan: dane.catalog_item_id ? 'kompletne' : 'brak',
-      wartosc: dane.catalog_item_id ? params?.name ?? 'Kompletne' : 'Do konfiguracji',
+      etykieta: T.wierszAparat,
+      stan: !isNewField || aparatWybrany ? 'kompletne' : 'ostrzezenie',
+      wartosc: !isNewField ? T.wierszAparatIstniejace : aparatWybrany?.name ?? T.wierszAparatBrak,
     },
     {
       etykieta: T.wierszMoc,
@@ -328,27 +312,6 @@ export function KreatorZrodloDyspozycyjne() {
             )
           ) : (
             <>
-              <KreatorSiatka kolumny={2}>
-                <PoleWyboru
-                  etykieta={T.aparat}
-                  wartosc={dane.new_field_switch_kind ?? ''}
-                  onZmiana={(v) => zmien('new_field_switch_kind', (v || null) as NNSwitchKind | null)}
-                  opcje={[{ id: '', etykieta: '— wybierz —' }, ...T.aparatOpcje]}
-                  pomoc={T.aparatPomoc}
-                  blad={bladDlaPola('new_field_switch_kind')}
-                  wymagane
-                  testid="mvd-kreator-zrodlo-dysp-aparat"
-                />
-                <PoleWyboru
-                  etykieta={T.stanNormalny}
-                  wartosc={dane.new_field_switch_state ?? ''}
-                  onZmiana={(v) => zmien('new_field_switch_state', (v || null) as NNSwitchState | null)}
-                  opcje={[{ id: '', etykieta: '— wybierz —' }, ...T.stanNormalnyOpcje]}
-                  blad={bladDlaPola('new_field_switch_state')}
-                  wymagane
-                  testid="mvd-kreator-zrodlo-dysp-stan"
-                />
-              </KreatorSiatka>
               <PoleKatalogu
                 etykieta={T.aparatKatalog}
                 wartosc={dane.new_field_switch_catalog_ref}
@@ -360,27 +323,13 @@ export function KreatorZrodloDyspozycyjne() {
                 pomoc={T.aparatKatalogPomoc}
                 testid="mvd-kreator-zrodlo-dysp-aparat-katalog"
               />
-              <KreatorSiatka kolumny={2}>
-                <PoleLiczbowe
-                  etykieta={T.napiecieNn}
-                  jednostka="kV"
-                  wartosc={dane.new_field_voltage_nn_kv}
-                  onZmiana={(v) => zmien('new_field_voltage_nn_kv', v)}
-                  krok={0.001}
-                  min={0}
-                  pomoc={T.napiecieNnPomoc}
-                  blad={bladDlaPola('new_field_voltage_nn_kv')}
-                  wymagane
-                  testid="mvd-kreator-zrodlo-dysp-napiecie-nn"
-                />
-                <PoleTekstowe
-                  etykieta={T.nazwaPola}
-                  wartosc={dane.new_field_name}
-                  onZmiana={(v) => zmien('new_field_name', v)}
-                  placeholder={T.nazwaPolaPlaceholder}
-                  testid="mvd-kreator-zrodlo-dysp-nazwa-pola"
-                />
-              </KreatorSiatka>
+              <PoleTekstowe
+                etykieta={T.nazwaPola}
+                wartosc={dane.new_field_name}
+                onZmiana={(v) => zmien('new_field_name', v)}
+                placeholder={T.nazwaPolaPlaceholder}
+                testid="mvd-kreator-zrodlo-dysp-nazwa-pola"
+              />
             </>
           )}
         </KreatorSekcja>
@@ -388,19 +337,7 @@ export function KreatorZrodloDyspozycyjne() {
 
       {krok === 'parametry' ? (
         <KreatorSekcja tytul={T.krokParametry} testid="mvd-kreator-zrodlo-dysp-parametry">
-          <KreatorInfo>{T.katalogPomoc}</KreatorInfo>
-          <PoleKatalogu
-            etykieta={tk.katalog}
-            wartosc={dane.catalog_item_id}
-            onZmiana={(v) => zmien('catalog_item_id', v)}
-            opcje={opcjeZrodla}
-            status={bladKatalogu ? 'error' : 'ready'}
-            placeholder={T.katalogPlaceholder}
-            komunikatBledu={bladKatalogu ?? tk.katalogBlad}
-            blad={bladDlaPola('catalog_item_id')}
-            wymagane
-            testid="mvd-kreator-zrodlo-dysp-katalog"
-          />
+          <KreatorInfo>{T.tabliczkaPomoc}</KreatorInfo>
 
           {kind === 'GENSET' ? (
             <>
@@ -537,7 +474,10 @@ export function KreatorZrodloDyspozycyjne() {
               etykieta={T.wierszSzyna}
               wartosc={busOptions.find((b) => b.ref_id === dane.bus_nn_ref)?.name ?? '—'}
             />
-            <RzadWartosci etykieta={T.wierszKatalog} wartosc={params?.name ?? '—'} />
+            <RzadWartosci
+              etykieta={T.wierszAparat}
+              wartosc={isNewField ? aparatWybrany?.name ?? T.wierszAparatBrak : T.wierszAparatIstniejace}
+            />
             <RzadWartosci etykieta={T.wierszMoc} wartosc={dane.rated_power_kw ? `${dane.rated_power_kw} kW` : '—'} />
           </KreatorSiatka>
         </KreatorSekcja>

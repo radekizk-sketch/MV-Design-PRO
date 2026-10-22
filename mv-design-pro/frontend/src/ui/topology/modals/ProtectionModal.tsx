@@ -15,18 +15,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CatalogPicker, type CatalogEntry } from './CatalogPicker';
 import { CatalogPreview, type CatalogPreviewSection } from './CatalogPreview';
 import { ExpertOverrides, type OverrideEntry } from './ExpertOverrides';
+import type { ProtectionAssignment } from '../../../types/enm';
+import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../shared/etykietyZabezpieczen';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type ProtectionDeviceType =
-  | 'overcurrent'
-  | 'earth_fault'
-  | 'directional_overcurrent'
-  | 'distance'
-  | 'differential'
-  | 'custom';
+/** Rodzaj zabezpieczenia — lustro `ProtectionAssignment.device_type` (jedna lista wartości). */
+export type ProtectionDeviceType = ProtectionAssignment['device_type'];
 
 export interface ProtectionFormData {
   ref_id: string;
@@ -89,14 +86,7 @@ function validateForm(data: ProtectionFormData): FieldError[] {
   return errors;
 }
 
-const DEVICE_TYPE_LABELS: Record<ProtectionDeviceType, string> = {
-  overcurrent: 'Nadprądowe',
-  earth_fault: 'Ziemnozwarciowe',
-  directional_overcurrent: 'Kierunkowe nadprądowe',
-  distance: 'Odległościowe',
-  differential: 'Różnicowe',
-  custom: 'Niestandardowe',
-};
+const DEVICE_TYPE_LABELS: Readonly<Record<ProtectionDeviceType, string>> = ETYKIETA_RODZAJU_ZABEZPIECZENIA;
 
 const DEFAULT_DATA: ProtectionFormData = {
   ref_id: '',

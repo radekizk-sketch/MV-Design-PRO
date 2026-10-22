@@ -978,7 +978,7 @@ def _male_pierwsze(tekst: str) -> str:
         ),
         (
             slownik.NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
-            "ui2/adapters/inspectorAdapter.ts",
+            "ui/shared/etykietyZabezpieczen.ts",
             "ETYKIETA_RODZAJU_ZABEZPIECZENIA",
             _male_pierwsze,
         ),
@@ -1415,9 +1415,14 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
         "add_transformer_sn_nn",
         {},
         "catalog.ref_required",
-        (slownik.nazwa_pola("catalog_ref", "add_transformer_sn_nn"),),
+        (slownik.nazwa_pola("transformer_catalog_ref", "add_transformer_sn_nn"),),
     ),
-    ("add_transformer_sn_nn", {"catalog_ref": _TRAFO + _LITEROWKA}, "catalog.item_not_found", ()),
+    (
+        "add_transformer_sn_nn",
+        {"transformer_catalog_ref": _TRAFO + _LITEROWKA},
+        "catalog.item_not_found",
+        (),
+    ),
     (
         "add_transformer_sn_nn",
         {

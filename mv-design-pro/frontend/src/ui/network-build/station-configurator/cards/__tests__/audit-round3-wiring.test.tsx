@@ -319,11 +319,10 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               typePl: 'SIEMENS 7SJ85',
               functionsPl: ['50/51', '67N'],
               settingsCount: 4,
+              enabled: true,
               vtCatalogRef: 'vt_20kv_100v_05_arteche', // realny typ katalogu, F_v 1,2
             },
           ]}
-          automation={[]}
-          interlocksConfigured={true}
           mvNeutralGroundingType="petersen_coil"
         />,
       );
@@ -341,8 +340,6 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       render(
         <StationConfigProtectionCard
           relays={[]}
-          automation={[]}
-          interlocksConfigured={true}
           deviceWithstandRows={[
             {
               bayDesignation: 'POLE-01',
@@ -370,11 +367,10 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               typePl: 'SIEMENS 7SJ85',
               functionsPl: ['67N'],
               settingsCount: 4,
+              enabled: true,
               vtCatalogRef: 'vt_20kv_fz_100_3_05_3p_siemens', // realny typ, F_v 1,9
             },
           ]}
-          automation={[]}
-          interlocksConfigured={true}
           mvNeutralGroundingType="petersen_coil"
         />,
       );

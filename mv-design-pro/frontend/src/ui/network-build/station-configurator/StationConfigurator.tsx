@@ -33,10 +33,7 @@ import {
   StationConfigNnSwitchgearCard,
   type StationConfigNnSwitchgearCardProps,
 } from './cards/StationConfigNnSwitchgearCard';
-import type {
-  LoadRow,
-  StationConfigLoadsCardProps,
-} from './cards/StationConfigLoadsCard';
+import type { LoadRow } from './cards/StationConfigLoadsCard';
 import {
   StationConfigDerSourcesCard,
   type StationConfigDerSourcesCardProps,
@@ -49,12 +46,18 @@ import {
   StationConfigReadinessCard,
   type StationConfigReadinessCardProps,
 } from './cards/StationConfigReadinessCard';
-import type { StationConfigMeasurementsCardProps } from './cards/StationConfigMeasurementsCard';
+import type { MeasurementRow } from './przekladnikiStacji';
+import type { PolePomiaroweWiersz } from './polaPomiaroweStacji';
 import {
   canonicalFieldRole,
+  FIELD_ROLE_LABEL_PL,
+  fieldLabelPluralPl,
   fieldRoleLabelPl,
   isSourceFieldRole,
 } from '../../sld/v2/station-rozdzielnia/contract';
+
+/** „Pola pomiarowe” — liczba mnoga etykiety roli z kanonu ról pól SN (jedno słownictwo). */
+const ETYKIETA_POL_POMIAROWYCH = fieldLabelPluralPl(FIELD_ROLE_LABEL_PL.POMIAROWE);
 
 export type StationConfigVisibleCardId =
   | 'basic'
@@ -71,9 +74,16 @@ export type StationConfigVisibleCardId =
   | 'power-quality'
   | 'protection'
   | 'nc-rfg'
-  | 'infrastructure'
   | 'network-analysis'
   | 'readiness';
+
+/** Przekładniki i pola pomiarowe stacji — wszystkie wiersze z modelu (`przekladnikiStacji.ts`,
+ *  `polaPomiaroweStacji.ts`). */
+export interface StationMeasurementsProps {
+  readonly cts: readonly MeasurementRow[];
+  readonly vts: readonly MeasurementRow[];
+  readonly polaPomiarowe: readonly PolePomiaroweWiersz[];
+}
 
 export type StationConfigCardId = StationConfigVisibleCardId | 'topology';
 
@@ -85,15 +95,14 @@ export interface StationConfiguratorProps {
   readonly transformer: StationConfigTransformerCardProps;
   readonly nnSwitchgear: StationConfigNnSwitchgearCardProps;
   readonly derSources: StationConfigDerSourcesCardProps;
-  readonly loads?: StationConfigLoadsCardProps;
   readonly protection: StationConfigProtectionCardProps;
-  readonly measurements: StationConfigMeasurementsCardProps;
+  readonly measurements: StationMeasurementsProps;
   readonly readiness: StationConfigReadinessCardProps;
   readonly defaultCard?: StationConfigCardId;
   readonly onOpenCalculations?: () => void;
 }
 
-type StepGroup = 'SN' | 'Pomiary' | 'Stacja' | 'OZE' | 'Ochrona' | 'Infrastruktura' | 'Raport';
+type StepGroup = 'SN' | 'Pomiary' | 'Stacja' | 'OZE' | 'Ochrona' | 'Raport';
 
 interface StepDefinition {
   readonly id: StationConfigVisibleCardId;
@@ -111,7 +120,7 @@ const STEPS: readonly StepDefinition[] = [
   { id: 'apparatus', n: 4, label: 'Aparatura SN', sub: 'Łączniki, przekładniki i pakiety pól', group: 'SN', code: 'SN-4' },
   { id: 'ct', n: 5, label: 'Przekładniki prądowe', sub: 'Rdzenie, klasy i obciążenia wtórne', group: 'Pomiary', code: 'PM-1' },
   { id: 'vt', n: 6, label: 'Przekładniki napięciowe', sub: 'Układ napięciowy i współczynnik napięciowy', group: 'Pomiary', code: 'PM-2' },
-  { id: 'measurements', n: 7, label: 'Liczniki i telemechanika', sub: 'Pomiary rozliczeniowe i sygnały', group: 'Pomiary', code: 'PM-3' },
+  { id: 'measurements', n: 7, label: ETYKIETA_POL_POMIAROWYCH, sub: 'Układy pomiarowe energii i pomiar napięcia szyn', group: 'Pomiary', code: 'PM-3' },
   { id: 'transformer', n: 8, label: 'Transformator', sub: 'Moc, grupa, zaczepy i poziomy nN', group: 'Stacja', code: 'ST-1' },
   { id: 'earthing', n: 9, label: 'Uziemienie', sub: 'Neutralny SN, siatka i wymagania 67N', group: 'Stacja', code: 'ST-2' },
   { id: 'nn-switchgear', n: 10, label: 'Strona nN', sub: 'Rozdzielnice, odpływy i odbiory', group: 'Stacja', code: 'ST-3' },
@@ -119,9 +128,8 @@ const STEPS: readonly StepDefinition[] = [
   { id: 'power-quality', n: 12, label: 'Jakość energii', sub: 'Regulacja, bilans i wpływ źródeł', group: 'OZE', code: 'OZE-2' },
   { id: 'protection', n: 13, label: 'Zabezpieczenia', sub: 'Przekaźniki, nastawy i selektywność', group: 'Ochrona', code: 'ZA-1' },
   { id: 'nc-rfg', n: 14, label: 'NC RfG i PTPiREE', sub: 'Profile źródeł i wymagania przyłączeniowe', group: 'Ochrona', code: 'ZA-2' },
-  { id: 'infrastructure', n: 15, label: 'SCADA i infrastruktura', sub: 'Sterowanie, telepomiary i automatyka', group: 'Infrastruktura', code: 'IF-1' },
-  { id: 'network-analysis', n: 16, label: 'Analiza sieciowa', sub: 'Ciąg SN, moce, napięcia i straty', group: 'Infrastruktura', code: 'IF-2' },
-  { id: 'readiness', n: 17, label: 'Obliczenia i raport', sub: 'Zakres obliczeń, dowody i eksport', group: 'Raport', code: 'RP-1' },
+  { id: 'network-analysis', n: 15, label: 'Analiza sieciowa', sub: 'Ciąg SN, moce, napięcia i straty', group: 'Raport', code: 'RP-1' },
+  { id: 'readiness', n: 16, label: 'Obliczenia i raport', sub: 'Zakres obliczeń, dowody i eksport', group: 'Raport', code: 'RP-2' },
 ];
 
 const GROUP_STYLE: Record<StepGroup, { readonly text: string; readonly border: string; readonly bg: string; readonly button: string }> = {
@@ -155,12 +163,6 @@ const GROUP_STYLE: Record<StepGroup, { readonly text: string; readonly border: s
     bg: 'bg-rose-950/20',
     button: 'bg-rose-400 text-slate-950',
   },
-  Infrastruktura: {
-    text: 'text-orange-300',
-    border: 'border-orange-400',
-    bg: 'bg-orange-950/20',
-    button: 'bg-orange-400 text-slate-950',
-  },
   Raport: {
     text: 'text-lime-300',
     border: 'border-lime-400',
@@ -187,7 +189,6 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
     transformer,
     nnSwitchgear,
     derSources,
-    loads,
     protection,
     measurements,
     readiness,
@@ -203,7 +204,7 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
   const prevStep = STEPS[activeStepIndex - 1] ?? null;
   const groupStyle = GROUP_STYLE[activeStep.group];
 
-  const loadRows = loads?.loads ?? nnSwitchgear.loads ?? [];
+  const loadRows = nnSwitchgear.loads;
   const progressLabel = `${activeStep.n} / ${STEPS.length}`;
 
   return (
@@ -281,7 +282,7 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
             {activeCard === 'vt' && <MeasurementPackagePanel mode="vt" measurements={measurements} protection={protection} />}
             {activeCard === 'measurements' && <MeasurementPackagePanel mode="meters" measurements={measurements} />}
             {activeCard === 'transformer' && <StationConfigTransformerCard {...transformer} />}
-            {activeCard === 'earthing' && <StationEarthingPanel basic={basic} protection={protection} />}
+            {activeCard === 'earthing' && <StationEarthingPanel basic={basic} />}
             {activeCard === 'nn-switchgear' && <StationConfigNnSwitchgearCard {...nnSwitchgear} />}
             {activeCard === 'der-sources' && <StationConfigDerSourcesCard {...derSources} />}
             {activeCard === 'power-quality' && (
@@ -289,9 +290,6 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
             )}
             {activeCard === 'protection' && <StationConfigProtectionCard {...protection} />}
             {activeCard === 'nc-rfg' && <StationNcRfgPanel ders={derSources.ders} protection={protection} />}
-            {activeCard === 'infrastructure' && (
-              <StationInfrastructurePanel measurements={measurements} protection={protection} topology={topology} />
-            )}
             {activeCard === 'network-analysis' && (
               <StationNetworkAnalysisPanel
                 topology={topology}
@@ -490,7 +488,7 @@ function MeasurementPackagePanel({
   protection,
 }: {
   readonly mode: 'ct' | 'vt' | 'meters';
-  readonly measurements: StationConfigMeasurementsCardProps;
+  readonly measurements: StationMeasurementsProps;
   readonly protection?: StationConfigProtectionCardProps;
 }): JSX.Element {
   if (mode === 'ct') {
@@ -526,22 +524,38 @@ function MeasurementPackagePanel({
     );
   }
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <MetricCard label="Liczniki" value={String(measurements.metersCount)} />
-      <MetricCard label="Telepomiary" value={String(measurements.telemetryCount)} />
-      <TechnicalPanel title="Punkty pomiarowe" subtitle="Pomiary rozliczeniowe, ruchowe i sygnały do systemu dyspozytorskiego.">
-        {measurements.missingMeasurementsPl && measurements.missingMeasurementsPl.length > 0 ? (
-          <ul className="space-y-1 text-xs text-scada-muted">
-            {measurements.missingMeasurementsPl.map((item) => <li key={item}>• {item}</li>)}
-          </ul>
-        ) : (
-          <GuidanceBox>
-            Zestaw pomiarowy wynika z pól SN, przekładników CT/VT, liczników i telemechaniki
-            przypisanych do wariantu stacji.
-          </GuidanceBox>
-        )}
-      </TechnicalPanel>
-    </div>
+    <TechnicalPanel
+      title={`${ETYKIETA_POL_POMIAROWYCH} SN`}
+      subtitle="Deklaracja pomiaru pola (układ pomiarowy energii albo pomiar napięcia szyn) i przekładniki w polu."
+    >
+      {measurements.polaPomiarowe.length === 0 ? (
+        <GuidanceBox>
+          Stacja nie ma pola pomiarowego SN — dodaj pole z rolą „Tor pomiarowy” w kreatorze pola SN
+          i zadeklaruj układ pomiarowy energii albo pomiar napięcia szyn.
+        </GuidanceBox>
+      ) : (
+        <table data-testid="station-metering-bays" className="w-full text-[11px]">
+          <thead>
+            <tr className="border-b border-scada-border text-scada-muted">
+              <th className="text-left">Pole</th>
+              <th className="text-left">Pomiar</th>
+              <th className="text-right">Przekładniki prądowe</th>
+              <th className="text-right">Przekładniki napięciowe</th>
+            </tr>
+          </thead>
+          <tbody>
+            {measurements.polaPomiarowe.map((pole) => (
+              <tr key={pole.bayId} data-testid={`station-metering-bay-${pole.bayId}`} className="border-b border-scada-border/40">
+                <td className="font-mono">{pole.designation}</td>
+                <td>{pole.pomiarPl}</td>
+                <td className="text-right font-mono">{pole.przekladnikiCt}</td>
+                <td className="text-right font-mono">{pole.przekladnikiVt}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </TechnicalPanel>
   );
 }
 
@@ -585,17 +599,15 @@ function MeasurementTable({
 
 function StationEarthingPanel({
   basic,
-  protection,
 }: {
   readonly basic: StationConfigBasicCardProps;
-  readonly protection: StationConfigProtectionCardProps;
 }): JSX.Element {
   const selected = basic.mvNeutralGroundings.find((item) => item.id === basic.mvNeutralGroundingRef);
   const requires67N = selected
     ? selected.grounding_type === 'isolated' || selected.grounding_type === 'petersen_coil'
     : false;
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="space-y-4">
       <TechnicalPanel title="Uziemienie punktu neutralnego SN" subtitle="Wariant z katalogu wpływa na zabezpieczenia ziemnozwarciowe i dobór VT.">
         <label className="flex flex-col gap-1 text-xs">
           <span className="text-scada-muted">Wariant katalogowy</span>
@@ -628,10 +640,6 @@ function StationEarthingPanel({
           <GuidanceBox>Wybierz katalogowy wariant uziemienia neutralnego SN dla tej stacji.</GuidanceBox>
         )}
       </TechnicalPanel>
-      <TechnicalPanel title="Powiązania z ochroną" subtitle="Zabezpieczenia i automatyka korzystają z tego samego wariantu uziemienia.">
-        <MetricCard label="Tryb sterowania" value={protection.controlMode ?? 'lokalne'} />
-        <MetricCard label="Uzależnienia" value={protection.interlocksConfigured ? 'skonfigurowane' : 'do konfiguracji'} />
-      </TechnicalPanel>
     </div>
   );
 }
@@ -648,8 +656,7 @@ function StationPowerQualityPanel({
   // Bilans eksportu wobec importu (ocena) liczy wyłącznie backend w pakiecie dowodów.
   const derBezMocy = ders.filter((der) => der.nominal_power_kw === null).length;
   const totalDerKw = ders.reduce((sum, der) => sum + (der.nominal_power_kw ?? 0), 0);
-  const odbioryBezMocy = loads.filter((load) => load.pMw === null).length;
-  const totalLoadMw = loads.reduce((sum, load) => sum + (load.pMw ?? 0), 0);
+  const totalLoadMw = loads.reduce((sum, load) => sum + load.pMw, 0);
   const profiles = new Set(ders.map((der) => der.profiles.nc_rfg_profile_ref).filter(Boolean));
   return (
     <div className="space-y-4">
@@ -662,14 +669,7 @@ function StationPowerQualityPanel({
               : `${totalDerKw.toFixed(0)} kW + ${derBezMocy} bez mocy z katalogu`
           }
         />
-        <MetricCard
-          label="Odbiory"
-          value={
-            odbioryBezMocy === 0
-              ? `${totalLoadMw.toFixed(3)} MW`
-              : `${totalLoadMw.toFixed(3)} MW + ${odbioryBezMocy} bez mocy`
-          }
-        />
+        <MetricCard label="Odbiory nN" value={`${totalLoadMw.toFixed(3)} MW`} />
         <MetricCard label="Profile NC RfG" value={String(profiles.size)} />
       </div>
       <TechnicalPanel title="Bilans i jakość energii" subtitle="Dane wejściowe do oceny napięcia, cosφ, profili Q(U) i wpływu źródeł.">
@@ -717,38 +717,8 @@ function StationNcRfgPanel({
           <GuidanceBox>Wybierz wariant PV, BESS albo FW, aby skonfigurować wymagania przyłączeniowe.</GuidanceBox>
         )}
       </TechnicalPanel>
-      <TechnicalPanel title="Ochrona przyłączeniowa" subtitle="Powiązanie profili źródeł z przekaźnikami, automatyką i blokadami.">
+      <TechnicalPanel title="Ochrona przyłączeniowa" subtitle="Przekaźniki przypięte do pól SN tej stacji (z modelu).">
         <MetricCard label="Przekaźniki" value={String(protection.relays.length)} />
-        <MetricCard label="Automatyka" value={String(protection.automation.filter((item) => item.enabled).length)} />
-      </TechnicalPanel>
-    </div>
-  );
-}
-
-function StationInfrastructurePanel({
-  measurements,
-  protection,
-  topology,
-}: {
-  readonly measurements: StationConfigMeasurementsCardProps;
-  readonly protection: StationConfigProtectionCardProps;
-  readonly topology: StationConfigTopologyCardProps;
-}): JSX.Element {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <TechnicalPanel title="Sterowanie i telemechanika" subtitle="Tryb pracy, sygnały i uzależnienia łączeniowe dla stacji.">
-        <div className="space-y-2 text-xs">
-          <Fact label="Tryb sterowania" value={protection.controlMode ?? 'lokalne'} />
-          <Fact label="Telepomiary" value={String(measurements.telemetryCount)} />
-          <Fact label="Uzależnienia łączeniowe" value={protection.interlocksConfigured ? 'skonfigurowane' : 'do konfiguracji'} />
-        </div>
-      </TechnicalPanel>
-      <TechnicalPanel title="Ciągłość w SLD" subtitle="Stacja musi być wpięta w rzeczywiste terminale ciągu SN.">
-        <div className="space-y-2 text-xs">
-          <Fact label="Połączenia terminali" value={String(topology.endToEndConnectionsCount)} />
-          <Fact label="Porty do powiązania" value={String(topology.missingEndpointsCount)} />
-          <Fact label="Porty zewnętrzne" value={String(topology.externalPorts.length)} />
-        </div>
       </TechnicalPanel>
     </div>
   );
@@ -781,7 +751,7 @@ function StationNetworkAnalysisPanel({
         <div className="grid gap-2 text-xs md:grid-cols-2">
           <Fact label="Ciąg SN" value={topology.endToEndConnectionsCount > 0 ? 'połączony terminalami' : 'wybierz terminale w SLD'} />
           <Fact label="Rozdzielnia SN" value={`${snSwitchgear.sectionsCount} sekcji, ${snSwitchgear.baysCount} pól`} />
-          <Fact label="Odbiory" value={`${loads.length} odpływów`} />
+          <Fact label="Odbiory nN" value={`${loads.length} odbiorów`} />
           <Fact label="Źródła OZE/BESS/FW" value={`${ders.length} układów`} />
         </div>
       </TechnicalPanel>

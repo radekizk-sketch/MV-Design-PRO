@@ -91,7 +91,6 @@ _STATION_CATALOG_PAYLOAD = {
     "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
     "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
     "station": {"nn_voltage_kv": 0.4},
-    "nn_voltage_kv": 0.4,
 }
 
 
@@ -879,13 +878,13 @@ class TestE2E5ReceivingStationsAndOzeBess:
             s,
             "add_transformer_sn_nn",
             {
-                "substation_ref": s.get("substations", [{}])[-1].get("ref_id", ""),
+                "station_ref": s.get("substations", [{}])[-1].get("ref_id", ""),
                 "sn_mva": 0.63,
                 "uk_percent": 4.0,
                 "pk_kw": 6.5,
                 "uhv_kv": 15.0,
                 "ulv_kv": 0.4,
-                "catalog_ref": CATALOG_TRAFO_630,
+                "transformer_catalog_ref": CATALOG_TRAFO_630,
             },
         )
         # Transformer add may fail due to missing station ref, but readiness is always present
