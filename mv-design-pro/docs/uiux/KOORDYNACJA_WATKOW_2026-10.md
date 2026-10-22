@@ -311,3 +311,29 @@ Pakiet A–D jest PRZYJĘTY jako plan wykonawczy karty GPZ-MODEL, z poniższymi 
 **8. Dowód odbiorowy (pkt D7) bez zmian.**
 - Werdykt wizualny należy do właściciela (B-02).
 - Liczby 23,469 / 16,781 / 9,047 kA zostają wyłącznie jako test układu rozbudowanego, nie jako dowód H5.
+
+### 2026-10-22, wpis 8 (wątek wykonawczy UI/UX) — karta GPZ-H5-BACKEND gotowa, model B zablokowany na katalogu linii 110 kV
+
+**Stan.** Karta GPZ-H5-BACKEND (pozycje D1/D2 pakietu `docs/plan/KOREKTA_GPZ_H5_ENEA_2026-10.md` oraz punkty 1–8 wpisu 7) jest zakończona commitem `88557ceb7` (gałąź robocza, jeszcze nie na tej gałęzi). Na tę gałąź trafi przez scalenie razem z kartą SLD, po domknięciu styku frontendu: 132 testy SLD v3 na przegenerowanych fiksturach GPZ, role pól funkcyjnych ZU/BKR/pomiar w SLD, formularz `dane_projektu`, e2e przełączeń H5.
+
+**Weryfikacja niezależna wątku wykonawczego.** Liczby z biegu (`create_run` → `execute_run`) porównano z rachunkiem ręcznym wg IEC 60909-0:2016. Zgodność jest do czwartego miejsca po przecinku.
+- 3F MAX: WN1 13,1216 / WN2 9,4475 / SN-A 8,9079 / SN-B 8,5988 kA. K_T = 0,95·c_max/(1 + 0,6·x_T) wg §6.3.3.
+- 3F MIN: SN-A 7,9062 / SN-B 7,4799 kA. Z_Q = c_min·U²/S″k,min wg wzoru (1), K_T z c_max.
+- 1F WN przy Z0/Z1 = 1,2: 12,3015 / 8,8571 kA.
+- 1F SN: jawna odmowa „brak drogi prądu zerowego”, bo brak danych uziemienia punktu neutralnego (ENEA §16). Dawny podpis fabrykacji I1F/I3F = 1,5 jest usunięty.
+- SC-02, SC-02b, SC-03 i SC-05a są zgodne z topologią: sekcja bez źródła jest w wyniku „bez napięcia”.
+- SC-04 i SC-05b dają odmowę E067 z akcją „model B”.
+- SC-06 czeka na kartę R8.
+
+Rdzenie B-01 nie są dotknięte (`solver_diff_guard` rc 0). Hashe golden gn01 i gn03 zmieniły się wyłącznie w `snapshot_hash` i `input_hash`; przyczyną jest usunięte pole meta `wn_sn_transformer_count`.
+
+**Do wątku prowadzącego — blokada modelu B (wpis 7, pkt 4).** Linii L1/L2 nie da się zbudować jako realnych gałęzi bez nowej ścieżki danych albo bez fabrykacji:
+- linia lub kabel bez katalogu jest blokowany (`network_model/catalog/governance.py:246–256`, E009);
+- wyjątek MANUAL_EQUIVALENT istnieje tylko dla źródeł (`governance.py:265–275`);
+- OVERRIDE wymaga pozycji katalogu, a katalogu przewodów 110 kV nie ma.
+
+„Istniejąca ścieżka ręczna z pochodzeniem” dla linii więc nie istnieje. Model B odblokuje karta katalogu przewodów 110 kV i solvera parametrów linii (wątek prowadzący). Wspólny punkt zasilania (szyna stacji zasilającej z danymi OSD) da się zbudować już dziś.
+
+**MENU-KANON.** Pięciu commitów nie było na gałęzi przy zamknięciu karty: `api/switchgear_config.py` nadal istnieje. Pola H5 są już w `OperationSpec`. Szablony H5 przekazują `line_fields_count` per sekcja, więc ciche „jedno pole na sekcję” nie występuje.
+
+**B-02.** Ekran H5 po przebudowie kompozycji jest u właściciela do oceny. Werdykt należy do właściciela.
