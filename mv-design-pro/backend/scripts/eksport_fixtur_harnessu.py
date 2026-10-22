@@ -26,7 +26,10 @@ Użycie (z katalogu `backend`):
 `--sprawdz` nie zapisuje — kończy kodem 1, gdy którykolwiek JSON różni się od
 świeżo policzonej odpowiedzi. `--tylko` zawęża przeliczenie (zapis albo porównanie)
 do wskazanych fixtur — przy pracy wielu wykonawców na jednym drzewie odświeża się
-wyłącznie własne sceny, a cudze zostają bajt w bajt.
+wyłącznie własne sceny, a cudze zostają bajt w bajt. Wybór jest domykany do pełnych GRUP
+BIEGÓW (``domknij_do_grup``): fixtury z jednego biegu kotwicy (wspólny ``RUN_ID_*``/``_UUID_*``
+generatora) rozstrzygają kotwicę w szumie razem (``rozstrzygnij_grupe``), więc jeden bieg
+nigdy nie ma w repo dwóch skrótów wyniku.
 """
 
 from __future__ import annotations
@@ -34,9 +37,10 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 import sys
 import typing
-from collections.abc import Iterator
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -221,7 +225,10 @@ from solver_input.v126_contracts import (  # noqa: E402
 )
 
 from tests.cgmes.golden_enm import build_golden_enm  # noqa: E402
-from tests.ci.tolerancja_fikstur import roznice_z_tolerancja  # noqa: E402
+from tests.ci.tolerancja_fikstur import (  # noqa: E402
+    klasy_rownosci_skrotow,
+    roznice_z_tolerancja,
+)
 from tests.golden.enm_builders.dynamika_projektanta import (  # noqa: E402
     build_dynamika_projektanta_enm,
     refy_sieci,
@@ -5044,30 +5051,166 @@ def _json(dane: Any) -> str:
     return json_fikstury(dane, sort_keys=False)
 
 
-def tresc_do_zapisu(sciezka: Path, dane: Any) -> str:
-    """Treść, którą generator zapisuje pod ``sciezka`` — KOTWICA W SZUMIE.
+def tokeny_biegow_generatora() -> tuple[str, ...]:
+    """Tożsamości biegów kotwic DEKLAROWANE w tym module — jedno źródło grup zapisu.
+
+    Każdy bieg, z którego powstają fikstury, ma w generatorze stałą tożsamości: identyfikator
+    biegu ``RUN_ID_*`` (napis wstawiany w miejsce losowego ``run.id`` przez
+    ``_ustabilizuj_identyfikatory``) albo ``_UUID_*`` (uuid5 sceny / biegu z
+    ``_zamrozona_tozsamosc_biegu``). Grupy zapisu (``grupy_biegow``) wyprowadza się z tych
+    deklaracji, nie z ręcznej listy plików: nowa scena z nową stałą tworzy nową grupę bez
+    edycji reguły zapisu."""
+    tokeny: set[str] = set()
+    for nazwa, wartosc in globals().items():
+        if nazwa.startswith("RUN_ID_") and isinstance(wartosc, str):
+            tokeny.add(wartosc)
+        elif nazwa.startswith("_UUID_") and isinstance(wartosc, UUID):
+            tokeny.add(str(wartosc))
+    return tuple(sorted(tokeny))
+
+
+def wzorzec_tokenow(tokeny: Iterable[str]) -> re.Pattern[str]:
+    """Wzorzec wystąpienia tokenu biegu jako CAŁEGO identyfikatora. Granica
+    ``(?<![\\w-])…(?![\\w-])`` jest konieczna, bo tokeny bywają swoimi prefiksami
+    (``run-sc-scena-zwarcia`` wobec ``run-sc-scena-zwarcia-robocza`` — dwa różne biegi);
+    alternatywy od najdłuższej, żeby dopasowanie nie skracało tokenu."""
+    alternatywy = "|".join(re.escape(t) for t in sorted(set(tokeny), key=lambda t: (-len(t), t)))
+    return re.compile(rf"(?<![\w-])(?:{alternatywy})(?![\w-])")
+
+
+def tokeny_w_tresci(tresc: str, wzorzec: re.Pattern[str]) -> frozenset[str]:
+    """Tokeny biegów występujące w treści fixtury."""
+    return frozenset(wzorzec.findall(tresc))
+
+
+def grupy_biegow(niesione: Mapping[str, frozenset[str]]) -> list[tuple[str, ...]]:
+    """Grupy zapisu: spójne składowe relacji „dwie fixtury niosą token tego samego biegu".
+
+    Fixtura niosąca tokeny dwóch biegów (ocena koordynacji stoi na biegu MAX i MIN) łączy
+    ich grupy — wszystko, co pochodzi z jednego biegu kotwicy, rozstrzyga się razem.
+    Fixtura bez tokenu jest grupą jednoelementową. Wynik deterministyczny: nazwy w grupie
+    i grupy posortowane."""
+    rodzic = {nazwa: nazwa for nazwa in niesione}
+
+    def korzen(nazwa: str) -> str:
+        while rodzic[nazwa] != nazwa:
+            rodzic[nazwa] = rodzic[rodzic[nazwa]]
+            nazwa = rodzic[nazwa]
+        return nazwa
+
+    pierwszy_z_tokenem: dict[str, str] = {}
+    for nazwa in sorted(niesione):
+        for token in sorted(niesione[nazwa]):
+            if token in pierwszy_z_tokenem:
+                a, b = sorted((korzen(nazwa), korzen(pierwszy_z_tokenem[token])))
+                rodzic[b] = a
+            else:
+                pierwszy_z_tokenem[token] = nazwa
+    skladowe: dict[str, list[str]] = {}
+    for nazwa in sorted(niesione):
+        skladowe.setdefault(korzen(nazwa), []).append(nazwa)
+    return sorted(tuple(grupa) for grupa in skladowe.values())
+
+
+def _tresc_na_dysku(sciezka: Path) -> str | None:
+    return sciezka.read_text(encoding="utf-8") if sciezka.exists() else None
+
+
+def rozstrzygnij_grupe(swieze: Mapping[Path, str]) -> dict[Path, str]:
+    """Treść zapisu fixtur JEDNEJ grupy biegu — KOTWICA W SZUMIE, rozstrzygana GRUPOWO.
 
     Reguła zapisu liczb usuwa szum numeryki tam, gdzie leży poniżej 12. cyfry znaczącej,
     ale NIE tam, gdzie sięga wyżej (reszty znormalizowane estymacji WLS — szum względny do
     3e-5; niedopasowanie po zbieżności rzędu 1e-12 — sam szum; skrót wyniku nad takimi
     liczbami). Gdy świeża odpowiedź różni się od pliku na dysku WYŁĄCZNIE w tolerancji
     przenośności (``roznice_z_tolerancja`` — ten sam predykat, którym test harnessu
-    rozstrzyga, czy fixtura jest aktualna: jedno źródło prawdy dla zapisu i porównania),
-    generator zapisuje LICZBY Z DYSKU przepuszczone przez regułę zapisu — plik będący już
-    punktem stałym reguły zostaje bajt w bajt, a plik sprzed reguły dostaje wyłącznie
-    zaokrąglenie ostatnich cyfr. Treść różna ponad tolerancję = świeża odpowiedź.
-    Skutek: regeneracja na innej maszynie nie wnosi do repo szumu, a ``--sprawdz`` jest
-    zielony wszędzie tam, gdzie treść się nie zmieniła."""
-    tresc = _json(dane)
-    if not sciezka.exists():
-        return tresc
-    na_dysku = sciezka.read_text(encoding="utf-8")
-    if na_dysku == tresc:
-        return tresc
-    zapisane = json.loads(na_dysku)
-    if not roznice_z_tolerancja(zapisane, json.loads(tresc)):
-        return _json(zapisane)
-    return tresc
+    rozstrzyga, czy fixtura jest aktualna), plik zostaje Z DYSKU przepuszczony przez regułę
+    zapisu — plik będący już punktem stałym reguły zostaje bajt w bajt.
+
+    Rozstrzygnięcie dotyczy CAŁEJ grupy (``grupy_biegow``), nie pojedynczego pliku: skróty
+    nieprzenośne (``POLA_SKROTOW_NIEPRZENOSNYCH``, m.in. ``result_hash``) leżą w tolerancji
+    każdego pliku z osobna, więc reguła per plik zostawiała stary skrót w pliku, w którym
+    poza skrótem nic się nie zmieniło, a wpisywała nowy do pliku z tego samego biegu
+    zmienionego ponad tolerancję — jeden bieg z dwoma ``result_hash`` (zmierzone na
+    ``skladowe_scena_wynik``/``skladowe_scena_slad`` i ``dynamika_scena_przebiegi``/
+    ``dynamika_scena_wyniki``). Dlatego grupa zostaje z dysku WYŁĄCZNIE, gdy każda jej
+    fixtura istnieje i różni się od świeżej odpowiedzi co najwyżej w tolerancji, A RELACJA
+    RÓWNOŚCI skrótów nieprzenośnych w grupie (``klasy_rownosci_skrotow`` — przenośna między
+    maszynami, w odróżnieniu od samej treści skrótu) jest na dysku taka sama jak w świeżej
+    odpowiedzi; inaczej świeża treść CAŁEJ grupy. Drugi warunek domyka też stan zastany:
+    grupa zapisana kiedyś niespójnie nie jest konserwowana jako „szum". Jeden predykat
+    wyboru dla wszystkich członków grupy (predykaty parami)."""
+    z_dysku: dict[Path, str] = {}
+    dane_dysku: dict[str, Any] = {}
+    dane_swieze: dict[str, Any] = {}
+    for sciezka, tresc in swieze.items():
+        na_dysku = _tresc_na_dysku(sciezka)
+        if na_dysku is None:
+            return dict(swieze)
+        zapisane = json.loads(na_dysku)
+        swieza = json.loads(tresc)
+        if na_dysku != tresc and roznice_z_tolerancja(zapisane, swieza):
+            return dict(swieze)
+        z_dysku[sciezka] = tresc if na_dysku == tresc else _json(zapisane)
+        dane_dysku[str(sciezka)] = zapisane
+        dane_swieze[str(sciezka)] = swieza
+    if klasy_rownosci_skrotow(dane_dysku) != klasy_rownosci_skrotow(dane_swieze):
+        return dict(swieze)
+    return z_dysku
+
+
+def tokeny_fixtury(sciezka: Path, swieza: str, wzorzec: re.Pattern[str]) -> frozenset[str]:
+    """Tokeny biegów fixtury: w treści świeżej ORAZ w pliku na dysku (stara treść też
+    należy do biegu, który właśnie się przelicza)."""
+    na_dysku = _tresc_na_dysku(sciezka)
+    tokeny = tokeny_w_tresci(swieza, wzorzec)
+    return tokeny if na_dysku is None else tokeny | tokeny_w_tresci(na_dysku, wzorzec)
+
+
+def tresci_do_zapisu(swieze: Mapping[str, str], katalog: Path) -> dict[str, str]:
+    """Treść zapisu każdej fixtury (nazwa → tekst) z grupowym rozstrzygnięciem kotwicy."""
+    wzorzec = wzorzec_tokenow(tokeny_biegow_generatora())
+    sciezki = {nazwa: katalog / f"{nazwa}.json" for nazwa in swieze}
+    niesione = {
+        nazwa: tokeny_fixtury(sciezki[nazwa], tresc, wzorzec) for nazwa, tresc in swieze.items()
+    }
+    wynik: dict[str, str] = {}
+    for grupa in grupy_biegow(niesione):
+        rozstrzygniete = rozstrzygnij_grupe({sciezki[n]: swieze[n] for n in grupa})
+        wynik.update({n: rozstrzygniete[sciezki[n]] for n in grupa})
+    return wynik
+
+
+def domknij_do_grup(
+    nazwy: Iterable[str],
+    katalog: Path,
+    policz: Callable[[str], str],
+    wszystkie: Iterable[str],
+) -> dict[str, str]:
+    """Świeże treści wybranych fixtur DOMKNIĘTYCH do pełnych grup biegów (``--tylko``).
+
+    Grupa rozstrzyga się razem, więc przeliczenie jednej fixtury bez reszty jej biegu
+    odtworzyłoby defekt reguły per plik. Domknięcie: tokeny biegów wybranych fixtur (świeże
+    i z dysku) wskazują fixtury, których plik na dysku niesie któryś z nich; te są
+    przeliczane i dokładają swoje tokeny — do punktu stałego. Fixtura, która niesie token
+    wyłącznie w treści świeżej (nie na dysku), różni się od dysku ponad tolerancję i już
+    jest czerwona w teście harnessu; pełny bieg generatora (bez ``--tylko``) liczy wszystko."""
+    wzorzec = wzorzec_tokenow(tokeny_biegow_generatora())
+    kolejnosc = list(wszystkie)
+    swieze: dict[str, str] = {}
+    do_policzenia = list(dict.fromkeys(nazwy))
+    tokeny: set[str] = set()
+    while do_policzenia:
+        for nazwa in do_policzenia:
+            swieze[nazwa] = policz(nazwa)
+            tokeny |= tokeny_fixtury(katalog / f"{nazwa}.json", swieze[nazwa], wzorzec)
+        do_policzenia = [
+            nazwa
+            for nazwa in kolejnosc
+            if nazwa not in swieze
+            and tokeny_w_tresci(_tresc_na_dysku(katalog / f"{nazwa}.json") or "", wzorzec) & tokeny
+        ]
+    return swieze
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -5077,7 +5220,10 @@ def main(argv: list[str] | None = None) -> int:
         "--tylko",
         nargs="+",
         metavar="NAZWA",
-        help="przelicz wyłącznie wskazane fixtury (nazwy z FIXTURY) — pozostałe bez zmian",
+        help=(
+            "przelicz wyłącznie wskazane fixtury (nazwy z FIXTURY) domknięte do pełnych grup "
+            "biegów — pozostałe bez zmian"
+        ),
     )
     args = parser.parse_args(argv)
 
@@ -5088,14 +5234,26 @@ def main(argv: list[str] | None = None) -> int:
         # Tryb `--sprawdz` tylko czyta: brak katalogu fikstur to rozjazd każdej fikstury,
         # a nie powód, żeby porównanie cokolwiek tworzyło w drzewie repozytorium.
         FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
+
+    def policz(nazwa: str) -> str:
+        return _json(FIXTURY[nazwa]())
+
+    if args.tylko:
+        swieze = domknij_do_grup(args.tylko, FIXTURES_DIR, policz, FIXTURY)
+        for nazwa in sorted(set(swieze) - set(args.tylko)):
+            print(f"[grupa biegu] dołączono {nazwa}")
+    else:
+        swieze = {nazwa: policz(nazwa) for nazwa in FIXTURY}
+    tresci = tresci_do_zapisu(swieze, FIXTURES_DIR)
+
     rozjazdy: list[str] = []
-    for nazwa, funkcja in FIXTURY.items():
-        if args.tylko and nazwa not in args.tylko:
+    for nazwa in FIXTURY:
+        if nazwa not in tresci:
             continue
         sciezka = FIXTURES_DIR / f"{nazwa}.json"
-        tresc = tresc_do_zapisu(sciezka, funkcja())
+        tresc = tresci[nazwa]
         if args.sprawdz:
-            if not sciezka.exists() or sciezka.read_text(encoding="utf-8") != tresc:
+            if _tresc_na_dysku(sciezka) != tresc:
                 rozjazdy.append(nazwa)
                 print(f"[rozjazd] {sciezka}")
             else:

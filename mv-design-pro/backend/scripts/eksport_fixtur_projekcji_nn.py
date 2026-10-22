@@ -169,6 +169,12 @@ def roznice_z_tolerancja(repo: object, backend: object, sciezka: str = "$") -> l
 def tresc_do_zapisu(sciezka: Path, projekcja: dict[str, Any]) -> str:
     """Treść pliku fixtury — KOTWICA W SZUMIE (ten sam wzorzec co harness scen).
 
+    Harness rozstrzyga kotwicę GRUPOWO — wszystkie fixtury jednego biegu razem
+    (``eksport_fixtur_harnessu.rozstrzygnij_grupe``), bo per plik jeden bieg dostawał dwa
+    ``result_hash``. Tu grupa biegu jest jednoelementowa: każdy scenariusz to osobny bieg
+    (``run_id`` = ``przebieg-<slug>``, ``normalizuj_projekcje``) i osobny plik, więc
+    rozstrzygnięcie per plik JEST rozstrzygnięciem grupowym.
+
     Gdy świeża projekcja różni się od pliku na dysku wyłącznie w tolerancji
     międzymaszynowej (``roznice_z_tolerancja`` — predykat testu), zapisywane są LICZBY Z
     DYSKU przepuszczone przez regułę zapisu: regeneracja na innej maszynie nie wnosi do

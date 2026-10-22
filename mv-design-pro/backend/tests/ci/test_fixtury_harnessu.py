@@ -31,6 +31,7 @@ decyzją, nie cichym przyrostem.
 
 from __future__ import annotations
 
+import functools
 import importlib.util
 import json
 import re
@@ -53,8 +54,10 @@ from tests.ci.tolerancja_fikstur import (
     POLA_TEKSTU_Z_LICZBAMI,
     RTOL_FIXTUR,
     ZIARNO_IDENTYFIKATORA_ENM,
+    klasy_rownosci_skrotow,
     liczby_rowne,
     roznice_z_tolerancja,
+    skroty_nieprzenosne,
 )
 from tests.golden.enm_builders.dynamika_projektanta import (
     NAZWA_KONCA_MAGISTRALI,
@@ -361,29 +364,16 @@ def test_pasmo_bezwymiarowych_dziala_tylko_dla_swojej_klasy_i_tylko_przy_zerze()
 def test_json_w_repo_rowny_odpowiedzi_backendu(nazwa: str) -> None:
     sciezka = eksport.FIXTURES_DIR / f"{nazwa}.json"
     assert sciezka.exists(), f"brak {sciezka} — uruchom scripts/eksport_fixtur_harnessu.py"
-    roznice = roznice_z_tolerancja(
-        json.loads(sciezka.read_text(encoding="utf-8")), eksport.FIXTURY[nazwa]()
-    )
+    roznice = roznice_z_tolerancja(json.loads(sciezka.read_text(encoding="utf-8")), _swieza(nazwa))
     assert roznice == [], "\n".join(roznice)
 
 
-def _skroty_nieprzenosne(
-    dane: object, sciezka: str = "$", klucz: str | None = None
-) -> dict[str, str]:
-    """Wszystkie wartości pól z `POLA_SKROTOW_NIEPRZENOSNYCH` o kształcie skrótu."""
-    if isinstance(dane, dict):
-        znalezione: dict[str, str] = {}
-        for k, v in dane.items():
-            znalezione.update(_skroty_nieprzenosne(v, f"{sciezka}.{k}", k))
-        return znalezione
-    if isinstance(dane, list):
-        znalezione = {}
-        for i, v in enumerate(dane):
-            znalezione.update(_skroty_nieprzenosne(v, f"{sciezka}[{i}]", klucz))
-        return znalezione
-    if isinstance(dane, str) and klucz in POLA_SKROTOW_NIEPRZENOSNYCH and HEX_SKROTU.search(dane):
-        return {sciezka: dane}
-    return {}
+@functools.cache
+def _swieza(nazwa: str) -> Any:
+    """Świeża odpowiedź fixtury liczona RAZ na proces testów — porównanie z repo i test
+    spójności grup biegów czytają tę samą odpowiedź (pełny przebieg generatora ~50 s).
+    Wywołujący nie mutują wyniku."""
+    return eksport.FIXTURY[nazwa]()
 
 
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
@@ -395,8 +385,8 @@ def test_atrapa_jest_deterministyczna(nazwa: str) -> None:
     # obrębie jednej maszyny dwa kolejne wyliczenia dają ten sam skrót, a jego
     # kształt jest pinowany z pomiaru (16 znaków hex dla identyfikatorów
     # `proof:v126:…`/`report:v126:…`, 64 dla skrótów pełnych).
-    skroty_a = _skroty_nieprzenosne(pierwsze)
-    skroty_b = _skroty_nieprzenosne(drugie)
+    skroty_a = skroty_nieprzenosne(pierwsze)
+    skroty_b = skroty_nieprzenosne(drugie)
     assert skroty_a == skroty_b
     for sciezka, wartosc in skroty_a.items():
         bez_ziaren = ZIARNO_IDENTYFIKATORA_ENM.sub("", wartosc)
@@ -404,16 +394,14 @@ def test_atrapa_jest_deterministyczna(nazwa: str) -> None:
         assert dlugosci <= {16, 64}, (nazwa, sciezka, wartosc)
 
 
-def test_fixtury_niosa_skroty_nieprzenosne() -> None:
+def test_fixtury_niosaskroty_nieprzenosne() -> None:
     """Pin inwentarza: pola wyłączone z porównania międzymaszynowego MUSZĄ w
     fikstrach realnie występować. Gdyby zniknęły, lista wyłączeń stałaby się
     martwa i milcząco osłabiałaby test przy następnym ich powrocie."""
     obecne: set[str] = set()
     for sciezka in sorted(eksport.FIXTURES_DIR.glob("*.json")):
         dane = json.loads(sciezka.read_text(encoding="utf-8"))
-        obecne.update(
-            klucz.rsplit(".", 1)[-1].split("[")[0] for klucz in _skroty_nieprzenosne(dane)
-        )
+        obecne.update(klucz.rsplit(".", 1)[-1].split("[")[0] for klucz in skroty_nieprzenosne(dane))
     # POMIAR 2026-09-18 na komplecie fixtur repo (69 plików). 2026-09-24 (Pakiet D2, luka
     # §5.2): skróty sekcji wniosku i studium liczone nad sekcją skwantyzowaną
     # (`kontrakt_liczb.kwantyzuj_kontrakt`) — sonda szumu BLAS na 90 fixturach nie rusza
@@ -1574,3 +1562,233 @@ def test_koordynacja_punkt_zwarcia_oceny_ma_wiersz_w_obu_biegach() -> None:
                 wpis["nazwa_urzadzenia_pl"],
                 wpis["nazwa_punktu_pl"],
             )
+
+
+# ---------------------------------------------------------------------------
+# Kotwica w szumie rozstrzygana GRUPOWO (decyzja architekta 2026-10-22). Skróty nieprzenośne
+# (`result_hash`, `proof_id`…) leżą w tolerancji każdego pliku z osobna, więc reguła per plik
+# zostawiała stary skrót w pliku zmienionym tylko w skrócie, a wpisywała nowy do pliku z
+# TEGO SAMEGO biegu zmienionego ponad tolerancję: `skladowe_scena_wynik` (e9cdf3f0…) wobec
+# `skladowe_scena_slad` (e0db4e76…) i `dynamika_scena_przebiegi` (23428460…) wobec
+# `dynamika_scena_wyniki` (9911d913…). Grupy wyprowadza generator z deklaracji biegów
+# (`RUN_ID_*`/`_UUID_*`). Iloczyn cech reguły: {zmiana tylko skrótu, zmiana ponad tolerancję}
+# × {jedna fixtura grupy, wszystkie} × fixtura innego biegu obok (musi zostać nietknięta).
+# ---------------------------------------------------------------------------
+
+_SKROT_STARY = "a" * 64
+_SKROT_NOWY = "b" * 64
+
+
+def _fikstura_biegu(token: str, skrot: str, ik_ka: float) -> dict[str, Any]:
+    return {
+        "run_id": token,
+        "analysis_case_context": {"reproducibility": {"result_hash": skrot}},
+        "ikss_ka": ik_ka,
+    }
+
+
+def _zapisz_na_dysk(katalog: Path, fikstury: dict[str, dict[str, Any]]) -> dict[str, str]:
+    katalog.mkdir(parents=True, exist_ok=True)
+    teksty = {nazwa: eksport._json(dane) for nazwa, dane in fikstury.items()}
+    for nazwa, tekst in teksty.items():
+        (katalog / f"{nazwa}.json").write_text(tekst, encoding="utf-8")
+    return teksty
+
+
+def _skrot_wyniku(tekst: str) -> str:
+    return str(json.loads(tekst)["analysis_case_context"]["reproducibility"]["result_hash"])
+
+
+@pytest.mark.parametrize("zakres", ["jedna", "wszystkie"])
+@pytest.mark.parametrize("zmiana", ["tylko_skrot", "ponad_tolerancje"])
+def test_kotwica_rozstrzyga_grupe_biegu_razem(tmp_path: Path, zmiana: str, zakres: str) -> None:
+    """Zmiana (nowy skrót; przy `ponad_tolerancje` także liczba ×1,5) w JEDNEJ fixturze
+    grupy albo we WSZYSTKICH. Z dysku zostaje wyłącznie grupa, w której wszystkie fixtury
+    zmieniły tylko skrót, i to RAZEM (relacja równości skrótów bez zmian); każdy inny
+    przypadek odświeża całą grupę. Zawsze: zapisane skróty mają relację równości świeżej
+    odpowiedzi, a fixtura innego biegu, zmieniona tylko w skrócie, zostaje z dysku."""
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    inny_bieg = eksport.RUN_ID_SCENY_DYNAMIKA
+    ik_dysk = {"wynik": 10.0, "slad": 20.0}
+    na_dysku = _zapisz_na_dysk(
+        tmp_path,
+        {
+            **{n: _fikstura_biegu(bieg, _SKROT_STARY, ik) for n, ik in ik_dysk.items()},
+            "inny": _fikstura_biegu(inny_bieg, _SKROT_STARY, 30.0),
+        },
+    )
+    zmienione = {"slad"} if zakres == "jedna" else {"wynik", "slad"}
+    mnoznik = 1.5 if zmiana == "ponad_tolerancje" else 1.0
+    swieze = {
+        n: _fikstura_biegu(
+            bieg,
+            _SKROT_NOWY if n in zmienione else _SKROT_STARY,
+            ik * (mnoznik if n in zmienione else 1.0),
+        )
+        for n, ik in ik_dysk.items()
+    }
+    swieze["inny"] = _fikstura_biegu(inny_bieg, _SKROT_NOWY, 30.0)
+    teksty_swieze = {nazwa: eksport._json(dane) for nazwa, dane in swieze.items()}
+
+    zapis = eksport.tresci_do_zapisu(teksty_swieze, tmp_path)
+
+    grupa_z_dysku = zmiana == "tylko_skrot" and zakres == "wszystkie"
+    for nazwa in ("wynik", "slad"):
+        oczekiwane = na_dysku[nazwa] if grupa_z_dysku else teksty_swieze[nazwa]
+        assert zapis[nazwa] == oczekiwane, (zmiana, zakres, nazwa)
+    rowne_swiezo = _skrot_wyniku(teksty_swieze["wynik"]) == _skrot_wyniku(teksty_swieze["slad"])
+    assert (_skrot_wyniku(zapis["wynik"]) == _skrot_wyniku(zapis["slad"])) == rowne_swiezo
+    assert zapis["inny"] == na_dysku["inny"]
+
+
+@pytest.mark.parametrize("zmieniona", ["wynik", "slad"])
+def test_kotwica_zmiana_ponad_tolerancje_w_jednej_odswieza_skrot_drugiej(
+    tmp_path: Path, zmieniona: str
+) -> None:
+    """Przypadek zmierzony (`skladowe`, `dynamika`): ten sam bieg daje nowy skrót obu
+    fixturom, a tylko jedna zmienia się ponad tolerancję. Reguła per plik zostawiała w
+    drugiej stary skrót; grupowa — wpisuje obu nowy."""
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    _zapisz_na_dysk(
+        tmp_path,
+        {n: _fikstura_biegu(bieg, _SKROT_STARY, 10.0) for n in ("wynik", "slad")},
+    )
+    swieze = {
+        n: eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 15.0 if n == zmieniona else 10.0))
+        for n in ("wynik", "slad")
+    }
+    zapis = eksport.tresci_do_zapisu(swieze, tmp_path)
+    assert zapis == swieze
+    assert {_skrot_wyniku(t) for t in zapis.values()} == {_SKROT_NOWY}
+
+
+def test_kotwica_nie_konserwuje_zastanego_rozjazdu_skrotow_grupy(tmp_path: Path) -> None:
+    """Stan zastany (repo po regule per plik): dwa skróty jednego biegu na dysku, a świeża
+    odpowiedź różni się od każdego pliku wyłącznie w tolerancji. Relacja równości skrótów
+    na dysku ≠ świeżej → grupa dostaje świeżą treść (spójny skrót)."""
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    _zapisz_na_dysk(
+        tmp_path,
+        {
+            "wynik": _fikstura_biegu(bieg, _SKROT_STARY, 10.0),
+            "slad": _fikstura_biegu(bieg, _SKROT_NOWY, 10.0),
+        },
+    )
+    swieze = {n: eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 10.0)) for n in ("wynik", "slad")}
+    assert eksport.tresci_do_zapisu(swieze, tmp_path) == swieze
+
+
+def test_kotwica_brak_pliku_czlonka_odswieza_cala_grupe(tmp_path: Path) -> None:
+    bieg = eksport.RUN_ID_SCENY_SKLADOWE
+    _zapisz_na_dysk(tmp_path, {"wynik": _fikstura_biegu(bieg, _SKROT_STARY, 10.0)})
+    swieze = {
+        "wynik": eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 10.0)),
+        "slad": eksport._json(_fikstura_biegu(bieg, _SKROT_NOWY, 20.0)),
+    }
+    assert eksport.tresci_do_zapisu(swieze, tmp_path) == swieze
+
+
+def test_grupy_biegow_rozrozniaja_token_bedacy_prefiksem_innego(tmp_path: Path) -> None:
+    """`run-sc-scena-zwarcia` jest prefiksem `run-sc-scena-zwarcia-robocza` — dwa biegi,
+    dwie grupy; skrót zmieniony ponad tolerancję w biegu roboczym nie odświeża kotwicy."""
+    kotwica = eksport.RUN_ID_SCENY_ZWARCIA
+    robocza = eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    assert robocza.startswith(kotwica)
+    na_dysku = _zapisz_na_dysk(
+        tmp_path,
+        {
+            "kotwica": _fikstura_biegu(kotwica, _SKROT_STARY, 10.0),
+            "robocza": _fikstura_biegu(robocza, _SKROT_STARY, 10.0),
+        },
+    )
+    swieze = {
+        "kotwica": eksport._json(_fikstura_biegu(kotwica, _SKROT_NOWY, 10.0)),
+        "robocza": eksport._json(_fikstura_biegu(robocza, _SKROT_NOWY, 15.0)),
+    }
+    zapis = eksport.tresci_do_zapisu(swieze, tmp_path)
+    assert zapis == {"kotwica": na_dysku["kotwica"], "robocza": swieze["robocza"]}
+
+
+def test_grupy_biegow_sa_spojnymi_skladowymi_i_deterministyczne() -> None:
+    niesione = {
+        "c": frozenset({"t2"}),
+        "a": frozenset({"t1"}),
+        "b": frozenset({"t1", "t2"}),
+        "d": frozenset({"t3"}),
+        "e": frozenset(),
+    }
+    oczekiwane = [("a", "b", "c"), ("d",), ("e",)]
+    assert eksport.grupy_biegow(niesione) == oczekiwane
+    assert eksport.grupy_biegow(dict(reversed(list(niesione.items())))) == oczekiwane
+
+
+def test_tokeny_biegow_pochodza_z_deklaracji_generatora() -> None:
+    tokeny = set(eksport.tokeny_biegow_generatora())
+    stale = {
+        wartosc if isinstance(wartosc, str) else str(wartosc)
+        for nazwa, wartosc in vars(eksport).items()
+        if (nazwa.startswith("RUN_ID_") and isinstance(wartosc, str))
+        or (nazwa.startswith("_UUID_") and isinstance(wartosc, eksport.UUID))
+    }
+    assert tokeny == stale
+    assert {eksport.RUN_ID_SCENY_SKLADOWE, eksport.RUN_ID_SCENY_DYNAMIKA} <= tokeny
+    assert str(eksport._UUID_PF_SCENY_WNIOSEK) in tokeny
+
+
+def test_tylko_domyka_wybor_do_pelnych_grup_biegow(tmp_path: Path) -> None:
+    """`--tylko` przelicza całe grupy: token z dysku wybranej fixtury dociąga fixtury tego
+    biegu, a ich tokeny — kolejne (punkt stały); fixtura obcego biegu zostaje poza."""
+    t1, t2, t3 = (
+        eksport.RUN_ID_SCENY_SKLADOWE,
+        eksport.RUN_ID_SCENY_DYNAMIKA,
+        eksport.RUN_ID_SCENY_OLTC,
+    )
+    _zapisz_na_dysk(
+        tmp_path,
+        {
+            "a": {"run_id": t1},
+            "b": {"run_id": t1, "drugi": t2},
+            "c": {"run_id": t2},
+            "obca": {"run_id": t3},
+        },
+    )
+    policzone: list[str] = []
+
+    def policz(nazwa: str) -> str:
+        policzone.append(nazwa)
+        return eksport._json({"nazwa": nazwa})
+
+    swieze = eksport.domknij_do_grup(["a"], tmp_path, policz, ["a", "b", "c", "obca"])
+    assert sorted(swieze) == ["a", "b", "c"]
+    assert sorted(policzone) == ["a", "b", "c"]
+
+
+def test_fikstury_jednego_biegu_maja_w_repo_te_same_skroty() -> None:
+    """Spójność repo: w każdej grupie biegu RELACJA RÓWNOŚCI skrótów nieprzenośnych
+    (`klasy_rownosci_skrotow` — ten sam predykat co reguła zapisu generatora) jest w JSON w
+    repo taka sama jak w świeżej odpowiedzi: jeden bieg = jeden `result_hash`/`proof_id` we
+    wszystkich swoich fixturach. Skrót świeżej odpowiedzi dzielony przez dwie RÓŻNE grupy =
+    grupowanie z deklaracji generatora nie pokrywa rzeczywistego współdzielenia (reguła
+    grupowa nie gwarantowałaby wtedy spójności) — też czerwony."""
+    wzorzec = eksport.wzorzec_tokenow(eksport.tokeny_biegow_generatora())
+    niesione = {
+        nazwa: eksport.tokeny_fixtury(
+            eksport.FIXTURES_DIR / f"{nazwa}.json", eksport._json(_swieza(nazwa)), wzorzec
+        )
+        for nazwa in eksport.FIXTURY
+    }
+    grupy = eksport.grupy_biegow(niesione)
+    grupa_fixtury = {nazwa: indeks for indeks, grupa in enumerate(grupy) for nazwa in grupa}
+    bledy: list[str] = []
+    for klasa in klasy_rownosci_skrotow({n: _swieza(n) for n in eksport.FIXTURY}):
+        if len({grupa_fixtury[nazwa] for nazwa, _ in klasa}) > 1:
+            bledy.append(f"skrót dzielony przez różne grupy biegów: {sorted(klasa)}")
+    for grupa in grupy:
+        swieze = klasy_rownosci_skrotow({n: _swieza(n) for n in grupa})
+        w_repo = klasy_rownosci_skrotow({n: _fikstura_repo(n) for n in grupa})
+        if w_repo != swieze:
+            bledy.append(
+                f"grupa {grupa}: w repo {sorted(map(sorted, w_repo - swieze))}, "
+                f"świeżo {sorted(map(sorted, swieze - w_repo))}"
+            )
+    assert bledy == [], "\n".join(bledy)

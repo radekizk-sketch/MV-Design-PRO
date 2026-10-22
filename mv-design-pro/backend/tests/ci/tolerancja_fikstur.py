@@ -11,6 +11,7 @@ Uzasadnienia progow i list pol — przy stalych nizej; piny — w tescie harness
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 
 #: Tolerancja WZGLĘDNA liczb fixtur. POMIAR (CI run 35290801270, job `pytest`,
 #: commit 8d795200 — 7 czerwonych przy 15 878 zielonych): największa zmierzona
@@ -290,3 +291,43 @@ def roznice_z_tolerancja(
         if klucz in POLA_TEKSTU_Z_LICZBAMI:
             return _roznice_w_tekscie(zloty, teraz, sciezka, klucz)
     return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
+
+
+def skroty_nieprzenosne(
+    dane: object, sciezka: str = "$", klucz: str | None = None
+) -> dict[str, str]:
+    """Wszystkie wartości pól z ``POLA_SKROTOW_NIEPRZENOSNYCH`` o kształcie skrótu
+    (ścieżka → wartość)."""
+    if isinstance(dane, dict):
+        znalezione: dict[str, str] = {}
+        for k, v in dane.items():
+            znalezione.update(skroty_nieprzenosne(v, f"{sciezka}.{k}", k))
+        return znalezione
+    if isinstance(dane, list):
+        znalezione = {}
+        for i, v in enumerate(dane):
+            znalezione.update(skroty_nieprzenosne(v, f"{sciezka}[{i}]", klucz))
+        return znalezione
+    if isinstance(dane, str) and klucz in POLA_SKROTOW_NIEPRZENOSNYCH and HEX_SKROTU.search(dane):
+        return {sciezka: dane}
+    return {}
+
+
+def klasy_rownosci_skrotow(
+    dokumenty: Mapping[str, object],
+) -> frozenset[frozenset[tuple[str, str]]]:
+    """Podział miejsc skrótów nieprzenośnych ``(dokument, ścieżka)`` na klasy RÓWNEJ wartości.
+
+    ``roznice_z_tolerancja`` porównuje skrót z ``POLA_SKROTOW_NIEPRZENOSNYCH`` wyłącznie po
+    kształcie, bo jego treść zależy od szumu numeryki maszyny. Przenośna jest natomiast
+    RELACJA RÓWNOŚCI: dwa miejsca niosące skrót tego samego wyniku (``result_hash`` biegu w
+    wyniku i w śladzie, ``proof_id`` dowodu w paśmie i w wynikach) mają go równego na
+    każdej maszynie. Ten podział jest drugą połową porównania grupy fixtur jednego biegu —
+    generator zostawia grupę z dysku tylko wtedy, gdy podział na dysku równa się podziałowi
+    świeżej odpowiedzi (``eksport_fixtur_harnessu.rozstrzygnij_grupe``), a test spójności
+    repo sprawdza to samo (``test_fikstury_jednego_biegu_maja_w_repo_te_same_skroty``)."""
+    klasy: dict[str, set[tuple[str, str]]] = {}
+    for nazwa, dane in dokumenty.items():
+        for sciezka, wartosc in skroty_nieprzenosne(dane).items():
+            klasy.setdefault(wartosc, set()).add((nazwa, sciezka))
+    return frozenset(frozenset(miejsca) for miejsca in klasy.values())
