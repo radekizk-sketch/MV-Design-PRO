@@ -103,6 +103,19 @@ def store_file(src: Path, item: dict, replace: bool) -> None:
 
 
 def download_file(item: dict, replace: bool) -> None:
+    # Oficjalne alternatywne ścieżki operatora — nie niezaufane lustra.
+    if item.get("alternate_urls"):
+        failures = []
+        for url in [item["url"], *item["alternate_urls"]]:
+            variant = dict(item)
+            variant.pop("alternate_urls", None)
+            variant["url"] = url
+            try:
+                download_file(variant, replace)
+                return
+            except (ValueError, RuntimeError, OSError) as exc:
+                failures.append(f"{url}: {exc}")
+        raise RuntimeError("Żaden oficjalny adres PDF ENEA nie zadziałał:\n" + "\n".join(failures))
     if item["kind"] != "official_public_pdf":
         raise ValueError("Nie wolno pobierać przez sieć prywatnego podręcznika")
     url = item["url"]
