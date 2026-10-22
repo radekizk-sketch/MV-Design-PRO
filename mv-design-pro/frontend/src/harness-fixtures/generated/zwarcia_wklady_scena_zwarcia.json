@@ -15,17 +15,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 643.644137139,
-        "ratio_ik_ir": 6.68894608511,
-        "mu": 0.704672296038,
+        "ikss_partial_a": 643.64107688,
+        "ratio_ik_ir": 6.68891428196,
+        "mu": 0.704673157753,
         "q": 1.0,
-        "ib_a": 453.558191949,
+        "ib_a": 453.556590104,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 rozdz. 9",
           "t_min_s": 0.1,
-          "argument": 6.68894608511,
+          "argument": 6.68891428196,
           "regula": "WEZEL",
           "wezel_dolny": {
             "t_min_s": 0.1,
@@ -34,8 +34,8 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704672296038,
-            "wartosc": 0.704672296038
+            "wartosc_surowa": 0.704673157753,
+            "wartosc": 0.704673157753
           },
           "wezel_gorny": {
             "t_min_s": 0.1,
@@ -44,16 +44,16 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704672296038,
-            "wartosc": 0.704672296038
+            "wartosc_surowa": 0.704673157753,
+            "wartosc": 0.704673157753
           },
           "waga": 0.0,
-          "wynik": 0.704672296038
+          "wynik": 0.704673157753
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 643.644137139,
-        "delta_u_wzgledne": 0.920497167676,
+        "ikss_zaciski_a": 643.64107688,
+        "delta_u_wzgledne": 0.920492791096,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -82,25 +82,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 643.644137139,
-    "ib_machines_a": 453.558191949,
+    "ikss_machines_a": 643.64107688,
+    "ib_machines_a": 453.556590104,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "z_kk_ohm": {
-        "re": 0.0541396260155,
-        "im": 1.06264651202
+        "re": 0.0541391635129,
+        "im": 1.06263679295
       },
       "i_base_a": 3849.0017946,
-      "ikss_total_a": 8953.06173407,
+      "ikss_total_a": 8953.14360646,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 447.653086703,
+      "small_motor_limit_a": 447.657180323,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -276,17 +276,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 81.9614750082,
-        "ratio_ik_ir": 6.24630331501,
-        "mu": 0.71755673939,
+        "ikss_partial_a": 81.9603927841,
+        "ratio_ik_ir": 6.24622083846,
+        "mu": 0.71755931419,
         "q": 1.0,
-        "ib_a": 58.8120087625,
+        "ib_a": 58.811443237,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 rozdz. 9",
           "t_min_s": 0.1,
-          "argument": 6.24630331501,
+          "argument": 6.24622083846,
           "regula": "WEZEL",
           "wezel_dolny": {
             "t_min_s": 0.1,
@@ -295,8 +295,8 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.71755673939,
-            "wartosc": 0.71755673939
+            "wartosc_surowa": 0.71755931419,
+            "wartosc": 0.71755931419
           },
           "wezel_gorny": {
             "t_min_s": 0.1,
@@ -305,16 +305,16 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.71755673939,
-            "wartosc": 0.71755673939
+            "wartosc_surowa": 0.71755931419,
+            "wartosc": 0.71755931419
           },
           "waga": 0.0,
-          "wynik": 0.71755673939
+          "wynik": 0.71755931419
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 601.050816727,
-        "delta_u_wzgledne": 0.859583025001,
+        "ikss_zaciski_a": 601.042880417,
+        "delta_u_wzgledne": 0.859571675017,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -343,25 +343,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 81.9614750082,
-    "ib_machines_a": 58.8120087625,
+    "ikss_machines_a": 81.9603927841,
+    "ib_machines_a": 58.811443237,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "z_kk_ohm": {
-        "re": 0.497750185093,
-        "im": 4.9706393175
+        "re": 0.497749640826,
+        "im": 4.9706358826
       },
       "i_base_a": 524.863881081,
-      "ikss_total_a": 13984.4652706,
+      "ikss_total_a": 13984.4749902,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 699.223263528,
+      "small_motor_limit_a": 699.223749511,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -537,17 +537,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 1470.71006347,
-        "ratio_ik_ir": 0.407575128501,
+        "ikss_partial_a": 1470.69046773,
+        "ratio_ik_ir": 0.407569697971,
         "mu": 1.0,
         "q": 1.0,
-        "ib_a": 1470.71006347,
+        "ib_a": 1470.69046773,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 rozdz. 9",
           "t_min_s": 0.1,
-          "argument": 0.407575128501,
+          "argument": 0.407569697971,
           "regula": "BEZ_ZANIKU",
           "wezel_dolny": null,
           "wezel_gorny": null,
@@ -556,8 +556,8 @@
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 39.2189350258,
-        "delta_u_wzgledne": 0.0587591928376,
+        "ikss_zaciski_a": 39.2184124728,
+        "delta_u_wzgledne": 0.0587584099303,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -565,7 +565,7 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4082 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
           },
           {
             "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
@@ -586,25 +586,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 1470.71006347,
-    "ib_machines_a": 1470.71006347,
+    "ikss_machines_a": 1470.69046773,
+    "ib_machines_a": 1470.69046773,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "z_kk_ohm": {
-        "re": 0.00258532344552,
-        "im": 0.0115678260099
+        "re": 0.00258532311663,
+        "im": 0.0115678190986
       },
       "i_base_a": 144337.567297,
-      "ikss_total_a": 20457.5125157,
+      "ikss_total_a": 20457.5242806,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 1022.87562578,
+      "small_motor_limit_a": 1022.87621403,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -630,7 +630,7 @@
       },
       {
         "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4082 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
       },
       {
         "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
@@ -685,7 +685,7 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4082 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
           },
           {
             "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
@@ -780,17 +780,17 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 643.644137139,
-        "ratio_ik_ir": 6.68894608511,
-        "mu": 0.704672296038,
+        "ikss_partial_a": 643.64107688,
+        "ratio_ik_ir": 6.68891428196,
+        "mu": 0.704673157753,
         "q": 1.0,
-        "ib_a": 453.558191949,
+        "ib_a": 453.556590104,
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
           "norma": "IEC 60909-0:2016 rozdz. 9",
           "t_min_s": 0.1,
-          "argument": 6.68894608511,
+          "argument": 6.68891428196,
           "regula": "WEZEL",
           "wezel_dolny": {
             "t_min_s": 0.1,
@@ -799,8 +799,8 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704672296038,
-            "wartosc": 0.704672296038
+            "wartosc_surowa": 0.704673157753,
+            "wartosc": 0.704673157753
           },
           "wezel_gorny": {
             "t_min_s": 0.1,
@@ -809,16 +809,16 @@
               0.72,
               0.32
             ],
-            "wartosc_surowa": 0.704672296038,
-            "wartosc": 0.704672296038
+            "wartosc_surowa": 0.704673157753,
+            "wartosc": 0.704673157753
           },
           "waga": 0.0,
-          "wynik": 0.704672296038
+          "wynik": 0.704673157753
         },
         "slad_q": null,
         "p_per_pole_mw": 0.0,
-        "ikss_zaciski_a": 643.644137139,
-        "delta_u_wzgledne": 0.920497167676,
+        "ikss_zaciski_a": 643.64107688,
+        "delta_u_wzgledne": 0.920492791096,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -847,25 +847,25 @@
         ]
       }
     ],
-    "ikss_machines_a": 643.644137139,
-    "ib_machines_a": 453.558191949,
+    "ikss_machines_a": 643.64107688,
+    "ib_machines_a": 453.556590104,
     "motors_negligible": true,
     "white_box": {
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "z_kk_ohm": {
-        "re": 0.0541396260155,
-        "im": 1.06264651202
+        "re": 0.0541391635129,
+        "im": 1.06263679295
       },
       "i_base_a": 3849.0017946,
-      "ikss_total_a": 8953.06173407,
+      "ikss_total_a": 8953.14360646,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 447.653086703,
+      "small_motor_limit_a": 447.657180323,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -1115,18 +1115,18 @@
       "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "z_kk_ohm": {
-        "re": 0.75572550809,
-        "im": 1.92643832363
+        "re": 0.755712041326,
+        "im": 1.92641924066
       },
       "i_base_a": 3849.0017946,
-      "ikss_total_a": 4603.47193319,
+      "ikss_total_a": 4603.52239368,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 230.17359666,
+      "small_motor_limit_a": 230.176119684,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -1135,7 +1135,7 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,603 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,604 kA, c = 1,10, t_min = 0,10 s.",
         "latex": null
       },
       {
@@ -1176,7 +1176,7 @@
       },
       {
         "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
     "wywod_sekcje": [
@@ -1188,7 +1188,7 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,603 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,604 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
           },
           {
@@ -1237,7 +1237,7 @@
           },
           {
             "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 0,230 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 0,230) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.603\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 4.604\\;\\mathrm{kA} = 0.230\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"

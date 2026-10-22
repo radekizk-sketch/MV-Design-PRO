@@ -127,7 +127,7 @@ def test_kt_direction_increases_ikss_on_lv_fault():
 
     # Solver Ik'' matches the corrected Y-bus formula (same builder path).
     builder = AdmittanceMatrixBuilder(graph)
-    z_bus = np.linalg.inv(builder.build(ground_slack_buses=True))
+    z_bus = np.linalg.inv(builder.build(siec_zwarciowa=True))
     idx = builder.node_id_to_index["B"]
     z_base_b = builder.get_zbase_ohm("B")
     z1 = z_bus[idx, idx] * z_base_b

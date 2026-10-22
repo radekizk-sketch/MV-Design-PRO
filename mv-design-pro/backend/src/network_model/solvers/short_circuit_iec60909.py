@@ -685,6 +685,56 @@ class ShortCircuitIEC60909Solver:
             )
 
     @staticmethod
+    def _append_admitancje_poprzeczne_trace(tracer: WhiteBoxTracer, graph: NetworkGraph) -> None:
+        """WHITE BOX (karta BEZ-POJEMNOSCI): jawny krok pominięcia admitancji poprzecznych gałęzi
+        w sieci zgodnej i przeciwnej — lista gałęzi, których B·ℓ NIE weszło do macierzy Z-bus
+        (`AdmittanceMatrixBuilder.admitancje_poprzeczne_pominiete`, ten sam zbiór, który
+        `build(siec_zwarciowa=True)` zeruje), z podstawą normy. Sieć bez takich gałęzi nie
+        dostaje kroku (nic nie pominięto — ślad bit w bit jak przed kartą)."""
+        from network_model.core.ybus import (
+            PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH,
+            AdmittanceMatrixBuilder,
+        )
+
+        budowniczy = AdmittanceMatrixBuilder(graph)
+        pominiete = budowniczy.admitancje_poprzeczne_pominiete()
+        if not pominiete:
+            return
+        fmt = ShortCircuitIEC60909Solver._format_float
+        # B·ℓ [S] z TEGO SAMEGO stempla, który budowniczy zeruje: Y_konca,pu = jB·ℓ·Z_base/2
+        # (Z_base węzła początkowego gałęzi — ta sama baza co w `_get_branch_admittances_pu`).
+        b_s = [
+            2.0 * float(y_konca_pu.imag) / budowniczy.get_zbase_ohm(galaz.from_node_id)
+            for galaz, y_konca_pu in pominiete
+        ]
+        galezie = [
+            {"branch_id": galaz.id, "nazwa": galaz.name, "b_s": b}
+            for (galaz, _), b in zip(pominiete, b_s, strict=True)
+        ]
+        suma_b_s = math.fsum(b_s)
+        tracer.add(
+            key="admitancje_poprzeczne_pominiete",
+            title=(
+                "Sieć zwarciowa składowej zgodnej i przeciwnej bez admitancji poprzecznych "
+                "gałęzi (pojemności linii i kabli)"
+            ),
+            formula_latex=(
+                r"\underline{Y}_{1} = \underline{Y}_{2}:\quad "
+                r"\underline{Y}_{sh,ij} = j B_{ij} \ell_{ij} \;\rightarrow\; 0"
+            ),
+            inputs={"galezie": galezie, "liczba_galezi": len(galezie)},
+            substitution="; ".join(
+                f"{galaz.name}: B·ℓ = {fmt(b)} S"
+                for (galaz, _), b in zip(pominiete, b_s, strict=True)
+            ),
+            substitution_latex=(
+                r"\sum B \ell = " + fmt(suma_b_s) + r"\,\mathrm{S} \;\rightarrow\; 0"
+            ),
+            result={"pominieta_susceptancja_suma_s": suma_b_s},
+            notes=PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH,
+        )
+
+    @staticmethod
     def _build_white_box_trace(
         *,
         short_circuit_type: ShortCircuitType,
@@ -708,6 +758,7 @@ class ShortCircuitIEC60909Solver:
         tracer = WhiteBoxTracer()
         if graph is not None:
             ShortCircuitIEC60909Solver._append_transformer_kt_trace(tracer, graph)
+            ShortCircuitIEC60909Solver._append_admitancje_poprzeczne_trace(tracer, graph)
         z_equiv_abs = abs(z_equiv)
         voltage_factor = voltage_factor_for_fault(short_circuit_type)
         if z_f is not None:

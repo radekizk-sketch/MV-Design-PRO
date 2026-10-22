@@ -18,7 +18,7 @@
     {
       "bus_ref": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_bus",
       "nominal_kv": 0.8,
-      "sk_mva": 37.995592,
+      "sk_mva": 37.995972,
       "modules": [
         {
           "gen_ref": "pv/e59e90d4dcd7fcf42db8bba4cffa1783/converter",
@@ -31,7 +31,7 @@
             {
               "symbol": "P_st,i",
               "formula_latex": "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
-              "substitution_pl": "P_st_i = 0.3 · 0.215 / 37.9956 MVA",
+              "substitution_pl": "P_st_i = 0.3 · 0.215 / 37.996 MVA",
               "result_pl": "P_st_i = 0.001698"
             }
           ],
@@ -40,7 +40,7 @@
       ],
       "pst": 0.001698,
       "plt": 0.001698,
-      "d_percent": 0.565855,
+      "d_percent": 0.565849,
       "pst_limit": 0.9,
       "plt_limit": 0.7,
       "verdict_pl": "w granicach planowania",
@@ -67,8 +67,8 @@
         {
           "symbol": "d",
           "formula_latex": "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
-          "substitution_pl": "d = 1 · 0.215 / 37.9956 · 100 %",
-          "result_pl": "d = 0.565855 %"
+          "substitution_pl": "d = 1 · 0.215 / 37.996 · 100 %",
+          "result_pl": "d = 0.565849 %"
         }
       ],
       "bus_name": "Pole PV nN"
@@ -80,5 +80,5 @@
     "exceeded_count": 0,
     "not_assessed_count": 0
   },
-  "input_hash": "855905ce08eacf6a24e62766256d213ce608687a4633f66cf684bbc9a3032412"
+  "input_hash": "07a1d4a38bdd4c20c1bc958aff78a609c7ae2727adfeff2489b3f4785453585e"
 }

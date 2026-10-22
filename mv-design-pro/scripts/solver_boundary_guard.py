@@ -44,6 +44,11 @@ DODATKOWE_CHRONIONE: tuple[str, ...] = (
     # składowych i prądu z pętli wspólne z TN — ADR-015 „jedna fizyka Ik1 nN").
     "backend/src/network_model/solvers/fault_loop_iec60364.py",
     "backend/src/network_model/solvers/petla_zwarcia_tt_it.py",
+    # Karta BEZ-POJEMNOSCI (zgoda B-01 architekta): budowniczy macierzy sieci zwarciowej —
+    # `short_circuit_core.build_zbus` woła `AdmittanceMatrixBuilder.build(siec_zwarciowa=True)`,
+    # więc każda zmiana stempli tego pliku jest zmianą liczb rdzenia IEC 60909 (3F/2F/1F/2F+G,
+    # wkłady, maszyny, pętla IEC 60364, ekwiwalent nN). Do karty plik był poza ochroną.
+    "backend/src/network_model/core/ybus.py",
 )
 
 #: Ścieżki chronione: CAŁA lista B-01 (jedno źródło `rdzenie_b01.py`, wpis-katalog z `/`
@@ -138,6 +143,15 @@ SANCTIONED_CHANGES = {
         " Ith, Ib, Sk'', Zk, Z1/Z2/Z0, kappa, m/n, i_DC, wklady zrodel, skrot white_box_trace)."
         " Testy tests/network_model/solvers/test_prog_wkladu_pominietego.py. Wpis do usuniecia"
         " po scaleniu do main."
+        " Zgoda B-01 architekta (karta BEZ-POJEMNOSCI, WYLACZNIE klasa admitancji poprzecznych"
+        " galezi w sieci zwarciowej): krok sladu `admitancje_poprzeczne_pominiete` (linie i kable,"
+        " ktorych B*l nie weszlo do sieci zgodnej i przeciwnej, suma B, podstawa IEC 60909-0:2016"
+        " p. 5.2 e) z `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`; brak kroku, gdy"
+        " nic nie pominieto). Rozplyw Thevenina po galeziach liczy prad z admitancji szeregowej"
+        " TEJ SAMEJ sieci co Z-bus — bilans KCL wezla zwarcia dokladny. Liczby sieci z B > 0"
+        " zmieniaja sie celowo (sonda przed/po w meldunku), sieci z B = 0 bit w bit. Testy"
+        " tests/network_model/solvers/test_zwarcie_bez_admitancji_poprzecznych.py. Wpis do"
+        " usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_contributions.py": (
         "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
@@ -168,6 +182,18 @@ SANCTIONED_CHANGES = {
         "zrodlo dla 3F/2F/1F/2F+G i toru dowodowego SC1; t_b z danych biegu (karta "
         "TB-WARTOSC-ROBOCZA: t_b punktu zwarcia zawsze rozstrzygniety, bez zmian w tym pliku). "
         "Zmiana liczb ib_a usankcjonowana karta. Wpis do usuniecia po scaleniu do main."
+        " Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): `build_zbus` buduje siec zgodna"
+        " (i przeciwna, Z_2 = Z_1) w trybie `siec_zwarciowa=True` budowniczego — bez B/2 linii"
+        " i kabli (IEC 60909-0:2016 p. 5.2 e) i 5.3.1). Jedyne wejscie sieci zgodnej wszystkich"
+        " sciezek zwarciowych. Wpis do usuniecia po scaleniu do main."
+    ),
+    "backend/src/network_model/core/ybus.py": (
+        "Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): jeden predykat `siec_zwarciowa` w"
+        " `AdmittanceMatrixBuilder.build` (dawny `ground_slack_buses`) — w sieci zwarciowej"
+        " admitancje poprzeczne galezi pominiete (IEC 60909-0:2016 p. 5.2 e) i 5.3.1, stala"
+        " PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH), boczniki zrodel i maszyn bez zmian;"
+        " `admitancje_poprzeczne_pominiete()` — zbior pominietych galezi dla sladu. Plik"
+        " dopisany do DODATKOWE_CHRONIONE ta sama karta. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "

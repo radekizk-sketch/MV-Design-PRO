@@ -169,8 +169,8 @@ def test_ten_sam_zbior_galezi_w_api_sladzie_i_eksportach(client: TestClient, rod
             and w["i_ka"] * 1000.0 < 1e-4
             and w["branch_name"] == NAZWA_GALEZI_REALNEJ_MALEJ
         }
-    # Wpis pominięty istnieje (gałąź martwa bez pojemności), a realny mały prąd ładowania
-    # odgałęzienia (kilka µA, nad progiem) ZOSTAJE na liście.
+    # Wpis pominięty istnieje (gałąź martwa bez źródła), a realny mały prąd mikrogeneratora
+    # w odgałęzieniu (kilka µA, nad progiem) ZOSTAJE na liście.
     assert NAZWA_GALEZI_BEZ_PRADU in widziane_pominiete
     assert widziane_realne_male == {NAZWA_GALEZI_REALNEJ_MALEJ}
 

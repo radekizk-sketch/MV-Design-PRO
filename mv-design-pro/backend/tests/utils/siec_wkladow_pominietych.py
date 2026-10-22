@@ -1,10 +1,14 @@
 """Sieć testowa karty PROG-ZERA-WKLADOW: wkład realny nad progiem i wkład pominięty.
 
-GPZ na szynie głównej, kabel SN do szyny OZE z falownikiem PV i dwa odgałęzienia
-martwe z szyny OZE:
-- „Kabel odgałęzienia” (5 m, susceptancja kablowa) niesie przy zwarciu na szynie głównej
-  RZECZYWISTY mały prąd ładowania pojemności — kilka mikroamperów, NAD progiem
-  |I| < 1e-6 A, więc wpis MUSI zostać na liście wkładów;
+GPZ na szynie głównej, kabel SN do szyny OZE z falownikiem PV i dwa odgałęzienia z szyny OZE:
+- „Kabel odgałęzienia” (5 m) prowadzi do szyny z mikrogeneratorem synchronicznym
+  (S_r ≈ 31 mVA — dana TESTOWA dobrana tak, by prąd leżał tuż nad progiem) i niesie przy
+  zwarciu na szynie głównej RZECZYWISTY mały prąd tej maszyny (bocznik Y″ = 1/Z″ w sieci
+  zgodnej, IEC 60909-0 p. 6.6) — kilka mikroamperów, NAD progiem |I| < 1e-6 A, więc wpis
+  MUSI zostać na liście wkładów. Do karty BEZ-POJEMNOSCI ten prąd był prądem ładowania
+  pojemności kabla; sieć zwarciowa składowej zgodnej nie ma admitancji poprzecznych gałęzi
+  (IEC 60909-0:2016 p. 5.2 e)), więc źródłem realnego małego prądu musi być źródło zwarciowe
+  — intencja testu (realny mały prąd nad progiem zostaje na liście) bez zmian;
 - „Kabel bez ładowania” (b = 0) prowadzi do szyny bez żadnego odbioru i bez pojemności —
   prąd zwarciowy w nim jest fizycznie zerem, a numerycznie zerem albo resztą
   zmiennoprzecinkową (zależnie od maszyny), więc wpis jest „wkładem pominiętym na
@@ -118,6 +122,21 @@ def siec_wkladow_pominietych() -> EnergyNetworkModel:
             "transformers": [],
             "generators": [
                 {
+                    # Mikrogenerator synchroniczny: P = 25 mW, cos φ = 0,8 → S_r = 31,25 mVA,
+                    # x″d = 0,15 (domyślna `SynchronousMachineSource`) → |Z″_GK| ≈ 1e9 Ω,
+                    # prąd do zwarcia na szynie głównej ≈ 9 µA (3F); 2F, 1F, 2F+G mniejszy, ale
+                    # wciąż nad progiem 1e-6 A i pod 1e-4 A.
+                    "id": "00000000-0000-0000-0000-000000000732",
+                    "ref_id": "gen-mikro",
+                    "name": "Mikrogenerator synchroniczny",
+                    "tags": [],
+                    "meta": {},
+                    "bus_ref": "bus-odg",
+                    "p_mw": 2.5e-8,
+                    "q_mvar": 0.0,
+                    "gen_type": "synchronous",
+                },
+                {
                     "id": "00000000-0000-0000-0000-000000000731",
                     "ref_id": "gen-pv",
                     "name": "Falownik PV",
@@ -128,7 +147,7 @@ def siec_wkladow_pominietych() -> EnergyNetworkModel:
                     "q_mvar": 0.0,
                     "gen_type": "pv_inverter",
                     "connection_variant": "DEDICATED_MV_CONNECTION",
-                }
+                },
             ],
             "substations": [],
             "bays": [],

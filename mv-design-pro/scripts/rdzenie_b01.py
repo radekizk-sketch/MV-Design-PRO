@@ -41,6 +41,13 @@ from __future__ import annotations
 #: w `short_circuit_contributions.py`) + addytywne zestawienie `wklady_pominiete` (pole wyniku
 #: exclude_none i krok śladu). Algorytmy IEC 60909, μ/q, t_b, c i tolerancje bez zmian;
 #: wielkości główne korpusu golden bit w bit. Każda inna zmiana rdzenia = nowa decyzja.
+#: Grupa „IEC 60909" zmieniona zgodą B-01 architekta (karta BEZ-POJEMNOSCI, WYŁĄCZNIE klasa
+#: admitancji poprzecznych gałęzi w sieci zwarciowej): `build_zbus` buduje sieć zgodną
+#: (i przeciwną, Z_2 = Z_1) budowniczym w trybie `siec_zwarciowa=True` — bez B/2 linii i kabli
+#: (IEC 60909-0:2016 p. 5.2 e) i 5.3.1, jedno źródło tekstu podstawy
+#: `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`); krok śladu
+#: `admitancje_poprzeczne_pominiete` (tylko gdy coś pominięto). Składowa zerowa (B0), rozpływ
+#: i estymacja stanu bez zmian. Liczby sieci z B > 0 zmieniają się celowo (sonda w meldunku).
 RDZENIE_B01: dict[str, tuple[str, ...]] = {
     "IEC 60909 (3F/2F/1F, MAX/MIN, wkłady)": (
         "network_model/solvers/short_circuit_iec60909.py",

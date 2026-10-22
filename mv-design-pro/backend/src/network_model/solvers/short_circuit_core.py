@@ -84,8 +84,16 @@ class ShortCircuitPostProcessResult:
 
 
 def build_zbus(graph: NetworkGraph) -> tuple[AdmittanceMatrixBuilder, np.ndarray]:
+    """Macierz Z-bus sieci zwarciowej IEC 60909 składowej zgodnej (i przeciwnej: Z_2 = Z_1).
+
+    JEDYNE wejście sieci zgodnej dla każdej ścieżki zwarciowej (3F/2F/1F/2F+G, wkłady
+    falowników i rozpływ Thevenina po gałęziach, maszyny wirujące, pętla zwarcia IEC 60364,
+    ekwiwalent sieci nadrzędnej nN). Budowniczy w trybie `siec_zwarciowa=True`: admitancje
+    poprzeczne gałęzi pominięte (IEC 60909-0:2016 p. 5.2 e) i 5.3.1, karta BEZ-POJEMNOSCI),
+    zasilania i maszyny jako boczniki źródeł.
+    """
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=True)
+    y_bus = builder.build(siec_zwarciowa=True)
 
     try:
         z_bus = np.linalg.inv(y_bus)

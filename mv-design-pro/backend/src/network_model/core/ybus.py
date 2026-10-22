@@ -15,6 +15,8 @@ System per-unit:
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import numpy as np
 from network_model.pochodne import impedancja_z_napiecia_i_mocy_ohm
 
@@ -24,6 +26,20 @@ from .node import NodeType
 from .topologia import UniaWezlow
 
 S_BASE_MVA: float = 100.0
+
+#: Podstawa normowa pominięcia admitancji poprzecznych gałęzi w sieci zwarciowej — JEDNO źródło
+#: tekstu dla budowniczego (`AdmittanceMatrixBuilder.build(siec_zwarciowa=True)`) i kroku śladu
+#: WHITE BOX solvera IEC 60909 (`admitancje_poprzeczne_pominiete`).
+PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH: str = (
+    "IEC 60909-0:2016 p. 5.2 e) — założenia obliczeń: pojemności linii, admitancje "
+    "poprzeczne i obciążenia niewirujące pomija się, z wyjątkiem składowej zerowej; "
+    "p. 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem "
+    "czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje "
+    "szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli "
+    "(B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa zachowuje pojemność "
+    "doziemną B0 w osobnej macierzy (`enm/mapping.py`) — p. 5.3.2: w sieci z punktem "
+    "neutralnym izolowanym i skompensowanym pojemności zerowe linii uwzględnia się."
+)
 
 
 class AdmittanceMatrixBuilder:
@@ -80,11 +96,28 @@ class AdmittanceMatrixBuilder:
         """Napięcie znamionowe węzła reprezentatywnego [kV]."""
         return self._graph.nodes[rep_id].voltage_level
 
-    def build(self, ground_slack_buses: bool = True) -> np.ndarray:
+    def build(self, *, siec_zwarciowa: bool = True) -> np.ndarray:
         """
         Buduje macierz Y-bus w systemie per-unit.
 
         Zamknięte łączniki scalają węzły (zero-impedance merge).
+
+        ``siec_zwarciowa`` — JEDEN predykat reprezentacji sieci zwarciowej IEC 60909 składowej
+        zgodnej; solver przyjmuje ją także za sieć składowej przeciwnej (Z_2 = Z_1,
+        `short_circuit_core.compute_equivalent_impedance` bez `z2_bus` — żaden wołający go nie
+        podaje):
+
+        * admitancje poprzeczne gałęzi (B/2 linii i kabli na każdym końcu) są POMINIĘTE —
+          ``PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH``; admitancja szeregowa bez zmian;
+        * zasilania systemowe wchodzą jako bocznik Y_Q = 1/Z_Q, a węzeł SLACK bez Z_Q —
+          admitancją idealną (`_ground_slack_buses`);
+        * maszyny wirujące wchodzą jako bocznik Y″ = 1/Z″ (`_add_machine_shunts`).
+
+        ``siec_zwarciowa=False`` — macierz gałęzi w pełnym modelu π (z B/2), bez boczników
+        źródeł; używa jej wyłącznie test parytetu z budowniczym rozpływu
+        (`tests/network_model/test_parytet_admitancji_rozplyw_zwarcia.py`). Rozpływ, estymacja
+        stanu i dynamika mają własnego budowniczego (`build_ybus_pu`) z B/2 — tam pojemności
+        linii są fizyką stanu ustalonego i zostają.
 
         Returns:
             Numpy ndarray o dtype=complex i rozmiarze (n, n) w per-unit.
@@ -94,17 +127,14 @@ class AdmittanceMatrixBuilder:
         size = len(self._representative_ids)
         y_bus = np.zeros((size, size), dtype=complex)
 
-        for branch in self._graph.branches.values():
-            if not branch.in_service:
-                continue
-
-            from_idx = self._node_id_to_index[branch.from_node_id]
-            to_idx = self._node_id_to_index[branch.to_node_id]
-
-            if from_idx == to_idx:
-                continue
-
-            y_series_pu, y_shunt_pu, ratio = self._get_branch_admittances_pu(branch)
+        for _, from_idx, to_idx, y_series_pu, y_shunt_pu, ratio in self._stemple_galezi():
+            if siec_zwarciowa:
+                # IEC 60909-0:2016 p. 5.2 e) — patrz PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH.
+                # Ten sam bocznik (ten sam iterator `_stemple_galezi`) wylicza
+                # `admitancje_poprzeczne_pominiete` dla śladu WHITE BOX. Dla gałęzi bez
+                # susceptancji (B = 0) bocznik i tak był zerem, więc taka sieć ma Y-bus bit
+                # w bit jak przed kartą BEZ-POJEMNOSCI.
+                y_shunt_pu = 0j
 
             # Model gałęzi z przekładnią POZA-ZNAMIONOWĄ `a` (idealny transformator
             # po stronie `from`, admitancja odniesiona do strony `to`):
@@ -120,11 +150,11 @@ class AdmittanceMatrixBuilder:
             y_bus[from_idx, from_idx] += y_series_pu / (ratio * ratio) + y_shunt_pu
             y_bus[to_idx, to_idx] += y_series_pu + y_shunt_pu
 
-        if ground_slack_buses:
+        if siec_zwarciowa:
             self._ground_slack_buses(y_bus)
             # Rotating machines (IEC 60909 §6.3/§6.7) are voltage-behind-Z″ sources;
             # in the SC context they add a shunt Y″=1/Z″ at their node, exactly as the
-            # slack is grounded. SC context ONLY (ground_slack_buses ⇒ called solely by
+            # slack is grounded. SC context ONLY (siec_zwarciowa ⇒ called solely by
             # short_circuit_core); no-op when no machines ⇒ existing networks unchanged.
             self._add_machine_shunts(y_bus)
 
@@ -182,6 +212,46 @@ class AdmittanceMatrixBuilder:
                 continue
             z_base = self.get_zbase_ohm(node_id)
             y_bus[idx, idx] += z_base / z_internal_ohm
+
+    def _stemple_galezi(
+        self,
+    ) -> Iterator[tuple[Branch, int, int, complex, complex, float]]:
+        """Gałęzie stemplowane do macierzy: (gałąź, indeks od, indeks do, Y_szeregowa pu,
+        Y_poprzeczna NA KONIEC pu, przekładnia `a`).
+
+        JEDYNE źródło zbioru gałęzi i ich admitancji dla `build` i
+        `admitancje_poprzeczne_pominiete` (predykaty parami z jednego miejsca): gałąź
+        w ruchu między RÓŻNYMI węzłami scalonymi; gałąź wewnątrz węzła scalonego zamkniętymi
+        łącznikami nie wchodzi do macierzy w ogóle. Wymaga mapy węzłów z
+        `_build_merged_node_map` (ustawia ją wołający). Kolejność = kolejność gałęzi grafu
+        (porządek sumowania stempli, od którego zależą bity macierzy).
+        """
+        for branch in self._graph.branches.values():
+            if not branch.in_service:
+                continue
+            from_idx = self._node_id_to_index[branch.from_node_id]
+            to_idx = self._node_id_to_index[branch.to_node_id]
+            if from_idx == to_idx:
+                continue
+            y_series_pu, y_shunt_pu, ratio = self._get_branch_admittances_pu(branch)
+            yield branch, from_idx, to_idx, y_series_pu, y_shunt_pu, ratio
+
+    def admitancje_poprzeczne_pominiete(self) -> list[tuple[Branch, complex]]:
+        """Gałęzie, których admitancja poprzeczna NIE wchodzi do sieci zwarciowej.
+
+        Para (gałąź, Y_poprzeczna NA KONIEC w pu bazy systemowej — dokładnie stempel, który
+        `build(siec_zwarciowa=True)` zeruje na obu końcach) dla każdej gałęzi z
+        `_stemple_galezi` o Y_poprzecznej ≠ 0. Ten sam iterator co `build`, więc zbiór
+        pominiętych i zbiór zerowanych to jeden zbiór. Kolejność deterministyczna
+        (identyfikator gałęzi).
+        """
+        self._representative_ids, self._node_id_to_index = self._build_merged_node_map()
+        pominiete = [
+            (branch, y_shunt_pu)
+            for branch, _, _, _, y_shunt_pu, _ in self._stemple_galezi()
+            if y_shunt_pu != 0
+        ]
+        return sorted(pominiete, key=lambda para: para[0].id)
 
     def get_zbase_ohm(self, node_id: str) -> float:
         """Zwraca Zbase [Ω] dla danego węzła: Vn² / Sbase."""

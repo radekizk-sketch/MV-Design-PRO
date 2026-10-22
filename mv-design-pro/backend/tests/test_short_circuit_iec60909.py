@@ -155,7 +155,7 @@ def test_ikss_3ph_transformer_only_matches_formula():
     tk_s = 1.0
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=False)
+    y_bus = builder.build(siec_zwarciowa=False)
     z_bus = np.linalg.inv(y_bus)
 
     node_index = builder.node_id_to_index["B"]
@@ -533,7 +533,7 @@ def test_zkk_from_inverse_ybus():
     graph = build_transformer_only_graph()
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=False)
+    y_bus = builder.build(siec_zwarciowa=False)
     z_bus = np.linalg.inv(y_bus)
     node_index = builder.node_id_to_index["B"]
     z_base_ohm = builder.get_zbase_ohm("B")
@@ -552,7 +552,7 @@ def test_zkk_from_inverse_ybus():
 
 def build_z_bus(graph: NetworkGraph) -> np.ndarray:
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build(ground_slack_buses=False)
+    y_bus = builder.build(siec_zwarciowa=False)
     return np.linalg.inv(y_bus)
 
 

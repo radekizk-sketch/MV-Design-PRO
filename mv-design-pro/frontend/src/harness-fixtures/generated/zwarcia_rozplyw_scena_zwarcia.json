@@ -11,7 +11,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.643603361698,
+        "i_ka": 0.64364107688,
         "direction": "to_from"
       },
       {
@@ -45,7 +45,7 @@
         "inputs": {
           "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "fault_index": 0,
-          "ik_thevenin_a": 8953.06173407,
+          "ik_thevenin_a": 8953.14360646,
           "n_nodes": 4
         },
         "substitution": "i_inj[0] = -1 (pu); V = Z_bus @ i_inj",
@@ -53,20 +53,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             }
           ]
         },
@@ -81,24 +81,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.0718863982865,
-          "i_contrib_a": 643.603361698,
+          "fraction": 0.0718899534254,
+          "i_contrib_a": 643.64107688,
           "direction": "to_from"
         },
         "notes": null
@@ -112,23 +112,23 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.928353888704,
+          "fraction": 0.928345399333,
           "i_contrib_a": 8311.60967663,
           "direction": "from_to"
         },
@@ -140,13 +140,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "Σ = 8311.61 ≈ 8953.06",
-        "substitution_latex": "\\sum = 8311.61 \\approx 8953.06",
+        "substitution": "Σ = 8311.61 ≈ 8953.14",
+        "substitution_latex": "\\sum = 8311.61 \\approx 8953.14",
         "result": {
           "sum_into_fault_a": 8311.60967663,
-          "fraction_sum": 0.928353888704
+          "fraction_sum": 0.928345399333
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -161,13 +161,13 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 1.44e-13,
+          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
           "suma_fazorowa_pominietych_thevenin_a": {
-            "re": -1.42e-13,
-            "im": -1.75e-14
+            "re": -6.93e-14,
+            "im": -1.72e-14
           },
           "liczba_pominietych_falownik": 3,
-          "suma_modulow_pominietych_falownik_a": 2.41e-15
+          "suma_modulow_pominietych_falownik_a": 3.63e-15
         },
         "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
       }
@@ -186,24 +186,24 @@
         "branch_name": "Linia SN 1",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 3.72e-19,
-        "kat_deg": -48.0
+        "i_ka": 0.0,
+        "kat_deg": null
       },
       {
         "branch_id": "tr_hv_sn",
         "branch_name": "TR 110/15",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 2.04e-18,
-        "kat_deg": -40.2
+        "i_ka": 3.63e-18,
+        "kat_deg": -12.7
       },
       {
         "branch_id": "tr_sn_nn",
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 1.44e-16,
-        "kat_deg": -173.0
+        "i_ka": 7.15e-17,
+        "kat_deg": -166.0
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
@@ -255,7 +255,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -290,7 +290,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.0819562826744,
+        "i_ka": 0.0819603927841,
         "direction": "to_from"
       },
       {
@@ -301,7 +301,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.000142410460775,
+        "i_ka": 0.00014241630032,
         "direction": "from_to"
       },
       {
@@ -312,7 +312,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.0819506886686,
+        "i_ka": 0.0819603927841,
         "direction": "to_from"
       },
       {
@@ -323,7 +323,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.00201469801611,
+        "i_ka": 0.00201466417562,
         "direction": "to_from"
       },
       {
@@ -334,7 +334,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.00215657585185,
+        "i_ka": 0.00215655762982,
         "direction": "to_from"
       }
     ],
@@ -346,7 +346,7 @@
         "inputs": {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "fault_index": 1,
-          "ik_thevenin_a": 13984.4652706,
+          "ik_thevenin_a": 13984.4749902,
           "n_nodes": 4
         },
         "substitution": "i_inj[1] = -1 (pu); V = Z_bus @ i_inj",
@@ -354,20 +354,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.00411363789333,
-              "im": -0.041079663781
+              "re": -0.00411363339526,
+              "im": -0.0410796353934
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.001661023816,
-              "im": -0.0355360255269
+              "re": -0.00166086690814,
+              "im": -0.0355355378636
             }
           ]
         },
@@ -382,24 +382,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.001661023816,
-            "im": -0.0355360255269
+            "re": -0.00166086690814,
+            "im": -0.0355355378636
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 13984.4652706
+          "ik_thevenin_a": 13984.4749902
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.00166102-j0.035536) * 1.06147-j1.17941| * 13984.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.00166102 - j 0.035536\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 13984.5",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.00166087-j0.0355355) * 1.06147-j1.17941| * 13984.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.00166087 - j 0.0355355\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 13984.5",
         "result": {
-          "fraction": 0.00586052316544,
-          "i_contrib_a": 81.9562826744,
+          "fraction": 0.00586081299737,
+          "i_contrib_a": 81.9603927841,
           "direction": "to_from"
         },
         "notes": null
@@ -413,24 +413,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00411363789333,
-            "im": -0.041079663781
+            "re": -0.00411363339526,
+            "im": -0.0410796353934
           },
           "v_to_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 13984.4652706
+          "ik_thevenin_a": 13984.4749902
         },
-        "substitution": "|(-0.00411364-j0.0410797 - -0.00406752-j0.0383379) * 0.0854818-j2.13534| * 13984.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00411364 - j 0.0410797\\right) - \\left(-0.00406752 - j 0.0383379\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 13984.5",
+        "substitution": "|(-0.00411363-j0.0410796 - -0.00406748-j0.0383375) * 0.0854818-j2.13534| * 13984.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.00411363 - j 0.0410796\\right) - \\left(-0.00406748 - j 0.0383375\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 13984.5",
         "result": {
-          "fraction": 0.00586012314973,
-          "i_contrib_a": 81.9506886686,
+          "fraction": 0.00586081299737,
+          "i_contrib_a": 81.9603927841,
           "direction": "to_from"
         },
         "notes": null
@@ -441,13 +441,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
-          "ik_thevenin_a": 13984.4652706
+          "ik_thevenin_a": 13984.4749902
         },
-        "substitution": "Σ = 81.9507 ≈ 13984.5",
-        "substitution_latex": "\\sum = 81.9507 \\approx 13984.5",
+        "substitution": "Σ = 81.9604 ≈ 13984.5",
+        "substitution_latex": "\\sum = 81.9604 \\approx 13984.5",
         "result": {
-          "sum_into_fault_a": 81.9506886686,
-          "fraction_sum": 0.00586012314973
+          "sum_into_fault_a": 81.9603927841,
+          "fraction_sum": 0.00586081299737
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -462,10 +462,10 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 0.0,
+          "suma_modulow_pominietych_thevenin_a": 3.2e-14,
           "suma_fazorowa_pominietych_thevenin_a": {
-            "re": 0.0,
-            "im": 0.0
+            "re": -3.06e-14,
+            "im": 9.35e-15
           },
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
@@ -487,8 +487,8 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 0.0,
-        "kat_deg": null
+        "i_ka": 3.2e-17,
+        "kat_deg": 163.0
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
@@ -540,7 +540,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -575,7 +575,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 1.47061689265,
+        "i_ka": 1.47069046773,
         "direction": "to_from"
       },
       {
@@ -586,7 +586,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 18.9918112971,
+        "i_ka": 18.9916485476,
         "direction": "from_to"
       },
       {
@@ -597,7 +597,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 20.4575125157,
+        "i_ka": 20.4575242806,
         "direction": "from_to"
       }
     ],
@@ -609,7 +609,7 @@
         "inputs": {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
           "fault_index": 2,
-          "ik_thevenin_a": 20457.5125157,
+          "ik_thevenin_a": 20457.5242806,
           "n_nodes": 4
         },
         "substitution": "i_inj[2] = -1 (pu); V = Z_bus @ i_inj",
@@ -617,20 +617,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -1.61582715345,
-              "im": -7.22989125618
+              "re": -1.61582694789,
+              "im": -7.22988693659
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             }
           ]
         },
@@ -645,24 +645,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
-        "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 20457.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 20457.5",
         "result": {
-          "fraction": 0.0718863982865,
-          "i_contrib_a": 1470.61689265,
+          "fraction": 0.0718899534254,
+          "i_contrib_a": 1470.69046773,
           "direction": "to_from"
         },
         "notes": null
@@ -676,24 +676,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 20457.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 20457.5",
         "result": {
-          "fraction": 0.928353888704,
-          "i_contrib_a": 18991.8112971,
+          "fraction": 0.928345399333,
+          "i_contrib_a": 18991.6485476,
           "direction": "from_to"
         },
         "notes": null
@@ -707,24 +707,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": -1.61582715345,
-            "im": -7.22989125618
+            "re": -1.61582694789,
+            "im": -7.22988693659
           },
           "y_series_pu": {
             "re": 0.0330249074427,
             "im": -0.140202372994
           },
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
-        "substitution": "|(-0.0240621-j0.472287 - -1.61583-j7.22989) * 0.0330249-j0.140202| * 20457.5",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-1.61583 - j 7.22989\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 20457.5",
+        "substitution": "|(-0.0240619-j0.472283 - -1.61583-j7.22989) * 0.0330249-j0.140202| * 20457.5",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(-1.61583 - j 7.22989\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 20457.5",
         "result": {
           "fraction": 1.0,
-          "i_contrib_a": 20457.5125157,
+          "i_contrib_a": 20457.5242806,
           "direction": "from_to"
         },
         "notes": null
@@ -735,12 +735,12 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "ik_thevenin_a": 20457.5125157
+          "ik_thevenin_a": 20457.5242806
         },
         "substitution": "Σ = 20457.5 ≈ 20457.5",
         "substitution_latex": "\\sum = 20457.5 \\approx 20457.5",
         "result": {
-          "sum_into_fault_a": 20457.5125157,
+          "sum_into_fault_a": 20457.5242806,
           "fraction_sum": 1.0
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
@@ -796,7 +796,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -831,7 +831,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.643603361698,
+        "i_ka": 0.64364107688,
         "direction": "to_from"
       },
       {
@@ -865,7 +865,7 @@
         "inputs": {
           "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "fault_index": 0,
-          "ik_thevenin_a": 8953.06173407,
+          "ik_thevenin_a": 8953.14360646,
           "n_nodes": 4
         },
         "substitution": "i_inj[0] = -1 (pu); V = Z_bus @ i_inj",
@@ -873,20 +873,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": -0.00406751867583,
-              "im": -0.0383378913922
+              "re": -0.00406748265563,
+              "im": -0.0383375406851
             },
             {
-              "re": -0.0240620560069,
-              "im": -0.472287338676
+              "re": -0.0240618504502,
+              "im": -0.472283019087
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             }
           ]
         },
@@ -901,24 +901,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.0240621-j0.472287 - 0.00352986-j0.436354) * 1.06147-j1.17941| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.0240619-j0.472283 - 0.00353145-j0.436348) * 1.06147-j1.17941| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.0240619 - j 0.472283\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.0718863982865,
-          "i_contrib_a": 643.603361698,
+          "fraction": 0.0718899534254,
+          "i_contrib_a": 643.64107688,
           "direction": "to_from"
         },
         "notes": null
@@ -932,23 +932,23 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.00406751867583,
-            "im": -0.0383378913922
+            "re": -0.00406748265563,
+            "im": -0.0383375406851
           },
           "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
+            "re": -0.0240618504502,
+            "im": -0.472283019087
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "|(-0.00406752-j0.0383379 - -0.0240621-j0.472287) * 0.0854818-j2.13534| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.06",
+        "substitution": "|(-0.00406748-j0.0383375 - -0.0240619-j0.472283) * 0.0854818-j2.13534| * 8953.14",
+        "substitution_latex": "\\left| \\left(\\left(-0.00406748 - j 0.0383375\\right) - \\left(-0.0240619 - j 0.472283\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 8953.14",
         "result": {
-          "fraction": 0.928353888704,
+          "fraction": 0.928345399333,
           "i_contrib_a": 8311.60967663,
           "direction": "from_to"
         },
@@ -960,13 +960,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "ik_thevenin_a": 8953.06173407
+          "ik_thevenin_a": 8953.14360646
         },
-        "substitution": "Σ = 643.603 ≈ 8953.06",
-        "substitution_latex": "\\sum = 643.603 \\approx 8953.06",
+        "substitution": "Σ = 643.641 ≈ 8953.14",
+        "substitution_latex": "\\sum = 643.641 \\approx 8953.14",
         "result": {
-          "sum_into_fault_a": 643.603361698,
-          "fraction_sum": 0.0718863982865
+          "sum_into_fault_a": 643.64107688,
+          "fraction_sum": 0.0718899534254
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -981,13 +981,13 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 1.44e-13,
+          "suma_modulow_pominietych_thevenin_a": 7.15e-14,
           "suma_fazorowa_pominietych_thevenin_a": {
-            "re": -1.42e-13,
-            "im": -1.75e-14
+            "re": -6.93e-14,
+            "im": -1.72e-14
           },
           "liczba_pominietych_falownik": 3,
-          "suma_modulow_pominietych_falownik_a": 2.41e-15
+          "suma_modulow_pominietych_falownik_a": 3.63e-15
         },
         "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
       }
@@ -1006,24 +1006,24 @@
         "branch_name": "Linia SN 1",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 3.72e-19,
-        "kat_deg": -48.0
+        "i_ka": 0.0,
+        "kat_deg": null
       },
       {
         "branch_id": "tr_hv_sn",
         "branch_name": "TR 110/15",
         "source_id": "gen_pv",
         "tor": "falownik",
-        "i_ka": 2.04e-18,
-        "kat_deg": -40.2
+        "i_ka": 3.63e-18,
+        "kat_deg": -12.7
       },
       {
         "branch_id": "tr_sn_nn",
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 1.44e-16,
-        "kat_deg": -173.0
+        "i_ka": 7.15e-17,
+        "kat_deg": -166.0
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
@@ -1075,7 +1075,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1110,7 +1110,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 3.94348894757,
+        "i_ka": 3.9434983582,
         "direction": "from_to"
       },
       {
@@ -1121,7 +1121,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 0.00746071011355,
+        "i_ka": 0.00746065778668,
         "direction": "to_from"
       },
       {
@@ -1132,7 +1132,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 3.94350994358,
+        "i_ka": 3.9434983582,
         "direction": "from_to"
       },
       {
@@ -1143,7 +1143,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 0.000714639531934,
+        "i_ka": 0.000714672774806,
         "direction": "to_from"
       },
       {
@@ -1154,7 +1154,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 0.00803523513949,
+        "i_ka": 0.00803521153329,
         "direction": "to_from"
       }
     ],
@@ -1166,7 +1166,7 @@
         "inputs": {
           "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "fault_index": 3,
-          "ik_thevenin_a": 4603.47193319,
+          "ik_thevenin_a": 4603.52239368,
           "n_nodes": 4
         },
         "substitution": "i_inj[3] = -1 (pu); V = Z_bus @ i_inj",
@@ -1174,20 +1174,20 @@
         "result": {
           "v_nodes_pu": [
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             },
             {
-              "re": -0.001661023816,
-              "im": -0.0355360255269
+              "re": -0.00166086690814,
+              "im": -0.0355355378636
             },
             {
-              "re": 0.00352986021756,
-              "im": -0.436353928066
+              "re": 0.00353145437217,
+              "im": -0.436347849852
             },
             {
-              "re": -0.335878003595,
-              "im": -0.856194810504
+              "re": -0.335872018367,
+              "im": -0.856186329184
             }
           ]
         },
@@ -1202,24 +1202,24 @@
           "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
           "to_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
           "v_from_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "v_to_pu": {
-            "re": -0.335878003595,
-            "im": -0.856194810504
+            "re": -0.335872018367,
+            "im": -0.856186329184
           },
           "y_series_pu": {
             "re": 1.06146539885,
             "im": -1.17940599872
           },
-          "ik_thevenin_a": 4603.47193319
+          "ik_thevenin_a": 4603.52239368
         },
-        "substitution": "|(0.00352986-j0.436354 - -0.335878-j0.856195) * 1.06147-j1.17941| * 4603.47",
-        "substitution_latex": "\\left| \\left(\\left(0.00352986 - j 0.436354\\right) - \\left(-0.335878 - j 0.856195\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 4603.47",
+        "substitution": "|(0.00353145-j0.436348 - -0.335872-j0.856186) * 1.06147-j1.17941| * 4603.52",
+        "substitution_latex": "\\left| \\left(\\left(0.00353145 - j 0.436348\\right) - \\left(-0.335872 - j 0.856186\\right)\\right) \\cdot \\left(1.06147 - j 1.17941\\right)\\right| \\cdot 4603.52",
         "result": {
-          "fraction": 0.856633646257,
-          "i_contrib_a": 3943.48894757,
+          "fraction": 0.85662630068,
+          "i_contrib_a": 3943.4983582,
           "direction": "from_to"
         },
         "notes": null
@@ -1233,24 +1233,24 @@
           "from_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
           "to_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
           "v_from_pu": {
-            "re": -0.001661023816,
-            "im": -0.0355360255269
+            "re": -0.00166086690814,
+            "im": -0.0355355378636
           },
           "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
+            "re": 0.00353145437217,
+            "im": -0.436347849852
           },
           "y_series_pu": {
             "re": 0.085481848241,
             "im": -2.13533588466
           },
-          "ik_thevenin_a": 4603.47193319
+          "ik_thevenin_a": 4603.52239368
         },
-        "substitution": "|(-0.00166102-j0.035536 - 0.00352986-j0.436354) * 0.0854818-j2.13534| * 4603.47",
-        "substitution_latex": "\\left| \\left(\\left(-0.00166102 - j 0.035536\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 4603.47",
+        "substitution": "|(-0.00166087-j0.0355355 - 0.00353145-j0.436348) * 0.0854818-j2.13534| * 4603.52",
+        "substitution_latex": "\\left| \\left(\\left(-0.00166087 - j 0.0355355\\right) - \\left(0.00353145 - j 0.436348\\right)\\right) \\cdot \\left(0.0854818 - j 2.13534\\right)\\right| \\cdot 4603.52",
         "result": {
-          "fraction": 0.856638207164,
-          "i_contrib_a": 3943.50994358,
+          "fraction": 0.85662630068,
+          "i_contrib_a": 3943.4983582,
           "direction": "from_to"
         },
         "notes": null
@@ -1261,13 +1261,13 @@
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
         "inputs": {
           "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
-          "ik_thevenin_a": 4603.47193319
+          "ik_thevenin_a": 4603.52239368
         },
-        "substitution": "Σ = 3943.49 ≈ 4603.47",
-        "substitution_latex": "\\sum = 3943.49 \\approx 4603.47",
+        "substitution": "Σ = 3943.5 ≈ 4603.52",
+        "substitution_latex": "\\sum = 3943.5 \\approx 4603.52",
         "result": {
-          "sum_into_fault_a": 3943.48894757,
-          "fraction_sum": 0.856633646257
+          "sum_into_fault_a": 3943.4983582,
+          "fraction_sum": 0.85662630068
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       },
@@ -1282,10 +1282,10 @@
         "substitution_latex": null,
         "result": {
           "liczba_pominietych_thevenin": 1,
-          "suma_modulow_pominietych_thevenin_a": 1.11e-13,
+          "suma_modulow_pominietych_thevenin_a": 1.23e-13,
           "suma_fazorowa_pominietych_thevenin_a": {
-            "re": -1.02e-13,
-            "im": -4.33e-14
+            "re": -1.19e-13,
+            "im": 2.97e-14
           },
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
@@ -1307,8 +1307,8 @@
         "branch_name": "TR 15/0.4",
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
-        "i_ka": 1.11e-16,
-        "kat_deg": -157.0
+        "i_ka": 1.23e-16,
+        "kat_deg": 166.0
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
@@ -1360,7 +1360,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "5f680d7a9078ba5330b006c751969e083960593e50dfed04356f22539870c217",
+        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",

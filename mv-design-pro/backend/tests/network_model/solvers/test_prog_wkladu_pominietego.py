@@ -9,8 +9,10 @@ Iloczyn cech (wymaganie 5 właściciela):
 - wartość: {0, +1e-17 kA, −1e-17 kA, tuż poniżej progu, dokładnie na progu, tuż powyżej};
 - tor: {falownikowy, Thevenina};
 - rodzaj zwarcia: {3F, 2F, 2F+Z, 1F};
-oraz sieć z RZECZYWISTYM małym prądem nad progiem (ładowanie pojemności odgałęzienia
-kablowego, kilka µA) — ten wpis zostaje na liście we wszystkich czterech rodzajach.
+oraz sieć z RZECZYWISTYM małym prądem nad progiem (prąd mikrogeneratora synchronicznego
+płynący odgałęzieniem kablowym, kilka µA; do karty BEZ-POJEMNOSCI był to prąd ładowania
+pojemności kabla, której sieć zwarciowa IEC 60909 nie zawiera) — ten wpis zostaje na liście
+we wszystkich czterech rodzajach.
 
 Wartości graniczne trafiają do predykatu rdzenia DOKŁADNIE: graf i macierz Z-bus testu są
 dobrane tak, że współczynnik podziału gałęzi sondy wynosi 2⁻⁴⁰ (potęga dwójki — mnożenie
@@ -377,7 +379,7 @@ def test_realny_maly_prad_nad_progiem_zostaje_na_liscie(rodzaj: str) -> None:
         and w["source_id"] == "THEVENIN_GRID"
     ]
     assert len(realne) == 1
-    # Ładowanie pojemności 5 m kabla: kilka µA — fizyka, nie szum; NAD progiem.
+    # Prąd mikrogeneratora za 5 m kabla: kilka µA — fizyka, nie szum; NAD progiem.
     assert PROG < realne[0]["i_contrib_a"] < 1e-4
     for punkt in punkty.values():
         wklady = punkt["branch_contributions"]

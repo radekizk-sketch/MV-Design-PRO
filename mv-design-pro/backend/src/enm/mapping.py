@@ -521,9 +521,13 @@ def _assemble_zero_sequence_y0(
         )
 
         # Audyt fizyki fala F (V12K): pojemność doziemna linii/kabla (B0) jako
-        # bocznik do ziemi w modelu π (jak susceptancja zgodna w Y1 — patrz
-        # AdmittanceMatrixBuilder._get_branch_admittances_pu, split /2 na
-        # każdy koniec). Przed tą kartą B0 było CAŁKOWICIE pomijane w sieci
+        # bocznik do ziemi w modelu π (podział /2 na każdy koniec — ten sam co
+        # dla susceptancji zgodnej w `AdmittanceMatrixBuilder._get_branch_admittances_pu`).
+        # Sieć zgodna i przeciwna zwarć NIE ma tej susceptancji (karta BEZ-POJEMNOSCI,
+        # `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`: IEC 60909-0:2016 p. 5.2 —
+        # pojemności pomija się z wyjątkiem składowej zerowej), więc B0 tutaj jest
+        # JEDYNĄ pojemnością linii w obliczeniu zwarciowym.
+        # Przed kartą fali F B0 było CAŁKOWICIE pomijane w sieci
         # składowej zerowej SC_1F/2F+G — dla sieci o punkcie neutralnym
         # izolowanym/skompensowanym (Petersen) ta pojemność jest DOMINUJĄCĄ
         # drogą powrotu prądu doziemnego (fizycznie: prąd pojemnościowy,

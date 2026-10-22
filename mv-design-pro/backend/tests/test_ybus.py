@@ -89,7 +89,7 @@ def test_ybus_single_line_between_two_nodes():
     graph.add_branch(line)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=False)
 
     z_base = 20.0**2 / S_BASE_MVA
     y_series = line.get_series_admittance() * z_base
@@ -106,6 +106,44 @@ def test_ybus_single_line_between_two_nodes():
     np.testing.assert_allclose(y_bus, expected)
 
 
+@pytest.mark.parametrize("b_us_per_km", [0.0, 5.0, 250.0])
+def test_ybus_siec_zwarciowa_pomija_admitancje_poprzeczna_linii(b_us_per_km: float) -> None:
+    """IEC 60909-0:2016 p. 5.2 e) (karta BEZ-POJEMNOSCI): sieć zwarciowa składowej zgodnej
+    = admitancje szeregowe bez B/2; model π (``siec_zwarciowa=False``) różni się od niej
+    DOKŁADNIE o B/2 na przekątnej. Iloczyn: B {0, małe, kabel SN} × tryb {zwarciowy, π}."""
+    graph = NetworkGraph()
+    graph.add_node(create_pq_node("A"))
+    graph.add_node(create_pq_node("B"))
+    line = create_line_branch("AB", "A", "B", 0.2, 0.4, b_us_per_km, 10.0)
+    graph.add_branch(line)
+
+    z_base = 20.0**2 / S_BASE_MVA
+    y_series = line.get_series_admittance() * z_base
+    y_shunt = line.get_shunt_admittance_per_end() * z_base
+
+    budowniczy = AdmittanceMatrixBuilder(graph)
+    y_zwarciowa = budowniczy.build(siec_zwarciowa=True)
+    np.testing.assert_allclose(
+        y_zwarciowa,
+        np.array([[y_series, -y_series], [-y_series, y_series]], dtype=complex),
+        rtol=1e-13,
+    )
+    y_pi = AdmittanceMatrixBuilder(graph).build(siec_zwarciowa=False)
+    np.testing.assert_allclose(y_pi - y_zwarciowa, np.diag([y_shunt, y_shunt]), atol=1e-15)
+    # Zbiór pominiętych = stemple, które tryb zwarciowy zeruje: Y_konca w pu, dokładnie to,
+    # o co przekątne modelu π przewyższają sieć zwarciową (ten sam iterator `_stemple_galezi`).
+    pominiete = budowniczy.admitancje_poprzeczne_pominiete()
+    if not b_us_per_km:
+        assert pominiete == []
+        return
+    ((galaz, y_konca_pu),) = pominiete
+    assert galaz.id == "AB"
+    assert y_konca_pu == pytest.approx(y_shunt, rel=1e-15)
+    # Stempel bit w bit: przekątna π = przekątna sieci zwarciowej + zerowany bocznik końca.
+    assert y_pi[0, 0] == y_zwarciowa[0, 0] + y_konca_pu
+    assert y_pi[1, 1] == y_zwarciowa[1, 1] + y_konca_pu
+
+
 def test_ybus_parallel_lines_between_two_nodes():
     graph = NetworkGraph()
     graph.add_node(create_pq_node("A"))
@@ -118,7 +156,7 @@ def test_ybus_parallel_lines_between_two_nodes():
     graph.add_branch(line2)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=False)
 
     z_base = 20.0**2 / S_BASE_MVA
     y_series_total = (line1.get_series_admittance() + line2.get_series_admittance()) * z_base
@@ -149,7 +187,7 @@ def test_ybus_ignores_out_of_service_branch():
     graph.add_branch(inactive_line)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=False)
 
     z_base = 20.0**2 / S_BASE_MVA
     y_series = active_line.get_series_admittance() * z_base
