@@ -195,8 +195,13 @@ export interface CanonicalGpzTransformer {
    *  (`Transformer.lv_bus_ref`); `null` = szyna SN transformatora nie jest szyną
    *  żadnej sekcji GPZ (wieża bez zejścia do szyny SN i wpis braku danych). */
   readonly lvSectionId: string | null;
-  /** Ref szyny WN (110 kV). */
+  /** Ref szyny WN (110 kV) z `Transformer.hv_bus_ref`. */
   readonly hvBusRef?: string | null;
+  /** Karta GPZ-H5-SLD: sekcja 110 kV (`Substation.gpz_hv_sections[]`), której szyną jest
+   *  szyna strony WN transformatora (`hv_bus_ref`) — TA SAMA reguła co `lvSectionId` po
+   *  stronie SN. `null` = GPZ bez sekcji 110 kV w modelu albo szyna WN transformatora nie
+   *  jest szyną żadnej sekcji 110 kV (wpis braku danych w kompozycji). */
+  readonly hvSectionId?: string | null;
   /** Adnotacja regulacji zaczepów z `Transformer.tap_changer` (brak = bez regulacji). */
   readonly oltc?: OltcGlyphAnnotation | null;
   /** Karta GPZ-PARYTET cz. 3: pole TR sekcji SN, którego JEDYNYM transformatorem jest ten
@@ -208,22 +213,61 @@ export interface CanonicalGpzTransformer {
   readonly poleWn: CanonicalGpzBay | null;
 }
 
+/**
+ * Sekcja rozdzielni 110 kV GPZ (`Substation.gpz_hv_sections[]`) — karta GPZ-H5-SLD: KAŻDA
+ * sekcja jest osobnym odcinkiem szyny WN na rysunku (szyna `busRef` modelu), z własnymi
+ * polami liniowymi, własnymi źródłami (`systemSources` z `busRef` tej szyny) i zaczepami
+ * transformatorów, których `hvSectionId` wskazuje tę sekcję. Łącznik szyn 110 kV między
+ * sekcjami = `CanonicalGpzProps.hvCouplers` (gałąź `bus_coupler` modelu).
+ */
 export interface CanonicalGpzHvSection {
   readonly sectionId: string;
   readonly order: number;
+  /** Kanoniczny ref Bus ENM szyny sekcji (`GPZSection.bus_ref`); `null` = brak w modelu. */
+  readonly busRef: string | null;
   /** Napięcie szyny WN (kV) z `Bus.voltage_kv`; `null` = brak danej w modelu. */
   readonly busVoltageKv: number | null;
   readonly label: string;
   readonly bays: readonly CanonicalGpzBay[];
+  /** Nazwa toru zasilania sekcji (`GPZSection.line_field_name`, np. „L1"); `null` = brak. */
+  readonly lineFieldName: string | null;
+  /** Źródło zasilające sekcję wskazane przez model (`GPZSection.incoming_source_ref`). */
+  readonly incomingSourceRef: string | null;
+}
+
+/**
+ * Karta GPZ-H5-SLD: odbiór (`Load`) przyłączony do szyny sekcji GPZ (SN albo 110 kV) —
+ * rysowany przy swojej sekcji. Wartości P/Q to DANE WEJŚCIOWE modelu (`Load.p_mw`,
+ * `Load.q_mvar`), nie wynik obliczeń.
+ */
+export interface CanonicalGpzLoad {
+  readonly loadRef: string;
+  /** `Load.name`; `null` = brak nazwy w modelu (podpis bez nazwy, bez wartości zastępczej). */
+  readonly name: string | null;
+  readonly busRef: string;
+  /** Sekcja GPZ, której szyną jest `busRef` (SN: `gpz_sections`, WN: `gpz_hv_sections`). */
+  readonly sectionId: string;
+  readonly side: 'sn' | 'wn';
+  readonly pMw: number | null;
+  readonly qMvar: number | null;
 }
 
 /**
  * Źródło systemowe (sieć zasilająca GPZ) wywiedzione WYŁĄCZNIE z relacji pierwszoklasowych
- * ENM (`Source` na szynie GPZ z danymi zwarciowymi), używane gdy `gpz_hv_sections` jest
- * puste — zarówno przy równoważniku na szynie WN, jak i na szynach SN (karta GPZ-MODEL).
+ * ENM (`Source` na szynie GPZ z danymi zwarciowymi). Karta GPZ-H5-SLD: JEDNO na KAŻDE
+ * `Source` na szynie GPZ (`CanonicalGpzProps.systemSources`) — dawniej `sources.find` brał
+ * pierwsze źródło i GPZ zasilany dwiema liniami 110 kV miał na rysunku jedno S″k.
  */
 export interface CanonicalGpzHvSystemSource {
   readonly sourceRef: string;
+  /** Szyna przyłączenia (`Source.bus_ref`) — wiąże tabliczkę z sekcją, przy której stoi. */
+  readonly busRef: string | null;
+  /** Nazwa toru zasilania: `Source.supply_line_name` (linia 110 kV L1/L2), a bez niej
+   *  `GPZSection.line_field_name` sekcji, której `incoming_source_ref` wskazuje to źródło;
+   *  `null` = model nie nazywa toru. */
+  readonly lineName: string | null;
+  /** Stacja, z której przychodzi linia toru (`Source.supplying_station_name`); `null` = brak. */
+  readonly supplyingStation?: string | null;
   /** `Source.meta.source_id` (preferowane) albo `Source.name` — nigdy wartość zastępcza. */
   readonly name: string;
   readonly sk3Mva: number | null;
@@ -254,17 +298,27 @@ export interface CanonicalGpzProps {
   /** Nazwa GPZ z ENM `Substation.name`; `null` = model nie niesie nazwy (kompozycja
    *  zgłasza jawny brak `gpz.name.missing`, nie wymyśla nazwy). */
   readonly name: string | null;
-  /** Strona WN: szyna 110 kV + pola liniowe WN. Brak → tylko SN. */
+  /** Karta GPZ-H5-SLD: model niesie kilka RÓŻNYCH opisów punktu neutralnego w źródłach
+   *  stacji — rysunek nie wybiera pierwszego (`snNeutralEarthing = null`, wpis braku danych). */
+  readonly snNeutralEarthingAmbiguous?: boolean;
+  /** Strona WN: sekcje rozdzielni 110 kV z `gpz_hv_sections` (każda osobnym odcinkiem
+   *  szyny). Brak → szyna WN wywiedziona z szyn modelu wskazanych przez transformatory. */
   readonly hvSections?: readonly CanonicalGpzHvSection[];
-  /** Źródło systemowe WN wywiedzione z relacji pierwszoklasowych, gdy `hvSections` puste. */
-  readonly hvSystemSource?: CanonicalGpzHvSystemSource | null;
+  /** Łączniki szyn 110 kV (gałęzie `bus_coupler` między szynami sekcji 110 kV) — ten sam
+   *  kształt i to samo źródło stanu co sprzęgła SN (`couplers`); `leftSectionId`/
+   *  `rightSectionId` to identyfikatory sekcji 110 kV. */
+  readonly hvCouplers?: readonly CanonicalGpzCoupler[];
+  /** Źródła systemowe — KAŻDE `Source` na szynie GPZ (SN albo WN), w porządku `sourceRef`. */
+  readonly systemSources?: readonly CanonicalGpzHvSystemSource[];
+  /** Odbiory przyłączone do szyn sekcji GPZ, w porządku `loadRef`. */
+  readonly loads?: readonly CanonicalGpzLoad[];
   /** Kanoniczny ref Bus ENM szyny WN (jedna szyna GPZ w paśmie WN) — `null` gdy brak albo
-   *  niejednoznaczność. */
+   *  niejednoznaczność. Ścieżka bez sekcji 110 kV; sekcje niosą własny `busRef`. */
   readonly hvBusRef?: string | null;
   /** Transformatory na osi (T1...Tn). */
   readonly transformers: readonly CanonicalGpzTransformer[];
   /** Strona SN: ≥1 sekcja. */
   readonly sections: readonly CanonicalGpzSection[];
-  /** Sprzęgła międzysekcyjne SN. */
+  /** Sprzęgła (łączniki szyn) międzysekcyjne SN. */
   readonly couplers: readonly CanonicalGpzCoupler[];
 }

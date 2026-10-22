@@ -109,14 +109,71 @@ export function tekstAlarmowGpz(
   return `Przeciążenia w GPZ: ${liczbaPrzeciazen}${nieaktualny ? PRZYROSTEK_NIEAKTUALNY : ''}`;
 }
 
-/** Tytuł tabeli pól (stan wyniku jawnie w tytule — nie w pustych komórkach). */
-export function tekstTytuluTabeliGpz(maWynik: boolean, nieaktualny: boolean): string {
+/** Tytuł tabeli pól (stan wyniku jawnie w tytule — nie w pustych komórkach). `innyBieg` =
+ *  wynik z aktywnego biegu rodziny rozpływu, a schemat pokazuje inny bieg (np. zwarciowy).
+ *  Wariant „inny bieg" nie jest dłuższy od najdłuższego wariantu bez niego (pomiar: 379 wobec
+ *  403 jednostek t1) — szerokość tytułu współtworzy szerokość ramy GPZ, a ta przesuwa świat
+ *  sieci i łamanie arkusza; dłuższy przyrostek poszerzał ramę o 440 jednostek na każdej
+ *  sieci (przypięte w `gpzStanyPola.test.ts`). */
+export function tekstTytuluTabeliGpz(maWynik: boolean, nieaktualny: boolean, innyBieg = false): string {
   if (!maWynik) return 'Pola GPZ — brak wyniku rozpływu mocy';
+  if (innyBieg) return `Pola GPZ — rozpływ z innego biegu${nieaktualny ? PRZYROSTEK_NIEAKTUALNY_KROTKI : ''}`;
   return `Pola GPZ — wynik rozpływu mocy${nieaktualny ? PRZYROSTEK_NIEAKTUALNY : ''}`;
 }
 
 /** Komórka wartości, gdy wynik jest, ale nie niesie tej wielkości dla pola. */
 export const TEKST_BRAKU_WARTOSCI = 'brak';
+
+/**
+ * Karta GPZ-H5-SLD pkt 3c (rozbieżność R13): jeden napis „brak" krył cztery różne stany —
+ * pole rezerwowe, pole bez odpływu, pole bez wyposażenia i niewykonane obliczenie. Trzy
+ * pierwsze to STAN DANYCH pola z rekordu modelu (nie z wyniku):
+ * - `rezerwowe` — rodzaj pola katalogowego „rezerwowe" (`czyPoleRezerwowe`, lustro backendu
+ *   `enm/rodzaj_stacji.py`);
+ * - `bez_odplywu` — pole liniowe, którego zacisku nie kończy żaden odcinek (`czyPoleWolne`);
+ * - `bez_aparatu` — model nie niesie żadnego rekordu aparatu pola (`primaryDevices`).
+ * Czwarty stan (`niewykonane`) to brak biegu rozpływu mocy. Pierwszeństwo: dane pola przed
+ * stanem obliczenia (pole rezerwowe pozostaje rezerwowym także bez biegu).
+ */
+export type StanDanychPolaGpz = 'rezerwowe' | 'bez_odplywu' | 'bez_aparatu';
+
+/** Stan danych pola z rekordu kanonicznego (`CanonicalGpzBay.reserve`, `.primaryDevices`). */
+export function stanDanychPolaGpz(pole: {
+  readonly reserve?: 'rezerwowe' | 'wolne';
+  readonly primaryDevices?: readonly unknown[];
+}): StanDanychPolaGpz | null {
+  if (pole.reserve === 'rezerwowe') return 'rezerwowe';
+  if (pole.reserve === 'wolne') return 'bez_odplywu';
+  if (!pole.primaryDevices || pole.primaryDevices.length === 0) return 'bez_aparatu';
+  return null;
+}
+
+export const TEKST_STANU_POLA_GPZ: Readonly<Record<StanDanychPolaGpz | 'niewykonane', string>> = {
+  rezerwowe: 'pole rezerwowe',
+  bez_odplywu: 'pole bez odpływu',
+  bez_aparatu: 'pole bez aparatu w modelu',
+  niewykonane: 'obliczenie niewykonane',
+};
+
+/**
+ * Napis wiersza wartości karty, gdy pole nie ma ŻADNEJ wartości z wyniku (`null` = karta
+ * pokazuje wartości kolumn, a pojedyncza nieobecna wielkość — „brak"). Wynik backendu ma
+ * pierwszeństwo: pole bez aparatu, dla którego backend podał P/Q/I/U, pokazuje liczby.
+ */
+export function tekstStanuWartosciPolaGpz(
+  stanDanych: StanDanychPolaGpz | null,
+  maWynik: boolean,
+  maWartosci: boolean,
+): string | null {
+  if (maWartosci) return null;
+  if (stanDanych !== null) return TEKST_STANU_POLA_GPZ[stanDanych];
+  if (!maWynik) return TEKST_STANU_POLA_GPZ.niewykonane;
+  return null;
+}
+
+/** Przyrostek nieaktualności w tytule wariantu „inny bieg" (karta GPZ-H5-SLD pkt 3b, R15:
+ *  schemat pokazuje np. bieg zwarciowy, pola — aktywny bieg rozpływu). */
+const PRZYROSTEK_NIEAKTUALNY_KROTKI = ' · nieaktualny';
 
 /** Oznacznik pola w tabeli, gdy model nie niesie ani numeru, ani nazwy pola WN. */
 export const TEKST_POLA_BEZ_OZNACZENIA = 'bez oznaczenia';
@@ -144,7 +201,17 @@ const WZORCE_ALARMOW: readonly string[] = [
   tekstAlarmowGpz(WZORZEC_LICZBY, true, true),
 ];
 
-const WZORCE_TYTULU: readonly string[] = [tekstTytuluTabeliGpz(false, false), tekstTytuluTabeliGpz(true, true)];
+const WZORCE_TYTULU: readonly string[] = [
+  tekstTytuluTabeliGpz(false, false),
+  tekstTytuluTabeliGpz(true, true),
+  tekstTytuluTabeliGpz(true, true, true),
+];
+
+/** Szerokość slotu tytułu tabeli (lustro reguły `ulozWariantTabeliGpz`; eksport dla testu
+ *  stabilności ramy). */
+export function szerokoscTytuluTabeliGpz(): number {
+  return snapUp(szerMax(WZORCE_TYTULU));
+}
 
 // ---------------------------------------------------------------------------
 // Geometria.
@@ -198,6 +265,10 @@ export interface KartaPolaGpz {
   readonly wartosciY: number;
   /** Lewa krawędź kolumny kart (odniesienie `KolumnaWartosciGpz.dx`). */
   readonly kolumnaX: number;
+  /** Stan danych pola (karta GPZ-H5-SLD pkt 3c) — render wybiera napis wiersza wartości. */
+  readonly stanDanych: StanDanychPolaGpz | null;
+  /** Lewa krawędź napisu stanu w wierszu wartości (początek pierwszej kolumny wartości). */
+  readonly stanX: number;
 }
 
 export interface PozycjaLegendyGpz {
@@ -244,6 +315,8 @@ export interface PoleTabeliGpzWejscie {
   readonly oznaczenie: string | null;
   readonly rola: RolaPolaGpz;
   readonly plakietki: readonly GpzStatusFlag[];
+  /** Stan danych pola z rekordu (`stanDanychPolaGpz`); `null` = pole z kompletem danych. */
+  readonly stanDanych: StanDanychPolaGpz | null;
 }
 
 const szer = (tekst: string): number => measureLabelWidth(tekst, KLASA_DANYCH_GPZ);
@@ -318,6 +391,8 @@ interface MiaryKartyGpz {
   readonly wartosciObokDx: number;
 }
 
+const SZEROKOSC_NAPISU_STANU = snapUp(szerMax(Object.values(TEKST_STANU_POLA_GPZ)));
+
 function miaryKartyGpz(pola: readonly PoleTabeliGpzWejscie[]): MiaryKartyGpz {
   const oznaczenia = pola.map((p) => p.oznaczenie ?? TEKST_POLA_BEZ_OZNACZENIA);
   const oznaczenieDx = BOK_PROBKI_ROLI + GRID;
@@ -335,8 +410,12 @@ function miaryKartyGpz(pola: readonly PoleTabeliGpzWejscie[]): MiaryKartyGpz {
   const szerokosciWartosci = DEFINICJE_WARTOSCI.map((d) =>
     snapUp(szerMax([d.naglowek, d.wzorzec, TEKST_BRAKU_WARTOSCI])),
   );
-  const wartosciW =
-    szerokosciWartosci.reduce((suma, w) => suma + w, 0) + (szerokosciWartosci.length - 1) * ODSTEP_KOLUMN;
+  // Wiersz wartości mieści kolumny P/Q/I/U ALBO napis stanu pola (pkt 3c) — ta sama miara
+  // dla wyboru wariantu karty i dla jej układu (`ulozWariantTabeliGpz`).
+  const wartosciW = Math.max(
+    szerokosciWartosci.reduce((suma, w) => suma + w, 0) + (szerokosciWartosci.length - 1) * ODSTEP_KOLUMN,
+    SZEROKOSC_NAPISU_STANU,
+  );
   // Odstęp opisu od wartości w karcie jednowierszowej = GRID (nie 2·GRID jak między
   // kolumnami): liczby są wyrównane do PRAWEJ krawędzi kolumny szerokości najdłuższego
   // wzorca, więc między opisem a pierwszą cyfrą zostaje jeszcze luz kolumny P.
@@ -368,7 +447,9 @@ export function ulozWariantTabeliGpz(
     kolumnyWartosci.push({ klucz: d.klucz, naglowek: d.naglowek, dx, width });
     dx += width + ODSTEP_KOLUMN;
   });
-  const wiersz2W = dx - ODSTEP_KOLUMN;
+  // Napis stanu pola (pkt 3c) zajmuje wiersz wartości od pierwszej kolumny — wiersz musi
+  // pomieścić najdłuższy z nich (jawnie, bez ucinania).
+  const wiersz2W = Math.max(dx - ODSTEP_KOLUMN, kolumnyWartosci[0].dx + SZEROKOSC_NAPISU_STANU);
   const kartaW = snapUp(Math.max(wiersz1W, wiersz2W));
   const kartaH = jednowierszowa ? WYSOKOSC_KARTY_JEDNOWIERSZOWEJ_GPZ : WYSOKOSC_KARTY_GPZ;
   const liczbaKolumn = Math.max(
@@ -377,7 +458,7 @@ export function ulozWariantTabeliGpz(
   );
   const kolumnyKart = Array.from({ length: liczbaKolumn }, (_, k) => x + k * (kartaW + ODSTEP_KOLUMN));
 
-  const tytul: V3Rect = { x, y, width: snapUp(szerMax(WZORCE_TYTULU)), height: WYSOKOSC_WIERSZA_GPZ };
+  const tytul: V3Rect = { x, y, width: szerokoscTytuluTabeliGpz(), height: WYSOKOSC_WIERSZA_GPZ };
   const naglowekY = y + WYSOKOSC_WIERSZA_GPZ;
   const kartyY = naglowekY + WYSOKOSC_WIERSZA_GPZ;
   const karty: KartaPolaGpz[] = pola.map((pole, i) => {
@@ -406,6 +487,8 @@ export function ulozWariantTabeliGpz(
       plakietki,
       wartosciY: jednowierszowa ? kartaY : kartaY + WYSOKOSC_WIERSZA_GPZ,
       kolumnaX,
+      stanDanych: pole.stanDanych,
+      stanX: kolumnaX + kolumnyWartosci[0].dx,
     };
   });
   const wierszeKart = Math.ceil(pola.length / liczbaKolumn);

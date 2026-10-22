@@ -66,7 +66,10 @@ import {
   hiddenLabelsHintText,
   hiddenLabelsHintTextKadru,
   hiddenLabelsHintTextPozaCelem,
+  POCHODZENIE_FONT_PX,
   sheetCaptionScreenRects,
+  ukladPochodzeniaWyniku,
+  type WierszPochodzenia,
 } from './chromeLayout';
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
 import type { SafeInsets } from '../../v2/viewport/ViewportController';
@@ -2245,35 +2248,10 @@ function SceneResultAggregateNode(props: {
   );
 }
 
-/** R2 (wym. 8) — baner warstwy „⚠ wyniki nieaktualne" (zakotwiczony w arkuszu,
- *  deterministycznie względem strefy GPZ). Renderowany, gdy wyniki są stare i
- *  warstwa liczb ma co pokazać. Zero fizyki, zero zgadywania — sam sygnał. */
-function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }): JSX.Element {
-  const { x, y } = props;
-  const palette = useSldPalette();
-  const typo = LABEL_TYPOGRAPHY.t4;
-  const lineH = labelLineHeight('t4');
-  const text = '⚠ wyniki nieaktualne';
-  const width = measureLabelWidth(text, 't4') + GRID;
-  const height = lineH + GRID / 2;
-  return (
-    <g data-testid="sld-v3-result-stale-badge">
-      <rect x={x} y={y} width={width} height={height} rx={2} fill={palette.canvasBackground} stroke={palette.highlight.resultStale} strokeWidth={1} strokeDasharray="3 2" />
-      <text
-        x={x + width / 2}
-        y={y + GRID / 4 + lineH * 0.5}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill={palette.highlight.resultStale}
-        fontFamily="sans-serif"
-        fontSize={typo.fontSize}
-        fontWeight={typo.fontWeight}
-      >
-        {text}
-      </text>
-    </g>
-  );
-}
+/** R2 (wym. 8) — treść banera warstwy liczb, gdy wyniki są nieaktualne. Baner jest
+ *  pierwszym wierszem TABLICZKI WYNIKU w przestrzeni ekranu (karta GPZ-H5-SLD pkt 3g,
+ *  `chromeLayout.ukladPochodzeniaWyniku`). Zero fizyki, zero zgadywania — sam sygnał. */
+const TEKST_BANERU_NIEAKTUALNOSCI = '⚠ wyniki nieaktualne';
 
 /** KD-11: węzeł etykiety rysowany WEDŁUG PLANU (`canvas/labelLegibility.ts`) —
  *  tekst (być może skrócony), rozmiar pisma (być może powiększony do minimum
@@ -2823,26 +2801,27 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     (anchorRef: string) => setExpandedAggregateRef((prev) => (prev === anchorRef ? null : anchorRef)),
     [],
   );
-  // Baner staleness zakotwiczony deterministycznie względem strefy GPZ (jak
-  // provenance), poniżej niej — na arkuszu, nie w pasie marginesu.
-  const staleBannerX = (scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID;
-  const staleBannerY = 4 * GRID;
+  // Baner nieaktualności i tabliczka pochodzenia stoją w PRZESTRZENI EKRANU
+  // (`chromeLayout.ukladPochodzeniaWyniku`, karta GPZ-H5-SLD pkt 3g) — patrz render.
   // R3 (wym. 7) + OVERLAY-TIMESTAMP: wiersz POCHODZENIA wyniku (popover agregatu
   // ORAZ badge w rogu arkusza) — moduł (etykieta PL z `analysis_type`) + przebieg
   // (`run_id`) + CZAS UKOŃCZENIA BIEGU (`completedAtLabel`, sformatowany w
   // workspace formatterem repo `formatDateTime`), z overlay.provenance (workspace
   // wypełnia z payloadu; ZERO nowego słownika/formattera). Brak `completedAtLabel`
   // ⇒ brak wiersza czasu (uczciwy brak). `undefined` = brak deklaracji.
-  const resultProvenanceText = useMemo(() => {
+  // Człony liczone RAZ: popover agregatu łączy je w jeden wiersz, tabliczka ekranowa
+  // stawia każdy w osobnym wierszu (jedno źródło treści, dwa układy).
+  const resultProvenanceParts = useMemo((): readonly string[] => {
     const p = effectiveOverlay?.provenance;
-    if (!p) return undefined;
+    if (!p) return [];
     const parts: string[] = [];
     if (p.analysisTypeLabel) parts.push(`Moduł: ${p.analysisTypeLabel}`);
     if (p.runId) parts.push(`Przebieg: ${p.runId}`);
     if (p.completedAtLabel) parts.push(`Czas ukończenia: ${p.completedAtLabel}`);
     if (p.swiezoscLabel) parts.push(`Świeżość: ${p.swiezoscLabel}`);
-    return parts.length > 0 ? parts.join(' · ') : undefined;
+    return parts;
   }, [effectiveOverlay?.provenance]);
+  const resultProvenanceText = resultProvenanceParts.length > 0 ? resultProvenanceParts.join(' · ') : undefined;
   // KD-11: PLAN ETYKIET dla bieżącej skali — jedna prawda o tym, co się rysuje
   // (tekst, rozmiar pisma, prostokąt) i co zostało ukryte. Tożsamość elementów
   // (nazwa, napięcie szyny, oznaczenie pola, nazwa źródła) NIE znika przy
@@ -2956,8 +2935,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // Komunikat jest widoczny, gdy cokolwiek ukryto ALBO gdy opis celu stoi poniżej
   // podłogi — inaczej drugi przypadek nie miałby na ekranie żadnego śladu.
   const pokazKomunikat = niewidoczneOpisy > 0 || (zbiorKadru !== null && opisyCelu.ponizejPodlogi > 0);
-  const hintScreenRect = useMemo(() => {
-    const captions = sheetCaptionScreenRects(
+  const sheetCaptions = useMemo(
+    () =>
+      sheetCaptionScreenRects(
       {
         sheet: sheetSize,
         frameMargin: FRAME_MARGIN,
@@ -2970,9 +2950,44 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         lodLabel: SCENE_LOD_LABELS_PL[effectiveLod],
       },
       { measure: measureTextWidth },
-    );
-    return hiddenLabelsHintScreenRect({ width, height }, hintTekst, captions, { measure: measureTextWidth });
-  }, [sheetSize, camera.transform, effectiveLod, hintTekst, width, height]);
+    ),
+    [sheetSize, camera.transform, effectiveLod],
+  );
+  const hintScreenRect = useMemo(
+    () => hiddenLabelsHintScreenRect({ width, height }, hintTekst, sheetCaptions, { measure: measureTextWidth }),
+    [sheetCaptions, hintTekst, width, height],
+  );
+  // Karta GPZ-H5-SLD pkt 3g: TABLICZKA WYNIKU w przestrzeni ekranu — baner
+  // nieaktualności (R2 wym. 8: gdy wyniki stare i warstwa liczb ma co pokazać)
+  // + pochodzenie (P-A/R3 wym. 7: przypadek, zbieżność, moduł, przebieg, czas,
+  // świeżość; brak `provenance` = brak tych wierszy). Ustępuje aparatowi arkusza
+  // i podkładce wskaźnika ukrytych opisów (jedna rodzina funkcji układu chromu).
+  const prowenancja = effectiveOverlay?.provenance;
+  const banerNieaktualnosci =
+    resultsStale && (resultLabelLayout.placements.length > 0 || resultLabelLayout.aggregates.length > 0);
+  const wierszeCaseLine =
+    prowenancja?.caseRef != null
+      ? `Wynik: ${prowenancja.caseRef} · ${prowenancja.converged ? 'zbieżny' : 'NIEZBIEŻNY'}`
+      : null;
+  const wierszePochodzenia = useMemo((): readonly WierszPochodzenia[] => {
+    const wiersze: WierszPochodzenia[] = [];
+    if (banerNieaktualnosci) wiersze.push({ id: 'nieaktualne', tekst: TEKST_BANERU_NIEAKTUALNOSCI });
+    if (prowenancja) {
+      if (wierszeCaseLine) wiersze.push({ id: 'wynik', tekst: wierszeCaseLine });
+      resultProvenanceParts.forEach((tekst, i) => wiersze.push({ id: `czlon-${i}`, tekst }));
+    }
+    return wiersze;
+  }, [banerNieaktualnosci, prowenancja, wierszeCaseLine, resultProvenanceParts]);
+  const ukladPochodzenia = useMemo(
+    () =>
+      ukladPochodzeniaWyniku(
+        { width, height },
+        wierszePochodzenia,
+        pokazKomunikat ? [...sheetCaptions, hiddenLabelsHintPlateRect(hintScreenRect)] : sheetCaptions,
+        { measure: measureTextWidth },
+      ),
+    [width, height, wierszePochodzenia, pokazKomunikat, sheetCaptions, hintScreenRect],
+  );
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
   // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
@@ -3526,7 +3541,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               adnotacje={scene.meta.gpzAdnotacje}
               gpzRef={scene.meta.gpzId}
               wyniki={overlay?.gpzWyniki ?? null}
-              nieaktualny={overlay?.resultsStale === true}
+              nieaktualny={overlay?.gpzWyniki?.nieaktualny ?? overlay?.resultsStale === true}
               skala={camera.transform.scale}
             />
           </g>
@@ -3731,75 +3746,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               provenanceText={resultProvenanceText}
             />
           ))}
-          {/* R2 (wym. 8): baner „⚠ wyniki nieaktualne" — gdy wyniki stare i
-            * warstwa ma co pokazać (etykiety lub agregaty). */}
-          {resultsStale
-            && (resultLabelLayout.placements.length > 0 || resultLabelLayout.aggregates.length > 0) && (
-            <ResultStaleBannerNode x={staleBannerX} y={staleBannerY} />
-          )}
         </g>
-        {/* Program P-A + R3 (§14.2 „overlay wyłącznie z wyniku”; wym. 7
-         * „pochodzenie wyniku”): deklaracja POCHODZENIA nakładki — operator
-         * zawsze widzi, z którego przypadku i z którego biegu (MODUŁ + PRZEBIEG)
-         * pochodzą wartości oraz czy solver zbiegł. Render w ukladzie arkusza
-         * (lewy górny róg treści), brak `provenance` = brak badge. */}
-        {(() => {
-          const prov = effectiveOverlay?.provenance;
-          if (!prov) return null;
-          const caseLine =
-            prov.caseRef != null
-              ? `Wynik: ${prov.caseRef} · ${prov.converged ? 'zbieżny' : 'NIEZBIEŻNY'}`
-              : null;
-          const rows: string[] = [];
-          if (caseLine) rows.push(caseLine);
-          if (resultProvenanceText) rows.push(resultProvenanceText);
-          if (rows.length === 0) return null;
-          const badgeX = (scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID;
-          const rowH = 1.7 * GRID;
-          const boxW = Math.max(...rows.map((r) => measureLabelWidth(r, 't3'))) + 2 * GRID;
-          const boxH = rows.length * rowH + 0.8 * GRID;
-          // Kolor konturu: gdy znany status zbieżności — sygnalizuj (zbieżny/nie);
-          // gdy sam moduł+przebieg (workspace) — neutralny kolor warstwy przepływu.
-          const strokeColor =
-            prov.converged === false ? palette.highlight.fault : palette.highlight.flow;
-          return (
-            <g
-              data-testid="sld-v3-overlay-provenance"
-              data-case-ref={prov.caseRef}
-              data-converged={prov.converged == null ? undefined : String(prov.converged)}
-              data-analysis-type-label={prov.analysisTypeLabel}
-              data-run-id={prov.runId}
-              data-completed-at={prov.completedAtLabel}
-              data-rodzina={prov.rodzina}
-              data-swiezosc={prov.swiezosc}
-            >
-              <rect
-                x={badgeX}
-                y={GRID}
-                width={boxW}
-                height={boxH}
-                fill={palette.canvasBackground}
-                stroke={strokeColor}
-                strokeWidth={1}
-                rx={2}
-              />
-              {rows.map((row, i) => (
-                <text
-                  key={`provenance-row-${i}`}
-                  data-testid={`sld-v3-overlay-provenance-row-${i}`}
-                  x={badgeX + GRID}
-                  y={GRID + 0.4 * GRID + rowH * (i + 0.5)}
-                  fill={i === 0 && caseLine ? strokeColor : palette.highlight.resultLabel}
-                  fontFamily="sans-serif"
-                  fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
-                  dominantBaseline="middle"
-                >
-                  {row}
-                </text>
-              ))}
-            </g>
-          );
-        })()}
       </SheetFrame>
       {/* WSKAŹNIK UKRYTYCH OPISÓW W PRZESTRZENI EKRANU (V12K-222).
        *
@@ -3872,6 +3819,85 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         </text>
         </g>
       )}
+      {/* Karta GPZ-H5-SLD pkt 3g: TABLICZKA WYNIKU (baner nieaktualności +
+       * pochodzenie) w PRZESTRZENI EKRANU, lewy-dolny róg widoku — dawniej
+       * zakotwiczona w arkuszu na prawo od strefy GPZ, poza kadrem „Dopasuj widok"
+       * (przyczyna i pomiar: `chromeLayout.ukladPochodzeniaWyniku`). Stały rozmiar
+       * ekranowy: pismo i marginesy dzielone przez skalę kamery, jak wskaźnik
+       * ukrytych opisów. */}
+      {ukladPochodzenia && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (() => {
+        const skala = camera.transform.scale;
+        const lewyGorny = screenToWorld({ x: ukladPochodzenia.plyta.x, y: ukladPochodzenia.plyta.y }, camera.transform);
+        const strokeColor = prowenancja?.converged === false ? palette.highlight.fault : palette.highlight.flow;
+        const wierszTekstu = (w: (typeof ukladPochodzenia.wiersze)[number], testId: string, fill: string) => {
+          const punkt = screenToWorld({ x: w.x, y: w.y + w.height / 2 }, camera.transform);
+          return (
+            <text
+              key={w.id}
+              data-testid={testId}
+              data-wiersz-pochodzenia={w.id}
+              x={punkt.x}
+              y={punkt.y}
+              fill={fill}
+              fontFamily="sans-serif"
+              fontSize={POCHODZENIE_FONT_PX / skala}
+              fontWeight={w.id === 'nieaktualne' ? 600 : undefined}
+              dominantBaseline="middle"
+            >
+              {w.tekst}
+            </text>
+          );
+        };
+        const banerWiersz = ukladPochodzenia.wiersze.find((w) => w.id === 'nieaktualne');
+        const wierszeProwenancji = ukladPochodzenia.wiersze.filter((w) => w.id !== 'nieaktualne');
+        return (
+          <g
+            data-testid="sld-v3-tabliczka-wyniku"
+            data-ekran-x={ukladPochodzenia.plyta.x}
+            data-ekran-y={ukladPochodzenia.plyta.y}
+            data-ekran-szerokosc={ukladPochodzenia.plyta.width}
+            data-ekran-wysokosc={ukladPochodzenia.plyta.height}
+          >
+            <rect
+              data-testid="sld-v3-tabliczka-wyniku-plyta"
+              x={lewyGorny.x}
+              y={lewyGorny.y}
+              width={ukladPochodzenia.plyta.width / skala}
+              height={ukladPochodzenia.plyta.height / skala}
+              rx={3 / skala}
+              fill={palette.canvasBackground}
+              stroke={prowenancja ? strokeColor : palette.highlight.resultStale}
+              strokeWidth={1 / skala}
+              strokeDasharray={prowenancja ? undefined : `${3 / skala} ${2 / skala}`}
+            />
+            {banerWiersz && (
+              <g data-testid="sld-v3-result-stale-badge">
+                {wierszTekstu(banerWiersz, 'sld-v3-result-stale-badge-tekst', palette.highlight.resultStale)}
+              </g>
+            )}
+            {prowenancja && wierszeProwenancji.length > 0 && (
+              <g
+                data-testid="sld-v3-overlay-provenance"
+                data-case-ref={prowenancja.caseRef}
+                data-converged={prowenancja.converged == null ? undefined : String(prowenancja.converged)}
+                data-analysis-type-label={prowenancja.analysisTypeLabel}
+                data-run-id={prowenancja.runId}
+                data-completed-at={prowenancja.completedAtLabel}
+                data-rodzina={prowenancja.rodzina}
+                data-swiezosc={prowenancja.swiezosc}
+              >
+                {wierszeProwenancji.map((w, i) =>
+                  wierszTekstu(
+                    w,
+                    `sld-v3-overlay-provenance-row-${i}`,
+                    w.id === 'wynik' ? strokeColor : palette.highlight.resultLabel,
+                  ),
+                )}
+              </g>
+            )}
+          </g>
+        );
+      })()}
       </g>
     </svg>
     </SldPaletteContext.Provider>

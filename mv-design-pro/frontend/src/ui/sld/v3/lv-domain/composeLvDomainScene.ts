@@ -39,6 +39,7 @@
  * JEDNA GEOMETRIA NA WSZYSTKIE POZIOMY LOD: ten moduł NIE ZNA pojęcia LOD.
  * Determinizm: te same dane → identyczna scena (sortowanie po `ref_id`).
  */
+import { liczbaZOdmiana } from '../../../shared/odmianaLiczebnikowa';
 import type { CadOrientation, CadSymbolId } from '../cad/cadSymbolRegistry';
 import { SYMBOL_ODBIORU, SYMBOL_TRANSFORMATORA, SYMBOL_ZABEZPIECZENIA, SYMBOL_ZACISKU, symbolPomiaru, symbolPunktuToru, symbolZrodlaDer, wpisAparatu } from './symbolRegistry';
 import type {
@@ -213,17 +214,17 @@ export function domainDescriptorLabel(view: LvDomainGraphView): string {
   const parts: string[] = [];
   parts.push(voltage != null ? `${plNumber(voltage)} kV` : '—');
   if (view.transformers.length > 0) parts.push(`${view.transformers.length}×TR`);
-  parts.push(`${main.length} ${main.length === 1 ? 'sekcja' : main.length >= 2 && main.length <= 4 ? 'sekcje' : 'sekcji'}`);
-  if (sub.length > 0) parts.push(`${sub.length} ${sub.length === 1 ? 'podrozdzielnica' : sub.length >= 2 && sub.length <= 4 ? 'podrozdzielnice' : 'podrozdzielnic'}`);
+  parts.push(liczbaZOdmiana(main.length, { jeden: 'sekcja', kilka: 'sekcje', wiele: 'sekcji' }));
+  if (sub.length > 0) parts.push(liczbaZOdmiana(sub.length, { jeden: 'podrozdzielnica', kilka: 'podrozdzielnice', wiele: 'podrozdzielnic' }));
   const genTypes = new Set(view.generators.map((g) => g.gen_type ?? 'źródło'));
   if (genTypes.has('pv_inverter')) parts.push('PV');
   if (genTypes.has('bess')) parts.push('magazyn');
   if ([...genTypes].some((t) => t !== 'pv_inverter' && t !== 'bess')) parts.push('generator');
   if (view.boundary_links.length > 0) {
-    parts.push(`${view.boundary_links.length} ${view.boundary_links.length === 1 ? 'granica domeny' : 'granice domeny'}`);
+    parts.push(liczbaZOdmiana(view.boundary_links.length, { jeden: 'granica domeny', kilka: 'granice domeny', wiele: 'granic domeny' }));
   }
   const wyspy = view.islands.filter((i) => i.is_islanded);
-  if (wyspy.length > 0) parts.push(`${wyspy.length} ${wyspy.length === 1 ? 'wyspa' : 'wyspy'}`);
+  if (wyspy.length > 0) parts.push(liczbaZOdmiana(wyspy.length, { jeden: 'wyspa', kilka: 'wyspy', wiele: 'wysp' }));
   return parts.join(' · ');
 }
 

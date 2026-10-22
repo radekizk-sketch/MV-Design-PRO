@@ -24,12 +24,14 @@ export function readinessIssue(over: Partial<ReadinessIssue> = {}): ReadinessIss
 /** Zestaw problemów obejmujący każdy cel gotowości (do testów grupowania). */
 export function problemyWszystkieCele(): ReadinessIssue[] {
   return [
+    // Cel „zwarcia" reprezentuje PARAMETR zwarciowy źródła — brak zasilania
+    // (`source.grid_supply_missing`) należy od karty GPZ-H5-SLD pkt 3d do celu „wspolne".
     readinessIssue({
-      code: 'source.grid_supply_missing',
+      code: 'source.sk3_invalid',
       severity: 'BLOCKER',
       element_ref: 'GPZ-1',
       element_refs: ['GPZ-1'],
-      message_pl: 'Brak źródła zasilania sieciowego (GPZ).',
+      message_pl: 'Moc zwarciowa sieci zasilającej nieprawidłowa.',
     }),
     readinessIssue({
       code: 'station.voltage_missing',

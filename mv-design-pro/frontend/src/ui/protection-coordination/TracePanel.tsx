@@ -9,6 +9,7 @@
  * - Expandable/collapsible trace steps
  */
 
+import { liczbaZOdmiana } from '../shared/odmianaLiczebnikowa';
 import { ZapisTechniczny } from '../../ui2/wyniki/wzorzec/ZapisTechniczny';
 import { InformacjeAudytowe } from '../../ui2/wyniki/wzorzec/InformacjeAudytowe';
 import { useShellStore } from '../../ui2/shell/useShellStore';
@@ -247,7 +248,7 @@ export function TracePanel({
 
       {/* Footer with step count */}
       <div className="border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
-        {traceSteps.length} {traceSteps.length === 1 ? 'krok' : 'kroków'} obliczeniowych
+        {liczbaZOdmiana(traceSteps.length, { jeden: 'krok obliczeniowy', kilka: 'kroki obliczeniowe', wiele: 'kroków obliczeniowych' })}
       </div>
     </div>
   );

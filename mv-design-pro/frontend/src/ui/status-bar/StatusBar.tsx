@@ -1,3 +1,4 @@
+import { liczbaZOdmiana } from '../shared/odmianaLiczebnikowa';
 import { clsx } from 'clsx';
 
 import {
@@ -168,7 +169,7 @@ export function StatusBar({
                 <>
                   <span className="ind-dot-warn" />
                   <span className="text-amber-400">
-                    {validationWarnings} {validationWarnings === 1 ? 'ostrzezenie' : 'ostrzezenia'}
+                    {liczbaZOdmiana(validationWarnings, { jeden: 'ostrzeżenie', kilka: 'ostrzeżenia', wiele: 'ostrzeżeń' })}
                   </span>
                 </>
               )}
@@ -176,7 +177,7 @@ export function StatusBar({
                 <>
                   <span className="ind-dot-error" />
                   <span className="text-red-400">
-                    {validationErrors} {validationErrors === 1 ? 'blad' : 'bledow'}
+                    {liczbaZOdmiana(validationErrors, { jeden: 'błąd', kilka: 'błędy', wiele: 'błędów' })}
                   </span>
                 </>
               )}

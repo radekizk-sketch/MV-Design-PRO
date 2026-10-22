@@ -85,7 +85,11 @@ export type OwnerKind =
   | 'no-point'           // badge „NO" (t3) przy symbolu
   | 'branch-point'       // ODG-RYSUNEK: nazwa punktu odgałęźnego (ZKSN / słup rozgałęźny) z danych
   | 'protection'         // F9.9: numer urządzenia „52" (spec §17.1/§17.3, ANSI/IEEE C37.2)
-  | 'lv-load';           // recenzja NO-GO pkt 6: odbiór zagregowany / granica modelu (t4) pod szyną nN
+  // Karta GPZ-H5-SLD: podpis ODBIORU (`Load`) pod strzałką odbioru — nazwa i dane P/Q
+  // z modelu. Zastępuje martwy rodzaj `'lv-load'` (zadeklarowany dla odbioru nN, bez
+  // producenta — przypięte dawniej testem `kotwicaJednoZrodlo`); pierwszym producentem
+  // są odbiory przyłączone do szyn sekcji GPZ (`compose/gpz.ts`).
+  | 'odbior';            // podpis odbioru (t3) pod strzałką odbioru
 
 /**
  * KD-11: KLASA ZNACZENIOWA etykiety wyprowadzona z RODZAJU WŁAŚCICIELA — dana
@@ -118,7 +122,7 @@ export type OwnerKind =
  *    ADNOTACJAMI toru, a karta zalicza nastawy do danych szczegółowych;
  *  - `port-caption` — podpis kierunku pola („⟨linia⟩ · kier. S03") i
  *    zakończenia toru;
- *  - `lv-load` — odbiór zagregowany nN / granica modelu.
+ *  - `odbior` — podpis odbioru (nazwa i dane P/Q z modelu).
  */
 export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = {
   'station-name': 'tozsamosc',
@@ -138,7 +142,7 @@ export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = 
   // pożyczały, więc warstwa czytelności widzi DOKŁADNIE to samo co przed
   // zmianą (rozdział dotyczy CELU KLIKNIĘCIA, nie widoczności).
   'segment-endpoint': 'dane',
-  'lv-load': 'dane',
+  odbior: 'dane',
 };
 
 /**
@@ -170,7 +174,7 @@ const DANE_LOD_TIER_BY_OWNER_KIND: Partial<Record<OwnerKind, 'L1' | 'L2'>> = {
   'segment-endpoint': 'L2',
   'port-caption': 'L2',
   protection: 'L2',
-  'lv-load': 'L2',
+  odbior: 'L2',
 };
 
 export const LOD_CLASS_BY_OWNER_KIND: Readonly<Record<OwnerKind, LodClass>> = Object.fromEntries(
@@ -697,7 +701,7 @@ export type SimpleAnchorPlacement = 'above' | 'below' | 'left' | 'right';
 
 export interface SimpleAnchoredOwnerInput {
   readonly ownerRef: string;
-  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'lv-load' | 'branch-point' | 'lacznik-toru';
+  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'odbior' | 'branch-point' | 'lacznik-toru';
   readonly text: string;
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;

@@ -207,7 +207,7 @@ import {
   type SldV3Overlay,
   type TransformerOltcOverlay,
 } from './overlay';
-import { buildGpzWynikiOverlay } from './gpzWyniki';
+import { buildGpzWynikiOverlay, payloadWynikowGpz } from './gpzWyniki';
 import {
   applyResultLabelFilter,
   buildResultLabelsFromScene,
@@ -244,8 +244,11 @@ import { useExecutionRunsStore } from '../../../study-cases/runStore';
 import { useStudyCasesStore } from '../../../study-cases/store';
 import {
   ETYKIETA_SWIEZOSCI,
+  payloadNakladki,
   rodzinaAnalizy,
   swiezoscBiegu,
+  useAktywnyBieg,
+  useWynikBiegu,
   type SwiezoscBiegu,
 } from '../../../../ui2/wyniki/kontekst/kontekstWyniku';
 import { ANALYSIS_TYPE_LABELS } from '../../../study-cases/types';
@@ -1547,7 +1550,26 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, [nakladkaRoznic, rawOverlayPayload, swiezoscNakladki]);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   // GPZ-PARYTET (§0 pkt 5): wyniki pól i bilansu GPZ — odczyt wierszy backendu.
-  const gpzWyniki = useMemo(() => buildGpzWynikiOverlay(rawOverlayPayload), [rawOverlayPayload]);
+  // Karta GPZ-H5-SLD pkt 3b (R15): blok GPZ czyta kontekst RODZINY rozpływu (K8) — gdy
+  // schemat pokazuje bieg zwarciowy, wyniki pól pochodzą z aktywnego biegu rozpływu, a tytuł
+  // tabeli mówi to jawnie; świeżość liczona dla TEGO biegu (ten sam predykat co nakładka).
+  const biegRozplywu = useAktywnyBieg('rozplyw');
+  const wynikRozplywu = useWynikBiegu(biegRozplywu?.id ?? null);
+  const payloadRozplywu = useMemo(
+    () =>
+      wynikRozplywu?.rodzaj === 'gotowe' && wynikRozplywu.wynik.runId === biegRozplywu?.id
+        ? payloadNakladki(wynikRozplywu.wynik)
+        : null,
+    [biegRozplywu?.id, wynikRozplywu],
+  );
+  const gpzWyniki = useMemo(() => {
+    const zrodlo = payloadWynikowGpz(rawOverlayPayload, payloadRozplywu);
+    const wyniki = buildGpzWynikiOverlay(zrodlo.payload, zrodlo.zBieguSpozaWidoku);
+    if (!wyniki || !zrodlo.payload) return wyniki;
+    const run = runsRejestru.find((r) => r.id === zrodlo.payload?.run_id);
+    const nieaktualny = run ? swiezoscBiegu(run, rewizjaModelu, werdyktPrzypadku).stan === 'nieaktualny' : false;
+    return { ...wyniki, nieaktualny };
+  }, [payloadRozplywu, rawOverlayPayload, rewizjaModelu, runsRejestru, werdyktPrzypadku]);
   const overlay = useMemo<SldV3Overlay>(
     () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance, gpzWyniki }),
     [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance, gpzWyniki],

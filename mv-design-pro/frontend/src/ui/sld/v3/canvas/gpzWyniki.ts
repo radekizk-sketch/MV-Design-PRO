@@ -30,6 +30,12 @@ export interface GpzWynikiOverlay {
   readonly pola: Readonly<Record<string, WynikiPolaGpz>>;
   /** Wiersze bilansu wg `Substation.ref_id` (ta sama przestrzeń co `props.id` GPZ). */
   readonly stacje: Readonly<Record<string, WynikiStacjiGpz>>;
+  /** Karta GPZ-H5-SLD pkt 3b (R15): `true` = wynik z aktywnego biegu rodziny rozpływu,
+   *  a schemat pokazuje inny bieg (np. zwarciowy) — tytuł tabeli mówi to jawnie. */
+  readonly zBieguSpozaWidoku: boolean;
+  /** Świeżość biegu, z którego pochodzą wyniki (`kontekstWyniku.swiezoscBiegu`); ustawia
+   *  przestrzeń robocza — bieg bloku może być innym biegiem niż nakładka schematu. */
+  readonly nieaktualny?: boolean;
 }
 
 /** Kody metryk wierszy GPZ — jedno źródło z backendem (`result_builder_v1._METRIC_MAP`). */
@@ -48,8 +54,32 @@ function wartosc(metryki: Readonly<Record<string, RawMetricValue>>, kod: string)
   return formatMetricValuePl(metryka);
 }
 
+/**
+ * Karta GPZ-H5-SLD pkt 3b (R15): payload, z którego blok GPZ czyta wyniki pól i bilansu.
+ * Blok GPZ pokazuje wielkości ROZPŁYWU, więc czyta kontekst RODZINY rozpływu (karta K8),
+ * niezależnie od biegu oglądanego na schemacie: gdy schemat pokazuje bieg rozpływu — ten
+ * bieg (schemat i blok zgodne); gdy pokazuje inny bieg (zwarcie, dynamika) — aktywny bieg
+ * rodziny rozpływu. Dawniej blok czytał tylko payload schematu i po wybraniu biegu
+ * zwarciowego pisał „brak wyniku rozpływu mocy" przy aktualnym rozpływie.
+ */
+export function payloadWynikowGpz(
+  payloadSchematu: RawOverlayPayload | null | undefined,
+  payloadRodzinyRozplywu: RawOverlayPayload | null | undefined,
+): { readonly payload: RawOverlayPayload | null; readonly zBieguSpozaWidoku: boolean } {
+  if (payloadSchematu && normalizeResultLabelAnalysis(payloadSchematu.analysis_type) === 'load_flow') {
+    return { payload: payloadSchematu, zBieguSpozaWidoku: false };
+  }
+  if (payloadRodzinyRozplywu && normalizeResultLabelAnalysis(payloadRodzinyRozplywu.analysis_type) === 'load_flow') {
+    return { payload: payloadRodzinyRozplywu, zBieguSpozaWidoku: payloadSchematu != null };
+  }
+  return { payload: null, zBieguSpozaWidoku: false };
+}
+
 /** Wyniki GPZ z payloadu `results/v1`; `null` = brak wyniku rozpływu mocy. */
-export function buildGpzWynikiOverlay(payload: RawOverlayPayload | null | undefined): GpzWynikiOverlay | null {
+export function buildGpzWynikiOverlay(
+  payload: RawOverlayPayload | null | undefined,
+  zBieguSpozaWidoku = false,
+): GpzWynikiOverlay | null {
   if (!payload || normalizeResultLabelAnalysis(payload.analysis_type) !== 'load_flow') return null;
   const pola: Record<string, WynikiPolaGpz> = {};
   const stacje: Record<string, WynikiStacjiGpz> = {};
@@ -76,5 +106,5 @@ export function buildGpzWynikiOverlay(payload: RawOverlayPayload | null | undefi
         };
       }
     });
-  return { pola, stacje };
+  return { pola, stacje, zBieguSpozaWidoku };
 }

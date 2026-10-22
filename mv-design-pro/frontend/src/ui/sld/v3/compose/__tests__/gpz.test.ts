@@ -191,7 +191,10 @@ describe('V3 compose/gpz — wyrocznie (grid_probe, zero-overlap, endsAtPortsOrB
             sectionId: 'hv-1',
             order: 1,
             label: '110 kV',
+            busRef: null,
             busVoltageKv: 110,
+            lineFieldName: null,
+            incomingSourceRef: null,
             bays: [lineBay('hv-b-1', { bayNumber: 'H1' })],
           },
         ],
@@ -454,7 +457,7 @@ describe('V3 compose/gpz — migracja visualParityChecklist (WYŁĄCZNIE klucze 
     const composition = composeGpz(
       baseProps({
         hvSections: [
-          { sectionId: 'hv-1', order: 1, label: '110 kV', busVoltageKv: 110, bays: [lineBay('hv-b-1', { bayNumber: 'H1', primaryDevices: rekordy('hv-b-1', ['CB', 'DS']) })] },
+          { sectionId: 'hv-1', order: 1, label: '110 kV', busRef: null, busVoltageKv: 110, lineFieldName: null, incomingSourceRef: null, bays: [lineBay('hv-b-1', { bayNumber: 'H1', primaryDevices: rekordy('hv-b-1', ['CB', 'DS']) })] },
         ],
         sections: [
           { sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { primaryDevices: rekordy('b-1', APARATY_POLA_LINIOWEGO) })] },
@@ -1200,15 +1203,21 @@ describe('V3 compose/gpz — ADAPTER-BUSREF (busResultRef szyn sekcji + szyny WN
     expect(primary!.meta.busResultRef).toBeUndefined();
   });
 
-  it('szyna WN niesie busResultRef = props.hvBusRef (gdy obecne)', () => {
+  // Karta GPZ-H5-SLD (przepisany do obecnego kanonu): każda sekcja 110 kV to OSOBNY odcinek
+  // szyny (`<sekcja>#hv-bus`), a ref wyniku niesie szyna TEJ sekcji (`GPZSection.bus_ref`),
+  // nie zbiorczy `hvBusRef` — przy dwóch sekcjach zbiorczy ref przypisałby wynik jednej szyny
+  // obu odcinkom. INTENCJA zachowana: szyna WN niesie ref wyniku z modelu.
+  it('szyna sekcji WN niesie busResultRef = busRef tej sekcji (nie zbiorczy hvBusRef)', () => {
     const composition = composeGpz(
       baseProps({
-        hvBusRef: 'bus/real/hv-110',
-        hvSections: [{ sectionId: 'hv-1', order: 1, label: '110 kV', busVoltageKv: 110, bays: [lineBay('hvb-1', { fieldRole: 'LINE_IN' })] }],
+        hvBusRef: 'bus/real/hv-110-zbiorczy',
+        hvSections: [
+          { sectionId: 'hv-1', order: 1, label: '110 kV', busRef: 'bus/real/hv-110', busVoltageKv: 110, lineFieldName: null, incomingSourceRef: null, bays: [lineBay('hvb-1', { fieldRole: 'LINE_IN' })] },
+        ],
       }),
       ORIGIN,
     );
-    const hvBus = composition.segments.find((s) => s.ownerRef === 'gpz-test#hv-bus');
+    const hvBus = composition.segments.find((s) => s.ownerRef === 'hv-1#hv-bus');
     expect(hvBus).toBeDefined();
     expect(hvBus!.meta.busResultRef).toBe('bus/real/hv-110');
   });
@@ -1252,7 +1261,10 @@ function pelnyGpz(overrides: Partial<CanonicalGpzProps> = {}): CanonicalGpzProps
         sectionId: 'hv-1',
         order: 1,
         label: '110 kV',
+        busRef: null,
         busVoltageKv: 110,
+        lineFieldName: null,
+        incomingSourceRef: null,
         bays: [lineBay('hv-b-1', { bayNumber: 'H1', fieldRole: 'LINE_IN', statusFlags: ['SPZ'] })],
       },
     ],
@@ -1352,7 +1364,7 @@ describe('GPZ-PARYTET — rama i nagłówek (gpz.frame / gpz.header / gpz.header
 
   it('pola bez oznaczenia w modelu (brak numeru i nazwy pola WN): karta mówi „bez oznaczenia" — nie wymyśla numeru', () => {
     const c = composeGpz(
-      baseProps({ hvSections: [{ sectionId: 'hv-1', order: 1, label: '110 kV', busVoltageKv: 110, bays: [lineBay('hv-b-1', { bayNumber: undefined, feederName: undefined, fieldRole: 'LINE_IN' })] }] }),
+      baseProps({ hvSections: [{ sectionId: 'hv-1', order: 1, label: '110 kV', busRef: null, busVoltageKv: 110, lineFieldName: null, incomingSourceRef: null, bays: [lineBay('hv-b-1', { bayNumber: undefined, feederName: undefined, fieldRole: 'LINE_IN' })] }] }),
       ORIGIN,
     );
     const karta = c.adnotacje!.tabela!.karty.find((k) => k.bayRef === 'hv-b-1')!;
@@ -1504,7 +1516,7 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
   });
 
   it('układ tabeli: szerokość dostępna steruje liczbą kolumn kart (wąsko ⇒ 1, szeroko ⇒ wszystkie w jednym wierszu)', () => {
-    const pola = Array.from({ length: 4 }, (_, i) => ({ bayRef: `b-${i}`, oznaczenie: `0${i}`, rola: 'liniowe' as const, plakietki: [] }));
+    const pola = Array.from({ length: 4 }, (_, i) => ({ bayRef: `b-${i}`, oznaczenie: `0${i}`, rola: 'liniowe' as const, plakietki: [], stanDanych: null }));
     const waska = ulozTabeliGpz(pola, 0, 0, 0);
     expect(waska.kolumnyKart).toHaveLength(1);
     const szeroka = ulozTabeliGpz(pola, 0, 0, 100000);
@@ -1522,6 +1534,7 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
       bayRef: `b-${i}`,
       oznaczenie: `Pole liniowe ${i + 1}`,
       rola: (i % 2 === 0 ? 'liniowe' : 'zrodlowe') as PoleTabeliGpzWejscie['rola'],
+      stanDanych: null,
       plakietki: [...plakietki],
     }));
   const progJednowierszowy = (pola: readonly PoleTabeliGpzWejscie[]): number => {
@@ -1572,7 +1585,7 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
     const szeroka = ulozTabeliGpz(dwieRole, 0, 0, 100000);
     expect(szeroka.legenda.every((l) => l.y === szeroka.tytul.y)).toBe(true);
     expect(Math.min(...szeroka.legenda.map((l) => l.probka.x))).toBeGreaterThanOrEqual(szeroka.tytul.x + szeroka.tytul.width + GRID);
-    const wszystkieRole: PoleTabeliGpzWejscie[] = ROLE_POL_GPZ.map((rola, i) => ({ bayRef: `r-${i}`, oznaczenie: `0${i}`, rola, plakietki: [] }));
+    const wszystkieRole: PoleTabeliGpzWejscie[] = ROLE_POL_GPZ.map((rola, i) => ({ bayRef: `r-${i}`, oznaczenie: `0${i}`, rola, plakietki: [], stanDanych: null }));
     const waska = ulozTabeliGpz(wszystkieRole, 0, 0, 0);
     const dolKart = Math.max(...waska.karty.map((k) => k.rect.y + k.rect.height));
     expect(waska.legenda.every((l) => l.y >= dolKart)).toBe(true);

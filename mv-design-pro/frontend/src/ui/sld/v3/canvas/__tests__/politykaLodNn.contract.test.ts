@@ -149,7 +149,7 @@ describe('T2-LOD §1 — LOD_CLASS_BY_OWNER_KIND jest KOMPLETNA i zgodna z plane
     'no-point',
     'branch-point',
     'protection',
-    'lv-load',
+    'odbior',
   ];
 
   it('KAŻDY rodzaj właściciela ma przypisaną klasę LOD', () => {
@@ -178,11 +178,11 @@ describe('T2-LOD §1 — LOD_CLASS_BY_OWNER_KIND jest KOMPLETNA i zgodna z plane
     expect(LOD_CLASS_BY_OWNER_KIND['segment-lateral']).toBe('L1');
   });
 
-  it('L2 = adnotacje drugorzędne (kierunek pola, koniec odcinka, zabezpieczenia, odbiór zagregowany nN)', () => {
+  it('L2 = adnotacje drugorzędne (kierunek pola, koniec odcinka, zabezpieczenia, podpis odbioru)', () => {
     expect(LOD_CLASS_BY_OWNER_KIND['port-caption']).toBe('L2');
     expect(LOD_CLASS_BY_OWNER_KIND['segment-endpoint']).toBe('L2');
     expect(LOD_CLASS_BY_OWNER_KIND.protection).toBe('L2');
-    expect(LOD_CLASS_BY_OWNER_KIND['lv-load']).toBe('L2');
+    expect(LOD_CLASS_BY_OWNER_KIND.odbior).toBe('L2');
   });
 
   it('ŻADEN rodzaj klasy `dane` nie jest L0 (rozłączność L0 od reszty)', () => {
@@ -192,7 +192,7 @@ describe('T2-LOD §1 — LOD_CLASS_BY_OWNER_KIND jest KOMPLETNA i zgodna z plane
       'segment-endpoint',
       'port-caption',
       'protection',
-      'lv-load',
+      'odbior',
     ];
     for (const kind of daneKinds) {
       expect(LOD_CLASS_BY_OWNER_KIND[kind], kind).not.toBe('L0');

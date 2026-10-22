@@ -3054,6 +3054,10 @@ function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
       // Addytywne: `ownerRef` (kompozyt sceny) NIETKNIĘTY, geometria bez zmian.
       busResultRef: seg.meta.busResultRef,
       elementKind: segmentElementKind(kind),
+      // Karta GPZ-H5-SLD: jawna klasa napięcia odcinka z kompozycji (łącznik szyn 110 kV,
+      // zejście odbioru, pola liniowe 110 kV) — ten sam kanał co symbole (V12K-217); bez
+      // niej odcinek bez znacznika `#hv-` w refie dostawał kolor SN.
+      voltageClass: seg.meta.voltageClass,
     },
   };
 }
@@ -3070,7 +3074,7 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // F8b-1: refy, które `GpzElementMeta` już niesie (compose/gpz.ts) —
       // bayRef (aparat pola) preferowany, potem transformerRef/sectionId dla
       // symboli bez przypisanego pola. Zero re-derywacji z geometrii.
-      ownerRef: sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.couplerRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
+      ownerRef: sym.meta.loadRef ?? sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.couplerRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): realny `BayPrimaryDevice.
       // device_ref` z kompozycji GPZ (`ComposedGpzSymbolInstance.deviceRef`,
       // WYŁĄCZNIE ścieżka danych) — ta sama reguła co aparaty stacji.
@@ -5921,8 +5925,11 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
 // DANĄ (kod stacji może wyglądać różnie u różnych operatorów), więc wyrocznia
 // pilnuje jego KSZTAŁTU, a nie treści; że jest to REALNY kod tej stacji,
 // dowodzi osobno `scripts/sld_v3_acceptance.mjs` (porównanie z ENM).
+// Karta GPZ-H5-SLD: oznaczenie sekcji z modelu (`GPZSection.name`) w zapisie operatorów —
+// numer arabski, rzymski („Sekcja II") albo litera („Sekcja A"); słownik nadal ZAMKNIĘTY
+// (jeden token po „Sekcja", dowolna fraza nie przechodzi).
 const BUSBAR_LABEL_TEXT_PATTERN =
-  /^(?:[^\s·]{1,16} · )?(?:Sekcja \d+|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
+  /^(?:[^\s·]{1,16} · )?(?:Sekcja (?:\d+|[IVX]+|[A-Z])|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
 
 // S9-12 (klasa C-8): zamknięta gramatyka etykiety szyny nN PRODUCENTA DER
 // (`compose/station.ts` `composeDerSnChain` → `stationLvBusbarLabelText`,

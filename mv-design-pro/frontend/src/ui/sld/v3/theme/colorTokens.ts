@@ -208,7 +208,9 @@ export function baseSymbolStrokeColor(
 ): string {
   if (symbolId === 'noPoint') return palette.state.nop;
   if (symbolId === 'gridSource') return palette.voltage.hv;
-  if (symbolId === 'loadArrow') return palette.voltage.nn;
+  // Karta GPZ-H5-SLD: odbiór na szynie sekcji GPZ niesie klasę napięcia swojej szyny
+  // z kompozycji (`meta.voltageClass`); bez niej — zagregowany odbiór nN stacji.
+  if (symbolId === 'loadArrow') return palette.voltage[meta?.voltageClass ?? 'nn'];
   return palette.voltage[voltageClassOf(meta)];
 }
 

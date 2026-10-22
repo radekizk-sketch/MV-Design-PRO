@@ -90,7 +90,7 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     bezKolizji(plan, [WYLACZNIK]);
   });
 
-  it('sąsiad POWIĘKSZONY i skracalny ustępuje: obie tożsamości narysowane, sąsiad skrócony z członem rozróżniającym', () => {
+  it('sąsiad POWIĘKSZONY i skracalny ustępuje: obie tożsamości narysowane, sąsiad ustępuje (druga strona albo skrót) z członem rozróżniającym', () => {
     const plan = planSceneLabels([OZNACZENIE_GPZ, Q1], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ);
     expect(plan.droppedIdentity).toEqual([]);
     const q1 = narysowana(plan, Q1.ownerRef);
@@ -98,8 +98,14 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     expect(q1?.text).toBe('Q1');
     expect(q1?.enlarged).toBe(true);
     expect(gpz?.enlarged).toBe(true);
-    // Sąsiad skrócony (nie zniknął) i nadal niesie człon rozróżniający „1.2".
-    expect(gpz!.text).not.toBe(OZNACZENIE_GPZ.text);
+    // Sąsiad USTĄPIŁ (nie zniknął) i nadal niesie człon rozróżniający „1.2". Przepisane do
+    // obecnego kanonu planu (karta GPZ-H5-SLD, zmierzone): `najlepszeDopasowanie` sąsiada
+    // przenosi go na drugą stronę slotu PEŁNYM tekstem, gdy tam się mieści — to lepsze niż
+    // skrót, więc „ustąpienie" = inny prostokąt albo krótszy tekst niż w planie bez Q1.
+    // Dawna asercja „tekst ≠ pełny" wymuszała skrót i była czerwona na bazie 82735bfc1.
+    const samGpz = narysowana(planSceneLabels([OZNACZENIE_GPZ], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ), OZNACZENIE_GPZ.ownerRef);
+    const ustapil = gpz!.text !== samGpz!.text || JSON.stringify(gpz!.rect) !== JSON.stringify(samGpz!.rect);
+    expect(ustapil).toBe(true);
     expect(gpz!.text.endsWith('1.2')).toBe(true);
     expect(gpz!.rect.x + gpz!.rect.width).toBeLessThanOrEqual(q1!.rect.x);
     bezKolizji(plan, [WYLACZNIK]);

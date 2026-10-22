@@ -27,6 +27,7 @@ import type {
   Bus,
   EnergyNetworkModel,
   Generator,
+  Load,
   Measurement,
   ProtectionAssignment,
   Source,
@@ -51,6 +52,7 @@ import {
 } from '../../shared/transformatoryStacji';
 import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import { grupujOdbioryWgPasma } from '../../../ui2/model/odbioryWgPasma';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
@@ -738,6 +740,18 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
   const generatorySn = (model.generators ?? []).filter(
     (g) => g.station_ref === stacja.ref_id && g.connection_variant === 'block_transformer',
   );
+  // Odbiory stacji wg pasma napięciowego ich szyny (karta GPZ-H5-SLD pkt 2): odbiór na
+  // szynie SN (sekcja GPZ) nie trafia do „Strony nN"; szyna bez napięcia — jawna grupa braku.
+  const szynyWlasne = szynyStacji(model, stacja);
+  const opisOdbioru = (l: Load): string =>
+    `${publicTechnicalLabel(l.name, 'Odbiór')} · ${zapisLiczby(l.p_mw, 'MW') ?? BRAK_DANYCH_PL}`;
+  const grupyOdbiorow = grupujOdbioryWgPasma(
+    (model.loads ?? []).filter((l) => szynyWlasne.has(l.bus_ref) || rekord(l.meta)?.station_ref === stacja.ref_id),
+    (l) => l.bus_ref,
+    model.buses ?? [],
+  );
+  const odbioryNn = grupyOdbiorow.find((g) => g.klucz === 'nN')?.odbiory.map(opisOdbioru) ?? [];
+  const odbioryPozaNn = grupyOdbiorow.filter((g) => g.klucz !== 'nN');
   const rozdzielnica: SekcjaKarty = {
     id: 'rozdzielnica_sn',
     tytul: stacja.station_type === 'gpz' ? 'Rozdzielnia SN' : 'Rozdzielnica SN',
@@ -747,6 +761,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       ...(generatorySn.length > 0
         ? [lista('zrodla_sn', 'Źródła przyłączone po stronie SN', generatorySn.map((g) => opisGeneratora(g)))]
         : []),
+      ...odbioryPozaNn.map((g) => lista(`odbiory_${g.klucz}`, g.tytul, g.odbiory.map(opisOdbioru))),
     ],
     tabele: [
       {
@@ -786,14 +801,10 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
       }));
 
   // Strona nN.
-  const szynyWlasne = szynyStacji(model, stacja);
   const szynyNn = (stacja.nn_sections ?? []).length > 0
     ? (stacja.nn_sections ?? []).map((s) => s.bus_ref)
     : stacja.bus_refs.filter((ref) => wPasmieNn(ix.szyny.get(ref)?.voltage_kv));
   const odplywy = polaNnStacji(model, stacja.ref_id).map((b) => nazwaPola(b) ?? fieldRoleLabelPl(b.bay_role));
-  const odbiory = (model.loads ?? [])
-    .filter((l) => szynyWlasne.has(l.bus_ref) || rekord(l.meta)?.station_ref === stacja.ref_id)
-    .map((l) => `${publicTechnicalLabel(l.name, 'Odbiór')} · ${zapisLiczby(l.p_mw, 'MW') ?? BRAK_DANYCH_PL}`);
   const zrodlaNn = (model.generators ?? [])
     .filter((g) => g.station_ref === stacja.ref_id && g.connection_variant !== 'block_transformer')
     .map((g) => opisGeneratora(g));
@@ -803,7 +814,7 @@ function kartaStacji(ix: IndeksModelu, stacja: Substation, katalogi: KatalogiKar
     wiersze: [
       lista('nn_sekcje', 'Sekcje szyn nN', szynyNn.map((ref) => opisSzyny(ix, ref)).filter((s): s is string => s !== null)),
       lista('nn_odplywy', 'Pola i odpływy nN', odplywy),
-      lista('nn_odbiory', 'Odbiory', odbiory),
+      lista('nn_odbiory', 'Odbiory', odbioryNn),
       lista('nn_zrodla', 'Źródła po stronie nN', zrodlaNn),
     ],
   };

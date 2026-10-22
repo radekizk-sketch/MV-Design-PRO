@@ -163,6 +163,7 @@ export function PasekNarzedzi({
       role="toolbar"
       aria-label={SHELL_STRINGS.toolbarLabel}
       data-testid="mvd-pasek-narzedzi"
+      data-toast-omija=""
     >
       {przelacznikPodgladu}
       <Narzedzie testId="mvd-narzedzie-szukaj" etykieta={SHELL_STRINGS.search} tytul={SHELL_STRINGS.searchHint} onClick={onSzukaj} />

@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 
+import { pasmoSzynyOdbioru, type KluczGrupyOdbiorow } from '../../ui2/model/odbioryWgPasma';
 import {
   useGotowoscModelu,
   usePodsumowanieGotowosci,
 } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
+import { KODY_BRAKU_ZASILANIA } from '../../ui2/spaces/gotowosc/grupowanieCelow';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
@@ -679,6 +681,8 @@ export interface LoadSummary {
   pKw: number;
   qKvar: number;
   catalogRef: string | null;
+  /** Karta GPZ-H5-SLD: pasmo napięciowe szyny odbioru (`pasmoSzynyOdbioru`). */
+  pasmo: KluczGrupyOdbiorow;
 }
 
 export interface OzeSourceSummary {
@@ -1075,6 +1079,7 @@ export function selectLoadSummaries(
   // SZYNY-STACJI-LUSTRO: stacja odbioru = stacja jego szyny z jednego lustra `szynyStacji`
   // (odbiór stoi zwykle na szynie odpływu nN za aparatem pola, spoza `bus_refs`).
   const stacjaSzyny = stacjaSzyn(snapshot);
+  const napiecieSzyny = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv]));
   return (snapshot.loads ?? [])
     .map((load) => {
       const stationRef = stacjaSzyny.get(load.bus_ref);
@@ -1091,6 +1096,7 @@ export function selectLoadSummaries(
         pKw: load.p_mw * 1000,
         qKvar: load.q_mvar * 1000,
         catalogRef: load.catalog_ref ?? null,
+        pasmo: pasmoSzynyOdbioru(load.bus_ref, napiecieSzyny),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -1227,8 +1233,13 @@ export type KategoriaBlokera = 'topologia' | 'katalogi' | 'eksploatacja' | 'anal
  * (`selectBlockersByCategory`) i przeglądu zbiorczego (`ReadinessBlockersReview`); dawniej
  * dwie kopie tych samych warunków (W5-C: rozjechały się przy kasacji tokenu `switch_state`).
  */
-export function kategoriaBlokera(kod: string): KategoriaBlokera {
-  const code = kod.toLowerCase();
+export function kategoriaBlokera(kod: string, kodKanoniczny?: string | null): KategoriaBlokera {
+  // Karta GPZ-H5-SLD pkt 3d: kod KANONICZNY ma pierwszeństwo (ten sam wybór co panel
+  // gotowości, `naProblemGotowosci`) — kod walidatora bez przestrzeni nazw (`E065`) nie
+  // niesie żadnego słowa poniżej i spadał do „Analiza". Brak zasilania — z jednej listy.
+  const kanon = kodKanoniczny ?? kod;
+  if (KODY_BRAKU_ZASILANIA.has(kanon)) return 'topologia';
+  const code = kanon.toLowerCase();
   if (
     code.includes('topology')
     || code.includes('island')
@@ -1262,7 +1273,7 @@ export function kategoriaBlokera(kod: string): KategoriaBlokera {
 }
 
 export function selectBlockersByCategory(
-  readinessOrIssues: ReadinessInfo | Pick<ReadinessIssue, 'code'>[] | null,
+  readinessOrIssues: ReadinessInfo | Pick<ReadinessIssue, 'code' | 'canonical_code'>[] | null,
 ): {
   topologia: number;
   katalogi: number;
@@ -1277,7 +1288,7 @@ export function selectBlockersByCategory(
   if (blockers.length === 0) return result;
 
   for (const b of blockers) {
-    result[kategoriaBlokera(b.code)] += 1;
+    result[kategoriaBlokera(b.code, b.canonical_code)] += 1;
     result.total += 1;
   }
 

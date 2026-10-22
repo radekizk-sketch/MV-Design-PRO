@@ -4,6 +4,7 @@
  * są nomenklaturą techniczną i pozostają dozwolone.
  */
 
+import { liczbaZOdmiana } from '../../../../ui/shared/odmianaLiczebnikowa';
 import type { KategoriaId } from './types';
 
 export const STRINGS = {
@@ -38,7 +39,7 @@ export const STRINGS = {
   gdzieUzytyTytul: 'Gdzie użyty',
   gdzieUzytyPusto: 'Ten typ nie jest przypisany do żadnego elementu modelu.',
   gdzieUzytyLiczba: (n: number): string =>
-    n === 1 ? 'Użyty w 1 elemencie modelu' : `Użyty w ${n} elementach modelu`,
+    `Użyty w ${liczbaZOdmiana(n, { jeden: 'elemencie', kilka: 'elementach', wiele: 'elementach' })} modelu`,
   gdzieUzytyPokaz: 'Pokaż element w modelu',
 
   immutableNota: 'Typy katalogowe są niezmienne — karta służy wyłącznie do odczytu.',

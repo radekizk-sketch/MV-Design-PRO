@@ -1,0 +1,362 @@
+{
+ "enm": {
+  "bays": [
+   {
+    "apparatus_catalog_ref": null,
+    "bay_number": null,
+    "bay_role": "COUPLER",
+    "bay_template_ref": null,
+    "branch_point_port_id": null,
+    "branch_point_ref": null,
+    "bus_ref": "gpz/rsn/section/001/bus_sn",
+    "catalog_bindings": null,
+    "config_id": null,
+    "equipment_refs": [
+     "gpz/rsn/coupler/001"
+    ],
+    "feeder_short_name": null,
+    "field_role": null,
+    "funkcja_pomiaru": null,
+    "gpz_section_id": "gpz/rsn/section/001",
+    "id": "fb8b3d7c-4cc8-5507-be04-aa57ffc11f50",
+    "manufacturer_ref": null,
+    "meta": {},
+    "metadane_pochodzenia": null,
+    "name": "Pole łącznika szyn ŁS SN 1-2",
+    "outgoing_destination_ref": null,
+    "ports": [],
+    "primary_devices": [],
+    "protection_codes": [],
+    "protection_ref": null,
+    "ref_id": "gpz/rsn/coupler/001/bay",
+    "rodzaj_pomiaru": null,
+    "runtime_state": null,
+    "substation_ref": "gpz/rsn/substation",
+    "surge_arresters": [],
+    "switchgear_family_ref": null,
+    "tags": [
+     "gpz_coupler_field"
+    ],
+    "terminal_bus_ref": null,
+    "wybor_bloku": null
+   },
+   {
+    "apparatus_catalog_ref": null,
+    "bay_number": null,
+    "bay_role": "FEEDER",
+    "bay_template_ref": null,
+    "branch_point_port_id": null,
+    "branch_point_ref": null,
+    "bus_ref": "gpz/rsn/section/001/bus_sn",
+    "catalog_bindings": null,
+    "config_id": null,
+    "equipment_refs": [],
+    "feeder_short_name": null,
+    "field_role": null,
+    "funkcja_pomiaru": null,
+    "gpz_section_id": "gpz/rsn/section/001",
+    "id": "21c89d5d-7b7f-55db-8f0e-91b3b9ab925a",
+    "manufacturer_ref": null,
+    "meta": {
+     "field_status": "READY_FOR_TRUNK"
+    },
+    "metadane_pochodzenia": null,
+    "name": "Pole liniowe A1",
+    "outgoing_destination_ref": null,
+    "ports": [],
+    "primary_devices": [],
+    "protection_codes": [],
+    "protection_ref": null,
+    "ref_id": "gpz/rsn/section/001/bay/001",
+    "rodzaj_pomiaru": null,
+    "runtime_state": null,
+    "substation_ref": "gpz/rsn/substation",
+    "surge_arresters": [],
+    "switchgear_family_ref": null,
+    "tags": [
+     "gpz_line_field"
+    ],
+    "terminal_bus_ref": null,
+    "wybor_bloku": null
+   },
+   {
+    "apparatus_catalog_ref": null,
+    "bay_number": null,
+    "bay_role": "FEEDER",
+    "bay_template_ref": null,
+    "branch_point_port_id": null,
+    "branch_point_ref": null,
+    "bus_ref": "gpz/rsn/section/001/bus_sn",
+    "catalog_bindings": null,
+    "config_id": null,
+    "equipment_refs": [],
+    "feeder_short_name": null,
+    "field_role": null,
+    "funkcja_pomiaru": null,
+    "gpz_section_id": "gpz/rsn/section/001",
+    "id": "92339c93-b81b-5988-808b-b7f00537b52b",
+    "manufacturer_ref": null,
+    "meta": {
+     "field_status": "RESERVE"
+    },
+    "metadane_pochodzenia": null,
+    "name": "Pole liniowe A2",
+    "outgoing_destination_ref": null,
+    "ports": [],
+    "primary_devices": [],
+    "protection_codes": [],
+    "protection_ref": null,
+    "ref_id": "gpz/rsn/section/001/bay/002",
+    "rodzaj_pomiaru": null,
+    "runtime_state": null,
+    "substation_ref": "gpz/rsn/substation",
+    "surge_arresters": [],
+    "switchgear_family_ref": null,
+    "tags": [
+     "gpz_line_field"
+    ],
+    "terminal_bus_ref": null,
+    "wybor_bloku": null
+   },
+   {
+    "apparatus_catalog_ref": null,
+    "bay_number": null,
+    "bay_role": "FEEDER",
+    "bay_template_ref": null,
+    "branch_point_port_id": null,
+    "branch_point_ref": null,
+    "bus_ref": "gpz/rsn/section/002/bus_sn",
+    "catalog_bindings": null,
+    "config_id": null,
+    "equipment_refs": [],
+    "feeder_short_name": null,
+    "field_role": null,
+    "funkcja_pomiaru": null,
+    "gpz_section_id": "gpz/rsn/section/002",
+    "id": "28ed3fbc-0732-5637-b3d2-358e9d51703c",
+    "manufacturer_ref": null,
+    "meta": {
+     "field_status": "READY_FOR_TRUNK"
+    },
+    "metadane_pochodzenia": null,
+    "name": "Pole liniowe B1",
+    "outgoing_destination_ref": null,
+    "ports": [],
+    "primary_devices": [],
+    "protection_codes": [],
+    "protection_ref": null,
+    "ref_id": "gpz/rsn/section/002/bay/001",
+    "rodzaj_pomiaru": null,
+    "runtime_state": null,
+    "substation_ref": "gpz/rsn/substation",
+    "surge_arresters": [],
+    "switchgear_family_ref": null,
+    "tags": [
+     "gpz_line_field"
+    ],
+    "terminal_bus_ref": null,
+    "wybor_bloku": null
+   },
+   {
+    "apparatus_catalog_ref": null,
+    "bay_number": null,
+    "bay_role": "FEEDER",
+    "bay_template_ref": null,
+    "branch_point_port_id": null,
+    "branch_point_ref": null,
+    "bus_ref": "gpz/rsn/section/002/bus_sn",
+    "catalog_bindings": null,
+    "config_id": null,
+    "equipment_refs": [],
+    "feeder_short_name": null,
+    "field_role": null,
+    "funkcja_pomiaru": null,
+    "gpz_section_id": "gpz/rsn/section/002",
+    "id": "da9eff2e-d9bc-5209-9821-4ea8991de19b",
+    "manufacturer_ref": null,
+    "meta": {
+     "field_status": "RESERVE"
+    },
+    "metadane_pochodzenia": null,
+    "name": "Pole liniowe B2",
+    "outgoing_destination_ref": null,
+    "ports": [],
+    "primary_devices": [],
+    "protection_codes": [],
+    "protection_ref": null,
+    "ref_id": "gpz/rsn/section/002/bay/002",
+    "rodzaj_pomiaru": null,
+    "runtime_state": null,
+    "substation_ref": "gpz/rsn/substation",
+    "surge_arresters": [],
+    "switchgear_family_ref": null,
+    "tags": [
+     "gpz_line_field"
+    ],
+    "terminal_bus_ref": null,
+    "wybor_bloku": null
+   }
+  ],
+  "branch_points": [],
+  "branches": [
+   {
+    "from_bus_ref": "gpz/rsn/section/001/bus_sn",
+    "id": "91df58cc-e331-58fd-8add-d1e33b539376",
+    "meta": {},
+    "name": "ŁS SN 1-2",
+    "normal_state": "open",
+    "ref_id": "gpz/rsn/coupler/001",
+    "status": "open",
+    "tags": [],
+    "to_bus_ref": "gpz/rsn/section/002/bus_sn",
+    "type": "bus_coupler"
+   }
+  ],
+  "buses": [
+   {
+    "frequency_hz": null,
+    "id": "7010c6c5-7932-5c57-982d-177a57f6c3ad",
+    "meta": {},
+    "name": "Szyna SN sekcja A",
+    "nominal_limits": null,
+    "phase_system": "3ph",
+    "ref_id": "gpz/rsn/section/001/bus_sn",
+    "tags": [],
+    "voltage_kv": 15.0,
+    "zone": "GPZ"
+   },
+   {
+    "frequency_hz": null,
+    "id": "3d175e66-9263-56d6-a372-8adf8d351a68",
+    "meta": {},
+    "name": "Szyna SN sekcja B",
+    "nominal_limits": null,
+    "phase_system": "3ph",
+    "ref_id": "gpz/rsn/section/002/bus_sn",
+    "tags": [],
+    "voltage_kv": 15.0,
+    "zone": "GPZ"
+   }
+  ],
+  "connection_nodes": [],
+  "corridors": [],
+  "generators": [],
+  "header": {
+   "connection_conditions": null,
+   "created_at": "2026-10-22T00:00:00Z",
+   "defaults": {
+    "frequency_hz": 50.0,
+    "sn_nominal_kv": null,
+    "unit_system": "SI"
+   },
+   "description": null,
+   "enm_version": "1.0",
+   "hash_sha256": "",
+   "name": "GPZ równoważnik SN",
+   "revision": 1,
+   "updated_at": "2026-10-22T00:00:00Z"
+  },
+  "junctions": [],
+  "katalog_projektu": null,
+  "line_runs": [],
+  "loads": [
+   {
+    "bus_ref": "gpz/rsn/section/001/bus_sn",
+    "id": "abb63420-fcd0-5d5a-bf3d-63a03fc5ffce",
+    "meta": {},
+    "model": "pq",
+    "name": "Odbiór SN 1",
+    "p_mw": 1.0,
+    "q_mvar": 0.3,
+    "ref_id": "gpz/rsn/load/001",
+    "tags": []
+   }
+  ],
+  "measurements": [],
+  "protection_assignments": [],
+  "shunt_capacitors": [],
+  "sources": [
+   {
+    "bus_ref": "gpz/rsn/section/001/bus_sn",
+    "id": "16f8c234-3c86-51fe-9fe6-26cee9e439d3",
+    "ik3_ka": null,
+    "ik3_min_ka": null,
+    "meta": {},
+    "model": "short_circuit_power",
+    "name": "Sieć zasilająca 1",
+    "ref_id": "gpz/rsn/source/001",
+    "rx_ratio": 0.1,
+    "sk3_min_mva": null,
+    "sk3_mva": 250.0,
+    "substation_ref": "gpz/rsn/substation",
+    "supply_line_name": null,
+    "supplying_station_name": null,
+    "tags": [],
+    "u_set_pu": null
+   },
+   {
+    "bus_ref": "gpz/rsn/section/002/bus_sn",
+    "id": "5f9da04b-5003-5ebe-8d6e-da8a0083d995",
+    "ik3_ka": null,
+    "ik3_min_ka": null,
+    "meta": {},
+    "model": "short_circuit_power",
+    "name": "Sieć zasilająca 2",
+    "ref_id": "gpz/rsn/source/002",
+    "rx_ratio": 0.1,
+    "sk3_min_mva": null,
+    "sk3_mva": 200.0,
+    "substation_ref": "gpz/rsn/substation",
+    "supply_line_name": null,
+    "supplying_station_name": null,
+    "tags": [],
+    "u_set_pu": null
+   }
+  ],
+  "substations": [
+   {
+    "bus_refs": [
+     "gpz/rsn/section/001/bus_sn",
+     "gpz/rsn/section/002/bus_sn"
+    ],
+    "construction_type": null,
+    "designation": null,
+    "entry_point_ref": "gpz/rsn/section/001/bus_sn",
+    "external_ports": [],
+    "gpz_hv_sections": [],
+    "gpz_sections": [
+     {
+      "bus_ref": "gpz/rsn/section/001/bus_sn",
+      "incoming_source_ref": null,
+      "left_coupler_ref": null,
+      "line_field_name": null,
+      "name": "Sekcja A",
+      "order": 0,
+      "right_coupler_ref": "gpz/rsn/coupler/001",
+      "section_id": "gpz/rsn/section/001"
+     },
+     {
+      "bus_ref": "gpz/rsn/section/002/bus_sn",
+      "incoming_source_ref": null,
+      "left_coupler_ref": "gpz/rsn/coupler/001",
+      "line_field_name": null,
+      "name": "Sekcja B",
+      "order": 1,
+      "right_coupler_ref": null,
+      "section_id": "gpz/rsn/section/002"
+     }
+    ],
+    "id": "5190b38b-fc82-5d2f-88ae-ae9d95730373",
+    "meta": {},
+    "name": "GPZ równoważnik SN",
+    "nn_sections": [],
+    "nn_voltage_levels": [],
+    "ref_id": "gpz/rsn/substation",
+    "station_type": "gpz",
+    "tags": [],
+    "transformer_refs": []
+   }
+  ],
+  "transformers": []
+ }
+}

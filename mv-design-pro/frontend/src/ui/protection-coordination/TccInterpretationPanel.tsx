@@ -9,6 +9,7 @@
  * „brakiem konfliktów".
  */
 
+import { formaLiczebnikowa } from '../shared/odmianaLiczebnikowa';
 import { useState } from 'react';
 import type { SelectivityCheck, CoordinationDevice } from './types';
 import { LABELS } from './types';
@@ -31,10 +32,7 @@ function formatA(wartosc: number | null): string {
 }
 
 function odmianaPar(liczba: number): string {
-  if (liczba === 1) return 'para';
-  const reszta10 = liczba % 10;
-  const reszta100 = liczba % 100;
-  return reszta10 >= 2 && reszta10 <= 4 && (reszta100 < 12 || reszta100 > 14) ? 'pary' : 'par';
+  return formaLiczebnikowa(liczba, { jeden: 'para', kilka: 'pary', wiele: 'par' });
 }
 
 export function TccInterpretationPanel({

@@ -126,7 +126,12 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     expect(container.querySelector('[data-testid="sld-v3-gpz-bilans-zasilania"]')).not.toBeNull();
   });
 
-  it('BRAK BIEGU: belka i tabela mówią jawnie „brak wyniku rozpływu mocy", wartości pól „brak" (nie zero)', () => {
+  // Karta GPZ-H5-SLD pkt 3c (kanon czterech stanów „brak"): bez biegu pole NIE pokazuje
+  // czterech kolumn „brak", tylko jeden napis stanu — „obliczenie niewykonane" dla pola
+  // z odpływem i aparatem, a dla pola rezerwowego / bez odpływu / bez aparatu jego stan
+  // danych modelu (ten ma pierwszeństwo, bo wynik i tak by go nie uzupełnił). Intencja
+  // testu bez zmian: brak biegu jest jawny i nigdy nie udaje zera.
+  it('BRAK BIEGU: belka i tabela mówią jawnie „brak wyniku rozpływu mocy", pola — stan „obliczenie niewykonane" (nie zero)', () => {
     const container = renderKanwe(2);
     powiekszDoCzytelnosci(container);
     const warstwa = container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!;
@@ -135,9 +140,27 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
     expect(tekst(container, 'sld-v3-gpz-bilans-odplywow')).toBe('Odpływy GPZ: brak wyniku rozpływu mocy');
     expect(tekst(container, 'sld-v3-gpz-alarmy')).toBe('Przeciążenia w GPZ: brak wyniku rozpływu mocy');
     expect(tekst(container, 'sld-v3-gpz-tabela-tytul')).toBe('Pola GPZ — brak wyniku rozpływu mocy');
-    const wartosci = [...container.querySelectorAll('[data-testid^="sld-v3-gpz-wartosc-"]')].map((n) => n.textContent);
-    expect(wartosci.length).toBeGreaterThan(0);
-    expect(wartosci.every((w) => w === 'brak')).toBe(true);
+    expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-wartosc-"]')).toHaveLength(0);
+    const pola = [...container.querySelectorAll('[data-gpz-stan-pola]')];
+    expect(pola.length).toBeGreaterThan(0);
+    const DOZWOLONE: Record<string, string> = {
+      niewykonane: 'obliczenie niewykonane',
+      rezerwowe: 'pole rezerwowe',
+      bez_odplywu: 'pole bez odpływu',
+      bez_aparatu: 'pole bez aparatu w modelu',
+    };
+    for (const pole of pola) {
+      const stan = pole.getAttribute('data-gpz-stan-pola')!;
+      expect(Object.keys(DOZWOLONE)).toContain(stan);
+      const napis = pole.querySelector('[data-testid^="sld-v3-gpz-stan-"]');
+      expect(napis?.textContent).toBe(DOZWOLONE[stan]);
+    }
+    // Jedyne pole GPZ tej fikstury ma w modelu `equipment_refs: []` — uczciwy stan
+    // „pole bez aparatu w modelu" (stan „obliczenie niewykonane" dla pola z aparatem
+    // przypina iloczyn H5: `gpzH5Iloczyn.contract.test.tsx`).
+    const poleGpz = enm.bays!.find((b) => b.ref_id.startsWith('gpz/'))!;
+    expect(poleGpz.equipment_refs).toEqual([]);
+    expect(pola.map((p) => p.getAttribute('data-gpz-stan-pola'))).toContain('bez_aparatu');
   });
 
   it('ROZPŁYW AKTUALNY: bilans, alarmy i pomiary pola to wartości wierszy backendu (1:1, tylko formatowanie)', () => {

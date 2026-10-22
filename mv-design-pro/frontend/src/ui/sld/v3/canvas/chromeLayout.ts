@@ -32,6 +32,11 @@
  * runnerze odbioru (P7).
  */
 
+import { liczbaZOdmiana } from '../../../shared/odmianaLiczebnikowa';
+
+/** Odmiana rzeczownika „opis" po liczebniku (karta GPZ-H5-SLD pkt 3f). */
+const ODMIANA_OPISU = { jeden: 'opis', kilka: 'opisy', wiele: 'opisów' } as const;
+
 /** Prostokąt w PIKSELACH EKRANU, względem lewego-górnego rogu kanwy. */
 export interface ScreenRect {
   readonly x: number;
@@ -79,7 +84,7 @@ export function sheetLodCaptionText(lodLabel: string): string {
 
 /** Treść wskaźnika ukrytych opisów — jedno źródło dla renderu i dla układu. */
 export function hiddenLabelsHintText(count: number): string {
-  return `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`;
+  return `Ukryto ${liczbaZOdmiana(count, ODMIANA_OPISU)} — przybliż, aby zobaczyć`;
 }
 
 /**
@@ -91,7 +96,7 @@ export function hiddenLabelsHintText(count: number): string {
  * widoczne w całości" jest prawdą (zero ukrytych i zero poniżej podłogi).
  */
 export function hiddenLabelsHintTextPozaCelem(count: number): string {
-  return `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} poza celem kadru — opisy celu widoczne w całości`;
+  return `Ukryto ${liczbaZOdmiana(count, ODMIANA_OPISU)} poza celem kadru — opisy celu widoczne w całości`;
 }
 
 /**
@@ -113,7 +118,7 @@ export function hiddenLabelsHintTextKadru(
 ): string {
   const czlonPodlogi = ponizejPodlogi > 0 ? `opisy celu poniżej ${podlogaPx} px: ${ponizejPodlogi}` : null;
   const czlonUkrytych =
-    count > 0 || czlonPodlogi === null ? `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} (celu kadru: ${celu})` : null;
+    count > 0 || czlonPodlogi === null ? `Ukryto ${liczbaZOdmiana(count, ODMIANA_OPISU)} (celu kadru: ${celu})` : null;
   const poczatek =
     czlonUkrytych !== null && czlonPodlogi !== null
       ? `${czlonUkrytych}; ${czlonPodlogi}`
@@ -295,4 +300,86 @@ export function chromeCaptionCollisions(
     }
   }
   return kolizje;
+}
+
+/**
+ * TABLICZKA POCHODZENIA WYNIKU — przestrzeń EKRANU (karta GPZ-H5-SLD pkt 3g).
+ *
+ * DLACZEGO (przyczyna u źródła, pomiar 2026-10-22, sonda na fiksturach H5). Tabliczka
+ * „Wynik: … / Moduł: … · Przebieg: … · Czas ukończenia: … · Świeżość: …" i baner
+ * „⚠ wyniki nieaktualne" były zakotwiczone w ARKUSZU, na prawo od strefy GPZ
+ * (`gpzZone.x + width + 2·GRID`, `y = GRID`), a cały ciąg pochodzenia stał w JEDNYM
+ * wierszu (893 j.św.). Kadr „Dopasuj widok" liczy się z treści sieci
+ * (`contentBoundingBoxOf`), w której tabliczki nie ma, więc tabliczka wystawała poza
+ * widok: H5 2×2 przy kadrze 1400×800 — prawa krawędź widoku 1664 j.św., tabliczka
+ * 1536…2429 j.św. (≈ 86 % szerokości poza kadrem; 1×3 i równoważnik SN — to samo).
+ * Ta sama klasa co wskaźnik „Ukryto N opisów" przed V12K-222: komunikat o stanie
+ * WYNIKU jest oprawą ekranu, nie treścią rysunku technicznego.
+ *
+ * ROZSTRZYGNIĘCIE: tabliczka (baner nieaktualności jako jej pierwszy wiersz) stoi w
+ * lewym-dolnym rogu WIDOKU, nad pasem doków, pismem stałym ekranowo, jeden człon
+ * pochodzenia na wiersz. Układ liczy ta sama rodzina funkcji co wskaźnik ukrytych
+ * opisów: tabliczka USTĘPUJE aparatowi arkusza (krawędź ramki, „Widok: …", „Skala …")
+ * i podkładce wskaźnika — rozłączność wynika z warunku, nie z położenia „dziś".
+ */
+export const POCHODZENIE_LEFT_PX = 12;
+/** Rozmiar pisma tabliczki pochodzenia [px EKRANU] — ten sam co wskaźnika. */
+export const POCHODZENIE_FONT_PX = HIDDEN_LABELS_HINT_FONT_PX;
+/** Wysokość wiersza tabliczki [px EKRANU] (pismo + interlinia 6, jak cała typografia v3). */
+export const POCHODZENIE_ROW_PX = POCHODZENIE_FONT_PX + 6;
+export const POCHODZENIE_PADDING_X_PX = 8;
+export const POCHODZENIE_PADDING_Y_PX = 4;
+
+export interface WierszPochodzenia {
+  /** Tożsamość wiersza (testy, DOM). */
+  readonly id: string;
+  readonly tekst: string;
+}
+
+export interface UkladPochodzenia {
+  /** Podkładka tabliczki [px EKRANU]. */
+  readonly plyta: ScreenRect;
+  /** Prostokąty napisów wierszy w kolejności wejścia [px EKRANU]. */
+  readonly wiersze: readonly (ScreenRect & WierszPochodzenia)[];
+}
+
+/**
+ * Układ tabliczki pochodzenia w przestrzeni EKRANU. `przeszkody` — prostokąty, którym
+ * tabliczka ustępuje (aparat arkusza `sheetCaptionScreenRects` oraz podkładka wskaźnika
+ * ukrytych opisów, gdy jest widoczny). Pusta lista wierszy ⇒ `null` (nic do pokazania).
+ * Tabliczka wypchnięta ponad górną krawędź widoku zostaje przy `y = 0` (ten sam
+ * kompromis co wskaźnik: napis poza kadrem nie informuje o niczym).
+ */
+export function ukladPochodzeniaWyniku(
+  viewport: { readonly width: number; readonly height: number },
+  wiersze: readonly WierszPochodzenia[],
+  przeszkody: readonly ScreenRect[],
+  metrics: ChromeTextMetrics,
+): UkladPochodzenia | null {
+  if (wiersze.length === 0) return null;
+  const szerTekstu = Math.max(...wiersze.map((w) => metrics.measure(w.tekst, POCHODZENIE_FONT_PX)));
+  const width = szerTekstu + 2 * POCHODZENIE_PADDING_X_PX;
+  const height = wiersze.length * POCHODZENIE_ROW_PX + 2 * POCHODZENIE_PADDING_Y_PX;
+  // Dolna krawędź slotu bazowego = dolna krawędź podkładki wskaźnika (ten sam pas).
+  const dolBazowy =
+    viewport.height - HIDDEN_LABELS_HINT_BOTTOM_PX - HIDDEN_LABELS_HINT_FONT_PX + (HIDDEN_LABELS_HINT_FONT_PX + 6) +
+    HIDDEN_LABELS_HINT_PLATE_PADDING_Y_PX;
+  let plyta: ScreenRect = { x: POCHODZENIE_LEFT_PX, y: dolBazowy - height, width, height };
+  for (let krok = 0; krok < 8; krok++) {
+    const kolidujace = przeszkody.filter((p) => zachodza(plyta, p));
+    if (kolidujace.length === 0) break;
+    const najwyzszy = Math.min(...kolidujace.map((p) => p.y));
+    plyta = { ...plyta, y: najwyzszy - CHROME_ROW_GAP_PX - height };
+  }
+  if (plyta.y < 0) plyta = { ...plyta, y: 0 };
+  return {
+    plyta,
+    wiersze: wiersze.map((w, i) => ({
+      ...w,
+      x: plyta.x + POCHODZENIE_PADDING_X_PX,
+      y: plyta.y + POCHODZENIE_PADDING_Y_PX + i * POCHODZENIE_ROW_PX,
+      width: metrics.measure(w.tekst, POCHODZENIE_FONT_PX),
+      height: POCHODZENIE_ROW_PX,
+    })),
+  };
 }

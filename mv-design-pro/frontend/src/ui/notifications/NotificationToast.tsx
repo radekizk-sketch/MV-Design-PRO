@@ -1,12 +1,53 @@
 /**
  * Notification Toast — inline non-blocking notifications.
  *
- * Renders at the top-right of the viewport. Auto-dismisses after 5s.
+ * Renders at the top-right of the viewport, BELOW every element marked as a toast-free zone
+ * (`data-toast-omija` — the project bar with „Oblicz" and the toolbar). Auto-dismisses after 5s.
  * Replaces all forbidden alert() calls per project canon rules.
+ *
+ * Karta GPZ-H5-SLD pkt 3e: stos stał na stałym `top-2 right-2` i zasłaniał przycisk „Oblicz"
+ * w prawym końcu paska projektu — po komunikacie operacji (np. „Dodano stację") inżynier nie
+ * mógł od razu uruchomić obliczeń. Ten komponent jest JEDYNYM rendererem `notify()` w aplikacji
+ * (inwentarz klasy: `position: fixed` w `ui/**`/`ui2/**` — pozostałe nakładki stałe to okna
+ * modalne, menu kontekstowe i wyszukiwarka, nie komunikaty), więc naprawa tutaj obejmuje całą
+ * klasę. Górna krawędź stosu = najniższa dolna krawędź stref `data-toast-omija` + odstęp,
+ * mierzona przy zmianie rozmiaru (pasek łamie się na wąskim oknie).
  */
 
 import { clsx } from 'clsx';
+import { useEffect, useState } from 'react';
 import { useNotificationStore, type NotificationType } from './store';
+
+/** Atrybut strefy, której komunikat nie może zasłonić (paski akcji powłoki). */
+export const ATRYBUT_STREFY_BEZ_TOASTOW = 'data-toast-omija';
+/** Odstęp stosu komunikatów od strefy chronionej i od krawędzi okna [px]. */
+export const ODSTEP_TOASTOW_PX = 8;
+
+/** Górna krawędź stosu komunikatów: pod najniższą strefą chronioną (albo przy krawędzi okna). */
+export function gornaKrawedzToastow(dokument: Document): number {
+  let dol = 0;
+  dokument.querySelectorAll(`[${ATRYBUT_STREFY_BEZ_TOASTOW}]`).forEach((element) => {
+    dol = Math.max(dol, element.getBoundingClientRect().bottom);
+  });
+  return Math.ceil(dol) + ODSTEP_TOASTOW_PX;
+}
+
+function useGornaKrawedzToastow(aktywny: boolean): number {
+  const [gora, setGora] = useState(ODSTEP_TOASTOW_PX);
+  useEffect(() => {
+    if (!aktywny) return;
+    const zmierz = () => setGora(gornaKrawedzToastow(document));
+    zmierz();
+    window.addEventListener('resize', zmierz);
+    const obserwator = typeof ResizeObserver === 'function' ? new ResizeObserver(zmierz) : null;
+    document.querySelectorAll(`[${ATRYBUT_STREFY_BEZ_TOASTOW}]`).forEach((element) => obserwator?.observe(element));
+    return () => {
+      window.removeEventListener('resize', zmierz);
+      obserwator?.disconnect();
+    };
+  }, [aktywny]);
+  return gora;
+}
 
 const TYPE_STYLES: Record<NotificationType, string> = {
   error: 'bg-red-50 border-red-400 text-red-800',
@@ -25,12 +66,14 @@ const TYPE_ICONS: Record<NotificationType, string> = {
 export function NotificationToast() {
   const notifications = useNotificationStore((s) => s.notifications);
   const dismiss = useNotificationStore((s) => s.dismiss);
+  const gora = useGornaKrawedzToastow(notifications.length > 0);
 
   if (notifications.length === 0) return null;
 
   return (
     <div
-      className="fixed top-2 right-2 z-50 flex flex-col gap-2 max-w-sm"
+      className="fixed z-50 flex flex-col gap-2 max-w-sm"
+      style={{ top: gora, right: ODSTEP_TOASTOW_PX }}
       data-testid="notification-toast-container"
     >
       {notifications.map((n) => (

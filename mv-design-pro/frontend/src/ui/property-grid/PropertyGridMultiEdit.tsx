@@ -16,6 +16,7 @@
  * - Mode gating (RESULT_VIEW/CASE_CONFIG = read-only)
  */
 
+import { formaLiczebnikowa, liczbaZOdmiana } from '../shared/odmianaLiczebnikowa';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { clsx } from 'clsx';
 import type { PropertyField, ValidationMessage, MultiEditFieldValue } from '../types';
@@ -251,8 +252,7 @@ export function PropertyGridMultiEdit({
             </h2>
             <p className="text-xs text-gray-600 mt-0.5">
               Wybrano: <span className="font-medium">{elements.length}</span> {
-                elements.length === 1 ? 'element' :
-                (elements.length >= 2 && elements.length <= 4) ? 'elementy' : 'elementów'
+                formaLiczebnikowa(elements.length, { jeden: 'element', kilka: 'elementy', wiele: 'elementów' })
               }
               {elements.length > 0 && ` (${elements[0].type})`}
             </p>
@@ -295,10 +295,7 @@ export function PropertyGridMultiEdit({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-blue-800">
               <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
-              <span>Niezapisane zmiany: {draftChanges.size} {
-                draftChanges.size === 1 ? 'pole' :
-                (draftChanges.size >= 2 && draftChanges.size <= 4) ? 'pola' : 'pól'
-              }</span>
+              <span>Niezapisane zmiany: {liczbaZOdmiana(draftChanges.size, { jeden: 'pole', kilka: 'pola', wiele: 'pól' })}</span>
             </div>
             <div className="flex gap-2">
               <button
@@ -390,7 +387,7 @@ export function PropertyGridMultiEdit({
           <div className="flex items-center gap-2 text-xs text-red-700">
             <ValidationIcon severity="ERROR" />
             <span>
-              {errorCount} {errorCount === 1 ? 'błąd' : 'błędów'} walidacji
+              {liczbaZOdmiana(errorCount, { jeden: 'błąd', kilka: 'błędy', wiele: 'błędów' })} walidacji
             </span>
           </div>
         </div>
@@ -441,7 +438,7 @@ function PropertySection({
           {warningCount > 0 && errorCount === 0 && <ValidationIcon severity="WARNING" />}
         </span>
         <span className="text-xs text-gray-500">
-          {section.fields.length} {section.fields.length === 1 ? 'pole' : 'pól'}
+          {liczbaZOdmiana(section.fields.length, { jeden: 'pole', kilka: 'pola', wiele: 'pól' })}
         </span>
       </button>
 

@@ -23,6 +23,7 @@
  * WYBÓR (§37/§38): klik w element podświetla PEŁNY tor zasilania z
  * `graph.supply_paths` backendu — zero BFS po stronie klienta.
  */
+import { liczbaZOdmiana } from '../../../shared/odmianaLiczebnikowa';
 import { useMemo, useState, type CSSProperties } from 'react';
 
 import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
@@ -1349,7 +1350,7 @@ function NodeLabel({ node, ctx }: { readonly node: LvDomainSceneNode; readonly c
     // gdy model go nie niesie (żadnego „—" udającego wartość).
     const klasa = typeof node.meta?.accuracyClass === 'string' ? node.meta.accuracyClass : null;
     const moc = typeof node.meta?.burdenVa === 'number' ? `${plNumber(node.meta.burdenVa)} VA` : null;
-    const rdzenie = typeof node.meta?.ctCores === 'number' ? `${node.meta.ctCores} ${node.meta.ctCores === 1 ? 'rdzeń' : node.meta.ctCores < 5 ? 'rdzenie' : 'rdzeni'}` : null;
+    const rdzenie = typeof node.meta?.ctCores === 'number' ? liczbaZOdmiana(node.meta.ctCores, { jeden: 'rdzeń', kilka: 'rdzenie', wiele: 'rdzeni' }) : null;
     const uklad = node.meta?.ctArrangement === '3xCT' ? '3×CT' : node.meta?.ctArrangement === 'ferranti' ? 'Ferranti' : null;
     const wiersze = [
       nazwaLinie[0],

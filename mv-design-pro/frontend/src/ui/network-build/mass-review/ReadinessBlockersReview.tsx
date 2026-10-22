@@ -5,6 +5,7 @@
  * Kliknięcie prowadzi do elementu i centruje widok.
  */
 
+import { formaLiczebnikowa, liczbaZOdmiana } from '../../shared/odmianaLiczebnikowa';
 import { useCallback, useMemo } from 'react';
 
 import {
@@ -49,8 +50,8 @@ export function ReadinessBlockersReview() {
     const issues = readinessIssues.filter((issue) => issue.severity === 'BLOCKER');
     return issues.map((issue) => ({
       ...issue,
-      category: categorizeBlocker(issue.code),
-      categoryLabel: CATEGORY_LABELS[categorizeBlocker(issue.code)],
+      category: categorizeBlocker(issue.code, issue.canonical_code),
+      categoryLabel: CATEGORY_LABELS[categorizeBlocker(issue.code, issue.canonical_code)],
       publicElementLabel: issue.element_ref
         ? publicElementLabelFromRef(snapshot, issue.element_ref)
         : '—',
@@ -103,9 +104,7 @@ export function ReadinessBlockersReview() {
     const helperMessage =
       warningsCount === 0
         ? 'Sieć jest przygotowana do analizy'
-        : warningsCount === 1
-          ? 'Pozostało 1 ostrzeżenie.'
-          : `Pozostały ${warningsCount} ostrzeżenia.`;
+        : `${formaLiczebnikowa(warningsCount, { jeden: 'Pozostało', kilka: 'Pozostały', wiele: 'Pozostało' })} ${liczbaZOdmiana(warningsCount, { jeden: 'ostrzeżenie', kilka: 'ostrzeżenia', wiele: 'ostrzeżeń' })}.`;
 
     return (
       <div className="flex flex-1 items-center justify-center p-8">

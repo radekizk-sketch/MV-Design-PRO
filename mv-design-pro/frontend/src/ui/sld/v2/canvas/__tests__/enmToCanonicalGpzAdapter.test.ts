@@ -36,6 +36,8 @@ type EnmFragment = Pick<
   // puste czyta `snapshot.sources` — `buildCanonicalGpzProps` wymaga tej
   // kolekcji dokładnie jak produkcyjny wywołujący (`buildScene.ts`).
   | 'sources'
+  // Karta GPZ-H5-SLD: odbiory przyłączone do szyny sekcji GPZ (`CanonicalGpzSection.loads`).
+  | 'loads'
 >;
 
 function emptyEnm(): EnmFragment {
@@ -49,6 +51,7 @@ function emptyEnm(): EnmFragment {
     protection_assignments: [],
     measurements: [],
     sources: [],
+    loads: [],
   };
 }
 

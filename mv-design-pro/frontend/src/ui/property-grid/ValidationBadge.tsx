@@ -10,6 +10,7 @@
  * - INFO: Blue background/text (informational)
  */
 
+import { liczbaZOdmiana } from '../shared/odmianaLiczebnikowa';
 import { clsx } from 'clsx';
 import type { ValidationSeverity, ValidationMessage } from '../types';
 
@@ -192,13 +193,13 @@ export function ValidationSummary({
         {errors.length > 0 && (
           <span className="flex items-center gap-1 text-red-700">
             <ValidationIcon severity="ERROR" />
-            {errors.length} {errors.length === 1 ? 'błąd' : 'błędów'}
+            {liczbaZOdmiana(errors.length, { jeden: 'błąd', kilka: 'błędy', wiele: 'błędów' })}
           </span>
         )}
         {warnings.length > 0 && (
           <span className="flex items-center gap-1 text-yellow-700">
             <ValidationIcon severity="WARNING" />
-            {warnings.length} {warnings.length === 1 ? 'ostrzeżenie' : 'ostrzeżeń'}
+            {liczbaZOdmiana(warnings.length, { jeden: 'ostrzeżenie', kilka: 'ostrzeżenia', wiele: 'ostrzeżeń' })}
           </span>
         )}
       </div>

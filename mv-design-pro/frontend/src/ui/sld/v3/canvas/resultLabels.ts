@@ -58,6 +58,7 @@ import {
   type ResultLabelKind,
   type ResultLabelLine,
   type ResultLabelLineSpec,
+  KIERUNEK_MOCY_TRANSFORMATORA_PL,
 } from './resultLabelTemplates';
 
 export type { ResultLabelKind, ResultLabelLine } from './resultLabelTemplates';
@@ -433,6 +434,10 @@ const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = {
   P: 'P',
   'ΔP': 'P',
   Q: 'Q',
+  // Karta GPZ-H5-SLD pkt 3a: P/Q transformatora niosą KIERUNEK w podpisie („P WN→SN") —
+  // ta sama wielkość co „P"/„Q", więc ten sam filtr (tabela ZAMKNIĘTA).
+  [`P ${KIERUNEK_MOCY_TRANSFORMATORA_PL}`]: 'P',
+  [`Q ${KIERUNEK_MOCY_TRANSFORMATORA_PL}`]: 'Q',
   S: 'S',
   // Sk = moc zwarciowa [MVA] (R4) — filtrowana pod „moc pozorna S" (obie w MVA,
   // najbliższa semantyka; linia pozostaje filtrowalna, brak cichego gubienia).

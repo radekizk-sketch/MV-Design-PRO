@@ -281,11 +281,11 @@ function klasaOdcinka(segment: PreviewSegment): HitObjectClass {
  * Oba zastosowania są PRZYPIĘTE testami wyroczni
  * (`__tests__/kotwicaJednoZrodlo.contract.test.ts`).
  *
- * `'lv-load'` NIE MA DZIŚ PRODUCENTA — żadne miejsce w kodzie nie tworzy etykiety
- * o tym `OwnerKind` (grep całego `src/`); wpis istnieje wyłącznie dlatego, że
- * `satisfies Record<OwnedKind, …>` wymaga kompletu kluczy. Fakt braku producenta
- * jest przypięty testem: gdy producent się pojawi, test każe rozstrzygnąć jego
- * kategorię świadomie, zamiast odziedziczyć niesprawdzone `'bus'`.
+ * `'odbior'` (karta GPZ-H5-SLD; zastępuje martwy `'lv-load'`, który nie miał producenta
+ * i deklarował niesprawdzone `'bus'`): podpis odbioru pod strzałką odbioru celuje w TĘ
+ * SAMĄ kategorię co jej symbol `loadArrow` (`classifySymbolElementKind` → `'apparatus'`)
+ * — ref podpisu i symbolu to `Load.ref_id`. Przypięte testem
+ * `kotwicaJednoZrodlo.contract.test.ts` (podpis i symbol odbioru — jedna kategoria).
  */
 export const LABEL_OWNER_ELEMENT_KIND = {
   'segment-span': 'segment',
@@ -311,7 +311,7 @@ export const LABEL_OWNER_ELEMENT_KIND = {
   'lacznik-toru': 'apparatus',
   'branch-point': 'branchPoint',
   protection: 'protectionAnnotation',
-  'lv-load': 'bus',
+  odbior: 'apparatus',
 } satisfies Record<OwnerKind, PreviewElementKind>;
 
 // ---------------------------------------------------------------------------

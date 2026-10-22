@@ -1,6 +1,8 @@
 /* Teksty PL ekranu „Ocena techniczna wyników" (karta B-02 / W3-E). Język formalny,
  * inżynierski — bez anglicyzmów interfejsu i bez skrótów stanów (PASS/WARN/FAIL). */
 
+import { liczbaZOdmiana } from '../../../ui/shared/odmianaLiczebnikowa';
+
 export const OCENA_STRINGS = {
   tytul: 'Ocena techniczna wyników',
   cel:
@@ -67,7 +69,7 @@ export const OCENA_STRINGS = {
   elementBezNazwy: 'element bez nazwy',
   elementAgregat: 'cała sieć (agregat)',
   liczbaElementow: (n: number): string =>
-    n === 1 ? '1 element' : n >= 2 && n <= 4 ? `${n} elementy` : `${n} elementów`,
+    liczbaZOdmiana(n, { jeden: 'element', kilka: 'elementy', wiele: 'elementów' }),
   identyfikatorModelu: 'Identyfikator w modelu',
   // Karta V12.7 §0.7 — werdykt ograniczony do zakresu z kontraktu (`zakres_oceny`),
   // NIGDY z domysłu UI. „uklad" = kryterium złożone: ocenia CAŁY tor/układ (kilka

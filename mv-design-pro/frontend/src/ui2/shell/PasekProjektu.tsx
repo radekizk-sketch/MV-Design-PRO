@@ -211,7 +211,7 @@ export function PasekProjektu({
     : (blokadaObliczen?.komunikat ?? SHELL_STRINGS.calculateHint);
 
   return (
-    <header className="mvd-pasek-projektu" data-testid="active-case-bar">
+    <header className="mvd-pasek-projektu" data-testid="active-case-bar" data-toast-omija="">
       <span className="mvd-logo" aria-hidden="true">
         {SHELL_STRINGS.appNameLead}
         <span className="mvd-logo-accent">{SHELL_STRINGS.appNameAccent}</span>

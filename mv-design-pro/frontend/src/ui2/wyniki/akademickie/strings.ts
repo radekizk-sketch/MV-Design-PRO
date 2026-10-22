@@ -11,15 +11,13 @@
  * (rozjazd nazwy = czerwony test, nie dwie prawdy na ekranie).
  */
 
+import { formaLiczebnikowa, liczbaZOdmiana } from '../../../ui/shared/odmianaLiczebnikowa';
 import type { RodzajAnalizy } from './api';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 
 /** Polska forma liczebnika „krok" (1 krok, 2–4 kroki, 5+ kroków; 12–14 kroków). */
 function odmianaKroku(n: number): string {
-  if (n === 1) return 'krok';
-  const jednosci = n % 10;
-  const dziesiatki = n % 100;
-  return jednosci >= 2 && jednosci <= 4 && (dziesiatki < 12 || dziesiatki > 14) ? 'kroki' : 'kroków';
+  return formaLiczebnikowa(n, { jeden: 'krok', kilka: 'kroki', wiele: 'kroków' });
 }
 
 /** Poziom istotności statusu (dobór koloru chipu — wyłącznie prezentacja). */
@@ -84,7 +82,7 @@ export const AKADEMICKIE_STRINGS = {
   // (karta V12.7 §0.5 — dwie POSTACIE słowne, trzy nazwane progi liczbowe;
   // liczba n z gotowości backendu, nigdy liczona z frontu).
   stanDanychBrak: (n: number): string =>
-    n === 1 ? 'BRAKUJE 1 DANEJ WYMAGANEJ' : `BRAKUJE ${n} DANYCH WYMAGANYCH`,
+    `BRAKUJE ${liczbaZOdmiana(n, { jeden: 'DANEJ WYMAGANEJ', kilka: 'DANYCH WYMAGANYCH', wiele: 'DANYCH WYMAGANYCH' })}`,
   stanDanychWycofana: 'analiza wycofana z powierzchni',
   stanDanychSprawdzanie: 'sprawdzanie danych modelu…',
   stanDanychNieustalony: 'stan danych nieustalony — sprawdzenie nie powiodło się',

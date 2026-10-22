@@ -9,6 +9,8 @@
  * `placeholder`).
  */
 
+import { liczbaZOdmiana } from '../../../ui/shared/odmianaLiczebnikowa';
+
 export const GOTOWOSC_STRINGS = {
   // Nagłówek przestrzeni
   tytul: 'Gotowość',
@@ -144,6 +146,6 @@ export const GOTOWOSC_STRINGS = {
 
   // ARIA — ogłoszenie na żywo (bez remountu, karta §4 kryterium 3)
   ariaZmianaGotowosci: (blokady: number, ostrzezenia: number): string =>
-    `Gotowość zaktualizowana: ${blokady} ${blokady === 1 ? 'blokada' : 'blokad'}, ` +
-    `${ostrzezenia} ${ostrzezenia === 1 ? 'ostrzeżenie' : 'ostrzeżeń'}.`,
+    `Gotowość zaktualizowana: ${liczbaZOdmiana(blokady, { jeden: 'blokada', kilka: 'blokady', wiele: 'blokad' })}, ` +
+    `${liczbaZOdmiana(ostrzezenia, { jeden: 'ostrzeżenie', kilka: 'ostrzeżenia', wiele: 'ostrzeżeń' })}.`,
 } as const;

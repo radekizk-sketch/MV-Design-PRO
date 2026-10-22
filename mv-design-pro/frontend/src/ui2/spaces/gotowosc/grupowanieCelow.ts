@@ -126,6 +126,15 @@
  * 4. `source.*`/`sources.*` blokuje RÓWNIEŻ `LOAD_FLOW` (rejestr, linie
  *    894-899) — grupowanie pod „zwarcia" jest wyborem głównym (parametry
  *    zwarciowe źródła to jego dominująca treść), nie oznacza wyłączności.
+ *    WYJĄTEK (karta GPZ-H5-SLD pkt 3d): kody BRAKU ZASILANIA
+ *    (`KODY_BRAKU_ZASILANIA` niżej — E001, E065, E066, źródło bez przyłączenia,
+ *    kilka równoważników w wyspie) nie mówią o parametrze zwarciowym, tylko o tym,
+ *    że część sieci nie ma toru zasilania — walidator ENM blokuje nimi KAŻDY bieg
+ *    (`enm/validator.py:2063-2072` dla E065), więc ich celem jest „Do uruchomienia
+ *    obliczeń", nie „Do obliczeń zwarciowych". Dawniej E065 stał wyłącznie w grupie
+ *    zwarć panelu gotowości, a w liczniku budowy sieci (`kategoriaBlokera`) — w
+ *    „Analiza" (kod `E065` bez żadnego dopasowanego słowa); oba grupowania czytają
+ *    teraz TĘ listę (jedno źródło prawdy, predykaty parami).
  */
 
 import type { FixAction, ReadinessIssue, ReadinessSeverity } from '../../../ui/types';
@@ -240,8 +249,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // SOURCES (canonical_operations.py:481-516)
   'source.voltage_invalid': 'zwarcia',
   'source.sk3_invalid': 'zwarcia',
-  'source.grid_supply_missing': 'zwarcia',
-  'source.connection_missing': 'zwarcia',
+  // `source.grid_supply_missing`, `source.connection_missing` — patrz
+  // `KODY_BRAKU_ZASILANIA` (cel 'wspolne', karta GPZ-H5-SLD pkt 3d).
   // TOPOLOGY (:518-553, :670-687)
   'trunk.terminal_missing': 'wspolne',
   'trunk.segment_missing': 'wspolne',
@@ -338,9 +347,6 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
   'nn.source.switch_missing': 'zwarcia',
-  'source.gpz_section_unsupplied': 'zwarcia',
-  'source.gpz_transformer_hv_unsupplied': 'zwarcia',
-  'source.multiple_grid_sources_in_island': 'zwarcia',
   'source.sk_min_inconsistent': 'zwarcia',
   'source.sk_min_missing': 'zwarcia',
   'source.u_set_pu_out_of_range': 'zwarcia',
@@ -499,8 +505,24 @@ const PREFIKS_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   analysis: 'wspolne',
 };
 
+/**
+ * Kody kanoniczne BRAKU ZASILANIA — część sieci bez toru zasilania (karta GPZ-H5-SLD
+ * pkt 3d). Jedno źródło dla panelu gotowości (`celDlaKodu` → 'wspolne') i dla licznika
+ * budowy sieci (`ui/network-build/networkBuildStore.ts::kategoriaBlokera` → 'topologia').
+ * Kody walidatora (`E001`, `E065`, `E066`, `sources.bus_missing`) wchodzą tu kodem
+ * kanonicznym mostu `domain/readiness_bridge.py`.
+ */
+export const KODY_BRAKU_ZASILANIA: ReadonlySet<string> = new Set([
+  'source.grid_supply_missing',
+  'source.connection_missing',
+  'source.gpz_section_unsupplied',
+  'source.gpz_transformer_hv_unsupplied',
+  'source.multiple_grid_sources_in_island',
+]);
+
 /** Wyznacza cel dla pojedynczego kodu gotowości (kod dokładny > fallback prefiksu > „Pozostałe"). */
 export function celDlaKodu(code: string): CelGotowosci {
+  if (KODY_BRAKU_ZASILANIA.has(code)) return 'wspolne';
   if (code in KOD_DOKLADNY_DO_CELU) return KOD_DOKLADNY_DO_CELU[code];
   if (code in KOD_Z_REJESTRU_DO_CELU) return KOD_Z_REJESTRU_DO_CELU[code];
   if (code in KOD_REFERENCJI_DO_CELU) return KOD_REFERENCJI_DO_CELU[code];

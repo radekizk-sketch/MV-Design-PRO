@@ -536,6 +536,14 @@ interface OdciskiLod {
  *    `obrysKotwicy` i drugie przejście stron przy obrysie symbolu ze styku K2b×K3, reguła
  *    W2C planu); dalej sondą ich nie rozkładano. Etykiet sceny jak w GPZ-MODEL: 55/520/914
  *    (referencyjna) i 108/1030/1816 (podwojona), czyli bez etykiet zgubionych ani dodanych.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-H5-SLD pkt 3c, 2026-10-22) — przeliczone 4 z 54 wpisów:
+ * odciski SCENY L1/L2 obu sieci. Przyczyna: karta tabeli pól GPZ niesie stan danych pola
+ * (`KartaPolaGpz.stanDanych` i `stanX` — napis „pole bez aparatu w modelu" zamiast „brak"),
+ * a karty siedzą w `scene.meta.gpzAdnotacje` (na L0 blok GPZ jest zwinięty, bez adnotacji).
+ * Pomiar sondą (kod karty vs kod bazy `82735bfc1`, ta sama fikstura): odcisk sceny z
+ * wyjętym `meta.gpzAdnotacje` jest IDENTYCZNY na wszystkich 6 scenach; symbole, odcinki,
+ * etykiety, węzły, skrzyżowania i bbox bez zmian. Declutter (6) i plany (42) bez zmian.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
@@ -553,7 +561,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '957d297d0fe9fcee6052eb9de9cf9c80',
+      scena: 'b8012a231d4d3ea2ca13d8ce418bad46',
       declutter: '40b7251b852fc542752fe1ba1f29338e',
       plany: [
         '06752775d45bbab5bd2330a0c33ea6b7',
@@ -566,7 +574,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '83203575489a3a901a5628b7c7e66235',
+      scena: '5c650dc15e12ea4e0d3f81379199a97d',
       declutter: '3ac69d221753e008d7ac680e0531d8d4',
       plany: [
         '67205bf8127c4c224ade425c47dd2246',
@@ -594,7 +602,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'ebde20e11332d8891f32a77a26e9afa9',
+      scena: '299f5be9304e9563efee911b8f769d0e',
       declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
       plany: [
         'bb96bce423fc0946291bdd36d49ed8c2',
@@ -607,7 +615,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '333a946c2d07fe6b49d43012fd586bff',
+      scena: '1c06fc9c3d995020d5aa73e8bbd6c774',
       declutter: 'fd2ac4acf96701c6273059192dddd93f',
       plany: [
         '28965374c394c62b1d414eddfdd5e98a',

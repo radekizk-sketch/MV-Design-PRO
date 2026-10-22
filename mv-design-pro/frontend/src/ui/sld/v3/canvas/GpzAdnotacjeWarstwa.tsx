@@ -24,6 +24,7 @@ import {
   WYSOKOSC_WIERSZA_GPZ,
   tekstAlarmowGpz,
   tekstOdplywowGpz,
+  tekstStanuWartosciPolaGpz,
   tekstTytuluTabeliGpz,
   tekstZasilaniaGpz,
   type BilansGpzWartosci,
@@ -135,7 +136,7 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
       )}
       {tabela && (
         <g data-testid="sld-v3-gpz-tabela-pol">
-          {tekstyCzytelne && tekst('sld-v3-gpz-tabela-tytul', tabela.tytul.x, tabela.tytul.y, tekstTytuluTabeliGpz(maWynik, nieaktualny), kolorTekstu)}
+          {tekstyCzytelne && tekst('sld-v3-gpz-tabela-tytul', tabela.tytul.x, tabela.tytul.y, tekstTytuluTabeliGpz(maWynik, nieaktualny, wyniki?.zBieguSpozaWidoku ?? false), kolorTekstu)}
           {tekstyCzytelne &&
             tabela.kolumnyKart.map((kx, k) =>
               tabela.kolumnyWartosci.map((kol) => (
@@ -146,13 +147,18 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
             )}
           {tabela.karty.map((karta) => {
             const wartosci = wartosciPola(karta.bayRef);
-            const pole = (klucz: 'p' | 'q' | 'i' | 'u'): string =>
-              maWynik ? (wartosci?.[klucz] ?? TEKST_BRAKU_WARTOSCI) : TEKST_BRAKU_WARTOSCI;
+            const pole = (klucz: 'p' | 'q' | 'i' | 'u'): string => wartosci?.[klucz] ?? TEKST_BRAKU_WARTOSCI;
+            // Karta GPZ-H5-SLD pkt 3c: pole bez żadnej wartości wyniku pokazuje PRZYCZYNĘ
+            // (rezerwa / bez odpływu / bez aparatu / obliczenie niewykonane), nie cztery „brak".
+            const maWartosci =
+              wartosci !== null && (['p', 'q', 'i', 'u'] as const).some((klucz) => wartosci[klucz] !== null);
+            const napisStanu = tekstStanuWartosciPolaGpz(karta.stanDanych, maWynik, maWartosci);
             return (
               <g
                 key={`gpz-karta-${karta.bayRef}`}
                 data-testid={`sld-v3-gpz-karta-${karta.bayRef}`}
                 data-gpz-rola={karta.rola}
+                data-gpz-stan-pola={karta.stanDanych ?? (maWynik ? 'kompletne' : 'niewykonane')}
               >
                 <rect
                   x={karta.probka.x}
@@ -201,7 +207,9 @@ export function GpzAdnotacjeWarstwa(props: GpzAdnotacjeWarstwaProps): JSX.Elemen
                     )}
                   </g>
                 ))}
-                {tekstyCzytelne &&
+                {tekstyCzytelne && napisStanu !== null &&
+                  tekst(`sld-v3-gpz-stan-${karta.bayRef}`, karta.stanX, karta.wartosciY, napisStanu, kolorTekstu)}
+                {tekstyCzytelne && napisStanu === null &&
                   tabela.kolumnyWartosci.map((kol) => (
                     <g key={`gpz-wartosc-${karta.bayRef}-${kol.klucz}`}>
                       {tekst(

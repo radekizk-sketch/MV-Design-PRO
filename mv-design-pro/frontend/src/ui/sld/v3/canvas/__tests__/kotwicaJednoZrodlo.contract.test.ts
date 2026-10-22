@@ -68,6 +68,10 @@ function loadEnm(relative: string): EnergyNetworkModel {
 const SIECI: readonly { readonly nazwa: string; readonly enm: EnergyNetworkModel }[] = [
   { nazwa: 'sldSubstrate52s', enm: loadEnm('../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json') },
   { nazwa: 'gpzFeeder', enm: loadEnm('../../scene/__tests__/fixtures/gpzFeeder.enm.json') },
+  // Karta GPZ-H5-SLD: GPZ z dwiema sekcjami 110 kV, łącznikiem szyn 110 kV, dwoma źródłami
+  // i odbiorami sekcji — nowe klasy obiektów rysunku (łącznik WN, podpis odbioru) pod tą
+  // samą wyrocznią A/B/D.
+  { nazwa: 'gpzH5_2x2', enm: loadEnm('../../scene/__tests__/fixtures/gpzH5_2x2.enm.json') },
 ];
 const LODY: readonly SceneLod[] = [0, 1, 2];
 
@@ -177,7 +181,8 @@ const DOZWOLONE_ROZJAZDY: ReadonlySet<string> = new Set([
   // w modelu GAŁĄŹ switch/breaker, więc kotwica to `galaz`. Deklaracja 'segment'
   // byłaby fałszywa w drugą stronę (pod refem łącznika nie ma odcinka — §6a
   // `wlasnoscEtykiet`). Rozjazd OCZEKIWANY z tego samego powodu co wyżej: rodzaj
-  // obiektu bierze się z kotwicy.
+  // obiektu bierze się z kotwicy. Karta GPZ-H5-SLD: TEN SAM rodzaj niesie nazwa łącznika
+  // szyn GPZ (SN i 110 kV) — w modelu gałąź `bus_coupler`, na rysunku symbol łącznika.
   'lacznik-toru→galaz',
   // K2b §0.4: podpis „NO" punktu normalnie otwartego wskazanego w
   // `Corridor.no_point_ref` refem ŁĄCZNIKA albo ODCINKA. Na rysunku to znacznik
@@ -420,15 +425,60 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
     }
   });
 
-  it('`lv-load` NIE MA producenta — deklaracja `bus` w tabeli napisów jest nieużywana', () => {
-    // Nagłówek `LABEL_OWNER_ELEMENT_KIND` twierdzi, że ten wpis istnieje wyłącznie
-    // z powodu kompletności `satisfies`. Gdy producent się pojawi, ten test padnie
-    // i wymusi świadome rozstrzygnięcie kategorii (dziś odziedziczyłaby
-    // niesprawdzone `'bus'`, czyli weszłaby w bramkę przejścia stacja→szyna).
-    for (const { nazwa, enm } of SIECI) {
-      for (const lod of LODY) {
-        const producenci = buildSceneV3(enm, lod).labels.filter((l) => l.ownerKind === 'lv-load');
-        expect(producenci.map((l) => l.ownerRef), `${nazwa} LOD ${lod}`).toEqual([]);
+  // Karta GPZ-H5-SLD (przepisany do obecnego kanonu): dawny `'lv-load'` nie miał producenta
+  // i deklarował niesprawdzone `'bus'` — test przypinał brak producenta, żeby pojawienie się
+  // go wymusiło świadomą decyzję. Producent się pojawił (odbiory sekcji GPZ, rodzaj `'odbior'`)
+  // i decyzja jest tu przypięta: podpis odbioru celuje w TĘ SAMĄ kategorię co symbol
+  // `loadArrow` tego samego `Load.ref_id` (menu i inspektor odbioru, nie szyny). Iloczyn:
+  // {H5 2×2, 1×3, równoważnik SN 2 sekcje} × LOD {1, 2} (L0 nie rysuje podpisów danych).
+  it('podpis odbioru (`odbior`) i symbol odbioru — ten sam ref i ta sama kategoria menu', () => {
+    const fikstury = ['gpzH5_2x2', 'gpzH5_1x3', 'gpzRownowaznikSn2'];
+    for (const nazwa of fikstury) {
+      const enm = (JSON.parse(
+        readFileSync(resolve(here, `../../scene/__tests__/fixtures/${nazwa}.enm.json`), 'utf-8'),
+      ) as { enm: EnergyNetworkModel }).enm;
+      const odbiory = (enm.loads ?? []).map((l) => l.ref_id).sort();
+      expect(odbiory.length, `${nazwa}: fikstura bez odbiorów nie sprawdza niczego`).toBeGreaterThan(0);
+      for (const lod of [1, 2] as const) {
+        const scene = buildSceneV3(enm, lod);
+        const podpisy = scene.labels.filter((l) => l.ownerKind === 'odbior');
+        const symbole = scene.symbols.filter((sym) => sym.symbolId === 'loadArrow');
+        // Podpis to kompozyt `${Load.ref_id}#load-label` — należy do odbioru (konwencja
+        // `bazaRefu` / `baseRefOf`: część przed `#`).
+        const baza = (ref: string) => ref.split('#')[0];
+        expect(podpisy.every((l) => l.ownerRef.endsWith('#load-label')), `${nazwa} LOD ${lod}: kompozyt podpisu`).toBe(true);
+        expect([...new Set(podpisy.map((l) => baza(l.ownerRef)))].sort(), `${nazwa} LOD ${lod}: podpisy`).toEqual(odbiory);
+        expect([...new Set(symbole.map((sym) => sym.meta?.ownerRef))].sort(), `${nazwa} LOD ${lod}: symbole`).toEqual(odbiory);
+        const areas = buildCanvasHitAreas({
+          symbols: scene.symbols,
+          segments: scene.segments,
+          labels: scene.labels.map((label, i) => ({ index: i, label, rect: label.rect })) as never,
+          resultMarkers: [],
+          scale: 1,
+        });
+        const index = buildCanvasModelIndex(enm);
+        for (const ref of odbiory) {
+          const obiekty = areas.filter((a) => a.ownerRef !== undefined && baza(a.ownerRef) === ref);
+          const podpis = obiekty.filter((a) => a.klasa === 'etykieta');
+          const symbol = obiekty.filter((a) => a.testId.includes('gpz-canonical-load-'));
+          expect(podpis.length, `${nazwa} LOD ${lod} ${ref}: podpis`).toBe(1);
+          expect(symbol.length, `${nazwa} LOD ${lod} ${ref}: symbol`).toBe(1);
+          // Podpis deklaruje kategorię symbolu (`LABEL_OWNER_ELEMENT_KIND.odbior`).
+          expect(podpis[0].elementKind).toBe(symbol[0].elementKind);
+          expect(podpis[0].elementKind).toBe(LABEL_OWNER_ELEMENT_KIND.odbior);
+          // JEDNO orzeczenie o obiekcie: podpis, symbol i zejście odbioru rozstrzygają się
+          // tak samo — i nigdy na kontener (GPZ z „Usuń stację"), klasa defektu A.
+          const orzeczenia = new Set(
+            obiekty.map((a) =>
+              JSON.stringify(
+                resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind }, index),
+              ),
+            ),
+          );
+          expect(orzeczenia.size, `${nazwa} LOD ${lod} ${ref}: ${[...orzeczenia].join(' | ')}`).toBe(1);
+          const wynik = JSON.parse([...orzeczenia][0]) as CanvasMenuSubjectResult;
+          expect(kotwicaWyniku(wynik), `${nazwa} LOD ${lod} ${ref}: awans do kontenera`).not.toBe('stacja');
+        }
       }
     }
   });

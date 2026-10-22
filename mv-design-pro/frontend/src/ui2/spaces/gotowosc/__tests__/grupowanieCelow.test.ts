@@ -9,9 +9,12 @@ import {
 import { problemyWszystkieCele, readinessIssue } from './fixtures';
 
 describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
-  it('source.* -> zwarcia (SOURCES, canonical_operations.py:481-516)', () => {
-    expect(celDlaKodu('source.grid_supply_missing')).toBe('zwarcia');
+  // Karta GPZ-H5-SLD pkt 3d: parametry źródła -> zwarcia; BRAK ZASILANIA (brak źródła,
+  // sekcja/transformator GPZ odcięte) blokuje KAŻDY bieg -> „Do uruchomienia obliczeń".
+  it('source.* -> zwarcia (SOURCES, canonical_operations.py:481-516); brak zasilania -> wspolne', () => {
     expect(celDlaKodu('source.voltage_invalid')).toBe('zwarcia');
+    expect(celDlaKodu('source.sk3_invalid')).toBe('zwarcia');
+    expect(celDlaKodu('source.grid_supply_missing')).toBe('wspolne');
   });
 
   it('sources.no_short_circuit_params -> zwarcia (enm/validator.py:287)', () => {

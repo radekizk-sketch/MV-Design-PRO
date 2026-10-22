@@ -449,6 +449,11 @@ export interface Source extends ENMElement {
    * Dawne `c_max`/`c_min` źródła usunięte — fantom bez konsumenta (karta
    * WSPOLCZYNNIK-C-JEDEN-NOSNIK: c dobiera backend per węzeł). */
   lv_voltage_tolerance?: TolerancjaNapieciaNn | null;
+  /** Karta GPZ-H5 (lustro `enm/models.py::Source`): nazwa linii 110 kV toru zasilania
+   *  równoważnika sekcji GPZ (L1, L2) i stacja, z której linia przychodzi — nazwy z warunków
+   *  przyłączenia, nie fizyka. `null`/brak = źródło bez toru 110 kV. */
+  supply_line_name?: string | null;
+  supplying_station_name?: string | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   parameter_source?: ParameterSourceWithManualEquivalent | null;

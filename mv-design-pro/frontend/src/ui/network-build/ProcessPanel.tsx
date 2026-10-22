@@ -24,6 +24,7 @@ import {
 import { useFieldReadModel } from '../field/useFieldReadModel';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { GOTOWOSC_STRINGS } from '../../ui2/spaces/gotowosc/strings';
+import { grupujWgKluczaPasma, TYTUL_GRUPY_ODBIOROW } from '../../ui2/model/odbioryWgPasma';
 import {
   resolveBranchSourceContext,
   resolveBranchSourceRef,
@@ -636,31 +637,40 @@ function TransformersSection({
         </div>
       )}
 
-      <div className="border-t border-scada-border pt-2">
-        <div className={clsx('mb-1 text-[10px] font-semibold uppercase tracking-wider', mutedTextClass)}>
-          Odbiory nN
-        </div>
-        {loads.length === 0 ? (
-          <p className={clsx('text-[11px]', mutedTextClass)}>Nie dodano jeszcze odbiorów nN.</p>
-        ) : (
-          <div className="space-y-1">
-            {loads.map((load) => (
-              <div
-                key={load.id}
-                className={clsx('flex items-center gap-2 rounded px-2 py-1 text-[11px]', primaryTextClass, rowHoverClass)}
-              >
-                <span className="truncate flex-1">{load.name}</span>
-                <span className="text-scada-muted">{load.pKw.toFixed(1)} kW</span>
-                {load.catalogRef ? (
-                  <span className="text-[10px] text-eng-green">KAT</span>
-                ) : (
-                  <span className="text-[10px] text-eng-amber">RĘCZ</span>
-                )}
-              </div>
-            ))}
+      {/* Karta GPZ-H5-SLD: odbiory w grupach pasma napięciowego swojej szyny — odbiór sekcji
+          SN GPZ nie stoi pod nagłówkiem „Odbiory nN". */}
+      {loads.length === 0 ? (
+        <div className="border-t border-scada-border pt-2">
+          <div className={clsx('mb-1 text-[10px] font-semibold uppercase tracking-wider', mutedTextClass)}>
+            {TYTUL_GRUPY_ODBIOROW.nN}
           </div>
-        )}
-      </div>
+          <p className={clsx('text-[11px]', mutedTextClass)}>Nie dodano jeszcze odbiorów nN.</p>
+        </div>
+      ) : (
+        grupujWgKluczaPasma(loads, (load) => load.pasmo).map((grupa) => (
+          <div key={grupa.klucz} className="border-t border-scada-border pt-2" data-testid={`odbiory-grupa-${grupa.klucz}`}>
+            <div className={clsx('mb-1 text-[10px] font-semibold uppercase tracking-wider', mutedTextClass)}>
+              {grupa.tytul}
+            </div>
+            <div className="space-y-1">
+              {grupa.odbiory.map((load) => (
+                <div
+                  key={load.id}
+                  className={clsx('flex items-center gap-2 rounded px-2 py-1 text-[11px]', primaryTextClass, rowHoverClass)}
+                >
+                  <span className="truncate flex-1">{load.name}</span>
+                  <span className="text-scada-muted">{load.pKw.toFixed(1)} kW</span>
+                  {load.catalogRef ? (
+                    <span className="text-[10px] text-eng-green">KAT</span>
+                  ) : (
+                    <span className="text-[10px] text-eng-amber">RĘCZ</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
 
       <ActionButton
         label="+ Dodaj transformator"
