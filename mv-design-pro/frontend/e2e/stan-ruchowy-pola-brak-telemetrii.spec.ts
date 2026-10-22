@@ -102,8 +102,6 @@ async function siecZPolem(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: OdpowiedzOperacji = {};
   for (const [idx, dlugosc] of [300, 250].entries()) {

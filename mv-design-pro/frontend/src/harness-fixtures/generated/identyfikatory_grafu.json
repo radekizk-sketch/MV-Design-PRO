@@ -1,6 +1,10 @@
 {
   "pary": [
     {
+      "ref_id": "bus/1957cf3c0508edb544739f771886cd58/downstream",
+      "graph_id": "94496eef-b3e6-5841-940e-6fb8338f0d66"
+    },
+    {
       "ref_id": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
       "graph_id": "edf8817a-c4e9-516c-93f9-7e119c5532a8"
     },
@@ -19,6 +23,18 @@
     {
       "ref_id": "bus/5a810eceaf6c7d13cff44e2be46f4ea8/downstream",
       "graph_id": "6392b5f5-3d91-548f-a0f2-79267771567a"
+    },
+    {
+      "ref_id": "bus/abf895244054e9481b88924a2bb075b2/nn",
+      "graph_id": "5c4ea611-3b4c-5bca-8583-244a708b2bac"
+    },
+    {
+      "ref_id": "bus/abf895244054e9481b88924a2bb075b2/sn_field_terminal/001",
+      "graph_id": "a3db1e01-0ea4-5f55-8723-1abcf115da21"
+    },
+    {
+      "ref_id": "bus/abf895244054e9481b88924a2bb075b2/sn_field_terminal/002",
+      "graph_id": "51b01038-829b-5a7f-b07c-4ede57bd420f"
     },
     {
       "ref_id": "bus_hv",
@@ -53,6 +69,14 @@
       "graph_id": "33354f69-fa8d-5e8e-a401-40d98501f5f1"
     },
     {
+      "ref_id": "field/abf895244054e9481b88924a2bb075b2/1",
+      "graph_id": "001fa57c-3ed6-5ddd-bbf6-fdd47d562ec6"
+    },
+    {
+      "ref_id": "field/abf895244054e9481b88924a2bb075b2/2",
+      "graph_id": "774615d4-51ee-5247-ad46-55d6a68d8e3e"
+    },
+    {
       "ref_id": "fuse_c",
       "graph_id": "3100d923-53e8-52aa-b015-a0a48e0328cb"
     },
@@ -85,16 +109,12 @@
       "graph_id": "b5ff09b2-6389-5c63-9e48-6d3950a7b01c"
     },
     {
-      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110",
-      "graph_id": "910fda16-66c4-5df4-b517-f975960e0771"
-    },
-    {
-      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
-      "graph_id": "741d1acd-a813-5122-b789-582017919224"
-    },
-    {
       "ref_id": "line_b_c",
       "graph_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
+    },
+    {
+      "ref_id": "load/2d3cd2eba2151a812f76e18667a26f09/nn",
+      "graph_id": "99377c7c-5160-5099-9c5f-33656f4d3677"
     },
     {
       "ref_id": "load/653abf8e7617cfbe6f783806c0e6c11a/nn",
@@ -129,6 +149,14 @@
       "graph_id": "02d464e9-7e5f-5c48-8505-eb84b2c3e29f"
     },
     {
+      "ref_id": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_bus",
+      "graph_id": "0140065a-ebf9-507a-8623-1fc9121dc676"
+    },
+    {
+      "ref_id": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_device",
+      "graph_id": "759f0e04-6a02-589c-a739-5acd0e88a28a"
+    },
+    {
       "ref_id": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_bus",
       "graph_id": "c7631e0a-a6de-5f53-a623-dac8db43ea47"
     },
@@ -137,12 +165,20 @@
       "graph_id": "abef82ed-6cf1-5cb1-9656-430ad0bdb0e2"
     },
     {
-      "ref_id": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
-      "graph_id": "7cd32cdd-225b-5da8-b0f2-d5405554de71"
+      "ref_id": "nn/a900546aa477764f997d4c616bd1ff3c/source_field",
+      "graph_id": "8295e4cf-db3e-5bb0-8637-d33e8f52dbec"
     },
     {
       "ref_id": "nn/c1a1e43716bd107b156defedff227e32/source_field",
       "graph_id": "b5478bb2-f701-5f5b-96a8-5cd6909a8132"
+    },
+    {
+      "ref_id": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_bus",
+      "graph_id": "612b32e0-3552-5d5b-9b49-dec7219d6d4d"
+    },
+    {
+      "ref_id": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_device",
+      "graph_id": "a09109c5-9887-5a43-b6ee-c278b81dd0d1"
     },
     {
       "ref_id": "pv/675a792b8e1a66e52396a0a3e4ca8bcf/converter",
@@ -169,8 +205,8 @@
       "graph_id": "1e626095-3d0b-50c8-9f28-8d7d6ba47f54"
     },
     {
-      "ref_id": "pv/cf52e8ef1365b7493495105069afcf67/converter",
-      "graph_id": "26554f17-8ae9-5d0e-92e0-278dff4b43d3"
+      "ref_id": "pv/bbdd9eac07e8ed5cd445f31a4ccb2418/converter",
+      "graph_id": "b0232b75-1b49-520c-8fbf-bee48fa60884"
     },
     {
       "ref_id": "pv/e59e90d4dcd7fcf42db8bba4cffa1783/converter",
@@ -179,6 +215,10 @@
     {
       "ref_id": "relay/25336230b9b6c2221a1154310b0305e6/assignment",
       "graph_id": "b162b0c5-583d-55b3-ae73-15a74ea408c7"
+    },
+    {
+      "ref_id": "seg/1957cf3c0508edb544739f771886cd58/segment",
+      "graph_id": "17d2f1a3-a2e7-5c1d-9de1-8eeec30dffc2"
     },
     {
       "ref_id": "seg/3f5131ae7a62a37827252bd9317034e8/segment",
@@ -201,14 +241,6 @@
       "graph_id": "7ddb7c11-a23a-5168-8b33-c8f223f4dd1e"
     },
     {
-      "ref_id": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_device",
-      "graph_id": "dc6dcf7e-65bc-5e9d-98a0-979bd2ac9371"
-    },
-    {
-      "ref_id": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal",
-      "graph_id": "9e6d15b4-6ab8-539d-a6d6-272d92ae58d0"
-    },
-    {
       "ref_id": "sn/9d008ed355939bef762652554f56b2e4/der/field_device",
       "graph_id": "a4df60c3-fe8d-5dd0-b016-5f54046ba76d"
     },
@@ -219,6 +251,14 @@
     {
       "ref_id": "sn/9d008ed355939bef762652554f56b2e4/der/source_field",
       "graph_id": "a2629c2c-fba9-53b2-89ea-9fc3ca2c7be4"
+    },
+    {
+      "ref_id": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_device",
+      "graph_id": "4bd9af72-7882-5774-937c-729723a31427"
+    },
+    {
+      "ref_id": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_terminal",
+      "graph_id": "dcacb0f4-2f62-52b2-9564-d16cde061c30"
     },
     {
       "ref_id": "src_gpz",
@@ -301,8 +341,28 @@
       "graph_id": "0ef138c6-c3ce-56cc-92bb-5cf348383b17"
     },
     {
+      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/nn_feeder/000",
+      "graph_id": "5b8867af-7051-5c7d-96be-0c66b6ce61f3"
+    },
+    {
+      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/nn_main_breaker",
+      "graph_id": "79476abf-792b-58da-a97b-5b2b0170277e"
+    },
+    {
+      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/001",
+      "graph_id": "90656139-655f-58b0-aec7-38349ec23c14"
+    },
+    {
+      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/002",
+      "graph_id": "935aaf2e-2864-56c6-b11b-77eec7e0a405"
+    },
+    {
       "ref_id": "sub/406ec9c7de80233f6ff070bc72972037/substation",
       "graph_id": "28c7d768-8f3e-5fdf-be13-6789b95f8c8f"
+    },
+    {
+      "ref_id": "sub/abf895244054e9481b88924a2bb075b2/substation",
+      "graph_id": "fed64cc5-6b49-5b80-bd15-2c2c6218239d"
     },
     {
       "ref_id": "sub_b",
@@ -319,6 +379,10 @@
     {
       "ref_id": "tr/406ec9c7de80233f6ff070bc72972037/transformer",
       "graph_id": "863b66fd-6843-56e7-8de9-bb51164022a3"
+    },
+    {
+      "ref_id": "tr/abf895244054e9481b88924a2bb075b2/transformer",
+      "graph_id": "ff25074f-8a7e-502a-9c54-5bc17f6fee69"
     },
     {
       "ref_id": "tr_hv_sn",

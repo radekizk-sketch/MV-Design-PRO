@@ -1,7 +1,7 @@
 /**
  * SLD-nN-TOPOLOGIA T0 (`docs/nn/PLAN_SLD_NN_TOPOLOGIA_2026-08.md` §0.3,
  * test ścieżkowy P0.12) — dowód na fixturze „Stacja B":
- * (a) istnieje ścieżka przewodząca SOURCE→…→T1→…→Odbiór-1 przechodząca przez
+ * (a) istnieje ścieżka przewodząca (szyna SN GPZ)→…→T1→…→Odbiór-1 przechodząca przez
  *     DOKŁADNIE jedną krawędź międzydomenową (T1);
  * (b) NIE istnieje ŻADNA ścieżka 15 kV→0,4 kV omijająca transformator —
  *     asercja na WSZYSTKICH parach (szyna SN, szyna nN);
@@ -29,15 +29,38 @@ function sourceBusRef(): string {
   return source.busRef;
 }
 
-describe('P0.12(a) — ścieżka SOURCE→…→T1→…→Odbiór-1 z DOKŁADNIE jednym przejściem transformatorowym', () => {
-  it('minimalna liczba przejść transformatorowych SOURCE→Odbiór-1 wynosi dokładnie 1', () => {
-    const crossings = minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.odbior1BusRef);
-    expect(crossings).toBe(1);
+describe('P0.12(a) — ścieżka SOURCE→…→T1→…→Odbiór-1 z DOKŁADNIE jednym przejściem transformatorowym po stronie SN', () => {
+  // GPZ-MODEL (2026-10-21): fikstura bazowa (`openBranch.enm.json`, generator z operacji
+  // domenowych) ma GPZ z równoważnikiem sieci 110 kV i transformatorem WN/SN (tryb A) —
+  // źródło stoi na szynie WN GPZ, więc ścieżka od źródła przechodzi przez DWA
+  // transformatory: WN/SN GPZ i T1 stacji. Intencja P0.12(a) („od strony SN do odbioru
+  // nN — dokładnie jedno przejście, przez T1") jest mierzona od szyny SN GPZ; od źródła
+  // — przejścia = 1 (T1) + liczba transformatorów GPZ na drodze (tu 1).
+  function szynaSnGpz(): string {
+    const gpz = enmBazowy.substations.find((s) => s.station_type === 'gpz');
+    const sekcja = gpz?.gpz_sections?.[0]?.bus_ref;
+    if (!sekcja) throw new Error('fixtura Stacja B bez sekcji SN GPZ — pomiar błędny');
+    return sekcja;
+  }
+
+  it('źródło stoi na szynie WN GPZ, a GPZ ma dokładnie jeden transformator WN/SN do sekcji SN', () => {
+    const zrodlo = graphBazowy.nodes.get(sourceBusRef());
+    expect(zrodlo?.voltageKv).toBe(110);
+    const trGpz = (enmBazowy.transformers ?? []).filter((t) => t.hv_bus_ref === sourceBusRef());
+    expect(trGpz.map((t) => t.lv_bus_ref)).toEqual([szynaSnGpz()]);
   });
 
-  it('minimalna liczba przejść transformatorowych SOURCE→RGNN-1 (bezpośrednio) wynosi dokładnie 1', () => {
-    const crossings = minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.rgnn1BusRef);
-    expect(crossings).toBe(1);
+  it('minimalna liczba przejść transformatorowych szyna SN GPZ→Odbiór-1 wynosi dokładnie 1 (T1)', () => {
+    expect(minTransformerCrossings(graphBazowy, szynaSnGpz(), STACJA_B_REFS.odbior1BusRef)).toBe(1);
+  });
+
+  it('minimalna liczba przejść transformatorowych szyna SN GPZ→RGNN-1 (bezpośrednio) wynosi dokładnie 1 (T1)', () => {
+    expect(minTransformerCrossings(graphBazowy, szynaSnGpz(), STACJA_B_REFS.rgnn1BusRef)).toBe(1);
+  });
+
+  it('od źródła 110 kV: transformator WN/SN GPZ + T1 = dokładnie 2 przejścia (Odbiór-1 i RGNN-1)', () => {
+    expect(minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.odbior1BusRef)).toBe(2);
+    expect(minTransformerCrossings(graphBazowy, sourceBusRef(), STACJA_B_REFS.rgnn1BusRef)).toBe(2);
   });
 
   it('szyna SN i szyna nN Stacji B są w DWÓCH różnych domenach (dowód, że test w ogóle mierzy coś realnego)', () => {

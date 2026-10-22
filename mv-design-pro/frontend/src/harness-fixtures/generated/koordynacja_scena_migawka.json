@@ -25,7 +25,7 @@
         "source_field_kind": "FEEDER"
       },
       "metadane_pochodzenia": null,
-      "name": "Pole liniowe GPZ",
+      "name": "Pole liniowe GPZ 1.1",
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
@@ -2182,27 +2182,6 @@
     },
     {
       "frequency_hz": null,
-      "id": "f55eba15-6577-526b-a40b-2bb99f645d8f",
-      "meta": {
-        "gpz_substation_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
-        "gpz_transformer_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn",
-        "render_on_sld": true,
-        "show_in_project_tree": false,
-        "visual_role": "GPZ_HV_BUS"
-      },
-      "name": "Szyna 110 kV TR1",
-      "nominal_limits": null,
-      "phase_system": "3ph",
-      "ref_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/bus_110",
-      "tags": [
-        "gpz_hv_bus",
-        "helper_bus"
-      ],
-      "voltage_kv": 110.0,
-      "zone": null
-    },
-    {
-      "frequency_hz": null,
       "id": "e5dbc8c9-6d6f-5fda-811b-4648ebd462fd",
       "meta": {
         "render_on_sld": false,
@@ -2798,7 +2777,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "08efdaa418866bfd631f817a7924a27cf0cef9cacfc6183387ee9a37b6397bc6",
+    "hash_sha256": "3c0aff7f18396497de796688f9bda5e7ffee85050cb4baa0aa8f75e3adef210d",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -3390,8 +3369,7 @@
   "substations": [
     {
       "bus_refs": [
-        "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
-        "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/bus_110"
+        "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn"
       ],
       "construction_type": null,
       "designation": null,
@@ -3403,7 +3381,7 @@
           "bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
           "incoming_source_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/source/main",
           "left_coupler_ref": null,
-          "line_field_name": "Pole liniowe GPZ",
+          "line_field_name": "Pole liniowe GPZ 1.1",
           "name": "Sekcja 1",
           "order": 0,
           "right_coupler_ref": null,
@@ -3412,13 +3390,11 @@
       ],
       "id": "8bc4f421-94ed-585e-84aa-766023425b1b",
       "meta": {
-        "gpz_hv_bus_refs": [
-          "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/bus_110"
-        ],
+        "gpz_hv_bus_refs": [],
         "gpz_section_count": 1,
         "short_circuit_input_side": "SN",
         "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-        "wn_sn_transformer_count": 1
+        "wn_sn_transformer_count": 0
       },
       "name": "GPZ Wschód",
       "nn_sections": [],
@@ -3426,9 +3402,7 @@
       "ref_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
       "station_type": "gpz",
       "tags": [],
-      "transformer_refs": [
-        "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn"
-      ]
+      "transformer_refs": []
     },
     {
       "bus_refs": [
@@ -3532,59 +3506,6 @@
     }
   ],
   "transformers": [
-    {
-      "catalog_namespace": "TRAFO_SN_NN",
-      "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
-      "hv_bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/bus_110",
-      "hv_neutral": null,
-      "i0_percent": 0.35,
-      "id": "4dac1f5c-6c33-5eb5-a8f3-faf20e4b00eb",
-      "lv_bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
-      "lv_earthing_system": null,
-      "lv_neutral": null,
-      "lv_voltage_tolerance": null,
-      "materialized_params": {
-        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
-        "catalog_item_version": "legacy",
-        "i0_percent": 0.35,
-        "p0_kw": 25.0,
-        "pk_kw": 120.0,
-        "rated_power_mva": 25.0,
-        "uk_percent": 11.0,
-        "vector_group": "Yd11",
-        "voltage_hv_kv": 110.0,
-        "voltage_lv_kv": 15.0
-      },
-      "meta": {
-        "catalog_item_version": "legacy",
-        "catalog_role": "TRANSFORMATOR_WN_SN",
-        "gpz_section_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001",
-        "gpz_section_order": 0,
-        "gpz_substation_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
-        "visual_role": "GPZ_WN_SN_TRANSFORMER"
-      },
-      "n_parallel": null,
-      "name": "TR1 110/15 kV",
-      "overrides": [],
-      "p0_kw": 25.0,
-      "parameter_source": "CATALOG",
-      "pk_kw": 120.0,
-      "ref_id": "gpz/5124d8b30e8b81a51280d601e490d2a9/transformer/001/wn_sn",
-      "sn_mva": 25.0,
-      "source_mode": "KATALOG",
-      "tags": [
-        "gpz_wn_sn_transformer"
-      ],
-      "tap_changer": null,
-      "tap_max": null,
-      "tap_min": null,
-      "tap_position": null,
-      "tap_step_percent": null,
-      "uhv_kv": 110.0,
-      "uk_percent": 11.0,
-      "ulv_kv": 15.0,
-      "vector_group": "Yd11"
-    },
     {
       "catalog_namespace": "TRAFO_SN_NN",
       "catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",

@@ -46,8 +46,6 @@ def _enm_with_source() -> dict:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("snapshot") is not None, "add_grid_source_sn musi zwrócić snapshot"
@@ -98,8 +96,6 @@ class TestAllOperationsReturnSnapshot:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": CATALOG_ZRODLO_SN,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert result.get("snapshot") is not None, "snapshot nie może być None"
@@ -169,8 +165,6 @@ class TestSnapshotChangesAfterOperation:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": CATALOG_ZRODLO_SN,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         fp_after = _snapshot_fingerprint(result["snapshot"])
@@ -210,8 +204,6 @@ class TestSnapshotChangesAfterOperation:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": CATALOG_ZRODLO_SN,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         changes = result.get("changes", {})
@@ -354,8 +346,6 @@ class TestNoUnhandledException:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": CATALOG_ZRODLO_SN,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert "error" in result, "Drugie dodanie GPZ powinno zwrócić error"
@@ -431,8 +421,6 @@ class TestFullDesignPath:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": CATALOG_ZRODLO_SN,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert result.get("snapshot") is not None
@@ -502,8 +490,6 @@ class TestFullDesignPath:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": CATALOG_ZRODLO_SN,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         r_after_gpz = execute_domain_operation(r_gpz["snapshot"], "refresh_snapshot", {})
@@ -547,8 +533,6 @@ class TestResponseEnvelopeCompleteness:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": CATALOG_ZRODLO_SN,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         for field in self.REQUIRED_FIELDS:

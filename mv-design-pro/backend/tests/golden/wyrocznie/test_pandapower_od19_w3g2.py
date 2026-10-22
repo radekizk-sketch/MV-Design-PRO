@@ -28,11 +28,10 @@ from typing import Any
 import pytest
 from enm.assembler import zloz_wejscie_rozplywu
 from enm.models import EnergyNetworkModel
-from fastapi.testclient import TestClient
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 
 from tests.golden.wyrocznie import pandapower as most
-from tests.reference_networks.w3g2_pasma_rozplywu import NAZWA_SZYNY_110, zbuduj_siec_w3g2
+from tests.reference_networks.w3g2_pasma_rozplywu import NAZWA_SZYNY_110, siec_w3g2_z_archiwum
 
 pytestmark = pytest.mark.pandapower
 
@@ -51,13 +50,12 @@ LUKA_MAGNESUJACA_P_MW = (0.02, 0.03)
 
 @pytest.fixture(scope="module")
 def migawki() -> dict[str, dict[str, Any]]:
-    from api.main import app
-
-    with TestClient(app) as klient:
-        return {
-            "spec": zbuduj_siec_w3g2(klient, tr1_nadpisany=True),
-            "czysty": zbuduj_siec_w3g2(klient, tr1_nadpisany=False),
-        }
+    # Archiwum sprzed karty GPZ-MODEL (dzisiejszy produkt nie tworzy martwej szyny 110 kV
+    # za TR GPZ — patrz ``w3g2_pasma_rozplywu``); rdzeń NR i most pandapower bez zmian.
+    return {
+        "spec": siec_w3g2_z_archiwum(tr1_nadpisany=True),
+        "czysty": siec_w3g2_z_archiwum(tr1_nadpisany=False),
+    }
 
 
 def _bez_galezi_magnesujacej(snapshot: dict[str, Any]) -> dict[str, Any]:

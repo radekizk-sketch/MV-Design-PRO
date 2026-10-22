@@ -17,7 +17,7 @@ import { GpzSectionsEditor } from './GpzSectionsEditor';
 import { stationSnBays, stationSnFieldCount } from '../stationSnFields';
 import { selectStationDistributionTransformers } from '../../shared/transformatoryStacji';
 import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
-import { powyzejPasmaNn, wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import { powyzejPasmaNn, wPasmieNn, wPasmieWn } from '../../../ui2/model/pasmaNapieciowe';
 
 // =============================================================================
 // Helpers
@@ -87,10 +87,22 @@ export function StationCard({ elementId }: { elementId: string }) {
     [stationBuses],
   );
 
-  const snBuses = useMemo(
-    () => stationBuses.filter((b) => powyzejPasmaNn(b.voltage_kv)),
+  // Karta GPZ-MODEL: szyna WN GPZ (równoważnik sieci 110 kV, strona górna transformatorów
+  // WN/SN) nie jest szyną SN — dawne „powyżej pasma nN" liczyło ją jako szynę SN.
+  const wnBuses = useMemo(
+    () => stationBuses.filter((b) => wPasmieWn(b.voltage_kv)),
     [stationBuses],
   );
+
+  const snBuses = useMemo(
+    () => stationBuses.filter((b) => powyzejPasmaNn(b.voltage_kv) && !wPasmieWn(b.voltage_kv)),
+    [stationBuses],
+  );
+
+  // Karta GPZ-MODEL — granica zasilania GPZ z JEDNEJ danej modelu: szyna WN w stacji
+  // ⇔ równoważnik sieci 110 kV z transformatorami WN/SN w modelu (przypadek A); brak szyny
+  // WN ⇔ równoważnik na szynach SN, transformatory WN/SN poza modelem (przypadek B).
+  const gpzRownowaznikWn = station?.station_type === 'gpz' && wnBuses.length > 0;
 
   const sections = useMemo((): CardSection[] => {
     if (!station) return [];
@@ -130,7 +142,12 @@ export function StationCard({ elementId }: { elementId: string }) {
           label: 'Transformatory',
           value: stationTransformers.length,
           unit: 'szt.',
-          severity: stationTransformers.length === 0 ? 'warning' : 'ok',
+          // GPZ z równoważnikiem na szynach SN nie ma transformatorów w modelu — to stan
+          // poprawny (przypadek B), nie brak; ostrzeżenie zostaje dla GPZ ze stroną WN.
+          severity: stationTransformers.length === 0
+            && (station.station_type !== 'gpz' || gpzRownowaznikWn)
+            ? 'warning'
+            : 'ok',
         },
         {
           key: 'sn_buses_count',
@@ -144,23 +161,29 @@ export function StationCard({ elementId }: { elementId: string }) {
           value: nnBuses.length,
           unit: 'szt.',
         },
-        // Phase 0A audit fix 11/12: GPZ sekcje (LV + HV) — readonly view do
-        // czasu pełnego edytora (Phase 1+). Operator widzi liczbę sekcji.
+        // GPZ: sekcje SN, szyny WN i granica zasilania (karta GPZ-MODEL). Pusta lista
+        // `gpz_hv_sections` jest stanem kanonicznym (jedna wspólna szyna WN albo brak strony
+        // WN), więc liczba sekcji WN nie jest tu miarą — miarą są szyny WN stacji.
         ...(station.station_type === 'gpz' ? [
           {
             key: 'gpz_sections_lv_count',
-            label: 'Sekcje SN (LV)',
+            label: 'Sekcje SN',
             value: (station.gpz_sections ?? []).length,
             unit: 'szt.',
             severity: ((station.gpz_sections ?? []).length === 0 ? 'warning' : 'ok') as 'warning' | 'ok',
           },
           {
-            key: 'gpz_sections_hv_count',
-            label: 'Sekcje 110 kV (HV)',
-            value: (station.gpz_hv_sections ?? []).length,
+            key: 'gpz_wn_buses_count',
+            label: 'Szyny WN',
+            value: wnBuses.length,
             unit: 'szt.',
-            // 0 sekcji HV w ENM = adapter syntezuje 1 (legacy fallback).
-            severity: ((station.gpz_hv_sections ?? []).length === 0 ? 'warning' : 'ok') as 'warning' | 'ok',
+          },
+          {
+            key: 'gpz_granica_zasilania',
+            label: 'Granica zasilania',
+            value: gpzRownowaznikWn
+              ? 'Równoważnik sieci WN — transformatory WN/SN w modelu'
+              : 'Równoważnik sieci na szynach SN — transformatory WN/SN poza modelem',
           },
         ] : []),
       ],
@@ -224,7 +247,7 @@ export function StationCard({ elementId }: { elementId: string }) {
     }
 
     return result;
-  }, [station, stationBays, stationBayCount, stationTransformers, snBuses, nnBuses, activeMode]);
+  }, [station, stationBays, stationBayCount, stationTransformers, snBuses, nnBuses, wnBuses, gpzRownowaznikWn, activeMode]);
 
   const handleAddTransformer = useCallback(() => {
     openOperationForm('add_transformer_sn_nn', { station_ref: elementId });

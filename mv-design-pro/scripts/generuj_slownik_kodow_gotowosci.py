@@ -41,8 +41,15 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from readiness_codes_guard import (  # noqa: E402
+    REGISTRY_FILE,
+    REPO_ROOT,
+    modul_z_tego_drzewa,
+    pakiet_domain_z_tego_drzewa,
+)
+
 DOKUMENT = REPO_ROOT / "docs" / "domain" / "READINESS_FIXACTIONS_CANONICAL_PL.md"
 
 ZNACZNIK_POCZATEK = "<!-- GENEROWANE: slownik kodow gotowosci — poczatek -->"
@@ -54,29 +61,6 @@ ZNACZNIK_KONIEC = "<!-- GENEROWANE: slownik kodow gotowosci — koniec -->"
 KOLEJNOSC_NAWIGACJI: tuple[str, ...] = ("panel", "tab", "modal", "focus")
 
 
-def _z_tego_drzewa(modul: ModuleType | None) -> ModuleType | None:
-    """Moduł rejestru tylko wtedy, gdy pochodzi z pliku TEGO drzewa (`REGISTRY_FILE`).
-
-    Wspólne środowisko wirtualne kilku drzew roboczych niesie wpis `.pth` na `backend/src`
-    jednego z nich; pakiet `domain` zaimportowany stamtąd to rejestr INNEGO drzewa
-    (pomiar przy scaleniu partii 9–13: 147 kodów z głównego checkoutu zamiast 160 z drzewa).
-    """
-    if modul is None:
-        return None
-    plik = getattr(modul, "__file__", None)
-    if plik is None or Path(plik).resolve() != REGISTRY_FILE.resolve():
-        return None
-    return modul
-
-
-def _pakiet_domain_z_tego_drzewa() -> bool:
-    """Czy `import domain` trafi w `backend/src/domain` TEGO drzewa (bez wykonania pakietu)."""
-    spec = importlib.util.find_spec("domain")
-    if spec is None or spec.origin is None:
-        return False
-    return Path(spec.origin).resolve().parent == REGISTRY_FILE.resolve().parent
-
-
 def modul_rejestru() -> ModuleType:
     """Moduł rejestru bez wykonywania `__init__` pakietu `domain` (patrz naglówek).
 
@@ -85,22 +69,27 @@ def modul_rejestru() -> ModuleType:
     normalnie), użyj DOKŁADNIE tego modułu, żeby `isinstance`/porównania enumów widziały te
     same klasy; w przeciwnym razie (goły `python3` w CI) załaduj plik bezpośrednio.
     """
-    juz = _z_tego_drzewa(sys.modules.get("domain.canonical_operations")) or sys.modules.get(
-        "_rejestr_slownik_gotowosci"
-    )
-    if juz is not None:
+    # TO SAMO DRZEWO (karta GPZ-MODEL): pakiet `domain` z innego drzewa (wpis `*.pth`
+    # srodowiska poetry wskazujacy `backend/src` glownego checkoutu) NIE jest rejestrem tego
+    # dokumentu — przyjmowany jest wylacznie modul z pliku `REGISTRY_FILE`. Para predykatow
+    # z `readiness_codes_guard.py` (jedno zrodlo: tamte funkcje).
+    juz = sys.modules.get("domain.canonical_operations")
+    if juz is not None and modul_z_tego_drzewa(juz):
         return juz
-    if _pakiet_domain_z_tego_drzewa():
+    wlasny = sys.modules.get("_rejestr_slownik_gotowosci")
+    if wlasny is not None:
+        return wlasny
+    if pakiet_domain_z_tego_drzewa():
         # Goły `python3` w CI bez zależności backendu: pakiet jest na ścieżce, ale
         # `domain/__init__.py` ciągnie pydantic — wtedy ładowanie z pliku niżej.
         try:
             import domain.canonical_operations as pakietowy  # noqa: PLC0415
         except ModuleNotFoundError:
             pakietowy = None
-        # Pakiet tego drzewa, ale podmoduł mógł już wisieć w `sys.modules` z innego drzewa.
-        z_drzewa = _z_tego_drzewa(pakietowy)
-        if z_drzewa is not None:
-            return z_drzewa
+        # Pakiet tego drzewa, ale podmoduł mógł już wisieć w `sys.modules` z innego drzewa
+        # (import zwraca wtedy wpis z `sys.modules`, nie plik obok pakietu).
+        if pakietowy is not None and modul_z_tego_drzewa(pakietowy):
+            return pakietowy
     spec = importlib.util.spec_from_file_location("_rejestr_slownik_gotowosci", REGISTRY_FILE)
     assert spec and spec.loader
     m = importlib.util.module_from_spec(spec)
@@ -228,8 +217,7 @@ def zloz_dokument(istniejacy_tekst: str, blok: str) -> str:
 
 def wygeneruj_dokument() -> str:
     """Pełna treść dokumentu PO wstawieniu wygenerowanego bloku — jedna funkcja, dwa
-    konsumenci (`main` przy zapisie i `readiness_dictionary_guard.py` przy `--check`).
-    """
+    konsumenci (`main` przy zapisie i `readiness_dictionary_guard.py` przy `--check`)."""
     if not REGISTRY_FILE.exists():
         raise SystemExit(f"BLAD: brak rejestru: {REGISTRY_FILE}")
     if not DOKUMENT.exists():

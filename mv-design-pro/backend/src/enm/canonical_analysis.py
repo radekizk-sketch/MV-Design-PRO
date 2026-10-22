@@ -3755,6 +3755,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     raw_result = run.raw_result or {}
     result_v1 = raw_result.get("result_v1", {})
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
+    graph_nodes = (raw_result.get("graph") or {}).get("nodes", {})
     branch_current_ka = raw_result.get("branch_current_ka", {})
     node_voltage_kv = raw_result.get("node_voltage_kv", {})
     galezie_modelu = galezie_modelu_biegu(run)
@@ -3808,13 +3809,20 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
         # różnica potencjałów końców z wyniku solvera. Wartość [kV] =
         # |U_from|−|U_to|; procent = (u_from−u_to)·100 [% U_n] (różnica w p.u.
         # jest już znormalizowana do napięcia znamionowego). Brak któregoś
-        # napięcia ⇒ None (uczciwy brak).
+        # napięcia ⇒ None (uczciwy brak). Karta GPZ-MODEL: końce o RÓŻNYCH
+        # napięciach znamionowych (transformator 110/15 kV) nie mają spadku w kV —
+        # różnica 110 − 15 kV to przekładnia, nie spadek; ΔU% (na bazie U_n
+        # każdego końca) zostaje.
         from_node = branch.get("from_node_id", "")
         to_node = branch.get("to_node_id", "")
         u_from_kv = node_voltage_kv.get(from_node)
         u_to_kv = node_voltage_kv.get(to_node)
+        un_from_kv = (graph_nodes.get(from_node) or {}).get("voltage_level")
+        un_to_kv = (graph_nodes.get(to_node) or {}).get("voltage_level")
         delta_u_kv = (
-            (u_from_kv - u_to_kv) if (u_from_kv is not None and u_to_kv is not None) else None
+            (u_from_kv - u_to_kv)
+            if (u_from_kv is not None and u_to_kv is not None and un_from_kv == un_to_kv)
+            else None
         )
         u_from_pu = node_u_pu.get(from_node)
         u_to_pu = node_u_pu.get(to_node)

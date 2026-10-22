@@ -116,7 +116,7 @@
           "source_field_kind": "FEEDER"
         },
         "metadane_pochodzenia": null,
-        "name": "Pole liniowe GPZ 1",
+        "name": "Pole liniowe GPZ 1.1",
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
@@ -170,7 +170,7 @@
           "source_field_kind": "FEEDER"
         },
         "metadane_pochodzenia": null,
-        "name": "Pole liniowe GPZ 2",
+        "name": "Pole liniowe GPZ 1.2",
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
@@ -224,7 +224,7 @@
           "source_field_kind": "FEEDER"
         },
         "metadane_pochodzenia": null,
-        "name": "Pole liniowe GPZ 1",
+        "name": "Pole liniowe GPZ 2.1",
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
@@ -278,7 +278,7 @@
           "source_field_kind": "FEEDER"
         },
         "metadane_pochodzenia": null,
-        "name": "Pole liniowe GPZ 2",
+        "name": "Pole liniowe GPZ 2.2",
         "outgoing_destination_ref": null,
         "ports": [],
         "primary_devices": [],
@@ -328,7 +328,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal"
         },
-        "name": "Aparat Pole liniowe GPZ 1",
+        "name": "Aparat Pole liniowe GPZ 2.1",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
@@ -372,7 +372,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal"
         },
-        "name": "Aparat Pole liniowe GPZ 1",
+        "name": "Aparat Pole liniowe GPZ 1.1",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
@@ -436,7 +436,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal"
         },
-        "name": "Aparat Pole liniowe GPZ 2",
+        "name": "Aparat Pole liniowe GPZ 1.2",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
@@ -480,7 +480,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal"
         },
-        "name": "Aparat Pole liniowe GPZ 2",
+        "name": "Aparat Pole liniowe GPZ 2.2",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
@@ -531,48 +531,6 @@
       },
       {
         "frequency_hz": null,
-        "id": "4673d5e6-6e78-5e19-8def-22af320c5887",
-        "meta": {
-          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
-          "gpz_transformer_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/wn_sn",
-          "render_on_sld": true,
-          "show_in_project_tree": false,
-          "visual_role": "GPZ_HV_BUS"
-        },
-        "name": "Szyna 110 kV TR1",
-        "nominal_limits": null,
-        "phase_system": "3ph",
-        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
-        "tags": [
-          "gpz_hv_bus",
-          "helper_bus"
-        ],
-        "voltage_kv": 110.0,
-        "zone": null
-      },
-      {
-        "frequency_hz": null,
-        "id": "8f399ba6-3ba1-5e5b-a702-b62ef44f870c",
-        "meta": {
-          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
-          "gpz_transformer_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/wn_sn",
-          "render_on_sld": true,
-          "show_in_project_tree": false,
-          "visual_role": "GPZ_HV_BUS"
-        },
-        "name": "Szyna 110 kV TR2",
-        "nominal_limits": null,
-        "phase_system": "3ph",
-        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110",
-        "tags": [
-          "gpz_hv_bus",
-          "helper_bus"
-        ],
-        "voltage_kv": 110.0,
-        "zone": null
-      },
-      {
-        "frequency_hz": null,
         "id": "c900a196-43ca-58ee-aae8-a04912fc2003",
         "meta": {
           "field_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001",
@@ -583,7 +541,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "visual_role": "FIELD_TERMINAL"
         },
-        "name": "Zacisk odpływowy Pole liniowe GPZ 1",
+        "name": "Zacisk odpływowy Pole liniowe GPZ 1.1",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal",
@@ -606,7 +564,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "visual_role": "FIELD_TERMINAL"
         },
-        "name": "Zacisk odpływowy Pole liniowe GPZ 2",
+        "name": "Zacisk odpływowy Pole liniowe GPZ 1.2",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal",
@@ -629,7 +587,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "visual_role": "FIELD_TERMINAL"
         },
-        "name": "Zacisk odpływowy Pole liniowe GPZ 1",
+        "name": "Zacisk odpływowy Pole liniowe GPZ 2.1",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal",
@@ -652,7 +610,7 @@
           "station_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
           "visual_role": "FIELD_TERMINAL"
         },
-        "name": "Zacisk odpływowy Pole liniowe GPZ 2",
+        "name": "Zacisk odpływowy Pole liniowe GPZ 2.2",
         "nominal_limits": null,
         "phase_system": "3ph",
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal",
@@ -766,9 +724,7 @@
       {
         "bus_refs": [
           "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
-          "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
-          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
-          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110"
+          "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn"
         ],
         "construction_type": null,
         "designation": null,
@@ -780,7 +736,7 @@
             "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
             "incoming_source_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/source/main",
             "left_coupler_ref": null,
-            "line_field_name": "Pole liniowe GPZ 1",
+            "line_field_name": "Pole liniowe GPZ 1.1",
             "name": "Sekcja 1",
             "order": 0,
             "right_coupler_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/coupler/001",
@@ -790,7 +746,7 @@
             "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
             "incoming_source_ref": null,
             "left_coupler_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/coupler/001",
-            "line_field_name": "Pole liniowe GPZ 1",
+            "line_field_name": "Pole liniowe GPZ 2.1",
             "name": "Sekcja 2",
             "order": 1,
             "right_coupler_ref": null,
@@ -799,14 +755,11 @@
         ],
         "id": "fe5be262-8b68-57e1-879e-60e8d4294318",
         "meta": {
-          "gpz_hv_bus_refs": [
-            "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
-            "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110"
-          ],
+          "gpz_hv_bus_refs": [],
           "gpz_section_count": 2,
           "short_circuit_input_side": "SN",
           "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-          "wn_sn_transformer_count": 2
+          "wn_sn_transformer_count": 0
         },
         "name": "GPZ 15 kV",
         "nn_sections": [],
@@ -814,119 +767,9 @@
         "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
         "station_type": "gpz",
         "tags": [],
-        "transformer_refs": [
-          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/wn_sn",
-          "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/wn_sn"
-        ]
+        "transformer_refs": []
       }
     ],
-    "transformers": [
-      {
-        "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
-        "hv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/bus_110",
-        "hv_neutral": null,
-        "i0_percent": 0.35,
-        "id": "1efc6b1d-5817-51cf-8862-59a581426bfa",
-        "lv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
-        "lv_earthing_system": null,
-        "lv_neutral": null,
-        "lv_voltage_tolerance": null,
-        "materialized_params": {
-          "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
-          "catalog_item_version": "legacy",
-          "i0_percent": 0.35,
-          "p0_kw": 25.0,
-          "pk_kw": 120.0,
-          "rated_power_mva": 25.0,
-          "uk_percent": 11.0,
-          "vector_group": "Yd11",
-          "voltage_hv_kv": 110.0,
-          "voltage_lv_kv": 15.0
-        },
-        "meta": {
-          "catalog_item_version": "legacy",
-          "catalog_role": "TRANSFORMATOR_WN_SN",
-          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
-          "gpz_section_order": 0,
-          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
-          "visual_role": "GPZ_WN_SN_TRANSFORMER"
-        },
-        "n_parallel": null,
-        "name": "TR1 110/15 kV",
-        "overrides": [],
-        "p0_kw": 25.0,
-        "parameter_source": "CATALOG",
-        "pk_kw": 120.0,
-        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/001/wn_sn",
-        "sn_mva": 25.0,
-        "source_mode": "KATALOG",
-        "tags": [
-          "gpz_wn_sn_transformer"
-        ],
-        "tap_changer": null,
-        "tap_max": null,
-        "tap_min": null,
-        "tap_position": null,
-        "tap_step_percent": null,
-        "uhv_kv": 110.0,
-        "uk_percent": 11.0,
-        "ulv_kv": 15.0,
-        "vector_group": "Yd11"
-      },
-      {
-        "catalog_namespace": "TRAFO_SN_NN",
-        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
-        "hv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/bus_110",
-        "hv_neutral": null,
-        "i0_percent": 0.35,
-        "id": "6b3c6a1f-bfc0-533a-b7a0-9c7e32898d77",
-        "lv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
-        "lv_earthing_system": null,
-        "lv_neutral": null,
-        "lv_voltage_tolerance": null,
-        "materialized_params": {
-          "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
-          "catalog_item_version": "legacy",
-          "i0_percent": 0.35,
-          "p0_kw": 25.0,
-          "pk_kw": 120.0,
-          "rated_power_mva": 25.0,
-          "uk_percent": 11.0,
-          "vector_group": "Yd11",
-          "voltage_hv_kv": 110.0,
-          "voltage_lv_kv": 15.0
-        },
-        "meta": {
-          "catalog_item_version": "legacy",
-          "catalog_role": "TRANSFORMATOR_WN_SN",
-          "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002",
-          "gpz_section_order": 1,
-          "gpz_substation_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/substation",
-          "visual_role": "GPZ_WN_SN_TRANSFORMER"
-        },
-        "n_parallel": null,
-        "name": "TR2 110/15 kV",
-        "overrides": [],
-        "p0_kw": 25.0,
-        "parameter_source": "CATALOG",
-        "pk_kw": 120.0,
-        "ref_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/transformer/002/wn_sn",
-        "sn_mva": 25.0,
-        "source_mode": "KATALOG",
-        "tags": [
-          "gpz_wn_sn_transformer"
-        ],
-        "tap_changer": null,
-        "tap_max": null,
-        "tap_min": null,
-        "tap_position": null,
-        "tap_step_percent": null,
-        "uhv_kv": 110.0,
-        "uk_percent": 11.0,
-        "ulv_kv": 15.0,
-        "vector_group": "Yd11"
-      }
-    ]
+    "transformers": []
   }
 }

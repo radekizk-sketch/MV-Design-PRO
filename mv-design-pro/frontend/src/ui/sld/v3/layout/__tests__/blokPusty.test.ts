@@ -13,7 +13,7 @@
  *      `labelGrowthReservationGaps` (drugi koniec pary: tusz nie wystaje poza
  *      rezerwację) + geometryczne zawieranie prostokąta w rezerwacji.
  *      JEDYNY WYJĄTEK jest DŁUGIEM NAZWANYM, nie ustępstwem: wiersz stanu
- *      zwinięcia GPZ (tylko L0) wystaje o zmierzone 95 j.św. poza baner strefy
+ *      zwinięcia GPZ (tylko L0) wystaje o zmierzone 87 j.św. poza baner strefy
  *      — defekt PIERWOTNY, którego zamknięcie wymaga rozstrzygnięcia kontraktu
  *      KD-5 (patrz `scene/buildScene.ts` `composeCollapsedGpz`). Test go NIE
  *      filtruje: asertuje go co do sztuki i co do rozmiaru, więc nowe takie
@@ -101,10 +101,15 @@ describe('BLOK-PUSTY §1 — prostokąt etykiety niesie TUSZ, nie rezerwację sl
         // liczby, więc test pada zarówno wtedy, gdy dojdzie NOWE takie miejsce,
         // jak i wtedy, gdy nadmiar zmieni rozmiar albo gdy dług zostanie
         // spłacony (wtedy tę gałąź się usuwa — świadomie, nie „żeby przeszło").
-        expect(luki.map((g) => g.ownerRef)).toEqual([
-          'gpz/1021aa18ea28ab398f1166359a58215a/substation#name-row-1',
-        ]);
-        expect(luki[0].inkExtent - luki[0].rectExtent).toBeCloseTo(95, 6);
+        // Ref GPZ czytany z fikstury (karta GPZ-MODEL: ziarno GPZ z równoważnikiem 110 kV
+        // zmieniło identyfikator; literał przepinany przy każdej regeneracji).
+        const gpzRef = enm.substations.find((st) => st.station_type === 'gpz')!.ref_id;
+        expect(luki.map((g) => g.ownerRef)).toEqual([`${gpzRef}#name-row-1`]);
+        // GPZ-MODEL (2026-10-21): 95 → 87. Tusz wiersza stanu bez zmian (391), baner
+        // szerszy o 8 (296 → 304), bo nazwa GPZ substratu brzmi „GPZ Referencyjny 110 kV"
+        // (o jeden znak dłuższa niż „… 15 kV" — GPZ z równoważnikiem 110 kV); pomiar sondą
+        // karty na fiksturze przed/po. Dług ten sam, nadmiar mniejszy o szerokość znaku.
+        expect(luki[0].inkExtent - luki[0].rectExtent).toBeCloseTo(87, 6);
         // Wiersz stanu istnieje WYŁĄCZNIE na poziomie przeglądowym — na L1/L2
         // gałąź `else` niżej wymaga zbioru PUSTEGO bez żadnego ustępstwa.
       } else {

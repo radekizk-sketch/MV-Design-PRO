@@ -173,14 +173,19 @@ def test_structural_fields_present_for_every_template() -> None:
     ten test — patrz test_apply_odgalezienie.py, który już dowodzi dostępności
     katalogu w tym środowisku testowym) ALBO szablon bez `transformer_options`
     — jedyny uczciwy taki przypadek to węzły BEZ transformatora (V12T-016,
-    rola A „rozdzielnia sieciowa"/E „kompensacja"/„rezerwa zasilania" —
-    zmierzone niżej: dokładnie te 3 kategorie, 9 szablonów)."""
+    rola A „rozdzielnia sieciowa"/E „kompensacja"/„rezerwa zasilania" — oraz GPZ
+    110/SN: karta GPZ-MODEL, szablon GPZ buduje równoważnik sieci na szynach SN,
+    a transformatory 110/SN są poza modelem — zmierzone niżej: dokładnie te
+    4 kategorie, 12 szablonów)."""
     templates = list_templates()
     assert len(templates) == 71
     bez_tr_kategorie = {
         TemplateCategory.ROZDZIELNIA_SIECIOWA,
         TemplateCategory.KOMPENSACJA,
         TemplateCategory.REZERWA_ZASILANIA,
+        # Karta GPZ-MODEL: równoważnik sieci na szynach SN — transformatory 110/SN
+        # nie są elementami modelu, więc szablon GPZ nie oferuje ich typów.
+        TemplateCategory.GPZ_110_SN,
     }
     policzone_bez_tr = 0
     for t in templates:
@@ -217,7 +222,7 @@ def test_structural_fields_present_for_every_template() -> None:
         ), f"{t.id}: voltage_lv_kv=None mimo transformer_options"
         assert d["rated_power_kva"] > 0
         assert d["voltage_hv_kv"] > d["voltage_lv_kv"] > 0
-    assert policzone_bez_tr == 9, f"Oczekiwano 9 szablonów bez TR, zmierzono {policzone_bez_tr}"
+    assert policzone_bez_tr == 12, f"Oczekiwano 12 szablonów bez TR, zmierzono {policzone_bez_tr}"
 
 
 def test_structural_fields_parity_list_vs_detail() -> None:
@@ -475,5 +480,6 @@ def test_structural_power_zgadza_sie_z_transformatorem_ktory_zmaterializuje_appl
         )
         moc_kafla, _ = catalog_choice_rated_kva(wyswietlana_opcja)
         assert moc_kafla is not None and moc_kafla > 0, t.id
-    # 71 szablonów (2 wiatrowe wycofane 2026-10-15) - 9 bez TR = 62.
-    assert zbadane == 62, f"Oczekiwano 62 szablonów z TR (71 - 9 bez TR), zmierzono {zbadane}"
+    # 71 szablonów (2 wiatrowe wycofane 2026-10-15) - 12 bez TR = 59 (karta GPZ-MODEL:
+    # 3 szablony GPZ bez transformatorów 110/SN — równoważnik sieci na szynach SN).
+    assert zbadane == 59, f"Oczekiwano 59 szablonów z TR (71 - 12 bez TR), zmierzono {zbadane}"

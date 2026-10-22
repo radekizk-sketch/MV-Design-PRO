@@ -28,6 +28,7 @@ from enm.migrations.klucze_meta_pola import (
 from enm.models import EnergyNetworkModel
 from enm.pola import czy_pole_nn, pola_nn, zacisk_pola
 from enm.store import LegacyFieldSpecsError, przygotuj_model_po_odczycie, reset_enm_store, set_enm
+from enm.validator import ENMValidator
 
 #: ARCHIWUM: migawka substratu 52 stacji zapisana PRZED kartą W5-B (drzewo `f3c435b6`,
 #: ścieżka produktu — 172 wpisy pól SN i 199 wpisów pól nN w `meta` stacji). Zamrożona celowo:
@@ -308,31 +309,67 @@ def test_substrat_52_stacji_migruje_sie_w_calosci() -> None:
     assert zmieniono_drugi is False
     assert drugi.model_dump(mode="json") == dane
     # Parytet archiwum ↔ ścieżka produktu po W5-B: projekt zapisany przed kartą, wczytany
-    # dziś, ma DOKŁADNIE te same pola (tożsamość, rola, szyna, zacisk, aparaty, nazwa) i ten
-    # sam graf, co substrat zbudowany dziś operacjami (fikstura generowana `sld_substrate_fixtures`).
+    # dziś, ma te same pola co substrat zbudowany dziś operacjami (fikstura generowana
+    # `sld_substrate_fixtures`) — POZA GPZ. Karta GPZ-MODEL zmieniła ścieżkę produktu GPZ:
+    # archiwum niesie równoważnik na szynach SN z transformatorem 110/SN do martwej szyny
+    # pomocniczej (fikcja, której operacja dziś nie tworzy), a substrat dzisiejszy —
+    # równoważnik po stronie 110 kV ze wspólną szyną 110 kV. Ziarno identyfikatorów GPZ
+    # zależy od ładunku operacji, więc zmieniły się identyfikatory WSZYSTKICH elementów
+    # (pomiar 2×2: kod sprzed karty na danych sprzed karty = archiwum; ta sama treść
+    # z nowymi identyfikatorami = substrat dzisiejszy, 487 ziaren, 0 konfliktów). Parytet
+    # porównuje więc pola po NAZWACH (stacja, rola, szyna, zacisk, aparaty, nazwa pola),
+    # a różnicę GPZ przypina jawnie: archiwum po odczycie jest blokowane przez walidator
+    # (E066 „transformator GPZ bez zasilania od strony 110 kV") — model nie jest migrowany.
     swiezy, _ = przygotuj_model_po_odczycie(
         EnergyNetworkModel.model_validate(
             json.loads(FIKSTURA_52S.read_text(encoding="utf-8"))["enm"]
         )
     )
 
-    def _pola(m: EnergyNetworkModel) -> list[tuple[object, ...]]:
+    def _pola_po_nazwach(m: EnergyNetworkModel) -> list[tuple[object, ...]]:
+        szyny = {b.ref_id: b.name for b in m.buses}
+        stacje = {s.ref_id: s for s in m.substations}
+        elementy = {e.ref_id: e.name for kolekcja in (m.branches, m.transformers) for e in kolekcja}
         return sorted(
             (
-                b.ref_id,
+                stacje[b.substation_ref].name,
                 b.bay_role,
-                b.bus_ref,
-                b.terminal_bus_ref,
-                b.substation_ref,
-                tuple(b.equipment_refs),
+                szyny.get(b.bus_ref),
+                szyny.get(b.terminal_bus_ref) if b.terminal_bus_ref else None,
+                tuple(sorted(str(elementy.get(r, "?")) for r in b.equipment_refs)),
                 b.field_role,
                 b.name,
             )
             for b in m.bays
+            if stacje[b.substation_ref].station_type != "gpz"
         )
 
-    assert _pola(model) == _pola(swiezy)
-    for kolekcja in ("buses", "branches", "loads", "generators", "transformers"):
-        assert sorted(e.ref_id for e in getattr(model, kolekcja)) == sorted(
-            e.ref_id for e in getattr(swiezy, kolekcja)
+    assert _pola_po_nazwach(model) == _pola_po_nazwach(swiezy)
+    # Parytet obejmuje wszystkie pola poza GPZ (nie jest pusty przez zbyt wąski filtr).
+    pola_gpz = {s.ref_id for s in model.substations if s.station_type == "gpz"}
+    assert len(_pola_po_nazwach(model)) == sum(
+        1 for b in model.bays if b.substation_ref not in pola_gpz
+    )
+    assert len(_pola_po_nazwach(model)) > 300
+    for kolekcja in ("loads", "generators"):
+        assert sorted(e.name for e in getattr(model, kolekcja)) == sorted(
+            e.name for e in getattr(swiezy, kolekcja)
         ), kolekcja
+
+    def _stacje(m: EnergyNetworkModel, gpz: bool) -> list[str | None]:
+        return sorted(s.name for s in m.substations if (s.station_type == "gpz") is gpz)
+
+    assert _stacje(model, False) == _stacje(swiezy, False)
+    # Nazwa GPZ pochodzi z napięcia równoważnika (szyny SN dawniej, szyna 110 kV dziś).
+    assert _stacje(model, True) == ["GPZ Referencyjny 15 kV"]
+    assert _stacje(swiezy, True) == ["GPZ Referencyjny 110 kV"]
+
+    # Różnica GPZ, przypięta: w archiwum transformator 110/SN wisi na szynie pomocniczej bez
+    # równoważnika (E066, BLOCKER); w substracie dzisiejszym równoważnik leży na szynie 110 kV
+    # i żadne zgłoszenie E066 nie powstaje.
+    e066_archiwum = [z for z in ENMValidator().validate(model).issues if z.code == "E066"]
+    assert len(e066_archiwum) == 1, e066_archiwum
+    assert e066_archiwum[0].severity == "BLOCKER"
+    (trafo_gpz,) = (t for t in model.transformers if t.ref_id == e066_archiwum[0].element_refs[0])
+    assert trafo_gpz.lv_bus_ref in {z.bus_ref for z in model.sources}
+    assert not [z for z in ENMValidator().validate(swiezy).issues if z.code == "E066"]

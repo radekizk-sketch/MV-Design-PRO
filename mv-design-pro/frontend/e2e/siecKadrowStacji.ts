@@ -82,8 +82,6 @@ export async function siecKadrow(request: APIRequestContext) {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
     catalog_binding: katalog('ZRODLO_SN', ZRODLO),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
     sections_count: 1,
     line_fields_per_section: 2,
     gpz_line_field_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT) },

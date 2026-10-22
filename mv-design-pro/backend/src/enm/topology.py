@@ -206,6 +206,34 @@ def podziel_krawedzie(snapshot: EnergyNetworkModel | Mapping[str, object]) -> Po
     )
 
 
+def szyny_sekcji_gpz(snapshot: EnergyNetworkModel | Mapping[str, object]) -> frozenset[str]:
+    """Szyny sekcji SN GPZ — z jawnego rejestru `gpz_sections` stacji `station_type == "gpz"`."""
+    return frozenset(
+        str(_pole(sekcja, "bus_ref"))
+        for stacja in _kolekcja(snapshot, "substations")
+        if _pole(stacja, "station_type") == "gpz"
+        for sekcja in _kolekcja(stacja, "gpz_sections")
+        if _pole(sekcja, "bus_ref")
+    )
+
+
+def transformatory_zasilajace_gpz(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+) -> frozenset[str]:
+    """`ref_id` transformatorów WN/SN zasilających GPZ — strona dolna na szynie sekcji SN GPZ.
+
+    Karta GPZ-MODEL: JEDNO źródło predykatu dla walidatora (E066 — transformator GPZ bez
+    zasilania od strony 110 kV) i dla operacji, które szukają transformatora „stacji"
+    (transformator blokowy źródła przekształtnikowego): transformator zasilający GPZ jest
+    granicą zasilania sieci SN, nigdy transformatorem blokowym ani stacyjnym SN/nN."""
+    sekcje = szyny_sekcji_gpz(snapshot)
+    return frozenset(
+        str(_pole(t, "ref_id"))
+        for t in _kolekcja(snapshot, "transformers")
+        if str(_pole(t, "lv_bus_ref")) in sekcje
+    )
+
+
 def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
     """Wyprowadź ``TopologyView`` z migawki (``EnergyNetworkModel`` albo słownik ENM).
 

@@ -1029,6 +1029,22 @@
     },
     {
       "area": "SOURCES",
+      "code": "source.gpz_section_unsupplied",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
+      }
+    },
+    {
+      "area": "SOURCES",
+      "code": "source.gpz_transformer_hv_unsupplied",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
+      }
+    },
+    {
+      "area": "SOURCES",
       "code": "source.grid_supply_missing",
       "fix_navigation": {
         "modal": "add_grid_source",
@@ -1363,7 +1379,7 @@
       }
     }
   ],
-  "count": 160,
+  "count": 162,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1495,6 +1511,8 @@
     "E021": "station.required_field_missing",
     "E022": "station.line_field_multiple_segments",
     "E063": "transformer.lv_earthing_system_missing",
+    "E065": "source.gpz_section_unsupplied",
+    "E066": "source.gpz_transformer_hv_unsupplied",
     "I004": "trunk.segment_missing",
     "I005": "ring.nop_required",
     "W-W5-01": "cable.screen_bonding_reference_mismatch",

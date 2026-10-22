@@ -86,8 +86,6 @@ async function siecGotowa(request: APIRequestContext): Promise<{ seed: Seed; enm
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalog('ZRODLO_SN', ZRODLO),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   for (const [idx, dlugosc] of [300, 250, 200].entries()) {
     enm = await operacja(request, caseId, 'continue_trunk_segment_sn', {

@@ -95,8 +95,6 @@ export async function zbudujSiecEtykietyStacji(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: wiazanie('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let wynik: OdpowiedzOperacji = {};
   for (const [indeks, dlugosc] of [400, 350, 300].entries()) {

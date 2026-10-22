@@ -160,11 +160,13 @@ from .slownik_komunikatow import (
     nazwa_technologii_zrodla,
     opis_elementu,
     opis_nazwy,
+    opis_obiektu,
     opis_pozycji_katalogu,
     pole,
     w_cudzyslowie,
     wartosc_w_zdaniu,
 )
+from .topology import transformatory_zasilajace_gpz
 from .topology_ops import (
     attach_protection,
     create_branch,
@@ -6559,11 +6561,18 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                     # na zacisku pola TR, dolna za wyłącznikiem głównym nN) — przynależność
                     # szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
                     station_buses = set(szyny_stacji(enm, station_for_auto))
+                    # GPZ-MODEL: transformator zasilający GPZ (110/SN, strona dolna na
+                    # sekcji SN GPZ) jest granicą zasilania sieci, nigdy transformatorem
+                    # blokowym źródła — jedno źródło predykatu z walidatorem (E066).
+                    zasilajace_gpz = transformatory_zasilajace_gpz(enm)
                     station_transformers = [
                         tr
                         for tr in enm.get("transformers", [])
-                        if tr.get("hv_bus_ref") in station_buses
-                        or tr.get("lv_bus_ref") in station_buses
+                        if (
+                            tr.get("hv_bus_ref") in station_buses
+                            or tr.get("lv_bus_ref") in station_buses
+                        )
+                        and tr.get("ref_id") not in zasilajace_gpz
                     ]
                     if len(station_transformers) == 1:
                         blocking_transformer_ref = station_transformers[0].get("ref_id")
@@ -6595,6 +6604,13 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         if transformer is None:
             return _error_response(
                 "Nie znaleziono transformatora blokowego dla źródła przekształtnikowego.",
+                "generator.block_transformer_invalid",
+            )
+        if transformer.get("ref_id") in transformatory_zasilajace_gpz(enm):
+            return _error_response(
+                f"{opis_obiektu(transformer, 'Transformator')} zasila sekcję SN GPZ od strony "
+                "110 kV — jest granicą zasilania sieci, a nie transformatorem blokowym źródła. "
+                "Wskaż transformator blokowy źródła albo przyłącz źródło polem SN.",
                 "generator.block_transformer_invalid",
             )
         if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():

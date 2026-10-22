@@ -1,5 +1,5 @@
 {
-  "bay_ref": "nn/8c5a6651972e3f18997e489f4a2dfd4d/source_field",
+  "bay_ref": "nn/a900546aa477764f997d4c616bd1ff3c/source_field",
   "dobor": {
     "kwestie_otwarte": [
       {
@@ -41,7 +41,7 @@
     "zero_sequence_current_source": "brak",
     "zero_sequence_voltage_source": "brak"
   },
-  "generator_ref": "pv/cf52e8ef1365b7493495105069afcf67/converter",
+  "generator_ref": "pv/bbdd9eac07e8ed5cd445f31a4ccb2418/converter",
   "urzadzenie": {
     "brakujace_funkcje": [],
     "nazwa": "ABB Relion REB670",

@@ -338,8 +338,6 @@ def test_nazwa_zrodla_gpz_jest_ziarnem_identyfikatorow():
                 "sk3_mva": 300.0,
                 "rx_ratio": 0.1,
                 "catalog_ref": "src-gpz-15kv-300mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert wynik.get("error") is None, wynik.get("error")

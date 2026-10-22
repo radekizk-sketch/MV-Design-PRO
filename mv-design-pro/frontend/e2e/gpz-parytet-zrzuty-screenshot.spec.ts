@@ -13,9 +13,13 @@
  * `#sld?run=<id>` (ta sama droga co produkcja: orkiestrator pobiera `results/v1`). Motyw
  * przełączany REALNYM przyciskiem powłoki; przybliżenie kółkiem myszy nad belką GPZ.
  *
- * Drugi kadr: GPZ z dwiema sekcjami SN i trzema transformatorami 110/SN (operacja
- * `add_grid_source_sn` rozdziela je na sekcje po kolei — dwa na sekcji 1): wieże
- * transformatorów jednej sekcji stoją obok siebie, nie jedna na drugiej.
+ * Granica zasilania SN (karta GPZ-MODEL): transformatory 110/SN są elementami modelu wyłącznie
+ * przy równoważniku sieci po stronie 110 kV — wszystkie łączą wspólną szynę 110 kV (na niej
+ * równoważnik) z sekcjami SN. Pierwszy kadr: jeden transformator (oznaczenie uzwojeń z grupy
+ * połączeń). Drugi kadr: dwie sekcje SN i trzy transformatory (operacja rozdziela je na sekcje
+ * po kolei — dwa na sekcji 1): wieże jednej sekcji stoją obok siebie, nie jedna na drugiej.
+ * Trzeci kadr: równoważnik z katalogu na szynach SN — dwie sekcje BEZ transformatorów (Sk″
+ * widziane z szyn SN zawiera już ich impedancję), sekcja 2 zasilana przez sprzęgło.
  *
  * Zrzuty: `docs/uiux/zrzuty/gpz-parytet/gpz-<stan>-<motyw>.png` (do drzewa repo wyłącznie
  * z `ZRZUTY_DO_DOKUMENTACJI=1`, inaczej `test-results/zrzuty-dokumentacji/…`).
@@ -34,6 +38,7 @@ const WERSJA_KATALOGU = '2024.1';
 const APARAT = 'sw-cb-abb-vd4-17kv-630a';
 const KABEL = 'cable-tfk-yakxs-3x120';
 const ZRODLO = 'src-gpz-15kv-250mva-rx010';
+const TRANSFORMATOR_WN_SN = 'tr-wn-sn-110-15-25mva-yd11';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(resolve(HERE, '..', '..', 'docs', 'uiux', 'zrzuty', 'gpz-parytet'));
 
@@ -65,9 +70,26 @@ async function operacja(request: APIRequestContext, caseId: string, name: string
   return body.snapshot ?? {};
 }
 
+/** Równoważnik sieci GPZ: na szynach SN z katalogu (transformatory poza modelem) albo
+ *  po stronie 110 kV z `transformatory` transformatorami 110/SN w modelu. */
+type UkladGpz =
+  | { readonly sekcje: number; readonly rownowaznik: 'SN' }
+  | { readonly sekcje: number; readonly rownowaznik: '110kV'; readonly transformatory: number };
+
+function zasilanieGpz(uklad: UkladGpz): Record<string, unknown> {
+  if (uklad.rownowaznik === 'SN') {
+    return { sk3_mva: 250.0, catalog_binding: katalog('ZRODLO_SN', ZRODLO) };
+  }
+  return {
+    manual_equivalent: { short_circuit_input_side: 'HV_110', hv_voltage_kv: 110.0, sk3_hv_mva: 3000.0, rx_ratio: 0.1 },
+    transformer_count: uklad.transformatory,
+    transformer_catalog_binding: katalog('TRAFO_SN_NN', TRANSFORMATOR_WN_SN),
+  };
+}
+
 async function siecGpz(
   request: APIRequestContext,
-  uklad: { readonly sekcje: number; readonly transformatory?: number } = { sekcje: 1 },
+  uklad: UkladGpz = { sekcje: 1, rownowaznik: '110kV', transformatory: 1 },
 ) {
   const suffix = Date.now().toString(36);
   const projectName = `GPZ parytet ${suffix}`;
@@ -85,12 +107,8 @@ async function siecGpz(
 
   let enm = await operacja(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
-    sk3_mva: 250.0,
-    catalog_binding: katalog('ZRODLO_SN', ZRODLO),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
+    ...zasilanieGpz(uklad),
     sections_count: uklad.sekcje,
-    ...(uklad.transformatory != null ? { transformer_count: uklad.transformatory } : {}),
     line_fields_per_section: 2,
     gpz_line_field_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT) },
   });
@@ -238,7 +256,7 @@ test('GPZ-PARYTET — kadry bloku GPZ przed biegiem i po biegu rozpływu mocy (o
 test('GPZ-PARYTET — dwie sekcje SN i trzy transformatory: wieże obok siebie (oba motywy)', async ({ page, request }) => {
   test.setTimeout(600000);
   mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
-  const seed = await siecGpz(request, { sekcje: 2, transformatory: 3 });
+  const seed = await siecGpz(request, { sekcje: 2, rownowaznik: '110kV', transformatory: 3 });
   await otworzSchemat(page, seed, '/#sld');
   for (const motyw of [
     { klucz: 'ciemny', theme: 'dark_scada' as const },
@@ -259,5 +277,24 @@ test('GPZ-PARYTET — dwie sekcje SN i trzy transformatory: wieże obok siebie (
       );
     }
     await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-dwie-sekcje-trzy-tr-${motyw.klucz}.png`) });
+  }
+});
+
+test('GPZ-PARYTET — równoważnik na szynach SN: dwie sekcje bez transformatorów 110/SN (oba motywy)', async ({ page, request }) => {
+  test.setTimeout(600000);
+  mkdirSync(KATALOG_ZRZUTOW, { recursive: true });
+  const seed = await siecGpz(request, { sekcje: 2, rownowaznik: 'SN' });
+  await otworzSchemat(page, seed, '/#sld');
+  for (const motyw of [
+    { klucz: 'ciemny', theme: 'dark_scada' as const },
+    { klucz: 'jasny', theme: 'light_technical' as const },
+  ]) {
+    await ustawMotyw(page, motyw.theme);
+    await page.getByRole('button', { name: 'Dopasuj widok' }).click();
+    await page.waitForTimeout(500);
+    await expect(page.getByTestId('sld-v3-gpz-zone')).toHaveCount(1, { timeout: 30000 });
+    // Granicą modelu są szyny SN: żadnej wieży transformatora 110/SN na schemacie.
+    await expect(page.locator('[data-uzwojenia-stan]')).toHaveCount(0);
+    await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-rownowaznik-sn-dwie-sekcje-${motyw.klucz}.png`) });
   }
 });

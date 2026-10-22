@@ -60,6 +60,12 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     "W043": "station.kind_mismatch",
     # „Pole SN o roli spoza słownika" == ten sam warunek (to samo źródło).
     "W044": "station.field_role_unknown",
+    # „Sekcja GPZ bez zasilania" (wyspa bez źródła z sekcją szyn SN GPZ, karta GPZ-MODEL)
+    # == ten sam warunek (jeden predykat wyspy `enm.topology.derive`).
+    "E065": "source.gpz_section_unsupplied",
+    # „Transformator GPZ bez zasilania od strony 110 kV" (karta GPZ-MODEL) == ten sam
+    # warunek (jeden predykat `enm/validator.py::transformatory_gpz_bez_zasilania_wn`).
+    "E066": "source.gpz_transformer_hv_unsupplied",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia

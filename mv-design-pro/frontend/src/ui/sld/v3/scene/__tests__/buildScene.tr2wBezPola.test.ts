@@ -261,9 +261,27 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // transformator, uziemnik] → [wyłącznik, transformator]; scena 33 → 11 symboli,
   // 27 → 20 tras, ramka 1296×886 → 1176×742 (krótsze stosy pól i tor TR GPZ bez rekordów).
   // Kotwica topologiczna kolumny TR (temat tego pliku) — testy T2/T4–T8 bez zmian.
+  // AKTUALIZACJA ŚWIADOMA (GPZ-MODEL, 2026-10-22, na bazie GEOMETRIA-STACJI): fikstura z API
+  // dostaje GPZ z równoważnikiem sieci 110 kV i transformatorem WN/SN (tryb A,
+  // `b.gpz_110kv(1)` w `fikstury_enm_sld.py`) zamiast fikcji „równoważnik na szynach SN + TR
+  // obok"; ziarno GPZ obejmuje ładunek operacji, więc wszystkie ref-y są nowe. DOWÓD 2×2
+  // (sonda: symbole rodzaj + x + y, odcinki punkty, etykiety tekst + x + y):
+  //  · KOD karty na fiksturze bazy `f7235700e`: jedyna różnica wobec kodu bazy to prawy
+  //    koniec szyny WN GPZ 160 → 200 — szyna WN mieści własny podpis „Szyna WN · 110 kV"
+  //    (`compose/gpz.ts`; bez tego glif źródła nad szyną WN zasłaniał podpis).
+  //  · DANE: źródło stoi nad szyną WN zamiast na prawym końcu szyny SN (podpis źródła
+  //    2 wiersze zamiast 3 — etykiet 21 → 20 na L1, 28 → 27 na L2), GPZ wyższy o 48;
+  //    rysunek POZA GPZ, unormowany do transformatora stacji, IDENTYCZNY na L1 i L2 (świat
+  //    przesunięty o jednakowy wektor (−32, +48)); różni się WYŁĄCZNIE początek kabla
+  //    GPZ→S01 (pole GPZ bliżej stacji o 32).
+  //  · KOD karty, drugi krok (podpis kabla GPZ→S0 odsuwany także od TUSZU etykiet GPZ,
+  //    `odsunPodpisOdElementowGpz`): sonda L2 przed/po tym kroku — symbole, odcinki i bbox
+  //    identyczne, etykiet 27 → 28: podpis kabla „GPZ ↔ S01 · YAKXS 3×120/16 · Un=20 kV ·
+  //    l = 40 m" (x 296, y 424), dotąd stawiany na etykiecie GPZ i zdejmowany declutterem
+  //    (najniższy priorytet `segment-span`), jest teraz narysowany. L1 bez zmian.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: 'db706905eb8afeb0b2b02e2a2daf5cb5',
-    2: '485d57004a8fbd184b893e09a03edfdf',
+    1: '8f135f305dd1d8a38421e664f4c320c8',
+    2: '6de64cfc159da38853215a96aaf0f5d0',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

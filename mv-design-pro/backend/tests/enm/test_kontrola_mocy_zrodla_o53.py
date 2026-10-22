@@ -184,8 +184,6 @@ def werdykt_stacyjny(c: Przypadek) -> str | None:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": h.REF_ZRODLO,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     siec = h._wykonaj(

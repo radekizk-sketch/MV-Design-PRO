@@ -1323,14 +1323,23 @@ def test_wniosek_zadanie_wskazuje_przebiegi_sceny_i_szyne_sn(
     assert zadanie["nazwa_przypadku"] == eksport.NAZWA_PRZYPADKU_SCEN_OZE
     assert zadanie["wnioskodawca"] is None and zadanie["adres_przylaczenia"] is None
     assert zadanie["operator_id"] == _operator_z_modelu(model)
-    # Węzeł przyłączenia = strona SN transformatora WN/SN GPZ, na napięciu górnej strony
-    # transformatorów blokowych modułów (wyprowadzone z topologii modelu, nie z nazwy szyny).
+    # Węzeł przyłączenia = szyna SN sekcji GPZ, na napięciu górnej strony transformatorów
+    # blokowych modułów (wyprowadzone z topologii modelu, nie z nazwy szyny). GPZ-MODEL:
+    # scena ma równoważnik sieci na szynach SN (tryb B) — granica modelu to szyny SN GPZ,
+    # transformatora WN/SN w modelu nie ma (dawna wersja szukała węzła jako „strony SN TR
+    # GPZ", czyli elementu, którego obliczenie nie zawierało).
     napiecia = {szyna.ref_id: szyna.voltage_kv for szyna in model.buses}
     szyny_wytworcow = {generator.bus_ref for generator in model.generators}
     bloki = [t for t in model.transformers if t.lv_bus_ref in szyny_wytworcow]
-    gpz = [t for t in model.transformers if t.lv_bus_ref not in szyny_wytworcow]
-    assert bloki and gpz
-    assert zadanie["bus_ref"] in {t.lv_bus_ref for t in gpz}
+    sekcje_gpz = {
+        sekcja.bus_ref
+        for stacja in model.substations
+        if stacja.station_type == "gpz"
+        for sekcja in (stacja.gpz_sections or [])
+    }
+    assert bloki and sekcje_gpz
+    assert [t for t in model.transformers if t.lv_bus_ref in sekcje_gpz] == []
+    assert zadanie["bus_ref"] in sekcje_gpz
     assert {napiecia[t.hv_bus_ref] for t in bloki} == {napiecia[zadanie["bus_ref"]]}
     assert [(p["id"], p["analysis_type"], p["status"]) for p in przebiegi] == [
         (zadanie["pf_run_id"], "LOAD_FLOW", "DONE"),

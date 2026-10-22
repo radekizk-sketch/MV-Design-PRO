@@ -108,7 +108,10 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     Pin tej karty (122) byl nieaktualny: pomiar guardem na czubku galezi UI/UX `f7235700e`
     = 123 (test czerwony na samej galezi). Scalenie z partiami 9–13 (2026-10-22): 124 programu
     + 1 karty W5-C = 125 — pomiar guardem na drzewie scalonym, zbior pol Literal scalony =
-    zbior programu + `normal_state` + `equipment_data_state` − `BranchPointSN.switch_state`."""
+    zbior programu + `normal_state` + `equipment_data_state` − `BranchPointSN.switch_state`.
+    Karta GPZ-MODEL podniosla ten sam pin na swojej bazie 122 -> 123 (ta sama korekta W5-C,
+    bez nowego pola Literal); po jej nalozeniu na drzewo scalone pomiar guardem = 125, bez
+    zmiany."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re

@@ -338,6 +338,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
   'nn.source.switch_missing': 'zwarcia',
+  'source.gpz_section_unsupplied': 'zwarcia',
+  'source.gpz_transformer_hv_unsupplied': 'zwarcia',
   'source.multiple_grid_sources_in_island': 'zwarcia',
   'source.sk_min_inconsistent': 'zwarcia',
   'source.sk_min_missing': 'zwarcia',

@@ -343,7 +343,9 @@ describe('KD-5 — REGRESJA WSTRZYKNIĘTA: kontrakt GRYZIE', () => {
   // (ten sam stan), a pole bez rekordu dostaje na obu LOD sylwetkę braku danych. Iniekcja:
   // przywrócenie stałego `breaker` w `buildCollapsedGpz` czerwieni przypadek bez rekordu.
   it('aparat pola na L0 pochodzi z rekordu modelu — pole bez rekordu: sylwetka braku danych, pole z rekordem: jego łącznik i stan', () => {
-    const bayRef = 'gpz/1021aa18ea28ab398f1166359a58215a/bay/001/001';
+    // Karta GPZ-MODEL: substrat 52 stacji buduje GPZ z równoważnikiem 110 kV, a ziarno
+    // identyfikatorów GPZ zależy od ładunku operacji — dawne `gpz/1021aa18…`.
+    const bayRef = 'gpz/371e5db9fef444f53336c1a460729f65/bay/001/001';
     const bezRekordu = aparatyPolL0(sceneL0);
     expect(bezRekordu.map((s) => [s.meta?.ownerRef, s.symbolId, s.state])).toEqual([[bayRef, 'bayNoEquipment', undefined]]);
 

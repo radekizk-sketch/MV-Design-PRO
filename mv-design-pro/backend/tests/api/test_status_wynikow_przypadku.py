@@ -37,8 +37,6 @@ GPZ = {
         "payload": {
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
         },
     }

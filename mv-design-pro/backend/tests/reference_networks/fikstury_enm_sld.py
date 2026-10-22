@@ -31,6 +31,15 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
   odcinkach 1 i 3, element rodzaju ZKSN / słup rozgałęźny / łącznik sekcyjny / węzeł nazwany
   na odcinkach 0 (za GPZ), 2 (między stacjami) i 4 (za ostatnią stacją).
 
+GPZ każdej sieci (karta GPZ-MODEL): równoważnik sieci po stronie 110 kV i jeden
+transformator 110/15 kV 25 MVA na wspólnej szynie WN (``KlientBudowy.gpz_110kv(1)``).
+Do tej karty fikstury żądały transformatora przy równoważniku podanym na szynach SN —
+rysunek niósł wtedy szynę 110 kV i transformator bez zasilania (fikcja obliczeniowa).
+Kontrakty SLD tych sieci badają kolumnę WN bloku GPZ (tabliczka TR, szyna WN, wieże
+transformatorów), więc przepisanie do kontraktu wybiera tryb, w którym transformator
+JEST elementem modelu; tryb SN (bez transformatorów) badają sceny eksportu harnessu
+i test adaptera ``enmToCanonicalGpzAdapter``.
+
 Regeneracja (z katalogu ``backend``):
     poetry run python -m tests.reference_networks.fikstury_enm_sld --write
 """
@@ -85,13 +94,13 @@ def _plik_enm(enm: dict[str, Any], nazwa: str, *, opakuj: bool = True) -> str:
 
 
 def _open_terminal(b: KlientBudowy) -> dict[str, Any]:
-    b.gpz()
+    b.gpz_110kv(1)
     b.odcinek_magistrali(1200, "F1")
     return b.migawka()
 
 
 def _open_branch(b: KlientBudowy) -> dict[str, Any]:
-    b.gpz()
+    b.gpz_110kv(1)
     b.odcinek_magistrali(1200, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja B", nn_odplywy=1)
     b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 140)
@@ -99,7 +108,7 @@ def _open_branch(b: KlientBudowy) -> dict[str, Any]:
 
 
 def _open_trunk_chain(b: KlientBudowy) -> dict[str, Any]:
-    b.gpz()
+    b.gpz_110kv(1)
     b.odcinek_magistrali(205, "F2")
     b.odcinek_magistrali(210, "F3")
     b.stacja_b(segmenty_korytarza(b.migawka())[1], "Stacja B", ratio=0.45, nn_odplywy=1)
@@ -107,7 +116,7 @@ def _open_trunk_chain(b: KlientBudowy) -> dict[str, Any]:
 
 
 def _gpz_feeder(b: KlientBudowy) -> dict[str, Any]:
-    b.gpz()
+    b.gpz_110kv(1)
     b.odcinek_magistrali(800, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja S01", nn_odplywy=1)
     b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 600)
@@ -329,7 +338,7 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
 
 
 def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
-    b.gpz()
+    b.gpz_110kv(1)
     b.odcinek_magistrali(80, "Magistrala 1")
     b.operacja(
         "insert_station_on_segment_sn",
@@ -359,7 +368,7 @@ def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
 
 
 def _s95_gpz_swiezy(b: KlientBudowy) -> dict[str, Any]:
-    b.gpz()
+    b.gpz_110kv(1)
     return b.migawka()
 
 
@@ -369,7 +378,7 @@ def _nn_board_demo(b: KlientBudowy) -> dict[str, Any]:
     a szyna nN stacji niesie źródło PV (lv-portal-screenshot.spec.ts: portal domeny nN)."""
     from enm.pola import pola_nn_stacji
 
-    b.gpz()
+    b.gpz_110kv(1)
     b.odcinek_magistrali(1200, "F1")
     b.stacja_b(segmenty_korytarza(b.migawka())[0], "Stacja B", nn_odplywy=4)
     b.odgalezienie(pole_gpz(b.migawka(), 0) + ".BRANCH", 140)
@@ -481,7 +490,7 @@ def _odpowiedz_operacji(wynik: dict[str, Any]) -> dict[str, Any]:
 
 def _b2_magistrala(b: KlientBudowy, liczba_odcinkow: int) -> list[str]:
     """GPZ + odcinki „Magistrala k" o długościach 200/260/320/380 m po kolei; zwraca ziarna."""
-    b.gpz()
+    b.gpz_110kv(1)
     ziarna: list[str] = []
     for k in range(liczba_odcinkow):
         wynik = b.odcinek_magistrali(200 + 60 * (k % 4), f"Magistrala {k + 1}")
@@ -546,7 +555,7 @@ def _b2_drogi(klient: TestClient) -> tuple[dict[str, dict[str, Any]], dict[str, 
         }
         migawki[nazwa_operacji] = b.migawka()
 
-    zapisz("add_grid_source_sn", b.gpz())
+    zapisz("add_grid_source_sn", b.gpz_110kv(1))
     b.odcinek_magistrali(300)
     b.odcinek_magistrali(300)
     zapisz("continue_trunk_segment_sn", b.odcinek_magistrali(300))
@@ -583,7 +592,11 @@ def _b2_drogi(klient: TestClient) -> tuple[dict[str, dict[str, Any]], dict[str, 
 def _s92(klient: TestClient) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Sieć biegu S9-2 i nakładki wyników biegów kanonicznych (zwarcie 3F i rozpływ)."""
     b = KlientBudowy(klient, "Bieg na schemacie")
-    b.gpz()
+    # Karta GPZ-MODEL: GPZ z równoważnikiem sieci po stronie 110 kV i jednym
+    # transformatorem 110/15 kV — sieć biegu niesie szynę WN i SN GPZ (most refów
+    # rysunek ↔ wynik obejmuje obie strony), a szyna 110 kV jest REALNIE zasilana
+    # (dawniej wisiała bez źródła obok równoważnika na szynie SN).
+    b.gpz_110kv(1)
     b.odcinek_magistrali(120, "Odcinek 0")
     b.odcinek_magistrali(121, "Odcinek 1")
     # Szablon stacji PRZELOTOWEJ (wcinanej w odcinek magistrali): kontrakt S9-2 (wyniki
@@ -626,7 +639,7 @@ def _stacja_pomiar_1000(b: KlientBudowy) -> dict[str, Any]:
     więc ZKSN stoi na ciągu zaraz za GPZ (poprzednikiem punktu jest GPZ). Do karty
     SLD-SUBSTRAT (kontynuacja) kanwa gubiła punkt RAZEM ze stacją („punkt poza
     rysunkiem" — brak kanału zejścia w szczelinie GPZ)."""
-    b.gpz()
+    b.gpz_110kv(1)
     b.odcinek_magistrali(120, "Odcinek 0")
     b.odcinek_magistrali(121, "Odcinek 1")
     b.szablon("tpl_sn_nn_1000kva", segmenty_korytarza(b.migawka())[1])
@@ -654,7 +667,7 @@ def _elementy_ciagu(b: KlientBudowy, rodzaj: str) -> dict[str, Any]:
     odcinkach 1 i 3, element `rodzaj` na odcinkach 0, 2 i 4 (z odgałęzieniem ze stacją
     dla punktów odgałęźnych — przypadek stacji klienta za ZKSN)."""
     napowietrzny = rodzaj == "slup"
-    b.gpz()
+    b.gpz_110kv(1)
     for indeks in range(5):
         b.odcinek_magistrali(
             300,

@@ -411,8 +411,6 @@ def _build_substrate(client, case_id: str) -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": REF_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
 
@@ -860,7 +858,11 @@ class TestNnFullChain:
         # bo substrat ma DUŻO więcej elementów niż ten jeden brakujący.
         assert len(enm.buses) >= 9, f"Za mało szyn po budowie: {len(enm.buses)}"
         assert len(enm.branches) >= 6, f"Za mało gałęzi po budowie: {len(enm.branches)}"
-        assert len(enm.transformers) == 2, "Oczekiwano 2 transformatorów (GPZ WN/SN + TR SN/nN)"
+        # Karta GPZ-MODEL: GPZ z równoważnikiem na szynach SN nie ma transformatora
+        # 110/SN (dawny TR GPZ zasilał martwą szynę pomocniczą 110 kV) — jedyny
+        # transformator substratu to TR SN/nN stacji.
+        assert len(enm.transformers) == 1, "Oczekiwano 1 transformatora (TR SN/nN stacji)"
+        assert (enm.transformers[0].uhv_kv, enm.transformers[0].ulv_kv) == (15.0, 0.4)
         assert len(enm.loads) == 2, (
             f"Oczekiwano 2 odbiorów (Silnik M1 + Odbiór K3, ZERO fantomów po karcie D3), "
             f"jest {len(enm.loads)}: {[ld.name for ld in enm.loads]}"

@@ -1004,10 +1004,11 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
 
   /* KARTA WN-WYNIK — ODMOWA ZAMIAST PODSTAWIENIA po stronie WN.
      Kompozycja rysuje JEDEN odcinek szyny WN, więc punkt wyniku wolno mu
-     przypisać wyłącznie wtedy, gdy model ma DOKŁADNIE JEDNĄ szynę WN. GPZ 2×TR
-     ma dwie odrębne szyny 110 kV — dotąd `find(...)` cicho brał pierwszą i
-     jeden narysowany odcinek pokazywał wielkość jednego z dwóch węzłów. */
-  it('GPZ 2×TR (DWIE szyny 110 kV) ⇒ hvBusRef=null — rysunek ma JEDNĄ szynę WN, więc odmawiamy zamiast podstawiać pierwszą', () => {
+     przypisać wyłącznie wtedy, gdy model ma DOKŁADNIE JEDNĄ szynę WN. Kreator GPZ
+     buduje jedną wspólną szynę WN (karta GPZ-MODEL — test niżej); kilka szyn WN
+     w stacji daje tylko jawne sekcje WN — wtedy `find(...)` cicho brałby pierwszą
+     i jeden narysowany odcinek pokazywałby wielkość jednego z dwóch węzłów. */
+  it('GPZ z DWIEMA szynami 110 kV ⇒ hvBusRef=null — rysunek ma JEDNĄ szynę WN, więc odmawiamy zamiast podstawiać pierwszą', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
       substations: [gpz('g', {
@@ -1026,6 +1027,32 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
     expect(props.hvBusRef ?? null).toBeNull();
     // Sekcja SN pozostaje jednoznaczna — odmowa dotyczy WYŁĄCZNIE strony WN.
     expect(props.sections[0].busRef).toBe('bus-15');
+  });
+
+  it('GPZ 3×TR na JEDNEJ wspólnej szynie 110 kV (karta GPZ-MODEL) ⇒ hvBusRef wskazuje tę szynę', () => {
+    // Kształt modelu z kreatora GPZ, przypadek A: wszystkie transformatory WN/SN
+    // mają stronę górną na tej samej szynie WN, każdy stronę dolną na swojej sekcji SN.
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        bus_refs: ['bus-110', 'bus-15-s1', 'bus-15-s2'],
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15-s1' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15-s2' },
+        ],
+        transformer_refs: ['tr1', 'tr2', 'tr3'],
+      })],
+      bays: [bay('bay-1', 'OUT', 'g', 'bus-15-s1', { gpz_section_id: 's1' })],
+      buses: [bus('bus-110', 110), bus('bus-15-s1', 15), bus('bus-15-s2', 15)],
+      transformers: [
+        transformer('tr1', { hv_bus_ref: 'bus-110', lv_bus_ref: 'bus-15-s1' }),
+        transformer('tr2', { hv_bus_ref: 'bus-110', lv_bus_ref: 'bus-15-s2' }),
+        transformer('tr3', { hv_bus_ref: 'bus-110', lv_bus_ref: 'bus-15-s1' }),
+      ],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g');
+    expect(props.hvBusRef).toBe('bus-110');
+    expect(props.transformers.map((t) => t.hvBusRef)).toEqual(['bus-110', 'bus-110', 'bus-110']);
   });
 
   it('GPZ 1×TR (JEDNA szyna 110 kV) mimo drugiej szyny WN spoza bus_refs ⇒ hvBusRef wskazuje szynę TEJ stacji', () => {

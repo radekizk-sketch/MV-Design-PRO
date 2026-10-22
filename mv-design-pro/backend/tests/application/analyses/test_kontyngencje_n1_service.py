@@ -900,8 +900,28 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # Różnica modelu wejściowego: złożenie pól w `bays` i stanu normalnego łącznika
     # (`normal_state`, UI/UX) z tolerancją napięcia sieci nN stacji (program). Enumeracja,
     # dotkliwości i ranking identyczne.
-    "gn01_promieniowa": "35f9706fd12fdc0257e76783ae878b4af46ed2aec53ce813d5606dbfd82824d6",
-    "gn03_pierscien": "81a508db8ee6838c228e4071cfa093b52345a33073458007661f8e9f70757fa5",
+    # 2026-10-21 (karta GPZ-MODEL, na bazie W5-C): gn01 1d65e0b8… → e8fb5ebe…, gn03
+    # 5ac3a589… → fc0f32f2…. Pełne widoki z kodu bazy karty (`f7235700e`) i po karcie
+    # porównane liść po liściu. Przyczyna: obie sieci podają równoważnik sieci NA SZYNACH SN
+    # (katalog źródła 15 kV), a dawny ładunek dokładał do niego wiszący transformator
+    # 110/15 kV z szyną 110 kV BEZ zasilania po stronie 110 kV; karta zakazuje tego
+    # połączenia (transformatory 110/SN są poza modelem w tym trybie). Skutek w widoku: znika
+    # kontyngencja fikcyjna „TR1 110/15 kV" (podsumowanie 6 → 5 kontyngencji, wszystkie
+    # rozstrzygnięte), a w śladzie pozostałych `transformatory_baza`/`transformatory_wariant`
+    # i `szyny_zasilane` maleją o ten transformator i jego szynę 110 kV (gn01 „Odcinek 1":
+    # `iteracje` NR 1 → 0, bo wyspa bilansująca to sama szyna SN). Dotkliwości,
+    # przeciążenia, naruszenia napięcia, odbiory bez zasilania, przypadek bazowy i ranking
+    # pozostałych kontyngencji — identyczne.
+    # 2026-10-22 (nałożenie GPZ-MODEL `73e56f4ad` na drzewo scalone programu): gn01 →
+    # a4b8be67…, gn03 → 959e81d3…. Pełne widoki z kodu czterech drzew (baza `f7235700e`,
+    # program `182d7df30`, GPZ-MODEL `73e56f4ad`, drzewo scalone; każde z trzech pierwszych
+    # odtwarza dokładnie swój pin) porównane liść po liściu: w gn01 403 liście zmienione
+    # przez GPZ-MODEL mają na drzewie scalonym wartość GPZ-MODEL, 159 bez zmian; w gn03
+    # odpowiednio 213 i 199. Jedyne liście różne od obu stron to `context.snapshot_hash`
+    # i `input_hash` (model wejściowy składa topologię GPZ-MODEL z polami addytywnymi
+    # programu). Wynik kontyngencji = wynik GPZ-MODEL.
+    "gn01_promieniowa": "a4b8be670ea780e84ab06ec2ef4a88bcce48dac07aec7e2ea64a04b2c6461261",
+    "gn03_pierscien": "959e81d39106f80572c9ca9b9270f11b5c005ebb93f1ae16059973653ac39433",
 }
 
 

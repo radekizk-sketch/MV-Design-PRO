@@ -27,6 +27,7 @@ from application.station_templates.schema import (
     TorJednostkiDerSn,
     _first_default_choice,
     dobor_torow_der_sn,
+    grid_source_voltage_kv,
     liczba_calkowita_parametru,
     obciazenie_odplywu_kw,
     parametr_calkowity_szablonu,
@@ -175,11 +176,13 @@ def _zastosuj_gpz_pod_blokada(
     """Zastosuj szablon GPZ (rola A, V12T-016) — `add_grid_source_sn`, KORZEŃ
     modelu, nie wcięcie w segment.
 
-    Impedancja układu WN/SN NIE dubluje się (patrz `templates/gpz_110_sn.py`
-    docstring): równoważnik systemowy (`grid_source_options`, ZRODLO_SN) niesie
-    Sk3/R/X widziane z szyny SN, transformator(y) WN/SN materializują się OBOK
-    (tabliczka + SLD). Uziemienie punktu neutralnego: `isolated` — jedyny
-    wybór bez fabrykowanego R/X (najczęstszy w sieciach SN 15/20 kV).
+    Granica zasilania SN (karta GPZ-MODEL, `templates/gpz_110_sn.py` docstring):
+    równoważnik systemowy (`grid_source_options`, ZRODLO_SN) niesie Sk3/R/X widziane
+    z szyny SN, więc transformatory 110/SN nie są elementami modelu i szablon ich nie
+    tworzy. Napięcie SN = napięcie znamionowe wybranego równoważnika z katalogu
+    (`grid_source_voltage_kv` — ta sama liczba, którą materializuje operacja).
+    Uziemienie punktu neutralnego: `isolated` — jedyny wybór bez fabrykowanego R/X
+    (najczęstszy w sieciach SN 15/20 kV).
     """
     overrides = params_override or {}
 
@@ -188,12 +191,6 @@ def _zastosuj_gpz_pod_blokada(
     enm = _get_enm(klucz)
     enm_dict: dict[str, Any] = enm.model_dump(mode="json")
 
-    transformer_ref = parametry.transformer_ref
-    if not transformer_ref:
-        raise TemplateApplyError(
-            code="template.transformer_catalog_missing",
-            message_pl=f"Szablon „{template.name_pl}” nie wskazuje transformatora WN/SN.",
-        )
     source_ref = overrides.get("grid_source_ref") or _cascade_manufacturer_choice(
         template.schema.grid_source_options, catalog_profile
     )
@@ -213,15 +210,14 @@ def _zastosuj_gpz_pod_blokada(
             code="template.sn_bay_apparatus_missing",
             message_pl=f"Szablon „{template.name_pl}” nie wskazuje aparatu pól liniowych GPZ.",
         )
-    transformer_count = parametry.transformer_count
     line_fields_per_section = parametry.sn_bays_count
-    voltage_kv = transformer_voltages_kv(transformer_ref)[1]
+    voltage_kv = grid_source_voltage_kv(source_ref)
     if voltage_kv is None:
         raise TemplateApplyError(
-            code="template.transformer_catalog_missing",
+            code="template.grid_source_catalog_missing",
             message_pl=(
-                f"Szablon „{template.name_pl}”: katalog nie ma napięcia dolnego strony "
-                f"transformatora ({opis_pozycji_katalogu(transformer_ref, None, 'typ')})."
+                f"Szablon „{template.name_pl}”: katalog nie ma napięcia znamionowego "
+                f"równoważnika sieci ({opis_pozycji_katalogu(source_ref, None, 'typ')})."
             ),
         )
 
@@ -231,8 +227,6 @@ def _zastosuj_gpz_pod_blokada(
         "voltage_kv": voltage_kv,
         "catalog_ref": source_ref,
         "sections_count": _GPZ_SECTIONS_COUNT,
-        "transformer_count": transformer_count,
-        "transformer_catalog_ref": transformer_ref,
         "line_fields_count": line_fields_per_section,
         "gpz_line_field_apparatus": {
             "catalog_ref": apparatus_ref,

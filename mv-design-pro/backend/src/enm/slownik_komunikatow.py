@@ -209,6 +209,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "tap_changer.regulation_type": "Rodzaj regulacji",  # zrodlo/strings.ts oltcTyp; transformator regTyp
     "add_nn_switch_device:to_bus_ref": "Szyna do",  # aparat-nn/strings.ts szynaDo
     "connect_secondary_ring_sn:to_bus_ref": "Zacisk B",  # pierscien/strings.ts zaciskB
+    "add_grid_source_sn:transformer_count": "Transformatory 110/SN",  # zrodlo/strings.ts liczbaTrafo
     "add_grid_source_sn:transformer_catalog_ref": "Typ transformatora 110/SN z katalogu",  # zrodlo/strings.ts transformatorKatalog
     "insert_station_on_segment_sn:transformer_catalog_ref": "Typ transformatora z katalogu",  # stacja/strings.ts typKatalog
     "transformer_catalog_ref": "Typ transformatora z katalogu",  # transformator/strings.ts typKatalog

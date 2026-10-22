@@ -342,7 +342,11 @@ def _wiazanie_katalogowe(przestrzen: str, pozycja: str) -> dict[str, Any]:
 def _gpz_sceny_oze(nazwa_projektu: str) -> tuple[dict[str, Any], str, str]:
     """GPZ 110/15 kV jako punkt przyłączenia scen OZE — zbudowany operacją
     `add_grid_source_sn` (ta sama, którą woła kreator źródła zasilania).
-    Zwraca `(enm, ref stacji, ref szyny SN)`."""
+    Zwraca `(enm, ref stacji, ref szyny SN)`.
+
+    Karta GPZ-MODEL: równoważnik sieci na szynach SN (katalog źródła 15 kV, 250 MVA) —
+    transformatory 110/15 kV NIE są wtedy elementami modelu (dawniej scena dokładała
+    wiszący transformator 110/15 kV bez zasilania po stronie 110 kV)."""
     enm = EnergyNetworkModel(header=ENMHeader(name=nazwa_projektu)).model_dump(mode="json")
     enm = _operacja_domenowa_sceny(
         enm,
@@ -353,8 +357,6 @@ def _gpz_sceny_oze(nazwa_projektu: str) -> tuple[dict[str, Any], str, str]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     stacja = next(s["ref_id"] for s in enm["substations"] if s["ref_id"].endswith("/substation"))
@@ -492,11 +494,58 @@ _UUID_SCENY_POLA_OZE = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SC
 
 
 def _enm_sceny_pola_oze() -> EnergyNetworkModel:
-    """Model scen „wiazania"/„frt": GPZ 110/15 kV + farma PV 1 MW w polu SN
-    (operacja `add_converter_source`, wariant z transformatorem blokowym) z
-    wiązaniami katalogowymi zapisanymi operacją `set_der_catalog_bindings` —
-    dokładnie tak, jak robi to projektant w konfiguratorze wytwórcy."""
-    enm, stacja, szyna_sn = _gpz_sceny_oze("Przyłączenie farmy PV 8 MW")
+    """Model scen „wiazania"/„frt": GPZ 110/15 kV → kabel 500 m → stacja wytwórcy
+    15/0,8 kV z jedynym transformatorem → farma PV 1 MW w polu SN stacji (operacja
+    `add_converter_source`, wariant z transformatorem blokowym — jedyny transformator
+    stacji wytwórcy) z wiązaniami katalogowymi zapisanymi operacją
+    `set_der_catalog_bindings` — dokładnie tak, jak robi to projektant w konfiguratorze
+    wytwórcy.
+
+    Karta GPZ-MODEL: dawniej farma stała w polu SN GPZ, a za „transformator blokowy"
+    operacja brała transformator 110/15 kV GPZ (jedyny transformator stacji GPZ). Ten
+    transformator jest granicą zasilania sieci, nie torem źródła — operacja odmawia go
+    dziś (`generator.block_transformer_missing`), więc scena stawia farmę tam, gdzie
+    transformator blokowy istnieje: w stacji wytwórcy za kablem z pola GPZ."""
+    enm, _stacja_gpz, _szyna_gpz = _gpz_sceny_oze("Przyłączenie farmy PV 8 MW")
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500,
+                "name": "Linia kablowa farmy PV",
+                "catalog_ref": _KATALOG_KABLA_KOORD,
+            }
+        },
+    )
+    koniec_kabla = str(
+        [galaz for galaz in enm["branches"] if galaz.get("type") in ("cable", "line_overhead")][-1][
+            "to_bus_ref"
+        ]
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "append_station_on_endpoint",
+        {
+            "endpoint_bus_ref": koniec_kabla,
+            "station": {"name": "Stacja wytwórcy PV", "station_type": "terminal"},
+            "nn_voltage_kv": 0.8,
+            "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
+            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_OZE},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+        },
+    )
+    stacja_wytworcy = next(s for s in enm["substations"] if s.get("station_type") != "gpz")
+    stacja = str(stacja_wytworcy["ref_id"])
+    szyna_sn = next(
+        b["ref_id"]
+        for b in enm["buses"]
+        if b["ref_id"] in stacja_wytworcy["bus_refs"]
+        and abs(float(b["voltage_kv"]) - 15.0) < 1e-9
+        and "/sn_field_terminal/" not in b["ref_id"]
+    )
     enm = _operacja_domenowa_sceny(
         enm,
         "add_converter_source",
@@ -2097,8 +2146,6 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -3723,8 +3770,6 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -4138,10 +4183,48 @@ def _segmenty_szablonu(
     wynik: list[str] = []
     for warianty in segmenty:
         for segment in warianty:
-            if segment in ("", "{n}"):
+            # Segment liczbowy znika — także LITERALNY (`hv_section/001/bus_wn`), nie tylko
+            # zmienna numeryczna: front dokleja numer do poprzedniego członu (pomiar realnych
+            # referencji w `slownikSegmentow.test.ts` pomija `^\d+$` tą samą regułą).
+            if segment in ("", "{n}") or segment.isdigit():
                 continue
             wynik.append(segment.replace("_{n}", "_1").replace("{n}", "1"))
     return wynik
+
+
+def punkt_neutralny_sn_grup_polaczen() -> dict[str, Any]:
+    """Punkt neutralny sieci SN, który daje transformator WN/SN każdej grupy słownika
+    IEC 60076-1 bez konfiguracji ``lv_neutral`` (karta GPZ-MODEL) — wyrocznia lustra
+    ``punktNeutralnySnTransformatora`` kreatora źródła. Liczy go TEN SAM model połączeń
+    składowej zerowej, który czyta zwarcie 1F i walidator (E-W5-01):
+    droga zerowa po stronie SN (szeregowa albo bocznik dolny) ⇒ ``directly_grounded``,
+    inaczej ``isolated``."""
+    from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076
+    from enm.models import Transformer
+    from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
+
+    wynik: dict[str, str] = {}
+    for grupa in sorted(GRUPY_POLACZEN_IEC60076):
+        model = build_transformer_zero_seq_model(
+            Transformer(
+                ref_id="tr",
+                name="tr",
+                hv_bus_ref="wn",
+                lv_bus_ref="sn",
+                sn_mva=25.0,
+                uhv_kv=110.0,
+                ulv_kv=15.0,
+                uk_percent=11.0,
+                pk_kw=120.0,
+                vector_group=grupa,
+            )
+        )
+        droga_sn = model.connection in (
+            ZeroSeqConnection.SERIES_THROUGH,
+            ZeroSeqConnection.LV_SHUNT_GROUND,
+        )
+        wynik[grupa] = "directly_grounded" if droga_sn else "isolated"
+    return {"grupy": wynik}
 
 
 def segmenty_referencji_modelu() -> dict[str, Any]:
@@ -4371,8 +4454,6 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -4909,6 +4990,25 @@ def _fabryka_sceny_geometrii_stacji(wariant: str) -> Any:
     return lambda: _scena_geometrii_stacji(wariant)
 
 
+def geometria_stacji_gpz_110kv() -> dict[str, Any]:
+    """Karta GPZ-MODEL × GEOMETRIA-STACJI: GPZ z równoważnikiem 110 kV, dwie sekcje SN ze
+    sprzęgłem i dwa transformatory 110/15 kV na wspólnej szynie WN
+    (`scena_geometrii_stacji.zbuduj_gpz_110kv`) jako odpowiedź operacji — migawka + widoki
+    logiczne."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_110kv
+
+    model = EnergyNetworkModel.model_validate(zbuduj_gpz_110kv())
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {"snapshot": odpowiedz["snapshot"], "logical_views": odpowiedz["logical_views"]}
+    )
+
+
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
     return lambda: _scena_punktu_startu(rodzaj, stan)
 
@@ -4961,6 +5061,7 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
         f"geometria_stacji_{wariant}": _fabryka_sceny_geometrii_stacji(wariant)
         for wariant in ("zamkniete", "otwarte", "bez_wyposazenia")
     },
+    "geometria_stacji_gpz_110kv": geometria_stacji_gpz_110kv,
 }
 
 
@@ -4999,6 +5100,7 @@ FIXTURY: dict[str, Any] = {
     "identyfikatory_grafu": identyfikatory_grafu,
     "katalogi_odniesien_v126": katalogi_odniesien_v126,
     "segmenty_referencji_modelu": segmenty_referencji_modelu,
+    "punkt_neutralny_sn_grup_polaczen": punkt_neutralny_sn_grup_polaczen,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,

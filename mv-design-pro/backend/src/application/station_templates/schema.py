@@ -325,6 +325,14 @@ def catalog_choice_rated_kva(option: Any) -> tuple[int | None, str | None]:
     return int(match.group(1)), ref
 
 
+def _domyslna_opcja(opcje: tuple[CatalogChoice, ...]) -> CatalogChoice | None:
+    """Opcja oznaczona `default=True`, w jej braku pierwsza z listy; `None` dla pustej."""
+    for opcja in opcje:
+        if opcja.default:
+            return opcja
+    return opcje[0] if opcje else None
+
+
 def _domyslna_opcja_transformatora(schema: TemplateSchema) -> CatalogChoice | None:
     """Wybrana domyślnie opcja transformatora szablonu (`default=True`),
     albo pierwsza z listy gdy żadna nie jest oznaczona; `None` gdy szablon
@@ -338,8 +346,8 @@ def _domyslna_opcja_transformatora(schema: TemplateSchema) -> CatalogChoice | No
 
 def moc_z_tokenu_identyfikatora_kva(template_id: str) -> int | None:
     """Moc transformatora [kVA], którą obiecuje TOKEN identyfikatora szablonu: `_630kva`,
-    `_2x1000kva` (moc JEDNOSTKOWA przy liczbie transformatorów w szablonie), `_1mva_`,
-    `_2x16mva_` (MVA → kVA). `None`, gdy identyfikator nie koduje mocy transformatora
+    `_2x1000kva` (moc JEDNOSTKOWA przy liczbie transformatorów w szablonie), `_1mva_`
+    (MVA → kVA). `None`, gdy identyfikator nie koduje mocy transformatora
     (`_1mw_` to moc źródła, `_0v6mvar_` — moc baterii, nie transformatora).
 
     Historyczny token `_50kva` wskazuje typoszereg 63 kVA (50 kVA nie istnieje w katalogu)."""
@@ -1057,13 +1065,31 @@ def shunt_capacitor_rated_kv(shunt_ref: str | None) -> float | None:
     return float(rated_kv)
 
 
+def grid_source_voltage_kv(source_ref: str | None) -> float | None:
+    """Napięcie znamionowe [kV] równoważnika systemowego GPZ (`ZRODLO_SN`) — z REALNEGO
+    rekordu katalogu (`SourceSystemType.voltage_rating_kv`), tej samej liczby, którą
+    materializuje `add_grid_source_sn`. `None` przy braku referencji/rekordu."""
+    if not isinstance(source_ref, str) or not source_ref.strip():
+        return None
+    from network_model.catalog import get_default_mv_catalog
+
+    item = get_default_mv_catalog().get_source_system_type(source_ref)
+    if item is None:
+        return None
+    napiecie = getattr(item, "voltage_rating_kv", None)
+    if not isinstance(napiecie, int | float) or float(napiecie) <= 0.0:
+        return None
+    return float(napiecie)
+
+
 def sn_voltage_kv(template: StationTemplate) -> float | None:
     """Napięcie SN [kV], na którym szablon pracuje — wyprowadzone z jego własnej
     zawartości, nie z nazwy ani z kategorii:
 
     1. szablon GPZ (niesie `grid_source_options`, droga `add_grid_source_sn`)
-       TWORZY szynę SN — jego napięciem SN jest strona DOLNA transformatora
-       110/SN (strona górna to sieć 110 kV, a nie napięcie pracy pól SN);
+       TWORZY szynę SN — jego napięciem SN jest napięcie znamionowe domyślnego
+       równoważnika sieci na szynach SN (`grid_source_voltage_kv`; transformatory
+       110/SN są poza modelem — granica zasilania SN, karta GPZ-MODEL);
     2. szablon wpinany w segment magistrali (`insert_station_on_segment_sn`)
        WYMAGA szyny o napięciu strony GÓRNEJ swojego transformatora SN/nN;
     3. szablon bez transformatora, za to z baterią kondensatorów (kompensacja)
@@ -1079,18 +1105,19 @@ def sn_voltage_kv(template: StationTemplate) -> float | None:
     dopiero przy zastosowaniu (`shunt.voltage_mismatch`). Pole zamyka lukę:
     wymaganie napięciowe jest częścią oferty, a nie niespodzianką po kliknięciu.
     Pomiar rozkładu na 73 szablonach (2026-09-17): 15 kV — 64, 20 kV — 3
-    (`tpl_gpz_110_20_2x16mva_h5`, `tpl_kompensacja_1v8mvar_20kv`,
+    (GPZ 20 kV — od karty GPZ-MODEL `tpl_gpz_sn_20_2s_4p`, napięcie z domyślnego
+    równoważnika sieci szablonu —, `tpl_kompensacja_1v8mvar_20kv`,
     `tpl_abonencka_630kva_pomiar_20kv`), napięciowo obojętne — 6 (3 rozdzielnie
     sieciowe + 3 warianty rezerwy zasilania). Pomiar 2026-10-15 po wycofaniu 2 szablonów
     wiatrowych 15 kV: 71 szablonów, 15 kV — 62 (pin: `test_napiecie_sn_szablonu`).
     """
+    if template.schema.grid_source_options:
+        zrodlo = _domyslna_opcja(template.schema.grid_source_options)
+        return grid_source_voltage_kv(zrodlo.catalog_ref if zrodlo is not None else None)
     transformator = resolve_template_default_transformer_choice(template)
     if transformator is not None:
-        napiecie_gn_kv, napiecie_dn_kv = transformer_voltages_kv(transformator.catalog_ref)
-        if template.schema.grid_source_options:
-            if napiecie_dn_kv is not None:
-                return napiecie_dn_kv
-        elif napiecie_gn_kv is not None:
+        napiecie_gn_kv, _napiecie_dn_kv = transformer_voltages_kv(transformator.catalog_ref)
+        if napiecie_gn_kv is not None:
             return napiecie_gn_kv
     bateria = resolve_template_default_shunt_choice(template)
     if bateria is not None:

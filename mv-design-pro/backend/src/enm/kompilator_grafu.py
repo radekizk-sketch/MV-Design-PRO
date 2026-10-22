@@ -158,10 +158,11 @@ def dodaj_zrodlo_slack(
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Dodaj szynę bilansującą jako ekwiwalent ręczny WPROST na jej własnym
-    napięciu (`skip_hv_transformer=True` — CV-4.3 K1: sieć referencyjna z
+    napięciu — równoważnik na szynach SN (CV-4.3 K1: sieć referencyjna z
     literatury JEST szczytem modelu, bez nadrzędnego układu 110 kV, którego
-    publikacja nie opisuje; zob. uzasadnienie w `enm/domain_operations.py::
-    _resolve_manual_source_equivalent`). Zwraca (enm, bus_ref źródła/GPZ).
+    publikacja nie opisuje; granica zasilania SN `enm/domain_operations.py::
+    _granica_zasilania_gpz` — bez transformatorów WN/SN). Zwraca (enm, bus_ref
+    źródła/GPZ).
 
     ``u_set_pu`` — napięcie zadane szyny bilansującej z literatury (MATPOWER ``Vm``
     szyny slack / pandapower ``ext_grid.vm_pu``); ``None`` = 1,0 p.u. Do 2026-09-09
@@ -189,7 +190,6 @@ def dodaj_zrodlo_slack(
                 "sn_voltage_kv": voltage_kv,
                 "sk3_mva": sk3_mva,
                 "rx_ratio": rx_ratio,
-                "skip_hv_transformer": True,
                 **({"u_set_pu": u_set_pu} if u_set_pu is not None else {}),
             },
             "line_fields_count": max(line_fields_count, 1),
@@ -937,7 +937,6 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
         rownowaznik: dict[str, Any] = {
             "sn_voltage_kv": szyna.voltage_kv,
             "rx_ratio": zrodlo.rx_ratio,
-            "skip_hv_transformer": True,
         }
         for klucz in ("sk3_mva", "ik3_ka", "sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu"):
             wartosc = getattr(zrodlo, klucz)

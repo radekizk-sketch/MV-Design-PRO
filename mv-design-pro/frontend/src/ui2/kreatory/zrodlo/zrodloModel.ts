@@ -11,7 +11,11 @@
 
 import type { WierszGotowosci } from '../rama';
 import type { ManualSourceShortCircuitMode } from '../../../ui/network-build/forms/catalogPayload';
-import { PUNKTY_NEUTRALNE_IMPEDANCYJNE, type TypPunktuNeutralnego } from '../../../types/uziemienie';
+import {
+  ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
+  PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  type TypPunktuNeutralnego,
+} from '../../../types/uziemienie';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { MVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
 import type {
@@ -110,8 +114,6 @@ export interface GridSourceFormData {
   oltc_ldc_enabled: boolean;
   oltc_ldc_r_ohm: number | null;
   oltc_ldc_x_ohm: number | null;
-  /** UI-only: zakres wariantu ('simplified' = źródło SN, 'advanced' = pełny WN/SN). */
-  complexity_mode: 'simplified' | 'advanced';
 }
 
 export interface BladPolaZrodla {
@@ -177,7 +179,6 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   oltc_ldc_enabled: false,
   oltc_ldc_r_ohm: null,
   oltc_ldc_x_ohm: null,
-  complexity_mode: 'simplified',
 };
 
 function isBlankValue(value: unknown): boolean {
@@ -229,6 +230,78 @@ export function scalDanePoczatkowe(initialData?: Partial<GridSourceFormData>): G
 
 function isPositive(value: number | null): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+/**
+ * Granica zasilania SN GPZ (karta GPZ-MODEL) — JEDEN predykat kreatora, lustro
+ * `_granica_zasilania_gpz` backendu: transformatory 110/SN są elementami modelu
+ * WYŁĄCZNIE przy równoważniku sieci po stronie 110 kV (tryb ekspercki, strona
+ * 110 kV). Równoważnik z katalogu albo ręczny po stronie SN podaje Sk″ widziane
+ * z szyn SN — zawiera już impedancję transformatorów, więc kreator nie oferuje
+ * wtedy ani liczby/typu transformatorów, ani regulacji zaczepów (backend odmawia
+ * takiego ładunku kodem `source.transformer_requires_hv_equivalent`).
+ */
+export function transformatoryWModelu(data: GridSourceFormData): boolean {
+  return data.manual_mode && data.short_circuit_input_side === 'HV_110';
+}
+
+/**
+ * Punkt neutralny sieci SN, który daje transformator 110/SN o danej grupie połączeń
+ * (karta GPZ-MODEL). Przy równoważniku 110 kV punkt neutralny SN jest punktem
+ * neutralnym uzwojenia SN transformatorów modelu, a kreator nie konfiguruje ich
+ * `lv_neutral` — zwarcie 1F czyta więc samą literę grupy: uzwojenie z `n`/`N` jest
+ * uziemione bezpośrednio, bez niej otwarte. Droga składowej zerowej po stronie SN
+ * istnieje przy gwieździe uziemionej po SN z trójkątem albo gwiazdą uziemioną po WN
+ * oraz przy zygzaku uziemionym po SN (o ile WN nie jest zygzakiem uziemionym) — lustro
+ * tablicy połączeń `enm/zero_sequence_transformer.py::_decide_connection`; spójność
+ * opisu z modelem rozstrzyga walidator backendu (E-W5-01). `null` = brak grupy.
+ */
+export function punktNeutralnySnTransformatora(grupa: string | null): TypPunktuNeutralnego | null {
+  if (!grupa) return null;
+  const litery = grupa.replace(/[^A-Za-z]/g, '');
+  const wn = litery.replace(/[a-z]/g, '');
+  const sn = litery.replace(/[A-Z]/g, '');
+  if (wn === '' || sn === '') return null;
+  const rodzaj = (uzwojenie: string): 'GWIAZDA_UZIEMIONA' | 'TROJKAT' | 'ZYGZAK_UZIEMIONY' | 'OTWARTE' => {
+    const u = uzwojenie.toUpperCase();
+    if (u.startsWith('D')) return 'TROJKAT';
+    const uziemione = u.includes('N');
+    if (u.startsWith('Z')) return uziemione ? 'ZYGZAK_UZIEMIONY' : 'OTWARTE';
+    return uziemione ? 'GWIAZDA_UZIEMIONA' : 'OTWARTE';
+  };
+  const strWn = rodzaj(wn);
+  const strSn = rodzaj(sn);
+  const drogaSn =
+    (strSn === 'GWIAZDA_UZIEMIONA' && (strWn === 'GWIAZDA_UZIEMIONA' || strWn === 'TROJKAT'))
+    || (strSn === 'ZYGZAK_UZIEMIONY' && strWn !== 'ZYGZAK_UZIEMIONY');
+  return drogaSn ? 'directly_grounded' : 'isolated';
+}
+
+/**
+ * Typy punktu neutralnego SN, które kreator może opisać bez sprzeczności z modelem
+ * (karta GPZ-MODEL). `null` = dowolny (równoważnik na szynach SN — opis niesie źródło,
+ * Z0 podaje projektant); przy równoważniku 110 kV — dokładnie ten, który wynika z grupy
+ * połączeń transformatora 110/SN (pusta lista, gdy transformator nie jest wybrany).
+ */
+export function typyUziemieniaDozwolone(
+  data: GridSourceFormData,
+): readonly TypPunktuNeutralnego[] | null {
+  if (!transformatoryWModelu(data)) return null;
+  const punkt = punktNeutralnySnTransformatora(data.transformer_vector_group);
+  return punkt === null ? [] : [punkt];
+}
+
+/**
+ * Postać parametru zwarciowego, którą kreator naprawdę wysyła — JEDEN predykat dla
+ * walidacji, podglądu, ładunku i wiersza gotowości. Impedancja R + jX istnieje tylko
+ * w trybie eksperckim po stronie SN (przełącznik postaci jest ukryty po stronie
+ * 110 kV i w trybie katalogowym); wartość pozostawiona w danych po przełączeniu trybu
+ * nie może zmienić tego, co liczy backend, wbrew polom widocznym na ekranie.
+ */
+export function trybParametruZwarciowego(data: GridSourceFormData): ManualSourceShortCircuitMode {
+  return data.manual_mode && data.short_circuit_input_side !== 'HV_110'
+    ? data.short_circuit_mode
+    : 'SHORT_CIRCUIT_POWER';
 }
 
 // ------------------------------------------------------------- Walidacja
@@ -306,14 +379,15 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
   if (!Number.isInteger(data.sections_count) || data.sections_count < 1 || data.sections_count > 4) {
     errors.push({ field: 'sections_count', message: 'Liczba sekcji GPZ musi mieścić się w zakresie 1-4.' });
   }
-  if (!Number.isInteger(data.transformer_count) || data.transformer_count < 1 || data.transformer_count > 4) {
-    errors.push({ field: 'transformer_count', message: 'Liczba transformatorów 110/SN musi mieścić się w zakresie 1-4.' });
-  }
-  if (!data.transformer_catalog_ref?.trim()) {
-    // Karta FAB-G: operacja domenowa wymaga jawnej pozycji katalogowej
-    // transformatora WN/SN (albo pary hv_voltage_kv + transformer_sn_mva) —
-    // bez tego pola backend odrzuca operację kodem catalog.ref_required.
-    errors.push({ field: 'transformer_catalog_ref', message: 'Dobierz transformator 110/SN z katalogu.' });
+  if (transformatoryWModelu(data)) {
+    if (!Number.isInteger(data.transformer_count) || data.transformer_count < 1 || data.transformer_count > MAX_TRANSFORMATOROW) {
+      errors.push({ field: 'transformer_count', message: `Liczba transformatorów 110/SN musi mieścić się w zakresie 1-${MAX_TRANSFORMATOROW}.` });
+    }
+    if (!data.transformer_catalog_ref?.trim()) {
+      // Karta FAB-G: operacja domenowa wymaga jawnej pozycji katalogowej
+      // transformatora WN/SN — bez niej backend odrzuca operację kodem catalog.ref_required.
+      errors.push({ field: 'transformer_catalog_ref', message: 'Dobierz transformator 110/SN z katalogu.' });
+    }
   }
   if (!Number.isInteger(data.line_fields_per_section) || data.line_fields_per_section < 1 || data.line_fields_per_section > 12) {
     errors.push({ field: 'line_fields_per_section', message: 'Liczba pól liniowych na sekcję musi mieścić się w zakresie 1-12.' });
@@ -346,7 +420,7 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
         errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
       }
       errors.push(...walidujDaneScenariuszaMin(data, data.sk3_hv_mva));
-    } else if (data.short_circuit_mode === 'IMPEDANCE') {
+    } else if (trybParametruZwarciowego(data) === 'IMPEDANCE') {
       if (data.r_ohm === null || data.r_ohm < 0) {
         errors.push({ field: 'r_ohm', message: 'W trybie impedancyjnym rezystancja R musi być nieujemna.' });
       }
@@ -393,6 +467,15 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
       errors.push({ field: 'z0_z1_ratio', message: 'Z0/Z1 musi być dodatnie.' });
     }
   }
+  const dozwoloneUziemienia = typyUziemieniaDozwolone(data);
+  if (dozwoloneUziemienia !== null && !dozwoloneUziemienia.includes(data.grounding_type)) {
+    errors.push({
+      field: 'grounding_type',
+      message: dozwoloneUziemienia.length === 0
+        ? 'Punkt neutralny sieci SN wynika z grupy połączeń transformatora 110/SN — wybierz transformator z katalogu.'
+        : `Transformator 110/SN o grupie ${data.transformer_vector_group} daje punkt neutralny SN „${ETYKIETA_PL_PUNKTU_NEUTRALNEGO[dozwoloneUziemienia[0]]}” — opis sieci SN musi być z nim zgodny.`,
+    });
+  }
   if (data.grounding_type === 'resistor_grounded' && (data.grounding_r_ohm === null || data.grounding_r_ohm <= 0)) {
     errors.push({ field: 'grounding_r_ohm', message: 'Uziemienie rezystorowe wymaga dodatniej rezystancji R.' });
   }
@@ -400,7 +483,9 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
     errors.push({ field: 'grounding_x_ohm', message: 'Cewka Petersena wymaga dodatniej reaktancji X.' });
   }
 
-  errors.push(...walidujOltc(data));
+  // Regulacja zaczepów dotyczy transformatorów 110/SN — istnieją tylko w modelu
+  // z równoważnikiem po stronie 110 kV (`transformatoryWModelu`).
+  if (transformatoryWModelu(data)) errors.push(...walidujOltc(data));
 
   return errors;
 }
@@ -458,7 +543,7 @@ export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePrevi
   if (!isPositive(previewVoltageKv) || !Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
     return null;
   }
-  const impedancyjny = data.manual_mode && data.short_circuit_mode === 'IMPEDANCE';
+  const impedancyjny = trybParametruZwarciowego(data) === 'IMPEDANCE';
   if (impedancyjny) {
     if (data.r_ohm === null || data.r_ohm < 0 || !isPositive(data.x_ohm)) {
       return null;
@@ -483,7 +568,7 @@ export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePrevi
 
   return {
     voltage_kv: previewVoltageKv,
-    short_circuit_mode: data.short_circuit_mode,
+    short_circuit_mode: trybParametruZwarciowego(data),
     sk3_mva: previewSk3Mva,
     rx_ratio: data.rx_ratio,
     r_ohm: data.r_ohm,
@@ -588,16 +673,17 @@ function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown
   const common = {
     voltage_kv: data.sn_voltage_kv,
     sn_voltage_kv: data.sn_voltage_kv,
-    hv_voltage_kv: data.hv_voltage_kv,
+    // Napięcie WN jest daną równoważnika wyłącznie po stronie 110 kV.
+    ...(data.short_circuit_input_side === 'HV_110' ? { hv_voltage_kv: data.hv_voltage_kv } : {}),
     short_circuit_input_side: data.short_circuit_input_side,
-    short_circuit_mode: data.short_circuit_mode,
+    short_circuit_mode: trybParametruZwarciowego(data),
     // CV-4.3 K7c: backend czyta u_set_pu BEZWARUNKOWO (przed rozgałęzieniem na
     // short_circuit_mode) — w `common`, więc obecne w OBU gałęziach poniżej
     // (impedancja i moc zwarciowa). Opcjonalne: brak klucza = nie wysyłamy
     // (zero fabrykacji, ten sam wzorzec co dane scenariusza MIN niżej).
     ...(data.u_set_pu !== null ? { u_set_pu: data.u_set_pu } : {}),
   };
-  if (data.short_circuit_mode === 'IMPEDANCE') {
+  if (trybParametruZwarciowego(data) === 'IMPEDANCE') {
     return {
       ...common,
       r_ohm: data.r_ohm,
@@ -629,11 +715,9 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
     source_name: data.source_name,
     voltage_kv: data.sn_voltage_kv,
     sections_count: Math.max(1, Math.min(MAX_SEKCJI, Math.trunc(data.sections_count || 1))),
-    hv_voltage_kv: data.hv_voltage_kv,
     short_circuit_input_side: data.short_circuit_input_side,
-    transformer_count: Math.max(1, Math.min(MAX_TRANSFORMATOROW, Math.trunc(data.transformer_count || 1))),
     line_fields_per_section: Math.max(1, Math.min(MAX_POL_NA_SEKCJE, Math.trunc(data.line_fields_per_section || 1))),
-    short_circuit_mode: data.short_circuit_mode,
+    short_circuit_mode: trybParametruZwarciowego(data),
     gpz_sections: buildGpzSections(data),
     zero_sequence: buildZeroSequence(data),
     grounding: buildGrounding(data),
@@ -647,12 +731,18 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
     // Rodzina rozdzielnicy producenta (Reference Engine) — spływa do SLD + oceny zgodności.
     switchgear_family_ref: data.switchgear_family_ref ?? undefined,
     manufacturer_ref: data.manufacturer_ref ?? undefined,
-    // Transformator 110/SN z katalogu (op czyta transformer_catalog_ref + parametry).
-    transformer_catalog_ref: data.transformer_catalog_ref ?? undefined,
-    transformer_sn_mva: data.transformer_catalog_ref ? data.transformer_sn_mva ?? undefined : undefined,
-    transformer_uk_percent: data.transformer_catalog_ref ? data.transformer_uk_percent ?? undefined : undefined,
-    transformer_vector_group: data.transformer_catalog_ref ? data.transformer_vector_group ?? undefined : undefined,
   };
+
+  // Granica zasilania SN (`transformatoryWModelu`): klucze transformatorów 110/SN
+  // (liczba, typ z katalogu, napięcie WN, regulacja zaczepów) trafiają do ładunku
+  // WYŁĄCZNIE przy równoważniku po stronie 110 kV — inaczej backend odmawia operacji.
+  // Tabliczka (Sn, uk, grupa) pochodzi z katalogu po stronie backendu, ładunek niesie
+  // tylko pozycję katalogową.
+  if (!transformatoryWModelu(data)) return uzupelnijParametryZwarciowe(payload, data);
+
+  payload.hv_voltage_kv = data.hv_voltage_kv;
+  payload.transformer_count = Math.max(1, Math.min(MAX_TRANSFORMATOROW, Math.trunc(data.transformer_count || 1)));
+  payload.transformer_catalog_ref = data.transformer_catalog_ref ?? undefined;
 
   // Regulacja zaczepów (OLTC/DETC) → klucze transformer_* czytane przez
   // _build_gpz_tap_changer. Dodawane WYŁĄCZNIE gdy regulacja włączona
@@ -681,7 +771,15 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
     }
   }
 
-  if (data.manual_mode && data.short_circuit_mode === 'IMPEDANCE') {
+  return uzupelnijParametryZwarciowe(payload, data);
+}
+
+/** Parametry zwarciowe równoważnika i blok trybu eksperckiego — wspólne dla obu granic. */
+function uzupelnijParametryZwarciowe(
+  payload: Record<string, unknown>,
+  data: GridSourceFormData,
+): Record<string, unknown> {
+  if (trybParametruZwarciowego(data) === 'IMPEDANCE') {
     payload.r_ohm = data.r_ohm;
     payload.x_ohm = data.x_ohm;
   } else if (data.manual_mode && data.short_circuit_input_side === 'HV_110') {
@@ -707,7 +805,13 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
 export function wierszeGotowosci(data: GridSourceFormData): WierszGotowosci[] {
   const hasZeroSequenceInput =
     (data.r0_ohm !== null && data.x0_ohm !== null) || isPositive(data.z0_z1_ratio);
-  const hasShortCircuitInput = isPositive(data.sk3_mva) && data.rx_ratio !== null;
+  // Sk″ po tej stronie, po której podano równoważnik (110 kV albo SN) — ten sam wybór
+  // pola co ładunek operacji i podgląd (dawniej wiersz czytał zawsze `sk3_mva`).
+  const hv = transformatoryWModelu(data);
+  const impedancyjny = trybParametruZwarciowego(data) === 'IMPEDANCE';
+  const hasShortCircuitInput = impedancyjny
+    ? data.r_ohm !== null && data.r_ohm >= 0 && isPositive(data.x_ohm)
+    : isPositive(hv ? data.sk3_hv_mva : data.sk3_mva) && data.rx_ratio !== null;
 
   const wiersze: Array<[string, WierszGotowosci['stan'], string]> = [
     ['Identyfikacja', data.source_name.trim() ? 'kompletne' : 'brak', 'Kompletne'],
@@ -727,11 +831,25 @@ export function wierszeGotowosci(data: GridSourceFormData): WierszGotowosci[] {
     ],
   ];
 
-  return wiersze.map(([etykieta, stan, fallback]) => ({
+  const ogolne = wiersze.map(([etykieta, stan, fallback]) => ({
     etykieta,
     stan,
     wartosc: stan === 'kompletne' ? 'Kompletne' : stan === 'ostrzezenie' ? fallback : 'Do konfiguracji',
   }));
+  return [...ogolne, wierszTransformatorow(data)];
+}
+
+/** Wiersz gotowości granicy zasilania SN — mówi wprost, czy transformatory 110/SN są w modelu. */
+export function wierszTransformatorow(data: GridSourceFormData): WierszGotowosci {
+  if (!transformatoryWModelu(data)) {
+    return { etykieta: 'Transformatory 110/SN', stan: 'kompletne', wartosc: 'W równoważniku SN (poza modelem)' };
+  }
+  const kompletne = Boolean(data.transformer_catalog_ref?.trim());
+  return {
+    etykieta: 'Transformatory 110/SN',
+    stan: kompletne ? 'kompletne' : 'brak',
+    wartosc: kompletne ? `${data.transformer_count} × w modelu` : 'Do konfiguracji',
+  };
 }
 
 // --------------------------------------------------------- Katalog / etykiety

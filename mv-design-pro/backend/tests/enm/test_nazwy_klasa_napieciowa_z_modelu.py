@@ -212,8 +212,6 @@ def test_nazwy_gpz_formatuja_napiecie_przez_g(napiecie_sn: float) -> None:
             "voltage_kv": napiecie_sn,
             "sk3_mva": 250.0,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert wynik.get("error") is None, wynik.get("error")

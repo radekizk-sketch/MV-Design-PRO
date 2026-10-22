@@ -184,7 +184,7 @@ export function buildCanonicalGpzProps(
     // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
     hvSystemSource:
       (substation.gpz_hv_sections ?? []).length === 0
-        ? deriveHvSystemSource(enm, substation, enm.buses ?? [], allTransformers, enm.sources ?? [])
+        ? deriveHvSystemSource(enm, substation, enm.buses ?? [], enm.sources ?? [])
         : null,
     // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ — patrz `gpzHvBusResultRef`
     // (odmowa przy niejednoznaczności, karta WN-WYNIK).
@@ -214,11 +214,12 @@ function gpzHvBuses(substation: Substation, buses: readonly Bus[]): readonly Bus
  *
  * Kompozycja rysuje DOKŁADNIE JEDEN odcinek szyny WN (`compose/gpz.ts` krok 7 —
  * span po wszystkich zaczepach WN), więc przypisanie mu punktu wyniku ma sens
- * tylko wtedy, gdy stacja ma w modelu DOKŁADNIE JEDNĄ szynę WN. GPZ o dwóch
- * transformatorach ma DWIE odrębne szyny 110 kV (`transformer/001/bus_110`,
- * `transformer/002/bus_110`) bez gałęzi między nimi — dotychczasowe `find(...)`
- * cicho brało PIERWSZĄ, więc jeden narysowany odcinek pokazywał wielkość
- * JEDNEGO z dwóch węzłów, milcząc o drugim. To ta sama klasa i ta sama reguła,
+ * tylko wtedy, gdy stacja ma w modelu DOKŁADNIE JEDNĄ szynę WN. Kreator GPZ
+ * (karta GPZ-MODEL) buduje jedną wspólną szynę 110 kV (`hv_section/001/bus_wn`,
+ * tag `gpz_hv_bus`) dla wszystkich transformatorów; kilka szyn WN w stacji
+ * powstaje tylko z jawnie dodanych sekcji WN (`add_gpz_section`, strona WN) —
+ * wtedy `find(...)` brałoby cicho PIERWSZĄ i jeden narysowany odcinek pokazywałby
+ * wielkość JEDNEGO z kilku węzłów, milcząc o pozostałych. To ta sama klasa i ta sama reguła,
  * co odmowy `stationFieldBusRef`/`pickStationBus` w `resultRefBridge.ts` (stacja
  * dwusekcyjna nie dostaje etykiety, bo rysunek ma jeden odcinek szyny).
  *
@@ -231,15 +232,20 @@ function gpzHvBusResultRef(substation: Substation, buses: readonly Bus[]): strin
 }
 
 /**
- * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10): wywodzi dane kolumny WN z
- * relacji PIERWSZOKLASOWYCH ENM — zero zgadywania, brak KTÓREGOKOLWIEK z
- * trzech rekordów (TR WN/SN, szyna WN, `Source` na szynie GPZ) ⇒ `null`
- * (uczciwy brak, `compose/gpz.ts` NIE dopisuje etykiety/tabliczki danych).
- *   1. TR WN/SN = `Substation.transformer_refs` → `snapshot.transformers`
- *      ze stroną górną w paśmie WN (`wPasmieWn(uhv_kv)`).
+ * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10): wywodzi tabliczkę źródła
+ * systemowego (sieć zasilająca GPZ) z relacji PIERWSZOKLASOWYCH ENM — zero
+ * zgadywania, brak `Source` na szynie GPZ ⇒ `null` (uczciwy brak, `compose/gpz.ts`
+ * NIE dopisuje etykiety/tabliczki danych).
+ *   1. Karta GPZ-MODEL: źródło systemowe NIE wymaga transformatora WN/SN. Przy
+ *      równoważniku sieci na szynach SN transformatorów 110/SN nie ma w modelu,
+ *      a tabliczka (nazwa, „Ekwiwalent sieci zasilającej", Sk″/Ik″) jest tam
+ *      JEDYNYM opisem zasilania GPZ na rysunku — dawny warunek „najpierw TR w paśmie
+ *      WN" pochodził z czasu, gdy kreator dokładał transformator bez zasilania do
+ *      każdego GPZ, i w trybie SN gubił tabliczkę.
  *   2. szyna WN = `gpzHvBuses` (wpisy `Substation.bus_refs` w paśmie WN)
- *      — JEDNO źródło prawdy z `hvBusRef`. Etykieta szyny WN opisuje POZIOM
- *      napięcia, więc kilka szyn WN o TYM SAMYM poziomie (GPZ 2×TR: dwie szyny
+ *      — JEDNO źródło prawdy z `hvBusRef`; jej brak (tryb SN) daje
+ *      `hvBusVoltageKv = null` i `sourceOnHvBus = false`. Etykieta szyny WN opisuje
+ *      POZIOM napięcia, więc kilka szyn WN o TYM SAMYM poziomie (jawne sekcje WN
  *      110 kV) jest tu jednoznaczne; szyny o RÓŻNYCH poziomach ⇒ `null` (karta
  *      WN-WYNIK: rysunek ma jedną szynę WN, a „110 kV" i „220 kV" nie są tym
  *      samym zdaniem — uczciwy brak zamiast pierwszej z brzegu).
@@ -251,16 +257,11 @@ function deriveHvSystemSource(
   enm: ModelSzyn,
   gpz: Substation,
   buses: readonly Bus[],
-  gpzTransformers: readonly Transformer[],
   sources: readonly Source[],
 ): CanonicalGpzHvSystemSource | null {
-  const hvTransformer = gpzTransformers.find((tr) => wPasmieWn(tr.uhv_kv));
-  if (!hvTransformer) return null;
-
   const hvBuses = gpzHvBuses(gpz, buses);
-  const hvBus = hvBuses[0];
-  if (!hvBus) return null;
-  if (hvBuses.some((b) => b.voltage_kv !== hvBus.voltage_kv)) return null;
+  const hvBus = hvBuses[0] ?? null;
+  if (hvBus !== null && hvBuses.some((b) => b.voltage_kv !== hvBus.voltage_kv)) return null;
 
   // SZYNY-STACJI-LUSTRO: źródło należy do GPZ, gdy stoi na szynie GPZ z jednego lustra
   // `szynyStacji` (szyny główne, zaciski pól, końce aparatów pól nN).
@@ -285,10 +286,10 @@ function deriveHvSystemSource(
     uSetPu: source.u_set_pu ?? null,
     voltageKv: sourceBus?.voltage_kv ?? null,
     // WN-WYNIK (uczciwość w obrębie pliku): „czy źródło stoi po stronie WN" to
-    // pytanie o ZBIÓR szyn WN stacji, nie o pierwszą z nich — GPZ 2×TR ma dwie
-    // szyny 110 kV i źródło na drugiej też jest źródłem po stronie WN.
+    // pytanie o ZBIÓR szyn WN stacji, nie o pierwszą z nich — GPZ z jawnymi
+    // sekcjami WN ma kilka szyn 110 kV i źródło na drugiej też jest po stronie WN.
     sourceOnHvBus: hvBuses.some((b) => b.ref_id === source.bus_ref),
-    hvBusVoltageKv: hvBus.voltage_kv ?? null,
+    hvBusVoltageKv: hvBus?.voltage_kv ?? null,
   };
 }
 

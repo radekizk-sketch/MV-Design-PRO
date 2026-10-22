@@ -163,7 +163,7 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
   // segment) — test dowodzi końca do końca, że kontrakt API (`target_
   // segment_id: str | None`) i domena (`apply_template_to_case`) działają
   // razem na PRAWDZIWYM backendzie, nie tylko w testach jednostkowych.
-  test('POST /api/station-templates/tpl_gpz_110_15_2x16mva_h5/apply creates GPZ without target_segment_id', async ({
+  test('POST /api/station-templates/tpl_gpz_sn_15_2s_4p/apply creates GPZ without target_segment_id', async ({
     request,
   }) => {
     const suffix = String(Date.now());
@@ -192,7 +192,7 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
     const studyCase = (await caseResponse.json()) as { id: string };
 
     const applyResponse = await request.post(
-      `${API_BASE}/api/station-templates/tpl_gpz_110_15_2x16mva_h5/apply`,
+      `${API_BASE}/api/station-templates/tpl_gpz_sn_15_2s_4p/apply`,
       {
         data: {
           case_id: studyCase.id,
@@ -203,7 +203,7 @@ test.describe('critical engineer flow — station templates end-to-end', () => {
     );
     expect(applyResponse.ok(), await applyResponse.text()).toBe(true);
     const result = await applyResponse.json();
-    expect(result.template_id).toBe('tpl_gpz_110_15_2x16mva_h5');
+    expect(result.template_id).toBe('tpl_gpz_sn_15_2s_4p');
     expect(typeof result.station_ref).toBe('string');
     expect(result.station_ref.length).toBeGreaterThan(0);
     expect(result.created_element_refs.length).toBeGreaterThan(0);

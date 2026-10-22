@@ -432,7 +432,7 @@ def _enm_pusty() -> dict:
 def _dodaj(manual: dict) -> dict:
     return add_grid_source_sn(
         _enm_pusty(),
-        {"voltage_kv": 15.0, "manual_equivalent": {"skip_hv_transformer": True, **manual}},
+        {"voltage_kv": 15.0, "manual_equivalent": manual},
     )
 
 

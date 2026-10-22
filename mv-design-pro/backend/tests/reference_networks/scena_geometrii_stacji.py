@@ -23,6 +23,13 @@ Warianty (iloczyn cech karty: stan sprzęgła × aparat {z modelu, brak}):
 * ``bez_wyposazenia`` — model zastany, w którym pola SN stacji nie mają powiązanych rekordów
   aparatów (`equipment_refs` puste); gałęzie łączeniowe zostają w modelu (topologia bez zmian),
   ale żadne pole ich nie wskazuje — przypadek „brak danych wyposażenia pola".
+
+Scena GPZ ``gpz_110kv`` (cecha „GPZ: szyna WN z szyn modelu"): GPZ z równoważnikiem sieci po
+stronie 110 kV, dwiema sekcjami SN ze sprzęgłem i dwoma transformatorami 110/15 kV na WSPÓLNEJ
+szynie WN (TR1 → sekcja 1, TR2 → sekcja 2) — jedyny kształt, w którym operacja
+`add_grid_source_sn` tworzy transformatory GPZ (karta GPZ-MODEL). Dawną fiksturą tej cechy był
+GPZ z równoważnikiem na szynach SN i dwoma transformatorami do DWÓCH martwych szyn 110 kV —
+model, którego backend już nie wytwarza (archiwum takiego modelu blokuje walidator, E066).
 """
 
 from __future__ import annotations
@@ -30,9 +37,21 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+
 from tests.reference_networks.sceny_zajetosci_pol import APARAT, TRAFO, _gpz, odcinek, ok, op
 
 WARIANTY = ("zamkniete", "otwarte", "bez_wyposazenia")
+
+#: Równoważnik sieci 110 kV i transformator WN/SN GPZ sceny ``gpz_110kv`` (pozycje katalogu
+#: jak w substracie 52 stacji).
+ZRODLO_110KV: dict[str, Any] = {
+    "short_circuit_input_side": "HV_110",
+    "hv_voltage_kv": 110.0,
+    "sk3_hv_mva": 3000.0,
+    "rx_ratio": 0.1,
+}
+TRAFO_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
 
 
 def _kable(enm: dict[str, Any]) -> list[dict[str, Any]]:
@@ -167,3 +186,25 @@ def zbuduj_wariant(wariant: str) -> dict[str, Any]:
                 pole["equipment_refs"] = []
                 pole.pop("primary_devices", None)
     return enm
+
+
+def zbuduj_gpz_110kv() -> dict[str, Any]:
+    """GPZ 110/15 kV: równoważnik 110 kV na wspólnej szynie WN, dwie sekcje SN ze sprzęgłem,
+    dwa transformatory 110/15 kV (TR1 → sekcja 1, TR2 → sekcja 2), po dwa pola liniowe na
+    sekcję z aparatem z katalogu."""
+    pusty = EnergyNetworkModel(header=ENMHeader(name="GEOMETRIA-GPZ", defaults=ENMDefaults()))
+    return ok(
+        op(
+            pusty.model_dump(mode="json"),
+            "add_grid_source_sn",
+            {
+                "voltage_kv": 15.0,
+                "manual_equivalent": dict(ZRODLO_110KV),
+                "sections_count": 2,
+                "transformer_count": 2,
+                "transformer_catalog_ref": TRAFO_WN_SN,
+                "line_fields_per_section": 2,
+                "gpz_line_field_apparatus": {"catalog_ref": APARAT},
+            },
+        )
+    )

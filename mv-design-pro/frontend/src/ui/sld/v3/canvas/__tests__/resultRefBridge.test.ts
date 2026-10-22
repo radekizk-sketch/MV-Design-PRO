@@ -45,7 +45,7 @@ const STACJA_POLE_TR = polaStacji.find((pole) => pole.bay_role === 'TR')!.ref_id
 const STACJA_POLA_LINIOWE = polaStacji.filter((pole) => pole.bay_role === 'IN' || pole.bay_role === 'OUT');
 const GPZ = gpz.ref_id;
 const GPZ_SEKCJA_BUS = gpz.bus_refs.find((ref) => ref.endsWith('/bus_sn'))!;
-const GPZ_BUS_110 = gpz.bus_refs.find((ref) => ref.endsWith('/bus_110'))!;
+const GPZ_BUS_110 = gpz.bus_refs.find((ref) => ref.endsWith('/hv_section/001/bus_wn'))!;
 const MUFA = (enm.buses ?? []).find((bus) => bus.ref_id.endsWith('/downstream'))!.ref_id;
 const ZACISK_POLA = (enm.buses ?? []).find((bus) => bus.ref_id.includes('/sn_field_terminal/'))!.ref_id;
 const ODCINEK_0 = (enm.branches ?? []).find((g) => g.name === 'Odcinek 0')!.ref_id;

@@ -49,7 +49,12 @@
  *       OBU stronach, NIE jest rysowana — plan zwraca ją jawnie
  *       (`droppedIdentity`), żeby wyrocznia odbioru mogła pilnować, że na
  *       skalach produkcyjnych ten zbiór jest PUSTY (a nie żeby cicho zgubić
- *       tożsamość).
+ *       tożsamość);
+ *   (f) USTĄPIENIE SKRACALNEGO SĄSIADA (karta GPZ-MODEL, `ustapSasiadow`) —
+ *       zanim tożsamość trafi do `droppedIdentity`, plan sprawdza, czy jej
+ *       stronę zajmują wyłącznie etykiety, które po odsunięciu znów znajdą
+ *       miejsce (zwykle skrócone); jeśli tak, oddają je. Liczba narysowanych
+ *       etykiet rośnie, żadna nie wypada.
  *
  * S9-7 (audyt C-4, TWARDA PODŁOGA EKRANOWA). Do wersji sprzed tej karty plan
  * miał czwarty stopień ustępstwa: „powrót do rozmiaru NATURALNEGO w oryginalnym
@@ -613,6 +618,86 @@ function najlepszeDopasowanie(
 }
 
 /**
+ * (f) USTĄPIENIE SKRACALNEGO SĄSIADA — karta GPZ-MODEL (pomiar na `gpzFeeder`,
+ * L2 przy skali dopasowania 0,4034): oznacznik „Q1" wyłącznika pierwszego pola
+ * stacji S01 nie mieścił się po ŻADNEJ stronie, bo z lewej leżało powiększone
+ * pełnym tekstem oznaczenie ostatniego pola GPZ („Pole liniowe GPZ 1.2", t3,
+ * tusz 248–525 j.św.), a pozostałe trzy strony zajmował symbol wyłącznika.
+ * Oznaczenie GPZ dostało miejsce PIERWSZE (ten sam priorytet, wyższe `y`)
+ * i wzięło pełny tekst, choć mieści się także skrócone z zachowaniem członu
+ * rozróżniającego; dwuznakowego „Q1" skrócić się nie da. Plan zachłanny gubił
+ * więc tożsamość od KOLIZJI — dokładnie to, czego zakazuje kontrakt KD-11
+ * („żadna tożsamość nie ginie od kolizji, jeśli da się ją narysować").
+ *
+ * Reguła: tożsamość, dla której zabrakło miejsca, próbuje swoich stron po
+ * kolei (`stronyWKolejnosci`) z TEKSTEM BAZOWYM. Strona wchodzi w grę tylko
+ * wtedy, gdy mieści się w arkuszu i nie dotyka RYSUNKU (symbol i tor zawsze
+ * wygrywają), a zajmują ją wyłącznie etykiety. Każdy taki sąsiad jest
+ * dopasowywany od nowa (pełna maszyneria `najlepszeDopasowanie`: skracanie
+ * i strony) wobec zbioru zajętego BEZ niego, z nową tożsamością. Jedno źródło
+ * prawdy o tym, KTO może ustąpić, to właśnie to ponowne dopasowanie: sąsiad
+ * w piśmie naturalnym ma jedną postać (tusz we własnym slocie sceny,
+ * rozstrzygniętym declutterem), więc wraca dokładnie na zajęte miejsce i nie
+ * ustępuje nigdy — bez osobnego warunku „tylko powiększone", który mógłby się
+ * z tym rozjechać. Zmiana jest przyjmowana WYŁĄCZNIE wtedy, gdy
+ * KAŻDY sąsiad znów znajdzie miejsce — liczba narysowanych etykiet rośnie
+ * o jeden, żadna nie wypada (inaczej plan zostaje bez zmian). Wszędzie, gdzie
+ * plan dotąd rysował każdą tożsamość, ta gałąź nie jest nawet wywoływana —
+ * wynik bajtowo ten sam. Przypięte: `__tests__/ustapienieSasiada.test.ts`.
+ *
+ * Mutuje `zaplanowane`/`uzyteKandydaty` tylko przy powodzeniu; wołający
+ * przebudowuje wtedy indeks zajętych prostokątów.
+ */
+function ustapSasiadow(
+  kandydat: Kandydat,
+  zaplanowane: Map<number, PlannedLabel>,
+  uzyteKandydaty: Map<number, Kandydat>,
+  obstacles: RectIndex,
+  sheet: SheetOutline,
+): boolean {
+  const { label, slot, tekstBazowy, fontSize } = kandydat;
+  if (!kandydat.enlarged || tekstBazowy.length === 0) return false;
+  const rotated = label.rotated === true;
+  const strony = stronyWKolejnosci(label.placement);
+  for (const strona of strony.length === 0 ? [label.placement] : strony) {
+    const rect = prostokatTuszu(slot, tekstBazowy, fontSize, rotated, strona);
+    if (!rectWithinSheet(rect, sheet) || obstacles.anyOverlap(rect)) continue;
+    const blokujace = [...zaplanowane.values()].filter((p) => rectsOverlap(p.rect, rect));
+    if (blokujace.length === 0) continue;
+    const odsuniete = new Set(blokujace.map((p) => p.index));
+    const zajeteBez = buildRectIndex([
+      ...[...zaplanowane.values()].filter((p) => !odsuniete.has(p.index)).map((p) => p.rect),
+      rect,
+    ]);
+    const nowe: PlannedLabel[] = [];
+    let wszystkieMieszcza = true;
+    for (const p of blokujace) {
+      const sasiad = uzyteKandydaty.get(p.index);
+      const d = sasiad ? najlepszeDopasowanie(sasiad, zajeteBez, obstacles, sheet) : null;
+      if (!sasiad || !d || d.text.length === 0) {
+        wszystkieMieszcza = false;
+        break;
+      }
+      zajeteBez.add(d.rect);
+      nowe.push({ label: p.label, index: p.index, text: d.text, fontSize: d.fontSize, rect: d.rect, enlarged: d.enlarged });
+    }
+    if (!wszystkieMieszcza) continue;
+    for (const p of nowe) zaplanowane.set(p.index, p);
+    zaplanowane.set(kandydat.index, {
+      label,
+      index: kandydat.index,
+      text: tekstBazowy,
+      fontSize,
+      rect,
+      enlarged: true,
+    });
+    uzyteKandydaty.set(kandydat.index, kandydat);
+    return true;
+  }
+  return false;
+}
+
+/**
  * Plan renderu etykiet sceny dla skali kamery. `obstacles` to prostokąty
  * SYMBOLI i ODCINKÓW TORU tego poziomu szczegółu (`sceneObstacleRects`,
  * `scene/buildScene.ts`) — „tor elektryczny nie znika", więc rysunek ZAWSZE
@@ -804,8 +889,12 @@ export function planSceneLabels(
   // S9-9: przeszkody sceny indeksowane RAZ na plan (zbiór stały), „zajęte"
   // przyrostowo — jak w `declutterLabels`, jedna maszyneria dla obu.
   const obstacleIndex = buildRectIndex(obstacles);
-  const zajete = createRectIndex();
+  let zajete = createRectIndex();
   const zaplanowane = new Map<number, PlannedLabel>();
+  /** Kandydat, z którego powstała każda zaplanowana etykieta (po ewentualnym
+   *  przejściu na postać zapasową) — potrzebny `ustapSasiadow`, żeby sąsiada
+   *  ustępującego miejsca dopasować TĄ SAMĄ postacią, którą plan go rysuje. */
+  const uzyteKandydaty = new Map<number, Kandydat>();
   for (const kandydatPierwotny of kolejnosc) {
     let kandydat = kandydatPierwotny;
     let dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
@@ -825,6 +914,14 @@ export function planSceneLabels(
       kandydat = zapasowy.enlarged ? { ...zapasowy, slot: przestawione.get(zapasowy.index) ?? zapasowy.slot } : zapasowy;
       dopasowanie = najlepszeDopasowanie(kandydat, zajete, obstacleIndex, sheet);
     }
+    if (
+      (!dopasowanie || dopasowanie.text.length === 0) &&
+      (kandydat.label.labelRole === 'tozsamosc' || kandydat.label.unresolved === true) &&
+      ustapSasiadow(kandydat, zaplanowane, uzyteKandydaty, obstacleIndex, sheet)
+    ) {
+      zajete = buildRectIndex([...zaplanowane.values()].map((p) => p.rect));
+      continue;
+    }
     if (!dopasowanie || dopasowanie.text.length === 0) {
       // T2-LOD: `unresolved` idzie do `droppedIdentity`, NIGDY do
       // `hiddenDetail` — nawet gdy przyczyną braku miejsca jest KOLIZJA (nie
@@ -839,6 +936,7 @@ export function planSceneLabels(
       continue;
     }
     zajete.add(dopasowanie.rect);
+    uzyteKandydaty.set(kandydat.index, kandydat);
     zaplanowane.set(kandydat.index, {
       label: kandydat.label,
       index: kandydat.index,

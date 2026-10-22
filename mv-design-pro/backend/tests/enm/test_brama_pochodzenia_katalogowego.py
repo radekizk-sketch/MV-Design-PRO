@@ -161,10 +161,6 @@ def _payload_gpz(
         "catalog_ref": REF_ZRODLO_SN,
         "sections_count": sections_count,
         "line_fields_per_section": line_fields_per_section,
-        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
-        # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
     }
     if apparatus_ref is None:
         return payload
@@ -696,8 +692,6 @@ def test_znacznik_pochodzenia_z_payloadu_nie_awansuje_zrodla_do_katalogu() -> No
         "voltage_kv": 15.0,
         "manual_equivalent": {"sk3_mva": 250.0, "rx_ratio": 0.1},
         "source_mode": "KATALOG",
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
     }
 
     wynik = execute_domain_operation(_pusty_enm(), "add_grid_source_sn", payload)
@@ -723,8 +717,6 @@ def test_recznny_ekwiwalent_bez_znacznika_katalogowego_dziala_jak_dotad() -> Non
             "source_name": "Stacja zasilająca ekspercka",
             "voltage_kv": 15.0,
             "manual_equivalent": {"sk3_mva": 250.0, "rx_ratio": 0.1},
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
 

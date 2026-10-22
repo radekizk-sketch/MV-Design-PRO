@@ -54,13 +54,15 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
 | `nn.source.field_missing` | SOURCES | 1 | BLOCKER | Źródło nN nie jest przypięte do pola źródłowego | panel: `inspector`, tab: `pole`, focus: `field_ref` |
 | `nn.source.parameters_missing` | SOURCES | 1 | BLOCKER | Źródło nN nie ma wymaganych parametrów elektrycznych | panel: `inspector`, tab: `parametry`, focus: `rated_power` |
 | `nn.source.switch_missing` | SOURCES | 1 | BLOCKER | Pole źródłowe nN nie posiada aparatu łączeniowego | panel: `inspector`, tab: `pole`, focus: `switch_kind` |
+| `source.gpz_section_unsupplied` | SOURCES | 1 | BLOCKER | Sekcja GPZ bez zasilania — sekcja nie ma własnego równoważnika sieci, a sprzęgło sekcji jest otwarte (zamknij sprzęgło albo zasil sekcję) | panel: `inspector`, tab: `polaczenia` |
+| `source.gpz_transformer_hv_unsupplied` | SOURCES | 1 | BLOCKER | Transformator GPZ bez zasilania od strony 110 kV — za jego szyną 110 kV nie ma równoważnika sieci, odbioru ani generatora (zbuduj GPZ od nowa z równoważnikiem po stronie 110 kV albo z równoważnikiem na szynach SN bez transformatorów 110/SN) | panel: `inspector`, tab: `polaczenia` |
 | `source.grid_supply_missing` | SOURCES | 1 | BLOCKER | Brak źródła zasilania sieciowego (GPZ) | panel: `wizard`, modal: `add_grid_source` |
 | `source.sk3_invalid` | SOURCES | 1 | BLOCKER | Nieprawidłowa moc zwarciowa źródła Sk3 | panel: `inspector`, tab: `parametry`, focus: `sk3_mva` |
 | `source.sk_min_inconsistent` | SOURCES | 1 | BLOCKER | Minimalna moc zwarciowa źródła przekracza maksymalną (S''kQmin > S''kQmax albo I''kQmin > I''kQmax) — dane warunków przyłączenia są sprzeczne | panel: `inspector`, tab: `parametry`, focus: `sk3_min_mva` |
@@ -223,21 +225,21 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 102 |
+| BLOCKER | 104 |
 | WARNING | 55 |
 | INFO | 3 |
-| **Razem** | **160** |
+| **Razem** | **162** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 16 |
+| SOURCES | 18 |
 | TOPOLOGY | 6 |
 | CATALOGS | 49 |
 | STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **160** |
+| **Razem** | **162** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

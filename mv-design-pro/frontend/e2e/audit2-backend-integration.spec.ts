@@ -502,8 +502,6 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
           catalog_item_id: 'src-gpz-15kv-250mva-rx010',
           catalog_item_version: '2024.1',
         },
-        hv_voltage_kv: 110.0,
-        transformer_sn_mva: 25.0,
       },
     });
 
@@ -624,8 +622,6 @@ async function zbudujSiecZeStacja(
       catalog_item_id: 'src-gpz-15kv-250mva-rx010',
       catalog_item_version: '2024.1',
     },
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   const magistrala = await operacja('continue_trunk_segment_sn', {
     segment: {

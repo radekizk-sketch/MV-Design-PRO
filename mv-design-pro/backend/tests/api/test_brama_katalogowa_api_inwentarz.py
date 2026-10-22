@@ -172,12 +172,6 @@ def _payload_zrodla(**nadpisania: Any) -> dict[str, Any]:
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "catalog_ref": REF_ZRODLO,
-        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary hv_voltage_kv
-        # + transformer_sn_mva (albo transformer_catalog_ref) — nadpisania
-        # (np. transformer_catalog_ref=REF_TRAFO_WN_SN w iniekcji bramy) i tak
-        # wygrywaja przez `payload.update(nadpisania)` ponizej.
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
     }
     payload.update(nadpisania)
     return payload
@@ -993,8 +987,6 @@ def test_produkcyjna_droga_zapisu_konczy_zle_referencje_kodem_422(
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": REF_ZRODLO,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         snapshot = _operacja_api(

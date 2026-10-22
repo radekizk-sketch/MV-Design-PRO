@@ -430,6 +430,8 @@ function kotwicaRefu(index: CanvasModelIndex, ref: string): Kotwica | null {
  * predykat brzmiał „pierwsza szyna o `voltage_kv > 1`" i był poprawny WYŁĄCZNIE
  * PRZEZ KOLEJNOŚĆ `bus_refs`. Zmierzone na sieci referencyjnej:
  * GPZ `bus_refs = [section/001/bus_sn = 15 kV, transformer/001/bus_110 = 110 kV]`
+ * (szyna 110 kV per transformator sprzed karty GPZ-MODEL; dziś jedna wspólna
+ * `hv_section/001/bus_wn` — kryterium niżej nie zależy od tej nazwy)
  * — dawny predykat zwracał szynę 15 kV RÓWNIEŻ dla napisu „Szyna WN · 110 kV",
  * czyli PODMIENIAŁBY obiekt (menu sekcji operujące na szynie 15 kV pod napisem
  * o szynie 110 kV) w chwili, gdy uchwyt napisu zaczął odpalać to przejście.

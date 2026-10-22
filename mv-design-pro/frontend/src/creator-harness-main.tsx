@@ -496,15 +496,8 @@ const NAZWA_STACJI_DEMO = (stacjaDemoScenyMigawka.substations as { ref_id: strin
 const ZRODLO_STACJI_DEMO = (
   stacjaDemoScenyMigawka.sources as { sk3_mva: number; rx_ratio: number }[]
 )[0];
-const TRAFO_WN_SN_STACJI_DEMO = (
-  stacjaDemoScenyMigawka.transformers as { sn_mva: number; ulv_kv: number }[]
-).find((trafo) => trafo.ulv_kv === NAPIECIE_SZYNY_SN_STACJI_DEMO)!;
 const SK3_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.sk3_mva;
 const RX_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.rx_ratio;
-const MOC_TRAFO_WN_SN_STACJI_DEMO = TRAFO_WN_SN_STACJI_DEMO.sn_mva;
-const NAPIECIE_WN_STACJI_DEMO = (
-  stacjaDemoScenyMigawka.buses as { voltage_kv: number }[]
-).reduce((maks, szyna) => Math.max(maks, szyna.voltage_kv), 0);
 
 /**
  * Moduły warsztatu wytwórców Z MODELU — odwzorowanie PRODUKCYJNE
@@ -2413,8 +2406,6 @@ async function zasiejSceneStacji(): Promise<void> {
     sk3_mva: SK3_ZRODLA_STACJI_DEMO,
     rx_ratio: RX_ZRODLA_STACJI_DEMO,
     catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
-    hv_voltage_kv: NAPIECIE_WN_STACJI_DEMO,
-    transformer_sn_mva: MOC_TRAFO_WN_SN_STACJI_DEMO,
   });
   if (!gpz || gpz.error) throw new Error(`add_grid_source_sn: ${gpz?.error ?? 'brak odpowiedzi'}`);
   const odcinek = await wykonaj(przypadek.id, 'continue_trunk_segment_sn', {

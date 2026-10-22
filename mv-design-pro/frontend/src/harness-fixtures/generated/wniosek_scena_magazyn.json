@@ -19,7 +19,7 @@
     "straty_pct": 0.7912,
     "straty_status": "PASS",
     "podsumowanie_walidacji": {
-      "spelnione": 10,
+      "spelnione": 8,
       "ostrzezenia": 0,
       "niespelnione": 0,
       "nieobliczone": 0
@@ -2322,7 +2322,7 @@
     "Zestawienia materiałowe nie są jeszcze generowane przez narzędzie — sekcja pominięta (bez danych zastępczych)."
   ],
   "odciski_sekcji_sha256": {
-    "bilans_mocy": "e42162195984c0ca37ac9acebe0a058c1105568308094b589d1113d5102a0431",
+    "bilans_mocy": "f7ec96e2b82e156fc2c940b98f8da48ea438cbe22f827821f1e04833531777b6",
     "zwarcia_punkt_przylaczenia": "e3acf60acec186540437e897e9dccf1340a7d02ac9a8c6ff1e09e915ef88da58",
     "zgodnosc_nc_rfg": "7f700f5b2c8ddc6e39890240648f1efeea0f6c23261c01325ecc6d47c18ecf12"
   },

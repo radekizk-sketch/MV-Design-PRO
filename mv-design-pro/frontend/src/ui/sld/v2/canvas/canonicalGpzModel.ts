@@ -218,8 +218,9 @@ export interface CanonicalGpzHvSection {
 }
 
 /**
- * Źródło systemowe WN wywiedzione WYŁĄCZNIE z relacji pierwszoklasowych ENM (`Source` na
- * szynie GPZ z danymi zwarciowymi), używane gdy `gpz_hv_sections` jest puste.
+ * Źródło systemowe (sieć zasilająca GPZ) wywiedzione WYŁĄCZNIE z relacji pierwszoklasowych
+ * ENM (`Source` na szynie GPZ z danymi zwarciowymi), używane gdy `gpz_hv_sections` jest
+ * puste — zarówno przy równoważniku na szynie WN, jak i na szynach SN (karta GPZ-MODEL).
  */
 export interface CanonicalGpzHvSystemSource {
   readonly sourceRef: string;
@@ -236,7 +237,8 @@ export interface CanonicalGpzHvSystemSource {
   readonly voltageKv: number | null;
   /** `true` ⇔ `Source.bus_ref` to szyna WN GPZ. */
   readonly sourceOnHvBus: boolean;
-  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny w paśmie WN). */
+  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny w paśmie WN); `null` = GPZ bez szyny WN
+   *  (równoważnik na szynach SN) albo brak danej. */
   readonly hvBusVoltageKv: number | null;
 }
 

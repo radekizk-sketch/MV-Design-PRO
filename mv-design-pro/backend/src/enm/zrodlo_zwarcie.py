@@ -20,6 +20,7 @@ impedancja jawna jest fizyczna, więc nie ma wariantu MIN (c_min wchodzi wyłąc
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
 
@@ -65,6 +66,32 @@ def tryb_danych(
     if dodatnia(ik3_ka):
         return TrybDanych.PRAD_ZWARCIOWY
     return None
+
+
+#: Strona WN ręcznego równoważnika sieci GPZ (Sk″ podane na szynie 110 kV).
+STRONA_ROWNOWAZNIKA_WN = "HV_110"
+#: Strona SN ręcznego równoważnika (Sk″ widziane z szyn SN GPZ).
+STRONA_ROWNOWAZNIKA_SN = "SN"
+_ALIASY_STRONY_WN = frozenset({"HV", "WN", "HV_110", "HV110", "110KV", "110_KV"})
+
+
+def strona_rownowaznika(manual: Mapping[str, object], payload: Mapping[str, object]) -> str:
+    """Strona ręcznego równoważnika sieci GPZ: ``HV_110`` albo ``SN``.
+
+    JEDEN predykat dla polityki API (kompletność danych przed operacją) i operacji
+    domenowej (`add_grid_source_sn`) — karta GPZ-MODEL wykryła, że polityka API
+    sprawdzała zawsze ``sk3_mva``, a domena po stronie 110 kV czyta ``sk3_hv_mva``
+    (kreator wysyła tylko ten drugi), więc równoważnik 110 kV z kreatora był odmawiany
+    jako „niekompletny". Pole ładunku na najwyższym poziomie jest aliasem pola
+    ``manual_equivalent``."""
+    surowa = manual.get("short_circuit_input_side", payload.get("short_circuit_input_side", "SN"))
+    strona = str(surowa).strip().upper()
+    return STRONA_ROWNOWAZNIKA_WN if strona in _ALIASY_STRONY_WN else STRONA_ROWNOWAZNIKA_SN
+
+
+def klucz_mocy_zwarciowej(strona: str) -> str:
+    """Klucz S″_kQ ręcznego równoważnika dla strony (`strona_rownowaznika`)."""
+    return "sk3_hv_mva" if strona == STRONA_ROWNOWAZNIKA_WN else "sk3_mva"
 
 
 def dane_zerowe(

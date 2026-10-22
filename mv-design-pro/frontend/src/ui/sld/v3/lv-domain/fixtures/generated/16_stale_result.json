@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "55cf401d16e0ced4d5f6a026b777334239dde9265dada8a89783be4714171a65",
+  "projection_hash": "47f020f6c05d8f7e4d19127e2851884158a515587b1c2c8d4dc06d06167dcc9a",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -1499,13 +1499,6 @@
               "source": "solver",
               "unit": "",
               "value": 0.997883353
-            },
-            "DELTA_U_KV": {
-              "code": "DELTA_U_KV",
-              "format_hint": "fixed2",
-              "source": "solver",
-              "unit": "kV",
-              "value": 14.5996964
             },
             "DELTA_U_PCT": {
               "code": "DELTA_U_PCT",

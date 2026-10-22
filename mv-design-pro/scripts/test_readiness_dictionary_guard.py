@@ -212,3 +212,59 @@ def test_uruchomienie_calego_straznika_rc0() -> None:
     )
     assert wynik.returncode == 0, wynik.stdout + wynik.stderr
     assert "OK" in wynik.stdout
+
+
+def _obcy_pakiet_domain(katalog: Path) -> Path:
+    """Pakiet `domain` z INNEGO drzewa: rejestr z jednym kodem, ktorego w tym drzewie nie ma.
+
+    Odtwarza srodowisko drzewa roboczego `git worktree`: poetry wpisuje `backend/src`
+    glownego checkoutu do `site-packages/*.pth`, wiec goly `import domain` trafia tam,
+    a nie do drzewa, w ktorym straznik biegnie (pomiar karty GPZ-MODEL: 147 kodow
+    glownego checkoutu wobec 149 w drzewie, falszywy rozjazd dokumentu)."""
+    pakiet = katalog / "domain"
+    pakiet.mkdir()
+    (pakiet / "__init__.py").write_text("", encoding="utf-8")
+    (pakiet / "canonical_operations.py").write_text(
+        "READINESS_CODES = {'obcy.kod_z_innego_drzewa': None}\n", encoding="utf-8"
+    )
+    return katalog
+
+
+@pytest.mark.parametrize(
+    "polecenie",
+    [
+        ["generuj_slownik_kodow_gotowosci.py", "--check"],
+        ["readiness_dictionary_guard.py"],
+        ["readiness_codes_guard.py"],
+    ],
+)
+def test_rejestr_z_innego_drzewa_na_sciezce_importu_nie_jest_czytany(
+    tmp_path: Path, polecenie: list[str]
+) -> None:
+    import os
+
+    obcy = _obcy_pakiet_domain(tmp_path)
+    srodowisko = {**os.environ, "PYTHONPATH": str(obcy)}
+    wynik = subprocess.run(
+        [sys.executable, str(REPO / "scripts" / polecenie[0]), *polecenie[1:]],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env=srodowisko,
+    )
+    assert wynik.returncode == 0, wynik.stdout + wynik.stderr
+    assert "obcy.kod_z_innego_drzewa" not in wynik.stdout + wynik.stderr
+
+
+def test_predykat_tego_drzewa_odrzuca_modul_z_innego_pliku(tmp_path: Path) -> None:
+    import importlib.util as iu
+
+    from readiness_codes_guard import modul_z_tego_drzewa
+
+    obcy = _obcy_pakiet_domain(tmp_path) / "domain" / "canonical_operations.py"
+    spec = iu.spec_from_file_location("_obcy_rejestr_testu", obcy)
+    assert spec and spec.loader
+    modul = iu.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    assert modul_z_tego_drzewa(modul) is False
+    assert modul_z_tego_drzewa(modul_rejestru()) is True

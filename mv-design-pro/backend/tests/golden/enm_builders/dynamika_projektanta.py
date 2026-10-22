@@ -141,8 +141,6 @@ def build_dynamika_projektanta_enm(
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _wiazanie("ZRODLO_SN", "src-gpz-15kv-250mva-rx010"),
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     for nazwa in ("Odcinek 1", NAZWA_ODCINKA_ZWARCIA):

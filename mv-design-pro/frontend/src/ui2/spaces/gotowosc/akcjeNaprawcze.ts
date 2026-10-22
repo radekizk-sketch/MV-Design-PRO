@@ -93,8 +93,9 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (156 kodów, stan rejestru partii integracji 11). Brak wpisu dla
- * kodu z rejestru jest błędem wykrywanym testem klasy `akcjeNaprawcze.klasa.test.ts`.
+ * KOMPLETNA tabela kodów kanonu (162 kody, stan rejestru po nałożeniu GPZ-MODEL na partie
+ * 9–13). Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
+ * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // --- Źródła zasilania -----------------------------------------------------
@@ -106,6 +107,18 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'schemat',
     'W jednej wyspie może pracować jedno źródło sieciowe — usuń nadmiarowe źródło z menu ' +
       'kontekstowego elementu na schemacie.',
+  ),
+  // E065 (karta GPZ-MODEL): emiter wskazuje otwarte sprzęgło sekcji — stan łącznika
+  // zmienia edycja parametrów elementu (pole `status`), ta sama co w inspektorze.
+  'source.gpz_section_unsupplied': EDYCJA,
+  // E066 (karta GPZ-MODEL): transformator 110/SN bez równoważnika po stronie 110 kV (model
+  // sprzed karty). Model nie jest migrowany, a żadna pojedyncza operacja nie przebudowuje
+  // GPZ na miejscu — klik prowadzi do transformatora na schemacie, powód mówi, co zrobić.
+  'source.gpz_transformer_hv_unsupplied': przestrzen(
+    'schemat',
+    'Transformator 110/SN istnieje w modelu wyłącznie przy równoważniku sieci po stronie ' +
+      '110 kV — zbuduj GPZ od nowa z równoważnikiem po stronie 110 kV albo z równoważnikiem ' +
+      'na szynach SN bez transformatorów 110/SN.',
   ),
   'source.sk_min_missing': EDYCJA,
   'source.sk_min_inconsistent': EDYCJA,

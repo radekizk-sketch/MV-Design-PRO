@@ -46,6 +46,7 @@ from enm.slownik_komunikatow import opis_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
+from enm.topology import transformatory_zasilajace_gpz
 from enm.tor_pola import szyna_glowna_stacji, szyna_raportowa, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
@@ -289,13 +290,20 @@ def _station_transformers(enm: dict[str, Any], station: dict[str, Any]) -> list[
     transformer_refs = {ref for ref in station.get("transformer_refs", []) if isinstance(ref, str)}
     # POLA-W-TORZE: szyny stacji z jednego źródła — transformator leży na zaciskach pól.
     station_buses = set(szyny_stacji(enm, station))
+    # GPZ-MODEL: transformator zasilający GPZ (110/SN) nie jest transformatorem stacji
+    # SN/nN — jego strona dolna to sekcja SN GPZ, nie szyna nN (jedno źródło predykatu
+    # `enm.topology.transformatory_zasilajace_gpz`, wspólne z walidatorem E066).
+    zasilajace_gpz = transformatory_zasilajace_gpz(enm)
     return [
         transformer
         for transformer in enm.get("transformers", [])
-        if transformer.get("ref_id") in transformer_refs
-        or transformer.get("id") in transformer_refs
-        or transformer.get("hv_bus_ref") in station_buses
-        or transformer.get("lv_bus_ref") in station_buses
+        if (
+            transformer.get("ref_id") in transformer_refs
+            or transformer.get("id") in transformer_refs
+            or transformer.get("hv_bus_ref") in station_buses
+            or transformer.get("lv_bus_ref") in station_buses
+        )
+        and transformer.get("ref_id") not in zasilajace_gpz
     ]
 
 

@@ -7,7 +7,7 @@ from typing import Any
 
 from enm.slownik_komunikatow import opis_operacji, pole
 from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
-from enm.zrodlo_zwarcie import tryb_danych
+from enm.zrodlo_zwarcie import klucz_mocy_zwarciowej, strona_rownowaznika, tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
     validate_catalog_binding,
@@ -178,7 +178,10 @@ def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
 
     # CV-4.3 K7: ten sam predykat trybu danych co mapper/walidator (moc zwarciowa ALBO
     # prąd zwarciowy, IEC 60909-0 eq. 6 zapisana prądem); R/X wymagane jak dotąd.
-    sk3_mva = manual.get("sk3_mva", payload.get("sk3_mva"))
+    # Karta GPZ-MODEL: S″_kQ po tej stronie, po której podano równoważnik — ten sam
+    # predykat strony i klucza co operacja domenowa (`enm/zrodlo_zwarcie.py`).
+    klucz_sk3 = klucz_mocy_zwarciowej(strona_rownowaznika(manual, payload))
+    sk3_mva = manual.get(klucz_sk3, payload.get(klucz_sk3))
     ik3_ka = manual.get("ik3_ka", payload.get("ik3_ka"))
     rx_ratio = manual.get("rx_ratio", payload.get("rx_ratio"))
     return (

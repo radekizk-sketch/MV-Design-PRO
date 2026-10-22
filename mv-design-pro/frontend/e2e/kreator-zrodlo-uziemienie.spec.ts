@@ -1,12 +1,18 @@
 /**
- * W5-A (jedna reprezentacja uziemienia): kreator źródła GPZ na REALNYM backendzie.
+ * W5-A (jedna reprezentacja uziemienia) × karta GPZ-MODEL (granica zasilania): kreator
+ * źródła GPZ na REALNYM backendzie.
  *
- * Ścieżka natywna projektanta: nazwa → pozycja katalogowa źródła → składowa zerowa
- * WYŁĄCZONA (brak jawnych liczb Z0) → transformator 110/SN z katalogu → punkt neutralny
- * sieci SN „uziemiony przez rezystor" z R_N → zapis. Dowód przez API:
+ * Ścieżka natywna projektanta: nazwa → pozycja katalogowa równoważnika na szynach SN →
+ * składowa zerowa WYŁĄCZONA (brak jawnych liczb Z0) → krok Transformatory (transformatory
+ * 110/SN są w równoważniku, poza modelem) → punkt neutralny sieci SN „uziemiony przez
+ * rezystor" z R_N → zapis. Dowód przez API:
  *  - `Source.neutral_grounding` niesie opis punktu neutralnego (JEDYNY nośnik),
- *  - `r0_ohm`/`x0_ohm` źródła są WYPROWADZONE z Z_0 = Z_T0 + 3·Z_N (ślad White Box w
- *    `materialized_params.zero_sequence_provenance`, proweniencja `WYPROWADZONE`),
+ *  - model NIE ma transformatorów 110/SN, a Z0 równoważnika NIE jest wyprowadzane
+ *    z transformatora spoza modelu (karta GPZ-MODEL skasowała to wyprowadzenie: grupa
+ *    Yd11 nie daje drogi składowej zerowej po stronie SN) — `r0_ohm`/`x0_ohm` puste,
+ *  - walidator (`GET /enm/validate`) zgłasza blokadę E-W5-01 „uziemiony bez Z0" z
+ *    podpowiedzią, skąd wziąć Z0 (dane operatora / transformator uziemiający albo
+ *    równoważnik 110 kV z transformatorami w modelu),
  *  - szyny GPZ nie niosą `grounding`, meta stacji nie niesie `grounding`/`zero_sequence`.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
@@ -50,7 +56,7 @@ async function createProjectAndCase(request: APIRequestContext) {
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
       name: projectName,
-      description: 'W5-A: punkt neutralny zrodla → Source.neutral_grounding + Z0 wyprowadzone',
+      description: 'W5-A: punkt neutralny zrodla → Source.neutral_grounding, Z0 z danych rownowaznika',
       mode: 'TO-BE',
       voltage_level_kv: 15.0,
       frequency_hz: 50.0,
@@ -109,7 +115,7 @@ async function przejdzDoKroku(page: Page, tytul: string): Promise<void> {
   await page.getByRole('button', { name: tytul, exact: false }).first().click();
 }
 
-test('W5-A: kreator zrodla — punkt neutralny → Source.neutral_grounding, Z0 wyprowadzone z Z_T0 + 3·Z_N', async ({
+test('W5-A × GPZ-MODEL: kreator zrodla — punkt neutralny → Source.neutral_grounding, uziemiony bez Z0 = blokada E-W5-01', async ({
   page,
   request,
 }) => {
@@ -120,8 +126,7 @@ test('W5-A: kreator zrodla — punkt neutralny → Source.neutral_grounding, Z0 
   // Krok 1: identyfikacja.
   await page.getByTestId('mvd-kreator-zrodlo-nazwa').fill('GPZ W5-A');
 
-  // Krok 2: źródło z katalogu (napięcie SN spływa z pozycji), składowa zerowa WYŁĄCZONA —
-  // bez jawnych r0/x0/z0z1 liczby Z0 mają zostać WYPROWADZONE z opisu punktu neutralnego.
+  // Krok 2: równoważnik z katalogu (napięcie SN spływa z pozycji), składowa zerowa WYŁĄCZONA.
   await przejdzDoKroku(page, 'Źródło i strona WN');
   const katalog = page.getByTestId('mvd-kreator-zrodlo-katalog-select');
   await expect(katalog.locator(`option[value="${SOURCE_ID}"]`)).toHaveCount(1, { timeout: 20000 });
@@ -130,13 +135,11 @@ test('W5-A: kreator zrodla — punkt neutralny → Source.neutral_grounding, Z0 
   if (await zero.isChecked()) await zero.click();
   await expect(zero).not.toBeChecked();
 
-  // Krok 3: transformator 110/SN z katalogu (Z_T0 = Z_T tej tabliczki wchodzi do Z0).
+  // Krok 3: transformatory 110/SN są zawarte w równoważniku na szynach SN — kreator
+  // nie oferuje ich liczby ani typu (granica zasilania SN).
   await przejdzDoKroku(page, 'Transformatory');
-  const katalogTrafo = page.getByTestId('mvd-kreator-zrodlo-transformator-katalog');
-  await expect(katalogTrafo.locator('option')).not.toHaveCount(1, { timeout: 20000 });
-  const trafoId = await katalogTrafo.locator('option:not([value=""])').first().getAttribute('value');
-  expect(trafoId).toBeTruthy();
-  await katalogTrafo.selectOption(trafoId!);
+  await expect(page.getByTestId('mvd-kreator-zrodlo-transformatory-poza-modelem')).toBeVisible();
+  await expect(page.getByTestId('mvd-kreator-zrodlo-transformator-katalog')).toHaveCount(0);
 
   // Krok 4: rozdzielnia SN — punkt neutralny uziemiony przez rezystor 12 Ω (natywnie).
   await przejdzDoKroku(page, 'Rozdzielnia SN');
@@ -158,21 +161,27 @@ test('W5-A: kreator zrodla — punkt neutralny → Source.neutral_grounding, Z0 
   expect(zrodlo.neutral_grounding).toMatchObject({ type: 'resistor_grounded', r_ohm: 12 });
   expect(zrodlo.neutral_grounding?.x_ohm ?? null).toBeNull();
 
-  // Z0 WYPROWADZONE (źródło po stronie SN, bez jawnych liczb, transformator z katalogu).
+  // Granica zasilania SN: brak transformatorów 110/SN w modelu i brak Z0 wyprowadzonego
+  // z transformatora spoza modelu.
   expect(zrodlo.source_side ?? 'SN').toBe('SN');
+  expect(enm.transformers ?? []).toHaveLength(0);
+  expect(zrodlo.r0_ohm ?? null).toBeNull();
+  expect(zrodlo.x0_ohm ?? null).toBeNull();
   expect(zrodlo.z0_z1_ratio ?? null).toBeNull();
-  expect(typeof zrodlo.r0_ohm).toBe('number');
-  expect(typeof zrodlo.x0_ohm).toBe('number');
-  // 3·R_N = 36 Ω wchodzi do R0 (plus R_T transformatora ≥ 0).
-  expect(zrodlo.r0_ohm as number).toBeGreaterThanOrEqual(36);
-  expect(zrodlo.x0_ohm as number).toBeGreaterThan(0);
-  const proweniencja = (zrodlo.materialized_params ?? {}).zero_sequence_provenance as
-    | { proweniencja?: string; wzor?: string; dane?: Record<string, unknown>; wynik?: Record<string, number> }
-    | undefined;
-  expect(proweniencja?.proweniencja).toBe('WYPROWADZONE');
-  expect(proweniencja?.wzor).toContain('Z_0 = Z_T0 + 3·Z_N');
-  expect(proweniencja?.dane?.r_n_ohm).toBe(12);
-  expect(proweniencja?.wynik?.r0_ohm).toBe(zrodlo.r0_ohm);
+  expect((zrodlo.materialized_params ?? {}) as Record<string, unknown>).not.toHaveProperty(
+    'zero_sequence_provenance',
+  );
+
+  // Uziemiony bez Z0 = blokada nazwana walidatora, z podpowiedzią źródła danych Z0.
+  const walidacja = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm/validate`, { timeout: 30000 });
+  expect(walidacja.ok()).toBeTruthy();
+  const { issues } = (await walidacja.json()) as {
+    issues: Array<{ code: string; element_refs: string[]; message_pl: string; suggested_fix?: string | null }>;
+  };
+  const blokada = issues.filter((i) => i.code === 'E-W5-01' && i.element_refs.includes(zrodlo.ref_id));
+  expect(blokada).toHaveLength(1);
+  expect(blokada[0].message_pl).toContain('nie ma impedancji zerowej');
+  expect(blokada[0].suggested_fix ?? '').toContain('równoważnik sieci po stronie 110 kV');
 
   // Kasacje: szyny bez `grounding`, meta stacji GPZ bez `grounding`/`zero_sequence`.
   for (const szyna of enm.buses ?? []) expect(szyna).not.toHaveProperty('grounding');
@@ -180,6 +189,4 @@ test('W5-A: kreator zrodla — punkt neutralny → Source.neutral_grounding, Z0 
   expect(gpz, 'stacja GPZ w modelu').toBeTruthy();
   expect(gpz?.meta ?? {}).not.toHaveProperty('grounding');
   expect(gpz?.meta ?? {}).not.toHaveProperty('zero_sequence');
-  // Grupa połączeń transformatora 110/SN — z katalogu, ze słownika IEC 60076-1.
-  for (const tr of enm.transformers ?? []) expect(tr.vector_group).toBeTruthy();
 });

@@ -320,12 +320,56 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-zrodlo-normy').textContent).not.toMatch(/1,10\s*\/\s*1,00/);
   });
 
-  it('krok Transformatory: wybór OLTC odsłania nastawy regulatora (klik natywny)', async () => {
+  it('zapis z równoważnikiem z katalogu nie wysyła kluczy transformatorów 110/SN (klik natywny)', async () => {
+    // Karta GPZ-MODEL: Sk″ katalogowe jest widziane z szyn SN — granicą modelu są
+    // szyny SN, backend odmawia ładunku z transformatorami w tym trybie.
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await waitFor(() =>
+      expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
+    );
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, , payload] = executeDomainOperationMock.mock.calls[0] as [string, string, Record<string, unknown>];
+    const klucze = Object.keys(payload).filter(
+      (k) => payload[k] !== undefined && (k.startsWith('transformer_') || k === 'hv_voltage_kv'),
+    );
+    expect(klucze).toEqual([]);
+  });
+
+  it('krok Transformatory przy równoważniku z katalogu: przyczyna i wskazanie trybu 110 kV zamiast pól (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
     await user.click(
       screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
     );
+    const info = screen.getByTestId('mvd-kreator-zrodlo-transformatory-poza-modelem');
+    expect(info.textContent).toContain('zawiera już impedancję transformatorów 110/SN');
+    expect(info.textContent).toContain('po stronie 110 kV');
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-liczba-trafo')).toBeNull();
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-transformator-katalog')).toBeNull();
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-oltc-typ')).toBeNull();
+  });
+
+  async function przejdzNaRownowaznik110kV(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-strona-HV_110'));
+    const sk3Hv = screen.getByTestId('mvd-kreator-zrodlo-sk3hv') as HTMLInputElement;
+    await user.clear(sk3Hv);
+    await user.type(sk3Hv, '3000');
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
+    );
+  }
+
+  it('krok Transformatory przy równoważniku 110 kV: wybór OLTC odsłania nastawy regulatora (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await przejdzNaRownowaznik110kV(user);
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-transformatory-poza-modelem')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-liczba-trafo')).toBeTruthy();
     // Domyślnie brak regulacji → brak nastaw OLTC.
     expect(screen.queryByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeNull();
     await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-typ'), 'OLTC');
@@ -334,26 +378,63 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-katalog')).toBeTruthy();
   });
 
-  it('OLTC z kreatora trafia do operacji domenowej add_grid_source_sn (klik natywny)', async () => {
+  it('równoważnik 110 kV: transformatory i OLTC z kreatora trafiają do operacji add_grid_source_sn (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
-    // Auto-wybór katalogu (efekt po montażu) — potrzebny do przejścia walidacji zapisu.
-    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await przejdzNaRownowaznik110kV(user);
     await waitFor(() =>
-      expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
+      expect((screen.getByTestId('mvd-kreator-zrodlo-transformator-katalog') as HTMLSelectElement).value).toBe('TR-110-15-25'),
     );
-    await user.click(
-      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
-    );
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-liczba-trafo'), '3');
     await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-typ'), 'OLTC');
     expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeTruthy();
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
     const [, , payload] = executeDomainOperationMock.mock.calls[0];
     expect(payload).toMatchObject({
+      hv_voltage_kv: 110,
+      transformer_count: 3,
+      transformer_catalog_ref: 'TR-110-15-25',
       transformer_regulation_type: 'OLTC',
       transformer_control_mode: 'AUTOMATIC',
+      manual_equivalent: expect.objectContaining({ short_circuit_input_side: 'HV_110', sk3_hv_mva: 3000 }),
+      // Karta GPZ-MODEL: YNd11 (SN w trójkąt) — punkt neutralny SN w modelu jest izolowany,
+      // więc domyślny opis „rezystor 12 Ω” nie trafia do zapisu.
+      grounding: { type: 'isolated' },
     });
+  });
+
+  /* Karta GPZ-MODEL — opis punktu neutralnego SN wobec modelu. Iloczyn cech:
+     {granica: szyny SN, 110 kV} × {krok: Rozdzielnia SN} — przy 110 kV kreator oferuje
+     wyłącznie punkt neutralny wynikający z grupy transformatora (YNd11 ⇒ izolowany). */
+  it('równoważnik 110 kV: uziemienie SN wyłącznie zgodne z grupą transformatora (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await przejdzNaRownowaznik110kV(user);
+    await waitFor(() =>
+      expect((screen.getByTestId('mvd-kreator-zrodlo-transformator-katalog') as HTMLSelectElement).value).toBe('TR-110-15-25'),
+    );
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-rozdzielnia"]') as HTMLElement,
+    );
+    const uziemienie = screen.getByTestId('mvd-kreator-zrodlo-uziemienie') as HTMLSelectElement;
+    expect(Array.from(uziemienie.options).map((o) => o.value)).toEqual(['isolated']);
+    expect(uziemienie.value).toBe('isolated');
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-uziemienie-ohm')).toBeNull();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-uziemienie-z-transformatora').textContent).toContain('YNd11');
+  });
+
+  it('równoważnik na szynach SN: pełny wybór uziemienia, bez noty o transformatorach (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-rozdzielnia"]') as HTMLElement,
+    );
+    const uziemienie = screen.getByTestId('mvd-kreator-zrodlo-uziemienie') as HTMLSelectElement;
+    expect(Array.from(uziemienie.options).map((o) => o.value)).toEqual(
+      ['resistor_grounded', 'isolated', 'petersen_coil', 'directly_grounded'],
+    );
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-uziemienie-z-transformatora')).toBeNull();
   });
 });
 

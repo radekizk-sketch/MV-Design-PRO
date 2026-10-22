@@ -149,8 +149,6 @@ async function przypadekZSiecia(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let siec: Migawka = {};
   for (const nazwa of ['Odcinek 1', 'Odcinek 2']) {

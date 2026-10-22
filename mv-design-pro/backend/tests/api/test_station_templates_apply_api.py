@@ -87,8 +87,6 @@ def _przypadek_z_odcinkiem(app_client) -> tuple[str, str]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     segment_result = _execute_domain_op(
@@ -348,8 +346,6 @@ def test_szablon_z_pomiarem_przylaczany_odgalezieniem_przez_koncowke_api(app_cli
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", SOURCE_ID),
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     segmenty: list[str] = []

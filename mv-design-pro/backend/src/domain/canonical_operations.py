@@ -874,6 +874,37 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "polaczenia"},
     ),
+    # Karta GPZ-MODEL: sekcja szyn SN GPZ w wyspie bez źródła sieciowego — przy
+    # równoważniku na szynach SN sekcje bez własnego zasilania zasila wyłącznie sprzęgło,
+    # więc otwarte sprzęgło odcina sekcję i jej odpływy. Emiter: walidator ENM E065
+    # (`enm/validator.py::_sekcja_gpz_bez_zasilania`, ten sam predykat wyspy co E003).
+    "source.gpz_section_unsupplied": ReadinessCodeSpec(
+        code="source.gpz_section_unsupplied",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Sekcja GPZ bez zasilania — sekcja nie ma własnego równoważnika sieci, a "
+            "sprzęgło sekcji jest otwarte (zamknij sprzęgło albo zasil sekcję)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "polaczenia"},
+    ),
+    # Karta GPZ-MODEL: transformator WN/SN GPZ, którego strona 110 kV jest martwa (bez
+    # równoważnika, odbioru i generatora; model sprzed karty: równoważnik na szynach SN +
+    # transformator do martwej szyny pomocniczej). Emiter: walidator ENM E066
+    # (`enm/validator.py::transformatory_gpz_bez_zasilania_wn`, domeny `derive().sekcje`).
+    "source.gpz_transformer_hv_unsupplied": ReadinessCodeSpec(
+        code="source.gpz_transformer_hv_unsupplied",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Transformator GPZ bez zasilania od strony 110 kV — za jego szyną 110 kV nie ma "
+            "równoważnika sieci, odbioru ani generatora (zbuduj GPZ od nowa z równoważnikiem po "
+            "stronie 110 kV albo z równoważnikiem na szynach SN bez transformatorów 110/SN)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "polaczenia"},
+    ),
     # CV-4.3 K7: scenariusz MIN bez S''_kQmin/I''_kQmin — Z_Q z danych MAX z JAWNYM
     # założeniem (niekonserwatywne dla czułości zabezpieczeń). Emiter:
     # `enm/zrodlo_zwarcie.py::KOD_SK_MIN_BRAK` → ślad `zrodla_sieciowe` i

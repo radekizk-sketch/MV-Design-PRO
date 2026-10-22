@@ -2520,6 +2520,74 @@ function zakresKawalkaLancucha(
   return { startX: Math.min(...xs), endX: Math.max(...xs) };
 }
 
+/**
+ * GPZ-MODEL (etykieta przęsła wychodzącego z GPZ): podpis kabla GPZ→S0 (ciąg
+ * główny i pole odpływowe) jest centrowany na kawałku trasy, który zaczyna się
+ * w polu liniowym GPZ — więc jego prostokąt wypada WEWNĄTRZ bloku GPZ, w wierszu
+ * podpisów nad osią szyny. DECYZJA przy `gpzRightEdgeX` mówi, że podpis nie
+ * może leżeć na własnych symbolach GPZ; centrowanie SLOT-DRYF-PRZĘSŁA tego nie
+ * pilnowało i działało tylko dlatego, że w tym wierszu bloku nie było aparatu.
+ * Od GPZ-MODEL tor transformatora WN/SN (aparat strony SN między transformatorem
+ * a szyną SN) stoi właśnie na tej wysokości, a silnik etykiet odrzucał podpis
+ * (`label.declutter`) — parametry kabla znikały z L2.
+ *
+ * Reguła: prostokąt przesuwa się w prawo tuż za PRAWĄ krawędź każdego elementu
+ * GPZ, który przecina — symbolu (aparat i okrąg zabezpieczenia) albo etykiety
+ * renderowanej kompozycji (pasmo nazwy GPZ, tabliczka transformatora, opisy
+ * sekcji, oznaczenia i podpisy pól, kody zabezpieczeń) — z odstępem jednej
+ * kratki, aż nie przecina żadnego. Zbiór przeszkód to te same symbole, które
+ * silnik etykiet dostaje jako bboxy (`allSymbols` ← kompozycja GPZ; na L2
+ * kompozycja renderowana = geometryczna, KD-5), i TE SAME prostokąty tuszu
+ * etykiet GPZ, które dostaje jako etykiety (`resolveLabels` na wejściach
+ * kompozycji renderowanej — ta sama funkcja co w sekcji 7), a predykat
+ * zachodzenia ten sam (`rectsOverlap`) — więc „brak przecięcia tutaj" ⇔ „brak
+ * odrzucenia za element GPZ tam". Etykiety weszły do zbioru po scaleniu
+ * z GEOMETRIA-STACJI: pole transformatora bez rekordu aparatów jest jedną
+ * sylwetką „brak danych", wieża TR jest niższa, a tabliczka TR (cztery wiersze
+ * pod symbolem) zeszła w wiersz podpisu kabla — silnik etykiet odrzucał podpis
+ * (pomiar: `gpzFeeder`, tabliczka y 468–500, podpis y 480). Bez przecięcia
+ * prostokąt jest zwracany bez zmian (tożsamość na scenach, na których podpis
+ * już był czysty).
+ */
+function odsunPodpisOdElementowGpz<T extends V3Rect>(
+  rect: T,
+  gpz: GpzComposition | null,
+  renderowana: GpzComposition | null,
+): T {
+  if (gpz === null) return rect;
+  const etykiety = renderowana?.labels;
+  const przeszkody: V3Rect[] = [
+    ...(etykiety
+      ? resolveLabels({
+          stationNameBands: [etykiety.stationName, ...etykiety.transformerLabels],
+          simpleAnchored: [...etykiety.sectionLabels, ...etykiety.fieldDesignations, ...etykiety.protection],
+          portCaptions: etykiety.fieldCaptions,
+        }).map((l) => l.rect)
+      : []),
+    ...gpz.symbols.map((sym) => ({
+      x: sym.x,
+      y: sym.y,
+      width: SYMBOL_DEFS[sym.symbolId].width,
+      height: SYMBOL_DEFS[sym.symbolId].height,
+    })),
+    ...gpz.protectionSymbols.map((sym) => ({
+      x: sym.x,
+      y: sym.y,
+      width: SYMBOL_DEFS[sym.symbolId].width,
+      height: SYMBOL_DEFS[sym.symbolId].height,
+    })),
+  ];
+  let x = rect.x;
+  for (;;) {
+    const probe = { ...rect, x };
+    const trafione = przeszkody.filter((r) => rectsOverlap(probe, r));
+    if (trafione.length === 0) return x === rect.x ? rect : probe;
+    // Każdy krok przesuwa x ściśle w prawo (za prawą krawędź trafionego
+    // symbolu), a symboli jest skończenie wiele — pętla się kończy.
+    x = snapUp(Math.max(...trafione.map((r) => r.x + r.width))) + GRID;
+  }
+}
+
 /** Odcinki MIĘDZY kolejnymi stacjami TEGO SAMEGO wiersza (magistrala lub
  *  lateral) — spec §5.4 „route między tapX kolejnych węzłów". `channelPointsX`
  *  (F6d, domyślnie puste — magistrala nie ma kanałów): patrz
@@ -2922,9 +2990,10 @@ function composeCollapsedGpz(
   // obejście") — WIERSZ STANU NIE MIEŚCI SIĘ W BANERZE STREFY GPZ.
   //
   // POMIAR (fixtura referencyjna, L0): baner strefy (`compose/gpz.ts`
-  // `headerSlot`) ma 296 j.św. i jest zmierzony WYŁĄCZNIE dla wiersza
-  // tytułowego; wiersz stanu niesie 391 j.św. tuszu, więc wystaje poza własną
-  // rezerwację o 95 j.św. (≈47 na stronę, bo wiersze pasma są centrowane).
+  // `headerSlot`) ma 304 j.św. (296 przed GPZ-MODEL — nazwa GPZ substratu urosła
+  // o jeden znak) i jest zmierzony WYŁĄCZNIE dla wiersza tytułowego; wiersz stanu
+  // niesie 391 j.św. tuszu, więc wystaje poza własną rezerwację o 87 j.św. (≈43 na
+  // stronę, bo wiersze pasma są centrowane).
   // Defekt jest PIERWOTNY — istniał przed tą kartą; różnica polega tylko na
   // tym, że dopóki prostokąt etykiety BYŁ slotem, nikt tego nie widział.
   //
@@ -4032,12 +4101,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               // (135 wobec 111 = szer. napisu − dł. kawałka). Fallback na
               // przęsło przycięte do prawej krawędzi GPZ zostaje dla
               // przypadku bez podziału na człony.
-              primaryRect: wysrodkujSlotNaPrzesle(
-                slot.rect,
-                zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.startX
-                  ?? Math.max(gpzPort.x, gpzRightEdgeX),
-                zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.endX
-                  ?? first.composed.entryPort.x,
+              // GPZ-MODEL: i nie na elementach GPZ (`odsunPodpisOdElementowGpz`).
+              primaryRect: odsunPodpisOdElementowGpz(
+                wysrodkujSlotNaPrzesle(
+                  slot.rect,
+                  zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.startX
+                    ?? Math.max(gpzPort.x, gpzRightEdgeX),
+                  zakresKawalkaLancucha(gpzChain, gpzPieces, wchodzacy.segmentRef)?.endX
+                    ?? first.composed.entryPort.x,
+                ),
+                gpzGeometry,
+                gpzComposition,
               ),
             });
           }
@@ -4536,12 +4610,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             // (pole odpływowe GPZ) znany dopiero tutaj.
             // SLOT-DRYF-PRZĘSŁA (runda 2): jak przy GPZ→S0 — kawałek
             // niosący ref podpisu, gdy przęsło jest łańcuchem.
-            primaryRect: wysrodkujSlotNaPrzesle(
-              slot.rect,
-              zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.startX
-                ?? Math.max(feederPort.x, gpzRightEdgeX),
-              zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.endX
-                ?? first.composed.entryPort.x,
+            // GPZ-MODEL: i nie na elementach GPZ (`odsunPodpisOdElementowGpz`).
+            primaryRect: odsunPodpisOdElementowGpz(
+              wysrodkujSlotNaPrzesle(
+                slot.rect,
+                zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.startX
+                  ?? Math.max(feederPort.x, gpzRightEdgeX),
+                zakresKawalkaLancucha(feederChain, feederPieces, wchodzacy.segmentRef)?.endX
+                  ?? first.composed.entryPort.x,
+              ),
+              gpzGeometry,
+              gpzComposition,
             ),
           });
         }
