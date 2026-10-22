@@ -54,11 +54,12 @@ import {
   colorSegmentLabelRows,
   type SegmentLabelSlotX,
 } from '../layout/segments';
-import type {
-  PortCaptionOwnerInput,
-  SimpleAnchoredOwnerInput,
-  StationNameBandOwnerInput,
-  StationNameBandRow,
+import {
+  przesunKotwiczonaEtykiete,
+  type PortCaptionOwnerInput,
+  type SimpleAnchoredOwnerInput,
+  type StationNameBandOwnerInput,
+  type StationNameBandRow,
 } from '../layout/labels';
 import { stackFootprint } from './station';
 import {
@@ -1794,6 +1795,8 @@ export function composeGpz(
         labelClass: 't4',
         anchor: { x: vtCenterX, y: vtTopY + vtDef.height },
         placement: 'below',
+        // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
+        obrysKotwicy: { x: vtX, y: vtTopY, width: vtDef.width, height: vtDef.height },
       });
     });
   });
@@ -1851,6 +1854,8 @@ export function composeGpz(
       labelClass: 't3',
       anchor: { x: midX, y: cbY + cbDef.height },
       placement: 'below',
+      // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
+      obrysKotwicy: { x: cbX, y: cbY, width: cbDef.width, height: cbDef.height },
     });
   });
 
@@ -2630,7 +2635,8 @@ function translateGpzComposition(
   });
   const moveAnchored = (list: SimpleAnchoredOwnerInput[]) => {
     list.forEach((l, i) => {
-      list[i] = { ...l, anchor: movePoint(l.anchor) };
+      // K2b×K3: kotwica i obrys symbolu przesuwane razem (jedno źródło pary).
+      list[i] = przesunKotwiczonaEtykiete(l, dx, dy);
     });
   };
   moveAnchored(parts.sectionLabels);

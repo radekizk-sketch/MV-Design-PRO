@@ -257,8 +257,21 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
     );
     expect(nopGlyph, 'stacja NOP musi mieć glif mini-RMU na L0').toBeTruthy();
     expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
-    // Na L0 osobny symbol `noPoint` NIE jest rysowany (sylwetka go zastępuje).
-    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+    // Na L0 osobny symbol `noPoint` STACJI NOP NIE jest rysowany (sylwetka go
+    // zastępuje). Przepisane do kanonu K2b §0.4 (intencja zachowana): punkt NO
+    // ustawiony na ŁĄCZNIKU/ODCINKU (`Corridor.no_point_ref`) jest rysowany
+    // symbolem `noPoint` na KAŻDYM poziomie, także na L0 — więc zakaz dotyczy
+    // wyłącznie symbolu, którego właścicielem jest stacja NOP.
+    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === nopRef)).toBe(false);
+    const refyNopKorytarzy = (withNop.corridors ?? [])
+      .map((c) => c.no_point_ref)
+      .filter((r): r is string => typeof r === 'string' && r.length > 0);
+    for (const ref of refyNopKorytarzy) {
+      expect(
+        nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === ref),
+        `NOP korytarza ${ref} narysowany na L0`,
+      ).toBe(true);
+    }
   });
 
   it('L1/L2: punkt NO = symbol noPoint + etykieta „NO" na osi szyny; kotwica identyczna L1↔L2 (GS-1)', () => {

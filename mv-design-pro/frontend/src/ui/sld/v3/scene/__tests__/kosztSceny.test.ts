@@ -456,11 +456,37 @@ interface OdciskiLod {
  * `canvas/labelLegibility.ts` (`najlepszeDopasowanie`): plan próbuje pełnego tekstu po każdej
  * stronie kotwicy, zanim skróci napis — dawniej skracał po stronie zadeklarowanej („TV1” →
  * „T…”, czytane jak transformator). Sonda: ten plik sprzed karty → 8 z 8 testów zielone.
+ *
+ * AKTUALIZACJA ŚWIADOMA (styk K2b×K3, 2026-10-22) — przeliczone odciski; z 54 wpisów tablicy
+ * zmienione 38. Pomiar (archiwum `git archive 8fe7fe9c4`, ten test w trybie budżetów): drzewo
+ * scalenia K2b+K3 `8fe7fe9c4` było CZERWONE (38 z 54 wpisów innych niż pin karty K3 — pin
+ * liczony na drzewie samego K3, scalenie z K2b dołożyło punkt NO korytarza na każdym poziomie
+ * i podpisy „NO", a krok budżetów po scaleniu nie biegł). Wkład tej karty względem drzewa
+ * scalenia, zmierzony odciskami liczonymi z pominięciem nowego pola `obrysKotwicy` etykiet:
+ * sceny L0/L1/L2, declutter i plany identyczne poza planem L2 przy skali 0,4 obu sieci —
+ * tam 1 (referencyjna) i 2 (podwojona) podpisy „PV 500 kW", dotąd PORZUCONE przez plan
+ * (`droppedIdentity` 1 → 0 i 2 → 0), stoją pełnym tekstem przy symbolu źródła (drugie
+ * przejście stron przy obrysie, `canvas/labelLegibility.ts`). Pozostałe różnice odcisków
+ * scen/declutteru/planów L1/L2 to samo pole `obrysKotwicy` podpisów DER, „NO", oznaczeń
+ * sprzęgieł, uziemnika lateralu, przekładnika szyny GPZ i łącznika toru (geometria `rect`
+ * bez zmian; para obrys↔symbol sceny przypięta w `canvas/__tests__/stronyPrzySymbolu.test.ts`).
+ *
+ * AKTUALIZACJA ŚWIADOMA (scalenie gałęzi programu, partie 9–13, z gałęzią UI/UX + naprawa
+ * styku K2b×K3, 2026-10-22) — przeliczone odciski; z 54 wpisów tablicy zmienione 9 względem
+ * pinu naprawy styku K2b×K3 (`73ef5e665`). Sonda na drzewie scalonym (ten test w trybie
+ * budżetów): (A) `electrical/invariants.ts` i `electrical/terminalGraph.ts` z `73ef5e665`
+ * (komunikaty niezmienników sprzed partii 10) → różnią się WYŁĄCZNIE 6 odcisków planu
+ * (L1 @4, L2 @3, L2 @4 obu sieci); (B) dodatkowo `canvas/labelLegibility.ts` z `73ef5e665`
+ * (bez reguły W2C-PLAN-ETYKIET „pełny tekst po każdej stronie przed skrótem") → 0 różnic
+ * z pinem `73ef5e665`. Wkład scalenia = dokładnie te dwie przyczyny programu: 3 odciski
+ * SCENY sieci podwojonej (treść komunikatów niezmienników, partia 10) i 6 odcisków PLANU
+ * (reguła W2C, złożona z drugim przejściem stron przy obrysie symbolu — pełny tekst po każdej
+ * stronie przed skrótem obowiązuje w obu przejściach). Declutter bez zmian.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '359593af993c38833258e13754be98a3',
+      scena: '789cb53d5f268603ff0b2d033e00885b',
       declutter: 'f231c5faae2acf31e9f835873a24f696',
       plany: [
         '6d4d3caa0b8387d32d9b18da92231455',
@@ -473,35 +499,35 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '095fb436aabed341e8d450960def27ca',
-      declutter: 'd759eb7c33b0d416f50df122e85d9020',
+      scena: '66746bc71daa1e35bdd8a10b762f0e32',
+      declutter: '7020f546e8cb87d315756c9ae7d6cc4d',
       plany: [
-        'dc62229ce0c2dd1157bcf4236787c491',
-        'ba3f2f90108cd98bd4de1dd9641a14c5',
-        'fa391732e6095b45bfaf887ca9d7fde1',
-        '13bd65e3f5e14e7a6c53cce671c53303',
-        '00dd651d65cdab5f1f86124f1f19344a',
-        '2879d0df8017b4ab07c2d50391155cdb',
-        '2879d0df8017b4ab07c2d50391155cdb',
+        '6d460a2dc18940e2e2499be22f5d8814',
+        '8422d5a2ce1bd1c118765b3987117988',
+        '6267e0f9fecb6e0d3a1eabd3219c5b49',
+        '19f8d5e3774afc2f85223f9a80f8cc55',
+        'ea31604d989a4628cfdf4e926a8ef19d',
+        '944e9784394c7a7ea5124ea349b5602f',
+        '944e9784394c7a7ea5124ea349b5602f',
       ],
     },
     {
-      scena: '3bb8b57df94415d834e440282950b6e0',
-      declutter: '88696c95332d7d597aa676ebc6c64b3c',
+      scena: '1f7f93bec2c3c4dca39d5e95be026bdd',
+      declutter: 'e6cb3d08c6d51d787709215af459e590',
       plany: [
-        '31b7e1f09b85409ed31091cde4413131',
-        '1fb76b808d9013bf6f87682a5430d03b',
-        'eff0fc1eca405a68be1ccea8efcb0905',
-        '508d59d47d2e062c09dfcf2e038fef73',
-        'ce771ba2ec2d5c1f82c38781d6d4b947',
-        '54cc1314b0f40f690751104cb30d6283',
-        '54cc1314b0f40f690751104cb30d6283',
+        '420300cd7fdbc3547e99b9e1cb4f3e45',
+        'b1d549d82599b2505d2b6fc291f53f51',
+        '64933b53665fd12e0d7fc63a258efcaf',
+        'ecc5248722ee597d0fe08257785bc08c',
+        '12dacc697daaef2baae4562521917bda',
+        '298aa19bd5fb85d752fcf5e8260fac90',
+        '298aa19bd5fb85d752fcf5e8260fac90',
       ],
     },
   ],
   podwojona: [
     {
-      scena: 'f39ece32e40a2442739bb1c95144e680',
+      scena: '54036042f219e6035fba02db39edea2c',
       declutter: 'f2b2d50a450cf47cb683942025bb9f15',
       plany: [
         '65c0b73306c5550c2dc5605a0edbcfc7',
@@ -514,29 +540,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '24eb8460af8a4d014a58a53b0a8fbbb9',
-      declutter: '1e7d9ab5e39d9161b6e8017934483f08',
+      scena: '3ebe0ed8f251403466e84305d973e550',
+      declutter: '22f34c9032fd1d953f0b405da81d7775',
       plany: [
-        '67f6df6c49436a83fc10784888077fa2',
-        '5c3bbd99ae4d0b8f81127c8525f90dbe',
-        'd205440033eb388d0e6adf71aec635ae',
-        'a45228f13b4b6eb909541d24bf5a222c',
-        '67e6382b3b361b902bdadc5b5f007f50',
-        '60d284cc8f9b20ba2fb442c4bd9ae743',
-        '60d284cc8f9b20ba2fb442c4bd9ae743',
+        '3c7ff93273bf721d4021f815c4bb3884',
+        '6c61f82773036e7a4739adf96af2d2f3',
+        'f82066307983c98056cf494c34a8b3ca',
+        '2a7044b05399d79dfeb6abd8d271130a',
+        'a89a9c6a7251d7cf48d19be18fdc6edc',
+        '9cfef62011a085f68baefe5d98854871',
+        '9cfef62011a085f68baefe5d98854871',
       ],
     },
     {
-      scena: 'd95938684f8e2322c3e2bd2f46cf01e2',
-      declutter: 'fcfd35ee05ae92705debfea288c7a864',
+      scena: '629815e1130d156c479e4fe7ce4a57b4',
+      declutter: 'ab973b3fdedee0ab8fdf0ac924dbab24',
       plany: [
-        '66a922dac1130323b2cadc4d055cef87',
-        'e5cd04492fe42ae03fd7d695b996b840',
-        'dcdb24977366020a9c626f3f3be832a3',
-        '74a60c514a6af2f173927d085df3b62f',
-        'd9a40ba3c5b27994e0fc5ef9e2f6fa8d',
-        'cc07bf5c398d1b4253428b59caa63dce',
-        'cc07bf5c398d1b4253428b59caa63dce',
+        'cd8c24ea92e1364538b731c1b1414d6c',
+        '453b4080a9704f11971702596052f80f',
+        'dc25cd4baa9fdff679d22df534bec6ad',
+        '5dbaae54ed712d22dda1492d52cff98f',
+        '1cef3b02344903eb47c866fcac7aa5b1',
+        'd8972a559805a39476b514e4fa114a5f',
+        'd8972a559805a39476b514e4fa114a5f',
       ],
     },
   ],

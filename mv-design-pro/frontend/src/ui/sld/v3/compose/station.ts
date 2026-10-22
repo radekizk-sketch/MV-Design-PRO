@@ -714,6 +714,8 @@ function buildBayStack(
           labelClass: 't4',
           anchor: { x: x + def.width / 2, y: lateralY + def.height },
           placement: 'below',
+          // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
+          obrysKotwicy: { x, y: lateralY, width: def.width, height: def.height },
           // Z3 (spec §12.1): pochodzenie identyfikatora lateralu (uziemnik QE)
           // na etykietę — spójnie z torem głównym.
           designationSource: identifierSource ?? undefined,
@@ -873,6 +875,8 @@ function composeDerSnChain(
     labelClass: 't2',
     anchor: { x: srcX + srcDef.width / 2, y: srcY + srcDef.height },
     placement: 'below',
+    // K2b×K3: obrys symbolu źródła — strony zastępcze planu etykiet stoją przy nim.
+    obrysKotwicy: { x: srcX, y: srcY, width: srcDef.width, height: srcDef.height },
   });
 }
 
@@ -1105,6 +1109,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         labelClass: 't2',
         anchor: { x: symbolX + def.width / 2, y: symbolY + def.height },
         placement: 'below',
+        // K2b×K3: obrys symbolu źródła — strony zastępcze planu etykiet stoją przy nim.
+        obrysKotwicy: { x: symbolX, y: symbolY, width: def.width, height: def.height },
       });
       return;
     }
@@ -1665,6 +1671,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           labelClass: 't3',
           anchor: { x: p.centerX, y: y + COUPLER_LINE_GLYPH_HEIGHT },
           placement: 'below',
+          // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
+          obrysKotwicy: { x, y, width: SYMBOL_DEFS[symbolId].width, height: SYMBOL_DEFS[symbolId].height },
         });
         continue;
       }
@@ -1939,6 +1947,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           labelClass: 't2',
           anchor: { x: centerX, y: y + def.height },
           placement: 'below',
+          // K2b×K3: obrys symbolu źródła — strony zastępcze planu etykiet stoją przy nim.
+          obrysKotwicy: { x, y, width: def.width, height: def.height },
         });
 
         slotX += slotWidth + GRID;

@@ -20,7 +20,7 @@ import { cleanup, render } from '@testing-library/react';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { KURTYNA_KADRU_OPACITY, SldCanvasV3, segmentTestId, symbolTestId } from '../SldCanvasV3';
-import { nalezyDoZakresu, zakresCelu } from '../zakresKadru';
+import { MIN_OPIS_CELU_KADRU_PX, nalezyDoZakresu, zakresCelu } from '../zakresKadru';
 import { hiddenLabelsHintText, hiddenLabelsHintTextKadru, hiddenLabelsHintTextPozaCelem } from '../chromeLayout';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -106,17 +106,60 @@ describe('komunikat ukrytych opisów w kadrze celu', () => {
     expect(k.celu).toBeNull();
     expect(k.tekst).toBe(hiddenLabelsHintText(k.n));
   });
-  it.each([1, 2] as const)('kadr stacji, L%i: wariant „celu kadru" ⇔ ukryte opisy celu > 0, inaczej „poza celem kadru"', (lod) => {
-    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={lod} refyKadru={refy} />);
-    const k = komunikat(container)!;
-    const ukryteCelu = Number(container.querySelector('svg[data-kadr-aktywny="true"]')!.getAttribute('data-ukryte-opisy-celu'));
-    if (ukryteCelu > 0) {
-      expect(k.celu).toBe(String(ukryteCelu));
-      expect(k.tekst).toBe(hiddenLabelsHintTextKadru(k.n, ukryteCelu));
-    } else {
+  /**
+   * K2b×K3: czytelność (b) ma dwa sposoby niespełnienia — opis celu UKRYTY albo
+   * NARYSOWANY poniżej podłogi. Wariant „opisy celu widoczne w całości" wolno
+   * wybrać WYŁĄCZNIE, gdy oba są zerowe — deklaracja komunikatu przypięta do
+   * kanału audytu (`data-min-opis-celu-px`). Iloczyn: LOD {1, 2} × cel {stacja,
+   * magistrala — rozległa, pismo poniżej podłogi występuje}.
+   */
+  const zakresMagistrali = zakresCelu('magistrala', enm, [], scena);
+  if (!zakresMagistrali.dostepny) throw new Error(zakresMagistrali.przyczyna);
+  const ponizejWDomu: number[] = [];
+  it.each([
+    [1, 'stacja', refy],
+    [2, 'stacja', refy],
+    [1, 'magistrala', zakresMagistrali.zakres.refy],
+    [2, 'magistrala', zakresMagistrali.zakres.refy],
+  ] as const)('L%i, kadr „%s": wariant „celu kadru" ⇔ opis celu ukryty albo poniżej podłogi, inaczej „poza celem kadru"', (lod, _cel, refyCelu) => {
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={1440} height={900} lodOverride={lod} refyKadru={refyCelu} />);
+    const svg = container.querySelector('svg[data-kadr-aktywny="true"]')!;
+    const ukryteCelu = Number(svg.getAttribute('data-ukryte-opisy-celu'));
+    const ponizej = Number(svg.getAttribute('data-opisy-celu-ponizej-podlogi'));
+    const minPx = Number(svg.getAttribute('data-min-opis-celu-px'));
+    expect(Number.isInteger(ponizej)).toBe(true);
+    // Para „poniżej podłogi" ↔ „najmniejsze pismo opisu celu": jedno źródło (plan).
+    expect(ponizej > 0, `min ${minPx} px, poniżej ${ponizej}`).toBe(minPx < MIN_OPIS_CELU_KADRU_PX - 0.01);
+    ponizejWDomu.push(ponizej);
+    const k = komunikat(container);
+    if (ukryteCelu > 0 || ponizej > 0) {
+      expect(k, 'opis celu ukryty albo poniżej podłogi — komunikat obowiązkowy').not.toBeNull();
+      expect(k!.celu).toBe(ukryteCelu > 0 ? String(ukryteCelu) : null);
+      expect(container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]')!.getAttribute('data-opisy-celu-ponizej-podlogi')).toBe(
+        ponizej > 0 ? String(ponizej) : null,
+      );
+      expect(k!.tekst).toBe(hiddenLabelsHintTextKadru(k!.n, ukryteCelu, ponizej, MIN_OPIS_CELU_KADRU_PX));
+    } else if (k !== null) {
       expect(k.celu).toBeNull();
       expect(k.tekst).toBe(hiddenLabelsHintTextPozaCelem(k.n));
     }
+  });
+  it('przypadek „poniżej podłogi" występuje w iloczynie (test nie jest pusty)', () => {
+    expect(ponizejWDomu.some((n) => n > 0)).toBe(true);
+  });
+});
+
+describe('treść komunikatu kadru celu (czyste funkcje)', () => {
+  it('ukryte i poniżej podłogi: oba człony; tylko poniżej podłogi: bez „Ukryto 0"; tylko ukryte: jak dotąd', () => {
+    expect(hiddenLabelsHintTextKadru(5, 2, 3, 13)).toBe(
+      'Ukryto 5 opisów (celu kadru: 2); opisy celu poniżej 13 px: 3 — cały cel w kadrze; opisy szczegółowe po przybliżeniu',
+    );
+    expect(hiddenLabelsHintTextKadru(0, 0, 3, 13)).toBe(
+      'Opisy celu poniżej 13 px: 3 — cały cel w kadrze; opisy szczegółowe po przybliżeniu',
+    );
+    expect(hiddenLabelsHintTextKadru(1, 1, 0, 13)).toBe(
+      'Ukryto 1 opis (celu kadru: 1) — cały cel w kadrze; opisy szczegółowe po przybliżeniu',
+    );
   });
 });
 

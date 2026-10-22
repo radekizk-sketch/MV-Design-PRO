@@ -2877,20 +2877,27 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // proporcji, brak miejsca) i najmniejsza wysokość narysowanego opisu celu na
   // ekranie — kanał audytu (`data-ukryte-opisy-celu`, `data-min-opis-celu-px`)
   // i podstawa jawnego komunikatu, gdy cel jest zbyt rozległy.
+  //
+  // K2b×K3: drugi sposób niespełnienia (b) — opis celu NARYSOWANY pismem poniżej
+  // podłogi (sufit proporcji klasy albo brak miejsca na pismo podłogi). Liczony
+  // tym samym obiektem podłogi, który dostał plan (`podlogaCelu.screenPx`), żeby
+  // komunikat „opisy celu widoczne w całości" nie mógł skłamać.
   const opisyCelu = useMemo(() => {
-    if (!zbiorKadru) return { ukryte: 0, minPx: null as number | null };
+    if (!zbiorKadru || !podlogaCelu) return { ukryte: 0, ponizejPodlogi: 0, minPx: null as number | null };
     const naleza = (ownerRef: string) => nalezyDoZakresu(ownerRef, zbiorKadru);
     const ukryte =
       labelPlan.hiddenDetail.filter((l) => naleza(l.ownerRef)).length +
       labelPlan.droppedIdentity.filter((l) => naleza(l.ownerRef)).length;
     let minPx: number | null = null;
+    let ponizejPodlogi = 0;
     for (const p of labelPlan.drawn) {
       if (!naleza(p.label.ownerRef)) continue;
       const px = p.fontSize * camera.transform.scale;
+      if (px < podlogaCelu.screenPx - 1e-6) ponizejPodlogi += 1;
       if (minPx === null || px < minPx) minPx = px;
     }
-    return { ukryte, minPx };
-  }, [zbiorKadru, labelPlan, camera.transform.scale]);
+    return { ukryte, ponizejPodlogi, minPx };
+  }, [zbiorKadru, podlogaCelu, labelPlan, camera.transform.scale]);
   // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
   // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
   //
@@ -2935,11 +2942,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // K2b §0.2 (b): w kadrze celu komunikat mówi, CZYJE opisy są ukryte — celu
   // (cel zbyt rozległy, pierwszeństwo kompletności) albo wyłącznie obiektów spoza
   // celu (cel czytelny w całości). Liczba zawsze ta sama: bilans planu etykiet.
+  const celNiespelniaCzytelnosci = opisyCelu.ukryte > 0 || opisyCelu.ponizejPodlogi > 0;
   const hintTekst = !zbiorKadru
     ? hiddenLabelsHintText(niewidoczneOpisy)
-    : opisyCelu.ukryte > 0
-      ? hiddenLabelsHintTextKadru(niewidoczneOpisy, opisyCelu.ukryte)
+    : celNiespelniaCzytelnosci
+      ? hiddenLabelsHintTextKadru(
+          niewidoczneOpisy,
+          opisyCelu.ukryte,
+          opisyCelu.ponizejPodlogi,
+          podlogaCelu?.screenPx ?? 0,
+        )
       : hiddenLabelsHintTextPozaCelem(niewidoczneOpisy);
+  // Komunikat jest widoczny, gdy cokolwiek ukryto ALBO gdy opis celu stoi poniżej
+  // podłogi — inaczej drugi przypadek nie miałby na ekranie żadnego śladu.
+  const pokazKomunikat = niewidoczneOpisy > 0 || (zbiorKadru !== null && opisyCelu.ponizejPodlogi > 0);
   const hintScreenRect = useMemo(() => {
     const captions = sheetCaptionScreenRects(
       {
@@ -3376,6 +3392,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       data-tryb-widoku={props.trybWidoku ?? 'arkusz'}
       data-kadr-aktywny={zbiorKadru ? 'true' : undefined}
       data-ukryte-opisy-celu={zbiorKadru ? opisyCelu.ukryte : undefined}
+      data-opisy-celu-ponizej-podlogi={zbiorKadru ? opisyCelu.ponizejPodlogi : undefined}
       data-min-opis-celu-px={zbiorKadru && opisyCelu.minPx !== null ? opisyCelu.minPx.toFixed(2) : undefined}
       width={width}
       height={height}
@@ -3804,7 +3821,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
        * przycisk h-7 ⇒ pas 40 px) — na zrzucie odbiorczym K11-B połowa zdania
        * była zasłonięta. Komunikat o UKRYTEJ treści, który sam jest zasłonięty,
        * nie informuje o niczym. */}
-      {niewidoczneOpisy > 0 && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
+      {pokazKomunikat && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
         <g data-testid="sld-v3-hidden-labels-hint-grupa">
         {/* PODKŁADKA (RAMKA-TNIE-PODPISY): komunikat systemowy leży NAD
          *  rysunkiem, więc bez własnego tła przecinała go pierwsza lepsza
@@ -3831,6 +3848,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           data-testid="sld-v3-hidden-labels-hint"
           data-hidden-count={niewidoczneOpisy}
           data-opisy-celu={opisyCelu.ukryte > 0 ? opisyCelu.ukryte : undefined}
+          data-opisy-celu-ponizej-podlogi={opisyCelu.ponizejPodlogi > 0 ? opisyCelu.ponizejPodlogi : undefined}
           x={
             screenToWorld(
               { x: hintScreenRect.x + hintScreenRect.width, y: hintScreenRect.y + HIDDEN_LABELS_HINT_FONT_PX },

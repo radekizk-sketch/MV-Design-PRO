@@ -83,22 +83,42 @@ export function hiddenLabelsHintText(count: number): string {
 }
 
 /**
- * K2b §0.2 (b) — komunikat, gdy cel kadru jest tak rozległy, że kompletność (a)
- * i czytelność (b) naraz są niewykonalne: pierwszeństwo ma widok całego celu,
- * a opisy szczegółowe są dostępne po przybliżeniu albo po kadrze części celu.
- */
-/**
- * K2b §0.2 (b): kadr celu, w którym WSZYSTKIE opisy celu są narysowane — ukryte są
- * wyłącznie opisy obiektów spoza celu (pod kurtyną kadru). Ta sama liczba co w
- * komunikacie ogólnym (bilans planu etykiet), ale bez wezwania do przybliżania:
- * cel jest czytelny w całości.
+ * K2b §0.2 (b): kadr celu, w którym WSZYSTKIE opisy celu są narysowane pismem
+ * nie mniejszym niż podłoga opisów celu — ukryte są wyłącznie opisy obiektów
+ * spoza celu (pod kurtyną kadru). Ta sama liczba co w komunikacie ogólnym
+ * (bilans planu etykiet), ale bez wezwania do przybliżania: cel jest czytelny
+ * w całości. Kanwa wybiera ten wariant WYŁĄCZNIE wtedy, gdy zdanie „opisy celu
+ * widoczne w całości" jest prawdą (zero ukrytych i zero poniżej podłogi).
  */
 export function hiddenLabelsHintTextPozaCelem(count: number): string {
   return `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} poza celem kadru — opisy celu widoczne w całości`;
 }
 
-export function hiddenLabelsHintTextKadru(count: number, celu: number): string {
-  return `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} (celu kadru: ${celu}) — cały cel w kadrze; opisy szczegółowe po przybliżeniu`;
+/**
+ * K2b §0.2 (b) — komunikat, gdy cel kadru jest tak rozległy, że kompletność (a)
+ * i czytelność (b) naraz są niewykonalne: pierwszeństwo ma widok całego celu,
+ * a opisy szczegółowe są dostępne po przybliżeniu albo po kadrze części celu.
+ *
+ * Czytelność (b) ma DWA sposoby niespełnienia i komunikat liczy oba: opis celu
+ * UKRYTY przez plan etykiet (`celu`) oraz opis celu NARYSOWANY pismem poniżej
+ * podłogi `podlogaPx` (`ponizejPodlogi` — sufit proporcji klasy albo brak
+ * miejsca na pismo podłogi). Do karty K2b×K3 drugi przypadek nie był nigdzie
+ * policzony, a kanwa wybierała wtedy wariant „opisy celu widoczne w całości".
+ */
+export function hiddenLabelsHintTextKadru(
+  count: number,
+  celu: number,
+  ponizejPodlogi: number,
+  podlogaPx: number,
+): string {
+  const czlonPodlogi = ponizejPodlogi > 0 ? `opisy celu poniżej ${podlogaPx} px: ${ponizejPodlogi}` : null;
+  const czlonUkrytych =
+    count > 0 || czlonPodlogi === null ? `Ukryto ${count} ${count === 1 ? 'opis' : 'opisów'} (celu kadru: ${celu})` : null;
+  const poczatek =
+    czlonUkrytych !== null && czlonPodlogi !== null
+      ? `${czlonUkrytych}; ${czlonPodlogi}`
+      : czlonUkrytych ?? `${czlonPodlogi!.charAt(0).toUpperCase()}${czlonPodlogi!.slice(1)}`;
+  return `${poczatek} — cały cel w kadrze; opisy szczegółowe po przybliżeniu`;
 }
 
 /**
