@@ -111,6 +111,8 @@ export interface SwitchEquipmentType extends CatalogType {
   ik_ka: number;
   icw_ka: number;
   medium?: string;
+  /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
+  card_field_status?: StatusPolKarty;
 }
 
 /**
@@ -258,6 +260,8 @@ export interface MVApparatusType extends CatalogType {
   /** Propozycje wartości roboczych dla parametrów, których karta nie podaje (zasada nr 4,
    *  V12K-351) — `GET /api/catalog/mv-apparatus-types`; rejestr backendu jest jedynym źródłem. */
   wartosci_robocze?: readonly PropozycjaWartosciRoboczej[];
+  /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
+  card_field_status?: StatusPolKarty;
 }
 
 /** Rodzaj źródła propozycji wartości roboczej (rejestr `network_model/catalog/wartosci_robocze.py`). */
@@ -274,6 +278,21 @@ export interface PropozycjaWartosciRoboczej {
   readonly uzasadnienie_pl: string;
   readonly wplyw_pl: string;
 }
+
+/**
+ * Jakość danej jednego pola pozycji katalogu (`card_field_status` backendu — kształt
+ * `CardFieldStatus.to_dict()`): wartość robocza ma `quality: 'ESTIMATED'` z podstawą
+ * (`source_ref`: norma z tablicą / standard OSD z punktem i stroną) albo z jawnym
+ * założeniem (`note`). Brak klucza `card_field_status` = dane przepisane z karty producenta.
+ */
+export interface StatusPolaKarty {
+  readonly field_name: string;
+  readonly quality: string;
+  readonly source_ref?: string | null;
+  readonly note?: string | null;
+}
+
+export type StatusPolKarty = Readonly<Record<string, StatusPolaKarty>>;
 
 /**
  * LV Apparatus Type (APARAT_NN).

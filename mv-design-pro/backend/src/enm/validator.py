@@ -79,6 +79,7 @@ from .slownik_komunikatow import (
     pole,
 )
 from .topology import (
+    TYPY_LACZNIKOW_ENM,
     derive,
     podziel_krawedzie,
     punkty_podzialu_korytarza,
@@ -327,6 +328,8 @@ class ENMValidator:
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
         self._check_shunt_capacitors(enm, issues)
+        # KATALOG-APARATURA-WN: łącznik topologii zasilania 110 kV bez typu katalogowego
+        self._check_lacznik_wn_bez_typu(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stację przelotową
         self._check_voltage_band_consistency(enm, issues)
         self._check_frequency_consistency(enm, issues)
@@ -2037,6 +2040,54 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    def _check_lacznik_wn_bez_typu(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Łącznik topologii zasilania 110 kV bez wiązania katalogowego.
+
+        Strona 110 kV jest funkcjonalną granicą zasilania GPZ (decyzja właściciela
+        2026-10-22): łącznik 110 kV wchodzi do modelu wyłącznie jako łącznik topologii ze
+        stanem łączeniowym, a reguła wiązania katalogowego wymaga mu typu — katalog ma jeden
+        typ minimalny na rodzaj (``sw-cb-110kv``, ``sw-ds-110kv``). Gałąź łącznikowa
+        (``TYPY_LACZNIKOW_ENM``) z co najmniej jednym końcem na szynie pasma WN bez
+        ``catalog_ref`` — z operacji bez wskazanego aparatu albo z modelu zewnętrznego —
+        nie jest przyjmowana po cichu. Ostrzeżenie nie blokuje obliczeń: łącznik bez
+        impedancji nie wnosi parametru do solvera (Zasada nr 4)."""
+        napiecia = {b.ref_id: b.voltage_kv for b in enm.buses}
+        for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
+            if galaz.type not in TYPY_LACZNIKOW_ENM or galaz.catalog_ref:
+                continue
+            napiecia_koncow = [
+                napiecia.get(ref) for ref in (galaz.from_bus_ref, galaz.to_bus_ref) if ref
+            ]
+            napiecie_wn = max(
+                (u for u in napiecia_koncow if u is not None and pasmo_napieciowe(u) == "WN"),
+                default=None,
+            )
+            if napiecie_wn is None:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="apparatus.hv_switch_catalog_missing",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"{opis_obiektu(galaz, 'Łącznik')} na szynie "
+                        f"{napiecie_wn:g} kV nie ma typu z katalogu — łącznik topologii "
+                        "zasilania 110 kV wymaga wiązania katalogowego (typ minimalny "
+                        "wyłącznika albo odłącznika 110 kV)."
+                    ),
+                    element_refs=[galaz.ref_id],
+                    wizard_step_hint="K4",
+                    suggested_fix="Przypisz łącznikowi typ wyłącznika albo odłącznika 110 kV.",
+                    fix_action=FixAction(
+                        action_type="SELECT_CATALOG",
+                        element_ref=galaz.ref_id,
+                        modal_type="BranchModal",
+                        payload_hint={"required": "catalog_ref"},
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # Graph connectivity check

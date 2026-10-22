@@ -44,15 +44,18 @@ TYPY APARATURY:
 
 METADATA:
 - Aparatura z deklaracją producenta: ZWERYFIKOWANY / PRODUKCYJNY_V1
-- Aparatura generyczna (bez producenta): CZESCIOWO_ZWERYFIKOWANY / REFERENCYJNY_V1
+- Aparatura generyczna SN (bez producenta): CZESCIOWO_ZWERYFIKOWANY / REFERENCYJNY_V1
+- Laczniki 110 kV (typ minimalny topologii zasilania, bez producenta i bez danych
+  wytrzymalosciowych, kazde pole karty ESTIMATED w `card_field_status`): REFERENCYJNY
 
-TYPOSZEREG PRZEMYSLOWY (36 rekordow):
-  CIRCUIT_BREAKER: 12 rekordow (ABB/Siemens/Eaton, 12+17.5+24 kV)
-  LOAD_SWITCH:      7 rekordow (ABB/Schneider, 12+17.5+24 kV)
-  DISCONNECTOR:     4 rekordy  (ABB + generyczny)
+TYPOSZEREG PRZEMYSLOWY (50 rekordow; pin: tests/network_model/catalog — szerokosc katalogu):
+  CIRCUIT_BREAKER: 21 rekordow (ABB/Siemens/Eaton 12+17.5+24 kV; ZPUE/Elektrometal
+                   12+24 kV; typ minimalny 110 kV)
+  LOAD_SWITCH:      9 rekordow (ABB/Schneider 12+17.5+24 kV; ZPUE/Elektrometal)
+  DISCONNECTOR:     7 rekordow (ABB + generyczny SN; ZPUE/Elektrometal; typ minimalny 110 kV)
   RECLOSER:         4 rekordy  (ABB/NOJA/Schneider)
   FUSE:             7 rekordow (ETI, 12+17.5 kV, 16-200A)
-  EARTH_SWITCH:     2 rekordy  (generyczne)
+  EARTH_SWITCH:     2 rekordy  (generyczne SN)
 """
 
 from collections import Counter
@@ -874,12 +877,102 @@ SWITCH_EARTH_SWITCHES: list[dict[str, Any]] = [
 
 
 # =============================================================================
+# LACZNIKI 110 kV — minimalne typy topologii zasilania (karta KATALOG-APARATURA-WN)
+# =============================================================================
+#
+# Decyzja właściciela 2026-10-22: strona 110 kV jest funkcjonalną granicą zasilania GPZ —
+# nie projektuje się pól 110 kV ani ich aparatury. Łącznik 110 kV (wyłącznik albo odłącznik,
+# np. most lub sprzęgło H5) wchodzi do modelu WYŁĄCZNIE jako łącznik topologii zasilania ze
+# stanem łączeniowym; reguła wiązania katalogowego (CLAUDE.md, reguła 10) wymaga mu typu.
+# Stąd JEDEN minimalny typ na rodzaj: klasa napięcia U_m = 123 kV i prąd znamionowy pola
+# z wymagań standardu operatora, każde pole ESTIMATED (``card_field_status``). Pozycja NIE
+# niesie danych wytrzymałościowych (I_k, I_cw, I_cu): wartość 0 w polu wymaganym typu
+# oznacza brak danej — projekcja APARAT_SN daje wtedy ``i_th_ka = None``, więc żadna
+# weryfikacja wytrzymałości nie ocenia aparatu 110 kV na liczbie, której nie ma.
+
+ZRODLO_ENEA_ZESZYT_1 = (
+    "ENEA Operator, Standard „Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje "
+    "dwutransformatorowe 110 kV/SN”, wersja 02.2023-2"
+)
+_ENEA_TAB2 = f"{ZRODLO_ENEA_ZESZYT_1}, §8.1 tab. 2, str. I 14/76"
+_ENEA_TAB5 = f"{ZRODLO_ENEA_ZESZYT_1}, §10.1 tab. 5, str. I 16/76 (U_m = 123 kV dla 110 kV)"
+_ZALOZENIE_LACZNIKA_110KV = (
+    "założenie: typ minimalny łącznika topologii zasilania 110 kV (decyzja właściciela "
+    "2026-10-22: 110 kV jako granica zasilania GPZ) — klasa napięcia i prąd znamionowy "
+    "z wymagań standardu operatora, nie z karty wyrobu"
+)
+
+
+def _status_pola(pole: str, zrodlo: str) -> dict[str, Any]:
+    """Wpis ``card_field_status`` pola wartości roboczej: ESTIMATED z podstawą i założeniem."""
+    return {
+        "field_name": pole,
+        "quality": "ESTIMATED",
+        "source_ref": zrodlo,
+        "note": _ZALOZENIE_LACZNIKA_110KV,
+    }
+
+
+def _lacznik_110kv(
+    item_id: str, name: str, *, equipment_kind: str, in_a: float, norma_wyrobu: str
+) -> dict[str, Any]:
+    return {
+        "id": item_id,
+        "name": name,
+        "params": {
+            "equipment_kind": equipment_kind,
+            "manufacturer": None,
+            "un_kv": 123.0,
+            "in_a": in_a,
+            "ik_ka": 0.0,
+            "icw_ka": 0.0,
+            "medium": None,
+            "u_m_kv": 123.0,
+            "i_cu_ka": None,
+            "card_field_status": {
+                "un_kv": _status_pola("un_kv", _ENEA_TAB5),
+                "u_m_kv": _status_pola("u_m_kv", _ENEA_TAB5),
+                "in_a": _status_pola("in_a", _ENEA_TAB2),
+            },
+            "verification_status": "REFERENCYJNY",
+            "catalog_status": "REFERENCYJNY_V1",
+            "source_reference": f"{ZRODLO_ENEA_ZESZYT_1}; {norma_wyrobu}",
+            "verification_note": (
+                "Typ minimalny łącznika topologii zasilania 110 kV: klasa napięcia i prąd "
+                "znamionowy jako wartości robocze (ESTIMATED), bez danych wytrzymałościowych "
+                "(I_k, I_cw, I_cu — brak danej) i bez producenta."
+            ),
+            "contract_version": "2.0",
+        },
+    }
+
+
+SWITCH_HV_110KV: list[dict[str, Any]] = [
+    _lacznik_110kv(
+        "sw-cb-110kv",
+        "Wyłącznik 110 kV (typ minimalny topologii zasilania)",
+        equipment_kind="CIRCUIT_BREAKER",
+        in_a=3150.0,
+        norma_wyrobu="PN-EN 62271-100",
+    ),
+    _lacznik_110kv(
+        "sw-ds-110kv",
+        "Odłącznik 110 kV (typ minimalny topologii zasilania)",
+        equipment_kind="DISCONNECTOR",
+        in_a=1600.0,
+        norma_wyrobu="PN-EN 62271-102",
+    ),
+]
+
+
+# =============================================================================
 # FUNKCJE DOSTEPU
 # =============================================================================
 
 
 def get_all_switch_equipment_types() -> list[dict[str, Any]]:
-    """Zwraca wszystkie typy aparatury laczeniowej w katalogu (48 rekordow po K30-22)."""
+    """Zwraca wszystkie typy aparatury laczeniowej w katalogu (50 rekordow: 48 SN po K30-22
+    + 2 minimalne laczniki 110 kV karty KATALOG-APARATURA-WN)."""
     return (
         SWITCH_CIRCUIT_BREAKERS
         + SWITCH_LOAD_SWITCHES
@@ -888,6 +981,7 @@ def get_all_switch_equipment_types() -> list[dict[str, Any]]:
         + SWITCH_FUSES
         + SWITCH_EARTH_SWITCHES
         + SWITCH_POLISH_PTPIRE  # K30-22 Polish ZPUE + Elektrometal expansion
+        + SWITCH_HV_110KV  # karta KATALOG-APARATURA-WN
     )
 
 

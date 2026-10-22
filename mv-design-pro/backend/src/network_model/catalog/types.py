@@ -1516,6 +1516,12 @@ class SwitchEquipmentType:
     medium: str | None = None
     u_m_kv: float | None = None
     i_cu_ka: float | None = None
+    #: Jakość danych pól pozycji (``{pole -> CardFieldStatus.to_dict()}``, ten sam kształt co
+    #: ``ConverterType.card_field_status``): pole wartości roboczej ma ``quality=ESTIMATED``
+    #: z podstawą (``source_ref``: norma z tablicą / standard OSD z punktem i stroną) albo
+    #: z jawnym założeniem (``note``). ``None`` = pozycja bez takiej deklaracji (dane
+    #: przepisane z karty katalogowej producenta) — klucz pomijany w ``to_dict``.
+    card_field_status: dict[str, dict[str, Any]] | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
@@ -1536,6 +1542,7 @@ class SwitchEquipmentType:
             "medium": self.medium,
             "u_m_kv": self.u_m_kv,
             "i_cu_ka": self.i_cu_ka,
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1560,6 +1567,11 @@ class SwitchEquipmentType:
             medium=data.get("medium"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentów",
@@ -2947,6 +2959,12 @@ class MVApparatusType:
     #: przez projektanta — nigdy sam człon nastawczy, który zaniżałby czas i zawyżał limit
     #: cieplny aparatu (karta WYTRZYMALOSC-PRAD-POLA).
     break_time_s: float | None = None
+    #: Jakość danych pól pozycji (``{pole -> CardFieldStatus.to_dict()}``, ten sam kształt co
+    #: ``ConverterType.card_field_status``): pole wartości roboczej ma ``quality=ESTIMATED``
+    #: z podstawą (``source_ref``: norma z tablicą / standard OSD z punktem i stroną) albo
+    #: z jawnym założeniem (``note``). ``None`` = pozycja bez takiej deklaracji (dane
+    #: przepisane z karty katalogowej producenta) — klucz pomijany w ``to_dict``.
+    card_field_status: dict[str, dict[str, Any]] | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
@@ -2979,6 +2997,7 @@ class MVApparatusType:
             "i_dyn_ka": self.i_dyn_ka,
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
             "break_time_s": self.break_time_s,
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3016,6 +3035,11 @@ class MVApparatusType:
             i_dyn_ka=(float(data["i_dyn_ka"]) if data.get("i_dyn_ka") is not None else None),
             break_time_s=(
                 float(data["break_time_s"]) if data.get("break_time_s") is not None else None
+            ),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
             ),
             **_catalog_metadata_kwargs(
                 data,
