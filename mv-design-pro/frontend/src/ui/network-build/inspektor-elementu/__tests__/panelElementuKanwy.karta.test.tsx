@@ -36,6 +36,22 @@ const SIEC = (
   ) as { readonly enm: EnergyNetworkModel }
 ).enm;
 
+
+/**
+ * K3 × K6: klik adresujący POLE (nie pojedyncze urządzenie). Aparatura pola pochodzi wyłącznie
+ * z rekordów modelu, więc symbol bez `deviceRef` istnieje już tylko jako sylwetka
+ * `bayNoEquipment` („brak danych wyposażenia pola") pola, które ma rekord `Bay` w modelu.
+ * Dawny predykat szukał łącznika pola stacji z konwencji (bez `deviceRef`) — po K3 takiego
+ * symbolu nie ma: łącznik pola stacji niesie ref urządzenia i otwiera kartę aparatu.
+ */
+function jestPoleBezRekorduAparatu(s: SceneV3['symbols'][number]): boolean {
+  return (
+    s.symbolId === 'bayNoEquipment' &&
+    s.meta?.elementKind === 'apparatus' &&
+    !s.meta?.deviceRef &&
+    (SIEC.bays ?? []).some((b) => b.ref_id === s.meta?.ownerRef)
+  );
+}
 interface Przypadek {
   readonly nazwa: string;
   readonly lod: SceneLod;
@@ -48,7 +64,7 @@ const PRZYPADKI: readonly Przypadek[] = [
   {
     nazwa: 'pole',
     lod: 2,
-    predykat: (s) => s.meta?.elementKind === 'apparatus' && !s.meta?.deviceRef && Boolean(s.meta?.ownerRef?.includes('/sn_field/')),
+    predykat: (s) => jestPoleBezRekorduAparatu(s),
     rodzajKarty: 'pole',
   },
   { nazwa: 'transformator', lod: 2, predykat: (s) => s.meta?.elementKind === 'transformer', rodzajKarty: 'transformator' },
@@ -135,5 +151,16 @@ describe.each(PRZYPADKI)('inspektor — karta techniczna: $nazwa', (przypadek) =
     kliknij(przypadek);
     expect(screen.getByTestId('inspektor-karta')).toBeInTheDocument();
     expect(screen.queryAllByTestId(/^inspektor-karta-zmien-/)).toHaveLength(0);
+  });
+});
+
+// K3 × K6: pole bez rekordu aparatury (sylwetka `bayNoEquipment`) — karta pola mówi to wprost
+// („Pole nie ma aparatów w modelu."), zamiast pokazywać łącznik wymyślony z konwencji.
+describe('inspektor — karta pola bez rekordu aparatury', () => {
+  it('klik w sylwetkę „brak danych wyposażenia pola" otwiera kartę pola z jawnym brakiem aparatów', () => {
+    const pole = PRZYPADKI.find((p) => p.nazwa === 'pole')!;
+    kliknij(pole);
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'pole');
+    expect(screen.getByTestId('inspektor-karta-tabela-aparaty-pusta')).toHaveTextContent('Pole nie ma aparatów w modelu.');
   });
 });

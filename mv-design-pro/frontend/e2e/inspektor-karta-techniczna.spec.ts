@@ -38,7 +38,9 @@ const MOTYWY = [
   { klucz: 'ciemny', theme: 'dark_scada' as const },
   { klucz: 'jasny', theme: 'light_technical' as const },
 ] as const;
-const STACJA = 'Stacja Przelotowa';
+// Stacja z czterema polami liniowymi (IN, OUT, 2 × FEEDER). Ziarno nazywa stacje wg rodzaju
+// wyprowadzonego z topologii (karta GEOMETRIA-STACJI): ta stacja jest odgałęźna (R2).
+const STACJA = 'Stacja Odgałęźna';
 const INNA_STACJA = 'Stacja Końcowa';
 /** BESS 2,5 MW: 5 × przekształtnik 0,5 MW / 0,4 kV (katalog backendu) za TR blokowym. */
 const PRZEKSZTALTNIK_BESS = 'conv-bess-nn-0p5mw-0p4kv';

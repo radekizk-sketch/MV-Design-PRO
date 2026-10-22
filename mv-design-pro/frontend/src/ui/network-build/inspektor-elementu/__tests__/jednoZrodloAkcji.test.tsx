@@ -74,6 +74,22 @@ function poId(pozycje: readonly Pozycja[]): Record<string, Pozycja> {
   return Object.fromEntries(pozycje.map((p) => [p.id, p]));
 }
 
+
+/**
+ * K3 × K6: klik adresujący POLE (nie pojedyncze urządzenie). Aparatura pola pochodzi wyłącznie
+ * z rekordów modelu, więc symbol bez `deviceRef` istnieje już tylko jako sylwetka
+ * `bayNoEquipment` („brak danych wyposażenia pola") pola, które ma rekord `Bay` w modelu.
+ * Dawny predykat szukał łącznika pola stacji z konwencji (bez `deviceRef`) — po K3 takiego
+ * symbolu nie ma: łącznik pola stacji niesie ref urządzenia i otwiera kartę aparatu.
+ */
+function jestPoleBezRekorduAparatu(s: SceneV3['symbols'][number]): boolean {
+  return (
+    s.symbolId === 'bayNoEquipment' &&
+    s.meta?.elementKind === 'apparatus' &&
+    !s.meta?.deviceRef &&
+    (SIEC.bays ?? []).some((b) => b.ref_id === s.meta?.ownerRef)
+  );
+}
 interface Przypadek {
   readonly nazwa: string;
   readonly enm: EnergyNetworkModel;
@@ -99,7 +115,7 @@ function segment(predykat: (s: SceneV3['segments'][number]) => boolean) {
 
 const PRZYPADKI: readonly Przypadek[] = [
   { nazwa: 'stacja', enm: SIEC, lod: 0, uchwyt: symbol((s) => s.meta?.elementKind === 'station' && s.symbolId !== 'gpzCollapsed') },
-  { nazwa: 'pole', enm: SIEC, lod: 2, uchwyt: symbol((s) => s.meta?.elementKind === 'apparatus' && !s.meta?.deviceRef && Boolean(s.meta?.ownerRef?.includes('/sn_field/'))) },
+  { nazwa: 'pole', enm: SIEC, lod: 2, uchwyt: symbol((s) => jestPoleBezRekorduAparatu(s)) },
   { nazwa: 'aparat', enm: SIEC_APARATOW, lod: 2, uchwyt: symbol((s) => s.meta?.elementKind === 'apparatus' && Boolean(s.meta?.deviceRef)) },
   { nazwa: 'transformator', enm: SIEC, lod: 2, uchwyt: symbol((s) => s.meta?.elementKind === 'transformer') },
   { nazwa: 'źródło OZE', enm: SIEC, lod: 2, uchwyt: symbol((s) => s.meta?.elementKind === 'der') },

@@ -93,6 +93,22 @@ function ustawWyniki(enm: EnergyNetworkModel, stan: StanWynikow): void {
   });
 }
 
+
+/**
+ * K3 × K6: klik adresujący POLE (nie pojedyncze urządzenie). Aparatura pola pochodzi wyłącznie
+ * z rekordów modelu, więc symbol bez `deviceRef` istnieje już tylko jako sylwetka
+ * `bayNoEquipment` („brak danych wyposażenia pola") pola, które ma rekord `Bay` w modelu.
+ * Dawny predykat szukał łącznika pola stacji z konwencji (bez `deviceRef`) — po K3 takiego
+ * symbolu nie ma: łącznik pola stacji niesie ref urządzenia i otwiera kartę aparatu.
+ */
+function jestPoleBezRekorduAparatu(s: SceneV3['symbols'][number]): boolean {
+  return (
+    s.symbolId === 'bayNoEquipment' &&
+    s.meta?.elementKind === 'apparatus' &&
+    !s.meta?.deviceRef &&
+    (SIEC.bays ?? []).some((b) => b.ref_id === s.meta?.ownerRef)
+  );
+}
 interface Przypadek {
   readonly nazwa: string;
   readonly enm: EnergyNetworkModel;
@@ -122,7 +138,7 @@ const PRZYPADKI: readonly Przypadek[] = [
     nazwa: 'pole',
     enm: SIEC,
     lod: 2,
-    uchwyt: symbol((s) => s.meta?.elementKind === 'apparatus' && !s.meta?.deviceRef && Boolean(s.meta?.ownerRef?.includes('/sn_field/'))),
+    uchwyt: symbol((s) => jestPoleBezRekorduAparatu(s)),
     rodzaj: 'apparatus',
   },
   {
