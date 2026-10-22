@@ -396,3 +396,51 @@ Karta KATALOG-APARATURA-WN idzie w dwóch commitach na czubku tej gałęzi, z W5
    - odwzorowanie ZU na `GroundingConfig`;
    - API i typy.
 2. **Commit 2:** role EARTHING/CAPACITOR, ZU w szablonie H5 z propozycją `ESTIMATED` i kasacja `apparatus_proposal`. Wepnie się w kod GPZ-H5-BACKEND, gdy ten trafi do repo. Ról pola nie dubluj: dodaje je Twój commit.
+
+### 2026-10-22, wpis 11 (wątek prowadzący) — DECYZJA WŁAŚCICIELA: zakres schematu GPZ H5 — 110 kV funkcjonalnie, SN w pełni
+
+Decyzja właściciela z 2026-10-22 jest wiążąca i zmienia zakres wpisów 7–10. Podsumowanie:
+- MV-DESIGN PRO projektuje sieć SN.
+- 110 kV jest **funkcjonalną granicą zasilania GPZ**, a nie przedmiotem projektu.
+- Rozdzielnica SN ma być pełnym, kanonicznym schematem jednokreskowym: poprawnym elektrycznie, czytelnym, zgodnym z logiką stacji, spójnym z obliczeniami, bez dekoracyjności.
+
+**Strona 110 kV — wyłącznie to, co wpływa na zasilanie i obliczenia SN:**
+- źródła zasilania (sieć zasilająca, S_k″ i R/X);
+- dwa pola zasilające / przyłącza, gdy wynikają z modelu, jako element topologii: linia zasilająca z katalogu `PRZEWOD_LINII_WN` (model B, karta LINIA-110) zostaje, bo jej impedancja wpływa na zwarcia w SN;
+- transformatory 110/SN;
+- łącznik 110 kV (wyłącznik albo odłącznik, np. most lub sprzęgło H5), tylko tam, gdzie jego stan łączeniowy zmienia zasilanie sekcji SN;
+- stany łączeniowe 110 kV, które wpływają na obliczenia SN.
+
+**Na stronie 110 kV NIE robimy:**
+- projektowania pól 110 kV;
+- katalogu aparatury 110 kV poza jednym minimalnym typem łącznika na rodzaj (U_m 123 kV, `ESTIMATED`, tylko do wiązania katalogowego i stanu);
+- przekładników CT i VT 110 kV;
+- napędów;
+- uziemników i odłączników z uziemnikiem;
+- ograniczników;
+- osprzętu punktu neutralnego 110 kV;
+- geometrii pól 110 kV;
+- osobnego modułu rozdzielni 110 kV.
+
+**Skutki dla Twojego wątku:**
+1. **SLD:** łańcuch symboli pól 110 kV z Z.1/Z.2 (OSZ(U), W, PIU, OL(U), OGR) NIE jest rysowany.
+   - Pole 110 kV na schemacie to: przyłącze / linia zasilająca, łącznik ze stanem (jeśli jest w modelu) i transformator.
+   - Część 110 kV ma być zwarta, w jednym pasie nad rozdzielnicą SN, bez wypełniania miejsca aparaturą.
+   - Inwentarz symboli w `GPZ_H5_LANCUCH_APARATURY.md` popraw: część 110 kV oznacz jako poza zakresem i powołaj ten wpis.
+2. **`PROPOZYCJA_APARATOW_110_H5` i `hv_bay_apparatus_proposal` / `meta.apparatus_proposal`:** kasacja bez zastępstwa.
+   - W GPZ-H5-BACKEND nie dokładaj aparatury 110 kV.
+   - Pola struktury 110 kV zostają jako topologia (sekcje, łącznik, transformator).
+3. **Pełna jakość tylko w części SN:**
+   - sekcje szyn i sprzęgło;
+   - pola liniowe, transformatorowe, pomiarowe (z VT), zespołu uziemiającego (transformator uziemiający, dławik, rezystor) i baterii kondensatorów;
+   - aparatura w prawidłowej kolejności elektrycznej;
+   - głowice kablowe i wyprowadzenia;
+   - stany łączeniowe;
+   - wiązanie z ENM, wynikami i nakładką wyników.
+4. **Karta KATALOG-APARATURA-WN (mój wątek):** zakres przycięty przed commitem.
+   - Wycofane: CT, VT, uziemniki, ograniczniki, osprzęt punktu neutralnego, rodzina rozdzielnicy i szablony pól 110 kV.
+   - Zostaje: jedna prawda aparatu pola SN; `set_bay_equipment` z kontrolą U_r względem napięcia pola i trzema stanami; aparat ZU (transformator uziemiający z Z0, dławik, rezystor) na `GroundingConfig` z propozycją `ESTIMATED` wg ENEA §16; szablony pól SN EARTHING i CAPACITOR; uzupełnienie szablonów SN o pełny łańcuch aparatury i głowice; minimalny typ łącznika 110 kV; kasacja `apparatus_proposal`.
+   - Commit 2 (wpięcie w GPZ-H5-BACKEND) bez zmian co do kolejności.
+5. **Wpis 10 obowiązuje dalej:** wypchnij gałąź GPZ-H5-BACKEND i podaj hash. Jeśli Twój commit już dodaje aparaturę pól 110 kV, zdejmij ją przed scaleniem — w nowym commicie, bez przepisywania historii.
+
+Werdykt wizualny GPZ H5 (B-02) wystawia właściciel. Zrzuty żywej aplikacji (oba motywy) po wdrożeniu tego zakresu publikujesz na stronie oceny.
