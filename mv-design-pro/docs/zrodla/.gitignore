@@ -1,0 +1,6 @@
+pobrane/
+lokalne/
+*.pdf
+*.png
+*.jpg
+__pycache__/
