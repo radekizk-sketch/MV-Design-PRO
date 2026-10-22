@@ -18,8 +18,13 @@ ZRODLA DANYCH:
 KONWENCJE:
 - un_kv [kV] — znamionowe napiecie pracy (12.0 dla SN 15 kV, 17.5 dla SN 20 kV, 24.0 dla SN 20 kV)
 - in_a [A] — prad znamionowy ciaglej pracy
-- ik_ka [kA] — znamionowy prad zwarciowy laczeniowy (wylaczniki, reklozery)
+- ik_ka [kA] — znamionowy prad zwarciowy laczeniowy (wylaczniki, reklozery, bezpieczniki)
 - icw_ka [kA] — prad wytrzymywany krotkotrwale 1s
+- ik_ka / icw_ka: ``None`` = brak danej z karty katalogowej, NIGDY 0.0 dla wielkosci
+  wlasciwej rodzajowi aparatu (bramka KAT-T-048 w `SwitchEquipmentType`). Zapis 0.0
+  wystepuje wylacznie w polu, ktorego rodzaj aparatu z definicji normy nie ma
+  (ik_ka rozlacznika/odlacznika/uziemnika, icw_ka bezpiecznika) — tam rozstrzyga rodzaj
+  (`RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA`, `RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO`).
 - medium — srodek gaszacy (SF6, VACUUM, AIR)
 - u_m_kv [kV] — napiecie najwyzsze urzadzenia U_m wg IEC 62271-1 (karta
   UM-ICU-KATALOG). Dla calej aparatury SN identyczne z un_kv — rodzina
@@ -46,7 +51,8 @@ METADATA:
 - Aparatura z deklaracją producenta: ZWERYFIKOWANY / PRODUKCYJNY_V1
 - Aparatura generyczna SN (bez producenta): CZESCIOWO_ZWERYFIKOWANY / REFERENCYJNY_V1
 - Laczniki 110 kV (typ minimalny topologii zasilania, bez producenta i bez danych
-  wytrzymalosciowych, kazde pole karty ESTIMATED w `card_field_status`): REFERENCYJNY
+  wytrzymalosciowych — ik_ka/icw_ka/i_cu_ka = None, kazde pole karty ESTIMATED
+  w `card_field_status`): REFERENCYJNY
 
 TYPOSZEREG PRZEMYSLOWY (50 rekordow; pin: tests/network_model/catalog — szerokosc katalogu):
   CIRCUIT_BREAKER: 21 rekordow (ABB/Siemens/Eaton 12+17.5+24 kV; ZPUE/Elektrometal
@@ -924,8 +930,9 @@ def _lacznik_110kv(
             "manufacturer": None,
             "un_kv": 123.0,
             "in_a": in_a,
-            "ik_ka": 0.0,
-            "icw_ka": 0.0,
+            # Brak danej z karty — `None`, nigdy 0.0 (bramka KAT-T-048).
+            "ik_ka": None,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 123.0,
             "i_cu_ka": None,

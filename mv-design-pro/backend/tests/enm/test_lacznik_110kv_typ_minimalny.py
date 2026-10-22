@@ -143,8 +143,9 @@ def test_typ_minimalny_estimated_bez_danych_wytrzymalosciowych(ref: str) -> None
     assert rekord.manufacturer is None and aparat.manufacturer is None
     assert rekord.verification_status == "REFERENCYJNY"
     # Bez danych wytrzymałościowych: tylko tyle danych, ile wymaga wiązanie i stan.
-    assert rekord.icw_ka == 0.0 and rekord.i_cu_ka is None
-    assert aparat.i_th_ka is None
+    # Brak danej z karty to `None`, nigdy 0 kA (bramka KAT-T-048) — rekord i projekcja.
+    assert rekord.ik_ka is None and rekord.icw_ka is None and rekord.i_cu_ka is None
+    assert aparat.breaking_capacity_ka is None and aparat.i_th_ka is None
     assert set(rekord.card_field_status or {}) == {"un_kv", "u_m_kv", "in_a"}
     assert set(aparat.card_field_status or {}) == {"u_n_kv", "i_n_a"}
     for status in (rekord.card_field_status, aparat.card_field_status):

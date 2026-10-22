@@ -91,8 +91,8 @@ POZYCJE_APARATURY_WN: dict[str, tuple[str, ...]] = {
     "mv_apparatus_types": ("sw-cb-110kv", "sw-ds-110kv"),
 }
 #: Wartość zrzutu z wyciętymi polami karty projekcji (jak `ODCISK_PO_W5E_TTIT`); pełny odcisk
-#: katalogu domyślnego po karcie: b8dce7f45d31cfd2168fe4914272670906147449f24c47e6fe1bbd1d476337d8.
-ODCISK_PO_APARATURZE_WN = "146f914f3efe2008369599c00aa10af9a262bc04410a19c415ba56ce3005f652"
+#: katalogu domyślnego po karcie: 0d50891f64dd97c345b62dbe0bbb7b1b4a6cfdd8477c77cc6154930a26f290fd.
+ODCISK_PO_APARATURZE_WN = "f9295f20b4955ebe0decac54818aaa7c5bed0d6d0e58ddd8a0362eaf2638859b"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 

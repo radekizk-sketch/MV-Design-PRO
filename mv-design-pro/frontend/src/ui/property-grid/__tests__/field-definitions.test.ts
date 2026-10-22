@@ -510,3 +510,26 @@ describe('P30e: field-definitions (mode-aware)', () => {
     });
   });
 });
+
+describe('parametry typu z katalogu: brak danej nie jest zerem', () => {
+  // Pole „z katalogu” bez danej (typ nieprzypisany albo pozycja bez tej wartości, np. łącznik
+  // 110 kV bez I_k/I_cw) pokazuje „brak danych”; domyślne 0 udawałoby wartość katalogową.
+  it.each<ElementType>(['LineBranch', 'TransformerBranch', 'Switch'])(
+    '%s: każde liczbowe pole typu ma wartość domyślną null',
+    (elementType) => {
+      const pola = getFieldDefinitionsForMode(elementType, 'MODEL_EDIT')
+        .flatMap((s) => s.fields)
+        .filter((f) => f.source === 'type' && f.type === 'number');
+      expect(pola.length).toBeGreaterThan(0);
+      expect(pola.filter((f) => f.value !== null).map((f) => f.key)).toEqual([]);
+    },
+  );
+
+  it('Switch: I_k i I_cw należą do parametrów typu', () => {
+    const klucze = getFieldDefinitionsForMode('Switch', 'MODEL_EDIT')
+      .flatMap((s) => s.fields)
+      .filter((f) => f.source === 'type')
+      .map((f) => f.key);
+    expect(klucze).toEqual(expect.arrayContaining(['ik_ka', 'icw_ka']));
+  });
+});

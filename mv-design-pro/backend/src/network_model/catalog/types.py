@@ -1474,6 +1474,52 @@ class TransformerType:
         )
 
 
+#: Komplet rodzajów aparatury łączeniowej (``SwitchEquipmentType.equipment_kind``).
+RODZAJE_APARATURY_LACZENIOWEJ: frozenset[str] = frozenset(
+    {"CIRCUIT_BREAKER", "LOAD_SWITCH", "DISCONNECTOR", "EARTH_SWITCH", "FUSE", "RECLOSER"}
+)
+#: Rodzaje aparatury łączeniowej SN ze ZNAMIONOWĄ zdolnością łączeniową zwarciową
+#: (``SwitchEquipmentType.ik_ka``): wyłącznik i reklozer (PN-EN 62271-100 / -111) oraz
+#: bezpiecznik (PN-EN 60282-1). Rozłącznik, odłącznik i uziemnik tej zdolności nie mają
+#: z definicji normy — JEDNO źródło dla bramki rekordu (KAT-T-048) i dla odczytu
+#: „nie dotyczy” zdolności wyłączania (``equipment_proof.catalog_bridge``).
+RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA: frozenset[str] = frozenset(
+    {"CIRCUIT_BREAKER", "RECLOSER", "FUSE"}
+)
+#: Rodzaje aparatury łączeniowej SN BEZ prądu krótkotrwałego wytrzymywanego
+#: (``SwitchEquipmentType.icw_ka``): wkładka bezpiecznikowa przepala się, nie
+#: przewodzi zwarcia przez czas znamionowy (PN-EN 60282-1 nie definiuje I_cw).
+RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO: frozenset[str] = frozenset({"FUSE"})
+
+
+def _sprawdz_prady_zwarciowe_lacznika(
+    item_id: str, equipment_kind: str, ik_ka: float | None, icw_ka: float | None
+) -> None:
+    """KAT-T-048: prąd zwarciowy łącznika dodatni albo ``None`` (brak danej z karty).
+
+    Zero NIE jest brakiem danej: 0 kA zdolności wyłączania wyłącznika albo prądu
+    krótkotrwałego odłącznika opisuje aparat, który nie istnieje, a każdy konsument
+    (dobór, dowód wytrzymałości, eksport, raport, interfejs) przeczytałby je jako
+    liczbę. Wielkość, której rodzaj aparatu z definicji normy NIE MA (zdolność
+    wyłączania rozłącznika/odłącznika/uziemnika, I_cw bezpiecznika), nie podlega
+    bramce — rodzaj rozstrzyga „nie dotyczy”, a historyczny zapis ``0.0`` tych pól
+    w katalogu jest odczytywany przez konsumentów właśnie po rodzaju.
+    """
+    for pole, wartosc, dotyczy in (
+        ("ik_ka", ik_ka, equipment_kind in RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA),
+        ("icw_ka", icw_ka, equipment_kind not in RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO),
+    ):
+        if wartosc is None:
+            continue
+        if not math.isfinite(wartosc) or wartosc < 0 or (dotyczy and wartosc == 0):
+            odmowa_twarda(
+                "KAT-T-048",
+                f"Łącznik '{item_id}' ({equipment_kind}) ma {pole}={wartosc!r} kA — prąd "
+                "zwarciowy właściwy rodzajowi aparatu jest dodatni; brak danej z karty "
+                "zapisuje się jako None, nigdy jako 0.",
+            )
+
+
 @dataclass(frozen=True)
 class SwitchEquipmentType:
     """
@@ -1489,8 +1535,12 @@ class SwitchEquipmentType:
         equipment_kind: Equipment kind (CIRCUIT_BREAKER, DISCONNECTOR, EARTH_SWITCH).
         un_kv: Rated voltage [kV].
         in_a: Rated current [A].
-        ik_ka: Short-circuit breaking current [kA] (for breakers).
-        icw_ka: Short-time withstand current [kA] (for disconnectors).
+        ik_ka: Znamionowy prąd zwarciowy łączeniowy [kA] (wyłącznik, reklozer,
+            bezpiecznik). ``None`` = brak danej z karty katalogowej — nigdy 0.0
+            (bramka KAT-T-048). Dla rodzaju bez zdolności wyłączania
+            (``RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA``) pole nie dotyczy.
+        icw_ka: Prąd krótkotrwały wytrzymywany I_cw [kA], 1 s. ``None`` = brak danej
+            z karty — nigdy 0.0 (KAT-T-048); dla bezpiecznika nie dotyczy.
         medium: Quenching medium (e.g., "SF6", "VACUUM").
         u_m_kv: Napiecie najwyzsze urzadzenia U_m [kV] wg IEC 62271-1 — karta
             UM-ICU-KATALOG. Dla aparatury SN rownowazne Ur z karty katalogowej
@@ -1511,8 +1561,8 @@ class SwitchEquipmentType:
     equipment_kind: str = "CIRCUIT_BREAKER"
     un_kv: float = 0.0
     in_a: float = 0.0
-    ik_ka: float = 0.0
-    icw_ka: float = 0.0
+    ik_ka: float | None = None
+    icw_ka: float | None = None
     medium: str | None = None
     u_m_kv: float | None = None
     i_cu_ka: float | None = None
@@ -1527,6 +1577,9 @@ class SwitchEquipmentType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        _sprawdz_prady_zwarciowe_lacznika(self.id, self.equipment_kind, self.ik_ka, self.icw_ka)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -1562,8 +1615,8 @@ class SwitchEquipmentType:
             equipment_kind=str(data.get("equipment_kind", "CIRCUIT_BREAKER")),
             un_kv=wymagany_float(data, "un_kv", context="SwitchEquipmentType"),
             in_a=wymagany_float(data, "in_a", context="SwitchEquipmentType"),
-            ik_ka=wymagany_float(data, "ik_ka", context="SwitchEquipmentType"),
-            icw_ka=wymagany_float(data, "icw_ka", context="SwitchEquipmentType"),
+            ik_ka=wymagany_float_lub_nieznany(data, "ik_ka", context="SwitchEquipmentType"),
+            icw_ka=wymagany_float_lub_nieznany(data, "icw_ka", context="SwitchEquipmentType"),
             medium=data.get("medium"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),

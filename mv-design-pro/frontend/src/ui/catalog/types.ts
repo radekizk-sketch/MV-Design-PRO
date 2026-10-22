@@ -108,8 +108,13 @@ export interface SwitchEquipmentType extends CatalogType {
   equipment_kind: string;
   un_kv: number;
   in_a: number;
-  ik_ka: number;
-  icw_ka: number;
+  /**
+   * Znamionowy prąd zwarciowy łączeniowy [kA]; `null` = brak danej z karty (nigdy 0 —
+   * bramka rekordu KAT-T-048). Dla rozłącznika/odłącznika/uziemnika wielkość nie dotyczy.
+   */
+  ik_ka: number | null;
+  /** Prąd krótkotrwały wytrzymywany I_cw [kA], 1 s; `null` = brak danej z karty. */
+  icw_ka: number | null;
   medium?: string;
   /** Jakość danych pól pozycji (typ minimalny łącznika 110 kV: każde pole ESTIMATED). */
   card_field_status?: StatusPolKarty;

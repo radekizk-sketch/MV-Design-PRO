@@ -122,6 +122,16 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       icw_ka: 25,
       medium: 'VACUUM',
     },
+    {
+      // Typ minimalny łącznika 110 kV: brak danych wytrzymałościowych z karty = null.
+      id: 'sw-cb-110kv',
+      name: 'Wyłącznik 110 kV (typ minimalny topologii zasilania)',
+      equipment_kind: 'CIRCUIT_BREAKER',
+      un_kv: 123,
+      in_a: 3150,
+      ik_ka: null,
+      icw_ka: null,
+    },
   ],
   MV_APPARATUS: [
     {
@@ -409,6 +419,26 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getByText('Prąd zwarciowy Ik3 min')).toBeInTheDocument();
     expect(screen.getByText('Stosunek R/X min')).toBeInTheDocument();
     expect(screen.getAllByText('brak danych')).toHaveLength(3);
+  });
+
+  it('aparatura łączeniowa: brak danej prądu zwarciowego to „brak danych”, nigdy „0 kA” (KAT-T-048)', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /Typy aparatury łączeniowej SN/i }));
+    await waitFor(() => {
+      expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('SWITCH_EQUIPMENT');
+    });
+
+    // Podsumowanie listy: pozycja z danymi niesie liczbę, pozycja bez danej — „brak danych”.
+    expect(await screen.findByRole('cell', { name: '12 kV · 630 A · Ik 25 kA' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '123 kV · 3150 A · Ik brak danych' })).toBeInTheDocument();
+
+    await user.click(screen.getByText('Wyłącznik 110 kV (typ minimalny topologii zasilania)'));
+    const szczegoly = screen.getByTestId('type-library-details-grid');
+    expect(szczegoly).toHaveTextContent('Prąd wyłączalny Ikbrak danych');
+    expect(szczegoly).toHaveTextContent('Prąd wytrzymałości Icwbrak danych');
+    expect(szczegoly).not.toHaveTextContent(/0[.,]0\s*kA/);
   });
 
   it('aparat SN: propozycje wartości roboczych w osobnej sekcji, nie jako dana karty (V12K-351)', async () => {

@@ -485,6 +485,7 @@ function PropertyFieldRow({
               <ValueWithUnit
                 value={field.value as number | null}
                 unit={field.unit}
+                placeholder={field.source === 'type' ? 'brak danych' : undefined}
                 valueClassName={clsx(
                   'text-xs',
                   field.source === 'calculated' ? 'text-blue-700' : 'text-gray-900'

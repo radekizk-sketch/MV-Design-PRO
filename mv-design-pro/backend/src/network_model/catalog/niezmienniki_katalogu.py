@@ -777,6 +777,25 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "która ją definiuje."
         ),
     ),
+    # Karta KATALOG-APARATURA-WN (poprawka architekta 2026-10-22) — `SwitchEquipmentType`.
+    RegulaKatalogu(
+        kod="KAT-T-048",
+        nazwa="Prąd zwarciowy łącznika właściwy jego rodzajowi dodatni albo brak danej",
+        klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
+        podstawa=(
+            "Definicja wielkości znamionowych aparatu łączeniowego (IEC 62271-1:2007 § 4.5 "
+            "prąd krótkotrwały wytrzymywany, IEC 62271-100:2008 § 4.101 znamionowy prąd "
+            "wyłączalny zwarciowy) — wielkość znamionowa jest dodatnia"
+        ),
+        uzasadnienie=(
+            "Wyłącznik o zdolności wyłączania 0 kA albo odłącznik o prądzie krótkotrwałym "
+            "0 kA nie istnieje. Zero zapisane jako „brak danej” każdy konsument (dobór, "
+            "dowód wytrzymałości, eksport, raport, interfejs) czyta jako liczbę — brak danej "
+            "jest więc `None`. Wielkość, której rodzaj aparatu z definicji normy nie ma "
+            "(zdolność wyłączania rozłącznika, odłącznika i uziemnika, I_cw bezpiecznika), "
+            "bramce nie podlega: o „nie dotyczy” rozstrzyga rodzaj aparatu."
+        ),
+    ),
     # -----------------------------------------------------------------------
     # REGULY WIARYGODNOSCI — sygnal do przegladu, NIGDY odmowa
     # -----------------------------------------------------------------------

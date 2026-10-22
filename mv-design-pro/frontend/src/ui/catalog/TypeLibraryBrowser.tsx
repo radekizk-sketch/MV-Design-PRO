@@ -6,6 +6,7 @@ import {
   type CatalogListItem,
 } from './api';
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
+import { BRAK_DANYCH_PL, pradKaLubBrakDanych } from './pradZwarciowyKatalogu';
 import type {
   CableType,
   LineType,
@@ -222,12 +223,12 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'TRANSFORMER':
       return `${formatDetailValue(record.rated_power_mva)} MVA · ${formatDetailValue(record.voltage_hv_kv)}/${formatDetailValue(record.voltage_lv_kv)} kV · uk=${formatDetailValue(record.uk_percent)}%`;
     case 'SWITCH_EQUIPMENT':
-      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · ${formatDetailValue(record.ik_ka)} kA`;
+      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · Ik ${pradKaLubBrakDanych(record.ik_ka)}`;
     case 'SYSTEM_SOURCE':
       return `${formatDetailValue(record.voltage_rating_kv)} kV · Sk3=${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
     case 'MV_APPARATUS':
     case 'LV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik=${formatDetailValue(record.breaking_capacity_ka)} kA`;
+      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
     case 'LV_RCD':
       return `IΔn=${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · In=${formatDetailValue(record.in_a)} A · ta=${formatDetailValue(record.t_a_s)} s`;
     case 'LV_CABLE':
@@ -710,12 +711,12 @@ function renderLineParams(type: LineType) {
       <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
       <DetailField
         label="Przekrój"
-        value={type.cross_section_mm2 == null ? 'brak danych' : type.cross_section_mm2.toFixed(0)}
+        value={type.cross_section_mm2 == null ? BRAK_DANYCH_PL : type.cross_section_mm2.toFixed(0)}
         unit="mm2"
       />
       <DetailField
         label="Maks. temperatura"
-        value={type.max_temperature_c == null ? 'brak danych' : type.max_temperature_c.toFixed(0)}
+        value={type.max_temperature_c == null ? BRAK_DANYCH_PL : type.max_temperature_c.toFixed(0)}
         unit="C"
       />
     </>
@@ -732,17 +733,17 @@ function renderSystemSourceMinParams(type: SourceSystemCatalogType) {
     <>
       <DetailField
         label="Moc zwarciowa Sk3 min"
-        value={type.sk3_min_mva == null ? 'brak danych' : formatNumber(type.sk3_min_mva)}
+        value={type.sk3_min_mva == null ? BRAK_DANYCH_PL : formatNumber(type.sk3_min_mva)}
         unit="MVA"
       />
       <DetailField
         label="Prąd zwarciowy Ik3 min"
-        value={type.ik3_min_ka == null ? 'brak danych' : formatNumber(type.ik3_min_ka)}
+        value={type.ik3_min_ka == null ? BRAK_DANYCH_PL : formatNumber(type.ik3_min_ka)}
         unit="kA"
       />
       <DetailField
         label="Stosunek R/X min"
-        value={type.rx_ratio_min == null ? 'brak danych' : formatNumber(type.rx_ratio_min)}
+        value={type.rx_ratio_min == null ? BRAK_DANYCH_PL : formatNumber(type.rx_ratio_min)}
       />
     </>
   );
@@ -786,8 +787,16 @@ function renderSwitchParams(type: SwitchEquipmentType) {
       <DetailField label="Rodzaj aparatu" value={type.equipment_kind} />
       <DetailField label="Napięcie znamionowe" value={type.un_kv.toFixed(1)} unit="kV" />
       <DetailField label="Prąd znamionowy" value={type.in_a.toFixed(0)} unit="A" />
-      <DetailField label="Prąd wyłączalny Ik" value={type.ik_ka.toFixed(1)} unit="kA" />
-      <DetailField label="Prąd wytrzymałości Icw" value={type.icw_ka.toFixed(1)} unit="kA" />
+      <DetailField
+        label="Prąd wyłączalny Ik"
+        value={type.ik_ka == null ? BRAK_DANYCH_PL : type.ik_ka.toFixed(1)}
+        unit={type.ik_ka == null ? undefined : 'kA'}
+      />
+      <DetailField
+        label="Prąd wytrzymałości Icw"
+        value={type.icw_ka == null ? BRAK_DANYCH_PL : type.icw_ka.toFixed(1)}
+        unit={type.icw_ka == null ? undefined : 'kA'}
+      />
       <DetailField label="Ośrodek gaszący" value={type.medium ?? '—'} />
     </>
   );
