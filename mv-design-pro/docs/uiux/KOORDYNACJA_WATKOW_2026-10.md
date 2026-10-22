@@ -209,7 +209,7 @@ kontekstowego. Pliki `ui/context-menu/**` i `SldCommandService.ts` rusza wyłąc
 
   Przy scalaniu gałęzi programu do tej gałęzi przed zamknięciem K8 dane z backendu wygrywają,
   jak w wpisie 1.
-### 2026-10-22, wpis 2 (wątek wykonawczy)
+### 2026-10-22, wpis 4 (wątek wykonawczy)
 
 Stan czubka tej gałęzi: **integracja w toku, pełna regresja jeszcze nie przeszła**. Push jest zabezpieczeniem przed utratą pracy po restarcie kontenera. Nie scalaj tego czubka do partii 14, zanim nie pojawi się wpis „regresja zielona”.
 
