@@ -87,3 +87,12 @@ Dla każdej edycji w pełnym audycie zweryfikować: `I''k,max`, `I''k,min`, `ip`
 
 ## 7. Prawa autorskie i jakość
 W repozytorium trzymać wyłącznie opracowanie własne, referencje, testy i dane legalnie udostępnione. Nie przechowywać zakupionego pełnego tekstu IEC w publicznym repo bez odrębnej licencji. Wskaźnik `SOURCE_CORROBORATED` nie oznacza `VALIDATED`, `IMPLEMENTED` ani `COMPLIANT`.
+
+## Korekty z niezależnego audytu 2026-10-22
+
+- PKN: **PN-EN 60909-0:2016-09** została opublikowana 07.09.2016 i wdraża IEC oraz EN 2016 identycznie (IDT): https://sklep.pkn.pl/pn-en-60909-0-2016-09e.html.
+- PKN potwierdza **EN IEC 60909-0:2026**, 18.09.2026. Status osobnej polskiej adopcji **PN-EN IEC 60909-0:2026** nie został potwierdzony: https://www.pkn.pl/o-pkn/wspolpraca-miedzynarodowa/nowe-enisoiec/normy-europejskie.
+- Oficjalny podgląd IEC 2016 ma pozorny konflikt między szerokim wyłączeniem pojedynczego doziemienia w §1 a procedurą dla zwarcia doziemnego w §7.5. Nie formułować na tej podstawie ogólnego zakazu 1F. Wydanie 2026 §1 wyraźnie ogranicza wyłączenie do punktu neutralnego izolowanego i rezonansowo uziemionego.
+- IEC TR 60909-4:2021 jest dostosowany do obliczeń **2016**, dlatego jego przykłady nie wystarczą jako wyłączna walidacja zmian 2026: https://webstore.iec.ch/en/publication/66482.
+- IEC 60909-3:2009 obejmuje także częściowe prądy powrotne w ziemi: https://webstore.iec.ch/en/publication/3890.
+- Błędy obliczeń i nazw wielkości wynikowych udokumentowano w [RED TEAM II](RED_TEAM_FIZYKA_I_ZRODLA_2026_10_22.md).
