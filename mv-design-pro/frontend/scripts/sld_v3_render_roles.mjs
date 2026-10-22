@@ -31,6 +31,7 @@ import { tmpdir } from 'node:os';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { chromium } from '../node_modules/@playwright/test/index.mjs';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 
 import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
 import { buildEnergizationOverlay } from '../src/ui/sld/v3/canvas/SldCanvasV3Workspace.tsx';
@@ -236,10 +237,11 @@ function dsfFor(clip) {
 
 // W CI ścieżka przeglądarki może być jawna; lokalnie używamy przeglądarki Playwright.
 const chromiumPath = process.env.SLD_V3_CHROMIUM_PATH;
-const browser = await chromium.launch({
-  ...(chromiumPath ? { executablePath: chromiumPath } : {}),
-  args: ['--no-sandbox'],
-});
+const browser = await chromium.launch(
+  chromiumPath
+    ? { executablePath: chromiumPath, args: ['--no-sandbox'] }
+    : chromiumLaunchOptions({ args: ['--no-sandbox'] }),
+);
 for (const job of jobs) {
   const dsf = dsfFor(job.clip);
   const page = await browser.newPage({ viewport: job.viewport, deviceScaleFactor: dsf });

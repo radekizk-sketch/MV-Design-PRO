@@ -11,6 +11,7 @@
  */
 
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
@@ -71,7 +72,7 @@ async function captureRoute(browser, viewport, route) {
 
 async function main() {
   await mkdir(OUT_DIR, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch(chromiumLaunchOptions({ headless: true }));
   const results = [];
   for (const v of VIEWPORTS) {
     for (const r of ROUTES) {

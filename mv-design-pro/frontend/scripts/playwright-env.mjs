@@ -113,6 +113,15 @@ export function resolveChromiumExecutable() {
   return null;
 }
 
+/** Opcje `chromium.launch` z przeglądarką wskazaną przez `resolveChromiumExecutable` —
+ *  jedno źródło wyboru binarki dla testów e2e i skryptów zrzutów/rasteryzacji (na obrazie
+ *  runnera bez wsparcia Playwright Chromium setup instaluje Google Chrome z APT, a skrypt
+ *  uruchamiający własną kopię Playwrighta szukałby nieistniejącej binarki pakietu). */
+export function chromiumLaunchOptions(extra = {}) {
+  const executablePath = resolveChromiumExecutable();
+  return executablePath ? { ...extra, executablePath } : { ...extra };
+}
+
 export function getPlaywrightEnv(baseEnv = process.env) {
   const env = { ...baseEnv };
   const executablePath = resolveChromiumExecutable();

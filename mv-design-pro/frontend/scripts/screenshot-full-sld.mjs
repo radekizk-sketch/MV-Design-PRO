@@ -9,6 +9,7 @@
  *  6. Zlicz <svg> elementów SLD canvas + GpzRenderer / CableRunRenderer instancje.
  */
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 import { mkdir } from 'node:fs/promises';
 
 const OUT = '/home/user/MV-Design-PRO/mv-design-pro/docs/audit/visual_full_scada';
@@ -16,7 +17,7 @@ const APP_URL = 'http://127.0.0.1:5173';
 
 async function main() {
   await mkdir(OUT, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch(chromiumLaunchOptions({ headless: true }));
 
   for (const { name, w, h } of [
     { name: '1920x1080', w: 1920, h: 1080 },

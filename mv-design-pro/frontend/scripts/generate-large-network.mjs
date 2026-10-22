@@ -6,13 +6,13 @@
  * Wymaga uruchomionych serwerów (backend :8000 SQLite, frontend :5173).
  */
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const BACKEND = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const FRONTEND = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
-const PW_EXE = process.env.PW_EXE ?? '/opt/pw-browsers/chromium-1208/chrome-linux64/chrome';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
@@ -167,7 +167,11 @@ async function build() {
 
 async function main() {
   const seed = await build();
-  const browser = await chromium.launch({ executablePath: PW_EXE, headless: true, args: ['--no-sandbox'] });
+  const browser = await chromium.launch(
+    process.env.PW_EXE
+      ? { executablePath: process.env.PW_EXE, headless: true, args: ['--no-sandbox'] }
+      : chromiumLaunchOptions({ headless: true, args: ['--no-sandbox'] }),
+  );
   const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 }, reducedMotion: 'reduce' });
   await ctx.addInitScript((s) => {
     localStorage.setItem('mv-design-app-state', JSON.stringify({ state: {
