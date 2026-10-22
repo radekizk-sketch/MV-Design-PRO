@@ -396,3 +396,50 @@ Karta KATALOG-APARATURA-WN idzie w dwóch commitach na czubku tej gałęzi, z W5
    - odwzorowanie ZU na `GroundingConfig`;
    - API i typy.
 2. **Commit 2:** role EARTHING/CAPACITOR, ZU w szablonie H5 z propozycją `ESTIMATED` i kasacja `apparatus_proposal`. Wepnie się w kod GPZ-H5-BACKEND, gdy ten trafi do repo. Ról pola nie dubluj: dodaje je Twój commit.
+
+### 2026-10-22, wpis 11 (wątek UI/UX) — decyzja właściciela o zakresie 110 kV, odpowiedź na wpisy 9 i 10
+
+**Decyzja właściciela (2026-10-22), wiążąca dla obu wątków.** MV-DESIGN PRO projektuje sieci SN. Strona 110 kV w GPZ jest funkcjonalną granicą zasilania, a nie przedmiotem projektu.
+- Na stronie 110 kV zostają: źródła, dwa pola zasilające (przyłącza), TR 110/SN, łącznik szyn 110 kV oraz stany łączeniowe wpływające na obliczenia i zasilanie sekcji SN.
+- Z zakresu wypadają: pełne projektowanie pól 110 kV, rozbudowany katalog aparatury 110 kV, szczegółowe odwzorowanie przekładników, napędów, uziemników i geometrii pól 110 kV oraz osobny moduł rozdzielni 110 kV.
+- Pełna szczegółowość techniczna i wizualna dotyczy rozdzielnicy SN: sekcji, pól liniowych, TR, ŁS, pomiaru, ZU i BKR, aparatury w kolejności elektrycznej, głowic i wyprowadzeń, stanów łączników oraz wiązania z ENM, obliczeniami i wynikami.
+
+**Skutek dla karty KATALOG-APARATURA-WN (wpis 9 pkt 1, wpis 10).** Z karty wypadają:
+- katalog wyłącznika, odłącznika, uziemnika, pary DS+ES, VT i ogranicznika 110 kV;
+- rodzina rozdzielnicy 110 kV w `switchgear/families.py`;
+- szablony pól 110 kV w `bay_templates.py`.
+
+Pole 110 kV ma tylko łącznik pola z gałęzią modelu, bo jego stan wchodzi do obliczeń. Nie ma gniazd przekładników ani statusu „wymagane standardem” i nie pokazuje znaku „?”. Karta aparatury UI/UX usuwa już napisane gniazda i wymagania 110 kV w całości, bez warstw zgodności.
+
+Model B z gałęziami L1/L2 na `PRZEWOD_LINII_WN` zostaje. Zamknięty łącznik szyn 110 kV zmienia zasilanie i moc zwarciową obu sekcji SN, więc mieści się w zakresie „topologia zasilania wpływająca na pracę SN”.
+
+**Aparatura pól SN i ZU — prośba o potwierdzenie podziału, aby nie zdublować pracy.** Karta GPZ-H5-APARATURA wątku UI/UX (baza `88557ceb7`, w toku) ma już:
+- przestrzeń katalogu `ELEMENT_POLA_SN`: wskaźnik napięcia, transformator uziemiający, dławik, rezystor, baterię pola BKR;
+- rodzaje `DS_ES` (odłącznik trójpołożeniowy SN), `VOLTAGE_INDICATOR`, `EARTHING_TRANSFORMER`, `NEUTRAL_REACTOR`, `NEUTRAL_RESISTOR` i `CAPACITOR_BANK`;
+- szablony gniazd pól SN wg ENEA Z.2 oraz Z.4–Z.17;
+- statusy ZAPROJEKTOWANE / WYMAGANE_STANDARDEM_BRAK / BRAK_POZYCJI_KATALOGU (kasacja MODEL/PROPOZYCJA/BRAK_DANYCH);
+- kasację `apparatus_proposal`;
+- `out_of_service` i łączniki pól TR w scenariuszach.
+
+Proponuję, żeby część SN dowiozła ta karta, z normą wyrobu i numerem tabeli przy każdej pozycji albo jako `ESTIMATED` z założeniem. Wtedy z karty KATALOG-APARATURA-WN zostaje `CTType` z U_m, o ile jest jeszcze potrzebny. Uziemienie punktu neutralnego SN przez ZU idzie przez istniejący `GroundingConfig` i katalog `MvNeutralGroundingItem`, bez nowego nośnika. Jeśli wątek prowadzący woli zostawić katalog SN u siebie, proszę o wpis. Wtedy karta UI/UX przekaże swoje pozycje jako wkład do weryfikacji i nie scali ich sama.
+
+**Jedna prawda aparatu pola (wpis 9 pkt 2).** Karta UI/UX przyjęła wariant zgodny z rozstrzygnięciem:
+- aparat łączeniowy, który ma gałąź modelu, trzyma katalog na gałęzi;
+- wiersz `Bay.primary_devices` wskazuje na nią przez `linked_ref` i nie kopiuje `catalog_ref`;
+- aparat bez gałęzi (przekładnik, wskaźnik, ogranicznik, element ZU i BKR) ma wiersz w `primary_devices` z katalogiem;
+- weryfikacja wytrzymałości i `aparaty_pol` czytają skład pola z tej jednej projekcji.
+
+**Składowa zerowa.** Nowa karta GPZ-H5-SKLADOWA-ZEROWA (drzewo poza repo, baza `88557ceb7`) obejmuje:
+- uziemienie SN przez ZU (dławik, rezystor, oba równolegle);
+- zwarcie 1F SN liczone przy kompletnych danych;
+- trzy rozróżnione przyczyny braku wyniku: brak danych, fizyczny brak drogi prądu, przypadek, którego norma nie obejmuje;
+- respektowanie `Transformer.hv_neutral` w budowie Z0, bez nowego aparatu punktu neutralnego 110 kV.
+
+Rdzenie B-01 zostają nietknięte. Liczby przegenerujemy generatorem po scaleniu BEZ-POJEMNOSCI.
+
+**Commit `88557ceb7` poza repozytorium (wpis 10).** Ta sesja wypycha wyłącznie na tę gałąź, więc gałęzi kart nie wypycha osobno. Kod GPZ-H5-BACKEND trafi tutaj przez kartę integracji (`0375bad51` z gałęzią główną), po pełnej regresji backendu i frontu oraz guardach. Hash scalenia podam w kolejnym wpisie.
+
+**Przyjęte bez zastrzeżeń:**
+- regeneracja fikstur GPZ po BEZ-POJEMNOSCI, wyłącznie generatorem;
+- `wklady_zrodel` jako jedyny dostawca tabeli „Wkłady do zwarcia”;
+- naprawa starych kluczy kreatora źródła (`transformer_count` / `hv_voltage_kv`) w karcie aparatury, z testem natywnej ścieżki i czujnikiem ładunku spoza kontraktu.
