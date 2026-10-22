@@ -16,9 +16,11 @@
  *
  * WARTOŚCI PROJEKTANTA MASZYNY WIRUJĄCEJ (karta PODSTAWA-Q, zasada nr 4): generator, którego rodzaj
  * jest maszyną wirującą w rejestrze backendu (synchroniczna, asynchroniczna klatkowa albo dwustronnie
- * zasilana), dostaje sekcję parametrów zwarciowych (x″d, cos φ, p, I_LR/I_rM, η — zestaw rodziny
- * z `GET /api/catalog/maszyny-wirujace/wartosci-robocze`). Ta sama mechanika listy `overrides`
- * (`wartosciRoboczeWspolne.ts`), brama wartości w operacji domenowej.
+ * zasilana), dostaje sekcję parametrów zwarciowych (moc znamionowa S_rG albo P_rM, x″d, cos φ, p,
+ * I_LR/I_rM, η — zestaw rodziny z `GET /api/catalog/maszyny-wirujace/wartosci-robocze`). Ta sama
+ * mechanika listy `overrides` (`wartosciRoboczeWspolne.ts`), brama wartości w operacji domenowej.
+ * Podpowiedź pola mocy znamionowej podaje regułę z rejestru (wyznaczenie P_rM z S_rM tabliczki
+ * albo propozycja z punktu pracy elementu) — bez liczby liczonej w UI.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -166,7 +168,13 @@ function podpowiedzMaszyny(
   if (zrodlo.rodzaj === 'tabliczka') {
     return `${T.maszynaZTabliczki} ${liczbaPl(zrodlo.wartosc)}${jednostka}.`;
   }
+  if (zrodlo.rodzaj === 'wyznaczenie') {
+    return `${T.maszynaWyznaczenie} ${zrodlo.opis}.`;
+  }
   const rodzaj = T.aparatRodzajZrodla[zrodlo.rodzajZrodla] ?? zrodlo.rodzajZrodla;
+  if (zrodlo.rodzaj === 'propozycja_elementu') {
+    return `${T.maszynaPropozycja} (${rodzaj}): ${zrodlo.regula}.`;
+  }
   return `${T.maszynaPropozycja} ${liczbaPl(zrodlo.wartosc)}${jednostka} (${rodzaj}).`;
 }
 

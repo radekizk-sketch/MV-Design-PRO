@@ -527,7 +527,7 @@
           "margines": null,
           "margines_jednostka": "",
           "margines_wzor_latex": "",
-          "uwaga_pl": null,
+          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
           "uzasadnienie_pl": "Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "wniosek_pl": "Brak podstaw do oceny spełnienia wymagania: Brak danych do oceny cieplnej: Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową.",
           "dowod": {
@@ -548,7 +548,7 @@
           "margines": null,
           "margines_jednostka": "",
           "margines_wzor_latex": "",
-          "uwaga_pl": null,
+          "uwaga_pl": "Prądy zwarciowe liczone z daną przyjętą (wartość robocza): moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”; reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”; znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny” — ocena na danej przyjętej, nie potwierdzony dowód zgodności",
           "uzasadnienie_pl": "Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
           "wniosek_pl": "Wymaganie spełnione: Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
           "dowod": {

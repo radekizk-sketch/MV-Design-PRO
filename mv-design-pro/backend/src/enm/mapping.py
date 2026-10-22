@@ -23,8 +23,11 @@ from typing import Any
 import numpy as np
 from network_model.catalog.types import ConverterKind
 from network_model.catalog.wartosci_robocze import (
+    OPISY_PARAMETROW_MASZYNY,
     PARAMETR_COS_PHI_MASZYNY,
     PARAMETR_KROTNOSC_I_LR,
+    PARAMETR_MOC_POZORNA_MASZYNY,
+    PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
     PARAMETR_PARY_BIEGUNOW,
     PARAMETR_SPRAWNOSC,
     PARAMETR_XD,
@@ -35,6 +38,8 @@ from network_model.catalog.wartosci_robocze import (
     WIELKOSC_TYLKO_IB,
     WIELKOSCI_ZWARCIOWE,
     WartoscRozstrzygnieta,
+    moc_pozorna_tabliczki_maszyny_mva,
+    moc_znamionowa_z_mocy_pozornej,
     rozstrzygnij_parametry_maszyny,
     wartosci_projektanta_maszyny,
     wpis_parametru_maszyny,
@@ -73,6 +78,7 @@ from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
     ka_na_a,
     kv_na_v,
+    moc_pozorna_z_czynnej_mva,
     moc_zwarciowa_z_pradu_mva,
     prad_znamionowy_a,
     simens_na_mikrosimens,
@@ -769,14 +775,14 @@ def _gen_quantity(gen: Generator) -> int:
     return liczba_jednostek_zrodla(gen)
 
 
-def _gen_rated_apparent_mva(
-    gen: Generator, mp: dict, *, cos_phi_fallback: float = 1.0
-) -> float | None:
-    """Total rated apparent power S_r [MVA] of the installation for SC.
+def _gen_rated_apparent_mva(gen: Generator, mp: dict) -> float | None:
+    """Total rated apparent power S_r [MVA] of a CONVERTER installation for SC (I_n for k_sc).
 
     Prefers the catalog per-unit ``sn_mva`` × parallel count; otherwise falls back
-    to |p_mw|/cosφ (|p_mw| is already the installation total). Returns None when no
+    to |p_mw| (cos φ = 1; |p_mw| is already the installation total). Returns None when no
     positive rating can be established (→ the source is skipped, never fabricated).
+    Rotating machines do NOT use this: their rated power is resolved by the working-value
+    register (``rozstrzygnij_parametry_maszyny``, karta PODSTAWA-Q) with explicit provenance.
     """
     sn = mp.get("sn_mva")
     if isinstance(sn, int | float) and sn > 0:
@@ -788,8 +794,7 @@ def _gen_rated_apparent_mva(
     p = abs(gen.p_mw)
     if p <= 0:
         return None
-    cf = cos_phi_fallback if cos_phi_fallback and cos_phi_fallback > 0 else 1.0
-    return p / cf
+    return p
 
 
 def _gen_rated_voltage_kv(
@@ -913,25 +918,35 @@ def _add_generator_sc_sources(
                     notes=_k_sc_notatka_zalozenia(zrodlo_sc.wklad_zrodlo),
                 )
         elif RODZINA_MASZYNY_WG_GEN_TYPE.get(gen_type) == RODZINA_MASZYNA_SYNCHRONICZNA:
-            # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): x″d i cos φ_rG — projektant
-            # (`Generator.overrides`) > tabliczka elementu > propozycja rejestru wartości
-            # roboczych. Wartość robocza idzie do grafu jako wpis danych przyjętych.
+            # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): S_rG, x″d i cos φ_rG —
+            # projektant (`Generator.overrides`) > tabliczka elementu > propozycja rejestru
+            # wartości roboczych (S_rG: z punktu pracy elementu, jawnie jako wartość robocza).
+            # Wartość robocza idzie do grafu jako wpis danych przyjętych.
             rodzina_s = RODZINA_MASZYNA_SYNCHRONICZNA
+            liczba_s = _gen_quantity(gen)
             parametry_s = rozstrzygnij_parametry_maszyny(
                 rodzina_s,
                 tabliczka=mp,
                 wartosci_projektanta=wartosci_projektanta_maszyny(rodzina_s, gen.overrides),
+                moc_czynna_punktu_pracy_mw=gen.p_mw,
+                liczba_jednostek=liczba_s,
             )
-            cos_phi_r = _wartosc_parametru(parametry_s, PARAMETR_COS_PHI_MASZYNY)
-            sr_mva = _gen_rated_apparent_mva(gen, mp, cos_phi_fallback=cos_phi_r)
-            if sr_mva is None or sr_mva <= 0:
+            moc_pozorna = parametry_s[PARAMETR_MOC_POZORNA_MASZYNY]
+            if moc_pozorna.wartosc is None:
                 continue
+            cos_phi_r = _wartosc_parametru(parametry_s, PARAMETR_COS_PHI_MASZYNY)
             graph.add_synchronous_machine_source(
                 SynchronousMachineSource(
                     id=gen.ref_id,
                     name=gen.name,
                     node_id=node_id,
-                    sr_mva=sr_mva,
+                    sr_mva=_moc_grupy(
+                        moc_pozorna,
+                        liczba_s,
+                        moc_grupy_z_punktu_pracy=moc_pozorna_z_czynnej_mva(
+                            abs(gen.p_mw), cos_phi_r
+                        ),
+                    ),
                     ur_kv=un_kv,
                     xd_subtransient_pu=_wartosc_parametru(parametry_s, PARAMETR_XD),
                     cos_phi_r=cos_phi_r,
@@ -943,50 +958,47 @@ def _add_generator_sc_sources(
                 graph, gen, parametry_s, wielkosci_wg_parametru=dict.fromkeys(parametry_s, None)
             )
         elif RODZINA_MASZYNY_WG_GEN_TYPE.get(gen_type) == RODZINA_MASZYNA_ASYNCHRONICZNA:
-            # Rated mechanical power P_rM is approximated by the electrical |p_mw|
-            # (they differ by η·cosφ). AsynchronousMachineSource derives
-            # S_rM = P_rM/(η·cosφ). Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): liczba
-            # par biegunów p, I_LR/I_rM, cos φ_rM i η_rM — projektant (`Generator.overrides`) >
-            # tabliczka elementu > propozycja rejestru wartości roboczych.
-            pr_mw = abs(gen.p_mw)
-            if pr_mw <= 0:
-                continue
+            # Karta PODSTAWA-Q (decyzja architekta do meldunku 0a90bbc97): moc znamionowa P_rM
+            # (IEC 60909-0:2016 pkt 6.7, m = P_rM/p pkt 9.1.2) to dana MASZYNY, nie punkt pracy
+            # |p_mw|. Rejestr wartości roboczych: projektant > tabliczka `pr_mw` > P_rM z mocy
+            # pozornej tabliczki S_rM·η_r·cos φ_r > propozycja z punktu pracy (jawna wartość
+            # robocza). Moc pozorna S_rM tabliczki wchodzi do Z_M wprost. Liczba par biegunów p,
+            # I_LR/I_rM, cos φ_rM i η_rM — ten sam rejestr.
             rodzina_a = RODZINA_MASZYNA_ASYNCHRONICZNA
+            liczba_a = _gen_quantity(gen)
             parametry_a = rozstrzygnij_parametry_maszyny(
                 rodzina_a,
                 tabliczka=mp,
                 wartosci_projektanta=wartosci_projektanta_maszyny(rodzina_a, gen.overrides),
+                moc_czynna_punktu_pracy_mw=gen.p_mw,
+                liczba_jednostek=liczba_a,
             )
+            moc_znamionowa = parametry_a[PARAMETR_MOC_ZNAMIONOWA_MASZYNY]
+            if moc_znamionowa.wartosc is None:
+                continue
+            moc_pozorna_jednostki = moc_pozorna_tabliczki_maszyny_mva(mp)
             maszyna = AsynchronousMachineSource(
                 id=gen.ref_id,
                 name=gen.name,
                 node_id=node_id,
-                pr_mw=pr_mw,
+                pr_mw=_moc_grupy(moc_znamionowa, liczba_a, moc_grupy_z_punktu_pracy=abs(gen.p_mw)),
                 ur_kv=un_kv,
+                sr_mva_tabliczki=(
+                    None if moc_pozorna_jednostki is None else moc_pozorna_jednostki * liczba_a
+                ),
                 cos_phi_r=_wartosc_parametru(parametry_a, PARAMETR_COS_PHI_MASZYNY),
                 efficiency=_wartosc_parametru(parametry_a, PARAMETR_SPRAWNOSC),
                 i_lr_ratio=_wartosc_parametru(parametry_a, PARAMETR_KROTNOSC_I_LR),
                 pole_pairs=int(_wartosc_parametru(parametry_a, PARAMETR_PARY_BIEGUNOW)),
-                liczba_jednostek=_gen_quantity(gen),
+                liczba_jednostek=liczba_a,
                 wind_type_3=_ASYNC_GEN_TYPES[gen_type],
             )
             graph.add_asynchronous_machine_source(maszyna)
-            # Liczba par biegunów wpływa na krzywą zaniku q (wyłącznie I_b), a gdy zmienia
-            # wiersz R_M/X_M maszyny SN — na impedancję Z_M i wszystkie prądy punktu. Predykat
-            # z modelu maszyny (jedno źródło progu tabeli), nie kopia progu tutaj.
-            wielkosci_p = (
-                None
-                if maszyna.r_over_x_zalezy_od_par_biegunow(PARY_BIEGUNOW_MAX)
-                else WIELKOSC_TYLKO_IB
-            )
             _zapisz_wartosci_robocze_maszyny(
                 graph,
                 gen,
                 parametry_a,
-                wielkosci_wg_parametru={
-                    **dict.fromkeys(parametry_a, None),
-                    PARAMETR_PARY_BIEGUNOW: wielkosci_p,
-                },
+                wielkosci_wg_parametru=_wielkosci_parametrow_asynchronicznej(maszyna, parametry_a),
             )
 
     return tracer.to_list()
@@ -1000,6 +1012,63 @@ def _wartosc_parametru(parametry: dict[str, WartoscRozstrzygnieta], parametr: st
     return wartosc
 
 
+def _moc_grupy(
+    moc: WartoscRozstrzygnieta, liczba_jednostek: int, *, moc_grupy_z_punktu_pracy: float
+) -> float:
+    """Moc znamionowa CAŁEJ grupy jednakowych maszyn z mocy rozstrzygniętej dla jednej.
+
+    Dana tabliczki, projektanta i wyznaczona z tabliczki dotyczą jednej maszyny — grupa to
+    × liczba jednostek. Propozycja jest określona na CAŁYM elemencie (punkt pracy), więc grupa
+    bierze ją wprost z punktu pracy (bez dzielenia i mnożenia przez liczbę jednostek — ta sama
+    liczba zmiennoprzecinkowa, którą obliczenie przyjmowało przed kartą).
+    """
+    if moc.pochodzenie == "PROPOZYCJA":
+        return moc_grupy_z_punktu_pracy
+    return _wartosc_parametru({moc.parametr: moc}, moc.parametr) * liczba_jednostek
+
+
+def _wielkosci_parametrow_asynchronicznej(
+    maszyna: AsynchronousMachineSource, parametry: dict[str, WartoscRozstrzygnieta]
+) -> dict[str, tuple[str, ...] | None]:
+    """Wielkości zwarciowe, na które wpływa KAŻDY parametr maszyny asynchronicznej.
+
+    ``None`` — wszystkie prądy punktu (parametr zmienia impedancję Z_M), ``WIELKOSC_TYLKO_IB``
+    — wyłącznie I_b (parametr zmienia tylko moc na parę biegunów m = P_rM/p, krzywa q pkt
+    9.1.2), ``()`` — żadna (parametr nie wchodzi do obliczenia). Parametr zmieniający m daje
+    wszystkie prądy, gdy w zakresie jego bramy wartości zmienia wiersz R_M/X_M maszyny SN
+    (predykat z modelu maszyny — jedno źródło progu tabeli). Przy S_rM z tabliczki Z_M nie
+    zależy od P_rM, η_r ani cos φ_r; η_r i cos φ_r wpływają wtedy na m tylko przez P_rM
+    wyznaczoną z S_rM (pkt 6.7), a przy P_rM podanej wprost — na nic.
+    """
+
+    def wg_m(m_od_mw: float, m_do_mw: float) -> tuple[str, ...] | None:
+        return (
+            None if maszyna.r_over_x_zalezy_od_mocy_na_pare(m_od_mw, m_do_mw) else WIELKOSC_TYLKO_IB
+        )
+
+    def zakres(parametr: str) -> tuple[float, float]:
+        opis = OPISY_PARAMETROW_MASZYNY[parametr]
+        return opis.dopuszczalne_od, opis.dopuszczalne_do
+
+    wielkosci: dict[str, tuple[str, ...] | None] = dict.fromkeys(parametry, None)
+    moc_jednostki = maszyna.moc_jednostki_mw
+    wielkosci[PARAMETR_PARY_BIEGUNOW] = wg_m(moc_jednostki / PARY_BIEGUNOW_MAX, moc_jednostki)
+    if maszyna.sr_mva_tabliczki is None:
+        return wielkosci
+    pary = max(1, maszyna.pole_pairs)
+    p_od, p_do = zakres(PARAMETR_MOC_ZNAMIONOWA_MASZYNY)
+    wielkosci[PARAMETR_MOC_ZNAMIONOWA_MASZYNY] = wg_m(p_od / pary, p_do / pary)
+    for parametr in (PARAMETR_SPRAWNOSC, PARAMETR_COS_PHI_MASZYNY):
+        if not moc_znamionowa_z_mocy_pozornej(parametry[PARAMETR_MOC_ZNAMIONOWA_MASZYNY]):
+            wielkosci[parametr] = ()
+            continue
+        od, do = zakres(parametr)
+        wartosc = _wartosc_parametru(parametry, parametr)
+        m = maszyna.p_per_pole_mw
+        wielkosci[parametr] = wg_m(m * od / wartosc, m * do / wartosc)
+    return wielkosci
+
+
 def _zapisz_wartosci_robocze_maszyny(
     graph: NetworkGraph,
     gen: Generator,
@@ -1010,20 +1079,24 @@ def _zapisz_wartosci_robocze_maszyny(
     """Wpisy wartości roboczych maszyny do grafu (``graph.wartosci_robocze_maszyn``).
 
     ``None`` w ``wielkosci_wg_parametru`` = parametr wpływa na wszystkie prądy zwarciowe
-    punktu (impedancja maszyny). Maszyna wyłącznie z danymi tabliczki nie dostaje wpisu.
+    punktu (impedancja maszyny), ``()`` = parametr nie wchodzi do obliczenia (wartość robocza
+    bez wpływu nie jest daną przyjętą). Maszyna wyłącznie z danymi tabliczki nie dostaje wpisu.
     """
-    wpisy = tuple(
-        wpis_parametru_maszyny(
-            rozstrzygniecie,
-            source_id=gen.ref_id,
-            source_name=nazwa_elementu(gen, "generators"),
-            wielkosci=wielkosci_wg_parametru[parametr] or WIELKOSCI_ZWARCIOWE,
+    wpisy = []
+    for parametr, rozstrzygniecie in parametry.items():
+        wielkosci = wielkosci_wg_parametru[parametr]
+        if not rozstrzygniecie.robocza or wielkosci == ():
+            continue
+        wpisy.append(
+            wpis_parametru_maszyny(
+                rozstrzygniecie,
+                source_id=gen.ref_id,
+                source_name=nazwa_elementu(gen, "generators"),
+                wielkosci=WIELKOSCI_ZWARCIOWE if wielkosci is None else wielkosci,
+            )
         )
-        for parametr, rozstrzygniecie in parametry.items()
-        if rozstrzygniecie.robocza
-    )
     if wpisy:
-        graph.wartosci_robocze_maszyn[gen.ref_id] = wpisy
+        graph.wartosci_robocze_maszyn[gen.ref_id] = tuple(wpisy)
 
 
 def _k_sc_substytucja_zalozenia(zrodlo: InverterSource, catalog_ref: str | None) -> str:

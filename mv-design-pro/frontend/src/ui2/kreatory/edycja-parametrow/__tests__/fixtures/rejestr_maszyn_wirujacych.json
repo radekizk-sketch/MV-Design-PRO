@@ -7,6 +7,29 @@
   "rodziny": {
     "MASZYNA_ASYNCHRONICZNA": [
       {
+        "calkowita": false,
+        "dopuszczalne_do": 100.0,
+        "dopuszczalne_od": 0.001,
+        "jednostka": "MW",
+        "nazwa_pl": "moc znamionowa (mechaniczna) jednej maszyny",
+        "parametr": "pr_mw",
+        "propozycja": {
+          "jednostka": "MW",
+          "nazwa_pl": "moc znamionowa (mechaniczna) jednej maszyny",
+          "odniesienie": "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa; IEC 60909-0:2016 pkt 6.7 i 9.1.2 wymagają mocy znamionowej P_rM z danych maszyny (S_rM = P_rM/(η_r·cos φ_r), m = P_rM/p)",
+          "parametr": "pr_mw",
+          "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje ani mocy znamionowej P_rM, ani mocy pozornej znamionowej S_rM — przyjęto P_rM z mocy czynnej punktu pracy elementu",
+          "wartosc": null,
+          "wplyw_pl": "moc pozorna S_rM, a z nią udział maszyny w prądach zwarciowych, oraz moc na parę biegunów m (zanik prądu wyłączeniowego I_b) są proporcjonalne do P_rM — maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
+        },
+        "symbol": "P_rM",
+        "wyznaczenie_z_tabliczki": {
+          "klucz_tabliczki": "sn_mva",
+          "opis_pl": "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7"
+        }
+      },
+      {
         "calkowita": true,
         "dopuszczalne_do": 50.0,
         "dopuszczalne_od": 1.0,
@@ -23,7 +46,8 @@
           "wartosc": 1.0,
           "wplyw_pl": "prąd wyłączeniowy I_b (i przy maszynie SN — współczynnik udaru) jest liczony zachowawczo; rzeczywista maszyna wielobiegunowa daje mniejszy I_b"
         },
-        "symbol": "p"
+        "symbol": "p",
+        "wyznaczenie_z_tabliczki": null
       },
       {
         "calkowita": false,
@@ -42,7 +66,8 @@
           "wartosc": 5.0,
           "wplyw_pl": "impedancja maszyny Z_M jest odwrotnie proporcjonalna do I_LR/I_rM — maszyna o większej krotności daje proporcjonalnie większy udział w prądach zwarciowych"
         },
-        "symbol": "I_LR/I_rM"
+        "symbol": "I_LR/I_rM",
+        "wyznaczenie_z_tabliczki": null
       },
       {
         "calkowita": false,
@@ -61,7 +86,8 @@
           "wartosc": 0.85,
           "wplyw_pl": "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do cos φ_rM"
         },
-        "symbol": "cos φ_r"
+        "symbol": "cos φ_r",
+        "wyznaczenie_z_tabliczki": null
       },
       {
         "calkowita": false,
@@ -80,10 +106,31 @@
           "wartosc": 0.95,
           "wplyw_pl": "moc pozorna S_rM, a z nią prąd znamionowy i udział maszyny w prądach zwarciowych, są odwrotnie proporcjonalne do sprawności"
         },
-        "symbol": "η_r"
+        "symbol": "η_r",
+        "wyznaczenie_z_tabliczki": null
       }
     ],
     "MASZYNA_SYNCHRONICZNA": [
+      {
+        "calkowita": false,
+        "dopuszczalne_do": 2000.0,
+        "dopuszczalne_od": 0.001,
+        "jednostka": "MVA",
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+        "parametr": "sn_mva",
+        "propozycja": {
+          "jednostka": "MVA",
+          "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+          "odniesienie": "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny",
+          "parametr": "sn_mva",
+          "rodzaj_zrodla": "ZALOZENIE_INZYNIERSKIE",
+          "uzasadnienie_pl": "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu",
+          "wartosc": null,
+          "wplyw_pl": "impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie"
+        },
+        "symbol": "S_rG",
+        "wyznaczenie_z_tabliczki": null
+      },
       {
         "calkowita": false,
         "dopuszczalne_do": 0.5,
@@ -101,7 +148,8 @@
           "wartosc": 0.15,
           "wplyw_pl": "impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych"
         },
-        "symbol": "x″d"
+        "symbol": "x″d",
+        "wyznaczenie_z_tabliczki": null
       },
       {
         "calkowita": false,
@@ -120,7 +168,8 @@
           "wartosc": 0.8,
           "wplyw_pl": "współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych"
         },
-        "symbol": "cos φ_r"
+        "symbol": "cos φ_r",
+        "wyznaczenie_z_tabliczki": null
       }
     ]
   }

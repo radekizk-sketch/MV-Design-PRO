@@ -151,6 +151,25 @@ PROJEKTANT: dict[str, dict[str, float]] = {
     },
 }
 POWOD_PROJEKTANTA = "tabliczka znamionowa z oględzin"
+#: Parametr mocy znamionowej rodziny: S_rG (pkt 6.3) i P_rM (pkt 6.7) JEDNEJ maszyny.
+PARAMETR_MOCY: dict[str, str] = {
+    RODZINA_MASZYNA_SYNCHRONICZNA: "sn_mva",
+    RODZINA_MASZYNA_ASYNCHRONICZNA: "pr_mw",
+}
+#: Wartość projektanta mocy znamionowej = moc tabliczki × 1,25 (inna niż tabliczka i punkt
+#: pracy, liczba dokładna w zapisie dwójkowym dla mocy sieci testowych).
+MNOZNIK_MOCY_PROJEKTANTA = 1.25
+
+
+def _tabliczka(rodzina: str, moc: float) -> dict[str, float]:
+    return {PARAMETR_MOCY[rodzina]: moc, **TABLICZKA[rodzina]}
+
+
+def _projektant(rodzina: str, moc: float) -> dict[str, float]:
+    """Wartości projektanta w kolejności rejestru (moc znamionowa pierwsza)."""
+    return {PARAMETR_MOCY[rodzina]: moc * MNOZNIK_MOCY_PROJEKTANTA, **PROJEKTANT[rodzina]}
+
+
 #: Dana tabliczki spoza bramy (cos φ < 0,5) — obliczenie przyjmuje propozycję z powodem.
 COS_PHI_ODRZUCONY = 0.3
 
@@ -168,15 +187,16 @@ def _wyrocznia(rodzina: str, dane: str) -> set[tuple[str, str]]:
     return {("cos_phi", "PROPOZYCJA")}
 
 
-def _dane_maszyny(rodzina: str, dane: str, baza: dict[str, float]) -> dict[str, Any]:
-    """Pola generatora (tabliczka, wartości projektanta, pochodzenie parametrów) dla wariantu."""
+def _dane_maszyny(rodzina: str, dane: str, baza: dict[str, float], *, moc: float) -> dict[str, Any]:
+    """Pola generatora (tabliczka, wartości projektanta, pochodzenie parametrów) dla wariantu;
+    ``moc`` — moc znamionowa JEDNEJ maszyny na tabliczce (S_rG albo P_rM)."""
     if dane == "tabliczka":
-        return {"materialized_params": {**baza, **TABLICZKA[rodzina]}}
+        return {"materialized_params": {**baza, **_tabliczka(rodzina, moc)}}
     if dane == "odrzucona":
         return {
             "materialized_params": {
                 **baza,
-                **TABLICZKA[rodzina],
+                **_tabliczka(rodzina, moc),
                 "cos_phi": COS_PHI_ODRZUCONY,
             }
         }
@@ -187,7 +207,7 @@ def _dane_maszyny(rodzina: str, dane: str, baza: dict[str, float]) -> dict[str, 
         "materialized_params": dict(baza),
         "overrides": [
             {"key": k, "value": v, "reason": POWOD_PROJEKTANTA}
-            for k, v in PROJEKTANT[rodzina].items()
+            for k, v in _projektant(rodzina, moc).items()
         ],
         "parameter_source": "OVERRIDE",
     }
@@ -247,16 +267,22 @@ def _czysty_stan():
 
 
 def _migawka_a(
-    maszyna: str, dane: str, *, p_mw: float = 2.0, jednostki: int | None = None
+    maszyna: str,
+    dane: str,
+    *,
+    p_mw: float = 2.0,
+    jednostki: int | None = None,
+    moc: float | None = None,
 ) -> tuple[dict[str, Any], str, str]:
-    """(migawka, węzeł grafu szyny maszyny, nazwa maszyny)."""
+    """(migawka, węzeł grafu szyny maszyny, nazwa maszyny). Moc znamionowa tabliczki jednej
+    maszyny domyślnie: S_rG 5 MVA, P_rM równa punktowi pracy (maszyna w punkcie znamionowym)."""
     migawka, wezel = _migawka_ze_stacja(maszyna)
     (gen,) = migawka["generators"]
     gen_type, rodzina = MASZYNY[maszyna]
     baza: dict[str, float] = {"un_kv": 33.0}
-    if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA:
-        baza["sn_mva"] = 5.0
-    gen.update(p_mw=p_mw, gen_type=gen_type, **_dane_maszyny(rodzina, dane, baza))
+    if moc is None:
+        moc = 5.0 if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA else p_mw
+    gen.update(p_mw=p_mw, gen_type=gen_type, **_dane_maszyny(rodzina, dane, baza, moc=moc))
     if jednostki is not None:
         gen["quantity"] = jednostki
     EnergyNetworkModel.model_validate(migawka)
@@ -302,9 +328,8 @@ def _siec_b(maszyna: str, dane: str) -> EnergyNetworkModel:
     enm = _build_mv_lv_enm("Sieć z maszyną")
     gen_type, rodzina = MASZYNY[maszyna]
     baza: dict[str, float] = {"un_kv": 0.4}
-    if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA:
-        baza["sn_mva"] = 0.25
-    pola = _dane_maszyny(rodzina, dane, baza)
+    moc = 0.25 if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA else 0.2
+    pola = _dane_maszyny(rodzina, dane, baza, moc=moc)
     return enm.model_copy(
         update={
             "transformers": [
@@ -366,6 +391,7 @@ KLUCZE_PARAMETRU_FORMULARZA = {
     "dopuszczalne_do",
     "calkowita",
     "propozycja",
+    "wyznaczenie_z_tabliczki",
 }
 
 
@@ -381,11 +407,17 @@ def test_rejestr_dla_formularza_przez_http_i_ksztalt_kontraktu() -> None:
         for opis in parametry:
             assert set(opis) == KLUCZE_PARAMETRU_FORMULARZA
             # Propozycja rejestru sama przechodzi bramę wartości (inaczej obliczenie
-            # przyjęłoby wartość, której projektant nie mógłby nadać).
-            assert (
-                blad_wartosci_maszyny(rodzina, opis["parametr"], opis["propozycja"]["wartosc"])
-                is None
-            )
+            # przyjęłoby wartość, której projektant nie mógłby nadać). Moc znamionowa nie ma
+            # liczby w rejestrze — propozycja zależy od punktu pracy elementu.
+            if opis["parametr"] == PARAMETR_MOCY[rodzina]:
+                assert opis["propozycja"]["wartosc"] is None
+                assert "punktu pracy" in opis["propozycja"]["uzasadnienie_pl"]
+            else:
+                assert (
+                    blad_wartosci_maszyny(rodzina, opis["parametr"], opis["propozycja"]["wartosc"])
+                    is None
+                )
+            assert (opis["wyznaczenie_z_tabliczki"] is not None) is (opis["parametr"] == "pr_mw")
             assert opis["propozycja"]["rodzaj_zrodla"] == "ZALOZENIE_INZYNIERSKIE"
             assert opis["propozycja"]["odniesienie"].strip()
 
@@ -508,7 +540,11 @@ def _zdania_wartosci_roboczych_rejestru() -> list[tuple[str, str]]:
     zdania: list[tuple[str, str]] = []
     for rodzina, parametry in PARAMETRY_MASZYNY.items():
         propozycje = wr.rozstrzygnij_parametry_maszyny(
-            rodzina, tabliczka={}, wartosci_projektanta={}
+            rodzina,
+            tabliczka={},
+            wartosci_projektanta={},
+            moc_czynna_punktu_pracy_mw=2.0,
+            liczba_jednostek=1,
         )
         for parametr in parametry:
             zdania.append(
@@ -521,6 +557,14 @@ def _zdania_wartosci_roboczych_rejestru() -> list[tuple[str, str]]:
                 zdania.append(
                     (f"{rodzina}/{parametr}/projektant/{powod}", projektant.opis_zrodla_pl())
                 )
+
+    z_mocy_pozornej = wr.rozstrzygnij_parametry_maszyny(
+        RODZINA_MASZYNA_ASYNCHRONICZNA,
+        tabliczka={"sn_mva": 2.5},
+        moc_czynna_punktu_pracy_mw=2.0,
+        liczba_jednostek=1,
+    )["pr_mw"]
+    zdania.append(("asynchroniczna/pr_mw/z_mocy_pozornej", z_mocy_pozornej.opis_zrodla_pl()))
 
     @_dc(frozen=True)
     class _Karta:
@@ -578,7 +622,9 @@ def test_wiersz_biegu_wg_wyroczni(maszyna: str, dane: str) -> None:
     assert all(w["source_name"] == nazwa for w in wpisy)
     if dane == "projektant":
         assert all(POWOD_PROJEKTANTA in w["opis_zrodla_pl"] for w in wpisy)
-        assert {w["parametr"]: w["wartosc"] for w in wpisy} == PROJEKTANT[rodzina]
+        assert {w["parametr"]: w["wartosc"] for w in wpisy} == _projektant(
+            rodzina, 2.0 if rodzina == RODZINA_MASZYNA_ASYNCHRONICZNA else 5.0
+        )
     if dane == "odrzucona":
         (wpis,) = wpisy
         assert "dana tabliczki odrzucona" in wpis["opis_zrodla_pl"]
@@ -602,30 +648,37 @@ def test_liczba_par_biegunow_i_liczba_jednostek_trafiaja_do_m(
     maszyna: str, dane: str, oczekiwane_p: int, jednostki: int
 ) -> None:
     """m = P_rM/p JEDNEJ maszyny grupy: p z rozstrzygnięcia pierwszeństwa, P_rM jednostki =
-    moc elementu / liczba jednostek (IEC 60909-0:2016 pkt 9.1.2 i tabela R_M/X_M pkt 6.7)."""
+    moc znamionowa jednej maszyny z tabliczki albo od projektanta; bez nich — propozycja
+    z punktu pracy elementu podzielonego na liczbę jednostek (IEC 60909-0:2016 pkt 9.1.2
+    i tabela R_M/X_M pkt 6.7)."""
     migawka, _, _ = _migawka_a(maszyna, dane, jednostki=jednostki)
     graf = map_enm_to_network_graph(EnergyNetworkModel.model_validate(migawka))
     (maszyna_grafu,) = graf.asynchronous_machine_sources.values()
     assert maszyna_grafu.pole_pairs == oczekiwane_p
     assert maszyna_grafu.liczba_jednostek == jednostki
-    assert maszyna_grafu.p_per_pole_mw == pytest.approx(2.0 / jednostki / oczekiwane_p)
-    m = 2.0 / jednostki / oczekiwane_p
+    moc_jednostki = {
+        "tabliczka": 2.0,
+        "odrzucona": 2.0,
+        "projektant": 2.0 * MNOZNIK_MOCY_PROJEKTANTA,
+        "propozycja": 2.0 / jednostki,
+    }[dane]
+    assert maszyna_grafu.moc_jednostki_mw == pytest.approx(moc_jednostki)
+    assert maszyna_grafu.p_per_pole_mw == pytest.approx(moc_jednostki / oczekiwane_p)
+    m = moc_jednostki / oczekiwane_p
     assert maszyna_grafu.r_over_x_ratio == (0.10 if m >= 1.0 else 0.15)
 
 
 @pytest.mark.parametrize("maszyna", list(MASZYNY))
 def test_sonda_identycznosci_liczb_tabliczka_rowna_propozycjom(maszyna: str) -> None:
-    """Tabliczka z wartościami równymi propozycjom rejestru (dawne domyślki konstruktora) daje
-    bit w bit te same prądy co brak tabliczki; różnią się WYŁĄCZNIE wpisy wartości roboczych."""
-    rodzina = MASZYNY[maszyna][1]
-    propozycje = {
-        p["parametr"]: p["propozycja"]["wartosc"]
-        for p in rejestr_maszyn_do_formularza()["rodziny"][rodzina]
-    }
+    """Tabliczka z wartościami równymi propozycjom rejestru (dawne domyślki konstruktora,
+    moc znamionowa z punktu pracy) daje bit w bit te same prądy co brak tabliczki; różnią się
+    WYŁĄCZNIE wpisy wartości roboczych."""
     bez, wezel, _ = _migawka_a(maszyna, "propozycja")
+    w_bez = _wiersz(_bieg_a(bez), wezel)
+    propozycje = {w["parametr"]: w["wartosc"] for w in w_bez["parametry_robocze_maszyn"]}
+    assert set(propozycje) == set(PARAMETRY_MASZYNY[MASZYNY[maszyna][1]])  # type: ignore[index]
     z_tabliczka = copy.deepcopy(bez)
     z_tabliczka["generators"][0]["materialized_params"].update(propozycje)
-    w_bez = _wiersz(_bieg_a(bez), wezel)
     w_tab = _wiersz(_bieg_a(z_tabliczka), wezel)
     assert w_bez["parametry_robocze_maszyn"]
     assert "parametry_robocze_maszyn" not in w_tab
@@ -915,9 +968,8 @@ def _enm_petli_z_maszyna(maszyna: str, dane: str) -> EnergyNetworkModel:
     enm = _enm_petli("TR-7", 15.0, 0.4)
     gen_type, rodzina = MASZYNY[maszyna]
     baza: dict[str, float] = {"un_kv": 15.0}
-    if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA:
-        baza["sn_mva"] = 2.5
-    pola = _dane_maszyny(rodzina, dane, baza)
+    moc = 2.5 if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA else 2.0
+    pola = _dane_maszyny(rodzina, dane, baza, moc=moc)
     gen = Generator(
         ref_id="gm",
         name=NAZWA_B,
@@ -965,8 +1017,7 @@ def test_kotwica_domeny_nn_niesie_wpisy_maszyn(maszyna: str, dane: str) -> None:
 @pytest.mark.parametrize("dane", DANE_B)
 def test_arkusz_obwodow_nn_z_maszyna_sn(dane: str) -> None:
     enm = _siec_referencyjna()
-    baza = {"un_kv": 15.0, "sn_mva": 2.5}
-    pola = _dane_maszyny(RODZINA_MASZYNA_SYNCHRONICZNA, dane, baza)
+    pola = _dane_maszyny(RODZINA_MASZYNA_SYNCHRONICZNA, dane, {"un_kv": 15.0}, moc=2.5)
     enm = enm.model_copy(
         update={
             "generators": [
@@ -1022,7 +1073,7 @@ def test_operacja_przyjmuje_wartosci_rodziny_w_kolejnosci_rejestru(gen_type: str
     rodzina = RODZINA_MASZYNY_WG_GEN_TYPE[gen_type]
     wpisy = [
         {"key": k, "value": v, "reason": POWOD_PROJEKTANTA}
-        for k, v in reversed(list(PROJEKTANT[rodzina].items()))
+        for k, v in reversed(list(_projektant(rodzina, 2.0).items()))
     ]
     gen = _generator_po(_zmien(_enm_generatora(gen_type), {"overrides": wpisy}))
     assert [w["key"] for w in gen["overrides"]] == list(PARAMETRY_MASZYNY[rodzina])  # type: ignore[index]
@@ -1273,24 +1324,53 @@ def test_bieg_modelu_z_wartoscia_spoza_bramy_zablokowany_kodem_kanonicznym() -> 
 _CIM = f"{{{NS_CIM}}}"
 
 
+@pytest.mark.parametrize("jednostki", [1, 3])
 @pytest.mark.parametrize("gen_type", ["synchronous", "fw_scig"])
-def test_cgmes_niesie_parametry_maszyny_tam_i_z_powrotem(gen_type: str) -> None:
+def test_cgmes_niesie_parametry_maszyny_tam_i_z_powrotem(gen_type: str, jednostki: int) -> None:
+    """Parametry intensywne (x″d, cos φ, p, I_LR/I_rM, η) przechodzą 1:1; moce znamionowe
+    S_rG/S_rM (``ratedS``) i P_rM (``ratedMechanicalPower``) są wielkościami grupy — eksport
+    × liczba jednostek, import jedna jednostka o mocy łącznej (ta sama moc całej grupy)."""
     rodzina = RODZINA_MASZYNY_WG_GEN_TYPE[gen_type]
-    tabliczka = {"sn_mva": 2.5, "un_kv": 15.0, **TABLICZKA[rodzina]}
+    tabliczka = {
+        "sn_mva": 2.5,
+        "un_kv": 15.0,
+        **_tabliczka(rodzina, 2.5 if gen_type == "synchronous" else 2.0),
+    }
     enm = EnergyNetworkModel.model_validate(
-        _enm_generatora(gen_type, materialized_params=tabliczka)
+        _enm_generatora(gen_type, materialized_params=tabliczka, quantity=jednostki)
     )
     eq, _tp = build_eq_tp_trees(enm)
     klasa = "SynchronousMachine" if gen_type == "synchronous" else "AsynchronousMachine"
     (urzadzenie,) = (e for e in eq if e.tag == f"{_CIM}{klasa}")
+    moc_p = urzadzenie.find(f"{_CIM}AsynchronousMachine.ratedMechanicalPower")
     if gen_type == "fw_scig":
         assert urzadzenie.find(f"{_CIM}AsynchronousMachine.polePairNumber").text == "2"
         assert urzadzenie.find(f"{_CIM}AsynchronousMachine.efficiency").text == "96"
+        assert moc_p is not None and float(moc_p.text) == pytest.approx(2.0e6 * jednostki)
+    else:
+        assert moc_p is None
     wynik = import_cgmes(export_cgmes(enm), prefer_side_car=False)
     assert wynik.enm is not None
     (gen,) = wynik.enm.generators
     for klucz, wartosc in TABLICZKA[rodzina].items():
         assert gen.materialized_params[klucz] == pytest.approx(wartosc), klucz
+    for klucz in ("sn_mva", "pr_mw"):
+        if klucz in tabliczka:
+            assert gen.materialized_params[klucz] == pytest.approx(
+                tabliczka[klucz] * jednostki
+            ), klucz
+
+
+def test_cgmes_maszyna_asynchroniczna_bez_mocy_mechanicznej_pomija_atrybut() -> None:
+    enm = EnergyNetworkModel.model_validate(
+        _enm_generatora("fw_scig", materialized_params={"un_kv": 15.0})
+    )
+    eq, _tp = build_eq_tp_trees(enm)
+    (urzadzenie,) = (e for e in eq if e.tag == f"{_CIM}AsynchronousMachine")
+    assert urzadzenie.find(f"{_CIM}AsynchronousMachine.ratedMechanicalPower") is None
+    wynik = import_cgmes(export_cgmes(enm), prefer_side_car=False)
+    assert wynik.enm is not None
+    assert "pr_mw" not in (wynik.enm.generators[0].materialized_params or {})
 
 
 def test_cgmes_utraty_nazywaja_dfig_i_wartosci_projektanta() -> None:

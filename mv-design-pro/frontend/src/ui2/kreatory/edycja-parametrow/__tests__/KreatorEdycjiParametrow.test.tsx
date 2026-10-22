@@ -405,9 +405,9 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     });
 
     it.each([
-      ['synchronous', ['xd_subtransient_pu', 'cos_phi']],
-      ['fw_scig', ['pole_pairs', 'i_lr_ratio', 'cos_phi', 'efficiency']],
-      ['fw_dfig', ['pole_pairs', 'i_lr_ratio', 'cos_phi', 'efficiency']],
+      ['synchronous', ['sn_mva', 'xd_subtransient_pu', 'cos_phi']],
+      ['fw_scig', ['pr_mw', 'pole_pairs', 'i_lr_ratio', 'cos_phi', 'efficiency']],
+      ['fw_dfig', ['pr_mw', 'pole_pairs', 'i_lr_ratio', 'cos_phi', 'efficiency']],
     ])('%s → sekcja z polami rodziny w kolejności rejestru', async (genType, klucze) => {
       snapshotState.snapshot = { generators: [generator(genType)] };
       render(<KreatorEdycjiParametrow />);
@@ -443,8 +443,24 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 0,85 (założenie inżynierskie).');
       expect(sekcja).toHaveTextContent('Puste pole: wartość robocza 1 (założenie inżynierskie).');
       expect(sekcja).toHaveTextContent('Liczba par biegunów p');
+      // Moc znamionowa bez tabliczki: reguła propozycji z punktu pracy, bez liczby liczonej w UI.
+      expect(sekcja).toHaveTextContent(
+        'Puste pole: wartość robocza (założenie inżynierskie): Tabliczka maszyny nie podaje ani mocy '
+          + 'znamionowej P_rM',
+      );
+      expect(sekcja).toHaveTextContent('Moc znamionowa (mechaniczna) jednej maszyny P_rM [MW]');
       // Bez zmiany wartości maszyny nic do zapisu.
       expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
+    });
+
+    it('P_rM bez tabliczki przy S_rM tabliczki → podpowiedź wyznaczenia (reguła normy, bez liczby)', async () => {
+      snapshotState.snapshot = { generators: [generator('fw_dfig', { materialized_params: { sn_mva: 2.4 } })] };
+      render(<KreatorEdycjiParametrow />);
+      const sekcja = await screen.findByTestId(M);
+      expect(sekcja).toHaveTextContent(
+        'Puste pole: dana tabliczki elementu, wyznaczona z mocy pozornej znamionowej S_rM tabliczki '
+          + 'elementu: P_rM = S_rM·η_r·cos φ_r, IEC 60909-0:2016 pkt 6.7.',
+      );
     });
 
     it('nowa wartość → lista overrides w kolejności rejestru; niezmieniona zachowuje uzasadnienie', async () => {
@@ -522,7 +538,7 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       snapshotState.snapshot = { generators: [generator('fw_scig')] };
       render(<KreatorEdycjiParametrow />);
       expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('');
-      await waitFor(() => expect(screen.getByTestId(`${M}-pole_pairs`)).toHaveFocus());
+      await waitFor(() => expect(screen.getByTestId(`${M}-pr_mw`)).toHaveFocus());
     });
 
     it.each([

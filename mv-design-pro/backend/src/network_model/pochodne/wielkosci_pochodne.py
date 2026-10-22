@@ -280,6 +280,28 @@ def moc_pozorna_z_czynnej_mva(moc_czynna_mw: float, cos_phi: float) -> float:
     return moc_czynna_mw / cos_phi
 
 
+def moc_pozorna_maszyny_asynchronicznej_mva(
+    moc_znamionowa_mw: float, sprawnosc: float, cos_phi: float
+) -> float:
+    """Moc pozorna znamionowa maszyny asynchronicznej S_rM = P_rM/(η_r·cos φ_r) [MVA].
+
+    IEC 60909-0:2016 pkt 6.7: P_rM to moc ZNAMIONOWA (mechaniczna na wale), nie punkt pracy.
+    Para z ``moc_znamionowa_maszyny_asynchronicznej_mw`` — jedna zależność normy w obu
+    kierunkach, w jednym miejscu (predykaty parami). Kolejność działań jak w dawnym
+    ``AsynchronousMachineSource.sr_mva`` (identyczne liczby).
+    """
+    return moc_znamionowa_mw / (sprawnosc * cos_phi)
+
+
+def moc_znamionowa_maszyny_asynchronicznej_mw(
+    moc_pozorna_mva: float, sprawnosc: float, cos_phi: float
+) -> float:
+    """Moc znamionowa maszyny asynchronicznej P_rM = S_rM·η_r·cos φ_r [MW] (odwrotność
+    ``moc_pozorna_maszyny_asynchronicznej_mva``, IEC 60909-0:2016 pkt 6.7) — gdy tabliczka
+    podaje moc pozorną znamionową, a nie moc mechaniczną."""
+    return moc_pozorna_mva * (sprawnosc * cos_phi)
+
+
 def moc_pozorna_z_czynnej_i_biernej_mva(moc_czynna_mw: float, moc_bierna_mvar: float) -> float:
     """Moc pozorna z czynnej i biernej: S = √(P² + Q²) (odbiór z jawną mocą bierną —
     moc wymagana transformatora stacji szablonu, gdy projektant podał Q zamiast cosφ).

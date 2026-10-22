@@ -28,6 +28,7 @@ from network_model.core.voltage_factor import (
 from network_model.pochodne import (
     impedancja_z_napiecia_i_pradu_ohm,
     kv_na_v,
+    moc_pozorna_maszyny_asynchronicznej_mva,
     prad_znamionowy_a,
     reaktancja_z_jednostek_wzglednych_ohm,
 )
@@ -197,7 +198,10 @@ class AsynchronousMachineSource:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = field(default="")
     node_id: str = field(default="")
-    pr_mw: float = field(default=0.0)  # rated mechanical power P_rM [MW]
+    # Moc ZNAMIONOWA P_rM całej grupy [MW] (IEC 60909-0:2016 pkt 6.7 i 9.1.2) — nie punkt
+    # pracy elementu. Mapowanie ENM rozstrzyga ją rejestrem wartości roboczych (karta
+    # PODSTAWA-Q): projektant > tabliczka ``pr_mw`` > S_rM tabliczki·η_r·cos φ_r > propozycja.
+    pr_mw: float = field(default=0.0)
     ur_kv: float = field(default=0.0)  # rated voltage U_rM [kV]
     # Karta PODSTAWA-Q (rozstrzygnięcie 3): dane tabliczki maszyny bez domyślek — wartość
     # podaje mapowanie ENM po rozstrzygnięciu pierwszeństwa (projektant > tabliczka >
@@ -211,6 +215,10 @@ class AsynchronousMachineSource:
     # parę biegunów m = P_rM/p (IEC 60909-0:2016 pkt 9.1.2, krzywa q; tabela R_M/X_M pkt 6.7)
     # dotyczy POJEDYNCZEJ maszyny — m z mocy grupy zawyżałoby q i zmieniało wiersz R_M/X_M.
     liczba_jednostek: int = field(kw_only=True)
+    # Moc pozorna znamionowa S_rM całej grupy z tabliczki elementu [MVA]. Gdy podana, Z_M
+    # liczy się z niej wprost (pkt 6.7 definiuje S_rM jako daną maszyny); bez niej
+    # S_rM = P_rM/(η_r·cos φ_r) z ``pr_mw``.
+    sr_mva_tabliczki: float | None = field(default=None, kw_only=True)
     r_over_x: float | None = field(default=None)  # R_M/X_M override; else IEC default
     # DFIG (wind Type 3) marker. A doubly-fed induction generator has a partial-scale
     # rotor converter; on a severe fault the crowbar fires (rotor shorted) and the
@@ -223,8 +231,10 @@ class AsynchronousMachineSource:
 
     @property
     def sr_mva(self) -> float:
-        """Rated apparent power S_rM = P_rM/(η·cos φ_rM) [MVA]."""
-        return self.pr_mw / (self.efficiency * self.cos_phi_r)
+        """Moc pozorna znamionowa S_rM [MVA]: z tabliczki albo P_rM/(η_r·cos φ_r) (pkt 6.7)."""
+        if self.sr_mva_tabliczki is not None:
+            return self.sr_mva_tabliczki
+        return moc_pozorna_maszyny_asynchronicznej_mva(self.pr_mw, self.efficiency, self.cos_phi_r)
 
     @property
     def ir_a(self) -> float:
@@ -248,18 +258,21 @@ class AsynchronousMachineSource:
         """Moc czynna na parę biegunów m = P_rM/p JEDNEJ maszyny [MW] (pkt 9.1.2)."""
         return self.moc_jednostki_mw / max(1, self.pole_pairs)
 
-    def r_over_x_zalezy_od_par_biegunow(self, pary_max: int) -> bool:
-        """Czy stosunek R_M/X_M (§6.7) zmienia się dla liczby par biegunów w zakresie 1…pary_max.
+    def r_over_x_zalezy_od_mocy_na_pare(self, m_od_mw: float, m_do_mw: float) -> bool:
+        """Czy stosunek R_M/X_M (§6.7) jest różny na końcach zakresu mocy na parę biegunów m.
 
-        Liczba par biegunów wpływa na moc na parę biegunów m = P_rM/p; poza krzywą zaniku q
-        (wyłącznie I_b) zmienia wiersz tabeli R_M/X_M maszyny SN (próg 1 MW na parę biegunów),
-        a z nim impedancję Z_M — i wtedy wszystkie prądy zwarciowe punktu. Maszyna nN (wiersz
-        stały 0,42) i maszyna z jawnym R_M/X_M nie zależą od p w tym sensie.
+        Parametr wartości roboczej, od którego zależy m = P_rM/p (liczba par biegunów, moc
+        znamionowa P_rM, a przy P_rM wyznaczonej z S_rM tabliczki — η_r i cos φ_r), poza krzywą
+        zaniku q (wyłącznie I_b) może zmienić wiersz tabeli R_M/X_M maszyny SN (próg 1 MW na
+        parę biegunów), a z nim impedancję Z_M — i wtedy wszystkie prądy zwarciowe punktu.
+        Tabela jest schodkowa i monotoniczna w m, więc wystarczy porównać końce zakresu
+        (wołający podaje zakres z bramy wartości parametru). Maszyna nN (wiersz stały 0,42)
+        i maszyna z jawnym R_M/X_M nie zależą od m w tym sensie.
         """
         if self.r_over_x is not None:
             return False
-        return _asynchronous_r_over_x(self.ur_kv, self.moc_jednostki_mw) != _asynchronous_r_over_x(
-            self.ur_kv, self.moc_jednostki_mw / max(1, pary_max)
+        return _asynchronous_r_over_x(self.ur_kv, m_od_mw) != _asynchronous_r_over_x(
+            self.ur_kv, m_do_mw
         )
 
     @property
@@ -288,6 +301,9 @@ class AsynchronousMachineSource:
             "wind_type_3": self.wind_type_3,
             "pr_mw": self.pr_mw,
             "sr_mva": self.sr_mva,
+            "sr_mva_z_tabliczki": self.sr_mva_tabliczki is not None,
+            "efficiency": self.efficiency,
+            "cos_phi_r": self.cos_phi_r,
             "ur_kv": self.ur_kv,
             "i_lr_ratio": self.i_lr_ratio,
             "ir_a": self.ir_a,

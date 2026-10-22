@@ -8,6 +8,19 @@
  */
 
 import type { RejestrMaszynWirujacych } from '../../../../ui/catalog/types';
+import { czyRejestrMaszyn } from '../wartosciRoboczeMaszyny';
 import rejestr from './fixtures/rejestr_maszyn_wirujacych.json';
 
-export const REJESTR_MASZYN: RejestrMaszynWirujacych = rejestr;
+/**
+ * Fikstura przechodzi przez TEN SAM strażnik postaci odpowiedzi co kreator
+ * (`czyRejestrMaszyn`, KreatorEdycjiParametrow) — import JSON poszerza literały rodzin do `string`,
+ * więc przypisanie wprost nie typuje się; rzutowanie ukryłoby rozjazd postaci, strażnik go zgłasza.
+ */
+function rejestrZFikstury(dane: unknown): RejestrMaszynWirujacych {
+  if (!czyRejestrMaszyn(dane)) {
+    throw new Error('Fikstura rejestru maszyn wirujących nie ma postaci odpowiedzi backendu.');
+  }
+  return dane;
+}
+
+export const REJESTR_MASZYN = rejestrZFikstury(rejestr);

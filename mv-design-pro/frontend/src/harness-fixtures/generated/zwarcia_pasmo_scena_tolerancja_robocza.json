@@ -40,6 +40,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 8.7950237678,
           "i_dc_ka": 2.55484906587,
           "ik_ka": 8.96999734197,
@@ -126,6 +179,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 13.9667229582,
           "i_dc_ka": 0.850943708892,
           "ik_ka": 13.9866218464,
@@ -213,6 +319,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 21.1512763692,
           "i_dc_ka": 0.0254871126231,
           "ik_ka": 21.1512763692,
@@ -299,6 +458,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 8.7950237678,
           "i_dc_ka": 2.55484906587,
           "ik_ka": 8.96999734197,
@@ -385,6 +597,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 4.39634478848,
           "i_dc_ka": 2.89245841365e-05,
           "ik_ka": 4.61150716833,
@@ -471,6 +736,14 @@
           "scenariusz": "MAX",
           "parametr": "lv_voltage_tolerance",
           "element_type": "Transformer"
+        },
+        {
+          "code": "fault.parametry_maszyny_robocze",
+          "element_ref": "gen_sync",
+          "element_type": "Generator",
+          "parametr": "sn_mva",
+          "message_pl": "Prądy zwarciowe z udziałem maszyny wirującej liczone na wartościach roboczych parametrów (IEC 60909-0:2016 pkt 6.3/6.7): maszyna „Generator synchroniczny”: moc pozorna znamionowa jednej maszyny S_rG = 2,5 MVA — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.; maszyna „Generator synchroniczny”: reaktancja podprzejściowa nasycona x″d = 0,15 p.u. (S_rG, U_rG) — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.; maszyna „Generator synchroniczny”: znamionowy współczynnik mocy cos φ_r = 0,8 — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.. Zmień wartość na elemencie (parametry maszyny generatora), jeśli znasz daną maszyny, i przelicz.",
+          "scenariusz": "MAX"
         },
         {
           "code": "fault.czas_tb_wartosc_robocza",
@@ -585,7 +858,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "b4e1265c0a0786c4f7c0978b37e1ac640f3ff2a70f1a6a2be83f5c3fa77a025b",
+        "result_hash": "9e877b84b79f04c522037fa8cd77561c637fd31c568f43694469d9e1cda47318",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -643,6 +916,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 8.00681225499,
           "i_dc_ka": 2.32259005988,
           "ik_ka": 8.15608263887,
@@ -729,6 +1055,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 12.6984620051,
           "i_dc_ka": 0.773585189902,
           "ik_ka": 12.7153068218,
@@ -816,6 +1195,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 17.4210598104,
           "i_dc_ka": 0.0208530921462,
           "ik_ka": 17.4210598104,
@@ -902,6 +1334,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 8.00681225499,
           "i_dc_ka": 2.32259005988,
           "ik_ka": 8.15608263887,
@@ -988,6 +1473,59 @@
             "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
             "ib_z_udzialem_maszyn": true
           },
+          "parametry_robocze_maszyn": [
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "sn_mva",
+              "nazwa_pl": "moc pozorna znamionowa jednej maszyny",
+              "symbol": "S_rG",
+              "wartosc": 2.5,
+              "jednostka": "MVA",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "xd_subtransient_pu",
+              "nazwa_pl": "reaktancja podprzejściowa nasycona",
+              "symbol": "x″d",
+              "wartosc": 0.15,
+              "jednostka": "p.u. (S_rG, U_rG)",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            },
+            {
+              "source_id": "gen_sync",
+              "source_name": "Generator synchroniczny",
+              "parametr": "cos_phi",
+              "nazwa_pl": "znamionowy współczynnik mocy",
+              "symbol": "cos φ_r",
+              "wartosc": 0.8,
+              "jednostka": "1",
+              "pochodzenie": "PROPOZYCJA",
+              "opis_zrodla_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+              "wielkosci": [
+                "ikss",
+                "ip",
+                "ib",
+                "ith"
+              ]
+            }
+          ],
           "ib_ka": 4.00791877601,
           "i_dc_ka": 2.62950764878e-05,
           "ik_ka": 4.19300971986,
@@ -1074,6 +1612,14 @@
           "scenariusz": "MIN",
           "parametr": "lv_voltage_tolerance",
           "element_type": "Transformer"
+        },
+        {
+          "code": "fault.parametry_maszyny_robocze",
+          "element_ref": "gen_sync",
+          "element_type": "Generator",
+          "parametr": "sn_mva",
+          "message_pl": "Prądy zwarciowe z udziałem maszyny wirującej liczone na wartościach roboczych parametrów (IEC 60909-0:2016 pkt 6.3/6.7): maszyna „Generator synchroniczny”: moc pozorna znamionowa jednej maszyny S_rG = 2,5 MVA — wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.; maszyna „Generator synchroniczny”: reaktancja podprzejściowa nasycona x″d = 0,15 p.u. (S_rG, U_rG) — wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.; maszyna „Generator synchroniczny”: znamionowy współczynnik mocy cos φ_r = 0,8 — wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.. Zmień wartość na elemencie (parametry maszyny generatora), jeśli znasz daną maszyny, i przelicz.",
+          "scenariusz": "MIN"
         },
         {
           "code": "fault.czas_tb_wartosc_robocza",
@@ -1188,7 +1734,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b99c3582dc61079bfe2cb538410508a2d118c69fb21922f4be286057148489d5",
-        "result_hash": "0f6ae43b3b1c6acca1c70105c9153a75615aa8a81cfdf0daf7dab8ae7bfd6ceb",
+        "result_hash": "523cb68351ace0710c18a93cc78e094a61c3e2c5e1a710bb71c418612811d407",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",

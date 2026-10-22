@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Final, Literal, Protocol
 
 from network_model.core.voltage_factor import (
@@ -41,6 +41,10 @@ from network_model.core.voltage_factor import (
     TOLERANCJE_NAPIECIA_NN,
     TolerancjaNapieciaNn,
     c_wiersza_nn,
+)
+from network_model.pochodne import (
+    moc_pozorna_z_czynnej_mva,
+    moc_znamionowa_maszyny_asynchronicznej_mw,
 )
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from werdykt.kontrakt import DanaPrzyjeta, Wielkosc
@@ -190,10 +194,15 @@ def liczba_pl(wartosc: float) -> str:
 
 @dataclass(frozen=True)
 class PropozycjaWartosci:
-    """Propozycja wartości roboczej: liczba, jednostka, źródło, uzasadnienie i wpływ."""
+    """Propozycja wartości roboczej: liczba, jednostka, źródło, uzasadnienie i wpływ.
+
+    ``wartosc is None`` wyłącznie we WZORCU propozycji zależnej od elementu (moc znamionowa
+    maszyny z punktu pracy elementu): rejestr dla formularza podaje regułę, a rozstrzygnięcie
+    parametru elementu podstawia liczbę (``rozstrzygnij_parametry_maszyny``).
+    """
 
     parametr: str
-    wartosc: float
+    wartosc: float | None
     jednostka: str
     rodzaj_zrodla: RodzajZrodla
     odniesienie: str
@@ -842,14 +851,17 @@ def dana_przyjeta_tolerancji_nn(
 # Rodzina: maszyna wirująca (IEC 60909-0:2016 pkt 6.3 i 6.7, krzywe μ i q pkt 9.1)
 # ---------------------------------------------------------------------------
 #
-# Maszyna synchroniczna (§6.3) wchodzi do zwarć przez x″d i cos φ_rG (impedancja Z″_GK z
-# poprawką K_G). Maszyna asynchroniczna (§6.7, w tym DFIG po zadziałaniu crowbara) — przez
-# krotność prądu zablokowanego wirnika I_LR/I_rM, cos φ_rM i sprawność η_rM (moc pozorna
-# S_rM = P_rM/(η·cos φ), impedancja Z_M) oraz liczbę par biegunów p (moc na parę biegunów
-# m = P_rM/p: krzywa zaniku q, pkt 9.1.2, i stosunek R_M/X_M dla maszyn SN). Brak tych danych
-# na tabliczce elementu nie blokuje zwarć: obliczenie przyjmuje propozycję rejestru, oznaczoną
-# jako dana przyjęta. Wartości propozycji są TE SAME, które model maszyny przyjmował dotąd
-# po cichu jako domyślki — liczby wyników bez zmian, zmienia się jawność założenia.
+# Maszyna synchroniczna (§6.3) wchodzi do zwarć przez moc pozorną znamionową S_rG, x″d
+# i cos φ_rG (impedancja Z″_GK z poprawką K_G). Maszyna asynchroniczna (§6.7, w tym DFIG po
+# zadziałaniu crowbara) — przez moc znamionową P_rM, krotność prądu zablokowanego wirnika
+# I_LR/I_rM, cos φ_rM i sprawność η_rM (moc pozorna S_rM = P_rM/(η·cos φ), impedancja Z_M)
+# oraz liczbę par biegunów p (moc na parę biegunów m = P_rM/p: krzywa zaniku q, pkt 9.1.2,
+# i stosunek R_M/X_M dla maszyn SN). Brak tych danych na tabliczce elementu nie blokuje zwarć:
+# obliczenie przyjmuje propozycję rejestru, oznaczoną jako dana przyjęta. Moc znamionowa jest
+# daną maszyny, nie punktem pracy: gdy tabliczka jej nie podaje, propozycją jest moc czynna
+# punktu pracy elementu (założenie „maszyna pracuje w punkcie znamionowym") — jawnie, jako
+# wartość robocza, a dla maszyny asynchronicznej z mocą pozorną S_rM na tabliczce P_rM
+# wyznacza się z niej wg pkt 6.7 (P_rM = S_rM·η_r·cos φ_r).
 
 RodzinaMaszyny = Literal["MASZYNA_SYNCHRONICZNA", "MASZYNA_ASYNCHRONICZNA"]
 RODZINA_MASZYNA_SYNCHRONICZNA: Final[RodzinaMaszyny] = "MASZYNA_SYNCHRONICZNA"
@@ -866,6 +878,8 @@ RODZINA_MASZYNY_WG_GEN_TYPE: Mapping[str, RodzinaMaszyny] = {
 
 #: Klucze parametrów maszyny — TE SAME na tabliczce elementu (``materialized_params``),
 #: w wartościach projektanta (``Generator.overrides``) i w imporcie CIM.
+PARAMETR_MOC_POZORNA_MASZYNY = "sn_mva"
+PARAMETR_MOC_ZNAMIONOWA_MASZYNY = "pr_mw"
 PARAMETR_XD = "xd_subtransient_pu"
 PARAMETR_COS_PHI_MASZYNY = "cos_phi"
 PARAMETR_PARY_BIEGUNOW = "pole_pairs"
@@ -874,8 +888,13 @@ PARAMETR_SPRAWNOSC = "efficiency"
 
 #: Parametry każdej rodziny maszyn — kolejność stała (determinizm śladu i danych przyjętych).
 PARAMETRY_MASZYNY: Mapping[str, tuple[str, ...]] = {
-    RODZINA_MASZYNA_SYNCHRONICZNA: (PARAMETR_XD, PARAMETR_COS_PHI_MASZYNY),
+    RODZINA_MASZYNA_SYNCHRONICZNA: (
+        PARAMETR_MOC_POZORNA_MASZYNY,
+        PARAMETR_XD,
+        PARAMETR_COS_PHI_MASZYNY,
+    ),
     RODZINA_MASZYNA_ASYNCHRONICZNA: (
+        PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
         PARAMETR_PARY_BIEGUNOW,
         PARAMETR_KROTNOSC_I_LR,
         PARAMETR_COS_PHI_MASZYNY,
@@ -888,7 +907,31 @@ PARAMETRY_MASZYNY: Mapping[str, tuple[str, ...]] = {
 #: R_M/X_M od p (``core.machine``) sprawdza zmianę wiersza tabeli.
 PARY_BIEGUNOW_MAX = 50
 
+#: Moce znamionowe maszyn JEDNEJ jednostki (tabliczka i wartość projektanta dotyczą jednej
+#: maszyny; grupa ``quantity`` = × liczba jednostek). Zakres obejmuje agregaty od 1 kVA/1 kW
+#: do największych turbogeneratorów (S_rG ok. 2000 MVA) i silników/generatorów indukcyjnych
+#: (P_rM do 100 MW) — wartość spoza niego jest błędem danych, nie maszyną.
+MOC_MASZYNY_MIN = 0.001
+MOC_POZORNA_MASZYNY_MAX_MVA = 2000.0
+MOC_ZNAMIONOWA_MASZYNY_MAX_MW = 100.0
+
 OPISY_PARAMETROW_MASZYNY: Mapping[str, OpisParametru] = {
+    PARAMETR_MOC_POZORNA_MASZYNY: OpisParametru(
+        parametr=PARAMETR_MOC_POZORNA_MASZYNY,
+        nazwa_pl="moc pozorna znamionowa jednej maszyny",
+        symbol="S_rG",
+        jednostka="MVA",
+        dopuszczalne_od=MOC_MASZYNY_MIN,
+        dopuszczalne_do=MOC_POZORNA_MASZYNY_MAX_MVA,
+    ),
+    PARAMETR_MOC_ZNAMIONOWA_MASZYNY: OpisParametru(
+        parametr=PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
+        nazwa_pl="moc znamionowa (mechaniczna) jednej maszyny",
+        symbol="P_rM",
+        jednostka="MW",
+        dopuszczalne_od=MOC_MASZYNY_MIN,
+        dopuszczalne_do=MOC_ZNAMIONOWA_MASZYNY_MAX_MW,
+    ),
     PARAMETR_XD: OpisParametru(
         parametr=PARAMETR_XD,
         nazwa_pl="reaktancja podprzejściowa nasycona",
@@ -936,7 +979,12 @@ _NORMA_MASZYN = "IEC 60909-0:2016"
 
 
 def _propozycja_maszyny(
-    parametr: str, wartosc: float, *, odniesienie: str, uzasadnienie_pl: str, wplyw_pl: str
+    parametr: str,
+    wartosc: float | None,
+    *,
+    odniesienie: str,
+    uzasadnienie_pl: str,
+    wplyw_pl: str,
 ) -> PropozycjaWartosci:
     return PropozycjaWartosci(
         parametr=parametr,
@@ -949,11 +997,34 @@ def _propozycja_maszyny(
     )
 
 
+_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY = (
+    "założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu "
+    "pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa"
+)
+
 #: Propozycje wartości roboczych każdej rodziny maszyn — JEDYNE miejsce tych liczb (model
 #: maszyny w ``network_model.core.machine`` nie ma domyślek: każdą wartość podaje mapowanie
-#: ENM po rozstrzygnięciu pierwszeństwa tutaj).
+#: ENM po rozstrzygnięciu pierwszeństwa tutaj). Propozycja mocy znamionowej jest WZORCEM
+#: (``wartosc is None``) — liczbę podstawia rozstrzygnięcie z punktu pracy elementu.
 PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
     RODZINA_MASZYNA_SYNCHRONICZNA: {
+        PARAMETR_MOC_POZORNA_MASZYNY: _propozycja_maszyny(
+            PARAMETR_MOC_POZORNA_MASZYNY,
+            None,
+            odniesienie=(
+                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}, podzielona przez cos φ_rG "
+                f"(S_rG = P/cos φ_rG); {_NORMA_MASZYN} pkt 6.3 wymaga S_rG z danych maszyny"
+            ),
+            uzasadnienie_pl=(
+                "Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy "
+                "czynnej punktu pracy elementu"
+            ),
+            wplyw_pl=(
+                "impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej "
+                "mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, "
+                "niż wykazuje obliczenie"
+            ),
+        ),
         PARAMETR_XD: _propozycja_maszyny(
             PARAMETR_XD,
             0.15,
@@ -988,6 +1059,24 @@ PROPOZYCJE_MASZYNY: Mapping[str, Mapping[str, PropozycjaWartosci]] = {
         ),
     },
     RODZINA_MASZYNA_ASYNCHRONICZNA: {
+        PARAMETR_MOC_ZNAMIONOWA_MASZYNY: _propozycja_maszyny(
+            PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
+            None,
+            odniesienie=(
+                f"{_ODNIESIENIE_MOCY_Z_PUNKTU_PRACY}; {_NORMA_MASZYN} pkt 6.7 i 9.1.2 wymagają "
+                "mocy znamionowej P_rM z danych maszyny (S_rM = P_rM/(η_r·cos φ_r), "
+                "m = P_rM/p)"
+            ),
+            uzasadnienie_pl=(
+                "Tabliczka maszyny nie podaje ani mocy znamionowej P_rM, ani mocy pozornej "
+                "znamionowej S_rM — przyjęto P_rM z mocy czynnej punktu pracy elementu"
+            ),
+            wplyw_pl=(
+                "moc pozorna S_rM, a z nią udział maszyny w prądach zwarciowych, oraz moc na "
+                "parę biegunów m (zanik prądu wyłączeniowego I_b) są proporcjonalne do P_rM — "
+                "maszyna o mocy znamionowej większej niż punkt pracy daje większe prądy"
+            ),
+        ),
         PARAMETR_PARY_BIEGUNOW: _propozycja_maszyny(
             PARAMETR_PARY_BIEGUNOW,
             1.0,
@@ -1063,7 +1152,10 @@ def rejestr_maszyn_do_formularza() -> dict[str, Any]:
     Jedno źródło dla UI: który rodzaj generatora jest którą rodziną, jakie parametry ma rodzina
     (kolejność ``PARAMETRY_MASZYNY``), ich nazwy, jednostki i zakres bramy oraz propozycja, którą
     obliczenie przyjmie bez tabliczki i bez wartości projektanta. UI nie powiela zakresów ani
-    liczb — brama wartości zostaje w operacji domenowej.
+    liczb — brama wartości zostaje w operacji domenowej. Propozycja mocy znamionowej ma
+    ``wartosc: null`` (liczba zależy od punktu pracy elementu — reguła w uzasadnieniu),
+    a ``wyznaczenie_z_tabliczki`` nazywa klucz tabliczki, z którego obliczenie wyznacza
+    parametr, gdy tabliczka nie podaje go wprost (P_rM z S_rM, pkt 6.7).
     """
     return {
         "rodzaj_generatora": dict(RODZINA_MASZYNY_WG_GEN_TYPE),
@@ -1078,6 +1170,14 @@ def rejestr_maszyn_do_formularza() -> dict[str, Any]:
                     "dopuszczalne_do": OPISY_PARAMETROW_MASZYNY[parametr].dopuszczalne_do,
                     "calkowita": OPISY_PARAMETROW_MASZYNY[parametr].calkowita,
                     "propozycja": PROPOZYCJE_MASZYNY[rodzina][parametr].to_dict(),
+                    "wyznaczenie_z_tabliczki": (
+                        {
+                            "klucz_tabliczki": PARAMETR_MOC_POZORNA_MASZYNY,
+                            "opis_pl": POCHODZENIE_MOCY_Z_MOCY_POZORNEJ,
+                        }
+                        if parametr == PARAMETR_MOC_ZNAMIONOWA_MASZYNY
+                        else None
+                    ),
                 }
                 for parametr in PARAMETRY_MASZYNY[rodzina]
             ]
@@ -1120,44 +1220,165 @@ def blad_wartosci_maszyny(rodzina: RodzinaMaszyny, parametr: object, wartosc: ob
     return _blad_wartosci_opisu(OPISY_PARAMETROW_MASZYNY[parametr], wartosc)
 
 
+#: Pochodzenie mocy znamionowej P_rM wyznaczonej z mocy pozornej znamionowej tabliczki (pkt 6.7).
+POCHODZENIE_MOCY_Z_MOCY_POZORNEJ = (
+    "wyznaczona z mocy pozornej znamionowej S_rM tabliczki elementu: P_rM = S_rM·η_r·cos φ_r, "
+    "IEC 60909-0:2016 pkt 6.7"
+)
+
+
+def moc_pozorna_tabliczki_maszyny_mva(tabliczka: Mapping[str, Any]) -> float | None:
+    """Moc pozorna znamionowa JEDNEJ maszyny z tabliczki (``sn_mva``) albo ``None``.
+
+    JEDEN predykat ważności tej danej dla obu rodzin: S_rG maszyny synchronicznej (parametr
+    rejestru) i S_rM maszyny asynchronicznej (impedancja Z_M wprost z tabliczki, pkt 6.7) —
+    brama wartości ta sama co dla wartości projektanta S_rG (predykaty parami).
+    """
+    surowa = tabliczka.get(PARAMETR_MOC_POZORNA_MASZYNY)
+    if surowa is None:
+        return None
+    if _blad_wartosci_opisu(OPISY_PARAMETROW_MASZYNY[PARAMETR_MOC_POZORNA_MASZYNY], surowa):
+        return None
+    return float(surowa)
+
+
+def moc_znamionowa_z_mocy_pozornej(rozstrzygniecie: WartoscRozstrzygnieta) -> bool:
+    """Czy P_rM rozstrzygnięto z mocy pozornej tabliczki (wtedy S_rM nie zależy od η_r, cos φ_r,
+    a te wpływają wyłącznie na m = P_rM/p)."""
+    return (
+        rozstrzygniecie.parametr == PARAMETR_MOC_ZNAMIONOWA_MASZYNY
+        and rozstrzygniecie.pochodzenie == "KATALOG"
+        and rozstrzygniecie.pochodzenie_karty == POCHODZENIE_MOCY_Z_MOCY_POZORNEJ
+    )
+
+
+def _rozstrzygnij_parametr_maszyny(
+    rodzina: RodzinaMaszyny,
+    parametr: str,
+    *,
+    tabliczka: Mapping[str, Any],
+    projektant: WartoscProjektanta | None,
+    propozycja: PropozycjaWartosci | None,
+    powod_braku: str | None,
+) -> WartoscRozstrzygnieta:
+    surowa = tabliczka.get(parametr)
+    odrzucenie = blad_wartosci_maszyny(rodzina, parametr, surowa) if surowa is not None else None
+    rozstrzygniecie = _rozstrzygnij(
+        parametr,
+        projektant=projektant,
+        z_karty=float(surowa) if surowa is not None and odrzucenie is None else None,
+        pochodzenie_karty=POCHODZENIE_TABLICZKI_MASZYNY,
+        propozycja=propozycja,
+        powod_braku=powod_braku,
+    )
+    if odrzucenie is not None and rozstrzygniecie.pochodzenie in ("PROPOZYCJA", None):
+        powod = f"dana tabliczki odrzucona: {odrzucenie}"
+        rozstrzygniecie = replace(
+            rozstrzygniecie,
+            powod_braku_pl=(
+                powod
+                if rozstrzygniecie.powod_braku_pl is None
+                else f"{rozstrzygniecie.powod_braku_pl}; {powod}"
+            ),
+        )
+    return rozstrzygniecie
+
+
+def _propozycja_mocy(
+    rodzina: RodzinaMaszyny, parametr: str, wartosc: float | None
+) -> PropozycjaWartosci | None:
+    """Propozycja mocy znamionowej elementu: wzorzec rejestru z liczbą z punktu pracy."""
+    if wartosc is None:
+        return None
+    return replace(PROPOZYCJE_MASZYNY[rodzina][parametr], wartosc=wartosc)
+
+
+_POWOD_BRAKU_MOCY = (
+    "moc znamionowa maszyny nieustalona: tabliczka jej nie podaje, projektant jej nie nadał, "
+    "a punkt pracy elementu ma zerową moc czynną — maszyna nie wchodzi do obliczenia zwarć"
+)
+
+
 def rozstrzygnij_parametry_maszyny(
     rodzina: RodzinaMaszyny,
     *,
     tabliczka: Mapping[str, Any],
     wartosci_projektanta: Mapping[str, WartoscProjektanta] | None = None,
+    moc_czynna_punktu_pracy_mw: float,
+    liczba_jednostek: int,
 ) -> dict[str, WartoscRozstrzygnieta]:
     """Wartość i pochodzenie KAŻDEGO parametru maszyny (projektant > tabliczka > propozycja).
 
     Dana tabliczki spoza bramy wartości (np. cos φ = 0, x″d ujemne) nie jest daną: obliczenie
     przyjmuje propozycję, a rozstrzygnięcie niesie powód odrzucenia tabliczki — ślad i dana
     przyjęta mówią wprost, że wartość z tabliczki nie została użyta i dlaczego.
+
+    Moc znamionowa (IEC 60909-0:2016: S_rG pkt 6.3, P_rM pkt 6.7 i 9.1.2) JEDNEJ maszyny:
+    projektant > tabliczka > (maszyna asynchroniczna) P_rM = S_rM·η_r·cos φ_r z mocy pozornej
+    tabliczki, z η_r i cos φ_r rozstrzygniętych tą samą funkcją > propozycja z punktu pracy
+    elementu (``moc_czynna_punktu_pracy_mw`` — moc całego elementu, |P|, dzielona na
+    ``liczba_jednostek``; dla S_rG dzielona też przez cos φ_rG). Punkt pracy o zerowej mocy
+    nie daje propozycji — moc zostaje nieustalona (``wartosc is None``) z nazwanym powodem.
     """
     projektant = dict(wartosci_projektanta or {})
+    n = max(1, liczba_jednostek)
+    moc_pracy_jednostki = abs(moc_czynna_punktu_pracy_mw) / n
     wynik: dict[str, WartoscRozstrzygnieta] = {}
     for parametr in PARAMETRY_MASZYNY[rodzina]:
-        surowa = tabliczka.get(parametr)
-        odrzucenie = (
-            blad_wartosci_maszyny(rodzina, parametr, surowa) if surowa is not None else None
-        )
-        rozstrzygniecie = _rozstrzygnij(
+        if parametr in (PARAMETR_MOC_POZORNA_MASZYNY, PARAMETR_MOC_ZNAMIONOWA_MASZYNY):
+            continue
+        wynik[parametr] = _rozstrzygnij_parametr_maszyny(
+            rodzina,
             parametr,
+            tabliczka=tabliczka,
             projektant=projektant.get(parametr),
-            z_karty=float(surowa) if surowa is not None and odrzucenie is None else None,
-            pochodzenie_karty=POCHODZENIE_TABLICZKI_MASZYNY,
             propozycja=PROPOZYCJE_MASZYNY[rodzina][parametr],
             powod_braku=None,
         )
-        if odrzucenie is not None and rozstrzygniecie.pochodzenie == "PROPOZYCJA":
-            rozstrzygniecie = WartoscRozstrzygnieta(
-                parametr=rozstrzygniecie.parametr,
-                wartosc=rozstrzygniecie.wartosc,
-                jednostka=rozstrzygniecie.jednostka,
-                pochodzenie=rozstrzygniecie.pochodzenie,
-                propozycja=rozstrzygniecie.propozycja,
-                powod_braku_pl=f"dana tabliczki odrzucona: {odrzucenie}",
+    cos_phi = wynik[PARAMETR_COS_PHI_MASZYNY].wartosc
+    assert cos_phi is not None  # rejestr ma propozycję cos φ każdej rodziny
+    if rodzina == RODZINA_MASZYNA_SYNCHRONICZNA:
+        parametr_mocy = PARAMETR_MOC_POZORNA_MASZYNY
+        propozycja = _propozycja_mocy(
+            rodzina,
+            parametr_mocy,
+            (
+                moc_pozorna_z_czynnej_mva(moc_pracy_jednostki, cos_phi)
+                if moc_pracy_jednostki > 0
+                else None
+            ),
+        )
+    else:
+        parametr_mocy = PARAMETR_MOC_ZNAMIONOWA_MASZYNY
+        propozycja = _propozycja_mocy(
+            rodzina, parametr_mocy, moc_pracy_jednostki if moc_pracy_jednostki > 0 else None
+        )
+    moc = _rozstrzygnij_parametr_maszyny(
+        rodzina,
+        parametr_mocy,
+        tabliczka=tabliczka,
+        projektant=projektant.get(parametr_mocy),
+        propozycja=propozycja,
+        powod_braku=_POWOD_BRAKU_MOCY,
+    )
+    if rodzina == RODZINA_MASZYNA_ASYNCHRONICZNA and moc.pochodzenie in ("PROPOZYCJA", None):
+        moc_s = moc_pozorna_tabliczki_maszyny_mva(tabliczka)
+        sprawnosc = wynik[PARAMETR_SPRAWNOSC].wartosc
+        assert sprawnosc is not None  # rejestr ma propozycję sprawności
+        if moc_s is not None:
+            # Powód odrzucenia danej tabliczki P_rM (jeśli był) zostaje; brak mocy już nie.
+            powod = moc.powod_braku_pl
+            if powod is not None and powod.startswith(_POWOD_BRAKU_MOCY):
+                powod = powod[len(_POWOD_BRAKU_MOCY) :].lstrip("; ") or None
+            moc = WartoscRozstrzygnieta(
+                parametr=parametr_mocy,
+                wartosc=moc_znamionowa_maszyny_asynchronicznej_mw(moc_s, sprawnosc, cos_phi),
+                jednostka=moc.jednostka,
+                pochodzenie="KATALOG",
+                pochodzenie_karty=POCHODZENIE_MOCY_Z_MOCY_POZORNEJ,
+                powod_braku_pl=powod,
             )
-        wynik[parametr] = rozstrzygniecie
-    return wynik
+    return {p: (moc if p == parametr_mocy else wynik[p]) for p in PARAMETRY_MASZYNY[rodzina]}
 
 
 def wartosci_projektanta_maszyny(

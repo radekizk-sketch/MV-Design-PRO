@@ -2107,8 +2107,9 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "overrides"},
     ),
     # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): parametry zwarciowe maszyny wirującej
-    # (x″d i cos φ generatora synchronicznego; liczba par biegunów p, I_LR/I_rM, cos φ i η
-    # maszyny asynchronicznej) bez danej tabliczki ani wartości projektanta NIE blokują biegu —
+    # (S_rG, x″d i cos φ generatora synchronicznego; moc znamionowa P_rM, liczba par biegunów
+    # p, I_LR/I_rM, cos φ i η maszyny asynchronicznej) bez danej tabliczki ani wartości
+    # projektanta NIE blokują biegu —
     # bieg liczy z propozycją rejestru `network_model.catalog.wartosci_robocze.PROPOZYCJE_MASZYNY`
     # (założenie inżynierskie, jakość ESTIMATED) i niesie założenie tego kodu
     # (`zalozenia_parametrow_maszyn`) na każdą maszynę z wartością roboczą; werdykty oparte na

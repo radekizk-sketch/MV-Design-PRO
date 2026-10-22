@@ -278,6 +278,23 @@ export interface PropozycjaWartosciRoboczej {
 /** Rodzina maszyny wirującej rejestru (`RodzinaMaszyny`, `network_model/catalog/wartosci_robocze.py`). */
 export type RodzinaMaszyny = 'MASZYNA_SYNCHRONICZNA' | 'MASZYNA_ASYNCHRONICZNA';
 
+/**
+ * Propozycja rejestru dla parametru maszyny wirującej. `wartosc: null` — liczba zależy od
+ * elementu (moc znamionowa z punktu pracy elementu); regułę podaje `uzasadnienie_pl`.
+ */
+export interface PropozycjaParametruMaszyny extends Omit<PropozycjaWartosciRoboczej, 'wartosc'> {
+  readonly wartosc: number | null;
+}
+
+/**
+ * Parametr, który obliczenie wyznacza z innej danej tabliczki, gdy tabliczka nie podaje go wprost
+ * (moc znamionowa P_rM z mocy pozornej S_rM, IEC 60909-0 pkt 6.7) — klucz tej danej i opis reguły.
+ */
+export interface WyznaczenieZTabliczki {
+  readonly klucz_tabliczki: string;
+  readonly opis_pl: string;
+}
+
 /** Parametr zwarciowy maszyny wirującej: opis, zakres bramy wartości i propozycja rejestru. */
 export interface ParametrMaszynyRejestru {
   readonly parametr: string;
@@ -287,7 +304,8 @@ export interface ParametrMaszynyRejestru {
   readonly dopuszczalne_od: number;
   readonly dopuszczalne_do: number;
   readonly calkowita: boolean;
-  readonly propozycja: PropozycjaWartosciRoboczej;
+  readonly propozycja: PropozycjaParametruMaszyny;
+  readonly wyznaczenie_z_tabliczki: WyznaczenieZTabliczki | null;
 }
 
 /**

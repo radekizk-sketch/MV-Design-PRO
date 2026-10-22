@@ -71,7 +71,11 @@ from network_model.pochodne import (
 )
 
 from .mrid import mrid_for, urn
-from .parametry_maszyn import atrybuty_maszyny_do_cim
+from .parametry_maszyn import (
+    ATRYBUT_MOCY_MECHANICZNEJ,
+    atrybuty_maszyny_do_cim,
+    moc_mechaniczna_do_cim,
+)
 from .profiles import NS_CIM, RDF_ABOUT, RDF_ID, RDF_RESOURCE
 from .units import (
     fmt_float,
@@ -686,7 +690,7 @@ GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
     "CAŁEJ instalacji; import: sn_mva = ratedS, jedna jednostka (ta sama moc łączna)",
     "limits (GenLimits), catalog_ref, connection_variant/station_ref/blocking_transformer_ref, "
     "dynamika, modele widmowe, nastawy i deklaracje modułu — brak odpowiednika w EQ",
-    "parametry zwarciowe maszyny DFIG (pole_pairs, i_lr_ratio, cos_phi, efficiency) — "
+    "parametry zwarciowe maszyny DFIG (pr_mw, pole_pairs, i_lr_ratio, cos_phi, efficiency) — "
     "PowerElectronicsConnection nie ma atrybutów maszyny wirującej",
     "pozostałe klucze materialized_params poza sn_mva, un_kv i parametrami zwarciowymi maszyn "
     "SynchronousMachine/AsynchronousMachine",
@@ -747,6 +751,8 @@ def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:
                                       [SSH, W, konwencja odbiorcza: −P]
       q_mvar                       -> .q [SSH, var, −Q]; brak = atrybut pominięty
       sn_mva × liczba jednostek    -> .ratedS [EQ, VA]; brak tabliczki = pominięty
+      pr_mw × liczba jednostek     -> AsynchronousMachine.ratedMechanicalPower [EQ, W];
+                                      brak tabliczki = pominięty (P_rM, IEC 60909-0 pkt 6.7)
       un_kv                        -> .ratedU [EQ, V]; brak = pominięty
       fw_scig                      -> AsynchronousMachine.asynchronousMachineType =
                                       generator [SSH]
@@ -772,6 +778,9 @@ def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:
     if gen.q_mvar is not None:
         _prop(urzadzenie, f"{wlasciciel}.q", fmt_float(_konwencja_odbiorcza(mw_to_w(gen.q_mvar))))
     if klasa == "AsynchronousMachine":
+        moc_p = moc_mechaniczna_do_cim(gen.materialized_params, liczba_jednostek_zrodla(gen))
+        if moc_p is not None:
+            _prop(urzadzenie, ATRYBUT_MOCY_MECHANICZNEJ, moc_p)
         _enum(
             urzadzenie,
             "AsynchronousMachine.asynchronousMachineType",

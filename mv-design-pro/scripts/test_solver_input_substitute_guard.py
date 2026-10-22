@@ -1917,7 +1917,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # calkowitej, brama liczby par biegunow p), -0.
     # PASS niezmieniony (zero podstawien; podstawienie `wpis.get(..., 0.0)` w
     # `machine_sc_iec60909.zdanie_zalozenia_krzywej_pl` wykryte guardem i naprawione u zrodla).
-    assert "Pol kontraktow wejsciowych: 4291." in wyjscie, wyjscie
+    # Karta PODSTAWA-Q, trzeci commit (2026-10-22): 4291 -> 4292 — POMIAR `contract_fields()`
+    # na drzewie drugiego commitu karty `0a90bbc97` (`git archive`: 4291, pin zgodny) i na
+    # drzewie trzeciego commitu (4292). Roznica zbiorow +1 (`sr_mva_tabliczki` — moc pozorna
+    # znamionowa S_rM grupy maszyn asynchronicznych z tabliczki, do Z_M wprost wg IEC 60909-0
+    # pkt 6.7; brak tabliczki = S_rM z P_rM/(eta_r*cos phi_r)), -0. PASS niezmieniony (zero
+    # podstawien).
+    assert "Pol kontraktow wejsciowych: 4292." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

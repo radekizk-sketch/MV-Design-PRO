@@ -105,13 +105,15 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   // nośnik `overrides` generatora; nazwy, jednostki i propozycje z rejestru backendu.
   maszynaTytul: 'Parametry zwarciowe maszyny wirującej nadane przez projektanta',
   maszynaPomoc:
-    'Tabliczka maszyny nie zawsze podaje reaktancję podprzejściową, współczynnik mocy, liczbę par '
-    + 'biegunów, krotność prądu zablokowanego wirnika i sprawność — obliczenie zwarciowe (IEC 60909-0) '
-    + 'przyjmuje wtedy wartość roboczą rejestru (założenie inżynierskie) i oznacza wyniki jako oparte '
-    + 'na danej przyjętej. Wpisz wartość z tabliczki albo karty producenta, aby obliczenie użyło jej '
-    + 'zamiast tabliczki elementu i propozycji. Puste pole: bez wartości projektanta.',
+    'Tabliczka maszyny nie zawsze podaje moc znamionową, reaktancję podprzejściową, współczynnik mocy, '
+    + 'liczbę par biegunów, krotność prądu zablokowanego wirnika i sprawność — obliczenie zwarciowe '
+    + '(IEC 60909-0) przyjmuje wtedy wartość roboczą rejestru (założenie inżynierskie; moc znamionowa '
+    + '— z punktu pracy elementu) i oznacza wyniki jako oparte na danej przyjętej. Wpisz wartość '
+    + 'z tabliczki albo karty producenta, aby obliczenie użyło jej zamiast tabliczki elementu '
+    + 'i propozycji. Puste pole: bez wartości projektanta.',
   maszynaPlaceholder: 'puste — bez wartości projektanta',
   maszynaZTabliczki: 'Puste pole: dana tabliczki elementu',
+  maszynaWyznaczenie: 'Puste pole: dana tabliczki elementu,',
   maszynaPropozycja: 'Puste pole: wartość robocza',
   maszynaRejestrNiedostepny:
     'Opis parametrów maszyny jest chwilowo niedostępny — odśwież widok, aby nadać wartości.',

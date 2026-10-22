@@ -281,10 +281,11 @@ def sprawdz_zgodnosc(profile_id: str, gen_type: str | None, nazwa_wytworcy: str)
 def moc_bazowa_mva(generator: Mapping[str, Any]) -> float | None:
     """Baza mocy kopii: `sn_mva` JEDNOSTKI z tabliczki × liczba jednostek; `None` = brak.
 
-    Ta sama konwencja co moc znamionowa źródła w zwarciach (`enm.mapping.
-    _gen_rated_apparent_mva`: `sn_mva` na jednostkę, całość = × liczba jednostek), ale BEZ
-    tamtejszej rezerwy |P|/cosφ — baza mocy modelu dynamicznego przyjęta z mocy czynnej
-    byłaby liczbą, której tabliczka nie deklaruje.
+    Ta sama konwencja co moc znamionowa źródła w zwarciach (`sn_mva` na jednostkę, całość =
+    × liczba jednostek: `enm.mapping._gen_rated_apparent_mva` dla przekształtnika, rejestr
+    wartości roboczych `network_model.catalog.wartosci_robocze` dla maszyny wirującej), ale BEZ
+    tamtejszej wartości roboczej z punktu pracy — baza mocy modelu dynamicznego przyjęta z mocy
+    czynnej byłaby liczbą, której tabliczka nie deklaruje.
     """
     tabliczka = generator.get("materialized_params") or {}
     sn = tabliczka.get("sn_mva") if isinstance(tabliczka, Mapping) else None

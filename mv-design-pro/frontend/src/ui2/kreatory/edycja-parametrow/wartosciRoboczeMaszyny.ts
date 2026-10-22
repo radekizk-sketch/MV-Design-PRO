@@ -2,7 +2,8 @@
  * Wartości projektanta parametrów zwarciowych maszyny wirującej (karta PODSTAWA-Q, zasada nr 4).
  *
  * PO CO. Tabliczka generatora synchronicznego albo maszyny asynchronicznej nie zawsze podaje
- * x″d, cos φ, liczbę par biegunów p, krotność I_LR/I_rM i sprawność η — obliczenie zwarciowe
+ * moc znamionową (S_rG, P_rM), x″d, cos φ, liczbę par biegunów p, krotność I_LR/I_rM i sprawność
+ * η — obliczenie zwarciowe
  * (IEC 60909-0 §6.3/§6.7 i rozdz. 9) przyjmuje wtedy propozycję rejestru backendu
  * (`network_model/catalog/wartosci_robocze.py`, założenie inżynierskie) i niesie ją jako daną
  * przyjętą. Projektant nadaje własną wartość w `overrides` generatora; rodzinę, parametry, ich
@@ -39,24 +40,36 @@ export function parametryMaszynyGeneratora(
 
 export type ZrodloParametruMaszyny =
   | { readonly rodzaj: 'tabliczka'; readonly wartosc: number }
-  | { readonly rodzaj: 'propozycja'; readonly wartosc: number; readonly rodzajZrodla: string };
+  | { readonly rodzaj: 'wyznaczenie'; readonly opis: string }
+  | { readonly rodzaj: 'propozycja'; readonly wartosc: number; readonly rodzajZrodla: string }
+  | { readonly rodzaj: 'propozycja_elementu'; readonly regula: string; readonly rodzajZrodla: string };
+
+function liczbaSkonczona(wartosc: unknown): wartosc is number {
+  return typeof wartosc === 'number' && Number.isFinite(wartosc);
+}
 
 /**
  * Co obliczenie przyjmie, gdy pole projektanta jest puste: liczba z tabliczki elementu
- * (`materialized_params`) albo propozycja rejestru. Odczyt, nie rozstrzygnięcie — dana tabliczki
- * spoza zakresu bramy zostanie odrzucona przez backend (ślad biegu nazywa powód).
+ * (`materialized_params`), wyznaczenie z innej danej tabliczki (reguła rejestru, np. P_rM z S_rM),
+ * propozycja rejestru albo propozycja zależna od elementu (reguła bez liczby — moduł nie liczy
+ * jej sam: zero fizyki w UI). Odczyt, nie rozstrzygnięcie — dana tabliczki spoza zakresu bramy
+ * zostanie odrzucona przez backend (ślad biegu nazywa powód).
  */
 export function zrodloParametruMaszyny(
   tabliczka: Readonly<Record<string, unknown>> | null | undefined,
   opis: ParametrMaszynyRejestru,
 ): ZrodloParametruMaszyny {
   const zTabliczki = tabliczka?.[opis.parametr];
-  if (typeof zTabliczki === 'number' && Number.isFinite(zTabliczki)) {
+  if (liczbaSkonczona(zTabliczki)) {
     return { rodzaj: 'tabliczka', wartosc: zTabliczki };
   }
-  return {
-    rodzaj: 'propozycja',
-    wartosc: opis.propozycja.wartosc,
-    rodzajZrodla: opis.propozycja.rodzaj_zrodla,
-  };
+  const wyznaczenie = opis.wyznaczenie_z_tabliczki;
+  if (wyznaczenie !== null && liczbaSkonczona(tabliczka?.[wyznaczenie.klucz_tabliczki])) {
+    return { rodzaj: 'wyznaczenie', opis: wyznaczenie.opis_pl };
+  }
+  const { wartosc, rodzaj_zrodla: rodzajZrodla } = opis.propozycja;
+  if (wartosc === null) {
+    return { rodzaj: 'propozycja_elementu', regula: opis.propozycja.uzasadnienie_pl, rodzajZrodla };
+  }
+  return { rodzaj: 'propozycja', wartosc, rodzajZrodla };
 }

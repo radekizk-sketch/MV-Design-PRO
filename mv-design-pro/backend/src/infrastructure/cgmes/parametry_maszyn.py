@@ -12,6 +12,11 @@ pod kluczami rejestru wartości roboczych (``network_model.catalog.wartosci_robo
   ``AsynchronousMachine.iaIrRatio``          [—]                         -> ``i_lr_ratio``
   ``AsynchronousMachine.efficiency``         [PerCent]                   -> ``efficiency`` (ułamek)
 
+Moc znamionowa maszyny asynchronicznej P_rM (``AsynchronousMachine.ratedMechanicalPower``
+[W] -> ``pr_mw`` [MW]) jest wielkością GRUPY jak ``ratedS``: eksport pisze moc jednej maszyny
+× liczba jednostek, import daje jedną jednostkę o mocy łącznej (``moc_mechaniczna_do_cim`` /
+``moc_mechaniczna_z_cim`` — ta sama konwencja co ``sn_mva``/``ratedS``).
+
 Eksport pisze atrybut, gdy tabliczka ma klucz; import czyta atrybut, gdy plik go ma. Wartość
 spoza zakresu rejestru NIE jest tu poprawiana — obliczenie odrzuca ją jawnie przy rozstrzyganiu
 parametrów (``rozstrzygnij_parametry_maszyny``: propozycja rejestru z powodem „dana tabliczki
@@ -26,12 +31,13 @@ from dataclasses import dataclass
 from network_model.catalog.wartosci_robocze import (
     PARAMETR_COS_PHI_MASZYNY,
     PARAMETR_KROTNOSC_I_LR,
+    PARAMETR_MOC_ZNAMIONOWA_MASZYNY,
     PARAMETR_PARY_BIEGUNOW,
     PARAMETR_SPRAWNOSC,
     PARAMETR_XD,
 )
 
-from .units import fmt_float, procent_na_ulamek, ulamek_na_procent
+from .units import fmt_float, mw_to_w, procent_na_ulamek, ulamek_na_procent, w_to_mw
 
 
 @dataclass(frozen=True)
@@ -120,3 +126,26 @@ def tabliczka_maszyny_z_cim(
         if wartosc is not None:
             wynik[opis.klucz] = wartosc
     return wynik
+
+
+#: Atrybut CIM mocy znamionowej maszyny asynchronicznej P_rM (IEC 60909-0 pkt 6.7).
+ATRYBUT_MOCY_MECHANICZNEJ = "AsynchronousMachine.ratedMechanicalPower"
+
+
+def moc_mechaniczna_do_cim(
+    tabliczka: Mapping[str, object] | None, liczba_jednostek: int
+) -> str | None:
+    """Tekst ``ratedMechanicalPower`` [W] — P_rM jednej maszyny z tabliczki × liczba jednostek;
+    ``None`` = tabliczka bez dodatniej liczby ``pr_mw`` (atrybut pominięty)."""
+    wartosc = (tabliczka or {}).get(PARAMETR_MOC_ZNAMIONOWA_MASZYNY)
+    if isinstance(wartosc, bool) or not isinstance(wartosc, int | float) or wartosc <= 0:
+        return None
+    return fmt_float(mw_to_w(float(wartosc) * max(1, liczba_jednostek)))
+
+
+def moc_mechaniczna_z_cim(tekst: str | None) -> dict[str, float]:
+    """Klucz tabliczki ``pr_mw`` [MW] z ``ratedMechanicalPower`` (jedna jednostka)."""
+    if tekst is None:
+        return {}
+    liczba = _liczba(tekst)
+    return {} if liczba is None else {PARAMETR_MOC_ZNAMIONOWA_MASZYNY: w_to_mw(liczba)}
