@@ -330,7 +330,7 @@ export const HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
  * w JEDEN obiekt. Ta struktura (nie luźne stałe) jest tym, co render przekazuje
  * przez kontekst, a eksport bierze jako źródło substytucji.
  */
-/** GPZ-PARYTET: kolory ról pól GPZ motywu dyspozytorskiego — sześć odcieni wzajemnie
+/** GPZ-PARYTET: kolory ról pól GPZ motywu dyspozytorskiego — osiem odcieni wzajemnie
  *  rozróżnialnych, każdy ≥ 3:1 na tle kanwy (test `palette.test.ts`), żaden nie powtarza
  *  wartości innego tokenu (eksport mapuje kolor ekranu na jeden cel dokumentowy). */
 export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
@@ -339,6 +339,9 @@ export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   transformatorowe: '#B48CF0',
   sprzeglo: '#9AA4AF',
   pomiarowe: '#3FBFA8',
+  // GPZ-H5: pola funkcyjne sekcji SN (zespół uziemiający, bateria kondensatorów).
+  uziemiajace: '#E07AB8',
+  kompensacyjne: '#C8C850',
   zrodlowe: '#7CC85A',
 };
 

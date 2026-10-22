@@ -6069,7 +6069,7 @@
    },
    "description": null,
    "enm_version": "1.0",
-   "hash_sha256": "8381ac853c05127a0817c67a276fae565ef21046cc520e6d8d6c3962d39049df",
+   "hash_sha256": "2589814d766ef013b8c9d27405719211bdf108af1033d374607abef8b8ed25b7",
    "name": "Sieć pokazowa — pomiar w odgałęzieniu",
    "revision": 16,
    "updated_at": "2026-08-06T00:00:00Z"
@@ -7043,6 +7043,8 @@
     "source_mode": "KATALOG",
     "source_side": "SN",
     "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+    "supply_line_name": null,
+    "supplying_station_name": null,
     "tags": [],
     "u_set_pu": null,
     "voltage_hv_kv": null,
@@ -7061,6 +7063,8 @@
     "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
     "external_ports": [],
     "gpz_hv_sections": [],
+    "gpz_reserve_mode": null,
+    "gpz_reserve_transformer_ref": null,
     "gpz_sections": [
      {
       "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -7075,11 +7079,9 @@
     ],
     "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
     "meta": {
-     "gpz_hv_bus_refs": [],
      "gpz_section_count": 1,
      "short_circuit_input_side": "SN",
-     "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-     "wn_sn_transformer_count": 0
+     "short_circuit_mode": "SHORT_CIRCUIT_POWER"
     },
     "name": "GPZ 15 kV",
     "nn_sections": [],
@@ -7099,6 +7101,8 @@
     "entry_point_ref": null,
     "external_ports": [],
     "gpz_hv_sections": [],
+    "gpz_reserve_mode": null,
+    "gpz_reserve_transformer_ref": null,
     "gpz_sections": [],
     "id": "bdbeebdf-3f8c-517e-8bd7-ef9537cc3111",
     "meta": {
@@ -7124,6 +7128,8 @@
     "entry_point_ref": null,
     "external_ports": [],
     "gpz_hv_sections": [],
+    "gpz_reserve_mode": null,
+    "gpz_reserve_transformer_ref": null,
     "gpz_sections": [],
     "id": "3d5f62f5-db18-5d43-ba25-c66c02648512",
     "meta": {
@@ -7149,6 +7155,8 @@
     "entry_point_ref": null,
     "external_ports": [],
     "gpz_hv_sections": [],
+    "gpz_reserve_mode": null,
+    "gpz_reserve_transformer_ref": null,
     "gpz_sections": [],
     "id": "3fb447ef-4684-5207-8c32-6740b80a5435",
     "meta": {
@@ -7174,6 +7182,8 @@
     "entry_point_ref": null,
     "external_ports": [],
     "gpz_hv_sections": [],
+    "gpz_reserve_mode": null,
+    "gpz_reserve_transformer_ref": null,
     "gpz_sections": [],
     "id": "0bcd8f11-f2cd-585f-9dfc-f17690c44e05",
     "meta": {
@@ -7201,6 +7211,8 @@
     "entry_point_ref": null,
     "external_ports": [],
     "gpz_hv_sections": [],
+    "gpz_reserve_mode": null,
+    "gpz_reserve_transformer_ref": null,
     "gpz_sections": [],
     "id": "9b79731e-16f9-5577-a189-13cdd2d1e039",
     "meta": {

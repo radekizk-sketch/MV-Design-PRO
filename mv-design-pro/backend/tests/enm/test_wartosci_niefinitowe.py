@@ -16,6 +16,7 @@ from typing import Any
 import pytest
 from enm.canonical_analysis import (
     OGRANICZENIE_WYNIK_NIEFIZYCZNY,
+    POWOD_WEZEL_BEZ_DROGI_ZEROWEJ,
     _execute_power_flow,
     _execute_short_circuit,
 )
@@ -175,14 +176,30 @@ def test_tor_zwarciowy_oznacza_wiersz_niefizyczny_dla_kazdego_rodzaju_i_miejsca(
     raw = run.raw_result
     assert sciezki_niefinitowe(raw) == []
     assert sciezki_niefinitowe(run.white_box_trace) == []
-    chore = [w for w in raw["results"] if w.get("non_physical_fields")]
+    # Karta GPZ-H5: w sieci zerowej tej sieci węzły bez drogi prądu zerowego do ziemi (kable
+    # nN bez r0/x0, szyna SN za trójkątem T1 i źródłem bez Z0) dają wiersz nieraportowalny
+    # z przyczyną TOPOLOGICZNĄ (bez solvera) — dawniej macierz fabrykowała im Z0 ≈ 0. Te
+    # wiersze nie są przedmiotem tego testu (wstrzyknięcie dotyczy wyniku solvera).
+    bez_drogi = {
+        str(w["fault_node_id"])
+        for w in raw["results"]
+        if w.get("non_physical_reason") == POWOD_WEZEL_BEZ_DROGI_ZEROWEJ
+    }
+    assert bool(bez_drogi) == (rodzaj in ("1F", "2FG"))
+    chore = [
+        w
+        for w in raw["results"]
+        if w.get("non_physical_fields") and str(w["fault_node_id"]) not in bez_drogi
+    ]
     assert len(chore) == 1, "dokładnie pierwszy wiersz (wstrzyknięty) jest niefizyczny"
     wiersz = chore[0]
     assert wiersz["reporting_status"] == "not_reportable"
     assert OGRANICZENIE_WYNIK_NIEFIZYCZNY in wiersz["reporting_limitations"]
     if miejsce == "wiersz":
         assert "$.ikss_a" in wiersz["non_physical_fields"]
-    assert raw["non_reportable_fault_node_ids"] == [str(wiersz["fault_node_id"])]
+    assert raw["non_reportable_fault_node_ids"] == sorted(
+        {str(wiersz["fault_node_id"]), *bez_drogi}
+    )
     zdrowe = [w for w in raw["results"] if not w.get("non_physical_fields")]
     assert all(w["reporting_status"] == "reportable" for w in zdrowe)
 

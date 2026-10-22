@@ -104,6 +104,7 @@ SLOWA_NIEKANONICZNE: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
 _ROLA_W_ETYKIECIE = (
     r"(?:liniowe\s+(?:wejściowe|wyjściowe|dopływowe|odpływowe)"
     r"|odgałęźne|transformatorowe|pomiarowe|sprzęgła|sprzęgłowe"
+    r"|zespołu\s+uziemiającego|baterii\s+kondensatorów"
     r"|źródłowe\s+(?:SN|PV|BESS|FW|OZE)|odpływowe(?!\s+nN\b)|dopływowe"
     r"|wejściowe|wyjściowe|zasilające|(?:OZE|DER|PV|BESS|FW)(?!\s+nN\b)"
     r"|źródła\s+(?:PV|BESS|FW)|przyłączeniowe\s+(?:OZE|PV|BESS|FW|SN))\b"
@@ -144,7 +145,8 @@ _INTERPUNKCJA_ZDANIA = re.compile(r"[;!?]|\.(?!\d)")
 #: Kod roli pola (modelu albo kanoniczny) jako samodzielny wyraz tekstu.
 KOD_ROLI = re.compile(
     r"(?<![\w.-])(?:IN|OUT|FEEDER|COUPLER|MEASUREMENT|LINIA_IN|LINIA_OUT|LINIA_ODG|SPRZEGLO"
-    r"|POMIAROWE|TRANSFORMATOROWE|PV_SN|BESS_SN|FW_SN)(?![\w-])"
+    r"|POMIAROWE|TRANSFORMATOROWE|PV_SN|BESS_SN|FW_SN|EARTHING|CAPACITOR|UZIEMIAJACE"
+    r"|KOMPENSACYJNE)(?![\w-])"
 )
 #: Wyraz „pole”/„rola” w dowolnej formie — tekst mówi o polu albo o jego roli.
 SLOWO_POLA_ALBO_ROLI = re.compile(
@@ -156,7 +158,8 @@ REGULA_KODU = "kod roli pola w tekście (nazwa roli z kanonu, nie kod roli)"
 #: (małymi literami — identyfikatory pól wewnętrznego układu stacji `in`/`tr`/`coupler`).
 _KOD_KLUCZA = (
     r"(?:IN|OUT|FEEDER|TR|COUPLER|MEASUREMENT|OZE|LINIA_IN|LINIA_OUT|LINIA_ODG|SPRZEGLO"
-    r"|POMIAROWE|TRANSFORMATOROWE|PV_SN|BESS_SN|FW_SN|in|out|feeder|tr|coupler|measurement|oze)"
+    r"|POMIAROWE|TRANSFORMATOROWE|PV_SN|BESS_SN|FW_SN|EARTHING|CAPACITOR|UZIEMIAJACE"
+    r"|KOMPENSACYJNE|in|out|feeder|tr|coupler|measurement|oze)"
 )
 _WPIS_MAPY = re.compile(
     rf"""(?:^|[\s{{,(\[])(?P<k1>["']?)(?P<klucz>{_KOD_KLUCZA})(?P=k1)\s*:\s*"""

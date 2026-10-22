@@ -423,22 +423,27 @@ def test_determinizm_dwa_biegi_i_kolejnosc_pol(rodzaj: str) -> None:
 #: Odciski ``raw_result["results"]`` biegów z t_b projektanta zmierzone na bazie karty
 #: (``5517d6eff``, przed TB-WARTOSC-ROBOCZA) skryptem sondy na tych samych migawkach —
 #: wynik i ślad biegu z podanym t_b są bit w bit te same (pole ``tb_zrodlo`` pominięte).
+#: Przepięte 2026-10-22 (karta GPZ-H5): karta GPZ-MODEL (``88e6d8828``) zmieniła odwołania
+#: szyn budowniczego sieci przykładu IEC 60909-4, więc zmieniły się WYŁĄCZNIE identyfikatory
+#: węzłów, gałęzi i ``proof_ref`` w wierszach. Sonda: wiersze z identyfikatorami UUID
+#: i ``proof_ref`` zamaskowanymi mają ten sam odcisk na ``10b475526`` (ostatni stan zielony
+#: pinu) i na drzewie karty dla wszystkich 15 par — liczby i ślad bez zmian.
 ODCISKI_BAZY: dict[tuple[str, float], str] = {
-    ("asynchroniczna", 0.02): "59676fe8e05653b69b62d0da080865eebf1fa80321cb698696952eab9a63f71e",
-    ("asynchroniczna", 0.1): "060b0b038e7244652d6d7ebbbfc408ca636943a26ecb453aada56e2a514852c5",
-    ("asynchroniczna", 0.25): "c8ed7701ace478b33d0f5ca381cbf5477bbd0f9f172ccd3265b32c843248f81f",
-    ("dfig", 0.02): "20e681e5e3a37e0b767a70e0c0da95f2a94b782be300525128e2c5f6983559ea",
-    ("dfig", 0.1): "c92693c77d8e5847166f8b1b54ff3c72fe8245218c557b0f97289022d6725269",
-    ("dfig", 0.25): "aeeff73d34d5114ae957f017262690552f8b4918fa252f618209ec035b060040",
-    ("odlegla", 0.02): "844a60f9aaecd1bbd655cd64b672b00f7305fc1bad79aaca8f0bab84fea93023",
-    ("odlegla", 0.1): "76e8930a1c8714324988028809e8fa65f4f242cad5a5ad86d498936c2996800c",
-    ("odlegla", 0.25): "9dd1f6b29d7849b9726788f4e111f608b357455beba938b1a8c78961dd88ff4c",
-    ("przeksztaltnik", 0.02): "a018b2eedaf9d682f732f7c30a005c1c294fe4d45209951dea3b4464cbfa7c13",
-    ("przeksztaltnik", 0.1): "0007d06ca677b262c6b28b62d84c49095dfc18c957afcef7ed0a815590b3f23e",
-    ("przeksztaltnik", 0.25): "447b1ddc0247b6788cf538975024ee83021856f71a92b8be4dc096e5e0d4123b",
-    ("synchroniczna", 0.02): "8cbfba717b1c4d50baea04aaeaff5ea551981199608cf0c3d58e549b35ca57d7",
-    ("synchroniczna", 0.1): "fce835b795ef4e768c2182262d21145bf916c9336df2cf97afbf24be5e366187",
-    ("synchroniczna", 0.25): "4f5348ac22fe1d2c05e6216d6ad56cbe0edc945fb886c7a0d68c4c07231875a3",
+    ("asynchroniczna", 0.02): "8a42d17014e5c4abdbc5bc5fec2a304632fc417002c9116321e132e868e6dc11",
+    ("asynchroniczna", 0.1): "d290090c4feeaaaf60a221a8edf158acf634f8c9f8b54a8ffc2fd1cbf0076fc0",
+    ("asynchroniczna", 0.25): "6077280acec6ccdb4b7d86c3a7334feceaa9ed71a1b313022a288819d1b328aa",
+    ("dfig", 0.02): "2cd0533baf191e21478605ee970a7d54ba86cbdd30ec0f6ae727dc16b519abd2",
+    ("dfig", 0.1): "caed7d4eed0395a75e63428e551eb27c2a0178053bcd7ed6f2776a0fe3bc7fdf",
+    ("dfig", 0.25): "bdea837f6223c00498210e2329c44a2c6a46b099bff898cc87b0c0edf1e1b473",
+    ("odlegla", 0.02): "5571975a564c7e4c1a232eed01865c1af7cf0c56d3a1c9ccc4c94224cec5bab1",
+    ("odlegla", 0.1): "9a60b7af8234e2c2257d48acb1682b50a28dda24d42a40339206e4e392dca1ca",
+    ("odlegla", 0.25): "52413525d9264dee01344e45138454d9323929d5d352af06851ce7dfc59cc34a",
+    ("przeksztaltnik", 0.02): "0a64278c823ece7b8d96928d2d8d5b444cb19b92503188c0afbfc0785205b659",
+    ("przeksztaltnik", 0.1): "ab6188590b10b1e8d0e239e3aa88d87481c080601513537370c8266daa577625",
+    ("przeksztaltnik", 0.25): "8a71ea4da22d13d21f9058b4137917dd2a0bebade67254ae916484f5011bd05c",
+    ("synchroniczna", 0.02): "8270e7643078d93d06f564c921c20928b9cdaf73ed07795e427afd2761592bbd",
+    ("synchroniczna", 0.1): "47579bee01f1fb84cf8e4f3ac62e98122ef6267603bbd060396b58b5e70373d6",
+    ("synchroniczna", 0.25): "a36c50160178517ac187b73d6d7616bb0de34a943232eef41915de63ce825fc1",
 }
 
 

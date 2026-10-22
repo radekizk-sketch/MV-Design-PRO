@@ -25,8 +25,8 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.validator import ENMValidator
 
 from tests.enm.test_canonical_sc_c_per_pasmo import N1, N2, _build_mv_lv_enm
+from tests.reference_networks.gpz_h5 import ladunek_gpz_110kv
 
-REF_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 REF_TRAFO_SN_NN = "tr-sn-nn-15-04-630kva-dyn11"
 
 
@@ -99,14 +99,9 @@ def _gpz() -> dict[str, Any]:
     wynik = execute_domain_operation(
         pusty,
         "add_grid_source_sn",
-        {
-            "source_name": "Stacja zasilająca",
-            "voltage_kv": 15.0,
-            "sk3_mva": 250.0,
-            "catalog_ref": REF_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
-        },
+        # Karta GPZ-H5: GPZ ze stroną 110 kV w kontrakcie jawnym (sekcja 110 kV z torem
+        # zasilania, transformator 110/15 kV z katalogu przypisany sekcja 110 kV → sekcja SN).
+        {"source_name": "Stacja zasilająca", **ladunek_gpz_110kv(1)},
     )
     assert not wynik.get("error"), wynik
     migawka = wynik["snapshot"]

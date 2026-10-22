@@ -37,7 +37,13 @@ from enm.scenariusze import (
     ScenariuszNieprzystajeError,
     apply_scenario,
 )
-from enm.topology import TYPY_LACZNIKOW_ENM, poprzednie_punkty_podzialu, punkty_podzialu
+from enm.topology import (
+    ROLE_LACZNIKOW_SZYN,
+    TYPY_LACZNIKOW_ENM,
+    poprzednie_punkty_podzialu,
+    punkty_podzialu,
+    role_lacznikow,
+)
 
 from tests.enm.siec_lacznikowa import (
     KABEL,
@@ -152,7 +158,12 @@ def test_operacja_w_modelu_bazowym(budowa: Callable[[], SiecLacznikowa], operacj
     zdarzenia = [z["event_type"] for z in wynik["domain_events"]]
     if operacja == "set_normal_open_point":
         assert zdarzenia == ["NOP_SET"] + ["NOP_CLEARED"] * (siec.poprzedni_nop is not None)
-        assert punkty_podzialu(po) == (siec.cel,)
+        # Karta GPZ-H5: łącznik szyn sekcji stacji (tu sprzęgło sekcji GPZ) normalnie
+        # otwarty jest rezerwą wewnątrz rozdzielni, nie punktem podziału sieci — rola z JEDNEJ
+        # funkcji `role_lacznikow`; pozycja normalna „otwarty” jest zapisana tak samo.
+        szyn = role_lacznikow(po).get(siec.cel) in ROLE_LACZNIKOW_SZYN
+        assert punkty_podzialu(po) == (() if szyn else (siec.cel,))
+        assert galaz(po, siec.cel)["normal_state"] == "open"
     else:
         assert zdarzenia == ["SWITCH_OPENED" if operacja == "open_switch" else "SWITCH_CLOSED"]
         # Chwilowe przełączenie NIE jest deklaracją punktu podziału.

@@ -134,6 +134,8 @@ const EXPORT_ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
   transformatorowe: '#5E3A9E',
   sprzeglo: '#56626F',
   pomiarowe: '#0B6E60',
+  uziemiajace: '#9C2A6E',
+  kompensacyjne: '#6B6B00',
   zrodlowe: '#3C6E1E',
 };
 

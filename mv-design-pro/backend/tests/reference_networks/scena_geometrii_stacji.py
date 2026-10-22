@@ -24,12 +24,12 @@ Warianty (iloczyn cech karty: stan sprzęgła × aparat {z modelu, brak}):
   aparatów (`equipment_refs` puste); gałęzie łączeniowe zostają w modelu (topologia bez zmian),
   ale żadne pole ich nie wskazuje — przypadek „brak danych wyposażenia pola".
 
-Scena GPZ ``gpz_110kv`` (cecha „GPZ: szyna WN z szyn modelu"): GPZ z równoważnikiem sieci po
-stronie 110 kV, dwiema sekcjami SN ze sprzęgłem i dwoma transformatorami 110/15 kV na WSPÓLNEJ
-szynie WN (TR1 → sekcja 1, TR2 → sekcja 2) — jedyny kształt, w którym operacja
-`add_grid_source_sn` tworzy transformatory GPZ (karta GPZ-MODEL). Dawną fiksturą tej cechy był
-GPZ z równoważnikiem na szynach SN i dwoma transformatorami do DWÓCH martwych szyn 110 kV —
-model, którego backend już nie wytwarza (archiwum takiego modelu blokuje walidator, E066).
+Scena GPZ ``gpz_110kv`` (cecha „GPZ: szyny WN z szyn modelu"): GPZ H5 110/15 kV karty
+GPZ-H5 — dwie sekcje szyn 110 kV (tory L1/L2, łącznik szyn 110 kV normalnie otwarty), dwa
+transformatory 110/15 kV przypisane jawnie (TR1 sekcja 110 kV 1 → sekcja SN A, TR2 sekcja
+110 kV 2 → sekcja SN B) i łącznik szyn SN. Dawną fiksturą tej cechy był GPZ ze WSPÓLNĄ szyną
+WN i przydziałem transformatorów z liczby (`transformer_count`) — kontrakt usunięty kartą
+GPZ-H5.
 """
 
 from __future__ import annotations
@@ -37,21 +37,10 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
-
+from tests.reference_networks.gpz_h5 import zbuduj_h5
 from tests.reference_networks.sceny_zajetosci_pol import APARAT, TRAFO, _gpz, odcinek, ok, op
 
 WARIANTY = ("zamkniete", "otwarte", "bez_wyposazenia")
-
-#: Równoważnik sieci 110 kV i transformator WN/SN GPZ sceny ``gpz_110kv`` (pozycje katalogu
-#: jak w substracie 52 stacji).
-ZRODLO_110KV: dict[str, Any] = {
-    "short_circuit_input_side": "HV_110",
-    "hv_voltage_kv": 110.0,
-    "sk3_hv_mva": 3000.0,
-    "rx_ratio": 0.1,
-}
-TRAFO_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
 
 
 def _kable(enm: dict[str, Any]) -> list[dict[str, Any]]:
@@ -189,22 +178,8 @@ def zbuduj_wariant(wariant: str) -> dict[str, Any]:
 
 
 def zbuduj_gpz_110kv() -> dict[str, Any]:
-    """GPZ 110/15 kV: równoważnik 110 kV na wspólnej szynie WN, dwie sekcje SN ze sprzęgłem,
-    dwa transformatory 110/15 kV (TR1 → sekcja 1, TR2 → sekcja 2), po dwa pola liniowe na
-    sekcję z aparatem z katalogu."""
-    pusty = EnergyNetworkModel(header=ENMHeader(name="GEOMETRIA-GPZ", defaults=ENMDefaults()))
-    return ok(
-        op(
-            pusty.model_dump(mode="json"),
-            "add_grid_source_sn",
-            {
-                "voltage_kv": 15.0,
-                "manual_equivalent": dict(ZRODLO_110KV),
-                "sections_count": 2,
-                "transformer_count": 2,
-                "transformer_catalog_ref": TRAFO_WN_SN,
-                "line_fields_per_section": 2,
-                "gpz_line_field_apparatus": {"catalog_ref": APARAT},
-            },
-        )
-    )
+    """GPZ H5 110/15 kV (karta GPZ-H5): dwa tory 110 kV L1/L2 na dwóch sekcjach szyn 110 kV
+    z łącznikiem normalnie otwartym, TR1 sekcja 110 kV 1 → sekcja SN A, TR2 sekcja 110 kV 2 →
+    sekcja SN B, łącznik szyn SN, po dwa pola liniowe na sekcję z aparatem z katalogu — ten sam
+    budowniczy co przypadek odbiorowy (`tests.reference_networks.gpz_h5`), bez odbiorów."""
+    return zbuduj_h5(odbiory=False, line_fields_count=2)

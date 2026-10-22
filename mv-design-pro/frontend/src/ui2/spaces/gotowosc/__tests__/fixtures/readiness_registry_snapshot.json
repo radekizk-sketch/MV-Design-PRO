@@ -1029,6 +1029,14 @@
     },
     {
       "area": "SOURCES",
+      "code": "source.gpz_coupler_joins_independent_equivalents",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
+      }
+    },
+    {
+      "area": "SOURCES",
       "code": "source.gpz_section_unsupplied",
       "fix_navigation": {
         "panel": "inspector",
@@ -1122,6 +1130,14 @@
     },
     {
       "area": "STATIONS",
+      "code": "station.gpz_structure_incomplete",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
+      }
+    },
+    {
+      "area": "STATIONS",
       "code": "station.kind_mismatch",
       "fix_navigation": {
         "modal": "update_element_parameters",
@@ -1151,6 +1167,14 @@
       "fix_navigation": {
         "panel": "inspector",
         "tab": "pola"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "station.szr_sn_with_generation",
+      "fix_navigation": {
+        "panel": "inspector",
+        "tab": "polaczenia"
       }
     },
     {
@@ -1379,7 +1403,7 @@
       }
     }
   ],
-  "count": 162,
+  "count": 165,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1513,6 +1537,7 @@
     "E063": "transformer.lv_earthing_system_missing",
     "E065": "source.gpz_section_unsupplied",
     "E066": "source.gpz_transformer_hv_unsupplied",
+    "E067": "source.gpz_coupler_joins_independent_equivalents",
     "I004": "trunk.segment_missing",
     "I005": "ring.nop_required",
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
@@ -1522,6 +1547,8 @@
     "W042": "station.element_bypasses_field",
     "W043": "station.kind_mismatch",
     "W044": "station.field_role_unknown",
+    "W063": "station.gpz_structure_incomplete",
+    "W064": "station.szr_sn_with_generation",
     "generators.voltage_control_incomplete": "generator.voltage_setpoint_missing",
     "generators.voltage_control_not_permitted": "generator.voltage_control_not_permitted",
     "generators.voltage_control_profile_missing": "generator.voltage_control_profile_missing",

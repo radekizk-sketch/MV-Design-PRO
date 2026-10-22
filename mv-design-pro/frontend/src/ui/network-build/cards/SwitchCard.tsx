@@ -25,6 +25,7 @@ import {
   czyPunktPodzialu,
   etykietaPozycjiNormalnej,
   pozycjaNormalna,
+  rolaLacznika,
 } from '../../shared/stanLacznika';
 
 // =============================================================================
@@ -122,7 +123,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
     [snapshot, branch],
   );
 
-  const isNop = czyPunktPodzialu(branch);
+  const isNop = czyPunktPodzialu(snapshot, branch);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
@@ -238,7 +239,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
               {
                 key: 'normal_state',
                 label: 'Pozycja normalna',
-                value: etykietaPozycjiNormalnej(pozycjaNormalna(branch)),
+                value: etykietaPozycjiNormalnej(pozycjaNormalna(branch), rolaLacznika(snapshot, branch)),
                 severity: isNop ? ('warning' as const) : ('ok' as const),
               },
             ]

@@ -1243,7 +1243,7 @@ function normalizeLineRunForLayout(
     segments: expandedSegmentRefs.map((segment_ref, index) => ({ segment_ref, order: index + 1 })),
     stations: [...lineRun.stations],
     // W5-C: stację punktu podziału ciągu wyprowadza `przypiszStacjePunktuPodzialu`
-    // z pozycji normalnej łączników (dawna kopia `LineRun.nop_station_ref` skasowana).
+    // z roli łączników (`punktyPodzialu`; dawna kopia `LineRun.nop_station_ref` skasowana).
     nop_station_ref: null,
     parent_run_ref: lineRun.parent_run_ref ?? null,
     branch_origin_station_ref: lineRun.branch_origin_station_ref ?? null,
@@ -1470,8 +1470,9 @@ function buildSldLineRunsForLayout(
 
 /**
  * W5-C: stacja punktu normalnie otwartego ciągu — PIERWSZA (wg kolejności ciągu) stacja,
- * której pole niesie łącznik z pozycją normalną `'open'` (`ui/shared/stanLacznika.ts::
- * punktyPodzialu` — jedno źródło, pozycja normalna łącznika). Punkt podziału poza stacją
+ * której pole niesie punkt podziału sieci (`ui/shared/stanLacznika.ts::punktyPodzialu` —
+ * jedno źródło: rola `PUNKT_PODZIALU` z `roleLacznikow`, karta GPZ-H5; normalnie otwarty
+ * łącznik szyn stacji, np. ŁS-SN w GPZ H5, nie czyni stacji „stacją NOP”). Punkt podziału poza stacją
  * (łącznik sekcyjny na trasie) nie oznacza żadnej stacji: łącznik jest rysowany jako
  * otwarty z własnego `status`, a kopia „stacji NOP" byłaby domysłem.
  */

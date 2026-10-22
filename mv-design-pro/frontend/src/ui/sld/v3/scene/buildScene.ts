@@ -5242,9 +5242,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // Każdy przypadek dostaje na L1/L2 podpis „NO" (t3). Łącznik w polu stacji, którą
   // adapter oznaczył znacznikiem NO (`isNop`), zostaje przy reprezentacji stacji
   // (symbol L1/L2, znacznik glifu L0) — bez drugiego symbolu z tej sekcji.
-  // Po operacjach łączników punkt podziału to wyłącznie łącznik z pozycją normalną
-  // „otwarty” (`SwitchBranch.normal_state`) — jedna prawda z `punktyPodzialu`
-  // (lustro `enm.topology.punkty_podzialu`); dawne `Corridor.no_point_ref` skasowane.
+  // Po operacjach łączników punkt podziału to wyłącznie łącznik normalnie otwarty Z ROLĄ
+  // punktu podziału — jedna prawda z `punktyPodzialu` (rola z `roleLacznikow`, lustro
+  // `enm.topology.role_lacznikow`, karta GPZ-H5): normalnie otwarty łącznik szyn stacji
+  // (ŁS-110, ŁS-SN) nie dostaje znacznika „NO”; dawne `Corridor.no_point_ref` skasowane.
   const refyNop = punktyPodzialu(snapshot).map((g) => g.ref_id);
   if (refyNop.length > 0) {
     const stacjaSzynyNop = new Map<string, string>();

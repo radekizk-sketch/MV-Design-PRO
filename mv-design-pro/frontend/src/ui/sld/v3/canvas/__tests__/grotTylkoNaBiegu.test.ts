@@ -118,7 +118,16 @@ describe('zwrot grota wzdłuż rysunku — przepływ from→to × orientacja rys
 describe('substrat 52 stacji — rezerwa pierścieniowa narysowana znakami powiązania', () => {
   const sciezka = resolve(process.cwd(), 'public/test-fixtures/sldSubstrate52s.enm.json');
   const enm = (JSON.parse(readFileSync(sciezka, 'utf-8')) as { enm: EnergyNetworkModel }).enm;
-  const PIERSCIEN = 'seg/f1301c98ab7632998c336fbf832b06cb/ring_closure';
+  // Odcinek powiązania pierścienia wyprowadzony z fikstury (jedyny `…/ring_closure`), nie
+  // literał identyfikatora: identyfikatory generowanej fikstury zmieniają się z każdą
+  // zmianą operacji budującej sieć (literał rozjechał się z fiksturą już przy karcie
+  // GPZ-MODEL i test był czerwony na bazie, mimo niezmienionej reguły rysunku).
+  const odcinkiPowiazania = (enm.branches ?? []).filter((g) => g.ref_id.endsWith('/ring_closure'));
+  const PIERSCIEN = odcinkiPowiazania.length === 1 ? odcinkiPowiazania[0].ref_id : '';
+
+  it('fikstura ma dokładnie jeden odcinek powiązania pierścienia', () => {
+    expect(odcinkiPowiazania).toHaveLength(1);
+  });
 
   it('odcinek powiązania nie ma udowodnionej orientacji rysunku (brak biegu)', () => {
     expect(orientedSegmentRefs(enm).has(PIERSCIEN)).toBe(false);

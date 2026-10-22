@@ -53,6 +53,9 @@ _ALIASY_MODELU = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    # Karta GPZ-H5 (ENEA Zeszyt 1 §13, zał. Z.2): pola funkcyjne sekcji SN GPZ.
+    "EARTHING": "UZIEMIAJACE",
+    "CAPACITOR": "KOMPENSACYJNE",
 }
 
 
@@ -330,16 +333,25 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
             "add_grid_source_sn",
             {
                 "voltage_kv": napiecie_sn,
-                # Karta GPZ-MODEL: transformator WN/SN jest elementem modelu wyłącznie
-                # przy równoważniku sieci po stronie WN (na jego szynie).
-                "manual_equivalent": {
-                    "short_circuit_input_side": "HV_110",
-                    "hv_voltage_kv": napiecie_wn,
-                    "sk3_hv_mva": 3000.0,
-                    "rx_ratio": 0.1,
-                },
-                "transformer_count": 1,
-                "transformer_catalog_ref": katalog,
+                # Karta GPZ-H5: transformator WN/SN jest elementem modelu wyłącznie w GPZ ze
+                # stroną 110 kV — sekcja 110 kV z torem zasilania i jawne przypisanie
+                # sekcja 110 kV → sekcja SN.
+                "hv_sections": [
+                    {
+                        "supply": {
+                            "line_name": "L1",
+                            "supplying_station_name": "Stacja zasilająca (dane testowe)",
+                            "manual_equivalent": {
+                                "hv_voltage_kv": napiecie_wn,
+                                "sk3_hv_mva": 3000.0,
+                                "rx_ratio": 0.1,
+                            },
+                        }
+                    }
+                ],
+                "transformers": [
+                    {"hv_section": 1, "sn_section": 1, "transformer_catalog_ref": katalog}
+                ],
             },
         )
         assert wynik.get("error") is None, wynik.get("error")

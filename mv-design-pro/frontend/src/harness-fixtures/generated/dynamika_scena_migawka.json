@@ -1212,7 +1212,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d",
+    "hash_sha256": "b662e256a2fdb82d3b7f0bd505574d7b200bce7f09e5692dfbe64fab778c3522",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1325,6 +1325,8 @@
       "source_mode": "KATALOG",
       "source_side": "SN",
       "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+      "supply_line_name": null,
+      "supplying_station_name": null,
       "tags": [],
       "u_set_pu": null,
       "voltage_hv_kv": null,
@@ -1343,6 +1345,8 @@
       "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [
         {
           "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -1357,11 +1361,9 @@
       ],
       "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
       "meta": {
-        "gpz_hv_bus_refs": [],
         "gpz_section_count": 1,
         "short_circuit_input_side": "SN",
-        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-        "wn_sn_transformer_count": 0
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER"
       },
       "name": "GPZ 15 kV",
       "nn_sections": [],
@@ -1381,6 +1383,8 @@
       "entry_point_ref": null,
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [],
       "id": "b758d70f-5e5b-5c3c-8e84-0a4456744bf5",
       "meta": {

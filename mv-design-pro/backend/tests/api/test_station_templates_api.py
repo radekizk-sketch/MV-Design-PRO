@@ -1,4 +1,4 @@
-"""Tests for K30-16/V12T-016 station templates REST API (71 templates, 15 categories)."""
+"""Tests for K30-16/V12T-016 station templates REST API (73 templates, 15 categories)."""
 
 from __future__ import annotations
 
@@ -11,13 +11,14 @@ def _make_client():
     return TestClient(app)
 
 
-def test_list_endpoint_returns_71_templates() -> None:
+def test_list_endpoint_returns_73_templates() -> None:
     client = _make_client()
     response = client.get("/api/station-templates")
     assert response.status_code == 200
     data = response.json()
-    # 73 z planu minus 2 wiatrowe wycofane 2026-10-15 (`SZABLONY_WIATROWE_WYCOFANE`).
-    assert data["total"] == 71
+    # 73 z planu minus 2 wiatrowe wycofane 2026-10-15 (`SZABLONY_WIATROWE_WYCOFANE`) plus 2 wzorce
+    # GPZ ENEA H5 110/15 i 110/20 kV (karta GPZ-H5-BACKEND, 2026-10-22).
+    assert data["total"] == 73
     assert len(data["templates"]) == data["total"]
 
 
@@ -43,7 +44,7 @@ def test_categories_endpoint_lists_15_categories() -> None:
     assert response.status_code == 200
     data = response.json()
     assert len(data["categories"]) == 15
-    assert data["total_templates"] == 71
+    assert data["total_templates"] == 73
     # Each category has icon + label + count
     for cat in data["categories"]:
         assert "id" in cat

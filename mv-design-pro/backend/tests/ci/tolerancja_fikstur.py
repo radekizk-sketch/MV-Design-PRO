@@ -162,16 +162,56 @@ _UUID_W_TEKSCIE = re.compile(
 )
 
 
-def liczby_rowne(a: float, b: float, klucz: str | None = None) -> bool:
+def liczby_rowne(
+    a: float, b: float, klucz: str | None = None, moc_pozorna_mva: float | None = None
+) -> bool:
     """Równość liczb w klasie przenośności: pasmo martwe zera, pasmo wielkości
-    bezwymiarowych ograniczonych (tylko dla pól tej klasy) albo tolerancja względna."""
+    bezwymiarowych ograniczonych (tylko dla pól tej klasy), pasmo zera mocy czynnej
+    przeniesione na cos φ przez moc pozorną (``moc_pozorna_mva``, tylko ``cos_phi``) albo
+    tolerancja względna."""
     if a == b:
         return True
     if abs(a) <= PASMO_ZERA_FIXTUR and abs(b) <= PASMO_ZERA_FIXTUR:
         return True
     if klucz in POLA_BEZWYMIAROWE_OGRANICZONE and abs(a - b) <= PASMO_BEZWYMIAROWYCH:
         return True
+    if (
+        klucz == POLE_COS_PHI
+        and moc_pozorna_mva is not None
+        and abs(a - b) * moc_pozorna_mva <= PASMO_ZERA_FIXTUR
+    ):
+        return True
     return abs(a - b) <= RTOL_FIXTUR * max(abs(a), abs(b))
+
+
+#: Wielkość ``cos φ = P/S`` — klucz wiersza (``cos_phi``) albo kod metryki nakładki
+#: (``COS_PHI``, sprowadzany małymi literami przez ``_klucz_wielkosci``).
+POLE_COS_PHI = "cos_phi"
+
+
+def _moc_pozorna_mva(zloty: dict[str, object], teraz: dict[str, object]) -> float | None:
+    """Moc pozorna S [MVA] obiektu niosącego cos φ — skala przeniesienia pasma zera P na cos φ.
+
+    POWÓD (karta GPZ-H5, pomiar 2026-10-22): cos φ odcinka kablowego otwartego na końcu
+    (`s92Rozplyw`, `seg/…/segment_R`: P = 4·10⁻¹¹ MW — straty I²R prądu ładowania — przy
+    S = 1,67·10⁻³ MVA) jest ilorazem liczby z pasma zera przez skończoną moc pozorną: na tej
+    samej maszynie przy 1 i 4 wątkach OpenBLAS 2,72936994116e-08 wobec 2,34549972647e-08,
+    czyli 3,8·10⁻⁹ BEZWZGLĘDNIE — ponad pasmo wielkości bezwymiarowych (1e-9), choć ΔP =
+    Δcos φ · S = 6,4·10⁻¹² MW leży głęboko w paśmie zera, w którym porównanie traktuje już
+    samo P tego odcinka. Dawniej ta sama para przechodziła o włos (baza `82735bfc1`: 9,9·10⁻¹⁰
+    przy 1 wątku). Reguła jest PRZENIESIENIEM istniejącego pasma zera P przez definicję
+    ilorazu (|Δcos φ|·S ≤ pasmo zera), nie nowym progiem: przy S = 1 MVA dopuszcza 1e-8,
+    a zmiana cos φ o 1e-3 na tym samym obiekcie (inny stan gałęzi) nadal pada. Kształty:
+    metryki nakładki (``{"S_MVA": {"value": S}, "COS_PHI": {...}}``) i wiersze z ``s_mva``.
+    Skala to większa z dwóch stron (zapis i świeża odpowiedź)."""
+    wartosci: list[float] = []
+    for strona in (zloty, teraz):
+        metryka = strona.get("S_MVA")
+        kandydat = metryka.get("value") if isinstance(metryka, dict) else strona.get("s_mva")
+        if isinstance(kandydat, bool) or not isinstance(kandydat, int | float):
+            return None
+        wartosci.append(abs(float(kandydat)))
+    return max(wartosci)
 
 
 def szkielet_skrotu(tekst: str) -> str:
@@ -257,9 +297,16 @@ def _bez_wpisow_szumu(lista: list[object]) -> list[object]:
 
 
 def roznice_z_tolerancja(
-    zloty: object, teraz: object, sciezka: str = "$", klucz: str | None = None
+    zloty: object,
+    teraz: object,
+    sciezka: str = "$",
+    klucz: str | None = None,
+    moc_pozorna_mva: float | None = None,
 ) -> list[str]:
-    """Lista ścieżek, na których fixtura z repo różni się od odpowiedzi backendu."""
+    """Lista ścieżek, na których fixtura z repo różni się od odpowiedzi backendu.
+
+    ``moc_pozorna_mva`` — moc pozorna obiektu, którego cos φ jest porównywany (wyłącznie
+    w zejściu do pola cos φ, ``_moc_pozorna_mva``)."""
     if isinstance(zloty, bool) or isinstance(teraz, bool):
         # `bool` jest częścią kontraktu (True != 1): typ i wartość dokładnie.
         if type(zloty) is type(teraz) and zloty == teraz:
@@ -268,19 +315,30 @@ def roznice_z_tolerancja(
     if isinstance(zloty, int | float) and isinstance(teraz, int | float):
         if isinstance(zloty, int) and isinstance(teraz, int):
             return [] if zloty == teraz else [f"{sciezka}: {zloty!r} != {teraz!r}"]
-        if liczby_rowne(float(zloty), float(teraz), klucz):
+        if liczby_rowne(float(zloty), float(teraz), klucz, moc_pozorna_mva):
             return []
         return [f"{sciezka}: {zloty!r} != {teraz!r} (poza tolerancją)"]
     if isinstance(zloty, dict) and isinstance(teraz, dict):
         if set(zloty) != set(teraz):
             return [f"{sciezka}: klucze {sorted(set(zloty) ^ set(teraz))}"]
-        return [
-            r
-            for k in zloty
-            for r in roznice_z_tolerancja(
-                zloty[k], teraz[k], f"{sciezka}.{k}", _klucz_wielkosci(zloty, k)
+        moc_obiektu = _moc_pozorna_mva(zloty, teraz)
+        roznice: list[str] = []
+        for k in zloty:
+            klucz_wielkosci = _klucz_wielkosci(zloty, k)
+            # Skala S schodzi WYŁĄCZNIE do pola cos φ: wprost (wiersz, kod metryki nakładki)
+            # albo do liścia ``value`` metryki o kodzie COS_PHI.
+            if k.lower() == POLE_COS_PHI:
+                moc_dziecka = moc_obiektu
+            elif klucz_wielkosci == POLE_COS_PHI:
+                moc_dziecka = moc_pozorna_mva
+            else:
+                moc_dziecka = None
+            roznice.extend(
+                roznice_z_tolerancja(
+                    zloty[k], teraz[k], f"{sciezka}.{k}", klucz_wielkosci, moc_dziecka
+                )
             )
-        ]
+        return roznice
     if isinstance(zloty, list) and isinstance(teraz, list):
         if klucz in POLA_LIST_WPISOW_ROZPLYWU:
             zloty, teraz = _bez_wpisow_szumu(zloty), _bez_wpisow_szumu(teraz)

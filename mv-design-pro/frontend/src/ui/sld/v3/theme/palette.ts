@@ -88,6 +88,10 @@ export const LIGHT_TECHNICAL_SLD_PALETTE: SldPalette = {
     transformatorowe: '#5E3A9E',
     sprzeglo: '#56626F',
     pomiarowe: '#0B6E60',
+    // GPZ-H5: pola funkcyjne sekcji SN (zespół uziemiający, bateria kondensatorów) — te same
+    // rodziny odcieni co motyw ciemny; ocena wizualna należy do właściciela (B-02).
+    uziemiajace: '#9C2A6E',
+    kompensacyjne: '#6B6B00',
     zrodlowe: '#3C6E1E',
   },
 };

@@ -117,6 +117,8 @@ export const FIELD_ROLE_LABEL_PL: Readonly<Record<BayCanonicalRole, string>> = {
   LINIA_ODG: 'Pole odgałęźne',
   SPRZEGLO: 'Pole sprzęgła',
   POMIAROWE: 'Pole pomiarowe',
+  UZIEMIAJACE: 'Pole zespołu uziemiającego',
+  KOMPENSACYJNE: 'Pole baterii kondensatorów',
   PV_SN: 'Pole źródłowe PV',
   BESS_SN: 'Pole źródłowe BESS',
   FW_SN: 'Pole źródłowe FW',
@@ -140,6 +142,8 @@ export const MODEL_BAY_ROLE_TO_CANONICAL: Readonly<Record<string, BayCanonicalRo
   TR: 'TRANSFORMATOROWE',
   COUPLER: 'SPRZEGLO',
   MEASUREMENT: 'POMIAROWE',
+  EARTHING: 'UZIEMIAJACE',
+  CAPACITOR: 'KOMPENSACYJNE',
 };
 
 const MODEL_SOURCE_ROLE = 'OZE';

@@ -2777,7 +2777,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "3c0aff7f18396497de796688f9bda5e7ffee85050cb4baa0aa8f75e3adef210d",
+    "hash_sha256": "9d51638364f4effad10a674340226369b5a53760fc7fdd48afe9153dbb69a8bf",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -3358,6 +3358,8 @@
       "source_mode": "KATALOG",
       "source_side": "SN",
       "substation_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/substation",
+      "supply_line_name": null,
+      "supplying_station_name": null,
       "tags": [],
       "u_set_pu": null,
       "voltage_hv_kv": null,
@@ -3376,6 +3378,8 @@
       "entry_point_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [
         {
           "bus_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/section/001/bus_sn",
@@ -3390,11 +3394,9 @@
       ],
       "id": "8bc4f421-94ed-585e-84aa-766023425b1b",
       "meta": {
-        "gpz_hv_bus_refs": [],
         "gpz_section_count": 1,
         "short_circuit_input_side": "SN",
-        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-        "wn_sn_transformer_count": 0
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER"
       },
       "name": "GPZ Wschód",
       "nn_sections": [],
@@ -3414,6 +3416,8 @@
       "entry_point_ref": null,
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [],
       "id": "cdd54a29-e5a1-5480-bbc9-3bd983501ab8",
       "meta": {
@@ -3439,6 +3443,8 @@
       "entry_point_ref": null,
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [],
       "id": "25beef76-f60d-5840-a8f6-a2c989a8942d",
       "meta": {
@@ -3464,6 +3470,8 @@
       "entry_point_ref": null,
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [],
       "id": "70f95b94-8ae2-5a35-9208-f9f40d3d7f05",
       "meta": {
@@ -3489,6 +3497,8 @@
       "entry_point_ref": null,
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [],
       "id": "0e984ed9-fd9d-5102-b295-867bf5b06f48",
       "meta": {

@@ -1,28 +1,26 @@
 from __future__ import annotations
 
+import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_stacji
+
+from tests.reference_networks.gpz_h5 import ladunek_gpz_110kv
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 CATALOG_APARAT_SN = "sw-cb-abb-vd4-24kv-630a"
 CATALOG_TRAFO_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
 
 
-def _gpz_110kv(transformer_count: int) -> dict:
-    """Równoważnik sieci po stronie 110 kV z transformatorami 110/SN — jedyny tryb,
-    w którym transformatory (i ich regulacja zaczepów) są elementami modelu
-    (karta GPZ-MODEL)."""
-    return {
-        "manual_equivalent": {
-            "short_circuit_input_side": "HV_110",
-            "hv_voltage_kv": 110.0,
-            "sk3_hv_mva": 3000.0,
-            "rx_ratio": 0.1,
-        },
-        "transformer_count": transformer_count,
-        "transformer_catalog_ref": CATALOG_TRAFO_WN_SN,
-    }
+def _gpz_110kv(sekcje_sn: int, **regulacja: object) -> dict:
+    """GPZ ze stroną 110 kV w kontrakcie karty GPZ-H5 (tor 110 kV na sekcję, transformator
+    przypisany jawnie sekcja 110 kV k → sekcja SN k) — jedyny tryb, w którym transformatory
+    (i ich regulacja zaczepów) są elementami modelu (karta GPZ-MODEL). Klucze regulacji
+    zaczepów `transformer_*` należą do WPISU transformatora (`transformers[]`)."""
+    ladunek = ladunek_gpz_110kv(sekcje_sn, transformer_catalog_ref=CATALOG_TRAFO_WN_SN)
+    for wpis in ladunek["transformers"]:
+        wpis.update(regulacja)
+    return ladunek
 
 
 def _empty_enm() -> dict:
@@ -45,6 +43,12 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
                 {"order": 0, "name": "Sekcja A", "line_field_name": "Pole liniowe A"},
                 {"order": 1, "name": "Sekcja B", "line_field_name": "Pole liniowe B"},
             ],
+            # Karta GPZ-H5: dwie sekcje SN — stan normalny łącznika szyn SN jest daną;
+            # zamknięty (jeden równoważnik zasila obie sekcje) wymaga uzasadnienia.
+            "sn_coupler": {
+                "normal_state": "closed",
+                "justification": "Obie sekcje zasilane jednym równoważnikiem sieci.",
+            },
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             "zero_sequence": {"enabled": True, "r0_ohm": 0.4, "x0_ohm": 1.8, "z0_z1_ratio": 1.3},
         },
@@ -56,8 +60,9 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
 
     assert len(snapshot["sources"]) == 1
     assert len(snapshot["substations"]) == 1
-    # Pola liniowe sekcji GPZ są rekordami `bays` stacji (po jednym na sekcję).
-    assert len(snapshot["bays"]) == 2
+    # Pola liniowe sekcji GPZ są rekordami `bays` stacji (po jednym na sekcję); łącznik szyn
+    # SN zajmuje pole sprzęgła (karta GPZ-H5: jedna cela, gdy ładunek nie podaje dwóch).
+    assert sorted(b["bay_role"] for b in snapshot["bays"]) == ["COUPLER", "FEEDER", "FEEDER"]
     assert {b["substation_ref"] for b in snapshot["bays"]} == {snapshot["substations"][0]["ref_id"]}
     # Karta GPZ-MODEL: równoważnik z katalogu źródeł stoi na szynach SN — granicą modelu
     # są szyny SN, transformatory 110/SN nie są elementami modelu obliczeniowego.
@@ -72,8 +77,11 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert len(substation["bus_refs"]) == 2
     assert substation["transformer_refs"] == []
     assert substation["meta"]["gpz_section_count"] == 2
-    assert substation["meta"]["wn_sn_transformer_count"] == 0
-    assert substation["meta"]["gpz_hv_bus_refs"] == []
+    # Karta GPZ-H5: liczba transformatorów i szyny 110 kV nie są kopiami w meta stacji —
+    # wynikają z `transformer_refs` i rejestru `gpz_hv_sections` (tu pustego: tryb SN).
+    assert "wn_sn_transformer_count" not in substation["meta"]
+    assert "gpz_hv_bus_refs" not in substation["meta"]
+    assert substation["gpz_hv_sections"] == []
     # W5-A: opis punktu neutralnego sieci SN WYŁĄCZNIE na źródle (`neutral_grounding`);
     # meta stacji nie niesie kopii `grounding`/`zero_sequence`.
     assert "grounding" not in substation["meta"]
@@ -103,7 +111,9 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert "zero_sequence_provenance" not in source["materialized_params"]
 
     pola_gpz = pola_stacji(snapshot, substation["ref_id"])
-    field_by_section = {field["gpz_section_id"]: field for field in pola_gpz}
+    field_by_section = {
+        field["gpz_section_id"]: field for field in pola_gpz if field["bay_role"] != "COUPLER"
+    }
     assert field_by_section[sections[0]["section_id"]]["name"] == "Pole liniowe A"
     assert field_by_section[sections[1]["section_id"]]["name"] == "Pole liniowe B"
     assert sections[0]["line_fields_count"] == 1
@@ -132,6 +142,12 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
                 {"order": 0, "name": "Sekcja 1", "line_field_name": "Pole sekcji 1"},
                 {"order": 1, "name": "Sekcja 2", "line_field_name": "Pole sekcji 2"},
             ],
+            # Karta GPZ-H5: dwie sekcje SN — stan normalny łącznika szyn SN jest daną;
+            # zamknięty (jeden równoważnik zasila obie sekcje) wymaga uzasadnienia.
+            "sn_coupler": {
+                "normal_state": "closed",
+                "justification": "Obie sekcje zasilane jednym równoważnikiem sieci.",
+            },
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
             "gpz_line_field_apparatus": {
@@ -152,6 +168,9 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
     pola_gpz = pola_stacji(snapshot, substation["ref_id"])
 
     assert len(sections) == 2
+    # 2 × 12 pól liniowych + pole sprzęgła łącznika szyn SN (karta GPZ-H5).
+    assert [field["bay_role"] for field in pola_gpz].count("COUPLER") == 1
+    pola_gpz = [field for field in pola_gpz if field["bay_role"] != "COUPLER"]
     assert len(pola_gpz) == 24
     assert len({field["ref_id"] for field in pola_gpz}) == 24
 
@@ -181,53 +200,46 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
 
 
 def test_add_grid_source_sn_manual_hv_short_circuit_anchors_source_on_110kv_bus():
+    """Karta GPZ-H5: każdy tor 110 kV ma WŁASNĄ sekcję szyn 110 kV z równoważnikiem; każdy
+    transformator łączy wskazaną sekcję 110 kV ze wskazaną sekcją SN (bez wspólnej szyny WN
+    i bez przydziału z liczby transformatorów)."""
+    ladunek = _gpz_110kv(2)
+    for wpis in ladunek["hv_sections"]:
+        wpis["supply"]["manual_equivalent"].update(
+            {"short_circuit_mode": "SHORT_CIRCUIT_POWER", "rx_ratio": 0.12, "z0_z1_ratio": 3.2}
+        )
     result = execute_domain_operation(
         enm_dict=_empty_enm(),
         op_name="add_grid_source_sn",
         payload={
             "source_name": "GPZ WN/SN",
             "voltage_kv": 15.0,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
-            "sections_count": 2,
-            "transformer_count": 2,
+            **ladunek,
             "gpz_sections": [
                 {"order": 0, "name": "Sekcja 1", "line_field_name": "Pole 1"},
                 {"order": 1, "name": "Sekcja 2", "line_field_name": "Pole 2"},
             ],
-            "manual_equivalent": {
-                "sn_voltage_kv": 15.0,
-                "hv_voltage_kv": 110.0,
-                "short_circuit_input_side": "HV_110",
-                "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-                "sk3_hv_mva": 3000.0,
-                "rx_ratio": 0.12,
-            },
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
-            "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
         },
     )
 
-    assert result.get("error") in (None, "")
+    assert result.get("error") in (None, ""), result.get("error")
     snapshot = result["snapshot"]
-    source = snapshot["sources"][0]
     substation = snapshot["substations"][0]
-
-    sections = substation["gpz_sections"]
-    hv_bus_refs = substation["meta"]["gpz_hv_bus_refs"]
-    # Karta GPZ-MODEL: JEDNA szyna 110 kV wspólna dla wszystkich transformatorów,
-    # równoważnik na niej; każdy transformator łączy ją z własną sekcją SN.
-    assert len(hv_bus_refs) == 1
-    assert substation["meta"]["wn_sn_transformer_count"] == 2
-    assert len(substation["bus_refs"]) == 3
-    assert source["bus_ref"] == hv_bus_refs[0]
+    sections = sorted(substation["gpz_sections"], key=lambda s: s["order"])
+    sekcje_wn = sorted(substation["gpz_hv_sections"], key=lambda s: s["order"])
+    hv_bus_refs = [sekcja["bus_ref"] for sekcja in sekcje_wn]
+    assert len(set(hv_bus_refs)) == 2
+    assert len(substation["bus_refs"]) == 4
     assert all(section["incoming_source_ref"] is None for section in sections)
-    assert source["gpz_section_id"] is None
-    assert source["source_side"] == "HV_110"
-    assert source["voltage_hv_kv"] == 110.0
-    assert source["sk3_hv_mva"] == 3000.0
-    assert source["materialized_params"]["short_circuit_input_side"] == "HV_110"
-    assert substation["entry_point_ref"] == hv_bus_refs[0]
+    sources = {source["ref_id"]: source for source in snapshot["sources"]}
+    assert len(sources) == 2
+    for sekcja in sekcje_wn:
+        source = sources[sekcja["incoming_source_ref"]]
+        assert source["bus_ref"] == sekcja["bus_ref"]
+        assert source["source_side"] == "HV_110"
+        assert source["voltage_hv_kv"] == 110.0
+        assert source["sk3_hv_mva"] == 3000.0
+        assert source["materialized_params"]["short_circuit_input_side"] == "HV_110"
 
     transformers = {transformer["ref_id"]: transformer for transformer in snapshot["transformers"]}
     for index, transformer_ref in enumerate(substation["transformer_refs"]):
@@ -237,15 +249,17 @@ def test_add_grid_source_sn_manual_hv_short_circuit_anchors_source_on_110kv_bus(
         assert transformer["ulv_kv"] == 15.0
         assert transformer["sn_mva"] == 25.0
         assert transformer["uk_percent"] == 11.0
-        assert transformer["hv_bus_ref"] == hv_bus_refs[0]
+        assert transformer["hv_bus_ref"] == hv_bus_refs[index]
         assert transformer["vector_group"] == "Yd11"
         assert transformer["catalog_ref"] == "tr-wn-sn-110-15-25mva-yd11"
         assert transformer["source_mode"] == "KATALOG"
         assert transformer["materialized_params"]["catalog_item_id"] == (
             "tr-wn-sn-110-15-25mva-yd11"
         )
+        # Przydział sekcja 110 kV → sekcja SN niesie WYŁĄCZNIE topologia (szyny zacisków);
+        # meta transformatora nie powiela numeru sekcji (jedno źródło prawdy).
         assert transformer["lv_bus_ref"] == sections[index]["bus_ref"]
-        assert transformer["meta"]["gpz_section_id"] == sections[index]["section_id"]
+        assert "gpz_section_id" not in transformer["meta"]
         assert transformer["meta"]["catalog_role"] == "TRANSFORMATOR_WN_SN"
 
 
@@ -409,9 +423,7 @@ def test_add_grid_source_sn_bez_oltc_nie_niesie_tap_changer():
             "source_name": "GPZ Bez OLTC",
             "voltage_kv": 15.0,
             **_gpz_110kv(1),
-            "sections_count": 1,
             "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
         },
     )
     assert result.get("error") in (None, "")
@@ -428,23 +440,23 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
         payload={
             "source_name": "GPZ z OLTC",
             "voltage_kv": 15.0,
-            **_gpz_110kv(2),
-            "sections_count": 2,
+            # OLTC z katalogu + jawne nastawy (zero fabrykacji — każde pole realne).
+            **_gpz_110kv(
+                2,
+                transformer_regulation_type="OLTC",
+                transformer_tap_changer_catalog_ref="tc_oltc_110sn_19_125",
+                transformer_control_mode="AUTOMATIC",
+                transformer_voltage_setpoint_kv=15.3,
+                transformer_deadband_kv=0.2,
+                transformer_delay_seconds=30.0,
+                transformer_ldc_enabled=True,
+                transformer_ldc_r_ohm=0.5,
+                transformer_ldc_x_ohm=1.2,
+            ),
             "gpz_sections": [
                 {"order": 0, "name": "Sekcja A", "line_fields_count": 1},
                 {"order": 1, "name": "Sekcja B", "line_fields_count": 1},
             ],
-            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
-            # OLTC z katalogu + jawne nastawy (zero fabrykacji — każde pole realne).
-            "transformer_regulation_type": "OLTC",
-            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
-            "transformer_control_mode": "AUTOMATIC",
-            "transformer_voltage_setpoint_kv": 15.3,
-            "transformer_deadband_kv": 0.2,
-            "transformer_delay_seconds": 30.0,
-            "transformer_ldc_enabled": True,
-            "transformer_ldc_r_ohm": 0.5,
-            "transformer_ldc_x_ohm": 1.2,
         },
     )
     assert result.get("error") in (None, "")
@@ -453,7 +465,7 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
     assert len(transformers) == 2
 
     sections = snapshot["substations"][0]["gpz_sections"]
-    section_bus_by_id = {s["section_id"]: s["bus_ref"] for s in sections}
+    section_buses = {s["bus_ref"] for s in sections}
 
     for trafo in transformers:
         tc = trafo["tap_changer"]
@@ -469,7 +481,8 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
         assert tc["line_drop_compensation"]["enabled"] is True
         assert tc["catalog_ref"] == "tc_oltc_110sn_19_125"
         # Each transformer regulates its own SN busbar (section LV bus).
-        assert tc["controlled_bus_ref"] == section_bus_by_id[trafo["meta"]["gpz_section_id"]]
+        assert tc["controlled_bus_ref"] == trafo["lv_bus_ref"]
+        assert trafo["lv_bus_ref"] in section_buses
 
     # Flows end-to-end: ENM -> domain graph -> canonical TapChanger visible.
     from enm.mapping import map_enm_to_network_graph
@@ -498,14 +511,42 @@ def test_add_grid_source_sn_ldc_bez_r_x_zostaje_nieskonfigurowane():
         payload={
             "source_name": "GPZ z OLTC bez LDC",
             "voltage_kv": 15.0,
-            **_gpz_110kv(1),
-            "transformer_regulation_type": "OLTC",
-            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
-            "transformer_ldc_enabled": True,
             # transformer_ldc_r_ohm / transformer_ldc_x_ohm CELOWO pominięte.
+            **_gpz_110kv(
+                1,
+                transformer_regulation_type="OLTC",
+                transformer_tap_changer_catalog_ref="tc_oltc_110sn_19_125",
+                transformer_ldc_enabled=True,
+            ),
         },
     )
     assert result.get("error") in (None, "")
     trafo = result["snapshot"]["transformers"][0]
     tc = trafo["tap_changer"]
     assert tc.get("line_drop_compensation") in (None, {})
+
+
+@pytest.mark.parametrize(
+    ("dane", "oczekiwane"),
+    [
+        ({"sections_count": 0}, "source.invalid_sections_count"),
+        ({"sections_count": 5}, "source.invalid_sections_count"),
+        ({}, 1),
+        ({"gpz_sections": [{"order": 0, "name": "Sekcja A"}]}, 1),
+    ],
+    ids=["zadane-0-odmowa", "zadane-5-odmowa", "brak-danych-jedna-szyna", "jeden-wpis"],
+)
+def test_liczba_sekcji_gpz_zadana_nie_jest_podmieniana(dane: dict, oczekiwane: object) -> None:
+    """Zadane `sections_count` = 0 dawało po cichu jedną sekcję (`... or 1`) zamiast odmowy
+    zakresu; bez liczby i bez wpisów GPZ jest rozdzielnicą niesekcjonowaną (jedna szyna SN)."""
+    wynik = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={"voltage_kv": 15.0, "catalog_ref": CATALOG_ZRODLO_SN, **dane},
+    )
+    if isinstance(oczekiwane, str):
+        assert wynik["error_code"] == oczekiwane
+    else:
+        assert wynik.get("error") in (None, ""), wynik.get("error")
+        stacja = next(s for s in wynik["snapshot"]["substations"] if s.get("station_type") == "gpz")
+        assert len(stacja["gpz_sections"]) == oczekiwane

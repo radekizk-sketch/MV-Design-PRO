@@ -334,7 +334,10 @@ def _resolve_canonical_bay_role(
         if {"WIND_INVERTER", "FW_PMSG", "FW_DFIG", "FW_SCIG"} & generator_types:
             return "FW_SN"
         return "PV_SN"
-    return CANONICAL_BAY_ROLE_MAP.get(bay.bay_role, "LINIA_OUT")
+    # Każda rola `Bay.bay_role` poza `OZE` jest w mapie kanonu (zamknięty `Literal`) — dawny
+    # zapas „LINIA_OUT” zgadywał rolę pola spoza mapy (karta GPZ-H5: pola funkcyjne ZU/BKR
+    # trafiały do read-modelu jako pola liniowe wyjściowe, zanim dostały rolę w kanonie).
+    return CANONICAL_BAY_ROLE_MAP[bay.bay_role]
 
 
 def _build_primary_devices(

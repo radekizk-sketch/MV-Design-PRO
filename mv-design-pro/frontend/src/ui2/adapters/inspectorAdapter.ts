@@ -68,6 +68,7 @@ import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacj
 import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
 import {
   etykietaPozycjiNormalnej,
+  rolaLacznika,
   opisLacznikowPortow,
   pozycjaNormalna,
 } from '../../ui/shared/stanLacznika';
@@ -236,11 +237,11 @@ function wlasciwosciKabla(el: Cable): WierszWlasciwosci[] {
   ];
 }
 
-function wlasciwosciLacznika(el: SwitchBranch): WierszWlasciwosci[] {
+function wlasciwosciLacznika(el: SwitchBranch, model: EnergyNetworkModel): WierszWlasciwosci[] {
   return [
     ...wlasciwosciGaleziWspolne(el),
     // W5-C: pozycja normalna z projektu obok bieżącego położenia („Stan") — dwa pojęcia.
-    wr('Pozycja normalna', etykietaPozycjiNormalnej(pozycjaNormalna(el))),
+    wr('Pozycja normalna', etykietaPozycjiNormalnej(pozycjaNormalna(el), rolaLacznika(model, el))),
     ...bezNulli([
       w('Rezystancja', el.r_ohm ?? null, 'Ω'),
       w('Reaktancja', el.x_ohm ?? null, 'Ω'),
@@ -259,7 +260,7 @@ function wlasciwosciBezpiecznika(el: FuseBranch): WierszWlasciwosci[] {
 }
 
 /** Rozdzielacz „odcinka" wg `type` (drugi poziom dyskryminacji — reguła KLASA pkt 1). */
-function wlasciwosciGaleziWgTypu(el: ENMElement): WierszWlasciwosci[] {
+function wlasciwosciGaleziWgTypu(el: ENMElement, model: EnergyNetworkModel): WierszWlasciwosci[] {
   const typ = (el as unknown as { type?: string }).type;
   switch (typ) {
     case 'line_overhead':
@@ -270,7 +271,7 @@ function wlasciwosciGaleziWgTypu(el: ENMElement): WierszWlasciwosci[] {
     case 'breaker':
     case 'bus_coupler':
     case 'disconnector':
-      return wlasciwosciLacznika(el as unknown as SwitchBranch);
+      return wlasciwosciLacznika(el as unknown as SwitchBranch, model);
     case 'fuse':
       return wlasciwosciBezpiecznika(el as unknown as FuseBranch);
     default:
@@ -518,7 +519,7 @@ function wlasciwosciKatalogoweWgTypu(
     case 'bus_coupler':
     case 'disconnector':
     case 'fuse':
-      return wlasciwosciGaleziWgTypu(element);
+      return wlasciwosciGaleziWgTypu(element, model);
     case 'transformator':
       return wlasciwosciTransformatora(element as unknown as Transformer);
     case 'zrodlo':

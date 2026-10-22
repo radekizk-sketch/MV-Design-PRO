@@ -1,29 +1,29 @@
 {
   "changes": {
     "created_element_ids": [
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_bus",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/000",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_breaker/000",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/001",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_breaker/001",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/002",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_breaker/002",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_terminal/003",
-      "stn/04651959d6bce6c332642e4f5048d0b0/sn_field_breaker/003",
-      "seg/9f97d85ae7f5d92176ef1daf001fe523/segment_R_L",
-      "seg/9f97d85ae7f5d92176ef1daf001fe523/segment_R_R",
-      "stn/04651959d6bce6c332642e4f5048d0b0/station",
-      "stn/04651959d6bce6c332642e4f5048d0b0/nn_bus",
-      "stn/04651959d6bce6c332642e4f5048d0b0/transformer"
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_bus",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_terminal/000",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_breaker/000",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_terminal/001",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_breaker/001",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_terminal/002",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_breaker/002",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_terminal/003",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/sn_field_breaker/003",
+      "seg/4ff43e652a8fcdc07aa6fc75eaf7fd50/segment_R_L",
+      "seg/4ff43e652a8fcdc07aa6fc75eaf7fd50/segment_R_R",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/station",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/nn_bus",
+      "stn/474db5a2ecacd8e9c64b1f713eadc38f/transformer"
     ],
     "deleted_element_ids": [
-      "seg/9f97d85ae7f5d92176ef1daf001fe523/segment_R"
+      "seg/4ff43e652a8fcdc07aa6fc75eaf7fd50/segment_R"
     ],
     "updated_element_ids": []
   },
-  "segment_srodkowy": "seg/9f97d85ae7f5d92176ef1daf001fe523/segment_R",
+  "segment_srodkowy": "seg/4ff43e652a8fcdc07aa6fc75eaf7fd50/segment_R",
   "selection_hint": {
-    "element_id": "stn/04651959d6bce6c332642e4f5048d0b0/station",
+    "element_id": "stn/474db5a2ecacd8e9c64b1f713eadc38f/station",
     "element_type": "substation",
     "zoom_to": true
   }

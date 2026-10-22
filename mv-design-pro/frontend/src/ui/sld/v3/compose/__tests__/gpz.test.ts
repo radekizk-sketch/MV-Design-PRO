@@ -1407,7 +1407,11 @@ describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.tran
 
 describe('GPZ-PARYTET — tła pól wg roli (gpz.bay.panel) i legenda ról', () => {
   it('każda rola modelu ma etykietę polską i pozycję w legendzie w stałej kolejności', () => {
-    expect(ROLE_POL_GPZ).toHaveLength(6);
+    // Karta GPZ-H5: pola funkcyjne sekcji SN GPZ (uziemiające, kompensacyjne) są rolami modelu
+    // (`bay_role` EARTHING/CAPACITOR) — 6 → 8.
+    expect(ROLE_POL_GPZ).toHaveLength(8);
+    expect(ROLE_POL_GPZ).toContain('uziemiajace');
+    expect(ROLE_POL_GPZ).toContain('kompensacyjne');
     for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
   });
 

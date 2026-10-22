@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -653,20 +654,72 @@ def _assemble_zero_sequence_y0(
         elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
             y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
 
-    # Zero-sequence paths can be intentionally blocked by transformer vector
-    # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
-    # calculations singular; adding a local numerical reference keeps them
-    # isolated from the solved SN network.
-    for idx in range(size):
-        if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
-            y0_bus[idx, idx] += complex(1e6, 0.0)
-
     return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
 
 
-def build_zero_sequence_zbus(
+def _indeksy_bez_drogi_zerowej(y0_bus: np.ndarray) -> frozenset[int]:
+    """Indeksy węzłów, których spójna składowa sieci zerowej nie ma odniesienia do ziemi.
+
+    Składowa = węzły połączone niezerowymi elementami pozadiagonalnymi Y0 (gałęzie zerowe
+    linii i kabli z r0/x0 oraz transformatorów o połączeniu szeregowym; linia albo kabel
+    bez r0/x0 nie wnosi gałęzi zerowej). Składowa bez żadnego bocznika do ziemi (uziemiony
+    punkt neutralny, źródło z Z0, pojemność doziemna B0) ma osobliwy
+    blok Y0 — rangowanie JAWNE przez SVD (``matrix_rank``), jak dla całej macierzy dawniej.
+    Pojedynczy węzeł bez żadnej admitancji zerowej (np. szyna SN za uzwojeniem trójkąta
+    transformatora 110/SN, bez zespołu uziemiającego) jest składową o zerowym bloku.
+    """
+    size = y0_bus.shape[0]
+    rodzic = list(range(size))
+
+    def korzen(i: int) -> int:
+        while rodzic[i] != i:
+            rodzic[i] = rodzic[rodzic[i]]
+            i = rodzic[i]
+        return i
+
+    wiersze, kolumny = np.nonzero(y0_bus)
+    for i, j in zip(wiersze.tolist(), kolumny.tolist(), strict=True):
+        if i != j:
+            ri, rj = korzen(i), korzen(j)
+            if ri != rj:
+                rodzic[max(ri, rj)] = min(ri, rj)
+    skladowe: dict[int, list[int]] = {}
+    for i in range(size):
+        skladowe.setdefault(korzen(i), []).append(i)
+    bez_drogi: set[int] = set()
+    for indeksy in skladowe.values():
+        blok = y0_bus[np.ix_(indeksy, indeksy)]
+        if np.linalg.matrix_rank(blok) < len(indeksy):
+            bez_drogi.update(indeksy)
+    return frozenset(bez_drogi)
+
+
+@dataclass(frozen=True)
+class SiecSkladowejZerowej:
+    """Macierz Z0-bus i węzły bez drogi prądu zerowego do ziemi (karta GPZ-H5).
+
+    ``z0_bus`` — w porządku węzłów ``AdmittanceMatrixBuilder(graph)`` (ten sam co Y1 solvera).
+    ``wezly_bez_drogi_zerowej`` — identyfikatory węzłów grafu, których składowa sieci zerowej
+    nie ma odniesienia do ziemi: dla nich Z0 NIE ISTNIEJE (zwarcie doziemne nie jest
+    definiowane bez danych uziemienia albo pojemności doziemnej) i żaden konsument nie czyta
+    ich wpisu ``z0_bus``. Blok takiej składowej jest w macierzy uzupełniony bocznikiem
+    jednostkowym WYŁĄCZNIE po to, by odwrócić macierz dla pozostałych składowych (bloki
+    rozłączne — wpisy innych węzłów są od niego niezależne).
+
+    Dawniej węzeł bez żadnej admitancji zerowej dostawał bocznik 1e6 pu, czyli Z0 ≈ 0 —
+    UZIEMIENIE BEZPOŚREDNIE sfabrykowane przez algebrę: szyna SN za trójkątem transformatora
+    110/SN dawała I″k1 = 1,5·I″k3 (pomiar na GPZ H5 110/15 kV: 12,9 kA wobec 8,6 kA),
+    a składowa wielowęzłowa bez odniesienia wywracała cały bieg (osobliwa macierz) — dwa
+    różne skutki tej samej przyczyny fizycznej. Teraz oba przypadki dają ten sam jawny brak.
+    """
+
+    z0_bus: np.ndarray
+    wezly_bez_drogi_zerowej: frozenset[str]
+
+
+def zbuduj_siec_zerowa(
     enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
-) -> np.ndarray:
+) -> SiecSkladowejZerowej:
     """
     Build the zero-sequence Z-bus from ENM fields without mutating the graph.
 
@@ -679,34 +732,40 @@ def build_zero_sequence_zbus(
     transformatorów z grupą zachowują wynik sprzed karty (TR bez ``vector_group``
     → połączenie OTWARTE, brak wkładu).
 
+    Karta GPZ-H5: węzły składowych bez odniesienia do ziemi są JAWNE
+    (``wezly_bez_drogi_zerowej``), a nie fabrykowane bocznikiem 1e6 pu ani zamieniane
+    w odmowę całego biegu — patrz ``SiecSkladowejZerowej``. Konsument (bieg zwarciowy,
+    pakiet dowodowy, kotwica SN domeny nN) odmawia wartości dla tych węzłów z przyczyną.
+
     Audyt fizyki fala F (V12K): rangowanie JAWNE przez SVD (``matrix_rank``)
-    przed inwersją. ``np.linalg.inv`` NIE gwarantuje ``LinAlgError`` dla macierzy
-    rangowo-niedomiarowej (np. sieć izolowana bez żadnej pojemności doziemnej
-    B0 — podsieć „unosi się" bez odniesienia do ziemi): LU z pivotingiem
-    częściowym potrafi „odwrócić" taką macierz, dając ogromne, fizycznie
-    bezsensowne Z0 (rząd 1e15+ Ω) zamiast czytelnego błędu. To byłoby CICHĄ
-    fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
-    przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
+    przed inwersją — ``np.linalg.inv`` NIE gwarantuje ``LinAlgError`` dla macierzy
+    rangowo-niedomiarowej (LU z pivotingiem potrafi „odwrócić" taką macierz, dając
+    fizycznie bezsensowne Z0 rzędu 1e15+ Ω zamiast czytelnego braku).
     """
-    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
+    _, node_index, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
     if size == 0:
         # Graf bez węzłów (sieć pusta albo bez węzła z odniesieniem) — macierz 0x0 jest
         # odwrotnością samej siebie. ``matrix_rank`` na tablicy zerowego rozmiaru rzucał
         # surowy ``ValueError`` numpy (pomiar partii integracji 11: koperta wejścia zwarcia
         # 1F pustego przypadku kończyła się 500 zamiast kopertą z pustym payloadem, jak 3F).
-        return np.zeros((0, 0), dtype=complex)
-    if np.linalg.matrix_rank(y0_bus) < size:
-        raise OdmowaDanychError(
-            "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
-            "(sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia "
-            "punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; "
-            "dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd "
-            "pojemnościowy doziemienia)"
+        return SiecSkladowejZerowej(
+            z0_bus=np.zeros((0, 0), dtype=complex), wezly_bez_drogi_zerowej=frozenset()
         )
+    bez_drogi = _indeksy_bez_drogi_zerowej(y0_bus)
+    for indeks in sorted(bez_drogi):
+        y0_bus[indeks, indeks] += 1.0
+    if np.linalg.matrix_rank(y0_bus) < size:
+        raise OdmowaDanychError("Zero-sequence Y-bus is singular; cannot compute Z0-bus")
     try:
-        return np.linalg.inv(y0_bus)
+        z0_bus = np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:
         raise OdmowaDanychError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+    return SiecSkladowejZerowej(
+        z0_bus=z0_bus,
+        wezly_bez_drogi_zerowej=frozenset(
+            wezel for wezel, indeks in node_index.items() if indeks in bez_drogi
+        ),
+    )
 
 
 def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:

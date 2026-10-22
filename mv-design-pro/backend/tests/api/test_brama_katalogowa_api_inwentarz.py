@@ -177,6 +177,51 @@ def _payload_zrodla(**nadpisania: Any) -> dict[str, Any]:
     return payload
 
 
+def _tor_110(linia: str, sk3_mva: float) -> dict[str, Any]:
+    """Tor zasilania sekcji 110 kV (karta GPZ-H5) — przykładowe dane przypadku testowego."""
+    return {
+        "line_name": linia,
+        "supplying_station_name": f"Stacja {linia}",
+        "manual_equivalent": {
+            "hv_voltage_kv": 110.0,
+            "sk3_hv_mva": sk3_mva,
+            "rx_ratio": 0.1,
+            "z0_z1_ratio": 1.2,
+        },
+    }
+
+
+def _payload_gpz_wn(*, transformator: dict[str, Any], **nadpisania: Any) -> dict[str, Any]:
+    """GPZ ze stroną 110 kV (układ H5): dwa tory, dwa transformatory z tym samym wpisem
+    typu (``transformator`` — klucze katalogowe wpisu `transformers[]`)."""
+    payload: dict[str, Any] = {
+        "voltage_kv": 15.0,
+        "sections_count": 2,
+        "hv_sections": [{"supply": _tor_110("L1", 2500.0)}, {"supply": _tor_110("L2", 1800.0)}],
+        "hv_coupler": {"normal_state": "open"},
+        "reserve_mode": "hidden",
+        "transformers": [
+            {"hv_section": 1, "sn_section": 1, **copy.deepcopy(transformator)},
+            {"hv_section": 2, "sn_section": 2, **copy.deepcopy(transformator)},
+        ],
+    }
+    payload.update(nadpisania)
+    return payload
+
+
+def _payload_gpz_sn_na_sekcje(zasilanie: dict[str, Any]) -> dict[str, Any]:
+    """GPZ z równoważnikiem na sekcję SN (łącznik szyn SN normalnie otwarty)."""
+    return {
+        "voltage_kv": 15.0,
+        "sections_count": 2,
+        "sn_coupler": {"normal_state": "open"},
+        "gpz_sections": [
+            {"name": "Sekcja 1", "supply": copy.deepcopy(zasilanie)},
+            {"name": "Sekcja 2", "supply": copy.deepcopy(zasilanie)},
+        ],
+    }
+
+
 def _payload_odcinka(rodzaj: str, ref: str, przestrzen: str) -> dict[str, Any]:
     return {
         "segment": {
@@ -351,30 +396,71 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: _payload_zrodla(catalog_binding=_wiazanie("ZRODLO_SN", REF_ZRODLO)),
         lambda p: _zepsuj_wiazanie(p),
     ),
+    # Karta GPZ-H5: transformatory 110/SN jako wpisy `transformers[]` — psujemy DRUGI
+    # wpis (brama musi czytać każdy wpis listy, nie tylko pierwszy).
     IniekcjaBramy(
         "add_grid_source_sn",
-        "transformer_catalog_ref",
-        lambda: _payload_zrodla(transformer_catalog_ref=REF_TRAFO_WN_SN),
-        lambda p: _zepsuj_klucz(p, "transformer_catalog_ref"),
+        "transformers[].transformer_catalog_ref",
+        lambda: _payload_gpz_wn(transformator={"transformer_catalog_ref": REF_TRAFO_WN_SN}),
+        lambda p: _zepsuj_klucz(p, "transformers", 1, "transformer_catalog_ref"),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
-        "transformer_catalog_binding",
-        lambda: _payload_zrodla(
-            transformer_catalog_binding=_wiazanie("TRAFO_SN_NN", REF_TRAFO_WN_SN)
+        "transformers[].transformer_catalog_binding",
+        lambda: _payload_gpz_wn(
+            transformator={"transformer_catalog_binding": _wiazanie("TRAFO_SN_NN", REF_TRAFO_WN_SN)}
         ),
-        lambda p: p["transformer_catalog_binding"].update(
+        lambda p: p["transformers"][1]["transformer_catalog_binding"].update(
             {"catalog_item_id": REF_TRAFO_WN_SN + LITEROWKA}
         ),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
-        "transformer_tap_changer_catalog_ref",
-        lambda: _payload_zrodla(
-            transformer_regulation_type="OLTC",
-            transformer_tap_changer_catalog_ref=REF_ZACZEPY,
+        "transformers[].transformer_tap_changer_catalog_ref",
+        lambda: _payload_gpz_wn(
+            transformator={
+                "transformer_catalog_ref": REF_TRAFO_WN_SN,
+                "transformer_regulation_type": "OLTC",
+                "transformer_tap_changer_catalog_ref": REF_ZACZEPY,
+            }
         ),
-        lambda p: _zepsuj_klucz(p, "transformer_tap_changer_catalog_ref"),
+        lambda p: _zepsuj_klucz(p, "transformers", 1, "transformer_tap_changer_catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "gpz_sections[].supply.catalog_ref",
+        lambda: _payload_gpz_sn_na_sekcje({"catalog_ref": REF_ZRODLO}),
+        lambda p: _zepsuj_klucz(p, "gpz_sections", 1, "supply", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "gpz_sections[].supply.catalog_binding",
+        lambda: _payload_gpz_sn_na_sekcje({"catalog_binding": _wiazanie("ZRODLO_SN", REF_ZRODLO)}),
+        lambda p: _zepsuj_wiazanie(p, "gpz_sections", 1, "supply"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "reserve_transformer_apparatus.catalog_ref",
+        lambda: _payload_gpz_wn(
+            transformator={"transformer_catalog_ref": REF_TRAFO_WN_SN},
+            reserve_mode="explicit",
+            reserve_transformer=2,
+            reserve_transformer_apparatus={"catalog_ref": REF_APARAT_SN},
+        ),
+        lambda p: _zepsuj_klucz(p, "reserve_transformer_apparatus", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_grid_source_sn",
+        "reserve_transformer_apparatus.catalog_binding",
+        lambda: _payload_gpz_wn(
+            transformator={"transformer_catalog_ref": REF_TRAFO_WN_SN},
+            reserve_mode="explicit",
+            reserve_transformer=2,
+            reserve_transformer_apparatus={
+                "catalog_binding": _wiazanie("APARAT_SN", REF_APARAT_SN)
+            },
+        ),
+        lambda p: _zepsuj_wiazanie(p, "reserve_transformer_apparatus"),
     ),
     IniekcjaBramy(
         "add_grid_source_sn",
@@ -912,19 +998,41 @@ def _operacja_api(
 INIEKCJE_HTTP: tuple[IniekcjaHttp, ...] = (
     IniekcjaHttp(
         "add_grid_source_sn",
-        "transformer_catalog_ref",
-        lambda _s: _payload_zrodla(transformer_catalog_ref=REF_TRAFO_WN_SN),
-        lambda p: _zepsuj_klucz(p, "transformer_catalog_ref"),
+        "transformers[].transformer_catalog_ref",
+        lambda _s: _payload_gpz_wn(transformator={"transformer_catalog_ref": REF_TRAFO_WN_SN}),
+        lambda p: _zepsuj_klucz(p, "transformers", 1, "transformer_catalog_ref"),
         wymaga_ciagu=False,
     ),
     IniekcjaHttp(
         "add_grid_source_sn",
-        "transformer_tap_changer_catalog_ref",
-        lambda _s: _payload_zrodla(
-            transformer_regulation_type="OLTC",
-            transformer_tap_changer_catalog_ref=REF_ZACZEPY,
+        "transformers[].transformer_tap_changer_catalog_ref",
+        lambda _s: _payload_gpz_wn(
+            transformator={
+                "transformer_catalog_ref": REF_TRAFO_WN_SN,
+                "transformer_regulation_type": "OLTC",
+                "transformer_tap_changer_catalog_ref": REF_ZACZEPY,
+            }
         ),
-        lambda p: _zepsuj_klucz(p, "transformer_tap_changer_catalog_ref"),
+        lambda p: _zepsuj_klucz(p, "transformers", 1, "transformer_tap_changer_catalog_ref"),
+        wymaga_ciagu=False,
+    ),
+    IniekcjaHttp(
+        "add_grid_source_sn",
+        "gpz_sections[].supply.catalog_ref",
+        lambda _s: _payload_gpz_sn_na_sekcje({"catalog_ref": REF_ZRODLO}),
+        lambda p: _zepsuj_klucz(p, "gpz_sections", 1, "supply", "catalog_ref"),
+        wymaga_ciagu=False,
+    ),
+    IniekcjaHttp(
+        "add_grid_source_sn",
+        "reserve_transformer_apparatus.catalog_ref",
+        lambda _s: _payload_gpz_wn(
+            transformator={"transformer_catalog_ref": REF_TRAFO_WN_SN},
+            reserve_mode="explicit",
+            reserve_transformer=2,
+            reserve_transformer_apparatus={"catalog_ref": REF_APARAT_SN},
+        ),
+        lambda p: _zepsuj_klucz(p, "reserve_transformer_apparatus", "catalog_ref"),
         wymaga_ciagu=False,
     ),
     IniekcjaHttp(

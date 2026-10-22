@@ -178,6 +178,22 @@ def _fix_gpz_section_unsupplied(
     return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=element_id)
 
 
+def _fix_gpz_coupler_joins_equivalents(
+    element_id: str | None,
+    _et: str | None,
+) -> FixAction:
+    """E067: nawigacja do zamkniętego łącznika szyn łączącego niezależne równoważniki."""
+    return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=element_id)
+
+
+def _fix_gpz_structure(
+    element_id: str | None,
+    _et: str | None,
+) -> FixAction:
+    """W063/W064: nawigacja do stacji GPZ albo łącznika szyn SN (struktura, tryb rezerwy, SZR)."""
+    return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=element_id)
+
+
 def _fix_gpz_transformer_hv_unsupplied(
     element_id: str | None,
     _et: str | None,
@@ -364,6 +380,9 @@ _FIX_ACTION_MAP: dict[
     "E003": _fix_graph_island,
     "E065": _fix_gpz_section_unsupplied,
     "E066": _fix_gpz_transformer_hv_unsupplied,
+    "E067": _fix_gpz_coupler_joins_equivalents,
+    "W063": _fix_gpz_structure,
+    "W064": _fix_gpz_structure,
     "W005": _fix_topology_ref_invalid,
     "W006": _fix_topology_ref_invalid,
     "W007": _fix_topology_ref_invalid,
@@ -392,9 +411,10 @@ KNOWN_BLOCKER_CODES: frozenset[str] = frozenset(
         # ENMValidator (already have FixAction in ValidationIssue)
         "E001",
         "E002",
-        "E003",
-        "E065",
+        # Karta GPZ-H5: E003 (wyspa bez źródła) i E065 (sekcja GPZ bez zasilania) są
+        # ostrzeżeniami — część niezasilona nie blokuje biegu (szyny „bez napięcia”).
         "E066",
+        "E067",
         "E004",
         "E005",
         "E006",

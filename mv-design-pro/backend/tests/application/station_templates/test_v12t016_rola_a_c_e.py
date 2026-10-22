@@ -30,6 +30,8 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.store import get_enm, set_enm
 from enm.validator import ENMValidator
 
+from tests.reference_networks.gpz_h5 import ladunek_h5
+
 _VALIDATOR = ENMValidator()
 
 
@@ -100,7 +102,9 @@ def _magistrala(
 #: zastosowanie (kompensacja/abonencka mają warianty 20 kV — muszą trafić na
 #: magistralę TEGO SAMEGO napięcia, inaczej domena słusznie odmawia).
 _ROLA_A_C_E_TEMPLATES: tuple[tuple[str, float], ...] = (
-    ("tpl_gpz_sn_15_2s_4p", 0.0),  # 0.0 = GPZ, brak magistrali (korzeń)
+    ("tpl_gpz_h5_110_15_2x25mva", 0.0),  # 0.0 = GPZ, brak magistrali (korzeń)
+    ("tpl_gpz_h5_110_20_2x25mva", 0.0),
+    ("tpl_gpz_sn_15_2s_4p", 0.0),
     ("tpl_gpz_sn_15_2s_6p", 0.0),
     ("tpl_gpz_sn_20_2s_4p", 0.0),
     ("tpl_rs_2pola_sprzeglo", 15.0),
@@ -122,6 +126,15 @@ _ROLA_A_C_E_TEMPLATES: tuple[tuple[str, float], ...] = (
 #: Układ sieci nN — DANA PROJEKTANTA (kreator stacji / `params_override`), nie domysł szablonu.
 UKLAD_NN_PROJEKTANTA: dict[str, Any] = {"nn_earthing": {"lv_system": "TN-C-S"}}
 
+#: Dane projektu GPZ H5 (karta GPZ-H5): tory zasilania L1/L2 (przykładowe dane przypadku
+#: testowego), stan normalny łącznika szyn 110 kV i tryb rezerwy — szablon H5 ich nie niesie
+#: i bez nich odmawia (`test_gpz_h5_akceptacja.py`).
+DANE_PROJEKTU_H5: dict[str, Any] = {
+    "hv_sections": ladunek_h5()["hv_sections"],
+    "hv_coupler": {"normal_state": "open"},
+    "reserve_mode": "hidden",
+}
+
 
 def _zastosuj(
     tpl_id: str,
@@ -134,6 +147,7 @@ def _zastosuj(
     template = get_template(tpl_id)
     assert template is not None, tpl_id
     klucz = f"v12t016:{tpl_id}{klucz_suffix}"
+    dane_projektu = DANE_PROJEKTU_H5 if tpl_id.startswith("tpl_gpz_h5_") else {}
     if voltage_kv == 0.0:
         set_enm(klucz, EnergyNetworkModel.model_validate(_pusty_enm()))
         target_segment_id = None
@@ -147,9 +161,10 @@ def _zastosuj(
             klucz_twin=klucz,
             target_segment_id=target_segment_id,
             insert_at_ratio=0.5,
-            params_override=dict(
-                UKLAD_NN_PROJEKTANTA if params_override is None else params_override
-            ),
+            params_override={
+                **dane_projektu,
+                **(UKLAD_NN_PROJEKTANTA if params_override is None else params_override),
+            },
             catalog_profile=None,
         ),
         klucz,
@@ -223,7 +238,7 @@ def test_kazdy_szablon_rola_a_c_e_aplikuje_sie_do_gotowosci_bez_blokad(
     )
 
 
-def test_wszystkie_16_szablonow_v12t016_pokryte_testem_parametrycznym() -> None:
+def test_wszystkie_szablony_rol_a_c_e_pokryte_testem_parametrycznym() -> None:
     """Pin liczności: KAŻDY szablon 5 nowych kategorii ma wpis w macierzy
     powyżej — inaczej test parametryczny cicho pomija nowy wariant."""
     nowe_kategorie = (
@@ -240,7 +255,8 @@ def test_wszystkie_16_szablonow_v12t016_pokryte_testem_parametrycznym() -> None:
     assert (
         wszystkie_id == id_w_macierzy
     ), f"Rozjazd: {wszystkie_id.symmetric_difference(id_w_macierzy)}"
-    assert len(wszystkie_id) == 16
+    # 16 szablonów karty V12T-016 + 2 szablony GPZ H5 karty GPZ-H5 (wzorzec podstawowy).
+    assert len(wszystkie_id) == 18
 
 
 def test_stacja_abonencka_materializuje_ct_vt_klasy_pomiarowej_na_polu_pomiarowym() -> None:
@@ -304,8 +320,9 @@ def test_gpz_tworzy_dwie_sekcje_i_sprzeglo_bez_transformatorow_110_sn() -> None:
 
     Karta GPZ-MODEL (granica zasilania SN): równoważnik szablonu (katalog `ZRODLO_SN`,
     Sk widziane z szyn SN) już zawiera impedancję transformatorów 110/SN, więc szablon ich
-    NIE tworzy — granicą modelu są szyny SN, równoważnik stoi na sekcji 1, sekcja 2 jest
-    zasilana przez sprzęgło."""
+    NIE tworzy — granicą modelu są szyny SN. Karta GPZ-H5 (jawny tryb równoważnika SN):
+    KAŻDA sekcja ma własny równoważnik, łącznik szyn SN jest normalnie otwarty (rezerwa
+    ukryta, ENEA Zeszyt 1 §26.10.5) — nie „sekcja 2 przez zamknięte sprzęgło”."""
     result, klucz = _zastosuj("tpl_gpz_sn_15_2s_4p", 0.0)
     saved = get_enm(klucz)
     d = saved.model_dump(mode="json")
@@ -316,10 +333,12 @@ def test_gpz_tworzy_dwie_sekcje_i_sprzeglo_bez_transformatorow_110_sn() -> None:
     assert d["transformers"] == []
     couplers = [b for b in d["branches"] if b.get("type") == "bus_coupler"]
     assert len(couplers) == 1, "Dwie sekcje wymagają dokładnie jednego sprzęgła międzysekcyjnego"
-    sekcje = substation["gpz_sections"]
-    (zrodlo,) = d["sources"]
-    assert zrodlo["bus_ref"] == sekcje[0]["bus_ref"]
-    assert [s["incoming_source_ref"] for s in sekcje] == [zrodlo["ref_id"], None]
+    assert couplers[0]["normal_state"] == "open"
+    sekcje = sorted(substation["gpz_sections"], key=lambda s: s["order"])
+    zrodla = {z["ref_id"]: z for z in d["sources"]}
+    assert len(zrodla) == 2
+    for sekcja in sekcje:
+        assert zrodla[sekcja["incoming_source_ref"]]["bus_ref"] == sekcja["bus_ref"]
 
 
 def test_gpz_target_segment_id_none_jest_akceptowany() -> None:

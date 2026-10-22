@@ -75,6 +75,12 @@ def _gpz(sekcje: int = 1) -> dict[str, Any]:
     }
     if sekcje > 1:
         ladunek["sections_count"] = sekcje
+        # Karta GPZ-H5: stan normalny łącznika szyn SN jest daną (bez domyślnego). Sieć
+        # łącznikowa: jeden równoważnik na sekcji 1, łącznik szyn normalnie zamknięty.
+        ladunek["sn_coupler"] = {
+            "normal_state": "closed",
+            "justification": "Sekcje zasilane jednym równoważnikiem sieci (sieć testowa).",
+        }
     return wykonaj(_pusty(), "add_grid_source_sn", ladunek)
 
 

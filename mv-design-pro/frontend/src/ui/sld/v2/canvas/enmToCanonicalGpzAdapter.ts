@@ -646,6 +646,8 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
     case 'TR': return 'transformatorowe';
     case 'COUPLER': return 'sprzeglo';
     case 'MEASUREMENT': return 'pomiarowe';
+    case 'EARTHING': return 'uziemiajace';
+    case 'CAPACITOR': return 'kompensacyjne';
     case 'OZE': return 'zrodlowe';
   }
 }

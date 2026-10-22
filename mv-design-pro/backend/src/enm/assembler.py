@@ -38,8 +38,8 @@ from enm.load_zip_model import (
 )
 from enm.mapping import (
     build_grid_source_trace,
-    build_zero_sequence_zbus,
     map_enm_to_network_graph,
+    zbuduj_siec_zerowa,
 )
 from enm.models import (
     FAZY_ODBIORU_JEDNOFAZOWEGO,
@@ -562,6 +562,10 @@ class WejscieZwarcia:
     graph_nodes: dict[str, dict[str, Any]]
     graph_branches: dict[str, dict[str, Any]]
     wezly_bez_odniesienia: frozenset[str]
+    #: Karta GPZ-H5: węzły grafu solvera bez drogi prądu składowej zerowej do ziemi
+    #: (``enm.mapping.SiecSkladowejZerowej``) — dla zwarć 1F/2F+Z ich Z0 nie istnieje, wiersz
+    #: powstaje bez solvera z przyczyną; pusty zbiór dla 3F/2F (sieć zerowa nie jest budowana).
+    wezly_bez_drogi_zerowej: frozenset[str]
     #: CV-4.3 K6: ślad WHITE BOX wyprowadzenia Z_Q każdego źródła sieciowego
     #: (c wg IEC 60909-0:2016 §6.2.1 eq. 6) — ``enm.mapping.build_grid_source_trace``.
     zrodla_sieciowe_trace: tuple[dict[str, Any], ...]
@@ -1035,7 +1039,7 @@ def zloz_wejscie_zwarcia(
 
     # Phase 43 / CV-4.2b: opt-in rozszerzenia audytu 2 dla SC (uziemienie Z0/Z1,
     # impedancja transformatora blokowego) od WOŁAJĄCEGO jako dane — assembler nie
-    # czyta bazy. Aplikowane przed build_zero_sequence_zbus.
+    # czyta bazy. Aplikowane przed zbuduj_siec_zerowa.
     audit2_extensions_sc = rozszerzenia_audit2
     from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
 
@@ -1129,10 +1133,17 @@ def zloz_wejscie_zwarcia(
     # Z0 w porządku węzłów grafu SOLVERA (ten sam ``AdmittanceMatrixBuilder``):
     # impedancje składowej zerowej pochodzą z pól ENM, więc dla grafu bez wysp
     # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
-    z0_bus = (
-        build_zero_sequence_zbus(enm, solve_graph, scenario=scenario_c)
+    # Karta GPZ-H5: węzły bez drogi prądu zerowego do ziemi (np. szyna SN za trójkątem
+    # transformatora 110/SN bez zespołu uziemiającego w danych) — wiersz zwarcia doziemnego
+    # takiego węzła powstaje bez solvera, z przyczyną (`POWOD_WEZEL_BEZ_DROGI_ZEROWEJ`).
+    siec_zerowa = (
+        zbuduj_siec_zerowa(enm, solve_graph, scenario=scenario_c)
         if _short_circuit_requires_z0(short_circuit_type)
         else None
+    )
+    z0_bus = siec_zerowa.z0_bus if siec_zerowa is not None else None
+    wezly_bez_drogi_zerowej = (
+        siec_zerowa.wezly_bez_drogi_zerowej if siec_zerowa is not None else frozenset()
     )
 
     reportable_fault_node_ids = [
@@ -1241,6 +1252,7 @@ def zloz_wejscie_zwarcia(
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
         wezly_bez_odniesienia=wezly_bez_odniesienia,
+        wezly_bez_drogi_zerowej=wezly_bez_drogi_zerowej,
         zrodla_sieciowe_trace=zrodla_sieciowe_trace,
         zalozenia=zalozenia,
         wklady_w_biegu=wklady_w_biegu,

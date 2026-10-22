@@ -1,7 +1,7 @@
-"""Station Templates API — K30-16/V12T-016, 71 templates across 15 categories.
+"""Station Templates API — K30-16/V12T-016, 73 templates across 15 categories.
 
 REST endpoints:
-- GET /api/station-templates — list all 71 templates
+- GET /api/station-templates — list all 73 templates
 - GET /api/station-templates?category=<cat> — filter by category
 - GET /api/station-templates/{template_id} — full schema + editable params
 - GET /api/station-templates/categories — list 15 categories with counts

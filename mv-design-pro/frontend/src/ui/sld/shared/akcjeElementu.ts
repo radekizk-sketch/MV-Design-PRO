@@ -97,7 +97,7 @@ export function stanLacznikaMenu(
   return {
     status: wynik.lacznik.status,
     maPozycjeNormalna: czyLacznikZPozycjaNormalna(wynik.lacznik),
-    jestPunktemPodzialu: czyPunktPodzialu(wynik.lacznik),
+    jestPunktemPodzialu: czyPunktPodzialu(snapshot, wynik.lacznik),
   };
 }
 

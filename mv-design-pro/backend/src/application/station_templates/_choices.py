@@ -65,9 +65,10 @@ TR_OPTIONS_MEDIUM_20KV = (  # 400-1250 kVA, sieć 20 kV — stacja abonencka war
 
 # Warunki zasilania GPZ (ZRODLO_SN) — równoważnik systemowy widziany z szyny SN
 # GPZ (`mv_source_catalog.py::SOURCE_SYSTEM_TYPES`, "Warunki przyłączenia /
-# standard OSD"). Impedancja transformatorów 110/SN jest już ujęta w Sk3
-# równoważnika, więc transformatory NIE są elementami modelu (granica zasilania SN,
-# karta GPZ-MODEL; kontrakt `add_grid_source_sn::_granica_zasilania_gpz`).
+# standard OSD"). Impedancja transformatora 110/SN zasilającego sekcję jest już ujęta
+# w Sk3 równoważnika, więc w szablonach „równoważnik na szynach SN” transformatory NIE
+# są elementami modelu (granica zasilania SN, karta GPZ-MODEL; reguła
+# `enm/domain_operations.py::add_grid_source_sn` — `KOD_TRANSFORMATOR_POZA_GRANICA_SN`).
 GPZ_SOURCE_OPTIONS_15 = (
     CatalogChoice("src-gpz-15kv-200mva-rx010", "Zasilanie GPZ 15 kV Sk3 200 MVA", "ZRODLO_SN"),
     CatalogChoice(
@@ -90,6 +91,29 @@ GPZ_SOURCE_OPTIONS_20 = (
     ),
     CatalogChoice("src-gpz-20kv-350mva-rx012", "Zasilanie GPZ 20 kV Sk3 350 MVA", "ZRODLO_SN"),
     CatalogChoice("src-gpz-20kv-500mva-rx010", "Zasilanie GPZ 20 kV Sk3 500 MVA", "ZRODLO_SN"),
+)
+
+# Transformatory 110/SN GPZ w układzie ENEA H5 (karta GPZ-H5) — typy z katalogu
+# `mv_transformer_catalog.py` (`tr-wn-sn-110-{SN}-{moc}mva-yd11`); przestrzeń nazw katalogu
+# transformatorów jest wspólna (`TRAFO_SN_NN`, ta sama co `add_grid_source_sn`).
+TR_WN_SN_OPTIONS_15 = (
+    CatalogChoice("tr-wn-sn-110-15-10mva-yd11", "TR 110/15 kV 10 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-15-16mva-yd11", "TR 110/15 kV 16 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice(
+        "tr-wn-sn-110-15-25mva-yd11", "TR 110/15 kV 25 MVA Yd11", "TRAFO_SN_NN", default=True
+    ),
+    CatalogChoice("tr-wn-sn-110-15-40mva-yd11", "TR 110/15 kV 40 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-15-63mva-yd11", "TR 110/15 kV 63 MVA Yd11", "TRAFO_SN_NN"),
+)
+
+TR_WN_SN_OPTIONS_20 = (
+    CatalogChoice("tr-wn-sn-110-20-10mva-yd11", "TR 110/20 kV 10 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-20-16mva-yd11", "TR 110/20 kV 16 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice(
+        "tr-wn-sn-110-20-25mva-yd11", "TR 110/20 kV 25 MVA Yd11", "TRAFO_SN_NN", default=True
+    ),
+    CatalogChoice("tr-wn-sn-110-20-40mva-yd11", "TR 110/20 kV 40 MVA Yd11", "TRAFO_SN_NN"),
+    CatalogChoice("tr-wn-sn-110-20-63mva-yd11", "TR 110/20 kV 63 MVA Yd11", "TRAFO_SN_NN"),
 )
 
 # =============================================================================
@@ -307,6 +331,39 @@ SN_APPARATUS_OPTIONS = (
     CatalogChoice(
         "sw-ds-abb-ojs-17kv-630a",
         "Odłącznik ABB OJS 17,5 kV 630 A",
+        "APARAT_SN",
+    ),
+)
+
+# Aparatura pól SN sieci 20 kV — typoszereg 24 kV (U_m sieci 20 kV wg IEC 62271-1 = 24 kV).
+# Dawniej szablony 20 kV (GPZ, stacja abonencka, kompensacja) wskazywały typoszereg 17,5 kV
+# — dowód doboru aparatury (`application/equipment_proof`, kryterium U_m) wychodził
+# NIE_SPELNIA dla aparatu wybranego przez sam szablon (karta GPZ-H5, znalezisko uboczne).
+SN_APPARATUS_OPTIONS_24KV = (
+    CatalogChoice(
+        "sw-cb-abb-vd4-24kv-630a",
+        "Wyłącznik ABB VD4 24 kV 630 A",
+        "APARAT_SN",
+        default=True,
+    ),
+    CatalogChoice(
+        "sw-cb-abb-vd4-24kv-1250a",
+        "Wyłącznik ABB VD4 24 kV 1250 A",
+        "APARAT_SN",
+    ),
+    CatalogChoice(
+        "sw-cb-siemens-3ah5-24kv-1250a",
+        "Wyłącznik Siemens 3AH5 24 kV 1250 A",
+        "APARAT_SN",
+    ),
+    CatalogChoice(
+        "sw-ls-schneider-sm6-24kv-630a",
+        "Rozłącznik Schneider SM6 24 kV 630 A",
+        "APARAT_SN",
+    ),
+    CatalogChoice(
+        "sw-ds-abb-ojs-24kv-630a",
+        "Odłącznik ABB OJS 24 kV 630 A",
         "APARAT_SN",
     ),
 )

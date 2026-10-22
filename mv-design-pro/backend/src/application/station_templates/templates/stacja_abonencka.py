@@ -22,6 +22,7 @@ from application.station_templates._choices import (
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
+    SN_APPARATUS_OPTIONS_24KV,
     TR_OPTIONS_MEDIUM,
     TR_OPTIONS_MEDIUM_20KV,
     TR_OPTIONS_SMALL,
@@ -55,6 +56,7 @@ def _abonencka(
     tr_options: tuple,
     feeders: int,
     vt_options: tuple = VT_METERING_OPTIONS,
+    apparatus_options: tuple = SN_APPARATUS_OPTIONS,
     use_case: str,
 ) -> StationTemplate:
     return StationTemplate(
@@ -76,7 +78,7 @@ def _abonencka(
             ),
             sn_bay_roles=_ROLE_ABONENCKA,
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
-            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
+            sn_bay_apparatus_options=apparatus_options,
             nn_feeders_count=TemplateParamInt(
                 default=feeders, min_value=1, max_value=8, label_pl="Liczba odpływów nN"
             ),
@@ -128,6 +130,8 @@ STACJA_ABONENCKA_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM_20KV,
         feeders=4,
         vt_options=VT_METERING_OPTIONS_20,
+        # Sieć 20 kV: aparatura pól z typoszeregu 24 kV (U_m sieci, IEC 62271-1).
+        apparatus_options=SN_APPARATUS_OPTIONS_24KV,
         use_case="Odbiorca SN średniej mocy w obszarze sieci 20 kV z "
         "rozliczeniem na stronie SN.",
     ),

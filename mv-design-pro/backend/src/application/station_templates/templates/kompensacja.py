@@ -22,6 +22,7 @@ from application.station_templates._choices import (
     KOMPENSATOR_OPTIONS_20,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
+    SN_APPARATUS_OPTIONS_24KV,
 )
 from application.station_templates.schema import (
     BayRoleSpec,
@@ -39,6 +40,7 @@ def _kompensacja(
     description_pl: str,
     *,
     shunt_options: tuple,
+    apparatus_options: tuple = SN_APPARATUS_OPTIONS,
     use_case: str,
 ) -> StationTemplate:
     return StationTemplate(
@@ -66,7 +68,7 @@ def _kompensacja(
                 BayRoleSpec(role="FEEDER", okreslenie_pl="(bateria kondensatorów)"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
-            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
+            sn_bay_apparatus_options=apparatus_options,
             nn_feeders_count=TemplateParamInt(
                 default=0, min_value=0, max_value=0, label_pl="Bez odpływów nN"
             ),
@@ -104,6 +106,8 @@ KOMPENSACJA_TEMPLATES = (
         "Węzeł przelotowy magistrali SN 20 kV z baterią kondensatorów 1,8 Mvar "
         "na polu odgałęźnym — kompensacja lokalna mocy biernej.",
         shunt_options=KOMPENSATOR_OPTIONS_20,
+        # Sieć 20 kV: aparatura pól z typoszeregu 24 kV (U_m sieci, IEC 62271-1).
+        apparatus_options=SN_APPARATUS_OPTIONS_24KV,
         use_case="Kompensacja mocy biernej węzła dystrybucyjnego w sieci 20 kV.",
     ),
 )

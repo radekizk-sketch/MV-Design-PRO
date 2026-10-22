@@ -93,6 +93,7 @@ from enm.katalog_projektu import katalog_dla_modelu
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_nadana_pozycji_katalogu
 from enm.rewizje import RewizjaNieistniejeError, RewizjaUszkodzonaError
+from enm.scenariusze import ScenariuszNieistniejeError, apply_scenario, wczytaj_scenariusz
 from enm.severity import empty_severity_counts
 from enm.slownik_komunikatow import NAZWY_KOLEKCJI_PL, opis_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, ZrodloZmiany, blokada_twin
@@ -106,20 +107,21 @@ from enm.topology_ops import (
     create_device,
     create_measurement,
     create_node,
-    delete_branch,
-    delete_device,
     delete_measurement,
-    delete_node,
     detach_protection,
     update_branch,
     update_device,
     update_node,
     update_protection,
+    usun_galaz,
+    usun_urzadzenie,
+    usun_wezel,
 )
 from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request, Response
 from network_model.catalog.materialization import pozycja_w_katalogu
+from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -346,10 +348,42 @@ def get_enm_topologia_tor(case_id: str, klucz: KluczTwin, element_ref: str) -> T
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@router.get("/{case_id}/enm/readiness")
-def get_enm_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
-    """Zwróć macierz gotowości dla wszystkich typów analiz."""
+def _model_gotowosci(
+    klucz: str, scenario_id: str | None
+) -> tuple[EnergyNetworkModel, dict[str, Any] | None]:
+    """Model, którego gotowość jest oceniana: HEAD projektu albo — gdy wskazano scenariusz
+    nazwany — migawka efektywna `apply_scenario(HEAD, scenariusz)`, TA SAMA, którą liczy bieg
+    (`enm.canonical_analysis.ocen_model_biegu`). Karta GPZ-H5: gotowość wariantu ruchowego
+    (np. utrata linii L1, zamknięty łącznik szyn) czytała dotąd model bazowy, więc meldowała
+    stan innego układu niż ten, który bieg policzy. Zwraca (model, opis scenariusza)."""
     enm = _get_enm(klucz)
+    if scenario_id is None:
+        return enm, None
+    try:
+        scenariusz = wczytaj_scenariusz(klucz, scenario_id)
+    except ScenariuszNieistniejeError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    try:
+        efektywna = apply_scenario(enm, scenariusz)
+    except OdmowaDanychError as exc:
+        raise OdmowaHttpError(exc, status_code=409) from exc
+    model = (
+        enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
+    )
+    return model, {
+        "scenario_id": scenariusz.scenario_id,
+        "scenario_revision": scenariusz.revision,
+        "snapshot_hash": efektywna.snapshot_hash,
+    }
+
+
+@router.get("/{case_id}/enm/readiness")
+def get_enm_readiness(
+    case_id: str, klucz: KluczTwin, scenario_id: str | None = None
+) -> dict[str, Any]:
+    """Zwróć macierz gotowości dla wszystkich typów analiz — modelu bazowego albo migawki
+    efektywnej scenariusza `scenario_id` (`_model_gotowosci`)."""
+    enm, scenariusz = _model_gotowosci(klucz, scenario_id)
     validator = ENMValidator()
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
@@ -361,6 +395,7 @@ def get_enm_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     return {
         "case_id": case_id,
         "enm_revision": enm.header.revision,
+        **({"scenario": scenariusz} if scenariusz is not None else {}),
         "validation": validation.model_dump(mode="json"),
         "readiness": readiness.model_dump(mode="json"),
         "analysis_readiness": {
@@ -755,15 +790,18 @@ def _bay_device_withstand(
 
 
 @router.get("/{case_id}/engineering-readiness")
-def get_engineering_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
+def get_engineering_readiness(
+    case_id: str, klucz: KluczTwin, scenario_id: str | None = None
+) -> dict[str, Any]:
     """Agregacyjny endpoint inżynierskiej gotowości modelu.
 
     Łączy walidację + readiness + fix_action w jeden response
     dla Engineering Readiness Panel.
     NIE zmienia istniejącego /readiness — to nowy endpoint UX.
-    Deterministyczny: ten sam ENM → identyczny wynik.
+    Deterministyczny: ten sam ENM → identyczny wynik. `scenario_id` — gotowość migawki
+    efektywnej scenariusza (`_model_gotowosci`), tej samej, którą policzy bieg.
     """
-    enm = _get_enm(klucz)
+    enm, scenariusz = _model_gotowosci(klucz, scenario_id)
     validator = ENMValidator()
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
@@ -797,6 +835,7 @@ def get_engineering_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     return {
         "case_id": case_id,
         "enm_revision": enm.header.revision,
+        **({"scenario": scenariusz} if scenariusz is not None else {}),
         "status": validation.status,
         "ready": readiness.ready,
         "validation": validation.model_dump(mode="json"),
@@ -814,7 +853,9 @@ def get_engineering_readiness(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/analysis-eligibility")
-def get_analysis_eligibility(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
+def get_analysis_eligibility(
+    case_id: str, klucz: KluczTwin, scenario_id: str | None = None
+) -> dict[str, Any]:
     """Macierz zdolności uruchomienia analiz (eligibility).
 
     Dla każdego typu analizy (SC_3F, SC_2F, SC_1F, LOAD_FLOW) zwraca:
@@ -824,9 +865,10 @@ def get_analysis_eligibility(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     - content_hash (deterministyczny SHA-256)
 
     Niezależna od walidacji i readiness — osobna warstwa.
-    Deterministyczny: identyczny ENM -> identyczny wynik.
+    Deterministyczny: identyczny ENM -> identyczny wynik. `scenario_id` — macierz migawki
+    efektywnej scenariusza (`_model_gotowosci`).
     """
-    enm = _get_enm(klucz)
+    enm, _scenariusz = _model_gotowosci(klucz, scenario_id)
     validator = ENMValidator()
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
@@ -913,13 +955,13 @@ class TopologyOpRequest(BaseModel):
 _OP_DISPATCH = {
     "create_node": lambda enm, data: create_node(enm, data),
     "update_node": lambda enm, data: update_node(enm, data),
-    "delete_node": lambda enm, data: delete_node(enm, data.get("ref_id", "")),
+    "delete_node": lambda enm, data: usun_wezel(enm, data.get("ref_id", "")),
     "create_branch": lambda enm, data: create_branch(enm, data),
     "update_branch": lambda enm, data: update_branch(enm, data),
-    "delete_branch": lambda enm, data: delete_branch(enm, data.get("ref_id", "")),
+    "delete_branch": lambda enm, data: usun_galaz(enm, data.get("ref_id", "")),
     "create_device": lambda enm, data: create_device(enm, data),
     "update_device": lambda enm, data: update_device(enm, data),
-    "delete_device": lambda enm, data: delete_device(
+    "delete_device": lambda enm, data: usun_urzadzenie(
         enm,
         data.get("device_type", ""),
         data.get("ref_id", ""),

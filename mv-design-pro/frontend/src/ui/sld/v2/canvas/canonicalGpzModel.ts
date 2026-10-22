@@ -65,8 +65,11 @@ export interface CanonicalGpzSection {
  * Rola pola rozdzielni GPZ wg modelu (`Bay.bay_role`) — klucz tła pola (`gpz.bay.panel`)
  * i legendy ról. Mapowanie 1:1, bez zlewania ról: `IN` → zasilające, `OUT`/`FEEDER` →
  * liniowe (odpływ magistrali i odgałęzienia), `TR` → transformatorowe, `COUPLER` → sprzęgło,
- * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy). Roli „rezerwowe" model
- * nie zna (pole wolne to stan zajętości liczony w backendzie, nie rola), więc nie istnieje.
+ * `MEASUREMENT` → pomiarowe, `OZE` → źródłowe (przyłącze wytwórcy), `EARTHING` → uziemiające
+ * (pole zespołu uziemiającego), `CAPACITOR` → kompensacyjne (pole baterii kondensatorów) —
+ * pola funkcyjne sekcji SN GPZ H5 (ENEA Zeszyt 1 §13, zał. Z.2, karta GPZ-H5). Roli
+ * „rezerwowe" model nie zna (pole wolne to stan zajętości liczony w backendzie, nie rola),
+ * więc nie istnieje.
  */
 export type RolaPolaGpz =
   | 'zasilajace'
@@ -74,6 +77,8 @@ export type RolaPolaGpz =
   | 'transformatorowe'
   | 'sprzeglo'
   | 'pomiarowe'
+  | 'uziemiajace'
+  | 'kompensacyjne'
   | 'zrodlowe';
 
 /**
