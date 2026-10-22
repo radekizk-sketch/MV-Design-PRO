@@ -36,7 +36,7 @@
  */
 import { sceneConnectivityIndex, type SceneV3 } from './buildScene';
 import type { PreviewSegmentKind } from '../compose/preview';
-import type { SymbolId } from '../symbols/defs';
+import { CONTINUITY_APPARATUS_SYMBOL_IDS, type SymbolId } from '../symbols/defs';
 
 /**
  * Klasy ODCINKÓW niosące prąd (tor mocy). Deklaracja JAWNA i zamknięta —
@@ -52,20 +52,10 @@ export const CURRENT_PATH_SEGMENT_KINDS: readonly PreviewSegmentKind[] = [
   'busGpz',
 ];
 
-/**
- * APARATY CIĄGŁOŚCI ELEKTRYCZNEJ — łączniki, którymi tor da się przerwać.
- * To one odpowiadają na pytanie „czym to odcinam", więc ich zniknięcie z
- * rysunku jest utratą informacji, nie uproszczeniem.
- */
-export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
-  'breaker',
-  'disconnector',
-  'loadBreakSwitch',
-  'fuseSwitch',
-  'noPoint',
-  'lineSwitch',
-  'lineBreaker',
-];
+// APARATY CIĄGŁOŚCI ELEKTRYCZNEJ — definicja w `symbols/defs.ts` (jedno źródło dla tej
+// wyroczni i dla aparatu ciągłości zwiniętego bloku GPZ w `buildScene.ts`, który nie może
+// importować tego modułu bez cyklu).
+export { CONTINUITY_APPARATUS_SYMBOL_IDS } from '../symbols/defs';
 
 export type LodContinuityGapReason =
   | 'brak-toru-glownego'

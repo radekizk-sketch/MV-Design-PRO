@@ -62,6 +62,7 @@ import { SldCanvasV3 } from '../../canvas/SldCanvasV3';
 import { fieldCaptionAt } from '../../compose/directions';
 import { bayColumnRequiredWidth } from '../../layout/measure';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
+import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 const FIXTURA = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -348,8 +349,10 @@ describe('PROPORCJE §2 — hierarchia grubości OBEJMUJE APARATURĘ (rodzaj kre
     // Dlatego mierzymy WPROST na wyrenderowanej kanwie: stosunek grubości
     // kreski aparatu do grubości szyny musi być TEN SAM co w tabeli rang, i to
     // przy skali, na której kompensacja realnie działa.
+    // GEOMETRIA-STACJI (§0 pkt 4): odłącznik rysuje się wyłącznie z rekordu modelu — fikstura
+    // dostaje rekordy aparatów pól (`zRekordamiAparatowPol`); dawniej dawała go konwencja.
     const { container } = render(
-      <SldCanvasV3 snapshot={SIEC} width={420} height={280} lodOverride={2} animateLodTransitions={false} />,
+      <SldCanvasV3 snapshot={zRekordamiAparatowPol(SIEC)} width={420} height={280} lodOverride={2} animateLodTransitions={false} />,
     );
     const kadr = container.querySelector('[data-testid="sld-canvas-v3"]')!.getAttribute('viewBox')!.split(' ');
     const skala = 420 / Number(kadr[2]);

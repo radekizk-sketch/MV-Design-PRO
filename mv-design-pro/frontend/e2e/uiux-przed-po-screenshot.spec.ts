@@ -4,7 +4,7 @@
  * SLD) — materiał oceny właściciela (bramka B-02); spec NIE wystawia werdyktu wizualnego.
  *
  * Warunek porównania: ten sam spec, te same dane (sieć `siecKadrow`: GPZ, magistrala, stacje
- * przelotowa, sekcyjna, końcowa i odgałęźna), to samo okno, ten sam motyw startowy i te same
+ * odgałęźna, sekcyjna, końcowa i końcowa odgałęzienia), to samo okno, ten sam motyw startowy i te same
  * NATYWNE kroki użytkownika uruchamiane na drzewie „przed” (sprzed zmiany) i „po”. Różnica
  * obrazów wynika wyłącznie z produktu. Etap biegu nazywa zmienna `UIUX_ETAP` (`przed`/`po`),
  * domyślnie `po`; zrzuty: `docs/uiux/zrzuty/przed-po/<etap>/<punkt>-<scena>-<okno>-<motyw>.png`
@@ -15,8 +15,8 @@
  *  - UI-02 `inspektor`: natywny klik w nazwę stacji na schemacie — inspektor otwarty;
  *  - UI-02 `panel-dolny`: panel dolny otwarty z paska stanu (jeśli powłoka go ma);
  *  - UI-04 `siec`: „Dopasuj widok” bez zaznaczenia;
- *  - UI-04 `dwuklik-stacji`: natywny dwuklik w nazwę stacji przelotowej w widoku sieci;
- *  - UI-04 `stacja-dopasuj`: zaznaczenie stacji przelotowej + „Dopasuj widok”.
+ *  - UI-04 `dwuklik-stacji`: natywny dwuklik w nazwę stacji odgałęźnej w widoku sieci;
+ *  - UI-04 `stacja-dopasuj`: zaznaczenie stacji odgałęźnej + „Dopasuj widok”.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -57,15 +57,15 @@ async function uchwytStacji(page: Page, ref: string) {
 test.describe(`UIUX przed/po — etap „${ETAP}”`, () => {
   test.describe.configure({ mode: 'serial' });
   let seed: Awaited<ReturnType<typeof siecKadrow>>;
-  let refPrzelotowej: string;
+  let refOdgaleznej: string;
 
   test.beforeAll(async ({ request }) => {
     test.setTimeout(300_000);
     mkdirSync(KATALOG, { recursive: true });
     seed = await siecKadrow(request);
-    const stacja = (seed.enm.substations ?? []).find((s) => s.name === 'Stacja Przelotowa');
+    const stacja = (seed.enm.substations ?? []).find((s) => s.name === 'Stacja Odgałęźna');
     expect(stacja).toBeTruthy();
-    refPrzelotowej = stacja!.ref_id;
+    refOdgaleznej = stacja!.ref_id;
   });
 
   test.afterAll(() => {
@@ -82,7 +82,7 @@ test.describe(`UIUX przed/po — etap „${ETAP}”`, () => {
         await uspokoj(page);
         await page.screenshot({ path: plik('ui01', 'powloka', okno, motyw.klucz) });
 
-        await (await uchwytStacji(page, refPrzelotowej)).click();
+        await (await uchwytStacji(page, refOdgaleznej)).click();
         await uspokoj(page);
         await page.screenshot({ path: plik('ui02', 'inspektor', okno, motyw.klucz) });
 
@@ -107,7 +107,7 @@ test.describe(`UIUX przed/po — etap „${ETAP}”`, () => {
       await uspokoj(page);
       await page.screenshot({ path: plik('ui04', 'siec', OKNO_SLD, motyw.klucz) });
 
-      await (await uchwytStacji(page, refPrzelotowej)).dblclick();
+      await (await uchwytStacji(page, refOdgaleznej)).dblclick();
       await uspokoj(page);
       await page.screenshot({ path: plik('ui04', 'dwuklik-stacji', OKNO_SLD, motyw.klucz) });
 
@@ -115,7 +115,7 @@ test.describe(`UIUX przed/po — etap „${ETAP}”`, () => {
       await otworzAplikacje(page, seed, OKNO_SLD, motyw.theme);
       await dopasuj.click();
       await uspokoj(page);
-      await (await uchwytStacji(page, refPrzelotowej)).click();
+      await (await uchwytStacji(page, refOdgaleznej)).click();
       await dopasuj.click();
       await uspokoj(page);
       await page.screenshot({ path: plik('ui04', 'stacja-dopasuj', OKNO_SLD, motyw.klucz) });

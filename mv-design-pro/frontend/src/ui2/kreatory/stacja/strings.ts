@@ -430,6 +430,12 @@ export const STACJA_STRINGS = {
     + 'to oznaczenia operatorskie z tej samej karty. Rysunek nie dodaje aparatu spoza kompozycji '
     + 'ani nie pomija aparatu, który w niej jest.',
   podgladStronaNn: 'nN',
+  // GEOMETRIA-STACJI (§0 pkt 4b): aparaty podglądu to propozycja szablonu, nie rekordy modelu.
+  podgladPropozycjaSzablonu: 'propozycja szablonu',
+  podgladPropozycjaOpis:
+    'Aparaty na rysunku pochodzą z kompozycji szablonu pola i nie są jeszcze zapisane w modelu '
+    + 'sieci — rysowane kreską przerywaną, bez stanu łączników. Po zapisie stacji schemat '
+    + 'jednokreskowy pokazuje aparaty z rekordów pól modelu.',
   // Nagłówek pakietu rozdzielnicy (dane rodziny + werdykt walidatora backendu).
   naglowekRodzina: 'Rodzina',
   naglowekProducent: 'Producent',

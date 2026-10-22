@@ -3,7 +3,7 @@
  * (`LINE_OUT`) i rysowane bez rodzaju źródła. Teraz rodzaj źródła pochodzi z przyłączonych
  * wytwórców (`Generator.meta.field_ref`) przez TĘ SAMĄ funkcję co pola źródłowe stacji
  * (`v2/model/polaZModelu.ts rolaPolaZrodlowego`), a pole dostaje glif źródła z tej samej
- * tabeli rola → glif (`apparatusSymbolsForRole`). Glif jest aparatem bocznym przy głowicy
+ * tabeli rola → glif (`glifZrodlaRoliPola`). Glif jest aparatem bocznym przy głowicy
  * kablowej — kabel nadal wychodzi z głowicy.
  *
  * Iloczyn cech na realnej ścieżce (migawka ENM → adapter → kompozycja → scena v3):
@@ -15,6 +15,7 @@ import type { EnergyNetworkModel, Generator } from '../../../../../types/enm';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3 } from '../buildScene';
 import { buildDerSnFixture } from './fixtures/w2cDerSnFixtures';
+import { nadajRekordyAparatow, POLE_LINIOWE_WYLACZNIKOWE } from './fixtures/rekordyAparatowPola';
 
 const GLIFY = ['derPv', 'derBess', 'derWind', 'derUnknown'] as const;
 type Wytworcy = 'PV' | 'BESS' | 'FW' | 'brak' | 'mieszane';
@@ -34,6 +35,9 @@ function migawka(pole: keyof typeof POLA, typy: readonly NonNullable<Generator['
   const { enm } = buildDerSnFixture([]);
   const bay = enm.bays.find((b) => b.ref_id.endsWith(POLA[pole]))!;
   (bay as { bay_role: string }).bay_role = 'OZE';
+  // GEOMETRIA-STACJI (§0 pkt 4): głowica kablowa pola z rekordu modelu (konwencja roli
+  // skasowana) — intencja testu to położenie glifu źródła względem głowicy.
+  nadajRekordyAparatow(bay, POLE_LINIOWE_WYLACZNIKOWE);
   typy.forEach((genType, i) => {
     enm.generators.push({
       id: `gen-oze-${i}`, ref_id: `gen-oze-${i}`, name: `Źródło ${i}`, tags: [], bus_ref: bay.bus_ref, p_mw: 1,

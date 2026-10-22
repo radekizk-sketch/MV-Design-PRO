@@ -124,6 +124,14 @@ export function indeksPrzynaleznosci(scene: SceneV3): IndeksPrzynaleznosci {
       label.rect.y + label.rect.height,
     );
   }
+  // GEOMETRIA-STACJI (Z-03): szyna sekcji stacji należy do rekordu `Bus` sekcji, nie do
+  // kompozytu stacji — prostokąt stacji obejmuje ją wg JEDYNEJ relacji sceny
+  // `meta.stacjaSzynySekcji` (bez niej kadr i kotwica kamery stacji gubią jej szyny).
+  for (const [busRef, stationRef] of Object.entries(scene.meta.stacjaSzynySekcji ?? {})) {
+    const szyna = pudla.get(busRef);
+    if (!szyna) continue;
+    obejmij(stationRef, szyna.minX, szyna.minY, szyna.maxX, szyna.maxY);
+  }
   INDEKSY.set(scene, pudla);
   return pudla;
 }

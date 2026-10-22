@@ -20,6 +20,7 @@
  * czytelny, bez integracji z solver companion w tej dostawie, STOP-notatka
  * tam).
  */
+import { obrysyZaznaczenia } from './obrysZaznaczenia';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
@@ -48,6 +49,7 @@ import {
   daneGlifuSymbolu,
   segmentStrokeWidthForScale,
   segmentDasharray,
+  klasaWagiOdcinka,
   strokeScaleFactor,
   pointsToPath,
   type PreviewElementKind,
@@ -102,7 +104,6 @@ import { resultLabelLinesForLod, RESULT_LABEL_TREND_GLYPH, type ResultLabelLod }
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
-import { rolaSymboluLacznika, type RolaSymboluLacznika } from '../../v2/model/stanAparatowPola';
 import { isLayerVisible, layerIdForElementMeta, type CanvasLayerVisibility } from './layers';
 import {
   bridgePointsForPolyline,
@@ -213,12 +214,6 @@ export interface SldElementClickMeta {
    *  prawego inspektora → `buildDaneElementuKanwy('apparatus', …, deviceRef)`.
    *  `undefined` dla stosu konwencji i elementów nie-aparatowych. */
   readonly deviceRef?: string;
-  /** UI-02b: rola klikniętego symbolu ŁĄCZNIKA pola BEZ refu pojedynczego aparatu (stos
-   *  z konwencji: glif rysuje agregat pola `cbState`/`dsState`/`esState`). Z TEJ SAMEJ
-   *  tabeli (`rolaSymboluLacznika`), którą kompozycja wybiera agregat glifu — inspektor
-   *  pokazuje położenie tego agregatu, nie „brak stanu". `undefined` dla symbolu z
-   *  `deviceRef` (stan per aparat), symbolu bez stanu i obiektów nie-aparatowych. */
-  readonly rolaLacznika?: RolaSymboluLacznika;
   /** K5-A: KANONICZNY Bus ref szyny (segmenty `elementKind==='bus'` GPZ —
    *  `meta.busResultRef`, ADAPTER-BUSREF). `ownerRef` szyn to kompozyt sceny
    *  (`${sectionId}#bus-primary` itd.) — operacje domenowe (np.
@@ -492,6 +487,11 @@ export interface SldCanvasV3Props {
    *  (`SldCanvasV3Workspace`) czyści zaznaczenie. Brak propa = zachowanie jak
    *  dotychczas (klik w tło bez skutku). */
   readonly onBackgroundClick?: () => void;
+  /** GEOMETRIA-STACJI (§0 pkt 5): refy zaznaczonych obiektów (stan wołającego —
+   *  `SldCanvasV3Workspace`, sklep selekcji). Kanwa rysuje dla nich obrys w barwie
+   *  `palette.highlight.selection`, niezależnej od barwy roli pola (`obrysZaznaczenia.ts`).
+   *  Brak propa = brak obrysu. */
+  readonly zaznaczenieRefy?: readonly string[];
 }
 
 function strokeForEnergization(energized: boolean | undefined, palette: SldPalette): string | undefined {
@@ -557,6 +557,10 @@ function SceneSymbolNode(props: {
       data-testid={testId}
       data-parity-key={parityKeysOf(symbol.meta)}
       data-apparatus-source={symbol.meta?.apparatusSource}
+      data-apparatus-origin={symbol.meta?.apparatusOrigin}
+      data-apparatus-type={symbol.meta?.apparatusTypeRef}
+      data-bay-reserve={symbol.meta?.bayReserve}
+      data-track-role={symbol.meta?.trackRole}
       data-designation-source={symbol.meta?.designationSource}
       data-source-state={sourceState}
       data-energized={energizedSym === undefined ? undefined : String(energizedSym)}
@@ -714,8 +718,7 @@ function SceneSegmentNode(props: {
   const palette = useSldPalette();
   if (segment.points.length < 2) return null;
   const testId = segmentTestId(segment, index);
-  const kind = segment.meta?.kind ?? 'sn';
-  const strokeWidth = segmentStrokeWidthForScale(kind, cameraScale);
+  const strokeWidth = segmentStrokeWidthForScale(klasaWagiOdcinka(segment.meta), cameraScale);
   // F9.9 / F10.5 / K2b §0.4 — wzór kreski z JEDNEJ reguły (`segmentDasharray`,
   // `compose/preview.tsx`), wspólnej z podglądem.
   const strokeDasharray = segmentDasharray(segment);
@@ -768,6 +771,7 @@ function SceneSegmentNode(props: {
       // deterministyczne wskazanie przęsła po refie ENM (luka wykryta
       // adaptacją e2e sld-editor-real-backend-flex, 2026-07-17).
       data-owner-ref={segment.meta?.ownerRef}
+      data-track-role={segment.meta?.trackRole}
       data-energized={energizedSeg === undefined ? undefined : String(energizedSeg)}
       data-flow-direction={flowSeg ? (flowSeg.forward ? 'forward' : 'reverse') : undefined}
       data-flow-source={flowSeg ? 'solver' : undefined}
@@ -2435,7 +2439,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
     cameraOverride,
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
-    fitTarget = 'tresc', centerRequest, onBackgroundClick,
+    fitTarget = 'tresc', centerRequest, onBackgroundClick, zaznaczenieRefy,
   } = props;
   // S9-8: obszar bezpieczny kadru — doki własne kanwy plus (opcjonalnie)
   // zasłona wołającego. Referencja stabilna, żeby `useEffect` refitu nie
@@ -2723,6 +2727,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
 
   const effectiveLod: SceneLod = lodOverride ?? camera.lod;
   const scene = sceneByLod[effectiveLod];
+  const obrysy = useMemo(
+    () => obrysyZaznaczenia(scene, zaznaczenieRefy ?? []),
+    [scene, zaznaczenieRefy],
+  );
   // F13.2 (spec §22.1, D3-3): przecięcia toru mocy TEJ sceny — jedna prawda
   // dla mostków wszystkich odcinków (deterministyczne, memoizowane per scena).
   const sceneCrossings = useMemo(() => interiorCrossings(scene.segments), [scene]);
@@ -3064,10 +3072,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): ref pojedynczego aparatu ze
         // sceny (ścieżka danych) — inspektor rozróżnia aparaty jednego pola.
         deviceRef: symbol.meta?.deviceRef,
-        rolaLacznika:
-          symbol.meta?.elementKind === 'apparatus' && !symbol.meta.deviceRef
-            ? rolaSymboluLacznika(symbol.symbolId)
-            : undefined,
         // PORTAL nN: stacja, której projekcję nN otwiera klik w portal.
         lvPortalStationRef: symbol.meta?.lvPortalStationRef,
       });
@@ -3611,6 +3615,25 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               <SceneLabelNode key={`label-${planned.index}`} planned={planned} cameraScale={camera.transform.scale} />
             ),
           )}
+        </g>
+        {/* GEOMETRIA-STACJI (§0 pkt 5): obrys zaznaczenia — własna barwa
+         *  (`highlight.selection`), niezależna od barwy roli pola. */}
+        <g data-testid="sld-v3-zaznaczenie">
+          {obrysy.map((obrys) => (
+            <rect
+              key={`zaznaczenie-${obrys.ref}`}
+              data-zaznaczenie-ref={obrys.ref}
+              x={obrys.rect.x}
+              y={obrys.rect.y}
+              width={obrys.rect.width}
+              height={obrys.rect.height}
+              fill="none"
+              stroke={palette.highlight.selection}
+              strokeWidth={2}
+              strokeDasharray="6 3"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
         </g>
         </g>
         {/* F9.5 (spec §14.2): nakładka przepływu NAD warstwami bazowymi

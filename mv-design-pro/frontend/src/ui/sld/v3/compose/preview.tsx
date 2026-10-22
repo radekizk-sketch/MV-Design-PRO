@@ -171,6 +171,15 @@ export function segmentStrokeWidthForScale(kind: PreviewSegmentKind, cameraScale
   return SEGMENT_STROKE_WIDTH[kind] * strokeScaleFactor(cameraScale);
 }
 
+/** GEOMETRIA-STACJI (§0 pkt 1): klasa wagi kreski odcinka. Zejście pola TORU GŁÓWNEGO
+ *  stacji przelotowej/odgałęźnej/końcowej (`trackRole === 'glowny'`) ma wagę magistrali
+ *  (`snTrunk`) — ciąg główny czyta się przez stację jednym rzutem oka, a pole odgałęzienia
+ *  zostaje przy wadze toru odgałęźnego (`sn`). Jedno wejście dla kanwy i harnessu. */
+export function klasaWagiOdcinka(meta: PreviewElementMeta | undefined): PreviewSegmentKind {
+  const kind = meta?.kind ?? 'sn';
+  return kind === 'sn' && meta?.trackRole === 'glowny' ? 'snTrunk' : kind;
+}
+
 /**
  * PROPORCJE (zgłoszenie właściciela 2026-08-07 „brak proporcji, grubości",
  * pkt 2: „tor prądowy grubszy od kreski aparatu ok. 8–10× — odwrócona
@@ -270,7 +279,7 @@ export interface PreviewElementMeta {
    * F8b-1 (spłata długu k1, REBUILD_PLAN_V3 F6b-2/F8a): realny ref ENM (lub
    * kompozyt zakotwiczony w realnym refie z sufiksem `#...`, ta sama
    * konwencja co `ComposedSegment.ownerRef`/`GpzElementMeta` — np. bayRef,
-   * segmentRef, station ref, `${stationId}#sn-bus`) elementu, którego ten
+   * segmentRef, station ref, `${busRef}#sn-bus`) elementu, którego ten
    * symbol/segment reprezentuje na scenie. Fundament selekcji (B) i nakładki
    * energizacji (C) — WOŁAJĄCY (`buildScene.ts`) NIE zgaduje: `undefined`,
    * gdy adapter nie daje jednoznacznego dopasowania (np. przęsło bez
@@ -307,14 +316,27 @@ export interface PreviewElementMeta {
    *  `theme/colorTokens.ts::voltageClassOf` z PIERWSZEŃSTWEM przed klasyfikacją
    *  substring po `ownerRef`. Brak pola = klasyfikacja jak dotąd. */
   readonly voltageClass?: 'hv' | 'sn' | 'nn';
-  /** F9.3 (SLD_CAD_SPEC_V3 §12.1): pochodzenie stosu aparatów pola —
-   *  `'dane'` gdy zbudowany z `Bay.primary_devices`, `'konwencja'` gdy z
-   *  fallbacku rysunkowego §12.4. Audytor DOM czyta to jako
-   *  `data-apparatus-source` na grupie symbolu (patrz `PreviewSymbolNode`
-   *  niżej i `canvas/SldCanvasV3.tsx`). `undefined` dla elementów, które nie
-   *  są aparatem pola (szyny, stacje, DER, segmenty).
+  /** Pochodzenie stosu aparatów pola — `'dane'` gdy zbudowany z rekordów aparatów modelu,
+   *  `'brak'` gdy model ich nie niesie (sylwetka „brak danych wyposażenia pola", karta
+   *  GEOMETRIA-STACJI §0 pkt 4c). Audytor DOM czyta to jako `data-apparatus-source` na
+   *  grupie symbolu (`PreviewSymbolNode` niżej i `canvas/SldCanvasV3.tsx`). `undefined`
+   *  dla elementów, które nie są aparatem pola (szyny, stacje, DER, segmenty).
    */
-  readonly apparatusSource?: 'dane' | 'konwencja';
+  readonly apparatusSource?: 'dane' | 'brak';
+  /** GEOMETRIA-STACJI (§0 pkt 4a): rekord aparatu — `Bay.primary_devices` (`'rekord_pola'`)
+   *  albo gałąź łączeniowa w `Bay.equipment_refs` (`'galaz_pola'`); DOM
+   *  `data-apparatus-origin`. */
+  readonly apparatusOrigin?: 'rekord_pola' | 'galaz_pola';
+  /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu (`catalog_ref`); DOM
+   *  `data-apparatus-type`. Brak = model nie niesie typu. */
+  readonly apparatusTypeRef?: string;
+  /** GEOMETRIA-STACJI (§0 pkt 5): pole rezerwowe/wolne, do którego należy symbol; DOM
+   *  `data-bay-reserve`. */
+  readonly bayReserve?: 'rezerwowe' | 'wolne';
+  /** GEOMETRIA-STACJI (§0 pkt 1): rola odcinka w sylwetce rodzaju stacji — tor główny
+   *  ciągu (pola liniowe stacji przelotowej/odgałęźnej/końcowej i szyna między nimi) albo
+   *  odgałęzienie stacji odgałęźnej; DOM `data-track-role`. */
+  readonly trackRole?: 'glowny' | 'odgalezienie';
   /** F10.2 (spec §19.1, V12K-035): pochodzenie IDENTYFIKATORA PER-APARAT
    *  (Q/QE/T) tego symbolu — `'konwencja'` gdy z fallbacku
    *  `apparatusIdentifiers` (`compose/apparatusSequence.ts`, dziś ZAWSZE,
@@ -557,6 +579,10 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-parity-key={parityKeysOf(symbol.meta)}
       data-test-id={symbol.meta?.testId}
       data-apparatus-source={symbol.meta?.apparatusSource}
+      data-apparatus-origin={symbol.meta?.apparatusOrigin}
+      data-apparatus-type={symbol.meta?.apparatusTypeRef}
+      data-bay-reserve={symbol.meta?.bayReserve}
+      data-track-role={symbol.meta?.trackRole}
       data-config-id={symbol.meta?.configId}
       data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
@@ -597,8 +623,7 @@ export function segmentDasharray(segment: PreviewSegment): string | undefined {
 function PreviewSegmentNode(props: { readonly segment: PreviewSegment; readonly stroke: string }): JSX.Element | null {
   const { segment, stroke } = props;
   if (segment.points.length < 2) return null;
-  const kind = segment.meta?.kind ?? 'sn';
-  const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
+  const strokeWidth = SEGMENT_STROKE_WIDTH[klasaWagiOdcinka(segment.meta)];
   const strokeDasharray = segmentDasharray(segment);
   return (
     <path

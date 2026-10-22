@@ -70,6 +70,7 @@ function makeScene(partial: {
       sheetRowBands: [],
       lateralRunIds: [],
       drawnStationIds: [],
+      stacjaSzynySekcji: {},
       stationTraversalOrder: [],
       drawnBranchPointRefs: [],
       stopNotes: [],

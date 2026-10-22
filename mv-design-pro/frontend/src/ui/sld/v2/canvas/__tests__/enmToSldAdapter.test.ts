@@ -2457,11 +2457,22 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
       .map((b) => b.bayRef)
       .sort();
     // Karta W5-B: jeden nośnik — rekordy `bays` pól SN stacji rysowanych blokiem.
+    // GEOMETRIA-STACJI (§0 pkt 4a): rekordem aparatu jest też gałąź łączeniowa pola
+    // (wyłącznik / rozłącznik / odłącznik / bezpiecznik) wskazana w `equipment_refs` — sieć
+    // referencyjna niesie wyłącznik pola właśnie tak, bez `primary_devices`. Rachunek ręczny
+    // po typach gałęzi (nie przez funkcję adaptera).
+    const typyLacznikow = new Set(['breaker', 'switch', 'disconnector', 'fuse']);
+    const typGalezi = new Map(enm.branches.map((g) => [g.ref_id, g.type]));
     const zDanymi = r.stations
       .flatMap((s) => polaSnStacji(enm, s.id))
-      .filter((b) => (b.primary_devices ?? []).length > 0)
+      .filter(
+        (b) =>
+          (b.primary_devices ?? []).length > 0 ||
+          b.equipment_refs.some((ref) => typyLacznikow.has(typGalezi.get(ref) ?? '')),
+      )
       .map((b) => b.ref_id)
       .sort();
+    expect(zDanymi.length).toBeGreaterThan(0);
     expect(narysowane).toEqual(zDanymi);
   });
 });

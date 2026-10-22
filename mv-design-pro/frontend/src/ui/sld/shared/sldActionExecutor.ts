@@ -219,7 +219,8 @@ interface SldOperationAction {
   readonly messagePl: string;
 }
 
-/** K5-A: kompozyt sceny `${stationRef}#sn-bus` → kanoniczny Bus ref przez
+/** K5-A: odcinek szyny sceny `${busRef}#sn-bus` → `busRef` (rekord `Bus`); kompozyt
+ *  `${stationRef}#sn-bus` (stacja bez rekordu sekcji) → kanoniczny Bus ref przez
  *  realne FK `substation.bus_refs` (szyna SN: U > 1 kV). Ref bez kompozytu
  *  lub nierozwiązywalny wraca bez zmian (uczciwa degradacja — kreator pokaże
  *  brak szyny albo odmowę backendu, zero fabrykowanego refu). */
@@ -229,7 +230,11 @@ function resolveCanonicalSectionBusRef(
 ): string {
   const marker = elementId.indexOf('#');
   if (marker <= 0 || elementId.slice(marker + 1) !== 'sn-bus') return elementId;
-  const stationRef = elementId.slice(0, marker);
+  const prefix = elementId.slice(0, marker);
+  // GEOMETRIA-STACJI (Z-03): odcinek szyny SN stacji niesie ref SEKCJI (`${busRef}#sn-bus`)
+  // — rekord `Bus` modelu jest kanonicznym refem wprost, bez wyboru szyny stacji.
+  if ((snapshot?.buses ?? []).some((bus) => bus.ref_id === prefix)) return prefix;
+  const stationRef = prefix;
   const station = (snapshot?.substations ?? []).find(
     (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
   );
@@ -535,7 +540,7 @@ export function buildSldOperationContext(
   if (actionId === 'add-arrester' && operationKind === 'apparatus') {
     operationKind = 'bay';
   }
-  // K5-A: szyna SN stacji na scenie v3 to kompozyt `${stationRef}#sn-bus` —
+  // K5-A: szyna SN stacji na scenie v3 to odcinek sekcji `${busRef}#sn-bus` —
   // rozwiązujemy kanoniczny Bus ref realnym FK `substation.bus_refs`
   // (szyna GPZ niesie kanoniczny ref już z `meta.busRef` w Workspace).
   if (kind === 'section' && (actionId === 'add-compensator' || actionId === 'add-arrester')) {

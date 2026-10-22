@@ -7,9 +7,16 @@
  * `deviceRef`) rysuje agregat roli pola (`cbState`/`dsState`/`esState`), a inspektor
  * pokazywał „brak stanu w modelu", bo szukał aparatu o refie pola. Ten sam rozjazd miał
  * łącznik TORU ciągu SN (gałąź łączeniowa poza polem): glif ze `status` gałęzi, inspektor
- * bez sekcji stanu. Naprawa: rola symbolu z JEDNEJ tabeli (`rolaSymboluLacznika`), którą
- * kompozycja wybiera agregat glifu, jedzie w meta kliku do inspektora; łącznik toru —
- * `stanLacznikaToruZModelu` na tym samym zbiorze typów gałęzi co scena.
+ * bez sekcji stanu. Naprawa: łącznik toru — `stanLacznikaToruZModelu` na tym samym zbiorze
+ * typów gałęzi co scena.
+ *
+ * GEOMETRIA-STACJI (§0 pkt 4, kryterium właściciela): aparat pola rysuje się WYŁĄCZNIE
+ * z rekordu modelu, więc symbol łącznika ma zawsze ref rekordu (`deviceRef`), a jego stan
+ * pochodzi z tego rekordu (glif i inspektor — ten sam `stanLacznikaPolaZModelu`). Stos
+ * z konwencji i przenoszenie agregatu roli pola do inspektora zniknęły razem z nim; pole bez
+ * rekordu rysuje sylwetkę braku danych — bez koloru stanu w rysunku i bez położenia
+ * w inspektorze (osobny przypadek niżej). Fikstury niosą rekordy aparatów
+ * (`zRekordamiAparatowPol`) — intencja testu (parytet glif = inspektor) bez zmian.
  *
  * Iloczyn cech: blok {stacja SN/nN, GPZ, tor ciągu} × rola symbolu {wyłącznik, odłącznik /
  * rozłącznik, uziemnik, łącznik toru} × stan modelu {zamknięty, otwarty, nieustalony} ×
@@ -23,7 +30,7 @@ import { dirname, resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
-import type { EnergyNetworkModel } from '../../../../../types/enm';
+import type { BayDeviceState, EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
@@ -31,8 +38,8 @@ import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
-import { POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
-import { rolaSymboluLacznika } from '../../../v2/model/stanAparatowPola';
+import { BRAK_POLOZENIA_W_MODELU, POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = resolve(here, '..', '..', '..', '..', '..');
@@ -41,8 +48,37 @@ function wczytaj(sciezka: string): EnergyNetworkModel {
   const surowy = JSON.parse(readFileSync(resolve(src, sciezka), 'utf8')) as
     | { readonly enm: EnergyNetworkModel }
     | EnergyNetworkModel;
-  return 'enm' in surowy ? surowy.enm : surowy;
+  return zeStanamiRekordow(zRekordamiAparatowPol('enm' in surowy ? surowy.enm : surowy));
 }
+
+const STANY_REKORDU: readonly BayDeviceState[] = ['zamkniety', 'otwarty', 'nieznany'];
+
+/** Rekordy łączników bez gałęzi (`linked_ref`) dostają stan rekordu (`switch_state`) —
+ *  kolejno zamknięty / otwarty / nieustalony wg pozycji w migawce (deterministycznie). Bez
+ *  tego uziemnik i łącznik pola bez gałęzi nie mają w modelu stanu, więc iloczyn ról
+ *  „uziemnik × stan" nie byłby osiągalny. */
+function zeStanamiRekordow(enm: EnergyNetworkModel): EnergyNetworkModel {
+  let licznik = 0;
+  return {
+    ...enm,
+    bays: enm.bays.map((bay) => ({
+      ...bay,
+      primary_devices: (bay.primary_devices ?? []).map((device) =>
+        device.linked_ref || device.switch_state || !['CB', 'DS', 'LOAD_SWITCH', 'ES'].includes(device.kind)
+          ? device
+          : { ...device, switch_state: { actual_state: STANY_REKORDU[licznik++ % STANY_REKORDU.length] } },
+      ),
+    })),
+  };
+}
+
+/** Rola symbolu łącznika w iloczynie pokrycia (wyłącznie klucz testu, nie reguła rysunku). */
+const ROLA_POKRYCIA: Readonly<Record<string, string>> = {
+  breaker: 'cb',
+  disconnector: 'ds',
+  loadBreakSwitch: 'ds',
+  earthSwitch: 'es',
+};
 
 const SIECI: readonly (readonly [string, string])[] = [
   ['52 stacje', 'ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json'],
@@ -100,7 +136,7 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
           if (meta?.elementKind !== 'apparatus' || !meta.ownerRef || symbol.state === undefined) return;
           const testId = meta.testId ?? `sld-v3-symbol-${index}`;
           const blok = blokSymbolu(testId, meta.ownerRef);
-          if (blok !== 'tor' && (meta.deviceRef || !rolaSymboluLacznika(symbol.symbolId))) return;
+          if (blok !== 'tor' && (!meta.deviceRef || !ROLA_POKRYCIA[symbol.symbolId])) return;
           const klucz = `${blok}|${symbol.symbolId}|${symbol.state}`;
           if (!reprezentanci.has(klucz)) reprezentanci.set(klucz, index);
         });
@@ -125,12 +161,38 @@ describe('Inspektor obiektu kanwy — położenie łącznika = stan glifu klikni
           expect(screen.getByTestId('inspektor-aparat-stan').textContent, klucz).toBe(
             POLOZENIE_LACZNIKA_PL[symbol.state!],
           );
-          pokryte.add(klucz.split('|')[0] + '|' + (rolaSymboluLacznika(symbol.symbolId) ?? 'tor') + '|' + symbol.state);
+          pokryte.add(klucz.split('|')[0] + '|' + (ROLA_POKRYCIA[symbol.symbolId] ?? 'tor') + '|' + symbol.state);
           fireEvent.keyDown(window, { key: 'Escape' });
         }
       });
     }
   }
+
+  it('pole bez rekordu aparatów: sylwetka braku danych bez stanu w rysunku i bez położenia w inspektorze', () => {
+    const enm = wczytaj(SIECI[0][1]);
+    const bezRekordow = {
+      ...enm,
+      bays: enm.bays.map((bay, i) => (i === enm.bays.findIndex((b) => b.substation_ref && !b.ref_id.startsWith('gpz/')) ? { ...bay, primary_devices: [], equipment_refs: [] } : bay)),
+    } as EnergyNetworkModel;
+    useSnapshotStore.setState({ snapshot: bezRekordow });
+    const scene = buildSceneV3(bezRekordow, 2);
+    const index = scene.symbols.findIndex((s) => s.symbolId === 'bayNoEquipment' && !(s.meta?.ownerRef ?? '').startsWith('gpz/'));
+    expect(index, 'scena rysuje sylwetkę braku danych pola stacji').toBeGreaterThanOrEqual(0);
+    const symbol = scene.symbols[index];
+    expect(symbol.state).toBeUndefined();
+    const { container } = render(
+      <>
+        <SldCanvasV3Workspace width={1600} height={1000} lodOverride={2} />
+        <InspektorKanwyTestowy />
+      </>,
+    );
+    const testId = symbol.meta?.testId ?? `sld-v3-symbol-${index}`;
+    const uchwyt = container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+    expect(uchwyt, 'uchwyt trafienia sylwetki').not.toBeNull();
+    fireEvent.click(uchwyt!);
+    expect(useSelectionStore.getState().selectedElements.map((e) => e.id)).toEqual([symbol.meta!.ownerRef]);
+    expect(screen.getByTestId('inspektor-aparat-stan').textContent).toBe(BRAK_POLOZENIA_W_MODELU);
+  });
 
   it('pokrycie iloczynu: każdy blok i każda rola wystąpiły, a stany zamknięty/otwarty/nieustalony — każdy', () => {
     const bloki = new Set([...pokryte].map((k) => k.split('|')[0]));

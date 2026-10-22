@@ -111,12 +111,13 @@ import {
 import { buildCanonicalGpzProps } from '../../v2/canvas/enmToCanonicalGpzAdapter';
 import { czyPoleKabloweGpz, type CanonicalGpzProps } from '../../v2/canvas/canonicalGpzModel';
 import type { StationOnRunViewModel } from '../../v2/model/widokSld';
+import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { formatLineTechnicalLabel } from '../layout/lineLabel';
 import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
-import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { CONTINUITY_APPARATUS_SYMBOL_IDS, SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import {
   classifyRouteNodes,
   type RouteGeometry,
@@ -283,6 +284,15 @@ export interface SceneV3Meta {
    *  nie „które". Wejście `branchPointCoverageGaps` („stacja za punktem odgałęźnym
    *  narysowana"). */
   readonly drawnStationIds: readonly string[];
+  /**
+   * GEOMETRIA-STACJI (Z-03): szyna sekcji stacji SN → stacja. Odcinek szyny i opis
+   * sekcji należą do rekordu `Bus` sekcji (`${busRef}#sn-bus`, `${busRef}#busbar-voltage`),
+   * a nie do kompozytu stacji, więc przynależność po prefiksie refu nie łączy ich ze
+   * stacją. Mapa jest JEDYNYM źródłem tej relacji dla indeksu przynależności
+   * (`canvas/viewAnchor.ts`: prostokąt stacji obejmuje jej szyny sekcji) — dana z
+   * `snSections` widoku stacji, zero przeszukiwania topologii. Klucze posortowane.
+   */
+  readonly stacjaSzynySekcji: Readonly<Record<string, string>>;
   /**
    * K2 (UI-04, nawigacja „poprzednia/następna stacja"): stacje narysowane w
    * PORZĄDKU OBCHODU RYSUNKU — GPZ, odgałęzienia z pól GPZ, potem ciąg główny
@@ -1163,7 +1173,37 @@ function buildMeasureInput(
     // kolumnę transformatora BEZ pola w obrębie właściwej sekcji szyn.
     hasTransformer: stationHasTransformerFact(props),
     transformerUnits: props.transformerUnits,
+    // GEOMETRIA-STACJI (Z-03): sekcje szyn SN i sprzęgła między nimi (adapter v2).
+    snSections: props.snSections,
+    snCouplers: props.snCouplers,
   };
+}
+
+/** Szyna sekcji → stacja dla stacji FAKTYCZNIE narysowanych (`SceneV3Meta.stacjaSzynySekcji`). */
+function stacjaSzynySekcjiNarysowanych(
+  drawnStationIds: ReadonlySet<string>,
+  stationById: ReadonlyMap<string, StationOnRunViewModel>,
+): Readonly<Record<string, string>> {
+  const pary: [string, string][] = [];
+  for (const stationId of drawnStationIds) {
+    for (const section of stationById.get(stationId)?.snSections ?? []) pary.push([section.busRef, stationId]);
+  }
+  pary.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return Object.fromEntries(pary);
+}
+
+/** Łącznik ciągłości pola GPZ z kompozycji pełnej (`buildCollapsedGpz`, L0): pierwszy
+ *  symbol pola wg kolejności `CONTINUITY_APPARATUS_SYMBOL_IDS`; `null` = pole bez rekordu
+ *  łącznika (sylwetka braku danych). */
+function lacznikCiaglosciPolaGpz(
+  symbols: readonly ComposedGpzSymbolInstance[],
+  bayRef: string,
+): { readonly symbolId: SymbolId; readonly state: ComposedGpzSymbolInstance['state'] } | null {
+  for (const symbolId of CONTINUITY_APPARATUS_SYMBOL_IDS) {
+    const symbol = symbols.find((s) => s.meta.bayRef === bayRef && s.symbolId === symbolId);
+    if (symbol) return { symbolId, state: symbol.state };
+  }
+  return null;
 }
 
 function buildRowLayout(
@@ -1394,6 +1434,34 @@ function findSegmentPointX(
   return segments.find((s) => s.ownerRef === ownerRef)?.points[pointIndex]?.x ?? null;
 }
 
+/**
+ * GEOMETRIA-STACJI (§0 pkt 1): rola toru pól liniowych w sylwetce rodzaju stacji.
+ *  · przelotowa / końcowa: poprzednik i następnik ciągu = tor główny;
+ *  · odgałęźna: tor główny + pola odgałęzień rozróżnione (`'odgalezienie'`);
+ *  · sekcyjna: brak (sylwetkę niosą sekcje szyn i sprzęgło).
+ * Pole rezerwowe/wolne nie należy do toru (brak odejścia w modelu).
+ */
+export function rolaToruPolStacji(
+  rodzaj: StationOnRunViewModel['topologicalType'],
+  previousIndex: number | null,
+  nextIndex: number | null,
+  branchIndices: readonly number[],
+  snBays: readonly MiniBlockBayDescriptor[],
+): ReadonlyMap<string, 'glowny' | 'odgalezienie'> {
+  const wynik = new Map<string, 'glowny' | 'odgalezienie'>();
+  if (rodzaj === 'sekcyjna') return wynik;
+  const ustaw = (index: number | null, rola: 'glowny' | 'odgalezienie'): void => {
+    if (index == null) return;
+    const bay = snBays[index];
+    if (!bay || bay.reserve) return;
+    wynik.set(bay.bayRef, rola);
+  };
+  ustaw(previousIndex, 'glowny');
+  ustaw(nextIndex, 'glowny');
+  if (rodzaj === 'odgałęźna') branchIndices.forEach((index) => ustaw(index, 'odgalezienie'));
+  return wynik;
+}
+
 function composeRowStation(
   measureInput: StationMeasureInput,
   props: StationOnRunViewModel,
@@ -1611,6 +1679,11 @@ function composeRowStation(
   // wspólna fabryka (`compose/unikalnyTestId.ts`, TA SAMA reguła co GPZ po
   // S9-4) obejmuje aparaty ORAZ adnotacje zabezpieczeń tej stacji.
   const unikalnyTestId = createUnikalnyTestId();
+  // GEOMETRIA-STACJI (§0 pkt 1): sylwetka rodzaju stacji — pola toru głównego
+  // (poprzednik/następnik ciągu) i pola odgałęzienia z TEJ SAMEJ klasyfikacji kierunku,
+  // która wyznacza porty magistrali (`findLineBayIndices`); rodzaj z topologii
+  // (`props.topologicalType`, jedna reguła produktu `ui/shared/rodzajStacji.ts`).
+  const rolaToru = rolaToruPolStacji(props.topologicalType, previousIndex, nextIndex, branchIndices, measureInput.snBays);
   const symbols: PreviewSymbol[] = composition.symbols.map((s) => ({
     symbolId: s.symbolId,
     x: s.x,
@@ -1625,6 +1698,8 @@ function composeRowStation(
       testId: unikalnyTestId(
         s.bayRef
           ? `${s.bayRef}#${s.symbolId}`
+          : s.couplerRef
+            ? `${s.couplerRef}#${s.symbolId}`
           : s.sourceRef
             ? `${s.sourceRef}#${s.symbolId}`
             : s.transformerRef
@@ -1637,6 +1712,8 @@ function composeRowStation(
       // `#lv-bus`), tożsamość stacji osobno w `lvPortalStationRef` niżej.
       ownerRef:
         s.bayRef
+        // GEOMETRIA-STACJI (Z-03/Z-08): sprzęgło międzysekcyjne = gałąź `bus_coupler`.
+        ?? s.couplerRef
         ?? s.sourceRef
         ?? s.transformerRef
         ?? (s.lvPortalStationRef ? lvPortalOwnerRef(s.lvPortalStationRef) : undefined),
@@ -1650,6 +1727,11 @@ function composeRowStation(
       // re-derywacji. `ownerRef` NIEZMIENIONE (nadal `bayRef`, spec §16/
       // nakładka energizacji kluczuje po refie POLA, nie per-aparat).
       apparatusSource: s.apparatusSource,
+      // GEOMETRIA-STACJI §0 pkt 4a/5: rekord aparatu, typ z modelu, rezerwa pola.
+      apparatusOrigin: s.apparatusOrigin,
+      apparatusTypeRef: s.apparatusTypeRef,
+      bayReserve: s.bayReserve,
+      trackRole: s.bayRef ? rolaToru.get(s.bayRef) : undefined,
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): `deviceRef` (WHITE BOX §12.1)
       // przepisany 1:1 z kompozycji — realny `BayPrimaryDevice.device_ref`
       // WYŁĄCZNIE dla ścieżki danych; `undefined` dla konwencji (zero
@@ -1685,9 +1767,11 @@ function composeRowStation(
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {
     const kind = classifyStationSegmentKind(s.ownerRef, edgeDomainByRef);
+    const zejsciePola = s.ownerRef.endsWith('#descent') ? s.ownerRef.slice(0, -'#descent'.length) : null;
+    const trackRole = zejsciePola ? rolaToru.get(zejsciePola) : undefined;
     return {
       points: s.points,
-      meta: { kind, ownerRef: s.ownerRef, elementKind: segmentElementKind(kind) },
+      meta: { kind, ownerRef: s.ownerRef, elementKind: segmentElementKind(kind), ...(trackRole ? { trackRole } : {}) },
     };
   });
 
@@ -2633,9 +2717,9 @@ function gpzBayBottomPort(
 // KD-5 (dług nazwany w V12K-285) — BLOK GPZ ZWINIĘTY na poziomie przeglądowym L0.
 // ---------------------------------------------------------------------------
 
-/** Minimalna długość zejścia pola odejściowego pod blokiem (aparat 16 px +
- *  prześwit 8 px z obu stron) — patrz `composeCollapsedGpz`. */
-const GPZ_COLLAPSED_MIN_DESCENT = 4 * GRID;
+/** Prześwit zejścia pola odejściowego pod blokiem ponad wysokość najwyższego aparatu
+ *  pola (8 px z obu stron aparatu) — patrz `composeCollapsedGpz`. */
+const GPZ_COLLAPSED_DESCENT_CLEARANCE = 2 * GRID;
 /** Odstęp między poziomami wachlarza zejść pól niemagistralnych (rozdziela
  *  poziome biegi kolejnych pól, żeby się nie zlewały). */
 const GPZ_COLLAPSED_FAN_STEP = 2 * GRID;
@@ -2668,8 +2752,8 @@ interface CollapsedGpz {
  *  (a) GLIF SIECI ZEWNĘTRZNEJ (`gridSource`) — kontrakt `allSourcesVisible`
  *      (§13.1): źródło jest widoczne na KAŻDYM LOD, bo „skąd to jest zasilane"
  *      nie jest szczegółem, tylko treścią przeglądu;
- *  (b) APARAT CIĄGŁOŚCI POLA ODEJŚCIOWEGO — jeden `breaker` na KAŻDE pole
- *      liniowe SN, zakotwiczony DOKŁADNIE w porcie, w którym pole oddaje tor
+ *  (b) APARAT CIĄGŁOŚCI POLA ODEJŚCIOWEGO — jeden aparat na KAŻDE pole
+ *      liniowe SN (łącznik z rekordu modelu albo sylwetka braku danych), zakotwiczony DOKŁADNIE w porcie, w którym pole oddaje tor
  *      sieci. To wymóg 3 karty K11-B (dyrektywa właściciela: „LOD NIGDY nie
  *      ukrywa toru przepływu energii ANI APARATÓW CIĄGŁOŚCI elektrycznej
  *      (odłącznik/wyłącznik w torze)") — rysunek bez łącznika kłamałby o
@@ -2697,7 +2781,6 @@ function composeCollapsedGpz(
   const symbols: PreviewSymbol[] = [];
   const segments: PreviewSegment[] = [];
   const blockDef = SYMBOL_DEFS.gpzCollapsed;
-  const breakerDef = SYMBOL_DEFS.breaker;
   const sourceDef = SYMBOL_DEFS.gridSource;
 
   const trunkPort = findGpzTrunkBottomPort(gpz, gpzData, stopNotes);
@@ -2706,13 +2789,25 @@ function composeCollapsedGpz(
   // Blok wyśrodkowany na osi pola magistrali i na osi szyny SN; gdy zejście
   // wyszłoby krótsze niż aparat ciągłości + prześwity, blok wędruje w górę
   // (geometria deterministyczna, bez zgadywania).
+  const lineBayRefs = findGpzLineBayRefs(gpzData);
+  // GEOMETRIA-STACJI (§0 pkt 4): aparat ciągłości pola = łącznik, który KOMPOZYCJA PEŁNA
+  // narysowała w tym polu z rekordu modelu (pierwszy wg `CONTINUITY_APPARATUS_SYMBOL_IDS`:
+  // wyłącznik przed rozłącznikiem i odłącznikiem), ze stanem tego rekordu. Pole bez rekordu
+  // łącznika — ta sama sylwetka braku danych co na L1/L2, bez koloru stanu. Do karty L0
+  // rysował wyłącznik w KAŻDYM polu (aparat z konwencji, nie z modelu). Zejście rezerwuje
+  // wysokość NAJWYŻSZEGO z tych aparatów (sylwetka braku danych jest dwa razy wyższa od
+  // wyłącznika), inaczej odcinek zejścia zdegenerowałby się do punktu i rozciął tor.
+  const aparatyPol = new Map(lineBayRefs.map((bayRef) => [bayRef, lacznikCiaglosciPolaGpz(gpz.symbols, bayRef)]));
+  const wysokoscAparatu = Math.max(
+    SYMBOL_DEFS.breaker.height,
+    ...[...aparatyPol.values()].map((a) => SYMBOL_DEFS[a?.symbolId ?? 'bayNoEquipment'].height),
+  );
   const blockY = Math.min(
     snapToGrid(busY - blockDef.height / 2),
-    snapToGrid(trunkPort.y - blockDef.height - GPZ_COLLAPSED_MIN_DESCENT),
+    snapToGrid(trunkPort.y - blockDef.height - wysokoscAparatu - GPZ_COLLAPSED_DESCENT_CLEARANCE),
   );
   const blockX = snapToGrid(axisX - blockDef.width / 2);
   const blockBottomY = blockY + blockDef.height;
-  const lineBayRefs = findGpzLineBayRefs(gpzData);
 
   symbols.push({
     symbolId: 'gpzCollapsed',
@@ -2773,14 +2868,14 @@ function composeCollapsedGpz(
       );
       return;
     }
-    const breakerTopY = port.y - breakerDef.height;
+    const lacznikPola = aparatyPol.get(bayRef) ?? null;
+    const apparatusDef = SYMBOL_DEFS[lacznikPola?.symbolId ?? 'bayNoEquipment'];
+    const breakerTopY = port.y - apparatusDef.height;
     symbols.push({
-      symbolId: 'breaker',
-      x: snapToGrid(port.x - breakerDef.width / 2),
+      symbolId: lacznikPola?.symbolId ?? 'bayNoEquipment',
+      x: snapToGrid(port.x - apparatusDef.width / 2),
       y: breakerTopY,
-      // Stan łącznika z KOMPOZYCJI PEŁNEJ (realny stan aparatu tego pola) —
-      // zero domysłu: brak wyłącznika w polu ⇒ stan nieokreślony.
-      state: gpz.symbols.find((s) => s.meta.bayRef === bayRef && s.symbolId === 'breaker')?.state,
+      state: lacznikPola?.state,
       meta: {
         testId: `sld-v3-l0-gpz-bay-${bayRef}`,
         ownerRef: bayRef,
@@ -2894,7 +2989,7 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // F8b-1: refy, które `GpzElementMeta` już niesie (compose/gpz.ts) —
       // bayRef (aparat pola) preferowany, potem transformerRef/sectionId dla
       // symboli bez przypisanego pola. Zero re-derywacji z geometrii.
-      ownerRef: sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
+      ownerRef: sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.couplerRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
       // S9-10 (dług `S9-4-DLUG-INSPEKTOR`): realny `BayPrimaryDevice.
       // device_ref` z kompozycji GPZ (`ComposedGpzSymbolInstance.deviceRef`,
       // WYŁĄCZNIE ścieżka danych) — ta sama reguła co aparaty stacji.
@@ -2906,6 +3001,13 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // pola WN transformatora dziedziczyły domyślny kolor SN (wyłącznik
       // 110 kV wyglądał jak wyłącznik 15 kV, pomiar audytu R4).
       voltageClass: sym.meta.voltageClass,
+      // GEOMETRIA-STACJI §0 pkt 4/5: rekord aparatu, typ z modelu i rezerwa pola — ta sama
+      // oś audytu co aparaty stacji. `apparatusSource` zostaje metadaną STACYJNĄ (filtr
+      // wyroczni identyfikatorów §19.1); pole GPZ bez danych rozpoznaje sylwetka
+      // `bayNoEquipment` (`data-brak-wyposazenia`).
+      apparatusOrigin: sym.meta.apparatusOrigin,
+      apparatusTypeRef: sym.meta.apparatusTypeRef,
+      bayReserve: sym.meta.bayReserve,
     },
     // V12K-219: rodzaj uziemienia punktu neutralnego. Druga po `voltageClass`
     // dana, która wypadała w tej samej jawnej liście pól — glif rysowałby
@@ -3029,6 +3131,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // GS-4: strona przyłączenia względem TR (adapter v2, jedyny pisarz —
         // klasyfikacja z REALNEJ szyny `Generator.bus_ref`→`voltage_kv`).
         connectionSide: s.connectionSide,
+        // GEOMETRIA-STACJI (Z-03): sekcja przyłączenia (adapter v2, jedyny pisarz).
+        sectionBusRef: s.sectionBusRef,
         // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER-SN
         // (TR blokowy + szyna nN producenta + kabel + pole SN) z REALNYCH
         // elementów ENM (W2b, adapter v2 jedyny pisarz). Struktura LUSTRZANA —
@@ -5415,6 +5519,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       sheetRowBands,
       lateralRunIds,
       drawnStationIds: [...drawnStationIds].sort(),
+      stacjaSzynySekcji: stacjaSzynySekcjiNarysowanych(drawnStationIds, stationById),
       stationTraversalOrder: porzadekObchoduStacji(
         gpzData?.id ?? null,
         mainRow.map((r) => r.id),
@@ -6296,81 +6401,93 @@ export function stationTypeLabels(scene: SceneV3): readonly (readonly [string, s
 }
 
 // ---------------------------------------------------------------------------
-// Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5) — bay_template_probe: pola
-// KONWENCJI stacji SN/nN używają szablonów TECHNOLOGICZNYCH RMU, nie kopii
-// uniwersalnego pola wyłącznikowego GPZ. Ścieżka danych (`primary_devices`
-// niepuste) poza zakresem — prymat danych §12.1 (CB+CT w polu liniowym
-// stacji legalne WYŁĄCZNIE ze świadomego wyboru rozdzielnicy w danych).
+// GEOMETRIA-STACJI (§0 pkt 4, wpis rejestru GEOMETRIA-STACJI-BRAK-WYPOSAZENIA) —
+// bay_equipment_probe. Zastępuje dawną `bay_template_probe` (§12.5), która pilnowała
+// JAKOŚCI szablonów konwencji RMU; konwencja skasowana (zero fabrykacji), więc sonda
+// pilnuje teraz, że rysunek pola mówi prawdę o danych:
+//  · stos z danych (`apparatusSource='dane'`) — każdy aparat niesie `deviceRef` rekordu,
+//    a sylwetki braku danych w nim nie ma;
+//  · stos bez danych (`'brak'`) — dokładnie jedna sylwetka `bayNoEquipment`, poza nią
+//    wyłącznie elementy modelu pola (transformator pola, źródło OZE) i zakończenie
+//    rezerwy, i ŻADEN symbol tego pola nie niesie stanu łącznika.
 // ---------------------------------------------------------------------------
 
-export interface BayTemplateGap {
+/** Symbole stosu pola, które nie są aparatem z rekordu: elementy modelu pola,
+ *  zakończenie pola rezerwowego i sylwetka braku danych. */
+const SYMBOLE_POLA_BEZ_REKORDU: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'transformer2W',
+  'derPv',
+  'derBess',
+  'derWind',
+  'derUnknown',
+  'bayReserve',
+  'bayNoEquipment',
+]);
+
+export interface BayEquipmentGap {
   readonly bayRef: string;
   readonly reason:
-    | 'rmu-line-breaker-leak'   // CB/CT z konwencji w polu liniowym RMU
-    | 'rmu-line-missing-switch' // pole liniowe RMU bez rozłącznika
-    | 'rmu-tr-missing-earth';   // pole TR RMU bez uziemnika (pkt 6 recenzji)
+    | 'dane-bez-rekordu' // aparat stosu z danych bez `deviceRef`
+    | 'dane-z-sylwetka-braku' // stos z danych z sylwetką braku danych
+    | 'brak-bez-sylwetki' // stos bez danych bez (albo z wieloma) sylwetek braku danych
+    | 'brak-z-aparatem' // stos bez danych z symbolem aparatu (aparat z konwencji)
+    | 'brak-ze-stanem'; // stos bez danych z barwą/rysunkiem stanu łącznika
   readonly detail?: string;
 }
 
-/**
- * bay_template_probe (spec §12.5): na SCENIE (symbole z `meta.ownerRef` =
- * bayRef, `meta.apparatusSource='konwencja'`) każde pole:
- *  (a) `RMU_LINE` konwencji: ZERO symboli `breaker`/`currentTransformer`
- *      i ≥1 `loadBreakSwitch`,
- *  (b) `RMU_TRANSFORMER` konwencji: ≥1 `earthSwitch`.
- * Role pól czytane z adaptera (`buildSldDataFromSnapshot` → `snBays`). Pola nienarysowane (L0 — stacje
- * zbiorcze) poza zakresem (nie ma czego mierzyć).
- */
-export function bayTemplateGaps(scene: SceneV3, snapshot: EnergyNetworkModel): readonly BayTemplateGap[] {
-  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
-  const roleByBayRef = new Map<string, { role: string; conventional: boolean }>();
-  for (const s of sldData.stations) {
-    for (const bay of s.snBays ?? []) {
-      roleByBayRef.set(bay.bayRef, {
-        role: bay.fieldRole,
-        conventional: !(bay.primaryDevices && bay.primaryDevices.length > 0),
-      });
-    }
-  }
-  const symbolsByBayRef = new Map<string, SymbolId[]>();
+/** bay_equipment_probe — patrz komentarz bloku wyżej. Sonda czyta WYŁĄCZNIE scenę
+ *  (symbole aparatów stacji, `meta.apparatusSource`), bez modelu: pochodzenie stosu jest
+ *  daną sceny przepisaną z kompozycji. */
+export function bayEquipmentGaps(scene: SceneV3): readonly BayEquipmentGap[] {
+  const stosy = new Map<string, PreviewSymbol[]>();
   for (const sym of scene.symbols) {
     const ref = sym.meta?.ownerRef;
-    if (!ref || !roleByBayRef.has(ref)) continue;
-    // Wyłącznie stos KONWENCJI (apparatusSource — §12.1); symbole bez
-    // znacznika (np. NO-badge na bayRef) nie są aparatem stosu.
-    if (sym.meta?.apparatusSource !== 'konwencja') continue;
-    const list = symbolsByBayRef.get(ref) ?? [];
-    list.push(sym.symbolId);
-    symbolsByBayRef.set(ref, list);
+    if (!ref || sym.meta?.apparatusSource == null) continue;
+    const lista = stosy.get(ref) ?? [];
+    lista.push(sym);
+    stosy.set(ref, lista);
   }
-
-  const gaps: BayTemplateGap[] = [];
-  for (const [bayRef, ids] of symbolsByBayRef) {
-    const info = roleByBayRef.get(bayRef)!;
-    if (!info.conventional) continue;
-    if (info.role === 'RMU_LINE') {
-      const leaked = ids.filter((id) => id === 'breaker' || id === 'currentTransformer');
-      if (leaked.length > 0) {
+  const gaps: BayEquipmentGap[] = [];
+  for (const [bayRef, stos] of [...stosy].sort((x, y) => (x[0] < y[0] ? -1 : x[0] > y[0] ? 1 : 0))) {
+    const zrodlo = stos[0].meta?.apparatusSource;
+    const sylwetki = stos.filter((sym) => sym.symbolId === 'bayNoEquipment').length;
+    if (zrodlo === 'dane') {
+      const bezRekordu = stos.filter((sym) => !SYMBOLE_POLA_BEZ_REKORDU.has(sym.symbolId) && !sym.meta?.deviceRef);
+      if (bezRekordu.length > 0) {
         gaps.push({
           bayRef,
-          reason: 'rmu-line-breaker-leak',
-          detail: `pole liniowe RMU z konwencji niesie ${leaked.join(',')} — przeciek szablonu pola wyłącznikowego (spec §12.5)`,
+          reason: 'dane-bez-rekordu',
+          detail: `aparaty bez rekordu modelu: ${bezRekordu.map((sym) => sym.symbolId).join(',')}`,
         });
       }
-      if (!ids.includes('loadBreakSwitch')) {
-        gaps.push({ bayRef, reason: 'rmu-line-missing-switch', detail: 'pole liniowe RMU bez rozłącznika (loadBreakSwitch)' });
-      }
-    } else if (info.role === 'RMU_TRANSFORMER') {
-      if (!ids.includes('earthSwitch')) {
-        gaps.push({ bayRef, reason: 'rmu-tr-missing-earth', detail: 'pole transformatorowe RMU bez uziemnika (recenzja pkt 6)' });
-      }
+      if (sylwetki > 0) gaps.push({ bayRef, reason: 'dane-z-sylwetka-braku' });
+      continue;
+    }
+    if (sylwetki !== 1) {
+      gaps.push({ bayRef, reason: 'brak-bez-sylwetki', detail: `sylwetek braku danych: ${sylwetki}` });
+    }
+    const aparaty = stos.filter((sym) => !SYMBOLE_POLA_BEZ_REKORDU.has(sym.symbolId));
+    if (aparaty.length > 0) {
+      gaps.push({
+        bayRef,
+        reason: 'brak-z-aparatem',
+        detail: `aparaty bez rekordu w modelu: ${aparaty.map((sym) => sym.symbolId).join(',')}`,
+      });
+    }
+    const zeStanem = stos.filter((sym) => sym.state != null);
+    if (zeStanem.length > 0) {
+      gaps.push({
+        bayRef,
+        reason: 'brak-ze-stanem',
+        detail: `stan bez rekordu: ${zeStanem.map((sym) => `${sym.symbolId}=${sym.state}`).join(',')}`,
+      });
     }
   }
   return gaps;
 }
 
-export function allBayTemplatesValid(scene: SceneV3, snapshot: EnergyNetworkModel): boolean {
-  return bayTemplateGaps(scene, snapshot).length === 0;
+export function allBayEquipmentTruthful(scene: SceneV3): boolean {
+  return bayEquipmentGaps(scene).length === 0;
 }
 
 // ---------------------------------------------------------------------------

@@ -15,6 +15,7 @@
 
 import type { StationTransformerUnit } from '../../../network-build/stationTransformerSelection';
 import type { MiniBlockBayDescriptor } from './widokPolStacji';
+import type { SprzegloSekcjiView } from './sprzeglaSekcji';
 
 /** Moc znamionowa transformatora jako tekst etykiety (kVA albo MVA, przecinek dziesiętny). */
 export function formatTransformerRatedPower(kva: number): string {
@@ -23,11 +24,27 @@ export function formatTransformerRatedPower(kva: number): string {
     : `${kva} kVA`;
 }
 
+/** Sekcja szyny SN stacji — rekord `Bus` modelu. */
+export interface StationSnSectionView {
+  readonly busRef: string;
+  /** Numer porządkowy sekcji (1..N) w kolejności `Substation.bus_refs`. */
+  readonly ordinal: number;
+  readonly voltageKv: number | null;
+}
+
 export interface StationOnRunViewModel {
   readonly id: string;
   readonly name: string;
   readonly topologicalType: 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna';
   readonly snBays?: readonly MiniBlockBayDescriptor[];
+  /** GEOMETRIA-STACJI (Z-03): sekcje szyn SN stacji — szyny główne strony SN
+   *  (`Substation.bus_refs` powyżej pasma nN) w kolejności rekordu stacji. Każda sekcja
+   *  rysuje WŁASNY odcinek szyny (`ownerRef = ${busRef}#sn-bus`). Brak/puste = stacja bez
+   *  rekordu szyny SN (rysunek prowadzi jedną szynę z konstrukcji bloku). */
+  readonly snSections?: readonly StationSnSectionView[];
+  /** GEOMETRIA-STACJI (Z-03, Z-08): sprzęgła MIĘDZY sekcjami — gałęzie `bus_coupler`
+   *  modelu (`v2/model/sprzeglaSekcji.ts`, jedno źródło z GPZ). */
+  readonly snCouplers?: readonly SprzegloSekcjiView[];
   readonly hasTransformer?: boolean;
   /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z OBOMA
    *  końcami topologicznymi (`Transformer.hv_bus_ref`/`lv_bus_ref`) — 0..N od

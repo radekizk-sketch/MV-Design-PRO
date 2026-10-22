@@ -10,7 +10,8 @@
  * jest RENDEROWANA w scenie produkcyjnej (nie tylko w zrzucie).
  *
  * Ćwiczy REALNY potok `buildSceneV3` na dwóch fixturach:
- *  - `sldSubstrate52s` (sieć referencyjna, 53 stacje) — skala + determinizm + LOD;
+ *  - `sldSubstrate52s` (sieć referencyjna, 53 stacje) z rekordami aparatów pól — skala
+ *    + determinizm + LOD;
  *  - `w1MatrixVariants` (macierz §20) — pełny zestaw rodzajów odczepu ES/SA/VT.
  */
 import { readFileSync } from 'node:fs';
@@ -24,12 +25,18 @@ import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3, noSceneSymbolOverlaps, noSymbolWireCollisions, type SceneLod, type SceneV3 } from '../buildScene';
 import { junctionDotGaps, lateralBranchNodes } from '../crossings';
 import { buildW1MatrixFixture } from './fixtures/w1MatrixVariants';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 
 const fixturePath = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json',
 );
-const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+// GEOMETRIA-STACJI (§0 pkt 4a): odczepy lateralne (ES) istnieją WYŁĄCZNIE z rekordów aparatów;
+// sieć referencyjna niesie w polach tylko gałąź wyłącznika, więc fikstura deklaruje rekordy
+// wyposażenia pól jawnie (`zRekordamiAparatowPol`) — dawniej ES dostarczała konwencja roli.
+const enm = zRekordamiAparatowPol(
+  (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm,
+);
 
 const JDEF = SYMBOL_DEFS.junction;
 

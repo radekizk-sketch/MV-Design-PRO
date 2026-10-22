@@ -39,6 +39,9 @@ export type DerConnectionSide = 'sn' | 'nn' | 'unknown';
 export interface StationDerSourceInput {
   readonly id: string;
   readonly kind: DerSourceKind;
+  /** GEOMETRIA-STACJI (Z-03): sekcja szyn SN stacji, z której zasilane jest pole źródłowe
+   *  SN (`SldSourceView.sectionBusRef`); `undefined` = sekcja nieustalona. */
+  readonly sectionBusRef?: string;
   readonly ratedPower?: number | null;
   /** F8b-1 (f92-2)/F9.4 (§13.1): `true` dla `kind==='unknown'` (gen_type
    *  nierozpoznany) — źródło NIE zginęło bez śladu (§13.1 wymaganie), ale

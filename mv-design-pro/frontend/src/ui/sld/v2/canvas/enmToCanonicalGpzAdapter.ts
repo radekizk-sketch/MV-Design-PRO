@@ -15,6 +15,7 @@
  * @see docs/audit/GPZ_RENDERER_REALITY_CHECK.md
  */
 
+import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
 import type {
   Bay,
   Branch,
@@ -46,6 +47,7 @@ import { wPasmieSn, wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
 // `enmToSldAdapter.ts`) — jedna prawda ENM Bay → aparat/adnotacja zabezpieczeń,
 // zero duplikacji logiki dopasowania `ProtectionAssignment`/`Measurement`.
 import {
+  nazwaCeluOdejscia,
   projectBayPrimaryDevices,
   resolveBayCtRatingAnnotations,
   resolveBayProtectionMarking,
@@ -55,6 +57,7 @@ import { buildOltcAnnotation } from './oltcGlyph';
 import { szynyStacji, type ModelSzyn } from '../../../shared/szynyStacji';
 import { polaStacji } from '../../../shared/polaStacji';
 import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
+import { czyPoleRezerwowe, czyPoleWolne } from '../../../shared/rodzajStacji';
 
 /* =============================================================================
    Public API
@@ -113,6 +116,9 @@ export function buildCanonicalGpzProps(
   const protectionCtx: ProtectionCtx = {
     protection_assignments: enm.protection_assignments ?? [],
     measurements: enm.measurements ?? [],
+    // GEOMETRIA-STACJI (§0 pkt 5): nazwa celu odejścia pola i predykat pola wolnego.
+    substations: enm.substations ?? [],
+    branches: enm.branches ?? [],
     galezieWgRef,
     // GPZ-PARYTET cz. 3 (pkt 1): rodzaj źródła pola OZE z przyłączonych wytwórców — ta
     // sama relacja i funkcja co pola źródłowe stacji (`v2/model/polaZModelu.ts`).
@@ -137,7 +143,11 @@ export function buildCanonicalGpzProps(
   const polaWToruTransformatora = new Set<string>(
     [...polaTrSn.values(), ...polaTrWn.values()].map((bay) => bay.ref_id),
   );
-  const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id));
+  // GEOMETRIA-STACJI (Z-07): pole sprzęgła wskazujące narysowane sprzęgło NIE jest osobnym
+  // polem sekcji — jego oznaczenie i aparat niesie sprzęgło (jedno miejsce na rysunku).
+  const couplers = buildCouplers(substation, allBays, enm.branches ?? []);
+  const polaSprzegiel = new Set(couplers.map((c) => c.bayRef).filter((ref): ref is string => ref != null));
+  const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id) && !polaSprzegiel.has(bay.ref_id));
 
   const lvSections = buildLvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx);
   // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
@@ -167,7 +177,7 @@ export function buildCanonicalGpzProps(
     // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
     snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
-    couplers: buildCouplers(substation, allBays, galezieWgRef),
+    couplers,
     hvSections: buildHvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
     // ścieżka `hvSectionDefs` (niepuste) jest nadrzędna i NIE potrzebuje tego
@@ -363,7 +373,7 @@ export function extractTransformerDesignation(name: string | null | undefined, i
 /** F11.1: kontekst rejestru device-ref (`ProtectionAssignment`/`Measurement`),
  *  wyłącznie pola faktycznie czytane przez `resolveBayProtectionMarking`/
  *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
-type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'> & {
+type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements' | 'substations' | 'branches'> & {
   /** Gałęzie migawki wg `ref_id` — źródło stanu łączników pól (`stanyAparatowPolaZModelu`). */
   readonly galezieWgRef: ReadonlyMap<string, Branch>;
   /** Wytwórcy wg pola (`Generator.meta.field_ref`) — rodzaj źródła pola OZE. */
@@ -504,7 +514,15 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
     bayRef: bay.ref_id,
     bayNumber: bay.bay_number ?? null,
     feederName: bay.feeder_short_name ?? bay.name ?? null,
-    destinationLabel: bay.outgoing_destination_ref ? `→ ${bay.outgoing_destination_ref}` : null,
+    // GEOMETRIA-STACJI (§0 pkt 5): NAZWA stacji docelowej (jedna funkcja ze stacjami);
+    // strzałkę „→" dokłada kompozycja. Dawniej adapter dokładał ją sam do surowego refu,
+    // a kompozycja drugi raz — podpis „→ → ⟨ref⟩".
+    destinationLabel: bay.outgoing_destination_ref
+      ? nazwaCeluOdejscia(protectionCtx, bay.outgoing_destination_ref)
+      : null,
+    ...(czyPoleRezerwowe(bay)
+      ? { reserve: 'rezerwowe' as const }
+      : czyPoleWolne(bay, protectionCtx.branches ?? []) ? { reserve: 'wolne' as const } : {}),
     fieldRole,
     rolaPola: rolaPolaGpz(bay.bay_role),
     ...(fieldRole === 'SOURCE' ? { rolaZrodla: rolaPolaZrodlowego(bay, protectionCtx.generatoryWgPola) } : {}),
@@ -528,37 +546,37 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
   };
 }
 
+/**
+ * GEOMETRIA-STACJI (Z-07, §0 pkt 2): sprzęgła GPZ z JEDNEGO źródła — gałęzi `bus_coupler`
+ * modelu łączących szyny sekcji SN (`sprzeglaMiedzySekcjami`, ta sama funkcja co stacje SN).
+ * Do karty sprzęgło wymagało rekordu pola COUPLER, którego operacja GPZ nie tworzy, więc
+ * sprzęgło z modelu znikało z rysunku. Rekord pola sprzęgła, gdy jest, dokłada oznaczenie
+ * i rodzaj aparatu; stan rysunku pochodzi ze `status` gałęzi.
+ */
 function buildCouplers(
   gpz: Substation,
   bays: readonly Bay[],
-  galezieWgRef: ReadonlyMap<string, Branch>,
+  branches: readonly Branch[],
 ): CanonicalGpzCoupler[] {
-  const sectionDefs = gpz.gpz_sections ?? [];
+  const sectionDefs = [...(gpz.gpz_sections ?? [])].sort((a, b) => a.order - b.order);
   if (sectionDefs.length < 2) return [];
-  const couplerBaysByRef = new Map<string, Bay>();
-  for (const b of bays) {
-    if (b.bay_role === 'COUPLER') {
-      couplerBaysByRef.set(b.ref_id, b);
-    }
-  }
-  const couplers: CanonicalGpzCoupler[] = [];
-  const sortedSections = [...sectionDefs].sort((a, b) => a.order - b.order);
-  for (let i = 0; i < sortedSections.length - 1; i++) {
-    const left = sortedSections[i];
-    const right = sortedSections[i + 1];
-    const couplerRef = left.right_coupler_ref ?? right.left_coupler_ref;
-    if (!couplerRef) continue;
-    const couplerBay = couplerBaysByRef.get(couplerRef);
-    if (!couplerBay) continue;
-    couplers.push({
-      couplerId: couplerBay.ref_id,
-      leftSectionId: left.section_id,
-      rightSectionId: right.section_id,
-      designation: couplerBay.name || couplerBay.ref_id,
-      closedState: stanyAparatowPolaZModelu(couplerBay, galezieWgRef).glownyLacznik,
-    });
-  }
-  return couplers;
+  const sectionIdByBus = new Map(sectionDefs.map((sec) => [sec.bus_ref, sec.section_id]));
+  return sprzeglaMiedzySekcjami(branches, sectionDefs.map((sec) => sec.bus_ref), bays).flatMap((sprzeglo) => {
+    const from = sectionIdByBus.get(sprzeglo.fromBusRef);
+    const to = sectionIdByBus.get(sprzeglo.toBusRef);
+    if (from == null || to == null) return [];
+    const fromOrder = sectionDefs.findIndex((sec) => sec.section_id === from);
+    const toOrder = sectionDefs.findIndex((sec) => sec.section_id === to);
+    return [{
+      couplerId: sprzeglo.ref,
+      leftSectionId: fromOrder <= toOrder ? from : to,
+      rightSectionId: fromOrder <= toOrder ? to : from,
+      designation: sprzeglo.designation,
+      closedState: sprzeglo.state,
+      rodzaj: sprzeglo.rodzaj,
+      bayRef: sprzeglo.bayRef,
+    }];
+  });
 }
 
 /* =============================================================================

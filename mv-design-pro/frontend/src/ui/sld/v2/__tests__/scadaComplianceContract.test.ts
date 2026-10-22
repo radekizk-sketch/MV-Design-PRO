@@ -53,7 +53,11 @@ describe('SCADA Compliance Contract — tor mocy + symbole + porty', () => {
 
     it('kompozycja GPZ v3 rysuje sekcje i pola transformatorowe', () => {
       expect(fileContains('ui/sld/v3/compose/gpz.ts', /CanonicalGpzSection/)).toBe(true);
-      expect(fileContains('ui/sld/v3/compose/gpz.ts', /transformerFieldTemplate/)).toBe(true);
+      // GEOMETRIA-STACJI (§0 pkt 4): stała gramatyka pola TR (`transformerFieldTemplate`)
+      // skasowana — pole TR rysuje się z rekordów aparatów modelu jedną funkcją
+      // `specyfikacjaPolaGpz` (intencja: pole TR ma budowniczego w kompozycji — bez zmian).
+      expect(fileContains('ui/sld/v3/compose/gpz.ts', /function specyfikacjaPolaGpz/)).toBe(true);
+      expect(fileContains('ui/sld/v3/compose/gpz.ts', /trFieldTestIdBase/)).toBe(true);
     });
 
     it('renderer v2 GPZ nie wraca (jedna ścieżka renderu)', () => {

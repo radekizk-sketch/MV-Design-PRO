@@ -65,6 +65,40 @@ const TR1: CanonicalGpzTransformer = {
   lvSectionId: 'sec-1',
 };
 
+/**
+ * GEOMETRIA-STACJI (§0 pkt 4): aparat rysuje się WYŁĄCZNIE z rekordu modelu
+ * (`primaryDevices`). Fixtury testów, których intencją jest geometria/tożsamość
+ * aparatów (DS/CB/CT/ES), niosą więc rekordy jawnie — dawniej te same symbole
+ * dostarczała konwencja roli, zastąpiona sylwetką braku danych.
+ */
+function rekordy(prefix: string, kinds: readonly BayPrimaryDeviceView['kind'][]): readonly BayPrimaryDeviceView[] {
+  return kinds.map((kind, i) => ({ kind, placement: 'MIDSTREAM' as const, deviceRef: `${prefix}/${kind.toLowerCase()}-${i}` }));
+}
+
+const APARATY_POLA_LINIOWEGO: readonly BayPrimaryDeviceView['kind'][] = ['DS', 'CB', 'CT', 'DS', 'ES', 'CABLE_HEAD'];
+
+/** Transformator z rekordami pola WN (DS+CB+CT) i pola TR (DS+CB+CT+ES) w modelu. */
+function zPolamiTransformatora(tr: CanonicalGpzTransformer): CanonicalGpzTransformer {
+  const pole = (ref: string, kinds: readonly BayPrimaryDeviceView['kind'][]): CanonicalGpzBay => ({
+    bayRef: ref,
+    bayNumber: null,
+    feederName: null,
+    destinationLabel: null,
+    fieldRole: 'TRANSFORMER',
+    rolaPola: 'transformatorowe',
+    statusFlags: [],
+    qDesignations: {},
+    primaryDevices: rekordy(ref, kinds),
+  });
+  return {
+    ...tr,
+    poleWn: pole(`${tr.transformerRef}/pole-wn`, ['DS', 'CB', 'CT']),
+    poleTr: pole(`${tr.transformerRef}/pole-tr`, ['DS', 'CB', 'CT', 'ES']),
+  };
+}
+
+const TR1_DANE = zPolamiTransformatora(TR1);
+
 /** Rola tła pola zgodna z rolą stosu aparatów (ta sama dana modelu `Bay.bay_role`). */
 const ROLA_DLA_STOSU: Readonly<Record<CanonicalGpzBay['fieldRole'], RolaPolaGpz>> = {
   LINE_IN: 'zasilajace',
@@ -193,7 +227,7 @@ describe('V3 compose/gpz — wyrocznie (grid_probe, zero-overlap, endsAtPortsOrB
 
 describe('V3 compose/gpz — migracja noDirectTie (guard no_direct_110kv_tr_tie_without_switchgear)', () => {
   it('TR 110/SN kończy się na kotwie pola TR, a do szyny SN prowadzi kolumna aparatów', () => {
-    const composition = composeGpz(baseProps(), ORIGIN);
+    const composition = composeGpz(baseProps({ transformers: [TR1_DANE] }), ORIGIN);
     expect(noDirectTransformerBusTies(composition)).toBe(true);
 
     const tr = composition.transformers[0];
@@ -222,6 +256,31 @@ describe('V3 compose/gpz — migracja noDirectTie (guard no_direct_110kv_tr_tie_
     expect(composition.symbols.some((s) => s.meta.testId === `${tr.trFieldTestId}-es`)).toBe(true);
   });
 
+  it('pola WN i TR bez rekordów aparatów: sylwetka braku danych zamiast aparatów z konwencji, styk nadal zakazany', () => {
+    // GEOMETRIA-STACJI (§0 pkt 4c): transformator bez rekordów pól nie dostaje
+    // wymyślonych DS/CB/CT/ES — obie kolumny niosą JEDNĄ sylwetkę bez stanu, a wyrocznia
+    // zakazu bezpośredniego styku trzyma (pole jest, tylko jego wyposażenie jest nieznane).
+    const composition = composeGpz(baseProps(), ORIGIN);
+    expect(noDirectTransformerBusTies(composition)).toBe(true);
+    const tr = composition.transformers[0];
+    for (const prefix of [tr.hvBayTestId, tr.trFieldTestId]) {
+      const stos = composition.symbols.filter((s) => s.meta.testId?.startsWith(`${prefix}-`));
+      expect(stos.map((s) => s.symbolId)).toEqual(['bayNoEquipment']);
+      expect(stos[0].state).toBeUndefined();
+      expect(stos[0].meta.apparatusSource).toBe('brak');
+    }
+  });
+
+  it('wyrocznia oblewa, gdy pole TR nie ma ŻADNEGO symbolu (bezpośredni styk)', () => {
+    const composition = composeGpz(baseProps(), ORIGIN);
+    const tr = composition.transformers[0];
+    const bezPolaTr: GpzComposition = {
+      ...composition,
+      symbols: composition.symbols.filter((s) => !s.meta.testId?.startsWith(`${tr.trFieldTestId}-`)),
+    };
+    expect(noDirectTransformerBusTies(bezPolaTr)).toBe(false);
+  });
+
   it('wielu transformatorów — inwariant trzyma dla KAŻDEGO niezależnie', () => {
     const composition = composeGpz(
       baseProps({
@@ -229,7 +288,7 @@ describe('V3 compose/gpz — migracja noDirectTie (guard no_direct_110kv_tr_tie_
           { sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')] },
           { sectionId: 'sec-2', order: 2, label: 'S2', busVoltageKv: 15, bays: [lineBay('b-2')] },
         ],
-        transformers: [TR1, { ...TR1, transformerRef: 'tr-2', designation: 'TR2', lvSectionId: 'sec-2' }],
+        transformers: [TR1_DANE, zPolamiTransformatora({ ...TR1, transformerRef: 'tr-2', designation: 'TR2', lvSectionId: 'sec-2' })],
       }),
       ORIGIN,
     );
@@ -252,6 +311,7 @@ describe('V3 compose/gpz — migracja noDirectTie (guard no_direct_110kv_tr_tie_
             bays: [{ ...lineBay('b-tr', { fieldRole: 'TRANSFORMER' }), esState: 'absent' }],
           },
         ],
+        transformers: [TR1_DANE],
       }),
       ORIGIN,
     );
@@ -394,12 +454,13 @@ describe('V3 compose/gpz — migracja visualParityChecklist (WYŁĄCZNIE klucze 
     const composition = composeGpz(
       baseProps({
         hvSections: [
-          { sectionId: 'hv-1', order: 1, label: '110 kV', busVoltageKv: 110, bays: [lineBay('hv-b-1', { bayNumber: 'H1' })] },
+          { sectionId: 'hv-1', order: 1, label: '110 kV', busVoltageKv: 110, bays: [lineBay('hv-b-1', { bayNumber: 'H1', primaryDevices: rekordy('hv-b-1', ['CB', 'DS']) })] },
         ],
         sections: [
-          { sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')] },
-          { sectionId: 'sec-2', order: 2, label: 'S2', busVoltageKv: 15, bays: [lineBay('b-2', { bayNumber: '06' })] },
+          { sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { primaryDevices: rekordy('b-1', APARATY_POLA_LINIOWEGO) })] },
+          { sectionId: 'sec-2', order: 2, label: 'S2', busVoltageKv: 15, bays: [lineBay('b-2', { bayNumber: '06', primaryDevices: rekordy('b-2', APARATY_POLA_LINIOWEGO) })] },
         ],
+        transformers: [TR1_DANE],
         couplers: [{ couplerId: 'spr-1', leftSectionId: 'sec-1', rightSectionId: 'sec-2', designation: 'SP', closedState: 'closed' }],
       }),
       ORIGIN,
@@ -616,7 +677,7 @@ describe('V3 compose/gpz — FIX-B: szyna rezerwowa NIE pokrywa się z primary',
 
 describe('V3 compose/gpz — FIX-C: bottomPort stosu z ES na końcu = port S CT (nie topPort)', () => {
   it('pole TR transformatora: segment #tr-field-to-bus zaczyna się w porcie S symbolu CT, nie w topPort stosu', () => {
-    const composition = composeGpz(baseProps(), ORIGIN);
+    const composition = composeGpz(baseProps({ transformers: [TR1_DANE] }), ORIGIN);
     const tr = composition.transformers[0];
     const ctSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ct`)!;
     const dsSymbol = composition.symbols.find((s) => s.meta.testId === `${tr.trFieldTestId}-ds`)!;
@@ -643,7 +704,7 @@ describe('V3 compose/gpz — FIX-C: bottomPort stosu z ES na końcu = port S CT 
           { sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')] },
           { sectionId: 'sec-2', order: 2, label: 'S2', busVoltageKv: 15, bays: [lineBay('b-2')] },
         ],
-        transformers: [TR1, { ...TR1, transformerRef: 'tr-2', designation: 'TR2', lvSectionId: 'sec-2' }],
+        transformers: [TR1_DANE, zPolamiTransformatora({ ...TR1, transformerRef: 'tr-2', designation: 'TR2', lvSectionId: 'sec-2' })],
       }),
       ORIGIN,
     );
@@ -1042,24 +1103,19 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
     expect(composition.protectionSegments[0].ownerRef).not.toBe(composition.measurementSegments[0].ownerRef);
   });
 
-  it('negatyw — zero zgadywania (a): `primaryDevices` NIE odpowiada szablonowi (inna długość) ⇒ CAŁY stos BEZ rejestru, okrąg BEZ linii, missingData zgłoszona', () => {
+  it('negatyw — zero zgadywania (a): rekordy niepełne (DS+CB+CT) ⇒ stos to DOKŁADNIE te rekordy, bez dorysowanego DS liniowego/ES/głowicy', () => {
+    // KOREKTA (GEOMETRIA-STACJI §0 pkt 4): dawniej rekordy porównywano z szablonem roli
+    // i przy niezgodności długości rysowano CAŁY szablon bez refów (aparaty z konwencji).
+    // Szablon skasowany — stos JEST rekordami modelu, więc „zero zgadywania" znaczy teraz:
+    // żaden aparat spoza rekordów nie powstaje, a refy rekordów trafiają na swoje symbole.
     const composition = composeGpz(
       propsWithRegistry({ primaryDevices: alignedLineDevices.slice(0, 3) }),
       ORIGIN,
     );
-    const breaker = composition.symbols.find(
-      (s) => s.meta.bayRef === 'b-prot' && s.symbolId === 'breaker',
-    )!;
-    expect(breaker.deviceRef).toBeUndefined();
-    expect(composition.protectionSegments).toHaveLength(0);
-    expect(composition.measurementSegments).toHaveLength(0);
-    expect(composition.missingData).toEqual(
-      expect.arrayContaining([
-        'bay.protection.trip_link_unresolved',
-        'bay.protection.measurement_link_unresolved',
-        'bay.protection.ct_rating_anchor_unresolved',
-      ]),
-    );
+    const stos = composition.symbols.filter((s) => s.meta.bayRef === 'b-prot');
+    expect(stos.map((s) => s.symbolId)).toEqual(['disconnector', 'breaker', 'currentTransformer']);
+    expect(stos.map((s) => s.deviceRef)).toEqual(['ds-bus-1', 'cb-1', 'ct-1']);
+    expect(stos.every((s) => s.meta.apparatusSource === 'dane')).toBe(true);
   });
 
   it('negatyw — zero zgadywania (b): `breaker_ref`/`ct_ref` wskazują refy NIEOBECNE w stosie (dane niespójne) ⇒ okrąg pozycjonowany, ale BEZ linii + missingData', () => {
@@ -1230,7 +1286,8 @@ describe('GPZ-PARYTET — rama i nagłówek (gpz.frame / gpz.header / gpz.header
     ['minimalny (jedna sekcja, jedno pole)', baseProps()],
     ['pełny (WN + 2 sekcje + sprzęgło, wszystkie role)', pelnyGpz()],
     ['bez nazwy w modelu', pelnyGpz({ name: null })],
-    ['wiele pól (łamanie kart)', baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: Array.from({ length: 9 }, (_, i) => lineBay(`b-${i}`, { bayNumber: String(i + 1).padStart(2, '0') })) }] })],
+    // Pola z rekordami aparatów (szerokość kolumny pola z danych — GEOMETRIA-STACJI §0 pkt 4).
+    ['wiele pól (łamanie kart)', baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: Array.from({ length: 9 }, (_, i) => lineBay(`b-${i}`, { bayNumber: String(i + 1).padStart(2, '0'), primaryDevices: rekordy(`b-${i}`, APARATY_POLA_LINIOWEGO) })) }] })],
   ];
 
   for (const [opis, props] of warianty) {

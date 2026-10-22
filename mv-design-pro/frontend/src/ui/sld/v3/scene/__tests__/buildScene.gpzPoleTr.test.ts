@@ -80,25 +80,25 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
           const brakGrupy = scena.meta.missingData.includes(`gpz.transformer.vector_group.missing:${trRef}`);
           expect(brakGrupy).toBe(grupa === null);
 
+          // KOREKTA (GEOMETRIA-STACJI §0 pkt 4): aparaty toru WYŁĄCZNIE z rekordów modelu.
+          // Pole TR modelu wskazuje gałąź wyłącznika (`equipment_refs`) — tor ma DOKŁADNIE ten
+          // wyłącznik (bez przekładnika/odłącznika z dawnej gramatyki pola TR); tor bez pola
+          // TR w modelu i pole WN TR bez rekordu mają sylwetkę braku danych bez stanu.
+          const stosPolaTr = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-tr-field-${trRef}-`));
+          const stosPolaWn = scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-hv-tr-bay-${trRef}-`));
+          expect(stosPolaWn.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);
           const wylacznikToru = scena.symbols.find(
             (s) => s.meta?.testId === `gpz-canonical-tr-field-${trRef}-cb`,
           );
-          expect(wylacznikToru, 'wyłącznik pola TR toru transformatora').toBeDefined();
-          // Przekładnik prądowy toru nie jest łącznikiem: nie niesie stanu łączeniowego
-          // ani z polem modelu, ani bez niego (ta sama reguła `stanAparatuPolaGpz`; dawniej
-          // tor bez pola dostawał CT ze stanem „nieznany").
-          const przekladnikiToru = scena.symbols.filter(
-            (s) =>
-              s.symbolId === 'currentTransformer' &&
-              (s.meta?.testId === `gpz-canonical-tr-field-${trRef}-ct` ||
-                s.meta?.testId === `gpz-canonical-hv-tr-bay-${trRef}-ct`),
-          );
-          expect(przekladnikiToru.length).toBeGreaterThan(0);
-          expect(przekladnikiToru.map((s) => s.state)).toEqual(przekladnikiToru.map(() => undefined));
+          // Przekładnik prądowy toru nie jest rysowany bez rekordu (ani ze stanem, ani bez).
+          expect(stosPolaTr.some((s) => s.symbolId === 'currentTransformer')).toBe(false);
           // Pole TR nie jest drugi raz rysowane w sekcji SN.
           expect(scena.symbols.filter((s) => s.meta?.testId?.startsWith(`gpz-canonical-bay-${POLE_TR}-`))).toEqual([]);
           if (miejsce === 'w polu TR') {
             // Stan łącznika i tożsamość zaznaczenia z pola modelu.
+            expect(stosPolaTr.map((s) => s.symbolId)).toEqual(['breaker']);
+            expect(wylacznikToru, 'wyłącznik pola TR toru transformatora').toBeDefined();
+            expect(wylacznikToru!.meta?.deviceRef).toBe(WYLACZNIK);
             expect(wylacznikToru!.state).toBe('open');
             expect(wylacznikToru!.meta?.ownerRef).toBe(POLE_TR);
             expect(scena.meta.gpzAdnotacje?.tabela?.karty.map((k) => k.bayRef)).toContain(POLE_TR);
@@ -107,8 +107,9 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
               scena.symbols.some((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === POLE_TR),
             ).toBe(true);
           } else {
-            expect(wylacznikToru!.state).toBe('unknown');
-            expect(wylacznikToru!.meta?.ownerRef).toBe(trRef);
+            expect(wylacznikToru).toBeUndefined();
+            expect(stosPolaTr.map((s) => [s.symbolId, s.state])).toEqual([['bayNoEquipment', undefined]]);
+            expect(stosPolaTr[0].meta?.ownerRef).toBe(trRef);
           }
         });
       }

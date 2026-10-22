@@ -19,7 +19,7 @@
  * WEWNĄTRZ bloku używa TEJ SAMEJ funkcji co rezerwacja miejsca
  * (`bayColumnRequiredWidth`, `layout/measure.ts` — zero cienia; lewa krawędź
  * bloku to `column.x + GRID`, FIX-4, patrz `composeStation`), a stos
- * aparatów per rola (`apparatusSymbolsForRole` niżej) MUSI dawać IDENTYCZNY
+ * aparatów pola (`planBayApparatus`, rekordy modelu albo sylwetka braku danych) MUSI dawać IDENTYCZNY
  * gabaryt {width,height} co `bayColumnFootprint` (measure) — sprawdzane w
  * `__tests__/station.test.ts` (describe „spójność measure↔compose", jedna
  * asercja per `FieldRole` z `ALL_FIELD_ROLES`; dwie niezależne implementacje
@@ -50,11 +50,10 @@
  * niżej woła `resolveBayApparatusSymbolIds` (`./apparatusSequence`, JEDNA
  * prawda współdzielona z `layout/measure.ts`): gdy `bay.primaryDevices`
  * niesie ≥1 aparat mapowalny na symbol pola, stos budowany Z DANYCH
- * (uporządkowanych już przez adapter wg `placement`); inaczej fallback
- * konwencji §12.4 (tabela w `apparatusSequence.ts`, NIE tutaj — usunięta
- * duplikacja `apparatusSymbolsForRole`/`stackFootprint` z tego pliku,
- * re-eksportowane niżej dla zgodności istniejących importów). KAŻDA instancja
- * symbolu niesie `apparatusSource` (`'dane' | 'konwencja'`, spec §12.1
+ * (uporządkowanych już przez adapter wg `placement`); inaczej JEDNA sylwetka
+ * „brak danych wyposażenia pola" (GEOMETRIA-STACJI §0 pkt 4 — konwencja roli
+ * skasowana, zero aparatu z domysłu). KAŻDA instancja
+ * symbolu niesie `apparatusSource` (`'dane' | 'brak'`, spec §12.1
  * „znacznik audytora") i, dla ścieżki danych, `deviceRef` (ENM
  * `BayPrimaryDevice.device_ref` — WHITE BOX, 0 aparatów „z domysłu").
  */
@@ -76,10 +75,15 @@ import {
   LV_MODEL_BOUNDARY_TEXT,
   LV_PORTAL_DROP_HEIGHT,
   planLvTerminal,
+  snSideSources,
   stationSnColumnLayout,
   type StationSnColumnPlacement,
   PORT_CAPTION_BUS_CLEARANCE,
   stationBusbarLabelText,
+  stationIsMultiSection,
+  stationSectionLabelText,
+  couplerGlyphWidth,
+  COUPLER_LINE_GLYPH_HEIGHT,
   stationSectionLabelCarriesCode,
   stationLvBusbarLabelText,
   stationLvLoadLabelText,
@@ -103,9 +107,8 @@ import {
   type StationNameBandOwnerInput,
   type StationNameBandRow,
 } from '../layout/labels';
-import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
+import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
-import { rolaSymboluLacznika, stanRoliSymbolu } from '../../v2/model/stanAparatowPola';
 import { fieldCaptionAt, isLineLikeRole } from './directions';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import {
@@ -113,8 +116,8 @@ import {
   apparatusIdentifierSources,
   LATERAL_APPARATUS_SYMBOLS,
   LATERAL_BRANCH_GAP,
-  apparatusSymbolsForRole,
   bayApparatusPlanFootprint,
+  czyGlowicaRezerwy,
   planBayApparatus,
   resolveBayApparatusSymbolIds,
   stackFootprint,
@@ -140,44 +143,10 @@ import {
   type ProtectionTopologyGap,
 } from './protectionTopologyValidation';
 
-// F9.3: `apparatusSymbolsForRole`/`stackFootprint` przeniesione do
-// `./apparatusSequence` (jedna prawda z `layout/measure.ts`) — re-eksport
-// zachowuje istniejące importy (`compose/gpz.ts` importuje `stackFootprint`
-// z `'./station'`; `__tests__/station.test.ts` importuje oba z `'../station'`).
-export { apparatusSymbolsForRole, stackFootprint };
-
-/**
- * Stan łącznika dla ŚCIEŻKI KONWENCJI (§12.4) — mapowanie z agregatów
- * `bay.cbState`/`bay.dsState`/`bay.esState` (jeden stan per KIND, nie per
- * pozycja w stosie — konwencja nie rozróżnia „DS_szynowy" od „DS_liniowy",
- * obie pozycje `disconnector` w §12.4 dostają TEN SAM `bay.dsState`, znana
- * uproszczona reprezentacja: `MiniBlockBayDescriptor` niesie jeden agregat na
- * kind, nie osobny stan per fizyczny aparat). Ścieżka DANYCH (§12.1) ma
- * stan PER APARAT wprost z `BayPrimaryDeviceView.switchState` —
- * `stackItemsForBay` niżej NIE woła tej funkcji w tej ścieżce.
- *
- * F10.6 (luka DOMAIN #6, F10.3 finding): `fuseSwitch` (rozłącznik z
- * bezpiecznikiem, `apparatusSymbolsForRole('TRANSFORMATOROWE')`) celowo BRAK
- * gałęzi tutaj — zbadane, NIE dodano pola. `BayPrimaryDevice.switch_state`
- * JUŻ niesie stan per-aparat dla `kind='FUSE'` na ŚCIEŻCE DANYCH (identycznie
- * jak CB/DS/ES powyżej — `stackItemsForBay` czyta go wprost z
- * `BayPrimaryDeviceView.switchState`, bez udziału tej funkcji). Luka
- * dotyczyła WYŁĄCZNIE ścieżki KONWENCJI (§12.4): `MiniBlockBayDescriptor` nie
- * niesie osobnego agregatu `fuseState` (tylko cb/ds/es), więc `fuseSwitch`
- * konwencyjny renderuje się bez per-kind stanu (`undefined` → domyślny stan
- * glifu). Dodanie `fuseState` byłoby POLEM-ATRAPĄ: konwencja (§12.4) i tak
- * jest fallbackiem BEZ `device_ref`/telemetrii — żaden realny sygnał SCADA
- * nie zasiliłby takiego agregatu; gdy dane są dostępne, ścieżka DANYCH już
- * je niesie poprawnie. Udokumentowane zamiast nowego pola.
- */
-function apparatusStateFor(symbolId: SymbolId, bay: MiniBlockBayDescriptor): SwitchState | undefined {
-  // Rola symbolu z JEDNEJ tabeli (`rolaSymboluLacznika`), którą czyta też inspektor
-  // klikniętego symbolu. Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik
-  // konwencji RMU — agregat `dsState` (jeden łącznik główny pola; osobny agregat per
-  // kind byłby polem-atrapą, patrz uzasadnienie `fuseSwitch` wyżej).
-  const rola = rolaSymboluLacznika(symbolId);
-  return rola ? stanRoliSymbolu(rola, bay) : undefined;
-}
+// F9.3: `stackFootprint` przeniesiony do `./apparatusSequence` (jedna prawda z
+// `layout/measure.ts`) — re-eksport zachowuje istniejące importy (`compose/gpz.ts`,
+// `__tests__/station.test.ts`).
+export { stackFootprint };
 
 /** Jeden aparat gotowy do rysowania w stosie — symbol + stan + (dla ścieżki
  *  danych) `device_ref` ENM (WHITE BOX/audyt, spec §12.1). */
@@ -193,37 +162,50 @@ interface StackItemSpec {
    *  WYŁĄCZNIE ścieżka danych (§12.1); `undefined` na ścieżce konwencji
    *  (§12.4 nie ma `device_ref`, więc nie ma tej danej per definicji). */
   readonly designation?: string;
+  /** GEOMETRIA-STACJI §0 pkt 4a: pochodzenie rekordu aparatu (`Bay.primary_devices` albo
+   *  gałąź łączeniowa z `Bay.equipment_refs`) i odwołanie katalogowe typu. */
+  readonly origin?: 'rekord_pola' | 'galaz_pola';
+  readonly typeRef?: string | null;
 }
 
 /**
- * Rozstrzyga stos aparatów JEDNEGO pola (spec §12.1 „prymat danych nad
- * konwencją"): `resolveBayApparatusSymbolIds` (`./apparatusSequence`, jedna
- * prawda z `layout/measure.ts`) daje listę `symbolId` + `source`; ta funkcja
- * DODATKOWO dowiązuje stan łącznika (per-aparat dla ścieżki danych, per-kind
- * dla konwencji) i `deviceRef` (WYŁĄCZNIE ścieżka danych — konwencja nie ma
- * `device_ref`, bo NIE pochodzi z ENM, spec §12.4 „każdy stos z konwencji
- * nosi `data-apparatus-source=\"konwencja\"`").
+ * Rozstrzyga stos aparatów JEDNEGO pola: `resolveBayApparatusSymbolIds`
+ * (`./apparatusSequence`, jedna prawda z `layout/measure.ts`) daje listę `symbolId` +
+ * `source`; ta funkcja dowiązuje do pozycji z DANYCH rekord aparatu (stan, `deviceRef`,
+ * `linkedRef`, oznaczenie). Pozycje spoza rekordów — elementy modelu pola (transformator
+ * pola TR, źródło pola OZE), sylwetka `bayNoEquipment` i zakończenie `bayReserve` — nie
+ * mają rekordu aparatu, więc nie mają stanu (GEOMETRIA-STACJI §0 pkt 4: bez rekordu nie ma
+ * koloru stanu; dawny agregat stanu „per kind" konwencji skasowany).
  */
 function stackItemsForBay(
   bay: MiniBlockBayDescriptor,
 ): { readonly items: readonly StackItemSpec[]; readonly source: BayApparatusSource } {
   const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
-  if (source === 'dane') {
-    // Ta sama filtracja co `resolveBayApparatusSymbolIds` (kind→symbol
-    // mapowalny, DER-kindy odfiltrowane) — reużywamy `symbolIdForPrimaryDeviceKind`
-    // WPROST (nie duplikujemy reguły filtracji), żeby dowiązać `deviceRef`/
-    // `switchState` 1:1 do `symbolIds` już wyliczonych wyżej.
-    const devices = (bay.primaryDevices ?? []).filter((d) => symbolIdForPrimaryDeviceKind(d.kind) != null);
-    const items: StackItemSpec[] = devices.map((d, index) => ({
-      symbolId: symbolIds[index],
-      state: d.switchState,
-      deviceRef: d.deviceRef,
-      linkedRef: d.linkedRef,
-      designation: d.designation,
-    }));
-    return { items, source };
-  }
-  const items = symbolIds.map((symbolId) => ({ symbolId, state: apparatusStateFor(symbolId, bay) }));
+  // Ta sama filtracja co `resolveBayApparatusSymbolIds` (kind→symbol mapowalny, DER-kindy
+  // odfiltrowane, głowica pola rezerwowego usunięta TYM SAMYM predykatem
+  // `czyGlowicaRezerwy`) — rekordy dowiązują się 1:1 do początku sekwencji, za nimi stoją
+  // elementy modelu pola i zakończenie rezerwy.
+  const devices =
+    source === 'dane'
+      ? (bay.primaryDevices ?? []).filter((d) => {
+          const id = symbolIdForPrimaryDeviceKind(d.kind);
+          return id != null && !czyGlowicaRezerwy(id, bay.reserve);
+        })
+      : [];
+  const items: StackItemSpec[] = symbolIds.map((symbolId, index) => {
+    const d = devices[index];
+    return d
+      ? {
+          symbolId,
+          state: d.switchState,
+          deviceRef: d.deviceRef,
+          linkedRef: d.linkedRef,
+          designation: d.designation,
+          origin: d.pochodzenie,
+          typeRef: d.typeRef ?? null,
+        }
+      : { symbolId };
+  });
   return { items, source };
 }
 
@@ -264,7 +246,7 @@ export interface ComposedSymbolInstance {
    *  (adnotacja „!" przy okręgu). */
   readonly protectionTopologyGaps?: readonly ProtectionTopologyGap[];
   /** F9.3 (spec §12.1): pochodzenie stosu tego pola — `'dane'` gdy zbudowany
-   *  z `Bay.primary_devices`, `'konwencja'` gdy z fallbacku §12.4. Audytor
+   *  z rekordów aparatów pola, `'brak'` gdy pole bez rekordów (sylwetka). Audytor
    *  DOM czyta to jako `data-apparatus-source` (`scene/buildScene.ts`,
    *  `compose/preview.tsx`/`canvas/SldCanvasV3.tsx`). F9.4: `undefined` dla
    *  symboli DER (`sourceRef` obecny) — pole jest SPECYFICZNIE o pochodzeniu
@@ -293,6 +275,18 @@ export interface ComposedSymbolInstance {
    *  (spec §13.1) oraz `sourceConnectivityGaps`/`allSourcesConnected` (spec
    *  §14.1) — WSZYSTKIE cztery eksportowane, `scene/buildScene.ts` (runda
    *  korekcyjna F9.4, patrz raport — dawniej wyrocznie-widma bez ciała). */
+  /** GEOMETRIA-STACJI (Z-03/Z-08): `Branch.ref_id` gałęzi sprzęgła międzysekcyjnego
+   *  (`bus_coupler`) — tożsamość symbolu sprzęgła na scenie. */
+  readonly couplerRef?: string;
+  /** GEOMETRIA-STACJI §0 pkt 4a: pochodzenie rekordu aparatu tego symbolu (`'rekord_pola'` —
+   *  `Bay.primary_devices`, `'galaz_pola'` — gałąź łączeniowa z `Bay.equipment_refs`);
+   *  `undefined` dla pozycji bez rekordu. Audytor DOM `data-apparatus-origin`. */
+  readonly apparatusOrigin?: 'rekord_pola' | 'galaz_pola';
+  /** Odwołanie katalogowe typu aparatu (`catalog_ref`) — `data-apparatus-type`. */
+  readonly apparatusTypeRef?: string;
+  /** GEOMETRIA-STACJI §0 pkt 5: pole rezerwowe (`'rezerwowe'`, `bay_kind`) albo wolne
+   *  (`'wolne'`, brak odejścia w modelu) — `data-bay-reserve`. */
+  readonly bayReserve?: 'rezerwowe' | 'wolne';
   readonly sourceRef?: string;
   /** TR2W-BEZ-POLA (§0.C.1): REALNY `Transformer.ref_id` — WYŁĄCZNIE dla
    *  symbolu `transformer2W` rysowanego BEZ pola roli TR (transformator
@@ -602,6 +596,9 @@ function buildBayStack(
       deviceRef: item.deviceRef,
       linkedRef: item.linkedRef,
       apparatusSource,
+      apparatusOrigin: item.origin,
+      apparatusTypeRef: item.typeRef ?? undefined,
+      bayReserve: bay.reserve,
       // F10.6 (DOMAIN, V12K-035): źródło identyfikatora — `'dane'` gdy
       // `BayPrimaryDevice.designation` obecny dla tego aparatu, inaczej
       // fallback konwencji `apparatusIdentifiers`. `undefined` dla aparatów
@@ -686,6 +683,9 @@ function buildBayStack(
         deviceRef: item.deviceRef,
         linkedRef: item.linkedRef,
         apparatusSource,
+        apparatusOrigin: item.origin,
+        apparatusTypeRef: item.typeRef ?? undefined,
+        bayReserve: bay.reserve,
         designationSource: identifierSource ?? undefined,
         uzwojenia: uzwojeniaSymbolu(item.symbolId, bay.transformerVectorGroup),
         x,
@@ -1055,7 +1055,56 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // bloku (`stationBlockWidth`) i wskazuje oś przęsła (`bayStackCenterX`), więc
   // rezerwacja, rysunek i trasowanie nie mogą się rozjechać.
   const columnPlan = stationSnColumnLayout(station, column.x);
+  // W2: X zaczepu pola źródłowego SN bez toru (port AC symbolu) — kolumny `der` planu.
+  const derTapX = new Map<string, number>();
+  const snDerById = new Map(snSideSources(station.derSources ?? []).map((s) => [s.id, s]));
   columnPlan.forEach((placement) => {
+    if (placement.kind === 'section-pad') return;
+    if (placement.kind === 'coupler') return; // rysowane razem z szynami sekcji niżej
+    if (placement.kind === 'der') {
+      const source = snDerById.get(placement.derSourceId ?? '');
+      if (!source) return;
+      // Pole źródłowe SN — kolumna NA SZYNIE SN (plan kolumn `stationSnColumnLayout`;
+      // rezerwacja szerokości/wysokości: `requiredStationWidth`/`stationBlockHeight`,
+      // jedna prawda measure↔compose).
+      const symbolId = symbolIdForSourceKind(source.kind);
+      const def = SYMBOL_DEFS[symbolId];
+      const symbolX = snapToGrid(placement.leftX + (placement.width - def.width) / 2);
+      const symbolY = blockTopY;
+      const ports = portsInWorld(def, symbolX, symbolY);
+      const acPort = ports.ac ?? Object.values(ports)[0];
+      busTapXs.push(acPort.x);
+      derTapX.set(source.id, acPort.x);
+      symbols.push({
+        symbolId,
+        sourceRef: source.id,
+        missingData: source.missingData,
+        operationalState: source.operationalState,
+        derKind: source.kind,
+        x: symbolX,
+        y: symbolY,
+        ports,
+      });
+      // Odczep od szyny SN (`busAxisY`) do portu AC symbolu źródła (`blockTopY`)
+      // — pion pola źródłowego, kotwica GÓRNA na szynie SN (`#sn-bus`, bus-like
+      // w `internalSegmentsEndAtPortsOrBus`), dolna na porcie AC symbolu.
+      segments.push({
+        ownerRef: `${source.id}#sn-source-descent`,
+        points: [
+          { x: acPort.x, y: busAxisY },
+          { x: acPort.x, y: acPort.y },
+        ],
+      });
+      derLabels.push({
+        ownerRef: `${source.id}#der-label`,
+        ownerKind: 'der',
+        text: derLabelText(source),
+        labelClass: 't2',
+        anchor: { x: symbolX + def.width / 2, y: symbolY + def.height },
+        placement: 'below',
+      });
+      return;
+    }
     if (placement.kind === 'transformer') {
       const jednostka = (station.transformerUnits ?? []).find((u) => u.ref === placement.transformerRef);
       composeImplicitTransformerColumn(placement, jednostka?.vectorGroup ?? null, busAxisY, blockTopY, {
@@ -1433,7 +1482,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       // `bayColumnRequiredWidth`/measure.ts, jedna prawda jak F6b-1), więc
       // podpis kierunku nigdy nie leży pod wchodzącym przewodem.
       const captionInset =
-        index === station.entryDescentBayIndex ? entryDescentCaptionInset(bay.fieldRole) : 0;
+        index === station.entryDescentBayIndex ? entryDescentCaptionInset(bay) : 0;
       // F10.2 (spec §19.1): przesunięte o `leftReserve` w prawo (jak stos) —
       // prawa krawędź wycinka NIEZMIENIONA (`bx + reservedWidth`), jedna
       // prawda z `layout/measure.ts` `bayColumnRequiredWidth`.
@@ -1510,7 +1559,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // Pierwszy wolny X ZA blokiem kolumn (pola + kolumny transformatorów bez
   // pola) — baza rzędu DER i pól źródłowych SN, dopisywanych PO PRAWEJ bloku.
   const lastColumn = columnPlan.length > 0 ? columnPlan[columnPlan.length - 1] : null;
-  let bx = lastColumn ? lastColumn.leftX + lastColumn.width + GRID : blockLeftX;
+  const bx = lastColumn ? lastColumn.leftX + lastColumn.width + GRID : blockLeftX;
 
   // TR2W-BEZ-POLA (§0.C.4 „zero fabrykacji"): domena mówi „stacja ma
   // transformator", ale migawka nie niesie ŻADNEGO rekordu `Transformer` z
@@ -1562,55 +1611,133 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // konstrukcji (jak każde pole). Rezerwacja szerokości/wysokości: `layout/
   // measure.ts` (`requiredStationWidth`/`stationBlockHeight` — `snSource
   // FieldsRowWidth`/wysokość pola źródłowego, jedna prawda measure↔compose).
-  snDerSources.forEach((source) => {
-    const symbolId = symbolIdForSourceKind(source.kind);
-    const def = SYMBOL_DEFS[symbolId];
-    const slotWidth = derColumnRequiredWidth(source);
-    const symbolX = snapToGrid(bx + (slotWidth - def.width) / 2);
-    const symbolY = blockTopY;
-    const ports = portsInWorld(def, symbolX, symbolY);
-    const acPort = ports.ac ?? Object.values(ports)[0];
-    busTapXs.push(acPort.x);
-
-    symbols.push({
-      symbolId,
-      sourceRef: source.id,
-      missingData: source.missingData,
-      operationalState: source.operationalState,
-      derKind: source.kind,
-      x: symbolX,
-      y: symbolY,
-      ports,
-    });
-
-    // Odczep od szyny SN (`busAxisY`) do portu AC symbolu źródła (`blockTopY`)
-    // — pion pola źródłowego, kotwica GÓRNA na szynie SN (`#sn-bus`, bus-like
-    // w `internalSegmentsEndAtPortsOrBus`), dolna na porcie AC symbolu.
-    segments.push({
-      ownerRef: `${source.id}#sn-source-descent`,
-      points: [
-        { x: acPort.x, y: busAxisY },
-        { x: acPort.x, y: acPort.y },
-      ],
-    });
-
-    derLabels.push({
-      ownerRef: `${source.id}#der-label`,
-      ownerKind: 'der',
-      text: derLabelText(source),
-      labelClass: 't2',
-      anchor: { x: symbolX + def.width / 2, y: symbolY + def.height },
-      placement: 'below',
-    });
-
-    bx += slotWidth + GRID;
-  });
 
   // Szyna SN pozioma NA OSI B2 (spec §3: „dł. z liczby pól") — od pierwszego
   // do ostatniego zaczepu pola tej stacji.
-  if (busTapXs.length > 0) {
+  const multiSection = stationIsMultiSection(station);
+  /**
+   * GEOMETRIA-STACJI (Z-03, Z-08): stacja WIELOSEKCYJNA — każda sekcja (rekord `Bus`)
+   * rysuje WŁASNY odcinek szyny `${busRef}#sn-bus` od pierwszego do ostatniego zaczepu
+   * swoich kolumn, wydłużony do portów sprzęgieł i rezerwy opisu; sprzęgło (gałąź
+   * `bus_coupler` modelu) stoi MIĘDZY sekcjami glifem toru poziomego w stanie z gałęzi —
+   * szyny sekcji dochodzą do jego portów, więc otwarte sprzęgło czyta się jako przerwa.
+   * Każda sekcja ma własny opis (`stationSectionLabelText`) wyśrodkowany nad własnymi
+   * kolumnami (plan rezerwuje szerokość `section-pad`). Kolumna bez ustalonej sekcji
+   * wisi na osobnym odcinku kompozytu stacji `${station.id}#sn-bus` (bez wyniku, bez
+   * sprzęgła) i jest zgłaszana jako brak danych — zero przypisania sekcji z domysłu.
+   */
+  function composeSectionBuses(): void {
+    const sections = station.snSections ?? [];
+    const couplers = new Map((station.snCouplers ?? []).map((c) => [c.ref, c]));
+    const xsBySection = new Map<string, number[]>(sections.map((sec) => [sec.busRef, []]));
+    const spanBySection = new Map<string, { left: number; right: number }>();
+    const unresolvedTaps: number[] = [];
+    const widenSpan = (ref: string, left: number, right: number): void => {
+      const span = spanBySection.get(ref);
+      spanBySection.set(ref, span ? { left: Math.min(span.left, left), right: Math.max(span.right, right) } : { left, right });
+    };
+    for (const p of columnPlan) {
+      if (p.kind === 'coupler') {
+        const coupler = couplers.get(p.couplerRef ?? '');
+        if (!coupler || p.sectionBusRef == null) continue;
+        const rightSection = coupler.fromBusRef === p.sectionBusRef ? coupler.toBusRef : coupler.fromBusRef;
+        const symbolId: SymbolId = coupler.rodzaj === 'wylacznik' ? 'lineBreaker' : 'lineSwitch';
+        const w = couplerGlyphWidth(coupler.rodzaj);
+        const x = snapToGrid(p.centerX - w / 2);
+        const y = snapToGrid(busAxisY - COUPLER_LINE_GLYPH_HEIGHT / 2);
+        symbols.push({
+          symbolId,
+          couplerRef: coupler.ref,
+          x,
+          y,
+          state: coupler.state,
+          ports: portsInWorld(SYMBOL_DEFS[symbolId], x, y),
+        });
+        xsBySection.get(p.sectionBusRef)?.push(x);
+        xsBySection.get(rightSection)?.push(x + w);
+        apparatusLabels.push({
+          ownerRef: `${coupler.ref}#designation`,
+          ownerKind: 'apparatus',
+          text: coupler.designation,
+          labelClass: 't3',
+          anchor: { x: p.centerX, y: y + COUPLER_LINE_GLYPH_HEIGHT },
+          placement: 'below',
+        });
+        continue;
+      }
+      if (!p.sectionResolved || p.sectionBusRef == null) {
+        const tap = p.kind === 'der' ? derTapX.get(p.derSourceId ?? '') : p.kind === 'section-pad' ? undefined : p.centerX;
+        if (tap != null) unresolvedTaps.push(tap);
+        missingData.push(`station.section.unresolved:${p.kind === 'bay' ? station.snBays[p.bayIndex!].bayRef : p.transformerRef ?? p.derSourceId ?? ''}`);
+        continue;
+      }
+      widenSpan(p.sectionBusRef, p.leftX, p.leftX + p.width);
+      if (p.kind === 'section-pad') {
+        xsBySection.get(p.sectionBusRef)?.push(p.leftX, p.leftX + p.width);
+        continue;
+      }
+      const tap = p.kind === 'der' ? derTapX.get(p.derSourceId ?? '') : p.centerX;
+      if (tap != null) xsBySection.get(p.sectionBusRef)?.push(tap);
+    }
+    // Sprzęgło między sekcjami NIESĄSIEDNIMI w kolejności rekordu stacji nie ma miejsca
+    // między nimi na rysunku — zgłoszone, nie rysowane obok obcej sekcji.
+    const drawn = new Set(columnPlan.filter((p) => p.kind === 'coupler').map((p) => p.couplerRef));
+    for (const coupler of couplers.values()) {
+      if (!drawn.has(coupler.ref)) missingData.push(`station.coupler.nonAdjacent:${coupler.ref}`);
+    }
+    sections.forEach((section) => {
+      const xs = xsBySection.get(section.busRef) ?? [];
+      if (xs.length === 0) return;
+      let left = Math.min(...xs);
+      let right = Math.max(...xs);
+      if (left === right) {
+        const span = spanBySection.get(section.busRef);
+        left = span ? snapToGrid(span.left) : left - GRID;
+        right = span ? snapToGrid(span.left + (span.right - span.left)) : right + GRID;
+      }
+      segments.push({
+        ownerRef: `${section.busRef}#sn-bus`,
+        points: [
+          { x: left, y: busAxisY },
+          { x: right, y: busAxisY },
+        ],
+      });
+      const span = spanBySection.get(section.busRef) ?? { left, right };
+      busbarLabels.push({
+        ownerRef: `${section.busRef}#busbar-voltage`,
+        ownerKind: 'busbar-voltage',
+        text: stationSectionLabelText(station, section.busRef),
+        labelClass: 't2',
+        anchor: {
+          x: snapToGrid((span.left + span.right) / 2),
+          y: busAxisY - stationPortCaptionHeight(station),
+        },
+        placement: 'above',
+        clearance: BUSBAR_LABEL_PATH_CLEARANCE,
+      });
+    });
+    if (unresolvedTaps.length > 0) {
+      const left = Math.min(...unresolvedTaps);
+      const right = Math.max(...unresolvedTaps);
+      segments.push({
+        ownerRef: `${station.id}#sn-bus`,
+        points: [
+          { x: left === right ? left - GRID : left, y: busAxisY },
+          { x: left === right ? right + GRID : right, y: busAxisY },
+        ],
+      });
+    }
+  }
+
+  // GEOMETRIA-STACJI (Z-03): odcinek szyny = rekord `Bus` sekcji (`${busRef}#sn-bus`);
+  // stacja bez rekordu sekcji (wejście bez `snSections`) — kompozyt stacji.
+  const soleSectionRef = station.snSections?.[0]?.busRef ?? null;
+  const busOwnerBase = soleSectionRef ?? station.id;
+  if (multiSection) {
+    composeSectionBuses();
+  } else if (busTapXs.length > 0) {
     segments.push({
-      ownerRef: `${station.id}#sn-bus`,
+      ownerRef: `${busOwnerBase}#sn-bus`,
       points: [
         { x: busTapXs[0], y: busAxisY },
         { x: busTapXs[busTapXs.length - 1], y: busAxisY },
@@ -1643,7 +1770,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // przy budowie `rows` niżej (JEDEN predykat, dwa końce: kto pisze i kto
     // milczy — inaczej „raz w bloku" byłoby deklaracją, nie własnością).
     busbarLabels.push({
-      ownerRef: `${station.id}#busbar-voltage`,
+      ownerRef: `${busOwnerBase}#busbar-voltage`,
       ownerKind: 'busbar-voltage',
       // S9-8: identyfikator stacji w opisie sekcji — patrz `stationBusbarLabelText`.
       text: stationBusbarLabelText(station.busVoltageKv, station.stationCode),
@@ -1884,7 +2011,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const blokNiesieKod =
     stationSectionLabelCarriesCode(station)
     && busbarLabels.some(
-      (l) => l.ownerRef === `${station.id}#busbar-voltage` && l.text.includes(station.stationCode!.trim()),
+      // GEOMETRIA-STACJI: opis sekcji ma ref szyny sekcji (`${busRef}#busbar-voltage`).
+      (l) => l.ownerKind === 'busbar-voltage' && l.ownerRef.endsWith('#busbar-voltage')
+        && l.text.includes(station.stationCode!.trim()),
     );
   if (station.stationCode && !blokNiesieKod) {
     rows.push({ text: station.stationCode, labelClass: 't1', role: 'tozsamosc' });
@@ -1994,7 +2123,7 @@ export function internalSegmentsEndAtPortsOrBus(composition: StationComposition)
 }
 
 // ---------------------------------------------------------------------------
-// F9.3 — wyrocznie §12.3 (field_entry_probe) i §14.3 (field_silhouette_probe).
+// F9.3 — wyrocznia §12.3 (field_entry_probe).
 // ---------------------------------------------------------------------------
 
 /**
@@ -2027,106 +2156,14 @@ export function fieldStacksEndAtCableHead(
       (s) => s.bayRef === bay.bayRef && !LATERAL_APPARATUS_SYMBOLS.has(s.symbolId),
     );
     const last = stackSymbols[stackSymbols.length - 1];
+    // GEOMETRIA-STACJI (§0 pkt 4/5): pole bez rekordów aparatów kończy się jawną sylwetką
+    // braku danych, pole rezerwowe/wolne — zakończeniem bez odejścia, a pole, którego model
+    // niesie wyłącznie gałąź aparatu głównego (bez rekordu składu pola), nie ma rekordu
+    // głowicy do narysowania. Luką danych pozostaje pole ze SKŁADEM (`rekord_pola`) bez
+    // `CABLE_HEAD`.
+    if (last?.symbolId === 'bayNoEquipment' || last?.symbolId === 'bayReserve') return true;
+    if ((bay.primaryDevices ?? []).every((d) => d.pochodzenie === 'galaz_pola')) return true;
     return last?.symbolId === 'cableHead';
   });
 }
 
-/**
- * Klasa sylwetki pola (spec §14.3: „wejście/wyjście/odgałęzienie/
- * transformator/sprzęgło/pomiar/DER"). RULING V12K-031 (nadzorca, runda
- * korekcyjna F9.3, recenzja Opusa — zastępuje pierwotną „DECYZJA F9.3 (dług)"
- * poniższego akapitu): wejście/wyjście/odgałęzienie pola liniowego są
- * FIZYCZNIE IDENTYCZNĄ konstrukcją rozdzielnicy (ta sama sekwencja aparatów,
- * §12.2/§12.4) — rysowanie różnicy stosu/akcentu między nimi fabrykowałoby
- * różnicę konstrukcyjną, której NIE MA (nadrzędny cel dyrektywy: prawda
- * fizyczna > litera zadania rysunkowego). SĄ więc ŚWIADOMIE ZWINIĘTE w JEDNĄ
- * klasę równoważności `'line'` — kierunek niesie podpis `kier./odg.`
- * (`compose/directions.ts`) i, docelowo, strzałki przepływu mocy §14.2/F9.5
- * (prawda solverowa), NIE sylwetka; odgałęzienie różni się AKCENTEM §14.4
- * (`branchJunction`), nie stosem. Patrz `docs/v12xx/REJESTR_KONFLIKTOW.md`
- * V12K-031 (pełna treść rulingu).
- */
-export type FieldSilhouetteClass =
-  | 'line'
-  | 'rmu_line'
-  | 'transformer'
-  | 'rmu_transformer'
-  | 'coupler'
-  | 'measurement'
-  | 'der_pv'
-  | 'der_bess'
-  | 'der_fw'
-  | 'der_unknown';
-
-/** KOREKTA RULINGU V12K-031 (recenzja NO-GO właściciela 2026-07-17 pkt 5,
- *  spec §12.5): przesłanka „wejście/wyjście/odgałęzienie = fizycznie
- *  identyczna konstrukcja" ZOSTAJE dla pól wyłącznikowych (LINE_IN/LINE_OUT/
- *  LINE_BRANCH/GPZ_LINE_BAY — jedna klasa `'line'`), ale pole liniowe stacji
- *  KOMPAKTOWEJ (RMU_LINE: rozłącznik+ES+głowica) i pole trafo bezpiecznikowe
- *  RMU (RMU_TRANSFORMER: rozłącznik bezpiecznikowy+ES+TR) są INNĄ
- *  technologią rozdzielnicy — recenzja zmierzyła, że wspólna sylwetka
- *  fabrykowała CB+CT w stacjach 630 kVA. Osobne klasy = osobne sygnatury. */
-export function fieldSilhouetteClass(role: FieldRole): FieldSilhouetteClass {
-  if (role === FIELD_ROLE.RMU_LINE) return 'rmu_line';
-  if (role === FIELD_ROLE.RMU_TRANSFORMER) return 'rmu_transformer';
-  if (isLineLikeRole(role)) return 'line';
-  if (isTransformerRole(role)) return 'transformer';
-  if (role === FIELD_ROLE.COUPLER) return 'coupler';
-  if (role === FIELD_ROLE.MEASUREMENT) return 'measurement';
-  if (role === FIELD_ROLE.DER_PV) return 'der_pv';
-  if (role === FIELD_ROLE.DER_BESS) return 'der_bess';
-  if (role === FIELD_ROLE.DER_UNKNOWN) return 'der_unknown';
-  return 'der_fw';
-}
-
-/** Reprezentant roli KAŻDEJ klasy (jedno wejście do `apparatusSymbolsForRole`
- *  per klasa) — sygnatura sylwetki to multiset `SymbolId` (sorted) stosu
- *  KONWENCJI tej klasy; właściwość ROLI/klasy, nie pojedynczego pola (pole z
- *  `primary_devices` może mieć inny realny stos — §14.3 mówi o rozróżnialności
- *  KATEGORII pól, nie o konkretnej instancji). */
-const SILHOUETTE_CLASS_REPRESENTATIVE_ROLE: Readonly<Record<FieldSilhouetteClass, FieldRole>> = {
-  line: FIELD_ROLE.LINE_IN,
-  rmu_line: FIELD_ROLE.RMU_LINE,
-  transformer: FIELD_ROLE.TRANSFORMER,
-  rmu_transformer: FIELD_ROLE.RMU_TRANSFORMER,
-  coupler: FIELD_ROLE.COUPLER,
-  measurement: FIELD_ROLE.MEASUREMENT,
-  der_pv: FIELD_ROLE.DER_PV,
-  der_bess: FIELD_ROLE.DER_BESS,
-  der_fw: FIELD_ROLE.DER_FW,
-  der_unknown: FIELD_ROLE.DER_UNKNOWN,
-};
-
-function silhouetteSignature(cls: FieldSilhouetteClass): string {
-  const role = SILHOUETTE_CLASS_REPRESENTATIVE_ROLE[cls];
-  return [...apparatusSymbolsForRole(role)].sort().join(',');
-}
-
-/**
- * field_silhouette_probe (spec §14.3, V12K-031 — RESTAURACJA semantyki
- * rola→cecha po recenzji Opusa FIX-2: wersja pośrednia sprawdzała tylko
- * „klasa→sygnatura injektywne dla klas OBECNYCH w jednej stacji", co jest
- * trywialnie prawdziwe, gdy stacja niesie tylko jedną klasę — nie dowodzi
- * NICZEGO o systemie). Ta wersja dowodzi WŁAŚCIWOŚCI GLOBALNEJ, nie
- * per-stacji: dla WSZYSTKICH ról zdefiniowanych (`ALL_FIELD_ROLES`,
- * `apparatusContracts.ts`) — każde dwie role SPOZA TEJ SAMEJ klasy
- * równoważności (`fieldSilhouetteClass`, V12K-031) MUSZĄ mieć RÓŻNE
- * sygnatury wizualne (multiset `SymbolId` stosu konwencji); każde dwie role
- * W TEJ SAMEJ klasie równoważności (np. `LINE_IN`/`LINE_OUT` — klasa
- * `'line'`) MOGĄ (i w tej implementacji DZIELĄ) tę samą sygnaturę — to NIE
- * jest naruszenie §14.3 (ruling V12K-031: identyczna konstrukcja fizyczna,
- * kierunek niesiony podpisem/strzałkami, nie sylwetką).
- */
-export function fieldSilhouettesAreInjective(): boolean {
-  for (let i = 0; i < ALL_FIELD_ROLES.length; i++) {
-    for (let j = i + 1; j < ALL_FIELD_ROLES.length; j++) {
-      const roleA = ALL_FIELD_ROLES[i];
-      const roleB = ALL_FIELD_ROLES[j];
-      const classA = fieldSilhouetteClass(roleA);
-      const classB = fieldSilhouetteClass(roleB);
-      if (classA === classB) continue; // ta sama klasa — dzielenie sygnatury dopuszczone (V12K-031).
-      if (silhouetteSignature(classA) === silhouetteSignature(classB)) return false;
-    }
-  }
-  return true;
-}

@@ -18,6 +18,7 @@
 
 import type {
   BayPrimaryDevice,
+  BayPrimaryDeviceKind,
   BayPrimaryPlacement,
   EnergyNetworkModel,
   LogicalViewsV1,
@@ -30,15 +31,16 @@ import type {
   ProtectionAssignment,
   Measurement,
 } from '../../../../types/enm';
-import { pickStationBus, stationSideBusRefs } from '../../shared/stationBusResolution';
-import { stacjaSzyn, szynyStacji} from '../../../shared/szynyStacji';
+import { pickStationBus, stationSideBusRefs, stationSnSectionBusRefs } from '../../shared/stationBusResolution';
+import { stacjaSzyn, szynaGlownaStacji, szynyStacji } from '../../../shared/szynyStacji';
+import { sprzeglaMiedzySekcjami } from '../model/sprzeglaSekcji';
 import { polaSnStacji, stacjaPola } from '../../../shared/polaStacji';
-import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
+import { NAZWA_RODZAJU_STACJI_PL, czyPoleRezerwowe, czyPoleWolne, rodzajStacji } from '../../../shared/rodzajStacji';
 import type { GpzViewModel } from '../model/widokSld';
-import type { StationOnRunViewModel } from '../model/widokSld';
+import type { StationOnRunViewModel, StationSnSectionView } from '../model/widokSld';
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../model/widokPolStacji';
 import { FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
-import { stanAparatuZModelu, stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
+import { stanAparatuZModelu, stanStatusuGalezi, stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
 import {
   derFieldRoleForGenerator,
   jedynyTransformatorPola,
@@ -482,6 +484,10 @@ export interface SldSourceView {
    *  `external_grid` nie niesie tego pola (zasilanie sieciowe nie jest DER
    *  stacji — pozycjonuje je `compose/gpz.ts`). */
   readonly connectionSide?: 'sn' | 'nn' | 'unknown';
+  /** GEOMETRIA-STACJI (Z-03): sekcja (szyna główna) stacji `connectionRef`, na której
+   *  leży szyna przyłączenia źródła (`szynaGlownaStacji(Generator.bus_ref)`); brak =
+   *  sekcja nieustalona. Nadawane WYŁĄCZNIE dla DER. */
+  readonly sectionBusRef?: string;
   /** W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER przyłączonego
    *  po stronie SN zmaterializowany jako REALNE elementy ENM (W2b). Obecny
    *  WYŁĄCZNIE, gdy `Generator.connection_variant==='block_transformer'` ∧
@@ -1555,6 +1561,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         stationCode,
         topologicalType: stationTopologicalType(snapshot, sub),
         snBays: stationSldDetails.snBays,
+        snSections: stationSldDetails.snSections,
+        snCouplers: stationSldDetails.snCouplers,
         hasTransformer: stationSldDetails.hasTransformer,
         // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
         transformerUnits: stationSldDetails.transformerUnits,
@@ -1593,6 +1601,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
         stationCode: stationCodeFromName(sub.name, stationSequence),
         topologicalType: stationTopologicalType(snapshot, sub),
         snBays: stationSldDetails.snBays,
+        snSections: stationSldDetails.snSections,
+        snCouplers: stationSldDetails.snCouplers,
         hasTransformer: stationSldDetails.hasTransformer,
         // TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki TR z terminalami WN/nN.
         transformerUnits: stationSldDetails.transformerUnits,
@@ -1611,6 +1621,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {
 
 interface StationMiniBlockDetails {
   readonly snBays: readonly MiniBlockBayDescriptor[];
+  readonly snSections: NonNullable<StationOnRunViewModel['snSections']>;
+  readonly snCouplers: NonNullable<StationOnRunViewModel['snCouplers']>;
   readonly hasTransformer: boolean;
   readonly transformerRefs: readonly string[];
   /** TR2W-BEZ-POLA (§0.C.2/§0.C.3): jednostki transformatorowe stacji z
@@ -1704,8 +1716,16 @@ function buildStationMiniBlockDetails(
         { pMw: 0, qMvar: 0, count: 0 },
       )
     : null;
+  const snSections = stationSnSections(station, busByRef);
+  const snCouplers = sprzeglaMiedzySekcjami(
+    snapshot.branches ?? [],
+    snSections.map((section) => section.busRef),
+    polaSnStacji(snapshot, station.ref_id),
+  );
   return {
     snBays,
+    snSections,
+    snCouplers,
     transformerRefs,
     transformerUnits,
     hasTransformer:
@@ -1794,6 +1814,7 @@ function buildExplicitStationMiniBays(
 ): MiniBlockBayDescriptor[] {
   const generatoryWgPola = wytworcyWgPola(snapshot);
   const transformatoryWgRef = new Map((snapshot.transformers ?? []).map((t) => [t.ref_id, t]));
+  const galezieMigawki = snapshot.branches ?? [];
   return polaSnStacji(snapshot, station.ref_id).map((bay, index) => {
     const rola = stationFieldRole(bay, generatoryWgPola);
     const transformatorPola = jedynyTransformatorPola(bay, transformatoryWgRef);
@@ -1805,8 +1826,10 @@ function buildExplicitStationMiniBays(
       fieldRole: mapStationBayRoleToMiniRole(rola),
       designation: bay.bay_number ?? bay.feeder_short_name ?? stationFieldDesignation(bay, rola, index),
       hasMissingRequiredDevice: bay.equipment_refs.length === 0,
-      // TR2W-BEZ-POLA (§0.C.2): sekcja szyn tego pola (`Bay.bus_ref`).
+      // TR2W-BEZ-POLA (§0.C.2): szyna pola (`Bay.bus_ref`).
       busRef: bay.bus_ref,
+      // GEOMETRIA-STACJI (Z-03): sekcja (szyna główna) pola — lustro backendu.
+      ...sekcjaPola(snapshot, station, bay.bus_ref),
       // GPZ-PARYTET cz. 2 (pkt 1): transformator pola i jego grupa połączeń z modelu.
       ...(transformatorPola
         ? {
@@ -1824,10 +1847,29 @@ function buildExplicitStationMiniBays(
       // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 (klucz
       // nieprzezroczysty — pin `enmToSldAdapter.configIdOpaque.test.ts`).
       configId: bay.config_id ?? undefined,
+      // GEOMETRIA-STACJI (§0 pkt 5): pole rezerwowe (rodzaj pola katalogowego) albo wolne
+      // (pole liniowe bez odcinka na zacisku) — jedna para predykatów `rodzajStacji.ts`.
+      ...(czyPoleRezerwowe(bay)
+        ? { reserve: 'rezerwowe' as const }
+        : czyPoleWolne(bay, galezieMigawki) ? { reserve: 'wolne' as const } : {}),
+      ...(bay.outgoing_destination_ref
+        ? { destinationName: nazwaCeluOdejscia(snapshot, bay.outgoing_destination_ref) }
+        : {}),
     };
   });
 }
 
+/** GEOMETRIA-STACJI (§0 pkt 5): nazwa celu odejścia pola — `Bay.outgoing_destination_ref`
+ *  wskazuje stację docelową (`backend/src/enm/models.py`); nazwa stacji z modelu, a gdy
+ *  model jej nie zna — sam ref (bez domysłu). Jedna funkcja dla stacji i GPZ. */
+export function nazwaCeluOdejscia(
+  snapshot: Pick<EnergyNetworkModel, 'substations'>,
+  ref: string,
+): string {
+  const stacja = (snapshot.substations ?? []).find((s) => s.ref_id === ref || s.id === ref);
+  const nazwa = typeof stacja?.name === 'string' ? stacja.name.trim() : '';
+  return nazwa || ref;
+}
 
 function buildDedicatedDerStationMiniBays(
   snapshot: EnergyNetworkModel,
@@ -1864,8 +1906,35 @@ function buildDedicatedDerStationMiniBays(
         cbState: 'unknown',
         dsState: 'unknown',
         esState: 'unknown',
+        // GEOMETRIA-STACJI (Z-03): sekcja z szyny przyłączenia wytwórcy (`Generator.bus_ref`).
+        ...sekcjaPola(snapshot, station, gen.bus_ref),
       }];
     });
+}
+
+/** GEOMETRIA-STACJI (Z-03): sekcja (szyna główna) stacji dla szyny przyłączenia — reguła
+ *  `szynaGlownaStacji` (lustro backendu `szyny_stacji`). Brak = sekcja nieustalona. */
+function sekcjaPola(
+  snapshot: EnergyNetworkModel,
+  station: Substation,
+  busRef: string | null | undefined,
+): { readonly sectionBusRef?: string } {
+  if (typeof busRef !== 'string' || !busRef) return {};
+  const sekcja = szynaGlownaStacji(snapshot, station, busRef);
+  return sekcja ? { sectionBusRef: sekcja } : {};
+}
+
+/** GEOMETRIA-STACJI (Z-03): sekcje szyn SN stacji — jedna reguła
+ *  `stationSnSectionBusRefs` (`shared/stationBusResolution.ts`). */
+function stationSnSections(
+  station: Substation,
+  busByRef: ReadonlyMap<string, Bus>,
+): StationSnSectionView[] {
+  return stationSnSectionBusRefs(station, busByRef).map((busRef, index) => ({
+    busRef,
+    ordinal: index + 1,
+    voltageKv: busByRef.get(busRef)?.voltage_kv ?? null,
+  }));
 }
 
 function isDedicatedMvDerConnection(
@@ -2051,13 +2120,16 @@ const PRIMARY_DEVICE_PLACEMENT_ORDER: Readonly<Record<BayPrimaryPlacement, numbe
  * `CanonicalGpzBay.primaryDevices` (jedna prawda stacja↔GPZ, zero duplikacji).
  */
 export function projectBayPrimaryDevices(
-  bay: { readonly primary_devices?: readonly BayPrimaryDevice[] | null },
+  bay: {
+    readonly primary_devices?: readonly BayPrimaryDevice[] | null;
+    readonly equipment_refs?: readonly string[] | null;
+  },
   // GPZ-PARYTET cz. 2 (pkt 2): gałęzie migawki po `ref_id` — stan aparatu z `status` jego
   // gałęzi łączeniowej (`stanAparatuZModelu`), nie z samego rekordu.
   galezieWgRef: ReadonlyMap<string, Branch>,
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
-  if (!devices || devices.length === 0) return undefined;
+  if (!devices || devices.length === 0) return aparatyZGaleziPola(bay.equipment_refs ?? [], galezieWgRef);
   return devices
     .map((device, sourceIndex) => ({ device, sourceIndex }))
     .sort((a, b) => {
@@ -2077,7 +2149,66 @@ export function projectBayPrimaryDevices(
       // F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator per-aparat
       // jako dana projektowa — patrz `BayPrimaryDeviceView.designation`.
       designation: device.designation ?? undefined,
+      pochodzenie: 'rekord_pola',
+      typeRef: device.catalog_ref ?? null,
     }));
+}
+
+/** Klasa wyrobu z katalogu (`materialized_params.device_kind`) → rodzaj aparatu pola —
+ *  lustro `_DEVICE_KIND_NA_TYP_GALEZI` backendu (`enm/domain_operations.py`), które z tej
+ *  samej klasy wybiera typ gałęzi. Pierwszeństwo przed typem gałęzi: typ `disconnector`
+ *  niesie i odłącznik, i uziemnik. */
+const RODZAJ_APARATU_Z_KLASY_WYROBU: Readonly<Record<string, BayPrimaryDeviceKind>> = {
+  WYLACZNIK: 'CB',
+  REKLOZER: 'CB',
+  ROZLACZNIK: 'LOAD_SWITCH',
+  ROZLACZNIK_BEZPIECZNIKOWY: 'FUSE',
+  ODLACZNIK: 'DS',
+  UZIEMNIK: 'ES',
+};
+
+/** Typ gałęzi łączeniowej → rodzaj aparatu pola, gdy klasa wyrobu nie przesądza. Sprzęgło
+ *  (`bus_coupler`) NIE jest aparatem pola — rysuje się między sekcjami (`sprzeglaSekcji.ts`). */
+const RODZAJ_APARATU_Z_TYPU_GALEZI: Readonly<Record<string, BayPrimaryDeviceKind>> = {
+  breaker: 'CB',
+  switch: 'LOAD_SWITCH',
+  disconnector: 'DS',
+  fuse: 'FUSE',
+};
+
+/**
+ * GEOMETRIA-STACJI (§0 pkt 4a): aparaty pola z GAŁĘZI łączeniowych modelu wskazanych
+ * w `Bay.equipment_refs`, gdy pole nie niesie `primary_devices`. Operacja budowy stacji
+ * tworzy aparat główny każdego pola SN jako gałąź z pozycji katalogu (B-12) — to jest
+ * rekord aparatu w modelu: rysunek pokazuje jego symbol (z klasy wyrobu albo typu gałęzi),
+ * stan (`Branch.status`), typ (`catalog_ref`) i tożsamość (`deviceRef` = ref gałęzi).
+ * Brak takich gałęzi = `undefined` (pole bez danych wyposażenia, sylwetka
+ * `bayNoEquipment`). Kolejność: wg kolejności `equipment_refs` (dana rekordu pola).
+ */
+function aparatyZGaleziPola(
+  equipmentRefs: readonly string[],
+  galezieWgRef: ReadonlyMap<string, Branch>,
+): readonly BayPrimaryDeviceView[] | undefined {
+  const aparaty: BayPrimaryDeviceView[] = [];
+  for (const ref of equipmentRefs) {
+    const galaz = galezieWgRef.get(ref);
+    if (!galaz) continue;
+    const klasa = galaz.materialized_params?.['device_kind'];
+    const kind =
+      (typeof klasa === 'string' ? RODZAJ_APARATU_Z_KLASY_WYROBU[klasa.trim().toUpperCase()] : undefined)
+      ?? RODZAJ_APARATU_Z_TYPU_GALEZI[galaz.type];
+    if (!kind || galaz.type === 'bus_coupler') continue;
+    aparaty.push({
+      kind,
+      placement: 'MIDSTREAM',
+      sectionSide: null,
+      deviceRef: galaz.ref_id,
+      ...(galaz.type === 'fuse' ? {} : { switchState: stanStatusuGalezi(galaz.status) }),
+      pochodzenie: 'galaz_pola',
+      typeRef: galaz.catalog_ref ?? null,
+    });
+  }
+  return aparaty.length > 0 ? aparaty : undefined;
 }
 
 // =============================================================================
@@ -2879,10 +3010,13 @@ function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
     if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return 'unknown';
     return v > 0.5 ? 'sn' : 'nn';
   };
+  const stacjeWgRefu = new Map((snapshot.substations ?? []).map((sub) => [sub.ref_id, sub]));
   const derSources: SldSourceView[] = (snapshot.generators ?? []).map((gen): SldSourceView => {
     const kind = mapGeneratorToSourceKind(gen);
     const chain = buildDerSnChain(snapshot, gen);
+    const stacja = gen.station_ref ? stacjeWgRefu.get(gen.station_ref) : undefined;
     return {
+      ...(stacja ? sekcjaPola(snapshot, stacja, gen.bus_ref) : {}),
       id: gen.ref_id,
       kind,
       connectionRef: gen.station_ref ?? gen.bus_ref,

@@ -4,8 +4,8 @@
  * aplikacji, bez zdarzeń syntetycznych).
  *
  * Co spec dowodzi (kryteria ukończenia kart):
- *  1. K2b §0.1–0.2 — dwuklik każdej z czterech stacji (przelotowa, sekcyjna, końcowa,
- *     odgałęźna): (a) stacja CAŁA w widocznej części kanwy (pod paskiem narzędzi
+ *  1. K2b §0.1–0.2 — dwuklik każdej z czterech stacji (odgałęźna, sekcyjna, końcowa,
+ *     końcowa odgałęzienia): (a) stacja CAŁA w widocznej części kanwy (pod paskiem narzędzi
  *     i mini-ścieżką); (b) kanwa nie ukrywa żadnego opisu celu
  *     (`data-ukryte-opisy-celu="0"`); (c) zbiór stacji WIDOCZNYCH (rysunek w obszarze,
  *     NIEprzyciemniony kurtyną kadru) = {cel}; (d) viewBox i zbiór widocznych `ownerRef`
@@ -219,7 +219,7 @@ for (const motyw of [
     // K2b §0.4: odcinek NAPOWIETRZNY (odgałęzienie z wolnego pola odgałęźnego stacji
     // przelotowej) i punkt normalnie otwarty na nim — operacjami domenowymi tego speku,
     // wspólny seed zostaje bez zmian.
-    const wolnePole = polaStacjiEnm(seed.enm, refStacji.get('Stacja Przelotowa'))
+    const wolnePole = polaStacjiEnm(seed.enm, refStacji.get('Stacja Odgałęźna'))
       .filter((f) => f.bay_role === 'FEEDER')
       .map((f) => f.ref_id)[0];
     expect(wolnePole, 'wolne pole odgałęźne stacji przelotowej').toBeTruthy();
@@ -322,8 +322,8 @@ for (const motyw of [
     const zaznaczeniePrzed = zaznaczenieZAdresu(page.url());
     // Kadr sieci w BIEŻĄCYM układzie okna (zaznaczenie otwiera inspektor po prawej).
     const kadrSieciZInspektorem = await kadrUstalony(page);
-    await dwuklikStacji(page, refStacji.get('Stacja Przelotowa')!);
-    await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText('Stacja Przelotowa');
+    await dwuklikStacji(page, refStacji.get('Stacja Odgałęźna')!);
+    await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText('Stacja Odgałęźna');
     const licznik = (await page.getByTestId('sld-v3-stacja-licznik').textContent()) ?? '';
     const [numer, wszystkie] = licznik.split('/').map(Number);
     expect(wszystkie).toBe(5);
@@ -379,18 +379,18 @@ for (const motyw of [
 
     // (5) Tor zasilania stacji odgałęźnej — menu „Dopasuj do…" → odpowiedź backendu.
     await wrocDoSieci(page);
-    const odgalezna = refStacji.get('Stacja Odgałęźna')!;
+    const odgalezna = refStacji.get('Stacja Końcowa odgałęzienia')!;
     await dwuklikStacji(page, odgalezna);
-    await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText('Stacja Odgałęźna');
+    await expect(page.getByTestId('sld-v3-sciezka-1')).toHaveText('Stacja Końcowa odgałęzienia');
     const odpowiedzToru = page.waitForResponse((r) => r.url().includes('/enm/topologia/tor?') && r.request().method() === 'GET');
     await page.getByTestId('sld-v3-dopasuj-do-toggle').click();
     await page.getByTestId('sld-v3-dopasuj-do-tor').click();
     expect((await odpowiedzToru).ok()).toBeTruthy();
     await expect(page.getByTestId('sld-v3-komunikat-kadru-tekst')).toContainText(
-      /^Tor zasilania elementu Stacja Odgałęźna: dróg \d+ \(pewnych \d+, warunkowych \d+\)/,
+      /^Tor zasilania elementu Stacja Końcowa odgałęzienia: dróg \d+ \(pewnych \d+, warunkowych \d+\)/,
     );
     await expect(page.getByTestId('sld-v3-komunikat-kadru-tekst')).toContainText('Podstawa:');
-    await expect.poll(() => etykietySciezki(page)).toEqual(['Sieć', 'Tor zasilania: Stacja Odgałęźna']);
+    await expect.poll(() => etykietySciezki(page)).toEqual(['Sieć', 'Tor zasilania: Stacja Końcowa odgałęzienia']);
     await kadrUstalony(page);
     await zrzut(page, 'tor', motyw.klucz);
     await page.getByTestId('sld-v3-komunikat-kadru-zamknij').click();
@@ -405,7 +405,7 @@ for (const motyw of [
     await expect(page.getByRole('button', { name: /^Schemat \(SLD\) \d$/ })).toHaveAttribute('aria-current', 'page', {
       timeout: 20000,
     });
-    await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Stacja Odgałęźna']);
+    await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Stacja Końcowa odgałęzienia']);
     await kadrUstalony(page);
     const pomiarProblemu = await zmierzKadr(page, enm, odgalezna);
     expect(pomiarProblemu.stacja!.left).toBeGreaterThanOrEqual(pomiarProblemu.obszar.left - 0.5);
@@ -414,22 +414,22 @@ for (const motyw of [
     // Tor zasilania elementu wskazanego z gotowości (element jest zaznaczony).
     await page.getByTestId('sld-v3-dopasuj-do-toggle').click();
     await page.getByTestId('sld-v3-dopasuj-do-tor').click();
-    await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Tor zasilania: Stacja Odgałęźna']);
+    await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Tor zasilania: Stacja Końcowa odgałęzienia']);
     await kadrUstalony(page);
     await zrzut(page, 'tor-z-gotowosci', motyw.klucz);
     await page.getByTestId('sld-v3-komunikat-kadru-zamknij').click();
 
-    // (7) Zakładka „Problemy" panelu dolnego: klik problemu stacji przelotowej → kadr stacji.
+    // (7) Zakładka „Problemy" panelu dolnego: klik problemu stacji odgałęźnej → kadr stacji.
     await wrocDoSieci(page);
     await page.getByTestId('mvd-view-menu').click();
     await page.getByTestId('mvd-toggle-bottom').click();
     await page.getByTestId('mvd-bottom-tab-problemy').click();
-    const wierszProblemu = page.getByTestId(/^mvd-problem-\d+$/).filter({ hasText: '„Stacja Przelotowa”' }).first();
+    const wierszProblemu = page.getByTestId(/^mvd-problem-\d+$/).filter({ hasText: '„Stacja Odgałęźna”' }).first();
     await expect(wierszProblemu).toBeVisible({ timeout: 30000 });
     await wierszProblemu.click();
-    await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Stacja Przelotowa']);
+    await expect.poll(() => etykietySciezki(page), { timeout: 20000 }).toEqual(['Sieć', 'Stacja Odgałęźna']);
     await kadrUstalony(page);
-    const pomiarDolny = await zmierzKadr(page, enm, refStacji.get('Stacja Przelotowa')!);
+    const pomiarDolny = await zmierzKadr(page, enm, refStacji.get('Stacja Odgałęźna')!);
     expect(pomiarDolny.stacja!.top).toBeGreaterThanOrEqual(pomiarDolny.obszar.top - 0.5);
     expect(pomiarDolny.stacja!.bottom).toBeLessThanOrEqual(pomiarDolny.obszar.bottom + 0.5);
 

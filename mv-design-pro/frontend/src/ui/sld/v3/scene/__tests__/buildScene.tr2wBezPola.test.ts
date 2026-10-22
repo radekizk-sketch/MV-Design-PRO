@@ -252,9 +252,18 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // etykiety: tekst + x + y) poza GPZ, stan przed kartą (8cc1f5af) vs po niej — te same
   // elementy w tej samej kolejności, KAŻDY przesunięty o jednakowy wektor (0, +200) na
   // L1 i L2; rysunek stacji z polem TR nie zmienił się względnie ani o jednostkę.
+  // AKTUALIZACJA ŚWIADOMA (GEOMETRIA-STACJI §0 pkt 4, 2026-10-21): aparat pola WYŁĄCZNIE
+  // z rekordu modelu. Fikstura (migawka z operacji) niesie w każdym polu SN stacji tylko
+  // gałąź wyłącznika (`equipment_refs`), bez `primary_devices`, a pole GPZ — żadnego rekordu.
+  // DOWÓD (sonda pól L1/L2: symbole wg pola, stan sprzed karty na drzewie HEAD vs po niej):
+  // pola liniowe [rozłącznik, głowica, uziemnik] → [wyłącznik], pole pomiarowe
+  // [odłącznik, przekładnik napięciowy, uziemnik] → [wyłącznik], pole TR [bezpiecznik,
+  // transformator, uziemnik] → [wyłącznik, transformator]; scena 33 → 11 symboli,
+  // 27 → 20 tras, ramka 1296×886 → 1176×742 (krótsze stosy pól i tor TR GPZ bez rekordów).
+  // Kotwica topologiczna kolumny TR (temat tego pliku) — testy T2/T4–T8 bez zmian.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '9bf96a662d3c8b8b5d7f955f728b553c',
-    2: 'e1a933c9e03175d2ca73c12c2d3ad0bd',
+    1: 'db706905eb8afeb0b2b02e2a2daf5cb5',
+    2: '485d57004a8fbd184b893e09a03edfdf',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {
@@ -266,15 +275,16 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
     });
   }
 
-  it('L2: aparatura pola TR (rozłącznik/uziemnik) NADAL na rysunku — nie zniknęła przy naprawie', () => {
+  // GEOMETRIA-STACJI (§0 pkt 4): aparatura pola TR to rekord modelu — w tej migawce gałąź
+  // wyłącznika pola (dawniej konwencja RMU: bezpiecznik + uziemnik, których model nie ma).
+  it('L2: aparatura pola TR z modelu (wyłącznik z gałęzi pola) i transformator NADAL na rysunku', () => {
     const scene = buildSceneV3(enmZPolem, 2);
-    const aparatyPolaTr = scene.symbols.filter(
-      (s) =>
-        (s.meta?.ownerRef ?? '').includes('/sn_field/')
-        && s.symbolId !== 'transformer2W'
-        && s.symbolId !== 'cableHead',
+    const poleTr = (enmZPolem.bays ?? []).find((b) => b.bay_role === 'TR' && b.ref_id.includes('/sn_field/'))!;
+    const symbolePolaTr = scene.symbols.filter((s) => s.meta?.ownerRef === poleTr.ref_id);
+    expect(symbolePolaTr.map((s) => s.symbolId).sort()).toEqual(['breaker', 'transformer2W']);
+    expect(symbolePolaTr.find((s) => s.symbolId === 'breaker')?.meta?.deviceRef).toBe(
+      poleTr.equipment_refs.find((ref) => (enmZPolem.branches ?? []).some((g) => g.ref_id === ref && g.type === 'breaker')),
     );
-    expect(aparatyPolaTr.length).toBeGreaterThan(0);
   });
 });
 

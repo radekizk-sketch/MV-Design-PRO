@@ -26,7 +26,7 @@ import {
 import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
 import { formatTransformerRatedPower, type StationOnRunViewModel } from '../../v2/model/widokSld';
-import { classifyLineBayDirection, fieldCaptionAt, isLineLikeRole } from '../compose/directions';
+import { classifyLineBayDirection, czyPoleToru, fieldCaptionAt } from '../compose/directions';
 import {
   apparatusIdentifiers,
   bayApparatusPlanFootprint,
@@ -57,7 +57,10 @@ export { snapUp } from '../core/grid';
  * slotowa PITCH, patrz UWAGA na górze pliku).
  */
 export interface StationMeasureInput
-  extends Pick<StationOnRunViewModel, 'id' | 'name' | 'stationCode' | 'transformerRatedKva' | 'busVoltageKv'> {
+  extends Pick<
+    StationOnRunViewModel,
+    'id' | 'name' | 'stationCode' | 'transformerRatedKva' | 'busVoltageKv' | 'snSections' | 'snCouplers'
+  > {
   /** Typ stacji wg §9 nomenklatury (np. „stacja przelotowa") — slot t4.
    *  Pole WŁASNE v3: `StationOnRunViewModel` (v2) NIE MA odpowiednika —
    *  to nie jest podzbiór v2, to rozszerzenie specyficzne dla pomiaru V3. */
@@ -152,8 +155,10 @@ export function stationBusbarLabelText(
    * — nie wymyślamy identyfikatora ze `station.id`, który jest hashem).
    */
   stationCode?: string | null,
+  /** GEOMETRIA-STACJI (Z-03): numer sekcji (1..N, kolejność `Substation.bus_refs`). */
+  ordinal = 1,
 ): string {
-  const sekcja = busVoltageKv != null ? `Sekcja 1 · ${liczbaRysunkuPl(busVoltageKv)} kV` : 'Sekcja 1';
+  const sekcja = busVoltageKv != null ? `Sekcja ${ordinal} · ${liczbaRysunkuPl(busVoltageKv)} kV` : `Sekcja ${ordinal}`;
   const kod = stationCode?.trim();
   return kod ? `${kod} · ${sekcja}` : sekcja;
 }
@@ -534,11 +539,22 @@ export function implicitStationTransformers(
  *  pola. `leftX`/`centerX` policzone jedną sumą prefiksową, więc rezerwacja
  *  miejsca (measure) i rysunek (compose) NIE MOGĄ się rozjechać. */
 export interface StationSnColumnPlacement {
-  readonly kind: 'bay' | 'transformer';
+  /** `bay` — pole rozdzielni; `transformer` — transformator bez pola; `der` — pole
+   *  źródłowe SN bez toru (placeholder W2); `coupler` — sprzęgło MIĘDZY sekcjami
+   *  (GEOMETRIA-STACJI, Z-03/Z-08); `section-pad` — rezerwa szerokości sekcji pod jej
+   *  opis (sekcja węższa niż napis albo bez pól). */
+  readonly kind: 'bay' | 'transformer' | 'der' | 'coupler' | 'section-pad';
   /** Indeks w `snBays` — WYŁĄCZNIE dla `kind==='bay'`. */
   readonly bayIndex: number | null;
   /** REALNY `Transformer.ref_id` — WYŁĄCZNIE dla `kind==='transformer'`. */
   readonly transformerRef: string | null;
+  /** `StationDerSourceInput.id` — WYŁĄCZNIE dla `kind==='der'`. */
+  readonly derSourceId?: string | null;
+  /** `Branch.ref_id` gałęzi sprzęgła — WYŁĄCZNIE dla `kind==='coupler'`. */
+  readonly couplerRef?: string | null;
+  /** Szyna sekcji, do której należy kolumna (`null` = stacja bez rekordu sekcji —
+   *  jedna szyna z konstrukcji bloku). Dla sprzęgła: sekcja po LEWEJ. */
+  readonly sectionBusRef?: string | null;
   /** TR2W-BEZ-POLA (§0.C.2): czy sekcja przyłączenia została ROZSTRZYGNIĘTA z
    *  danych (terminal WN transformatora dopasowany do sekcji pól), czy kolumna
    *  siadła na końcu bloku jako uczciwa degradacja. `true` także wtedy, gdy
@@ -560,7 +576,48 @@ type StationColumnsInput = Pick<
   | 'entryDescentBayIndex'
   | 'hasTransformer'
   | 'transformerUnits'
+  | 'derSources'
+  | 'snSections'
+  | 'snCouplers'
+  | 'busVoltageKv'
+  | 'stationCode'
 >;
+
+/** Gabaryty glifów toru poziomego sprzęgła (`SYMBOL_DEFS.lineSwitch` 32×16,
+ *  `SYMBOL_DEFS.lineBreaker` 16×16) — literały, bo measure.ts nie importuje
+ *  `SYMBOL_DEFS` (wzór `IMPLICIT_TR_SYMBOL_WIDTH`); zgodność przypina test
+ *  `layout/__tests__/sekcjeStacji.test.ts`. */
+export const COUPLER_LINE_SWITCH_WIDTH = 32;
+export const COUPLER_LINE_BREAKER_WIDTH = 16;
+export const COUPLER_LINE_GLYPH_HEIGHT = 16;
+
+/** Szerokość glifu sprzęgła z rodzaju łącznika z danych. */
+export function couplerGlyphWidth(rodzaj: 'wylacznik' | 'lacznik'): number {
+  return rodzaj === 'wylacznik' ? COUPLER_LINE_BREAKER_WIDTH : COUPLER_LINE_SWITCH_WIDTH;
+}
+
+/** Szerokość kolumny sprzęgła: glif albo oznaczenie (t3, pod szyną), z prześwitem GRID
+ *  po obu stronach — szyny sekcji dochodzą do portów glifu. */
+export function couplerColumnWidth(coupler: { readonly rodzaj: 'wylacznik' | 'lacznik'; readonly designation: string }): number {
+  return snapUp(Math.max(couplerGlyphWidth(coupler.rodzaj), measureLabelWidth(coupler.designation, 't3')) + 2 * GRID);
+}
+
+/** Stacja WIELOSEKCYJNA — model niesie ≥ 2 szyny główne strony SN. Jedna reguła dla
+ *  planu kolumn, kompozycji i opisów sekcji. */
+export function stationIsMultiSection(station: Pick<StationMeasureInput, 'snSections'>): boolean {
+  return (station.snSections?.length ?? 0) > 1;
+}
+
+/** Tekst opisu sekcji `ordinal` stacji — kod stacji niesie WYŁĄCZNIE pierwsza sekcja
+ *  (kod raz w bloku, `stationSectionLabelCarriesCode`). */
+export function stationSectionLabelText(
+  station: Pick<StationMeasureInput, 'busVoltageKv' | 'stationCode' | 'snSections'>,
+  sectionBusRef: string,
+): string {
+  const section = (station.snSections ?? []).find((s) => s.busRef === sectionBusRef);
+  const ordinal = section?.ordinal ?? 1;
+  return stationBusbarLabelText(section?.voltageKv ?? station.busVoltageKv, ordinal === 1 ? station.stationCode : null, ordinal);
+}
 
 /**
  * TR2W-BEZ-POLA §0.C.2 — KOTWICA TOPOLOGICZNA. Kolejność kolumn bloku SN:
@@ -586,20 +643,26 @@ export function stationSnColumnLayout(
   station: StationColumnsInput,
   columnX: number,
 ): readonly StationSnColumnPlacement[] {
+  if (stationIsMultiSection(station)) return multiSectionColumnLayout(station, columnX);
   const bays = station.snBays;
   const implicitTr = implicitStationTransformers(station);
+  const soleSection = station.snSections?.[0]?.busRef ?? null;
   // Sekcje ZADEKLAROWANE przez pola. Pusty zbiór = rozdzielnica jest z danych
   // jednosekcyjna (rysunek i tak prowadzi JEDNĄ ciągłą szynę `#sn-bus`), więc
   // nie ma sekcji do rozstrzygnięcia — nie zgłaszamy wtedy luki.
+  // GEOMETRIA-STACJI: sekcja pola = `sectionBusRef` (szyna główna), a bez niej `busRef`.
+  const sekcjaPola = (bay: MiniBlockBayDescriptor): string | undefined => bay.sectionBusRef ?? bay.busRef;
   const declaredSections = new Set<string>();
   bays.forEach((bay) => {
-    if (bay.busRef) declaredSections.add(bay.busRef);
+    const sekcja = sekcjaPola(bay);
+    if (sekcja) declaredSections.add(sekcja);
   });
   // Ostatnie pole KAŻDEJ sekcji — punkt, ZA którym siada kolumna
   // transformatora tej sekcji.
   const lastBayOfSection = new Map<string, number>();
   bays.forEach((bay, index) => {
-    if (bay.busRef) lastBayOfSection.set(bay.busRef, index);
+    const sekcja = sekcjaPola(bay);
+    if (sekcja) lastBayOfSection.set(sekcja, index);
   });
 
   // Transformatory przypięte do konkretnego pola-granicy sekcji (…) oraz te
@@ -635,6 +698,7 @@ export function stationSnColumnLayout(
       kind: 'transformer',
       bayIndex: null,
       transformerRef: unit.ref,
+      sectionBusRef: soleSection,
       // Rozdzielnica bez zadeklarowanych sekcji = jedna sekcja z konstrukcji
       // rysunku: kolumna na końcu bloku JEST kolumną własnej sekcji.
       sectionResolved: resolvedRefs.has(unit.ref) || declaredSections.size === 0,
@@ -645,7 +709,19 @@ export function stationSnColumnLayout(
     bx += columnWidth + MIN_GLYPH_CLEARANCE;
   };
 
-  bays.forEach((bay, index) => {
+  bays.forEach((_bay, index) => {
+    pushBay(index);
+    (afterBayIndex.get(index) ?? []).forEach(pushTransformer);
+  });
+  unresolved.forEach(pushTransformer);
+  // W2: pola źródłowe SN bez toru — za blokiem kolumn (ta sama oś i odstęp, które
+  // kompozycja stosowała, zanim plan objął te kolumny).
+  snSideSources(station.derSources ?? []).forEach((source) => pushDer(source, soleSection, true));
+
+  return out;
+
+  function pushBay(index: number): void {
+    const bay = bays[index];
     const width = bayColumnRequiredWidth(
       bays,
       index,
@@ -657,16 +733,160 @@ export function stationSnColumnLayout(
       kind: 'bay',
       bayIndex: index,
       transformerRef: null,
+      sectionBusRef: soleSection,
       sectionResolved: true,
       leftX: bx,
       width,
       centerX: snapToGrid(bx + apparatusIdentifierLeftReserve(bay) + mainStackWidth / 2),
     });
     bx += width + MIN_GLYPH_CLEARANCE;
-    (afterBayIndex.get(index) ?? []).forEach(pushTransformer);
-  });
-  unresolved.forEach(pushTransformer);
+  }
 
+  function pushDer(source: StationDerSourceInput, sectionBusRef: string | null, resolved: boolean): void {
+    const width = derColumnRequiredWidth(source);
+    out.push({
+      kind: 'der',
+      bayIndex: null,
+      transformerRef: null,
+      derSourceId: source.id,
+      sectionBusRef,
+      sectionResolved: resolved,
+      leftX: bx,
+      width,
+      centerX: snapToGrid(bx + width / 2),
+    });
+    bx += width + GRID;
+  }
+}
+
+/**
+ * GEOMETRIA-STACJI (Z-03): plan kolumn stacji WIELOSEKCYJNEJ. Kolumny grupowane wg
+ * sekcji (kolejność `snSections`, czyli `Substation.bus_refs`): w obrębie sekcji pola
+ * w kolejności zapisu, za nimi transformatory bez pola tej sekcji (kotwica
+ * `hvSekcjaBusRef`) i pola źródłowe SN bez toru (`sectionBusRef` źródła). Między
+ * sekcjami sąsiednimi — kolumna SPRZĘGŁA z gałęzi `bus_coupler` modelu; pole sprzęgła
+ * (rekord COUPLER wskazujący tę gałąź) nie jest osobną kolumną — jego oznaczenie niesie
+ * sprzęgło. Sekcja węższa niż własny opis dostaje rezerwę `section-pad`, więc opisy
+ * sąsiednich sekcji nie mogą na siebie nachodzić. Kolumna bez ustalonej sekcji siada na
+ * końcu bloku z `sectionResolved:false` (kompozycja zgłasza brak, nie zgaduje sekcji).
+ */
+function multiSectionColumnLayout(
+  station: StationColumnsInput,
+  columnX: number,
+): readonly StationSnColumnPlacement[] {
+  const bays = station.snBays;
+  const sections = station.snSections ?? [];
+  const couplers = station.snCouplers ?? [];
+  const couplerBayRefs = new Set(couplers.map((c) => c.bayRef).filter((ref): ref is string => ref != null));
+  type Item =
+    | { readonly kind: 'bay'; readonly index: number }
+    | { readonly kind: 'transformer'; readonly unit: StationTransformerUnit }
+    | { readonly kind: 'der'; readonly source: StationDerSourceInput };
+  const groups = new Map<string, Item[]>(sections.map((s) => [s.busRef, []]));
+  const unresolved: Item[] = [];
+  const place = (sectionBusRef: string | null | undefined, item: Item): void => {
+    const group = sectionBusRef != null ? groups.get(sectionBusRef) : undefined;
+    if (group) group.push(item);
+    else unresolved.push(item);
+  };
+  bays.forEach((bay, index) => {
+    if (couplerBayRefs.has(bay.bayRef)) return;
+    place(bay.sectionBusRef, { kind: 'bay', index });
+  });
+  implicitStationTransformers(station).forEach((unit) => place(unit.hvSekcjaBusRef, { kind: 'transformer', unit }));
+  snSideSources(station.derSources ?? []).forEach((source) => place(source.sectionBusRef, { kind: 'der', source }));
+
+  const out: StationSnColumnPlacement[] = [];
+  let bx = columnX + GRID;
+  const pushItem = (item: Item, sectionBusRef: string | null, resolved: boolean): void => {
+    if (item.kind === 'bay') {
+      const bay = bays[item.index];
+      const width = bayColumnRequiredWidth(bays, item.index, station.bayDirectionCaptions, station.entryDescentBayIndex);
+      const mainStackWidth = bayApparatusPlanFootprint(planBayApparatus(bay)).mainStack.width;
+      out.push({
+        kind: 'bay',
+        bayIndex: item.index,
+        transformerRef: null,
+        sectionBusRef,
+        sectionResolved: resolved,
+        leftX: bx,
+        width,
+        centerX: snapToGrid(bx + apparatusIdentifierLeftReserve(bay) + mainStackWidth / 2),
+      });
+      bx += width + MIN_GLYPH_CLEARANCE;
+      return;
+    }
+    if (item.kind === 'transformer') {
+      out.push({
+        kind: 'transformer',
+        bayIndex: null,
+        transformerRef: item.unit.ref,
+        sectionBusRef,
+        sectionResolved: resolved,
+        leftX: bx,
+        width: IMPLICIT_TR_SYMBOL_WIDTH,
+        centerX: snapToGrid(bx + IMPLICIT_TR_SYMBOL_WIDTH / 2),
+      });
+      bx += IMPLICIT_TR_SYMBOL_WIDTH + MIN_GLYPH_CLEARANCE;
+      return;
+    }
+    const width = derColumnRequiredWidth(item.source);
+    out.push({
+      kind: 'der',
+      bayIndex: null,
+      transformerRef: null,
+      derSourceId: item.source.id,
+      sectionBusRef,
+      sectionResolved: resolved,
+      leftX: bx,
+      width,
+      centerX: snapToGrid(bx + width / 2),
+    });
+    bx += width + GRID;
+  };
+
+  sections.forEach((section, k) => {
+    const sectionLeft = bx;
+    (groups.get(section.busRef) ?? []).forEach((item) => pushItem(item, section.busRef, true));
+    // Rezerwa pod opis sekcji: rozpiętość kolumn sekcji ≥ napis + 2×GRID.
+    const needed = measureLabelWidth(stationSectionLabelText(station, section.busRef), 't2') + 2 * GRID;
+    const have = bx - sectionLeft;
+    if (have < needed) {
+      const width = snapUp(needed - have);
+      out.push({
+        kind: 'section-pad',
+        bayIndex: null,
+        transformerRef: null,
+        sectionBusRef: section.busRef,
+        sectionResolved: true,
+        leftX: bx,
+        width,
+        centerX: snapToGrid(bx + width / 2),
+      });
+      bx += width + MIN_GLYPH_CLEARANCE;
+    }
+    const next = sections[k + 1];
+    if (!next) return;
+    couplers
+      .filter((c) => (c.fromBusRef === section.busRef && c.toBusRef === next.busRef)
+        || (c.fromBusRef === next.busRef && c.toBusRef === section.busRef))
+      .forEach((coupler) => {
+        const width = couplerColumnWidth(coupler);
+        out.push({
+          kind: 'coupler',
+          bayIndex: null,
+          transformerRef: null,
+          couplerRef: coupler.ref,
+          sectionBusRef: section.busRef,
+          sectionResolved: true,
+          leftX: bx,
+          width,
+          centerX: snapToGrid(bx + width / 2),
+        });
+        bx += width + MIN_GLYPH_CLEARANCE;
+      });
+  });
+  unresolved.forEach((item) => pushItem(item, null, false));
   return out;
 }
 
@@ -688,10 +908,9 @@ function lvSideNameRowWidths(
  * Gabaryt kolumny pola (jedna pionowa kolumna aparatów, spec §3 "Stacja
  * SN/nN", §12 „prymat danych nad konwencją"). F9.3: gabaryt jest DATA-AWARE —
  * gdy `bay.primaryDevices` niesie co najmniej jeden aparat mapowalny na
- * symbol pola, rezerwacja liczy stos Z DANYCH (§12.1); inaczej fallback
- * konwencji wg roli (§12.4). Rozstrzygnięcie „dane vs konwencja" i sama
- * tabela konwencji żyją w `compose/apparatusSequence.ts`
- * (`resolveBayApparatusSymbolIds`/`apparatusSymbolsForRole`) — TA SAMA funkcja
+ * symbol pola, rezerwacja liczy stos Z DANYCH (§12.1); inaczej sylwetkę braku danych
+ * wyposażenia pola (GEOMETRIA-STACJI §0 pkt 4). Rozstrzygnięcie „dane vs brak" żyje
+ * w `compose/apparatusSequence.ts` (`resolveBayApparatusSymbolIds`) — TA SAMA funkcja
  * jest wołana przez `compose/station.ts` (`buildBayStack`) przy REALNYM
  * rysowaniu, więc rezerwacja i rysunek nie mogą się rozjechać (wzór F6b-1,
  * test „spójność measure↔compose", `compose/__tests__/station.test.ts`).
@@ -804,7 +1023,7 @@ export function bayColumnRequiredWidth(
   // entryDescentBayIndex`) — podpis kierunku musi zmieścić się na PRAWO od
   // osi stosu (wycinek B2 przycięty w `compose/station.ts` TĄ SAMĄ stałą
   // `entryDescentCaptionInset` — jedna prawda, wzór F6b-1).
-  const captionInset = index === entryDescentBayIndex ? entryDescentCaptionInset(bay.fieldRole) : 0;
+  const captionInset = index === entryDescentBayIndex ? entryDescentCaptionInset(bay) : 0;
   const captionWidth = caption ? measureLabelWidth(caption, 't3') + captionInset : 0;
 
   // F9.9 (spec §17.3): kolumna adnotacji zabezpieczeń — DODANA na końcu
@@ -833,17 +1052,17 @@ export function bayColumnRequiredWidth(
  * zgadzać: rezerwacja szerokości (`bayColumnRequiredWidth` wyżej) i pozycja
  * wycinka (`compose/station.ts`).
  *
- * F9.3: liczona z KONWENCJI (`apparatusSymbolsForRole`), NIE z gabarytu
- * data-aware `bayColumnFootprint` — inset to margines geometryczny stały dla
- * danej ROLI (miejsce na pion wchodzący z góry), niezależny od tego, czy
- * KONKRETNE pole akurat niesie `primary_devices`; sprzężenie z danymi
- * konkretnego pola nie jest tu potrzebne i tylko zwiększałoby powierzchnię
- * zmiany przy przełączaniu dane↔konwencja tego samego pola.
+ * GEOMETRIA-STACJI (§0 pkt 4): liczona z PLANU APARATÓW TEGO POLA (`planBayApparatus` —
+ * rekordy modelu albo sylwetka braku danych), czyli z tej samej osi stosu, na której stoi
+ * pion zejścia. Dawniej z tabeli konwencji roli, niezależnie od danych pola — po skasowaniu
+ * konwencji byłaby to druga, niezależna reguła osi (reguła KLASA pkt 3).
  */
-export function entryDescentCaptionInset(role: FieldRole): number {
+export function entryDescentCaptionInset(
+  bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices' | 'reserve' | 'transformerRef'>,
+): number {
   // F10.1: oś stosu = połowa szerokości TORU GŁÓWNEGO (aparaty boczne ES/VT/SA
   // rozszerzają kolumnę w prawo i nie przesuwają osi — spec §18.1).
-  const plan = planBayApparatus({ fieldRole: role, primaryDevices: undefined });
+  const plan = planBayApparatus(bay);
   return snapUp(bayApparatusPlanFootprint(plan).mainStack.width / 2) + GRID;
 }
 
@@ -952,19 +1171,6 @@ export function nnSideSources(
 }
 
 /**
- * W2 (RECENZJA_L2 §4 wariant B): szerokość WYMAGANA rzędu pól źródłowych SN —
- * te same sloty co rząd nN (`derColumnRequiredWidth` per źródło + odstępy
- * GRID), bo `compose/station.ts` rysuje pole źródłowe SN symbolem tej samej
- * klasy (`symbolIdForSourceKind`) z etykietą `derLabelText`. `0` gdy zero
- * źródeł SN (sieć referencyjna: 20/20 DER na nN ⇒ 0 ⇒ zero zmian geometrii). */
-export function snSourceFieldsRowWidth(
-  sources: readonly StationDerSourceInput[],
-): number {
-  const snDer = snSideSources(sources);
-  return derRowFootprint(snDer).width;
-}
-
-/**
  * W2: wysokość pola źródłowego SN pod osią magistrali (symbol źródła na
  * `blockTopY` + etykieta rodzaj+moc pod nim) — kandydat do `max()` z
  * najwyższą kolumną pola w `stationBlockHeight` (pole źródłowe zajmuje ten sam
@@ -1002,11 +1208,25 @@ export function stationBlockWidth(station: StationColumnsInput): number {
   // poza własną kolumnę arkusza. Plan i rysunek to TA SAMA suma prefiksowa.
   // SCHEMAT-10 S7-P3 (V12K-137): światło między sąsiednimi glifami pól = §5
   // `MIN_GLYPH_CLEARANCE` (`layout/clearances.ts`, wartość bazowa `GRID`).
+  // W2: pola źródłowe SN bez toru stojące ZA ostatnią kolumną bloku nie wchodzą do
+  // bazy centrowania `tapX` (decyzja F9.4 niżej); ich ekstent liczy
+  // `stationSnPlanWidth` (rezerwacja kolumny w `requiredStationWidth`).
+  const plan = stationSnColumnLayout(station, 0);
+  let lastIndex = plan.length - 1;
+  while (lastIndex >= 0 && plan[lastIndex].kind === 'der') lastIndex -= 1;
+  if (lastIndex < 0) return 0;
+  const last = plan[lastIndex];
+  // `stationSnColumnLayout(…, 0)` zaczyna pierwszą kolumnę na `0 + GRID`
+  // (`blockLeftX` kompozycji) — szerokość SAMEGO bloku liczymy od tej krawędzi.
+  return last.leftX + last.width - GRID;
+}
+
+/** Pełny ekstent planu kolumn bloku SN (z polami źródłowymi SN bez toru) — od lewej
+ *  krawędzi bloku (`GRID`) do prawej krawędzi ostatniej kolumny planu. */
+export function stationSnPlanWidth(station: StationColumnsInput): number {
   const plan = stationSnColumnLayout(station, 0);
   if (plan.length === 0) return 0;
   const last = plan[plan.length - 1];
-  // `stationSnColumnLayout(…, 0)` zaczyna pierwszą kolumnę na `0 + GRID`
-  // (`blockLeftX` kompozycji) — szerokość SAMEGO bloku liczymy od tej krawędzi.
   return last.leftX + last.width - GRID;
 }
 
@@ -1108,9 +1328,9 @@ export function requiredStationWidth(station: StationMeasureInput): number {
   // rezerwacji wchodzi najdalszy z nich (dla stacji bez odbioru i bez DER
   // portal mieści się w kolumnie TR — zero dodatkowej szerokości).
   const allDer = station.derSources ?? [];
-  let blockWidth = stationBlockWidth(station);
-  const snFieldsWidth = snSourceFieldsRowWidth(allDer);
-  if (snFieldsWidth > 0) blockWidth += GRID + snFieldsWidth;
+  // Pola źródłowe SN bez toru są kolumnami planu (`stationSnColumnLayout`), więc ekstent
+  // bloku z nimi to pełna szerokość planu — ta sama suma, którą rysuje kompozycja.
+  let blockWidth = Math.max(stationBlockWidth(station), stationSnPlanWidth(station));
   const portXs = lvTerminalPortXs(station);
   if (stationHasLvSide(station) && portXs.length > 0) {
     const nnDer = nnSideSources(allDer);
@@ -1214,7 +1434,7 @@ export interface LineBayIndices {
 export function findLineBayIndices(snBays: readonly MiniBlockBayDescriptor[]): LineBayIndices {
   const lineBayIdx: number[] = [];
   snBays.forEach((bay, i) => {
-    if (isLineLikeRole(bay.fieldRole)) lineBayIdx.push(i);
+    if (czyPoleToru(bay)) lineBayIdx.push(i);
   });
   let previousIndex: number | null = null;
   let nextIndex: number | null = null;

@@ -134,8 +134,11 @@ describe('inspektor obiektu kanwy — identyfikacja pola i aparatu z modelu (kar
       expect(dane?.parentStationLabel).toBe(kod);
       expect(dane?.parentBayLabel).toBe('Pole liniowe wejściowe 1');
       expect(dane?.label).toBe('Wyłącznik pola SN 1');
-      // Pole bez aparatów pierwotnych — identyfikator aparatu: uczciwy brak.
-      expect(dane?.globalId).toBeNull();
+      // GEOMETRIA-STACJI (§0 pkt 4): gałąź wyłącznika w `equipment_refs` JEST rekordem aparatu
+      // pola — rysunek stawia z niej wyłącznik „Q1" (`projectBayPrimaryDevices`, pochodzenie
+      // `galaz_pola`), więc inspektor podaje TEN SAM identyfikator (dawniej: brak, bo pole bez
+      // `primary_devices` rysowało stos z konwencji bez tożsamości aparatu).
+      expect(dane?.globalId).toBe(`${kod}.F01.Q1`);
     });
 
     it('aparat pierwotny w rekordzie pola: identyfikator globalny wg pozycji pola w kolejności zapisu', () => {

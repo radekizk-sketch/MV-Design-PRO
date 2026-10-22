@@ -150,6 +150,7 @@ export function PodgladRozdzielnicySn({
     komunikatStatusu,
   });
   const { szerokosc, wysokosc, szynaY } = rysunek;
+  const jestPropozycja = rysunek.sloty.some((slot) => slot.scena.symbole.length > 0);
 
   // Kreski tabel arkusza: obramowanie + pionowe przegrody na granicach slotów.
   // Granica jest ZAWSZE krawędzią slotu policzoną w modelu — tabela funkcji nad
@@ -182,6 +183,14 @@ export function PodgladRozdzielnicySn({
   return (
     <div className="mvd-podglad-rozdzielnica" data-testid={testid}>
       <NaglowekPakietu naglowek={rysunek.naglowek} />
+      {/* GEOMETRIA-STACJI (§0 pkt 4b): aparaty kreatora to PROPOZYCJA SZABLONU — niezapisane
+          w modelu, więc jawnie opisane i rysowane innym stylem (kreska przerywana, bez stanu)
+          niż aparaty z rekordów pól na schemacie jednokreskowym sieci. */}
+      {jestPropozycja ? (
+        <p className="mvd-podglad-propozycja-opis" data-testid="mvd-podglad-propozycja">
+          <strong>{T.podgladPropozycjaSzablonu}</strong> — {T.podgladPropozycjaOpis}
+        </p>
+      ) : null}
       {/* SKALA ARKUSZA: rysunek WOLNO zmniejszyć do szerokości panelu, ale nie
           wolno go POWIĘKSZAĆ ponad rozmiar własny. Bez tego ograniczenia wąski
           rysunek rozciągał się na całą szerokość panelu razem z wysokością:
@@ -341,8 +350,10 @@ export function PodgladRozdzielnicySn({
               return (
                 <g key={`symbol-${slot.klucz}-${i}`}>
                   <g
+                    className="mvd-podglad-propozycja"
                     data-symbol-pola={symbol.id}
                     data-oznaczenie={symbol.oznaczenie}
+                    data-propozycja-szablonu="true"
                     transform={`translate(${symbol.x}, ${symbol.y}) scale(${SKALA_SYMBOLU})`}
                   >
                     <Glyph x={0} y={0} stroke="currentColor" />

@@ -45,6 +45,11 @@ const POLA_SEKCJI_1: readonly boolean[] = [true, false];
 const ZRODLO_NA: readonly Sekcja[] = [1, 2];
 const SPRZEGLO: readonly boolean[] = [false, true];
 const POLE_SPRZEGLA = 'gpz-test/sprzeglo';
+/** GEOMETRIA-STACJI (§0 pkt 2): sprzęgło istnieje z gałęzi `bus_coupler` łączącej szyny
+ *  sekcji (jedno źródło); rekord pola COUPLER wskazuje ją i dokłada oznaczenie. Dawniej
+ *  fikstura niosła samo pole COUPLER z `right/left_coupler_ref` — sprzęgło bez gałęzi
+ *  w modelu, którego solver nie widzi; rysunek takiego sprzęgła był fabrykacją. */
+const GALAZ_SPRZEGLA = 'gpz-test/sprzeglo-galaz';
 const SEKCJE: readonly Sekcja[] = [1, 2];
 const SZYNA_SEKCJI_2 = 'gpz-test/sekcja-2/bus_sn';
 const SEKCJA_2 = 'gpz-test/sekcja-2';
@@ -99,8 +104,26 @@ function migawka(badana: Sekcja, liczba: number, w: Warianty = {}): Migawka {
   if (sprzeglo) {
     gpz.gpz_sections![0] = { ...gpz.gpz_sections![0], right_coupler_ref: POLE_SPRZEGLA };
     gpz.gpz_sections![1] = { ...gpz.gpz_sections![1], left_coupler_ref: POLE_SPRZEGLA };
+    enm.branches.push({
+      id: GALAZ_SPRZEGLA,
+      ref_id: GALAZ_SPRZEGLA,
+      name: 'Sprzęgło S1-S2',
+      type: 'bus_coupler',
+      from_bus_ref: sekcja1.bus_ref!,
+      to_bus_ref: SZYNA_SEKCJI_2,
+      status: 'closed',
+      tags: [],
+      meta: {},
+    } as unknown as EnergyNetworkModel['branches'][number]);
     enm.bays.push(
-      pole({ ref_id: POLE_SPRZEGLA, name: 'Sprzęgło S1-S2', bay_role: 'COUPLER', substation_ref: gpz.ref_id, bus_ref: sekcja1.bus_ref! }),
+      pole({
+        ref_id: POLE_SPRZEGLA,
+        name: 'Sprzęgło S1-S2',
+        bay_role: 'COUPLER',
+        substation_ref: gpz.ref_id,
+        bus_ref: sekcja1.bus_ref!,
+        equipment_refs: [GALAZ_SPRZEGLA],
+      }),
     );
   }
   const nowe: Transformer[] = [];
@@ -164,12 +187,12 @@ interface Prostokat {
 function prostokatySceny(scena: SceneV3, refyWiez: readonly string[], zrodloRef: string): Prostokat[] {
   const wiezaSymbolu = (testId: string | undefined): string | null => {
     if (testId === `gpz-canonical-source-${zrodloRef}`) return `źródło ${zrodloRef}`;
-    if (testId === `gpz-canonical-coupler-${POLE_SPRZEGLA}`) return 'sprzęgło';
+    if (testId === `gpz-canonical-coupler-${GALAZ_SPRZEGLA}`) return 'sprzęgło';
     return refyWiez.find((ref) => nalezyDoWiezy(testId, ref)) ?? null;
   };
   const wiezaEtykiety = (ownerRef: string): string | null => {
     if (ownerRef.startsWith(`${zrodloRef}#`)) return `źródło ${zrodloRef}`;
-    if (ownerRef.startsWith(`${POLE_SPRZEGLA}#`)) return 'sprzęgło';
+    if (ownerRef.startsWith(`${GALAZ_SPRZEGLA}#`) || ownerRef.startsWith(`${POLE_SPRZEGLA}#`)) return 'sprzęgło';
     return refyWiez.find((ref) => ownerRef.startsWith(`${ref}#`)) ?? null;
   };
   return [
@@ -258,10 +281,10 @@ function sprawdzWieze(m: Migawka, scena: SceneV3): void {
   expect(scena.meta.missingData).not.toContain('gpz.source.unattached');
   expect(scena.labels.some((l) => l.ownerRef.startsWith(`${m.zrodloRef}#system-source-label`))).toBe(true);
   // Wyłącznik sprzęgła między końcem szyny sekcji 1 a początkiem szyny sekcji 2.
-  const wylacznikSprzegla = scena.symbols.filter((s) => s.meta?.testId === `gpz-canonical-coupler-${POLE_SPRZEGLA}`);
+  const wylacznikSprzegla = scena.symbols.filter((s) => s.meta?.testId === `gpz-canonical-coupler-${GALAZ_SPRZEGLA}`);
   expect(wylacznikSprzegla).toHaveLength(m.sprzeglo ? 1 : 0);
   if (m.sprzeglo) {
-    const os = wylacznikSprzegla[0].x + SYMBOL_DEFS.breaker.width / 2;
+    const os = wylacznikSprzegla[0].x + SYMBOL_DEFS[wylacznikSprzegla[0].symbolId].width / 2;
     expect(os).toBeGreaterThan(szynaSekcji(scena, m.sekcjaId[1]).prawo);
     expect(os).toBeLessThan(szynaSekcji(scena, m.sekcjaId[2]).lewo);
   }

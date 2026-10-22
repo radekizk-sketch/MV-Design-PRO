@@ -10,9 +10,9 @@
  * JSON po stronie backendu + synchronizacja kopii (czerwone CI przy
  * rozjeździe).
  *
- * Zgodność słownika konwencji §12.4 (`apparatusSymbolsForRole`) z profilami
- * egzekwuje `compose/__tests__/apparatusSequence.referenceParity.test.ts`
- * (z negatywem-sabotażem).
+ * Zgodność rysunku ścieżki danych pola (`resolveBayApparatusSymbolIds`) z profilami
+ * egzekwuje `v3/compose/__tests__/apparatusSequence.referenceParity.test.ts`
+ * (z negatywem-sabotażem); słownik konwencji roli skasowany (GEOMETRIA-STACJI §0 pkt 4).
  */
 
 import type { BayPrimaryDeviceKind } from '../../../types/enm';

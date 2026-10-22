@@ -97,6 +97,7 @@ import {
   sceneObstacleRects,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { rectWithinSheet, sheetSizeFor } from '../src/ui/sld/v3/sheet/outline.ts';
+import { CONTINUITY_APPARATUS_SYMBOL_IDS } from '../src/ui/sld/v3/symbols/defs.ts';
 import {
   planSceneLabels,
   plannedLabelCollisions,
@@ -116,14 +117,15 @@ import {
   MIN_PARALLEL_CABLE_CLEARANCE,
   TOP_LEVEL_FIELD_CLEARANCE,
 } from '../src/ui/sld/v3/layout/clearances.ts';
-import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
+import { allBayEquipmentTruthful, bayEquipmentGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { labelReservationRect, overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import {
   SEGMENT_STROKE_WIDTH,
   segmentStrokeWidthForScale,
   MIN_TRUNK_STROKE_SCREEN_PX,
 } from '../src/ui/sld/v3/compose/preview.tsx';
-import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
+import { symbolePolaBezDanych } from '../src/ui/sld/v3/compose/apparatusSequence.ts';
+import { FIELD_ROLE } from '../src/ui/sld/v2/domain/apparatusContracts.ts';
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
 import {
@@ -582,7 +584,18 @@ const EXPECTED_STATION_COUNT = 53;
 // `#lv-load-drop` × 33). DOWÓD 2×2 (kod HEAD/nowy × fikstura stara/nowa, liść po liściu,
 // meldunek karty): zmiana kodu tej karty daje ±0 pionów (dwa słupki końca otwartego
 // zastąpione dwoma znakami powiązania po 16 px — ta sama przyczyna „slupek-terminalny").
-const VERTICAL_LENGTH_BASELINE = { 0: 22752, 1: 45992, 2: 45992 };
+// GEOMETRIA-STACJI (2026-10-21): 22752/45992/45992 → 21240/43992/43992 (zmierzone, spadek
+// −1512/−2000/−2000). Przyczyna: stos pola z rekordów modelu zamiast konwencji §12.4 —
+// fixtura niesie po jednej gałęzi łączeniowej pola (wyłącznik), więc stos stacji to wyłącznik
+// (+ transformator pola TR) bez dorysowanych odłączników/przekładnika/głowicy; niższe stosy
+// = krótsze piony rezerwacji kanału i footprintu. Wyjątek „jog-trasy" niżej.
+// GEOMETRIA-STACJI, pomiar końcowy (2026-10-22): L1/L2 43992 → 44016 (+24), w całości
+// przyczyna „footprint" (1912 → 1936). Porównanie liść po liściu z drzewem HEAD (zrzut
+// pionów `auditVerticalSegments`, L1): jedyna różnica footprint względem HEAD to pion
+// `gpz/…/transformer/001/wn_sn#tr-field-to-bus` 48 → 40 (−8; HEAD 1944). Pośredni pomiar
+// 1912 pochodził ze stanu roboczego karty sprzed przywrócenia symbolu transformatora w polu
+// TR z rekordami; stanu pośredniego nie odtworzono, więc wiążące jest porównanie z HEAD.
+const VERTICAL_LENGTH_BASELINE = { 0: 21240, 1: 44016, 2: 44016 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -621,11 +634,20 @@ const VERTICAL_LENGTH_BASELINE = { 0: 22752, 1: 45992, 2: 45992 };
 // „footprint" L1/L2 baseline 1688 → 1680 = wartość zmierzona już na czubku przed kartą
 // (luz 8 odebrany, nie skutek regeneracji) — atrybucja przy `VERTICAL_LENGTH_BASELINE`.
 const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
-  0: { footprint: 80, 'rezerwacja-kanalu': 22344, 'jog-trasy': 120, 'slupek-terminalny': 208 },
-  // SLD-SUBSTRAT, kontynuacja: „footprint" L1/L2 1680 → 1944 (+264 = 33 × `#lv-load-drop`,
-  // atrybucja przy `VERTICAL_LENGTH_BASELINE`); pozostałe przyczyny bez zmian.
-  1: { footprint: 1944, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
-  2: { footprint: 1944, 'rezerwacja-kanalu': 43752, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  // GEOMETRIA-STACJI (2026-10-21, zmierzone): L0 footprint 80 → 32, rezerwacja-kanalu
+  // 22344 → 20920, jog-trasy 120 → 80; L1/L2 footprint 1944 → 1912, rezerwacja-kanalu
+  // 43752 → 41712 (stosy z rekordów — atrybucja przy `VERTICAL_LENGTH_BASELINE`). L1/L2
+  // „jog-trasy" 88 → 160 (+72, JEDYNY wzrost): pion odcinka magistrali
+  // `seg/18ff1bb3…/segment` (x=80, y 472→632) zaczyna się w dolnym porcie pola GPZ
+  // `gpz/1021aa18…/bay/001/001`, które w modelu nie ma rekordów aparatów — rysowane jest
+  // sylwetką „brak danych wyposażenia pola" (32 px) zamiast dawnego stosu konwencji, więc
+  // port wyjścia jest o 72 px wyżej, a jog do pasa magistrali o tyle dłuższy. Suma pionów
+  // spada (−2000). Zero fabrykacji ma pierwszeństwo przed krótszym jogiem (rejestr
+  // GEOMETRIA-STACJI-BRAK-WYPOSAZENIA).
+  0: { footprint: 32, 'rezerwacja-kanalu': 20920, 'jog-trasy': 80, 'slupek-terminalny': 208 },
+  // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
+  1: { footprint: 1936, 'rezerwacja-kanalu': 41712, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  2: { footprint: 1936, 'rezerwacja-kanalu': 41712, 'jog-trasy': 160, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -699,7 +721,10 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // przesuniętego przez tę strzałkę); KOD −32 na każdym LOD (dwa półodcinki odgałęzienia
 // przycięte do portów symbolu łącznika sekcyjnego „Łącznik sekcyjny NO (rezerwa)" — tor
 // nie przechodzi pod nożem łącznika). Załamania bez zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 55336, 1: 76512, 2: 80136 };
+// GEOMETRIA-STACJI (2026-10-21, zmierzone): 55336/76512/80136 → 53520/68528/73160 — węższe
+// kolumny pól (stos z rekordów modelu bez dorysowanych aparatów konwencji), krótsze szyny
+// i przęsła; załamania bez zmian.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 53520, 1: 68528, 2: 73160 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 
 /**
@@ -893,16 +918,30 @@ function checkContinuity(scene) {
   return JSON.stringify(ids);
 }
 
-// F9.3 (FIX-3, po recenzji Opusa): wpięcie field_silhouette_probe (§14.3,
-// V12K-031) — WŁAŚCIWOŚĆ GLOBALNA systemu (nie zależy od fixtury/sceny,
-// `fieldSilhouettesAreInjective` dowodzi na `ALL_FIELD_ROLES`), sprawdzana
-// RAZ, przed pętlą per-LOD.
+// GEOMETRIA-STACJI (§0 pkt 4, wpis rejestru GEOMETRIA-STACJI-BRAK-WYPOSAZENIA): dawna
+// field_silhouette_probe (§14.3) dowodziła różnowartościowości sylwetek KONWENCJI ról pól;
+// konwencja skasowana (zero fabrykacji), więc własnością globalną jest teraz: dla KAŻDEJ
+// roli pole bez rekordów aparatów rysuje sylwetkę braku danych i ŻADNEGO łącznika.
 line('');
-line('=== field_silhouette_probe (§14.3, V12K-031, globalne — poza pętlą LOD) ===');
-check(
-  'field_silhouette_probe: każde dwie role SPOZA tej samej klasy równoważności mają RÓŻNE sygnatury wizualne',
-  fieldSilhouettesAreInjective(),
-);
+line('=== field_no_equipment_probe (GEOMETRIA-STACJI §0 pkt 4c, globalne — poza pętlą LOD) ===');
+{
+  const LACZNIKI = new Set(['breaker', 'loadBreakSwitch', 'disconnector', 'earthSwitch', 'fuse', 'currentTransformer', 'voltageTransformer', 'surgeArrester', 'cableHead']);
+  // Iloczyn: rola × {transformator pola w modelu, brak rekordu transformatora}.
+  const naruszenia = Object.values(FIELD_ROLE).flatMap((role) =>
+    [undefined, 'accept-sld-v3/transformator'].flatMap((transformerRef) => {
+      const ids = symbolePolaBezDanych({ fieldRole: role, transformerRef });
+      const bezRekordu = transformerRef === undefined && ids.includes('transformer2W');
+      return ids[0] !== 'bayNoEquipment' || ids.some((id) => LACZNIKI.has(id)) || bezRekordu
+        ? [`${role}${transformerRef ? '+TR' : ''}`]
+        : [];
+    }),
+  );
+  check(
+    'field_no_equipment_probe: każda rola pola bez rekordów aparatów = sylwetka „brak danych wyposażenia pola" bez aparatów z konwencji',
+    naruszenia.length === 0,
+    naruszenia.length ? `role z aparatem bez rekordu: ${naruszenia.join(',')}` : '',
+  );
+}
 
 // F9.7: source_symbol_probe (§13.2) — WŁAŚCIWOŚĆ GLOBALNA (tabela stała
 // `DER_SOURCE_KIND_SYMBOL`, `compose/sourceKind.ts`), nie zależy od
@@ -1055,10 +1094,13 @@ for (const lod of LODS) {
     // (F9.3) — GPZ (`compose/gpz.ts`, poza autoryzacją F9.3) NIE niesie tego
     // pola, więc filtrujemy po jego OBECNOŚCI (nie po `elementKind`, który
     // miesza stacje SN z GPZ — patrz `buildScene.test.ts`, ten sam fix).
+    // GEOMETRIA-STACJI §0 pkt 4: pochodzenie stosu każdego pola stacji jawne — `'dane'`
+    // (rekordy aparatów modelu; fixtura niesie gałęzie łączeniowe pól) albo `'brak'`
+    // (sylwetka braku danych). Prawdziwość obu gałęzi pilnuje bay_equipment_probe niżej.
     const fieldApparatus = scene.symbols.filter((s) => s.meta?.apparatusSource != null);
-    const withoutMarker = fieldApparatus.filter((s) => s.meta?.apparatusSource !== 'konwencja');
+    const withoutMarker = fieldApparatus.filter((s) => s.meta?.apparatusSource !== 'dane' && s.meta?.apparatusSource !== 'brak');
     check(
-      '§12.1 (cell_sequence_probe/konwencja): 100% aparatów pola nosi data-apparatus-source="konwencja"',
+      '§12.1 (cell_sequence_probe): 100% symboli stosów pól stacji nosi data-apparatus-source="dane"|"brak"',
       fieldApparatus.length > 0 && withoutMarker.length === 0,
       `aparaty=${fieldApparatus.length} bez_znacznika=${withoutMarker.length}`,
     );
@@ -1180,21 +1222,22 @@ for (const lod of LODS) {
     const busByRef = new Map((enm.buses ?? []).map((b) => [b.ref_id, b]));
     let voltageMismatch = 0;
     let voltageChecked = 0;
+    // GEOMETRIA-STACJI (§0 pkt 1): etykieta napięcia jest PER SEKCJA — właściciel
+    // `⟨ref szyny ENM⟩#busbar-voltage`, więc porównanie idzie z napięciem TEJ szyny (dawniej
+    // jedna etykieta stacji `⟨stacja⟩#busbar-voltage` i maksimum po szynach stacji).
     for (const station of (enm.substations ?? []).filter((s) => s.station_type !== 'gpz')) {
-      const label = scene.labels.find((l) => l.ownerKind === 'busbar-voltage' && l.ownerRef === `${station.ref_id}#busbar-voltage`);
-      if (!label) continue;
-      const expectedKv = Math.max(
-        0,
-        ...(station.bus_refs ?? [])
-          .map((ref) => busByRef.get(ref)?.voltage_kv)
-          .filter((v) => typeof v === 'number' && v > 0.5),
-      );
-      const match = label.text.match(/· (\d+(?:\.\d+)?) kV$/);
-      voltageChecked += 1;
-      if (expectedKv > 0.5) {
-        if (!match || Number(match[1]) !== expectedKv) voltageMismatch += 1;
-      } else if (match) {
-        voltageMismatch += 1;
+      for (const busRef of station.bus_refs ?? []) {
+        const label = scene.labels.find((l) => l.ownerKind === 'busbar-voltage' && l.ownerRef === `${busRef}#busbar-voltage`);
+        if (!label) continue;
+        const kv = busByRef.get(busRef)?.voltage_kv;
+        const expectedKv = typeof kv === 'number' && kv > 0.5 ? kv : 0;
+        const match = label.text.match(/· (\d+(?:\.\d+)?) kV$/);
+        voltageChecked += 1;
+        if (expectedKv > 0.5) {
+          if (!match || Number(match[1]) !== expectedKv) voltageMismatch += 1;
+        } else if (match) {
+          voltageMismatch += 1;
+        }
       }
     }
     check(
@@ -1444,7 +1487,13 @@ for (const lod of LODS) {
         (s.meta?.ownerRef ?? '').startsWith('gpz/') &&
         s.symbolId !== 'gpzCollapsed' &&
         s.symbolId !== 'gridSource' &&
-        s.symbolId !== 'breaker',
+        // GEOMETRIA-STACJI (§0 pkt 4): aparat ciągłości pola L0 pochodzi z rekordu modelu
+        // (zbiór `CONTINUITY_APPARATUS_SYMBOL_IDS` — to samo źródło co kompozycja L0
+        // w `buildScene.ts`), a pole bez rekordów rysuje sylwetkę `bayNoEquipment`.
+        // Dawniej sonda wpuszczała wyłącznie `breaker`, bo L0 dorysowywał wyłącznik
+        // z konwencji roli niezależnie od danych pola (fabrykacja aparatu).
+        !CONTINUITY_APPARATUS_SYMBOL_IDS.includes(s.symbolId) &&
+        s.symbolId !== 'bayNoEquipment',
     );
     check(
       'gpz_collapsed_probe (§21.3, V12K-293): L0 rysuje GPZ ZWINIĘTY — dokładnie jeden gpzCollapsed (gdy pełny detal niesie pasmo gpz/), a poza nim wyłącznie glif źródła i aparaty ciągłości pól',
@@ -1454,26 +1503,45 @@ for (const lod of LODS) {
     );
   }
 
-  // -- §12.5 (recenzja NO-GO 2026-07-17 pkt 5): szablony technologiczne pól --
-  const templateGaps = bayTemplateGaps(scene, enm);
+  // -- GEOMETRIA-STACJI §0 pkt 4: rysunek pola mówi prawdę o danych wyposażenia --
+  const equipmentGaps = bayEquipmentGaps(scene);
   check(
-    'bay_template_probe (§12.5): pola KONWENCJI stacji SN/nN używają szablonów RMU (zero CB/CT z konwencji w polu liniowym; rozłącznik obecny; ES w polu TR)',
-    allBayTemplatesValid(scene, enm) && templateGaps.length === 0,
-    `luki=${templateGaps.length}${templateGaps.length ? ' np. ' + JSON.stringify(templateGaps[0]) : ''}`,
+    'bay_equipment_probe (GEOMETRIA-STACJI §0 pkt 4): stos z danych = aparaty z rekordem modelu; stos bez danych = jedna sylwetka braku danych, zero aparatów z konwencji, zero stanu bez rekordu',
+    allBayEquipmentTruthful(scene) && equipmentGaps.length === 0,
+    `luki=${equipmentGaps.length}${equipmentGaps.length ? ' np. ' + JSON.stringify(equipmentGaps[0]) : ''}`,
   );
   if (lod === 2) {
-    // Test negatywny — dowód, że wyrocznia gryzie: breaker WSTRZYKNIĘTY w
-    // pole RMU konwencji MUSI dać gap (sabotaż na kopii sceny).
-    const rmuSwitch = scene.symbols.find(
-      (sym) => sym.symbolId === 'loadBreakSwitch' && sym.meta?.apparatusSource === 'konwencja',
-    );
-    const sabotaged = rmuSwitch
-      ? { ...scene, symbols: [...scene.symbols, { ...rmuSwitch, symbolId: 'breaker' }] }
+    // Testy negatywne — dowód, że wyrocznia gryzie (sabotaż na kopii sceny). Fixtura niesie
+    // rekordy aparatów (gałęzie łączeniowe pól), więc pole „bez danych" jest wstrzykiwane:
+    // (1) aparat z konwencji obok sylwetki braku danych, (2) stan na sylwetce braku danych,
+    // (3) aparat stosu z danych pozbawiony rekordu (`deviceRef`).
+    const aparatDanych = scene.symbols.find((sym) => sym.meta?.apparatusSource === 'dane' && sym.meta?.deviceRef);
+    const polePozorne = aparatDanych
+      ? { ...aparatDanych, symbolId: 'bayNoEquipment', state: undefined, meta: { ...aparatDanych.meta, ownerRef: 'accept-sld-v3-pole-bez-danych', apparatusSource: 'brak', deviceRef: undefined } }
+      : null;
+    const zAparatem = polePozorne
+      ? { ...scene, symbols: [...scene.symbols, polePozorne, { ...polePozorne, symbolId: 'breaker' }] }
       : null;
     check(
-      'bay_template_probe (test negatywny — dowód, że wyrocznia gryzie): CB wstrzyknięty w pole RMU konwencji MUSI dać FAIL',
-      sabotaged != null && bayTemplateGaps(sabotaged, enm).some((g) => g.reason === 'rmu-line-breaker-leak'),
-      sabotaged ? '' : 'brak pola RMU konwencji na fixturze — sabotaż niewykonalny',
+      'bay_equipment_probe (test negatywny — aparat z konwencji przy braku rekordu MUSI dać FAIL)',
+      zAparatem != null && bayEquipmentGaps(zAparatem).some((g) => g.reason === 'brak-z-aparatem'),
+      zAparatem ? '' : 'brak aparatu z danych na fixturze — sabotaż niewykonalny',
+    );
+    const zeStanem = polePozorne
+      ? { ...scene, symbols: [...scene.symbols, { ...polePozorne, state: 'closed' }] }
+      : null;
+    check(
+      'bay_equipment_probe (test negatywny — stan bez rekordu MUSI dać FAIL)',
+      zeStanem != null && bayEquipmentGaps(zeStanem).some((g) => g.reason === 'brak-ze-stanem'),
+      zeStanem ? '' : 'brak aparatu z danych na fixturze — sabotaż niewykonalny',
+    );
+    const bezRekordu = aparatDanych
+      ? { ...scene, symbols: scene.symbols.map((sym) => (sym === aparatDanych ? { ...sym, meta: { ...sym.meta, deviceRef: undefined } } : sym)) }
+      : null;
+    check(
+      'bay_equipment_probe (test negatywny — aparat stosu z danych bez rekordu MUSI dać FAIL)',
+      bezRekordu != null && bayEquipmentGaps(bezRekordu).some((g) => g.reason === 'dane-bez-rekordu'),
+      bezRekordu ? '' : 'brak aparatu z danych na fixturze — sabotaż niewykonalny',
     );
   }
 

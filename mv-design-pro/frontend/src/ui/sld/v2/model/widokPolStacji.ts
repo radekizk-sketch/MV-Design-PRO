@@ -40,6 +40,13 @@ export interface BayPrimaryDeviceView {
    *  aparatu (render pozostaje przy konwencji, znacznik
    *  `data-designation-source="konwencja"`). */
   readonly designation?: string;
+  /** GEOMETRIA-STACJI (§0 pkt 4a): rekord, z którego pochodzi aparat — `'rekord_pola'`
+   *  (`Bay.primary_devices`) albo `'galaz_pola'` (gałąź łączeniowa modelu wskazana
+   *  w `Bay.equipment_refs`, gdy pole nie niesie `primary_devices`; `deviceRef` = ref gałęzi). */
+  readonly pochodzenie?: 'rekord_pola' | 'galaz_pola';
+  /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu — `catalog_ref` rekordu albo
+   *  gałęzi (`null` = model go nie niesie; brak typu nie jest uzupełniany). */
+  readonly typeRef?: string | null;
 }
 
 /**
@@ -144,6 +151,19 @@ export interface MiniBlockBayDescriptor {
    *  pole rozdzielnicy. `undefined` = dana nieprzekazana (stacja
    *  jednosekcyjna z konstrukcji rysunku — cały blok jest jedną sekcją). */
   readonly busRef?: string;
+  /** GEOMETRIA-STACJI (Z-03): szyna GŁÓWNA (sekcja) stacji, z której pole jest zasilane —
+   *  `busRef`, gdy jest szyną główną, inaczej szyna główna pola, za którego zaciskiem pole
+   *  stoi (`ui/shared/szynyStacji.ts szynaGlownaStacji`, lustro backendu; np. pola części
+   *  klienckiej za układem pomiarowym energii). `undefined` = sekcja nieustalona. */
+  readonly sectionBusRef?: string;
+  /** GEOMETRIA-STACJI (§0 pkt 5): pole REZERWOWE (`bay_kind` „rezerwowe" — ten sam
+   *  predykat co backend `enm/rodzaj_stacji.py`, `ui/shared/rodzajStacji.ts
+   *  czyPoleRezerwowe`) albo WOLNE (pole liniowe, do którego zacisku nie przyłącza się
+   *  żaden odcinek modelu — `czyPoleWolne`). `undefined` = pole czynne. */
+  readonly reserve?: 'rezerwowe' | 'wolne';
+  /** GEOMETRIA-STACJI (§0 pkt 5): NAZWA celu odejścia pola (`Bay.outgoing_destination_ref`
+   *  rozwiązany na nazwę stacji/szyny modelu; ref, gdy model nie zna nazwy). */
+  readonly destinationName?: string;
   /** K30-63: stan CB (wyłącznika) — pokazuje czerwoną open marker zamiast
    *  domyślnie zielonego closed. 'unknown' → szary z '?'. */
   readonly cbState?: 'closed' | 'open' | 'unknown';

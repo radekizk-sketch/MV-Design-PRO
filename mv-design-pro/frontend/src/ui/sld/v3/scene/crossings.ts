@@ -383,7 +383,7 @@ export const BUS_BAND_HALF = 2 * GRID;
 
 /** Zakres własności stacji/GPZ: dwa pierwsze człony ścieżki `ownerRef`
  *  (`stn/⟨id⟩`, `gpz/⟨id⟩`) — pola (`stn/⟨id⟩/sn_field/…`) i szyna
- *  (`stn/⟨id⟩/station#sn-bus`) tej samej stacji dzielą prefiks; trasy
+ *  (`stn/⟨id⟩/sn_bus#sn-bus`) tej samej stacji dzielą prefiks; trasy
  *  zewnętrzne (`seg/⟨id⟩/…`) nigdy. */
 function ownerScope(ownerRef: string | undefined): string {
   return (ownerRef ?? '').split('/').slice(0, 2).join('/');

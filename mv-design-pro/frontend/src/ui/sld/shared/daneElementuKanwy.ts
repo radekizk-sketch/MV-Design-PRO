@@ -34,9 +34,6 @@ import { projectBayPrimaryDevices } from '../v2/canvas/enmToSldAdapter';
 import {
   stanLacznikaPolaZModelu,
   stanLacznikaToruZModelu,
-  stanRoliSymbolu,
-  stanyAparatowPolaZModelu,
-  type RolaSymboluLacznika,
 } from '../v2/model/stanAparatowPola';
 import { czyPoleNn, pola, polaNnStacji, polaSnStacji, stacjaPola } from '../../shared/polaStacji';
 import { apparatusIdentifiers, symbolIdForPrimaryDeviceKind } from '../v3/compose/apparatusSequence';
@@ -510,7 +507,6 @@ export function buildDaneElementuStacji(
   overlayPayload: RawOverlayPayload | null,
   kind: string,
   id: string,
-  rolaLacznika?: RolaSymboluLacznika,
 ): DaneElementuKanwy | null {
   const rodzaj = mapKindToRodzajElementu(kind);
   if (!rodzaj) return null;
@@ -575,17 +571,16 @@ export function buildDaneElementuStacji(
   const galezieWgRef = new Map((snapshot?.branches ?? []).map((b) => [b.ref_id, b]));
   let apparatusState: DaneElementuKanwy['apparatusState'] = null;
   if (rodzaj === 'apparatus' && snapshot) {
-    // Ref aparatu albo gałęzi pola → stan TEGO łącznika; ref samego pola (symbol stosu
-    // z konwencji, bez refu aparatu) → agregat roli klikniętego symbolu, który rysuje glif
-    // (`stanyAparatowPolaZModelu` + `stanRoliSymbolu`, ta sama tabela ról co kompozycja).
-    // Łącznik TORU ciągu (gałąź poza polem stacji) → `status` gałęzi, jak glif toru.
+    // Ref aparatu albo gałęzi pola → stan TEGO łącznika. Ref samego pola (sylwetka „brak
+    // danych wyposażenia pola", GEOMETRIA-STACJI §0 pkt 4) → brak położenia: glif nie ma
+    // koloru stanu, więc i inspektor nie przypisuje mu agregatu pola (do karty symbol stosu
+    // z konwencji brał agregat roli — rysunek i inspektor pokazywały stan aparatu, którego
+    // model nie zawiera). Łącznik TORU ciągu (gałąź poza polem stacji) → `status` gałęzi.
     const polozenie = !poleTrafione
       ? stanLacznikaToruZModelu(id, galezieWgRef)
       : poleTrafione.ref_id !== id
         ? stanLacznikaPolaZModelu(id, poleTrafione, galezieWgRef)
-        : rolaLacznika
-          ? stanRoliSymbolu(rolaLacznika, stanyAparatowPolaZModelu(poleTrafione, galezieWgRef))
-          : undefined;
+        : undefined;
     let rekord: BaySwitchState | null = null;
     for (const bay of snapshot.bays ?? []) {
       rekord = rekordStanuAparatu(bay, id);
@@ -696,7 +691,6 @@ export function buildDaneElementuDlaRodzaju(
     readonly snapshot: EnergyNetworkModel | null;
     readonly sldData: SldDataPayload;
     readonly overlayPayload: RawOverlayPayload | null;
-    readonly rolaLacznika?: RolaSymboluLacznika;
   },
 ): DaneElementuKanwy | null {
   if (kind === 'cable_run' || kind === 'cable_segment_sn' || kind === 'overhead_line_sn') {
@@ -705,7 +699,7 @@ export function buildDaneElementuDlaRodzaju(
   if (kind === 'zksn' || kind === 'branch_pole') {
     return buildDaneWezlaSn(deps.snapshot, deps.overlayPayload, kind, id);
   }
-  return buildDaneElementuStacji(deps.snapshot, deps.sldData, deps.overlayPayload, kind, id, deps.rolaLacznika);
+  return buildDaneElementuStacji(deps.snapshot, deps.sldData, deps.overlayPayload, kind, id);
 }
 
 // ---------------------------------------------------------------------------
@@ -788,7 +782,6 @@ export function buildDaneElementuKanwy(
   elementKind: PreviewElementKind | undefined,
   id: string,
   deviceRef: string | undefined,
-  rolaLacznika?: RolaSymboluLacznika,
 ): DaneElementuKanwy | null {
   if (elementKind === 'station') {
     return buildDaneStacji(snapshot, sldData, overlayPayload, id);
@@ -804,7 +797,6 @@ export function buildDaneElementuKanwy(
       snapshot,
       sldData,
       overlayPayload,
-      rolaLacznika: deviceRef ? undefined : rolaLacznika,
     });
     if (!dane) return null;
     const stationRef = stationRefForBayOwner(snapshot, id);

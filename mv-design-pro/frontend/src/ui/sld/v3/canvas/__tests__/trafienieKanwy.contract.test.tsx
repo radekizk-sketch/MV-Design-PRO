@@ -34,7 +34,6 @@ import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/bui
 import { planSceneLabels } from '../labelLegibility';
 import { sheetSizeFor } from '../../sheet/outline';
 import { SldCanvasV3 } from '../SldCanvasV3';
-import { rolaSymboluLacznika } from '../../../v2/model/stanAparatowPola';
 import {
   HIT_ATTR,
   MIN_HIT_SCREEN_PX,
@@ -45,12 +44,18 @@ import {
   type HitDomNode,
   type HitObjectClass,
 } from '../hitAreas';
+import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
   here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json',
 );
-const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+// GEOMETRIA-STACJI (§0 pkt 4a): aparaty pól (głowice, uziemniki, odłączniki) istnieją WYŁĄCZNIE
+// z rekordów modelu — sieć referencyjna niesie w polach tylko gałąź wyłącznika, więc fikstura
+// deklaruje rekordy wyposażenia pól jawnie (dawniej dostarczała je konwencja roli).
+const enm = zRekordamiAparatowPol(
+  (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm,
+);
 
 const CANVAS_WIDTH = 1322;
 const CANVAS_HEIGHT = 696;
@@ -244,12 +249,14 @@ describe('S9-4 — tożsamość zaznaczenia niesiona klikiem NATYWNYM', () => {
       // wzbogacenie co prawy klik od S9-5) — wołający rozwiązuje po niej
       // kompozytowe refy etykiet tym samym tematem co menu.
       klasa: 'aparat',
-      // UI-02b: symbol łącznika stosu bez refu aparatu niesie ROLĘ (agregat pola, który
-      // rysuje glif) — z tej samej tabeli co kompozycja (`rolaSymboluLacznika`).
-      deviceRef: undefined,
+      // GEOMETRIA-STACJI (§0 pkt 4): fikstura niesie rekordy aparatów pól, więc aparat
+      // stosu ma ref rekordu (`deviceRef`) i roli agregatu nie potrzebuje — rola
+      // (`rolaSymboluLacznika`) zostaje wyłącznie dla symbolu bez refu aparatu. Symbol bez refu aparatu to po karcie wyłącznie sylwetka braku danych — bez stanu.
+      deviceRef: aparat.meta!.deviceRef,
       lvPortalStationRef: undefined,
-      rolaLacznika: rolaSymboluLacznika(aparat.symbolId),
+      rolaLacznika: undefined,
     });
+    expect(aparat.meta!.deviceRef, 'aparat z rekordu modelu niesie ref rekordu').toBeTruthy();
   });
 
   it('klik w TOR zaznacza TEN odcinek (ownerRef odcinka, elementKind=segment)', async () => {

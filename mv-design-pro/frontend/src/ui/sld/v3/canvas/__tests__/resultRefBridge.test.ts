@@ -58,7 +58,7 @@ describe('resultRefBridge — most refów rysunek ↔ punkt wyniku', () => {
   const bridge = buildResultRefBridge(enm);
 
   it('szyna SN stacji: odcinek `#sn-bus` wskazuje kanoniczną szynę SN', () => {
-    expect(bridge.get(`${STACJA}#sn-bus`)).toEqual({ resultRef: STACJA_SN_BUS, kind: 'bus' });
+    expect(bridge.get(`${STACJA_SN_BUS}#sn-bus`)).toEqual({ resultRef: STACJA_SN_BUS, kind: 'bus' });
   });
 
   it('szyna nN stacji: odcinek `#lv-bus` wskazuje szynę nN i NIESIE KLASĘ „bus" (scena klasyfikuje go jako zwykły odcinek toru)', () => {
@@ -110,27 +110,39 @@ describe('resultRefBridge — ODMOWY zamiast zgadywania', () => {
     expect(bridge.has(STACJA_POLE_TR)).toBe(false);
     // ...a szyny stacji zostają związane — odmowa dotyczy WYŁĄCZNIE
     // niejednoznacznej rodziny, nie całej stacji.
-    expect(bridge.get(`${STACJA}#sn-bus`)?.resultRef).toBe(STACJA_SN_BUS);
+    expect(bridge.get(`${STACJA_SN_BUS}#sn-bus`)?.resultRef).toBe(STACJA_SN_BUS);
   });
 
-  it('stacja, której pola wskazują RÓŻNE szyny (dwie sekcje): szyna SN i blok stacji bez wiązania', () => {
+  // GEOMETRIA-STACJI (Z-03): stacja dwusekcyjna NIE jest już odmową dla szyn — każda sekcja
+  // (rekord `Bus` w `Substation.bus_refs`) ma własny odcinek `${busRef}#sn-bus` i własny punkt
+  // wyniku; odmową zostaje WYŁĄCZNIE blok L0 (jeden symbol dla dwóch szyn). Dawniej sekcje
+  // wyprowadzano z `bus_ref` pól, a rysunek miał jeden odcinek szyny dla całej stacji.
+  it('stacja DWUSEKCYJNA: każda sekcja wiąże własną szynę, blok stacji L0 bez wiązania', () => {
     const model = klon();
-    const pierwsze = polaSnStacji(model, STACJA)[0];
-    // Druga sekcja SN: szyna o napięciu SN (pole zostaje polem SN — poziom z napięcia szyny).
-    (model.buses as unknown[]).push({ ...(model.buses ?? []).find((b) => b.ref_id === STACJA_SN_BUS)!, ref_id: `${STACJA_SN_BUS}-sekcja-2` });
-    pierwsze.bus_ref = `${STACJA_SN_BUS}-sekcja-2`;
+    const sekcja2 = `${STACJA_SN_BUS}-sekcja-2`;
+    (model.buses as unknown[]).push({ ...(model.buses ?? []).find((b) => b.ref_id === STACJA_SN_BUS)!, ref_id: sekcja2 });
+    const stacja = stacjaW(model, STACJA);
+    stacja.bus_refs = [STACJA_SN_BUS, sekcja2, ...stacja.bus_refs.filter((ref) => ref !== STACJA_SN_BUS)];
+    polaSnStacji(model, STACJA)[0].bus_ref = sekcja2;
     const bridge = buildResultRefBridge(model);
-    expect(bridge.has(`${STACJA}#sn-bus`)).toBe(false);
+    expect(bridge.get(`${STACJA_SN_BUS}#sn-bus`)).toEqual({ resultRef: STACJA_SN_BUS, kind: 'bus' });
+    expect(bridge.get(`${sekcja2}#sn-bus`)).toEqual({ resultRef: sekcja2, kind: 'bus' });
     expect(bridge.has(STACJA)).toBe(false);
     // Szyna nN pozostaje związana (inna rodzina, inne dane).
     expect(bridge.get(`${STACJA}#lv-bus`)?.resultRef).toBe(STACJA_NN_BUS);
+  });
+
+  it('GPZ: szyna WN rozdzielni nie jest sekcją SN — zero odcinka `#sn-bus` dla szyny 110 kV', () => {
+    const bridge = buildResultRefBridge(enm);
+    expect(bridge.has(`${GPZ_BUS_110}#sn-bus`)).toBe(false);
+    expect(bridge.has(`${GPZ_SEKCJA_BUS}#sn-bus`)).toBe(false);
   });
 
   it('szyna pól wskazana przez pola, ale NIEOBECNA w migawce ⇒ brak wiązania (ref bez rekordu to nie punkt wyniku)', () => {
     const model = klon();
     model.buses = (model.buses ?? []).filter((bus) => bus.ref_id !== STACJA_SN_BUS);
     const bridge = buildResultRefBridge(model);
-    expect(bridge.has(`${STACJA}#sn-bus`)).toBe(false);
+    expect(bridge.has(`${STACJA_SN_BUS}#sn-bus`)).toBe(false);
   });
 
   it('stacja z DWIEMA szynami nN tego samego napięcia ⇒ `#lv-bus` bez wiązania (remis = odmowa)', () => {

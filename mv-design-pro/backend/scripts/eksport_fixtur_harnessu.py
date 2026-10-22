@@ -4776,6 +4776,28 @@ def ciag_w_budowie_etapy() -> dict[str, Any]:
     return canonicalize_json({"liczba_ogniw": LICZBA_OGNIW, "etapy": etapy})
 
 
+def _scena_geometrii_stacji(wariant: str) -> dict[str, Any]:
+    """Karta K3 GEOMETRIA-STACJI: scena `tests/reference_networks/scena_geometrii_stacji.py`
+    (stacje czterech rodzajów z topologii, stacja sekcyjna typu D) jako odpowiedź operacji —
+    migawka + widoki logiczne, niedeterminizm konstrukcji przypięty jak w scenach wyżej."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.scena_geometrii_stacji import zbuduj_wariant
+
+    model = EnergyNetworkModel.model_validate(zbuduj_wariant(wariant))
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {"snapshot": odpowiedz["snapshot"], "logical_views": odpowiedz["logical_views"]}
+    )
+
+
+def _fabryka_sceny_geometrii_stacji(wariant: str) -> Any:
+    return lambda: _scena_geometrii_stacji(wariant)
+
+
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
     return lambda: _scena_punktu_startu(rodzaj, stan)
 
@@ -4792,6 +4814,10 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
     },
     **{nazwa: _fabryka_widokow_fikstury(nazwa) for nazwa in _FIKSTURY_ENM_FRONTU},
     "ciag_w_budowie_etapy": ciag_w_budowie_etapy,
+    **{
+        f"geometria_stacji_{wariant}": _fabryka_sceny_geometrii_stacji(wariant)
+        for wariant in ("zamkniete", "otwarte", "bez_wyposazenia")
+    },
 }
 
 

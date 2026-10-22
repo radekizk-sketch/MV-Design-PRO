@@ -39,6 +39,8 @@ export type SymbolId =
   | 'derGenerator'     // generator (G w okręgu)
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
   | 'derUnknown'       // źródło nieokreślone (rodzaj nierozstrzygnięty w modelu)
+  | 'bayNoEquipment'   // brak danych wyposażenia pola (sylwetka bez stanu, karta GEOMETRIA-STACJI)
+  | 'bayReserve'       // zakończenie pola rezerwowego/wolnego (bez głowicy i odejścia)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
   | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
@@ -255,6 +257,23 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   derUnknown: def('derUnknown', 32, 32, [
     { name: 'ac', x: 16, y: 0, dir: 'N' },
   ], 'Źródło nieokreślone'),
+  // GEOMETRIA-STACJI (§0 pkt 4c, dyrektywa właściciela 2026-10-21): pole, którego model nie
+  // niesie ŻADNEGO rekordu aparatu (ani `Bay.primary_devices`, ani gałęzi łączeniowej
+  // w `equipment_refs`), rysuje się JEDNĄ jawną sylwetką „brak danych wyposażenia pola"
+  // zamiast stosu aparatów z konwencji. Sylwetka nie ma stanu (glif ignoruje `state`)
+  // — kolor stanu bez rekordu byłby fabrykacją. Gabaryt 16×32 (2×4 GRID), porty N/S
+  // w osi toru pola jak każdy aparat szeregowy.
+  bayNoEquipment: def('bayNoEquipment', 16, 32, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 32, dir: 'S' },
+  ], 'Brak danych wyposażenia pola'),
+  // GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola REZERWOWEGO (`bay_kind` „rezerwowe",
+  // ten sam predykat co backend `enm/rodzaj_stacji.py`) albo pola WOLNEGO (pole liniowe,
+  // do którego zacisku model nie przyłącza żadnego odcinka). Bez głowicy kablowej
+  // i bez odejścia — JEDEN port N; za nim nic się nie przyłącza.
+  bayReserve: def('bayReserve', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Pole rezerwowe (bez odejścia)'),
   // F9.4 (spec §13.1/§13.2): sieć zewnętrzna (Source ENM) — jeden port
   // `bottom` (S), gabaryt 16×24 jak `disconnector`/`earthSwitch` (aparat
   // jednokolumnowy, nie DER 32×32 — ten symbol nie jest instalacją DER).
@@ -410,3 +429,18 @@ export function makeBusbarDef(length: number): BusbarDef {
     ],
   };
 }
+
+/**
+ * APARATY CIĄGŁOŚCI ELEKTRYCZNEJ — łączniki, którymi tor da się przerwać.
+ * To one odpowiadają na pytanie „czym to odcinam", więc ich zniknięcie z
+ * rysunku jest utratą informacji, nie uproszczeniem.
+ */
+export const CONTINUITY_APPARATUS_SYMBOL_IDS: readonly SymbolId[] = [
+  'breaker',
+  'disconnector',
+  'loadBreakSwitch',
+  'fuseSwitch',
+  'noPoint',
+  'lineSwitch',
+  'lineBreaker',
+];

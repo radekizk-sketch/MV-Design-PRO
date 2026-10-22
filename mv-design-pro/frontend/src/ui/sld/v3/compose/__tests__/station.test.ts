@@ -24,10 +24,7 @@ import { colorSegmentLabelRows, computeSegmentLabelSlotX } from '../../layout/se
 import { resolveLabels } from '../../layout/labels';
 import {
   allCompositionSymbolsOnGrid,
-  apparatusSymbolsForRole,
   composeStation,
-  fieldSilhouetteClass,
-  fieldSilhouettesAreInjective,
   fieldStacksEndAtCableHead,
   internalSegmentsEndAtPortsOrBus,
   noCompositionSymbolOverlaps,
@@ -38,12 +35,15 @@ import {
   bayApparatusPlanFootprint,
   planApparatusSymbolIds,
   planBayApparatus,
+  symbolePolaBezDanych,
 } from '../apparatusSequence';
 
 /** F10.1: oczekiwana KOLEJNOŚĆ instancji kompozycji = tor główny, potem
- *  aparaty boczne (buildBayStack dokleja laterale na końcu). */
+ *  aparaty boczne (buildBayStack dokleja laterale na końcu). GEOMETRIA-STACJI (§0 pkt 4c):
+ *  pole bez rekordów aparatów rysuje sylwetkę braku danych (+ elementy modelu pola),
+ *  nie sekwencję z konwencji roli (skasowaną — zero fabrykacji). */
 function planOrderedSymbols(role: FieldRole): readonly string[] {
-  const plan = planApparatusSymbolIds([...apparatusSymbolsForRole(role)]);
+  const plan = planApparatusSymbolIds([...symbolePolaBezDanych({ fieldRole: role })]);
   return [...plan.mainPath, ...plan.laterals.map((l) => l.symbolId)];
 }
 import {
@@ -134,7 +134,7 @@ function buildComposeInput(
 
 describe('V3 compose/station — spójność measure↔compose (wymóg zadania F5a, F9.3: bayColumnFootprint jest data-aware)', () => {
   for (const role of ALL_FIELD_ROLES) {
-    it(`rola ${role}, bez primary_devices (konwencja): bayApparatusPlanFootprint(plan) === bayColumnFootprint`, () => {
+    it(`rola ${role}, bez primary_devices (brak danych): bayApparatusPlanFootprint(plan) === bayColumnFootprint`, () => {
       // F10.1 (spec §18.1/§18.2): tożsamość parytetu ZREDEFINIOWANA — gabaryt
       // kolumny = plan „tor główny + aparaty boczne" (ES/VT/SA odgałęziają
       // się bocznie, nie stoją w osi), NIE płaski stos całej sekwencji.
@@ -145,7 +145,7 @@ describe('V3 compose/station — spójność measure↔compose (wymóg zadania F
       const fromMeasure = bayColumnFootprint(makeBay(role, 0));
       expect({ width: fromPlan.width, height: fromPlan.height }).toEqual(fromMeasure);
       if (plan.laterals.length === 0) {
-        expect(fromMeasure).toEqual(stackFootprint(apparatusSymbolsForRole(role)));
+        expect(fromMeasure).toEqual(stackFootprint(symbolePolaBezDanych({ fieldRole: role })));
       } else {
         // Tor główny bez lateralu jest WĘŻSZY niż pełny gabaryt (rozszerzenie
         // boczne > 0) — dowód, że podział realnie działa dla tej roli.
@@ -693,15 +693,17 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
     expect(branch!.points.every((pt) => pt.y === branch!.points[0].y)).toBe(true);
   });
 
-  it('DER-kindy w primary_devices są odfiltrowane (nie są aparatem pola, §12.1) — fallback konwencji, gdy WSZYSTKIE odfiltrowane', () => {
+  it('DER-kindy w primary_devices są odfiltrowane (nie są aparatem pola, §12.1) — sylwetka braku danych, gdy WSZYSTKIE odfiltrowane', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
       primaryDevices: [{ deviceRef: 'pv-1', kind: 'GENERATOR_PV', placement: 'OFF_PATH' }],
     });
     const station = makeStation('der-only-devices', [bay]);
     const composition = composeStation(buildComposeInput(station));
 
-    // Brak aparatów mapowalnych ⇒ fallback konwencji (§12.4) dla LINE_IN.
-    expect(composition.symbols.every((s) => s.apparatusSource === 'konwencja')).toBe(true);
+    // Brak aparatów mapowalnych ⇒ sylwetka „brak danych wyposażenia pola" (GEOMETRIA-STACJI
+    // §0 pkt 4c; dawniej fallback konwencji §12.4 — skasowany, zero fabrykacji).
+    expect(composition.symbols.every((s) => s.apparatusSource === 'brak')).toBe(true);
+    expect(composition.symbols.map((s) => s.symbolId)).toEqual(['bayNoEquipment']);
     // F10.1: kolejność instancji = tor główny, potem aparaty boczne.
     expect(composition.symbols.map((s) => s.symbolId)).toEqual(planOrderedSymbols(FIELD_ROLE.LINE_IN));
   });
@@ -744,24 +746,32 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
   });
 });
 
-describe('V3 compose/station — F9.3 §12.4: gałąź „konwencja" — znacznik na KAŻDYM polu bez primary_devices', () => {
+// GEOMETRIA-STACJI (§0 pkt 4c, rejestr GEOMETRIA-STACJI-BRAK-WYPOSAZENIA): dawna gałąź
+// „konwencja" (§12.4 — typowa sekwencja aparatów roli bez rekordów modelu) SKASOWANA. Pole bez
+// rekordów aparatów rysuje JEDNĄ sylwetkę „brak danych wyposażenia pola" (+ elementy modelu pola:
+// transformator z rekordu, glif źródła OZE) — bez łącznika, bez stanu, bez deviceRef.
+describe('V3 compose/station — GEOMETRIA-STACJI §0 pkt 4c: pole bez primary_devices = sylwetka braku danych', () => {
+  const LACZNIKI = new Set(['breaker', 'loadBreakSwitch', 'disconnector', 'earthSwitch', 'fuse', 'currentTransformer', 'voltageTransformer', 'surgeArrester', 'cableHead']);
   for (const role of ALL_FIELD_ROLES) {
-    it(`rola ${role}: bez primary_devices ⇒ WSZYSTKIE symbole apparatusSource="konwencja", 0 deviceRef, sekwencja == tabela §12.4`, () => {
-      const bay = makeBay(role, 0);
-      const station = makeStation(`convention-${role}`, [bay]);
+    it(`rola ${role}: bez primary_devices ⇒ jedna sylwetka bayNoEquipment, apparatusSource="brak", 0 deviceRef, 0 stanu, 0 łącznika`, () => {
+      // Agregaty stanu pola (`cbState`/`dsState`) bez rekordu aparatu NIE dają barwy stanu.
+      const bay = makeBay(role, 0, { cbState: 'open', dsState: 'closed' });
+      const station = makeStation(`brak-danych-${role}`, [bay]);
       const composition = composeStation(buildComposeInput(station));
 
-      expect(composition.symbols.length).toBeGreaterThan(0);
-      expect(composition.symbols.every((s) => s.apparatusSource === 'konwencja')).toBe(true);
+      expect(composition.symbols.filter((s) => s.symbolId === 'bayNoEquipment')).toHaveLength(1);
+      expect(composition.symbols.every((s) => s.apparatusSource === 'brak')).toBe(true);
       expect(composition.symbols.every((s) => s.deviceRef === undefined)).toBe(true);
-      // F10.1 (DEC-1): kolejność instancji = tor główny + aparaty boczne.
+      expect(composition.symbols.every((s) => s.state === undefined)).toBe(true);
+      expect(composition.symbols.some((s) => LACZNIKI.has(s.symbolId))).toBe(false);
       expect(composition.symbols.map((s) => s.symbolId)).toEqual(planOrderedSymbols(role));
     });
   }
 
-  it('§12.5 (V12K-028): ZERO symboli surgeArrester w konwencji, dla KAŻDEJ roli', () => {
-    for (const role of ALL_FIELD_ROLES) {
-      expect(apparatusSymbolsForRole(role)).not.toContain('surgeArrester');
+  it('rola TR: transformator na sylwetce WYŁĄCZNIE z rekordu transformatora pola (transformerRef)', () => {
+    for (const role of [FIELD_ROLE.TRANSFORMER, FIELD_ROLE.RMU_TRANSFORMER]) {
+      expect(symbolePolaBezDanych({ fieldRole: role })).toEqual(['bayNoEquipment']);
+      expect(symbolePolaBezDanych({ fieldRole: role, transformerRef: 'tr-1' })).toEqual(['bayNoEquipment', 'transformer2W']);
     }
   });
 });
@@ -771,7 +781,7 @@ describe('V3 compose/station — F9.3 §12.4: gałąź „konwencja" — znaczni
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/station — F9.3 §12.3: field_entry_probe (głowica na końcu toru pola liniowego)', () => {
-  it('konwencja (§12.4): KAŻDE pole liniowe (LINE_IN/LINE_OUT/LINE_BRANCH/RMU_LINE/GPZ_LINE_BAY) kończy się cableHead', () => {
+  it('brak danych (§0 pkt 4c): pole liniowe bez rekordów kończy się sylwetką braku danych — ZERO fabrykowanej głowicy', () => {
     const lineRoles: FieldRole[] = [
       FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.LINE_BRANCH, FIELD_ROLE.RMU_LINE, FIELD_ROLE.GPZ_LINE_BAY,
     ];
@@ -779,6 +789,7 @@ describe('V3 compose/station — F9.3 §12.3: field_entry_probe (głowica na ko�
     const station = makeStation('entry-probe-convention', snBays);
     const composition = composeStation(buildComposeInput(station));
     expect(fieldStacksEndAtCableHead(composition, snBays)).toBe(true);
+    expect(composition.symbols.some((s) => s.symbolId === 'cableHead')).toBe(false);
   });
 
   it('dane (§12.1): pole liniowe z CABLE_HEAD w DOWNSTREAM ⇒ zielone', () => {
@@ -816,49 +827,28 @@ describe('V3 compose/station — F9.3 §12.3: field_entry_probe (głowica na ko�
 // (i) F9.3 — §14.3 field_silhouette_probe.
 // ---------------------------------------------------------------------------
 
-describe('V3 compose/station — F9.3 §14.3/V12K-031: field_silhouette_probe (rola→sylwetka injektywne PONAD KLASY równoważności, restauracja po recenzji Opusa FIX-2)', () => {
-  it('GLOBALNIE: każde dwie role SPOZA tej samej klasy równoważności mają RÓŻNE sygnatury wizualne (dowód na ALL_FIELD_ROLES, nie per-stacja)', () => {
-    expect(fieldSilhouettesAreInjective()).toBe(true);
+// GEOMETRIA-STACJI (§0 pkt 4c): dawna wyrocznia field_silhouette_probe (§14.3/V12K-031 —
+// sylwetki KONWENCJI ról parami różne) skasowana razem z konwencją. Rola pola bez rekordów
+// aparatów jest rozróżniona OPISEM roli pola („F01 · liniowe", „FT1 · transformatorowe")
+// i elementami MODELU pola, nie wymyśloną sekwencją aparatów; rozróżnialne sylwetką zostają
+// role, których pole niesie element modelu (transformator z rekordu, źródła OZE).
+describe('V3 compose/station — GEOMETRIA-STACJI §0 pkt 4c: rozróżnienie ról bez rekordów aparatów', () => {
+  it('pola liniowe, sprzęgło i pomiar bez rekordów: ta sama sylwetka braku danych — rolę niesie opis pola', () => {
+    const role: FieldRole[] = [FIELD_ROLE.LINE_IN, FIELD_ROLE.COUPLER, FIELD_ROLE.MEASUREMENT];
+    for (const r of role) expect(symbolePolaBezDanych({ fieldRole: r })).toEqual(['bayNoEquipment']);
+    const snBays = role.map((r, i) => makeBay(r, i));
+    const composition = composeStation(buildComposeInput(makeStation('opis-roli', snBays)));
+    const opisy = composition.labels.apparatus.filter((l) => l.ownerKind === 'field-role');
+    expect(opisy).toHaveLength(role.length);
+    expect(new Set(opisy.map((l) => l.text.replace(/^\S+ · /, ''))).size).toBe(role.length);
   });
 
-  it('7 klas sylwetki (linia/TR/sprzęgło/pomiar/3×DER) — reprezentanci dają parami RÓŻNE sygnatury', () => {
-    const classes: FieldRole[] = [
-      FIELD_ROLE.LINE_IN, FIELD_ROLE.TRANSFORMER, FIELD_ROLE.COUPLER, FIELD_ROLE.MEASUREMENT,
-      FIELD_ROLE.DER_PV, FIELD_ROLE.DER_BESS, FIELD_ROLE.DER_FW,
-    ];
-    const signatures = classes.map((role) => [...apparatusSymbolsForRole(role)].sort().join(','));
-    expect(new Set(signatures).size).toBe(signatures.length);
-  });
-
-  // INTENCJA RULINGU V12K-031 zachowana dla PÓL WYŁĄCZNIKOWYCH: wejście/
-  // wyjście/odgałęzienie tej samej technologii są fizycznie identyczne i
-  // dzielą sygnaturę świadomie. KOREKTA (recenzja NO-GO właściciela
-  // 2026-07-17 pkt 5, spec §12.5): RMU_LINE to INNA technologia rozdzielnicy
-  // (rozłącznik+ES+głowica) — własna klasa `rmu_line`, WŁASNA sygnatura;
-  // pomiar recenzji: wspólna sylwetka fabrykowała CB+CT w stacjach 630 kVA.
-  it('RULING V12K-031 + korekta pkt 5: LINE_IN/LINE_OUT/LINE_BRANCH/GPZ_LINE_BAY = jedna klasa `line` (wspólna sygnatura świadomie); RMU_LINE = osobna klasa `rmu_line` z szablonem rozłącznikowym', () => {
-    const breakerLineRoles: FieldRole[] = [
-      FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.LINE_BRANCH, FIELD_ROLE.GPZ_LINE_BAY,
-    ];
-    for (const role of breakerLineRoles) expect(fieldSilhouetteClass(role)).toBe('line');
-    const signatures = new Set(breakerLineRoles.map((role) => [...apparatusSymbolsForRole(role)].sort().join(',')));
-    expect(signatures.size).toBe(1);
-
-    expect(fieldSilhouetteClass(FIELD_ROLE.RMU_LINE)).toBe('rmu_line');
-    const rmuSig = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_LINE)].sort().join(',');
-    expect(rmuSig).toBe('cableHead,earthSwitch,loadBreakSwitch');
-    expect(signatures.has(rmuSig)).toBe(false);
-  });
-
-  it('RMU_TRANSFORMER = osobna klasa `rmu_transformer` (pkt 5/6 recenzji: rozłącznik bezpiecznikowy + ES + TR); klasy RMU_LINE/RMU_TRANSFORMER/COUPLER parami rozróżnialne sygnaturą', () => {
-    expect(fieldSilhouetteClass(FIELD_ROLE.RMU_TRANSFORMER)).toBe('rmu_transformer');
-    expect(fieldSilhouetteClass(FIELD_ROLE.TRANSFORMER)).toBe('transformer');
-    // pkt 6 recenzji: pole TR RMU MUSI nieść uziemnik.
-    expect(apparatusSymbolsForRole(FIELD_ROLE.RMU_TRANSFORMER)).toContain('earthSwitch');
-    const sigLine = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_LINE)].sort().join(',');
-    const sigTr = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_TRANSFORMER)].sort().join(',');
-    const sigCoupler = [...apparatusSymbolsForRole(FIELD_ROLE.COUPLER)].sort().join(',');
-    expect(new Set([sigLine, sigTr, sigCoupler]).size).toBe(3);
+  it('źródła OZE bez rekordów: sylwetka braku danych + glif źródła roli — parami różne', () => {
+    const sygnatury = [FIELD_ROLE.DER_PV, FIELD_ROLE.DER_BESS, FIELD_ROLE.DER_FW].map((r) =>
+      symbolePolaBezDanych({ fieldRole: r }).join(','),
+    );
+    expect(new Set(sygnatury).size).toBe(3);
+    for (const sygnatura of sygnatury) expect(sygnatura.startsWith('bayNoEquipment,')).toBe(true);
   });
 
   it('ALL_FIELD_ROLES niesie WSZYSTKIE 13 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
@@ -1507,40 +1497,27 @@ describe('V3 compose/station — F10.3 §18.4: etykieta szyny SN (busbar-voltage
 });
 
 describe('V3 compose/station — F10.3 §18.4: sprzęgło (COUPLER) renderuje STAN z danych', () => {
-  it('pole COUPLER między dwoma polami liniowymi: aparat CB sprzęgła niesie stan z `bay.cbState` (dane), widoczny na scenie MIĘDZY sąsiadami', () => {
+  // GEOMETRIA-STACJI (§0 pkt 4): stan aparatu WYŁĄCZNIE z rekordu aparatu. Dawniej pole COUPLER
+  // bez `primary_devices` rysowało konwencję DS→CB→CT, a CB brał barwę stanu z agregatu
+  // `bay.cbState` — stan aparatu, którego model nie ma. Intencja testu (sprzęgło widoczne MIĘDZY
+  // sąsiadami, porty spójne) zostaje; stan i aparaty — tylko ze ścieżki danych (test niżej).
+  it('pole COUPLER bez rekordów aparatów między dwoma polami liniowymi: sylwetka braku danych MIĘDZY sąsiadami, ZERO stanu z agregatu `cbState`', () => {
     const left = makeBay(FIELD_ROLE.LINE_IN, 0, { bayRef: 'left-line' });
     const coupler = makeBay(FIELD_ROLE.COUPLER, 1, { bayRef: 'coupler-1', cbState: 'open', dsState: 'closed' });
     const right = makeBay(FIELD_ROLE.LINE_OUT, 2, { bayRef: 'right-line' });
     const station = makeStation('coupler-open', [left, coupler, right]);
     const composition = composeStation(buildComposeInput(station));
 
-    // Sprzęgło (§12.4 konwencja: DS→CB→CT) — CB niesie stan Z DANYCH pola
-    // (`bay.cbState`), TA SAMA ścieżka co każdy inny wyłącznik pola.
-    const couplerBreaker = composition.symbols.find((s) => s.bayRef === 'coupler-1' && s.symbolId === 'breaker')!;
-    expect(couplerBreaker).toBeDefined();
-    expect(couplerBreaker.state).toBe('open');
-    const couplerDisconnector = composition.symbols.find((s) => s.bayRef === 'coupler-1' && s.symbolId === 'disconnector')!;
-    expect(couplerDisconnector.state).toBe('closed');
+    const couplerSymbols = composition.symbols.filter((s) => s.bayRef === 'coupler-1');
+    expect(couplerSymbols.map((s) => s.symbolId)).toEqual(['bayNoEquipment']);
+    expect(couplerSymbols[0].state).toBeUndefined();
 
-    // Widoczność MIĘDZY sekcjami: sprzęgło zajmuje pozycję X ściśle między
-    // sąsiadami (left < coupler < right), na TEJ SAMEJ szynie SN ciągłej
-    // (dowód rozłączności/ciągłości toru — `internalSegmentsEndAtPortsOrBus`
-    // niezależnie potwierdza spójność portów).
     const leftX = composition.symbols.find((s) => s.bayRef === 'left-line')!.x;
     const rightX = composition.symbols.find((s) => s.bayRef === 'right-line')!.x;
-    expect(couplerBreaker.x).toBeGreaterThan(leftX);
-    expect(couplerBreaker.x).toBeLessThan(rightX);
+    expect(couplerSymbols[0].x).toBeGreaterThan(leftX);
+    expect(couplerSymbols[0].x).toBeLessThan(rightX);
     expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
     expect(noCompositionSymbolOverlaps(composition)).toBe(true);
-  });
-
-  it('pole COUPLER: aparat CB sprzęgła niesie stan „closed" (dane) — dowód, że OBA stany widoczne (rozłącznik z open, ten z closed — brak stanu domyślnego stałego)', () => {
-    const coupler = makeBay(FIELD_ROLE.COUPLER, 0, { bayRef: 'coupler-closed', cbState: 'closed' });
-    const station = makeStation('coupler-closed', [coupler]);
-    const composition = composeStation(buildComposeInput(station));
-
-    const couplerBreaker = composition.symbols.find((s) => s.symbolId === 'breaker')!;
-    expect(couplerBreaker.state).toBe('closed');
   });
 
   it('pole COUPLER ze ścieżki DANYCH (`primary_devices` z `kind: "CB"`): stan PER APARAT wprost z `switch_state`, nie z agregatu konwencji', () => {

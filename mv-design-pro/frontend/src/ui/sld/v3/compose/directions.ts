@@ -217,6 +217,18 @@ export function isLineLikeRole(role: FieldRole): boolean {
   );
 }
 
+/**
+ * GEOMETRIA-STACJI (§0 pkt 5): pole TORU — pole liniowe, które prowadzi odcinek (nie jest
+ * rezerwowe ani wolne). JEDEN predykat dla podpisów kierunku (`stationBayCaptions`) i portów
+ * routingu (`findLineBayIndices`): kolejność pól toru wyznacza poprzednika, następnika
+ * i N-te odgałęzienie. Do karty pole wolne liczyło się jak pole toru — w stacji o polach
+ * [IN, OUT, FEEDER (wolne), FEEDER (z odgałęzieniem)] kabel odgałęzienia i podpis „odg."
+ * wychodziły z pola WOLNEGO, a pole, z którego model prowadzi odgałęzienie, stało bez opisu.
+ */
+export function czyPoleToru(bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'reserve'>): boolean {
+  return isLineLikeRole(bay.fieldRole) && !bay.reserve;
+}
+
 /** Klasyfikacja kierunku pola liniowego (spec §9, DECYZJA w nagłówku pliku).
  *  `lineBayPosition`: indeks TEGO pola WŚRÓD pól liniowych tej stacji
  *  (0-based, w kolejności `snBays`) — ignorowany dla ról jawnych. */
@@ -417,19 +429,26 @@ export function stationBayCaptions(
 ): readonly (string | null)[] {
   const lineBayIndices: number[] = [];
   snBays.forEach((bay, index) => {
-    if (isLineLikeRole(bay.fieldRole)) lineBayIndices.push(index);
+    if (czyPoleToru(bay)) lineBayIndices.push(index);
   });
 
   let branchIndex = 0;
   return snBays.map((bay, index) => {
     const lineBayPosition = lineBayIndices.indexOf(index);
-    const direction = classifyLineBayDirection(bay.fieldRole, lineBayPosition);
+    // Pole wolne/rezerwowe nie ma odpływu, więc nie ma kierunku (i nie zabiera numeru odgałęzienia).
+    const direction = czyPoleToru(bay) ? classifyLineBayDirection(bay.fieldRole, lineBayPosition) : null;
     const thisBranchIndex = direction === 'branch' ? branchIndex++ : -1;
-    return bayDirectionCaption({
+    const podpis = bayDirectionCaption({
       direction,
       context,
       branchIndex: thisBranchIndex,
       designationFallback: bay.designation,
     });
+    // GEOMETRIA-STACJI (§0 pkt 5): odpływ pola liniowego kończy się nazwą celu
+    // (`Bay.outgoing_destination_ref` → nazwa stacji celu, adapter): podpis kierunku ciągu
+    // (gdy jest) i „→ ⟨cel⟩" — cel zadeklarowany w modelu jest zawsze nazwany, odpływ nie
+    // biegnie poza kadr bez opisu. Pole rezerwowe/wolne nie ma odpływu, więc nie ma celu.
+    if (direction == null || !bay.destinationName) return podpis;
+    return podpis != null ? `${podpis} → ${bay.destinationName}` : `→ ${bay.destinationName}`;
   });
 }

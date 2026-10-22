@@ -106,3 +106,27 @@ export function stationSideBusRefs(
     })
     .sort();
 }
+
+/**
+ * GEOMETRIA-STACJI (Z-03) — SEKCJE szyn SN stacji: szyny główne `Substation.bus_refs` z
+ * rekordem `Bus` po stronie SN (`belongsToSide(…, 'sn')`), w kolejności rekordu stacji,
+ * bez powtórzeń. Lustro backendu `enm.domain_operations._sn_bus_refs_for_substation`.
+ *
+ * JEDNA reguła dla rysunku (adapter v2: odcinek szyny na sekcję, `ownerRef =
+ * ${busRef}#sn-bus`), mostu wyników (`v3/canvas/resultRefBridge.ts`: punkt wyniku na
+ * sekcję) i kadru sekcji (`v3/canvas/zakresKadru.ts`) — trzy końce tej samej pary
+ * „co narysowano ↔ czego dotyczy wynik/kadr" (reguła KLASA pkt 3).
+ */
+export function stationSnSectionBusRefs(
+  substation: Pick<Substation, 'bus_refs'>,
+  busByRef: ReadonlyMap<string, Pick<Bus, 'voltage_kv'>>,
+): readonly string[] {
+  const wynik: string[] = [];
+  for (const busRef of substation.bus_refs ?? []) {
+    if (typeof busRef !== 'string' || !busRef || wynik.includes(busRef)) continue;
+    const v = busByRef.get(busRef)?.voltage_kv;
+    if (typeof v !== 'number' || !Number.isFinite(v) || !belongsToSide(v, 'sn')) continue;
+    wynik.push(busRef);
+  }
+  return wynik;
+}

@@ -97,13 +97,16 @@ describe('ogranicznik przepięć — oznacznik rodziny F (V12K-335 pkt 3)', () =
     // lateralnej (laterale RÓŻNYCH kotwic w tej samej kolumnie X stykają się
     // pionowo i nie zostawiają pasa na etykietę górnego) — nazwany w rejestrze
     // przy wierszu S9-12 (pomiar na czystym HEAD 683745a4: ta sama luka bez
-    // zmian F). Pin liczbowy 405/406 celowo DOSŁOWNY: regres etykiet F zmienia
-    // różnicę licznika i test robi się czerwony.
+    // zmian F). Pin liczbowy celowo DOSŁOWNY: regres etykiet F zmienia
+    // różnicę licznika i test robi się czerwony. GEOMETRIA-STACJI (§0 pkt 4): 405/406 →
+    // 243/244 — pola fikstury bez rekordów aparatów nie rysują już stosu z konwencji
+    // (sylwetka braku danych nie jest aparatem uprawnionym do oznacznika); różnica 1
+    // (ta sama luka T2) bez zmian.
     expect(apparatusIdentifierGaps(scene)).toEqual([
       {
         ownerRef: undefined,
         symbolId: 'apparatus-label',
-        reason: 'liczba etykiet identyfikatora (405) != liczba aparatów uprawnionych (406)',
+        reason: 'liczba etykiet identyfikatora (243) != liczba aparatów uprawnionych (244)',
       },
     ]);
   });

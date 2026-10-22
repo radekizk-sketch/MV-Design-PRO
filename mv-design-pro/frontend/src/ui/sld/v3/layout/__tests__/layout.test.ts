@@ -149,7 +149,7 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     const captions = ['kier. GPZ Południowy-Wschód'];
     const plain = bayColumnRequiredWidth([bay], 0, captions);
     const withDescent = bayColumnRequiredWidth([bay], 0, captions, 0);
-    expect(withDescent - plain).toBe(entryDescentCaptionInset(FIELD_ROLE.RMU_LINE));
+    expect(withDescent - plain).toBe(entryDescentCaptionInset(bay));
     // Inne pola tej samej stacji (index ≠ entryDescentBayIndex) — bez zmian.
     expect(bayColumnRequiredWidth([bay], 0, captions, 1)).toBe(plain);
     // Bez podpisu kierunku inset nie ma czego odsuwać — bez zmian.
@@ -173,11 +173,19 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
   });
 
   it('brak designation i brak bayDirectionCaptions ⇒ szerokość kolumny = leftReserve + footprint + GRID + oznaczenie FUNKCYJNE pola (F10.2, spec §19.1 wymaga oznaczenia ZAWSZE)', () => {
+    // GEOMETRIA-STACJI (§0 pkt 4): aparaty pola WYŁĄCZNIE z rekordów modelu — pole niesie
+    // jawnie odłącznik, wyłącznik i uziemnik (dawniej ten sam stos dawała konwencja roli dla
+    // pola bez rekordów; pole bez rekordów ma dziś sylwetkę braku danych — test niżej).
     const bay: MiniBlockBayDescriptor = {
       bayRef: 'b1',
       fieldRole: FIELD_ROLE.RMU_LINE,
       designation: '',
       hasMissingRequiredDevice: false,
+      primaryDevices: [
+        { deviceRef: 'b1/ds', kind: 'DS', placement: 'MIDSTREAM' },
+        { deviceRef: 'b1/cb', kind: 'CB', placement: 'MIDSTREAM' },
+        { deviceRef: 'b1/es', kind: 'ES', placement: 'MIDSTREAM' },
+      ],
     };
     const station: StationMeasureInput = { ...baseFields, name: 'A', snBays: [bay] };
     // F10.1 (spec §18.1): footprint pola liniowego = stos toru głównego
@@ -206,6 +214,11 @@ describe('V3 layout — measure (spec §5.1, FIX-3: rezerwacja etykiet WŁASNYCH
     expect(requiredStationWidth(station)).toBe(
       snapUp(Math.max(expectedBlockWidth, expectedNameWidth) + 2 * GRID),
     );
+  });
+
+  it('pole bez rekordów aparatów ⇒ footprint = sylwetka braku danych wyposażenia pola (zero stosu z konwencji)', () => {
+    const bay: MiniBlockBayDescriptor = { bayRef: 'b1', fieldRole: FIELD_ROLE.RMU_LINE, designation: '', hasMissingRequiredDevice: false };
+    expect(bayColumnFootprint(bay).width).toBe(SYMBOL_DEFS.bayNoEquipment.width);
   });
 
   it('designation złożony wyłącznie z białych znaków traktowany jak brak (spójnie z FIX-4)', () => {

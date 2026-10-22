@@ -39,6 +39,11 @@ import { buildSceneV3, sceneConnectivityIndex, type SceneV3 } from '../../scene/
 import { buildTerminalGraph } from '../terminalGraph';
 import { buildStacjaBFixture, STACJA_B_REFS } from './fixtures/stacjaB';
 
+// GEOMETRIA-STACJI (Z-03, §0 pkt 1): odcinek szyny SN należy do REKORDU `Bus` sekcji
+// (`${busRef}#sn-bus`), nie do kompozytu stacji — intencja kontroli bez zmian (ta sama
+// szyna SN Stacji B, te same wymagania klasyfikacji i spójności), zmieniła się tożsamość.
+const SN_BUS_OWNER_REF = `${STACJA_B_REFS.snBusRef}#sn-bus`;
+
 const enm = buildStacjaBFixture();
 const scene: SceneV3 = buildSceneV3(enm, 2);
 const graph = buildTerminalGraph(enm);
@@ -148,7 +153,7 @@ describe('Check A2 — DOWÓD DEFEKTU B-02: DWIE strukturalnie identyczne szyny 
   });
 
   it('DOWÓD BEZPOŚREDNI (bez pętli, dla czytelności meldunku): #sn-bus I #lv-bus TEJ SAMEJ stacji są OBIE kind="bus"/elementKind="bus" — symetria naprawiona T1 (przed T1: #lv-bus miała kind="lv"/elementKind="segment", asymetria zmierzona w T0)', () => {
-    const snBusSeg = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#sn-bus`);
+    const snBusSeg = scene.segments.find((s) => s.meta?.ownerRef === SN_BUS_OWNER_REF);
     const lvBusSeg = scene.segments.find((s) => s.meta?.ownerRef === `${STACJA_B_REFS.stationRef}#lv-bus`);
     expect(snBusSeg?.meta?.kind).toBe('bus');
     expect(snBusSeg?.meta?.elementKind).toBe('bus');
@@ -261,7 +266,7 @@ describe('Check C — LV DOMAIN PROJECTION: sceneConnectivityIndex spójna SN �
 
   it('kontrola: zacisk nN (#lv-bus), szyna SN (#sn-bus) i pion portalu (#lv-portal-drop) ISTNIEJĄ na scenie jako odrębne segmenty', () => {
     expect(() => segmentIndexByOwnerRef(lvBusOwnerRef)).not.toThrow();
-    expect(() => segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`)).not.toThrow();
+    expect(() => segmentIndexByOwnerRef(SN_BUS_OWNER_REF)).not.toThrow();
     expect(() => segmentIndexByOwnerRef(portalDropOwnerRef)).not.toThrow();
   });
 
@@ -272,7 +277,7 @@ describe('Check C — LV DOMAIN PROJECTION: sceneConnectivityIndex spójna SN �
 
   it('zacisk nN i szyna SN SĄ w jednej składowej sceny (transformator FIZYCZNIE łączy obie strony przez port symbolu) — Check C mierzy realną spójność, nie wysepki per domena', () => {
     const lvBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(lvBusOwnerRef));
-    const snBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(`${STACJA_B_REFS.stationRef}#sn-bus`));
+    const snBusRoot = connectivity.segmentRoot(segmentIndexByOwnerRef(SN_BUS_OWNER_REF));
     expect(snBusRoot).toBe(lvBusRoot);
   });
 

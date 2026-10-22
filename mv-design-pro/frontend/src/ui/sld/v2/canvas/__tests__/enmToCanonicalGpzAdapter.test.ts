@@ -625,7 +625,9 @@ describe('buildCanonicalGpzProps — LV sekcje', () => {
     const b = props.sections[0].bays[0];
     expect(b.bayNumber).toBe('10');
     expect(b.feederName).toBe('STAROŁĘCKA');
-    expect(b.destinationLabel).toBe('→ ST-001');
+    // GEOMETRIA-STACJI (§0 pkt 5): podpis celu bez strzałki — strzałkę dokłada kompozycja
+    // (dawniej dokładały ją obie warstwy, podpis z podwójną strzałką); cel bez rekordu = ref.
+    expect(b.destinationLabel).toBe('ST-001');
   });
 });
 
@@ -661,22 +663,59 @@ describe('buildCanonicalGpzProps — HV sekcje', () => {
    --------------------------------------------------------------------------- */
 
 describe('buildCanonicalGpzProps — sprzęgła', () => {
-  it('Coupler między 2 sekcjami z right_coupler_ref → mapping', () => {
+  // GEOMETRIA-STACJI (§0 pkt 2): JEDNO źródło sprzęgła — gałąź `bus_coupler` modelu między
+  // szynami dwóch sekcji. Pole COUPLER (i `right_coupler_ref` sekcji) tylko dokłada oznaczenie
+  // i rodzaj aparatu; samo nie tworzy sprzęgła. Dawniej test budował sprzęgło z samego pola
+  // COUPLER między sekcjami na TEJ SAMEJ szynie — przypadek, którego model nie opisuje.
+  function sprzeglo(ref: string, fromBus: string, toBus: string): never {
+    return { id: ref, ref_id: ref, name: `Sprzęgło ${ref}`, type: 'bus_coupler', status: 'closed', from_bus_ref: fromBus, to_bus_ref: toBus, tags: [], meta: {} } as never;
+  }
+  function dwieSekcje(): Substation[] {
+    return [gpz('g', {
+      bus_refs: ['bus-15a', 'bus-15b'],
+      gpz_sections: [
+        { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15a', right_coupler_ref: 'cpl-9' },
+        { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15b', left_coupler_ref: 'cpl-9' },
+      ],
+    })];
+  }
+
+  it('gałąź bus_coupler między szynami 2 sekcji → sprzęgło; pole COUPLER dokłada oznaczenie', () => {
     const enm: EnmFragment = {
       ...emptyEnm(),
-      substations: [gpz('g', {
-        gpz_sections: [
-          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15', right_coupler_ref: 'cpl-9' },
-          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15', left_coupler_ref: 'cpl-9' },
-        ],
-      })],
-      bays: [bay('cpl-9', 'COUPLER', 'g', 'bus-15')],
-      buses: [bus('bus-15', 15)],
+      substations: dwieSekcje(),
+      bays: [bay('cpl-9', 'COUPLER', 'g', 'bus-15a', { name: 'Pole sprzęgła S1–S2', equipment_refs: ['q-cpl'] })],
+      branches: [sprzeglo('q-cpl', 'bus-15b', 'bus-15a')],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
     };
     const props = buildCanonicalGpzProps(enm, 'g');
     expect(props.couplers).toHaveLength(1);
+    expect(props.couplers[0].couplerId).toBe('q-cpl');
     expect(props.couplers[0].leftSectionId).toBe('s1');
     expect(props.couplers[0].rightSectionId).toBe('s2');
+    expect(props.couplers[0].bayRef).toBe('cpl-9');
+    expect(props.couplers[0].designation).toBe('Pole sprzęgła S1–S2');
+  });
+
+  it('gałąź bus_coupler BEZ pola COUPLER → sprzęgło z nazwą gałęzi (pole nie warunkuje istnienia)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: dwieSekcje(),
+      branches: [sprzeglo('q-cpl', 'bus-15a', 'bus-15b')],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g');
+    expect(props.couplers.map((c) => [c.couplerId, c.bayRef, c.designation])).toEqual([['q-cpl', null, 'Sprzęgło q-cpl']]);
+  });
+
+  it('pole COUPLER (i right_coupler_ref) BEZ gałęzi bus_coupler → couplers=[] (zero sprzęgła z samego pola)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: dwieSekcje(),
+      bays: [bay('cpl-9', 'COUPLER', 'g', 'bus-15a')],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
+    };
+    expect(buildCanonicalGpzProps(enm, 'g').couplers).toEqual([]);
   });
 
   it('1 sekcja → couplers=[]', () => {
@@ -697,31 +736,37 @@ describe('buildCanonicalGpzProps — sprzęgła', () => {
    --------------------------------------------------------------------------- */
 
 describe('buildCanonicalGpzProps — stan łączników pola i sprzęgła z modelu', () => {
-  function galaz(ref: string, type: string, status: 'open' | 'closed') {
-    return { id: ref, ref_id: ref, name: ref, type, status, from_bus_ref: 'bus-15', to_bus_ref: `${ref}-k`, tags: [], meta: {} } as never;
+  function galaz(ref: string, type: string, status: 'open' | 'closed' | undefined, from = 'bus-15a', to = `${ref}-k`) {
+    return { id: ref, ref_id: ref, name: ref, type, status, from_bus_ref: from, to_bus_ref: to, tags: [], meta: {} } as never;
   }
+  // GEOMETRIA-STACJI (§0 pkt 1–2): sekcje na RÓŻNYCH szynach, sprzęgło = gałąź `bus_coupler`
+  // między nimi; stan sprzęgła ze `status` gałęzi (brak statusu = nieznany — trzeci rysunek).
+  // Dawniej „brak gałęzi sprzęgła" dawał sprzęgło nieustalone z samego pola COUPLER; teraz
+  // brak gałęzi = brak sprzęgła (osobny test w bloku „sprzęgła"), a stan nieznany pochodzi
+  // z gałęzi bez `status`.
   function enmZeStanami(stanPola: 'open' | 'closed' | null, stanSprzegla: 'open' | 'closed' | null): EnmFragment {
     return {
       ...emptyEnm(),
       substations: [gpz('g', {
+        bus_refs: ['bus-15a', 'bus-15b'],
         gpz_sections: [
-          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15', right_coupler_ref: 'cpl' },
-          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15', left_coupler_ref: 'cpl' },
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15a', right_coupler_ref: 'cpl' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15b', left_coupler_ref: 'cpl' },
         ],
       })],
       bays: [
-        bay('pole-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1', equipment_refs: stanPola ? ['q-pole'] : [] }),
-        bay('cpl', 'COUPLER', 'g', 'bus-15', { equipment_refs: stanSprzegla ? ['q-cpl'] : [] }),
+        bay('pole-1', 'OUT', 'g', 'bus-15a', { gpz_section_id: 's1', equipment_refs: stanPola ? ['q-pole'] : [] }),
+        bay('cpl', 'COUPLER', 'g', 'bus-15a', { equipment_refs: ['q-cpl'] }),
       ],
       branches: [
         ...(stanPola ? [galaz('q-pole', 'breaker', stanPola)] : []),
-        ...(stanSprzegla ? [galaz('q-cpl', 'bus_coupler', stanSprzegla)] : []),
+        galaz('q-cpl', 'bus_coupler', stanSprzegla ?? undefined, 'bus-15a', 'bus-15b'),
       ],
-      buses: [bus('bus-15', 15)],
+      buses: [bus('bus-15a', 15), bus('bus-15b', 15)],
     };
   }
 
-  // Iloczyn: obiekt {pole odpływowe, sprzęgło} × stan w modelu {zamknięty, otwarty, brak gałęzi}.
+  // Iloczyn: obiekt {pole odpływowe, sprzęgło} × stan w modelu {zamknięty, otwarty, brak danej}.
   for (const stan of ['closed', 'open', null] as const) {
     it(`pole i sprzęgło: gałąź ${stan ?? 'brak'} → ${stan ?? 'unknown'}`, () => {
       const props = buildCanonicalGpzProps(enmZeStanami(stan, stan), 'g');

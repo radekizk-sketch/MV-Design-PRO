@@ -210,12 +210,50 @@ export function kategoriaPolaStacji(pole: {
   readonly bay_kind?: unknown;
   readonly metadane_pochodzenia?: unknown;
 }): KategoriaRoli | null {
-  for (const rodzaj of [pole.bay_kind, rekord(pole.metadane_pochodzenia)?.bay_kind]) {
-    const wartosc = napis(rodzaj)?.toLowerCase();
-    if (wartosc !== undefined && wartosc in KATEGORIA_RODZAJU_POLA) return KATEGORIA_RODZAJU_POLA[wartosc];
-  }
+  const rodzaj = rodzajPolaKatalogowego(pole);
+  if (rodzaj !== null) return KATEGORIA_RODZAJU_POLA[rodzaj];
   const rola = rolaPolaStacji(pole);
   return rola === null ? null : KATEGORIA_ROLI_POLA[rola];
+}
+
+/** Rodzaj pola katalogowego pola (`bay_kind` wpisu składu albo `metadane_pochodzenia.bay_kind`
+ *  rekordu) — jedno miejsce odczytu dla kategorii pola i dla predykatu rezerwy. */
+function rodzajPolaKatalogowego(pole: {
+  readonly bay_kind?: unknown;
+  readonly metadane_pochodzenia?: unknown;
+}): string | null {
+  for (const rodzaj of [pole.bay_kind, rekord(pole.metadane_pochodzenia)?.bay_kind]) {
+    const wartosc = napis(rodzaj)?.toLowerCase();
+    if (wartosc !== undefined && wartosc in KATEGORIA_RODZAJU_POLA) return wartosc;
+  }
+  return null;
+}
+
+/** GEOMETRIA-STACJI (§0 pkt 5): pole REZERWOWE — rodzaj pola katalogowego „rezerwowe", TEN
+ *  SAM odczyt, którym reguła rodzaju stacji wyłącza je z pól liniowych (lustro backendu
+ *  `enm/rodzaj_stacji.py`, `KATEGORIA_RODZAJU_POLA`). */
+export function czyPoleRezerwowe(pole: { readonly bay_kind?: unknown; readonly metadane_pochodzenia?: unknown }): boolean {
+  return rodzajPolaKatalogowego(pole) === 'rezerwowe';
+}
+
+/** GEOMETRIA-STACJI (§0 pkt 5): pole WOLNE — pole liniowe (`kategoriaPolaStacji`), którego
+ *  ZACISK (`terminal_bus_ref`, dana rekordu) nie jest końcem żadnego odcinka terenowego SN
+ *  modelu (`TYPY_ODCINKA_TERENOWEGO` — ten sam zbiór co reguła wyprowadzeń R3). Pole bez
+ *  zacisku w rekordzie nie jest rozstrzygane (zacisk dzielony z szyną — `false`, bez domysłu).
+ *  Odczyt końców gałęzi po refach rekordu, bez przechodzenia grafu. */
+export function czyPoleWolne(
+  pole: PoleDlaRodzaju & { readonly terminal_bus_ref?: unknown },
+  galezie: readonly GalazDlaRodzaju[],
+): boolean {
+  if (kategoriaPolaStacji(pole) !== 'liniowe') return false;
+  const zacisk = napis(pole.terminal_bus_ref);
+  if (!zacisk) return false;
+  return !galezie.some(
+    (galaz) =>
+      typeof galaz.type === 'string'
+      && TYPY_ODCINKA_TERENOWEGO.has(galaz.type)
+      && (napis(galaz.from_bus_ref) === zacisk || napis(galaz.to_bus_ref) === zacisk),
+  );
 }
 
 function wyprowadzeniaPolaczone(

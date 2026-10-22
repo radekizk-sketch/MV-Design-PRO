@@ -26,7 +26,7 @@ import { planSceneLabels } from '../labelLegibility';
 import { KADR_MAX_SCALE, type BoundingBox } from '../camera';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { indeksPrzynaleznosci, kluczePrzynaleznosci, nalezyDo } from '../viewAnchor';
-import { pickStationBus } from '../../../shared/stationBusResolution';
+import { stationSnSectionBusRefs } from '../../../shared/stationBusResolution';
 import {
   MIN_OPIS_CELU_KADRU_PX,
   SASIEDZI_ELEKTRYCZNIE_WYMAGANI,
@@ -182,7 +182,8 @@ describe('zagnieżdżenie pole ⊂ sekcja ⊂ stacja na L1 i L2', () => {
     const etykieta = sekcja.sciezka[sekcja.sciezka.length - 1]!.etykieta;
     expect(etykieta).toMatch(/^Szyna SN \d+(,\d+)? kV/);
     expect(etykieta).not.toBe(stacja.name);
-    expect(sekcja.refy).toContain(`${stacja.ref_id}#sn-bus`);
+    // GEOMETRIA-STACJI (Z-03): odcinek szyny SN należy do rekordu `Bus` sekcji.
+    expect(sekcja.refy).toContain(`${bay.bus_ref}#sn-bus`);
   });
 });
 
@@ -214,12 +215,17 @@ describe('szyna stacji: pasmo z jednego lustra i kompozyt rysunku z jednej regu�
     expect(refy.some((r) => r.endsWith('#sn-bus') || r.endsWith('#lv-bus'))).toBe(false);
   });
 
+  // GEOMETRIA-STACJI (Z-03, §0 pkt 1): każda szyna SN stacji jest SEKCJĄ z własnym odcinkiem
+  // `${busRef}#sn-bus` (reguła `stationSnSectionBusRefs`), więc druga szyna SN — wyższa,
+  // równa czy niższa — nie odbiera kadrowi sekcji jego odcinka. Dawniej jeden kompozyt
+  // `stacja#sn-bus` rozstrzygany `pickStationBus` (najwyższe napięcie, remis = odmowa)
+  // gubił odcinek sekcji przy drugiej szynie wyższej lub równej.
   it.each([
     ['brak drugiej szyny SN', null, true],
-    ['druga szyna SN wyższa (20 kV)', 20, false],
-    ['druga szyna SN równa (remis)', 'rowna', false],
+    ['druga szyna SN wyższa (20 kV)', 20, true],
+    ['druga szyna SN równa (remis)', 'rowna', true],
     ['druga szyna SN niższa (6 kV)', 6, true],
-  ] as const)('%s: kompozyt szyny SN w sekcji ⇔ pickStationBus wskazuje szynę pola', (_opis, druga, oczekiwany) => {
+  ] as const)('%s: odcinek sekcji szyny pola w kadrze sekcji ⇔ szyna pola jest sekcją SN stacji', (_opis, druga, oczekiwany) => {
     const model = kopia();
     const szynaPola = model.buses.find((b) => b.ref_id === bay.bus_ref)!;
     const stacja = model.substations.find((st) => st.ref_id === bay.substation_ref)!;
@@ -229,10 +235,12 @@ describe('szyna stacji: pasmo z jednego lustra i kompozyt rysunku z jednej regu�
       stacja.bus_refs = [...(stacja.bus_refs ?? []), ref];
     }
     const refy = sekcjaPola(model).refy;
-    const kompozyt = `${stacja.ref_id}#sn-bus`;
-    const wybrana = pickStationBus(stacja, new Map(model.buses.map((b) => [b.ref_id, b])), 'sn').ref;
-    expect(refy.includes(kompozyt)).toBe(oczekiwany);
-    expect(refy.includes(kompozyt)).toBe(wybrana === bay.bus_ref);
+    const odcinek = `${bay.bus_ref}#sn-bus`;
+    const sekcje = stationSnSectionBusRefs(stacja, new Map(model.buses.map((b) => [b.ref_id, b])));
+    expect(refy.includes(odcinek)).toBe(oczekiwany);
+    expect(refy.includes(odcinek)).toBe(sekcje.includes(bay.bus_ref!));
+    // Odcinek drugiej szyny nie wpada do kadru sekcji pola (to inna sekcja).
+    expect(refy.includes('bus/k2-druga-szyna-sn#sn-bus')).toBe(false);
   });
 });
 
@@ -360,7 +368,14 @@ describe('determinizm i jedno źródło przynależności', () => {
   });
 
   it('indeks przynależności ≡ przegląd zupełny sceny (symbole, odcinki, etykiety) na L0/L1/L2', () => {
+    // GEOMETRIA-STACJI (Z-03): szyny sekcji stacji należą do rekordów `Bus` sekcji, a do
+    // stacji — przez relację sceny `meta.stacjaSzynySekcji`; przegląd zupełny liczy je tak samo.
     const przeglad = (scene: SceneV3, ref: string): BoundingBox | null => {
+      const szynyStacji = Object.entries(scene.meta.stacjaSzynySekcji)
+        .filter(([, stacja]) => stacja === ref)
+        .map(([szyna]) => szyna);
+      const nalezy = (ownerRef: string | undefined): boolean =>
+        nalezyDo(ownerRef, ref) || szynyStacji.some((szyna) => nalezyDo(ownerRef, szyna));
       let b: BoundingBox | null = null;
       const dolicz = (x0: number, y0: number, x1: number, y1: number) => {
         b = b
@@ -368,16 +383,16 @@ describe('determinizm i jedno źródło przynależności', () => {
           : { minX: x0, minY: y0, maxX: x1, maxY: y1 };
       };
       for (const s of scene.symbols) {
-        if (!nalezyDo(s.meta?.ownerRef, ref)) continue;
+        if (!nalezy(s.meta?.ownerRef)) continue;
         const def = SYMBOL_DEFS[s.symbolId];
         dolicz(s.x, s.y, s.x + def.width, s.y + def.height);
       }
       for (const s of scene.segments) {
-        if (!nalezyDo(s.meta?.ownerRef, ref)) continue;
+        if (!nalezy(s.meta?.ownerRef)) continue;
         for (const p of s.points) dolicz(p.x, p.y, p.x, p.y);
       }
       for (const l of scene.labels) {
-        if (!nalezyDo(l.ownerRef, ref)) continue;
+        if (!nalezy(l.ownerRef)) continue;
         dolicz(l.rect.x, l.rect.y, l.rect.x + l.rect.width, l.rect.y + l.rect.height);
       }
       return b;

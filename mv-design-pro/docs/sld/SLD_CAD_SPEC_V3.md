@@ -353,6 +353,22 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
 
 ### 12.1 Prymat danych nad konwencją (rozstrzygnięcie „dane vs konwencja")
 
+> **KOREKTA 2026-10-21 (karta GEOMETRIA-STACJI §0 pkt 4, wpis
+> `GEOMETRIA-STACJI-BRAK-WYPOSAZENIA` w `docs/v12xx/REJESTR_KONFLIKTOW.md`) — wiąże przed
+> treścią §12.1/§12.3/§12.4 poniżej.** Fallback konwencji §12.4 jest SKASOWANY (dyrektywa
+> właściciela 2026-10-21 „zero fabrykacji" jest późniejsza od tej specyfikacji). Pole stacji
+> i GPZ rysowane jest w jednym z trzech przypadków: (a) rekordy aparatów modelu
+> (`Bay.primary_devices`, a przy ich braku gałęzie łączeniowe z `Bay.equipment_refs`) →
+> symbol, oznaczenie, typ (`data-apparatus-type`), stan z rekordu, `data-apparatus-source="dane"`,
+> `data-apparatus-origin="rekord_pola|galaz_pola"`; (b) propozycja szablonu w podglądzie
+> kreatora stacji (niezapisana) → kreska przerywana, `data-propozycja-szablonu`, opis
+> „propozycja szablonu", bez stanu; (c) brak rekordów → JEDNA sylwetka `bayNoEquipment`
+> („brak danych wyposażenia pola"), bez barwy i rysunku stanu, `data-apparatus-source="brak"`;
+> elementy modelu, których pole jest nośnikiem (transformator pola TR, źródło OZE), są
+> rysowane w obu ścieżkach. Pole rezerwowe/wolne traci głowicę i kończy się symbolem
+> `bayReserve`. Wartość `"konwencja"` znacznika `data-apparatus-source` nie istnieje.
+> Wyrocznia `bay_template_probe` zastąpiona przez `bay_equipment_probe` (`bayEquipmentGaps`).
+
 - **Wymaganie:** stos aparatów pola jest budowany z `Bay.primary_devices` (ENM), gdy lista jest niepusta.
   Kolejność aparatów wynika z `placement` (UPSTREAM przy szynie → MIDSTREAM → DOWNSTREAM przy głowicy)
   oraz `section_side`; symbol z `kind`→`ApparatusKind` (`apparatusContracts.ts`). Konwencja-wg-roli
@@ -396,11 +412,17 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
 
 - **Wymaganie:** każde pole liniowe/odgałęźne, którego kabel jest fizycznym wejściem, kończy stos symbolem
   głowicy kablowej (`cableHead`), a kabel wchodzi/wychodzi od głowicy — nigdy „od szyny" bez głowicy.
-- **Źródło danych:** `kind='CABLE_HEAD'` (ENM) lub konwencja (§12.4) z oznaczeniem.
+- **Źródło danych:** `kind='CABLE_HEAD'` (ENM). (Korekta 2026-10-21: bez konwencji §12.4 —
+  pole bez rekordu głowicy nie dostaje głowicy dorysowanej; patrz nota w §12.1.)
 - **Wyrocznia odbioru:** `field_entry_probe` — 0 pól liniowych, w których zejście kablowe zaczyna się
   bez symbolu głowicy na końcu toru pola (gdy pole ma kabel).
 
 ### 12.4 Kompozycja typowa celki wg roli (KONWENCJA RYSUNKOWA — fallback)
+
+> **SKASOWANE 2026-10-21 (nota w §12.1, wpis rejestru `GEOMETRIA-STACJI-BRAK-WYPOSAZENIA`).**
+> Treść poniżej zostaje jako zapis historyczny; słownik sekwencji typowych żyje dalej
+> WYŁĄCZNIE jako profile referencyjne pakietu `iec62271` Reference Engine (walidacja
+> i szablony kreatora), nie jako rysunek pola bez danych.
 
 - **Wymaganie:** znormalizowane stosy fallback (gdy `primary_devices` puste), PER TECHNOLOGIA
   rozdzielnicy (recenzja NO-GO właściciela 2026-07-17 pkt 5 — słownik szablonów §12.4a):

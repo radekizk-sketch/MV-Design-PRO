@@ -570,6 +570,18 @@
   border-radius: 10px;
   background: var(--mvd-panel-2);
 }
+/* GEOMETRIA-STACJI (§0 pkt 4b): aparat PROPOZYCJI SZABLONU (niezapisany w modelu) —
+   kreska przerywana na całym glifie, odróżniona od aparatu z rekordu modelu na schemacie
+   sieci (kreska ciągła). Opis nad rysunkiem nazywa stan danych słowami. */
+.mvd-podglad-propozycja * {
+  stroke-dasharray: 3 2;
+}
+.mvd-podglad-propozycja-opis {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mvd-ink);
+}
 .mvd-podglad-rozdzielnica-opis {
   margin: 0;
   font-size: 11px;

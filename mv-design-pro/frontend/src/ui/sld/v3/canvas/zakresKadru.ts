@@ -35,7 +35,7 @@ import type { Bay, Bus, EnergyNetworkModel, GPZSection, Substation } from '../..
 import type { TorElementuOdpowiedz } from '../../../../ui2/adapters/topologiaZasilenia';
 import { sceneObstacleRects, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { sheetSizeFor } from '../sheet/outline';
-import { pickStationBus, type StationBusSide } from '../../shared/stationBusResolution';
+import { pickStationBus, stationSnSectionBusRefs, type StationBusSide } from '../../shared/stationBusResolution';
 import { pasmoNapieciowe, powyzejPasmaNn, wPasmieNn } from '../../../../ui2/model/pasmaNapieciowe';
 import type { TuszEtykietKadru } from './camera';
 import { planSceneLabels, type PodlogaOpisowCelu } from './labelLegibility';
@@ -346,17 +346,23 @@ function stronaSzyny(ix: IndeksModelu, szyna: string): StationBusSide | null {
 }
 
 /**
- * Kompozyt szyny stacji na rysunku (`stacja#sn-bus` / `stacja#lv-bus`,
- * `compose/station.ts`), gdy rysuje DOKŁADNIE tę szynę. Rysunek ma dla stacji
- * jeden odcinek szyny SN i jeden nN, a to, którą szynę przedstawia, rozstrzyga
- * JEDNA reguła `pickStationBus` (`sld/shared/stationBusResolution.ts` — ta sama,
- * z której adapter bierze napięcie opisu szyny): najwyższe napięcie strony,
+ * Ref odcinka szyny stacji na rysunku (`compose/station.ts`), gdy rysuje DOKŁADNIE tę
+ * szynę: strona SN — odcinek sekcji `szyna#sn-bus` (każda sekcja SN stacji ma własny);
+ * strona nN — jeden kompozyt `stacja#lv-bus`, którego szynę rozstrzyga reguła
+ * `pickStationBus` (`sld/shared/stationBusResolution.ts`): najwyższe napięcie strony,
  * remis ⇒ brak jednoznacznej szyny ⇒ kompozyt nie jest dopisywany.
  */
 function kompozytSzyny(ix: IndeksModelu, stacja: Substation, szyna: string): string | null {
   const strona = stronaSzyny(ix, szyna);
-  if (strona === null || pickStationBus(stacja, ix.szyny, strona).ref !== szyna) return null;
-  return `${stacja.ref_id}#${strona === 'sn' ? 'sn-bus' : 'lv-bus'}`;
+  if (strona === null) return null;
+  // GEOMETRIA-STACJI (Z-03): strona SN rysuje odcinek NA SEKCJĘ (`${busRef}#sn-bus`,
+  // reguła `stationSnSectionBusRefs` — ta sama co rysunek), więc kadr sekcji stacji
+  // wielosekcyjnej wskazuje WŁASNY odcinek zamiast odmowy przy remisie napięć.
+  if (strona === 'sn') {
+    return stationSnSectionBusRefs(stacja, ix.szyny).includes(szyna) ? `${szyna}#sn-bus` : null;
+  }
+  if (pickStationBus(stacja, ix.szyny, strona).ref !== szyna) return null;
+  return `${stacja.ref_id}#lv-bus`;
 }
 
 /** Sekcja szyn elementu: sekcja GPZ albo szyna stacji, na której stoi pole. */
@@ -434,9 +440,9 @@ function refySekcji(ix: IndeksModelu, sekcja: Sekcja): string[] {
   }
   const { stacja, szyna } = sekcja;
   const refy = [szyna];
-  // Kompozycja stacji rysuje szynę SN jako JEDEN kompozyt `stacja#sn-bus`
+  // Kompozycja stacji rysuje szynę SN jako odcinek sekcji `szyna#sn-bus`
   // (`compose/station.ts`), a szynę nN jako `stacja#lv-bus` — należy do sekcji,
-  // gdy rysuje tę szynę (`kompozytSzyny`, jedna reguła wyboru szyny stacji).
+  // gdy rysuje tę szynę (`kompozytSzyny`, jedna reguła szyn stacji).
   const kompozyt = kompozytSzyny(ix, stacja, szyna);
   if (kompozyt) refy.push(kompozyt);
   for (const pole of ix.polaStacji.get(stacja.ref_id) ?? []) {

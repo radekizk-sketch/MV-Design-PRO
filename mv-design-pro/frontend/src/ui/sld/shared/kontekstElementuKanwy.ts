@@ -18,7 +18,6 @@ import { create } from 'zustand';
 
 import type { PreviewElementKind } from '../v3/compose/preview';
 import type { CanvasMenuSubject } from '../v3/canvas/canvasMenuSubject';
-import type { RolaSymboluLacznika } from '../v2/model/stanAparatowPola';
 
 export interface KontekstElementuKanwy {
   /** Id selekcji globalnej, której dotyczy kontekst (klucz odczytu). */
@@ -29,8 +28,6 @@ export interface KontekstElementuKanwy {
   readonly ref: string;
   /** Ref pojedynczego urządzenia aparatu (ścieżka danych sceny), gdy znany. */
   readonly deviceRef?: string;
-  /** Rola klikniętego symbolu łącznika bez `deviceRef` (`SldElementClickMeta.rolaLacznika`). */
-  readonly rolaLacznika?: RolaSymboluLacznika;
   /** Temat menu z `resolveCanvasMenuSubject`; `null` = obiekt bez operacji domenowych. */
   readonly temat: CanvasMenuSubject | null;
   /** Kanwa w trybie podglądu — wykonawca akcji blokuje wtedy wstawianie i usuwanie. */

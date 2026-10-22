@@ -31,6 +31,10 @@ V3 = FRONTEND_SRC / "ui" / "sld" / "v3"
 WORKFLOW = REPO_ROOT.parent / ".github" / "workflows" / "sld-determinism.yml"
 
 CONTINUITY_MODULE = V3 / "scene" / "lodContinuity.ts"
+# GEOMETRIA-STACJI: zbiór aparatów ciągłości deklarowany w rejestrze symboli (jedno źródło
+# dla wyroczni i dla kompozycji L0 GPZ w `buildScene.ts` — bez cyklu importu); wyrocznia
+# MUSI go reeksportować z tego modułu, nie trzymać kopii.
+SYMBOL_DEFS_MODULE = V3 / "symbols" / "defs.ts"
 CONTINUITY_TEST = V3 / "scene" / "__tests__" / "lodContinuity.test.ts"
 LAYERS_MODULE = V3 / "canvas" / "layers.ts"
 CANVAS_MODULE = V3 / "canvas" / "SldCanvasV3.tsx"
@@ -97,7 +101,16 @@ def main() -> int:
         )
     else:
         segment_kinds = declared_list(module_src, "CURRENT_PATH_SEGMENT_KINDS")
-        apparatus = declared_list(module_src, "CONTINUITY_APPARATUS_SYMBOL_IDS")
+        defs_src = read(SYMBOL_DEFS_MODULE) or ""
+        apparatus = declared_list(defs_src, "CONTINUITY_APPARATUS_SYMBOL_IDS")
+        if not re.search(
+            r"export \{\s*CONTINUITY_APPARATUS_SYMBOL_IDS\s*\} from '\.\./symbols/defs'",
+            module_src,
+        ):
+            violations.append(
+                "GUARD 1: wyrocznia nie reeksportuje CONTINUITY_APPARATUS_SYMBOL_IDS z rejestru"
+                " symboli (druga kopia zbioru albo brak kontraktu)"
+            )
         if segment_kinds is None:
             violations.append("GUARD 1: brak deklaracji CURRENT_PATH_SEGMENT_KINDS")
         else:

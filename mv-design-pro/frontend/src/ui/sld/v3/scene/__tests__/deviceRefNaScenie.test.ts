@@ -13,7 +13,10 @@
  *
  * Wyrocznia „ref istnieje w modelu" (zero fabrykacji): każdy `deviceRef` na
  * scenie MUSI być `BayPrimaryDevice.device_ref` obecnym w migawce
- * (`bays[].primary_devices` — karta W5-B: rekord `bays` jest jedynym nośnikiem pól).
+ * (`bays[].primary_devices` — karta W5-B: rekord `bays` jest jedynym nośnikiem pól)
+ * ALBO refem gałęzi łączeniowej modelu wskazanej przez `Bay.equipment_refs` (karta
+ * GEOMETRIA-STACJI §0 pkt 4a: aparat pola z rekordu gałęzi, gdy pole nie niesie
+ * `primary_devices` — dawniej ta sama gałąź była rysowana symbolem konwencji bez refu).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -46,8 +49,10 @@ function deviceRefyModelu(enm: EnergyNetworkModel): ReadonlySet<string> {
       if (typeof ref === 'string' && ref) refy.add(ref);
     }
   };
+  const galezie = new Set((enm.branches ?? []).filter((b) => b.type !== 'bus_coupler').map((b) => b.ref_id));
   for (const bay of enm.bays ?? []) {
     zbierz((bay as { primary_devices?: unknown }).primary_devices);
+    for (const ref of bay.equipment_refs ?? []) if (galezie.has(ref)) refy.add(ref);
   }
   return refy;
 }
@@ -109,11 +114,18 @@ describe('S9-10 — deviceRef aparatu przechodzi z kompozycji na scenę', () => 
   );
 
   it.each([0, 1, 2] as SceneLod[])(
-    'NEGATYW (LOD %s): stos KONWENCJI (fixtura bez primary_devices) NIE fabrykuje deviceRef',
+    'NEGATYW (LOD %s): fixtura bez primary_devices — każdy deviceRef to gałąź łączeniowa pola z modelu, pole bez rekordów nie ma refu',
     (lod) => {
+      // KOREKTA (GEOMETRIA-STACJI §0 pkt 4): dawniej ta fixtura rysowała stosy konwencji
+      // i wyrocznia żądała ZERA refów. Konwencja skasowana — aparat pola rysuje się z gałęzi
+      // łączeniowej wskazanej w `equipment_refs` (ref = ta gałąź), a pole bez żadnego
+      // rekordu dostaje sylwetkę braku danych bez refu. Intencja (zero fabrykacji) bez zmian.
       const scene = buildSceneV3(substrateEnm, lod);
+      const dozwolone = deviceRefyModelu(substrateEnm);
       const zRefem = scene.symbols.filter((s) => s.meta?.deviceRef !== undefined);
-      expect(zRefem, 'zero zgadywanych refów urządzeń').toEqual([]);
+      expect(zRefem.filter((s) => !dozwolone.has(s.meta!.deviceRef!)), 'zero zgadywanych refów urządzeń').toEqual([]);
+      const bezDanych = scene.symbols.filter((s) => s.meta?.apparatusSource === 'brak');
+      expect(bezDanych.filter((s) => s.meta?.deviceRef !== undefined)).toEqual([]);
     },
   );
 

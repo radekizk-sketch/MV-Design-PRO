@@ -1,9 +1,10 @@
 /**
  * Sieć kadrów stacji (karta POLA-W-TORZE, reużyta przez kartę K2 KADROWANIE-NAWIGACJA):
- * GPZ z dwoma polami liniowymi, magistrala trzech odcinków, cztery drogi budowy stacji
- * SN/nN — przelotowa (wcięcie w odcinek, dwa pola odgałęźne), sekcyjna (wcięcie, stacja
- * typu D), końcowa (stacja na końcu ciągu) i odgałęźna (koniec odgałęzienia z pola
- * odgałęźnego stacji przelotowej). Budowana operacjami API na REALNYM backendzie.
+ * GPZ z dwoma polami liniowymi, magistrala trzech odcinków, cztery stacje SN/nN nazwane
+ * wg rodzaju z topologii (karta GEOMETRIA-STACJI §0 pkt 6) — odgałęźna (wcięcie w odcinek,
+ * dwa pola odgałęźne), sekcyjna (wcięcie, stacja typu D), końcowa (stacja na końcu ciągu)
+ * i końcowa odgałęzienia (koniec odgałęzienia z pola odgałęźnego stacji odgałęźnej).
+ * Budowana operacjami API na REALNYM backendzie.
  *
  * Moduł pomocniczy (nie spec): jedna definicja sieci dla obu speców — druga kopia byłaby
  * dwiema prawdami o tym samym materiale oceny.
@@ -104,7 +105,7 @@ export async function siecKadrow(request: APIRequestContext) {
     ...wspolne,
     segment_ref: odcinek1?.ref_id,
     station_type: 'B',
-    station: { name: 'Stacja Przelotowa', sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
+    station: { name: 'Stacja Odgałęźna', sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
     sn_fields: ['IN', 'OUT', 'FEEDER', 'FEEDER'],
   });
   const odcinek3 = kable(enm).find((b) => b.name === 'Odcinek 3');
@@ -125,8 +126,8 @@ export async function siecKadrow(request: APIRequestContext) {
     nn_voltage_kv: 0.4,
     sn_fields: [{ field_role: 'LINIA_IN' }, { field_role: 'LINIA_OUT' }],
   });
-  const przelotowa = (enm.substations ?? []).find((s) => s.name === 'Stacja Przelotowa');
-  const polaOdgalezne = polaStacjiEnm(enm, przelotowa?.ref_id)
+  const odgalezna = (enm.substations ?? []).find((s) => s.name === 'Stacja Odgałęźna');
+  const polaOdgalezne = polaStacjiEnm(enm, odgalezna?.ref_id)
     .filter((f) => f.bay_role === 'FEEDER')
     .map((f) => f.ref_id);
   expect(polaOdgalezne.length).toBe(2);
@@ -137,7 +138,7 @@ export async function siecKadrow(request: APIRequestContext) {
   const koniecOdgalezienia = kable(enm).find((b) => b.name === 'Odgałęzienie 1')?.to_bus_ref;
   enm = await operacja(request, caseId, 'append_station_on_endpoint', {
     endpoint_bus_ref: koniecOdgalezienia,
-    station: { name: 'Stacja Odgałęźna', station_type: 'branch' },
+    station: { name: 'Stacja Końcowa odgałęzienia', station_type: 'branch' },
     field_apparatus_catalog_ref: APARAT,
     transformer: { catalog_binding: katalog('TRAFO_SN_NN', TRAFO) },
     nn_voltage_kv: 0.4,
@@ -207,9 +208,15 @@ export async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_tec
     .toBe(docelowy);
 }
 
+/** Stacje ziarna z nazwami zgodnymi z rodzajem wyprowadzonym z topologii (karta
+ *  GEOMETRIA-STACJI §0 pkt 6; reguła `ui/shared/rodzajStacji.ts` = `enm/rodzaj_stacji.py`):
+ *  stacja z czterema polami liniowymi jest odgałęźna (R2), stacja sekcyjna ma sprzęgło (R1),
+ *  stacja na końcu ciągu z drugim polem liniowym wolnym jest końcowa (R3), a stacja na końcu
+ *  odgałęzienia z jednym polem liniowym — końcowa (R4). Deklaracje `station_type` zostają
+ *  (walidator W043 zgłasza rozjazd deklaracji z topologią — ćwiczone w `k2-kadrowanie-nawigacja`). */
 export const STACJE: readonly { readonly nazwa: string; readonly plik: string }[] = [
-  { nazwa: 'Stacja Przelotowa', plik: 'przelotowa' },
+  { nazwa: 'Stacja Odgałęźna', plik: 'odgalezna' },
   { nazwa: 'Stacja Sekcyjna', plik: 'sekcyjna' },
   { nazwa: 'Stacja Końcowa', plik: 'koncowa' },
-  { nazwa: 'Stacja Odgałęźna', plik: 'odgalezna' },
+  { nazwa: 'Stacja Końcowa odgałęzienia', plik: 'koncowa-odgalezienia' },
 ];

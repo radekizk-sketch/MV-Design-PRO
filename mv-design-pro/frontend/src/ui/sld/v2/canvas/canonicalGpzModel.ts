@@ -97,8 +97,12 @@ export interface CanonicalGpzBay {
   readonly bayNumber: string | null;
   /** Krótka nazwa odpływu z `Bay.feeder_short_name`. */
   readonly feederName: string | null;
-  /** Cel feedera (np. "→ STAROŁĘCKA 42"). */
+  /** NAZWA stacji docelowej odejścia (`Bay.outgoing_destination_ref` rozwiązany na
+   *  `Substation.name`, ref gdy model nie zna nazwy); strzałkę dokłada kompozycja. */
   readonly destinationLabel: string | null;
+  /** GEOMETRIA-STACJI (§0 pkt 5): pole rezerwowe (`bay_kind`) albo wolne (bez odcinka na
+   *  zacisku) — ta sama para predykatów co pola stacji (`ui/shared/rodzajStacji.ts`). */
+  readonly reserve?: 'rezerwowe' | 'wolne';
   /** Rola pola dla gramatyki stosu aparatów — z ENM `Bay.bay_role`. */
   readonly fieldRole: BayFieldRole;
   /** Rola pola dla tła i legendy (`gpz.bay.panel`) — z ENM `Bay.bay_role`, bez zlewania
@@ -125,9 +129,10 @@ export interface CanonicalGpzBay {
   /** Kody funkcji zabezpieczeniowych ANSI/IEC (`Bay.protection_codes`) — kompozycja
    *  pokazuje WYŁĄCZNIE dostarczone kody (brak → brak oznaczenia). */
   readonly protectionCodes?: readonly string[];
-  /** Uporządkowana lista aparatów pola z ENM `Bay.primary_devices` — `undefined` gdy ENM
-   *  nie niesie tej danej. Kompozycja dopasowuje ją do szablonu stosu wyłącznie przy
-   *  dokładnej zgodności sekwencji (`primaryDeviceItemsForTemplate`). */
+  /** Uporządkowana lista aparatów pola z modelu (`Bay.primary_devices`, a gdy pola nie ma —
+   *  gałęzie łączeniowe w `equipment_refs`; `projectBayPrimaryDevices`) — `undefined` gdy
+   *  model nie niesie żadnego rekordu aparatu. Kompozycja buduje z niej stos pola
+   *  (`compose/gpz.ts specyfikacjaPolaGpz`); bez niej — sylwetka braku danych. */
   readonly primaryDevices?: readonly BayPrimaryDeviceView[];
   /** Adnotacja zabezpieczeń pola — `Bay.protection_ref` rozwiązany na
    *  `ProtectionAssignment`. Kody tu mają pierwszeństwo nad `protectionCodes`. */
@@ -161,11 +166,17 @@ export function czyPoleKabloweGpz(role: BayFieldRole): boolean {
 export type SwitchState = 'closed' | 'open' | 'unknown';
 
 export interface CanonicalGpzCoupler {
+  /** `Branch.ref_id` gałęzi `bus_coupler` (GEOMETRIA-STACJI: jedno źródło sprzęgła). */
   readonly couplerId: string;
   readonly leftSectionId: string;
   readonly rightSectionId: string;
   readonly designation: string;
+  /** Stan z `Branch.status` gałęzi sprzęgła (brak = nieznany). */
   readonly closedState: SwitchState;
+  /** Rodzaj łącznika z danych (`v2/model/sprzeglaSekcji.ts`); brak = łącznik. */
+  readonly rodzaj?: 'wylacznik' | 'lacznik';
+  /** Pole sprzęgła wskazujące gałąź (`null`/brak = brak rekordu pola). */
+  readonly bayRef?: string | null;
 }
 
 export interface CanonicalGpzTransformer {

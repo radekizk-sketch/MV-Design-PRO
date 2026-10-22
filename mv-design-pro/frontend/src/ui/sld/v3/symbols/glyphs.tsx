@@ -766,6 +766,48 @@ export function DerUnknownGlyph(props: GlyphProps): JSX.Element {
 }
 
 /**
+ * GEOMETRIA-STACJI (§0 pkt 4c): pole bez ŻADNEGO rekordu wyposażenia w modelu — tor pola
+ * doprowadzony do przerywanej ramki z pytajnikiem. Glif NIE czyta `state`: bez rekordu nie
+ * ma stanu, a więc i koloru stanu (dyrektywa właściciela 2026-10-21, zero fabrykacji).
+ */
+export function BayNoEquipmentGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('bayNoEquipment', props)} data-brak-wyposazenia="true">
+      <line x1={8} y1={0} x2={8} y2={4} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <rect
+        x={1} y={4} width={14} height={24}
+        fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
+        strokeDasharray="3 2"
+      />
+      <text
+        x={8} y={21} textAnchor="middle"
+        fill={stroke(props)} fontFamily="sans-serif" fontSize={13} fontWeight={700}
+      >
+        ?
+      </text>
+      <line x1={8} y1={28} x2={8} y2={32} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+    </g>
+  );
+}
+
+/**
+ * GEOMETRIA-STACJI (§0 pkt 5): zakończenie pola rezerwowego/wolnego — krótki tor pola
+ * zamknięty poprzeczką i drugą, przerywaną: pole przygotowane, bez głowicy i bez odejścia.
+ */
+export function BayReserveGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('bayReserve', props)}>
+      <line x1={8} y1={0} x2={8} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={2} y1={8} x2={14} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line
+        x1={4} y1={13} x2={12} y2={13}
+        stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} strokeDasharray="2 2"
+      />
+    </g>
+  );
+}
+
+/**
  * F9.4 (spec §13.1/§13.2): sieć zewnętrzna (`Source` ENM, `kind=
  * 'external_grid'`) — strzałka zasilania W DÓŁ (konwencja: moc wchodzi Z
  * ZEWNĄTRZ do szyny), odrębna od wszystkich symboli DER (bez ramki
@@ -1187,6 +1229,8 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derGenerator: DerGeneratorGlyph,
   derWind: DerWindGlyph,
   derUnknown: DerUnknownGlyph,
+  bayNoEquipment: BayNoEquipmentGlyph,
+  bayReserve: BayReserveGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
   gpzCollapsed: GpzCollapsedGlyph,

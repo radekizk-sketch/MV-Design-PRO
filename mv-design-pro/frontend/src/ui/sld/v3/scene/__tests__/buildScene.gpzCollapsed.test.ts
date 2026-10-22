@@ -27,6 +27,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, lod0ReadabilityGaps, allSourcesConnected, allSourcesVisible, type SceneV3 } from '../buildScene';
 import { lodPathContinuityGaps, CONTINUITY_APPARATUS_SYMBOL_IDS } from '../lodContinuity';
 import { SYMBOL_DEFS, type SymbolId } from '../../symbols/defs';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 import { MINI_GPZ, miniGpzPathContinuityGaps, miniGpzMarkerSpacingGaps, miniGpzSignature } from '../../symbols/miniRmuGrammar';
 import { minimapProjectionOf, minimapShapesOf } from '../../canvas/minimap';
 
@@ -87,7 +88,9 @@ function gpzCollapseGaps(scene: SceneV3): readonly string[] {
   // Aparat ciągłości pola odejściowego — wymóg 3 K11-B (LOD nie ukrywa
   // aparatów ciągłości toru); bez niego zwinięcie kłamałoby o możliwości
   // odcięcia magistrali.
-  const wylaczniki = gpzSymbols(scene).filter((s) => s.symbolId === 'breaker');
+  // GEOMETRIA-STACJI (§0 pkt 4): aparatem pola na L0 jest łącznik z rekordu modelu albo —
+  // gdy model go nie niesie — sylwetka braku danych; kontrakt wymaga JEDNEGO z nich na pole.
+  const wylaczniki = aparatyPolL0(scene);
   const pola = bloki[0]?.meta?.gpzGlyph?.feeders ?? 0;
   if (wylaczniki.length !== pola) {
     gaps.push(`aparatów ciągłości pól odejściowych ${wylaczniki.length}, pól ${pola}`);
@@ -95,12 +98,21 @@ function gpzCollapseGaps(scene: SceneV3): readonly string[] {
   return gaps;
 }
 
+const APARATY_POLA_L0 = new Set<string>([...CONTINUITY_APPARATUS_SYMBOL_IDS, 'bayNoEquipment']);
+
+/** Aparaty pól odejściowych zwiniętego bloku GPZ (testId `sld-v3-l0-gpz-bay-…`). */
+function aparatyPolL0(scene: SceneV3) {
+  return gpzSymbols(scene).filter(
+    (s) => (s.meta?.testId ?? '').startsWith('sld-v3-l0-gpz-bay-') && APARATY_POLA_L0.has(s.symbolId),
+  );
+}
+
 describe('KD-5 — L0: blok GPZ ZWINIĘTY (jeden symbol, zero geometrii pól wewnętrznych)', () => {
   it('kontrakt zwinięcia spełniony na REALNEJ scenie sieci referencyjnej', () => {
     expect(gpzCollapseGaps(sceneL0)).toEqual([]);
   });
 
-  it('GPZ wnosi na L0 dokładnie 3 symbole (blok + sieć zewnętrzna + aparat pola magistrali) wobec 15 na L1', () => {
+  it('GPZ wnosi na L0 dokładnie 3 symbole (blok + sieć zewnętrzna + aparat pola magistrali) wobec 5 na L1', () => {
     // POMIAR BAZOWY (fixtura niezmienna — liczby przybite jak golden): przed
     // zwinięciem GPZ rysował na L0 16 symboli po 16 px świata, co przy skali
     // przeglądu 0,1203 dawało ≈1,9 px na symbol (V12K-285).
@@ -122,9 +134,20 @@ describe('KD-5 — L0: blok GPZ ZWINIĘTY (jeden symbol, zero geometrii pól wew
     // wywoływany jest WYŁĄCZNIE z operacji budowy STACJI SN/nN
     // (`insert_station_on_segment_sn`/`append_station_on_endpoint`), nigdy z
     // budowy GPZ. Pełny wywód: `kosztSceny.test.ts` pkt (13).
-    expect(gpzSymbols(sceneL0).map((s) => s.symbolId).sort()).toEqual(['breaker', 'gpzCollapsed', 'gridSource']);
-    expect(gpzSymbols(sceneL1).length).toBe(15);
-    expect(gpzSymbols(sceneL2).length).toBe(15);
+    //
+    // AKTUALIZACJA (GEOMETRIA-STACJI, 2026-10-21): 15 → 5 na L1/L2. Aparaty WYŁĄCZNIE z rekordów
+    // modelu (§0 pkt 4): GPZ fikstury nie ma w modelu pól WN TR ani TR (tor transformatora →
+    // dwie sylwetki braku danych zamiast DS+CB+CT i DS+CB+CT+ES z konwencji), a pole magistrali
+    // nie niesie żadnego rekordu aparatu (ani `primary_devices`, ani gałęzi łącznika
+    // w `equipment_refs`) — sylwetka braku danych zamiast DS+CB+CT+DS+ES+głowicy. Skład L1:
+    // sieć zewnętrzna + trzy sylwetki braku danych (pole WN TR, pole TR, pole magistrali)
+    // + transformator. L0: aparat ciągłości pola magistrali jest TYM SAMYM, co rysuje L1 —
+    // sylwetka braku danych (do karty L0 rysował wyłącznik z konwencji w każdym polu).
+    expect(gpzSymbols(sceneL0).map((s) => s.symbolId).sort()).toEqual(['bayNoEquipment', 'gpzCollapsed', 'gridSource']);
+    expect(gpzSymbols(sceneL1).map((s) => s.symbolId).sort()).toEqual(
+      ['bayNoEquipment', 'bayNoEquipment', 'bayNoEquipment', 'gridSource', 'transformer2W'],
+    );
+    expect(gpzSymbols(sceneL2).length).toBe(5);
   });
 
   it('blok niesie TOŻSAMOŚĆ (ref GPZ + pas nazwy z napięciem i stanem) — nie anonimowy prostokąt', () => {
@@ -219,8 +242,11 @@ describe('KD-5 — zwinięcie NIE przemeblowuje świata (jedna kotwica) i nie ł
     // między dwoma odcinkami odgałęzienia) — element modelu, który dotąd nie miał
     // żadnego prymitywu (`scene/elementyToru.ts`). Intencja bez zmian: aparat pola
     // odejściowego pochodzi z GPZ; łącznik toru jest osobną klasą z własnym testId.
-    const zGpz = aparaty.filter((s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'));
-    expect(zGpz.length).toBeGreaterThan(0);
+    // GEOMETRIA-STACJI (§0 pkt 4): pole magistrali GPZ fikstury nie niesie rekordu łącznika,
+    // więc jego aparatem na L0 jest sylwetka braku danych (nie aparat ciągłości z konwencji);
+    // intencja „pole odejściowe GPZ ma na L0 swój aparat" sprawdzana wprost.
+    expect(aparaty.filter((s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'))).toEqual([]);
+    expect(aparatyPolL0(sceneL0).map((s) => s.symbolId)).toEqual(['bayNoEquipment']);
     // K2b §0.4: punkt normalnie otwarty wskazany ŁĄCZNIKIEM toru
     // (`Corridor.no_point_ref`) ma symbol `noPoint` także na L0 — to znacznik
     // stanu TEGO łącznika toru (ten sam `ownerRef`), nie aparat innej klasy.
@@ -299,7 +325,7 @@ describe('KD-5 — REGRESJA WSTRZYKNIĘTA: kontrakt GRYZIE', () => {
   it('pole odejściowe bez aparatu ciągłości ⇒ kontrakt czerwony ORAZ luka ciągłości LOD', () => {
     const bezWylacznika: SceneV3 = {
       ...sceneL0,
-      symbols: sceneL0.symbols.filter((s) => s.symbolId !== 'breaker'),
+      symbols: sceneL0.symbols.filter((s) => !(s.meta?.testId ?? '').startsWith('sld-v3-l0-gpz-bay-')),
     };
     expect(bezWylacznika.symbols.length).toBeLessThan(sceneL0.symbols.length);
     expect(gpzCollapseGaps(bezWylacznika).some((g) => g.startsWith('aparatów ciągłości'))).toBe(true);
@@ -310,5 +336,24 @@ describe('KD-5 — REGRESJA WSTRZYKNIĘTA: kontrakt GRYZIE', () => {
     const bezAparatow: SceneV3 = { ...sceneL0, symbols: sceneL0.symbols.filter((s) => !ids.has(s.symbolId)) };
     expect(lodPathContinuityGaps(bezWylacznika).some((g) => g.reason === 'brak-aparatow-ciaglosci')).toBe(false);
     expect(lodPathContinuityGaps(bezAparatow).some((g) => g.reason === 'brak-aparatow-ciaglosci')).toBe(true);
+  });
+
+  // GEOMETRIA-STACJI (§0 pkt 4) — iloczyn „LOD (L0 / L1) × pole z rekordem łącznika / bez
+  // rekordu": aparat pola na L0 jest TYM SAMYM łącznikiem, który L1 rysuje z rekordu modelu
+  // (ten sam stan), a pole bez rekordu dostaje na obu LOD sylwetkę braku danych. Iniekcja:
+  // przywrócenie stałego `breaker` w `buildCollapsedGpz` czerwieni przypadek bez rekordu.
+  it('aparat pola na L0 pochodzi z rekordu modelu — pole bez rekordu: sylwetka braku danych, pole z rekordem: jego łącznik i stan', () => {
+    const bayRef = 'gpz/1021aa18ea28ab398f1166359a58215a/bay/001/001';
+    const bezRekordu = aparatyPolL0(sceneL0);
+    expect(bezRekordu.map((s) => [s.meta?.ownerRef, s.symbolId, s.state])).toEqual([[bayRef, 'bayNoEquipment', undefined]]);
+
+    const zRekordami = zRekordamiAparatowPol(enm);
+    const l0 = buildSceneV3(zRekordami, 0);
+    const l1 = buildSceneV3(zRekordami, 1);
+    const wylacznikL1 = l1.symbols.find((s) => s.meta?.ownerRef?.startsWith(bayRef) && s.symbolId === 'breaker');
+    expect(wylacznikL1).toBeDefined();
+    expect(aparatyPolL0(l0).map((s) => [s.meta?.ownerRef, s.symbolId, s.state])).toEqual([
+      [bayRef, 'breaker', wylacznikL1!.state],
+    ]);
   });
 });

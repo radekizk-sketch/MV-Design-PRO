@@ -2,9 +2,9 @@
  * 7 pozycji PLAN recenzji NO-GO właściciela 2026-07-17 (rejestr:
  * docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md, spec §12.5) — dowody sceny:
  *
- *  - pkt 5: szablony technologiczne pól RMU — `bay_template_probe`
- *    (`bayTemplateGaps`) z NEGATYWEM (sabotaż: breaker wstrzyknięty w pole
- *    RMU konwencji MUSI dać gap);
+ *  - pkt 5: prawda o wyposażeniu pól — `bay_equipment_probe` (`bayEquipmentGaps`,
+ *    karta GEOMETRIA-STACJI zastąpiła sondę szablonów konwencji RMU) z NEGATYWAMI
+ *    dla każdej przyczyny sondy;
  *  - pkt 6: tor za TR domknięty — wiersze strony nN w paśmie nazw
  *    („Szyna nN · 0,4 kV" + jawna granica modelu, bo fixtura nie niesie
  *    rekordów `Load`);
@@ -17,69 +17,88 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  allBayTemplatesValid,
-  bayTemplateGaps,
-  buildSceneV3,
-} from '../buildScene';
+import { allBayEquipmentTruthful, bayEquipmentGaps, buildSceneV3 } from '../buildScene';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { SceneV3 } from '../buildScene';
 
 const fixturePath = join(__dirname, 'fixtures', 'gpzFeeder.enm.json');
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
-describe('bay_template_probe (spec §12.5, recenzja NO-GO pkt 5)', () => {
-  it('pozytyw: pola konwencji stacji SN/nN używają szablonów RMU — zero gapów na L1/L2', () => {
-    for (const lod of [1, 2] as const) {
-      const scene = buildSceneV3(enm, lod);
-      expect(bayTemplateGaps(scene, enm)).toEqual([]);
-      expect(allBayTemplatesValid(scene, enm)).toBe(true);
+describe('bay_equipment_probe (GEOMETRIA-STACJI §0 pkt 4; zastępuje bay_template_probe §12.5)', () => {
+  // Recenzja NO-GO pkt 5 pilnowała jakości SZABLONU konwencji RMU (rozłącznik zamiast
+  // CB+CT). Karta GEOMETRIA-STACJI skasowała konwencję: aparat pola rysuje się WYŁĄCZNIE
+  // z rekordu modelu. Intencja pkt 5 („rysunek pola nie kłamie o wyposażeniu") przechodzi
+  // na sondę prawdziwości: stos z danych = same rekordy, stos bez danych = jedna sylwetka
+  // bez aparatu i bez stanu. Iloczyn: LOD {L1, L2} × fikstura {surowa, z rekordami} ×
+  // naruszenie {5 przyczyn sondy}.
+  const zRekordami = zRekordamiAparatowPol(enm);
+  // Pole liniowe stacji bez rekordów (ani `primary_devices`, ani gałęzi w `equipment_refs`) —
+  // stos „brak" (fikstura niesie wyłącznik w każdym polu stacji).
+  const pierwszePoleStacji = enm.bays.findIndex((b) => b.ref_id.includes('/sn_field/000'));
+  const bezRekordow: EnergyNetworkModel = {
+    ...enm,
+    bays: enm.bays.map((b, i) => (i === pierwszePoleStacji ? { ...b, equipment_refs: [] } : b)),
+  };
+
+  it('pozytyw: fikstura surowa, z rekordami i z polem bez rekordów — zero luk na L1/L2', () => {
+    for (const model of [enm, zRekordami, bezRekordow]) {
+      for (const lod of [1, 2] as const) {
+        const scene = buildSceneV3(model, lod);
+        expect(bayEquipmentGaps(scene)).toEqual([]);
+        expect(allBayEquipmentTruthful(scene)).toBe(true);
+      }
     }
   });
 
-  it('pola liniowe RMU niosą rozłącznik (loadBreakSwitch), ZERO breaker/CT z konwencji; pola TR RMU niosą uziemnik (pkt 6)', () => {
-    const scene = buildSceneV3(enm, 2);
-    const stationApparatus = scene.symbols.filter(
-      (s) => s.meta?.apparatusSource === 'konwencja' && (s.meta?.ownerRef ?? '').startsWith('stn/'),
+  it('pola stacji z rekordami RMU niosą rozłącznik i uziemnik z rekordów, ZERO wyłącznika i przekładnika', () => {
+    const scene = buildSceneV3(zRekordami, 2);
+    const aparatyStacji = scene.symbols.filter(
+      (s) => s.meta?.apparatusSource === 'dane' && (s.meta?.ownerRef ?? '').startsWith('stn/'),
     );
-    expect(stationApparatus.length).toBeGreaterThan(0);
-    expect(stationApparatus.some((s) => s.symbolId === 'loadBreakSwitch')).toBe(true);
-    expect(stationApparatus.some((s) => s.symbolId === 'earthSwitch')).toBe(true);
-    // Pomiar recenzji pkt 5: CB+CT w polu liniowym stacji kompaktowej =
-    // przeciek uniwersalnego szablonu GPZ — po naprawie ZERO takich symboli
-    // ze ścieżki konwencji na stacjach.
-    expect(stationApparatus.some((s) => s.symbolId === 'breaker' || s.symbolId === 'currentTransformer')).toBe(false);
+    expect(aparatyStacji.length).toBeGreaterThan(0);
+    // Transformator pola TR jest elementem modelu pola (rekord `Transformer`), nie aparatem.
+    expect(aparatyStacji.filter((s) => s.symbolId !== 'transformer2W').every((s) => !!s.meta?.deviceRef)).toBe(true);
+    expect(aparatyStacji.some((s) => s.symbolId === 'loadBreakSwitch')).toBe(true);
+    expect(aparatyStacji.some((s) => s.symbolId === 'earthSwitch')).toBe(true);
+    expect(aparatyStacji.some((s) => s.symbolId === 'breaker' || s.symbolId === 'currentTransformer')).toBe(false);
   });
 
-  it('NEGATYW (wyrocznia gryzie): breaker wstrzyknięty w pole RMU konwencji ⇒ gap rmu-line-breaker-leak', () => {
-    const scene = buildSceneV3(enm, 2);
-    const rmuSwitch = scene.symbols.find(
-      (s) => s.symbolId === 'loadBreakSwitch' && s.meta?.apparatusSource === 'konwencja',
-    );
-    expect(rmuSwitch).toBeDefined();
-    const sabotaged: SceneV3 = {
-      ...scene,
-      symbols: [
-        ...scene.symbols,
-        { ...rmuSwitch!, symbolId: 'breaker' },
-      ],
-    };
-    const gaps = bayTemplateGaps(sabotaged, enm);
-    expect(gaps.some((g) => g.reason === 'rmu-line-breaker-leak')).toBe(true);
+  function sabotaz(scene: SceneV3, zrodlo: 'dane' | 'brak', zmiana: (s: SceneV3['symbols'][number]) => SceneV3['symbols'][number]): SceneV3 {
+    const cel = scene.symbols.find((s) => s.meta?.apparatusSource === zrodlo && (zrodlo === 'brak' ? s.symbolId === 'bayNoEquipment' : true));
+    expect(cel, `scena ma stos „${zrodlo}"`).toBeDefined();
+    return { ...scene, symbols: [...scene.symbols, zmiana(cel!)] };
+  }
+
+  it('NEGATYW: aparat stosu z danych bez refu rekordu ⇒ dane-bez-rekordu', () => {
+    const scene = buildSceneV3(zRekordami, 2);
+    const zly = sabotaz(scene, 'dane', (s) => ({ ...s, symbolId: 'breaker', meta: { ...s.meta, deviceRef: undefined } }));
+    expect(bayEquipmentGaps(zly).some((g) => g.reason === 'dane-bez-rekordu')).toBe(true);
   });
 
-  it('NEGATYW (wyrocznia gryzie): pole RMU bez rozłącznika ⇒ gap rmu-line-missing-switch', () => {
-    const scene = buildSceneV3(enm, 2);
-    const sabotaged: SceneV3 = {
-      ...scene,
-      symbols: scene.symbols.map((s) =>
-        s.symbolId === 'loadBreakSwitch' && s.meta?.apparatusSource === 'konwencja'
-          ? { ...s, symbolId: 'disconnector' }
-          : s,
-      ),
-    };
-    const gaps = bayTemplateGaps(sabotaged, enm);
-    expect(gaps.some((g) => g.reason === 'rmu-line-missing-switch')).toBe(true);
+  it('NEGATYW: sylwetka braku danych w stosie z danych ⇒ dane-z-sylwetka-braku', () => {
+    const scene = buildSceneV3(zRekordami, 2);
+    const zly = sabotaz(scene, 'dane', (s) => ({ ...s, symbolId: 'bayNoEquipment' }));
+    expect(bayEquipmentGaps(zly).some((g) => g.reason === 'dane-z-sylwetka-braku')).toBe(true);
+  });
+
+  it('NEGATYW: druga sylwetka w stosie bez danych ⇒ brak-bez-sylwetki', () => {
+    const scene = buildSceneV3(bezRekordow, 2);
+    const zly = sabotaz(scene, 'brak', (s) => ({ ...s }));
+    expect(bayEquipmentGaps(zly).some((g) => g.reason === 'brak-bez-sylwetki')).toBe(true);
+  });
+
+  it('NEGATYW: aparat z konwencji w stosie bez danych ⇒ brak-z-aparatem', () => {
+    const scene = buildSceneV3(bezRekordow, 2);
+    const zly = sabotaz(scene, 'brak', (s) => ({ ...s, symbolId: 'loadBreakSwitch' }));
+    expect(bayEquipmentGaps(zly).some((g) => g.reason === 'brak-z-aparatem')).toBe(true);
+  });
+
+  it('NEGATYW: stan łącznika w stosie bez danych ⇒ brak-ze-stanem', () => {
+    const scene = buildSceneV3(bezRekordow, 2);
+    const cel = scene.symbols.find((s) => s.symbolId === 'bayNoEquipment' && s.meta?.apparatusSource === 'brak')!;
+    const zly: SceneV3 = { ...scene, symbols: scene.symbols.map((s) => (s === cel ? { ...s, state: 'closed' } : s)) };
+    expect(bayEquipmentGaps(zly).some((g) => g.reason === 'brak-ze-stanem')).toBe(true);
   });
 });
 

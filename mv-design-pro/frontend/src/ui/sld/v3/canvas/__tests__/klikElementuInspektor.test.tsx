@@ -24,6 +24,7 @@ import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy'
 import { useShellStore } from '../../../../../ui2/shell/useShellStore';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
 import { POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 afterEach(() => {
   cleanup();
@@ -43,7 +44,12 @@ const fixturePath = resolve(
   'fixtures',
   'sldSubstrate52s.enm.json',
 );
-const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+// GEOMETRIA-STACJI (§0 pkt 4a): aparaty pól (głowice, uziemniki, odłączniki) istnieją WYŁĄCZNIE
+// z rekordów modelu — sieć referencyjna niesie w polach tylko gałąź wyłącznika, więc fikstura
+// deklaruje rekordy wyposażenia pól jawnie (dawniej dostarczała je konwencja roli).
+const enm = zRekordamiAparatowPol(
+  (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm,
+);
 
 beforeEach(() => {
   useSnapshotStore.getState().reset();
@@ -163,15 +169,17 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
   });
 
   it('klik w aparat: inspektor pokazuje aparat ze ścieżką stacji › pola i sekcją stanu (brak telemetrii bez rekordu źródła)', () => {
-    const { scene, index, symbol } = pierwszySymbol(2, (s) => s.meta?.elementKind === 'apparatus');
+    // GEOMETRIA-STACJI (§0 pkt 4): pierwszy aparat sceny (odłącznik pola GPZ bez gałęzi
+    // i bez stanu rekordu) nie ma stanu w modelu — intencja testu to łącznik ZE stanem glifu,
+    // więc wybór wprost po stanie.
+    const { scene, index, symbol } = pierwszySymbol(2, (s) => s.meta?.elementKind === 'apparatus' && s.state !== undefined);
     const { container } = renderZInspektorem();
     fireEvent.click(uchwytSymbolu(container, scene, index)!);
     expect(screen.getByTestId('inspektor-element-kanwy')).toHaveAttribute('data-rodzaj', 'apparatus');
     expect(screen.getByTestId('inspektor-element-sciezka').textContent).toContain('›');
     // Telemetria (tryb, komunikacja) — wyłącznie z rekordu źródła runtime: bez rekordu
     // „brak telemetrii". Położenie łącznika — z modelu, TEN SAM stan co glif klikniętego
-    // symbolu (symbol stosu bez aparatu pierwotnego: agregat roli pola; pełny iloczyn —
-    // `stanAparatuParytetGlifu.test.tsx`).
+    // symbolu (rekord aparatu pola; pełny iloczyn — `stanAparatuParytetGlifu.test.tsx`).
     expect(screen.getByTestId('inspektor-aparat-komunikacja').textContent).toBe('brak telemetrii');
     expect(symbol.state, 'pierwszy aparat sceny to łącznik ze stanem glifu').toBeDefined();
     expect(screen.getByTestId('inspektor-aparat-stan').textContent).toBe(POLOZENIE_LACZNIKA_PL[symbol.state!]);

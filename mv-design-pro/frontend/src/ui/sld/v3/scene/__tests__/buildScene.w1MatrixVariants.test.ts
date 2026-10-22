@@ -114,16 +114,32 @@ describe('W1 — macierz wyposażenia: łańcuch danych kreator→ENM→adapter�
     expect(states).toContain('open');
   });
 
-  it('pole BEZ danych = ścieżka konwencji (§12.4) — brak regresu na polach nieobjętych macierzą', () => {
+  // GEOMETRIA-STACJI (§0 pkt 4): ścieżka konwencji §12.4 skasowana. Intencja „brak regresu na
+  // polach nieobjętych macierzą" — pole spoza macierzy rysuje WYŁĄCZNIE to, co ma w modelu:
+  // gałąź łączeniową pola (`equipment_refs`, aparaty z refem gałęzi) albo — bez rekordów —
+  // jedną sylwetkę braku danych; żaden symbol sceny nie pochodzi z konwencji.
+  it('pole spoza macierzy rysuje wyłącznie rekordy modelu (gałąź pola) albo sylwetkę braku danych — zero konwencji', () => {
     const targetFields = new Set(fixture.targets.map((t) => t.fieldRef));
-    const conventional = sceneL2.symbols.find(
+    const galezie = new Set((fixture.enm.branches ?? []).map((g) => g.ref_id));
+    const polaSpoza = sceneL2.symbols.filter(
       (s) =>
         typeof s.meta?.ownerRef === 'string' &&
         (s.meta.ownerRef as string).includes('/sn_field/') &&
         !targetFields.has(s.meta.ownerRef as string) &&
-        s.meta.apparatusSource === 'konwencja',
+        s.meta.apparatusSource != null &&
+        s.symbolId !== 'transformer2W',
     );
-    expect(conventional, 'istnieje pole rysowane z konwencji').toBeTruthy();
+    expect(polaSpoza.length, 'fikstura ma pola spoza macierzy').toBeGreaterThan(0);
+    for (const s of polaSpoza) {
+      if (s.symbolId === 'bayNoEquipment') {
+        expect(s.meta?.apparatusSource).toBe('brak');
+        expect(s.state).toBeUndefined();
+      } else {
+        expect(s.meta?.apparatusSource).toBe('dane');
+        expect(galezie.has(s.meta?.deviceRef ?? ''), `${s.symbolId}: ref gałęzi pola`).toBe(true);
+      }
+    }
+    expect(sceneL2.symbols.some((s) => (s.meta?.apparatusSource as string | undefined) === 'konwencja')).toBe(false);
   });
 
   it('adapter DOMYKA łańcuch: field_spec.primary_devices → snBays[].primaryDevices (nie gubione)', () => {

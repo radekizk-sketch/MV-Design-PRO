@@ -253,11 +253,21 @@ describe('C — kontrola czułości wyroczni', () => {
     const { enm } = SIECI[0];
     const scene = buildSceneV3(enm, 2);
     const index = buildCanvasModelIndex(enm);
+    // GEOMETRIA-STACJI (Z-03): opis sekcji szyny SN stacji należy dziś do rekordu `Bus`
+    // sekcji (`${busRef}#busbar-voltage`), więc ucięcie sufiksu prowadzi do szyny, nie do
+    // stacji. Stan sprzed naprawy odtwarzamy na KOPII razem z dawną tożsamością napisu
+    // (`${stationRef}#busbar-voltage`, relacja sceny `meta.stacjaSzynySekcji`) — inaczej
+    // kontrola czułości mierzyłaby tylko napisy GPZ.
+    const dawnyRef = (ownerRef: string): string => {
+      const [baza, ...reszta] = ownerRef.split('#');
+      const stacja = scene.meta.stacjaSzynySekcji[baza];
+      return stacja ? [stacja, ...reszta].join('#') : ownerRef;
+    };
     const awanse = scene.labels
       .filter((label) => LABEL_OWNER_ELEMENT_KIND[label.ownerKind] !== ELEMENT_KIND_KOTWICY.stacja)
       .map((label) =>
         resolveCanvasMenuSubject(
-          { klasa: 'etykieta', ownerRef: label.ownerRef, elementKind: undefined, busRef: undefined },
+          { klasa: 'etykieta', ownerRef: dawnyRef(label.ownerRef), elementKind: undefined, busRef: undefined },
           index,
         ),
       )

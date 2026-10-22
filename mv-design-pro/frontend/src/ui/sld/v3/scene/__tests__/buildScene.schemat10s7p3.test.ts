@@ -44,6 +44,7 @@ import { computeStationTaps } from '../../layout/segments';
 import { GRID } from '../../core/grid';
 import type { StationMeasureInput } from '../../layout/measure';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -202,7 +203,11 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
   });
 
   it('§11f (różne footprinty razem): stacja/switchgear/PV/BESS/trafo/pomiar współistnieją bez kolizji; NO wstrzyknięty renderuje się', () => {
-    const scene = buildSceneV3(bigEnm, 2);
+    // GEOMETRIA-STACJI (§0 pkt 4): aparaty pola rysują się wyłącznie z rekordów modelu.
+    // Intencja testu — heterogeniczne footprinty, w tym przekładnik prądowy pola — wymaga
+    // więc rekordów aparatów w fiksturze (`zRekordamiAparatowPol`: pola GPZ z CT). Dawniej
+    // CT dorysowywała konwencja roli niezależnie od danych pola (fabrykacja aparatu).
+    const scene = buildSceneV3(zRekordamiAparatowPol(bigEnm), 2);
     const symbolIds = new Set(scene.symbols.map((s) => s.symbolId));
     // Fixtura MUSI być heterogeniczna — inaczej test §11f byłby pusty.
     expect(symbolIds.has('transformer2W'), 'transformator blokowy obecny').toBe(true);

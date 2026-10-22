@@ -82,7 +82,7 @@ export interface ResultLabelEntry {
   readonly ownerRef: string;
   /** S9-2 — ref PUNKTU WYNIKU (klucz `payload.elements`), z którego zbudowano
    *  linie. Różny od `ownerRef` wszędzie tam, gdzie rysunek nazywa obiekt
-   *  refem kompozytowym (szyna stacji `${stationRef}#sn-bus`, blok stacji na
+   *  refem kompozytowym (szyna sekcji stacji `${busRef}#sn-bus`, blok stacji na
    *  L0, symbol transformatora zakotwiczony na polu) — patrz
    *  `resultRefBridge.ts`. Nośnik tożsamości dla dedupu (jedna etykieta na
    *  punkt) i dla rachunku pokrycia (`summarizeResultPointCoverage`). */
@@ -273,7 +273,7 @@ export function buildResultLabelsFromScene(
     if (entries[ownerRef]) continue;
     const binding = bridge?.get(ownerRef);
     if (binding) {
-      // Szyna stacji (`${stationRef}#sn-bus` / `#lv-bus`): ref rysunkowy nie
+      // Szyna stacji (`${busRef}#sn-bus` / `${stationRef}#lv-bus`): ref rysunkowy nie
       // jest refem szyny w modelu. Most rozstrzyga też KLASĘ — odcinek szyny nN
       // jest w scenie klasyfikowany jako zwykły odcinek toru, a jest szyną.
       emit(ownerRef, binding.resultRef, binding.kind);

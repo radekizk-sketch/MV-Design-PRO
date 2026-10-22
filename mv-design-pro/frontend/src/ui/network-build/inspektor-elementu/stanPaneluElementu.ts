@@ -146,7 +146,6 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
       kontekst.elementKind,
       kontekst.ref,
       kontekst.deviceRef,
-      kontekst.rolaLacznika,
     );
     if (wprost || !kontekst.temat) return wprost;
     // Ref kompozytowy rysunku (`…#sn-bus`) — dane z kotwicy modelu tematu, nie z sufiksu.
@@ -157,7 +156,6 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
       ELEMENT_KIND_KOTWICY[kontekst.temat.kotwica],
       kontekst.temat.modelRef,
       kontekst.deviceRef,
-      kontekst.rolaLacznika,
     );
   }, [kontekst, payload, sldData, snapshot]);
 

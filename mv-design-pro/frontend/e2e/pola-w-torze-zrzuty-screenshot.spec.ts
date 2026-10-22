@@ -4,9 +4,10 @@
  *
  * Po karcie kabel i transformator stacji są przyłączone do ZACISKU pola, które im służy,
  * a aparat pola leży w ich torze prądowym. Kadry pokazują cztery drogi budowy stacji:
- * przelotową (wcięcie w odcinek, dwa pola odgałęźne), sekcyjną (pole wyjściowe na sekcji B),
- * końcową (stacja na końcu ciągu) i odgałęźną (stacja na końcu odgałęzienia wyprowadzonego
- * z pola odgałęźnego stacji przelotowej) — w obu motywach.
+ * odgałęźną (wcięcie w odcinek, dwa pola odgałęźne), sekcyjną (pole wyjściowe na sekcji B),
+ * końcową (stacja na końcu ciągu) i końcową odgałęzienia (stacja na końcu odgałęzienia
+ * wyprowadzonego z pola odgałęźnego stacji odgałęźnej) — w obu motywach. Nazwy stacji są
+ * zgodne z rodzajem z topologii (karta GEOMETRIA-STACJI §0 pkt 6).
  *
  * Sieć budowana operacjami API (kadry pokazują RYSUNEK, a nie proces budowy — ten dowodzi
  * spec `s95-budowa-z-kanwy.spec.ts`). Motyw przełączany REALNYM przyciskiem powłoki
@@ -32,7 +33,7 @@ const KATALOG_ZRZUTOW = katalogZrzutow(
     : resolve(HERE, '..', '..', 'docs', 'sld', 'audyt-2026-09'),
 );
 
-test('POLA-W-TORZE — kadry stacji przelotowej, sekcyjnej, końcowej i odgałęźnej (oba motywy)', async ({
+test('POLA-W-TORZE — kadry stacji odgałęźnej, sekcyjnej, końcowej i końcowej odgałęzienia (oba motywy)', async ({
   page,
   request,
 }) => {

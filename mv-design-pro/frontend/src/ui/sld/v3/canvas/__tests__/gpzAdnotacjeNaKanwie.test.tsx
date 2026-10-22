@@ -85,6 +85,15 @@ function powiekszDoCzytelnosci(container: HTMLElement): void {
   }
 }
 
+/** Oddalenie natywnym kółkiem myszy aż pismo adnotacji GPZ spadnie poniżej progu czytelności. */
+function oddalPonizejCzytelnosci(container: HTMLElement): void {
+  const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+  for (let i = 0; i < 60; i += 1) {
+    if (container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')?.getAttribute('data-gpz-teksty') === 'ponizej-progu-czytelnosci') return;
+    fireEvent.wheel(svg, { clientX: 40, clientY: 40, deltaY: 140 });
+  }
+}
+
 const tekst = (container: HTMLElement, testId: string): string | null =>
   container.querySelector(`[data-testid="${testId}"]`)?.textContent ?? null;
 
@@ -99,10 +108,14 @@ describe('GPZ-PARYTET — kontrola wejścia fikstury z żywego biegu', () => {
 });
 
 describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', () => {
-  it('pismo poniżej progu czytelności (kadr całej sieci): teksty nie są rysowane, tła pól i próbki ról zostają', () => {
+  // GEOMETRIA-STACJI: kadr całej sieci tej fikstury mieści się dziś w progu czytelności (stosy
+  // pól bez rekordów są niższe i węższe — sylwetka braku danych zamiast stosu z konwencji),
+  // więc stan „poniżej progu" osiągamy natywnym oddaleniem kółkiem, nie samym kadrem startowym.
+  it('pismo poniżej progu czytelności (oddalony kadr): teksty nie są rysowane, tła pól i próbki ról zostają', () => {
     const container = renderKanwe(2);
     const warstwa = container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!;
     expect(warstwa).not.toBeNull();
+    oddalPonizejCzytelnosci(container);
     expect(warstwa.getAttribute('data-gpz-teksty')).toBe('ponizej-progu-czytelnosci');
     expect(container.querySelector('[data-testid="sld-v3-gpz-bilans-zasilania"]')).toBeNull();
     expect(container.querySelectorAll('[data-testid^="sld-v3-gpz-panel-"]').length).toBeGreaterThan(0);

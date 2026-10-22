@@ -40,37 +40,6 @@ export interface StanyAparatowPola {
 
 type RolaLacznika = 'cb' | 'ds';
 
-/**
- * Rola symbolu łącznika na schemacie: który agregat pola (`cbState`/`dsState`/`esState`)
- * rysuje symbol BEZ refu pojedynczego aparatu (stos z konwencji, pole bez
- * `primary_devices`). JEDNO źródło mapowania dla glifu (`v3/compose/station.ts`,
- * `v3/compose/gpz.ts`) i dla inspektora obiektu kliknięcia (`sld/shared/daneElementuKanwy.ts`
- * przez `SldElementClickMeta.rolaLacznika`) — rysunek i inspektor nie mogą przypisać temu
- * samemu symbolowi różnych agregatów. Rozłącznik konwencji RMU rysuje łącznik główny pola,
- * czyli agregat odłącznika/rozłącznika. Symbol bez stanu (bezpiecznik, przekładnik) ⇒
- * `undefined`.
- */
-export type RolaSymboluLacznika = 'cb' | 'ds' | 'es';
-
-const ROLA_SYMBOLU: Readonly<Record<string, RolaSymboluLacznika>> = {
-  breaker: 'cb',
-  disconnector: 'ds',
-  loadBreakSwitch: 'ds',
-  earthSwitch: 'es',
-};
-
-export function rolaSymboluLacznika(symbolId: string): RolaSymboluLacznika | undefined {
-  return ROLA_SYMBOLU[symbolId];
-}
-
-/** Agregat pola dla roli symbolu (`cb` → `cbState` itd.). */
-export function stanRoliSymbolu<T>(
-  rola: RolaSymboluLacznika,
-  stany: { readonly cbState?: T; readonly dsState?: T; readonly esState?: T },
-): T | undefined {
-  return rola === 'cb' ? stany.cbState : rola === 'ds' ? stany.dsState : stany.esState;
-}
-
 /** Rola symbolu pola dla typu gałęzi łączeniowej ENM (bezpiecznik nie ma stanu w symbolu). */
 const ROLA_TYPU_GALEZI: Readonly<Record<string, RolaLacznika>> = {
   breaker: 'cb',
@@ -122,6 +91,15 @@ function stanGalezi(galaz: Branch, aparaty: readonly BayPrimaryDevice[]): StanLa
     if (stanRekordu(aparat.switch_state.actual_state) !== zModelu) return 'unknown';
   }
   return zModelu;
+}
+
+/**
+ * Stan gałęzi łączeniowej rozstrzygnięty rekordami aparatów jej pola (`status` gałęzi; rekord
+ * aparatu powiązany `linked_ref`, sprzeczny ze statusem ⇒ `unknown`, jak K6a). Wejście
+ * sprzęgła sekcji (`sprzeglaSekcji.ts`) — ta sama reguła co łącznik pola, bez drugiej.
+ */
+export function stanGaleziPola(galaz: Branch, aparatyPola: readonly BayPrimaryDevice[]): StanLacznikaRysunku {
+  return stanGalezi(galaz, aparatyPola);
 }
 
 /**

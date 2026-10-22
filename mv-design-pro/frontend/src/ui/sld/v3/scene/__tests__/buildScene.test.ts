@@ -73,6 +73,7 @@ import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { GRID, type V3Rect } from '../../core/grid';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -86,7 +87,14 @@ const fixturePath = resolve(
   'fixtures',
   'sldSubstrate52s.enm.json',
 );
-const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+/** Sieć referencyjna jak w migawce: pola niosą wyłącznie gałąź wyłącznika (`equipment_refs`). */
+const enmZastany = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+// GEOMETRIA-STACJI (§0 pkt 4a): wyrocznie tego pliku (głowice kablowe, odczepy lateralne,
+// pasma etykiet aparatów) potrzebują aparatów, które istnieją WYŁĄCZNIE z rekordów modelu —
+// dawniej dostarczała je konwencja roli. Fikstura deklaruje rekordy wyposażenia pól jawnie
+// (`zRekordamiAparatowPol`, pola OZE bez rekordów = przypadek braku danych); sieć zastana
+// (`enmZastany`) pokrywa test ścieżki gałęzi pola niżej.
+const enm = zRekordamiAparatowPol(enmZastany);
 
 const LODS: readonly SceneLod[] = [0, 1, 2];
 
@@ -203,20 +211,33 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
       });
 
-      it('F9.3 (§12.1): KAŻDY aparat pola STACJI (składający `apparatusSource`, spec §12.1) na fixturze nosi "konwencja" (brak primary_devices, f92-1)', () => {
-        // `apparatusSource` jest ustawiane WYŁĄCZNIE przez `composeStation`
-        // (`v3/compose/station.ts`) — GPZ (`compose/gpz.ts`, POZA
-        // autoryzacją F9.3) ma WŁASNĄ, nietkniętą gramatykę aparatów i NIE
-        // niesie tego pola; filtrowanie po obecności `apparatusSource`
-        // (nie po `elementKind`, który miesza stacje SN z GPZ) odróżnia
-        // dokładnie te symbole, które przeszły przez F9.3.
+      it('F9.3 (§12.1) → GEOMETRIA-STACJI (§0 pkt 4): pochodzenie stosu pola STACJI z danych — rekordy aparatów „dane", pola OZE bez rekordów „brak" (jedna sylwetka bez stanu)', () => {
+        // KOREKTA: dawniej fikstura bez `primary_devices` rysowała stosy konwencji („konwencja").
+        // Konwencja skasowana; fikstura niesie rekordy (patrz `zRekordamiAparatowPol`).
         const stationFieldApparatus = scene.symbols.filter((s) => s.meta?.apparatusSource != null);
-        // LOD 0 (spec §7): stacje są symbolem zbiorczym `stationCollapsed`,
-        // ŻADEN aparat pola nie jest rysowany — filtr jest wtedy pusty
-        // (wyrocznia wciąż prawdziwa, wacuously) — sanity length>0 dotyczy
-        // WYŁĄCZNIE LOD 1/2, gdzie `composeStation` faktycznie się wykonuje.
         if (lod !== 0) expect(stationFieldApparatus.length).toBeGreaterThan(0);
-        expect(stationFieldApparatus.every((s) => s.meta?.apparatusSource === 'konwencja')).toBe(true);
+        expect(stationFieldApparatus.every((s) => s.meta?.apparatusSource === 'dane' || s.meta?.apparatusSource === 'brak')).toBe(true);
+        const brak = stationFieldApparatus.filter((s) => s.meta?.apparatusSource === 'brak');
+        expect(brak.every((s) => s.symbolId === 'bayNoEquipment' || s.meta?.elementKind !== 'apparatus')).toBe(true);
+        expect(brak.filter((s) => s.symbolId === 'bayNoEquipment').every((s) => s.state === undefined)).toBe(true);
+      });
+
+      it('GEOMETRIA-STACJI (§0 pkt 4a): sieć zastana — pole bez `primary_devices` rysuje gałąź łączeniową z `equipment_refs` (ref, stan), bez aparatów spoza modelu', () => {
+        const zastana = buildSceneV3(enmZastany, lod);
+        const galezie = new Map((enmZastany.branches ?? []).map((b) => [b.ref_id, b]));
+        const aparaty = zastana.symbols.filter((s) => s.meta?.apparatusSource != null && s.meta?.elementKind === 'apparatus');
+        if (lod !== 0) expect(aparaty.length).toBeGreaterThan(0);
+        for (const s of aparaty) {
+          if (s.symbolId === 'bayNoEquipment') {
+            expect(s.meta?.deviceRef).toBeUndefined();
+            continue;
+          }
+          expect(s.meta?.apparatusSource).toBe('dane');
+          expect(galezie.has(s.meta!.deviceRef!), `${s.meta?.testId}: gałąź pola w modelu`).toBe(true);
+          expect(['breaker', 'switch']).toContain(galezie.get(s.meta!.deviceRef!)!.type);
+        }
+        // Żaden aparat z dawnej konwencji (głowica, uziemnik, przekładnik) bez rekordu.
+        expect(zastana.symbols.filter((s) => s.meta?.apparatusSource != null && ['cableHead', 'earthSwitch', 'currentTransformer', 'loadBreakSwitch'].includes(s.symbolId))).toEqual([]);
       });
     });
   }
@@ -1215,9 +1236,16 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // (sonda karty, `k2/pion_sonda.txt`): kod HEAD + nowa fikstura = 22752/45992/45992,
     // nowy kod + stara fikstura = 22752/45728/45728 (znaki powiązania zastępują dwa słupki
     // końca otwartego 1:1, ±16 px); rozbicie liść po liściu = 33 × `#lv-load-drop`.
+    // GEOMETRIA-STACJI (2026-10-21): L1/L2 45992 → 45984 (−8), L0 bez zmian. Fikstura niesie
+    // rekordy aparatów pól (`zRekordamiAparatowPol`) — stosy pól stacji i GPZ identyczne jak
+    // dawna konwencja (pomiar per właściciel odcinka, kod HEAD + fikstura zastana vs kod
+    // karty + fikstura z rekordami: jedyna różnica to `#tr-field-to-bus`). GPZ sieci
+    // referencyjnej nie ma w modelu pól WN TR ani TR, więc tor transformatora niesie dwie
+    // sylwetki braku danych zamiast aparatów z konwencji (DS+CB+CT / DS+CB+CT+ES): odcinek
+    // pole TR → szyna SN 48 → 40 px.
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22752);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45992);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45992);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45984);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45984);
   });
 });
 

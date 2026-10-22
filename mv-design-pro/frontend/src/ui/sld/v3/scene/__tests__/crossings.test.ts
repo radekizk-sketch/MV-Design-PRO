@@ -21,12 +21,18 @@ import {
   polylinePathWithBridges,
   verticalPathWithBridges,
 } from '../crossings';
+import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
   here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json',
 );
-const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+// GEOMETRIA-STACJI (§0 pkt 4a): aparaty pól (głowice, uziemniki, odłączniki) istnieją WYŁĄCZNIE
+// z rekordów modelu — sieć referencyjna niesie w polach tylko gałąź wyłącznika, więc fikstura
+// deklaruje rekordy wyposażenia pól jawnie (dawniej dostarczała je konwencja roli).
+const enm = zRekordamiAparatowPol(
+  (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm,
+);
 
 function seg(points: { x: number; y: number }[], kind?: string, ownerRef?: string): PreviewSegment {
   return { points, meta: { kind: kind as never, ownerRef } };

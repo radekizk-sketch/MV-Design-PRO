@@ -66,7 +66,19 @@ function baySymbols(scene: ReturnType<typeof buildSceneV3>, fieldRef: string): S
  *  kolejność źródłowa), tor główny w osi + aparaty boczne (ES/VT/SA) doklejone
  *  na końcu — lustro reguły `compose/station.ts` (bez duplikacji logiki compose;
  *  liczymy WYŁĄCZNIE z danych wejściowych, to jest oracle, nie kopia). */
-function expectedSequence(devices: readonly { kind: string; placement: string }[]): string[] {
+/** GEOMETRIA-STACJI (§0 pkt 4a): pole wskazujące w `equipment_refs` rekord transformatora
+ *  modelu, którego rekordy aparatów nie niosą `TRANSFORMER_DEVICE`, rysuje ten transformator
+ *  za torem aparatów (element modelu pola — dawniej ginął z rysunku stacji). */
+function poleNiesieTransformator(fixture: W1cMatrixFixture, fieldRef: string, devices: readonly { kind: string }[]): boolean {
+  const transformatory = new Set((fixture.enm.transformers ?? []).map((t) => t.ref_id));
+  const bay = fixture.enm.bays.find((b) => b.ref_id === fieldRef);
+  return (
+    (bay?.equipment_refs ?? []).some((ref) => transformatory.has(ref))
+    && !devices.some((d) => d.kind === 'TRANSFORMER_DEVICE')
+  );
+}
+
+function expectedSequence(devices: readonly { kind: string; placement: string }[], zTransformatorem = false): string[] {
   const sorted = devices
     .map((d, i) => ({ d, i }))
     .filter(({ d }) => symbolIdForPrimaryDeviceKind(d.kind as never) != null)
@@ -75,7 +87,10 @@ function expectedSequence(devices: readonly { kind: string; placement: string }[
       return pd !== 0 ? pd : a.i - b.i;
     })
     .map(({ d }) => ({ kind: d.kind, symbolId: symbolIdForPrimaryDeviceKind(d.kind as never)! }));
-  const main = sorted.filter((s) => !LATERAL_KINDS.has(s.kind)).map((s) => s.symbolId);
+  const main = [
+    ...sorted.filter((s) => !LATERAL_KINDS.has(s.kind)).map((s) => s.symbolId),
+    ...(zTransformatorem ? ['transformer2W'] : []),
+  ];
   const lateral = sorted.filter((s) => LATERAL_KINDS.has(s.kind)).map((s) => s.symbolId);
   return [...main, ...lateral];
 }
@@ -110,7 +125,7 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
       const syms = baySymbols(sceneL2, target.fieldRef);
       const ids = syms.map((s) => s.symbolId);
       expect(ids, `${target.case.configId} (${target.fieldRef})`).toEqual(
-        expectedSequence(target.case.devices),
+        expectedSequence(target.case.devices, poleNiesieTransformator(fixture, target.fieldRef, target.case.devices)),
       );
       // Cały stos Z DANYCH (zero konwencji/fabrykacji).
       expect(syms.every((s) => s.meta?.apparatusSource === 'dane'), target.case.configId).toBe(true);
@@ -136,7 +151,9 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
       const mappable = target.case.devices.filter(
         (d) => symbolIdForPrimaryDeviceKind(d.kind as never) != null,
       );
-      expect(syms.length, target.case.configId).toBe(mappable.length);
+      expect(syms.length, target.case.configId).toBe(
+        mappable.length + (poleNiesieTransformator(fixture, target.fieldRef, target.case.devices) ? 1 : 0),
+      );
     }
   });
 

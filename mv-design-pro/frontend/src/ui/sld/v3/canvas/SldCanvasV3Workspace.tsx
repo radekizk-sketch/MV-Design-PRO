@@ -386,7 +386,7 @@ const ALL_SCENE_LODS: readonly SceneLod[] = [0, 1, 2];
  * 'station'/'bus'/'segment' — apparatus/transformer/der mają `ownerRef=bayRef`,
  * który nie odpowiada żadnej kategorii `SupplyPathHighlight` (patrz nagłówek).
  * `ownerRef` bywa kompozytem zakotwiczonym w realnym refie z sufiksem `#...`
- * (konwencja `compose/station.ts`/`compose/gpz.ts`, np. `${stationId}#sn-bus`)
+ * (konwencja `compose/station.ts`/`compose/gpz.ts`, np. `${busRef}#sn-bus`)
  * — bazowy ref (przed `#`) jest tym, co `SupplyPathHighlight` faktycznie niesie
  * (stację/gałąź/szynę), więc dopasowanie odcina sufiks.
  */
@@ -2436,7 +2436,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         elementKind,
         ref: id,
         deviceRef: meta?.deviceRef,
-        rolaLacznika: meta?.rolaLacznika,
         temat: tematKliku(),
         tylkoOdczyt: props.readOnly ?? false,
       });
@@ -2701,6 +2700,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           trybWidoku={trybWidokuSchematu}
           safeInsets={effectiveCanvasInsets}
           odslonRefy={odslonRefy}
+          zaznaczenieRefy={zaznaczenieRefy}
         />
       ) : null}
 

@@ -432,87 +432,98 @@ interface OdciskiLod {
  * z polem modelu, `compose/gpz.ts` `stanAparatuPolaGpz`, przypięte w
  * `buildScene.gpzPoleTr.test.ts`). Zmienia to scenę L1/L2 obu sieci; L0, declutter i 21
  * planów na sieć identyczne z bazą `2df442be0`.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GEOMETRIA-STACJI, 2026-10-22) — przeliczone odciski; z 54 wpisów
+ * tablicy zmienione wszystkie 54. Pomiar: ten test w trybie budżetów na drzewie HEAD karty
+ * (archiwum `git archive`) — 8 z 8 zielonych, czyli czerwień wnosi wyłącznie kod tej karty.
+ * Przyczyny (każda zmienia scenę i etykiety na KAŻDYM LOD obu sieci): (1) aparaty pola
+ * wyłącznie z rekordów modelu — stos konwencji roli zniknął, pole bez rekordów ma jedną
+ * sylwetkę „brak danych wyposażenia pola" (§0 pkt 4); na L0 pole GPZ dostaje aparat ciągłości
+ * z rekordu albo tę sylwetkę zamiast wyłącznika z konwencji; (2) odcinek szyny SN stacji
+ * niesie ref sekcji `${busRef}#sn-bus` zamiast `${stationRef}#sn-bus` (§0 pkt 1), więc
+ * zmienia się tożsamość segmentów i etykiet szyn; (3) niższe stosy pól przesuwają kotwice
+ * etykiet, a za nimi plan etykiet przy każdej skali gestu.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '6bc7816abaa048bb06db7ac4df52298f',
-      declutter: '45eb7087a1a66c74a143d69e6afa29ad',
+      scena: '359593af993c38833258e13754be98a3',
+      declutter: 'f231c5faae2acf31e9f835873a24f696',
       plany: [
-        '3af677ee930b28ebb4f1b3441d612c35',
-        '42958f6153f29f9927b232ec8a7b2c5e',
-        'c78bddc70ad7039a54445407e1e304b0',
-        '7ed27c10070b0d6743168eab02d3fc07',
-        'a788a2ca8b718f172497baf202bd2d11',
-        'cc998540a7e5a829f4c5239fc1416a2e',
-        'cc998540a7e5a829f4c5239fc1416a2e',
+        '6d4d3caa0b8387d32d9b18da92231455',
+        '1622acd9b100a249ba4aa4a60ea038a0',
+        '4ca2be1e1ee64aaf4cc2ff1aa375d001',
+        '466e6227098763388210c475e957096a',
+        '29d4783da16690a3408fb46fe71f5d11',
+        '30d75484a3bdf267be438438123b8f95',
+        '30d75484a3bdf267be438438123b8f95',
       ],
     },
     {
-      scena: '13091b02a1f84b278546759a7720243b',
-      declutter: 'c9a7135ba0d48e6a78a26a831bd54c80',
+      scena: '095fb436aabed341e8d450960def27ca',
+      declutter: 'd759eb7c33b0d416f50df122e85d9020',
       plany: [
-        'ed1ae6a3118eaf6cebc3d97c73bc88b4',
-        '235513d5f84161c8c26c43296155bd9d',
-        '8b3218247f0a350bced70495d1fb4c77',
-        '06dbfe32e34a1c06397d85650a11c50b',
-        '79f34292cac0f7517bbf1cf0d6ddaacf',
-        '0ba310bc81350f73e402b6301f08e2fd',
-        '0ba310bc81350f73e402b6301f08e2fd',
+        'dc62229ce0c2dd1157bcf4236787c491',
+        'ba3f2f90108cd98bd4de1dd9641a14c5',
+        'fa391732e6095b45bfaf887ca9d7fde1',
+        '13bd65e3f5e14e7a6c53cce671c53303',
+        '00dd651d65cdab5f1f86124f1f19344a',
+        '2879d0df8017b4ab07c2d50391155cdb',
+        '2879d0df8017b4ab07c2d50391155cdb',
       ],
     },
     {
-      scena: '3adc0a3e129354a2bab540fbc4adcefb',
-      declutter: '3e180052897beb543554edc861ce7eba',
+      scena: '3bb8b57df94415d834e440282950b6e0',
+      declutter: '88696c95332d7d597aa676ebc6c64b3c',
       plany: [
-        '14d7a96ae5e4a2fc8647f7dd3652e2a3',
-        '3b0fadefebf325cc6e9773afcfc5a119',
-        '82953fb58977d6ae083585a6177f84c0',
-        '3544ae7a2b36207bf14985f32df00504',
-        'f175fab01dc8ec8c531dc4a057466687',
-        'b1df23d3f64591182545ba9060c4949b',
-        'b1df23d3f64591182545ba9060c4949b',
+        '31b7e1f09b85409ed31091cde4413131',
+        '1fb76b808d9013bf6f87682a5430d03b',
+        'eff0fc1eca405a68be1ccea8efcb0905',
+        '508d59d47d2e062c09dfcf2e038fef73',
+        'ce771ba2ec2d5c1f82c38781d6d4b947',
+        '54cc1314b0f40f690751104cb30d6283',
+        '54cc1314b0f40f690751104cb30d6283',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '355380cd3205b317fad6952c443230c2',
-      declutter: 'c47bbb130e277715e4a94f07de40aaad',
+      scena: 'f39ece32e40a2442739bb1c95144e680',
+      declutter: 'f2b2d50a450cf47cb683942025bb9f15',
       plany: [
-        'e3e95fec3e3fe43ece05565ebec462c7',
-        'bf0e54dba68f8775a1b138ba0f10728f',
-        'ce78bdbe7960ead6ba6b6509e00c50b5',
-        '40a969a729c84550f884c50786dffbfe',
-        'a4a96df75368611f228463fa21d8ddbd',
-        '9b6781d4fb032234aaf97d9e3eb5dffd',
-        '9b6781d4fb032234aaf97d9e3eb5dffd',
+        '65c0b73306c5550c2dc5605a0edbcfc7',
+        '1b61c1007befd93519a594446616a890',
+        '17e2f31f5972b41dfe5d9d96cf23c676',
+        'a6bd5793ddcddcfc3e8a5f13c6af5e26',
+        '4ad6101726abd6c3ca6e394233af0e39',
+        'a0843e1c709af0b6be165bdf876ee254',
+        'a0843e1c709af0b6be165bdf876ee254',
       ],
     },
     {
-      scena: '679bf718aa9dc4cacb18480578de3242',
-      declutter: 'd1ffeff23c545b1900a5e9a6a120869c',
+      scena: '24eb8460af8a4d014a58a53b0a8fbbb9',
+      declutter: '1e7d9ab5e39d9161b6e8017934483f08',
       plany: [
-        'b92247a7c92026438284e70a02fcb15d',
-        '712da706ddc69018f6eead902200cd82',
-        'a0414d9b61da608f4de000ca20597062',
-        '1e00e76736218f9037237f8e1c3f66dc',
-        '0b2881816f4de86db0527f0621a7f4b2',
-        '78a817f7ea72ad4901ba25a70f7b53dd',
-        '78a817f7ea72ad4901ba25a70f7b53dd',
+        '67f6df6c49436a83fc10784888077fa2',
+        '5c3bbd99ae4d0b8f81127c8525f90dbe',
+        'd205440033eb388d0e6adf71aec635ae',
+        'a45228f13b4b6eb909541d24bf5a222c',
+        '67e6382b3b361b902bdadc5b5f007f50',
+        '60d284cc8f9b20ba2fb442c4bd9ae743',
+        '60d284cc8f9b20ba2fb442c4bd9ae743',
       ],
     },
     {
-      scena: 'd401b19f2f8c3e48d3e45da97e80daa2',
-      declutter: 'ba1409d29aaf5158465886e366fcf824',
+      scena: 'd95938684f8e2322c3e2bd2f46cf01e2',
+      declutter: 'fcfd35ee05ae92705debfea288c7a864',
       plany: [
-        '1cec4b684db262c00133928f68b85261',
-        'ef45e907ea8776933b84d7ec02cb1a21',
-        '3d0abffa08309dc0444f29412bb037cb',
-        '3f6e4c31593e263f91994d087cb7dfc8',
-        'd10724cb5e4fc7f7ca5e074ebfbc068d',
-        '600376e70433d5c2ef91aab004124926',
-        '600376e70433d5c2ef91aab004124926',
+        '66a922dac1130323b2cadc4d055cef87',
+        'e5cd04492fe42ae03fd7d695b996b840',
+        'dcdb24977366020a9c626f3f3be832a3',
+        '74a60c514a6af2f173927d085df3b62f',
+        'd9a40ba3c5b27994e0fc5ef9e2f6fa8d',
+        'cc07bf5c398d1b4253428b59caa63dce',
+        'cc07bf5c398d1b4253428b59caa63dce',
       ],
     },
   ],
