@@ -258,6 +258,12 @@ async function openElementInspector(page: Page, elementRef: string): Promise<voi
   // rozwiązuje workspace kliku — `resolveTransformerRefForOwnerRef`).
   // Selektor: transformator w obrębie stacji (`stn/`), odróżniony od
   // transformatora GPZ (`gpz/`).
+  // Odświeżenie strony zachowuje selekcję z adresu (także przy zimnym starcie `/`), więc
+  // prawy inspektor może pokazywać obiekt z poprzedniego kroku i zasłaniać część kanwy.
+  // Escape to kanoniczny gest odznaczenia (`SldCanvasV3Workspace`): inspektor się zwija,
+  // kanwa wraca do pełnej szerokości i klik trafia w symbol, nie w panel.
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('mvd-inspector')).toBeHidden();
   const isStationTransformer = /\/transformer$/.test(elementRef) && elementRef.startsWith('stn/');
   const symbol = isStationTransformer
     ? page.locator('g[data-element-kind="transformer"][data-owner-ref^="stn/"]').first()
@@ -272,19 +278,6 @@ async function openElementInspector(page: Page, elementRef: string): Promise<voi
   await symbol.click({ force: true });
 
   await expect(page.getByTestId('sld-engineering-inspector-wrapper')).toBeVisible();
-}
-
-async function activateEngineeringFieldEditor(page: Page, fieldKey: string): Promise<void> {
-  const fieldRow = page.getByTestId(`engineering-field-${fieldKey}`);
-  await expect(fieldRow).toHaveCount(1);
-
-  // REALNY klik Playwright w komórkę wartości (ta sama zasada co klik w
-  // elementy kanwy: test ćwiczy ścieżkę użytkownika, nie syntetyczny event).
-  const clickable = fieldRow.locator('div.cursor-pointer').first();
-  await expect(clickable, `Missing editable value cell for engineering-field-${fieldKey}`).toBeVisible();
-  await clickable.click();
-
-  await expect(fieldRow.locator('input')).toBeVisible();
 }
 
 test('real backend SLD editor flow: source -> trunk -> station -> branch -> update -> delete -> continue', async ({ page, request }, testInfo) => {
@@ -364,14 +357,29 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
 
   await zoomUntilSelectorVisible(page, 'g[data-element-kind="transformer"][data-owner-ref^="stn/"]', -240);
   await openElementInspector(page, transformerRef!);
-  await expect(page.getByTestId('engineering-section-typ_i_katalog')).toContainText(TRAFO_ID);
+  // K6: transformator ma kartę techniczną (tabliczka z katalogu ze źródłem danej); zmiana
+  // nazwy idzie operacją domenową `update_element_parameters` przez kreator edycji
+  // parametrów, otwierany przyciskiem „Zmień" przy wierszu karty (realne kliki).
+  const kartaTr = page.getByTestId('inspektor-karta');
+  await expect(kartaTr).toHaveAttribute('data-rodzaj-karty', 'transformator');
+  await expect(kartaTr.getByTestId('inspektor-karta-pole-tr_typ')).toHaveAttribute('data-brak', 'false');
+  await expect(kartaTr.getByTestId('inspektor-karta-wartosc-tr_sn')).toContainText('MVA');
+  await expect(kartaTr.getByTestId('inspektor-karta-tabliczka-zrodlo')).toBeVisible();
   await capture(page, testInfo, '03a-transformer-inspector');
 
-  await activateEngineeringFieldEditor(page, 'name');
-  const nameEditor = page.getByTestId('engineering-field-name').locator('input');
-  await nameEditor.fill(UPDATED_TRANSFORMER_NAME);
-  await nameEditor.press('Tab');
-  await expect(page.getByTestId('engineering-field-name')).toContainText(UPDATED_TRANSFORMER_NAME);
+  await kartaTr.getByTestId('inspektor-karta-zmien-nazwa').click();
+  const kreatorEdycji = page.getByTestId('mvd-kreator-edycja');
+  await expect(kreatorEdycji).toBeVisible();
+  await expect(kreatorEdycji.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('name');
+  await kreatorEdycji.getByTestId('mvd-kreator-edycja-wartosc-0').fill(UPDATED_TRANSFORMER_NAME);
+  await kreatorEdycji.getByTestId('mvd-kreator-edycja-zapisz').click();
+  await expect(kreatorEdycji).toHaveCount(0);
+  // Po zapisie projektant patrzy na TEN SAM obiekt: selekcja i karta przeżywają przejście
+  // `navigateToSld()` także z adresu zimnego startu `/` (dawniej selekcja leżała wtedy
+  // w `location.search` i ginęła przy zmianie trasy — inspektor się zwijał).
+  await expect(page.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'transformator');
+  await expect(page.getByTestId('inspektor-karta-wartosc-nazwa')).toContainText(UPDATED_TRANSFORMER_NAME);
+  expect(new URL(page.url()).search).toBe('');
 
   const branchFromRef = findBranchCapableFieldPort(op.snapshot);
   expect(branchFromRef).toBeTruthy();

@@ -398,14 +398,40 @@
 .mvd-inspector {
   border-left: 1px solid var(--mvd-line);
   background: var(--mvd-panel-2);
-  overflow: auto;
-  padding: 12px 14px;
+  /* K6: nagłówek inspektora (tryb szeroki) stoi, przewija się wyłącznie treść. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
   min-width: 0;
 }
+.mvd-inspector[hidden] {
+  display: none;
+}
+.mvd-inspector-pasek {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--mvd-line);
+  flex: none;
+}
+.mvd-inspector-tresc {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+}
 .mvd-inspector-naglowek {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: var(--mvd-font-size-data);
   font-weight: 600;
+}
+.mvd-inspector-szeroki[aria-pressed='true'] {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-color: var(--mvd-accent);
 }
 .mvd-inspector-empty {
   color: var(--mvd-muted);

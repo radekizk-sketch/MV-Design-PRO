@@ -235,3 +235,113 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* K6 — karta techniczna obiektu w prawym inspektorze (`inspektor-elementu/KartaTechnicznaElementu`).
+ * Ten sam układ w inspektorze zwykłym (340–420 px) i w trybie szerokim (560 px): tabele są zwarte
+ * (jeden wiersz na obiekt), tryb szeroki pokazuje więcej kolumn bez przewijania. */
+.mvd-kt {
+  font-size: var(--mvd-font-size-data);
+  color: var(--mvd-ink);
+}
+.mvd-kt-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-kt-tytul {
+  margin: 0;
+  font-size: var(--mvd-font-size-data);
+  font-weight: 600;
+}
+.mvd-kt-wiersze {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+/* Wiersz etykieta–wartość; wartość dłuższa niż reszta wiersza (np. podstawa rodzaju stacji)
+   przechodzi pod etykietę na całą szerokość zamiast zawijać się w wąskiej kolumnie. */
+.mvd-kt-wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 8px;
+}
+.mvd-kt-etykieta {
+  flex: 0 0 auto;
+  max-width: 45%;
+  color: var(--mvd-muted);
+}
+.mvd-kt-wartosc {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 2px 6px;
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.mvd-kt-brak {
+  color: var(--mvd-muted);
+}
+.mvd-kt-lista {
+  flex: 1 0 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mvd-kt-zrodlo-wiersza,
+.mvd-kt-zrodlo {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: var(--mvd-font-size-data);
+}
+.mvd-kt-zmien {
+  padding: 0 6px;
+}
+.mvd-kt-tabela-ramka {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-kt-podpis-tabeli {
+  margin: 0;
+  color: var(--mvd-muted);
+}
+/* Tabela w prawdziwym układzie tabeli: jeden wiersz na obiekt (pole, odcinek, aparat), bez
+   zawijania komórek; kolumny poza szerokością inspektora przewija się w poziomie (klawiatura:
+   fokus na obszarze tabeli), a pierwsza kolumna — nazwa obiektu — zostaje przy krawędzi. */
+.mvd-kt-tabela-przewijanie {
+  overflow-x: auto;
+}
+.mvd-kt-tabela {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.mvd-kt-tabela th,
+.mvd-kt-tabela td {
+  padding: 3px 12px 3px 0;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-kt-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+.mvd-kt-tabela th:first-child,
+.mvd-kt-tabela td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--mvd-panel-2);
+  font-weight: 600;
+}

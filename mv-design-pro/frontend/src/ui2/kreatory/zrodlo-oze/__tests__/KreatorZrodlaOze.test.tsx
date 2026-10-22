@@ -57,11 +57,17 @@ vi.mock('../../../../ui/topology/snapshotStore', () => {
   return { useSnapshotStore };
 });
 
+// K6: kontekst wywołania kreatora (preselekcja technologii, wariantu i mocy) — zmienny per test.
+const kontekstOperacji = vi.hoisted(() => ({ wartosc: {} as Record<string, unknown> }));
 vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
   useNetworkBuildStore: (selector: (s: { closeOperationForm: typeof closeFormMock }) => unknown) =>
     selector({ closeOperationForm: closeFormMock }),
-  useActiveOperationContext: () => ({}),
+  useActiveOperationContext: () => kontekstOperacji.wartosc,
 }));
+
+// K6: katalog pakietów baterii BESS (`GET /api/catalog/bess-battery-types`) — w mocku
+// modułu klienta katalogów niżej.
+const fetchBessBatteryTypesMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   resolveStationRef: () => resolved.station,
@@ -151,6 +157,7 @@ const fetchNcRfgOperatorsMock = vi.fn(() =>
   ]),
 );
 vi.mock('../../../../ui/network-build/station-der/derRemoteCatalogs', () => ({
+  fetchBessBatteryTypes: () => fetchBessBatteryTypesMock(),
   fetchNcRfgOperators: () => fetchNcRfgOperatorsMock(),
   getNcRfgOperator: (
     operators: ReadonlyArray<{ operator_id: string }>,
@@ -220,6 +227,11 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     fetchBomMock.mockResolvedValue(null);
     fetchConverterTypesMock.mockReset();
     fetchConverterTypesMock.mockResolvedValue(DOMYSLNE_KONWERTERY);
+    kontekstOperacji.wartosc = {};
+    fetchBessBatteryTypesMock.mockReset();
+    fetchBessBatteryTypesMock.mockResolvedValue([
+      { id: 'bat-lfp-2mwh', name: 'Pakiet LFP 2 MWh', chemistry: 'LFP', capacity_kwh: 2000, nominal_voltage_dc_v: 1200, c_rate: 0.5 },
+    ]);
     fetchLvApparatusTypesMock.mockReset();
     fetchLvApparatusTypesMock.mockResolvedValue(DOMYSLNE_APARATY);
     fetchNcRfgOperatorsMock.mockReset();
@@ -1037,5 +1049,55 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
       expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'gotowy');
     });
     expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeEnabled();
+  });
+
+  /**
+   * K6 (Z-16): kontekst wywołania niesie technologię, wariant i moc (formularz nN inspektora
+   * „Przyłącz po stronie SN…", akcje stacji „Dodaj układ BESS z katalogu"). Dotąd kreator je
+   * ignorował (start zawsze od PV / strony nN). Iloczyn: technologia {PV, BESS, FW} ×
+   * wariant {nn_side, block_transformer} × moc {podana, brak}.
+   */
+  it.each([
+    ['PV', 'nn_side', 0.8],
+    ['BESS', 'block_transformer', 2.5],
+    ['FW', 'block_transformer', null],
+  ] as const)('preselekcja z kontekstu: %s × %s × moc %s', async (tech, wariant, moc) => {
+    kontekstOperacji.wartosc = {
+      station_ref: 'st-1',
+      source_technology: tech,
+      connection_variant: wariant,
+      ...(moc !== null ? { power_setpoint_mw: moc } : {}),
+    };
+    render(<KreatorZrodlaOze />);
+    expect(screen.getByTestId('mvd-kreator-oze-technologia')).toHaveValue(tech);
+    expect(screen.getByTestId('mvd-kreator-oze-wariant')).toHaveValue(wariant);
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze')).toHaveAttribute('data-status', 'gotowy'));
+  });
+
+  it('kontekst bez preselekcji (albo spoza słownika) → wartości domyślne PV / strona nN', () => {
+    kontekstOperacji.wartosc = { station_ref: 'st-1', source_technology: 'WODA', connection_variant: 'sn_side', power_setpoint_mw: -1 };
+    render(<KreatorZrodlaOze />);
+    expect(screen.getByTestId('mvd-kreator-oze-technologia')).toHaveValue('PV');
+    expect(screen.getByTestId('mvd-kreator-oze-wariant')).toHaveValue('nn_side');
+  });
+
+  it('BESS: krok katalogu ma wymagany pakiet baterii z katalogu; PV — bez pola baterii', async () => {
+    kontekstOperacji.wartosc = { station_ref: 'st-1', source_technology: 'BESS' };
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-bateria').querySelector('option[value="bat-lfp-2mwh"]')).not.toBeNull(),
+    );
+    expect(fetchBessBatteryTypesMock).toHaveBeenCalled();
+    cleanup();
+    fetchBessBatteryTypesMock.mockClear();
+    kontekstOperacji.wartosc = { station_ref: 'st-1', source_technology: 'PV' };
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter').querySelector('option[value="conv-pv-1"]')).not.toBeNull(),
+    );
+    expect(screen.queryByTestId('mvd-kreator-oze-bateria')).toBeNull();
+    expect(fetchBessBatteryTypesMock).not.toHaveBeenCalled();
   });
 });

@@ -76,9 +76,34 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-/** Konwersja tekstu na typ: liczba / bool / null wykrywane automatycznie, reszta jako tekst. */
-function parsujWartosc(raw: string): string | number | boolean | null {
+/**
+ * Klucze kontraktu o wartości TEKSTOWEJ (pola `str` modeli ENM) — ich wartość nie jest
+ * zgadywana jako liczba. K6: numer pola „01" wysyłany jako liczba 1 był odrzucany przez
+ * walidację backendu (`Bay.bay_number: str`), a nazwa „2" zapisywała się jako liczba.
+ */
+const KLUCZE_TEKSTOWE: ReadonlySet<string> = new Set([
+  'name',
+  'bay_number',
+  'feeder_short_name',
+  'outgoing_destination_ref',
+  'entry_point_ref',
+  'station_type',
+  'vector_group',
+  'lv_earthing_system',
+  'screen_bonding',
+  'insulation',
+  'conductor_material',
+  'catalog_ref',
+  'catalog_namespace',
+  'source_mode',
+  'parameter_source',
+]);
+
+/** Konwersja tekstu na typ: dla kluczy tekstowych tekst; inaczej liczba / bool / null
+ *  wykrywane automatycznie, reszta jako tekst. */
+function parsujWartosc(raw: string, klucz = ''): string | number | boolean | null {
   const trimmed = raw.trim();
+  if (KLUCZE_TEKSTOWE.has(klucz.trim())) return trimmed;
   if (trimmed === 'null') return null;
   if (trimmed === 'true') return true;
   if (trimmed === 'false') return false;
@@ -186,7 +211,7 @@ export function KreatorEdycjiParametrow() {
       return;
     }
     const parameters = wypelnione.reduce<Record<string, unknown>>((acc, w) => {
-      acc[w.klucz.trim()] = parsujWartosc(w.wartosc);
+      acc[w.klucz.trim()] = parsujWartosc(w.wartosc, w.klucz);
       return acc;
     }, { ...zmianyNcRfg });
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };

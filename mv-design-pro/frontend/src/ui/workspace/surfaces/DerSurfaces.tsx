@@ -733,7 +733,7 @@ function FieldRow({ label, value }: { readonly label: string; readonly value: st
 
 function EngineeringNote({ children }: { readonly children: string }) {
   return (
-    <p className="mt-3 border-l-2 border-sygnal-info bg-sygnal-info-tlo px-3 py-2 text-xs text-sygnal-info-tusz">
+    <p className="mt-3 border-l-2 border-sygnal-info bg-sygnal-info-tlo px-3 py-2 text-[length:var(--mvd-font-size-data)] text-sygnal-info-tusz">
       {children}
     </p>
   );
@@ -1015,7 +1015,7 @@ function PvInverterCatalogPanel({
       <div className="rounded border border-scada-border bg-scada-surface/60 p-3">
         <h3 className="text-sm font-semibold text-scada-text">Certyfikowane falowniki PTPiREE</h3>
         {rejestr.stan === 'ladowanie' && (
-          <p className="mt-2 text-[11px] text-scada-muted" data-testid="ptpiree-rejestr-ladowanie">
+          <p className="mt-2 text-[length:var(--mvd-font-size-data)] text-scada-muted" data-testid="ptpiree-rejestr-ladowanie">
             Wczytywanie wykazu PTPiREE z backendu…
           </p>
         )}
@@ -1023,7 +1023,7 @@ function PvInverterCatalogPanel({
           <div
             role="alert"
             data-testid="ptpiree-rejestr-blad"
-            className="mt-2 rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[11px] text-sygnal-blokada-tusz"
+            className="mt-2 rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[length:var(--mvd-font-size-data)] text-sygnal-blokada-tusz"
           >
             <div className="font-semibold">
               Rejestr PTPiREE niedostępny — lista certyfikowanych urządzeń nie jest pokazywana, bo
@@ -1035,7 +1035,7 @@ function PvInverterCatalogPanel({
         {wykaz && (
           <>
             <div className="mt-1 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <p className="text-[11px] text-scada-muted" data-testid="ptpiree-rejestr-opis">
+              <p className="text-[length:var(--mvd-font-size-data)] text-scada-muted" data-testid="ptpiree-rejestr-opis">
                 Wykaz z backendu obejmuje {wykaz.rejestr.length} pozycji falownikowych i konwerterowych z oficjalnych wykazów PTPiREE, akceptowanych przez OSD od {wykaz.manifest.accepted_from}. Pozycja wykazu nie niesie parametrów elektrycznych urządzenia.
               </p>
               <input
@@ -1043,12 +1043,12 @@ function PvInverterCatalogPanel({
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Szukaj producenta, modelu, dokumentu..."
-                className="min-h-9 w-full rounded border border-scada-border bg-scada-panel px-3 py-1 text-xs text-scada-text outline-none focus:border-cyan-400 md:w-80"
+                className="min-h-9 w-full rounded border border-scada-border bg-scada-panel px-3 py-1 text-[length:var(--mvd-font-size-data)] text-scada-text outline-none focus:border-cyan-400 md:w-80"
                 aria-label="Szukaj w certyfikatach PTPiREE"
               />
             </div>
 
-            <div className="mt-3 text-[11px] text-scada-muted">
+            <div className="mt-3 text-[length:var(--mvd-font-size-data)] text-scada-muted">
               {matchingCertificates.length} wyników; tabela pokazuje pierwsze 24. Użyj wyszukiwarki po producencie, modelu albo numerze dokumentu.
             </div>
 
@@ -1059,7 +1059,7 @@ function PvInverterCatalogPanel({
                   href={source.source_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded border border-scada-border bg-scada-panel p-2 text-xs text-scada-text hover:border-cyan-400"
+                  className="rounded border border-scada-border bg-scada-panel p-2 text-[length:var(--mvd-font-size-data)] text-scada-text hover:border-cyan-400"
                 >
                   <span className="block font-semibold">WiPWC {source.wipwc_version} · publikacja {source.publication_date}</span>
                   <span className="mt-1 block text-cyan-200">{source.record_count} pozycji w wykazie</span>
@@ -1068,7 +1068,7 @@ function PvInverterCatalogPanel({
             </div>
 
             <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full text-left text-[11px]">
+              <table className="min-w-full text-left text-[length:var(--mvd-font-size-data)]">
                 <thead className="text-scada-muted">
                   <tr className="border-b border-scada-border">
                     <th className="py-2 pr-3 font-semibold">Producent / model</th>
@@ -1115,7 +1115,7 @@ function PvInverterCatalogPanel({
                               z backendu (der.catalogs.ptpiree_certificate_ref), nie z kliku
                               na tej liście referencyjnej. */}
                           {selected ? (
-                            <span className="rounded border border-emerald-400/50 bg-emerald-500/10 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+                            <span className="rounded border border-emerald-400/50 bg-emerald-500/10 px-2 py-1 text-[length:var(--mvd-font-size-data)] font-semibold text-emerald-700">
                               zgodne z modelem
                             </span>
                           ) : (
@@ -1461,20 +1461,20 @@ function DerSurfaceShell({
       className="flex h-full w-full flex-col p-4"
     >
       <div className="mb-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+        <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
           {screenCode} · {title}
         </div>
         <h2 className="mt-1 text-base font-semibold text-scada-text">
           {der?.name ?? 'Układ PV/BESS/FW niewybrany'}
         </h2>
         {!der && (
-          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz">
             Wybierz układ PV/BESS/FW z karty stacji „Układy przyłączeniowe” albo z menu
             kontekstowego SLD, aby otworzyć jego konfigurację przyłączeniową.
           </p>
         )}
         {der === surfaceContextDer && !storeDer && !snapshotDer && (
-          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz">
             Falownik wybrany na schemacie wymaga przypisania kompletnego pakietu
             katalogowego OZE: urządzenia, PCC, toru przyłączenia, profili NC RfG/FRT
             i zabezpieczeń.
@@ -1541,7 +1541,7 @@ function DerSurfaceShell({
 function DerKpi({ label, value }: { readonly label: string; readonly value: string }) {
   return (
     <div className="rounded border border-scada-border bg-scada-surface p-2">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-scada-muted">
+      <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
         {label}
       </div>
       <div className="mt-1 text-sm font-medium text-scada-text">{cleanCatalogText(value)}</div>

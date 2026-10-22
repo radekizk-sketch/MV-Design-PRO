@@ -523,12 +523,12 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+            <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
               Karta odcinka SN
             </div>
             <h2 className="mt-1 text-base font-semibold text-scada-text">{segmentName}</h2>
           </div>
-          <span className="border border-scada-sn/40 bg-scada-sn/10 px-2 py-1 text-[11px] font-semibold text-scada-text">
+          <span className="border border-scada-sn/40 bg-scada-sn/10 px-2 py-1 text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text">
             {segmentSummary.family}
           </span>
         </div>
@@ -547,18 +547,18 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
         <div
           data-testid="sld-segment-inspector"
           data-segment-ref={segmentRef ?? ''}
-          className="mt-3 grid gap-2 border border-scada-border/70 bg-scada-bg p-3 text-[11px] text-scada-muted sm:grid-cols-3"
+          className="mt-3 grid gap-2 border border-scada-border/70 bg-scada-bg p-3 text-[length:var(--mvd-font-size-data)] text-scada-muted sm:grid-cols-3"
         >
           <div>
-            <div className="font-semibold uppercase tracking-[0.14em]">Odcinek SN</div>
+            <div className="font-semibold">Odcinek SN</div>
             <div className="mt-1 font-mono text-scada-text">{segmentRef ?? MISSING_DASH}</div>
           </div>
           <div data-testid="sld-segment-inspector-catalog">
-            <div className="font-semibold uppercase tracking-[0.14em]">Katalog</div>
+            <div className="font-semibold">Katalog</div>
             <div className="mt-1 font-mono text-scada-text">{selectedCatalogRef ?? MISSING_DASH}</div>
           </div>
           <div data-testid="sld-segment-inspector-catalog-family">
-            <div className="font-semibold uppercase tracking-[0.14em]">Przestrzeń katalogu</div>
+            <div className="font-semibold">Przestrzeń katalogu</div>
             <div className="mt-1 font-mono text-scada-text">{selectedCatalogNamespace ?? MISSING_DASH}</div>
           </div>
           <div data-testid="sld-segment-catalog-status" className="sm:col-span-2">
@@ -579,7 +579,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
           data-testid="segment-end-actions"
           className="mt-4 border-t border-scada-border pt-3"
         >
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-scada-muted">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
             Dokończenie odcinka
           </div>
           {endpointStatus.isFree && (
@@ -590,7 +590,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                   type="button"
                   data-testid="segment-action-append-station"
                   onClick={() => openEndpointOperation('insert_station_on_segment_sn')}
-                  className="border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-xs font-semibold text-scada-text hover:bg-scada-sn/20"
+                  className="border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text hover:bg-scada-sn/20"
                 >
                   Zakończ stacją SN/nN
                 </button>
@@ -601,7 +601,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                     data-testid="segment-action-append-zksn"
                     disabled={!canAppendZksn}
                     onClick={() => openEndpointOperation('insert_zksn_on_segment_sn')}
-                    className={`border border-scada-border px-3 py-2 text-left text-xs font-semibold text-scada-text ${
+                    className={`border border-scada-border px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text ${
                       canAppendZksn
                         ? 'bg-scada-bg hover:border-scada-sn'
                         : 'cursor-not-allowed bg-scada-surface opacity-50'
@@ -616,7 +616,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                     data-testid="segment-action-append-branch-pole"
                     disabled={!canAppendBranchPole}
                     onClick={() => openEndpointOperation('insert_branch_pole_on_segment_sn')}
-                    className={`border border-scada-border px-3 py-2 text-left text-xs font-semibold text-scada-text ${
+                    className={`border border-scada-border px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text ${
                       canAppendBranchPole
                         ? 'bg-scada-bg hover:border-scada-sn'
                         : 'cursor-not-allowed bg-scada-surface opacity-50'
@@ -628,7 +628,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
               </div>
               <div
                 data-testid="segment-termination-standard"
-                className="mt-2 text-[11px] leading-5 text-scada-muted"
+                className="mt-2 text-[length:var(--mvd-font-size-data)] leading-5 text-scada-muted"
               >
                 {terminationStandardHint}
               </div>
@@ -637,7 +637,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
           {!endpointStatus.isFree && (
             <div
               data-testid="segment-endpoint-occupied"
-              className="mt-2 border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs leading-5 text-sygnal-uwaga-tusz"
+              className="mt-2 border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] leading-5 text-sygnal-uwaga-tusz"
             >
               <div className="font-semibold text-white">Końcowy zacisk odcinka jest zajęty</div>
               <div className="mt-1">{endpointStatus.reasonPl}</div>
@@ -646,7 +646,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
                   type="button"
                   data-testid="segment-action-open-end-station"
                   onClick={openEndpointStation}
-                  className="mt-3 border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-xs font-semibold text-scada-text hover:bg-scada-sn/20"
+                  className="mt-3 border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text hover:bg-scada-sn/20"
                 >
                   Otwórz stację na końcu odcinka
                 </button>
@@ -656,7 +656,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
           {actionNotice && (
             <div
               data-testid="segment-action-notice"
-              className="mt-2 border border-sygnal-uwaga bg-sygnal-uwaga-tlo px-3 py-2 text-xs text-sygnal-uwaga-tusz"
+              className="mt-2 border border-sygnal-uwaga bg-sygnal-uwaga-tlo px-3 py-2 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz"
             >
               {actionNotice}
             </div>
@@ -674,7 +674,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
             data-active={activeCard === id}
             onClick={() => setActiveCard(id)}
             className={
-              'whitespace-nowrap px-3 py-2 text-xs font-medium '
+              'whitespace-nowrap px-3 py-2 text-[length:var(--mvd-font-size-data)] font-medium '
               + (activeCard === id
                 ? 'border-b-2 border-scada-sn text-scada-text'
                 : 'border-b-2 border-transparent text-scada-muted hover:text-scada-text')
@@ -733,7 +733,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
               value={data.conductorMm2}
               onChange={(v) => setData((d) => ({ ...d, conductorMm2: v }))}
             />
-            <p className="rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted">
+            <p className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
               Parametry elektryczne odcinka są pobierane z wybranego typu katalogowego.
               Zmiana R/X/C jest operacją ekspercką i wymaga jawnego uzasadnienia technicznego.
             </p>
@@ -783,7 +783,7 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
               value={data.ampacityA}
               onChange={(v) => setData((d) => ({ ...d, ampacityA: v }))}
             />
-            <p className="rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted">
+            <p className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
               Wynik analizy obciążalności cieplnej dostępny po obliczeniach
               rozpływu mocy. Aktualny wynik:{' '}
               <span className="font-medium">{MISSING_DASH}</span>
@@ -798,10 +798,10 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="border border-scada-border/80 bg-scada-surface/70 px-3 py-2">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-scada-muted">
+      <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
         {label}
       </div>
-      <div className="mt-1 min-h-[1.25rem] break-words text-xs font-semibold text-scada-text">
+      <div className="mt-1 min-h-[1.25rem] break-words text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text">
         {value || MISSING_DASH}
       </div>
     </div>
@@ -819,7 +819,7 @@ interface FieldProps {
 function Field({ label, value, onChange, placeholder, required }: FieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-scada-muted">
+      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
         {label}
         {required && <span className="text-red-400"> *</span>}
       </label>
@@ -846,7 +846,7 @@ interface NumberFieldProps {
 function NumberField({ label, unit, value, onChange, placeholder, required }: NumberFieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-scada-muted">
+      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
         {label}
         {unit && <span> [{unit}]</span>}
         {required && <span className="text-red-400"> *</span>}
@@ -882,7 +882,7 @@ interface SelectFieldProps {
 function SelectField({ label, value, onChange, options, required, testId }: SelectFieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-scada-muted">
+      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
         {label}
         {required && <span className="text-red-400"> *</span>}
       </label>

@@ -311,12 +311,12 @@ function EquivalentImpedanceProof({ step }: { step: TraceStep }) {
   return (
     <div
       data-testid="equivalent-impedance-proof"
-      className="space-y-2 rounded border border-blue-200 bg-blue-50/70 p-3"
+      className="space-y-2 rounded border border-[color:var(--mvd-info)] bg-[color:var(--mvd-info-bg)]/70 p-3"
     >
-      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+      <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-info)]">
         Wyprowadzenie impedancji zastępczej
       </div>
-      <p className="text-[11px] leading-5 text-slate-700">
+      <p className="text-[length:var(--mvd-font-size-data)] leading-5 text-[color:var(--mvd-ink)]">
         Dla zwarcia trójfazowego zgodnie z IEC 60909 impedancja widziana z punktu
         zwarcia jest impedancją składowej zgodnej. Poniżej pokazano zapis symboliczny
         oraz podstawienie wartości pobranych ze śladu obliczeń.
@@ -371,21 +371,21 @@ function TraceValuesTable({
 
   return (
     <div className="space-y-1">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+      <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-muted)]">
         {title}
       </div>
-      <table className="w-full border-collapse text-[11px]">
-        <tbody className="divide-y divide-slate-200">
+      <table className="w-full border-collapse text-[length:var(--mvd-font-size-data)]">
+        <tbody className="divide-y divide-[color:var(--mvd-line)]">
           {rows.map(([key, value]) => {
             const latex = traceValueLatex(key, value);
             return (
             <tr key={key}>
-              <th className="w-1/2 py-1 pr-2 text-left font-medium text-slate-500">
+              <th className="w-1/2 py-1 pr-2 text-left font-medium text-[color:var(--mvd-muted)]">
                 {traceLabel(key)}
               </th>
-              <td className="py-1 text-right text-slate-800">
+              <td className="py-1 text-right text-[color:var(--mvd-ink)]">
                 {latex ? (
-                  <MathRenderer latex={latex} className="text-slate-900" />
+                  <MathRenderer latex={latex} className="text-[color:var(--mvd-ink)]" />
                 ) : (
                   <span>nie wyznaczono</span>
                 )}
@@ -403,11 +403,11 @@ function FormulaBlock({ label, latex }: { label: string; latex: string | undefin
   if (!latex) return null;
   return (
     <div className="space-y-1">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+      <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-muted)]">
         {label}
       </div>
-      <div className="overflow-x-auto rounded border border-slate-200 bg-slate-50 px-2 py-2">
-        <MathRenderer latex={latex} block className="text-slate-900" />
+      <div className="overflow-x-auto rounded border border-[color:var(--mvd-line)] bg-[color:var(--mvd-surface)] px-2 py-2">
+        <MathRenderer latex={latex} block className="text-[color:var(--mvd-ink)]" />
       </div>
     </div>
   );
@@ -417,18 +417,18 @@ function TraceStepCard({ step, index }: { step: TraceStep; index: number }) {
   return (
     <article
       data-testid="element-proof-trace-step"
-      className="space-y-3 rounded border border-slate-200 bg-white p-3"
+      className="space-y-3 rounded border border-[color:var(--mvd-line)] bg-[color:var(--mvd-panel)] p-3"
     >
       <header className="flex items-start gap-2">
-        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[10px] font-semibold text-white">
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[color:var(--mvd-accent)] text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-accent-ink)]">
           {index + 1}
         </span>
         <div>
-          <div className="text-xs font-semibold text-slate-900">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-ink)]">
             {traceStepTitle(step, index)}
           </div>
           {step.phase && (
-            <div className="mt-0.5 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+            <div className="mt-0.5 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-muted)]">
               {step.phase}
             </div>
           )}
@@ -443,16 +443,16 @@ function TraceStepCard({ step, index }: { step: TraceStep; index: number }) {
       <FormulaBlock label="Podstawienie" latex={step.substitution_latex} />
       {!step.substitution_latex && step.substitution && (
         <div className="space-y-1" data-testid="element-proof-substitution-text">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-muted)]">
             Podstawienie
           </div>
-          <p className="text-[11px] text-slate-800">{step.substitution}</p>
+          <p className="text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-ink)]">{step.substitution}</p>
         </div>
       )}
       <TraceValuesTable title="Wynik kroku" values={step.result} />
 
       {step.notes && (
-        <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+        <div className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-2 py-1.5 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]">
           {step.notes}
         </div>
       )}
@@ -465,7 +465,7 @@ function ShortCircuitRows({ rows }: { rows: ShortCircuitRow[] }) {
     return (
       <div
         data-testid="element-proof-no-short-circuit"
-        className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+        className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]"
       >
         Nie wyznaczono wyniku zwarciowego dla tego obiektu w aktywnym obliczeniu.
       </div>
@@ -473,9 +473,9 @@ function ShortCircuitRows({ rows }: { rows: ShortCircuitRow[] }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded border border-slate-200">
-      <table className="min-w-full text-[11px]" data-testid="element-proof-short-circuit-table">
-        <thead className="bg-slate-50 text-slate-500">
+    <div className="overflow-x-auto rounded border border-[color:var(--mvd-line)]">
+      <table className="min-w-full text-[length:var(--mvd-font-size-data)]" data-testid="element-proof-short-circuit-table">
+        <thead className="bg-[color:var(--mvd-surface)] text-[color:var(--mvd-muted)]">
           <tr>
             <th className="px-2 py-1.5 text-left font-semibold">Punkt</th>
             <th className="px-2 py-1.5 text-left font-semibold">Typ</th>
@@ -484,7 +484,7 @@ function ShortCircuitRows({ rows }: { rows: ShortCircuitRow[] }) {
             <th className="px-2 py-1.5 text-right font-semibold">Ith</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-200 bg-white text-slate-800">
+        <tbody className="divide-y divide-[color:var(--mvd-line)] bg-[color:var(--mvd-panel)] text-[color:var(--mvd-ink)]">
           {rows.map((row) => (
             <tr key={`${row.target_id}:${row.fault_type ?? 'fault'}`}>
               <td className="px-2 py-1.5">
@@ -572,14 +572,14 @@ export function ElementCalculationProofPanel({
   return (
     <section
       data-testid="element-calculation-proof-panel"
-      className={className ?? 'border-b border-gray-200 bg-white px-4 py-3'}
+      className={className ?? 'border-b border-[color:var(--mvd-line)] px-4 py-3'}
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-info)]">
             Wywód obliczeń
           </div>
-          <h4 className="text-sm font-semibold text-slate-900">
+          <h4 className="text-sm font-semibold text-[color:var(--mvd-ink)]">
             {selectedElement ? selectedElement.name || selectedElement.id : 'Wybierz obiekt na SLD'}
           </h4>
         </div>
@@ -588,7 +588,7 @@ export function ElementCalculationProofPanel({
             href={`/api/analysis-runs/${encodeURIComponent(runId)}/export/proof/latex`}
             target="_blank"
             rel="noreferrer"
-            className="shrink-0 rounded border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"
+            className="shrink-0 rounded border border-[color:var(--mvd-line)] px-2 py-1 text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-ink)] hover:bg-[color:var(--mvd-surface)]"
             data-testid="element-proof-latex-link"
           >
             Pełny LaTeX
@@ -596,7 +596,7 @@ export function ElementCalculationProofPanel({
         )}
         {runId && !eksportLatex.dostepny && (
           <span
-            className="shrink-0 cursor-not-allowed rounded border border-slate-200 px-2 py-1 text-[10px] font-semibold text-slate-400"
+            className="shrink-0 cursor-not-allowed rounded border border-[color:var(--mvd-line)] px-2 py-1 text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-muted)]"
             title={eksportLatex.powod_pl ?? undefined}
             aria-disabled="true"
             data-testid="element-proof-latex-niedostepny"
@@ -607,25 +607,25 @@ export function ElementCalculationProofPanel({
       </div>
 
       {!runId ? (
-        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]">
           Brak aktywnego obliczenia. Uruchom obliczenia, aby zobaczyć wywód dla elementu.
         </div>
       ) : !selectedElement ? (
-        <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <div className="rounded border border-[color:var(--mvd-line)] bg-[color:var(--mvd-surface)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-muted)]">
           Kliknij węzeł, odcinek, stację, pole albo transformator na SLD.
         </div>
       ) : state.status === 'loading' ? (
-        <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        <div className="rounded border border-[color:var(--mvd-line)] bg-[color:var(--mvd-surface)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-muted)]">
           Pobieram wynik zwarciowy i ślad obliczeń dla zaznaczonego obiektu.
         </div>
       ) : state.status === 'error' ? (
-        <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-900">
+        <div className="rounded border border-[color:var(--mvd-err)] bg-[color:var(--mvd-err-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-err-ink)]">
           Nie udało się pobrać wywodu obliczeń: {state.errors.join(' ')}
         </div>
       ) : (
         <div className="space-y-3">
           {state.errors.length > 0 && (
-            <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+            <div className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]">
               {state.errors.join(' ')}
             </div>
           )}
@@ -634,7 +634,7 @@ export function ElementCalculationProofPanel({
 
           {traceSteps.length > 0 ? (
             <div className="space-y-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-[color:var(--mvd-muted)]">
                 Kroki wywodu obliczeniowego
               </div>
               {traceSteps.map((step, index) => (
@@ -648,7 +648,7 @@ export function ElementCalculationProofPanel({
           ) : (
             <div
               data-testid="element-proof-no-trace"
-              className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+              className="rounded border border-[color:var(--mvd-warn)] bg-[color:var(--mvd-warn-bg)] px-3 py-2 text-[length:var(--mvd-font-size-data)] text-[color:var(--mvd-warn-ink)]"
             >
               Ślad obliczeń jest dostępny, ale nie ma kroku bezpośrednio powiązanego
               z zaznaczonym obiektem. Otwórz pełny plik .tex albo wybierz węzeł

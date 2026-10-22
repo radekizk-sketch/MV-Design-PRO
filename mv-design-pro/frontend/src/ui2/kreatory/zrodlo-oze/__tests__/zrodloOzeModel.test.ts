@@ -11,6 +11,8 @@ import {
   TECHNOLOGIA_OPCJE,
   bessLabel,
   converterCatalogNamespace,
+  daneZKontekstu,
+  BRAK_PAKIETU_BATERII_PL,
   maKontekst,
   materializedParams,
   regulacjaLabel,
@@ -632,5 +634,39 @@ describe('sekwencja zapisu K9-A', () => {
         snapshot: { generators: [] },
       }),
     ).toBeNull();
+  });
+});
+
+/*
+ * K6: pakiet baterii BESS i preselekcja z kontekstu. Iloczyn: technologia {PV, BESS, FW} ×
+ * pakiet {wybrany, brak} — błąd i pole ładunku wyłącznie dla BESS.
+ */
+describe('K6 — pakiet baterii BESS i preselekcja kreatora', () => {
+  it.each([
+    ['PV', null, false, undefined],
+    ['PV', 'bat-1', false, undefined],
+    ['FW', 'bat-1', false, undefined],
+    ['BESS', null, true, undefined],
+    ['BESS', '  ', true, undefined],
+    ['BESS', 'bat-1', false, 'bat-1'],
+  ] as const)('%s × pakiet %s → błąd %s, ładunek %s', (tech, bateria, blad, wLadunku) => {
+    const d = dane({ source_technology: tech, battery_catalog_ref: bateria });
+    const bledy = walidujFormularz(d, KONTEKST).filter((b) => b.field === 'battery_catalog_ref');
+    expect(bledy.length > 0).toBe(blad);
+    if (blad) expect(bledy[0].message).toBe(BRAK_PAKIETU_BATERII_PL);
+    const ladunek = zbudujPayload(d, KONTEKST, { ...KONWERTER, kind: tech === 'FW' ? 'WIND' : tech } as ConverterType, null);
+    expect(ladunek.battery_catalog_ref).toBe(wLadunku);
+  });
+
+  it('daneZKontekstu: słownikowe wartości preselekcji, reszta domyślna; śmieci ignorowane', () => {
+    expect(daneZKontekstu(null)).toEqual(DANE_DOMYSLNE);
+    expect(daneZKontekstu({ source_technology: 'BESS', connection_variant: 'block_transformer', power_setpoint_mw: 2.5 })).toEqual({
+      ...DANE_DOMYSLNE,
+      source_technology: 'BESS',
+      connection_variant: 'block_transformer',
+      power_setpoint_mw: 2.5,
+    });
+    expect(daneZKontekstu({ source_technology: 'X', connection_variant: 'sn_side', power_setpoint_mw: 0 })).toEqual(DANE_DOMYSLNE);
+    expect(daneZKontekstu({ power_setpoint_mw: Number.NaN }).power_setpoint_mw).toBeNull();
   });
 });

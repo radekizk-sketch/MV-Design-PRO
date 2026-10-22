@@ -25,7 +25,7 @@ import { StatusBar } from './StatusBar';
 import { SpaceNav } from './SpaceNav';
 import { PanelDolny } from './panelDolny/PanelDolny';
 import { ZAKLADKI_PANELU_DOLNEGO, type ZakladkaPaneluDolnego } from './panelDolny/rejestrZakladek';
-import { clampLeftWidth, clampRightWidth, DEFAULT_LAYOUT, useShellStore } from './useShellStore';
+import { clampLeftWidth, DEFAULT_LAYOUT, efektywnaSzerokoscInspektora, useShellStore } from './useShellStore';
 import { useThemeModeStore, applyThemeMode } from '../theme/themeMode';
 import {
   useShellCaseInfo,
@@ -138,6 +138,7 @@ export function AppShell({
   const setRightWidth = useShellStore((s) => s.setRightWidth);
   const toggleLeftCollapsed = useShellStore((s) => s.toggleLeftCollapsed);
   const toggleRightCollapsed = useShellStore((s) => s.toggleRightCollapsed);
+  const toggleRightWide = useShellStore((s) => s.toggleRightWide);
   const resetLayout = useShellStore((s) => s.resetLayout);
   const bottomPanelOpen = useShellStore((s) => s.bottomPanelOpen);
   const bottomPanelTab = useShellStore((s) => s.bottomPanelTab);
@@ -168,7 +169,12 @@ export function AppShell({
   // zwinięcia, bo brak wpisu przestrzeni omijał domyślne store'a). Karta K1:
   // szerokości zapisane przy dawnych granicach są przycinane do bieżących.
   const leftWidth = clampLeftWidth(layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth);
-  const rightWidth = clampRightWidth(layout?.rightWidth ?? DEFAULT_LAYOUT.rightWidth);
+  // K6: tryb szeroki (560 px) tylko z jawnego polecenia; poza nim pasmo 340–420 px.
+  const rightWide = layout?.rightWide === true;
+  const rightWidth = efektywnaSzerokoscInspektora({
+    rightWidth: layout?.rightWidth ?? DEFAULT_LAYOUT.rightWidth,
+    rightWide,
+  });
   const leftCollapsed = layout?.leftCollapsed ?? DEFAULT_LAYOUT.leftCollapsed;
   const rightCollapsed = layout?.rightCollapsed ?? DEFAULT_LAYOUT.rightCollapsed;
 
@@ -280,6 +286,8 @@ export function AppShell({
         bottomOpen={bottomPanelOpen}
         onToggleLeft={() => toggleLeftCollapsed(activeSpace)}
         onToggleRight={() => toggleRightCollapsed(activeSpace)}
+        rightWide={rightWide}
+        onToggleRightWide={() => toggleRightWide(activeSpace)}
         onToggleBottom={toggleBottomPanel}
         onResetLayout={() => resetLayout(activeSpace)}
         onOpenProject={onOpenProject}
@@ -325,16 +333,15 @@ export function AppShell({
             }
             right={
               inspector ?? (
-                <div>
-                  <h2 className="mvd-inspector-naglowek">{SHELL_STRINGS.inspectorHeading}</h2>
-                  <p className="mvd-inspector-empty">{SHELL_STRINGS.inspectorEmpty}</p>
-                </div>
+                <p className="mvd-inspector-empty">{SHELL_STRINGS.inspectorEmpty}</p>
               )
             }
             leftWidth={leftWidth}
             rightWidth={rightWidth}
             leftCollapsed={leftCollapsed}
             rightCollapsed={rightCollapsed}
+            rightWide={rightWide}
+            onToggleRightWide={() => toggleRightWide(activeSpace)}
             onToggleLeft={() => toggleLeftCollapsed(activeSpace)}
             onToggleRight={() => toggleRightCollapsed(activeSpace)}
             onResizeLeft={(width) => setLeftWidth(activeSpace, width)}

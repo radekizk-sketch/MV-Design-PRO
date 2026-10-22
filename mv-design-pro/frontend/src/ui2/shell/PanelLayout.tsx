@@ -19,6 +19,9 @@ interface PanelLayoutProps {
   rightWidth: number;
   leftCollapsed: boolean;
   rightCollapsed: boolean;
+  /** K6: tryb szeroki inspektora (560 px) — przycisk w nagłówku inspektora. */
+  rightWide?: boolean;
+  onToggleRightWide?: () => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
   onResizeLeft: (width: number) => void;
@@ -33,6 +36,8 @@ export function PanelLayout({
   rightWidth,
   leftCollapsed,
   rightCollapsed,
+  rightWide = false,
+  onToggleRightWide,
   onToggleLeft,
   onToggleRight,
   onResizeLeft,
@@ -126,8 +131,26 @@ export function PanelLayout({
         aria-label={SHELL_STRINGS.inspectorHeading}
         hidden={rightCollapsed}
         data-testid="mvd-inspector"
+        data-szeroki={rightWide ? 'true' : 'false'}
       >
-        {right}
+        <div className="mvd-inspector-pasek" data-testid="mvd-inspector-pasek">
+          <h2 className="mvd-inspector-naglowek">{SHELL_STRINGS.inspectorHeading}</h2>
+          {onToggleRightWide && (
+            <button
+              type="button"
+              className="mvd-btn mvd-inspector-szeroki"
+              aria-pressed={rightWide}
+              title={SHELL_STRINGS.inspectorWideHint}
+              onClick={onToggleRightWide}
+              data-testid="mvd-inspector-szeroki"
+            >
+              {SHELL_STRINGS.inspectorWideButton}
+            </button>
+          )}
+        </div>
+        <div className="mvd-inspector-tresc" data-testid="mvd-inspector-tresc">
+          {right}
+        </div>
       </aside>
     </div>
   );

@@ -7,6 +7,7 @@ import { resolveSelectedElementFromSnapshot } from '../shared/selectionResolutio
 import { useSelectionStore } from '../selection/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { useUrlSelectionSync } from './useUrlSelectionSync';
+import { navigateToSld } from './routes';
 
 const snapshot = {
   header: {} as never,
@@ -305,6 +306,41 @@ describe('useUrlSelectionSync', () => {
       expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(przed);
     });
 
+    it('zdjęcie selekcji (Escape, klik w tło) zamyka okno otwarte przez selekcję', async () => {
+      await oknoStacji();
+      // Odtwarzanie z adresu blokuje reakcje do następnej klatki.
+      await act(() => new Promise<void>((koniec) => requestAnimationFrame(() => koniec())));
+      act(() => {
+        useSelectionStore.getState().clearSelection();
+      });
+      await waitFor(() => {
+        expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+      });
+    });
+
+    it('zdjęcie selekcji nie zamyka formularza otwartego przez użytkownika', async () => {
+      act(() => {
+        window.history.replaceState(null, '', '/#sld');
+        useSelectionStore.getState().clearSelection();
+        useNetworkBuildStore.getState().openOperationForm('add_converter_source', {});
+      });
+      act(() => {
+        render(<UrlSelectionSyncProbe />);
+      });
+      await act(() => new Promise<void>((koniec) => requestAnimationFrame(() => koniec())));
+      const formularz = useNetworkBuildStore.getState().activeSurface;
+      expect(formularz).not.toBeNull();
+      act(() => {
+        useSelectionStore.getState().selectElement(kanoniczny('kab-1'));
+      });
+      await waitFor(() => expect(useSelectionStore.getState().selectedElement?.id).toBe('kab-1'));
+      act(() => {
+        useSelectionStore.getState().clearSelection();
+      });
+      await waitFor(() => expect(useSelectionStore.getState().selectedElement).toBeNull());
+      expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(formularz?.surfaceId);
+    });
+
     it('okno otwarte przez użytkownika (formularz operacji) nie jest ruszane przez selekcję', async () => {
       act(() => {
         window.history.replaceState(null, '', '/#sld');
@@ -324,5 +360,43 @@ describe('useUrlSelectionSync', () => {
         expect(useNetworkBuildStore.getState().activeSurface?.surfaceId).toBe(formularz?.surfaceId);
       }
     });
+  });
+});
+
+describe('useUrlSelectionSync — zimny start bez trasy', () => {
+  afterEach(() => {
+    act(() => {
+      useSelectionStore.getState().clearSelection();
+      useSnapshotStore.getState().reset();
+      window.history.replaceState(null, '', '/');
+    });
+  });
+
+  // K6: zapis kreatora (np. „Zmień" w karcie inspektora → update_element_parameters) wybiera
+  // obiekt i woła navigateToSld(). Przy adresie `/` selekcja lądowała w location.search,
+  // a przejście na `#sld` czytało pusty hash i czyściło selekcję — inspektor się zwijał.
+  it('selekcja wybrana przy adresie `/` przeżywa navigateToSld()', async () => {
+    act(() => {
+      window.history.replaceState(null, '', '/');
+      useSnapshotStore.setState({ snapshot } as never);
+    });
+    render(<UrlSelectionSyncProbe />);
+    // Odtwarzanie z adresu przy montażu blokuje zapis do adresu do następnej klatki.
+    await act(() => new Promise<void>((koniec) => requestAnimationFrame(() => koniec())));
+    const ref = 'stn/1/sn_field_breaker/000';
+    act(() => {
+      useSelectionStore.getState().selectElement({ id: ref, type: 'Switch', name: 'Wyłącznik pola SN 1' });
+    });
+    await waitFor(() => expect(new URLSearchParams(window.location.hash.split('?')[1]).get('sel')).toBe(ref));
+    expect(window.location.search).toBe('');
+    act(() => {
+      navigateToSld();
+      // Przeglądarka przy nawigacji fragmentu (`location.hash = …`) wysyła `popstate`;
+      // jsdom tego nie robi, więc zdarzenie wysyłamy jawnie — to ono czyściło selekcję.
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await waitFor(() => expect(window.location.hash.startsWith('#sld?')).toBe(true));
+    expect(useSelectionStore.getState().selectedElement?.id).toBe(ref);
+    expect(new URLSearchParams(window.location.hash.split('?')[1]).get('sel')).toBe(ref);
   });
 });

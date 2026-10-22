@@ -37,6 +37,12 @@ import {
   type SzkicDer,
 } from '../../sld/shared/kontekstElementuKanwy';
 import { useSldActionExecutor } from '../../sld/shared/sldActionExecutor';
+import {
+  buildKartaTechniczna,
+  type EdycjaWiersza,
+  type KartaTechniczna,
+} from '../../sld/shared/kartaTechnicznaElementu';
+import { useKatalogiKarty } from './katalogiKarty';
 
 /** Stan sekcji „Wyniki": brak / nieaktualne / wartość — bez wartości zastępczych. */
 export type StanWynikowElementu =
@@ -113,6 +119,11 @@ export interface StanPaneluElementu {
   readonly szkicDer: SzkicDer | null;
   readonly daneSzkicuDer: DaneElementuKanwy | null;
   readonly konfiguracja: OtwarcieKonfiguracji | null;
+  /** K6: karta techniczna obiektu (`kartaTechnicznaElementu.ts`); `null` — rodzaj bez karty. */
+  readonly karta: KartaTechniczna | null;
+  /** Zmiana wartości karty operacją domenową; `null` poza trybem edycji modelu i dla
+   *  obiektu tylko do odczytu (bez przycisku „Zmień" — bez atrapy). */
+  readonly edytuj: ((edycja: EdycjaWiersza) => void) | null;
 }
 
 export function useStanPaneluElementu(): StanPaneluElementu | null {
@@ -124,6 +135,9 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   const payload = useRawResultOverlayStore((state) => state.payload);
   const status = useAppStateStore((state) => state.activeCaseResultStatus);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const activeMode = useAppStateStore((state) => state.activeMode);
+  const katalogi = useKatalogiKarty();
 
   const index = useMemo(() => buildCanvasModelIndex(snapshot), [snapshot]);
   const sldData = useMemo(() => buildSldDataFromSnapshot(snapshot, logicalViews), [snapshot, logicalViews]);
@@ -158,6 +172,19 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
       kontekst.deviceRef,
     );
   }, [kontekst, payload, sldData, snapshot]);
+
+  const karta = useMemo(() => buildKartaTechniczna(snapshot, dane, katalogi), [dane, katalogi, snapshot]);
+  const edycjaDozwolona = activeMode === 'MODEL_EDIT' && !(kontekst?.tylkoOdczyt ?? false);
+  const edytuj = useCallback(
+    (edycja: EdycjaWiersza) =>
+      openOperationForm('update_element_parameters', {
+        element_ref: edycja.elementRef,
+        field: edycja.parametr,
+        value: edycja.wartosc,
+        source: 'inspektor_karta',
+      }),
+    [openOperationForm],
+  );
 
   const temat = kontekst?.temat ?? null;
   const akcje = useMemo(
@@ -224,5 +251,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     szkicDer,
     daneSzkicuDer,
     konfiguracja,
+    karta,
+    edytuj: edycjaDozwolona ? edytuj : null,
   };
 }

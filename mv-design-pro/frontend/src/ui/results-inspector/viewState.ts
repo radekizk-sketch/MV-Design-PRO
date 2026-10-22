@@ -1,5 +1,5 @@
 import type { ResultsInspectorTab } from './types';
-import { getCurrentHashRoute, getCurrentSearchParams } from '../navigation/urlState';
+import { adresZTrasaIParametrami, getCurrentHashRoute, getCurrentSearchParams } from '../navigation/urlState';
 
 export type ResultsSnapshotMode = 'RUN_SNAPSHOT' | 'CURRENT_MODEL';
 
@@ -48,10 +48,7 @@ export function updateResultsSnapshotMode(mode: ResultsSnapshotMode): void {
   const params = getCurrentSearchParams();
   params.set(RESULTS_SNAPSHOT_PARAM, encodeResultsSnapshotMode(mode));
 
-  const queryString = params.toString();
-  const nextHash = queryString ? `${currentHash}?${queryString}` : currentHash;
-  const nextUrl = `${window.location.pathname}${nextHash}`;
-  window.history.replaceState(null, '', nextUrl);
+  window.history.replaceState(null, '', adresZTrasaIParametrami(currentHash, params));
 }
 
 export function resolveAvailableResultsTabs(

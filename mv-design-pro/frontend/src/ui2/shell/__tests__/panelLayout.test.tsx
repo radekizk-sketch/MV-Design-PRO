@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppShell } from '../AppShell';
 import {
@@ -14,6 +14,8 @@ import {
   RAIL_WIDTH,
   LEFT_DEFAULT,
   RIGHT_DEFAULT,
+  RIGHT_WIDE,
+  efektywnaSzerokoscInspektora,
   BOTTOM_MIN,
   BOTTOM_MAX,
   BOTTOM_DEFAULT,
@@ -42,13 +44,18 @@ describe('useShellStore — granice szerokości (kontrakt UI-02, karta K1 POWLOK
     expect(clampLeftWidth(Number.NaN)).toBe(LEFT_DEFAULT);
   });
 
-  it('inspektor: 340 px minimum, domyślnie 360 (w paśmie 340–420), przeciąganie do 560', () => {
-    expect([RIGHT_MIN, RIGHT_DEFAULT, RIGHT_MAX]).toEqual([340, 360, 560]);
-    expect(RIGHT_DEFAULT).toBeLessThanOrEqual(420);
+  // K6 (Z-13): przeciąganie i klawiatura w paśmie UI-02 340–420 px; 560 px wyłącznie jako
+  // jawny tryb szeroki (osobne pole układu, nie wartość szerokości z uchwytu).
+  it('inspektor: 340–420 px (domyślnie 360), tryb szeroki 560 px wyłącznie jawnym poleceniem', () => {
+    expect([RIGHT_MIN, RIGHT_DEFAULT, RIGHT_MAX, RIGHT_WIDE]).toEqual([340, 360, 420, 560]);
     expect(clampRightWidth(100)).toBe(RIGHT_MIN);
     expect(clampRightWidth(999)).toBe(RIGHT_MAX);
+    expect(clampRightWidth(560)).toBe(RIGHT_MAX);
     expect(clampRightWidth(400)).toBe(400);
     expect(clampRightWidth(Number.POSITIVE_INFINITY)).toBe(RIGHT_DEFAULT);
+    expect(efektywnaSzerokoscInspektora({ rightWidth: 400, rightWide: false })).toBe(400);
+    expect(efektywnaSzerokoscInspektora({ rightWidth: 900, rightWide: false })).toBe(RIGHT_MAX);
+    expect(efektywnaSzerokoscInspektora({ rightWidth: 360, rightWide: true })).toBe(RIGHT_WIDE);
   });
 
   it('panel dolny: wysokość regulowana w granicach', () => {
@@ -62,12 +69,13 @@ describe('useShellStore — granice szerokości (kontrakt UI-02, karta K1 POWLOK
   it('zapis z dawnymi granicami (lewy 200–320, inspektor 280) jest przycinany przy odczycie', () => {
     useShellStore.setState({
       layoutBySpace: {
-        model: { leftWidth: 320, rightWidth: 280, leftCollapsed: false, rightCollapsed: false },
-        projekt: { leftWidth: 200, rightWidth: 900, leftCollapsed: true, rightCollapsed: true },
+        model: { leftWidth: 320, rightWidth: 280, leftCollapsed: false, rightCollapsed: false, rightWide: false },
+        projekt: { leftWidth: 200, rightWidth: 900, leftCollapsed: true, rightCollapsed: true, rightWide: false },
       },
     });
     expect(useShellStore.getState().getLayout('model')).toMatchObject({ leftWidth: 260, rightWidth: 340 });
-    expect(useShellStore.getState().getLayout('projekt')).toMatchObject({ leftWidth: 220, rightWidth: 560 });
+    // Dawny zapis 900 px (granica 560) NIE daje trybu szerokiego — przycięcie do 420.
+    expect(useShellStore.getState().getLayout('projekt')).toMatchObject({ leftWidth: 220, rightWidth: 420, rightWide: false });
   });
 });
 
@@ -162,6 +170,93 @@ describe('AppShell — zwijanie/rozwijanie paneli', () => {
 
     expect(screen.getByTestId('mvd-body').style.gridTemplateColumns).toContain(`${LEFT_DEFAULT}px`);
   });
+
+  // K6 (Z-13): iloczyn cech — polecenie {przycisk nagłówka, menu Widok} × stan {zwykły,
+  // szeroki} × przestrzeń {bieżąca, inna} × zmiana z uchwytu {przeciąganie, klawiatura}.
+  it.each(['przycisk', 'menu'] as const)(
+    'tryb szeroki (%s): 560 px i powrót tym samym poleceniem, zapis per przestrzeń',
+    async (polecenie) => {
+      const user = userEvent.setup();
+      useShellStore.getState().setRightCollapsed('projekt', false);
+      useShellStore.getState().setRightWidth('projekt', 400);
+      render(<AppShell />);
+      const kolumny = () => screen.getByTestId('mvd-body').style.gridTemplateColumns;
+      const wykonaj = async () => {
+        if (polecenie === 'przycisk') {
+          await user.click(screen.getByTestId('mvd-inspector-szeroki'));
+        } else {
+          await user.click(screen.getByTestId('mvd-view-menu'));
+          await user.click(screen.getByTestId('mvd-toggle-right-wide'));
+        }
+      };
+      expect(kolumny()).toMatch(/ 400px$/);
+      expect(screen.getByTestId('mvd-inspector-szeroki')).toHaveAttribute('aria-pressed', 'false');
+      await wykonaj();
+      expect(kolumny()).toMatch(/ 560px$/);
+      expect(screen.getByTestId('mvd-inspector-szeroki')).toHaveAttribute('aria-pressed', 'true');
+      expect(screen.getByTestId('mvd-inspector')).toHaveAttribute('data-szeroki', 'true');
+      expect(useShellStore.getState().getLayout('projekt').rightWide).toBe(true);
+      expect(useShellStore.getState().getLayout('model').rightWide).toBe(false);
+      expect(localStorage.getItem('mvd-shell-ui-local') ?? '').toContain('"rightWide":true');
+      await wykonaj();
+      // Powrót do szerokości sprzed trybu szerokiego (pole szerokości nietknięte).
+      expect(kolumny()).toMatch(/ 400px$/);
+      expect(useShellStore.getState().getLayout('projekt').rightWide).toBe(false);
+    },
+  );
+
+  it('tryb szeroki włączony przy zwiniętym inspektorze otwiera go; menu pokazuje stan', async () => {
+    const user = userEvent.setup();
+    render(<AppShell />);
+    expect(screen.getByTestId('mvd-inspector')).toHaveAttribute('hidden');
+    await user.click(screen.getByTestId('mvd-view-menu'));
+    expect(screen.getByTestId('mvd-toggle-right-wide')).toHaveAttribute('aria-checked', 'false');
+    await user.click(screen.getByTestId('mvd-toggle-right-wide'));
+    expect(screen.getByTestId('mvd-inspector')).not.toHaveAttribute('hidden');
+    expect(screen.getByTestId('mvd-body').style.gridTemplateColumns).toMatch(/ 560px$/);
+    await user.click(screen.getByTestId('mvd-view-menu'));
+    expect(screen.getByTestId('mvd-toggle-right-wide')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it.each(['przeciaganie', 'klawiatura'] as const)(
+    'zmiana z uchwytu (%s) nie wychodzi poza 420 px i kończy tryb szeroki',
+    (zrodlo) => {
+      useShellStore.getState().setRightCollapsed('projekt', false);
+      render(<AppShell />);
+      const uchwyt = screen.getByTestId('mvd-handle-right');
+      // jsdom nie ma `PointerEvent` (fireEvent gubi `clientX`), więc ruch wskaźnika to
+      // `MouseEvent` o typie `pointermove` — natywne przeciąganie ćwiczy e2e
+      // `inspektor-karta-techniczna.spec.ts` (mysz Playwrighta na realnym uchwycie).
+      const przesun = (clientX: number) =>
+        act(() => {
+          window.dispatchEvent(new MouseEvent('pointermove', { clientX }));
+        });
+      const chwyc = (clientX: number) =>
+        act(() => {
+          uchwyt.dispatchEvent(new MouseEvent('pointerdown', { clientX, bubbles: true }));
+        });
+      const kolumny = () => screen.getByTestId('mvd-body').style.gridTemplateColumns;
+      if (zrodlo === 'przeciaganie') {
+        chwyc(1000);
+        przesun(400);
+        fireEvent.pointerUp(window);
+      } else {
+        for (let i = 0; i < 20; i += 1) fireEvent.keyDown(uchwyt, { key: 'ArrowLeft' });
+      }
+      expect(kolumny()).toMatch(/ 420px$/);
+      fireEvent.click(screen.getByTestId('mvd-inspector-szeroki'));
+      expect(kolumny()).toMatch(/ 560px$/);
+      if (zrodlo === 'przeciaganie') {
+        chwyc(1000);
+        przesun(900);
+        fireEvent.pointerUp(window);
+      } else {
+        fireEvent.keyDown(uchwyt, { key: 'ArrowLeft' });
+      }
+      expect(kolumny()).toMatch(/ 420px$/);
+      expect(useShellStore.getState().getLayout('projekt').rightWide).toBe(false);
+    },
+  );
 
   it('przełączanie przestrzeni skrótami 1–7 zmienia aktywną przestrzeń', () => {
     render(<AppShell />);

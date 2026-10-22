@@ -478,9 +478,11 @@ describe('S95-START — pasek działań inspektora czyta TO SAMO rozstrzygnięci
       useSnapshotStore.setState({ snapshot: enm, logicalViews: widoki });
       useSelectionStore.getState().selectElement({ id: ref, type: 'Station', name: 'Stacja' });
       renderWithQueryClient(<InspectorEngineeringView />);
-      const host = await screen.findByTestId('tech-card-host');
-      expect(within(host).queryByRole('button', { name: etykietaKarty })).toBeNull();
-      const pasek = screen.getByTestId('inspektor-dzialania');
+      // K6: obiekt z kartą techniczną panelu nie dostaje drugiej karty (`TechCard`) — skrót
+      // karty do tej samej operacji nie istnieje nigdzie w inspektorze poza paskiem działań.
+      const pasek = await screen.findByTestId('inspektor-dzialania');
+      expect(screen.queryByTestId('tech-card-host')).toBeNull();
+      expect(screen.queryAllByRole('button', { name: etykietaKarty })).toHaveLength(0);
       const pozycja = within(pasek).getByTestId('inspektor-akcja-continue-trunk');
       const niedostepna = pozycja.getAttribute('aria-disabled') === 'true';
       expect(niedostepna).toBe(!OCZEKIWANA[stan]);

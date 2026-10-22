@@ -144,7 +144,9 @@ const PRZYPADKI: readonly Przypadek[] = [
     enm: SIEC,
     lod: 2,
     uchwyt: symbol((s) => s.meta?.elementKind === 'der'),
-    rodzaj: '',
+    // K6: źródło OZE ma własny rodzaj danych panelu (karta techniczna źródła z torem
+    // przyłączenia) — dawniej panel nie rozpoznawał rodzaju (pusty atrybut).
+    rodzaj: 'generator',
   },
   {
     nazwa: 'odcinek',
@@ -239,7 +241,7 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
     return;
   }
 
-  if (przypadek.rodzaj === '') {
+  if (przypadek.rodzaj === 'generator') {
     for (const stan of ['brak', 'nieaktualne', 'wartosc'] as const) {
       it(`działanie dostępne (wyniki: ${stan}): „Pokaż zgodność przyłączeniową" otwiera macierz NC RfG; rejestr źródła nie ma pozycji warunkowych`, () => {
         kliknij();

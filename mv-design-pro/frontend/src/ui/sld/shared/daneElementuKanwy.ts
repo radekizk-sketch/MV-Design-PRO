@@ -52,6 +52,11 @@ export type RodzajElementuKanwy =
   | 'der'
   | 'cable_run'
   | 'node'
+  // K6: źródło OZE (`Generator`), sieć zasilająca (`Source`) i szyna (`Bus`) — dotąd klik
+  // w nie dawał `null` (sieć zasilająca: rodzaj „station" z refem źródła — fałszywa kategoria).
+  | 'generator'
+  | 'grid_source'
+  | 'bus'
   | null;
 
 export interface DaneElementuKanwy {
@@ -711,29 +716,50 @@ export function buildDaneElementuDlaRodzaju(
  * `elementKind` v3 → `kind` budowniczego `buildDaneElementuDlaRodzaju`. JAWNA,
  * zamknięta tabela; `undefined` = brak danych panelu dla tego rodzaju (bez zgadywania).
  *  - 'station' → 'station';
- *  - 'source' → 'gpz' (sieć zewnętrzna; `Source.id` to inna przestrzeń refów niż
- *    `Substation.ref_id` — budowniczy bez dopasowanej stacji zwraca `null`);
  *  - 'segment' → 'cable_segment_sn' (dane ciągu SN, `buildDaneCiaguSn`);
- *  - 'bus' → 'section' (budowniczy nie zna sekcji — `null`, uczciwy brak);
  *  - 'transformer'/'apparatus'/'branchPoint' → DEDYKOWANE ścieżki w
  *    `buildDaneElementuKanwy` (ref właściciela symbolu to ref POLA albo punktu
  *    odgałęźnego, nie urządzenia);
- *  - 'der' → `undefined`: panel istniejącego źródła daje karta inspektora generatora;
- *    formularz DER dotyczy wyłącznie szkicu po upuszczeniu z palety (`buildDaneSzkicuDer`).
+ *  - 'der'/'source'/'bus' → DEDYKOWANA ścieżka `buildDaneObiektuModelu` (K6: źródło OZE,
+ *    sieć zasilająca i szyna mają kartę techniczną; dawne 'source' → 'gpz' dawało rodzaj
+ *    „station" z refem źródła, a 'bus'/'der' — brak danych panelu). Formularz DER dotyczy
+ *    wyłącznie szkicu po upuszczeniu z palety (`buildDaneSzkicuDer`).
  */
 export function elementKindDlaPanelu(kind: PreviewElementKind | undefined): string | undefined {
   switch (kind) {
     case 'station':
       return 'station';
-    case 'source':
-      return 'gpz';
     case 'segment':
       return 'cable_segment_sn';
-    case 'bus':
-      return 'section';
     default:
       return undefined;
   }
+}
+
+/**
+ * K6: dane panelu dla obiektu modelu spoza stacji — źródła OZE (`generators`), sieci zasilającej
+ * (`sources`) i szyny (`buses`). Rekord nieznany w modelu ⇒ `null` (uczciwy brak).
+ */
+export function buildDaneObiektuModelu(
+  snapshot: EnergyNetworkModel | null,
+  overlayPayload: RawOverlayPayload | null,
+  rodzaj: 'generator' | 'grid_source' | 'bus',
+  id: string,
+): DaneElementuKanwy | null {
+  const kolekcja = rodzaj === 'generator'
+    ? snapshot?.generators
+    : rodzaj === 'grid_source'
+      ? snapshot?.sources
+      : snapshot?.buses;
+  const element = (kolekcja ?? []).find((item) => item.ref_id === id || item.id === id);
+  if (!element) return null;
+  const domyslna = rodzaj === 'generator' ? 'Źródło OZE' : rodzaj === 'grid_source' ? 'Sieć zasilająca' : 'Szyna';
+  return {
+    kind: rodzaj,
+    elementId: element.ref_id,
+    label: publicTechnicalLabel(element.name, domyslna),
+    liveMetrics: buildLiveMetrics(overlayPayload, rodzaj, element.ref_id),
+  };
 }
 
 /** Stacja-właścicielka pola z rekordu `bays` (`stacjaPola`, jedna reguła także dla GPZ). */
@@ -810,6 +836,9 @@ export function buildDaneElementuKanwy(
     if (!punkt) return null;
     return buildDaneWezlaSn(snapshot, overlayPayload, punkt.branch_point_type, id);
   }
+  if (elementKind === 'der') return buildDaneObiektuModelu(snapshot, overlayPayload, 'generator', id);
+  if (elementKind === 'source') return buildDaneObiektuModelu(snapshot, overlayPayload, 'grid_source', id);
+  if (elementKind === 'bus') return buildDaneObiektuModelu(snapshot, overlayPayload, 'bus', id);
   const kind = elementKindDlaPanelu(elementKind);
   if (!kind) return null;
   return buildDaneElementuDlaRodzaju(kind, id, { snapshot, sldData, overlayPayload });

@@ -1237,7 +1237,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
             Konfigurator stacji SN/nN
           </div>
           <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
@@ -1312,7 +1312,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
             </div>
             {((continuationBlockReason && !ciagWPasku) || (branchBlockReason && !odgalezienieWPasku)) && (
               <div
-                className="max-w-xl rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-3 py-2 text-[11px] leading-relaxed text-sygnal-blokada-tusz"
+                className="max-w-xl rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-3 py-2 text-[length:var(--mvd-font-size-data)] leading-relaxed text-sygnal-blokada-tusz"
                 data-testid="station-network-action-blockers"
               >
                 {continuationBlockReason && !ciagWPasku && (
@@ -1326,7 +1326,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           </div>
         )}
         {!stationRef && (
-          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz">
             Wybierz stację z drzewa układów albo kliknij stację w SLD i wybierz
             "Otwórz konfigurator stacji".
           </p>
@@ -1360,7 +1360,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
         >
           <div className="w-[420px] max-w-[90vw] rounded-lg border border-scada-border bg-scada-panel p-5 shadow-2xl">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+            <div className="mb-2 text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
               Operacja nieodwracalna
             </div>
             <h3 className="text-base font-semibold text-scada-text">

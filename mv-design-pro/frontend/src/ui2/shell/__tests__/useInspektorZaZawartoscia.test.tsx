@@ -32,7 +32,7 @@ describe('useInspektorZaZawartoscia (K11-A)', () => {
     // Stan zapisany sprzed dyrektywy: panel otwarty mimo braku treści.
     useShellStore.setState({
       layoutBySpace: {
-        schemat: { leftWidth: 240, rightWidth: 320, leftCollapsed: false, rightCollapsed: false },
+        schemat: { leftWidth: 240, rightWidth: 320, leftCollapsed: false, rightCollapsed: false, rightWide: false },
       },
     });
     renderHook(() => useInspektorZaZawartoscia());

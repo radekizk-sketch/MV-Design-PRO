@@ -173,7 +173,7 @@ export function ProjectDashboardSurface(): JSX.Element {
       {/* Nagłówek */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
             E-00 · Pulpit projektu
           </div>
           <h1 className="mt-1 text-xl font-bold text-scada-text">
@@ -223,7 +223,7 @@ export function ProjectDashboardSurface(): JSX.Element {
           <button
             type="button"
             onClick={() => void refresh()}
-            className="mt-3 rounded border border-sygnal-blokada px-3 py-1 text-xs text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
+            className="mt-3 rounded border border-sygnal-blokada px-3 py-1 text-[length:var(--mvd-font-size-data)] text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
           >
             Spróbuj ponownie
           </button>
@@ -237,7 +237,7 @@ export function ProjectDashboardSurface(): JSX.Element {
           className="flex flex-1 items-center justify-center"
         >
           <div className="max-w-md rounded border border-scada-border bg-scada-panel p-6 text-center">
-            <div className="mb-2 text-sm font-bold uppercase tracking-widest text-scada-muted">
+            <div className="mb-2 text-sm font-bold text-scada-muted">
               Brak projektów
             </div>
             <h2 className="mb-3 text-base font-semibold text-scada-text">
@@ -278,7 +278,7 @@ export function ProjectDashboardSurface(): JSX.Element {
               className="flex flex-col rounded border border-scada-border bg-scada-panel p-4 hover:border-scada-sn"
             >
               <div className="mb-2 flex-1">
-                <div className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+                <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
                   Projekt
                 </div>
                 <h3 className="mt-1 text-base font-semibold text-scada-text">
@@ -288,7 +288,7 @@ export function ProjectDashboardSurface(): JSX.Element {
                   {project.description?.trim() || 'Brak opisu projektu.'}
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 border-t border-scada-border pt-3 text-[11px] text-scada-muted">
+              <div className="grid grid-cols-2 gap-2 border-t border-scada-border pt-3 text-[length:var(--mvd-font-size-data)] text-scada-muted">
                 <div>
                   <div className="font-semibold text-scada-text">Utworzono</div>
                   <div>{formatDatePl(project.created_at)}</div>
@@ -340,7 +340,7 @@ export function ProjectDashboardSurface(): JSX.Element {
           aria-label="Potwierdzenie usunięcia projektu"
         >
           <div className="w-[420px] max-w-[90vw] rounded-lg border border-scada-border bg-scada-panel p-5 shadow-2xl">
-            <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+            <div className="mb-2 text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
               Operacja nieodwracalna
             </div>
             <h3 className="text-base font-semibold text-scada-text">

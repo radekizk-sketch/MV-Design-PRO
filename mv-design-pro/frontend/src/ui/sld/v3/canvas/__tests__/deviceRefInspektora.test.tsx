@@ -143,23 +143,24 @@ describe('S9-10 — inspektor pokazuje KLIKNIĘTY aparat (Workspace, realna ści
     const user = userEvent.setup();
     const { container } = render(<><SldCanvasV3Workspace width={1322} height={696} lodOverride={2} /><InspektorKanwyTestowy /></>);
 
-    const trescInspektora = (): string => {
-      const label = container.querySelector('[data-testid="inspektor-element-kanwy"]');
-      expect(label, 'inspektor pokazuje aparat po kliku').toBeTruthy();
-      return label!.textContent ?? '';
+    const inspektor = (): { tresc: string; ref: string } => {
+      const panel = container.querySelector('[data-testid="inspektor-element-kanwy"]');
+      expect(panel, 'inspektor pokazuje aparat po kliku').toBeTruthy();
+      return { tresc: panel!.textContent ?? '', ref: panel!.getAttribute('data-element-id') ?? '' };
     };
 
     await user.click(uchwytObrysu(container, para!.a.testId));
-    const trescA = trescInspektora();
+    const a = inspektor();
     await user.click(uchwytObrysu(container, para!.b.testId));
-    const trescB = trescInspektora();
+    const b = inspektor();
 
-    // Treść inspektora pochodzi z refu URZĄDZENIA (ogon refu), więc dwa
-    // aparaty jednego pola MUSZĄ dać różne treści — dokładnie ta
-    // rozróżnialność, której audyt P-2 nie zastał.
-    expect(trescA).not.toBe(trescB);
-    expect(trescA).toContain(para!.a.deviceRef.split('/').pop()!);
-    expect(trescB).toContain(para!.b.deviceRef.split('/').pop()!);
+    // Treść inspektora pochodzi z refu URZĄDZENIA, więc dwa aparaty jednego pola MUSZĄ dać
+    // różne treści — dokładnie ta rozróżnialność, której audyt P-2 nie zastał. K6: karta
+    // techniczna pokazuje identyfikatory publiczne (S74.F01.Q1), nie ogon refu technicznego,
+    // więc o tym, KTÓRE urządzenie opisuje inspektor, świadczy ref obiektu panelu.
+    expect(a.tresc).not.toBe(b.tresc);
+    expect(a.ref).toBe(para!.a.deviceRef);
+    expect(b.ref).toBe(para!.b.deviceRef);
   });
 });
 

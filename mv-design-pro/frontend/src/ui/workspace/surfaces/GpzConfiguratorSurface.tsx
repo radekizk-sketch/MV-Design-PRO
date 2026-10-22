@@ -125,13 +125,13 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
   return (
     <div data-testid="gpz-configurator-surface" className="flex h-full w-full flex-col p-4">
       <div className="mb-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+        <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
           Główny Punkt Zasilający 110/SN
         </div>
         <h2 className="mt-1 text-base font-semibold text-scada-text">
           {data.name || gpzNameFromSnapshot || 'GPZ 110/SN'}
         </h2>
-        <div className="mt-1 text-xs text-scada-muted">
+        <div className="mt-1 text-[length:var(--mvd-font-size-data)] text-scada-muted">
           Zakres konfiguracji: {completeness.done}/{completeness.total} kart technicznych
         </div>
       </div>
@@ -147,7 +147,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
             aria-selected={activeCard === id}
             onClick={() => setActiveCard(id)}
             className={
-              'whitespace-nowrap px-3 py-2 text-xs font-medium '
+              'whitespace-nowrap px-3 py-2 text-[length:var(--mvd-font-size-data)] font-medium '
               + (activeCard === id
                 ? 'border-b-2 border-scada-sn text-scada-text'
                 : 'border-b-2 border-transparent text-scada-muted hover:text-scada-text')
@@ -197,7 +197,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                 data-testid="gpz-short-circuit-mode-hv"
                 onClick={() => setData((d) => ({ ...d, shortCircuitInputMode: 'HV_110_ADVANCED' }))}
                 className={
-                  'border px-3 py-2 text-left text-xs font-semibold '
+                  'border px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold '
                   + (data.shortCircuitInputMode === 'HV_110_ADVANCED'
                     ? 'border-scada-sn bg-scada-surface text-scada-text'
                     : 'border-scada-border text-scada-muted hover:text-scada-text')
@@ -210,7 +210,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                 data-testid="gpz-short-circuit-mode-sn"
                 onClick={() => setData((d) => ({ ...d, shortCircuitInputMode: 'SN_SIMPLIFIED' }))}
                 className={
-                  'border px-3 py-2 text-left text-xs font-semibold '
+                  'border px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold '
                   + (data.shortCircuitInputMode === 'SN_SIMPLIFIED'
                     ? 'border-scada-sn bg-scada-surface text-scada-text'
                     : 'border-scada-border text-scada-muted hover:text-scada-text')
@@ -256,7 +256,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                 placeholder="np. 310"
               />
             )}
-            <p className="rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted">
+            <p className="rounded border border-scada-border bg-scada-surface p-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
               Parametry zwarciowe zasilają obliczenia IEC 60909 po stronie serwerowej.
               Po dobraniu wariantu GPZ karta prowadzi dalej do transformatora i sekcji SN.
             </p>
@@ -335,13 +335,13 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                   key={idx}
                   className="rounded border border-scada-border bg-scada-surface p-3"
                 >
-                  <div className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+                  <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
                     Sekcja {String.fromCharCode(65 + idx)}
                   </div>
                   <div className="mt-1 text-lg font-semibold text-scada-text">
                     {count > 0 ? `${count} pól` : MISSING_DASH}
                   </div>
-                  <p className="mt-2 text-xs text-scada-muted">
+                  <p className="mt-2 text-[length:var(--mvd-font-size-data)] text-scada-muted">
                     Pola dodaje się z menu kontekstowego sekcji lub przez akcję
                     "Dodaj pole SN".
                   </p>
@@ -352,7 +352,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
         )}
       </div>
 
-      <div className="border-t border-scada-border p-3 text-xs text-scada-muted">
+      <div className="border-t border-scada-border p-3 text-[length:var(--mvd-font-size-data)] text-scada-muted">
         Karta GPZ pokazuje dane katalogowe, sekcje SN, transformatory i bilans pól.
         Nowy układ GPZ dodaje akcja "Dodaj źródło zasilania GPZ" z panelu budowy sieci.
       </div>
@@ -371,7 +371,7 @@ interface FieldProps {
 function Field({ label, value, onChange, placeholder, required }: FieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-scada-muted">
+      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
         {label}
         {required && <span className="text-red-400"> *</span>}
       </label>
@@ -398,7 +398,7 @@ interface NumberFieldProps {
 function NumberField({ label, unit, value, onChange, placeholder, required }: NumberFieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-scada-muted">
+      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
         {label}
         {unit && <span className="text-scada-muted"> [{unit}]</span>}
         {required && <span className="text-red-400"> *</span>}
@@ -433,7 +433,7 @@ interface SelectFieldProps {
 function SelectField({ label, value, onChange, options, required }: SelectFieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-scada-muted">
+      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
         {label}
         {required && <span className="text-red-400"> *</span>}
       </label>

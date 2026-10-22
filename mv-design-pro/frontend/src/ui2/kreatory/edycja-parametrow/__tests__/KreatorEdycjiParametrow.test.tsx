@@ -103,6 +103,31 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     });
   });
 
+  // K6: klucz TEKSTOWY kontraktu (pole `str` modelu) × wartość o kształcie liczby — wartość
+  // zostaje tekstem. Dawniej „01" szło jako liczba 1 i backend odrzucał `Bay.bay_number`
+  // (string_type), a nazwa „2" zapisywała się jako liczba. Klucz liczbowy dalej dostaje liczbę.
+  it.each([
+    ['bay_number', '01', '01'],
+    ['name', '2', '2'],
+    ['feeder_short_name', '15', '15'],
+    ['vector_group', '11', '11'],
+    ['length_km', '0.5', 0.5],
+    ['tap_position', '-2', -2],
+  ])('klucz %s z wartością „%s" → %j', async (klucz, wpis, oczekiwana) => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorEdycjiParametrow />);
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), klucz);
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), wpis);
+    await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'update_element_parameters',
+        expect.objectContaining({ parameters: { [klucz]: oczekiwana } }),
+      );
+    });
+  });
+
   it('uczciwy stan zerowy: bez parametru zapis zablokowany', async () => {
     render(<KreatorEdycjiParametrow />);
     expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();

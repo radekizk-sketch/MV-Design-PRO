@@ -208,6 +208,8 @@ test.describe('Branch points workflow', () => {
     // rejestru menu kanwy (`inspektor-akcja-<id>`); karta techniczna nie dubluje pozycji paska.
     // Linia napowietrzna: słup rozgałęźny jest, ZK SN (rodzina kablowa) — nie.
     const inspector = page.getByTestId('inspector-engineering');
+    // K6: działania są na końcu inspektora, zwinięte — rozwinięcie jednym klikiem.
+    await inspector.getByTestId('inspektor-dzialania-rozwin').click();
     await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).toBeVisible();
     await expect(inspector.getByTestId('inspektor-akcja-insert-pole')).not.toHaveAttribute('aria-disabled', 'true');
     await expect(inspector.getByRole('button', { name: /rozga/i })).toHaveCount(1);
@@ -261,6 +263,8 @@ test.describe('Branch points workflow', () => {
     // UI-02b: jedno działanie „ZK SN" — pozycja paska z rejestru menu kanwy; kabel nie ma
     // słupa rozgałęźnego (rodzina linii napowietrznej).
     const inspector = page.getByTestId('inspector-engineering');
+    // K6: działania są na końcu inspektora, zwinięte — rozwinięcie jednym klikiem.
+    await inspector.getByTestId('inspektor-dzialania-rozwin').click();
     await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).toBeVisible();
     await expect(inspector.getByTestId('inspektor-akcja-insert-zksn')).not.toHaveAttribute('aria-disabled', 'true');
     await expect(inspector.getByRole('button', { name: /ZKSN|ZK SN/i })).toHaveCount(1);

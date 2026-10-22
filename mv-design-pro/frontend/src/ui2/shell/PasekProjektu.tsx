@@ -36,6 +36,9 @@ export interface PasekProjektuProps {
   onToggleSzczegolyAudytowe: () => void;
   leftCollapsed: boolean;
   rightCollapsed: boolean;
+  /** K6: tryb szeroki inspektora (560 px) — pozycja menu Widok. */
+  rightWide?: boolean;
+  onToggleRightWide?: () => void;
   bottomOpen: boolean;
   onToggleLeft: () => void;
   onToggleRight: () => void;
@@ -91,6 +94,8 @@ export function PasekProjektu({
   onToggleSzczegolyAudytowe,
   leftCollapsed,
   rightCollapsed,
+  rightWide = false,
+  onToggleRightWide,
   bottomOpen,
   onToggleLeft,
   onToggleRight,
@@ -173,6 +178,18 @@ export function PasekProjektu({
       testId: 'mvd-toggle-right',
       onWybierz: onToggleRight,
     },
+    ...(onToggleRightWide
+      ? [
+          {
+            id: 'prawy-szeroki',
+            etykieta: SHELL_STRINGS.inspectorWide,
+            opis: SHELL_STRINGS.inspectorWideHint,
+            zaznaczona: rightWide,
+            testId: 'mvd-toggle-right-wide',
+            onWybierz: onToggleRightWide,
+          },
+        ]
+      : []),
     {
       id: 'dolny',
       etykieta: SHELL_STRINGS.toggleBottom,

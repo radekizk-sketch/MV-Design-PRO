@@ -185,15 +185,20 @@ describe('SldCanvasV3Workspace — UI-02b: klik obiektu → selekcja i prawy ins
     expect(screen.getByTestId('inspektor-aparat-stan').textContent).toBe(POLOZENIE_LACZNIKA_PL[symbol.state!]);
   });
 
-  it('klik w źródło OZE: brak danych panelu, ale inspektor pokazuje działania z menu źródła i sekcję wyników', () => {
+  // K6 (Z-12): źródło OZE ma własną kartę techniczną (dotąd panel bez danych — sam pasek
+  // działań i wyniki). Intencja zachowana: klik nie rzuca, działania z menu źródła i sekcja
+  // wyników są obecne; doszły nagłówek i karta rodzaju „źródło".
+  it('klik w źródło OZE: karta techniczna źródła, działania z menu źródła i sekcja wyników', () => {
     const { scene, index } = pierwszySymbol(2, (s) => s.meta?.elementKind === 'der');
     const { container } = renderZInspektorem();
     expect(() => fireEvent.click(uchwytSymbolu(container, scene, index)!)).not.toThrow();
     const panel = screen.getByTestId('inspektor-element-kanwy');
-    expect(panel).toHaveAttribute('data-rodzaj', '');
+    expect(panel).toHaveAttribute('data-rodzaj', 'generator');
+    expect(enm.generators.some((g) => g.ref_id === panel.getAttribute('data-element-id'))).toBe(true);
+    expect(screen.getByTestId('inspektor-karta')).toHaveAttribute('data-rodzaj-karty', 'zrodlo');
     expect(screen.getByTestId('inspektor-dzialania')).toBeInTheDocument();
     expect(screen.getByTestId('inspektor-wyniki')).toBeInTheDocument();
-    expect(screen.queryByTestId('inspektor-element-etykieta')).toBeNull();
+    expect(screen.getByTestId('inspektor-element-etykieta').textContent).toBeTruthy();
   });
 
   it('klik w odcinek SN: inspektor ma wejście do konfiguratora odcinka (E-12, karta trasy) i wyniki odcinka', () => {

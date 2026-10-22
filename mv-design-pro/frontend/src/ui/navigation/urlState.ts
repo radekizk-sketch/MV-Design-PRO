@@ -244,6 +244,23 @@ export function getCurrentHashRoute(): string {
 }
 
 /**
+ * Adres strony z trasą hash i parametrami kontekstu — JEDNO źródło składania adresu dla
+ * wszystkich zapisów stanu do URL (selekcja, diagnostyka, tryb schematu, tryb migawki wyników).
+ *
+ * Trasa pusta (zimny start `/`) z parametrami daje `#?…`, NIE `?…`: parametry muszą trafić do
+ * części hash, bo tylko z niej czyta je `getCurrentSearchParams` (routing hash). Dawny zapis
+ * `${pathname}?sel=…` kładł selekcję w `location.search`, którego nikt nie czyta — pierwsza
+ * zmiana trasy (np. `navigateToSld()` po zapisie kreatora) gubiła selekcję i prawy inspektor
+ * się zwijał. `getCurrentHashRoute` traktuje `#` jako brak trasy (D1), więc adres jest spójny
+ * w obie strony.
+ */
+export function adresZTrasaIParametrami(route: string, params: URLSearchParams): string {
+  const queryString = params.toString();
+  const hash = queryString ? `${route || '#'}?${queryString}` : route;
+  return `${window.location.pathname}${hash}`;
+}
+
+/**
  * Update URL with selection state.
  * Uses replaceState to avoid cluttering browser history.
  *
@@ -269,14 +286,8 @@ export function updateUrlWithSelection(selection: SelectedElement | null): void 
   for (const [key, value] of selectionParams.entries()) {
     params.set(key, value);
   }
-  const queryString = params.toString();
-
-  // Build new URL: hash + optional query string
-  const newHash = queryString ? `${currentHash}?${queryString}` : currentHash;
-
   // Use replaceState to avoid history pollution
-  const newUrl = `${window.location.pathname}${newHash}`;
-  window.history.replaceState(null, '', newUrl);
+  window.history.replaceState(null, '', adresZTrasaIParametrami(currentHash, params));
 }
 
 /**
@@ -378,12 +389,8 @@ export function updateUrlWithDiagnostics(state: DiagnosticsUrlState): void {
     params.delete(URL_PARAMS.DIAGNOSTICS_SEVERITY);
   }
 
-  const queryString = params.toString();
-  const newHash = queryString ? `${currentHash}?${queryString}` : currentHash;
-
   // Use replaceState to avoid history pollution
-  const newUrl = `${window.location.pathname}${newHash}`;
-  window.history.replaceState(null, '', newUrl);
+  window.history.replaceState(null, '', adresZTrasaIParametrami(currentHash, params));
 }
 
 /**
@@ -426,12 +433,8 @@ export function updateUrlWithSelectionAndDiagnostics(
     params.set(URL_PARAMS.DIAGNOSTICS_SEVERITY, filterToUrlValue(diagnostics.filter));
   }
 
-  const queryString = params.toString();
-  const newHash = queryString ? `${currentHash}?${queryString}` : currentHash;
-
   // Use replaceState to avoid history pollution
-  const newUrl = `${window.location.pathname}${newHash}`;
-  window.history.replaceState(null, '', newUrl);
+  window.history.replaceState(null, '', adresZTrasaIParametrami(currentHash, params));
 }
 
 // =============================================================================
@@ -541,10 +544,6 @@ export function updateUrlWithSldMode(state: SldModeUrlState): void {
     params.delete(URL_PARAMS.PROTECTION_LAYER);
   }
 
-  const queryString = params.toString();
-  const newHash = queryString ? `${currentHash}?${queryString}` : currentHash;
-
   // Use replaceState to avoid history pollution
-  const newUrl = `${window.location.pathname}${newHash}`;
-  window.history.replaceState(null, '', newUrl);
+  window.history.replaceState(null, '', adresZTrasaIParametrami(currentHash, params));
 }

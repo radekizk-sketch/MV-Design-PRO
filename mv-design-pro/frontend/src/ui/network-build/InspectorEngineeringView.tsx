@@ -42,22 +42,17 @@ import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
 import { useProblemyGotowosci } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { issueTargetsElement } from './liveReadiness';
-import { ukladRozdzielnicyStacjiPl } from '../shared/rodzajStacji';
 import {
   isRawTechnicalIdentifier,
   publicTechnicalLabel,
   stationPublicIdentity,
 } from '../shared/publicTechnicalLabels';
-import {
-  stationReadModelSnFields,
-  stationSnFieldCount,
-} from './stationSnFields';
+import { stationReadModelSnFields } from './stationSnFields';
 import type { ReadinessIssue, SelectedElement } from '../types';
 import type {
   EnergyNetworkModel,
   Branch,
   Generator,
-  Load,
   LogicalViewsV1,
   Port,
   ProtectionAssignment,
@@ -90,14 +85,17 @@ import type { WorkspaceSurfaceCode } from '../workspace/types';
 import { TechCard, buildTechCardSubject } from '../tech-card';
 import { ElementCalculationProofPanel } from '../proof';
 import { stacjaSzyn, szynyStacji } from '../shared/szynyStacji';
-import { polaNnStacji } from '../shared/polaStacji';
 import {
   selectStationDistributionTransformers,
   stationRefOfTransformer,
   transformatoryNalezaceDoStacji,
 } from '../shared/transformatoryStacji';
 import { operacjaAkcjiMenu } from '../sld/shared/sldActionExecutor';
-import { PanelElementuKanwy } from './inspektor-elementu/PanelElementuKanwy';
+import {
+  DzialaniaZwiniete,
+  PanelElementuKanwy,
+  type OperacjaModeluInspektora,
+} from './inspektor-elementu/PanelElementuKanwy';
 import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
 import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
 
@@ -623,14 +621,6 @@ function formatElementTypeLabel(elementType: string): string {
   return ELEMENT_TYPE_LABELS[elementType] ?? elementType;
 }
 
-function formatLoadPower(loads: readonly Load[]): string {
-  const totalKw = loads.reduce((sum, load) => sum + ((load.p_mw ?? 0) * 1000), 0);
-  if (totalKw >= 1000) {
-    return `${(totalKw / 1000).toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
-  }
-  return `${totalKw.toLocaleString('pl-PL', { maximumFractionDigits: 1 })} kW`;
-}
-
 function connectionVariantLabelPl(variant: string | null | undefined): string {
   if (!variant) return 'nie wyznaczono';
   switch (variant) {
@@ -741,42 +731,6 @@ function sourceSideLabel(generator: Generator | null | undefined): string {
     return 'SN';
   }
   return 'nie wyznaczono';
-}
-
-function stationGeneratorKindLabel(generator: Generator): string {
-  if (generator.gen_type === 'bess') return 'BESS';
-  if (
-    generator.gen_type === 'wind_inverter'
-    || generator.gen_type === 'fw_pmsg'
-    || generator.gen_type === 'fw_dfig'
-    || generator.gen_type === 'fw_scig'
-  ) {
-    return 'FW';
-  }
-  if (generator.gen_type === 'pv_inverter' || generator.gen_type === null) return 'PV';
-  return 'źródło';
-}
-
-function formatStationGeneratorPower(powerMw: number): string {
-  return `${powerMw.toLocaleString('pl-PL', { maximumFractionDigits: 3 })} MW`;
-}
-
-function formatStationGeneratorSummary(generators: readonly Generator[]): string {
-  if (generators.length === 0) return 'bez źródeł przyłączonych';
-
-  const groups = new Map<string, { count: number; powerMw: number }>();
-  generators.forEach((generator) => {
-    const label = stationGeneratorKindLabel(generator);
-    const current = groups.get(label) ?? { count: 0, powerMw: 0 };
-    groups.set(label, {
-      count: current.count + 1,
-      powerMw: current.powerMw + (generator.p_mw ?? 0),
-    });
-  });
-
-  return Array.from(groups.entries())
-    .map(([label, group]) => `${label} ${group.count} szt. / ${formatStationGeneratorPower(group.powerMw)}`)
-    .join('; ');
 }
 
 function protectionScopeLabel(scope: unknown): string | null {
@@ -2441,62 +2395,12 @@ function buildSectionsForElement(
     elementType = 'substation';
     const stationIdentity = stationPublicIdentity(snapshot, station);
     elementName = stationIdentity.displayName;
-    // Karta W5-B: liczność pól SN z rekordów `bays` stacji (jeden nośnik; read-model pola jest
-    // projekcją tych samych rekordów, więc nie jest drugim źródłem liczności).
-    const snFieldCount = stationSnFieldCount(snapshot, station);
-    const snSwitchgearLabel = snFieldCount > 0
-      ? `${snFieldCount} pól SN`
-      : ukladRozdzielnicyStacjiPl(snapshot, station);
+    // K6 (Z-12): dane stacji (identyfikacja, rozdzielnica SN z tabelą pól, transformator,
+    // strona nN, przyłączenia) pokazuje WYŁĄCZNIE karta techniczna panelu z kanwy
+    // (`kartaTechnicznaElementu.ts`) — dawne sekcje „Identyfikacja"/„Struktura" tego widoku
+    // były drugą, uboższą ścieżką tych samych danych i zostały usunięte.
     // SZYNY-STACJI-LUSTRO: transformatory stacji z JEDNEJ reguły (bez blokowego źródła DER).
     const stationTransformers = selectStationDistributionTransformers(snapshot, station);
-    // SZYNY-STACJI-LUSTRO: odbiory stacji na jej szynach z jednego lustra `szynyStacji`
-    // (także na szynach odpływów nN za aparatami pól) — jak backend `moce_odbiorow_stacji_kw`.
-    const stationBusRefs = szynyStacji(snapshot, station);
-    const stationLoads = (snapshot.loads ?? []).filter((load) => stationBusRefs.has(load.bus_ref));
-    const stationGenerators = (snapshot.generators ?? []).filter((generator) => {
-      const generatorStation = generatorStationRef(generator);
-      return generatorStation === station.ref_id || generatorStation === station.id;
-    });
-    const nnFeederCount = polaNnStacji(snapshot, station.ref_id).filter((pole) => pole.bay_role === 'FEEDER').length;
-    sections.push({
-      id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'id', label: 'Oznaczenie stacji', value: stationIdentity.code },
-        { key: 'name', label: 'Nazwa', value: stationIdentity.displayName },
-        { key: 'station_type', label: 'Typ stacji', value: stationIdentity.typeLabel },
-      ],
-    });
-    sections.push({
-      id: 'structure', label: 'Struktura', fields: [
-        {
-          key: 'bay_count',
-          label: 'Rozdzielnica SN',
-          value: snSwitchgearLabel,
-          source: 'calculated',
-        },
-        { key: 'transformer_count', label: 'Transformatory', value: stationTransformers.length, source: 'calculated' },
-        { key: 'bus_count', label: 'Szyny', value: station.bus_refs.length, source: 'calculated' },
-        {
-          key: 'nn_feeders',
-          label: 'Rozdzielnica nN',
-          value: nnFeederCount > 0 ? `${nnFeederCount} odpływów nN` : 'bez odpływów nN',
-          source: 'calculated',
-        },
-        {
-          key: 'nn_loads',
-          label: 'Odbiory nN',
-          value: stationLoads.length > 0
-            ? `${stationLoads.length} odbiorów / ${formatLoadPower(stationLoads)}`
-            : 'bez odbiorów nN',
-          source: 'calculated',
-        },
-        {
-          key: 'der_sources',
-          label: 'Układy PV/BESS/FW',
-          value: formatStationGeneratorSummary(stationGenerators),
-          source: 'calculated',
-        },
-      ],
-    });
     actions.push({ id: 'continue_trunk_from_station', label: 'Kontynuuj ciąg SN', op: 'continue_trunk_segment_sn', variant: 'primary' });
     if (stationTransformers.length === 0) {
       actions.push({ id: 'create_transformer_sn_nn', label: 'Dobierz transformator z katalogu', op: 'add_transformer_sn_nn', context: { station_ref: station.id }, variant: 'primary' });
@@ -2904,6 +2808,31 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
 
   const szybkieOperacje = actions.filter((action) => !operacjeZPaska.has(action.op));
   const panelKanwyMaTresc = panelMaTresc(stanPanelu);
+  // K6 (Z-12, Z-13): gdy obiekt ma kartę techniczną (`kartaTechnicznaElementu.ts`), JEDYNYM
+  // nagłówkiem i JEDYNYM opisem danych obiektu jest panel z kanwy — nagłówek, sekcje danych
+  // i karta `TechCard` tego widoku byłyby drugą (i trzecią) ścieżką tych samych danych z inną
+  // nazwą i innym rodzajem. Zostają: dowód obliczeń, akcje źródła przekształtnikowego,
+  // schemat pola i operacje, których pasek działań panelu nie ma.
+  const kartaObiektu = stanPanelu?.karta ?? null;
+  const pokazTechCard = Boolean(techCardSubjectWithActions) && !kartaObiektu;
+  const akcjeKartyBezPaska = kartaObiektu ? techCardSubjectWithActions?.actions ?? [] : [];
+  const operacjeModelu: OperacjaModeluInspektora[] =
+    activeMode === 'MODEL_EDIT' && !pokazTechCard
+      ? [
+          ...szybkieOperacje.map((action) => ({
+            id: action.id,
+            etykietaPl: action.label,
+            onClick: () => handleAction(action),
+            wariant: action.variant === 'danger' ? ('danger' as const) : undefined,
+          })),
+          ...akcjeKartyBezPaska.map((action) => ({
+            id: `karta-${action.id}`,
+            etykietaPl: action.label,
+            onClick: action.onClick,
+            niedostepnaPl: action.disabled ? action.disabledReasonPl ?? 'Operacja niedostępna dla tego obiektu.' : null,
+          })),
+        ]
+      : [];
 
   if (!elementId || (sections.length === 0 && !panelKanwyMaTresc)) {
     return (
@@ -2946,6 +2875,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           sld-editor-real-backend-flex, karta UI-02b). */}
       <div data-testid="sld-engineering-inspector-wrapper" className="min-h-0 flex-1 overflow-y-auto">
       {/* Header */}
+      {!kartaObiektu && (
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
           <span className="inline-block w-2 h-2 rounded-full bg-blue-500" />
@@ -2955,8 +2885,9 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           {headerSubtitle}
         </p>
       </div>
+      )}
 
-      {stanPanelu && <PanelElementuKanwy stan={stanPanelu} />}
+      {stanPanelu && <PanelElementuKanwy stan={stanPanelu} dzialaniaPoza />}
 
       <ElementCalculationProofPanel
         runId={activeRunId ?? null}
@@ -2964,7 +2895,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         candidateRefs={calculationProofRefs}
       />
 
-      {techCardSubjectWithActions && (
+      {pokazTechCard && techCardSubjectWithActions && (
         <div
           data-testid="tech-card-host"
           data-tech-card-subject-kind={techCardSubjectWithActions.kind}
@@ -3045,7 +2976,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
 
       {/* Sections */}
       <div>
-        {sections.map((section, index) => (
+        {!kartaObiektu && sections.map((section, index) => (
           <SectionBlock
             key={`${section.id}:${index}`}
             section={section}
@@ -3057,33 +2988,14 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
 
         {selectedBayField && <BayWindowSchematic item={selectedBayField} />}
 
-        {/* Quick actions */}
-        {szybkieOperacje.length > 0 && activeMode === 'MODEL_EDIT' && !techCardSubjectWithActions && (
-          <div className="px-4 py-3 border-t border-gray-200">
-            <h4 className="text-[length:var(--mvd-font-size-data)] font-semibold text-gray-500 mb-2">
-              Operacje
-            </h4>
-            <div className="flex flex-wrap gap-1.5">
-              {szybkieOperacje.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  onClick={() => handleAction(action)}
-                  className={clsx(
-                    'px-2.5 py-1 text-[length:var(--mvd-font-size-data)] font-medium rounded transition-colors',
-                    action.variant === 'primary'
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : action.variant === 'danger'
-                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-                  )}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* K6: działania na samym końcu inspektora, zwinięte — pozycje rejestru menu kanwy
+            i operacje modelu tego widoku w JEDNYM bloku (operacje modelu tylko w trybie edycji
+            i bez karty `TechCard`, która ma własny pasek akcji). */}
+        <DzialaniaZwiniete
+          akcje={stanPanelu?.akcje ?? []}
+          onAkcja={stanPanelu?.wykonajAkcje ?? (() => undefined)}
+          operacje={operacjeModelu}
+        />
       </div>
       </div>
 

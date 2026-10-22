@@ -28,11 +28,12 @@ import type { DaneElementuKanwy } from '../../../sld/shared/daneElementuKanwy';
 import { useKontekstElementuKanwy, type RodzajSzkicuDer } from '../../../sld/shared/kontekstElementuKanwy';
 import { odpowiedzKlasyfikacji } from '../../../../ui2/oze/ncrfg/__tests__/atrapaKlasyfikacji';
 import { FormularzSzkicuDer } from '../FormularzSzkicuDer';
+import { useNetworkBuildStore } from '../../networkBuildStore';
 
 const KATALOG: Readonly<Record<'PV' | 'BESS' | 'WIND', readonly unknown[]>> = {
   PV: [
     { id: 'conv-pv-nn-0.5mw-0p4kv', name: 'Falownik PV 0,5 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.5, pmax_mw: 0.5 },
-    { id: 'conv-pv-nn-1mw-0p4kv', name: 'Falownik PV 1 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 1, pmax_mw: 1 },
+    { id: 'conv-pv-nn-1mw-0p4kv', name: 'Falownik PV 1 MW / 0,4 kV', kind: 'PV', un_kv: 0.4, sn_mva: 1, pmax_mw: 1, control_mode: 'Q_U_DROOP' },
     { id: 'conv-pv-sn-2mw-15kv', name: 'Falownik PV 2 MW / 15 kV', kind: 'PV', un_kv: 15, sn_mva: 2, pmax_mw: 2 },
   ],
   BESS: [
@@ -51,6 +52,10 @@ interface Zadanie {
 }
 
 const zadania: Zadanie[] = [];
+/** K6: katalog pakietów baterii BESS — `null` = błąd pobrania (HTTP 500). */
+let katalogBaterii: readonly unknown[] | null = [
+  { id: 'bat-lfp-2mwh', name: 'Pakiet LFP 2 MWh', chemistry: 'LFP', capacity_kwh: 2000, nominal_voltage_dc_v: 1200, c_rate: 0.5 },
+];
 const ODPOWIEDZ_ZAPISU = { snapshot: { header: { name: 'po zapisie' } }, logical_views: null };
 
 function atrapaFetch(opoznienieKlasyfikacji?: Promise<void>): void {
@@ -65,6 +70,11 @@ function atrapaFetch(opoznienieKlasyfikacji?: Promise<void>): void {
     if (url.startsWith('/api/catalog/converter-types')) {
       const kind = /[?&]kind=([^&]+)/.exec(url)?.[1] as 'PV' | 'BESS' | 'WIND' | undefined;
       return new Response(JSON.stringify((kind && KATALOG[kind]) ?? []), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (url.startsWith('/api/catalog/bess-battery-types')) {
+      return katalogBaterii === null
+        ? new Response('błąd', { status: 500 })
+        : new Response(JSON.stringify(katalogBaterii), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
     if (metoda === 'POST' && /\/api\/projects\/[^/]+\/cases\/[^/]+\/generators$/.test(url)) {
       return new Response(JSON.stringify(ODPOWIEDZ_ZAPISU), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -273,5 +283,115 @@ describe('formularz szkicu DER w inspektorze — moduł NC RfG i napięcie punkt
     await uzytkownik.click(screen.getByTestId('inspektor-der-anuluj'));
     expect(useKontekstElementuKanwy.getState().szkicDer).toBeNull();
     expect(postyZapisu()).toHaveLength(0);
+  });
+});
+
+/*
+ * K6 (Z-16): formularz nN inspektora — nagłówek strony przyłączenia, jedyna ścieżka SN przez
+ * pełny kreator z preselekcją, pakiet baterii BESS i tryb regulacji z katalogu.
+ * Iloczyn cech: technologia {PV, BESS, FW} × pakiet baterii {wybrany, brak, katalog
+ * niedostępny} × przekształtnik {z trybem w karcie katalogowej, bez trybu, niewybrany}.
+ */
+describe('formularz szkicu DER w inspektorze — K6 strona przyłączenia, BESS, tryb regulacji', () => {
+  beforeEach(() => {
+    katalogBaterii = [
+      { id: 'bat-lfp-2mwh', name: 'Pakiet LFP 2 MWh', chemistry: 'LFP', capacity_kwh: 2000, nominal_voltage_dc_v: 1200, c_rate: 0.5 },
+    ];
+  });
+
+  it('nagłówek „Przyłączenie po stronie nN stacji", bez gołego tekstu o stronie SN', async () => {
+    atrapaFetch();
+    renderuj('PV');
+    expect(screen.getByRole('heading', { name: 'Przyłączenie po stronie nN stacji' })).toBeInTheDocument();
+    expect(screen.getByTestId('inspektor-der-stacja')).toHaveTextContent('Nowy układ PV/BESS/FW w stacji Stacja 1');
+    expect(screen.getByTestId('inspektor-der-formularz')).not.toHaveTextContent('dostępne w pełnym kreatorze źródła');
+    await listaPrzeksztaltnikow();
+  });
+
+  it.each(['PV', 'BESS', 'FW'] as const)(
+    '%s: „Przyłącz po stronie SN…" otwiera kreator SN z preselekcją stacji, technologii i mocy; szkic znika',
+    async (derKind) => {
+      atrapaFetch();
+      const otworz = vi.fn();
+      const pierwotny = useNetworkBuildStore.getState().openOperationForm;
+      useNetworkBuildStore.setState({ openOperationForm: otworz });
+      try {
+        const uzytkownik = userEvent.setup();
+        renderuj(derKind);
+        const moc = screen.getByTestId('inspektor-der-moc');
+        await uzytkownik.clear(moc);
+        await uzytkownik.type(moc, '2.5');
+        await uzytkownik.click(screen.getByRole('button', { name: 'Przyłącz po stronie SN…' }));
+        expect(otworz).toHaveBeenCalledTimes(1);
+        expect(otworz).toHaveBeenCalledWith('add_converter_source', {
+          station_ref: 'station/1',
+          source_technology: derKind,
+          connection_variant: 'block_transformer',
+          power_setpoint_mw: 2.5,
+          source: 'inspektor_szkic_der',
+        });
+        expect(useKontekstElementuKanwy.getState().szkicDer).toBeNull();
+        expect(postyZapisu()).toHaveLength(0);
+      } finally {
+        useNetworkBuildStore.setState({ openOperationForm: pierwotny });
+      }
+    },
+  );
+
+  it('BESS bez pakietu baterii: brak POST i komunikat; z pakietem POST niesie battery_catalog_ref', async () => {
+    atrapaFetch();
+    const uzytkownik = userEvent.setup();
+    renderuj('BESS');
+    await uzytkownik.selectOptions(await listaPrzeksztaltnikow(), 'conv-bess-nn-1mw-2mwh-0p4kv');
+    const bateria = (await screen.findByTestId('inspektor-der-bateria')) as HTMLSelectElement;
+    expect(bateria.value).toBe('');
+    expect(Array.from(bateria.options).slice(1).map((o) => o.label)).toEqual(['Pakiet LFP 2 MWh · LFP · 2000 kWh · 1200 V DC']);
+    await uzytkownik.click(screen.getByTestId('inspektor-der-zapisz'));
+    expect(await screen.findByTestId('inspektor-der-blad')).toHaveTextContent('Wybierz pakiet baterii magazynu z katalogu.');
+    expect(postyZapisu()).toHaveLength(0);
+
+    await uzytkownik.selectOptions(bateria, 'bat-lfp-2mwh');
+    await uzytkownik.click(screen.getByTestId('inspektor-der-zapisz'));
+    await waitFor(() => expect(postyZapisu()).toHaveLength(1));
+    expect(postyZapisu()[0].cialo).toMatchObject({ der_kind: 'BESS', battery_catalog_ref: 'bat-lfp-2mwh' });
+  });
+
+  it.each([
+    ['pusty katalog', [] as unknown[], 'Katalog nie zawiera pakietów baterii magazynu'],
+    ['błąd katalogu', null, 'Nie udało się pobrać katalogu pakietów baterii'],
+  ])('BESS, %s: uczciwy stan, kierunek do kreatora, zapis zablokowany', async (_n, lista, komunikat) => {
+    katalogBaterii = lista;
+    atrapaFetch();
+    const uzytkownik = userEvent.setup();
+    renderuj('BESS');
+    await uzytkownik.selectOptions(await listaPrzeksztaltnikow(), 'conv-bess-nn-1mw-2mwh-0p4kv');
+    expect(await screen.findByTestId('inspektor-der-bateria-brak')).toHaveTextContent(komunikat);
+    expect(screen.getByTestId('inspektor-der-bateria-brak')).toHaveTextContent('kreatorze źródła');
+    await uzytkownik.click(screen.getByTestId('inspektor-der-zapisz'));
+    expect(await screen.findByTestId('inspektor-der-blad')).toHaveTextContent('Wybierz pakiet baterii magazynu z katalogu.');
+    expect(postyZapisu()).toHaveLength(0);
+  });
+
+  it.each(['PV', 'FW'] as const)('%s: brak pola baterii i brak battery_catalog_ref w żądaniu', async (derKind) => {
+    atrapaFetch();
+    renderuj(derKind);
+    await waitFor(() => expect(zadania.some((z) => z.url.startsWith('/api/catalog/converter-types'))).toBe(true));
+    expect(screen.queryByTestId('inspektor-der-bateria')).toBeNull();
+    expect(zadania.some((z) => z.url.startsWith('/api/catalog/bess-battery-types'))).toBe(false);
+  });
+
+  it('tryb regulacji: z karty katalogowej ze źródłem; pozycja bez trybu = „brak danych"; bez wyboru — wskazówka', async () => {
+    atrapaFetch();
+    const uzytkownik = userEvent.setup();
+    renderuj('PV');
+    const lista = await listaPrzeksztaltnikow();
+    expect(screen.getByTestId('inspektor-der-regulacja-tryb')).toHaveTextContent('wybierz przekształtnik z katalogu');
+    await uzytkownik.selectOptions(lista, 'conv-pv-nn-1mw-0p4kv');
+    expect(screen.getByTestId('inspektor-der-regulacja-tryb')).toHaveTextContent('Regulacja Q(U) — charakterystyka opadająca');
+    expect(screen.getByTestId('inspektor-der-regulacja-zrodlo')).toHaveTextContent(
+      'źródło: karta katalogowa przekształtnika Falownik PV 1 MW / 0,4 kV',
+    );
+    await uzytkownik.selectOptions(lista, 'conv-pv-nn-0.5mw-0p4kv');
+    expect(screen.getByTestId('inspektor-der-regulacja-tryb')).toHaveTextContent('brak danych');
   });
 });

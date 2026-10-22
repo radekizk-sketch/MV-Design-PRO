@@ -19,14 +19,70 @@ export function isGenericStationName(value: string | null | undefined): boolean 
   return /^stacja\s+(inline|terminal|branch|sectional)$/i.test(value.trim());
 }
 
+/** Odwołanie techniczne w nazwie (ścieżka modelu, skrót, UUID) — nazwa nie nadaje się do ekranu. */
+export function containsTechnicalReference(value: string): boolean {
+  return /\/(?:segment|station|source|bay|bus|branch)\b/i.test(value)
+    || /\b(?:do\s+punktu|za\s+punktem)\s+rozga/i.test(value)
+    || /\b(?:seg|gpz|stn|bay|bus|src)\/[a-z0-9/_#-]{12,}/i.test(value)
+    || /\b[0-9a-f]{24,}\b/i.test(value)
+    || /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(value);
+}
+
+interface RekordStacji {
+  readonly ref_id?: unknown;
+  readonly id?: unknown;
+  readonly station_type?: unknown;
+  readonly name?: unknown;
+  readonly station_code?: unknown;
+  readonly code?: unknown;
+}
+
+function tekst(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * K6 (Z-11): JEDEN predykat „stacja GPZ" dla numeracji stacji terenowych — drzewo projektu,
+ * kod porządkowy stacji i nagłówek inspektora liczą S01, S02… z tego samego zbioru.
+ */
+export function jestStacjaGpz(item: RekordStacji): boolean {
+  const ref = String(item.ref_id ?? item.id ?? '');
+  return ref.startsWith('gpz/') || tekst(item.station_type).toLowerCase().includes('gpz');
+}
+
+/**
+ * K6 (Z-11): etykieta stacji w drzewie projektu i w nagłówku inspektora — JEDNA reguła:
+ * kod stacji, potem nazwa nadana przez projektanta (bez nazw ogólnych i odwołań technicznych),
+ * a bez nich numer porządkowy S01, S02… wśród stacji terenowych.
+ */
+export function etykietaStacjiWDrzewie(item: RekordStacji, index: number): string {
+  const code = tekst(item.station_code) || tekst(item.code);
+  if (code.trim()) return code.trim().toUpperCase();
+  const name = tekst(item.name).trim();
+  if (name && !/^stacja\s+(inline|terminal|sectional|branch)$/i.test(name) && !containsTechnicalReference(name)) {
+    return name;
+  }
+  return `S${String(index + 1).padStart(2, '0')}`;
+}
+
+function indeksStacjiTerenowej(snapshot: EnergyNetworkModel, station: Substation): number {
+  return (snapshot.substations ?? [])
+    .filter((item) => !jestStacjaGpz(item))
+    .findIndex((item) => item.id === station.id || item.ref_id === station.ref_id);
+}
+
+/**
+ * Nazwa stacji tak jak w drzewie projektu (nagłówek inspektora, karta techniczna). GPZ nie ma
+ * wiersza w sekcji stacji drzewa (pokazuje go sekcja zasilania) — jego nazwa to nazwa
+ * nadana przez projektanta, a bez niej „GPZ".
+ */
+export function nazwaStacjiJakWDrzewie(snapshot: EnergyNetworkModel, station: Substation): string {
+  if (jestStacjaGpz(station)) return publicTechnicalLabel(station.name, 'GPZ');
+  return etykietaStacjiWDrzewie(station, Math.max(0, indeksStacjiTerenowej(snapshot, station)));
+}
+
 export function stationOrdinalCode(snapshot: EnergyNetworkModel, station: Substation): string {
-  const fieldStations = (snapshot.substations ?? []).filter((item) =>
-    String(item.station_type ?? '').toLowerCase() !== 'gpz',
-  );
-  const index = fieldStations.findIndex((item) =>
-    item.id === station.id || item.ref_id === station.ref_id,
-  );
-  return `S${String(Math.max(0, index) + 1).padStart(2, '0')}`;
+  return `S${String(Math.max(0, indeksStacjiTerenowej(snapshot, station)) + 1).padStart(2, '0')}`;
 }
 
 export function stationPublicIdentity(

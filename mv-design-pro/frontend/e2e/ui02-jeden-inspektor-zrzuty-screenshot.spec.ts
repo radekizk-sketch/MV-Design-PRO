@@ -67,6 +67,11 @@ async function srodekKanwyTrafiaKanwe(page: Page): Promise<void> {
 
 /** Pasek działań inspektora: ≥ 1 działanie, każde dokładnie raz, niedostępne z przyczyną. */
 async function sprawdzPasekDzialan(page: Page): Promise<void> {
+  // K6: działania są na końcu inspektora, zwinięte — rozwinięcie jednym klikiem.
+  const zwiniete = page.getByTestId('mvd-inspector').getByTestId('inspektor-dzialania-zwiniete');
+  if ((await zwiniete.getAttribute('open')) === null) {
+    await zwiniete.getByTestId('inspektor-dzialania-rozwin').click();
+  }
   const pasek = page.getByTestId('mvd-inspector').getByTestId('inspektor-dzialania');
   await expect(pasek).toBeVisible();
   const dzialania = await pasek.locator('[data-testid^="inspektor-akcja-"]').evaluateAll((els) =>

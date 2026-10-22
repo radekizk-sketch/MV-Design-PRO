@@ -22,17 +22,21 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { DEFAULT_SPACE, type SpaceId } from './spaces';
 
 /*
- * Granice paneli (kontrakt UIUX przemysłowy, UI-02, karta K1 POWLOKA): lewy panel
- * 220–260 px (domyślnie 240), inspektor 340–420 px w układzie domyślnym
- * (domyślnie 360) — przeciąganie dopuszcza szerszy inspektor do 560 px, bo
- * tabele audytowe inspektora tego wymagają. Panel dolny: regulowana wysokość.
+ * Granice paneli (kontrakt UIUX przemysłowy, UI-02, karty K1 POWLOKA i K6 INSPEKTOR):
+ * lewy panel 220–260 px (domyślnie 240), inspektor 340–420 px (domyślnie 360) —
+ * przeciąganie i klawiatura NIGDY nie wychodzą poza 420 px. Szerokość 560 px (tabele
+ * karty technicznej z pełnym nagłówkiem kolumn) daje WYŁĄCZNIE jawne polecenie „Tryb
+ * szeroki" (przycisk w nagłówku inspektora i pozycja menu Widok), odwracalne tym samym
+ * poleceniem i zapisywane per przestrzeń. Szerokość nie zmienia się samoczynnie: selekcja
+ * obiektu nie czyta ani nie pisze żadnego z tych pól. Panel dolny: regulowana wysokość.
  */
 export const LEFT_MIN = 220;
 export const LEFT_MAX = 260;
 export const LEFT_DEFAULT = 240;
 export const RIGHT_MIN = 340;
-export const RIGHT_MAX = 560;
+export const RIGHT_MAX = 420;
 export const RIGHT_DEFAULT = 360;
+export const RIGHT_WIDE = 560;
 export const RAIL_WIDTH = 48;
 export const BOTTOM_MIN = 140;
 export const BOTTOM_MAX = 480;
@@ -61,6 +65,8 @@ export interface PanelLayoutState {
   rightWidth: number;
   leftCollapsed: boolean;
   rightCollapsed: boolean;
+  /** K6: tryb szeroki inspektora (560 px) — wyłącznie z jawnego polecenia. */
+  rightWide: boolean;
 }
 
 export const DEFAULT_LAYOUT: PanelLayoutState = {
@@ -71,6 +77,7 @@ export const DEFAULT_LAYOUT: PanelLayoutState = {
   // zabiera przestrzeni roboczej — otwiera go selekcja albo powierzchnia
   // panelowa (useInspektorZaZawartoscia), nie sam montaż powłoki.
   rightCollapsed: true,
+  rightWide: false,
 };
 
 function przytnij(min: number, max: number, wartosc: number, domyslna: number): number {
@@ -84,6 +91,14 @@ export function clampLeftWidth(width: number): number {
 
 export function clampRightWidth(width: number): number {
   return przytnij(RIGHT_MIN, RIGHT_MAX, width, RIGHT_DEFAULT);
+}
+
+/**
+ * Szerokość kolumny inspektora: tryb szeroki = {@link RIGHT_WIDE}, poza nim szerokość
+ * z przeciągania przycięta do pasma 340–420 px. Jedna reguła dla powłoki i testów.
+ */
+export function efektywnaSzerokoscInspektora(layout: Pick<PanelLayoutState, 'rightWidth' | 'rightWide'>): number {
+  return layout.rightWide ? RIGHT_WIDE : clampRightWidth(layout.rightWidth);
 }
 
 export function clampBottomHeight(height: number): number {
@@ -188,6 +203,8 @@ interface ShellState {
   toggleRightCollapsed: (space: SpaceId) => void;
   /** K11-A: jawne ustawienie zwinięcia inspektora (automat za zawartością). */
   setRightCollapsed: (space: SpaceId, collapsed: boolean) => void;
+  /** K6: przełącza tryb szeroki inspektora; włączenie otwiera zwinięty inspektor. */
+  toggleRightWide: (space: SpaceId) => void;
   resetLayout: (space: SpaceId) => void;
 
   openBottomPanel: (tab: BottomPanelTab) => void;
@@ -209,6 +226,7 @@ function layoutFor(state: ShellState, space: SpaceId): PanelLayoutState {
     rightWidth: clampRightWidth(zapisany.rightWidth),
     leftCollapsed: Boolean(zapisany.leftCollapsed),
     rightCollapsed: Boolean(zapisany.rightCollapsed),
+    rightWide: zapisany.rightWide === true,
   };
 }
 
@@ -266,7 +284,9 @@ export const useShellStore = create<ShellState>()(
 
       setRightWidth: (space, width) =>
         set((state) => ({
-          layoutBySpace: patchLayout(state, space, { rightWidth: clampRightWidth(width) }),
+          // Przeciąganie i klawiatura działają w paśmie 340–420 px: zmiana szerokości
+          // z uchwytu kończy tryb szeroki (jedna szerokość inspektora naraz).
+          layoutBySpace: patchLayout(state, space, { rightWidth: clampRightWidth(width), rightWide: false }),
         })),
 
       toggleLeftCollapsed: (space) =>
@@ -287,6 +307,18 @@ export const useShellStore = create<ShellState>()(
         set((state) => {
           if (layoutFor(state, space).rightCollapsed === collapsed) return state;
           return { layoutBySpace: patchLayout(state, space, { rightCollapsed: collapsed }) };
+        }),
+
+      toggleRightWide: (space) =>
+        set((state) => {
+          const biezacy = layoutFor(state, space);
+          const szeroki = !biezacy.rightWide;
+          return {
+            layoutBySpace: patchLayout(state, space, {
+              rightWide: szeroki,
+              ...(szeroki ? { rightCollapsed: false } : {}),
+            }),
+          };
         }),
 
       resetLayout: (space) =>

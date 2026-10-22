@@ -216,7 +216,18 @@ export function useUrlSelectionSync(): void {
   // 2b. Po dostępności snapshotu ENM kanonikalizujemy selekcję
   // odtworzoną z URL, np. wyłącznik zapisany wcześniej jako LineBranch.
   useEffect(() => {
-    if (!selectedElement || !snapshot) {
+    if (!selectedElement) {
+      // Okno idzie za selekcją także przy jej ZDJĘCIU (Escape, klik w tło, `clearSelection`):
+      // okno otwarte przez synchronizację selekcji nie może zostać w inspektorze jako okno
+      // obiektu, którego nikt już nie wskazuje. Okno otwarte przez użytkownika (formularz
+      // operacji) zostaje — `oknoZSelekcji` rozróżnia źródło. W trakcie odtwarzania z adresu
+      // (montaż, popstate) selekcja w domknięciu efektu bywa jeszcze pusta — pomijamy.
+      if (!isRestoringRef.current && oknoZSelekcji()) {
+        closeActiveSurface();
+      }
+      return;
+    }
+    if (!snapshot) {
       return;
     }
 

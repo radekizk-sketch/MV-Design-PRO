@@ -77,16 +77,16 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
   return (
     <div data-testid="bay-configurator-surface" className="flex h-full w-full flex-col p-4">
       <div className="mb-3">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+        <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
           Karta pola SN
         </div>
         <h2 className="mt-1 text-base font-semibold text-scada-text">{bayName}</h2>
-        {roleLabel && <p className="mt-0.5 text-xs text-scada-muted">{roleLabel}</p>}
+        {roleLabel && <p className="mt-0.5 text-[length:var(--mvd-font-size-data)] text-scada-muted">{roleLabel}</p>}
       </div>
       {!bayRef ? (
         <p
           data-testid="bay-card-no-ref"
-          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz"
+          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz"
         >
           Brak referencji do pola SN w kontekście. Wybierz pole z lewego nawigatora
           modelu lub kliknij pole w SLD i wybierz &quot;Otwórz kartę pola&quot;.
@@ -94,7 +94,7 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
       ) : snapshot && !bayInModel && !item && !isLoading ? (
         <p
           data-testid="bay-card-missing"
-          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz"
+          className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[length:var(--mvd-font-size-data)] text-sygnal-uwaga-tusz"
         >
           Wskazane pole nie występuje w modelu sieci. Wybierz istniejące pole z nawigatora modelu.
         </p>

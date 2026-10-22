@@ -1,15 +1,19 @@
 /**
- * UI-02b JEDEN-INSPEKTOR — sekcje prawego inspektora przejęte z dawnej szuflady
- * szczegółów kanwy. Kanwa nie ma już własnego panelu: klik elementu zaznacza go, a te
- * sekcje (w `InspectorEngineeringView`) pokazują dla tej samej selekcji:
- *  - kontekst obiektu na schemacie (rodzaj, stacja › pole, identyfikator globalny aparatu);
+ * UI-02b JEDEN-INSPEKTOR → K6 KARTA TECHNICZNA — sekcje prawego inspektora dla obiektu
+ * schematu. Kanwa nie ma własnego panelu: klik elementu zaznacza go, a te sekcje (nad oknem
+ * technicznym w `LegacyInspektor` albo w `InspectorEngineeringView`) pokazują, w kolejności
+ * pracy projektanta:
+ *  - nagłówek: rodzaj i nazwa obiektu (stacja — rodzaj z topologii, ta sama reguła co drzewo
+ *    projektu), stacja › pole, identyfikator globalny aparatu;
  *  - formularz nowego układu PV/BESS/FW po upuszczeniu z palety (`FormularzSzkicuDer`);
- *  - pasek działań z TEGO SAMEGO rejestru i kontekstu dostępności co menu kontekstowe kanwy
- *    (`akcjeElementu`), wykonywanych tym samym wykonawcą; pozycja niedostępna jest
- *    nieaktywna (`aria-disabled`) z przyczyną w opisie przycisku;
- *  - „Wyniki" — wielkości elementu z nakładki wyników: brak / nieaktualne / wartość;
+ *  - kartę techniczną obiektu (`KartaTechnicznaElementu`): identyfikacja, rozdzielnica z tabelą
+ *    pól, transformator z danymi tabliczki i źródłem danej, strona nN, przyłączenia…;
  *  - węzeł SN (ZK SN, słup rozgałęźny) i stan aparatu z rekordu źródła runtime modelu;
- *  - wejście do pełnej konfiguracji odcinka (E-12) i karty węzła (E-14 / E-15).
+ *  - „Wyniki" — wielkości elementu z nakładki wyników: brak / nieaktualne / wartość;
+ *  - wejście do pełnej konfiguracji odcinka (E-12) i karty węzła (E-14 / E-15);
+ *  - na końcu, ZWINIĘTE, działania z TEGO SAMEGO rejestru i kontekstu dostępności co menu
+ *    kontekstowe kanwy (`akcjeElementu`), wykonywane tym samym wykonawcą; pozycja niedostępna
+ *    jest nieaktywna (`aria-disabled`) z przyczyną w opisie przycisku.
  * Zero fizyki: każda liczba pochodzi z modelu albo z wyniku backendu.
  */
 import type { JSX } from 'react';
@@ -23,6 +27,7 @@ import {
 import type { SldMenuAction } from '../../sld/v2/command/SldCommandService';
 import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
+import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
 import type { StanPaneluElementu, StanWynikowElementu } from './stanPaneluElementu';
 
 const STYL_SEKCJI = {
@@ -39,6 +44,9 @@ const NAZWA_RODZAJU: Readonly<Record<NonNullable<RodzajElementuKanwy>, string>> 
   der: 'Źródło rozproszone',
   cable_run: 'Ciąg SN',
   node: 'Węzeł sieci SN',
+  generator: 'Źródło OZE',
+  grid_source: 'Sieć zasilająca',
+  bus: 'Szyna',
 };
 
 const REF_WEWNETRZNY = /\b(?:stn|seg|gpz|bus|bay|pv|bess|fw|source)\/[^\s]+/i;
@@ -241,8 +249,80 @@ export function SekcjaStanuAparatu({ stan }: { readonly stan: DaneElementuKanwy[
   );
 }
 
-export function PanelElementuKanwy({ stan }: { readonly stan: StanPaneluElementu }): JSX.Element {
-  const { dane, akcje, wykonajAkcje, wyniki, szkicDer, daneSzkicuDer, konfiguracja } = stan;
+/** Operacja modelu spoza rejestru menu kanwy (skróty widoku inżynierskiego: przypisanie
+ *  katalogu, edycja parametrów…) — pokazywana w tym samym zwiniętym bloku działań. */
+export interface OperacjaModeluInspektora {
+  readonly id: string;
+  readonly etykietaPl: string;
+  readonly onClick: () => void;
+  readonly niedostepnaPl?: string | null;
+  readonly wariant?: 'danger';
+}
+
+/** Działania obiektu na końcu inspektora, ZWINIĘTE (K6): rozwinięcie jednym klikiem w nagłówek
+ *  listy, liczba pozycji w nagłówku. Pozycje rejestru menu kanwy i operacje modelu widoku
+ *  inżynierskiego są w JEDNYM bloku — nie ma drugiej, rozwiniętej listy operacji poniżej. */
+export function DzialaniaZwiniete({
+  akcje,
+  onAkcja,
+  operacje = [],
+}: {
+  readonly akcje: readonly SldMenuAction[];
+  readonly onAkcja: (actionId: string) => void;
+  readonly operacje?: readonly OperacjaModeluInspektora[];
+}): JSX.Element | null {
+  const liczba = akcje.length + operacje.length;
+  if (liczba === 0) return null;
+  return (
+    <details data-testid="inspektor-dzialania-zwiniete" className="border-b" style={{ borderColor: 'var(--mvd-line)' }}>
+      <summary
+        data-testid="inspektor-dzialania-rozwin"
+        className="cursor-pointer px-4 py-2 font-semibold"
+        style={{ fontSize: 'var(--mvd-font-size-data)', color: 'var(--mvd-ink)' }}
+      >
+        Działania ({liczba})
+      </summary>
+      <PasekDzialanElementu akcje={akcje} onAkcja={onAkcja} />
+      {operacje.length > 0 && (
+        <section
+          data-testid="inspektor-operacje-modelu"
+          aria-label="Operacje modelu"
+          className="flex flex-col gap-1 border-b px-4 py-3"
+          style={STYL_SEKCJI}
+        >
+          <span style={{ color: 'var(--mvd-muted)' }}>Operacje modelu</span>
+          <div className="flex flex-wrap gap-1.5">
+            {operacje.map((operacja) => (
+              <button
+                key={operacja.id}
+                type="button"
+                className="mvd-btn"
+                data-testid={`inspektor-operacja-${operacja.id}`}
+                aria-disabled={operacja.niedostepnaPl ? true : undefined}
+                title={operacja.niedostepnaPl ?? operacja.etykietaPl}
+                onClick={operacja.niedostepnaPl ? undefined : operacja.onClick}
+                style={operacja.wariant === 'danger' && !operacja.niedostepnaPl ? { color: 'var(--mvd-err)' } : undefined}
+              >
+                {operacja.etykietaPl}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </details>
+  );
+}
+
+export function PanelElementuKanwy({
+  stan,
+  dzialaniaPoza = false,
+}: {
+  readonly stan: StanPaneluElementu;
+  /** `true` — działania renderuje wołający na samym końcu inspektora (widok inżynierski, który
+   *  pod tym panelem ma jeszcze dowód obliczeń i schemat pola). */
+  readonly dzialaniaPoza?: boolean;
+}): JSX.Element {
+  const { dane, akcje, wykonajAkcje, wyniki, szkicDer, daneSzkicuDer, konfiguracja, karta, edytuj } = stan;
   const kontekstStacji = dane
     ? [dane.parentStationLabel ?? (dane.kind !== 'station' && dane.stationCode ? `Stacja ${dane.stationCode}` : null), dane.parentBayLabel]
         .filter((czesc): czesc is string => Boolean(czesc))
@@ -253,8 +333,11 @@ export function PanelElementuKanwy({ stan }: { readonly stan: StanPaneluElementu
       {dane && (
         <div className="flex flex-col gap-0.5 border-b px-4 py-2" style={STYL_SEKCJI} data-testid="inspektor-element-kontekst">
           <span>
-            <span style={{ color: 'var(--mvd-muted)' }}>{dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element'}: </span>
-            <span data-testid="inspektor-element-etykieta" className="font-semibold">{etykietaElementuKanwy(dane)}</span>
+            <span data-testid="inspektor-element-rodzaj" style={{ color: 'var(--mvd-muted)' }}>
+              {karta?.rodzajPl ?? (dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element')}
+            </span>
+            <span style={{ color: 'var(--mvd-muted)' }}>: </span>
+            <span data-testid="inspektor-element-etykieta" className="font-semibold">{karta?.nazwa ?? etykietaElementuKanwy(dane)}</span>
           </span>
           {kontekstStacji && <span data-testid="inspektor-element-sciezka" style={{ color: 'var(--mvd-muted)' }}>{kontekstStacji}</span>}
           {dane.globalId && (
@@ -263,7 +346,10 @@ export function PanelElementuKanwy({ stan }: { readonly stan: StanPaneluElementu
         </div>
       )}
       {szkicDer && daneSzkicuDer && <FormularzSzkicuDer dane={daneSzkicuDer} derKind={szkicDer.derKind} />}
-      <PasekDzialanElementu akcje={akcje} onAkcja={wykonajAkcje} />
+      {karta && <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} />}
+      {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
+      {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}
+      {(dane || stan.temat) && <SekcjaWynikowElementu wyniki={wyniki} />}
       {konfiguracja && (
         <div className="border-b px-4 py-3" style={STYL_SEKCJI}>
           <button type="button" className="mvd-btn" data-testid="inspektor-otworz-konfiguracje" onClick={konfiguracja.otworz}>
@@ -271,9 +357,7 @@ export function PanelElementuKanwy({ stan }: { readonly stan: StanPaneluElementu
           </button>
         </div>
       )}
-      {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
-      {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}
-      {(dane || stan.temat) && <SekcjaWynikowElementu wyniki={wyniki} />}
+      {!dzialaniaPoza && <DzialaniaZwiniete akcje={akcje} onAkcja={wykonajAkcje} />}
     </div>
   );
 }

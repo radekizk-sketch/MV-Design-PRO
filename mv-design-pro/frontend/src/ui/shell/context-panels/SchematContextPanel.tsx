@@ -14,6 +14,11 @@ import type { ElementType } from '../../types';
 import { fieldLabelInSentencePl, fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { podpisStacjiPl, type ModelDlaRodzaju, type StacjaDlaRodzaju } from '../../shared/rodzajStacji';
 import {
+  containsTechnicalReference,
+  etykietaStacjiWDrzewie,
+  jestStacjaGpz,
+} from '../../shared/publicTechnicalLabels';
+import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   type EntityTypeCode,
   type WorkspaceSurfaceCode,
@@ -775,10 +780,10 @@ function isGpzScopedRecord(item: SnapshotRecord): boolean {
   return ref.startsWith('gpz/') || substationRef.startsWith('gpz/');
 }
 
+/** K6: predykat GPZ z jednego źródła (`ui/shared/publicTechnicalLabels.ts`) — numeracja
+ *  stacji w drzewie i w nagłówku inspektora liczona z tego samego zbioru. */
 function isGpzSubstationRecord(item: SnapshotRecord): boolean {
-  const ref = getRef(item);
-  const type = asText(item.station_type).toLowerCase();
-  return ref.startsWith('gpz/') || type.includes('gpz');
+  return jestStacjaGpz(item);
 }
 
 function getRef(item: SnapshotRecord): string {
@@ -791,14 +796,6 @@ function getDisplayName(item: SnapshotRecord, fallbackLabel: string, ordinal: nu
   // w drzewie zastępuje numer porządkowy — tak jak brak nazwy.
   if (name && !containsTechnicalReference(name) && !/\bbez\s+nazwy\b/i.test(name)) return name;
   return `${fallbackLabel} ${String(ordinal).padStart(2, '0')}`;
-}
-
-function containsTechnicalReference(value: string): boolean {
-  return /\/(?:segment|station|source|bay|bus|branch)\b/i.test(value)
-    || /\b(?:do\s+punktu|za\s+punktem)\s+rozga/i.test(value)
-    || /\b(?:seg|gpz|stn|bay|bus|src)\/[a-z0-9/_#-]{12,}/i.test(value)
-    || /\b[0-9a-f]{24,}\b/i.test(value)
-    || /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i.test(value);
 }
 
 function asText(value: unknown): string {
@@ -982,15 +979,10 @@ function formatStationType(snapshot: SnapshotRecord, item: SnapshotRecord): stri
   return podpis === 'GPZ' ? podpis : podpis.charAt(0).toLowerCase() + podpis.slice(1);
 }
 
-function formatStationTreeLabel(item: SnapshotRecord, index: number, fallbackLabel: string): string {
-  const code = asText(item.station_code) || asText(item.code);
-  if (code.trim()) return code.trim().toUpperCase();
-  const name = asText(item.name).trim();
-  if (name && !/^stacja\s+(inline|terminal|sectional|branch)$/i.test(name) && !containsTechnicalReference(name)) {
-    return name;
-  }
-  if (fallbackLabel === 'Stacja') return `S${String(index + 1).padStart(2, '0')}`;
-  return `${fallbackLabel} ${String(index + 1).padStart(2, '0')}`;
+/** K6 (Z-11): etykieta stacji z JEDNEJ reguły (`etykietaStacjiWDrzewie`) — ta sama nazwa
+ *  w drzewie i w nagłówku inspektora (karta techniczna, `nazwaStacjiJakWDrzewie`). */
+function formatStationTreeLabel(item: SnapshotRecord, index: number): string {
+  return etykietaStacjiWDrzewie(item, index);
 }
 
 function formatGeneratorMeta(item: SnapshotRecord, snapshot?: SnapshotRecord | null): string | undefined {
@@ -1009,7 +1001,7 @@ function generatorStationLabel(item: SnapshotRecord, snapshot: SnapshotRecord): 
   const stations = getCollection(snapshot, 'substations').filter((station) => !isGpzSubstationRecord(station));
   const index = stations.findIndex((station) => getRef(station) === stationRef || asText(station.id) === stationRef);
   if (index < 0) return '';
-  return formatStationTreeLabel(stations[index], index, 'Stacja');
+  return formatStationTreeLabel(stations[index], index);
 }
 
 function formatGeneratorTreeLabel(item: SnapshotRecord, index: number, generators: SnapshotRecord[]): string {

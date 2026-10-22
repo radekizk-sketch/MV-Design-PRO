@@ -62,6 +62,11 @@ export const OZE_STRINGS = {
   katalog: 'Układ PV/BESS/FW',
   katalogPlaceholder: '— wybierz układ z katalogu —',
   katalogBlad: 'Nie udało się pobrać katalogu układów PV/BESS/FW.',
+  bateria: 'Pakiet baterii magazynu',
+  bateriaPlaceholder: '— wybierz pakiet baterii z katalogu —',
+  bateriaBlad: 'Nie udało się pobrać katalogu pakietów baterii magazynu.',
+  bateriaPomoc:
+    'Pakiet baterii to sprzęt oddzielny od przekształtnika (PCS): chemia, energia, napięcie DC i C-rate z katalogu.',
   katalogLadowanieStopka: 'Ładowanie katalogu przekształtników i aparatury nN — zapis chwilę poczeka.',
   katalogPomoc: 'Tabliczka wnosi napięcie, moc znamionową i zdolność Q — z katalogu (ZERO fizyki w UI).',
   liczba: 'Liczba jednostek',

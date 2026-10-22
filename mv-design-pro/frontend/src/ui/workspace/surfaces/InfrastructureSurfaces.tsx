@@ -268,14 +268,14 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
           <KeyValue label="Porty odgałęźne" value={`${branchPorts.length}`} />
         </div>
         <div className="rounded border border-scada-border bg-scada-panel p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-scada-muted">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
             Tor główny WE/WY
           </div>
           <div className="mt-2 space-y-2">
             {mainOutAlreadyContinued ? (
               <p
                 data-testid="zksn-main-out-state"
-                className="rounded border border-scada-border bg-scada-surface px-3 py-2 text-xs font-semibold text-scada-text"
+                className="rounded border border-scada-border bg-scada-surface px-3 py-2 text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text"
               >
                 Pole WY ciągu głównego jest już połączone z następnym odcinkiem kablowym.
               </p>
@@ -285,7 +285,7 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
                 disabled={!mainOutBusRef}
                 onClick={handleContinueMainRoute}
                 data-testid="zksn-action-continue-main"
-                className="w-full rounded border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-xs font-semibold text-scada-text hover:bg-scada-sn/20 disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-scada-surface disabled:text-scada-muted"
+                className="w-full rounded border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text hover:bg-scada-sn/20 disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-scada-surface disabled:text-scada-muted"
               >
                 {mainOutBusRef
                   ? 'Kontynuuj tor kablowy z pola WY'
@@ -295,12 +295,12 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
           </div>
         </div>
         <div className="rounded border border-scada-border bg-scada-panel p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-scada-muted">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
             Wyprowadzenia kablowe
           </div>
           <div className="mt-2 space-y-2">
             {branchPorts.length === 0 ? (
-              <p className="text-[11px] text-amber-300">
+              <p className="text-[length:var(--mvd-font-size-data)] text-amber-300">
                 Brak wolnych pól odgałęźnych w materializacji ZK SN.
               </p>
             ) : (
@@ -311,7 +311,7 @@ export function ZksnSurface({ surface }: SurfaceProps): JSX.Element {
                   disabled={port.occupied}
                   onClick={() => handleStartBranchFromPort(port.portId)}
                   data-testid={`zksn-action-start-branch-${port.portId}`}
-                  className="w-full rounded border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-xs font-semibold text-scada-text hover:bg-scada-sn/20 disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-scada-surface disabled:text-scada-muted"
+                  className="w-full rounded border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text hover:bg-scada-sn/20 disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-scada-surface disabled:text-scada-muted"
                 >
                   {port.occupied
                     ? `${port.displayLabel}: odgałęzienie kablowe już wyprowadzone`
@@ -410,11 +410,11 @@ export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
           <KeyValue label="Tor odgałęźny" value={branchPortState} />
         </div>
         <div className="rounded border border-scada-border bg-scada-panel p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-scada-muted">
+          <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
             {branchPortOccupied ? 'Odgałęzienie wyprowadzone' : 'Następny krok projektowy'}
           </div>
           {branchPortOccupied ? (
-            <p className="mt-2 rounded border border-scada-border bg-scada-surface px-3 py-2 text-xs font-semibold text-scada-text">
+            <p className="mt-2 rounded border border-scada-border bg-scada-surface px-3 py-2 text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text">
               Port odgałęźny jest zajęty: {branchSegmentLabel}. Kontynuuj konfigurację odcinka
               odgałęźnego albo jego zakończenia.
             </p>
@@ -424,13 +424,13 @@ export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
               disabled={!branchSourceRef}
               onClick={handleStartBranch}
               data-testid="branch-pole-action-start-branch"
-              className="mt-2 w-full rounded border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-xs font-semibold text-scada-text hover:bg-scada-sn/20 disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-scada-surface disabled:text-scada-muted"
+              className="mt-2 w-full rounded border border-scada-sn bg-scada-sn/10 px-3 py-2 text-left text-[length:var(--mvd-font-size-data)] font-semibold text-scada-text hover:bg-scada-sn/20 disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-scada-surface disabled:text-scada-muted"
             >
               Wyprowadź odgałęzienie SN z portu słupa
             </button>
           )}
           {!branchSourceRef && !branchPortOccupied && (
-            <p className="mt-2 text-[11px] text-amber-300">
+            <p className="mt-2 text-[length:var(--mvd-font-size-data)] text-amber-300">
               Najpierw wybierz wolny port odgałęźny słupa.
             </p>
           )}
@@ -524,7 +524,7 @@ export function NopSurface({ surface }: SurfaceProps): JSX.Element {
           checked={data.remoteControl}
           onChange={(v) => setData((d) => ({ ...d, remoteControl: v }))}
         />
-        <p className="rounded border border-scada-border bg-scada-surface p-3 text-[11px] text-scada-muted">
+        <p className="rounded border border-scada-border bg-scada-surface p-3 text-[length:var(--mvd-font-size-data)] text-scada-muted">
           NOP modeluje rozcięcie elektryczne pierścienia SN. Operacja domenowa
           set_normal_open_point (panel ENM) ustawia / zmienia stan łącznika.
         </p>
@@ -540,7 +540,7 @@ export function NopSurface({ surface }: SurfaceProps): JSX.Element {
 function SurfaceHeader({ code: _code, title, subtitle }: { code: string; title: string; subtitle: string }) {
   return (
     <div className="mb-4">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+      <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">
         {title}
       </div>
       <h2 className="mt-1 text-base font-semibold text-scada-text">{subtitle}</h2>
@@ -557,7 +557,7 @@ function publicBranchPortLabel(portLabel: string | null | undefined): string {
 function KeyValue({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded border border-scada-border bg-scada-surface p-2">
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-scada-muted">{label}</div>
+      <div className="text-[length:var(--mvd-font-size-data)] font-semibold text-scada-muted">{label}</div>
       <div className="mt-1 text-sm font-medium text-scada-text">{value}</div>
     </div>
   );
@@ -574,7 +574,7 @@ interface FieldProps {
 function Field({ label, value, onChange, placeholder, required }: FieldProps) {
   return (
     <div>
-      <label className="mb-1 block text-xs text-scada-muted">
+      <label className="mb-1 block text-[length:var(--mvd-font-size-data)] text-scada-muted">
         {label}
         {required && <span className="text-red-400"> *</span>}
       </label>

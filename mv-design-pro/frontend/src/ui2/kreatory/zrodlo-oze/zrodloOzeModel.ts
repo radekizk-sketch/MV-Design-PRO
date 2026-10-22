@@ -142,6 +142,9 @@ export interface OzeFormData {
   new_field_name: string;
   quantity: number;
   converter_catalog_ref: string | null;
+  /** K6: pakiet baterii BESS z katalogu `BATERIA_BESS` (sprzęt oddzielny od przekształtnika);
+   *  wymagany dla BESS, nieobecny w payloadzie dla PV/FW (backend odrzuca go 422). */
+  battery_catalog_ref: string | null;
   apparatus_catalog_ref: string | null;
   blocking_transformer_ref: string | null;
   control_mode: TrybRegulacji;
@@ -212,6 +215,7 @@ export const DANE_DOMYSLNE: OzeFormData = {
   new_field_name: '',
   quantity: 1,
   converter_catalog_ref: null,
+  battery_catalog_ref: null,
   apparatus_catalog_ref: null,
   blocking_transformer_ref: null,
   control_mode: 'STALY_COS_PHI',
@@ -242,6 +246,28 @@ export const DANE_DOMYSLNE: OzeFormData = {
   pf_curve_ref: null,
   dane_modulu_ncrfg: PUSTE_DANE_MODULU,
 };
+
+/** K6: komunikat braku pakietu baterii — wspólny dla kreatora i formularza nN inspektora. */
+export const BRAK_PAKIETU_BATERII_PL = 'Wybierz pakiet baterii magazynu z katalogu.';
+
+/**
+ * K6 (Z-16): dane początkowe kreatora z kontekstu wywołania — technologia, wariant
+ * przyłączenia i moc zadana przekazane przez wywołującego (formularz nN inspektora
+ * „Przyłącz po stronie SN…", akcje stacji „Dodaj układ BESS z katalogu"). Dotąd kreator
+ * ignorował te klucze i zawsze startował od PV / strony nN — kontekst był atrapą.
+ * Wartość spoza słownika albo niedodatnia moc = brak preselekcji danego pola.
+ */
+export function daneZKontekstu(context: Record<string, unknown> | null | undefined): OzeFormData {
+  const tech = context?.source_technology;
+  const wariant = context?.connection_variant;
+  const moc = context?.power_setpoint_mw;
+  return {
+    ...DANE_DOMYSLNE,
+    ...(tech === 'PV' || tech === 'BESS' || tech === 'FW' ? { source_technology: tech } : {}),
+    ...(wariant === 'nn_side' || wariant === 'block_transformer' ? { connection_variant: wariant } : {}),
+    ...(typeof moc === 'number' && Number.isFinite(moc) && moc > 0 ? { power_setpoint_mw: moc } : {}),
+  };
+}
 
 function parseQuantity(value: number): number {
   return Math.max(1, Math.trunc(value) || 1);
@@ -342,6 +368,9 @@ export function walidujFormularz(
     }
   }
   if (data.source_technology === 'BESS') {
+    if (!data.battery_catalog_ref?.trim()) {
+      errors.push({ field: 'battery_catalog_ref', message: BRAK_PAKIETU_BATERII_PL });
+    }
     const socMin = data.soc_min_percent;
     const socMax = data.soc_max_percent;
     if (socMin !== null && (socMin < 0 || socMin > 100)) {
@@ -448,6 +477,8 @@ export function zbudujPayload(
     has_lvrt_curve: data.has_lvrt_curve ? true : undefined,
     has_hvrt_curve: data.has_hvrt_curve ? true : undefined,
     bess_mode: data.source_technology === 'BESS' ? data.bess_mode : undefined,
+    battery_catalog_ref:
+      data.source_technology === 'BESS' ? data.battery_catalog_ref?.trim() || undefined : undefined,
     soc_min_percent:
       data.source_technology === 'BESS' ? data.soc_min_percent ?? undefined : undefined,
     soc_max_percent:

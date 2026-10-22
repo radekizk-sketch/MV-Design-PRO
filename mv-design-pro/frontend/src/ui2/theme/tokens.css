@@ -31,7 +31,8 @@
   --mvd-left-max: 260px;
   --mvd-left-default: 240px;
   --mvd-right-min: 340px;
-  --mvd-right-max: 560px;
+  --mvd-right-max: 420px;
+  --mvd-right-wide: 560px;
   --mvd-right-default: 360px;
   /* Typografia (§8): dane robocze nie mniejsze niż 13 px. */
   --mvd-font-size-data: 13px;

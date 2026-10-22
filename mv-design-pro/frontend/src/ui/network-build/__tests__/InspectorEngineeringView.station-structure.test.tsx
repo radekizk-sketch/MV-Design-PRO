@@ -34,12 +34,16 @@ vi.mock('../networkBuildStore', () => ({
     selector({ openOperationForm, openRouteSurface }),
 }));
 
-vi.mock('../../selection', () => ({
+const selekcja = vi.hoisted(() => ({
   useSelectionStore: (selector: (state: unknown) => unknown) =>
     selector({
       selectedElements: [{ id: 'st-no-bays', type: 'Station', name: 'Stacja testowa' }],
     }),
 }));
+// Inspektor czyta selekcję przez indeks pakietu, panel z kanwy (karta techniczna) — wprost
+// ze sklepu; obie ścieżki widzą TĘ SAMĄ selekcję.
+vi.mock('../../selection', () => selekcja);
+vi.mock('../../selection/store', () => selekcja);
 
 // JEDNA prawda gotowosci (KD-1 / V12K-286): inspektor czyta problemy przez
 // `gotowoscAdapter` z `useSnapshotStore.readiness`, wiec scena zasila TO pole
@@ -134,13 +138,39 @@ describe('InspectorEngineeringView - struktura stacji', () => {
     executeDomainOperation.mockReset();
   });
 
-  it('opisuje rozdzielnicę SN liczbą pól SN z rekordów `bays` stacji (odpływy nN liczone osobno)', () => {
+  // K6 (Z-12): dane stacji pokazuje WYŁĄCZNIE karta techniczna panelu z kanwy; intencja dawnego
+  // testu sekcji „Struktura" zachowana — rozdzielnica SN z rekordów `bays` stacji (pięć pól SN
+  // na szynie 15 kV), odpływy nN osobno (dwa pola na szynie 0,4 kV), odbiory i źródła nN.
+  it('opisuje rozdzielnicę SN polami SN z rekordów `bays` stacji (odpływy nN osobno)', async () => {
     render(<InspectorEngineeringView />);
 
-    expect(screen.getAllByText('Stacja testowa').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('engineering-field-nn_feeders')).toHaveTextContent(/Rozdzielnica nN\s*2 odpływów nN/);
-    expect(screen.getByTestId('engineering-field-nn_loads')).toHaveTextContent(/Odbiory nN\s*2 odbiorów \/ 80 kW/);
-    expect(screen.getByTestId('engineering-field-der_sources')).toHaveTextContent(/Układy PV\/BESS\/FW\s*PV 1 szt\. \/ 0,4 MW; BESS 1 szt\. \/ 0,2 MW/);
-    expect(screen.getByTestId('engineering-field-bay_count')).toHaveTextContent(/Rozdzielnica SN\s*5 pól SN/);
+    const karta = await screen.findByTestId('inspektor-karta');
+    expect(karta).toHaveAttribute('data-rodzaj-karty', 'stacja');
+    expect(screen.getByTestId('inspektor-element-etykieta')).toHaveTextContent('Stacja testowa');
+    expect(screen.getAllByTestId('inspektor-karta-wiersz-pola_sn')).toHaveLength(5);
+    expect(screen.getByTestId('inspektor-karta-lista-nn_odplywy').querySelectorAll('li')).toHaveLength(2);
+    const odbiory = screen.getByTestId('inspektor-karta-lista-nn_odbiory');
+    expect(odbiory.querySelectorAll('li')).toHaveLength(2);
+    expect(odbiory).toHaveTextContent('Odbiór nN 1');
+    const zrodla = screen.getByTestId('inspektor-karta-lista-nn_zrodla');
+    expect(zrodla.querySelectorAll('li')).toHaveLength(2);
+    expect(zrodla).toHaveTextContent('Blok PV 1');
+    expect(zrodla).toHaveTextContent('Magazyn energii 1');
+    // Bez drugiej ścieżki tych samych danych: dawne sekcje widoku nie wracają.
+    expect(screen.queryByTestId('engineering-field-bay_count')).toBeNull();
+    expect(screen.queryByTestId('tech-card-host')).toBeNull();
+    // Działania na SAMYM końcu inspektora (po wyniku i dowodzie obliczeń), zwinięte, w jednym
+    // bloku — bez drugiej, rozwiniętej listy „Operacje" pod nim.
+    const opakowanie = screen.getByTestId('sld-engineering-inspector-wrapper');
+    const dzialania = screen.getByTestId('inspektor-dzialania-zwiniete') as HTMLDetailsElement;
+    expect(dzialania.open).toBe(false);
+    const sekcje = Array.from(opakowanie.querySelectorAll('[data-testid]')).filter(
+      (el) => !dzialania.contains(el) && el !== dzialania && !el.contains(dzialania),
+    );
+    for (const el of sekcje) {
+      expect(el.compareDocumentPosition(dzialania) & Node.DOCUMENT_POSITION_FOLLOWING, el.getAttribute('data-testid') ?? '').toBeTruthy();
+    }
+    expect(screen.getByTestId('element-calculation-proof-panel').compareDocumentPosition(dzialania) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Operacje' })).toBeNull();
   });
 });
