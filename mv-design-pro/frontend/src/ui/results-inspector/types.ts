@@ -201,6 +201,31 @@ export interface WkladPominietyRozplywu {
 }
 
 /**
+ * Wkład jednego źródła do prądu zwarciowego w punkcie (karta WKLAD-ZRODLA) — rozbicie
+ * części Thevenina na zasilania systemowe, szyny sztywne i maszyny wirujące metodą
+ * zastępczego źródła napięcia (IEC 60909-0:2016 §4.2: I_Q,k = Y_Q,k·Z_kf·I_k''(Th)).
+ * Projekcja `_sc_wklady_zrodel` (`enm/canonical_analysis.py`): odnośnik źródła z modelu,
+ * prąd w kA w miejscu zwarcia i na zaciskach źródła, kąt fazora względem I_k''(Th),
+ * udział względem I_k'' (z falownikami) — z rdzenia, zero fizyki w prezentacji. Klasa
+ * wpisu: `WKLAD`, `POMINIETY` (|I| poniżej progu rdzenia) albo `INNA_WYSPA` (wkład
+ * strukturalnie zerowy, przyczyna w `przyczyna`). Falowniki nie są na tej liście — stoją
+ * per źródło w `contributions` wiersza.
+ */
+export interface WkladZrodlaRozplywu {
+  source_id: string;
+  source_name: string | null;
+  rodzaj: 'siec' | 'szyna_sztywna' | 'maszyna_synchroniczna' | 'maszyna_asynchroniczna';
+  node_id: string;
+  node_name: string;
+  klasa: 'WKLAD' | 'POMINIETY' | 'INNA_WYSPA';
+  i_ka: number;
+  i_zaciski_ka: number;
+  kat_deg: number | null;
+  udzial: number;
+  przyczyna: string | null;
+}
+
+/**
  * Single short-circuit result row.
  */
 export interface ShortCircuitRow {

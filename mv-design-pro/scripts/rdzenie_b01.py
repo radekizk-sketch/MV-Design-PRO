@@ -48,6 +48,16 @@ from __future__ import annotations
 #: `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`); krok śladu
 #: `admitancje_poprzeczne_pominiete` (tylko gdy coś pominięto). Składowa zerowa (B0), rozpływ
 #: i estymacja stanu bez zmian. Liczby sieci z B > 0 zmieniają się celowo (sonda w meldunku).
+#: Grupa „IEC 60909" zmieniona zgodą B-01 architekta z 2026-10-22 (karta WKLAD-ZRODLA, wzorzec
+#: GPZ H5, WYŁĄCZNIE wkład per źródło): addytywne pola wyniku `wklady_zrodel`
+#: i `wklady_zrodel_slad` (exclude_none) — I_Q,k = Y_Q,k·Z_kf·I_k''(Th) (IEC 60909-0:2016 §4.2)
+#: dla zasilań systemowych, szyn sztywnych i maszyn wirujących (admitancje ze stempla źródeł
+#: budowniczego macierzy Y; karta nie zmienia `core/ybus.py`),
+#: źródło z innej wyspy strukturalnie zerowe, jeden predykat progu, krok bilansu. Zero zmian
+#: istniejących liczb (sonda bit w bit). Każda inna zmiana rdzenia = nowa decyzja.
+#: Partia integracji obu kart: macierz bilansu wkładów źródeł budowana tym samym predykatem
+#: `siec_zwarciowa=True` co `build_zbus` — człony poprzeczne bilansu wyłącznie z przekładni
+#: poza-znamionowej (pojemności linii i kabli nie wchodzą do sieci zgodnej).
 RDZENIE_B01: dict[str, tuple[str, ...]] = {
     "IEC 60909 (3F/2F/1F, MAX/MIN, wkłady)": (
         "network_model/solvers/short_circuit_iec60909.py",

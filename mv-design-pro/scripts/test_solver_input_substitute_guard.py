@@ -1901,7 +1901,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zbiorow +2 (`wklady_pominiete` — addytywne pole wyniku SC z zestawieniem wkladow
     # pominietych na podstawie tolerancji numerycznej, `wklady_pominiete_json` — kolumna
     # artefaktu rozplywu), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4286." in wyjscie, wyjscie
+    # Karta WKLAD-ZRODLA (2026-10-22, zgoda B-01 architekta): 4286 -> 4292 — POMIAR
+    # `contract_fields()` na bazie karty `f121c5e79` (`git archive`: 4286, pin zgodny) i na
+    # drzewie karty (4292). Roznica zbiorow +6 (`wklady_zrodel`, `wklady_zrodel_slad` —
+    # addytywne pola wyniku SC z wkladem kazdego zrodla i jego sladem, `wklady_zrodel_json`,
+    # `wklady_zrodel_slad_json` — kolumny artefaktu rozplywu, `i_zaciski_a` — prad wkladu na
+    # zaciskach zrodla `WkladZrodla`, `y_pu` — admitancja bocznika zrodla `BocznikZrodla`),
+    # -0. Nowa nazwa `i_zaciski_a` odslonila zastany odczyt `detale.get("i_zaciski_a", 0.0)`
+    # w `machine_sc_iec60909.py` (wywod maszyny) — naprawiony u zrodla (prad na zaciskach
+    # podawany jawnie przez wolajacego). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4292." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

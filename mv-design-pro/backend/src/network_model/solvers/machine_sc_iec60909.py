@@ -634,6 +634,7 @@ def compute_machine_contributions(
         z_internal_ohm: complex,
         detale: dict,
         ip_a: float,
+        i_zaciski_a: float,
         ir_a: float,
         ratio: float,
         mu: float,
@@ -690,7 +691,9 @@ def compute_machine_contributions(
                 }
             )
         if ir_a > 0:
-            i_zaciski_ka = float(detale.get("i_zaciski_a", 0.0)) / 1000.0
+            # Prąd na zaciskach podaje wołający (ta sama liczba, z której policzono krotność);
+            # dawny odczyt `detale.get("i_zaciski_a", 0.0)` podstawiał zero za brak klucza.
+            i_zaciski_ka = i_zaciski_a / 1000.0
             kroki.append(
                 {
                     "tekst": (
@@ -805,6 +808,7 @@ def compute_machine_contributions(
                 z_internal_ohm=m.z_internal_ohm,
                 detale=detale,
                 ip_a=ip_a,
+                i_zaciski_a=i_zaciski_a,
                 ir_a=ir_a,
                 ratio=ratio,
                 mu=mu,

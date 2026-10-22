@@ -207,6 +207,140 @@
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.64364107688,
+        "i_zaciski_ka": 0.64364107688,
+        "kat_deg": 4.46786953875,
+        "udzial": 0.0717542244052,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 8.31160967663,
+        "i_zaciski_ka": 1.13340131954,
+        "kat_deg": -0.34563801554,
+        "udzial": 0.926592673042,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00406748265563,
+            "im": 0.0383375406851
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 8953.14 A = 8311.61 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 8311.61\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.92832850753,
+            "im": -0.00560022951317
+          },
+          "i_a": 8311.60967663,
+          "i_zaciski_a": 1133.40131954,
+          "kat_deg": -0.34563801554,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": -0.00353145437217,
+            "im": 0.436347849852
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 8953.14 A = 643.641 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 643.641\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.0716714924702,
+            "im": 0.00560022951317
+          },
+          "i_a": 643.64107688,
+          "i_zaciski_a": 643.64107688,
+          "kat_deg": 4.46786953875,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 8953.14360646,
+          "ik_inverters_a": 16.9356078962,
+          "ik_total_a": 8970.07921436,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14-j1.03739e-12 A, prąd członów poprzecznych gałęzi 3.22445e-13+j3.55038e-13 A, razem 8953.14-j6.82355e-13 A wobec I_k''(Th) = 8953.14 A; reszta 6.82355e-13 A, dopuszczalna 8.95314e-06 A.",
+        "substitution_latex": "\\left(8953.14 - j 1.03739e-12\\right) + \\left(3.22445e-13 + j 3.55038e-13\\right) = \\left(8953.14 - j 6.82355e-13\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 8953.14360646,
+            "im": -1.03739239421e-12
+          },
+          "suma_modulow_zrodel_a": 8955.25075351,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 3.22444782745e-13,
+            "im": 3.55037637656e-13
+          },
+          "suma_bilansu_a": {
+            "re": 8953.14360646,
+            "im": -6.82354756554e-13
+          },
+          "reszta_a": 6.82354756554e-13,
+          "tolerancja_a": 8.95314360646e-06,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -492,6 +626,140 @@
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.0819603927841,
+        "i_zaciski_ka": 0.601042880417,
+        "kat_deg": 1.32821897902,
+        "udzial": 0.00585990933583,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 13.9025367488,
+        "i_zaciski_ka": 13.9025367488,
+        "kat_deg": -0.00782962142253,
+        "udzial": 0.993987487357,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00411363339526,
+            "im": 0.0410796353934
+          },
+          "ik_thevenin_a": 13984.4749902,
+          "un_zwarcia_kv": 110.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00411363+j0.0410796)| * 13984.5 A = 13902.5 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00411363 + j 0.0410796\\right) \\right| \\cdot 13984.5\\,\\mathrm{A} = 13902.5\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.99414076172,
+            "im": -0.000135851993281
+          },
+          "i_a": 13902.5367488,
+          "i_zaciski_a": 13902.5367488,
+          "kat_deg": -0.00782962142253,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": 0.00166086690814,
+            "im": 0.0355355378636
+          },
+          "ik_thevenin_a": 13984.4749902,
+          "un_zwarcia_kv": 110.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (0.00166087+j0.0355355)| * 13984.5 A = 81.9604 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.00166087 + j 0.0355355\\right) \\right| \\cdot 13984.5\\,\\mathrm{A} = 81.9604\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.00585923828036,
+            "im": 0.000135851993281
+          },
+          "i_a": 81.9603927841,
+          "i_zaciski_a": 601.042880417,
+          "kat_deg": 1.32821897902,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 13984.4749902,
+          "ik_inverters_a": 2.15655762983,
+          "ik_total_a": 13986.6315479,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 13984.5-j8.79297e-14 A, prąd członów poprzecznych gałęzi 4.34742e-14+j4.28933e-14 A, razem 13984.5-j4.50363e-14 A wobec I_k''(Th) = 13984.5 A; reszta 4.50363e-14 A, dopuszczalna 1.39845e-05 A.",
+        "substitution_latex": "\\left(13984.5 - j 8.79297e-14\\right) + \\left(4.34742e-14 + j 4.28933e-14\\right) = \\left(13984.5 - j 4.50363e-14\\right)\\,\\mathrm{A} \\approx 13984.5\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 13984.4749902,
+            "im": -8.79296635503e-14
+          },
+          "suma_modulow_zrodel_a": 13984.4971416,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 4.34742010365e-14,
+            "im": 4.28933257375e-14
+          },
+          "suma_bilansu_a": {
+            "re": 13984.4749902,
+            "im": -4.50363378128e-14
+          },
+          "reszta_a": 4.50363378128e-14,
+          "tolerancja_a": 1.39844749902e-05,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -748,6 +1016,140 @@
     ],
     "wklady_pominiete": null,
     "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 1.47069046773,
+        "i_zaciski_ka": 0.0392184124728,
+        "kat_deg": 4.46786953875,
+        "udzial": 0.0697253918432,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 18.9916485476,
+        "i_zaciski_ka": 0.0690605401733,
+        "kat_deg": -0.34563801554,
+        "udzial": 0.900393499371,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00406748265563,
+            "im": 0.0383375406851
+          },
+          "ik_thevenin_a": 20457.5242806,
+          "un_zwarcia_kv": 0.4,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 20457.5 A = 18991.6 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 20457.5\\,\\mathrm{A} = 18991.6\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.92832850753,
+            "im": -0.00560022951317
+          },
+          "i_a": 18991.6485476,
+          "i_zaciski_a": 69.0605401733,
+          "kat_deg": -0.34563801554,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": -0.00353145437217,
+            "im": 0.436347849852
+          },
+          "ik_thevenin_a": 20457.5242806,
+          "un_zwarcia_kv": 0.4,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 20457.5 A = 1470.69 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 20457.5\\,\\mathrm{A} = 1470.69\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.0716714924702,
+            "im": 0.00560022951317
+          },
+          "i_a": 1470.69046773,
+          "i_zaciski_a": 39.2184124728,
+          "kat_deg": 4.46786953875,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 20457.5242806,
+          "ik_inverters_a": 635.085296109,
+          "ik_total_a": 21092.6095767,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 20457.5-j2.01794e-12 A, prąd członów poprzecznych gałęzi 7.36772e-13+j8.11245e-13 A, razem 20457.5-j1.2067e-12 A wobec I_k''(Th) = 20457.5 A; reszta 7.37534e-12 A, dopuszczalna 2.04575e-05 A.",
+        "substitution_latex": "\\left(20457.5 - j 2.01794e-12\\right) + \\left(7.36772e-13 + j 8.11245e-13\\right) = \\left(20457.5 - j 1.2067e-12\\right)\\,\\mathrm{A} \\approx 20457.5\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 20457.5242806,
+            "im": -2.01794136956e-12
+          },
+          "suma_modulow_zrodel_a": 20462.3390154,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 7.36771603596e-13,
+            "im": 8.11244788661e-13
+          },
+          "suma_bilansu_a": {
+            "re": 20457.5242806,
+            "im": -1.2066965809e-12
+          },
+          "reszta_a": 7.375342422e-12,
+          "tolerancja_a": 2.04575242806e-05,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -1027,6 +1429,140 @@
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.64364107688,
+        "i_zaciski_ka": 0.64364107688,
+        "kat_deg": 4.46786953875,
+        "udzial": 0.0717542244052,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 8.31160967663,
+        "i_zaciski_ka": 1.13340131954,
+        "kat_deg": -0.34563801554,
+        "udzial": 0.926592673042,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00406748265563,
+            "im": 0.0383375406851
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00406748+j0.0383375)| * 8953.14 A = 8311.61 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00406748 + j 0.0383375\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 8311.61\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.92832850753,
+            "im": -0.00560022951317
+          },
+          "i_a": 8311.60967663,
+          "i_zaciski_a": 1133.40131954,
+          "kat_deg": -0.34563801554,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": -0.00353145437217,
+            "im": 0.436347849852
+          },
+          "ik_thevenin_a": 8953.14360646,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (-0.00353145+j0.436348)| * 8953.14 A = 643.641 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(-0.00353145 + j 0.436348\\right) \\right| \\cdot 8953.14\\,\\mathrm{A} = 643.641\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.0716714924702,
+            "im": 0.00560022951317
+          },
+          "i_a": 643.64107688,
+          "i_zaciski_a": 643.64107688,
+          "kat_deg": 4.46786953875,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 8953.14360646,
+          "ik_inverters_a": 16.9356078962,
+          "ik_total_a": 8970.07921436,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14-j1.03739e-12 A, prąd członów poprzecznych gałęzi 3.22445e-13+j3.55038e-13 A, razem 8953.14-j6.82355e-13 A wobec I_k''(Th) = 8953.14 A; reszta 6.82355e-13 A, dopuszczalna 8.95314e-06 A.",
+        "substitution_latex": "\\left(8953.14 - j 1.03739e-12\\right) + \\left(3.22445e-13 + j 3.55038e-13\\right) = \\left(8953.14 - j 6.82355e-13\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 8953.14360646,
+            "im": -1.03739239421e-12
+          },
+          "suma_modulow_zrodel_a": 8955.25075351,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 3.22444782745e-13,
+            "im": 3.55037637656e-13
+          },
+          "suma_bilansu_a": {
+            "re": 8953.14360646,
+            "im": -6.82354756554e-13
+          },
+          "reszta_a": 6.82354756554e-13,
+          "tolerancja_a": 8.95314360646e-06,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -1312,6 +1848,140 @@
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
+    "wklady_zrodel": [
+      {
+        "source_id": "gen_sync",
+        "source_name": "Generator synchroniczny",
+        "rodzaj": "maszyna_synchroniczna",
+        "node_id": "bus_sn_c",
+        "node_name": "Stacja C SN",
+        "klasa": "WKLAD",
+        "i_ka": 0.697528469612,
+        "i_zaciski_ka": 0.697528469612,
+        "kat_deg": -17.4153313206,
+        "udzial": 0.151256588191,
+        "przyczyna": null
+      },
+      {
+        "source_id": "src_gpz",
+        "source_name": "System 110 kV",
+        "rodzaj": "siec",
+        "node_id": "bus_hv",
+        "node_name": "GPZ 110 kV",
+        "klasa": "WKLAD",
+        "i_ka": 3.9434983582,
+        "i_zaciski_ka": 0.537749776118,
+        "kat_deg": 3.03463917581,
+        "udzial": 0.85513370878,
+        "przyczyna": null
+      }
+    ],
+    "wklady_zrodel_slad": [
+      {
+        "key": "wklad_zrodla_027336b7-86da-56ec-a8f1-968932c96e9a",
+        "title": "Wkład źródła System 110 kV do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "027336b7-86da-56ec-a8f1-968932c96e9a",
+          "rodzaj": "siec",
+          "node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "y_pu": {
+            "re": 2.39603960396,
+            "im": -23.9603960396
+          },
+          "z_kf_pu": {
+            "re": 0.00166086690814,
+            "im": 0.0355355378636
+          },
+          "ik_thevenin_a": 4603.52239368,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 110.0
+        },
+        "substitution": "I = |(2.39604-j23.9604) * (0.00166087+j0.0355355)| * 4603.52 A = 3943.5 A",
+        "substitution_latex": "\\left| \\left(2.39604 - j 23.9604\\right) \\cdot \\left(0.00166087 + j 0.0355355\\right) \\right| \\cdot 4603.52\\,\\mathrm{A} = 3943.5\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.855425063581,
+            "im": 0.045349527181
+          },
+          "i_a": 3943.4983582,
+          "i_zaciski_a": 537.749776118,
+          "kat_deg": 3.03463917581,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklad_zrodla_gen_sync",
+        "title": "Wkład źródła Generator synchroniczny do prądu zwarciowego",
+        "formula_latex": "\\underline{I}_{Q,k} = \\underline{Y}_{Q,k} \\cdot \\underline{Z}_{kf} \\cdot I_k''^{(Th)}",
+        "inputs": {
+          "source_id": "gen_sync",
+          "rodzaj": "maszyna_synchroniczna",
+          "node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "y_pu": {
+            "re": 0.0115042353076,
+            "im": -0.16434621868
+          },
+          "z_kf_pu": {
+            "re": 0.335872018367,
+            "im": 0.856186329184
+          },
+          "ik_thevenin_a": 4603.52239368,
+          "un_zwarcia_kv": 15.0,
+          "un_zrodla_kv": 15.0
+        },
+        "substitution": "I = |(0.0115042-j0.164346) * (0.335872+j0.856186)| * 4603.52 A = 697.528 A",
+        "substitution_latex": "\\left| \\left(0.0115042 - j 0.164346\\right) \\cdot \\left(0.335872 + j 0.856186\\right) \\right| \\cdot 4603.52\\,\\mathrm{A} = 697.528\\,\\mathrm{A}",
+        "result": {
+          "wspolczynnik_pu": {
+            "re": 0.144574936419,
+            "im": -0.045349527181
+          },
+          "i_a": 697.528469612,
+          "i_zaciski_a": 697.528469612,
+          "kat_deg": -17.4153313206,
+          "klasa": "WKLAD"
+        },
+        "notes": null
+      },
+      {
+        "key": "wklady_zrodel_bilans",
+        "title": "Bilans wkładów źródeł w węźle zwarcia",
+        "formula_latex": "\\sum_{Q} \\underline{I}_{Q,k} + \\underline{I}_{\\text{poprz}} = I_k''^{(Th)}, \\quad I_k'' = I_k''^{(Th)} + I_{k}^{(\\text{fal})}",
+        "inputs": {
+          "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "short_circuit_type": "3F",
+          "ik_thevenin_a": 4603.52239368,
+          "ik_inverters_a": 8.0352115333,
+          "ik_total_a": 4611.55760522,
+          "liczba_zrodel": 2,
+          "tolerancja_wzgledna": 1e-09,
+          "prog_wkladu_pominietego_a": 1e-06
+        },
+        "substitution": "Suma fazorowa wkładów źródeł 4603.52-j3.12639e-13 A, prąd członów poprzecznych gałęzi 4.67669e-13+j2.26796e-13 A, razem 4603.52-j8.58423e-14 A wobec I_k''(Th) = 4603.52 A; reszta 9.13537e-13 A, dopuszczalna 4.60352e-06 A.",
+        "substitution_latex": "\\left(4603.52 - j 3.12639e-13\\right) + \\left(4.67669e-13 + j 2.26796e-13\\right) = \\left(4603.52 - j 8.58423e-14\\right)\\,\\mathrm{A} \\approx 4603.52\\,\\mathrm{A}",
+        "result": {
+          "suma_fazorowa_zrodel_a": {
+            "re": 4603.52239368,
+            "im": -3.12638803734e-13
+          },
+          "suma_modulow_zrodel_a": 4641.02682781,
+          "prad_czlonow_poprzecznych_a": {
+            "re": 4.67668972495e-13,
+            "im": 2.26796469929e-13
+          },
+          "suma_bilansu_a": {
+            "re": 4603.52239368,
+            "im": -8.58423338055e-14
+          },
+          "reszta_a": 9.13536818539e-13,
+          "tolerancja_a": 4.60352239368e-06,
+          "bilans_domkniety": true
+        },
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",

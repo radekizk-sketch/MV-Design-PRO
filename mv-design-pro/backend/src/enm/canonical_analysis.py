@@ -70,6 +70,7 @@ from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
+from enm.mapping import grid_source_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (
     ELEMENT_SPOZA_MODELU,
@@ -108,8 +109,11 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
     KLUCZ_SLADU_ROZPLYWU,
+    KLUCZ_SLADU_WKLADOW_ZRODEL,
     KLUCZ_WKLADOW_POMINIETYCH,
+    KLUCZ_WKLADOW_ZRODEL,
     KLUCZE_ROZPLYWU,
+    KLUCZE_SLADU_ROZPLYWU,
     canonical_run_repository_scope,
 )
 from network_model.brak_zasobu import BrakZasobuError
@@ -164,7 +168,10 @@ from network_model.solvers.power_flow_unbalanced import (
     UnbalancedPowerFlowResult,
     solve_unbalanced_backward_forward_sweep,
 )
-from network_model.solvers.short_circuit_contributions import PROG_WKLADU_POMIJALNEGO_A
+from network_model.solvers.short_circuit_contributions import (
+    PROG_WKLADU_POMIJALNEGO_A,
+    RODZAJ_BOCZNIKA_SZYNA_SZTYWNA,
+)
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitResult,
@@ -302,9 +309,7 @@ POWOD_WEZEL_BEZ_ODNIESIENIA = "fault_node_without_reference_impedance"
 _KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"c_factor", "un_v", "tk_s", "tb_s"})
 #: Poddrzewa śladu White Box wiersza — zerowane bez wykazu ścieżek (setki wpisów bez
 #: wartości diagnostycznej; wykaz `non_physical_fields` nazywa pola KONTRAKTU).
-_KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset(
-    {"white_box_trace", "branch_contributions", "branch_flow_trace", "wklady_pominiete"}
-)
+_KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"white_box_trace", *KLUCZE_ROZPLYWU})
 
 
 def _zeruj_liczby_wyniku(
@@ -425,6 +430,8 @@ KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
         "i_dc_a",
         "tb_zrodlo",
         "wklady_pominiete",
+        "wklady_zrodel",
+        "wklady_zrodel_slad",
     }
 )
 
@@ -893,7 +900,7 @@ def pobierz_rozplyw_biegu(
     Brak w źródłach → ``None``: uczciwy brak (solver policzony bez wkładów albo
     nieznany punkt zwarcia), nigdy pusta lista udająca „policzono zero".
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory)[0]
+    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_ROZPLYWU)
 
 
 def pobierz_slad_rozplywu_biegu(
@@ -908,7 +915,7 @@ def pobierz_slad_rozplywu_biegu(
     (`_rozplyw_punktu`). Brak → ``None``: bieg policzony bez wkładów, punkt nieznany
     albo zapis sprzed dodania kolumny śladu — nigdy pusta lista udająca „ślad pusty".
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory)[1]
+    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_SLADU_ROZPLYWU)
 
 
 def pobierz_wklady_pominiete_biegu(
@@ -923,7 +930,7 @@ def pobierz_wklady_pominiete_biegu(
     (`_rozplyw_punktu`). ``None``: punkt bez wkładów pominiętych (rdzeń nie emituje pustego
     zestawienia), bieg policzony bez wkładów albo punkt nieznany.
     """
-    return _rozplyw_punktu(run, fault_node_id, uow_factory)[2]
+    return _rozplyw_punktu(run, fault_node_id, uow_factory).get(KLUCZ_WKLADOW_POMINIETYCH)
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
@@ -2457,9 +2464,10 @@ _POLA_SPOJNOSCI_WKLADOW: tuple[str, ...] = ("ikss_a", "ip_a", "ith_a", "sk_mva",
 
 def _policz_rozplyw_punktu_na_zadanie(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None, list[dict[str, Any]] | None] | None:
-    """Wkłady gałęziowe + ślad podziału prądu + wkłady pominięte JEDNEGO punktu policzone
-    z wejścia biegu.
+) -> dict[str, Any] | None:
+    """Ładunek rozpływu JEDNEGO punktu (cała klasa `KLUCZE_ROZPLYWU`: wkłady gałęziowe,
+    ślad podziału prądu, wkłady pominięte, wkłady źródeł i ich ślad) policzony z wejścia
+    biegu.
 
     PERF-SC-50 (krok 3): bieg kanoniczny nie liczy iloczynu źródło×gałąź dla każdego
     z punktów zwarcia (92 % bajtów biegu sieci 50 stacji); punkt wybrany przez
@@ -2503,51 +2511,48 @@ def _policz_rozplyw_punktu_na_zadanie(
             "(migawka, opcje, konfiguracja audytu 2) zmieniły się od jego wykonania — "
             "uruchom analizę ponownie."
         )
-    wklady = list(odtworzony.get(KLUCZ_ROZPLYWU) or [])
-    slad_surowy = odtworzony.get(KLUCZ_SLADU_ROZPLYWU)
-    # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY) — ta sama granica co bieg.
-    slad = kroki_zwarcia_w_kontrakcie(slad_surowy) if slad_surowy is not None else None
-    pominiete = odtworzony.get(KLUCZ_WKLADOW_POMINIETYCH)
+    rozplyw: dict[str, Any] = {klucz: odtworzony.get(klucz) for klucz in KLUCZE_ROZPLYWU}
+    rozplyw[KLUCZ_ROZPLYWU] = list(rozplyw[KLUCZ_ROZPLYWU] or [])
+    # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY) — ta sama granica i TA SAMA krotka
+    # kluczy sladu (`KLUCZE_SLADU_ROZPLYWU`) co bieg.
+    for klucz_sladu in KLUCZE_SLADU_ROZPLYWU:
+        if rozplyw[klucz_sladu] is not None:
+            rozplyw[klucz_sladu] = kroki_zwarcia_w_kontrakcie(rozplyw[klucz_sladu])
     with canonical_run_repository_scope() as repository:
-        repository.zapisz_rozplyw_punktu(run.id, fault_node_id, wklady, slad, pominiete)
-    return wklady, slad, pominiete
+        repository.zapisz_rozplyw_punktu(run.id, fault_node_id, rozplyw)
+    return rozplyw
 
 
 def _rozplyw_punktu(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
-) -> tuple[list[dict[str, Any]] | None, list[dict[str, Any]] | None, list[dict[str, Any]] | None]:
-    """(wkłady, ślad, wkłady pominięte) punktu — JEDNA prawda dostępu dla akcesorów.
+) -> dict[str, Any]:
+    """Ładunek rozpływu punktu — JEDNA prawda dostępu dla akcesorów.
 
+    Słownik po kluczach `KLUCZE_ROZPLYWU` (wkłady gałęziowe, ślad podziału prądu, wkłady
+    pominięte, wkłady źródeł, ślad wkładów źródeł); wartość ``None`` = uczciwy brak treści.
     Kolejność źródeł: (1) inline w artefakcie (świeży bieg `in_run`, zapis sprzed
     rozdzielenia), (2) osobna tabela rozpływu, (3) PERF-SC-50: obliczenie na żądanie
-    z wejścia biegu (utrwalane w (2)). Brak flagi dostępności → (None, None, None): bieg
-    policzony bez wkładów albo nieznany punkt — uczciwy brak.
+    z wejścia biegu (utrwalane w (2)). Brak flagi dostępności → same ``None``: bieg
+    policzony bez wkładów albo nieznany punkt.
     """
+    brak: dict[str, Any] = dict.fromkeys(KLUCZE_ROZPLYWU)
     for item in (run.raw_result or {}).get("results", []):
         if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
             continue
-        inline = item.get(KLUCZ_ROZPLYWU)
-        if inline is not None:
-            slad_inline = item.get(KLUCZ_SLADU_ROZPLYWU)
-            pominiete_inline = item.get(KLUCZ_WKLADOW_POMINIETYCH)
-            return (
-                list(inline),
-                list(slad_inline) if slad_inline is not None else None,
-                list(pominiete_inline) if pominiete_inline is not None else None,
-            )
+        if item.get(KLUCZ_ROZPLYWU) is not None:
+            return {
+                klucz: list(item[klucz]) if item.get(klucz) is not None else None
+                for klucz in KLUCZE_ROZPLYWU
+            }
         if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
-            return None, None, None
+            return brak
         with canonical_run_repository_scope() as repository:
-            z_tabeli = repository.get_branch_flows(run.id, fault_node_id)
-            slad_z_tabeli = repository.get_branch_flow_trace(run.id, fault_node_id)
-            pominiete_z_tabeli = repository.get_wklady_pominiete(run.id, fault_node_id)
+            z_tabeli = repository.get_rozplyw_punktu(run.id, fault_node_id)
         if z_tabeli is not None:
-            return z_tabeli, slad_z_tabeli, pominiete_z_tabeli
+            return z_tabeli
         policzone = _policz_rozplyw_punktu_na_zadanie(run, fault_node_id, uow_factory)
-        if policzone is None:
-            return None, None, None
-        return policzone
-    return None, None, None
+        return brak if policzone is None else policzone
+    return brak
 
 
 def _execute_short_circuit(
@@ -2648,7 +2653,7 @@ def _execute_short_circuit(
         # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY): granica aplikacji zdejmuje
         # kopie LaTeX-u rdzenia B-01 z pola prozy `substitution` PO KLUCZU KROKU —
         # wiersz wyniku i slad biegu dostaja te same kroki.
-        for klucz_sladu in ("white_box_trace", KLUCZ_SLADU_ROZPLYWU):
+        for klucz_sladu in ("white_box_trace", *KLUCZE_SLADU_ROZPLYWU):
             if payload.get(klucz_sladu) is not None:
                 payload[klucz_sladu] = kroki_zwarcia_w_kontrakcie(payload[klucz_sladu])
         node_trace_step_refs: list[int] = []
@@ -4047,6 +4052,59 @@ def _sc_wklady_pominiete(
     return wpisy
 
 
+def _sc_wklady_zrodel(
+    raw: list[dict[str, Any]] | None,
+    graph_nodes: dict[str, Any],
+    snapshot: dict[str, Any] | None,
+) -> list[dict[str, Any]] | None:
+    """Wkłady źródeł punktu (karta WKLAD-ZRODLA) — projekcja prezentacyjna, zero fizyki.
+
+    Odnośnik źródła do modelu ENM: zasilanie systemowe ma w grafie identyfikator z reguły
+    `grid_source_graph_id` (ta sama funkcja, którą mapowanie nadaje go przy budowie grafu),
+    maszyna wirująca — ``ref_id`` generatora, szyna sztywna — węzeł grafu (``element_id``
+    szyny). Prąd A→kA; klasa wpisu, przyczyna, kąt fazora i udział z rdzenia bez zmian treści.
+    Sort deterministyczny po odnośniku modelu (``source_id``) — kolejność rdzenia wynika
+    z identyfikatorów grafu (UUID zasilań), nieczytelnych dla projektanta. ``None`` = bieg bez
+    wkładów.
+    """
+    if raw is None:
+        return None
+    zasilania = {
+        grid_source_graph_id(str(zrodlo.get("ref_id"))): zrodlo
+        for zrodlo in (snapshot or {}).get("sources") or []
+        if isinstance(zrodlo, dict) and zrodlo.get("ref_id")
+    }
+    wpisy: list[dict[str, Any]] = []
+    for entry in raw:
+        source_key = str(entry.get("source_id") or "")
+        node_key = entry.get("node_id")
+        wezel = _wpis_grafu(graph_nodes, node_key)
+        zasilanie = zasilania.get(source_key)
+        if zasilanie is not None:
+            element_id = zasilanie.get("ref_id")
+        elif entry.get("rodzaj") == RODZAJ_BOCZNIKA_SZYNA_SZTYWNA:
+            element_id = wezel.get("element_id") or source_key
+        else:
+            element_id = source_key
+        wpisy.append(
+            {
+                "source_id": element_id,
+                "source_name": entry.get("source_name"),
+                "rodzaj": entry.get("rodzaj"),
+                "node_id": wezel.get("element_id") or node_key,
+                "node_name": nazwa_nadana(wezel.get("name")) or opis_bez_nazwy("buses"),
+                "klasa": entry.get("klasa"),
+                "i_ka": _amps_to_ka(entry.get("i_a")),
+                "i_zaciski_ka": _amps_to_ka(entry.get("i_zaciski_a")),
+                "kat_deg": entry.get("kat_deg"),
+                "udzial": entry.get("udzial"),
+                "przyczyna": entry.get("przyczyna"),
+            }
+        )
+    wpisy.sort(key=lambda wpis: str(wpis["source_id"] or ""))
+    return wpisy
+
+
 def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
     """Czy dla tego punktu zwarcia rozpływ ISTNIEJE (niezależnie od miejsca zapisu).
 
@@ -4160,7 +4218,10 @@ def build_short_circuit_rozplyw(
     for item in raw_result.get("results", []):
         if item.get("fault_node_id") == target_id:
             # PERF-SC-50: wkłady i ślad JEDNYM odczytem/obliczeniem punktu (`_rozplyw_punktu`).
-            wklady, slad, pominiete = _rozplyw_punktu(run, target_id, uow_factory)
+            rozplyw = _rozplyw_punktu(run, target_id, uow_factory)
+            wklady = rozplyw[KLUCZ_ROZPLYWU]
+            slad = rozplyw[KLUCZ_SLADU_ROZPLYWU]
+            pominiete = rozplyw[KLUCZ_WKLADOW_POMINIETYCH]
             return {
                 "run_id": str(run.id),
                 "target_id": target_id,
@@ -4177,6 +4238,14 @@ def build_short_circuit_rozplyw(
                 "prog_wkladu_pominietego_a": (
                     PROG_WKLADU_POMIJALNEGO_A if wklady is not None else None
                 ),
+                # Karta WKLAD-ZRODLA: wkład KAŻDEGO źródła (zasilanie systemowe per tor,
+                # szyna sztywna, maszyna wirująca) I = |Y·Z_kf|·I_k''(Th) — ta sama klasa
+                # ładunku punktu; ślad kroków (źródło po źródle + bilans) bez projekcji.
+                # Źródła przekształtnikowe stoją per źródło w `contributions` wiersza wyniku.
+                "wklady_zrodel": _sc_wklady_zrodel(
+                    rozplyw[KLUCZ_WKLADOW_ZRODEL], graph_nodes, run.snapshot
+                ),
+                "wklady_zrodel_slad": rozplyw[KLUCZ_SLADU_WKLADOW_ZRODEL],
             }
     raise BrakZasobuError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 
