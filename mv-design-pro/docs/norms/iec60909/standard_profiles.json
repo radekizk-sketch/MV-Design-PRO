@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0.0",
+  "registry_status": "specification_only",
+  "publisher": "IEC",
+  "family": "IEC 60909-0",
+  "default_profile_for_new_runs": null,
+  "profiles": [
+    {
+      "id": "IEC_60909_0_2016",
+      "title_pl": "IEC 60909-0:2016 — wydanie 2.0",
+      "publication_date": "2016-01-28",
+      "withdrawn_date": "2026-07-23",
+      "edition": "2.0",
+      "status": "historic",
+      "implementation_status": "UNVERIFIED_EXISTING_IMPLEMENTATION",
+      "production_selectable": false,
+      "source_url": "https://webstore.iec.ch/en/publication/24100",
+      "clauses": {
+        "calculation_assumptions": "5.2",
+        "symmetrical_components": "5.3.2",
+        "equipment": "6",
+        "initial": "7",
+        "peak": "8",
+        "breaking": "9",
+        "dc": "10",
+        "steady_state": "11",
+        "thermal": "12"
+      },
+      "scope": {
+        "frequency_hz": [
+          50,
+          60
+        ],
+        "isolated_or_resonant_single_line_earth": "OUT_OF_SCOPE_VERIFY_EDITION_TEXT"
+      },
+      "zero_sequence_capacitance": {
+        "rule_id": "Z0_CAP_2016_5_2_F",
+        "status": "SOURCE_CORROBORATED_IMPLEMENTATION_UNVERIFIED",
+        "condition": "LOW_IMPEDANCE_EARTHED_AND_EARTH_FAULT_FACTOR_GT_1_4",
+        "require_input": [
+          "earthing_type",
+          "earth_fault_factor",
+          "b0_siemens_per_km"
+        ],
+        "on_undefined": "BLOCK_REPORTABILITY",
+        "nominal_line_capacitance_sequence_1_2": "OMIT"
+      }
+    },
+    {
+      "id": "IEC_60909_0_2026",
+      "title_pl": "IEC 60909-0:2026 — wydanie 3.0",
+      "publication_date": "2026-07-23",
+      "edition": "3.0",
+      "status": "current",
+      "implementation_status": "NOT_IMPLEMENTED_NORMATIVE_VALIDATION_REQUIRED",
+      "production_selectable": false,
+      "source_url": "https://webstore.iec.ch/en/publication/68454",
+      "clauses": {
+        "calculation_assumptions": "5.2.4",
+        "symmetrical_components": "5.2.5",
+        "equipment": "6",
+        "initial": "7",
+        "peak": "8",
+        "breaking": "9",
+        "dc": "10",
+        "steady_state": "11",
+        "thermal": "14"
+      },
+      "scope": {
+        "frequency_hz": [
+          50,
+          60
+        ],
+        "isolated_or_resonant_single_line_earth": "OUT_OF_SCOPE",
+        "gfl_gfm_distinguished": false
+      },
+      "zero_sequence_capacitance": {
+        "rule_id": "Z0_CAP_2026_5_2_4",
+        "status": "UNVERIFIED_NORMATIVE_RULE",
+        "condition": "DO_NOT_INFER_FROM_2016",
+        "on_undefined": "BLOCK_REPORTABILITY",
+        "nominal_line_capacitance_sequence_1_2": "REQUIRES_CLAUSE_CHECK"
+      }
+    }
+  ],
+  "study_case_contract": {
+    "property": "short_circuit_standard_id",
+    "required_for_new_case": true,
+    "immutable_during_run": true,
+    "change_invalidates_case_results": true,
+    "propagate_to": [
+      "solver_config",
+      "trace",
+      "frozen_run_metadata",
+      "resultset_metadata",
+      "proof",
+      "report",
+      "export",
+      "eaz",
+      "equipment_checks"
+    ],
+    "forbidden": [
+      "AUTO_FALLBACK",
+      "SILENT_EDITION_SUBSTITUTION",
+      "AUTO_CONVERSION_OF_OLD_CASES"
+    ]
+  },
+  "engineering_methods_outside_iec60909_0": [
+    {
+      "id": "MV_EARTH_FAULT_ISOLATED",
+      "purpose_pl": "Doziemienia w sieci SN z izolowanym punktem neutralnym",
+      "status": "SEPARATE_METHOD_REQUIRED"
+    },
+    {
+      "id": "MV_EARTH_FAULT_RESONANT",
+      "purpose_pl": "Doziemienia w sieci SN kompensowanej",
+      "status": "SEPARATE_METHOD_REQUIRED"
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://webstore.iec.ch/en/publication/24100",
+      "type": "PRIMARY",
+      "claim": "2016 edition lifecycle"
+    },
+    {
+      "url": "https://webstore.iec.ch/en/publication/68454",
+      "type": "PRIMARY",
+      "claim": "2026 edition publication"
+    },
+    {
+      "url": "https://standards.iteh.ai/catalog/standards/iec/111c61a1-d4a4-4eb4-9655-ba4785738720/iec-60909-0-2026",
+      "type": "PUBLIC_PREVIEW",
+      "claim": "2026 contents and published scope"
+    },
+    {
+      "url": "https://www.nen.nl/en/nen-en-iec-60909-2026-en-356880",
+      "type": "NATIONAL_STANDARDS_BODY",
+      "claim": "GFL GFM not distinguished"
+    },
+    {
+      "url": "https://www.easypower.com/files/Short_Circuit_Currents_According_to_IEC_60909.pdf",
+      "type": "TECHNICAL_PRESENTATION",
+      "claim": "2016 line capacitance assumptions corroboration"
+    }
+  ]
+}
