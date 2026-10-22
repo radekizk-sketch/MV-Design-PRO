@@ -150,3 +150,62 @@ a `enm/hash.py` traktuje je jako skasowane.
   - dodaje wiersz V12K-351 do `REJESTR_KONFLIKTOW.md`.
 - **Podział pracy.** Wątek wykonawczy nie rusza `ui/context-menu/**` do czasu dostarczenia tej
   karty na tę gałąź.
+
+### 2026-10-22, wpis 3 (wątek prowadzący)
+
+**Polecenie dla wątku wykonawczego: karta UIUX-IKONY.** Biblioteka ikon technicznych istnieje, ale
+produkt jej nie renderuje. Pomiar karty menu kontekstowego:
+- `TechnicalIcon` z `ui/icons/technicalIconRegistry.tsx` nie ma żadnego miejsca renderowania
+  produkcyjnego — używają go tylko testy;
+- pole `icon` w `screenCanonRegistry.ts` (50 wpisów) też nie jest renderowane nigdzie.
+
+Jest to funkcja istniejąca tylko w testach, czyli dług według ZASADY NR 1.
+
+**Rozstrzygnięcie.** Kontrakt UI `docs/ui/V12XX_FORMAL_TECHNICAL_UI_UX_CANON.md` jest wiążący
+(`docs/ui/` to kontrakty UI). Jego wymagania:
+- §12.2 (wiersz 420): ikony ekranów w nagłówkach ekranów, menu kontekstowym, okruszkach,
+  wynikach wyszukiwania i raportach;
+- §5.2 (wiersz 175): miniatury obiektów sieciowych w drzewie i inspektorze;
+- wiersze 193–252: tabele nazw ikon obszarów, obiektów i analiz.
+
+Ikony wpinasz we wszystkie te miejsca, które dziś istnieją:
+- menu kontekstowe SLD (`SLD_MENU_REGISTRY` po karcie V12K-351);
+- `ui/shared/Breadcrumbs.tsx`;
+- wyszukiwanie `ui2/search`;
+- nagłówki ekranów;
+- drzewo i inspektor.
+
+**Pasek obszarów (§5, wiersze 113 i 262).** Skasowała go karta D1, więc tej pozycji nie
+odtwarzasz. Rozbieżność dokumentu z produktem dopisujesz do `REJESTR_KONFLIKTOW.md` z odwołaniem
+do D1 i nanosisz notę w kontrakcie.
+
+**Raporty PDF/DOCX.** Generator jest po stronie backendu, a biblioteka ikon jest komponentem
+React. Najpierw ustal, czy kontrakt raportu (`docs/export/**`) wymaga ikon w raporcie:
+- jeśli tak, to raport dostaje te same nazwy ikon przez wspólne zasoby SVG, a nie drugą,
+  równoległą bibliotekę;
+- jeśli nie, zapisujesz tę rozbieżność w rejestrze.
+
+**Zasady.** Jedna biblioteka. Ikona zawsze idzie z tekstem etykiety, nigdy zamiast niego. Obie
+motywy. Zrzuty obu motywów na stronie oceny — werdykt wizualny wystawia właściciel (B-02), wątek
+wykonawczy go nie wystawia.
+
+**Kolejność.** Karta idzie po K8. Startuje z czubka tej gałęzi po dołożeniu na nią kart menu
+kontekstowego. Pliki `ui/context-menu/**` i `SldCommandService.ts` rusza wyłącznie ta karta.
+
+**Stan pozostałych prac wątku prowadzącego.**
+- Karta menu kontekstowego V12K-351: dwa commity są gotowe i zweryfikowane
+  (tsc, strażniki, vitest 344 plików / 6261 testów). Trzeci commit dotyczy dziewięciu operacji
+  domenowych bez toku pracy:
+  - operacje dublujące zdolność dostępną inną drogą są kasowane;
+  - operacje unikalne (rodzina nN, obwód wtórny pomiaru) są wpinane w menu;
+  - `dialog_completeness_guard` klasyfikuje każdą operację kanoniczną.
+
+  Wszystkie trzy commity trafią na tę gałąź razem.
+- Próg wkładów pominiętych (zgoda B-01 z 2026-10-21) jest zweryfikowany i trafił do partii
+  integracji 14 gałęzi programu. Ekran rozpływu zwarciowego (`ui2/wyniki/zwarcia`) dostaje wtedy:
+  - notę o wkładach pominiętych;
+  - zestawienie w trybie eksperckim;
+  - kontener `mvd-zwarcia-rozplyw-tabela`.
+
+  Przy scalaniu gałęzi programu do tej gałęzi przed zamknięciem K8 dane z backendu wygrywają,
+  jak w wpisie 1.
