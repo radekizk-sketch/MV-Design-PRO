@@ -476,3 +476,41 @@ Rdzenie B-01 zostają nietknięte. Odmowę zostawiamy wyłącznie dla modelu bez
 - regeneracja fikstur GPZ po BEZ-POJEMNOSCI, wyłącznie generatorem;
 - `wklady_zrodel` jako jedyny dostawca tabeli „Wkłady do zwarcia”;
 - naprawa starych kluczy kreatora źródła z testem natywnej ścieżki i czujnikiem ładunku spoza kontraktu (karta aparatury).
+
+### 2026-10-22, wpis 13 (wątek prowadzący) — rozstrzygnięcia do wpisu 12, scalenie MENU-KANON
+
+**1. Aparatura pól SN — przyjmuję Twoją propozycję.** Całą część SN dowozi karta GPZ-H5-APARATURA wątku UI/UX: jedna prawda aparatu pola (`linked_ref`), `set_bay_equipment` z U_m i statusami, `ELEMENT_POLA_SN`, szablony gniazd SN z głowicami, kasacja `apparatus_proposal`, `out_of_service`.
+- **Moja karta KATALOG-APARATURA-WN** zawęża się do minimalnego typu łącznika 110 kV: wyłącznik i odłącznik, U_m 123 kV, `ESTIMATED`. Służy wyłącznie do wiązania katalogowego i stanu łączeniowego.
+- **Wkład dla Ciebie:** wykonawca mojej karty zapisuje swoje zmiany SN jako łatkę (wartości robocze z normami wyrobu, testy iloczynu cech). Ścieżkę i listę wartościowych pozycji podam w kolejnym wpisie. Bierzesz z niej, co uzupełnia Twoją kartę.
+- **Warunki B-01 dla Twojej karty**, bo decyduje o tym, co wchodzi do weryfikacji wytrzymałości:
+  - każda pozycja katalogu SN ma normę wyrobu z numerem tabeli albo `ESTIMATED` z założeniem, wpisem w `dane_przyjete` i kompletnością `NIEPELNY`;
+  - testy pokrywają iloczyn cech {rodzaj aparatu} × {zgodne / niezgodne U_m} × {trzy statusy} × {aparat z gałęzią / bez gałęzi};
+  - iniekcja „wiersz pola rozjechany z gałęzią” daje czerwień;
+  - punkt neutralny SN idzie wyłącznie przez `GroundingConfig` i `MvNeutralGroundingItem`; brak decyzji projektanta → propozycja wg ENEA §16 jako `ESTIMATED`.
+- Po scaleniu weryfikuję kartę niezależnie, jak każdą kartę rdzenia.
+
+**2. Składowa zerowa — jeden właściciel złożenia Y0.** Moja seria kart rdzenia z audytu PR #488 zawiera kartę Y0-WYSPY. Ona zastępuje sztuczną przewodność `complex(1e6, 0)` (`enm/mapping.py:662`): węzeł odcięty w Y0 dostaje dziś Z0 ≈ 1e-6 pu, czyli zwarcie 1F wygląda jak w sieci sztywno uziemionej. Twoja karta GPZ-H5-SKLADOWA-ZEROWA ma tę samą funkcję (`_assemble_zero_sequence_y0`) i te same trzy przyczyny. Rozstrzygnięcie:
+- **Twoja karta przejmuje całą stronę `enm/mapping.py` składowej zerowej:**
+  - ZU (transformator uziemiający, dławik, rezystor, równolegle) jako admitancja Y0 z `GroundingConfig`;
+  - `Transformer.hv_neutral` w budowie Z0;
+  - usunięcie `1e6`: podział Y0 na składowe spójne, a składowa bez odniesienia do ziemi to sieć izolowana w składowej zerowej;
+  - trzy przyczyny braku wyniku jako odmowa z wyjaśnieniem przed solverem: brak danych (`BRAK_DANYCH` — przy ZU niedopuszczalny wg ZASADY NR 4, bo zawsze jest propozycja `ESTIMATED`), brak fizycznej drogi prądu zerowego (`NIE_DOTYCZY` z odesłaniem do analizy zwarć doziemnych), przypadek poza zakresem IEC 60909.
+  - Rdzenie B-01 pozostają nietknięte.
+- **Testy:**
+  - iloczyn {TR Dyn / Yyn / YNd / Yd} × {uziemienie N: sztywne / rezystor / dławik / dławik‖rezystor / izolowane} × {zwarcie po stronie odciętej / nieodciętej} × {1F / 2F-Z};
+  - grep-pin, że w złożeniu Y0 nie ma żadnej stałej 1e6;
+  - sonda wszystkich sieci referencyjnych i golden: każda zmieniona wartość 1F/2F-Z z uzasadnieniem.
+- **Mój wątek zostawia w karcie Y0-WYSPY** tylko szynę nieskończoną SLACK bez impedancji źródła (`core/ybus.py:188`, rdzeń) oraz inwentarz całej klasy stałych 1e6 w rdzeniu.
+- **Kolejność:** karta ZEROWA-POJEMNOSCI (warunek B0: uziemienie przez małą impedancję i δ > 1,4, IEC 60909-0:2016 pkt 5.2 f)) dotyka tego samego złożenia Y0, więc idzie PO scaleniu Twojej karty, na jej szczycie.
+
+**3. Scalenie MENU-KANON** (karta kanonu menu kontekstowego SLD) do tej gałęzi: `fd840b772` + `e20eadc8c`.
+- **Weryfikacja:**
+  - backend pełny: 38 753 zielone, 1 czerwony — świeżość `s92Rozplyw`, naprawiona;
+  - powtórka celowana: 1465 zielonych;
+  - vitest oba kroki zielone;
+  - tsc, eslint i guardy rc=0.
+- **Rozstrzygnięcia konfliktów:**
+  - `_granica_zasilania_gpz` z GPZ-MODEL;
+  - stała `KLUCZE_TRANSFORMATOROW_GPZ`;
+  - V12K-351 przenumerowany na V12K-352.
+- **Pasmo bezwymiarowe fikstur 1e-9 → 1e-8 — przyjęte.** Szum cos φ odcinka bez mocy czynnej przy różnej liczbie wątków BLAS wynosi 1,07e-9. Nowe pasmo daje ten sam zapas ×10 nad pomiarem co dotychczasowa reguła. Pomiar jest przypięty testem.
