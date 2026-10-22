@@ -41,7 +41,12 @@ from typing import Literal
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
 from network_model.core.uziemienie import TypPunktuNeutralnego
-from network_model.pochodne import mva_na_kva
+from network_model.pochodne import (
+    impedancja_rownolegla_ohm,
+    impedancja_z_napiecia_i_pradu_ohm,
+    kv_na_v,
+    mva_na_kva,
+)
 from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn, w_pasmie_nn
 
 #: Wersja katalogow audytu 2 = DATA PRZEGLADU PROWENIENCJI (ISO-8601).
@@ -1172,6 +1177,11 @@ def get_block_transformer(btr_id: str) -> BlockTransformerItem | None:
 # parytet obu warstw pilnuje `tests/network_model/test_audit2_katalogi_parytet.py`.
 
 
+#: Wariant zespolu uziemiajacego SN (ENEA Zeszyt 1 §16): dlawik (Z.13), dlawik ‖ rezystor
+#: (Z.14), rezystor (Z.15).
+WariantZespoluUziemiajacego = Literal["DLAWIK", "DLAWIK_REZYSTOR", "REZYSTOR"]
+
+
 @dataclass(frozen=True)
 class MvNeutralGroundingItem:
     id: str
@@ -1184,9 +1194,29 @@ class MvNeutralGroundingItem:
     r_ohm: float | None = None
     #: Reaktancja uziemienia [Ohm] definiujaca wariant (petersen_coil).
     x_ohm: float | None = None
+    # --- Zespol uziemiajacy SN jako aparat pola ZU (karta KATALOG-APARATURA-WN, ENEA
+    # Zeszyt 1 §16, rys. Z.13–Z.15). Pola addytywne: pozycja bez zespolu (warianty
+    # powyzej) ich nie niesie, a `to_dict` ich nie emituje (ksztalt zastanych pozycji
+    # i ladunek audytu 2 bez zmian). r_ohm/x_ohm pozycji zespolu to SZEREGOWY
+    # odpowiednik elementu punktu neutralnego wyprowadzony z parametrow definiujacych
+    # (nastawa dlawika, prad rezystora) — `GroundingConfig` niesie wlasnie te liczby.
+    #: Napiecie znamionowe sieci SN, do ktorej wariant jest wyprowadzony [kV].
+    napiecie_sieci_kv: float | None = None
+    #: Wariant elementu punktu neutralnego (Z.13 dlawik, Z.14 dlawik ‖ rezystor, Z.15 rezystor).
+    wariant_zespolu: WariantZespoluUziemiajacego | None = None
+    #: Nastawa dlawika (prad indukcyjny przy napieciu fazowym sieci) [A] — parametr definiujacy.
+    prad_dlawika_a: float | None = None
+    #: Zakres regulacji pradu dlawika [A] — ENEA Zeszyt 1 §16 („minimum 40 - 400 A").
+    zakres_regulacji_dlawika_a: tuple[float, float] | None = None
+    #: Prad rezystora przy napieciu fazowym sieci [A] — parametr definiujacy.
+    prad_rezystora_a: float | None = None
+    #: Grupa polaczen transformatora uziemiajacego (ENEA Zeszyt 1 §16: ZNyn11).
+    uklad_polaczen_transformatora: str | None = None
+    #: Podstawa wariantu (dokument z punktem i strona).
+    podstawa_pl: str | None = None
 
     def to_dict(self) -> dict:
-        return {
+        wynik: dict = {
             "id": self.id,
             "catalog_namespace": self.catalog_namespace,
             "catalog_version": self.catalog_version,
@@ -1196,6 +1226,25 @@ class MvNeutralGroundingItem:
             "r_ohm": self.r_ohm,
             "x_ohm": self.x_ohm,
         }
+        for klucz, wartosc in (
+            ("napiecie_sieci_kv", self.napiecie_sieci_kv),
+            ("wariant_zespolu", self.wariant_zespolu),
+            ("prad_dlawika_a", self.prad_dlawika_a),
+            (
+                "zakres_regulacji_dlawika_a",
+                (
+                    list(self.zakres_regulacji_dlawika_a)
+                    if self.zakres_regulacji_dlawika_a is not None
+                    else None
+                ),
+            ),
+            ("prad_rezystora_a", self.prad_rezystora_a),
+            ("uklad_polaczen_transformatora", self.uklad_polaczen_transformatora),
+            ("podstawa_pl", self.podstawa_pl),
+        ):
+            if wartosc is not None:
+                wynik[klucz] = wartosc
+        return wynik
 
 
 MV_NEUTRAL_GROUNDING_CATALOG: tuple[MvNeutralGroundingItem, ...] = (
@@ -1262,6 +1311,148 @@ MV_NEUTRAL_GROUNDING_CATALOG: tuple[MvNeutralGroundingItem, ...] = (
         ),
     ),
 )
+
+
+# --- Zespol uziemiajacy SN (karta KATALOG-APARATURA-WN) -------------------------------
+#
+# Liczby pozycji: (a) parametry DEFINIUJACE wariant, widoczne w nazwie (nastawa dlawika,
+# prad rezystora) albo (b) dane z nazwanego zrodla (zakres regulacji dlawika 40–400 A i
+# zakres pradu rezystora wymuszajacego 20–40 A — ENEA Operator, Zeszyt 1 §16, s. 29–30).
+# Impedancja zerowa transformatora uziemiajacego NIE jest pola pozycji (zadne zrodlo jej
+# nie podaje): wartosc robocza zyje w rejestrze `wartosci_robocze` i wchodzi do obliczen
+# przez odwzorowanie `enm/zespol_uziemiajacy.py` jako dana przyjeta ESTIMATED.
+
+ZRODLO_ENEA_ZESZYT_1_S16 = (
+    "ENEA Operator — Standard stacji elektroenergetycznych 110 kV, Zeszyt 1 "
+    "(wersja 02.2023-2), §16 „Stanowisko zespolu uziemiajacego SN”, s. 29–30; rys. Z.13–Z.15"
+)
+
+#: Napiecia sieci SN typoszeregu zespolow (IEC 60038 tab. 3, wartosci uzywane w PL).
+NAPIECIA_SIECI_ZESPOLOW_KV: tuple[float, ...] = (6.0, 10.0, 15.0, 20.0, 30.0)
+#: Zakres regulacji dlawika — ENEA §16: „dla parametrow dlawika minimum 40 - 400 A".
+ZAKRES_DLAWIKA_ENEA_A: tuple[float, float] = (40.0, 400.0)
+#: Nastawa dlawika pozycji katalogu: gorna granica zakresu ENEA (pozycja definiujaca).
+NASTAWA_DLAWIKA_POZYCJI_A = 400.0
+#: Rezystor ukladu rownoleglego Z.14: gorna granica pradu wymuszanego 20–40 A (ENEA §16).
+PRAD_REZYSTORA_ROWNOLEGLEGO_A = 40.0
+#: Rezystor zespolu Z.15 (siec kablowa) — prad definiujacy wariant (w nazwie pozycji).
+PRAD_REZYSTORA_SIECI_KABLOWEJ_A = 500.0
+
+
+def _impedancja_elementu_zu(
+    napiecie_sieci_kv: float,
+    *,
+    prad_dlawika_a: float | None,
+    prad_rezystora_a: float | None,
+) -> complex:
+    """Z_N elementu punktu neutralnego z parametrow definiujacych (U_f / I)."""
+    u_v = kv_na_v(napiecie_sieci_kv)
+    z_dlawika = (
+        complex(0.0, impedancja_z_napiecia_i_pradu_ohm(u_v, prad_dlawika_a))
+        if prad_dlawika_a is not None
+        else None
+    )
+    z_rezystora = (
+        complex(impedancja_z_napiecia_i_pradu_ohm(u_v, prad_rezystora_a), 0.0)
+        if prad_rezystora_a is not None
+        else None
+    )
+    if z_dlawika is not None and z_rezystora is not None:
+        return impedancja_rownolegla_ohm(z_dlawika, z_rezystora)
+    wynik = z_dlawika if z_dlawika is not None else z_rezystora
+    if wynik is None:
+        raise ValueError("zespol uziemiajacy bez elementu punktu neutralnego")
+    return wynik
+
+
+def _kv_tekst(napiecie_sieci_kv: float) -> str:
+    return f"{napiecie_sieci_kv:g}"
+
+
+def zespol_uziemiajacy(
+    napiecie_sieci_kv: float, wariant: WariantZespoluUziemiajacego
+) -> MvNeutralGroundingItem:
+    """Pozycja zespolu uziemiajacego SN dla napiecia sieci i wariantu (jedna fabryka)."""
+    kv = _kv_tekst(napiecie_sieci_kv)
+    prad_dlawika = NASTAWA_DLAWIKA_POZYCJI_A if wariant != "REZYSTOR" else None
+    prad_rezystora = (
+        PRAD_REZYSTORA_ROWNOLEGLEGO_A
+        if wariant == "DLAWIK_REZYSTOR"
+        else PRAD_REZYSTORA_SIECI_KABLOWEJ_A if wariant == "REZYSTOR" else None
+    )
+    z_n = _impedancja_elementu_zu(
+        napiecie_sieci_kv, prad_dlawika_a=prad_dlawika, prad_rezystora_a=prad_rezystora
+    )
+    if wariant == "DLAWIK":
+        ident = f"zu_dlawik_400a_{kv}kv"
+        typ: TypPunktuNeutralnego = "petersen_coil"
+        etykieta = (
+            f"Zespół uziemiający {kv} kV — transformator ZNyn11 + dławik 40–400 A "
+            "(nastawa 400 A)"
+        )
+        opis = (
+            "Sieć kablowo-napowietrzna skompensowana (ENEA Zeszyt 1 §16, rys. Z.13): dławik "
+            "gaszący z płynną regulacją nadążną 10–100 % (zakres co najmniej 40–400 A). "
+            "Nastawa pozycji 400 A; rzeczywistą nastawę ustala regulator względem prądu "
+            "pojemnościowego sieci — praca w rezonansie I_L = I_C jest niedopuszczalna."
+        )
+        r_ohm, x_ohm = None, z_n.imag
+    elif wariant == "DLAWIK_REZYSTOR":
+        ident = f"zu_dlawik_400a_rezystor_40a_{kv}kv"
+        typ = "petersen_coil"
+        etykieta = (
+            f"Zespół uziemiający {kv} kV — transformator ZNyn11 + dławik 400 A ‖ rezystor 40 A"
+        )
+        opis = (
+            "Sieć kablowo-napowietrzna, układ równoległy rezystor–dławik (ENEA Zeszyt 1 §16, "
+            "rys. Z.14). Rezystor 40 A — górna granica prądu wymuszanego 20–40 A z §16. "
+            "R/X pozycji to szeregowy odpowiednik układu równoległego."
+        )
+        r_ohm, x_ohm = z_n.real, z_n.imag
+    else:
+        ident = f"zu_rezystor_500a_{kv}kv"
+        typ = "resistor_grounded"
+        etykieta = f"Zespół uziemiający {kv} kV — transformator ZNyn11 + rezystor 500 A"
+        opis = (
+            "Sieć o charakterze kablowym, punkt neutralny uziemiony przez rezystor (ENEA "
+            "Zeszyt 1 §16, rys. Z.15). Prąd rezystora 500 A jest parametrem wariantu — "
+            "ENEA wartości nie narzuca; dobór wynika z analizy z §16 (przepięcia, "
+            "zagrożenie porażeniowe, działanie zabezpieczeń)."
+        )
+        r_ohm, x_ohm = z_n.real, None
+    return MvNeutralGroundingItem(
+        id=ident,
+        catalog_namespace="mv_neutral_grounding",
+        catalog_version=AUDIT2_CATALOG_VERSION,
+        grounding_type=typ,
+        label_pl=etykieta,
+        description_pl=opis,
+        r_ohm=r_ohm,
+        x_ohm=x_ohm,
+        napiecie_sieci_kv=napiecie_sieci_kv,
+        wariant_zespolu=wariant,
+        prad_dlawika_a=prad_dlawika,
+        zakres_regulacji_dlawika_a=ZAKRES_DLAWIKA_ENEA_A if prad_dlawika is not None else None,
+        prad_rezystora_a=prad_rezystora,
+        uklad_polaczen_transformatora="ZNyn11",
+        podstawa_pl=ZRODLO_ENEA_ZESZYT_1_S16,
+    )
+
+
+WARIANTY_ZESPOLU_UZIEMIAJACEGO: tuple[WariantZespoluUziemiajacego, ...] = (
+    "DLAWIK",
+    "DLAWIK_REZYSTOR",
+    "REZYSTOR",
+)
+
+#: Typoszereg zespolow uziemiajacych: napiecie sieci × wariant (kolejnosc stala).
+ZESPOLY_UZIEMIAJACE_SN: tuple[MvNeutralGroundingItem, ...] = tuple(
+    zespol_uziemiajacy(kv, wariant)
+    for kv in NAPIECIA_SIECI_ZESPOLOW_KV
+    for wariant in WARIANTY_ZESPOLU_UZIEMIAJACEGO
+)
+
+MV_NEUTRAL_GROUNDING_CATALOG = MV_NEUTRAL_GROUNDING_CATALOG + ZESPOLY_UZIEMIAJACE_SN
 
 
 def get_mv_neutral_grounding(grounding_id: str) -> MvNeutralGroundingItem | None:

@@ -9,7 +9,10 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyny_stacji
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.pochodne.pasma_napieciowe import (
+    napiecie_najwyzsze_urzadzen_kv,
+    powyzej_pasma_nn,
+)
 from pydantic import BaseModel, Field
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
@@ -203,21 +206,6 @@ class V126RunRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
-_STANDARD_UM_KV: tuple[float, ...] = (12.0, 17.5, 24.0, 36.0)
-
-
-def _nearest_standard_um_kv(nominal_kv: float) -> float:
-    """Najbliższe znormalizowane napięcie najwyższe urządzenia U_m ≥ napięcie znamionowe szyny.
-
-    IEC 60071-1 typoszereg SN. Nie fabrykuje danych ogranicznika — jedynie
-    przypisuje poziom izolacji do poziomu napięcia szyny (mapowanie normowe).
-    """
-    for u_m in _STANDARD_UM_KV:
-        if nominal_kv <= u_m:
-            return u_m
-    return _STANDARD_UM_KV[-1]
-
-
 def _grounding_type_to_network_neutral(grounding_type: str | None) -> str | None:
     """Mapowanie typu uziemienia punktu neutralnego SN na kategorię TOV solvera.
 
@@ -386,10 +374,18 @@ def _wejscia_izolacji(
                 )
             )
         else:
+            # U_m sieci z pary IEC 60038 (jedno źródło: `pasma_napieciowe.
+            # napiecie_najwyzsze_urzadzen_kv`). Do karty KATALOG-APARATURA-WN most miał
+            # własny typoszereg 12/17,5/24/36 kV: sieć 6 kV dostawała U_m = 12 kV zamiast
+            # 7,2 kV, a sieć 110 kV — 36 kV zamiast 123 kV. Szyna nN nie ma U_m aparatury
+            # SN/WN — ogranicznik nN nie wchodzi do koordynacji izolacji IEC 60071.
+            u_m_sieci = napiecie_najwyzsze_urzadzen_kv(bus.voltage_kv)
+            if u_m_sieci is None:
+                return
             rows.append(
                 V126InsulationInput(
                     location_bus_ref=bus_ref,
-                    u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
+                    u_m_kv=u_m_sieci,
                     network_neutral=neutral,
                 )
             )

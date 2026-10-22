@@ -6,11 +6,19 @@ analizę. Odpowiadają na nie dwie analizy naraz — werdykt wytrzymałości
 (``protection/czas_wylaczenia_pola``) — więc czytelnik jest jeden. Druga
 implementacja rozjechałaby się przy pierwszej zmianie kreatora stacji.
 
-Aparat pola jest gałęzią łącznikową z wiązaniem katalogu APARAT_SN
-(``insert_station_on_segment_sn`` / ``append_station_on_endpoint`` /
-``add_sn_bay``, reguła B-12: wskazanie pozycji jest WYMAGANE). Referencja pola
-siedzi w ``meta`` gałęzi — raz jako ``bay_ref``, raz jako ``field_ref``
-(zależnie od operacji), więc czytamy oba.
+Aparat pola to (karta KATALOG-APARATURA-WN — jedna prawda wyposażenia pola):
+
+* gałąź łącznikowa z wiązaniem katalogu APARAT_SN należąca do pola — przynależność
+  WYŁĄCZNIE z rekordu pola (``Bay.equipment_refs``, ten sam predykat co
+  ``enm.pola.pole_aparatu``; dawny odczyt referencji pola z ``meta`` gałęzi —
+  ``bay_ref``/``field_ref`` — był drugim, niezależnym predykatem przynależności), typ —
+  z wiązania gałęzi (``insert_station_on_segment_sn`` / ``append_station_on_endpoint`` /
+  ``add_sn_bay``, reguła B-12; ``set_bay_equipment`` przypisuje typ tej gałęzi);
+* aparat rekordu pola (``Bay.primary_devices``) z pozycją APARAT_SN BEZ gałęzi modelu —
+  np. uziemnik albo odłącznik zaprojektowany operacją ``set_bay_equipment``. Ma pozycję
+  katalogową, więc podlega weryfikacji wytrzymałości tak samo jak łącznik z gałęzią;
+  nie wyłącza zwarcia, więc czas wyłączenia pola czyta wyłącznie aparaty z gałęzią
+  (``wylacznie_galezie=True``).
 
 WARTOŚCI ROBOCZE (zasada nr 4, kontrakt werdyktu §3c, V12K-351). Parametr aparatu, którego
 karta nie niesie (czas własny wyłącznika, znamiona wytrzymałości), nie blokuje analizy: JEDNO
@@ -28,6 +36,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from enm.models import EnergyNetworkModel, ParameterOverride, Substation
+from enm.pola import pola_stacji
+from enm.wyposazenie_pola import (
+    NAZWY_RODZAJOW_APARATU_POLA_PL,
+    PRZESTRZEN_KATALOGU_APARATU,
+    RODZAJE_Z_TYPEM_GALEZI,
+)
 from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.types import MVApparatusType
 from network_model.catalog.wartosci_robocze import (
@@ -52,6 +66,9 @@ class AparatPola:
     #: Wartości nadane przez projektanta na tej gałęzi (``overrides`` z kluczami parametrów
     #: rejestru wartości roboczych), w kolejności ``PARAMETRY_APARATU_SN``.
     wartosci_projektanta: tuple[WartoscProjektanta, ...] = ()
+    #: ``True`` — aparat jest gałęzią łącznikową modelu (wyłącza zwarcie, nosi stan);
+    #: ``False`` — aparat rekordu pola bez gałęzi (``aparat_ref`` = ``device_ref`` aparatu).
+    galaz: bool = True
 
 
 def wartosci_projektanta(overrides: list[ParameterOverride]) -> tuple[WartoscProjektanta, ...]:
@@ -115,29 +132,56 @@ def znajdz_stacje(enm: EnergyNetworkModel, station_ref: str) -> Substation | Non
     )
 
 
-def aparaty_pol_stacji(enm: EnergyNetworkModel, station: Substation) -> dict[str, list[AparatPola]]:
-    """Referencja pola → aparaty katalogowe tego pola (kolejność deterministyczna)."""
+def aparaty_pol_stacji(
+    enm: EnergyNetworkModel, station: Substation, *, wylacznie_galezie: bool = False
+) -> dict[str, list[AparatPola]]:
+    """Referencja pola → aparaty katalogowe tego pola (kolejność deterministyczna: gałęzie po
+    referencji, potem aparaty rekordu pola w kolejności rekordu). Docstring modułu."""
+    galezie = {galaz.ref_id: galaz for galaz in enm.branches}
     wynik: dict[str, list[AparatPola]] = {}
-    for branch in enm.branches:
-        if getattr(branch, "catalog_namespace", None) != NAMESPACE_APARAT_SN:
-            continue
-        catalog_ref = getattr(branch, "catalog_ref", None)
-        if not catalog_ref:
-            continue
-        meta = dict(getattr(branch, "meta", None) or {})
-        if meta.get("station_ref") not in (None, station.ref_id):
-            continue
-        pole_ref = meta.get("bay_ref") or meta.get("field_ref")
-        if not isinstance(pole_ref, str) or not pole_ref:
-            continue
-        wynik.setdefault(pole_ref, []).append(
-            AparatPola(
-                aparat_ref=branch.ref_id,
-                aparat_nazwa=branch.name,
-                catalog_ref=str(catalog_ref),
-                wartosci_projektanta=wartosci_projektanta(list(branch.overrides)),
+    for bay in pola_stacji(enm, station.ref_id):
+        z_galezi: list[AparatPola] = []
+        for ref in bay.equipment_refs:
+            branch = galezie.get(ref)
+            if branch is None or getattr(branch, "catalog_namespace", None) != NAMESPACE_APARAT_SN:
+                continue
+            catalog_ref = getattr(branch, "catalog_ref", None)
+            if not catalog_ref:
+                continue
+            z_galezi.append(
+                AparatPola(
+                    aparat_ref=branch.ref_id,
+                    aparat_nazwa=branch.name,
+                    catalog_ref=str(catalog_ref),
+                    wartosci_projektanta=wartosci_projektanta(list(branch.overrides)),
+                )
             )
-        )
-    for pozycje in wynik.values():
-        pozycje.sort(key=lambda p: p.aparat_ref)
+        z_galezi.sort(key=lambda p: p.aparat_ref)
+        bez_galezi: list[AparatPola] = []
+        if not wylacznie_galezie:
+            for device in bay.primary_devices:
+                # Aparat wskazujący gałąź ma typ GAŁĘZI (już wyżej) — rekord go nie powiela.
+                if device.kind in RODZAJE_Z_TYPEM_GALEZI and device.linked_ref:
+                    continue
+                if PRZESTRZEN_KATALOGU_APARATU.get(device.kind) != NAMESPACE_APARAT_SN:
+                    continue
+                # Pozycja BOM-u rodziny (szablon aparatu producenta) nie jest pozycją APARAT_SN.
+                if (
+                    not device.catalog_ref
+                    or get_default_mv_catalog().get_mv_apparatus_type(device.catalog_ref) is None
+                ):
+                    continue
+                rodzaj = NAZWY_RODZAJOW_APARATU_POLA_PL.get(device.kind, "aparat")
+                bez_galezi.append(
+                    AparatPola(
+                        aparat_ref=device.device_ref,
+                        aparat_nazwa=(
+                            f"{rodzaj} {device.designation}" if device.designation else rodzaj
+                        ),
+                        catalog_ref=device.catalog_ref,
+                        galaz=False,
+                    )
+                )
+        if z_galezi or bez_galezi:
+            wynik[bay.ref_id] = [*z_galezi, *bez_galezi]
     return wynik

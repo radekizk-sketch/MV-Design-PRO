@@ -79,6 +79,20 @@ ODCISK_SPRZED_KARTY = "1a8bcd4ba4a73c5dfb14a1f0315f82492a820cbb785226991432f8636
 #: `ODCISK_SPRZED_KARTY` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
 #: poniżej (przeliczona na drzewie partii 9, po katalogu z proweniencją i torze V112).
 ODCISK_PO_W5E_TTIT = "e83ee88bce1a45b0ef7e57931612c100764968c4fcd42281b133215fc3b1c062"
+#: Karta KATALOG-APARATURA-WN (2026-10-22, zakres po decyzji właściciela: 110 kV to granica
+#: zasilania GPZ): 2 typy minimalne łączników topologii 110 kV (rekord aparatury łączeniowej
+#: + jego projekcja APARAT_SN). Dowód liść po liściu (zrzut kanoniczny baza `956e3e37d` vs
+#: drzewo karty): wyłącznie nowe identyfikatory, 0 zmienionych pozycji istniejących — pole
+#: `card_field_status` dodane do obu typów jest poza odciskiem, gdy ma wartość `None`
+#: (`odcisk._POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE`). Zrzut z wyciętymi pozycjami karty daje
+#: DOKŁADNIE `ODCISK_PO_W5E_TTIT`.
+POZYCJE_APARATURY_WN: dict[str, tuple[str, ...]] = {
+    "switch_equipment_types": ("sw-cb-110kv", "sw-ds-110kv"),
+    "mv_apparatus_types": ("sw-cb-110kv", "sw-ds-110kv"),
+}
+#: Wartość zrzutu z wyciętymi polami karty projekcji (jak `ODCISK_PO_W5E_TTIT`); pełny odcisk
+#: katalogu domyślnego po karcie: b8dce7f45d31cfd2168fe4914272670906147449f24c47e6fe1bbd1d476337d8.
+ODCISK_PO_APARATURZE_WN = "146f914f3efe2008369599c00aa10af9a262bc04410a19c415ba56ce3005f652"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -116,6 +130,10 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_APARATURZE_WN
+    for przestrzen, identyfikatory in POZYCJE_APARATURY_WN.items():
+        for identyfikator in identyfikatory:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_W5E_TTIT
     bez_rcd = {
         przestrzen: postac for przestrzen, postac in zrzut.items() if przestrzen != "lv_rcd_types"

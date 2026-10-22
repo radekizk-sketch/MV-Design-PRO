@@ -109,16 +109,23 @@ def resolve_generator(enm: dict[str, Any], generator_ref: str | None) -> dict[st
 
 
 def _apparatus_for(
-    branch_index: dict[str, dict[str, Any]], field_ref: str | None
+    branch_index: dict[str, dict[str, Any]], rekord_pola: Any
 ) -> dict[str, Any] | None:
-    if not field_ref:
+    """Aparat pola źródłowego DER: gałąź z ``equipment_refs`` rekordu pola.
+
+    Przynależność gałęzi do pola ma jedno źródło prawdy — ``Bay.equipment_refs``
+    (to samo czyta weryfikacja wytrzymałości aparatury, ``aparaty_pol_stacji``);
+    klucze ``meta.field_ref`` gałęzi nie są tu czytane.
+    """
+    if rekord_pola is None:
         return None
+    refs = rekord_pola.get("equipment_refs") or []
     candidates = [
-        branch
-        for branch in branch_index.values()
-        if isinstance(branch.get("meta"), dict)
-        and branch["meta"].get("field_ref") == field_ref
-        and "der_source_field_device" in (branch.get("tags") or [])
+        branch_index[ref]
+        for ref in refs
+        if isinstance(ref, str)
+        and ref in branch_index
+        and "der_source_field_device" in (branch_index[ref].get("tags") or [])
     ]
     if not candidates:
         return None
@@ -161,7 +168,7 @@ def extract_der_sn_track(
         block_transformer=tr_index.get(str(generator.get("blocking_transformer_ref") or "")),
         mv_cable=branch_index.get(str(meta.get("der_mv_cable_ref") or "")),
         pole=dict(rekord_pola) if rekord_pola is not None else None,
-        apparatus=_apparatus_for(branch_index, field_ref if isinstance(field_ref, str) else None),
+        apparatus=_apparatus_for(branch_index, rekord_pola),
         mv_bus=bus_index.get(str(meta.get("der_mv_bus_ref") or "")),
         transformatory_grupy=grupa.transformatory,
         pozostale_zrodla_grupy=grupa.pozostale_zrodla,

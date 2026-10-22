@@ -69,7 +69,6 @@ def _enm(*, aparaty: dict[str, str] | None = None) -> EnergyNetworkModel:
                 to_bus_ref=f"zacisk/{indeks:02d}",
                 catalog_ref=catalog_ref,
                 catalog_namespace="APARAT_SN",
-                meta={"station_ref": "stn", "bay_ref": pole_ref},
             )
         )
     return EnergyNetworkModel(
@@ -88,9 +87,20 @@ def _enm(*, aparaty: dict[str, str] | None = None) -> EnergyNetworkModel:
             )
         ],
         # Karta W5-B: pola stacji są rekordami `bays` (jedyny nośnik pól).
+        # Przynależność aparatu do pola — WYŁĄCZNIE rekord pola (`Bay.equipment_refs`, karta
+        # KATALOG-APARATURA-WN), nie `meta` gałęzi.
         bays=[
-            Bay(ref_id="pole/in", name="P-01", bay_role="IN", substation_ref="stn", bus_ref="sn1"),
-            Bay(ref_id="pole/tr", name="P-02", bay_role="TR", substation_ref="stn", bus_ref="sn2"),
+            Bay(
+                ref_id=pole_ref,
+                name=nazwa,
+                bay_role=rola,
+                substation_ref="stn",
+                bus_ref=szyna_pola[pole_ref],
+                equipment_refs=[
+                    b.ref_id for b in branches if b.from_bus_ref == szyna_pola[pole_ref]
+                ],
+            )
+            for pole_ref, nazwa, rola in (("pole/in", "P-01", "IN"), ("pole/tr", "P-02", "TR"))
         ],
     )
 

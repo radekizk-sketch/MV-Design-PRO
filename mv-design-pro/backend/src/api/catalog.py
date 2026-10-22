@@ -27,6 +27,7 @@ from application.catalog_governance import CatalogGovernanceService
 from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076, GrupaPolaczenIEC60076
 from enm.models import UKLADY_SIECI_NN, UkladSieciNn
 from enm.nazwy_elementow import nazwa_pozycji_katalogu
+from enm.zespol_uziemiajacy import CharakterSieci, odwzoruj_zespol_uziemiajacy
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
@@ -108,6 +109,68 @@ def slowniki_uziemienia() -> SlownikiUziemienia:
         uziemienia_ekranu_kabla=list(UZIEMIENIA_EKRANU_KABLA),
         role_uziemnika=list(ROLE_UZIEMNIKA),
     )
+
+
+class UziemienieZespolu(BaseModel):
+    """Ladunek `grounding` operacji `add_grid_source_sn` (nosnik `GroundingConfig`)."""
+
+    type: TypPunktuNeutralnego
+    r_ohm: float | None = None
+    x_ohm: float | None = None
+
+
+class SkladowaZerowaZespolu(BaseModel):
+    """Ladunek `zero_sequence` operacji `add_grid_source_sn` (Source.r0_ohm/x0_ohm)."""
+
+    enabled: bool
+    r0_ohm: float
+    x0_ohm: float
+
+
+class WielkoscDanejPrzyjetej(BaseModel):
+    wartosc: float
+    jednostka: str
+
+
+class DanaPrzyjetaZespolu(BaseModel):
+    """Dana przyjeta werdyktu (`werdykt.kontrakt.DanaPrzyjeta`) — jakosc ESTIMATED."""
+
+    nazwa_pl: str
+    wartosc: WielkoscDanejPrzyjetej | None
+    powod_pl: str
+    jakosc: str | None
+
+
+class OdwzorowanieZespoluUziemiajacegoOdpowiedz(BaseModel):
+    """Zespol uziemiajacy SN → punkt neutralny modelu (`enm/zespol_uziemiajacy.py`)."""
+
+    pozycja_ref: str
+    propozycja: bool
+    napiecie_sieci_kv: float
+    grounding: UziemienieZespolu
+    zero_sequence: SkladowaZerowaZespolu | None
+    dane_przyjete: list[DanaPrzyjetaZespolu]
+    wyjasnienie_pl: str
+    podstawa_pl: str
+
+
+@router.get(
+    "/zespol-uziemiajacy/odwzorowanie",
+    response_model=OdwzorowanieZespoluUziemiajacegoOdpowiedz,
+)
+def odwzorowanie_zespolu_uziemiajacego(
+    napiecie_sieci_kv: float,
+    pozycja_ref: str | None = None,
+    charakter_sieci: CharakterSieci | None = None,
+) -> OdwzorowanieZespoluUziemiajacegoOdpowiedz:
+    """Pozycja zespolu uziemiajacego (albo brak decyzji → propozycja wg ENEA §16, ESTIMATED)
+    jako ladunki `grounding` i `zero_sequence` operacji GPZ — jedno odwzorowanie, bez
+    drugiego nosnika. Odmowa (422 z `kod`): nieznana pozycja, napiecie spoza SN, pozycja
+    wyprowadzona dla innego napiecia sieci."""
+    wynik = odwzoruj_zespol_uziemiajacy(
+        pozycja_ref, napiecie_sieci_kv=napiecie_sieci_kv, charakter_sieci=charakter_sieci
+    )
+    return OdwzorowanieZespoluUziemiajacegoOdpowiedz.model_validate(wynik.to_dict())
 
 
 def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
@@ -1291,7 +1354,11 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
                 # Katalog ograniczników nie niesie statusu certyfikatu PTPiREE
                 # (namespace OGRANICZNIK_SN — brak pola w rekordzie źródłowym).
                 certyfikat_ptpiree=False,
-                badge_pl=f"IEC 60099-4, klasa {item.energy_class}",
+                badge_pl=(
+                    f"IEC 60099-4, klasa {item.energy_class}"
+                    if item.energy_class is not None
+                    else f"IEC 60099-4, {item.energy_absorption_kj_per_kv:g} kJ/kV"
+                ),
                 rationale_pl=(
                     f"Um={item.u_m_kv:g} kV, MCOV={item.mcov_kv:g} kV, "
                     f"Ures10kA={item.u_residual_at_10ka_kv:g} kV, "

@@ -160,6 +160,33 @@ def _dodatnia(wartosc: object) -> float | None:
     return liczba if liczba > 0 else None
 
 
+#: Pole rekordu łącznika → pole projekcji ``MVApparatusType`` (te same wielkości, inne
+#: nazwy). Jakość danych pola (``card_field_status``) idzie za wielkością, nie za nazwą.
+_POLA_PROJEKCJI_APARATU: dict[str, str] = {
+    "un_kv": "u_n_kv",
+    "in_a": "i_n_a",
+    "ik_ka": "breaking_capacity_ka",
+    "icw_ka": "i_th_ka",
+}
+
+
+def _jakosc_pol_projekcji_aparatu(status: object) -> dict[str, object]:
+    """``card_field_status`` rekordu łącznika przepisany na nazwy pól projekcji aparatu.
+
+    Pole rekordu bez odpowiednika w projekcji (``u_m_kv``, ``i_cu_ka`` — projekcja ich nie
+    niesie) nie przechodzi. Rekord bez deklaracji daje projekcję bez klucza (bajtowo jak
+    przed kartą KATALOG-APARATURA-WN)."""
+    if not isinstance(status, dict) or not status:
+        return {}
+    wynik: dict[str, dict] = {}
+    for pole_rekordu, wpis in status.items():
+        pole_projekcji = _POLA_PROJEKCJI_APARATU.get(str(pole_rekordu))
+        if pole_projekcji is None or not isinstance(wpis, dict):
+            continue
+        wynik[pole_projekcji] = {**wpis, "field_name": pole_projekcji}
+    return {"card_field_status": wynik} if wynik else {}
+
+
 def _derive_mv_apparatus_records(
     switch_equipment_records: Iterable[dict],
 ) -> list[dict]:
@@ -199,6 +226,7 @@ def _derive_mv_apparatus_records(
                     "i_th_ka": icw_ka,
                     "i_th_duration_s": (_ICW_CZAS_ODNIESIENIA_S if icw_ka is not None else None),
                     "manufacturer": params.get("manufacturer"),
+                    **_jakosc_pol_projekcji_aparatu(params.get("card_field_status")),
                     **_copy_catalog_quality(record),
                 },
             }

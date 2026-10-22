@@ -1696,6 +1696,14 @@ class BayBaseModel(BaseModel):
     # `dane_przyjete_wyposazenia`.
     equipment_data_state: Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"] = "BRAK_DANYCH"
     equipment_assumed_data: list[dict[str, Any]] = []
+    # Karta KATALOG-APARATURA-WN: aparaty rekordu pola po projekcji typu łącznika z gałęzi
+    # (typ aparatu wskazującego gałąź = wiązanie APARAT_SN gałęzi), każdy z kontrolą napięcia
+    # U_r ≥ U_m sieci pola i znacznikiem „wymagany standardem", oraz wymagania standardu
+    # z szablonu pola (wymagane / zaprojektowane / brakujące). Jedno złożenie:
+    # `enm.wyposazenie_pola.opis_wyposazenia_pola` — to samo niesie odpowiedź operacji
+    # `set_bay_equipment` (`wyposazenie_pola`).
+    equipment_devices: list[dict[str, Any]] = []
+    equipment_requirements: dict[str, Any] | None = None
 
 
 class BayShortCircuitSourceContribution(BaseModel):

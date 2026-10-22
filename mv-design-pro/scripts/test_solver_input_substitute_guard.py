@@ -1936,7 +1936,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # K6a: kontrakt topologii zasilenia; W5-C: `close_ref`, `no_point_refs`, stan danych
     # wyposazenia pola) − 3 nazwy skasowane przez UI/UX (`field_spec`, `no_point_ref`,
     # `nop_station_ref`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4337." in wyjscie, wyjscie
+    # Karta KATALOG-APARATURA-WN (2026-10-22, zakres SN po decyzji wlasciciela): 4337 -> 4349
+    # — POMIAR `contract_fields()` na bazie karty `956e3e37d` (`git archive`: 4337, pin
+    # zgodny) i na drzewie karty (4349). Roznica zbiorow +12, -0: odczyt pola
+    # (`equipment_devices`, `equipment_requirements`), pozycja zespolu uziemiajacego
+    # (`wariant_zespolu`, `prad_dlawika_a`, `prad_rezystora_a`, `zakres_regulacji_dlawika_a`,
+    # `uklad_polaczen_transformatora`) i odwzorowanie ZU (`pozycja_ref`, `napiecie_sieci_kv`,
+    # `grounding`, `zero_sequence`, `wyjasnienie_pl`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4349." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2202,7 +2209,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): 580 programu + 6 plikow enm
         # (W5-B 3, GPZ-PARYTET 1, W5-C 3 − 1 skasowany) + 1 application (K6a) + 1 api (W5-C)
         # = 588. POMIAR guardem na drzewie scalonym i na obu rodzicach (577 / 580).
-        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KATALOG-APARATURA-WN (2026-10-22): 588 -> 589 (+1 `enm/zespol_uziemiajacy.py` —
+        # jedno odwzorowanie aparatu ZU na punkt neutralny modelu, zero wpisow w zapadce
+        # i wykluczeniach). POMIAR guardem na drzewie karty (baza `956e3e37d`: 588).
+        "Przeskanowano 589 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2465,7 +2475,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): enm 62 bazy wspolnej + 6 UI/UX
         # + 3 programu (`zdania_odmow_rdzenia.py`, `uziom_instalacji.py`, `tolerancja_nn.py`)
         # = 71; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=71, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta KATALOG-APARATURA-WN (2026-10-22): enm 71 -> 72 (+1 `enm/zespol_uziemiajacy.py`);
+        # dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=72, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

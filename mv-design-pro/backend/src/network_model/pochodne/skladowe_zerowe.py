@@ -39,3 +39,31 @@ def impedancja_rozproszenia_transformatora_pu(
     disc = z_pu * z_pu - r_pu * r_pu
     x_pu = math.sqrt(disc) if disc > 0 else 0.0
     return complex(r_pu, x_pu)
+
+
+def impedancja_rownolegla_ohm(z_a_ohm: complex, z_b_ohm: complex) -> complex:
+    """Impedancja dwóch gałęzi równoległych: Z = Z_a·Z_b / (Z_a + Z_b) [Ω].
+
+    Wołający: zespół uziemiający z układem równoległym rezystor ‖ dławik w punkcie
+    neutralnym (ENEA Zeszyt 1 §16) — wynik to szeregowy odpowiednik R_N + jX_N, który niesie
+    ``GroundingConfig``. Suma zerowa (dwie gałęzie zwierające się wzajemnie) nie ma sensu
+    fizycznego dla punktu neutralnego — ``ValueError``.
+    """
+    suma = z_a_ohm + z_b_ohm
+    if suma == 0:
+        raise ValueError("impedancja równoległa: suma impedancji gałęzi równa zeru")
+    return z_a_ohm * z_b_ohm / suma
+
+
+def impedancja_zerowa_zespolu_uziemiajacego_ohm(
+    z_t0_ohm: complex, z_punktu_neutralnego_ohm: complex
+) -> complex:
+    """Impedancja zerowa zespołu uziemiającego widziana z szyn SN: Z_0 = Z_T0 + 3·Z_N [Ω].
+
+    Transformator uziemiający ZNyn11 (ENEA Zeszyt 1 §16) daje drogę składowej zerowej przez
+    swoją impedancję zerową na fazę Z_T0 i element punktu neutralnego Z_N (dławik, rezystor
+    albo ich układ równoległy); prąd zerowy trzech faz płynie przez Z_N, stąd 3·Z_N w obwodzie
+    jednej fazy (IEC 60909-0:2016 § 6, składowe symetryczne). Wynik zasila ``Source.r0_ohm``/
+    ``x0_ohm`` równoważnika na szynach SN — ten sam nośnik, który czyta solver zwarć 1F.
+    """
+    return z_t0_ohm + 3.0 * z_punktu_neutralnego_ohm

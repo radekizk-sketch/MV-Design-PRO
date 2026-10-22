@@ -74,10 +74,22 @@ class BayTemplate(BaseModel):
     description: str
     devices: list[BayDeviceTemplate] = Field(default_factory=list)
     ports: list[BayPortTemplate] = Field(default_factory=list)
+    #: Podstawa składu pola (dokument z punktem/stroną albo jawne założenie) — czytana przez
+    #: listę aparatów „wymaganych standardem” (`enm.wyposazenie_pola.wymagania_standardu`).
+    #: ``None`` = skład kanoniczny rysunku pola bez przywołanego dokumentu.
+    podstawa_pl: str | None = None
+
+
+#: Schemat zasadniczy rozdzielni SN stacji 110 kV/SN — kolejność aparatów w polach.
+PODSTAWA_ROZDZIELNI_SN_ENEA = (
+    "ENEA Operator, Standard „Stacje elektroenergetyczne 110 kV. Zeszyt 1. Stacje "
+    "dwutransformatorowe 110 kV/SN”, wersja 02.2023-2, §13 (rozdzielnia SN, str. I 23–25/76) "
+    "i zał. Z.2 „Schemat zasadniczy rozdzielni SN”"
+)
 
 
 # ---------------------------------------------------------------------------
-# Kanoniczne 10 szablonów BayTemplate (brief 2 §3 + STATION_INTERNAL_SLD §3)
+# Kanoniczne 12 szablonów BayTemplate (brief 2 §3 + STATION_INTERNAL_SLD §3)
 # ---------------------------------------------------------------------------
 
 BAY_TEMPLATE_LINE_IN = BayTemplate(
@@ -96,6 +108,7 @@ BAY_TEMPLATE_LINE_IN = BayTemplate(
         ),
     ],
     ports=[BayPortTemplate(kind="sn_input", suffix="in")],
+    podstawa_pl=PODSTAWA_ROZDZIELNI_SN_ENEA,
 )
 
 BAY_TEMPLATE_LINE_OUT = BayTemplate(
@@ -114,6 +127,7 @@ BAY_TEMPLATE_LINE_OUT = BayTemplate(
         ),
     ],
     ports=[BayPortTemplate(kind="sn_output", suffix="out")],
+    podstawa_pl=PODSTAWA_ROZDZIELNI_SN_ENEA,
 )
 
 # Kanoniczny zestaw funkcji zabezpieczeniowych pola transformatorowego SN/WN
@@ -235,11 +249,18 @@ BAY_TEMPLATE_TRANSFORMER = BayTemplate(
         BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
         BayDeviceTemplate(kind="DS_LINE", designation_q="Q2", position=3, placement="DOWNSTREAM"),
         BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
+        # Głowica kablowa pola: transformator przyłącza się do pola mostem kablowym SN —
+        # pole kończy się głowicą w przedziale przyłączeniowym (ENEA Zeszyt 1 §13, zał. Z.2:
+        # pole TR; §13 „przedział przyłączeniowy (kablowy)” każdego pola).
         BayDeviceTemplate(
-            kind="TRANSFORMER_DEVICE", designation_q="TR", position=5, placement="DOWNSTREAM"
+            kind="CABLE_HEAD", designation_q="GK", position=5, placement="DOWNSTREAM"
+        ),
+        BayDeviceTemplate(
+            kind="TRANSFORMER_DEVICE", designation_q="TR", position=6, placement="DOWNSTREAM"
         ),
     ],
     ports=[BayPortTemplate(kind="sn_transformer", suffix="trafo")],
+    podstawa_pl=PODSTAWA_ROZDZIELNI_SN_ENEA,
 )
 
 BAY_TEMPLATE_MEASUREMENT = BayTemplate(
@@ -253,6 +274,7 @@ BAY_TEMPLATE_MEASUREMENT = BayTemplate(
         BayDeviceTemplate(kind="ES", designation_q="Q9", position=2, placement="GROUND_BRANCH"),
     ],
     ports=[BayPortTemplate(kind="sn_measurement", suffix="meas")],
+    podstawa_pl=PODSTAWA_ROZDZIELNI_SN_ENEA,
 )
 
 BAY_TEMPLATE_COUPLER = BayTemplate(
@@ -263,13 +285,19 @@ BAY_TEMPLATE_COUPLER = BayTemplate(
     devices=[
         BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
         BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
-        BayDeviceTemplate(kind="DS_BUS", designation_q="Q2", position=2, placement="DOWNSTREAM"),
-        BayDeviceTemplate(kind="ES", designation_q="Q9", position=3, placement="GROUND_BRANCH"),
+        # Przekładnik prądowy sprzęgła: wymagane funkcje pola sprzęgła (51/50,
+        # `BAY_PROTECTION_CODES_BY_ROLE["COUPLER"]`) mierzą prąd — bez przekładnika rola
+        # deklarowała zabezpieczenia bez wielkości wejściowej. ENEA Zeszyt 1 zał. Z.2: pole
+        # łącznika szyn ma przekładniki prądowe za wyłącznikiem.
+        BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q2", position=3, placement="DOWNSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q9", position=4, placement="GROUND_BRANCH"),
     ],
     ports=[
         BayPortTemplate(kind="sn_coupler", suffix="left"),
         BayPortTemplate(kind="sn_coupler", suffix="right"),
     ],
+    podstawa_pl=PODSTAWA_ROZDZIELNI_SN_ENEA,
 )
 
 BAY_TEMPLATE_DER_PV = BayTemplate(
@@ -335,6 +363,78 @@ BAY_TEMPLATE_AUX = BayTemplate(
 )
 
 
+# Pola zasilania stanowisk zespołu uziemiającego i baterii kondensatorów rozdzielni SN
+# (ENEA Zeszyt 1 §13: „dwoma polami dla zasilania zespołów uziemiających, dwoma polami dla
+# zasilania BKR”; zał. Z.2: pola ZU i BKR). Elektrycznie oba są polami odpływowymi
+# wyłącznikowymi z wyprowadzeniem kablowym do stanowiska w budynku stacji: odłącznik szynowy
+# → wyłącznik → przekładnik prądowy → (uziemnik bocznie) → głowica kablowa — ten sam tor, co
+# profil „Pole liniowe wyłącznikowe” pakietu IEC 62271 (`reference_engine`), więc rola modelu
+# OUT (pole odpływowe: funkcje 51/50/51N/67N). Własne role pola (uziemiające / bateryjne) wnosi
+# gałąź GPZ H5 wątku UI/UX, a ta karta ich nie dubluje (KOORDYNACJA_WATKOW_2026-10 wpis 10–11).
+#
+# Transformator uziemiający ZNyn11 z dławikiem / rezystorem NIE jest aparatem pola: stoi na
+# stanowisku zespołu poza rozdzielnicą, a jego fizykę niesie jeden nośnik — punkt neutralny
+# modelu (`GroundingConfig` + `zero_sequence` źródła GPZ, odwzorowanie
+# `enm.zespol_uziemiajacy.odwzoruj_zespol_uziemiajacy`). Urządzenie transformatora w szablonie
+# pola byłoby drugą, pozbawioną fizyki reprezentacji tego samego obiektu.
+BAY_TEMPLATE_EARTHING = BayTemplate(
+    template_id="bay_template_earthing",
+    name="Pole zespołu uziemiającego",
+    bay_role="OUT",
+    description=(
+        "Pole zasilania zespołu uziemiającego SN: odłącznik szynowy – wyłącznik – przekładnik "
+        "prądowy – uziemnik – głowica kablowa; ograniczniki przepięć stanowiska zespołu. "
+        "Transformator uziemiający z dławikiem albo rezystorem w punkcie neutralnym jest "
+        "uziemieniem punktu neutralnego sieci (źródło GPZ), nie aparatem pola."
+    ),
+    devices=[
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q9", position=3, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(
+            kind="CABLE_HEAD", designation_q="GK", position=4, placement="DOWNSTREAM"
+        ),
+        # Ograniczniki na stanowisku zespołu uziemiającego — ENEA Zeszyt 1 §19 i §16
+        # („stanowisko zespołu uziemiającego … w ograniczniki przepięć”).
+        BayDeviceTemplate(
+            kind="SURGE_ARRESTER", designation_q="F1", position=5, placement="GROUND_BRANCH"
+        ),
+    ],
+    ports=[BayPortTemplate(kind="sn_output", suffix="zu")],
+    podstawa_pl=PODSTAWA_ROZDZIELNI_SN_ENEA,
+)
+
+BAY_TEMPLATE_CAPACITOR = BayTemplate(
+    template_id="bay_template_capacitor",
+    name="Pole baterii kondensatorów",
+    bay_role="OUT",
+    description=(
+        "Pole zasilania baterii kondensatorów równoległych SN: odłącznik szynowy – wyłącznik – "
+        "przekładnik prądowy – uziemnik – głowica kablowa; na stanowisku baterii: ograniczniki "
+        "przepięć i przekładniki napięciowe rozładowcze."
+    ),
+    devices=[
+        BayDeviceTemplate(kind="DS_BUS", designation_q="Q1", position=0, placement="UPSTREAM"),
+        BayDeviceTemplate(kind="CB", designation_q="Q0", position=1, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="CT", designation_q="T1", position=2, placement="MIDSTREAM"),
+        BayDeviceTemplate(kind="ES", designation_q="Q9", position=3, placement="GROUND_BRANCH"),
+        BayDeviceTemplate(
+            kind="CABLE_HEAD", designation_q="GK", position=4, placement="DOWNSTREAM"
+        ),
+        # Ograniczniki na stanowisku baterii — ENEA Zeszyt 1 §19.
+        BayDeviceTemplate(
+            kind="SURGE_ARRESTER", designation_q="F1", position=5, placement="GROUND_BRANCH"
+        ),
+        # Dwa przekładniki napięciowe włączone międzyfazowo po stronie zasilania — rozładowanie
+        # baterii po odłączeniu (ENEA Zeszyt 1 §17).
+        BayDeviceTemplate(kind="VT", designation_q="T2", position=6, placement="OFF_PATH"),
+    ],
+    ports=[BayPortTemplate(kind="sn_output", suffix="bkr")],
+    podstawa_pl=PODSTAWA_ROZDZIELNI_SN_ENEA,
+)
+
+
 BAY_TEMPLATE_REGISTRY: dict[str, BayTemplate] = {
     t.template_id: t
     for t in [
@@ -348,6 +448,8 @@ BAY_TEMPLATE_REGISTRY: dict[str, BayTemplate] = {
         BAY_TEMPLATE_DER_FW,
         BAY_TEMPLATE_RESERVE,
         BAY_TEMPLATE_AUX,
+        BAY_TEMPLATE_EARTHING,
+        BAY_TEMPLATE_CAPACITOR,
     ]
 }
 
@@ -442,6 +544,11 @@ def template_primary_devices(
             # Uziemnik pola (typologia §12.5) — odróżnia go od uziemienia ekranów
             # kabla/konstrukcji/punktu neutralnego. Szablon to uziemnik pola.
             entry["earthing_role"] = "field_earth"
+        elif primary_kind == "SURGE_ARRESTER":
+            # Ogranicznik przepięć stanowiska (pola ZU i BKR, ENEA Zeszyt 1 §19) to
+            # odgałęzienie DO ZIEMI — ta sama rola, co w polu źródłowym SN niżej i w moście
+            # producenckim (`reference_engine.field_configuration_catalog`).
+            entry["earthing_role"] = "surge_ground"
         devices.append(entry)
     return devices
 

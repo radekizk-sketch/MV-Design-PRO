@@ -431,13 +431,15 @@ def test_json_round_trip_with_ports() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_bay_template_registry_has_10_templates() -> None:
+def test_bay_template_registry_has_12_templates() -> None:
     from network_model.catalog.bay_templates import (
         BAY_TEMPLATE_REGISTRY,
         list_bay_templates,
     )
 
-    assert len(BAY_TEMPLATE_REGISTRY) == 10
+    # Karta KATALOG-APARATURA-WN (2026-10-22): 10 → 12 — pole zespołu uziemiającego i pole
+    # baterii kondensatorów rozdzielni SN (ENEA Zeszyt 1 §13, zał. Z.2).
+    assert len(BAY_TEMPLATE_REGISTRY) == 12
     templates = list_bay_templates()
     assert {t.template_id for t in templates} == {
         "bay_template_line_in",
@@ -450,6 +452,8 @@ def test_bay_template_registry_has_10_templates() -> None:
         "bay_template_der_fw",
         "bay_template_reserve",
         "bay_template_aux",
+        "bay_template_earthing",
+        "bay_template_capacitor",
     }
 
 

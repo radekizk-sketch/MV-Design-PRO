@@ -116,7 +116,6 @@ def _enm(
                 catalog_namespace="APARAT_SN",
                 parameter_source="OVERRIDE" if nadpisania else "CATALOG",
                 overrides=nadpisania or [],
-                meta={"station_ref": "stn", "bay_ref": POLE},
             ),
             *(
                 [
@@ -128,7 +127,6 @@ def _enm(
                         to_bus_ref="zacisk2",
                         catalog_ref=INNY_APARAT_KATALOG,
                         catalog_namespace="APARAT_SN",
-                        meta={"station_ref": "stn", "bay_ref": POLE},
                     )
                 ]
                 if drugi_aparat
@@ -154,7 +152,18 @@ def _enm(
             )
         ],
         # Karta W5-B: pole stacji jest rekordem `bays` (jedyny nośnik pól).
-        bays=[Bay(ref_id=POLE, name="P-01", bay_role="IN", substation_ref="stn", bus_ref="sn")],
+        # Przynależność aparatu do pola — WYŁĄCZNIE rekord pola (`Bay.equipment_refs`, karta
+        # KATALOG-APARATURA-WN), nie `meta` gałęzi.
+        bays=[
+            Bay(
+                ref_id=POLE,
+                name="P-01",
+                bay_role="IN",
+                substation_ref="stn",
+                bus_ref="sn",
+                equipment_refs=[APARAT, *(["aparat/02"] if drugi_aparat else [])],
+            )
+        ],
     )
 
 

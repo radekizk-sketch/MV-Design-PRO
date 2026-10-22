@@ -209,6 +209,9 @@ def test_wykonanie_zapisuje_pole_z_wyposazeniem_katalogowym(klient: TestClient) 
         "CT",
         "DS",
         "ES",
+        # Głowica mostu kablowego przed transformatorem (ENEA Zeszyt 1 zał. Z.2; karta
+        # KATALOG-APARATURA-WN — szablon pola transformatorowego).
+        "CABLE_HEAD",
         "TRANSFORMER_DEVICE",
     ]
     assert all(aparat["catalog_ref"] for aparat in pole["primary_devices"])

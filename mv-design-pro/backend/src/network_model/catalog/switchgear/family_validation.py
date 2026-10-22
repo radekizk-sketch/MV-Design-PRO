@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from network_model.pochodne.pasma_napieciowe import napiecie_aparatu_wystarcza
+
 from .complete_mv_bay_template import (
     BayKind,
     CompleteMvBayTemplate,
@@ -152,10 +154,16 @@ def czy_rodzina_obsluguje_napiecie(family: SwitchgearFamily, voltage_kv: float) 
        izolacji. Rotoblok VCB deklarowany na sieć 20 kV nie wchodzi do sieci
        15 kV, choć jego izolacja by to wytrzymała — bo karta go tam nie oferuje.
     2. Gdy karta napięć sieci NIE podaje (lista pusta), rozstrzyga klasa
-       urządzenia: wystarczy JEDNA klasa `Um >= voltage_kv`. Podstawa normowa:
-       PN-EN 62271-1 definiuje napięcie znamionowe urządzenia jako GÓRNĄ
-       granicę najwyższego napięcia sieci, dla której urządzenie zaprojektowano
-       — więc aparat klasy 24 kV pracuje w sieci 15 i 20 kV, ale nie w 30 kV.
+       urządzenia: wystarczy JEDNA klasa nie mniejsza niż najwyższe napięcie
+       sieci U_m (para IEC 60038). Podstawa normowa: PN-EN 62271-1 p. 5.2
+       definiuje napięcie znamionowe urządzenia jako GÓRNĄ granicę najwyższego
+       napięcia sieci, dla której urządzenie zaprojektowano — więc aparat klasy
+       24 kV pracuje w sieci 15 i 20 kV, ale nie w 30 kV (U_m = 36 kV). Predykat
+       jest JEDEN dla rodziny, aparatu pola i walidatora modelu
+       (`pasma_napieciowe.napiecie_aparatu_wystarcza`, karta KATALOG-APARATURA-WN);
+       do tej karty rodzina porównywała klasę z napięciem ZNAMIONOWYM sieci, co
+       dla klasy spoza typoszeregu (np. 15 kV w sieci 15 kV, U_m = 17,5 kV)
+       dawało zgodność wbrew normie.
     3. Gdy karta nie podaje ŻADNEJ z dwóch wielkości, rodzina nie ma czym
        potwierdzić zgodności — odpowiedź brzmi „nie", a nie „może". Cicha zgoda
        przy braku danych to fabrykacja zgodności.
@@ -171,7 +179,8 @@ def czy_rodzina_obsluguje_napiecie(family: SwitchgearFamily, voltage_kv: float) 
             for napiecie_sieci in family.network_voltages_kv
         )
     return any(
-        klasa_um + _TOLERANCJA_NAPIECIA_KV >= voltage_kv for klasa_um in family.um_classes_kv
+        napiecie_aparatu_wystarcza(klasa_um, voltage_kv) is True
+        for klasa_um in family.um_classes_kv
     )
 
 

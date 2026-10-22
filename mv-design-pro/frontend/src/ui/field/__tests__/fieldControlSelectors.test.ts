@@ -63,6 +63,8 @@ function fieldItem(): FieldReadModelItem {
         interlocks: { entries: [] },
         equipment_data_state: 'MODEL',
         equipment_assumed_data: [],
+        equipment_devices: [],
+        equipment_requirements: null,
       },
     },
   };

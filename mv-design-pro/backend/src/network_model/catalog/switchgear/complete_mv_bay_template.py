@@ -162,10 +162,12 @@ class CompleteMvBayTemplate(BaseModel):
 
         Hash zawiera: base_template (model_dump), manufacturer_ref,
         family_ref, bay_kind, bay_role, source_status. NIE zawiera
-        source_refs ani version (te się zmieniają niezależnie).
+        source_refs ani version (te się zmieniają niezależnie) ani
+        ``base_template.podstawa_pl`` — to cytowanie podstawy składu (standard
+        operatora z punktem), czyli źródło jak ``source_refs``, nie skład pola.
         """
         payload = {
-            "base_template": self.base_template.model_dump(mode="json"),
+            "base_template": self.base_template.model_dump(mode="json", exclude={"podstawa_pl"}),
             "manufacturer_ref": self.manufacturer_ref,
             "switchgear_family_ref": self.switchgear_family_ref,
             "bay_kind": self.bay_kind,

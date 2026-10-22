@@ -29,6 +29,7 @@ from enm.wyposazenie_pola import (
     PRZESTRZEN_KATALOGU_APARATU,
     RODZAJE_BEZ_KATALOGU_SN,
     RODZAJE_KATALOGOWE_APARATU,
+    napiecie_znamionowe_pozycji_kv,
     stan_danych_wyposazenia,
 )
 
@@ -53,19 +54,29 @@ def _pierwsza(slownik: dict[str, Any], warunek: Any = None) -> str:
     return next(ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ))
 
 
+#: Napięcie sieci 15 kV (U_m = 17,5 kV) — pozycja z U_r ≥ 17,5 kV pasma SN (aparat klasy
+#: 110 kV w polu SN przechodzi kontrolę napięcia, ale nie jest aparatem pola SN). Pozycja bez
+#: U_r (przekładniki SN katalogu) — dopuszczona, kontrola napięcia jej nie ocenia.
+def _pasuje_do_sieci_15kv(przestrzen: str, ref: str) -> bool:
+    u_r = napiecie_znamionowe_pozycji_kv(przestrzen, ref)
+    return u_r is None or 17.5 <= u_r <= 36.0
+
+
 def _ref_aparatu_sn(rodzaj_katalogowy: str) -> str:
     return _pierwsza(
-        katalog_biezacy().mv_apparatus_types, lambda t: t.device_kind == rodzaj_katalogowy
+        katalog_biezacy().mv_apparatus_types,
+        lambda t: t.device_kind == rodzaj_katalogowy and _pasuje_do_sieci_15kv("APARAT_SN", t.id),
     )
 
 
 def _ref_przestrzeni(przestrzen: str) -> str:
     katalog = katalog_biezacy()
-    return {
-        "CT": lambda: _pierwsza(katalog.ct_types),
-        "VT": lambda: _pierwsza(katalog.vt_types),
-        "OGRANICZNIK_SN": lambda: _pierwsza(katalog.surge_arrester_types),
-    }[przestrzen]()
+    slownik = {
+        "CT": katalog.ct_types,
+        "VT": katalog.vt_types,
+        "OGRANICZNIK_SN": katalog.surge_arrester_types,
+    }[przestrzen]
+    return next(ref for ref in sorted(slownik) if _pasuje_do_sieci_15kv(przestrzen, ref))
 
 
 #: Rodzaj aparatu pola → poprawna pozycja katalogowa (MODEL).

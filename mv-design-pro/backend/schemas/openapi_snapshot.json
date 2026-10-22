@@ -3497,6 +3497,48 @@
     "title": "DanaPrzyjeta",
     "type": "object"
    },
+   "DanaPrzyjetaZespolu": {
+    "description": "Dana przyjeta werdyktu (`werdykt.kontrakt.DanaPrzyjeta`) — jakosc ESTIMATED.",
+    "properties": {
+     "jakosc": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Jakosc"
+     },
+     "nazwa_pl": {
+      "title": "Nazwa Pl",
+      "type": "string"
+     },
+     "powod_pl": {
+      "title": "Powod Pl",
+      "type": "string"
+     },
+     "wartosc": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/WielkoscDanejPrzyjetej"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "nazwa_pl",
+     "wartosc",
+     "powod_pl",
+     "jakosc"
+    ],
+    "title": "DanaPrzyjetaZespolu",
+    "type": "object"
+   },
    "DeklaracjeModulu": {
     "additionalProperties": false,
     "description": "Deklaracje modułu (dane testów T05, T10–T13, T16–T20) ze źródłem.\n\nJednostki: ``p_min_kw`` w kW, ``ramp_rate_pct_per_min`` w % P_max/min,\n``reactive_current_gain`` bezwymiarowe (p.u./p.u.), ``p_recovery_time_s`` i\n``cease_generation_time_s`` w s, ``harmonic_thdu_percent`` w %. Pola ``*_required``\nto wymaganie zdolności dodatkowej w programie szczegółowym badań operatora (brak =\nnie wymagano), pozostałe pola logiczne — deklaracja zdolności modułu (brak = nie\nzadeklarowano, ``False`` = zadeklarowano brak).\n\nPola są ŚCISŁE (``strict=True`` na polu — te same ograniczenia co pola wejścia solvera\n``NcRfgPtpireeModuleInput``, parytet przypięty testem): deklaracja ma typ swojego pola —\nwartość logiczna nie staje się liczbą (``true`` → 1,0 s), napis nie staje się liczbą ani\nwartością logiczną (``\"1.5\"``, ``\"true\"``), liczba nie staje się wartością logiczną\n(``1``); liczba całkowita w polu liczbowym jest liczbą (``100`` → 100,0 kW).",
@@ -9494,6 +9536,63 @@
     "title": "OdstepstwoWiarygodnosciOdpowiedz",
     "type": "object"
    },
+   "OdwzorowanieZespoluUziemiajacegoOdpowiedz": {
+    "description": "Zespol uziemiajacy SN → punkt neutralny modelu (`enm/zespol_uziemiajacy.py`).",
+    "properties": {
+     "dane_przyjete": {
+      "items": {
+       "$ref": "#/components/schemas/DanaPrzyjetaZespolu"
+      },
+      "title": "Dane Przyjete",
+      "type": "array"
+     },
+     "grounding": {
+      "$ref": "#/components/schemas/UziemienieZespolu"
+     },
+     "napiecie_sieci_kv": {
+      "title": "Napiecie Sieci Kv",
+      "type": "number"
+     },
+     "podstawa_pl": {
+      "title": "Podstawa Pl",
+      "type": "string"
+     },
+     "pozycja_ref": {
+      "title": "Pozycja Ref",
+      "type": "string"
+     },
+     "propozycja": {
+      "title": "Propozycja",
+      "type": "boolean"
+     },
+     "wyjasnienie_pl": {
+      "title": "Wyjasnienie Pl",
+      "type": "string"
+     },
+     "zero_sequence": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SkladowaZerowaZespolu"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "pozycja_ref",
+     "propozycja",
+     "napiecie_sieci_kv",
+     "grounding",
+     "zero_sequence",
+     "dane_przyjete",
+     "wyjasnienie_pl",
+     "podstawa_pl"
+    ],
+    "title": "OdwzorowanieZespoluUziemiajacegoOdpowiedz",
+    "type": "object"
+   },
    "OknoPomiaru": {
     "additionalProperties": false,
     "description": "Okno analizy widmowej: rodzaj (np. prostokątne zsynchronizowane), długość i liczba\nokresów podstawowej — wszystkie z dokumentu pomiaru.",
@@ -14456,6 +14555,30 @@
     "title": "SkladowaWidma",
     "type": "object"
    },
+   "SkladowaZerowaZespolu": {
+    "description": "Ladunek `zero_sequence` operacji `add_grid_source_sn` (Source.r0_ohm/x0_ohm).",
+    "properties": {
+     "enabled": {
+      "title": "Enabled",
+      "type": "boolean"
+     },
+     "r0_ohm": {
+      "title": "R0 Ohm",
+      "type": "number"
+     },
+     "x0_ohm": {
+      "title": "X0 Ohm",
+      "type": "number"
+     }
+    },
+    "required": [
+     "enabled",
+     "r0_ohm",
+     "x0_ohm"
+    ],
+    "title": "SkladowaZerowaZespolu",
+    "type": "object"
+   },
    "SladKroku": {
     "description": "Krok sladu WHITE BOX (kanon pieciu pol).\n\nKontrakt pol (karta DOWOD-CIEPLNY): zapis matematyczny WYLACZNIE w polach\n``*_latex`` (LaTeX goly, bez ``$$``); ``substitution`` i ``notes`` sa proza.",
     "properties": {
@@ -16069,6 +16192,48 @@
     "title": "UpdateStudyCaseRequest",
     "type": "object"
    },
+   "UziemienieZespolu": {
+    "description": "Ladunek `grounding` operacji `add_grid_source_sn` (nosnik `GroundingConfig`).",
+    "properties": {
+     "r_ohm": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "R Ohm"
+     },
+     "type": {
+      "enum": [
+       "isolated",
+       "petersen_coil",
+       "directly_grounded",
+       "resistor_grounded"
+      ],
+      "title": "Type",
+      "type": "string"
+     },
+     "x_ohm": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "X Ohm"
+     }
+    },
+    "required": [
+     "type"
+    ],
+    "title": "UziemienieZespolu",
+    "type": "object"
+   },
    "V126AnalizaWycofanaResponse": {
     "description": "Ciało odmowy 410 dla rodzaju V12.6 zdjętego z powierzchni (karta W3-E).\n\nTen sam kształt jedzie DODATKOWO jako pole addytywne `wycofany` na\nczterech końcówkach GET historycznego biegu tego rodzaju (results, trace,\nproof, report) — odtwarzalność zostaje, powierzchnia do NOWYCH biegów nie.",
     "properties": {
@@ -16698,6 +16863,24 @@
      "jednostka"
     ],
     "title": "Wielkosc",
+    "type": "object"
+   },
+   "WielkoscDanejPrzyjetej": {
+    "properties": {
+     "jednostka": {
+      "title": "Jednostka",
+      "type": "string"
+     },
+     "wartosc": {
+      "title": "Wartosc",
+      "type": "number"
+     }
+    },
+    "required": [
+     "wartosc",
+     "jednostka"
+    ],
+    "title": "WielkoscDanejPrzyjetej",
     "type": "object"
    },
    "WniosekOsdRequest": {
@@ -23906,6 +24089,85 @@
      }
     },
     "summary": "List Wind Inverter Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/zespol-uziemiajacy/odwzorowanie": {
+   "get": {
+    "description": "Pozycja zespolu uziemiajacego (albo brak decyzji → propozycja wg ENEA §16, ESTIMATED)\njako ladunki `grounding` i `zero_sequence` operacji GPZ — jedno odwzorowanie, bez\ndrugiego nosnika. Odmowa (422 z `kod`): nieznana pozycja, napiecie spoza SN, pozycja\nwyprowadzona dla innego napiecia sieci.",
+    "operationId": "odwzorowanie_zespolu_uziemiajacego_api_catalog_zespol_uziemiajacy_odwzorowanie_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "napiecie_sieci_kv",
+      "required": true,
+      "schema": {
+       "title": "Napiecie Sieci Kv",
+       "type": "number"
+      }
+     },
+     {
+      "in": "query",
+      "name": "pozycja_ref",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Pozycja Ref"
+      }
+     },
+     {
+      "in": "query",
+      "name": "charakter_sieci",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "KABLOWA",
+          "KABLOWO_NAPOWIETRZNA"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Charakter Sieci"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OdwzorowanieZespoluUziemiajacegoOdpowiedz"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Odwzorowanie Zespolu Uziemiajacego",
     "tags": [
      "Type Catalog"
     ]

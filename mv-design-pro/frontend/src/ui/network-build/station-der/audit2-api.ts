@@ -130,6 +130,51 @@ export interface MvNeutralGroundingItem {
   readonly description_pl: string;
   readonly r_ohm: number | null;
   readonly x_ohm: number | null;
+  /** Pozycje zespołu uziemiającego SN (ENEA Zeszyt 1 §16) — pola obecne tylko w tych
+   *  pozycjach (`to_dict` pomija `None`). */
+  readonly napiecie_sieci_kv?: number;
+  readonly wariant_zespolu?: WariantZespoluUziemiajacego;
+  readonly prad_dlawika_a?: number;
+  readonly zakres_regulacji_dlawika_a?: readonly [number, number];
+  readonly prad_rezystora_a?: number;
+  readonly uklad_polaczen_transformatora?: string;
+  readonly podstawa_pl?: string;
+}
+
+/** Wariant zespołu uziemiającego SN (ENEA Zeszyt 1 §16, rys. Z.13–Z.15). */
+export type WariantZespoluUziemiajacego = 'DLAWIK' | 'DLAWIK_REZYSTOR' | 'REZYSTOR';
+
+/** Charakter sieci SN — podstawa propozycji wariantu zespołu, gdy projektant nie wybrał. */
+export type CharakterSieciSn = 'KABLOWA' | 'KABLOWO_NAPOWIETRZNA';
+
+/**
+ * Odwzorowanie zespołu uziemiającego na ładunki operacji GPZ (`grounding`,
+ * `zero_sequence`) — `GET /api/catalog/zespol-uziemiajacy/odwzorowanie`
+ * (`enm/zespol_uziemiajacy.py::odwzoruj_zespol_uziemiajacy`). `propozycja: true` = projektant
+ * nie wybrał pozycji; wariant zaproponowany wg §16 z jakością ESTIMATED w `dane_przyjete`.
+ */
+export interface OdwzorowanieZespoluUziemiajacego {
+  readonly pozycja_ref: string;
+  readonly propozycja: boolean;
+  readonly napiecie_sieci_kv: number;
+  readonly grounding: {
+    readonly type: MvNeutralGroundingItem['grounding_type'];
+    readonly r_ohm: number | null;
+    readonly x_ohm: number | null;
+  };
+  readonly zero_sequence: {
+    readonly enabled: boolean;
+    readonly r0_ohm: number;
+    readonly x0_ohm: number;
+  } | null;
+  readonly dane_przyjete: ReadonlyArray<{
+    readonly nazwa_pl: string;
+    readonly wartosc: { readonly wartosc: number; readonly jednostka: string } | null;
+    readonly powod_pl: string;
+    readonly jakosc: string | null;
+  }>;
+  readonly wyjasnienie_pl: string;
+  readonly podstawa_pl: string;
 }
 
 /**
@@ -207,6 +252,44 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 /** Pobiera snapshot wszystkich 7 katalogow audytu 2. */
 export async function fetchAudit2CatalogSnapshot(): Promise<AuditCatalogSnapshot> {
   return getJson<AuditCatalogSnapshot>(`${BASE}/snapshot`);
+}
+
+/** Odmowa odwzorowania zespołu uziemiającego (422): kod maszynowy + zdanie dla projektanta. */
+export class OdmowaOdwzorowaniaZespolu extends Error {
+  readonly kod: string | null;
+
+  constructor(kod: string | null, komunikat: string) {
+    super(komunikat);
+    this.name = 'OdmowaOdwzorowaniaZespolu';
+    this.kod = kod;
+  }
+}
+
+/**
+ * Zespół uziemiający SN → ładunki `grounding` / `zero_sequence` operacji
+ * `add_grid_source_sn`. Bez `pozycjaRef` backend proponuje wariant wg ENEA §16
+ * (charakter sieci: kablowa → rezystor, pozostałe → dławik) z jakością ESTIMATED.
+ */
+export async function fetchOdwzorowanieZespoluUziemiajacego(args: {
+  readonly napiecieSieciKv: number;
+  readonly pozycjaRef?: string | null;
+  readonly charakterSieci?: CharakterSieciSn | null;
+}): Promise<OdwzorowanieZespoluUziemiajacego> {
+  const parametry = new URLSearchParams({ napiecie_sieci_kv: String(args.napiecieSieciKv) });
+  if (args.pozycjaRef) parametry.set('pozycja_ref', args.pozycjaRef);
+  if (args.charakterSieci) parametry.set('charakter_sieci', args.charakterSieci);
+  const response = await fetch(`/api/catalog/zespol-uziemiajacy/odwzorowanie?${parametry}`);
+  if (response.status === 422) {
+    const cialo = (await response.json()) as { kod?: string; detail?: unknown };
+    throw new OdmowaOdwzorowaniaZespolu(
+      cialo.kod ?? null,
+      typeof cialo.detail === 'string' ? cialo.detail : 'Odwzorowanie zespołu odrzucone.',
+    );
+  }
+  if (!response.ok) {
+    throw new Error(`Odwzorowanie zespołu uziemiającego: ${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<OdwzorowanieZespoluUziemiajacego>;
 }
 
 /** Pozycja katalogu wytrzymalosci aparatury (eng.18, IEC 60909). */

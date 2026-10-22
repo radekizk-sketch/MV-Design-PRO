@@ -42,9 +42,13 @@ from enm.nastawy_zabezpieczen import (
     ETYKIETY_JEDNOSTEK_PROGU_PL,
     JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
-from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
+from enm.pola import napiecia_szyn, pola_wszystkich_stacji, punkt_przylaczenia_pola
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
-from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
+from enm.wyposazenie_pola import (
+    katalog_galezi_lacznikowych,
+    opis_wyposazenia_pola,
+    projekcja_aparatow_pola,
+)
 from network_model.core.uziemienie import TypPunktuNeutralnego
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
@@ -120,6 +124,8 @@ FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
 
 def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, Any]:
     branches = {branch.ref_id: branch for branch in enm.branches}
+    katalog_galezi = katalog_galezi_lacznikowych(enm)
+    napiecia = napiecia_szyn(enm)
     # Karta W5-B: pola stacji czytane WPROST z rekordów `bays` (jedyny nośnik pól) — bez
     # scalania dawnych słowników wpisów i bez syntezy pól GPZ z `gpz_sections` (pole GPZ bez
     # rekordu = brak pola, nazwany w gotowości). Pola rozdzielnic odgałęźnych ZKSN nie
@@ -164,6 +170,7 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
                 bay=bay,
                 canonical_role=canonical_role,
                 branches=branches,
+                katalog_galezi=katalog_galezi,
                 measurements_by_bay=measurements_by_bay,
                 transformers_by_bus=transformers_by_bus,
                 generators_by_bus=generators_by_bus,
@@ -194,6 +201,11 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
         )
 
+        # Wyposażenie z REKORDU pola (projekcja typu łącznika z gałęzi) — to samo złożenie,
+        # co odpowiedź operacji `set_bay_equipment`.
+        wyposazenie = opis_wyposazenia_pola(
+            enm, bay, bay.primary_devices, katalog_galezi=katalog_galezi, napiecia=napiecia
+        )
         base_model = BayBaseModel(
             bay_ref=bay.ref_id,
             bay_role=canonical_role,
@@ -210,10 +222,10 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
             bay_template_ref=bay.bay_template_ref,
             switchgear_family_ref=bay.switchgear_family_ref,
-            equipment_data_state=stan_danych_wyposazenia(list(bay.primary_devices)),
-            equipment_assumed_data=dane_przyjete_wyposazenia(
-                [device.model_dump(mode="json") for device in bay.primary_devices]
-            ),
+            equipment_data_state=wyposazenie["stan_danych"],
+            equipment_assumed_data=wyposazenie["dane_przyjete"],
+            equipment_devices=wyposazenie["aparaty"],
+            equipment_requirements=wyposazenie["wymagania_standardu"],
         )
 
         project_results = _build_project_results(
@@ -342,6 +354,7 @@ def _build_primary_devices(
     bay: Bay,
     canonical_role: str,
     branches: dict[str, Branch],
+    katalog_galezi: dict[str, str | None],
     measurements_by_bay: dict[str, list[Measurement]],
     transformers_by_bus: dict[str, list[Transformer]],
     generators_by_bus: dict[str, list[Generator]],
@@ -350,8 +363,13 @@ def _build_primary_devices(
     # pole niesie już zmaterializowane aparaty pierwotne (szablon kreatora,
     # rekord `Bay.primary_devices`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
     # zamiast wnioskować z equipment. Puste = przelicz z equipment jak dotąd.
+    # Typ aparatu wskazującego gałąź łącznikową czyta się z wiązania GAŁĘZI (jedna prawda,
+    # `enm.wyposazenie_pola.projekcja_aparatow_pola`) — rekord pola go nie kopiuje.
     if bay.primary_devices:
-        return list(bay.primary_devices)
+        return [
+            BayPrimaryDevice.model_validate(aparat)
+            for aparat in projekcja_aparatow_pola(bay.primary_devices, katalog_galezi)
+        ]
     devices: list[BayPrimaryDevice] = []
     for ref in sorted(bay.equipment_refs):
         branch = branches.get(ref)

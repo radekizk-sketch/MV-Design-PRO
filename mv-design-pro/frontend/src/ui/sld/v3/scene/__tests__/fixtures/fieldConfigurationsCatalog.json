@@ -48,6 +48,90 @@
       "template_id": "bay_template_aux"
     },
     {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_capacitor",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole baterii kondensatorów",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_capacitor::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_capacitor::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_capacitor::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_capacitor::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_capacitor::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "kanoniczny:bay_template_capacitor::dev::5",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_capacitor::dev::6",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_capacitor"
+    },
+    {
       "bay_role": "COUPLER",
       "config_ref": "kanoniczny:bay_template_coupler",
       "field_role": "SPRZEGLO",
@@ -74,8 +158,17 @@
           "symbol_ref": "symbol:cb"
         },
         {
-          "designation": "Q2",
+          "designation": "T1",
           "device_ref": "kanoniczny:bay_template_coupler::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_coupler::dev::3",
           "is_controllable": true,
           "kind": "DS",
           "placement": "DOWNSTREAM",
@@ -84,7 +177,7 @@
         },
         {
           "designation": "Q9",
-          "device_ref": "kanoniczny:bay_template_coupler::dev::3",
+          "device_ref": "kanoniczny:bay_template_coupler::dev::4",
           "earthing_role": "field_earth",
           "is_controllable": false,
           "kind": "ES",
@@ -361,6 +454,81 @@
       "renderable": true,
       "source": "kanoniczny",
       "template_id": "bay_template_der_pv"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_earthing",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole zespołu uziemiającego",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_earthing::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_earthing::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_earthing::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_earthing::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_earthing::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "kanoniczny:bay_template_earthing::dev::5",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_earthing"
     },
     {
       "bay_role": "IN",
@@ -644,8 +812,17 @@
           "symbol_ref": "symbol:es"
         },
         {
-          "designation": "TR",
+          "designation": "GK",
           "device_ref": "kanoniczny:bay_template_transformer::dev::5",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "TR",
+          "device_ref": "kanoniczny:bay_template_transformer::dev::6",
           "is_controllable": false,
           "kind": "TRANSFORMER_DEVICE",
           "placement": "DOWNSTREAM",

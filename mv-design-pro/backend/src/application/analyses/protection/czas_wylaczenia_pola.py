@@ -176,7 +176,9 @@ def czasy_wylaczenia_pol_stacji(
     if stacja is None:
         return {}
 
-    aparaty = aparaty_pol_stacji(enm, stacja)
+    # Zwarcie wyłącza wyłącznie aparat z gałęzią łącznikową modelu — aparat rekordu pola bez
+    # gałęzi (np. uziemnik) nie jest członem czasu wyłączenia.
+    aparaty = aparaty_pol_stacji(enm, stacja, wylacznie_galezie=True)
     wynik: dict[str, dict[str, Any]] = {}
 
     # Pola stacji z rekordów `bays` (jedyny nośnik pól, karta W5-B) — w kolejności
@@ -361,7 +363,9 @@ def pola_lokalne_wezlow(enm: EnergyNetworkModel) -> dict[str, tuple[PoleLokalne,
         if bay.substation_ref not in aparaty_stacji:
             stacja = znajdz_stacje(enm, bay.substation_ref)
             aparaty_stacji[bay.substation_ref] = (
-                aparaty_pol_stacji(enm, stacja) if stacja is not None else {}
+                aparaty_pol_stacji(enm, stacja, wylacznie_galezie=True)
+                if stacja is not None
+                else {}
             )
         aparaty_pola = aparaty_stacji[bay.substation_ref].get(bay.ref_id, [])
         if not aparaty_pola:

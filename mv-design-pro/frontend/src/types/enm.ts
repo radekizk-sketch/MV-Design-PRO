@@ -1575,6 +1575,10 @@ export interface BayBaseModel {
   equipment_data_state: StanDanychWyposazenia;
   /** W5-C: aparaty przyjęte jako wartość robocza (jakość ESTIMATED). */
   equipment_assumed_data: DanaPrzyjetaWyposazenia[];
+  /** Aparaty pola z typem łącznika z gałęzi i kontrolą napięcia (`opis_wyposazenia_pola`). */
+  equipment_devices: AparatWyposazeniaPola[];
+  /** Wymagane standardem / zaprojektowane / brakujące (szablon pola). */
+  equipment_requirements: WymaganiaStandarduPola | null;
 }
 
 export interface BayShortCircuitSourceContribution {
@@ -2352,12 +2356,64 @@ export interface DanaPrzyjetaWyposazenia {
   jakosc: string;
 }
 
+/**
+ * Kontrola napięcia aparatu względem sieci pola (`kontrola_napiecia_aparatu`,
+ * PN-EN 62271-1 p. 5.2: U_r ≥ U_m). `napiecie_wystarcza: null` = nie oceniono — przyczyna
+ * w `wyjasnienie_pl` (brak danych ≠ spełnia).
+ */
+export interface KontrolaNapieciaAparatu {
+  u_r_kv: number | null;
+  napiecie_sieci_kv: number | null;
+  u_m_sieci_kv: number | null;
+  margines_kv: number | null;
+  napiecie_wystarcza: boolean | null;
+  podstawa_pl: string;
+  wyjasnienie_pl: string;
+}
+
+/** Aparat pola po projekcji typu łącznika z gałęzi (`opis_wyposazenia_pola`). */
+export interface AparatWyposazeniaPola {
+  device_ref: string;
+  kind: string;
+  /** Typ aparatu; dla łącznika z gałęzią — wiązanie APARAT_SN gałęzi (jedna prawda). */
+  catalog_ref: string | null;
+  /** `true` — typ pochodzi z gałęzi łącznikowej (`linked_ref`), rekord pola go nie kopiuje. */
+  typ_z_galezi: boolean;
+  stan_danych: StanDanychWyposazenia;
+  wymagany_standardem: boolean;
+  kontrola_napiecia: KontrolaNapieciaAparatu;
+}
+
+/** Stan aparatu wymaganego szablonem pola. */
+export type StanWymaganegoAparatu = 'ZAPROJEKTOWANY' | 'BRAKUJACY';
+
+export interface WymaganyAparatPola {
+  kind: string;
+  designation: string | null;
+  placement: string | null;
+  stan: StanWymaganegoAparatu;
+  /** Aparat pola, który pokrywa wymaganie (`null` = brakujący). */
+  device_ref: string | null;
+}
+
+/** Aparaty wymagane standardem (szablon pola) × aparaty zaprojektowane. */
+export interface WymaganiaStandarduPola {
+  bay_template_ref: string | null;
+  podstawa_pl: string | null;
+  pozycje: WymaganyAparatPola[];
+  liczba_wymaganych: number;
+  liczba_zaprojektowanych: number;
+  liczba_brakujacych: number;
+  wyjasnienie_pl: string;
+}
+
 /** Wynik `set_bay_equipment` (klucz `wyposazenie_pola` odpowiedzi operacji). */
 export interface WyposazeniePolaOdpowiedz {
   bay_ref: string;
   stan_danych: StanDanychWyposazenia;
-  aparaty: Array<{ device_ref: string; stan_danych: Exclude<StanDanychWyposazenia, 'BRAK_DANYCH'> }>;
+  aparaty: AparatWyposazeniaPola[];
   dane_przyjete: DanaPrzyjetaWyposazenia[];
+  wymagania_standardu: WymaganiaStandarduPola;
 }
 
 // ---------------------------------------------------------------------------

@@ -42,7 +42,9 @@ from network_model.pochodne.skladowe_symetryczne import (
 )
 from network_model.pochodne.skladowe_zerowe import (
     impedancja_punktu_neutralnego_ohm,
+    impedancja_rownolegla_ohm,
     impedancja_rozproszenia_transformatora_pu,
+    impedancja_zerowa_zespolu_uziemiajacego_ohm,
 )
 from network_model.pochodne.wielkosci_pochodne import (
     SQRT2,
@@ -84,6 +86,8 @@ __all__ = [
     "czlon_wykladniczy_kappa",
     "impedancja_odniesiona_do_napiecia_ohm",
     "impedancja_punktu_neutralnego_ohm",
+    "impedancja_rownolegla_ohm",
+    "impedancja_zerowa_zespolu_uziemiajacego_ohm",
     "impedancja_rozproszenia_transformatora_pu",
     "impedancja_wlasna_ohm",
     "impedancja_wzajemna_ohm",

@@ -114,6 +114,9 @@ def _pole(
         "bay_role": "FEEDER",
         "substation_ref": STACJA,
         "bus_ref": szyna_sn,
+        # Przynależność aparatu do pola — WYŁĄCZNIE rekord pola (`Bay.equipment_refs`, karta
+        # KATALOG-APARATURA-WN), nie `meta` gałęzi.
+        "equipment_refs": [f"wyl/{sufiks}"],
     }
     zacisk = {
         "ref_id": f"zacisk/{sufiks}",
@@ -128,7 +131,6 @@ def _pole(
         "to_bus_ref": zacisk["ref_id"],
         "catalog_ref": APARAT_KATALOG,
         "catalog_namespace": "APARAT_SN",
-        "meta": {"station_ref": STACJA, "bay_ref": pole_ref},
     }
     przekladnik = {
         "ref_id": f"ct/{sufiks}",

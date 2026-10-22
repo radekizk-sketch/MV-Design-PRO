@@ -142,3 +142,90 @@ def szyna_poza_pasmem_sn(voltage_kv: float | None) -> bool:
     if voltage_kv is None:
         return False
     return pasmo_napieciowe(voltage_kv) != "SN"
+
+
+# ---------------------------------------------------------------------------
+# Najwyższe napięcie urządzeń U_m dla napięcia znamionowego sieci (karta KATALOG-APARATURA-WN)
+# ---------------------------------------------------------------------------
+
+NAPIECIE_NAJWYZSZE_URZADZEN_KV: dict[float, float] = {
+    # IEC 60038:2009 (PN-EN 60038:2012) tab. 3 — sieci trójfazowe 1–35 kV (seria I):
+    3.0: 3.6,
+    3.3: 3.6,
+    6.0: 7.2,
+    6.6: 7.2,
+    10.0: 12.0,
+    11.0: 12.0,
+    # 15 kV i 20 kV — pary potwierdzone w standardzie ENEA Operator „Stacje
+    # elektroenergetyczne 110 kV, Zeszyt 1" (wersja 02.2023-2) §10.1 tab. 5, str. I 16/76.
+    15.0: 17.5,
+    20.0: 24.0,
+    22.0: 24.0,
+    30.0: 36.0,
+    33.0: 36.0,
+    35.0: 40.5,
+    # IEC 60038 tab. 4 — sieci trójfazowe powyżej 35 kV do 230 kV; para 110 → 123 kV
+    # potwierdzona także w ENEA Zeszyt 1 §10.1 tab. 5:
+    45.0: 52.0,
+    66.0: 72.5,
+    69.0: 72.5,
+    110.0: 123.0,
+    115.0: 123.0,
+    132.0: 145.0,
+    138.0: 145.0,
+    150.0: 170.0,
+    220.0: 245.0,
+    # IEC 60038 tab. 5 — sieci powyżej 245 kV (podana jest wyłącznie wartość U_m; polska
+    # sieć przesyłowa 400 kV pracuje z U_m = 420 kV):
+    400.0: 420.0,
+}
+"""Napięcie znamionowe sieci Uₙ [kV] → najwyższe napięcie urządzeń U_m [kV] (IEC 60038).
+
+U_m wyznacza dolną granicę napięcia znamionowego aparatu U_r w tej sieci (PN-EN 62271-1
+p. 5.2: napięcie znamionowe aparatu równe jest najwyższemu napięciu sieci, w której aparat
+może pracować)."""
+
+_TOLERANCJA_NAPIECIA_SIECI_KV = 1e-6
+
+
+def napiecie_najwyzsze_urzadzen_kv(voltage_kv: float | None) -> float | None:
+    """Najwyższe napięcie urządzeń U_m [kV] dla sieci o napięciu znamionowym ``voltage_kv``.
+
+    JEDNO źródło tej pary w backendzie: kontrola napięcia aparatu pola (`enm/wyposazenie_pola`)
+    i poziom izolacji koordynacji izolacji IEC 60071 (`solver_input/v126_contracts`).
+
+    Napięcie znamionowe spoza tablic IEC 60038 nie ma normowej pary — wtedy U_m to najmniejsza
+    wartość typoszeregu U_m tablic 3–5, nie mniejsza niż Uₙ (aparat o niższym U_m nie może
+    pracować w tej sieci z definicji napięcia znamionowego). Napięcie w paśmie nN, nieznane
+    albo niefizyczne daje ``None`` — dla nN norma aparatury SN/WN nie definiuje U_m.
+    """
+    napiecie = _znane(voltage_kv)
+    if napiecie is None or pasmo_napieciowe(napiecie) == "nN":
+        return None
+    for znamionowe, u_m in NAPIECIE_NAJWYZSZE_URZADZEN_KV.items():
+        if abs(znamionowe - napiecie) <= _TOLERANCJA_NAPIECIA_SIECI_KV:
+            return u_m
+    for u_m in sorted(set(NAPIECIE_NAJWYZSZE_URZADZEN_KV.values())):
+        if u_m >= napiecie:
+            return u_m
+    return None
+
+
+def napiecie_aparatu_wystarcza(
+    napiecie_znamionowe_aparatu_kv: float | None, napiecie_sieci_kv: float | None
+) -> bool | None:
+    """Czy aparat o napięciu znamionowym U_r może pracować w sieci o napięciu Uₙ.
+
+    JEDYNY predykat tej reguły w backendzie (PN-EN 62271-1 p. 5.2: U_r ≥ U_m sieci, U_m z pary
+    IEC 60038 — `napiecie_najwyzsze_urzadzen_kv`): kontrola aparatu pola
+    (`enm/wyposazenie_pola`), zgodność napięciowa rodziny rozdzielnicy
+    (`catalog/switchgear/family_validation`) i reguła walidatora modelu czytają tę funkcję.
+
+    ``None`` — rozstrzygnięcie niemożliwe: aparat bez U_r albo sieć bez U_m (napięcie nieznane
+    albo w paśmie nN). Brak danej nie jest zgodnością ani niezgodnością.
+    """
+    u_m = napiecie_najwyzsze_urzadzen_kv(napiecie_sieci_kv)
+    u_r = _znane(napiecie_znamionowe_aparatu_kv)
+    if u_m is None or u_r is None:
+        return None
+    return u_r + _TOLERANCJA_NAPIECIA_SIECI_KV >= u_m

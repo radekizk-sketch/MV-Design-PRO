@@ -106,6 +106,8 @@ function item(templateRef: string | null, familyRef: string | null): FieldReadMo
         equipment_assumed_data: [
           { nazwa_pl: 'Wyłącznik Q1', wartosc: 'CB', powod_pl: 'aparat z szablonu pola bez pozycji katalogowej', jakosc: 'ESTIMATED' },
         ],
+        equipment_devices: [],
+        equipment_requirements: null,
       },
       runtime_state: null,
       scenario_state: null,

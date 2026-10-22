@@ -327,6 +327,9 @@ class ENMValidator:
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
         self._check_shunt_capacitors(enm, issues)
+        # KATALOG-APARATURA-WN: aparat z katalogu o napięciu znamionowym < U_m sieci
+        self._check_napiecie_aparatury(enm, issues)
+        self._check_lacznik_wn_bez_typu(enm, issues)
         # V12S-007: pasmo napieciowe + ciaglosc przez stację przelotową
         self._check_voltage_band_consistency(enm, issues)
         self._check_frequency_consistency(enm, issues)
@@ -2037,6 +2040,64 @@ class ENMValidator:
                         ),
                     )
                 )
+
+    def _check_napiecie_aparatury(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Aparat z pozycją katalogową o napięciu znamionowym niższym od najwyższego napięcia
+        sieci w miejscu zainstalowania (PN-EN 62271-1 p. 5.2: U_r ≥ U_m). Ten sam predykat,
+        którym ``set_bay_equipment`` odmawia zapisu — tu dla aparatów wstawionych innymi
+        operacjami (łącznik toru, przekładnik, ogranicznik, aparat pola bez gałęzi)."""
+        from .wyposazenie_pola import aparaty_za_niskiego_napiecia
+
+        for wpis in aparaty_za_niskiego_napiecia(enm):
+            kontrola = wpis["kontrola_napiecia"]
+            issues.append(
+                ValidationIssue(
+                    code="apparatus.voltage_rating_too_low",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=f"{wpis['opis_pl']}: {kontrola['wyjasnienie_pl']}",
+                    element_refs=[wpis["element_ref"]],
+                    wizard_step_hint="K4",
+                    suggested_fix=(
+                        "Wybierz z katalogu aparat o napięciu znamionowym co najmniej równym "
+                        "najwyższemu napięciu sieci w miejscu zainstalowania."
+                    ),
+                    fix_action=FixAction(
+                        action_type="NAVIGATE_TO_ELEMENT",
+                        element_ref=wpis["element_ref"],
+                        payload_hint={"required": "catalog_ref"},
+                    ),
+                )
+            )
+
+    def _check_lacznik_wn_bez_typu(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """Łącznik topologii zasilania 110 kV bez wiązania katalogowego (reguła wiązania
+        katalogowego; typ minimalny łącznika 110 kV w katalogu APARAT_SN)."""
+        from .wyposazenie_pola import laczniki_wn_bez_typu
+
+        for wpis in laczniki_wn_bez_typu(enm):
+            issues.append(
+                ValidationIssue(
+                    code="apparatus.hv_switch_catalog_missing",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"{wpis['opis_pl']} nie ma typu z katalogu — łącznik topologii zasilania 110 kV wymaga wiązania "
+                        "katalogowego (typ minimalny wyłącznika albo odłącznika 110 kV)."
+                    ),
+                    element_refs=[wpis["element_ref"]],
+                    wizard_step_hint="K4",
+                    suggested_fix="Przypisz łącznikowi typ wyłącznika albo odłącznika 110 kV.",
+                    fix_action=FixAction(
+                        action_type="SELECT_CATALOG",
+                        element_ref=wpis["element_ref"],
+                        modal_type="BranchModal",
+                        payload_hint={"required": "catalog_ref"},
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # Graph connectivity check

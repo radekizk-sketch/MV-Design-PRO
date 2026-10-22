@@ -46,12 +46,13 @@ def test_canonical_enumeration_covers_registry() -> None:
     """Każdy kanoniczny szablon pola staje się przypadkiem macierzy (uwaga 16)."""
     configs = enumerate_canonical_configurations()
     refs = {c["config_ref"] for c in configs}
-    # 10 szablonów + 2 warianty pola źródłowego SN (W2b).
+    # 12 szablonów (karta KATALOG-APARATURA-WN: + pole zespołu uziemiającego i pole baterii
+    # kondensatorów, ENEA Zeszyt 1 §13) + 2 warianty pola źródłowego SN (W2b).
     assert config_ref_for_template("bay_template_line_in") in refs
     assert config_ref_for_template("bay_template_transformer") in refs
     assert "kanoniczny:mv_source_cb" in refs
     assert "kanoniczny:mv_source_lbs" in refs
-    assert len(configs) == 12
+    assert len(configs) == 14
 
 
 def test_enumeration_is_deterministic() -> None:

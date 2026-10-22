@@ -192,7 +192,7 @@ class PropozycjaWartosci:
     def to_dict(self) -> dict[str, Any]:
         return {
             "parametr": self.parametr,
-            "nazwa_pl": OPISY_PARAMETROW_APARATU_SN[self.parametr].nazwa_pl,
+            "nazwa_pl": opis_parametru(self.parametr).nazwa_pl,
             "wartosc": self.wartosc,
             "jednostka": self.jednostka,
             "rodzaj_zrodla": self.rodzaj_zrodla,
@@ -800,5 +800,100 @@ def dana_przyjeta_tolerancji_nn(
         nazwa_pl=f"tolerancja napięcia sieci nN ({miejsce_pl})",
         wartosc=Wielkosc(wartosc=_PROCENT_TOLERANCJI_NN[rozstrzygniecie.wartosc], jednostka="%"),
         powod_pl=rozstrzygniecie.opis_zrodla_pl(),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+# --- Zespół uziemiający SN (karta KATALOG-APARATURA-WN) -----------------------------------
+#
+# Impedancja zerowa transformatora uziemiającego ZNyn11 na fazę (Z_T0) — parametr wyrobu
+# deklarowany przez producenta (PN-EN 60076-6: transformator uziemiający ma impedancję zerową
+# jako wielkość znamionową), którego żadne źródło repozytorium nie podaje. Wartość robocza:
+# założenie inżynierskie rzędu wielkości. Wpływ jest mały, bo w obwodzie zerowym zespołu
+# dominuje 3·Z_N elementu punktu neutralnego (np. 20 kV, dławik 400 A: 3·X_N ≈ 86,6 Ω).
+PARAMETR_R0_TRANSFORMATORA_UZIEMIAJACEGO = "r0_transformatora_uziemiajacego_ohm"
+PARAMETR_X0_TRANSFORMATORA_UZIEMIAJACEGO = "x0_transformatora_uziemiajacego_ohm"
+R0_TRANSFORMATORA_UZIEMIAJACEGO_ROBOCZA_OHM = 1.0
+X0_TRANSFORMATORA_UZIEMIAJACEGO_ROBOCZA_OHM = 6.0
+
+OPISY_PARAMETROW_ZESPOLU_UZIEMIAJACEGO: Mapping[str, OpisParametru] = {
+    PARAMETR_R0_TRANSFORMATORA_UZIEMIAJACEGO: OpisParametru(
+        parametr=PARAMETR_R0_TRANSFORMATORA_UZIEMIAJACEGO,
+        nazwa_pl="rezystancja zerowa transformatora uziemiającego (na fazę)",
+        symbol="R_T0",
+        jednostka="Ω",
+        dopuszczalne_od=0.0,
+        dopuszczalne_do=100.0,
+    ),
+    PARAMETR_X0_TRANSFORMATORA_UZIEMIAJACEGO: OpisParametru(
+        parametr=PARAMETR_X0_TRANSFORMATORA_UZIEMIAJACEGO,
+        nazwa_pl="reaktancja zerowa transformatora uziemiającego (na fazę)",
+        symbol="X_T0",
+        jednostka="Ω",
+        dopuszczalne_od=0.0,
+        dopuszczalne_do=200.0,
+    ),
+}
+
+
+def opis_parametru(parametr: str) -> OpisParametru:
+    """Opis parametru rejestru — aparat SN albo zespół uziemiający (jedno wyszukanie)."""
+    if parametr in OPISY_PARAMETROW_APARATU_SN:
+        return OPISY_PARAMETROW_APARATU_SN[parametr]
+    return OPISY_PARAMETROW_ZESPOLU_UZIEMIAJACEGO[parametr]
+
+
+_ODNIESIENIE_Z_T0 = (
+    "założenie inżynierskie rzędu wielkości impedancji zerowej transformatora uziemiającego "
+    "ZNyn11 SN; PN-EN 60076-6 czyni ją wielkością znamionową deklarowaną przez producenta"
+)
+_WPLYW_Z_T0 = (
+    "prąd zwarcia 1F sieci SN zależy przede wszystkim od 3·Z_N elementu punktu neutralnego; "
+    "rzeczywista Z_T0 z karty producenta zmienia go zwykle o kilka procent"
+)
+
+
+def propozycje_impedancji_zerowej_transformatora_uziemiajacego() -> (
+    tuple[PropozycjaWartosci, PropozycjaWartosci]
+):
+    """Propozycje R_T0 i X_T0 transformatora uziemiającego (zasada nr 4, ESTIMATED)."""
+    return (
+        PropozycjaWartosci(
+            parametr=PARAMETR_R0_TRANSFORMATORA_UZIEMIAJACEGO,
+            wartosc=R0_TRANSFORMATORA_UZIEMIAJACEGO_ROBOCZA_OHM,
+            jednostka="Ω",
+            rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+            odniesienie=_ODNIESIENIE_Z_T0,
+            uzasadnienie_pl=(
+                "Pozycja zespołu uziemiającego nie podaje impedancji zerowej transformatora — "
+                f"przyjęto R_T0 = {liczba_pl(R0_TRANSFORMATORA_UZIEMIAJACEGO_ROBOCZA_OHM)} Ω"
+            ),
+            wplyw_pl=_WPLYW_Z_T0,
+        ),
+        PropozycjaWartosci(
+            parametr=PARAMETR_X0_TRANSFORMATORA_UZIEMIAJACEGO,
+            wartosc=X0_TRANSFORMATORA_UZIEMIAJACEGO_ROBOCZA_OHM,
+            jednostka="Ω",
+            rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+            odniesienie=_ODNIESIENIE_Z_T0,
+            uzasadnienie_pl=(
+                "Pozycja zespołu uziemiającego nie podaje impedancji zerowej transformatora — "
+                f"przyjęto X_T0 = {liczba_pl(X0_TRANSFORMATORA_UZIEMIAJACEGO_ROBOCZA_OHM)} Ω"
+            ),
+            wplyw_pl=_WPLYW_Z_T0,
+        ),
+    )
+
+
+def dana_przyjeta_z_propozycji(propozycja: PropozycjaWartosci) -> DanaPrzyjeta:
+    """Propozycja rejestru jako dana przyjęta werdyktu (ESTIMATED, powód ze źródłem)."""
+    return DanaPrzyjeta(
+        nazwa_pl=opis_parametru(propozycja.parametr).nazwa_pl,
+        wartosc=Wielkosc(wartosc=propozycja.wartosc, jednostka=propozycja.jednostka),
+        powod_pl=(
+            f"wartość robocza ({_RODZAJ_ZRODLA_PL[propozycja.rodzaj_zrodla]}): "
+            f"{propozycja.odniesienie}. {propozycja.uzasadnienie_pl}. "
+            f"Wpływ: {propozycja.wplyw_pl}."
+        ),
         jakosc=FieldQuality.ESTIMATED,
     )
