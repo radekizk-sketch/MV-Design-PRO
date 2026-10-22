@@ -77,7 +77,7 @@ OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     # jak sprzed delty (dowód: testy addytywności).
     "branch_flow_trace",
     # Audyt fizyki fala G (2026-07): wspolczynniki cieplne m/n faktycznie
-    # uzyte w ith_a = ikss*sqrt(m+n) (IEC 60909-0 §4.7/§12). Obecne w
+    # uzyte w ith_a = ikss*sqrt(m+n) (IEC 60909-0:2016 §14 i załącznik A). Obecne w
     # to_dict() ZAWSZE dla wynikow policzonych PO tej delcie (solver je
     # zawsze liczy); None tylko dla wynikow zrekonstruowanych z payloadu
     # sprzed delty (kompatybilnosc wsteczna).
@@ -154,7 +154,7 @@ class ShortCircuitResult:
     branch_flow_trace: list[dict] | None = None
     # Audyt fizyki fala G (2026-07, addytywnie): wspolczynniki cieplne m
     # (skladowa DC) i n (skladowa AC) FAKTYCZNIE uzyte w ith_a = ikss*sqrt(m+n)
-    # (IEC 60909-0 §4.7/§12; ta sama norma jest juz udokumentowana i uzywana
+    # (IEC 60909-0:2016 §14 i załącznik A; ta sama norma jest juz udokumentowana i uzywana
     # w proof_generator.py dla SC1/SC3F — patrz EQ_SC3F_008/EQ_SC1_011).
     # None = wynik sprzed delty (rekonstrukcja bez tych pol) — payload
     # bajt-w-bajt jak przed delta (dowod: testy addytywnosci kontraktu).
@@ -1083,7 +1083,7 @@ class ShortCircuitIEC60909Solver:
 
         kappa = 1.02 + 0.98 * exp(-3 * R/X)
         Ip = kappa * sqrt(2) * Ik''
-        Ith = Ik'' * sqrt(tk)
+        Ith = Ik'' * sqrt(m+n)
         Sk'' = sqrt(3) * Un * Ik''
         """
         if fault_node_id not in graph.nodes:

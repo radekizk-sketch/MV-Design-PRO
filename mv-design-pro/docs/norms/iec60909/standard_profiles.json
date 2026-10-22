@@ -1,0 +1,213 @@
+{
+  "schema_version": "1.0.0",
+  "registry_status": "AUDITED_DOCUMENTATION_ONLY_NEEDS_NORMATIVE_VALIDATION",
+  "publisher": "IEC",
+  "family": "IEC 60909-0",
+  "default_profile_for_new_runs": null,
+  "profiles": [
+    {
+      "id": "IEC_60909_0_2016",
+      "title_pl": "IEC 60909-0:2016 — wydanie 2.0",
+      "publication_date": "2016-01-28",
+      "withdrawn_date": "2026-07-23",
+      "edition": "2.0",
+      "status": "historic",
+      "implementation_status": "UNVERIFIED_EXISTING_IMPLEMENTATION",
+      "production_selectable": false,
+      "source_url": "https://webstore.iec.ch/en/publication/24100",
+      "clauses": {
+        "calculation_assumptions": "5.2",
+        "symmetrical_components": "5.3.2",
+        "equipment": "6",
+        "initial": "7",
+        "peak": "8",
+        "breaking": "9",
+        "dc": "10",
+        "steady_state": "11",
+        "thermal": "14"
+      },
+      "scope": {
+        "frequency_hz": [
+          50,
+          60
+        ],
+        "isolated_or_resonant_single_line_earth": "SOURCE_CONFLICT_2016_SCOPE_VS_7_5_REVIEW_REQUIRED",
+        "scope_note": "2016 clause 1 preview broadly excludes single line-to-earth fault, while clause 7.5 describes such fault calculations; no unqualified scope claim pending source clarification"
+      },
+      "zero_sequence_capacitance": {
+        "rule_id": "Z0_CAP_2016_5_2_F",
+        "status": "SOURCE_CORROBORATED_IMPLEMENTATION_UNVERIFIED",
+        "condition": "LOW_IMPEDANCE_EARTHED_AND_EARTH_FAULT_FACTOR_GT_1_4",
+        "require_input": [
+          "earthing_type",
+          "earth_fault_factor",
+          "b0_siemens_per_km"
+        ],
+        "on_undefined": "BLOCK_REPORTABILITY",
+        "nominal_line_capacitance_sequence_1_2": "OMIT",
+        "notes": "Strict >1.4 applies to low-impedance earthed networks; no inference that all other earthing systems admit neglect of capacitance"
+      }
+    },
+    {
+      "id": "IEC_60909_0_2026",
+      "title_pl": "IEC 60909-0:2026 — wydanie 3.0",
+      "publication_date": "2026-07-23",
+      "edition": "3.0",
+      "status": "current",
+      "implementation_status": "NOT_IMPLEMENTED_NORMATIVE_VALIDATION_REQUIRED",
+      "production_selectable": false,
+      "source_url": "https://webstore.iec.ch/en/publication/68454",
+      "clauses": {
+        "calculation_assumptions": "5.2.4",
+        "symmetrical_components": "5.2.5",
+        "equipment": "6",
+        "initial": "7",
+        "peak": "8",
+        "breaking": "9",
+        "dc": "10",
+        "steady_state": "11",
+        "thermal": "14"
+      },
+      "scope": {
+        "frequency_hz": [
+          50,
+          60
+        ],
+        "isolated_or_resonant_single_line_earth": "OUT_OF_SCOPE",
+        "gfl_gfm_distinguished": false,
+        "scope_note": "Single line-to-earth in isolated/resonant neutral excluded by clause 1. Do not apply 60909-0 claim to separate earth-fault engineering study."
+      },
+      "zero_sequence_capacitance": {
+        "rule_id": "Z0_CAP_2026_5_2_4",
+        "status": "UNVERIFIED_NORMATIVE_RULE",
+        "condition": "DO_NOT_INFER_FROM_2016",
+        "on_undefined": "BLOCK_REPORTABILITY",
+        "nominal_line_capacitance_sequence_1_2": "REQUIRES_CLAUSE_CHECK"
+      }
+    }
+  ],
+  "study_case_contract": {
+    "property": "short_circuit_standard_id",
+    "required_for_new_case": true,
+    "immutable_during_run": true,
+    "change_invalidates_case_results": true,
+    "propagate_to": [
+      "solver_config",
+      "trace",
+      "frozen_run_metadata",
+      "resultset_metadata",
+      "proof",
+      "report",
+      "export",
+      "eaz",
+      "equipment_checks"
+    ],
+    "forbidden": [
+      "AUTO_FALLBACK",
+      "SILENT_EDITION_SUBSTITUTION",
+      "AUTO_CONVERSION_OF_OLD_CASES"
+    ]
+  },
+  "engineering_methods_outside_iec60909_0": [
+    {
+      "id": "MV_EARTH_FAULT_ISOLATED",
+      "purpose_pl": "Doziemienia w sieci SN z izolowanym punktem neutralnym",
+      "status": "SEPARATE_METHOD_REQUIRED"
+    },
+    {
+      "id": "MV_EARTH_FAULT_RESONANT",
+      "purpose_pl": "Doziemienia w sieci SN kompensowanej",
+      "status": "SEPARATE_METHOD_REQUIRED"
+    }
+  ],
+  "sources": [
+    {
+      "url": "https://webstore.iec.ch/en/publication/24100",
+      "type": "PRIMARY",
+      "claim": "2016 edition lifecycle"
+    },
+    {
+      "url": "https://webstore.iec.ch/en/publication/68454",
+      "type": "PRIMARY",
+      "claim": "2026 edition publication"
+    },
+    {
+      "url": "https://standards.iteh.ai/catalog/standards/iec/111c61a1-d4a4-4eb4-9655-ba4785738720/iec-60909-0-2026",
+      "type": "PUBLIC_PREVIEW",
+      "claim": "2026 contents and published scope"
+    },
+    {
+      "url": "https://www.nen.nl/en/nen-en-iec-60909-2026-en-356880",
+      "type": "NATIONAL_STANDARDS_BODY",
+      "claim": "GFL GFM not distinguished"
+    },
+    {
+      "url": "https://www.easypower.com/files/Short_Circuit_Currents_According_to_IEC_60909.pdf",
+      "type": "TECHNICAL_PRESENTATION",
+      "claim": "2016 line capacitance assumptions corroboration"
+    },
+    {
+      "url": "https://elstandard.se/documents/preview/1694801",
+      "type": "NATIONAL_STANDARDS_BODY_PREVIEW",
+      "claim": "Official Swedish EN 60909-0:2016 preview, table of contents and clause 1 scope wording"
+    },
+    {
+      "url": "https://www.pkn.pl/o-pkn/wspolpraca-miedzynarodowa/nowe-enisoiec/normy-europejskie",
+      "type": "POLISH_STANDARDIZATION_BODY",
+      "claim": "EN IEC 60909-0:2026 European publication listed 2026-09-18"
+    },
+    {
+      "url": "https://www.digsilent.de/en/faq-reader-powerfactory/why-are-the-results-of-short-citcuit-calculation-depending-on-max-voltage-tolerance.html",
+      "type": "ENGINEERING_VENDOR",
+      "claim": "2016 Table 1 LV voltage tolerance +/-6% and +/-10% voltage factors"
+    },
+    {
+      "url": "https://sklep.pkn.pl/pn-en-60909-0-2016-09e.html",
+      "type": "PKN_NATIONAL_STANDARDS_CATALOG",
+      "claim": "PN-EN 60909-0:2016-09 published 2016-09-07, identical adoption 2016"
+    },
+    {
+      "url": "https://webstore.iec.ch/en/publication/66482",
+      "type": "IEC_PRIMARY_REFERENCE_REPORT",
+      "claim": "TR 60909-4:2021 adapted to IEC 60909-0:2016, not 2026"
+    }
+  ],
+  "european_adoption": {
+    "designation": "EN IEC 60909-0:2026",
+    "publication_date": "2026-09-18",
+    "source_url": "https://www.pkn.pl/o-pkn/wspolpraca-miedzynarodowa/nowe-enisoiec/normy-europejskie",
+    "status": "VERIFIED_PKN_EUROPEAN_STANDARDS_LIST"
+  },
+  "verified_core_examination": {
+    "c_factor_code": "network_model/core/voltage_factor.py: band-specific ±6% LV assumed, no 10% LV selection",
+    "zero_sequence_code": "enm/mapping.py:_assemble_zero_sequence_y0 stamps B0 unconditionally when parameter present",
+    "numeric_regularization": "enm/mapping.py adds artificial 1e6 pu shunt to disconnected zero-sequence nodes",
+    "frequency": "short_circuit_core.py: OMEGA_50HZ fixed, requires 60 Hz eligibility check",
+    "symmetrical_breaking_current": "short_circuit_core.py: ib_a formula contains DC attenuation term; definition of Ib is symmetrical AC component",
+    "branch_currents": "short_circuit_iec60909.py: branch magnitudes and direction from voltage magnitudes; KCL in complex domain not demonstrated",
+    "status": "STATIC_AUDIT_NOT_NUMERICALLY_VALIDATED"
+  },
+  "polish_adoption_2016": {
+    "designation": "PN-EN 60909-0:2016-09",
+    "published": "2016-09-07",
+    "relationship": "IDT to EN 60909-0:2016 and IEC 60909-0:2016",
+    "source_url": "https://sklep.pkn.pl/pn-en-60909-0-2016-09e.html",
+    "status": "VERIFIED_PKN_CATALOG"
+  },
+  "polish_adoption_2026": {
+    "designation": null,
+    "status": "NOT_VERIFIED_IN_PKN_CATALOG",
+    "warning": "EN IEC publication does not automatically establish a published PN-EN IEC designation"
+  },
+  "reference_reports": {
+    "IEC_TR_60909_4_2021": {
+      "url": "https://webstore.iec.ch/en/publication/66482",
+      "adapted_to": "IEC_60909_0_2016",
+      "note": "Examples support numerical checks against 2016, NOT sufficient to certify IEC 2026 independently"
+    },
+    "IEC_60909_3_2009": {
+      "url": "https://webstore.iec.ch/en/publication/3890",
+      "scope": "Two separate simultaneous earth faults; earth return and sheath currents in defined networks"
+    }
+  }
+}
