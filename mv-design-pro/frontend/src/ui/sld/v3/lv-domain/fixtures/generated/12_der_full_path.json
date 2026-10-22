@@ -1011,7 +1011,7 @@
     "scenario_id": "MAX",
     "station_ref": "stDER"
   },
-  "projection_hash": "59b2987389808588b343dd98bc6ff412b3d58b945551bb17b2224e0ff8ef095c",
+  "projection_hash": "e2727c2e6f9af13f2a3da3d1a3546ba54f0ad0f9aab9a36ecf0b4843a5e6e053",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -3257,6 +3257,7 @@
       "station_name": "Stacja OZE",
       "station_ref": "stDER",
       "status": "OK",
+      "status_danych": "UNVALIDATED_INPUT",
       "transformer_ref": "T1",
       "upstream_node_id": "sn",
       "upstream_source_ids": [
