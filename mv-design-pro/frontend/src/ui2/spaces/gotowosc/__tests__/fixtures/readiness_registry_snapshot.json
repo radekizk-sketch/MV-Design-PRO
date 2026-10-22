@@ -53,6 +53,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "branch.z0_wartosc_robocza",
+      "fix_navigation": {
+        "focus": "r0_ohm_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "branch.zero_sequence_missing",
       "fix_navigation": {
         "focus": "r0_ohm_per_km",
@@ -1372,7 +1381,7 @@
       }
     }
   ],
-  "count": 161,
+  "count": 162,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

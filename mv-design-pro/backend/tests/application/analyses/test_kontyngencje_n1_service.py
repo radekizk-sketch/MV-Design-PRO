@@ -878,8 +878,15 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # Referencyjna" deklaruje tolerancję kanałem operacji (`nn_earthing.lv_voltage_tolerance`
     # = PLUS_6); widok z budowniczym bez tej deklaracji odtwarza 99081f49…, a porównanie
     # liść po liściu daje WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
-    "gn01_promieniowa": "881afd52ad08cd7eabc795f92d626904d6190733bd54386b4b278f68302ddb59",
-    "gn03_pierscien": "e77ef28818fde4ce270dfdc3045eff8d431bab8e5ebed0ea5371d19c7dd616d4",
+    # 2026-10-22 (karta LINIA-110, pkt 2): gn01 881afd52… → f87c9268…, gn03 e77ef288… →
+    # 8c3b0f7e…. Pełne widoki z kodu bazy `04760140e` (odtwarzają dokładnie poprzednie piny)
+    # i po karcie porównane liść po liściu: w widoku różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: kable SN
+    # z katalogu niosą w `materialized_params` mapę `wartosci_robocze` (R′0, X′0, żyła
+    # powrotna — założenia inżynierskie katalogu): 4 gałęzie gn01, 3 gałęzie gn03. Enumeracja
+    # kontyngencji, dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "f87c9268d4e98c2e028b9418bb7097f5cad80d4887ddfccf0ea1f7b2b44b50c9",
+    "gn03_pierscien": "8c3b0f7edb9d23b2d67736015074c87e5f2a2444e273e63b0996bd322f824702",
 }
 
 

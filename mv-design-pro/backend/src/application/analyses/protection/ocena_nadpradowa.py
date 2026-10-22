@@ -59,6 +59,7 @@ from application.analyses.protection.catalog.zakresy import (
     wartosc_w_jednostce_zakresu as wartosc_w_jednostce_zakresu_katalogu,
 )
 from domain.readiness_bridge import opis_kanoniczny
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.mapping import ref_to_graph_id
 from enm.models import (
@@ -1676,11 +1677,14 @@ def ocena_punktu_rekord(
     powod_wiarygodnosci: str,
     odniesienie_biegu: str,
     tolerancja_nn_robocza: bool = False,
+    dane_galezi: tuple[DanaPrzyjeta, ...] = (),
 ) -> OcenaKryterium:
     """Rekord K: prąd przekaźnika ≥ prąd rozruchowy stopnia (zadziałanie w strefie).
 
     ``tolerancja_nn_robocza`` — punkt zwarcia w sieci nN liczonej z wartością roboczą
     tolerancji napięcia (znacznik wiersza biegu): prąd przekaźnika stoi na danej przyjętej.
+    ``dane_galezi`` — dane przyjęte gałęzi z wartością roboczą impedancji wchodzącej do prądu
+    punktu (znacznik wiersza biegu, karta LINIA-110): ta sama konsekwencja.
     """
     braki: list[str] = []
     if wiarygodnosc == NIEWIARYGODNY:
@@ -1723,7 +1727,8 @@ def ocena_punktu_rekord(
                 (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia {nazwa_punktu}"),)
                 if tolerancja_nn_robocza
                 else ()
-            ),
+            )
+            + dane_galezi,
         ),
         zakres_waznosci=_zakres_waznosci(wiarygodnosc, powod_wiarygodnosci),
         slad=[
@@ -2045,6 +2050,7 @@ def ocen_zabezpieczenia(
                     bilans=bilans,
                     odniesienie_biegu=odniesienie_biegu,
                     tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
+                    dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
                 )
             )
         if braki_punktow:
@@ -2080,6 +2086,7 @@ def _ocena_punktu(
     bilans: dict[str, Any],
     odniesienie_biegu: str,
     tolerancja_nn_robocza: bool = False,
+    dane_galezi: tuple[DanaPrzyjeta, ...] = (),
 ) -> OcenaPunktu:
     slady, decydujacy = czas_urzadzenia(nastawy.stopnie, prad)
     # Stopień odniesienia rekordu i marginesu: decydujący (gdy ruszył) albo najczulszy
@@ -2123,6 +2130,7 @@ def _ocena_punktu(
             powod_wiarygodnosci=powod,
             odniesienie_biegu=odniesienie_biegu,
             tolerancja_nn_robocza=tolerancja_nn_robocza,
+            dane_galezi=dane_galezi,
         ),
     )
 

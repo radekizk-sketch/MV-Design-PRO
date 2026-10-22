@@ -362,6 +362,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "geometria_slupa": null,
         "id": "6df811a8-91f3-50e1-ae52-8c7da68c570a",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -384,6 +385,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -397,6 +402,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -425,6 +431,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bp/0727ae9043987fc654b1b72b70869306/bus",
+        "geometria_slupa": null,
         "id": "a0e758c2-f103-5c44-adef-6b10f2442553",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -447,6 +454,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -457,6 +468,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -618,6 +630,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_bus_1",
+        "geometria_slupa": null,
         "id": "21692a56-11e7-5cf9-8431-f1358a31a185",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -640,6 +653,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -650,6 +667,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -678,6 +696,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/48c4f82503a67d50f018c843c0bf9207/sn_field_terminal/001",
+        "geometria_slupa": null,
         "id": "02635e55-208b-56fc-a03e-7997814ab715",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -700,6 +719,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -710,6 +733,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -784,6 +808,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/e584c00c109354119ca46e2f9e8a6ca2/downstream",
+        "geometria_slupa": null,
         "id": "35675918-2870-59ec-97fd-72d6b667d4d8",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -806,6 +831,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -816,6 +845,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -844,6 +874,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/bus",
+        "geometria_slupa": null,
         "id": "59c5455d-94dd-5e9c-9279-390cdadd0c76",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -866,6 +897,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -876,6 +911,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1037,6 +1073,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_bus_1",
+        "geometria_slupa": null,
         "id": "1617422c-b160-5805-8779-21db8be2d15a",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1059,6 +1096,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1069,6 +1110,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1097,6 +1139,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/7f2408b7a5717b7f57d39a3f7f9e753b/sn_field_terminal/001",
+        "geometria_slupa": null,
         "id": "b0ff8e6f-058d-55a3-9d18-f7f80676930b",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1119,6 +1162,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1129,6 +1176,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1203,6 +1251,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/cc38149498c267ebef0dd68d0c770271/downstream",
+        "geometria_slupa": null,
         "id": "528cf293-155f-5c71-beb0-549102b3dafa",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1225,6 +1274,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1235,6 +1288,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1263,6 +1317,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/bus",
+        "geometria_slupa": null,
         "id": "7a5f7658-f39c-5bcf-bdb9-00f17a7dbd9a",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1285,6 +1340,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1295,6 +1354,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1456,6 +1516,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_bus_1",
+        "geometria_slupa": null,
         "id": "ee5e6285-d1ef-58b7-8783-94d2b4de6d74",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1478,6 +1539,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1488,6 +1553,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1516,6 +1582,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/0341b394f49e895d18e1d9125a5c5d60/sn_field_terminal/001",
+        "geometria_slupa": null,
         "id": "8d7cad20-22c8-5982-b7b0-a56c328ac3e9",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1538,6 +1605,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1548,6 +1619,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1727,6 +1799,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/a40f7d9d113bd9b949e3827d322d116d/downstream",
+        "geometria_slupa": null,
         "id": "79800706-da44-5c07-a2d7-50f0a7d3ca6f",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1749,6 +1822,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1759,6 +1836,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1787,6 +1865,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/ae976efc2b84fd08302c86cf0b68a817/sn_field_terminal/001",
+        "geometria_slupa": null,
         "id": "049a56cb-1391-5013-bbed-b327479baa70",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -1809,6 +1888,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -1819,6 +1902,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -1998,6 +2082,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "bus/0c0660d8b3d1adade718c1b5a9a8b2c4/downstream",
+        "geometria_slupa": null,
         "id": "0613ef1c-8fb6-5290-9609-ef1d66111ea4",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -2020,6 +2105,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -2030,6 +2119,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -2058,6 +2148,7 @@
         "endpoint_a_port": null,
         "endpoint_b_port": null,
         "from_bus_ref": "stn/34444a4aba5f0e0e55e125241b16d477/sn_field_terminal/001",
+        "geometria_slupa": null,
         "id": "75589904-a158-5086-8874-4719661da363",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 88.0,
@@ -2080,6 +2171,10 @@
           "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
           "trade_name": null,
           "voltage_rating_kv": 20.0,
+          "wartosci_robocze": {
+            "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+            "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+          },
           "x0_ohm_per_km": 1.065,
           "x_ohm_per_km": 0.355
         },
@@ -2090,6 +2185,7 @@
         "operating_temperature_c": 70.0,
         "overrides": [],
         "parameter_source": "CATALOG",
+        "parametry_z_geometrii": null,
         "r0_ohm_per_km": 1.224,
         "r_ohm_per_km": 0.408,
         "rating": {
@@ -3077,7 +3173,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "4b112ac00db5a655641cc58d1b5ecfd18c1f3eaac44c64dff24e432a27dfbedc",
+      "hash_sha256": "c624b84e714eb4f5a1c31c9c262fd2e9b02456896fa327c9c6b9967b7dfc6fbb",
       "name": "Elementy ciągu — slup",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"

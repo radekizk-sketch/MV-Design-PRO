@@ -1259,3 +1259,114 @@ class TestTolerancjaSieciNnZArkusza:
         )
         assert wynik.success is False
         assert ("Źródła", 2, "tolerancja_nN") in _kolumny(wynik.bledy)
+
+
+# ---------------------------------------------------------------------------
+# Karta LINIA-110 (rozstrzygnięcie architekta, pkt 3): przewód linii 110 kV z arkusza
+# ---------------------------------------------------------------------------
+
+PRZEWOD_AFL6_240 = "przewod-wn-243-al1-39-st1a"
+PRZEWOD_ODGROMOWY = "przewod-wn-97-al1-56-st1a"
+
+
+def _arkusz_linii_110kv(naglowek: list[str], wiersz: list) -> bytes:
+    return zbuduj_skoroszyt(
+        [
+            (
+                "Szyny",
+                [
+                    NAGLOWEK_SZYN,
+                    ["B1", "Stacja zasilająca 110 kV", 110.0],
+                    ["B2", "GPZ 110 kV", 110.0],
+                ],
+            ),
+            ("Linie", [naglowek, wiersz]),
+            ("Źródła", [NAGLOWEK_ZRODEL, ["Z1", "B1", "system", 3000.0, 0.1]]),
+        ]
+    )
+
+
+class TestPrzewodLinii110kV:
+    """Typ katalogowy z przestrzeni ``PRZEWOD_LINII_WN`` wiąże przewód fazowy odcinka; R′, X′,
+    B′ i Z′0 liczy solver z geometrii słupa (bez geometrii w arkuszu — wartość robocza
+    ``ESTIMATED`` z założeniem biegu). Wartości R/X/B/C obok przewodu to druga prawda (błąd
+    wiersza), a dane wyrobu podane obok muszą się zgadzać z tablicą normy."""
+
+    def test_import_wiaze_przewod_i_liczy_parametry_z_geometrii(self, serwis, test_db_session):
+        from enm.parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
+
+        dane = _arkusz_linii_110kv(
+            NAGLOWEK_LINII_KATALOG, ["L1", "B1", "B2", "AFL-6 240", 12.0, PRZEWOD_AFL6_240]
+        )
+        wynik = serwis.importuj(dane, "Linia 110 kV")
+        assert wynik.status == STATUS_ZAIMPORTOWANO, wynik.bledy
+        model = _model_projektu(wynik.project_id or "")
+        [linia] = model.branches
+        assert linia.type == "line_overhead"
+        assert linia.catalog_ref == PRZEWOD_AFL6_240
+        assert linia.catalog_namespace == "PRZEWOD_LINII_WN"
+        assert linia.length_km == pytest.approx(12.0)
+        proweniencja = linia.parametry_z_geometrii
+        assert proweniencja is not None
+        assert proweniencja.kompletnosc_dowodu == "NIEPELNY"
+        # Przykład liczbowy (ten sam co w karcie, AFL-6 240 na słupie roboczym, 50 Hz).
+        assert linia.r_ohm_per_km == pytest.approx(0.1190, abs=5e-5)
+        assert linia.x_ohm_per_km == pytest.approx(0.4090, abs=5e-5)
+        assert linia.b_siemens_per_km == pytest.approx(2.786e-6, abs=5e-10)
+        [zalozenie] = zalozenia_linii_wn(model, None)
+        assert zalozenie["code"] == KOD_GEOMETRIA_ROBOCZA
+        assert {d["jakosc"] for d in zalozenie["dane_przyjete"]} == {"ESTIMATED"}
+        blokady = [
+            i for i in ENMValidator().validate(model).issues if i.severity == SEVERITY_BLOCKER
+        ]
+        assert blokady == []
+
+    @pytest.mark.parametrize(
+        ("kolumny", "wartosci", "kolumna_bledu"),
+        [
+            (["R_ohm_km"], [0.12], "R_ohm_km"),
+            (["X_ohm_km"], [0.41], "X_ohm_km"),
+            (["B_uS_km"], [2.8], "B_uS_km"),
+            (["C_nF_km"], [9.0], "C_nF_km"),
+            (["rodzaj"], ["KABEL"], "rodzaj"),
+            (["I_dop_A"], [1.0], "I_dop_A"),
+            (["Un_kV"], [15.0], "Un_kV"),
+        ],
+    )
+    def test_druga_prawda_obok_przewodu_to_blad_wiersza(
+        self, kolumny: list[str], wartosci: list, kolumna_bledu: str
+    ):
+        dane = _arkusz_linii_110kv(
+            NAGLOWEK_LINII_KATALOG + kolumny,
+            ["L1", "B1", "B2", "AFL-6 240", 12.0, PRZEWOD_AFL6_240, *wartosci],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert ("Linie", 2, kolumna_bledu) in _kolumny(wynik.bledy)
+
+    def test_dane_wyrobu_zgodne_z_katalogiem_sa_dozwolone(self):
+        przewod = get_default_mv_catalog().overhead_conductor_types[PRZEWOD_AFL6_240]
+        dane = _arkusz_linii_110kv(
+            NAGLOWEK_LINII_KATALOG + ["rodzaj", "I_dop_A", "przekroj_mm2"],
+            [
+                "L1",
+                "B1",
+                "B2",
+                "AFL-6 240",
+                12.0,
+                PRZEWOD_AFL6_240,
+                "LINIA",
+                przewod.rated_current_a,
+                przewod.cross_section_mm2,
+            ],
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is True, wynik.bledy
+
+    def test_przewod_odgromowy_nie_jest_przewodem_fazowym_odcinka(self):
+        dane = _arkusz_linii_110kv(
+            NAGLOWEK_LINII_KATALOG, ["L1", "B1", "B2", "Odgromowy", 12.0, PRZEWOD_ODGROMOWY]
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(dane)
+        assert wynik.success is False
+        assert ("Linie", 2, "typ_katalogowy") in _kolumny(wynik.bledy)

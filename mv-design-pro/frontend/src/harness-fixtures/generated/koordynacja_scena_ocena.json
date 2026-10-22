@@ -55,7 +55,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 6e54fd68add5)",
+          "odniesienie": "bieg zwarciowy 3F (migawka d973769b63cd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -294,7 +294,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 6e54fd68add5)",
+          "odniesienie": "bieg zwarciowy 3F (migawka d973769b63cd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -533,7 +533,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 6e54fd68add5)",
+          "odniesienie": "bieg zwarciowy 3F (migawka d973769b63cd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -772,7 +772,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 6e54fd68add5)",
+          "odniesienie": "bieg zwarciowy 3F (migawka d973769b63cd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1011,7 +1011,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 6e54fd68add5)",
+          "odniesienie": "bieg zwarciowy 3F (migawka d973769b63cd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1250,7 +1250,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 6e54fd68add5)",
+          "odniesienie": "bieg zwarciowy 3F (migawka d973769b63cd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1489,7 +1489,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 6e54fd68add5)",
+          "odniesienie": "bieg zwarciowy 3F (migawka d973769b63cd)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1677,7 +1677,7 @@
   ],
   "nastawy": [
     {
-      "alf": 20,
+      "alf": 20.0,
       "braki": [],
       "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
       "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
@@ -1686,7 +1686,7 @@
       "klasa_ct": "5P20",
       "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
       "obwod_wtorny_ct": {
-        "alf": 20,
+        "alf": 20.0,
         "dlugosc_przewodu_m": null,
         "i2n_a": 5.0,
         "moc_stykow_va": null,
@@ -1850,7 +1850,7 @@
       }
     },
     {
-      "alf": 20,
+      "alf": 20.0,
       "braki": [],
       "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
       "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
@@ -1859,7 +1859,7 @@
       "klasa_ct": "5P20",
       "nazwa_pl": "Zabezpieczenie odejścia S01",
       "obwod_wtorny_ct": {
-        "alf": 20,
+        "alf": 20.0,
         "dlugosc_przewodu_m": null,
         "i2n_a": 5.0,
         "moc_stykow_va": null,

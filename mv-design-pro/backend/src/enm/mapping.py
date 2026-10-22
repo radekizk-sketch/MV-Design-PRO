@@ -709,6 +709,28 @@ def build_zero_sequence_zbus(
         raise OdmowaDanychError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
 
 
+def skladowe_sieci_zerowej(
+    enm: EnergyNetworkModel, graph: NetworkGraph, *, scenario: Scenario = "MAX"
+) -> dict[str, int]:
+    """Numer składowej spójnej SIECI SKŁADOWEJ ZEROWEJ każdego węzła grafu.
+
+    Z TEJ SAMEJ macierzy Y0 co ``build_zero_sequence_zbus`` (``_assemble_zero_sequence_y0``):
+    dwa węzły leżą w jednej składowej, gdy łączy je droga elementów szeregowych sieci zerowej
+    (linia/kabel z Z0, transformator z drogą HV↔LV). Impedancja zerowa gałęzi wpływa na prąd
+    zwarcia doziemnego w węźle wtedy i tylko wtedy, gdy gałąź i węzeł leżą w jednej składowej —
+    np. Z0 kabla SN nie wchodzi do zwarcia 1F po stronie nN transformatora Dyn (karta LINIA-110,
+    pkt 2: dane przyjęte składowej zerowej per punkt zwarcia, nie per bieg).
+    """
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import connected_components
+
+    _, node_index, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
+    if size == 0:
+        return {}
+    _, etykiety = connected_components(csr_matrix(y0_bus != 0), directed=False)
+    return {wezel: int(etykiety[indeks]) for wezel, indeks in sorted(node_index.items())}
+
+
 def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
     """Ślad WHITE BOX budowy sieci składowej zerowej — rozbicie po elementach
     (linie/kable, źródła, transformatory z decyzją grupy połączeń). ADDYTYWNE."""

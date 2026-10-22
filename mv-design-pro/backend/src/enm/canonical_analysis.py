@@ -65,6 +65,7 @@ from enm.assembler import (
     zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
 )
+from enm.dane_przyjete_galezi import KLUCZ_WIERSZA_DANE_GALEZI, dane_przyjete_galezi_punktow
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
@@ -2581,6 +2582,15 @@ def _execute_short_circuit(
     # scenariusza projektanta — pola nie są czytane); punkty z t_b roboczym → założenie biegu.
     pola_lokalne = pola_lokalne_biegu(wejscie)
     punkty_tb_roboczego: list[dict[str, Any]] = []
+    # Karta LINIA-110: dane przyjęte gałęzi z wartością roboczą impedancji — per punkt, z TYCH
+    # SAMYCH założeń biegu: linie 110 kV z wyspy węzła, R′0/X′0 katalogu ze składowej sieci
+    # zerowej węzła (wyłącznie zwarcia doziemne; kontrakt werdyktu §3).
+    dane_galezi_punktow = dane_przyjete_galezi_punktow(
+        wejscie.zalozenia,
+        graph,
+        reportable_fault_node_ids,
+        skladowe_zerowe=wejscie.skladowe_zerowe,
+    )
     for numer_punktu, node_id in enumerate(reportable_fault_node_ids):
         if kontekst is not None:
             # Punkt przerwania MIEDZY punktami zwarcia (karta DYNAMIKA-W-TLE): postęp w
@@ -2716,6 +2726,14 @@ def _execute_short_circuit(
                 **(
                     {"tolerancja_nn_robocza": True}
                     if wejscie.graph.nodes[node_id].tolerancja_nn_robocza
+                    else {}
+                ),
+                # Karta LINIA-110: prąd punktu zależy od impedancji gałęzi policzonej
+                # z wartością roboczą — konsumenci werdyktów niosą stąd dane przyjęte
+                # (`dane_przyjete_galezi_wiersza`). Addytywnie, WYŁĄCZNIE gdy niepuste.
+                **(
+                    {KLUCZ_WIERSZA_DANE_GALEZI: dane_galezi_punktow[node_id]}
+                    if node_id in dane_galezi_punktow
                     else {}
                 ),
             }
@@ -3910,6 +3928,12 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "c_factor": item.get("c_factor"),
         "c_zrodlo": item.get("c_zrodlo"),
         **({"tolerancja_nn_robocza": True} if item.get("tolerancja_nn_robocza") else {}),
+        # Karta LINIA-110: dane przyjęte gałęzi punktu (addytywnie, wyłącznie niepuste).
+        **(
+            {KLUCZ_WIERSZA_DANE_GALEZI: list(item[KLUCZ_WIERSZA_DANE_GALEZI])}
+            if item.get(KLUCZ_WIERSZA_DANE_GALEZI)
+            else {}
+        ),
         "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),

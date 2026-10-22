@@ -75,6 +75,7 @@ from application.equipment_proof.wielkosc_wylaczania import (
     wielkosc_kryterium_wylaczania,
 )
 from application.field_read_model import collect_bays
+from enm.dane_przyjete_galezi import KLUCZ_WIERSZA_DANE_GALEZI, dane_przyjete_galezi_wiersza
 from enm.mapping import ref_to_graph_id
 from enm.models import Bay, EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
@@ -184,6 +185,9 @@ class PradyPola:
     #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkt w sieci nN liczonej z wartością roboczą
     #: tolerancji napięcia (znacznik wiersza biegu) — prądy pola stoją na danej przyjętej.
     tolerancja_nn_robocza: bool = False
+    #: Karta LINIA-110: dane przyjęte gałęzi z wartością roboczą, których impedancja wchodzi
+    #: do prądu punktu (znacznik wiersza biegu ``dane_przyjete_galezi``).
+    dane_galezi: tuple[DanaPrzyjeta, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -201,6 +205,11 @@ class PradyPola:
             # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None).
             **({"tb_zrodlo": self.tb_zrodlo} if self.tb_zrodlo is not None else {}),
             **({"tolerancja_nn_robocza": True} if self.tolerancja_nn_robocza else {}),
+            **(
+                {KLUCZ_WIERSZA_DANE_GALEZI: [d.model_dump(mode="json") for d in self.dane_galezi]}
+                if self.dane_galezi
+                else {}
+            ),
         }
 
 
@@ -279,6 +288,7 @@ def prady_pol_z_biegu(
                 dict(wiersz["tb_zrodlo"]) if isinstance(wiersz.get("tb_zrodlo"), Mapping) else None
             ),
             tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
+            dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
         )
     return wynik
 
@@ -548,10 +558,14 @@ def _dane_przyjete(
 
 def _dane_pradow(prady: PradyPola) -> tuple[DanaPrzyjeta, ...]:
     """Dana przyjęta PRĄDU pola: punkt w sieci nN liczonej z wartością roboczą tolerancji
-    (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — każde kryterium porównujące prąd tego punktu."""
-    if not prady.tolerancja_nn_robocza:
-        return ()
-    return (dana_przyjeta_tolerancji_nn(miejsce_pl=_opis_punktu(prady)),)
+    (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) oraz linie 110 kV z wartością roboczą geometrii
+    w wyspie punktu (karta LINIA-110) — każde kryterium porównujące prąd tego punktu."""
+    tolerancja = (
+        (dana_przyjeta_tolerancji_nn(miejsce_pl=_opis_punktu(prady)),)
+        if prady.tolerancja_nn_robocza
+        else ()
+    )
+    return tolerancja + prady.dane_galezi
 
 
 def _dowod(run_id: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()) -> StatusDowodu:

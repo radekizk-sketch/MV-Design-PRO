@@ -91,6 +91,7 @@ from enm.canonical_analysis import (
     build_branch_results,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
@@ -359,17 +360,21 @@ def _dane_przyjete_punktow(
     snapshot: dict[str, Any] | None, punkty: list[tuple[dict[str, Any] | None, str, str]]
 ) -> tuple[DanaPrzyjeta, ...]:
     """Dane przyjęte prądów wejścia nastaw: każdy szynowy punkt (raz) w sieci nN liczonej z
-    wartością roboczą tolerancji (znacznik TEGO SAMEGO wiersza, z którego czytany jest prąd —
-    `_wiersz_w_wezle`, jedno źródło). Kolejność deterministyczna: kolejność punktów wejścia."""
+    wartością roboczą tolerancji oraz każda linia 110 kV z wartością roboczą geometrii w wyspie
+    punktu (raz, karta LINIA-110) — znaczniki TEGO SAMEGO wiersza, z którego czytany jest
+    prąd (`_wiersz_w_wezle`, jedno źródło). Kolejność deterministyczna: kolejność punktów
+    wejścia, w punkcie — tolerancja, potem linie."""
     szyny: list[str] = []
+    linie: list[DanaPrzyjeta] = []
     for raw_result, graf, szyna_ref in punkty:
-        robocza = bool(_wiersz_w_wezle(raw_result, graf).get("tolerancja_nn_robocza"))
-        if robocza and szyna_ref not in szyny:
+        wiersz = _wiersz_w_wezle(raw_result, graf)
+        if bool(wiersz.get("tolerancja_nn_robocza")) and szyna_ref not in szyny:
             szyny.append(szyna_ref)
+        linie.extend(d for d in dane_przyjete_galezi_wiersza(wiersz) if d not in linie)
     return tuple(
         dana_przyjeta_tolerancji_nn(miejsce_pl=opis_elementu(snapshot, ref, "szyna"))
         for ref in szyny
-    )
+    ) + tuple(linie)
 
 
 def zbuduj_wejscie_nastaw(

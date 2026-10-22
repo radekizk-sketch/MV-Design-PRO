@@ -85,6 +85,18 @@ class EdgeSpec:
     dlugosc_m: float = 1000.0
     rodzaj: str = "LINIA"
     name: str | None = None
+    #: Kategoria katalogu typu odcinka, gdy NIE wynika z rodzaju (``LINIA`` → ``LINIA_SN``,
+    #: ``KABEL`` → ``KABEL_SN``): przewód linii 110 kV z katalogu ``PRZEWOD_LINII_WN`` (karta
+    #: LINIA-110). ``None`` = kategoria domyślna rodzaju — ładunek operacji bez zmian.
+    catalog_namespace: str | None = None
+
+
+def _segment_z_kategoria(segment: dict[str, Any], catalog_namespace: str | None) -> dict[str, Any]:
+    """Segment operacji budowy odcinka z jawną kategorią katalogu (``catalog_binding``), gdy
+    jest podana — inaczej segment bez zmian (ten sam ładunek, te same identyfikatory)."""
+    if catalog_namespace is None:
+        return segment
+    return {**segment, "catalog_binding": {"catalog_namespace": catalog_namespace}}
 
 
 def _nazwa_krawedzi(krawedz: EdgeSpec) -> str:
@@ -212,6 +224,7 @@ def kontynuuj_z_pola(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
     bus_name: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Pierwsze odejście z pola liniowego GPZ (`continue_trunk_segment_sn`).
@@ -228,13 +241,16 @@ def kontynuuj_z_pola(
         "continue_trunk_segment_sn",
         {
             "field_ref": field_ref,
-            "segment": {
-                "rodzaj": rodzaj,
-                "dlugosc_m": dlugosc_m,
-                "name": name,
-                "catalog_ref": catalog_ref,
-                "bus_name": bus_name,
-            },
+            "segment": _segment_z_kategoria(
+                {
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc_m,
+                    "name": name,
+                    "catalog_ref": catalog_ref,
+                    "bus_name": bus_name,
+                },
+                catalog_namespace,
+            ),
         },
     )
     branch = _ostatnia_dodana_galaz(enm, name)
@@ -249,6 +265,7 @@ def rozpocznij_z_pola(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
     bus_name: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Kolejne (drugie, trzecie, ...) odejście z GPZ (`start_branch_segment_sn`).
@@ -261,13 +278,16 @@ def rozpocznij_z_pola(
         "start_branch_segment_sn",
         {
             "from_ref": f"{field_ref}.BRANCH",
-            "segment": {
-                "rodzaj": rodzaj,
-                "dlugosc_m": dlugosc_m,
-                "name": name,
-                "catalog_ref": catalog_ref,
-                "bus_name": bus_name,
-            },
+            "segment": _segment_z_kategoria(
+                {
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc_m,
+                    "name": name,
+                    "catalog_ref": catalog_ref,
+                    "bus_name": bus_name,
+                },
+                catalog_namespace,
+            ),
         },
     )
     branch = _ostatnia_dodana_galaz(enm, name)
@@ -282,6 +302,7 @@ def kontynuuj_z_szyny(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
     bus_name: str | None = None,
 ) -> tuple[dict[str, Any], str]:
     """Odejście z DOWOLNEJ zwykłej szyny (nie GPZ) — dowolna liczba wywołań
@@ -294,13 +315,16 @@ def kontynuuj_z_szyny(
         "continue_trunk_segment_sn",
         {
             "from_terminal_id": from_bus_ref,
-            "segment": {
-                "rodzaj": rodzaj,
-                "dlugosc_m": dlugosc_m,
-                "name": name,
-                "catalog_ref": catalog_ref,
-                "bus_name": bus_name,
-            },
+            "segment": _segment_z_kategoria(
+                {
+                    "rodzaj": rodzaj,
+                    "dlugosc_m": dlugosc_m,
+                    "name": name,
+                    "catalog_ref": catalog_ref,
+                    "bus_name": bus_name,
+                },
+                catalog_namespace,
+            ),
         },
     )
     branch = _ostatnia_dodana_galaz(enm, name)
@@ -316,6 +340,7 @@ def zamknij_pierscien(
     dlugosc_m: float,
     name: str | None = None,
     rodzaj: str = "LINIA",
+    catalog_namespace: str | None = None,
 ) -> dict[str, Any]:
     """Domknij pierścień/oczko między DWIEMA istniejącymi szynami."""
     return wykonaj(
@@ -325,7 +350,10 @@ def zamknij_pierscien(
             "from_bus_ref": from_bus_ref,
             "to_bus_ref": to_bus_ref,
             "ring_name": name,
-            "segment": {"rodzaj": rodzaj, "dlugosc_m": dlugosc_m, "catalog_ref": catalog_ref},
+            "segment": _segment_z_kategoria(
+                {"rodzaj": rodzaj, "dlugosc_m": dlugosc_m, "catalog_ref": catalog_ref},
+                catalog_namespace,
+            ),
         },
     )
 
@@ -563,6 +591,7 @@ def zbuduj_topologie(
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
                     rodzaj=edge.rodzaj,
+                    catalog_namespace=edge.catalog_namespace,
                     bus_name=other_lit,
                 )
                 gpz_first_departure_done = True
@@ -575,6 +604,7 @@ def zbuduj_topologie(
                     dlugosc_m=edge.dlugosc_m,
                     name=_nazwa_krawedzi(edge),
                     rodzaj=edge.rodzaj,
+                    catalog_namespace=edge.catalog_namespace,
                     bus_name=other_lit,
                 )
         else:
@@ -585,6 +615,7 @@ def zbuduj_topologie(
                 dlugosc_m=edge.dlugosc_m,
                 name=_nazwa_krawedzi(edge),
                 rodzaj=edge.rodzaj,
+                catalog_namespace=edge.catalog_namespace,
                 bus_name=other_lit,
             )
         bus_map[other_lit] = new_ref
@@ -617,6 +648,7 @@ def zbuduj_topologie(
             dlugosc_m=edge.dlugosc_m,
             name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
+            catalog_namespace=edge.catalog_namespace,
         )
         branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
@@ -676,6 +708,7 @@ def rozbuduj_z_dowolnej_szyny(
             dlugosc_m=edge.dlugosc_m,
             name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
+            catalog_namespace=edge.catalog_namespace,
             bus_name=other_lit,
         )
         bus_map[other_lit] = new_ref
@@ -703,6 +736,7 @@ def rozbuduj_z_dowolnej_szyny(
             dlugosc_m=edge.dlugosc_m,
             name=_nazwa_krawedzi(edge),
             rodzaj=edge.rodzaj,
+            catalog_namespace=edge.catalog_namespace,
         )
         branch_map[edge.edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(edge))["ref_id"]
 
@@ -1013,6 +1047,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),
                         rodzaj=odcinek.rodzaj,
+                        catalog_namespace=odcinek.catalog_namespace,
                         bus_name=szyny[lit_nowej].name,
                     )
                 else:
@@ -1024,6 +1059,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                         dlugosc_m=odcinek.dlugosc_m,
                         name=_nazwa_krawedzi(odcinek),
                         rodzaj=odcinek.rodzaj,
+                        catalog_namespace=odcinek.catalog_namespace,
                         bus_name=szyny[lit_nowej].name,
                     )
             else:
@@ -1034,6 +1070,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                     dlugosc_m=odcinek.dlugosc_m,
                     name=_nazwa_krawedzi(odcinek),
                     rodzaj=odcinek.rodzaj,
+                    catalog_namespace=odcinek.catalog_namespace,
                     bus_name=szyny[lit_nowej].name,
                 )
             wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(odcinek))[
@@ -1090,6 +1127,7 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
                 dlugosc_m=odcinek.dlugosc_m,
                 name=_nazwa_krawedzi(odcinek),
                 rodzaj=odcinek.rodzaj,
+                catalog_namespace=odcinek.catalog_namespace,
             )
             wynik.branch_map[edge_id] = _ostatnia_dodana_galaz(enm, _nazwa_krawedzi(odcinek))[
                 "ref_id"

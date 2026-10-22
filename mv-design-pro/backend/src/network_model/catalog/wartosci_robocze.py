@@ -1143,3 +1143,116 @@ def dane_przyjete_linii_wn(
             )
         )
     return tuple(wynik)
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: pola katalogu linii i kabli SN wyprowadzone bez danych producenta
+# ---------------------------------------------------------------------------
+#
+# Żadna pozycja katalogu linii napowietrznych i kabli SN nie ma składowej zerowej z karty
+# producenta (pomiar 2026-10-22: 25 linii i 62 kable z R′0/X′0 wyprowadzonym, 0 z karty).
+# Wyprowadzenie (``mv_cable_line_catalog._with_zero_sequence_parameters`` i
+# ``_with_cable_return_conductor``) jest ZAŁOŻENIEM INŻYNIERSKIM — nie danej producenta i nie
+# normy — więc pozycja niesie mapę ``wartosci_robocze`` (pole → założenie), materializacja
+# przenosi ją do gałęzi, a każdy wynik, do którego wchodzi taka wartość, ma daną przyjętą
+# ``ESTIMATED`` (kompletność dowodu ``NIEPELNY``, kontrakt werdyktu §3). Projektant zmienia
+# wartość w parametrach odcinka (R′0, X′0) — wartość projektanta różna od katalogowej nie jest
+# daną przyjętą.
+
+#: Klucz pozycji katalogu i ``materialized_params`` gałęzi: pole → założenie wyprowadzenia.
+KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU = "wartosci_robocze"
+
+ZALOZENIE_R0_TRZY_R1 = (
+    "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
+    "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_X0_TRZY_X1 = (
+    "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
+    "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej "
+    "wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje "
+    "składowej zerowej tej pozycji"
+)
+ZALOZENIE_R_ZYLY_POWROTNEJ = (
+    "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg "
+    "IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; "
+    "przekrój znamionowy, nie zmierzony"
+)
+ZALOZENIE_ITH_ZYLY_POWROTNEJ = (
+    "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału "
+    "(IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej "
+    "żyły powrotnej"
+)
+
+#: Pola składowej zerowej gałęzi objęte daną przyjętą (kolejność stała — determinizm).
+POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
+    ("r0_ohm_per_km", "R′0"),
+    ("x0_ohm_per_km", "X′0"),
+)
+
+
+def wartosc_projektanta(wartosc: Any, tabliczkowa: Any) -> bool:
+    """Pole elementu niesie wartość PROJEKTANTA: tabliczka zna to pole, a element ma INNĄ wartość.
+
+    JEDEN predykat dla dwóch stron tej samej granicy (reguła KLASA, predykaty parami):
+    uzupełnienie katalogu (``enm.catalog_completion``) NIE nadpisuje wartości projektanta,
+    a dana przyjęta z wartości roboczej katalogu (``pola_z0_robocze``) NIE powstaje dla pola,
+    które projektant zmienił. Wartość projektanta równa tabliczkowej jest nieodróżnialna od
+    tabliczkowej — zostaje wartością katalogu (z jej założeniem).
+    """
+    if wartosc is None or tabliczkowa is None:
+        return False
+    if isinstance(wartosc, bool) or isinstance(tabliczkowa, bool):
+        return bool(wartosc) != bool(tabliczkowa)
+    if isinstance(wartosc, int | float) and isinstance(tabliczkowa, int | float):
+        return float(wartosc) != float(tabliczkowa)
+    if isinstance(wartosc, str) and isinstance(tabliczkowa, str):
+        return wartosc.strip().upper() != tabliczkowa.strip().upper()
+    return bool(wartosc != tabliczkowa)
+
+
+def pola_z0_robocze(
+    materialized_params: Mapping[str, Any] | None, wartosci_galezi: Mapping[str, Any]
+) -> tuple[tuple[str, str, str, float], ...]:
+    """Pola składowej zerowej gałęzi, które NADAL są wartością roboczą katalogu.
+
+    JEDEN predykat dla założeń biegu i dla danych przyjętych: pole jest robocze, gdy pozycja
+    katalogu oznaczyła je w ``wartosci_robocze`` ORAZ wartość gałęzi nie jest wartością
+    projektanta (``wartosc_projektanta`` — ten sam predykat, którym uzupełnienie katalogu
+    oszczędza wartość projektanta). Zwraca krotki (pole, etykieta, założenie,
+    wartość) w kolejności ``POLA_SKLADOWEJ_ZEROWEJ``.
+    """
+    params = materialized_params or {}
+    robocze = params.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
+    if not isinstance(robocze, Mapping):
+        return ()
+    wynik: list[tuple[str, str, str, float]] = []
+    for pole_z0, etykieta in POLA_SKLADOWEJ_ZEROWEJ:
+        zalozenie = robocze.get(pole_z0)
+        katalogowa = params.get(pole_z0)
+        wartosc = wartosci_galezi.get(pole_z0)
+        if (
+            isinstance(zalozenie, str)
+            and isinstance(katalogowa, int | float)
+            and isinstance(wartosc, int | float)
+            and not wartosc_projektanta(wartosc, katalogowa)
+        ):
+            wynik.append((pole_z0, etykieta, zalozenie, float(wartosc)))
+    return tuple(wynik)
+
+
+def dana_przyjeta_z0(
+    *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
+) -> DanaPrzyjeta:
+    """Wartość robocza składowej zerowej z katalogu jako dana przyjęta werdyktu (§3c pkt 4)."""
+    return DanaPrzyjeta(
+        nazwa_pl=f"{etykieta} z katalogu ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
+        powod_pl=(
+            f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
+            "albo pomiar)."
+        ),
+        jakosc=FieldQuality.ESTIMATED,
+    )

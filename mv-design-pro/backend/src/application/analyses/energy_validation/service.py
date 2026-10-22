@@ -29,6 +29,7 @@ from analysis.energy_validation.models import (
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.power_flow_reconstruction import graf_z_biegu, wynik_rozplywu_z_biegu
 from enm.canonical_analysis import CanonicalRun
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 
@@ -68,4 +69,6 @@ def build_energy_validation_view(run: CanonicalRun) -> dict[str, Any]:
         graf_z_biegu(run),
         EnergyValidationConfig(),
     )
-    return view.to_dict()
+    # Karta LINIA-110: napięcia, obciążenia i straty biegu stoją na impedancji linii 110 kV
+    # z wartością roboczą geometrii — dane przyjęte widoku (addytywnie, gdy są).
+    return {**view.to_dict(), **pola_danych_przyjetych_biegu(run.raw_result)}

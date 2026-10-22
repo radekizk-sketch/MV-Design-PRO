@@ -35,9 +35,10 @@ transformatora, którego szyna nN jest ich korzeniem.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
+from enm.dane_przyjete_galezi import dane_przyjete_linii_wezla
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
@@ -725,7 +726,14 @@ def oblicz_petle_na_trasie(
         tolerancja_nn=tolerancja.wartosc,
         tolerancja_nn_robocza=tolerancja.robocza,
     )
-    return compute_fault_loop(build_fault_loop_input(request))
+    wynik = compute_fault_loop(build_fault_loop_input(request))
+    # Karta LINIA-110: impedancja sieci zasilającej pętli (Z_kk w węźle HV transformatora)
+    # zawiera linie 110 kV z wyspy tego węzła — ich wartości robocze geometrii są danymi
+    # przyjętymi pętli (te same rekordy co założenia biegów, `zalozenia_linii_wn`).
+    dane_linii = dane_przyjete_linii_wezla(enm, trafo.hv_bus_ref)
+    if not dane_linii:
+        return wynik
+    return replace(wynik, dane_przyjete_linii_wn=dane_linii)
 
 
 def build_station_fault_loop_view(

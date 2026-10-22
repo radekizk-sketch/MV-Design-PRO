@@ -38,7 +38,12 @@ Tryby wyswietlania (`viewMode`):
 | Akcje           | Edytuj parametry                                                             |
 | Uwagi           | Brak catalog_ref -- Source nie korzysta z katalogu (parametry GPZ bezposrednie). Zgodne z architektura. |
 
-### 2. LineSegmentCard
+### 2. LineSegmentCard (skasowana 2026-10-22)
+
+> Karta LINIA-110: `cards/LineSegmentCard.tsx` nie miała żadnego konsumenta produkcyjnego
+> (eksport z beczki `cards/index.ts`, test `cardAnalysisResults.test.ts` sprawdzał wyłącznie
+> własne kopie funkcji). Parametry odcinka — także linii 110 kV z geometrii słupa — pokazuje
+> inspektor elementu i kreator edycji parametrów gałęzi. Tabela poniżej jest zapisem historycznym.
 
 | Pole            | Wartosc                                                                      |
 |-----------------|------------------------------------------------------------------------------|
@@ -141,7 +146,7 @@ Tryby wyswietlania (`viewMode`):
 | Karta              | Wyniki analizy (RESULT_VIEW) | Bilans mocy | Rola w sieci | Przypisanie trafo |
 |--------------------|:----------------------------:|:-----------:|:------------:|:-----------------:|
 | SourceCard         | TAK                          | --          | --           | --                |
-| LineSegmentCard    | TAK                          | --          | TAK          | --                |
+| LineSegmentCard (skasowana) | TAK                          | --          | TAK          | --                |
 | TransformerCard    | TAK                          | --          | --           | --                |
 | SwitchCard         | TAK                          | --          | --           | --                |
 | StationCard        | TAK                          | --          | --           | TAK               |
@@ -158,6 +163,10 @@ Tryby wyswietlania (`viewMode`):
 - Testy: `cardAnalysisResults.test.ts` -- pokrycie sekcji wynikow dla kazdej karty
 - Guard: `scripts/overlay_no_physics_guard.py` -- potwierdzenie braku fizyki w kartach
 - CI: frontend-checks workflow -- green
+
+> Korekta 2026-10-22 (karta LINIA-110): `cardAnalysisResults.test.ts` skasowany — testował
+> wyłącznie lokalne kopie funkcji, nie kod kart; `LineSegmentCard.tsx` skasowana (zero
+> konsumentów produkcyjnych). Opis wyżej jest stanem z 2026-03-28, nie bieżącym dowodem.
 
 **Status: ZAMKNIETY**
 

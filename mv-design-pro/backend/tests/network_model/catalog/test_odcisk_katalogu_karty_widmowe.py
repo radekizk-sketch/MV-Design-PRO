@@ -84,6 +84,13 @@ ODCISK_PO_W5E_TTIT = "e83ee88bce1a45b0ef7e57931612c100764968c4fcd42281b133215fc3
 #: `ODCISK_PO_W5E_TTIT` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
 #: poniżej.
 ODCISK_PO_LINIA_110 = "4f66d5626e211540eb1f1afe34d6da1d90ec50800758e208893e7383f51e9f44"
+#: Karta LINIA-110, pkt 2 rozstrzygnięć (2026-10-22): 87 pozycji SN (25 linii, 62 kable) niesie
+#: mapę ``wartosci_robocze`` (R′0, X′0, a 10 kabli także R′ i Ith żyły powrotnej — założenia
+#: inżynierskie katalogu). Dowód liść po liściu (zrzut przed kartą vs po): 216 różnic, wszystkie
+#: to dodane pole ``wartosci_robocze`` (153 linie, 63 kable); 129 z nich było PUSTE, więc pole
+#: puste wypada z odcisku (``_POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_PUSTE``). Zrzut bez tych 87 map
+#: daje DOKŁADNIE ``ODCISK_PO_LINIA_110`` — żadna liczba katalogu się nie zmieniła.
+ODCISK_PO_Z0_ROBOCZE = "85a046c9e4bcd8dce8fc44507c1280fb72604cbd80cd6b637fc9418b80f855c0"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -121,6 +128,15 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_Z0_ROBOCZE
+    oznaczone = 0
+    for przestrzen in ("line_types", "cable_types"):
+        for postac in zrzut[przestrzen].values():  # type: ignore[attr-defined]
+            if "wartosci_robocze" in postac:
+                assert postac["wartosci_robocze"], "pusta mapa wartości roboczych w odcisku"
+                postac.pop("wartosci_robocze")
+                oznaczone += 1
+    assert oznaczone == 87
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_LINIA_110
     bez_przewodow_wn = {
         przestrzen: postac

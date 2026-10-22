@@ -303,17 +303,23 @@ def linie_z_wartoscia_robocza(enm: EnergyNetworkModel) -> list[OverheadLine]:
 
 
 def zalozenia_linii_wn(enm: EnergyNetworkModel, scenario: str | None) -> tuple[dict[str, Any], ...]:
-    """Założenia biegu: jedno na KAŻDĄ linię 110 kV liczoną z wartością roboczą danych linii.
+    """Założenia biegu: jedno na KAŻDĄ załączoną linię 110 kV liczoną z wartością roboczą.
 
     Wzorzec założeń biegu (``fault.c_tolerancja_nn_robocza``): kod, element, zdanie, scenariusz,
-    parametr (pole, w którym projektant zmienia wartość). Linia z kompletem danych projektu
-    nie daje założenia. ``scenario`` = scenariusz współczynnika c biegu zwarciowego; rozpływ
-    (bez scenariusza c) podaje ``None`` i klucz ``scenariusz`` jest pominięty.
+    parametr (pole, w którym projektant zmienia wartość) oraz ``dane_przyjete`` — dane przyjęte
+    werdyktu (``ESTIMATED``, JEDNO tłumaczenie ``dane_przyjete_linii_wn``), które konsumenci
+    werdyktów niosą dalej (kompletność dowodu ``NIEPELNY``, kontrakt werdyktu §3). Linia
+    z kompletem danych projektu nie daje założenia; linia otwarta też nie — jej impedancja
+    nie wchodzi do żadnego wyniku biegu. ``scenario`` = scenariusz współczynnika c biegu
+    zwarciowego; rozpływ (bez scenariusza c) podaje ``None`` i klucz ``scenariusz`` jest pominięty.
     """
     zalozenia: list[dict[str, Any]] = []
     for linia in linie_z_wartoscia_robocza(enm):
+        if linia.status != "closed":
+            continue
         dane = rozstrzygnij_dane_linii_wn(geometria_projektu(linia.model_dump(mode="json")))
         opisy = " ".join(s.opis_zrodla_pl() for s in dane.robocze)
+        przyjete = dane_przyjete_linii_wn(dane, miejsce_pl=nazwa_elementu(linia, "branches"))
         zalozenia.append(
             {
                 "code": KOD_GEOMETRIA_ROBOCZA,
@@ -325,6 +331,7 @@ def zalozenia_linii_wn(enm: EnergyNetworkModel, scenario: str | None) -> tuple[d
                 ),
                 **({"scenariusz": scenario} if scenario is not None else {}),
                 "parametr": "geometria_slupa",
+                "dane_przyjete": [d.model_dump(mode="json") for d in przyjete],
             }
         )
     return tuple(zalozenia)

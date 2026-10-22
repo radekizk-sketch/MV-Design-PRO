@@ -122,6 +122,7 @@ def download_equipment_proof_pack(
         required_fault_results=wielkosci_kontraktu_klienta(wejscie.wielkosci),
         proweniencja=wejscie.proweniencja,
         tolerancja_nn_robocza=wejscie.tolerancja_nn_robocza,
+        dane_galezi=wejscie.dane_galezi,
         project_name=nazwa_projektu_z_migawki(bieg.snapshot if bieg is not None else None),
         case_name=nazwa_przypadku_z_bazy(payload.case_id, uow_factory),
     )

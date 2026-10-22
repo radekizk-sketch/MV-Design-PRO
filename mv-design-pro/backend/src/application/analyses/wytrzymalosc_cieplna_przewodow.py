@@ -87,6 +87,7 @@ from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from application.twin_key import klucz_twin_dla_przypadku
 from domain.canonical_operations import opisy_kodow_gotowosci_pl
 from enm.canonical_analysis import CanonicalRun, pobierz_rozplyw_biegu
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from enm.hash import compute_enm_hash
 from enm.klucz_twin import PrzypadekBezProjektuError
 from enm.mapping import map_enm_to_network_graph
@@ -546,14 +547,20 @@ def _pierwszy_wiersz(run: CanonicalRun) -> dict[str, Any]:
 
 def _dane_przyjete_biegu(run: CanonicalRun) -> dict[str, Any]:
     """Dane przyjęte prądów oceny (karta TOLERANCJA-NN-WARTOSC-ROBOCZA): punkt zwarcia
-    w sieci nN liczonej z wartością roboczą tolerancji — wszystkie prądy gałęzi tego biegu
-    stoją na danej przyjętej. Pusty słownik, gdy znacznika nie ma (odpowiedź bez zmian)."""
+    w sieci nN liczonej z wartością roboczą tolerancji oraz linie 110 kV z wartością roboczą
+    geometrii w wyspie punktu (karta LINIA-110) — wszystkie prądy gałęzi tego biegu stoją na
+    danej przyjętej. Pusty słownik, gdy znaczników nie ma (odpowiedź bez zmian)."""
     wiersz = _pierwszy_wiersz(run)
-    if not wiersz.get("tolerancja_nn_robocza"):
+    dane = list(dane_przyjete_galezi_wiersza(wiersz))
+    if wiersz.get("tolerancja_nn_robocza"):
+        punkt = opis_rodzaju_i_nazwy("szyna", nazwa_nadana(wiersz.get("target_name")))
+        dane.insert(0, dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {punkt}"))
+    if not dane:
         return {}
-    punkt = opis_rodzaju_i_nazwy("szyna", nazwa_nadana(wiersz.get("target_name")))
-    dana = dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {punkt}")
-    return {"status_danych": "UNVALIDATED_INPUT", "dane_przyjete": [dana.model_dump(mode="json")]}
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [dana.model_dump(mode="json") for dana in dane],
+    }
 
 
 def _odtworz_wynik_zwarciowy(

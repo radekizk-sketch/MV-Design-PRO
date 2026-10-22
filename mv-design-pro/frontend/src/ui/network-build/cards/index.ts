@@ -12,7 +12,6 @@ export type { CardSection, CardField, CardAction, ObjectCardProps } from './Obje
 // Specialized cards
 export { StationCard } from './StationCard';
 export { TrunkCard } from './TrunkCard';
-export { LineSegmentCard } from './LineSegmentCard';
 export { TransformerCard } from './TransformerCard';
 export { SwitchCard } from './SwitchCard';
 export { NnSwitchgearCard } from './NnSwitchgearCard';

@@ -26,13 +26,17 @@ Usage:
 import math
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
-from network_model.catalog.wartosci_robocze import pochodzenie_danej_karty
+from network_model.catalog.wartosci_robocze import (
+    KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+    pochodzenie_danej_karty,
+)
 from network_model.ir_fields import (
     wymagany_float,
     wymagany_float_lub_nieznany,
@@ -906,6 +910,14 @@ class MaterializationContract:
         }
 
 
+def wartosci_robocze_z_danych(data: Mapping[str, Any]) -> tuple[tuple[str, str], ...]:
+    """Mapa ``wartosci_robocze`` pozycji (pole → założenie) w postaci niezmiennej i posortowanej."""
+    surowe = data.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
+    if not isinstance(surowe, Mapping):
+        return ()
+    return tuple(sorted((str(pole), str(zalozenie)) for pole, zalozenie in surowe.items()))
+
+
 @dataclass(frozen=True)
 class LineType:
     """
@@ -967,6 +979,9 @@ class LineType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+    #: Pola wyprowadzone bez danej producenta (pole → założenie, rejestr
+    #: ``wartosci_robocze``): wartość robocza ``ESTIMATED``, nie dana karty (zasada nr 4).
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
 
     @property
     def dane_cieplne_kompletne(self) -> bool:
@@ -1031,6 +1046,9 @@ class LineType:
             "thermal_source_reference": self.thermal_source_reference,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -1086,6 +1104,7 @@ class LineType:
             thermal_source_reference=data.get("thermal_source_reference"),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog linii i kabli MV-DESIGN-PRO / IEC 60287 / IEC 60949",
@@ -1369,6 +1388,9 @@ class CableType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+    #: Pola wyprowadzone bez danej producenta (pole → założenie, rejestr
+    #: ``wartosci_robocze``): wartość robocza ``ESTIMATED``, nie dana karty (zasada nr 4).
+    wartosci_robocze: tuple[tuple[str, str], ...] = ()
 
     def susceptancja_us_per_km(self, czestotliwosc_hz: float) -> float:
         """Susceptancja z pojemności jednostkowej kabla: B = 2π·f·C [µS/km].
@@ -1472,6 +1494,9 @@ class CableType:
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU: (
+                dict(self.wartosci_robocze) if self.wartosci_robocze else None
+            ),
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -1550,6 +1575,7 @@ class CableType:
             ),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
+            wartosci_robocze=wartosci_robocze_z_danych(data),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog linii i kabli MV-DESIGN-PRO / IEC 60502-2 / IEC 60287 / IEC 60949",
@@ -4568,7 +4594,11 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",
+            # Karta LINIA-110 (pkt 2 rozstrzygnięć): pola wyprowadzone bez danej producenta
+            # (R′0, X′0, żyła powrotna) — gałąź niesie założenie, wyniki daną przyjętą.
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
         ),
+        pola_opcjonalne=(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
@@ -4608,7 +4638,10 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "thermal_source_reference",
             "source_reference",
             "trade_name",
+            # Karta LINIA-110 (pkt 2 rozstrzygnięć): R′0/X′0 wyprowadzone bez danej producenta.
+            KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
         ),
+        pola_opcjonalne=(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),

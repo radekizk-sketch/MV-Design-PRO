@@ -416,6 +416,13 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "n_parallel",
             # W5-A (F9): uklad uziemienia ekranu kabla — dana projektowa.
             "screen_bonding",
+            # Karta LINIA-110: geometria słupa (dana projektu) i proweniencja R′/X′/B′/Z′0
+            # policzonych z geometrii. Biała lista gubiła je, gdy operacja buduje odcinek
+            # z danych istniejącej linii (podział odcinka: `_copy_split_segment_fields` →
+            # `create_branch`) — połówki traciły geometrię projektu, a uzupełnienie katalogu
+            # przeliczało je z wartości roboczej (fałszywa dana przyjęta zamiast danej projektu).
+            "geometria_slupa",
+            "parametry_z_geometrii",
         ):
             if key in data:
                 branch_data[key] = data[key]

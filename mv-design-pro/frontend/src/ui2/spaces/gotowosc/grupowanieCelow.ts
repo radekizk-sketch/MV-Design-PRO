@@ -346,6 +346,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'source.u_set_pu_out_of_range': 'zwarcia',
   // CATALOGS (wspolne)
   'branch.zero_sequence_missing': 'wspolne',
+  // R′0/X′0 z wartości roboczej katalogu: zwarcia doziemne i rozpływ niesymetryczny.
+  'branch.z0_wartosc_robocza': 'wspolne',
   'cable.insulation_data_missing': 'wspolne',
   'cable.operating_temperature_missing': 'wspolne',
   'cable.screen_bonding_reference_mismatch': 'wspolne',

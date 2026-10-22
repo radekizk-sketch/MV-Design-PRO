@@ -31,6 +31,14 @@ from .types import (
     CatalogStatus,
     CatalogVerificationStatus,
 )
+from .wartosci_robocze import (
+    KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU,
+    ZALOZENIE_ITH_ZYLY_POWROTNEJ,
+    ZALOZENIE_R0_TRZY_R1,
+    ZALOZENIE_R0_ZYLA_POWROTNA,
+    ZALOZENIE_R_ZYLY_POWROTNEJ,
+    ZALOZENIE_X0_TRZY_X1,
+)
 
 # =============================================================================
 # STAŁE MATERIAŁOWE — gęstość prądu zwarciowego jth dla 1s [A/mm²]
@@ -101,6 +109,9 @@ ENEA_OPERATOR_CABLE_SOURCE_REFERENCE = (
 CATALOG_TEST_SOURCE_REFERENCE = (
     "Rekord testowy MV-DESIGN-PRO - nie stosować w katalogu produkcyjnym"
 )
+#: Rezystywność ρ20 [Ω·mm²/km]: miedź wyżarzona 17,241 (IEC 60028, 1/58 Ω·mm²/m), aluminium
+#: 28,264 (IEC 60889). Wartość ρ/S z przekroju ZNAMIONOWEGO jest założeniem (pozycja niesie
+#: ``wartosci_robocze``), nie rezystancją żyły powrotnej z karty producenta.
 RETURN_CONDUCTOR_RHO_OHM_MM2_PER_KM_20C = {
     "CU": 17.241,
     "AL": 28.264,
@@ -113,6 +124,18 @@ RETURN_CONDUCTOR_SECTION_PATTERN = re.compile(
     r"(?:[13]\s*[x×]\s*)?(\d{2,4})\s*/\s*(\d{1,3})(?!\s*kV)",
     re.IGNORECASE,
 )
+
+
+def _oznacz_wartosc_robocza(params: dict[str, Any], pole: str, zalozenie: str) -> None:
+    """Pole wyprowadzone bez danej producenta: wpis ``wartosci_robocze`` (pole → założenie).
+
+    Zero cichych założeń (zasada nr 4): każda wartość policzona tu mnożnikiem albo wzorem
+    z oznaczenia pozycji niesie założenie z rejestru ``wartosci_robocze`` — materializacja
+    przenosi mapę do gałęzi, a wyniki liczone z tą wartością mają daną przyjętą ``ESTIMATED``.
+    """
+    robocze = dict(params.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU) or {})
+    robocze[pole] = zalozenie
+    params[KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU] = dict(sorted(robocze.items()))
 
 
 def _with_cable_return_conductor(record: dict[str, Any]) -> dict[str, Any]:
@@ -136,10 +159,17 @@ def _with_cable_return_conductor(record: dict[str, Any]) -> dict[str, Any]:
         rho = RETURN_CONDUCTOR_RHO_OHM_MM2_PER_KM_20C.get(material)
         if rho is not None and params.get("return_conductor_r_ohm_per_km_20c") is None:
             params["return_conductor_r_ohm_per_km_20c"] = round(rho / section_float, 6)
+            _oznacz_wartosc_robocza(
+                params, "return_conductor_r_ohm_per_km_20c", ZALOZENIE_R_ZYLY_POWROTNEJ
+            )
         jth = RETURN_CONDUCTOR_JTH_1S_A_PER_MM2.get(material)
         if jth is not None:
             params.setdefault("return_conductor_jth_1s_a_per_mm2", jth)
-            params.setdefault("return_conductor_ith_1s_a", round(jth * section_float, 6))
+            if params.get("return_conductor_ith_1s_a") is None:
+                params["return_conductor_ith_1s_a"] = round(jth * section_float, 6)
+                _oznacz_wartosc_robocza(
+                    params, "return_conductor_ith_1s_a", ZALOZENIE_ITH_ZYLY_POWROTNEJ
+                )
     return {
         "id": record["id"],
         "name": record["name"],
@@ -174,20 +204,28 @@ def _with_zero_sequence_parameters(record: dict[str, Any], *, kind: str) -> dict
             "params": params,
         }
 
+    # Karta LINIA-110 (rozstrzygnięcie architekta, pkt 2): żadna z tych reguł nie ma podstawy
+    # w karcie producenta ani w normie — każde wyprowadzone pole dostaje jawne założenie
+    # (``wartosci_robocze``), a konsumenci wyniku daną przyjętą ESTIMATED.
     if kind == "cable":
         return_r = _float_param(params, "return_conductor_r_ohm_per_km_20c")
         if params.get("r0_ohm_per_km") is None:
             if return_r is not None and return_r > 0:
                 params["r0_ohm_per_km"] = round(r1 + return_r, 6)
+                _oznacz_wartosc_robocza(params, "r0_ohm_per_km", ZALOZENIE_R0_ZYLA_POWROTNA)
             else:
                 params["r0_ohm_per_km"] = round(3.0 * r1, 6)
+                _oznacz_wartosc_robocza(params, "r0_ohm_per_km", ZALOZENIE_R0_TRZY_R1)
         if params.get("x0_ohm_per_km") is None:
             params["x0_ohm_per_km"] = round(3.0 * x1, 6)
+            _oznacz_wartosc_robocza(params, "x0_ohm_per_km", ZALOZENIE_X0_TRZY_X1)
     elif kind == "line":
         if params.get("r0_ohm_per_km") is None:
             params["r0_ohm_per_km"] = round(3.0 * r1, 6)
+            _oznacz_wartosc_robocza(params, "r0_ohm_per_km", ZALOZENIE_R0_TRZY_R1)
         if params.get("x0_ohm_per_km") is None:
             params["x0_ohm_per_km"] = round(3.0 * x1, 6)
+            _oznacz_wartosc_robocza(params, "x0_ohm_per_km", ZALOZENIE_X0_TRZY_X1)
 
     return {
         "id": record["id"],

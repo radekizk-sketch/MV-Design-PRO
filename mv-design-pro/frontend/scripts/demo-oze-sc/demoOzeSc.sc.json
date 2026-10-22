@@ -1,7 +1,7 @@
 {
   "_meta": {
     "analysis_type": "short_circuit_3f",
-    "builder_snapshot_hash": "f7b292ae1b6fb53902ca8636bb8ac99f683e764e0c03d1df9b8bfd16845e3101",
+    "builder_snapshot_hash": "fc4dafac6739d8a32ed56399da7885ffb619b88e8c891b5ea45017ef645a0bdb",
     "c_factor": 1.1,
     "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "note": "Realny bieg zwarciowy; Ik''/ip/Ith/Sk 1:1 z solvera. Regeneracja: scripts/generate-demo-oze-sc.py.",

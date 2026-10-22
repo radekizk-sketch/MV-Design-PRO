@@ -133,6 +133,12 @@ class FaultLoopResult:
     # Karta W5-E-TTIT: wielkości pętli TT/IT (addytywne — `None` dla TN, to_dict bez klucza,
     # więc słowniki i odciski wyników TN są bit w bit takie jak przed kartą).
     tt_it: WynikTtIt | None = None
+    # Karta LINIA-110: dane przyjęte (zapis JSON kontraktu werdyktu) linii 110 kV liczonych
+    # z wartością roboczą geometrii w wyspie zasilającej transformator — impedancja sieci
+    # zasilającej pętli stoi na nich. Dokłada WOŁAJĄCY (warstwa aplikacji,
+    # `fault_loop.service.oblicz_petle_na_trasie`); solver ich nie czyta. Addytywnie:
+    # `to_dict` niesie klucz wyłącznie, gdy niepuste.
+    dane_przyjete_linii_wn: tuple[dict[str, Any], ...] = ()
 
     @property
     def z_loop_magnitude_ohm(self) -> float:
@@ -169,6 +175,8 @@ class FaultLoopResult:
         }
         if self.tolerancja_nn_robocza:
             wynik["tolerancja_nn_robocza"] = True
+        if self.dane_przyjete_linii_wn:
+            wynik["dane_przyjete_linii_wn"] = [dict(d) for d in self.dane_przyjete_linii_wn]
         if self.tt_it is not None:
             wynik["tt_it"] = self.tt_it.to_dict()
         return wynik

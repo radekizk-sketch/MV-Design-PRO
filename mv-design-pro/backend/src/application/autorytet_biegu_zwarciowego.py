@@ -34,6 +34,7 @@ from typing import Any
 from uuid import UUID
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
 from network_model.core.autorytet_wyniku_zwarciowego import (
     BlokadaAutorytetu,
     ProweniencjaWynikuZwarciowego,
@@ -47,6 +48,7 @@ from network_model.core.wiazanie_wyniku_zwarciowego import (
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaNazwana
 from network_model.pochodne.jednostki import a_na_ka, v_na_kv
+from werdykt import DanaPrzyjeta
 
 #: Rodzaje biegu kanonicznego, którego artefakt niesie wielkości zwarciowe.
 #: Lista JAWNA, nie dopełnienie: bieg rozpływowy nie ma prądu zwarciowego, więc
@@ -109,6 +111,9 @@ class WejscieZwarcioweZBiegu:
     tolerancja_nn_robocza: bool = False
     """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkt w sieci nN liczonej z wartością roboczą
     tolerancji napięcia (znacznik wiersza biegu) — liczby stoją na danej przyjętej."""
+    dane_galezi: tuple[DanaPrzyjeta, ...] = ()
+    """Karta LINIA-110: dane przyjęte gałęzi z wartością roboczą impedancji wchodzącej do prądu
+    punktu (znacznik wiersza biegu ``dane_przyjete_galezi``) — ta sama konsekwencja."""
 
     def niezgodnosci_z_echem(self, echo: Mapping[str, Any] | None) -> tuple[str, ...]:
         """Czym liczby przysłane przez konsumenta różnią się od liczb biegu.
@@ -294,6 +299,7 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> Wejs
         wiazanie=wiazanie,
         wielkosci=wielkosci_do_odcisku(wiersz),
         tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
+        dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
     )
 
 

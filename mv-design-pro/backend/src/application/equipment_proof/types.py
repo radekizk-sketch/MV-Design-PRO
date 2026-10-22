@@ -80,6 +80,10 @@ class EquipmentProofInput:
     #: roboczą tolerancji napięcia (znacznik wiersza biegu, `wejscie_zwarciowe_z_biegu`) —
     #: wymagane wielkości zwarciowe stoją na danej przyjętej.
     tolerancja_nn_robocza: bool = field(default=False, kw_only=True)
+    #: Karta LINIA-110: dane przyjęte gałęzi, których impedancja z wartości roboczej wchodzi do
+    #: prądu punktu zabudowy (linia 110 kV z geometrii roboczej, R′0/X′0 z założenia katalogu —
+    #: znacznik wiersza biegu) — wymagane wielkości stoją na danej przyjętej.
+    dane_galezi: tuple[DanaPrzyjeta, ...] = field(default=(), kw_only=True)
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -94,6 +98,8 @@ class EquipmentProofInput:
         # bajt w bajt taki sam jak przed kartą (determinizm istniejących pakietów).
         if self.tolerancja_nn_robocza:
             payload["tolerancja_nn_robocza"] = True
+        if self.dane_galezi:
+            payload["dane_przyjete_galezi"] = [d.model_dump(mode="json") for d in self.dane_galezi]
         return canonicalize_json(payload)
 
 
