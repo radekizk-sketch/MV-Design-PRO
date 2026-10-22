@@ -53,7 +53,10 @@ from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
 from network_model.catalog.types import normalize_ptpiree_key
-from network_model.catalog.wartosci_robocze import propozycje_aparatu_sn
+from network_model.catalog.wartosci_robocze import (
+    propozycje_aparatu_sn,
+    rejestr_maszyn_do_formularza,
+)
 from network_model.core.uziemienie import (
     ROLE_UZIEMNIKA,
     TYPY_PUNKTU_NEUTRALNEGO,
@@ -245,6 +248,15 @@ def list_mv_apparatus_types() -> list[dict[str, Any]]:
         }
         for item in get_default_mv_catalog().list_mv_apparatus_types()
     ]
+
+
+@router.get("/maszyny-wirujace/wartosci-robocze")
+def rejestr_wartosci_roboczych_maszyn() -> dict[str, Any]:
+    """Parametry zwarciowe maszyn wirujących i ich propozycje wartości roboczych (karta
+    PODSTAWA-Q, zasada nr 4): rodzaj generatora → rodzina, parametry rodziny z nazwą, jednostką
+    i zakresem bramy oraz propozycja, którą obliczenie przyjmie bez tabliczki i bez wartości
+    projektanta. Dostawca sekcji parametrów maszyny w kreatorze edycji parametrów."""
+    return rejestr_maszyn_do_formularza()
 
 
 @router.get("/lv-apparatus-types")

@@ -275,6 +275,30 @@ export interface PropozycjaWartosciRoboczej {
   readonly wplyw_pl: string;
 }
 
+/** Rodzina maszyny wirującej rejestru (`RodzinaMaszyny`, `network_model/catalog/wartosci_robocze.py`). */
+export type RodzinaMaszyny = 'MASZYNA_SYNCHRONICZNA' | 'MASZYNA_ASYNCHRONICZNA';
+
+/** Parametr zwarciowy maszyny wirującej: opis, zakres bramy wartości i propozycja rejestru. */
+export interface ParametrMaszynyRejestru {
+  readonly parametr: string;
+  readonly nazwa_pl: string;
+  readonly symbol: string;
+  readonly jednostka: string;
+  readonly dopuszczalne_od: number;
+  readonly dopuszczalne_do: number;
+  readonly calkowita: boolean;
+  readonly propozycja: PropozycjaWartosciRoboczej;
+}
+
+/**
+ * Rejestr parametrów maszyn wirujących (`GET /api/catalog/maszyny-wirujace/wartosci-robocze`,
+ * karta PODSTAWA-Q): rodzaj generatora → rodzina i parametry rodziny w kolejności rejestru.
+ */
+export interface RejestrMaszynWirujacych {
+  readonly rodzaj_generatora: Readonly<Record<string, RodzinaMaszyny>>;
+  readonly rodziny: Readonly<Record<RodzinaMaszyny, readonly ParametrMaszynyRejestru[]>>;
+}
+
 /**
  * LV Apparatus Type (APARAT_NN).
  * Source: backend LVApparatusType dataclass (network_model/catalog/types.py).

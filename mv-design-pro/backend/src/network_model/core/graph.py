@@ -102,6 +102,11 @@ class NetworkGraph:
         # w karcie katalogowej konwertera. Metadana mostu, nie wejście solvera —
         # network_model/solvers/** jej nie czyta (B-01, solver nietknięty).
         self.k_sc_assumptions_trace: list[dict] = []
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): wartości robocze parametrów maszyn
+        # wirujących (x″d, cos φ_r, I_LR/I_rM, η_r, p) — id źródła → wpisy rejestru
+        # `wartosci_robocze.wpis_parametru_maszyny`. Metadana mostu ENM → graf dla śladu biegu
+        # i danych przyjętych werdyktów; solvery jej nie czytają (liczą z pól źródła).
+        self.wartosci_robocze_maszyn: dict[str, tuple[dict, ...]] = {}
         self._graph: nx.MultiGraph = nx.MultiGraph()
 
     def add_node(self, node: Node) -> None:
@@ -753,6 +758,12 @@ class NetworkGraph:
             if grid_source.node_id in zbior:
                 podgraf.add_grid_sc_source(grid_source)
         podgraf.k_sc_assumptions_trace = list(self.k_sc_assumptions_trace)
+        podgraf.wartosci_robocze_maszyn = {
+            id_zrodla: wpisy
+            for id_zrodla, wpisy in self.wartosci_robocze_maszyn.items()
+            if id_zrodla in podgraf.synchronous_machine_sources
+            or id_zrodla in podgraf.asynchronous_machine_sources
+        }
         return podgraf
 
     def is_connected(self) -> bool:

@@ -28,6 +28,7 @@ the CIM name. ZERO physics; imports neither solvers nor analysis.
 
 from __future__ import annotations
 
+import functools
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -61,6 +62,7 @@ from network_model.pochodne import (
 )
 
 from .mrid import KLASY_OBIEKTOW_GLOWNYCH, mrid_for
+from .parametry_maszyn import tabliczka_maszyny_z_cim
 from .profiles import NS_CIM, NS_RDF
 from .refmap import CgmesRefMap
 from .units import (
@@ -561,7 +563,8 @@ def _importuj_generatory(
     Para eksportu: ``cgmes_exporter._emit_generator`` (tabela pól tam). Moc ``p``/``q``
     w konwencji odbiorczej CIM -> wytwarzanie ENM (znak odwrócony). ``ratedS``/``ratedU``
     -> ``materialized_params`` ``sn_mva``/``un_kv`` (jedna jednostka: ratedS to moc całej
-    instalacji), bez atrybutu = klucz nieobecny. Brak ``p`` = 0 MW z NAZWANYM ostrzeżeniem
+    instalacji), bez atrybutu = klucz nieobecny. Parametry zwarciowe maszyn wirujących
+    (``parametry_maszyn.ATRYBUTY_MASZYNY_CIM``) -> klucze rejestru wartości roboczych. Brak ``p`` = 0 MW z NAZWANYM ostrzeżeniem
     (wzorzec odbiorów wyżej; ``Generator.p_mw`` nie przyjmuje braku).
     """
     jednostki: dict[str, list[str]] = {}
@@ -600,6 +603,9 @@ def _importuj_generatory(
                 tabliczka["sn_mva"] = va_to_mva(s_va)
             if u_v is not None:
                 tabliczka["un_kv"] = v_to_kv(u_v)
+            # Karta PODSTAWA-Q: parametry zwarciowe maszyny wirującej (x″d, cos φ, p, I_LR/I_rM,
+            # η) — ta sama tabela co eksport; brak atrybutu = wartość robocza przy obliczeniu.
+            tabliczka.update(tabliczka_maszyny_z_cim(klasa, functools.partial(_text, elem)))
             if p_w is None:
                 bez_mocy.append(name)
             generatory.append(

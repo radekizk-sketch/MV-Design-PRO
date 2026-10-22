@@ -31,7 +31,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from network_model.core.branch import odmowa_gdy_pk_sprzeczne_z_uk
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
@@ -98,6 +98,12 @@ class FaultLoopBuildRequest:
     tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
     # Klasa wyżej jest wartością roboczą — przekazywane 1:1 do `FaultLoopInput`.
     tolerancja_nn_robocza: bool = field(default=False, kw_only=True)
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn, z którymi policzono
+    # `upstream_r_ohm`/`upstream_x_ohm` — trafiają do składowej sieci zasilającej
+    # (`LoopImpedanceComponent.parametry_robocze_maszyn`); bez impedancji upstream — błąd.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = field(
+        default=(), kw_only=True, compare=False
+    )
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
@@ -123,11 +129,17 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
             "upstream_r_ohm i upstream_x_ohm MUSZĄ być oba None (no upstream) "
             "lub oba ustawione na float. Brak konsystencji w danych."
         )
+    if request.parametry_robocze_maszyn and not has_r:
+        raise ValueError(
+            "parametry_robocze_maszyn bez impedancji sieci zasilającej (upstream_r_ohm/x_ohm) — "
+            "wartości robocze maszyn opisują wyłącznie tę składową pętli."
+        )
     if has_r and has_x:
         upstream = LoopImpedanceComponent(
             label=request.upstream_label,
             r_ohm=request.upstream_r_ohm,  # type: ignore[arg-type]
             x_ohm=request.upstream_x_ohm,  # type: ignore[arg-type]
+            parametry_robocze_maszyn=request.parametry_robocze_maszyn,
         )
 
     return FaultLoopInput(

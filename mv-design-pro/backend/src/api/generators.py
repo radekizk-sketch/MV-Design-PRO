@@ -48,7 +48,10 @@ from enm.store import set_enm as _set_enm
 from enm.tor_pola import szyna_glowna_stacji, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
@@ -1090,9 +1093,20 @@ def get_der_instrument_transformers(
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
     prad_roboczy = _prad_roboczy_pola_a(generator, napiecie_v)
-    ik_ka, ip_ka, run_ref, tolerancja_robocza = _prady_zwarciowe_szyny(
+    ik_ka, ip_ka, run_ref, tolerancja_robocza, robocze_maszyn = _prady_zwarciowe_szyny(
         case_id, generator.get("bus_ref")
     )
+    # Dane przyjęte Ik''/ip szyny pola: tolerancja sieci nN (karta TOLERANCJA-NN-WARTOSC-ROBOCZA)
+    # i wartości robocze parametrów maszyn wirujących wyspy szyny (karta PODSTAWA-Q).
+    dane_przyjete_pola = (
+        (
+            dana_przyjeta_tolerancji_nn(
+                miejsce_pl=opis_elementu(dane, generator.get("bus_ref"), "szyna pola")
+            ),
+        )
+        if tolerancja_robocza
+        else ()
+    ) + dane_przyjete_maszyn(robocze_maszyn, wielkosc=("ikss", "ip"))
     prady_wejsc, napiecia_wejsc, zrodlo_wejsc = _wejscia_urzadzenia(
         _pierwsza_wartosc(zrodla, "protection_catalog_ref")
     )
@@ -1158,18 +1172,14 @@ def get_der_instrument_transformers(
         },
         "przekladnik_pradowy": _dobor_przekladnika(ct_ref, "ct", tor_pradowy),
         "przekladnik_napieciowy": _dobor_przekladnika(vt_ref, "vt", tor_napieciowy),
-        # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: Ik''/ip szyny pola w sieci nN liczonej z wartością
-        # roboczą tolerancji (znacznik wiersza biegu) — addytywnie, WYŁĄCZNIE gdy prawda.
+        # Karty TOLERANCJA-NN-WARTOSC-ROBOCZA i PODSTAWA-Q: Ik''/ip szyny pola liczone z daną
+        # przyjętą (znaczniki wiersza biegu) — addytywnie, WYŁĄCZNIE gdy są.
         **(
             {
                 "status_danych": "UNVALIDATED_INPUT",
-                "dane_przyjete": [
-                    dana_przyjeta_tolerancji_nn(
-                        miejsce_pl=opis_elementu(dane, generator.get("bus_ref"), "szyna pola")
-                    ).model_dump(mode="json")
-                ],
+                "dane_przyjete": [d.model_dump(mode="json") for d in dane_przyjete_pola],
             }
-            if tolerancja_robocza
+            if dane_przyjete_pola
             else {}
         ),
     }
@@ -1221,19 +1231,20 @@ def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) ->
 
 def _prady_zwarciowe_szyny(
     case_id: str, bus_ref: Any
-) -> tuple[float | None, float | None, str | None, bool]:
-    """Ik'', ip, przebieg i znacznik wartości roboczej tolerancji sieci nN (karta
-    TOLERANCJA-NN-WARTOSC-ROBOCZA) dla szyny pola z OSTATNIEGO zakonczonego przebiegu
-    zwarciowego — znacznik z TEGO SAMEGO wiersza co prądy.
+) -> tuple[float | None, float | None, str | None, bool, list[dict[str, Any]]]:
+    """Ik'', ip, przebieg, znacznik wartości roboczej tolerancji sieci nN (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA) i wartości robocze parametrów maszyn (karta PODSTAWA-Q) dla
+    szyny pola z OSTATNIEGO zakonczonego przebiegu zwarciowego — znaczniki z TEGO SAMEGO
+    wiersza co prądy.
 
-    Brak przebiegu albo brak wiersza dla tej szyny zwraca `(None, None, None, False)` —
+    Brak przebiegu albo brak wiersza dla tej szyny zwraca `(None, None, None, False, [])` —
     regula zamieni to w nazwany brak danej („uruchom analize zwarciowa"), a nie w
     zgodnosc. Zadnego sumowania wkladow: suma prądow zwarciowych nalezy do solwera.
     """
     from enm.canonical_analysis import build_short_circuit_results, list_runs_for_case
 
     if not isinstance(bus_ref, str):
-        return None, None, None, False
+        return None, None, None, False, []
     from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 
     # Karta OD-14: reguły aparatury pola liczą prądem zwarcia METALICZNEGO — bieg przez
@@ -1255,8 +1266,9 @@ def _prady_zwarciowe_szyny(
                     wiersz.get("ip_ka"),
                     str(run.id),
                     bool(wiersz.get("tolerancja_nn_robocza")),
+                    list(wiersz.get("parametry_robocze_maszyn") or ()),
                 )
-    return None, None, None, False
+    return None, None, None, False, []
 
 
 def _wejscia_urzadzenia(

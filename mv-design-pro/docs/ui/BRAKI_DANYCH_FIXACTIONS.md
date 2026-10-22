@@ -58,7 +58,7 @@ Frontend mapuje przez `BACKEND_MODAL_TYPE_MAP` na `MODAL_ID`:
 
 ## Pełna lista kodów BLOCKER z FixActions
 
-### ENMValidator (E001-E010)
+### ENMValidator (E001-E011)
 
 | Kod | Opis | FixAction |
 |-----|------|-----------|
@@ -72,6 +72,7 @@ Frontend mapuje przez `BACKEND_MODAL_TYPE_MAP` na `MODAL_ID`:
 | E008 | Źródło bez param. zwarciowych | OPEN_MODAL → SourceModal |
 | E009 | Brak ref. katalogowej | SELECT_CATALOG |
 | E010 | Overrides bez OVERRIDE | NAVIGATE_TO_ELEMENT |
+| E011 | Wartość projektanta maszyny wirującej albo aparatu SN spoza bramy rejestru wartości roboczych (kanon: `catalog.wartosc_projektanta_niedopuszczalna`) | NAVIGATE_TO_ELEMENT → sekcja wartości projektanta kreatora edycji parametrów |
 
 ### Generator Validation
 

@@ -255,6 +255,7 @@ class _Substrate:
             efficiency=efficiency,
             i_lr_ratio=i_lr_ratio,
             pole_pairs=pole_pairs,
+            liczba_jednostek=1,
             wind_type_3=wind_type_3,
         )
         self.graph.add_asynchronous_machine_source(src)

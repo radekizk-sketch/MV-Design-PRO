@@ -37,6 +37,7 @@ uzupełnienia rejestru (mechanizm gotowy, zero fabrykacji tymczasem).
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
@@ -47,7 +48,10 @@ from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
     pasmo_dla_u0,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import ia_gwarantowane_a
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
 from network_model.solvers.protection_lv_curves import (
     FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL,
@@ -181,18 +185,39 @@ def z_danymi_przyjetymi(wynik: SwzResult, dane: tuple[DanaPrzyjeta, ...]) -> Swz
 
 def dane_przyjete_petli(wynik: FaultLoopResult, punkt_pl: str) -> tuple[DanaPrzyjeta, ...]:
     """Dane przyjęte prądu pętli: c pętli z wartości roboczej tolerancji sieci nN (karta
-    TOLERANCJA-NN-WARTOSC-ROBOCZA). JEDNO tłumaczenie znacznika wyniku pętli dla werdyktów
-    SWZ TN, TT/IT, doboru aparatu nN, arkusza obwodów i dowodu obwodu nN."""
-    return dane_przyjete_znacznika_petli(wynik.tolerancja_nn_robocza, punkt_pl)
+    TOLERANCJA-NN-WARTOSC-ROBOCZA) oraz wartości robocze parametrów maszyn wirujących, z którymi
+    policzono impedancję sieci zasilającej SN (karta PODSTAWA-Q, rozstrz. 3). JEDNO tłumaczenie
+    wyniku pętli dla werdyktów SWZ TN, TT/IT, doboru aparatu nN, arkusza obwodów i dowodu
+    obwodu nN."""
+    return _dane_przyjete_petli(
+        wynik.tolerancja_nn_robocza, wynik.parametry_robocze_maszyn, punkt_pl
+    )
 
 
-def dane_przyjete_znacznika_petli(robocza: bool, punkt_pl: str) -> tuple[DanaPrzyjeta, ...]:
+def dane_przyjete_petli_zserializowanej(
+    petla: Mapping[str, Any], punkt_pl: str
+) -> tuple[DanaPrzyjeta, ...]:
     """To samo tłumaczenie dla wyniku pętli już zserializowanego (``FaultLoopResult.to_dict``
-    niesie ``tolerancja_nn_robocza`` wyłącznie przy wartości roboczej) — arkusz obwodów nN
-    czyta pętlę doziemną TT/IT z widoku SWZ, nie z obiektu wyniku."""
-    if not robocza:
-        return ()
-    return (dana_przyjeta_tolerancji_nn(miejsce_pl=f"pętla zwarcia w punkcie „{punkt_pl}”"),)
+    niesie ``tolerancja_nn_robocza`` i ``parametry_robocze_maszyn`` wyłącznie przy wartościach
+    roboczych) — arkusz obwodów nN czyta pętlę doziemną TT/IT z widoku SWZ, nie z obiektu."""
+    return _dane_przyjete_petli(
+        bool(petla.get("tolerancja_nn_robocza")),
+        petla.get("parametry_robocze_maszyn") or (),
+        punkt_pl,
+    )
+
+
+def _dane_przyjete_petli(
+    robocza: bool, parametry_robocze_maszyn: Iterable[Mapping[str, Any]], punkt_pl: str
+) -> tuple[DanaPrzyjeta, ...]:
+    tolerancja = (
+        (dana_przyjeta_tolerancji_nn(miejsce_pl=f"pętla zwarcia w punkcie „{punkt_pl}”"),)
+        if robocza
+        else ()
+    )
+    # Wpis maszyny w wyniku pętli zmienia impedancję sieci zasilającej (wielkość I″k wpisu,
+    # `parametry_robocze_impedancji_maszyn`) — prąd pętli stoi na tej samej danej przyjętej.
+    return tolerancja + dane_przyjete_maszyn(parametry_robocze_maszyn, wielkosc="ikss")
 
 
 def ocen_swz(

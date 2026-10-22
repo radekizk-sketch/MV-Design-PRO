@@ -304,6 +304,12 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // `lv_voltage_tolerance`, formularz parametrów tego elementu); nadpisanie c jest parametrem
   // przypadku albo scenariusza zwarciowego, nie elementu modelu.
   'fault.c_tolerancja_nn_robocza': EDYCJA,
+  // Karta PODSTAWA-Q: maszyna wirująca liczona z wartością roboczą parametru zwarciowego —
+  // wartość projektanta wpisuje się w parametrach TEGO generatora (`overrides`).
+  'fault.parametry_maszyny_robocze': EDYCJA,
+  // Karta PODSTAWA-Q (E011): wartość projektanta spoza bramy rejestru — naprawa w sekcji
+  // wartości projektanta TEGO elementu (maszyna wirująca albo aparat SN, `overrides`).
+  'catalog.wartosc_projektanta_niedopuszczalna': EDYCJA,
   'fault.c_nadpisanie_bez_uzasadnienia': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   'fault.c_nadpisanie_wartosc_niepoprawna': przestrzen('obliczenia', POWOD_NADPISANIE_C),
   // Karta SC-IB-ITH-ZRODLA: t_b jest daną scenariusza zwarciowego, nie elementu modelu.

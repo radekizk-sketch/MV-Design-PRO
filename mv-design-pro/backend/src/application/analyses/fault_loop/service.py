@@ -35,10 +35,11 @@ transformatora, którego szyna nN jest ich korzeniem.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
+from enm.maszyny_robocze import parametry_robocze_impedancji_maszyn
 from enm.models import EnergyNetworkModel, Substation, Transformer
 from enm.nazwy_elementow import nazwa_elementu
 from enm.slownik_komunikatow import etykieta_parametru, opis_obiektu
@@ -267,6 +268,10 @@ class UpstreamHvThevenin:
 
     hv_bus_ref: str
     z_hv_ohm: complex
+    #: Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn wirujących wyspy węzła
+    #: HV, z którymi policzono ``z_hv_ohm`` (maszyny są admitancjami bocznikowymi Z-bus) —
+    #: każdy konsument (pętla zwarcia, kotwica SN) niesie je jako dane przyjęte.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = field(default=(), compare=False)
 
 
 def restrict_graph_to_island_of(graph: NetworkGraph, node_id: str) -> bool:
@@ -364,6 +369,7 @@ def compute_upstream_hv_thevenin(
         UpstreamHvThevenin(
             hv_bus_ref=hv_node_id,
             z_hv_ohm=z_kk_hv_ohm,
+            parametry_robocze_maszyn=parametry_robocze_impedancji_maszyn(graph, hv_node_id),
         ),
         [],
     )
@@ -554,7 +560,9 @@ def _upstream_thevenin_lv_component(
         ulv_kv=trafo.ulv_kv,
         label=etykieta_sieci_zasilajacej_petli(trafo),
     )
-    return component, []
+    # Karta PODSTAWA-Q (rozstrz. 3): składowa niesie wartości robocze maszyn, z którymi ją
+    # policzono — wynik pętli zbiera je z tej składowej (`parametry_robocze_skladowych`).
+    return replace(component, parametry_robocze_maszyn=hv_equiv.parametry_robocze_maszyn), []
 
 
 def uklad_nn_transformatora(trafo: Transformer) -> str | None:
@@ -724,6 +732,8 @@ def oblicz_petle_na_trasie(
         # (deklaracja albo wartość robocza — karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
         tolerancja_nn=tolerancja.wartosc,
         tolerancja_nn_robocza=tolerancja.robocza,
+        # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze maszyn, z którymi policzono Z sieci SN.
+        parametry_robocze_maszyn=upstream.parametry_robocze_maszyn,
     )
     return compute_fault_loop(build_fault_loop_input(request))
 

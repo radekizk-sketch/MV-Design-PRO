@@ -25,9 +25,9 @@ This file is NEW (not one of the 7 frozen solver files); it CALLS the frozen
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import (
@@ -633,6 +633,86 @@ class MachinePartialContribution:
             "delta_u_wzgledne": float(self.delta_u_wzgledne),
             "wywod": list(self.wywod),
         }
+
+
+def zalozenia_krzywych_wkladow(
+    wklady: Iterable[MachinePartialContribution],
+) -> list[dict[str, Any]]:
+    """Krzywe zaniku wkładów maszyn wyznaczone na ZAŁOŻENIU INŻYNIERSKIM (karta PODSTAWA-Q).
+
+    Jeden wpis na ślad μ albo q, którego podstawa (`SladKrzywejZaniku.podstawa`, jedyna tablica
+    `PODSTAWY_REGUL_KRZYWYCH`) ma rodzaj źródła ``ZALOZENIE_INZYNIERSKIE``: interpolacja q po
+    t_min (pkt 9.1.2 jej nie przewiduje), krzywa 0,02 s dla t_min < 0,02 s (μ i q), q = 1 dla
+    m ≤ 0. Ślad o podstawie normowej (węzeł, interpolacja μ wg pkt 9.1.1, powyżej zakresu) nie
+    daje wpisu — lista pusta znaczy: I_b punktu stoi na samych zapisach normy. Kolejność wkładów
+    jak w `compute_machine_contributions` (deterministyczna), w maszynie μ przed q.
+
+    Predykat parami: wpis powstaje z TEGO SAMEGO śladu, który dał liczbę μ/q, więc deklaracja
+    podstawy w wierszu wyniku nie może rozjechać się z regułą rachunku.
+    """
+    wynik: list[dict[str, Any]] = []
+    for wklad in wklady:
+        for slad in (wklad.slad_mu, wklad.slad_q):
+            if slad is None:
+                continue
+            podstawa = slad.podstawa
+            if podstawa.rodzaj_zrodla != PODSTAWA_ZALOZENIE_INZYNIERSKIE:
+                continue
+            wynik.append(
+                {
+                    "source_id": wklad.source_id,
+                    "source_name": wklad.source_name,
+                    "machine_type": wklad.machine_type,
+                    "wielkosc": slad.wielkosc,
+                    "regula": slad.regula,
+                    "t_min_s": float(slad.t_min_s),
+                    "argument": float(slad.argument),
+                    "wynik": float(slad.wynik),
+                    "norma": podstawa.norma,
+                    "podstawa_reguly": podstawa.rodzaj_zrodla,
+                    "podstawa_reguly_pl": podstawa.opis_pl,
+                }
+            )
+    return wynik
+
+
+def zdanie_zalozenia_krzywej_pl(wpis: Mapping[str, Any]) -> str:
+    """Zdanie o jednym wpisie `zalozenia_krzywych_wkladow` — JEDNO tłumaczenie dla werdyktu
+    (zakres ważności), dowodu aparatury, pakietu dowodowego i raportu.
+
+    Treść: która wielkość, której maszyny, przy jakim t_min i argumencie, z jaką podstawą
+    (zdanie z jedynej tablicy podstaw). Nazwa maszyny z modelu (``source_name``); brak nazwy
+    nazywa rodzaj, nigdy identyfikator.
+    """
+    symbol = "μ" if wpis.get("wielkosc") == "mu" else "q"
+    argument_pl = "I″k/I_r" if wpis.get("wielkosc") == "mu" else "m"
+    jednostka = "" if wpis.get("wielkosc") == "mu" else " MW"
+    maszyna = opis_rodzaju_i_nazwy("maszyna", wpis.get("source_name"))
+    # Wpis z `zalozenia_krzywych_wkladow` zawsze niesie liczby — brak klucza to błąd programu
+    # wołającego (KeyError), nie dana do zastąpienia zerem.
+    t_min = f"{float(wpis['t_min_s']):g}".replace(".", ",")
+    argument = f"{float(wpis['argument']):.4g}".replace(".", ",")
+    wynik = f"{float(wpis['wynik']):.4f}".replace(".", ",")
+    return (
+        f"{symbol} = {wynik} ({maszyna}, t_min = {t_min} s, {argument_pl} = {argument}{jednostka})"
+        f" — {wpis.get('podstawa_reguly_pl')}"
+    )
+
+
+def zdanie_zalozen_zaniku_ib_pl(wpisy: Iterable[Mapping[str, Any]]) -> str | None:
+    """Zdanie o WSZYSTKICH założeniach krzywych zaniku, na których stoi I_b punktu (karta
+    PODSTAWA-Q) — JEDNO zdanie dla komentarza kroku śladu „Ib", zakresu ważności werdyktu
+    I_b ≤ I_cu, uwagi i ostrzeżenia dowodu doboru aparatury oraz ostrzeżenia dowodu SC3F.
+
+    ``None`` dla listy pustej: I_b stoi na samych zapisach normy i nikt nie dopisuje zdania.
+    """
+    zdania = [zdanie_zalozenia_krzywej_pl(wpis) for wpis in wpisy]
+    if not zdania:
+        return None
+    return (
+        "Prąd wyłączeniowy I_b stoi na założeniach inżynierskich krzywych zaniku "
+        "(IEC 60909-0:2016 pkt 9.1): " + "; ".join(zdania) + "."
+    )
 
 
 @dataclass(frozen=True)

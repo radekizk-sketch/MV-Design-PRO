@@ -97,7 +97,11 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 from enm.slownik_komunikatow import opis_elementu
 from enm.tor_pola import szyna_raportowa, wezel_elektryczny
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+    scal_wpisy_maszyn,
+)
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import DanaPrzyjeta
@@ -360,16 +364,22 @@ def _dane_przyjete_punktow(
 ) -> tuple[DanaPrzyjeta, ...]:
     """Dane przyjęte prądów wejścia nastaw: każdy szynowy punkt (raz) w sieci nN liczonej z
     wartością roboczą tolerancji (znacznik TEGO SAMEGO wiersza, z którego czytany jest prąd —
-    `_wiersz_w_wezle`, jedno źródło). Kolejność deterministyczna: kolejność punktów wejścia."""
+    `_wiersz_w_wezle`, jedno źródło). Kolejność deterministyczna: kolejność punktów wejścia.
+
+    Karta PODSTAWA-Q (rozstrz. 3): prąd ``ikss_a`` punktu liczony z wartością roboczą parametru
+    maszyny wirującej jego wyspy (pole ``parametry_robocze_maszyn`` TEGO SAMEGO wiersza) — dana
+    przyjęta maszyny, raz na (maszyna, parametr)."""
     szyny: list[str] = []
+    wpisy_maszyn: list[list[dict[str, Any]]] = []
     for raw_result, graf, szyna_ref in punkty:
-        robocza = bool(_wiersz_w_wezle(raw_result, graf).get("tolerancja_nn_robocza"))
-        if robocza and szyna_ref not in szyny:
+        wiersz = _wiersz_w_wezle(raw_result, graf)
+        if bool(wiersz.get("tolerancja_nn_robocza")) and szyna_ref not in szyny:
             szyny.append(szyna_ref)
+        wpisy_maszyn.append(list(wiersz.get("parametry_robocze_maszyn") or ()))
     return tuple(
         dana_przyjeta_tolerancji_nn(miejsce_pl=opis_elementu(snapshot, ref, "szyna"))
         for ref in szyny
-    )
+    ) + dane_przyjete_maszyn(scal_wpisy_maszyn(wpisy_maszyn), wielkosc="ikss")
 
 
 def zbuduj_wejscie_nastaw(

@@ -98,6 +98,10 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.catalog.wartosci_robocze import (
+    WIELKOSCI_ZWARCIOWE,
+    zdanie_parametru_maszyny_pl,
+)
 from network_model.pochodne import (
     SQRT2,
     SQRT3,
@@ -117,6 +121,7 @@ from network_model.solvers.machine_sc_iec60909 import (
     MachineShortCircuitResult,
     SladKrzywejZaniku,
     WezelKrzywejZaniku,
+    zdanie_zalozen_zaniku_ib_pl,
 )
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     SC1AsymmetricalQuantities,
@@ -191,6 +196,13 @@ class SC3FInput:
     krok_ib: dict[str, Any] | None = None
     krok_idc: dict[str, Any] | None = None
     tb_zrodlo: dict[str, Any] | None = None
+    # Karta PODSTAWA-Q: wpisy μ/q maszyn wyznaczone na założeniu inżynierskim (pole wyniku
+    # ``zalozenia_zaniku``; puste = I_b na samej normie) — zdanie w ostrzeżeniach dowodu.
+    zalozenia_zaniku: tuple[dict[str, Any], ...] = ()
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn wirujących wyspy punktu
+    # (`enm.maszyny_robocze.parametry_robocze_maszyn_punktu` na grafie biegu) — każdy wpis to
+    # zdanie w ostrzeżeniach dowodu; wpis wyłącznie dla krzywej zaniku — tylko przy kroku I_b.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = ()
 
     # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10). Para
     # rozstrzygana JEDNYM predykatem (`z_f_ohm is not None`): przy Z_f `z_thevenin_ohm` to
@@ -266,6 +278,7 @@ class SC3FInput:
             krok_ib=krok_sladu_zwarcia(result.white_box_trace, "Ib"),
             krok_idc=krok_sladu_zwarcia(result.white_box_trace, "iDC"),
             tb_zrodlo=result.tb_zrodlo,
+            zalozenia_zaniku=tuple(result.zalozenia_zaniku or ()),
             z_f_ohm=result.z_f_ohm,
             z_petli_ohm=result.zkk_ohm if result.z_f_ohm is not None else None,
         )
@@ -822,6 +835,17 @@ class ProofGenerator:
                 "I_b i i_DC policzone przy czasie wyłączenia t_b będącym wartością roboczą "
                 f"(wynik obliczeniowy na danej przyjętej): {data.tb_zrodlo.get('opis_pl')}"
             )
+        # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim — jedno zdanie z solvera.
+        zdanie_zaniku = zdanie_zalozen_zaniku_ib_pl(data.zalozenia_zaniku)
+        if data.ib_ka is not None and zdanie_zaniku is not None:
+            ostrzezenia_tb.append(zdanie_zaniku)
+        wielkosci_dowodu = WIELKOSCI_ZWARCIOWE if data.ib_ka is not None else ("ikss", "ip", "ith")
+        for wpis in data.parametry_robocze_maszyn:
+            if any(w in wpis["wielkosci"] for w in wielkosci_dowodu):
+                ostrzezenia_tb.append(
+                    "Wynik liczony z wartością roboczą parametru (dana przyjęta): "
+                    + zdanie_parametru_maszyny_pl(wpis)
+                )
         if data.ib_ka is not None:
             step_number += 1
             steps.append(

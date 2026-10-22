@@ -13,13 +13,23 @@
  * sekcję czterech parametrów (czas własny, I_k, t_k, I_p). Zapis to lista `overrides`
  * (`wartosciRoboczeAparatu.ts`); bramą wartości jest walidator backendu, a obok pola stoi to, co
  * obliczenie przyjmie bez wartości projektanta (dana karty albo propozycja rejestru backendu).
+ *
+ * WARTOŚCI PROJEKTANTA MASZYNY WIRUJĄCEJ (karta PODSTAWA-Q, zasada nr 4): generator, którego rodzaj
+ * jest maszyną wirującą w rejestrze backendu (synchroniczna, asynchroniczna klatkowa albo dwustronnie
+ * zasilana), dostaje sekcję parametrów zwarciowych (x″d, cos φ, p, I_LR/I_rM, η — zestaw rodziny
+ * z `GET /api/catalog/maszyny-wirujace/wartosci-robocze`). Ta sama mechanika listy `overrides`
+ * (`wartosciRoboczeWspolne.ts`), brama wartości w operacji domenowej.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchMvApparatusTypes } from '../../../ui/catalog/api';
-import type { MVApparatusType } from '../../../ui/catalog/types';
+import { fetchMvApparatusTypes, fetchRejestrMaszynWirujacych } from '../../../ui/catalog/api';
+import type {
+  MVApparatusType,
+  ParametrMaszynyRejestru,
+  RejestrMaszynWirujacych,
+} from '../../../ui/catalog/types';
 import { useGrupyPolaczen } from '../../../ui/catalog/useGrupyPolaczen';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -64,6 +74,17 @@ import {
   type FormularzWartosciAparatu,
   type ParametrAparatuSn,
 } from './wartosciRoboczeAparatu';
+import {
+  formularzZNadpisanRejestru,
+  nadpisaniaZFormularzaRejestru,
+  nadpisaniaZmienioneRejestru,
+  type FormularzWartosci,
+} from './wartosciRoboczeWspolne';
+import {
+  czyRejestrMaszyn,
+  parametryMaszynyGeneratora,
+  zrodloParametruMaszyny,
+} from './wartosciRoboczeMaszyny';
 import { RODZAJE_STACJI, podpisRodzajuStacjiPl } from '../../../ui/shared/rodzajStacji';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 
@@ -129,6 +150,26 @@ function podpowiedzAparatu(pozycja: MVApparatusType | null, parametr: ParametrAp
   return `${T.aparatBrak}.`;
 }
 
+/** Etykieta pola parametru maszyny z opisu rejestru backendu: nazwa, symbol i jednostka. */
+function etykietaParametruMaszyny(opis: ParametrMaszynyRejestru): string {
+  const jednostka = opis.jednostka === '1' ? '' : ` [${opis.jednostka}]`;
+  return `${opis.nazwa_pl.charAt(0).toUpperCase()}${opis.nazwa_pl.slice(1)} ${opis.symbol}${jednostka}`;
+}
+
+/** Podpowiedź pola maszyny: co obliczenie przyjmie, gdy projektant nie poda wartości. */
+function podpowiedzMaszyny(
+  tabliczka: Readonly<Record<string, unknown>> | null | undefined,
+  opis: ParametrMaszynyRejestru,
+): string {
+  const zrodlo = zrodloParametruMaszyny(tabliczka, opis);
+  const jednostka = opis.jednostka === '1' ? '' : ` ${opis.jednostka}`;
+  if (zrodlo.rodzaj === 'tabliczka') {
+    return `${T.maszynaZTabliczki} ${liczbaPl(zrodlo.wartosc)}${jednostka}.`;
+  }
+  const rodzaj = T.aparatRodzajZrodla[zrodlo.rodzajZrodla] ?? zrodlo.rodzajZrodla;
+  return `${T.maszynaPropozycja} ${liczbaPl(zrodlo.wartosc)}${jednostka} (${rodzaj}).`;
+}
+
 /** Konwersja tekstu na typ: liczba / tak-nie / brak wartości wykrywane automatycznie, reszta jako tekst. */
 function parsujWartosc(raw: string): string | number | boolean | null {
   const trimmed = raw.trim();
@@ -160,8 +201,15 @@ export function KreatorEdycjiParametrow() {
   );
   const jestAparatSn = galaz?.catalog_namespace === NAMESPACE_APARAT_SN;
   const poleKontekstu = readString(context?.field);
-  const poleAparatuZKontekstu =
-    jestAparatSn && jestParametremAparatuSn(poleKontekstu) ? poleKontekstu : null;
+  // `overrides` (akcja naprawcza blokady E011 — wartość projektanta spoza bramy) wskazuje całą
+  // sekcję aparatu: kursor w pierwszym polu.
+  const poleAparatuZKontekstu = !jestAparatSn
+    ? null
+    : jestParametremAparatuSn(poleKontekstu)
+      ? poleKontekstu
+      : poleKontekstu === 'overrides'
+        ? PARAMETRY_APARATU_SN[0]
+        : null;
 
   // Pole wskazane przez kontekst (akcja naprawcza gotowości, C-12): klucz pierwszego
   // wiersza i kursor w polu jego wartości — projektant wpisuje od razu brakującą daną.
@@ -172,7 +220,13 @@ export function KreatorEdycjiParametrow() {
   // + `vector_group`), inaczej formularz zaczynałby się od klucza, którego backend nie zna.
   // Parametr aparatu SN wskazany kontekstem (akcja „Zmień wartość" ekranu wytrzymałości)
   // trafia do sekcji aparatu, nie do wiersza klucz → wartość.
-  const initialKey = poleAparatuZKontekstu
+  // Generator: akcja naprawcza założenia `fault.parametry_maszyny_robocze` wskazuje `overrides`
+  // (nośnik wartości projektanta maszyny) — to sekcja maszyny, nie wiersz klucz → wartość.
+  const generatorZKontekstu = useSnapshotStore(
+    (s) => s.snapshot?.generators?.some((g) => g.ref_id === elementRef) ?? false,
+  );
+  const poleMaszynyZKontekstu = generatorZKontekstu && poleKontekstu === 'overrides';
+  const initialKey = poleAparatuZKontekstu || poleMaszynyZKontekstu
     ? ''
     : poleKontekstu || kluczZWymogu(readString(context?.required));
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
@@ -260,7 +314,56 @@ export function KreatorEdycjiParametrow() {
     setFormularzAparatu((p) => (p ? { ...p, [parametr]: wartosc } : p));
   }, []);
 
-  const liczbaDoZapisu = wypelnione.length + liczbaZmianNcRfg + (zmianaAparatu ? 1 : 0);
+  // Karta PODSTAWA-Q: sekcja maszyny wirującej — rodzina i parametry z rejestru backendu.
+  const [rejestrMaszyn, setRejestrMaszyn] = useState<RejestrMaszynWirujacych | null>(null);
+  const [rejestrMaszynNiedostepny, setRejestrMaszynNiedostepny] = useState(false);
+  const generatorRef = generator?.ref_id ?? '';
+  useEffect(() => {
+    if (!generatorRef) return undefined;
+    let aktywny = true;
+    fetchRejestrMaszynWirujacych()
+      .then((rejestr: unknown) => {
+        if (!aktywny) return;
+        if (czyRejestrMaszyn(rejestr)) setRejestrMaszyn(rejestr);
+        else setRejestrMaszynNiedostepny(true);
+      })
+      .catch(() => {
+        if (aktywny) setRejestrMaszynNiedostepny(true);
+      });
+    return () => {
+      aktywny = false;
+    };
+  }, [generatorRef]);
+  const parametryMaszyny = useMemo(
+    () => parametryMaszynyGeneratora(rejestrMaszyn, generator?.gen_type),
+    [rejestrMaszyn, generator],
+  );
+  const kluczeMaszyny = useMemo(
+    () => (parametryMaszyny ?? []).map((p) => p.parametr),
+    [parametryMaszyny],
+  );
+  const [formularzMaszyny, setFormularzMaszyny] = useState<FormularzWartosci | null>(null);
+  useEffect(() => {
+    if (parametryMaszyny && formularzMaszyny === null) {
+      setFormularzMaszyny(formularzZNadpisanRejestru(kluczeMaszyny, generator?.overrides));
+    }
+  }, [parametryMaszyny, kluczeMaszyny, generator, formularzMaszyny]);
+  const wynikMaszyny = useMemo(
+    () =>
+      formularzMaszyny && parametryMaszyny
+        ? nadpisaniaZFormularzaRejestru(kluczeMaszyny, formularzMaszyny, generator?.overrides, powod)
+        : null,
+    [formularzMaszyny, parametryMaszyny, kluczeMaszyny, generator, powod],
+  );
+  const zmianaMaszyny =
+    wynikMaszyny?.rodzaj === 'lista'
+    && nadpisaniaZmienioneRejestru(wynikMaszyny.nadpisania, generator?.overrides);
+  const zmienPoleMaszyny = useCallback((parametr: string, wartosc: string) => {
+    setFormularzMaszyny((p) => (p ? { ...p, [parametr]: wartosc } : p));
+  }, []);
+
+  const liczbaDoZapisu =
+    wypelnione.length + liczbaZmianNcRfg + (zmianaAparatu ? 1 : 0) + (zmianaMaszyny ? 1 : 0);
   const brakElementu = !elementRef;
   const kompletne = Boolean(elementRef && liczbaDoZapisu > 0);
 
@@ -291,6 +394,10 @@ export function KreatorEdycjiParametrow() {
       setBladGlobalny(T.bledneWartosciAparatu);
       return;
     }
+    if (wynikMaszyny?.rodzaj === 'blad') {
+      setBladGlobalny(T.bledneWartosciMaszyny);
+      return;
+    }
     if (liczbaDoZapisu === 0) {
       setBladGlobalny(T.brakParametrow);
       return;
@@ -300,6 +407,7 @@ export function KreatorEdycjiParametrow() {
       return acc;
     }, { ...zmianyNcRfg });
     if (zmianaAparatu && wynikAparatu?.rodzaj === 'lista') parameters.overrides = wynikAparatu.nadpisania;
+    if (zmianaMaszyny && wynikMaszyny?.rodzaj === 'lista') parameters.overrides = wynikMaszyny.nadpisania;
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };
     if (powod.trim()) payload.reason = powod.trim();
 
@@ -319,7 +427,7 @@ export function KreatorEdycjiParametrow() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaDoZapisu, powod, selekcjaPoOperacji, wynikAparatu, wynikDanychModulu, wypelnione, zmianaAparatu, zmianyNcRfg]);
+  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaDoZapisu, powod, selekcjaPoOperacji, wynikAparatu, wynikDanychModulu, wynikMaszyny, wypelnione, zmianaAparatu, zmianaMaszyny, zmianyNcRfg]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: nazwaElementu || 'Brak' },
@@ -335,6 +443,18 @@ export function KreatorEdycjiParametrow() {
             stan: wynikAparatu?.rodzaj === 'blad' ? ('brak' as const) : ('kompletne' as const),
             wartosc:
               wynikAparatu?.rodzaj === 'lista' ? `${wynikAparatu.nadpisania.length} z 4` : T.aparatBladLiczby,
+          },
+        ]
+      : []),
+    ...(formularzMaszyny && parametryMaszyny
+      ? [
+          {
+            etykieta: T.wierszMaszyna,
+            stan: wynikMaszyny?.rodzaj === 'blad' ? ('brak' as const) : ('kompletne' as const),
+            wartosc:
+              wynikMaszyny?.rodzaj === 'lista'
+                ? `${wynikMaszyny.nadpisania.length} z ${parametryMaszyny.length}`
+                : T.maszynaBladLiczby,
           },
         ]
       : []),
@@ -410,6 +530,37 @@ export function KreatorEdycjiParametrow() {
               />
             ))}
           </KreatorSiatka>
+        </KreatorSekcja>
+      ) : null}
+
+      {formularzMaszyny && parametryMaszyny ? (
+        <KreatorSekcja tytul={T.maszynaTytul} testid="mvd-kreator-edycja-maszyna">
+          <KreatorInfo>{T.maszynaPomoc}</KreatorInfo>
+          <KreatorSiatka kolumny={2}>
+            {parametryMaszyny.map((opis, i) => (
+              <PoleTekstowe
+                key={opis.parametr}
+                etykieta={etykietaParametruMaszyny(opis)}
+                wartosc={formularzMaszyny[opis.parametr] ?? ''}
+                onZmiana={(v) => zmienPoleMaszyny(opis.parametr, v)}
+                placeholder={T.maszynaPlaceholder}
+                pomoc={podpowiedzMaszyny(generator?.materialized_params, opis)}
+                blad={
+                  wynikMaszyny?.rodzaj === 'blad' && wynikMaszyny.parametr === opis.parametr
+                    ? T.maszynaBladLiczby
+                    : undefined
+                }
+                fokus={poleMaszynyZKontekstu && i === 0}
+                testid={`mvd-kreator-edycja-maszyna-${opis.parametr}`}
+              />
+            ))}
+          </KreatorSiatka>
+        </KreatorSekcja>
+      ) : null}
+
+      {generator && rejestrMaszynNiedostepny ? (
+        <KreatorSekcja tytul={T.maszynaTytul} testid="mvd-kreator-edycja-maszyna-niedostepna">
+          <KreatorInfo>{T.maszynaRejestrNiedostepny}</KreatorInfo>
         </KreatorSekcja>
       ) : null}
 

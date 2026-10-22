@@ -80,8 +80,11 @@ class SynchronousMachineSource:
     node_id: str = field(default="")
     sr_mva: float = field(default=0.0)  # rated apparent power S_rG [MVA]
     ur_kv: float = field(default=0.0)  # rated voltage U_rG [kV]
-    xd_subtransient_pu: float = field(default=0.15)  # x″d [pu], saturated subtransient
-    cos_phi_r: float = field(default=0.8)  # rated power factor cos φ_rG
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3): x″d i cos φ_rG bez domyślek — wartość podaje
+    # mapowanie ENM po rozstrzygnięciu pierwszeństwa (projektant > tabliczka > propozycja
+    # rejestru `network_model.catalog.wartosci_robocze`, jedyne miejsce wartości roboczych).
+    xd_subtransient_pu: float = field(kw_only=True)  # x″d [pu], saturated subtransient
+    cos_phi_r: float = field(kw_only=True)  # rated power factor cos φ_rG
     un_kv: float | None = field(default=None)  # system nominal voltage U_n [kV]; default U_rG
     # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_max we wzorze K_G to c_max tabeli 1 IEC 60909-0 dla
     # U_n sieci, do której przyłączona jest maszyna — czytany z JEDYNEGO źródła tabeli
@@ -196,10 +199,18 @@ class AsynchronousMachineSource:
     node_id: str = field(default="")
     pr_mw: float = field(default=0.0)  # rated mechanical power P_rM [MW]
     ur_kv: float = field(default=0.0)  # rated voltage U_rM [kV]
-    cos_phi_r: float = field(default=0.85)  # rated power factor
-    efficiency: float = field(default=0.95)  # rated efficiency η
-    i_lr_ratio: float = field(default=5.0)  # locked-rotor ratio I_LR/I_rM
-    pole_pairs: int = field(default=1)  # p (for P_rM/p)
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3): dane tabliczki maszyny bez domyślek — wartość
+    # podaje mapowanie ENM po rozstrzygnięciu pierwszeństwa (projektant > tabliczka >
+    # propozycja rejestru `network_model.catalog.wartosci_robocze`).
+    cos_phi_r: float = field(kw_only=True)  # rated power factor
+    efficiency: float = field(kw_only=True)  # rated efficiency η
+    i_lr_ratio: float = field(kw_only=True)  # locked-rotor ratio I_LR/I_rM
+    pole_pairs: int = field(kw_only=True)  # p (for P_rM/p)
+    # Liczba jednakowych maszyn, które element reprezentuje (``Generator.quantity``): ``pr_mw``
+    # jest mocą CAŁEJ grupy (Z_M grupy = Z_M maszyny / n — wkład do I″k sumuje się), a moc na
+    # parę biegunów m = P_rM/p (IEC 60909-0:2016 pkt 9.1.2, krzywa q; tabela R_M/X_M pkt 6.7)
+    # dotyczy POJEDYNCZEJ maszyny — m z mocy grupy zawyżałoby q i zmieniało wiersz R_M/X_M.
+    liczba_jednostek: int = field(kw_only=True)
     r_over_x: float | None = field(default=None)  # R_M/X_M override; else IEC default
     # DFIG (wind Type 3) marker. A doubly-fed induction generator has a partial-scale
     # rotor converter; on a severe fault the crowbar fires (rotor shorted) and the
@@ -228,8 +239,28 @@ class AsynchronousMachineSource:
         )
 
     @property
+    def moc_jednostki_mw(self) -> float:
+        """Moc znamionowa P_rM jednej maszyny grupy [MW]."""
+        return self.pr_mw / max(1, self.liczba_jednostek)
+
+    @property
     def p_per_pole_mw(self) -> float:
-        return self.pr_mw / max(1, self.pole_pairs)
+        """Moc czynna na parę biegunów m = P_rM/p JEDNEJ maszyny [MW] (pkt 9.1.2)."""
+        return self.moc_jednostki_mw / max(1, self.pole_pairs)
+
+    def r_over_x_zalezy_od_par_biegunow(self, pary_max: int) -> bool:
+        """Czy stosunek R_M/X_M (§6.7) zmienia się dla liczby par biegunów w zakresie 1…pary_max.
+
+        Liczba par biegunów wpływa na moc na parę biegunów m = P_rM/p; poza krzywą zaniku q
+        (wyłącznie I_b) zmienia wiersz tabeli R_M/X_M maszyny SN (próg 1 MW na parę biegunów),
+        a z nim impedancję Z_M — i wtedy wszystkie prądy zwarciowe punktu. Maszyna nN (wiersz
+        stały 0,42) i maszyna z jawnym R_M/X_M nie zależą od p w tym sensie.
+        """
+        if self.r_over_x is not None:
+            return False
+        return _asynchronous_r_over_x(self.ur_kv, self.moc_jednostki_mw) != _asynchronous_r_over_x(
+            self.ur_kv, self.moc_jednostki_mw / max(1, pary_max)
+        )
 
     @property
     def r_over_x_ratio(self) -> float:
@@ -260,6 +291,7 @@ class AsynchronousMachineSource:
             "ur_kv": self.ur_kv,
             "i_lr_ratio": self.i_lr_ratio,
             "ir_a": self.ir_a,
+            "liczba_jednostek": self.liczba_jednostek,
             "p_per_pole_mw": self.p_per_pole_mw,
             "r_over_x": self.r_over_x_ratio,
             "z_internal_ohm": z,

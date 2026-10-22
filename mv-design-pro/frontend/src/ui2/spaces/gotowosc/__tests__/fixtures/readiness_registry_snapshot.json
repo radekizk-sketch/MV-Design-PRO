@@ -282,6 +282,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "catalog.wartosc_projektanta_niedopuszczalna",
+      "fix_navigation": {
+        "focus": "overrides",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "conductor.fault_current_missing",
       "fix_navigation": {
         "panel": "analizy",
@@ -507,6 +516,15 @@
       "fix_navigation": {
         "panel": "analizy",
         "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "SOURCES",
+      "code": "fault.parametry_maszyny_robocze",
+      "fix_navigation": {
+        "focus": "overrides",
+        "panel": "inspector",
+        "tab": "parametry"
       }
     },
     {
@@ -1363,7 +1381,7 @@
       }
     }
   ],
-  "count": 160,
+  "count": 162,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1492,6 +1510,7 @@
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
     "E001": "source.grid_supply_missing",
     "E009": "catalog.binding_missing",
+    "E011": "catalog.wartosc_projektanta_niedopuszczalna",
     "E021": "station.required_field_missing",
     "E022": "station.line_field_multiple_segments",
     "E063": "transformer.lv_earthing_system_missing",

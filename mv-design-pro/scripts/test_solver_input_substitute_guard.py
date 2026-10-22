@@ -1907,7 +1907,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # `PodstawaRegulyKrzywej`, tekst do dowodu SC3F i rejestru rownan; pozostale pola rekordu
     # — `rodzaj_zrodla`, `norma`, `opis_pl` — juz byly w zbiorze), -0. PASS niezmieniony
     # (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4287." in wyjscie, wyjscie
+    # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 4287 -> 4291 — POMIAR
+    # `contract_fields()` na drzewie pierwszego commitu karty `aa856bb8b` (4287, pin zgodny)
+    # i na drzewie drugiego commitu (4291). Roznica zbiorow +4 (`zalozenia_zaniku` — addytywne
+    # pole wyniku SC z krzywymi μ/q o podstawie zalozenia inzynierskiego, zgoda B-01;
+    # `parametry_robocze_maszyn` — wpisy wartosci roboczych maszyn wirujacych wiersza;
+    # `liczba_jednostek` — liczba jednostek grupy maszyn asynchronicznych, m = P_rM/p jednej
+    # maszyny wg IEC 60909-0 pkt 9.1.2; `calkowita` — znacznik parametru rejestru o wartosci
+    # calkowitej, brama liczby par biegunow p), -0.
+    # PASS niezmieniony (zero podstawien; podstawienie `wpis.get(..., 0.0)` w
+    # `machine_sc_iec60909.zdanie_zalozenia_krzywej_pl` wykryte guardem i naprawione u zrodla).
+    assert "Pol kontraktow wejsciowych: 4291." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2153,7 +2163,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 13 (2026-10-21): 577 bazy + `core/czas_wylaczenia.py` +
         # `catalog/wartosci_robocze.py` + 1 plik application wniesiony partia 12 bez przypiecia
         # = 580. POMIAR guardem na drzewie scalenia.
-        "Przeskanowano 580 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 580 -> 582 (+2
+        # `enm/maszyny_robocze.py` — wpisy wartosci roboczych maszyn punktu zwarcia,
+        # `enm/wartosci_projektanta.py` — jedna brama wartosci projektanta; zero wpisow
+        # w zapadce i wykluczeniach). POMIAR guardem na `aa856bb8b` (580) i na drzewie karty (582).
+        "Przeskanowano 582 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2399,7 +2413,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 9 (+ B01-RUNDA-3): enm 63 + 1 = 64. POMIAR guardem na drzewie partii.
         # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): enm 64 + 1 (`enm/tolerancja_nn.py`)
         # = 65; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii.
-        "  enm: pliki_skanowane=65, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta PODSTAWA-Q (2026-10-22): enm 65 -> 67 (+2 `enm/maszyny_robocze.py`,
+        # `enm/wartosci_projektanta.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR jak wyzej.
+        "  enm: pliki_skanowane=67, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

@@ -101,6 +101,24 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   aparatBladLiczby: 'Wartość musi być liczbą (separator dziesiętny: przecinek albo kropka).',
   wierszAparat: 'Wartości projektanta aparatu',
   bledneWartosciAparatu: 'Wartość parametru aparatu nie jest liczbą — popraw pole oznaczone niżej.',
+  // Karta PODSTAWA-Q: wartości projektanta parametrów zwarciowych maszyny wirującej —
+  // nośnik `overrides` generatora; nazwy, jednostki i propozycje z rejestru backendu.
+  maszynaTytul: 'Parametry zwarciowe maszyny wirującej nadane przez projektanta',
+  maszynaPomoc:
+    'Tabliczka maszyny nie zawsze podaje reaktancję podprzejściową, współczynnik mocy, liczbę par '
+    + 'biegunów, krotność prądu zablokowanego wirnika i sprawność — obliczenie zwarciowe (IEC 60909-0) '
+    + 'przyjmuje wtedy wartość roboczą rejestru (założenie inżynierskie) i oznacza wyniki jako oparte '
+    + 'na danej przyjętej. Wpisz wartość z tabliczki albo karty producenta, aby obliczenie użyło jej '
+    + 'zamiast tabliczki elementu i propozycji. Puste pole: bez wartości projektanta.',
+  maszynaPlaceholder: 'puste — bez wartości projektanta',
+  maszynaZTabliczki: 'Puste pole: dana tabliczki elementu',
+  maszynaPropozycja: 'Puste pole: wartość robocza',
+  maszynaRejestrNiedostepny:
+    'Opis parametrów maszyny jest chwilowo niedostępny — odśwież widok, aby nadać wartości.',
+  maszynaBladLiczby: 'Wartość musi być liczbą (separator dziesiętny: przecinek albo kropka).',
+  wierszMaszyna: 'Wartości projektanta maszyny',
+  bledneWartosciMaszyny:
+    'Wartość parametru maszyny nie jest liczbą — popraw pole oznaczone niżej.',
   bledneDaneModulu:
     'Dane modułu NC RfG zawierają błędy pól — popraw je przed zapisem (pola oznaczone niżej).',
 } as const;

@@ -70,6 +70,7 @@ from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
+from enm.maszyny_robocze import parametry_robocze_maszyn_punktu, wyspy_wezlow_grafu
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (
     ELEMENT_SPOZA_MODELU,
@@ -425,6 +426,8 @@ KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
         "i_dc_a",
         "tb_zrodlo",
         "wklady_pominiete",
+        "zalozenia_zaniku",
+        "parametry_robocze_maszyn",
     }
 )
 
@@ -2581,6 +2584,8 @@ def _execute_short_circuit(
     # scenariusza projektanta — pola nie są czytane); punkty z t_b roboczym → założenie biegu.
     pola_lokalne = pola_lokalne_biegu(wejscie)
     punkty_tb_roboczego: list[dict[str, Any]] = []
+    # Karta PODSTAWA-Q: wyspy grafu RAZ na bieg (maszyny wyspy punktu → dane przyjęte wiersza).
+    wyspy_wezlow = wyspy_wezlow_grafu(graph) if graph.wartosci_robocze_maszyn else {}
     for numer_punktu, node_id in enumerate(reportable_fault_node_ids):
         if kontekst is not None:
             # Punkt przerwania MIEDZY punktami zwarcia (karta DYNAMIKA-W-TLE): postęp w
@@ -2720,6 +2725,13 @@ def _execute_short_circuit(
                 ),
             }
         )
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): maszyny wirujące wyspy punktu
+        # liczone z wartościami roboczymi parametrów — addytywnie, WYŁĄCZNIE gdy są.
+        robocze_maszyn = parametry_robocze_maszyn_punktu(
+            wejscie.graph, node_id, short_circuit_type, wyspy=wyspy_wezlow
+        )
+        if robocze_maszyn:
+            payload["parametry_robocze_maszyn"] = robocze_maszyn
         if wejscie.impedancja_zwarcia is not None:
             payload["reporting_limitations"] = [
                 *payload["reporting_limitations"],
@@ -3913,6 +3925,16 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None): pochodzenie t_b punktu, gdy
         # nie pochodzi ze scenariusza projektanta (pola lokalne albo wartość robocza).
         **({"tb_zrodlo": item["tb_zrodlo"]} if item.get("tb_zrodlo") is not None else {}),
+        # Karta PODSTAWA-Q (addytywnie, exclude-None): krzywe zaniku μ/q maszyn wyznaczone na
+        # założeniu inżynierskim — konsument werdyktu I_b ≤ I_cu niesie je w zakresie ważności.
+        **({"zalozenia_zaniku": item["zalozenia_zaniku"]} if item.get("zalozenia_zaniku") else {}),
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, addytywnie): wartości robocze parametrów maszyn
+        # wirujących wyspy punktu — konsumenci werdyktów niosą je w `dane_przyjete`.
+        **(
+            {"parametry_robocze_maszyn": item["parametry_robocze_maszyn"]}
+            if item.get("parametry_robocze_maszyn")
+            else {}
+        ),
         # Karta SC-IB-ITH-ZRODLA: Ib = SYMETRYCZNY prąd wyłączeniowy IEC 60909-0 rozdz. 9,
         # i_DC(t_b) — składowa nieokresowa rozdz. 10, obie przy t_b punktu (karta
         # TB-WARTOSC-ROBOCZA); None wyłącznie dla wiersza bez solvera / zapisu sprzed kart.
@@ -4794,6 +4816,18 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                         **(
                             {"tb_zrodlo": item["tb_zrodlo"]}
                             if item.get("tb_zrodlo") is not None
+                            else {}
+                        ),
+                        # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim (addytywnie).
+                        **(
+                            {"zalozenia_zaniku": item["zalozenia_zaniku"]}
+                            if item.get("zalozenia_zaniku")
+                            else {}
+                        ),
+                        # Karta PODSTAWA-Q: wartości robocze parametrów maszyn (addytywnie).
+                        **(
+                            {"parametry_robocze_maszyn": item["parametry_robocze_maszyn"]}
+                            if item.get("parametry_robocze_maszyn")
                             else {}
                         ),
                     },

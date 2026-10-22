@@ -25,6 +25,8 @@ from network_model.odmowa_danych import (
 from network_model.solvers.machine_sc_iec60909 import (
     MachineShortCircuitResult,
     compute_machine_contributions,
+    zalozenia_krzywych_wkladow,
+    zdanie_zalozen_zaniku_ib_pl,
 )
 from network_model.solvers.short_circuit_contributions import (
     NAZWA_WKLADU_POMINIETEGO,
@@ -142,6 +144,12 @@ OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     # zestawienie wkładów pominiętych na podstawie tolerancji numerycznej (|I| < 1e-6 A) —
     # obecne WYŁĄCZNIE, gdy policzono wkłady gałęziowe i choć jeden wkład został pominięty.
     "wklady_pominiete",
+    # Karta PODSTAWA-Q (zgoda B-01 architekta z 2026-10-22, addytywnie, exclude-None): krzywe
+    # zaniku μ/q wkładów maszyn wyznaczone na ZAŁOŻENIU INŻYNIERSKIM (interpolacja q po t_min,
+    # krzywa 0,02 s dla t_min < 0,02 s, q = 1 dla m ≤ 0) — obecne WYŁĄCZNIE dla zwarcia 3F
+    # z udziałem maszyn, gdy choć jedna krzywa stoi na założeniu. Sieć bez maszyn albo z samymi
+    # węzłami normy / interpolacją μ serializuje się bajt w bajt jak przed kartą.
+    "zalozenia_zaniku",
 ]
 
 
@@ -179,6 +187,10 @@ class ShortCircuitResult:
         wklady_pominiete: list[WkladPominiety] | None - zestawienie wkładów gałęziowych
             pominiętych na podstawie tolerancji numerycznej (|I| < 1e-6 A; addytywnie,
             exclude-None — ``None``, gdy wkładów nie liczono albo żaden nie był pominięty)
+        zalozenia_zaniku: list[dict] | None - krzywe zaniku μ/q wkładów maszyn wyznaczone na
+            założeniu inżynierskim (`machine_sc_iec60909.zalozenia_krzywych_wkladow`; karta
+            PODSTAWA-Q, addytywnie, exclude-None — ``None``, gdy I_b punktu stoi na samych
+            zapisach normy albo maszyn brak)
         sk_mva: float - moc zwarciowa Sk'' [MVA]
         ik_thevenin_a: float - wkład sieci Thevenina [A]
         ik_inverters_a: float - wkład źródeł falownikowych [A]
@@ -256,6 +268,10 @@ class ShortCircuitResult:
     # i kąt fazora w zapisie deterministycznym. None = wkładów nie liczono albo żaden nie
     # był pominięty (payload bez klucza, bajt w bajt jak przed kartą).
     wklady_pominiete: list[WkladPominiety] | None = None
+    # Karta PODSTAWA-Q (zgoda B-01 architekta z 2026-10-22, addytywnie): krzywe zaniku μ/q
+    # wkładów maszyn o podstawie ZALOZENIE_INZYNIERSKIE — konsument werdyktu I_b ≤ I_cu niesie
+    # je w zakresie ważności. None = brak takich krzywych (payload bez klucza, bajt w bajt).
+    zalozenia_zaniku: list[dict[str, Any]] | None = None
 
     # -------------------------------------------------------------------------
     # Aliasy dla kompatybilności wstecznej (preferuj canonical: ikss_a, ip_a, ...)
@@ -387,6 +403,9 @@ class ShortCircuitResult:
         # Karta PROG-ZERA-WKLADOW (addytywnie, exclude-None): zestawienie wkładów pominiętych.
         if self.wklady_pominiete is not None:
             data["wklady_pominiete"] = [w.to_dict() for w in self.wklady_pominiete]
+        # Karta PODSTAWA-Q (addytywnie, exclude-None): krzywe zaniku na założeniu inżynierskim.
+        if self.zalozenia_zaniku is not None:
+            data["zalozenia_zaniku"] = serialize_value([dict(w) for w in self.zalozenia_zaniku])
         return data
 
 
@@ -415,6 +434,12 @@ class PradWylaczeniowy:
     @property
     def tb_s(self) -> float:
         return self.czas_tb.wartosc_s
+
+    @property
+    def zalozenia_zaniku(self) -> list[dict[str, Any]]:
+        """Krzywe zaniku wkładów tego punktu o podstawie założenia inżynierskiego (karta
+        PODSTAWA-Q) — wyprowadzone z tych samych śladów, które dały μ i q (jedno źródło)."""
+        return zalozenia_krzywych_wkladow(wklad for wklad, _ in self.zaniki)
 
 
 @dataclass(frozen=True)
@@ -553,6 +578,7 @@ class ShortCircuitIEC60909Solver:
         z_equiv_metaliczne: complex | None = None,
         ikss_metaliczny_a: float | None = None,
         wklady_pominiete: list[WkladPominiety] | None = None,
+        zalozenia_zaniku: list[dict[str, Any]] | None = None,
     ) -> ShortCircuitResult:
         ik_total = ikss_thevenin + ik_inverters
         return ShortCircuitResult(
@@ -589,6 +615,7 @@ class ShortCircuitIEC60909Solver:
             i_dc_a=i_dc_a,
             tb_zrodlo=ShortCircuitIEC60909Solver._zrodlo_tb_wiersza(czas_tb, ib_przypadek),
             wklady_pominiete=wklady_pominiete,
+            zalozenia_zaniku=zalozenia_zaniku,
         )
 
     @staticmethod
@@ -947,6 +974,11 @@ class ShortCircuitIEC60909Solver:
         zrodlo_tb = ShortCircuitIEC60909Solver._zrodlo_tb_wyniku(wylaczeniowy.czas_tb)
         if zrodlo_tb is not None:
             wejscia["tb_zrodlo"] = zrodlo_tb
+        # Karta PODSTAWA-Q: krzywe zaniku na założeniu inżynierskim — w kroku „Ib" wyłącznie,
+        # gdy są (ślad punktu z samymi zapisami normy bez zmian).
+        zalozenia = wylaczeniowy.zalozenia_zaniku
+        if zalozenia:
+            wejscia["zalozenia_zaniku"] = zalozenia
         skladniki = " - ".join(
             f"{fmt(zanik.delta_u_wzgledne)} \\cdot (1 - {fmt(zanik.mu)} \\cdot "
             f"{fmt(zanik.q)}) \\cdot {fmt(zanik.ikss_czesciowy_a)}"
@@ -967,9 +999,18 @@ class ShortCircuitIEC60909Solver:
                 "Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny "
                 "synchronicznej, q z mocy na parę biegunów dla asynchronicznej; ΔU''_m — spadek "
                 "na reaktancji podprzejściowej maszyny. Źródła przekształtnikowe wchodzą do "
-                "Ik'' i Ib bez zaniku." + ShortCircuitIEC60909Solver._uwaga_tb(wylaczeniowy.czas_tb)
+                "Ik'' i Ib bez zaniku."
+                + ShortCircuitIEC60909Solver._uwaga_tb(wylaczeniowy.czas_tb)
+                + ShortCircuitIEC60909Solver._uwaga_zalozen_zaniku(zalozenia)
             ),
         )
+
+    @staticmethod
+    def _uwaga_zalozen_zaniku(zalozenia: list[dict[str, Any]]) -> str:
+        """Zdanie komentarza obliczeń o krzywych zaniku na założeniu inżynierskim (karta
+        PODSTAWA-Q; puste, gdy I_b stoi na samych zapisach normy)."""
+        zdanie = zdanie_zalozen_zaniku_ib_pl(zalozenia)
+        return "" if zdanie is None else f" {zdanie}"
 
     @staticmethod
     def _uwaga_tb(czas_tb: CzasWylaczeniaTb) -> str:
@@ -1967,6 +2008,7 @@ class ShortCircuitIEC60909Solver:
             z_equiv_metaliczne=core.z_equiv_metaliczne,
             ikss_metaliczny_a=ikss_metaliczny_a,
             wklady_pominiete=wklady_pominiete or None,
+            zalozenia_zaniku=wylaczeniowy.zalozenia_zaniku or None,
         )
 
     @staticmethod

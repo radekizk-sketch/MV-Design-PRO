@@ -326,8 +326,18 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     assert wywod[0]["tekst"].startswith("Model: IEC 60909")
     assert wywod[0]["latex"] is None
     assert wywod[1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
+    # Karta PODSTAWA-Q (rozstrz. 3): tabliczka „Agregat" nie podaje x″d ani cos φ_rG —
+    # nagłówek niesie zdanie na każdą wartość roboczą (kolejność rejestru), odpowiedź —
+    # wpisy i dane przyjęte (ten sam dobór).
+    assert wywod[2]["tekst"].startswith("Wartość robocza: maszyna „Agregat”: reaktancja")
+    assert wywod[3]["tekst"].startswith("Wartość robocza: maszyna „Agregat”: znamionowy")
+    assert [w["parametr"] for w in dane["parametry_robocze_maszyn"]] == [
+        "xd_subtransient_pu",
+        "cos_phi",
+    ]
+    assert dane["status_danych"] == "UNVALIDATED_INPUT" and len(dane["dane_przyjete"]) == 2
     # Karta #145: separator nazywa maszynę bez kodu typu (`SYNCHRONOUS`).
-    assert wywod[2]["tekst"] == "— Agregat —"
+    assert wywod[4]["tekst"] == "— Agregat —"
     latexy = " ".join(k["latex"] for k in wywod if k["latex"])
     # Wzor ogolny pradu czesciowego (superpozycja Z-bus) + podstawienie z c.
     assert r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk}|\,|Z_m|}" in latexy
@@ -436,7 +446,9 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
         "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza"
     )
     assert dane["t_min_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
-    assert dane["wywod"][3]["tekst"] == "— Agregat —"
+    # Karta PODSTAWA-Q: po zdaniu t_min — zdania wartości roboczych maszyny (x″d, cos φ_rG).
+    assert [k["tekst"][:16] for k in dane["wywod"][3:5]] == ["Wartość robocza:"] * 2
+    assert dane["wywod"][5]["tekst"] == "— Agregat —"
     assert dane["wywod"][-2]["tekst"].startswith("Suma wkładów maszyn")
     assert "Reguła małych silników" in dane["wywod"][-1]["tekst"]
 

@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -72,6 +72,7 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `source.connection_missing` | SOURCES | 2 | BLOCKER | Źródło zasilania nie jest podłączone do szyny | panel: `inspector`, tab: `polaczenia` |
 | `source.multiple_grid_sources_in_island` | SOURCES | 2 | BLOCKER | Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno źródło sieciowe w wyspie) | panel: `inspector`, tab: `polaczenia` |
 | `connection.cos_phi_required_missing` | SOURCES | 3 | WARNING | Brak wymaganego cosφ z warunków OSD — uzupełnij, by ocenić współczynnik mocy w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `wymagany_cos_phi` |
+| `fault.parametry_maszyny_robocze` | SOURCES | 3 | INFO | Maszyna wirująca liczona z wartością roboczą parametru zwarciowego (propozycja rejestru — założenie inżynierskie, nie dana producenta) — wpisz wartość z tabliczki maszyny w parametrach generatora, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `overrides` |
 | `nn.measurement.required_missing` | SOURCES | 3 | WARNING | Źródło nN nie ma przypisanego punktu pomiaru energii | panel: `inspector`, tab: `pomiary`, focus: `measurement_point` |
 | `source.sk_min_missing` | SOURCES | 3 | WARNING | Źródło sieciowe nie ma minimalnej mocy zwarciowej S''kQmin — scenariusz MIN liczony z impedancji dla S''kQmax (założenie niekonserwatywne dla czułości zabezpieczeń); wprowadź S''kQmin albo I''kQmin z warunków przyłączenia | panel: `inspector`, tab: `parametry`, focus: `sk3_min_mva` |
 | `ring.endpoints_missing` | TOPOLOGY | 2 | BLOCKER | Pierścień nie ma zdefiniowanych punktów końcowych | panel: `sld` |
@@ -105,6 +106,7 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.materialization_incomplete` | CATALOGS | 2 | BLOCKER | Materializacja katalogu nie dała wszystkich parametrów wymaganych przez solver — uzupełnij rekord katalogowy albo wskaż pozycję kompletną | panel: `inspector`, tab: `katalog` |
 | `catalog.materialization_required` | CATALOGS | 2 | BLOCKER | Wiązanie wyłącza materializację, a element techniczny musi brać parametry z katalogu | panel: `inspector`, tab: `katalog` |
 | `catalog.nameplate_mismatch` | CATALOGS | 2 | BLOCKER | Dane tabliczki z formularza przeczą pozycji katalogowej — liczby pochodzą z katalogu, więc wybierz pozycję o właściwych parametrach | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.wartosc_projektanta_niedopuszczalna` | CATALOGS | 2 | BLOCKER | Wartość projektanta parametru urządzenia jest spoza dopuszczalnego zakresu albo dotyczy parametru, którego to urządzenie nie ma — popraw ją albo usuń w parametrach elementu i zapisz | panel: `inspector`, tab: `parametry`, focus: `overrides` |
 | `conductor.fault_current_missing` | CATALOGS | 2 | WARNING | Brak prądu cieplnego z biegu SC — uruchom analizę zwarciową, by sprawdzić wytrzymałość zwarciową przekroju | panel: `analizy`, tab: `zwarciowa` |
 | `conductor.thermal_data_missing` | CATALOGS | 2 | WARNING | Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — uzupełnij pozycję katalogową | panel: `katalog`, tab: `kable`, focus: `ith_1s_a` |
 | `ct.rated_burden_missing` | CATALOGS | 2 | WARNING | Brak mocy znamionowej przekładnika prądowego w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `ct`, focus: `burden_va` |
@@ -223,21 +225,21 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 102 |
+| BLOCKER | 103 |
 | WARNING | 55 |
-| INFO | 3 |
-| **Razem** | **160** |
+| INFO | 4 |
+| **Razem** | **162** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 16 |
+| SOURCES | 17 |
 | TOPOLOGY | 6 |
-| CATALOGS | 49 |
+| CATALOGS | 50 |
 | STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **160** |
+| **Razem** | **162** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

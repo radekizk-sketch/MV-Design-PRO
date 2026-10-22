@@ -53,7 +53,10 @@ from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.tolerancja_nn import wyspy_wezlow_nn
-from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
+from network_model.catalog.wartosci_robocze import (
+    dane_przyjete_maszyn,
+    rozstrzygnij_tolerancje_nn,
+)
 from network_model.core.voltage_factor import (
     c_for_node,
     zrodlo_c_z_tabeli,
@@ -261,6 +264,9 @@ def _build_upstream_equivalent_snapshot_surowy(
         "model_revision": enm.header.revision,  # werdykt: modelRevision
         "model_hash": model_hash,  # werdykt: /hash
         "missing_data": [],
+        # Karta PODSTAWA-Q (rozstrz. 3), addytywnie — WYŁĄCZNIE gdy Z1 stoi na wartości roboczej
+        # parametru maszyny wirującej wyspy węzła SN: wpisy i dane przyjęte (jedno tłumaczenie).
+        **_dane_przyjete_maszyn_kotwicy(hv_equiv.parametry_robocze_maszyn),
         "note_pl": (
             "Równoważnik Thevenina sieci SN w punkcie HV transformatora — "
             "granica wizualna domeny nN (L2) jest granicą domeny napięciowej "
@@ -268,6 +274,20 @@ def _build_upstream_equivalent_snapshot_surowy(
             "snapshot jest dokładnie tym wejściem, którym solver pętli "
             "zwarcia nN liczy stronę SN (application.analyses.fault_loop)."
         ),
+    }
+
+
+def _dane_przyjete_maszyn_kotwicy(
+    wpisy: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    """Pola kotwicy dla wartości roboczych maszyn: lista wpisów i dane przyjęte Z1/Sk″/Ik″."""
+    if not wpisy:
+        return {}
+    return {
+        "parametry_robocze_maszyn": [dict(w) for w in wpisy],
+        "dane_przyjete": [
+            d.model_dump(mode="json") for d in dane_przyjete_maszyn(wpisy, wielkosc="ikss")
+        ],
     }
 
 

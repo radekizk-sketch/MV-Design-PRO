@@ -95,7 +95,10 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.store import get_enm
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import resolve_thermal_params
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
@@ -545,15 +548,24 @@ def _pierwszy_wiersz(run: CanonicalRun) -> dict[str, Any]:
 
 
 def _dane_przyjete_biegu(run: CanonicalRun) -> dict[str, Any]:
-    """Dane przyjęte prądów oceny (karta TOLERANCJA-NN-WARTOSC-ROBOCZA): punkt zwarcia
-    w sieci nN liczonej z wartością roboczą tolerancji — wszystkie prądy gałęzi tego biegu
-    stoją na danej przyjętej. Pusty słownik, gdy znacznika nie ma (odpowiedź bez zmian)."""
+    """Dane przyjęte prądów oceny: punkt zwarcia w sieci nN liczonej z wartością roboczą
+    tolerancji (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) i wartości robocze parametrów maszyn
+    wirujących wyspy punktu wpływające na I″k i I_th (karta PODSTAWA-Q) — wszystkie prądy
+    gałęzi tego biegu stoją na danej przyjętej. Pusty słownik, gdy żadnej nie ma (odpowiedź
+    bez zmian)."""
     wiersz = _pierwszy_wiersz(run)
-    if not wiersz.get("tolerancja_nn_robocza"):
-        return {}
     punkt = opis_rodzaju_i_nazwy("szyna", nazwa_nadana(wiersz.get("target_name")))
-    dana = dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {punkt}")
-    return {"status_danych": "UNVALIDATED_INPUT", "dane_przyjete": [dana.model_dump(mode="json")]}
+    dane = (
+        (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {punkt}"),)
+        if wiersz.get("tolerancja_nn_robocza")
+        else ()
+    ) + dane_przyjete_maszyn(wiersz.get("parametry_robocze_maszyn"), wielkosc=("ikss", "ith"))
+    if not dane:
+        return {}
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [dana.model_dump(mode="json") for dana in dane],
+    }
 
 
 def _odtworz_wynik_zwarciowy(
@@ -604,6 +616,8 @@ def _odtworz_wynik_zwarciowy(
         tb_s=_wymagane_pole_sc(payload, "tb_s"),
         i_dc_a=payload.get("i_dc_a"),
         tb_zrodlo=payload.get("tb_zrodlo"),
+        # Karta PODSTAWA-Q: odtworzenie wyniku kompletne (ocena cieplna I_b nie czyta).
+        zalozenia_zaniku=payload.get("zalozenia_zaniku"),
         # PERF-SC-50: wkłady liczone na żądanie z wejścia biegu (fabryka UoW jak przy
         # biegu — opcje audytu 2 czytane tą samą bazą).
         branch_contributions=_odtworz_wklady_galeziowe(

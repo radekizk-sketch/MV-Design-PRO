@@ -48,6 +48,7 @@ from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopResult,
     LoopImpedanceComponent,
     NetworkType,
+    parametry_robocze_skladowych,
     prad_z_petli,
     wspolczynniki_c_petli,
     zsumuj_skladowe_petli,
@@ -290,6 +291,7 @@ def oblicz_petle_tt(data: FaultLoopInput) -> FaultLoopResult:
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
         tolerancja_nn_robocza=c.tolerancja_nn_robocza,
+        parametry_robocze_maszyn=parametry_robocze_skladowych(data),
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.TT,
@@ -425,6 +427,7 @@ def oblicz_petle_it(data: FaultLoopInput) -> FaultLoopResult:
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
         tolerancja_nn_robocza=c.tolerancja_nn_robocza,
+        parametry_robocze_maszyn=parametry_robocze_skladowych(data),
         white_box_trace=tuple(trace),
         tt_it=WynikTtIt(
             uklad=NetworkType.IT,

@@ -44,9 +44,11 @@ from application.proof_engine.proof_pack import (
 )
 from application.proof_engine.types import ProofDocument
 from application.solvers.short_circuit_binding import zwarcie_3f_ze_snapshotu
+from enm.maszyny_robocze import parametry_robocze_maszyn_punktu
 from network_model.core.voltage_factor import NadpisanieC, Scenario
 from network_model.pochodne import a_na_ka, v_na_kv
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
+from network_model.solvers.short_circuit_core import ShortCircuitType
 
 
 @dataclass
@@ -189,6 +191,15 @@ class SC3FProofPack:
             tb_s=result.tb_s,
             # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (None = scenariusz projektanta).
             tb_zrodlo=result.tb_zrodlo,
+            # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim → ostrzeżenie dowodu.
+            zalozenia_zaniku=tuple(result.zalozenia_zaniku or ()),
+            # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze maszyn wyspy punktu — z TEGO SAMEGO
+            # grafu i tą samą funkcją co pole wiersza biegu (`canonical_analysis`).
+            parametry_robocze_maszyn=tuple(
+                parametry_robocze_maszyn_punktu(
+                    graph, result.fault_node_id, ShortCircuitType.THREE_PHASE
+                )
+            ),
             i_dc_ka=None if result.i_dc_a is None else a_na_ka(result.i_dc_a),
             krok_ib=krok_ib,
             krok_idc=krok_idc,

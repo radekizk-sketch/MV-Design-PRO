@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -17,9 +17,15 @@ from application.proof_engine.packs.sc_asymmetrical import (
 from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FProofPack
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from enm.assembler import impedancja_zwarcia_z_opcji
+from enm.maszyny_robocze import parametry_robocze_maszyn_punktu
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
-from network_model.catalog.wartosci_robocze import tolerancja_nn_napiecia
+from network_model.catalog.wartosci_robocze import (
+    WIELKOSCI_ZWARCIOWE,
+    dane_przyjete_maszyn,
+    tolerancja_nn_napiecia,
+    zdanie_parametru_maszyny_pl,
+)
 from network_model.core.czas_wylaczenia import (
     CZAS_TB_ROBOCZY_S,
     POCHODZENIE_TB_PROJEKTANT,
@@ -36,6 +42,7 @@ from network_model.core.voltage_factor import (
 )
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
+from network_model.solvers.short_circuit_core import ShortCircuitType
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 router = APIRouter(prefix="/api/proof", tags=["proof-pack"])
@@ -301,7 +308,11 @@ def _krok_reguly_malych_silnikow(result: Any) -> dict[str, Any]:
     }
 
 
-def _wywod_sekcje_wkladow(result: Any, zrodlo_tb: CzasWylaczeniaTb | None) -> list[dict[str, Any]]:
+def _wywod_sekcje_wkladow(
+    result: Any,
+    zrodlo_tb: CzasWylaczeniaTb | None,
+    parametry_robocze_maszyn: Sequence[Mapping[str, Any]] = (),
+) -> list[dict[str, Any]]:
     """Wywod sekcyjny wkladow (ZWARCIA-PRO F3 pkt 8) — ADDYTYWNIE obok `wywod`.
 
     Ta sama tresc co plaska lista `_wywod_wkladow`, pogrupowana w sekcje
@@ -313,6 +324,10 @@ def _wywod_sekcje_wkladow(result: Any, zrodlo_tb: CzasWylaczeniaTb | None) -> li
     lokalne albo wartość robocza; karta TB-WARTOSC-ROBOCZA): nagłówek niesie wtedy zdanie
     źródła z nośnika (ten sam warunek co pole odpowiedzi ``t_min_zrodlo``). ``None`` = t_b
     scenariusza — nagłówek bez zdania źródła.
+
+    ``parametry_robocze_maszyn`` — karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów
+    maszyn wyspy punktu (ten sam dobór co pole wiersza biegu); nagłówek niesie zdanie na wpis
+    (ten sam warunek co pole odpowiedzi ``parametry_robocze_maszyn``).
     """
     naglowek: list[dict[str, Any]] = [
         {
@@ -338,6 +353,10 @@ def _wywod_sekcje_wkladow(result: Any, zrodlo_tb: CzasWylaczeniaTb | None) -> li
     if zrodlo_tb is not None:
         naglowek.append(
             {"tekst": f"Czas t_min (= t_b punktu zwarcia): {zrodlo_tb.opis_pl}", "latex": None}
+        )
+    for wpis in parametry_robocze_maszyn:
+        naglowek.append(
+            {"tekst": f"Wartość robocza: {zdanie_parametru_maszyny_pl(wpis)}", "latex": None}
         )
     z_f = result.white_box.get("z_f_ohm")
     if z_f is not None:
@@ -573,7 +592,12 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     # Karta TB-WARTOSC-ROBOCZA: JEDEN predykat pochodzenia t_min dla zdania wywodu
     # i pola odpowiedzi `t_min_zrodlo` (predykaty parami).
     zrodlo_tb = punkt.czas_tb if punkt.czas_tb.pochodzenie != POCHODZENIE_TB_PROJEKTANT else None
-    sekcje = _wywod_sekcje_wkladow(result, zrodlo_tb)
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze maszyn wyspy punktu — JEDEN dobór dla
+    # zdania wywodu i pola odpowiedzi (predykaty parami; ta sama funkcja co wiersz biegu).
+    robocze_maszyn = parametry_robocze_maszyn_punktu(
+        punkt.graf, punkt.fault_node_id, ShortCircuitType.THREE_PHASE
+    )
+    sekcje = _wywod_sekcje_wkladow(result, zrodlo_tb, robocze_maszyn)
     input_hash = _input_hash_wkladow(payload)
     return {
         **result.to_dict(),
@@ -587,6 +611,20 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
         # Karta TB-WARTOSC-ROBOCZA (addytywnie): pochodzenie t_min = t_b punktu, gdy nie
         # pochodzi z żądania (scenariusza) — pola lokalne albo wartość robocza.
         **({"t_min_zrodlo": zrodlo_tb.to_dict()} if zrodlo_tb is not None else {}),
+        # Karta PODSTAWA-Q (addytywnie): wpisy i dane przyjęte wkładów, gdy maszyna wyspy punktu
+        # liczona jest z wartością roboczą parametru (Z_M i krzywe zaniku na danej przyjętej).
+        **(
+            {
+                "parametry_robocze_maszyn": robocze_maszyn,
+                "status_danych": "UNVALIDATED_INPUT",
+                "dane_przyjete": [
+                    d.model_dump(mode="json")
+                    for d in dane_przyjete_maszyn(robocze_maszyn, wielkosc=WIELKOSCI_ZWARCIOWE)
+                ],
+            }
+            if robocze_maszyn
+            else {}
+        ),
     }
 
 

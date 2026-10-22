@@ -86,7 +86,10 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, prad_z_mocy_pozornej_ka
 from network_model.solvers.cable_ampacity_derating import (
@@ -1300,8 +1303,15 @@ def serialize_lv_circuit_verification_pack(document: ProofDocument) -> dict[str,
 
 def _ostrzezenia_danych_przyjetych(fl: FaultLoopResult, nazwa_odcinka: str) -> tuple[str, ...]:
     """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: c pętli z wartości roboczej tolerancji sieci nN —
-    dowód stoi na danej przyjętej (jedno tłumaczenie: `dana_przyjeta_tolerancji_nn`)."""
-    if not fl.tolerancja_nn_robocza:
-        return ()
-    dana = dana_przyjeta_tolerancji_nn(miejsce_pl=f"obwód „{nazwa_odcinka}”")
-    return (f"Prąd pętli liczony z daną przyjętą: {dana.nazwa_pl} — {dana.powod_pl}",)
+    dowód stoi na danej przyjętej (jedno tłumaczenie: `dana_przyjeta_tolerancji_nn`). Karta
+    PODSTAWA-Q (rozstrz. 3): impedancja sieci zasilającej SN liczona z wartością roboczą
+    parametru maszyny wirującej (`FaultLoopResult.parametry_robocze_maszyn`) — każdy wpis to
+    osobne ostrzeżenie (jedno tłumaczenie: `dane_przyjete_maszyn`)."""
+    dane = (
+        (dana_przyjeta_tolerancji_nn(miejsce_pl=f"obwód „{nazwa_odcinka}”"),)
+        if fl.tolerancja_nn_robocza
+        else ()
+    ) + dane_przyjete_maszyn(fl.parametry_robocze_maszyn, wielkosc="ikss")
+    return tuple(
+        f"Prąd pętli liczony z daną przyjętą: {dana.nazwa_pl} — {dana.powod_pl}" for dana in dane
+    )
