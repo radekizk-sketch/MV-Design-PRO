@@ -11,9 +11,16 @@ SCAN FILES:
   frontend/src/ui/topology/modals/index.ts        (exports)
 
 CHECKS:
-  1. Every model-mutating operation has at least one corresponding dialog
+  1. Every operation listed in OPERATION_TO_MODAL has at least one dialog provider
+     (legacy modal in topology/modals or ui2 creator in ui2/kreatory)
   2. All dialog exports are present in index.ts
-  3. Dialog files use Polish labels (no English UI strings)
+  3. Missing modals directory or missing index.ts is a violation (fail-closed)
+
+Zakres (pomiar 2026-10-22, V12K-351): strażnik sprawdza operacje z listy
+OPERATION_TO_MODAL, a NIE cały rejestr `CANONICAL_OPERATIONS` (55 operacji,
+23 poza listą i poza NO_MODAL_NEEDED). Polskie etykiety pilnują
+`forbidden_ui_terms_guard.py` i `ui_terminology_guard.py`, nie ten strażnik.
+Samotest: `scripts/test_dialog_completeness_guard.py`.
 
 MAPPING: operation -> expected modal
   add_grid_source_sn      -> KreatorZrodloZasilania (ui2)
@@ -182,8 +189,9 @@ def main() -> int:
 
     modal_names = find_modal_files()
     if not modal_names:
-        print("WARNING: No modal files found in %s" % MODALS_DIR)
-        return 0
+        # Fail-closed (V12K-351): brak katalogu okien to brak dostawców, nie „czysto".
+        print("DIALOG COMPLETENESS GUARD: no modal files found in %s" % MODALS_DIR)
+        return 1
 
     # Dostawcy dialogu = legacy modals/ + kanoniczne kreatory ui2.
     provider_names = modal_names | find_creator_files()
