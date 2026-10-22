@@ -101,6 +101,7 @@ def _async(node_id: str = "B") -> AsynchronousMachineSource:
         efficiency=0.95,
         i_lr_ratio=5.0,
         pole_pairs=2,
+        liczba_jednostek=1,
     )
 
 
@@ -116,6 +117,7 @@ def _dfig(node_id: str = "B") -> AsynchronousMachineSource:
         efficiency=0.95,
         i_lr_ratio=5.0,
         pole_pairs=2,
+        liczba_jednostek=1,
         wind_type_3=True,
     )
 
@@ -264,6 +266,7 @@ def test_small_motor_negligible():
             efficiency=0.90,
             i_lr_ratio=5.0,
             pole_pairs=1,
+            liczba_jednostek=1,
         )
     )
     res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
@@ -489,7 +492,16 @@ def test_prad_znamionowy_niedodatni_to_odmowa_nie_krotnosc_zero():
     g = _slack_line_bus()
     g.add_asynchronous_machine_source(
         AsynchronousMachineSource(
-            id="M", name="Silnik bledny", node_id="B", pr_mw=-2.0, ur_kv=15.0, i_lr_ratio=5.0
+            id="M",
+            name="Silnik bledny",
+            node_id="B",
+            pr_mw=-2.0,
+            ur_kv=15.0,
+            cos_phi_r=0.85,
+            efficiency=0.95,
+            i_lr_ratio=5.0,
+            pole_pairs=1,
+            liczba_jednostek=1,
         )
     )
     with pytest.raises(ValueError, match="Maszyna „Silnik bledny”: prąd znamionowy I_r"):

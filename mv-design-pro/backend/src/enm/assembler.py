@@ -64,6 +64,7 @@ from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
 from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
+from network_model.catalog.wartosci_robocze import zalozenia_parametrow_maszyn
 from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB, czas_tb_z_danych
@@ -1245,6 +1246,9 @@ def zloz_wejscie_zwarcia(
         # Karta LINIA-110 (pkt 2): linie i kable z R′0/X′0 z założenia katalogu — wyłącznie
         # zwarcia doziemne (Z0 nie wchodzi do 3F/2F).
         + zalozenia_z0
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3): maszyny wirujące liczone z wartościami roboczymi
+        # parametrów (`graph.wartosci_robocze_maszyn`, wypełnione RAZ przez mapowanie ENM).
+        + zalozenia_parametrow_maszyn(graph.wartosci_robocze_maszyn, scenario_c)
     )
     # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
     # migawki dołączonej do żądania) — `network_model.core.

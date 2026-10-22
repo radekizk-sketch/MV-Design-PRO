@@ -22029,6 +22029,30 @@
     ]
    }
   },
+  "/api/catalog/maszyny-wirujace/wartosci-robocze": {
+   "get": {
+    "description": "Parametry zwarciowe maszyn wirujących i ich propozycje wartości roboczych (karta\nPODSTAWA-Q, zasada nr 4): rodzaj generatora → rodzina, parametry rodziny z nazwą, jednostką\ni zakresem bramy oraz propozycja, którą obliczenie przyjmie bez tabliczki i bez wartości\nprojektanta. Dostawca sekcji parametrów maszyny w kreatorze edycji parametrów.",
+    "operationId": "rejestr_wartosci_roboczych_maszyn_api_catalog_maszyny_wirujace_wartosci_robocze_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Rejestr Wartosci Roboczych Maszyn Api Catalog Maszyny Wirujace Wartosci Robocze Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Rejestr Wartosci Roboczych Maszyn",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/mv-apparatus-types": {
    "get": {
     "description": "Pozycje katalogu aparatów SN + propozycje wartości roboczych dla braków karty.\n\n``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni\nparametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja\nkatalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.",

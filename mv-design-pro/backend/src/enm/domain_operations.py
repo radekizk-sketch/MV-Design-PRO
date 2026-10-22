@@ -28,10 +28,6 @@ from network_model.catalog.audit2_catalogs import (
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.types import CatalogBinding
-from network_model.catalog.wartosci_robocze import (
-    PARAMETRY_APARATU_SN,
-    blad_wartosci_projektanta,
-)
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
@@ -147,6 +143,7 @@ from .tor_pola import (
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
 from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
+from .wartosci_projektanta import nadpisania_aparatu_sn, nadpisania_generatora
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
     TYPY_ODCINKA_TERENOWEGO,
@@ -10178,46 +10175,6 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
 # ---------------------------------------------------------------------------
 
 
-def _nadpisania_aparatu_sn(
-    surowe: object,
-) -> tuple[list[dict[str, Any]], str | None]:
-    """Lista wartości projektanta aparatu SN w postaci znormalizowanej albo powód odmowy.
-
-    Wpis: ``{"key": parametr rejestru, "value": liczba, "reason": napis | None}``. Klucz
-    powtórzony jest odmową (dwie wartości jednego parametru to sprzeczność, nie wybór).
-    Kolejność wyniku — ``PARAMETRY_APARATU_SN`` (determinizm zapisu).
-    """
-    if not isinstance(surowe, list):
-        return [], (
-            f"Pole {pole('overrides', 'update_element_parameters')}: wartości projektanta "
-            "aparatu SN podaje się jako listę wpisów {key, value, reason}."
-        )
-    po_kluczu: dict[str, dict[str, Any]] = {}
-    for wpis in surowe:
-        if not isinstance(wpis, dict):
-            return [], "Wpis wartości projektanta aparatu SN musi mieć postać {key, value, reason}."
-        klucz = wpis.get("key")
-        wartosc = wpis.get("value")
-        blad = blad_wartosci_projektanta(klucz, wartosc)
-        if blad is not None:
-            return [], blad
-        if not isinstance(klucz, str) or not isinstance(wartosc, int | float):
-            raise AssertionError("brama rejestru przepuściła wpis spoza kontraktu")
-        if klucz in po_kluczu:
-            return [], (
-                f"Parametr „{klucz}” podano dwukrotnie — aparat ma jedną wartość parametru."
-            )
-        powod = wpis.get("reason")
-        if powod is not None and not isinstance(powod, str):
-            return [], f"Uzasadnienie wartości parametru „{klucz}” musi być tekstem."
-        po_kluczu[klucz] = {
-            "key": klucz,
-            "value": float(wartosc),
-            "reason": (powod.strip() or None) if isinstance(powod, str) else None,
-        }
-    return [po_kluczu[k] for k in PARAMETRY_APARATU_SN if k in po_kluczu], None
-
-
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Aktualizuj parametry elementu."""
     odmowa = _odmowa_typu_ladunku(payload, "update_element_parameters", {"parameters": "slownik"})
@@ -10581,7 +10538,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if coll == "branches" and "overrides" in parameters:
         przestrzen = parameters.get("catalog_namespace", current_element.get("catalog_namespace"))
         if przestrzen == "APARAT_SN":
-            nadpisania, blad_nadpisan = _nadpisania_aparatu_sn(parameters["overrides"])
+            nadpisania, blad_nadpisan = nadpisania_aparatu_sn(parameters["overrides"])
             if blad_nadpisan is not None:
                 return _error_response(blad_nadpisan, "params.override_invalid")
             katalog_aparatu = parameters.get("catalog_ref", current_element.get("catalog_ref"))
@@ -10599,6 +10556,37 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 parameters = {**parameters, "overrides": [], "parameter_source": "CATALOG"}
             else:
                 parameters = {**parameters, "overrides": [], "parameter_source": None}
+    # Karta PODSTAWA-Q (rozstrz. 3, zasada nr 4): wartości projektanta parametrów maszyny
+    # wirującej (x″d, cos φ, p, I_LR/I_rM, η) niesie `overrides` generatora — ta sama brama co
+    # dana tabliczki przed obliczeniem (`enm.wartosci_projektanta`). Rodzaju generatora ta
+    # operacja nie zmienia (`gen_type` spoza listy dopuszczonej — `params.key_not_allowed`), więc
+    # stan końcowy to rodzaj bieżący i lista po zmianie.
+    if coll == "generators" and "overrides" in parameters:
+        nadpisania_maszyny, blad_maszyny = nadpisania_generatora(
+            current_element.get("gen_type"),
+            parameters["overrides"],
+            opis_pl=opis_elementu(enm, element_ref, "Źródło"),
+        )
+        if blad_maszyny is not None:
+            return _error_response(blad_maszyny, "params.override_invalid")
+        zrodlo = current_element.get("parameter_source")
+        parameters = {
+            **parameters,
+            "overrides": nadpisania_maszyny,
+            "parameter_source": (
+                "OVERRIDE"
+                if nadpisania_maszyny
+                else (
+                    (
+                        "CATALOG"
+                        if parameters.get("catalog_ref", current_element.get("catalog_ref"))
+                        else None
+                    )
+                    if zrodlo == "OVERRIDE"
+                    else zrodlo
+                )
+            ),
+        }
 
     # Decyzja O-53 (jedna tabliczka, jedna kontrola): zmiana TYPU źródła przekształtnikowego
     # przez aktualizację parametrów idzie tą samą drogą co przypisanie typu — materializacja

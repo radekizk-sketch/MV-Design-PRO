@@ -71,6 +71,11 @@ from network_model.pochodne import (
 )
 
 from .mrid import mrid_for, urn
+from .parametry_maszyn import (
+    ATRYBUT_MOCY_MECHANICZNEJ,
+    atrybuty_maszyny_do_cim,
+    moc_mechaniczna_do_cim,
+)
 from .profiles import NS_CIM, RDF_ABOUT, RDF_ID, RDF_RESOURCE
 from .units import (
     fmt_float,
@@ -685,7 +690,12 @@ GENERATOR_UTRATA_TORU_OBCEGO: tuple[str, ...] = (
     "CAŁEJ instalacji; import: sn_mva = ratedS, jedna jednostka (ta sama moc łączna)",
     "limits (GenLimits), catalog_ref, connection_variant/station_ref/blocking_transformer_ref, "
     "dynamika, modele widmowe, nastawy i deklaracje modułu — brak odpowiednika w EQ",
-    "pozostałe klucze materialized_params poza sn_mva i un_kv",
+    "parametry zwarciowe maszyny DFIG (pr_mw, pole_pairs, i_lr_ratio, cos_phi, efficiency) — "
+    "PowerElectronicsConnection nie ma atrybutów maszyny wirującej",
+    "pozostałe klucze materialized_params poza sn_mva, un_kv i parametrami zwarciowymi maszyn "
+    "SynchronousMachine/AsynchronousMachine",
+    "wartości projektanta parametrów zwarciowych maszyny (overrides) — EQ niesie wyłącznie "
+    "tabliczkę; wartość projektanta wpisana do atrybutu udawałaby daną tabliczki odbiorcy",
 )
 
 
@@ -741,9 +751,15 @@ def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:
                                       [SSH, W, konwencja odbiorcza: −P]
       q_mvar                       -> .q [SSH, var, −Q]; brak = atrybut pominięty
       sn_mva × liczba jednostek    -> .ratedS [EQ, VA]; brak tabliczki = pominięty
+      pr_mw × liczba jednostek     -> AsynchronousMachine.ratedMechanicalPower [EQ, W];
+                                      brak tabliczki = pominięty (P_rM, IEC 60909-0 pkt 6.7)
       un_kv                        -> .ratedU [EQ, V]; brak = pominięty
       fw_scig                      -> AsynchronousMachine.asynchronousMachineType =
                                       generator [SSH]
+      xd_subtransient_pu, cos_phi,   -> SynchronousMachine.satDirectSubtransX,
+      pole_pairs, i_lr_ratio,           RotatingMachine.ratedPowerFactor,
+      efficiency                        AsynchronousMachine.polePairNumber/iaIrRatio/
+                                      efficiency [EQ, ``parametry_maszyn``]; brak = pominięty
 
     Atrybuty SSH w członie EQ — ten sam zastany wzorzec co ``EnergyConsumer.p/q``.
     """
@@ -762,12 +778,19 @@ def _emit_generator(eq: ET.Element, tp: ET.Element, gen: Generator) -> None:
     if gen.q_mvar is not None:
         _prop(urzadzenie, f"{wlasciciel}.q", fmt_float(_konwencja_odbiorcza(mw_to_w(gen.q_mvar))))
     if klasa == "AsynchronousMachine":
+        moc_p = moc_mechaniczna_do_cim(gen.materialized_params, liczba_jednostek_zrodla(gen))
+        if moc_p is not None:
+            _prop(urzadzenie, ATRYBUT_MOCY_MECHANICZNEJ, moc_p)
         _enum(
             urzadzenie,
             "AsynchronousMachine.asynchronousMachineType",
             "AsynchronousMachineKind",
             "generator",
         )
+    # Karta PODSTAWA-Q: parametry zwarciowe maszyny wirującej z tabliczki (wartość robocza nie
+    # jest daną tabliczki — nie trafia do pliku; odbiorca liczy z własnym założeniem).
+    for atrybut, tekst in atrybuty_maszyny_do_cim(klasa, gen.materialized_params):
+        _prop(urzadzenie, atrybut, tekst)
     if jednostka is not None:
         unit = _obj(eq, jednostka, mrid_for(jednostka, gen.ref_id))
         _prop(unit, "IdentifiedObject.name", f"{gen.name}_{_SUFIKS_JEDNOSTKI[jednostka]}")

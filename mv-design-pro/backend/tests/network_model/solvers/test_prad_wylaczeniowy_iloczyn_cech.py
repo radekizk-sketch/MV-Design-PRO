@@ -397,8 +397,12 @@ def test_dowod_sc3f_ta_sama_definicja_co_slad(topologia: str, tb_s: float | None
     assert "EQ_SC3F_014" in kroki and "EQ_SC3F_020" in kroki
     assert SC3FProofPack.validate_completeness(wynik) == []
     # t_b roboczy jawnie w ostrzeżeniach dowodu (z jego źródłem), t_b projektanta — bez uwagi.
+    # Zdanie o t_b, nie samo słowo „wartość robocza": od karty PODSTAWA-Q dowód niesie też
+    # wartości robocze parametrów maszyny (np. liczba par biegunów p bez tabliczki) — to inna
+    # dana przyjęta, niezależna od t_b.
     ostrzezenia = " ".join(wynik.proof_sc3f.summary.warnings)
+    zdanie_tb = "czasie wyłączenia t_b będącym wartością roboczą"
     if tb_s is None:
-        assert "wartością roboczą" in ostrzezenia and wiersz["tb_zrodlo"]["opis_pl"] in ostrzezenia
+        assert zdanie_tb in ostrzezenia and wiersz["tb_zrodlo"]["opis_pl"] in ostrzezenia
     else:
-        assert "wartością roboczą" not in ostrzezenia
+        assert zdanie_tb not in ostrzezenia

@@ -145,13 +145,6 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         "k_sc — krotność prądu zwarciowego falownika, nie c",
     ),
     (
-        "network_model/core/machine.py",
-        "efficiency: float = field(default=0.95)  # rated efficiency η",
-    ): (
-        1,
-        "sprawność znamionowa silnika asynchronicznego",
-    ),
-    (
         "network_model/core/wklad_zwarciowy_przeksztaltnika.py",
         "K_SC_DOMYSLNY_SYSTEMOWY: float = 1.1",
     ): (

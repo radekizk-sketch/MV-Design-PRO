@@ -84,6 +84,13 @@ class LoopImpedanceComponent:
     label: str  # human-readable, polskie
     r_ohm: float
     x_ohm: float
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn wirujących, z którymi
+    # policzono TĘ składową (impedancja sieci zasilającej SN z Z-bus solvera zwarciowego,
+    # w którym maszyny są admitancjami bocznikowymi). Metadana pochodzenia, nie liczba —
+    # poza porównaniem i serializacją składowej; wynik pętli zbiera ją jednym miejscem.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = field(
+        default=(), kw_only=True, compare=False
+    )
 
     @property
     def magnitude_ohm(self) -> float:
@@ -139,6 +146,11 @@ class FaultLoopResult:
     # `fault_loop.service.oblicz_petle_na_trasie`); solver ich nie czyta. Addytywnie:
     # `to_dict` niesie klucz wyłącznie, gdy niepuste.
     dane_przyjete_linii_wn: tuple[dict[str, Any], ...] = ()
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn wirujących, na których
+    # stoi impedancja sieci zasilającej SN (składowa `upstream_impedance` wejścia,
+    # `parametry_robocze_skladowych`); konsument werdyktu dokłada dane przyjęte. Addytywnie: `to_dict` niesie klucz
+    # wyłącznie przy niepustej krotce (pętle bez maszyn bit w bit jak przed kartą).
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = field(default=(), compare=False)
 
     @property
     def z_loop_magnitude_ohm(self) -> float:
@@ -179,6 +191,8 @@ class FaultLoopResult:
             wynik["dane_przyjete_linii_wn"] = [dict(d) for d in self.dane_przyjete_linii_wn]
         if self.tt_it is not None:
             wynik["tt_it"] = self.tt_it.to_dict()
+        if self.parametry_robocze_maszyn:
+            wynik["parametry_robocze_maszyn"] = [dict(w) for w in self.parametry_robocze_maszyn]
         return wynik
 
 
@@ -385,6 +399,15 @@ def prad_z_petli(
     return ik_min, ik_max, krok
 
 
+def parametry_robocze_skladowych(data: FaultLoopInput) -> tuple[dict[str, Any], ...]:
+    """Wartości robocze maszyn, na których stoi wynik pętli — JEDNO miejsce doboru dla układów
+    TN, TT i IT: wpisy składowej ``upstream_impedance`` (jedynej składowej liczonej z sieci SN
+    z maszynami). Wynik bez impedancji sieci zasilającej nie niesie żadnego wpisu."""
+    if data.upstream_impedance is None:
+        return ()
+    return data.upstream_impedance.parametry_robocze_maszyn
+
+
 def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
     """
     Oblicz impedancję pętli zwarcia + Ik per IEC 60364-4-41.
@@ -444,5 +467,6 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
         c_zrodlo_min=c.zrodlo_min,
         c_zrodlo_max=c.zrodlo_max,
         tolerancja_nn_robocza=c.tolerancja_nn_robocza,
+        parametry_robocze_maszyn=parametry_robocze_skladowych(data),
         white_box_trace=tuple(trace),
     )

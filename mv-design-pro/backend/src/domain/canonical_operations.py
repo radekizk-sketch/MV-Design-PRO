@@ -2129,6 +2129,43 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "focus": "geometria_slupa",
         },
     ),
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): kanoniczny odpowiednik E011 walidatora
+    # ENM — wartość projektanta (`overrides`) maszyny wirującej albo aparatu SN spoza bramy
+    # rejestru wartości roboczych (`enm.wartosci_projektanta`). Operacje zapisu jej nie
+    # przyjmują; model z pliku, który ją niesie, nie liczy się z cichym pominięciem — blokada
+    # z naprawą w sekcji wartości projektanta kreatora edycji parametrów.
+    "catalog.wartosc_projektanta_niedopuszczalna": ReadinessCodeSpec(
+        code="catalog.wartosc_projektanta_niedopuszczalna",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wartość projektanta parametru urządzenia jest spoza dopuszczalnego zakresu albo "
+            "dotyczy parametru, którego to urządzenie nie ma — popraw ją albo usuń w parametrach "
+            "elementu i zapisz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "overrides"},
+    ),
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): parametry zwarciowe maszyny wirującej
+    # (S_rG, x″d i cos φ generatora synchronicznego; moc znamionowa P_rM, liczba par biegunów
+    # p, I_LR/I_rM, cos φ i η maszyny asynchronicznej) bez danej tabliczki ani wartości
+    # projektanta NIE blokują biegu —
+    # bieg liczy z propozycją rejestru `network_model.catalog.wartosci_robocze.PROPOZYCJE_MASZYNY`
+    # (założenie inżynierskie, jakość ESTIMATED) i niesie założenie tego kodu
+    # (`zalozenia_parametrow_maszyn`) na każdą maszynę z wartością roboczą; werdykty oparte na
+    # prądach jej wyspy dostają daną przyjętą (`dane_przyjete_maszyn`).
+    "fault.parametry_maszyny_robocze": ReadinessCodeSpec(
+        code="fault.parametry_maszyny_robocze",
+        area=ReadinessArea.SOURCES,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Maszyna wirująca liczona z wartością roboczą parametru zwarciowego (propozycja "
+            "rejestru — założenie inżynierskie, nie dana producenta) — wpisz wartość z tabliczki "
+            "maszyny w parametrach generatora, jeśli jest inna, i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "overrides"},
+    ),
     # Karta TB-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4, V12K-351): czas wyłączenia t_b = t_min
     # (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) rozstrzyga się PER
     # PUNKT ZWARCIA: scenariusz projektanta > najkrótszy czas wyłączenia pól lokalnych >

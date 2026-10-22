@@ -54,7 +54,10 @@ from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.tolerancja_nn import wyspy_wezlow_nn
-from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
+from network_model.catalog.wartosci_robocze import (
+    dane_przyjete_maszyn,
+    rozstrzygnij_tolerancje_nn,
+)
 from network_model.core.voltage_factor import (
     c_for_node,
     zrodlo_c_z_tabeli,
@@ -268,13 +271,11 @@ def _build_upstream_equivalent_snapshot_surowy(
         "model_revision": enm.header.revision,  # werdykt: modelRevision
         "model_hash": model_hash,  # werdykt: /hash
         "missing_data": [],
-        # Addytywnie, WYŁĄCZNIE przy danych przyjętych — równoważnik na danych projektu bez
-        # zmian (odcisk projekcji nN bit w bit).
-        **(
-            {"status_danych": "UNVALIDATED_INPUT", "dane_przyjete": list(dane_przyjete)}
-            if dane_przyjete
-            else {}
-        ),
+        # Karty LINIA-110 i PODSTAWA-Q (kontrakt werdyktu §3), addytywnie — WYŁĄCZNIE gdy Z1/Z0
+        # stoi na wartości roboczej (linia 110 kV, R′0/X′0 katalogu, parametr maszyny wirującej
+        # wyspy węzła SN): wpisy maszyn, status danych i JEDNA lista danych przyjętych —
+        # równoważnik na danych projektu bez zmian (odcisk projekcji nN bit w bit).
+        **_dane_przyjete_kotwicy(dane_przyjete, hv_equiv.parametry_robocze_maszyn),
         "note_pl": (
             "Równoważnik Thevenina sieci SN w punkcie HV transformatora — "
             "granica wizualna domeny nN (L2) jest granicą domeny napięciowej "
@@ -283,6 +284,25 @@ def _build_upstream_equivalent_snapshot_surowy(
             "zwarcia nN liczy stronę SN (application.analyses.fault_loop)."
         ),
     }
+
+
+def _dane_przyjete_kotwicy(
+    dane_galezi: tuple[dict[str, Any], ...],
+    wpisy_maszyn: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    """Pola kotwicy dla danych przyjętych: gałęzie z wartością roboczą impedancji (karta
+    LINIA-110) i wartości robocze maszyn (karta PODSTAWA-Q) — jedna lista ``dane_przyjete``
+    i jeden ``status_danych`` (kontrakt werdyktu §3), wpisy maszyn osobno."""
+    dane = list(dane_galezi) + [
+        d.model_dump(mode="json") for d in dane_przyjete_maszyn(wpisy_maszyn, wielkosc="ikss")
+    ]
+    pola: dict[str, Any] = {}
+    if wpisy_maszyn:
+        pola["parametry_robocze_maszyn"] = [dict(w) for w in wpisy_maszyn]
+    if dane:
+        pola["status_danych"] = "UNVALIDATED_INPUT"
+        pola["dane_przyjete"] = dane
+    return pola
 
 
 def build_upstream_equivalent_snapshot(

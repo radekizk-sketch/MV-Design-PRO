@@ -315,7 +315,7 @@ def test_konsumenci_pradow_punktu_doziemnego_niosa_dane_przyjete_z0(wariant: str
     # Reguły generatorów pola liczą WYŁĄCZNIE prądem zwarcia trójfazowego — Z0 nie wchodzi
     # do niego, więc wiersz 3F tej samej sieci nie niesie danej przyjętej Z0 (predykat parą).
     _bieg(migawka, N1, FaultType.SC_3F)
-    ik, _ip, _run_id, _tolerancja, dane_galezi = _prady_zwarciowe_szyny("z0", N1)
+    ik, _ip, _run_id, _tolerancja, dane_galezi, _maszyny = _prady_zwarciowe_szyny("z0", N1)
     assert ik is not None
     assert dane_galezi == ()
 

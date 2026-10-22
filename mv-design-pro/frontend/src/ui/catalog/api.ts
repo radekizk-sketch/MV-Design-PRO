@@ -22,6 +22,7 @@ import type {
   PVInverterCatalogType,
   PtpireeGeneratorCertificateCatalogType,
   ProtectionDeviceType,
+  RejestrMaszynWirujacych,
   SourceSystemCatalogType,
   SwitchEquipmentType,
   ShuntCapacitorCatalogType,
@@ -277,6 +278,14 @@ export async function fetchSwitchEquipmentTypes(): Promise<SwitchEquipmentType[]
 
 export async function fetchMvApparatusTypes(): Promise<MVApparatusType[]> {
   return fetchCatalogJson<MVApparatusType[]>('/api/catalog/mv-apparatus-types');
+}
+
+/**
+ * Karta PODSTAWA-Q: parametry zwarciowe maszyn wirujących (x″d, cos φ, p, I_LR/I_rM, η) z zakresem
+ * bramy i propozycją wartości roboczej — dostawca sekcji maszyny w kreatorze edycji parametrów.
+ */
+export async function fetchRejestrMaszynWirujacych(): Promise<RejestrMaszynWirujacych> {
+  return fetchCatalogJson<RejestrMaszynWirujacych>('/api/catalog/maszyny-wirujace/wartosci-robocze');
 }
 
 export async function fetchLvApparatusTypes(): Promise<LVApparatusType[]> {

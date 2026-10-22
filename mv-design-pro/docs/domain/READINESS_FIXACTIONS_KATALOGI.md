@@ -3,7 +3,7 @@
 > Dokument wiążący: definiuje system gotowości, akcji naprawczych i katalogu.
 > Patrz też: `READINESS_FIXACTIONS_CANONICAL_PL.md` (szczegółowy opis kodów).
 
-## 1. BLOKERY GOTOWOŚCI (E001–E010)
+## 1. BLOKERY GOTOWOŚCI (E001–E011)
 
 | Kod | Warunek | Blokuje | Akcja naprawcza |
 |-----|---------|---------|-----------------|
@@ -17,6 +17,7 @@
 | E008 | Źródło bez Sk3/Ik3 | Analizy | Ustaw parametry zwarciowe |
 | E009 | Element bez catalog_ref | Analizy | Wybierz z katalogu (SELECT_CATALOG) |
 | E010 | Override bez parameter_source="OVERRIDE" | Analizy | Ustaw flagę źródła |
+| E011 | Wartość projektanta (`overrides`) maszyny wirującej albo aparatu SN spoza bramy rejestru wartości roboczych (`enm/wartosci_projektanta.py`) | Analizy | Popraw albo usuń wartość w sekcji wartości projektanta (update_element_parameters) |
 
 ## 2. SYSTEM FIXACTIONS
 

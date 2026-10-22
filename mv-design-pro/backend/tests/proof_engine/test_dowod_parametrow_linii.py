@@ -167,7 +167,8 @@ def test_rownania_linii_sa_w_rejestrze_globalnym() -> None:
 
 def test_rozjazd_wzoru_solvera_z_rejestrem_jest_odmowa() -> None:
     krok = _wynik(AFL6_240, "projekt", True, 1).slad[0]
-    with pytest.raises(ValueError, match="rozjechały"):
+    # Błąd programu (rejestr i solver rozjechane), nie odmowa danych — asercja.
+    with pytest.raises(AssertionError, match="rozjechały"):
         rownanie_kroku(krok.kod, krok.wzor_latex + r" + 0")
 
 

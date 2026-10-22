@@ -71,6 +71,7 @@ from application.analyses.aparaty_pol import (
 from application.analyses.protection.czas_wylaczenia_pola import czasy_wylaczenia_pol_stacji
 from application.equipment_proof.catalog_bridge import resolve_um_icu_from_catalog
 from application.equipment_proof.wielkosc_wylaczania import (
+    WIELKOSC_IB,
     WielkoscKryteriumWylaczania,
     wielkosc_kryterium_wylaczania,
 )
@@ -93,8 +94,10 @@ from network_model.catalog.wartosci_robocze import (
     WYDANIE_REJESTRU,
     WartoscRozstrzygnieta,
     dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
 )
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
+from network_model.solvers.machine_sc_iec60909 import zdanie_zalozen_zaniku_ib_pl
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
     DanaPrzyjeta,
@@ -188,6 +191,14 @@ class PradyPola:
     #: Karta LINIA-110: dane przyjęte gałęzi z wartością roboczą, których impedancja wchodzi
     #: do prądu punktu (znacznik wiersza biegu ``dane_przyjete_galezi``).
     dane_galezi: tuple[DanaPrzyjeta, ...] = ()
+    #: Karta PODSTAWA-Q: krzywe zaniku μ/q maszyn tego punktu wyznaczone na założeniu
+    #: inżynierskim (wpisy `machine_sc_iec60909.zalozenia_krzywych_wkladow` z wiersza biegu) —
+    #: I_b stoi na tych założeniach, więc zakres ważności kryterium wyłączania je nazywa.
+    zalozenia_zaniku: tuple[dict[str, Any], ...] = ()
+    #: Karta PODSTAWA-Q (rozstrzygnięcie 3): wartości robocze parametrów maszyn wirujących
+    #: wyspy punktu (wpisy `wartosci_robocze.wpis_parametru_maszyny` z wiersza biegu) — dane
+    #: przyjęte kryteriów, których porównywana wielkość od nich zależy.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -208,6 +219,17 @@ class PradyPola:
             **(
                 {KLUCZ_WIERSZA_DANE_GALEZI: [d.model_dump(mode="json") for d in self.dane_galezi]}
                 if self.dane_galezi
+                else {}
+            ),
+            # Karta PODSTAWA-Q (addytywnie, exclude-empty).
+            **(
+                {"zalozenia_zaniku": [dict(w) for w in self.zalozenia_zaniku]}
+                if self.zalozenia_zaniku
+                else {}
+            ),
+            **(
+                {"parametry_robocze_maszyn": [dict(w) for w in self.parametry_robocze_maszyn]}
+                if self.parametry_robocze_maszyn
                 else {}
             ),
         }
@@ -289,6 +311,14 @@ def prady_pol_z_biegu(
             ),
             tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
             dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
+            zalozenia_zaniku=tuple(
+                dict(w) for w in (wiersz.get("zalozenia_zaniku") or ()) if isinstance(w, Mapping)
+            ),
+            parametry_robocze_maszyn=tuple(
+                dict(w)
+                for w in (wiersz.get("parametry_robocze_maszyn") or ())
+                if isinstance(w, Mapping)
+            ),
         )
     return wynik
 
@@ -556,16 +586,26 @@ def _dane_przyjete(
     return tuple(dane)
 
 
-def _dane_pradow(prady: PradyPola) -> tuple[DanaPrzyjeta, ...]:
-    """Dana przyjęta PRĄDU pola: punkt w sieci nN liczonej z wartością roboczą tolerancji
-    (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) oraz linie 110 kV z wartością roboczą geometrii
-    w wyspie punktu (karta LINIA-110) — każde kryterium porównujące prąd tego punktu."""
+def _dane_pradow(prady: PradyPola, *, wielkosc: str | None) -> tuple[DanaPrzyjeta, ...]:
+    """Dane przyjęte PRĄDU pola porównywanego w kryterium (``wielkosc``: ``ip``/``ith``/``ib``/
+    ``ikss``): punkt w sieci nN liczonej z wartością roboczą tolerancji (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA), linie 110 kV z wartością roboczą geometrii w wyspie punktu
+    (karta LINIA-110 — impedancja gałęzi wchodzi do każdej wielkości zwarciowej punktu) oraz
+    wartości robocze parametrów maszyn wirujących wyspy punktu, od których ta wielkość zależy
+    (karta PODSTAWA-Q, rozstrzygnięcie 3). ``None`` — wielkości porównania nie ustalono (bieg
+    bez napięcia punktu): tolerancja i gałęzie, bez wpisów maszyn."""
     tolerancja = (
         (dana_przyjeta_tolerancji_nn(miejsce_pl=_opis_punktu(prady)),)
         if prady.tolerancja_nn_robocza
         else ()
     )
-    return tolerancja + prady.dane_galezi
+    if wielkosc is None:
+        return tolerancja + prady.dane_galezi
+    return (
+        tolerancja
+        + prady.dane_galezi
+        + dane_przyjete_maszyn(prady.parametry_robocze_maszyn, wielkosc=wielkosc)
+    )
 
 
 def _dowod(run_id: str, dane_przyjete: tuple[DanaPrzyjeta, ...] = ()) -> StatusDowodu:
@@ -593,13 +633,20 @@ def _opis_punktu(prady: PradyPola) -> str:
     return opis_rodzaju_i_nazwy("szyna", prady.punkt_nazwa)
 
 
-def _zakres(prady: PradyPola) -> ZakresWaznosci:
+def _zakres(prady: PradyPola, *, z_zanikiem: bool = False) -> ZakresWaznosci:
+    """Zakres ważności rekordu pola. ``z_zanikiem`` — rekord porównuje I_b (prąd wyłączeniowy
+    z zanikiem prądów maszyn): zakres nazywa wtedy krzywe zaniku μ/q wyznaczone na założeniu
+    inżynierskim (karta PODSTAWA-Q, kontrakt werdyktu §4.1 — „rodzaj analizy i założenia").
+    Rekordy porównujące I″k, i_p i I_th od μ/q nie zależą — ich zakres założeń nie niesie."""
     punkt = _opis_punktu(prady)
+    zdanie = zdanie_zalozen_zaniku_ib_pl(prady.zalozenia_zaniku) if z_zanikiem else None
+    dopisek = "" if zdanie is None else f" {zdanie}"
     return ZakresWaznosci(
         rodzaj_analizy="SHORT_CIRCUIT",
         opis_pl=(
             f"Zwarcie trójfazowe w punkcie zabudowy pola ({punkt}) wg zapisanego biegu "
             "IEC 60909; każdy aparat pola przewodzi co najwyżej prąd zwarcia w tym punkcie."
+            + dopisek
         ),
         wykluczenia=(
             "zwarcia niesymetryczne (osobny tor biegu)",
@@ -639,7 +686,7 @@ def _ocena_dynamiczna(
         else None
     )
     dane = _dane_przyjete([zapis_i_dyn, zapis_i_th], aparat_pl=przedmiot.nazwa_pl) + (
-        _dane_pradow(prady)
+        _dane_pradow(prady, wielkosc="ip")
     )
     braki: list[str] = []
     if prady.ip_ka is None and prady.powod_pl:
@@ -726,7 +773,7 @@ def _ocena_cieplna(
             zapis_czasu_wlasnego if isinstance(zapis_czasu_wlasnego, dict) else None,
         ],
         aparat_pl=przedmiot.nazwa_pl,
-    ) + _dane_pradow(prady)
+    ) + _dane_pradow(prady, wielkosc="ith")
     braki: list[str] = []
     if prady.ith_ka is None and prady.powod_pl:
         braki.append(prady.powod_pl)
@@ -937,10 +984,23 @@ def _ocena_wylaczania(
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
         # Suma danych przyjętych rekordu, deterministyczna kolejność: t_b roboczy (karta
-        # TB-WARTOSC-ROBOCZA), potem tolerancja sieci nN (TOLERANCJA-NN-WARTOSC-ROBOCZA).
+        # TB-WARTOSC-ROBOCZA), potem tolerancja sieci nN (TOLERANCJA-NN-WARTOSC-ROBOCZA), potem
+        # parametry robocze maszyn wpływające na porównywaną wielkość (PODSTAWA-Q).
         # Rekord NIE_DOTYCZY niczego nie porównuje — nie stoi na żadnej danej przyjętej.
-        dowod=_dowod(run_id, () if nie_dotyczy else dane + _dane_pradow(prady)),
-        zakres_waznosci=_zakres(prady),
+        dowod=_dowod(
+            run_id,
+            (
+                ()
+                if nie_dotyczy
+                else dane
+                + _dane_pradow(
+                    prady, wielkosc=wielkosc.wielkosc_zwarciowa if wielkosc is not None else None
+                )
+            ),
+        ),
+        # Karta PODSTAWA-Q: zakres nazywa założenia krzywych zaniku wyłącznie, gdy rekord
+        # porównuje I_b (ten sam predykat wyboru wielkości co werdykt i dowód doboru).
+        zakres_waznosci=_zakres(prady, z_zanikiem=wielkosc is WIELKOSC_IB and not nie_dotyczy),
         slad=(
             OdnosnikSladu(
                 run_id=run_id,

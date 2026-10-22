@@ -34,6 +34,7 @@ from network_model.catalog.wartosci_robocze import (
     PARAMETRY_APARATU_SN,
     WartoscProjektanta,
     WartoscRozstrzygnieta,
+    blad_wartosci_projektanta,
     rozstrzygnij_parametry_aparatu_sn,
 )
 from werdykt import DanaPrzyjeta, FieldQuality, Wielkosc
@@ -58,12 +59,15 @@ def wartosci_projektanta(overrides: list[ParameterOverride]) -> tuple[WartoscPro
     """Wartości projektanta aparatu SN z ``overrides`` gałęzi (tylko parametry rejestru).
 
     Klucze spoza rejestru nie są parametrami aparatu — operacja domenowa ich nie przyjmuje.
-    Wartość nieliczbowa (dokument sprzed bramy) nie jest wartością projektanta.
+    Wpis spoza bramy wartości (tekst, liczba poza zakresem — model wczytany z pliku, który
+    ominąłby operację) nie jest wartością projektanta: TA SAMA brama co operacja domenowa
+    (``blad_wartosci_projektanta``), jak dla maszyn wirujących (``wartosci_projektanta_maszyny``).
     """
     po_kluczu: dict[str, WartoscProjektanta] = {}
     for wpis in overrides:
-        if wpis.key not in PARAMETRY_APARATU_SN or isinstance(wpis.value, str):
+        if blad_wartosci_projektanta(wpis.key, wpis.value) is not None:
             continue
+        assert isinstance(wpis.value, int | float)
         po_kluczu[wpis.key] = WartoscProjektanta(
             parametr=wpis.key, wartosc=float(wpis.value), powod_pl=wpis.reason or None
         )

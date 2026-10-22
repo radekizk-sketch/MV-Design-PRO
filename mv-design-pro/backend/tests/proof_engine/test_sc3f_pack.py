@@ -147,8 +147,17 @@ def test_synchronous_machine_bez_tb_wartosc_robocza_daje_ib_maszyn_i_ostrzezenie
         assert klucz in klucze_r
         assert klucze_r[klucz].value == klucze_p[klucz].value
     assert klucze_r["ib_ka"].value < klucze_r["ikss_ka"].value
-    assert any("wartością roboczą" in w for w in roboczy.proof_sc3f.summary.warnings)
-    assert not any("wartością roboczą" in w for w in podany.proof_sc3f.summary.warnings)
+    # Zdanie o t_b — nie samo słowo „wartość robocza": od karty PODSTAWA-Q dowód niesie też
+    # wartości robocze parametrów maszyny (x″d, cos φ_rG bez tabliczki) w OBU biegach, bo nie
+    # zależą od t_b.
+    zdanie_tb = "czasie wyłączenia t_b będącym wartością roboczą"
+    assert any(zdanie_tb in w for w in roboczy.proof_sc3f.summary.warnings)
+    assert not any(zdanie_tb in w for w in podany.proof_sc3f.summary.warnings)
+    for dowod in (roboczy, podany):
+        assert any(
+            "wartością roboczą parametru" in w and "x″d" in w
+            for w in dowod.proof_sc3f.summary.warnings
+        )
 
 
 def test_sc3f_pack_is_deterministic():

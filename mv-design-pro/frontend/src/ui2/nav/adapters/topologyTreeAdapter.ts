@@ -8,9 +8,9 @@
  *   `lateral_roots`, `adjacency` — `frontend/src/types/enm.ts:1121-1144`
  *   (interfejsy `SpineNode`/`TopologyGraphSummary`), udostępniane przez
  *   `useTopologyStore` (`ui/topology/store.ts:22-40`, pole `summary`).
- *   Algorytm łączenia odgałęzień z najbliższym węzłem magistrali odtwarza
- *   `ui/topology/TopologyTreeView.tsx:59-122` (`buildSpineTree`/`getIsolatedNodes`)
- *   — ten sam kształt danych, inny (zagnieżdżony) układ drzewa.
+ *   Algorytm łączenia odgałęzień z najbliższym węzłem magistrali pochodzi z dawnego
+ *   `ui/topology/TopologyTreeView.tsx` (`buildSpineTree`/`getIsolatedNodes`; widok bez
+ *   montażu skasowany jako martwy kod) — ten sam kształt danych, zagnieżdżony układ drzewa.
  * - Liczniki {blokady, ostrzeżenia}: `ReadinessIssue.element_ref`/`element_refs`
  *   + `severity` (`ui/types.ts:548-558`), z JEDNEJ prawdy gotowości
  *   (`spaces/gotowosc/adapters/gotowoscAdapter.useGotowoscModelu` nad
@@ -134,7 +134,7 @@ function szynaLisc(ref: string, liczniki: Map<string, LicznikiWezla>): WezelDrze
   return { id: ref, etykietaPL: ref, ikona: 'szyna', liczniki: liczOrDefault(liczniki, ref), dzieci: [], trybMin: 'basic' };
 }
 
-/** Węzły grafu bez wpisu w spine/lateral (posortowane, jak `getIsolatedNodes` w TopologyTreeView). */
+/** Węzły grafu bez wpisu w spine/lateral (posortowane, jak `getIsolatedNodes` dawnego TopologyTreeView). */
 function znajdzIzolowane(topologia: TopologiaZOdpowiedzi): string[] {
   const spineSet = new Set(topologia.spine.map((s) => s.bus_ref));
   const lateralSet = new Set(topologia.lateralRoots);

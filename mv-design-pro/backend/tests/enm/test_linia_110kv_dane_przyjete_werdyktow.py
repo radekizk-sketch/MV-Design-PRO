@@ -343,7 +343,7 @@ def test_konsumenci_pradow_punktu_wniosek_osd_generatory_nastawy(
     bieg = _bieg(migawka, "short_circuit_sn", _opcje_zwarcia("B"))
     assert bieg.status == "FINISHED", bieg.error_message
     _sprawdz_dane(list(_zwarcia_sekcja(bieg, "B").get("dane_przyjete") or []), przyjeta)
-    ik, _ip, run_id, _tolerancja, dane_galezi = _prady_zwarciowe_szyny("linia-110", "B")
+    ik, _ip, run_id, _tolerancja, dane_galezi, _maszyny = _prady_zwarciowe_szyny("linia-110", "B")
     assert ik is not None and run_id == str(bieg.id)
     _sprawdz_dane([d.model_dump(mode="json") for d in dane_galezi], przyjeta)
     dane_nastaw = _dane_przyjete_punktow(

@@ -98,6 +98,9 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # (`lv_earthing_system`) == ten sam fakt, ktory gotowosc petli zwarcia zglasza jako
     # ELIG_FLNN_MISSING_EARTHING_SYSTEM (jeden predykat `enm/uklad_sieci_nn.py`).
     "E063": "transformer.lv_earthing_system_missing",
+    # „Wartość projektanta spoza bramy rejestru wartości roboczych" == ten sam warunek (jedna
+    # brama `enm/wartosci_projektanta.py`, karta PODSTAWA-Q).
+    "E011": "catalog.wartosc_projektanta_niedopuszczalna",
     # Konfiguracja punktu neutralnego niespojna (rezystor bez R_N, dlawik bez X_N,
     # izolowany ze skonczona Z0) — zrodlo i transformator, jeden predykat.
     "E-W5-01": "earthing.neutral_grounding_inconsistent",

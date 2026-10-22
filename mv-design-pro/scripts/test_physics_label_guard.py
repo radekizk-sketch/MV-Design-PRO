@@ -26,6 +26,26 @@ def test_freshness_is_green_on_repo() -> None:
     assert guard.check_allowed_operational_setpoints_freshness(guard.REPO_ROOT) == []
 
 
+def test_scan_covers_live_operation_dialogs() -> None:
+    """Skan nie jest pusty: obejmuje żywe kreatory ui2 (dawniej martwe modale topologii)."""
+    pliki = guard.iter_files(guard.REPO_ROOT)
+    nazwy = {f.name for f in pliki}
+    assert {
+        "KreatorZrodlaOze.tsx",
+        "KreatorPomiaru.tsx",
+        "KreatorPrzekaznika.tsx",
+    } <= nazwy
+    assert not any("topology" in f.parts for f in pliki)
+
+
+def test_main_returns_1_when_scan_dir_is_missing(tmp_path: Path, monkeypatch) -> None:
+    """Brak katalogu skanowania = naruszenie (nie ciche zero przeskanowanych plików)."""
+    monkeypatch.setattr(guard, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(guard, "ALLOWED_OPERATIONAL_SETPOINTS", {})
+
+    assert guard.main() == 1
+
+
 def test_scan_file_raw_is_superset_of_scan_file() -> None:
     """scan_file() (filtrowany) musi byc podzbiorem scan_file_raw() (surowy)."""
     patterns = guard.build_patterns()
@@ -74,11 +94,11 @@ def test_freshness_catches_orphaned_entry(monkeypatch) -> None:
 def test_freshness_catches_entry_whose_field_moved_out(tmp_path: Path, monkeypatch) -> None:
     """Plik o tej nazwie istnieje, ale pole juz nie wystepuje w kontekscie
     wejsciowym -- sierota SEMANTYCZNA, nie tylko brak pliku."""
-    scan_dir = tmp_path / "frontend" / "src" / "ui" / "topology" / "modals"
+    scan_dir = tmp_path / "frontend" / "src" / "ui2" / "kreatory" / "zrodlo-oze"
     scan_dir.mkdir(parents=True, exist_ok=True)
-    modal = scan_dir / "PVInverterModal.tsx"
+    modal = scan_dir / "KreatorZrodlaOze.tsx"
     modal.write_text(
-        "export function PVInverterModal() {\n"
+        "export function KreatorZrodlaOze() {\n"
         "  return <div>brak pol fizycznych tutaj</div>;\n"
         "}\n",
         encoding="utf-8",
@@ -88,7 +108,7 @@ def test_freshness_catches_entry_whose_field_moved_out(tmp_path: Path, monkeypat
     monkeypatch.setattr(
         guard,
         "ALLOWED_OPERATIONAL_SETPOINTS",
-        {("PVInverterModal.tsx", "cos_phi"): "test: pole juz nie wystepuje"},
+        {("KreatorZrodlaOze.tsx", "cos_phi"): "test: pole juz nie wystepuje"},
     )
 
     violations = guard.check_allowed_operational_setpoints_freshness(tmp_path)
@@ -98,11 +118,11 @@ def test_freshness_catches_entry_whose_field_moved_out(tmp_path: Path, monkeypat
 
 
 def test_freshness_accepts_entry_whose_field_still_present(tmp_path: Path, monkeypatch) -> None:
-    scan_dir = tmp_path / "frontend" / "src" / "ui" / "topology" / "modals"
+    scan_dir = tmp_path / "frontend" / "src" / "ui2" / "kreatory" / "zrodlo-oze"
     scan_dir.mkdir(parents=True, exist_ok=True)
-    modal = scan_dir / "PVInverterModal.tsx"
+    modal = scan_dir / "KreatorZrodlaOze.tsx"
     modal.write_text(
-        "export function PVInverterModal() {\n" '  return <input name="cos_phi" />;\n' "}\n",
+        "export function KreatorZrodlaOze() {\n" '  return <input name="cos_phi" />;\n' "}\n",
         encoding="utf-8",
     )
 
@@ -110,7 +130,7 @@ def test_freshness_accepts_entry_whose_field_still_present(tmp_path: Path, monke
     monkeypatch.setattr(
         guard,
         "ALLOWED_OPERATIONAL_SETPOINTS",
-        {("PVInverterModal.tsx", "cos_phi"): "test: pole nadal wystepuje"},
+        {("KreatorZrodlaOze.tsx", "cos_phi"): "test: pole nadal wystepuje"},
     )
 
     assert guard.check_allowed_operational_setpoints_freshness(tmp_path) == []
@@ -119,18 +139,18 @@ def test_freshness_accepts_entry_whose_field_still_present(tmp_path: Path, monke
 def test_scan_file_still_filters_allowed_setpoint(tmp_path: Path, monkeypatch) -> None:
     """Regresja: filtr scan_file() musi nadal dzialac po refaktorze na
     scan_file_raw() -- bit-w-bit ten sam wynik jak przed refaktorem."""
-    scan_dir = tmp_path / "frontend" / "src" / "ui" / "topology" / "modals"
+    scan_dir = tmp_path / "frontend" / "src" / "ui2" / "kreatory" / "zrodlo-oze"
     scan_dir.mkdir(parents=True, exist_ok=True)
-    modal = scan_dir / "PVInverterModal.tsx"
+    modal = scan_dir / "KreatorZrodlaOze.tsx"
     modal.write_text(
-        "export function PVInverterModal() {\n" '  return <input name="cos_phi" />;\n' "}\n",
+        "export function KreatorZrodlaOze() {\n" '  return <input name="cos_phi" />;\n' "}\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(guard, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(
         guard,
         "ALLOWED_OPERATIONAL_SETPOINTS",
-        {("PVInverterModal.tsx", "cos_phi"): "test: dozwolona nastawa"},
+        {("KreatorZrodlaOze.tsx", "cos_phi"): "test: dozwolona nastawa"},
     )
 
     patterns = guard.build_patterns()

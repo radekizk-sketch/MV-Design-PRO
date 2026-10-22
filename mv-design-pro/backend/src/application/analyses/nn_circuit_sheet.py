@@ -130,7 +130,7 @@ from application.analyses.nn_device_selection import (
     wybierz_aparat_dla_obwodu_nn,
 )
 from application.analyses.swz.service import build_swz_view
-from application.analyses.swz.werdykt import dane_przyjete_znacznika_petli
+from application.analyses.swz.werdykt import dane_przyjete_petli_zserializowanej
 from application.analyses.voltage_profile_view import build_voltage_profile_view
 from application.proof_engine.lv_circuit_verification_binding import (
     resolve_urzadzenie_ochronne,
@@ -156,7 +156,10 @@ from enm.models import (
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwa_elementu, nazwa_po_identyfikatorze
 from enm.uklad_sieci_nn import uklad_nn_stacji
 from network_model.catalog.lv_mcb_bands_iec60898 import PROG_CIEPLNY_WYZWALA_X_IN
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import ka_na_a, km_na_m, prad_roboczy_a
 from network_model.solvers.cable_ampacity_derating import (
@@ -228,11 +231,7 @@ def _ik_min_tt_it(widok: dict[str, Any], system: str, punkt_pl: str) -> dict[str
         return _wartosc(
             petla["ik_min_a"],
             f"pętla doziemna IEC 60364-4-41 układ {system} (I_d min, scenariusz MIN)",
-            dane_przyjete_znacznika_petli(
-                bool(petla.get("tolerancja_nn_robocza")),
-                punkt_pl,
-                petla.get("dane_przyjete_linii_wn") or (),
-            ),
+            dane_przyjete_petli_zserializowanej(petla, punkt_pl),
         )
     return {
         **_brak(widok.get("reason_pl") or f"Pętla doziemna układu {system} niedostępna."),
@@ -473,13 +472,15 @@ def _ib_z_rozplywu(run: CanonicalRun, branch_ref: str, zacisk: Literal["od", "do
 
 def _ik_z_biegu_zwarciowego(
     run: CanonicalRun, bus_ref: str
-) -> tuple[float | None, float | None, bool, tuple[DanaPrzyjeta, ...]]:
-    """(ikss_ka, ith_ka, tolerancja_nn_robocza, dane gałęzi) w punkcie ``bus_ref``
-    z biegu IEC 60909 (REUSE build_short_circuit_results). ``(None, None, False, ())`` gdy
-    punkt nie występuje w wyniku tego biegu (uczciwy brak, nie 0). Trzeci element — znacznik
-    wiersza: punkt w sieci nN liczonej z wartością roboczą tolerancji (karta
-    TOLERANCJA-NN-WARTOSC-ROBOCZA); czwarty — dane przyjęte gałęzi z wartością roboczą
-    impedancji wchodzącej do prądu punktu (karta LINIA-110)."""
+) -> tuple[float | None, float | None, bool, tuple[DanaPrzyjeta, ...], list[dict[str, Any]]]:
+    """(ikss_ka, ith_ka, tolerancja_nn_robocza, dane gałęzi, parametry_robocze_maszyn)
+    w punkcie ``bus_ref`` z biegu IEC 60909 (REUSE build_short_circuit_results).
+    ``(None, None, False, (), [])`` gdy punkt nie występuje w wyniku tego biegu (uczciwy brak,
+    nie 0). Trzeci element — znacznik wiersza: punkt w sieci nN liczonej z wartością roboczą
+    tolerancji (karta TOLERANCJA-NN-WARTOSC-ROBOCZA); czwarty — dane przyjęte gałęzi
+    z wartością roboczą impedancji wchodzącej do prądu punktu (karta LINIA-110); piąty —
+    wartości robocze parametrów maszyn wirujących wyspy punktu (karta PODSTAWA-Q, rozstrz. 3).
+    Wszystkie z TEGO SAMEGO wiersza."""
     for row in build_short_circuit_results(run).get("rows", []):
         if row.get("element_id") == bus_ref:
             return (
@@ -487,8 +488,9 @@ def _ik_z_biegu_zwarciowego(
                 row.get("ith_ka"),
                 bool(row.get("tolerancja_nn_robocza")),
                 dane_przyjete_galezi_wiersza(row),
+                list(row.get("parametry_robocze_maszyn") or ()),
             )
-    return None, None, False, ()
+    return None, None, False, (), []
 
 
 # =============================================================================
@@ -823,18 +825,31 @@ def _build_row(
     ith_ka: float | None = None
     zrodlo_ik_max_pl = ""
     dane_ik_max: tuple[DanaPrzyjeta, ...] = ()
+    dane_ith: tuple[DanaPrzyjeta, ...] = ()
     if short_circuit_run is not None:
-        ikss_ka, ith_ka, ik_roboczy, dane_linii_ik = _ik_z_biegu_zwarciowego(
+        ikss_ka, ith_ka, ik_roboczy, dane_linii_ik, robocze_maszyn = _ik_z_biegu_zwarciowego(
             short_circuit_run, worst_bus_ref
         )
         zrodlo_ik_max_pl = f"bieg zwarciowy IEC 60909 ({short_circuit_run.id})"
-        if ik_roboczy:
-            dane_ik_max = (
+        dane_tolerancji: tuple[DanaPrzyjeta, ...] = (
+            (
                 dana_przyjeta_tolerancji_nn(
                     miejsce_pl=f"punkt zwarcia {nazwa_po_identyfikatorze(worst_bus_ref, enm)}"
                 ),
             )
-        dane_ik_max += dane_linii_ik
+            if ik_roboczy
+            else ()
+        )
+        # Karty LINIA-110 i PODSTAWA-Q (rozstrz. 3): I″k i I_th punktu z wartością roboczą
+        # impedancji gałęzi (I_th wynika z I″k, więc stoi na tych samych danych gałęzi) albo
+        # parametru maszyny wirującej — dana przyjęta wg wielkości, na której stoi dane
+        # sprawdzenie.
+        dane_ik_max = (
+            dane_tolerancji + dane_linii_ik + dane_przyjete_maszyn(robocze_maszyn, wielkosc="ikss")
+        )
+        dane_ith = (
+            dane_tolerancji + dane_linii_ik + dane_przyjete_maszyn(robocze_maszyn, wielkosc="ith")
+        )
     # Dane przyjęte Ik1_min (pętla z wartością roboczą tolerancji) — z wyniku doboru.
     dane_ik1_min: tuple[DanaPrzyjeta, ...] = tuple(
         DanaPrzyjeta.model_validate(d)
@@ -1041,7 +1056,7 @@ def _build_row(
             kabel_decydujacy,
             ith_ka=ith_ka,
             fault_duration_s=fault_duration_s,
-            dane_przyjete=dane_ik_max,
+            dane_przyjete=dane_ith,
         )
         if kable
         else _brak(route_error or "Brak kabla decydującego na trasie.")

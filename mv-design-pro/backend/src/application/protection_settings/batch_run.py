@@ -98,7 +98,11 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
 from enm.slownik_komunikatow import opis_elementu
 from enm.tor_pola import szyna_raportowa, wezel_elektryczny
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+    scal_wpisy_maszyn,
+)
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import DanaPrzyjeta
@@ -360,21 +364,31 @@ def _dane_przyjete_punktow(
     snapshot: dict[str, Any] | None, punkty: list[tuple[dict[str, Any] | None, str, str]]
 ) -> tuple[DanaPrzyjeta, ...]:
     """Dane przyjęte prądów wejścia nastaw: każdy szynowy punkt (raz) w sieci nN liczonej z
-    wartością roboczą tolerancji oraz każda linia 110 kV z wartością roboczą geometrii w wyspie
-    punktu (raz, karta LINIA-110) — znaczniki TEGO SAMEGO wiersza, z którego czytany jest
-    prąd (`_wiersz_w_wezle`, jedno źródło). Kolejność deterministyczna: kolejność punktów
-    wejścia, w punkcie — tolerancja, potem linie."""
+    wartością roboczą tolerancji (znacznik TEGO SAMEGO wiersza, z którego czytany jest prąd —
+    `_wiersz_w_wezle`, jedno źródło) oraz każda linia 110 kV z wartością roboczą geometrii
+    w wyspie punktu (raz, karta LINIA-110). Kolejność deterministyczna: kolejność punktów
+    wejścia, w punkcie — tolerancja, potem linie, na końcu maszyny.
+
+    Karta PODSTAWA-Q (rozstrz. 3): prąd ``ikss_a`` punktu liczony z wartością roboczą parametru
+    maszyny wirującej jego wyspy (pole ``parametry_robocze_maszyn`` TEGO SAMEGO wiersza) — dana
+    przyjęta maszyny, raz na (maszyna, parametr)."""
     szyny: list[str] = []
     linie: list[DanaPrzyjeta] = []
+    wpisy_maszyn: list[list[dict[str, Any]]] = []
     for raw_result, graf, szyna_ref in punkty:
         wiersz = _wiersz_w_wezle(raw_result, graf)
         if bool(wiersz.get("tolerancja_nn_robocza")) and szyna_ref not in szyny:
             szyny.append(szyna_ref)
         linie.extend(d for d in dane_przyjete_galezi_wiersza(wiersz) if d not in linie)
-    return tuple(
-        dana_przyjeta_tolerancji_nn(miejsce_pl=opis_elementu(snapshot, ref, "szyna"))
-        for ref in szyny
-    ) + tuple(linie)
+        wpisy_maszyn.append(list(wiersz.get("parametry_robocze_maszyn") or ()))
+    return (
+        tuple(
+            dana_przyjeta_tolerancji_nn(miejsce_pl=opis_elementu(snapshot, ref, "szyna"))
+            for ref in szyny
+        )
+        + tuple(linie)
+        + dane_przyjete_maszyn(scal_wpisy_maszyn(wpisy_maszyn), wielkosc="ikss")
+    )
 
 
 def zbuduj_wejscie_nastaw(

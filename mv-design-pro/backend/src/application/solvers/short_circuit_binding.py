@@ -386,6 +386,12 @@ class GrafIDoborC:
     #: Karta TB-WARTOSC-ROBOCZA: t_min = t_b punktu z ``czas_tb_punktu`` (ta sama reguła co
     #: wiersz biegu) — rozbicie maszyn nie ma drugiego źródła t_b.
     czas_tb: CzasWylaczeniaTb
+    #: Partia 2 (uzgodnienie kart LINIA-110 i PODSTAWA-Q w wkładach na żądanie): znacznik
+    #: tolerancji sieci nN z wartości roboczej węzła i dane przyjęte gałęzi (zapis JSON) z TYCH
+    #: SAMYCH założeń wejścia co wiersz biegu (`dane_przyjete_galezi_punktow`) — wkłady stoją na
+    #: tych samych danych przyjętych co I″k punktu.
+    tolerancja_nn_robocza: bool = False
+    dane_przyjete_galezi: tuple[dict[str, Any], ...] = ()
 
 
 def graf_i_dobor_c_punktu(
@@ -422,9 +428,19 @@ def graf_i_dobor_c_punktu(
         czas_tb = czas_tb_punktu(
             wejscie, fault_node_id, c_factor=dobor_c.wartosc, z_f_ohm=z_f_ohm, granica_b01=True
         )
+    from enm.dane_przyjete_galezi import dane_przyjete_galezi_punktow
+
+    dane_galezi = dane_przyjete_galezi_punktow(
+        wejscie.zalozenia,
+        wejscie.graph,
+        (fault_node_id,),
+        skladowe_zerowe=wejscie.skladowe_zerowe,
+    ).get(fault_node_id, ())
     return GrafIDoborC(
         graf=wejscie.solve_graph,
         fault_node_id=fault_node_id,
         dobor_c=dobor_c,
         czas_tb=czas_tb,
+        tolerancja_nn_robocza=bool(wejscie.graph.nodes[fault_node_id].tolerancja_nn_robocza),
+        dane_przyjete_galezi=tuple(dict(d) for d in dane_galezi),
     )

@@ -1938,7 +1938,41 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # galezi) oraz stale klasowe importera XLSX `_KOLUMNY_Z_GEOMETRII_WN`,
     # `_POLA_KRZYZOWE_PRZEWODU_WN` (arkusz przewodow 110 kV). PASS niezmieniony (zero
     # podstawien).
-    assert "Pol kontraktow wejsciowych: 4350." in wyjscie, wyjscie
+    # Karta PODSTAWA-Q (2026-10-22): 4286 -> 4287 — POMIAR `contract_fields()` na bazie karty
+    # `f121c5e79` (`git archive`: 4286, pin zgodny) i na drzewie karty (4287). Roznica zbiorow
+    # +1 (`skrot_pl` — krotka postac podstawy reguly krzywej zaniku μ/q w
+    # `PodstawaRegulyKrzywej`, tekst do dowodu SC3F i rejestru rownan; pozostale pola rekordu
+    # — `rodzaj_zrodla`, `norma`, `opis_pl` — juz byly w zbiorze), -0. PASS niezmieniony
+    # (zero podstawien).
+    # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 4287 -> 4291 — POMIAR
+    # `contract_fields()` na drzewie pierwszego commitu karty `aa856bb8b` (4287, pin zgodny)
+    # i na drzewie drugiego commitu (4291). Roznica zbiorow +4 (`zalozenia_zaniku` — addytywne
+    # pole wyniku SC z krzywymi μ/q o podstawie zalozenia inzynierskiego, zgoda B-01;
+    # `parametry_robocze_maszyn` — wpisy wartosci roboczych maszyn wirujacych wiersza;
+    # `liczba_jednostek` — liczba jednostek grupy maszyn asynchronicznych, m = P_rM/p jednej
+    # maszyny wg IEC 60909-0 pkt 9.1.2; `calkowita` — znacznik parametru rejestru o wartosci
+    # calkowitej, brama liczby par biegunow p), -0.
+    # PASS niezmieniony (zero podstawien; podstawienie `wpis.get(..., 0.0)` w
+    # `machine_sc_iec60909.zdanie_zalozenia_krzywej_pl` wykryte guardem i naprawione u zrodla).
+    # Karta PODSTAWA-Q, trzeci commit (2026-10-22): 4291 -> 4292 — POMIAR `contract_fields()`
+    # na drzewie drugiego commitu karty `0a90bbc97` (`git archive`: 4291, pin zgodny) i na
+    # drzewie trzeciego commitu (4292). Roznica zbiorow +1 (`sr_mva_tabliczki` — moc pozorna
+    # znamionowa S_rM grupy maszyn asynchronicznych z tabliczki, do Z_M wprost wg IEC 60909-0
+    # pkt 6.7; brak tabliczki = S_rM z P_rM/(eta_r*cos phi_r)), -0. PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji, scalenie PODSTAWA-Q (2026-10-22): 4350 -> 4356 — POMIAR
+    # `contract_fields()` na drzewie po scaleniu LINIA-110 (4350) i na drzewie po scaleniu
+    # PODSTAWA-Q (4356). Roznica zbiorow +6, -0 — dokladnie szesc pol opisanych wyzej dla trzech
+    # commitow karty PODSTAWA-Q (`skrot_pl`, `zalozenia_zaniku`, `parametry_robocze_maszyn`,
+    # `liczba_jednostek`, `calkowita`, `sr_mva_tabliczki`). PASS niezmieniony (zero
+    # podstawien).
+    # Partia 2 integracji, uzgodnienie wkladow (2026-10-22): 4356 -> 4357 — POMIAR
+    # `contract_fields()` z `short_circuit_binding.py` w wersji scalenia (4356) i po uzgodnieniu
+    # (4357). Roznica zbiorow +1 (`dane_przyjete_galezi` — `GrafIDoborC` niesie dane przyjete
+    # galezi punktu z tych samych zalozen wejscia co wiersz biegu, odpowiedz wkladow
+    # `sc3f/contributions` sklada z nich jedna liste danych przyjetych), -0; drugie nowe pole
+    # `tolerancja_nn_robocza` bylo juz w zbiorze (wezel grafu). PASS niezmieniony.
+    assert "Pol kontraktow wejsciowych: 4357." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2191,7 +2225,16 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # ohl_equations.py` dodane, `proof_engine/registries/ls_equations.py` skasowany);
         # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na bazie `f121c5e79` (`git archive`:
         # 580, pin zgodny) i na drzewie karty (585).
-        "Przeskanowano 585 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta PODSTAWA-Q, rozstrzygniecia architekta 2-3 (2026-10-22): 580 -> 582 (+2
+        # `enm/maszyny_robocze.py` — wpisy wartosci roboczych maszyn punktu zwarcia,
+        # `enm/wartosci_projektanta.py` — jedna brama wartosci projektanta; zero wpisow
+        # w zapadce i wykluczeniach). POMIAR guardem na `aa856bb8b` (580) i na drzewie karty (582).
+        # Partia 2 integracji (2026-10-22, scalenie LINIA-110 i PODSTAWA-Q na partie zwarc):
+        # 580 -> 588 = +5 LINIA-110 opisane wyzej, +1 `enm/dane_przyjete_galezi.py` (drugi commit
+        # karty LINIA-110 `dda21faa1` dolozyl plik bez podniesienia pinu: pomiar 586 przy pinie
+        # 585 na drzewie po pierwszym scaleniu), +2 PODSTAWA-Q opisane wyzej. POMIAR guardem na
+        # drzewie scalonym (588); dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2439,7 +2482,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): enm 64 + 1 (`enm/tolerancja_nn.py`)
         # = 65; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii.
         # Karta LINIA-110: enm 65 -> 66 (+1 `enm/parametry_linii_wn.py`). POMIAR.
-        "  enm: pliki_skanowane=66, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta PODSTAWA-Q (2026-10-22): enm 65 -> 67 (+2 `enm/maszyny_robocze.py`,
+        # `enm/wartosci_projektanta.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR jak wyzej.
+        # Partia 2 integracji: enm 65 -> 69 (+1 `enm/parametry_linii_wn.py`, +1
+        # `enm/dane_przyjete_galezi.py` — karta LINIA-110; +2 PODSTAWA-Q jak wyzej). POMIAR.
+        "  enm: pliki_skanowane=69, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

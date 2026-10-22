@@ -33,7 +33,10 @@ from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebi
 from application.autorytet_biegu_zwarciowego import wymagaj_zakresu_biegu
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 from enm.dane_przyjete_galezi import dane_przyjete_galezi_wiersza
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
@@ -116,6 +119,9 @@ def build_arc_flash_view(
     # tak samo punkty, do których prądu wchodzi linia 110 kV z wartością roboczą geometrii.
     robocze: set[str] = set()
     dane_linii: dict[str, tuple[DanaPrzyjeta, ...]] = {}
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3): wartości robocze parametrów maszyn wirujących wyspy
+    # punktu z TEGO SAMEGO wiersza — I_bf = I″k punktu stoi na nich, gdy wpływają na I″k.
+    robocze_maszyn: dict[str, list[dict[str, Any]]] = {}
     for row in build_short_circuit_results(run).get("rows", []):
         target_id = row.get("target_id")
         if not target_id:
@@ -124,6 +130,7 @@ def build_arc_flash_view(
         if row.get("tolerancja_nn_robocza"):
             robocze.add(str(target_id))
         dane_linii[str(target_id)] = dane_przyjete_galezi_wiersza(row)
+        robocze_maszyn[str(target_id)] = list(row.get("parametry_robocze_maszyn") or ())
         inputs.append(
             ArcFlashInput(
                 bus_ref=str(target_id),
@@ -141,10 +148,14 @@ def build_arc_flash_view(
     for wynik in view.get("results") or []:
         wynik["bus_name"] = nazwy_szyn[str(wynik["bus_ref"])]
         dane = (
-            (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {wynik['bus_name']}"),)
-            if str(wynik["bus_ref"]) in robocze
-            else ()
-        ) + dane_linii.get(str(wynik["bus_ref"]), ())
+            (
+                (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {wynik['bus_name']}"),)
+                if str(wynik["bus_ref"]) in robocze
+                else ()
+            )
+            + dane_linii.get(str(wynik["bus_ref"]), ())
+            + dane_przyjete_maszyn(robocze_maszyn.get(str(wynik["bus_ref"])), wielkosc="ikss")
+        )
         if dane:
             wynik["status_danych"] = "UNVALIDATED_INPUT"
             wynik["dane_przyjete"] = [dana.model_dump(mode="json") for dana in dane]

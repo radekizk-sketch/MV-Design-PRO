@@ -175,6 +175,15 @@ SANCTIONED_CHANGES = {
         "poza-znamionowej; tekst kroku bilansu i docstring uzgodnione z tym stanem. Test "
         "test_bilans_wkladow_zrodel_kabel_o_duzym_b_bez_czlonow_poprzecznych. Wpis do usuniecia "
         "po scaleniu do main."
+        " Zgoda B-01 architekta z 2026-10-22 (karta PODSTAWA-Q, rozstrzygniecie 2, WYLACZNIE "
+        "pole addytywne): pole wyniku zalozenia_zaniku (exclude_none, "
+        "OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS) - wpisy mu/q maszyn wyznaczone regula o rodzaju "
+        "zrodla ZALOZENIE_INZYNIERSKIE (jedna funkcja zalozenia_krzywych_wkladow z "
+        "machine_sc_iec60909 nad tymi samymi zanikami, ktore licza I_b), wejscie i uwaga kroku "
+        "sladu Ib. Pole nieobecne dla sieci bez maszyn, zwarc niesymetrycznych i krzywych z "
+        "wezla normy - wynik i slad bit w bit; zero zmian liczb (sonda korpusu golden). Testy "
+        "tests/network_model/solvers/test_zalozenia_zaniku_werdykt.py. Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_contributions.py": (
         "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "

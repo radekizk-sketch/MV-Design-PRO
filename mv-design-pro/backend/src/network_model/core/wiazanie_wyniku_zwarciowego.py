@@ -87,6 +87,11 @@ MODULY_IMPLEMENTACJI_ZWARCIOWEJ: tuple[str, ...] = (
     "network_model/core/czas_wylaczenia.py",
     "network_model/core/wklad_zwarciowy_przeksztaltnika.py",
     "network_model/core/inverter.py",
+    # Karta PODSTAWA-Q (rozstrzygnięcie 3): impedancja maszyny wirującej (Z″_GK, Z_M, R/X)
+    # i wartości robocze jej parametrów (x″d, cos φ_r, I_LR/I_rM, η_r, p) z rejestru — ta sama
+    # migawka liczy inne prądy, gdy zmieni się propozycja rejestru albo model maszyny.
+    "network_model/core/machine.py",
+    "network_model/catalog/wartosci_robocze.py",
 )
 
 

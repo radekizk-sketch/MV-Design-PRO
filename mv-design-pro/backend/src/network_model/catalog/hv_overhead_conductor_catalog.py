@@ -66,7 +66,6 @@ TEMPERATURA_PRZEWODU_110KV_C = 80.0
 ALFA_ALUMINIUM_1_PER_K = 0.004
 #: Jth(1 s) przewodu AFL dla pary 80 → 200 °C [A/mm²] — IEC 60949 §3, zaokrąglone w dół.
 JTH_AL_ST_OHL_80C = 84.0
-NAPIECIE_ZNAMIONOWE_SIECI_KV = 110.0
 
 #: Identyfikator przewodu fazowego wymaganego przez standard ENEA linii 110 kV (§4.1).
 ID_AFL6_240 = "przewod-wn-243-al1-39-st1a"
@@ -109,7 +108,9 @@ def _rekord(
         "alfa_1_per_k": ALFA_ALUMINIUM_1_PER_K,
         "masa_kg_per_km": masa_kg_per_km,
         "wytrzymalosc_kn": wytrzymalosc_kn,
-        "voltage_rating_kv": NAPIECIE_ZNAMIONOWE_SIECI_KV,
+        # Dana pozycji katalogu (napięcie znamionowe sieci, dla której przewód jest pozycją
+        # standardu ENEA linii 110 kV), nie granica pasma — zapis jak w katalogach SN.
+        "voltage_rating_kv": 110.0,
         "max_temperature_c": TEMPERATURA_PRZEWODU_110KV_C,
         "rated_current_a": prad_a,
         "jth_1s_a_per_mm2": JTH_AL_ST_OHL_80C,

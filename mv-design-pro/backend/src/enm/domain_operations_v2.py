@@ -46,6 +46,11 @@ from network_model.catalog.types import (
     pola_karty_obecne,
     pola_toru_maszyny_obecne,
 )
+from network_model.catalog.wartosci_robocze import (
+    PARAMETR_COS_PHI_MASZYNY,
+    RODZINA_MASZYNA_SYNCHRONICZNA,
+    blad_wartosci_maszyny,
+)
 from network_model.core.uziemienie import ETYKIETA_PL_ROLI_UZIEMNIKA, ROLE_UZIEMNIKA
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import (
@@ -6822,9 +6827,16 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
             + ".",
             "generator.power_missing",
         )
-    if not (0 < power_factor_jawny <= 1):
+    # Karta PODSTAWA-Q (predykaty parami): cos φ tabliczki agregatu to cos φ_rG maszyny
+    # synchronicznej IEC 60909-0 §6.3 — ta sama brama co dla danej tabliczki przed obliczeniem
+    # (`blad_wartosci_maszyny`); dawny przedział (0; 1] przyjmował wartość, którą obliczenie
+    # odrzucało (wartość robocza zamiast danej podanej przez projektanta).
+    blad_cos_phi = blad_wartosci_maszyny(
+        RODZINA_MASZYNA_SYNCHRONICZNA, PARAMETR_COS_PHI_MASZYNY, power_factor_jawny
+    )
+    if blad_cos_phi is not None:
         return _error_response(
-            f"Agregat prądotwórczy: {pole('power_factor')} musi być w przedziale (0; 1].",
+            f"Agregat prądotwórczy: {pole('power_factor')} — {blad_cos_phi}",
             "generator.power_factor_invalid",
         )
     p_mw = kw_na_mw(rated_power_kw)

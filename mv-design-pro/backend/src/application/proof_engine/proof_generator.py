@@ -98,6 +98,10 @@ from application.proof_engine.types import (
     UnitCheckResult,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.catalog.wartosci_robocze import (
+    WIELKOSCI_ZWARCIOWE,
+    zdanie_parametru_maszyny_pl,
+)
 from network_model.pochodne import (
     SQRT2,
     SQRT3,
@@ -117,6 +121,7 @@ from network_model.solvers.machine_sc_iec60909 import (
     MachineShortCircuitResult,
     SladKrzywejZaniku,
     WezelKrzywejZaniku,
+    zdanie_zalozen_zaniku_ib_pl,
 )
 from network_model.solvers.short_circuit_asymmetrical_quantities import (
     SC1AsymmetricalQuantities,
@@ -191,6 +196,13 @@ class SC3FInput:
     krok_ib: dict[str, Any] | None = None
     krok_idc: dict[str, Any] | None = None
     tb_zrodlo: dict[str, Any] | None = None
+    # Karta PODSTAWA-Q: wpisy μ/q maszyn wyznaczone na założeniu inżynierskim (pole wyniku
+    # ``zalozenia_zaniku``; puste = I_b na samej normie) — zdanie w ostrzeżeniach dowodu.
+    zalozenia_zaniku: tuple[dict[str, Any], ...] = ()
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn wirujących wyspy punktu
+    # (`enm.maszyny_robocze.parametry_robocze_maszyn_punktu` na grafie biegu) — każdy wpis to
+    # zdanie w ostrzeżeniach dowodu; wpis wyłącznie dla krzywej zaniku — tylko przy kroku I_b.
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = ()
 
     # Zwarcie przez impedancję przejścia Z_f (karta OD-14, partia integracji 10). Para
     # rozstrzygana JEDNYM predykatem (`z_f_ohm is not None`): przy Z_f `z_thevenin_ohm` to
@@ -266,6 +278,7 @@ class SC3FInput:
             krok_ib=krok_sladu_zwarcia(result.white_box_trace, "Ib"),
             krok_idc=krok_sladu_zwarcia(result.white_box_trace, "iDC"),
             tb_zrodlo=result.tb_zrodlo,
+            zalozenia_zaniku=tuple(result.zalozenia_zaniku or ()),
             z_f_ohm=result.z_f_ohm,
             z_petli_ohm=result.zkk_ohm if result.z_f_ohm is not None else None,
         )
@@ -822,6 +835,17 @@ class ProofGenerator:
                 "I_b i i_DC policzone przy czasie wyłączenia t_b będącym wartością roboczą "
                 f"(wynik obliczeniowy na danej przyjętej): {data.tb_zrodlo.get('opis_pl')}"
             )
+        # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim — jedno zdanie z solvera.
+        zdanie_zaniku = zdanie_zalozen_zaniku_ib_pl(data.zalozenia_zaniku)
+        if data.ib_ka is not None and zdanie_zaniku is not None:
+            ostrzezenia_tb.append(zdanie_zaniku)
+        wielkosci_dowodu = WIELKOSCI_ZWARCIOWE if data.ib_ka is not None else ("ikss", "ip", "ith")
+        for wpis in data.parametry_robocze_maszyn:
+            if any(w in wpis["wielkosci"] for w in wielkosci_dowodu):
+                ostrzezenia_tb.append(
+                    "Wynik liczony z wartością roboczą parametru (dana przyjęta): "
+                    + zdanie_parametru_maszyny_pl(wpis)
+                )
         if data.ib_ka is not None:
             step_number += 1
             steps.append(
@@ -1996,17 +2020,19 @@ class ProofGenerator:
         """Podstawienie kroku μ albo q z śladu `SladKrzywejZaniku` (karta MU-INTERPOLACJA).
 
         Dowód NIE liczy krzywych: węzły, ich wartości, waga interpolacji i wynik pochodzą
-        z jednej funkcji solvera (`machine_sc_iec60909.slad_mu` / `slad_q`).
+        z jednej funkcji solvera (`machine_sc_iec60909.slad_mu` / `slad_q`). Podstawa reguły
+        (karta PODSTAWA-Q) też: `slad.podstawa.skrot_pl` z jedynej tablicy solvera — interpolacja
+        μ z zezwoleniem pkt 9.1.1, interpolacja q jako interpretacja inżynierska.
         """
         symbol = "\\mu" if slad.wielkosc == "mu" else "q"
         dolny, gorny = slad.wezel_dolny, slad.wezel_gorny
+        podstawa = f"\\text{{{slad.podstawa.skrot_pl}}}"
         if slad.regula == REGULA_BEZ_ZANIKU or dolny is None or gorny is None:
             if slad.wielkosc == "mu":
                 return (
-                    f"\\mu = 1 \\quad (I_k''/I_r = {slad.argument:.3f} \\leq 2,\\ "
-                    f"\\text{{z dala od generatora}})"
+                    f"\\mu = 1 \\quad (I_k''/I_r = {slad.argument:.3f} \\leq 2,\\ " f"{podstawa})"
                 )
-            return "q = 1 \\quad (m \\leq 0)"
+            return f"q = 1 \\quad (m \\leq 0,\\ {podstawa})"
         if slad.regula != REGULA_INTERPOLACJA:
             podstawienie = cls._podstawienie_wezla_krzywej(slad, dolny, symbol)
             if slad.regula == REGULA_PONIZEJ_ZAKRESU:
@@ -2021,7 +2047,7 @@ class ProofGenerator:
                     f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}}:\\ \\text{{krzywa }}"
                     f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}})"
                 )
-            return podstawienie
+            return f"{podstawienie} \\quad ({podstawa})"
         s_1 = f"{symbol}_{{{dolny.t_min_s:.2f}}}"
         s_2 = f"{symbol}_{{{gorny.t_min_s:.2f}}}"
         return (
@@ -2031,7 +2057,7 @@ class ProofGenerator:
             f"{{{gorny.t_min_s:.2f} - {dolny.t_min_s:.2f}}} \\left({s_2} - {s_1}\\right)"
             f" = {dolny.wartosc:.4f} + {slad.waga:.4f} \\cdot "
             f"({gorny.wartosc:.4f} - {dolny.wartosc:.4f}) = {slad.wynik:.4f}"
-            f" \\quad (\\text{{interpolacja liniowa między krzywymi normy}})"
+            f" \\quad ({podstawa})"
         )
 
     @classmethod
@@ -2040,7 +2066,7 @@ class ProofGenerator:
         step_number: int,
         machine: MachinePartialContribution,
     ) -> ProofStep:
-        """Krok maszynowy: współczynnik zanikania μ (IEC 60909-0:2016 rozdz. 9) ze śladu."""
+        """Krok maszynowy: współczynnik zanikania μ (IEC 60909-0:2016 pkt 9.1.1) ze śladu."""
         mu = machine.mu
         equation = EQ_SC3F_011
         slad = machine.slad_mu
@@ -2079,7 +2105,8 @@ class ProofGenerator:
         slad: SladKrzywejZaniku,
     ) -> ProofStep:
         """Krok maszynowy: dodatkowy współczynnik zanikania q maszyny asynchronicznej
-        (IEC 60909-0:2016 rozdz. 9) ze śladu."""
+        (IEC 60909-0:2016 pkt 9.1.2) ze śladu; interpolacja pomiędzy węzłami t_min jest
+        interpretacją inżynierską (pkt 9.1.2 jej nie przewiduje) — mówi to podstawienie."""
         q = machine.q
         equation = EQ_SC3F_012
         return ProofStep(

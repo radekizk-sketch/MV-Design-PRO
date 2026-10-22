@@ -341,6 +341,36 @@
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -389,7 +419,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -760,6 +790,36 @@
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -808,7 +868,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1150,6 +1210,36 @@
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -1198,7 +1288,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1563,6 +1653,36 @@
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -1611,7 +1731,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1982,6 +2102,36 @@
         "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
+    "status_danych": "UNVALIDATED_INPUT",
+    "dane_przyjete": [
+      {
+        "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 2.5,
+          "jednostka": "MVA"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): założenie inżynierskie: maszyna pracuje w punkcie znamionowym, więc moc czynna punktu pracy elementu (|P| podzielone na liczbę jednostek) przyjęta jako moc znamionowa, podzielona przez cos φ_rG (S_rG = P/cos φ_rG); IEC 60909-0:2016 pkt 6.3 wymaga S_rG z danych maszyny. Tabliczka maszyny nie podaje mocy pozornej znamionowej — przyjęto S_rG z mocy czynnej punktu pracy elementu. Wpływ: impedancja Z″_GK jest odwrotnie proporcjonalna do S_rG — maszyna o większej mocy znamionowej niż punkt pracy daje większy udział w prądach zwarciowych, niż wykazuje obliczenie.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "reaktancja podprzejściowa nasycona x″d maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.15,
+          "jednostka": "p.u. (S_rG, U_rG)"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa nasyconej reaktancji podprzejściowej generatorów synchronicznych (zakres spotykany 0,10–0,25 p.u.); IEC 60909-0:2016 pkt 6.3 wymaga x″d z danych maszyny i nie podaje wartości domyślnej. Tabliczka maszyny nie podaje reaktancji podprzejściowej — przyjęto x″d 0,15 p.u. Wpływ: impedancja zwarciowa maszyny Z″_GK jest proporcjonalna do x″d — maszyna o mniejszej reaktancji daje większy udział w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      },
+      {
+        "nazwa_pl": "znamionowy współczynnik mocy cos φ_r maszyny „Generator synchroniczny”",
+        "wartosc": {
+          "wartosc": 0.8,
+          "jednostka": "1"
+        },
+        "powod_pl": "wartość robocza (założenie inżynierskie): wartość typowa znamionowego współczynnika mocy generatorów synchronicznych; IEC 60909-0:2016 pkt 6.3 (współczynnik K_G) wymaga cos φ_rG z danych maszyny. Tabliczka maszyny nie podaje znamionowego współczynnika mocy — przyjęto cos φ_rG 0,8. Wpływ: współczynnik K_G impedancji maszyny zależy od sin φ_rG — inna wartość zmienia udział maszyny w prądach zwarciowych.",
+        "jakosc": "ESTIMATED"
+      }
+    ],
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -2030,7 +2180,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "b81fa9693b1d753c4695abef49f479c35e55fc90925427f29f44e2771686e3a0",
-        "result_hash": "7d7746fde38f30725816ddce53d5bdd67855a16f682feedb9f05f10d91110135",
+        "result_hash": "97e4d848038eef97d506e64d8d82f29b0a41ec26dab38ad60e235b9c70f0a3d1",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",

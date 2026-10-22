@@ -57,6 +57,12 @@ class WielkoscKryteriumWylaczania:
     wydanie: str
     jednostka_redakcyjna: str
 
+    @property
+    def wielkosc_zwarciowa(self) -> str:
+        """Klucz wielkości zwarciowej punktu (``ib`` / ``ikss``) — dobór danych przyjętych
+        maszyn wirujących (`wartosci_robocze.dane_przyjete_maszyn`) z TEGO SAMEGO pola wyniku."""
+        return self.klucz.removesuffix("_ka")
+
 
 WIELKOSC_IB = WielkoscKryteriumWylaczania(
     klucz="ib_ka",

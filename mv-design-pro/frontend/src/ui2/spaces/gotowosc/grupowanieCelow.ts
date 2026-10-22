@@ -271,6 +271,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.item_missing': 'wspolne',
   'catalog.item_id_missing': 'wspolne',
   'catalog.binding_required': 'wspolne',
+  // Karta PODSTAWA-Q (E011): wartość projektanta maszyny albo aparatu SN spoza bramy rejestru.
+  'catalog.wartosc_projektanta_niedopuszczalna': 'wspolne',
   'catalog.binding_invalid': 'wspolne',
   'catalog.namespace_missing': 'wspolne',
   'catalog.namespace_required': 'wspolne',
@@ -376,6 +378,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: tolerancja napięcia sieci nN (+6 %/+10 %)
   // deklarowana na transformatorze stacji — wzorzec `lv_earthing_system` (obszar STATIONS).
   'fault.c_tolerancja_nn_robocza': 'stacje',
+  // Karta PODSTAWA-Q: parametry zwarciowe maszyny wirującej (obszar SOURCES — dane zwarciowe).
+  'fault.parametry_maszyny_robocze': 'zwarcia',
   // GENERATORS (rozplyw)
   'bess.energy_module_missing': 'rozplyw',
   'bess.soc_limits_invalid': 'rozplyw',

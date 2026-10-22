@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
-PHYSICS-LABEL GUARD — CI enforcement for catalog-first modals.
+PHYSICS-LABEL GUARD — CI enforcement for catalog-first operation dialogs.
 
 BINDING RULE (PR-10):
-- Modale topologii (BranchModal, TransformerStationModal, LoadDERModal,
-  MeasurementModal, ProtectionModal) NIE MOGĄ zawierać edytowalnych pól
-  z parametrami fizycznymi (R', X', B', uk%, Sn, ratio, burden, class, etc.).
-- Parametry fizyczne mogą być wyświetlane wyłącznie jako READ-ONLY w CatalogPreview.
+- Kreatory operacji domenowych (ui2/kreatory: stacja, transformator, odbiór, pomiar,
+  przekaźnik, źródło OZE …) NIE MOGĄ zawierać edytowalnych pól z parametrami
+  fizycznymi typu (R', X', B', uk%, Sn, ratio, burden, class, etc.) — te idą z katalogu.
+- Parametry fizyczne mogą być wyświetlane wyłącznie jako READ-ONLY (podgląd katalogu).
 
-Skanuje pliki modali i walidacji w poszukiwaniu podejrzanych nazw pól
+Skanuje pliki kreatorów w poszukiwaniu podejrzanych nazw pól
 w kontekście <input>, <Input>, name=, defaultValue=, register(.
 
+Historia (2026-10-22, karta PODSTAWA-Q, commit 3): do tej daty skanowany był wyłącznie
+katalog `frontend/src/ui/topology/modals` — modale bez montażu (jedynym konsumentem był
+nierenderowany `TopologyPanel`), skasowane jako martwy kod razem z `ExpertOverrides`
+(edytor `overrides` gałęzi/stacji/zabezpieczeń, których backend nie czyta). Żywymi
+dostawcami tych dialogów są kreatory ui2 — to one są teraz skanowane; brak katalogu
+skanowania jest naruszeniem, nie cichym zerem.
+
 Dozwolone:
-- CatalogPreview.tsx (podgląd READ-ONLY — nie skanowany)
-- ExpertOverrides.tsx (klucze override — nie skanowany)
 - Pliki testowe (__tests__/) — nie skanowane
 - Komentarze w kodzie
 
@@ -34,13 +39,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Directories to scan (relative to REPO_ROOT)
 SCAN_DIRS = [
-    "frontend/src/ui/topology/modals",
+    "frontend/src/ui2/kreatory",
 ]
 
 # Files to SKIP (read-only components, test files, shared components)
 SKIP_FILENAMES = {
-    "CatalogPreview.tsx",
-    "ExpertOverrides.tsx",
     "index.ts",
 }
 
@@ -119,17 +122,12 @@ IGNORE_PATTERN = re.compile(r"//\s*physics-guard-ignore")
 # Wyłącznie dla pól, które są nastawą OPERACYJNĄ instalacji, a nie parametrem
 # fizycznym typu katalogowego (PR-10 nienaruszone — parametry typu idą z
 # katalogu; nastawa trybu regulacji jest per instalacja). Mechanizm celowo
-# NIE osłabia reguły: każdy inny plik/pole (w tym cos_phi w LoadDERModal,
-# gdzie jest fizyką modelu odbioru) nadal blokuje CI. Marker inline
+# NIE osłabia reguły: każdy inny plik/pole nadal blokuje CI. Marker inline
 # `// physics-guard-ignore` jest niemożliwy w pozycji atrybutu JSX (składnia),
-# stąd allowlist po stronie guardu.
-ALLOWED_OPERATIONAL_SETPOINTS: dict[tuple[str, str], str] = {
-    ("PVInverterModal.tsx", "cos_phi"): (
-        "Nastawa trybu regulacji STALY_COS_PHI falownika (DER_PV_BESS_FW_CONFIGURATOR "
-        "§3.3 'Tryb regulacji: stały cos φ'), walidowana (0,1]; model falownika "
-        "wiązany z katalogu przez catalog_item_id."
-    ),
-}
+# stąd allowlist po stronie guardu. Pusta od 2026-10-22: jedyny wpis
+# (`PVInverterModal.tsx`, `cos_phi`) zniknął razem ze skasowanym martwym modalem;
+# kreator źródła OZE ui2 nie ma trafienia (pomiar zapadki świeżości).
+ALLOWED_OPERATIONAL_SETPOINTS: dict[tuple[str, str], str] = {}
 
 
 class Violation(NamedTuple):
@@ -276,6 +274,14 @@ def main() -> int:
     patterns = build_patterns()
     violations = []
 
+    brakujace = [d for d in SCAN_DIRS if not (REPO_ROOT / d).is_dir()]
+    if brakujace:
+        print(
+            "PHYSICS-LABEL GUARD: brak katalogu skanowania: " + ", ".join(brakujace),
+            file=sys.stderr,
+        )
+        return 1
+
     for file_path in iter_files(REPO_ROOT):
         file_violations = scan_file(file_path, patterns)
         violations.extend(file_violations)
@@ -296,11 +302,11 @@ def main() -> int:
         print("=" * 70, file=sys.stderr)
         print(file=sys.stderr)
         print(
-            "Modale topologii nie mogą zawierać edytowalnych pól fizycznych.",
+            "Kreatory operacji nie mogą zawierać edytowalnych pól fizycznych.",
             file=sys.stderr,
         )
         print(
-            "Parametry fizyczne powinny być wyłącznie w CatalogPreview (READ-ONLY).",
+            "Parametry fizyczne typu idą z katalogu i są wyłącznie READ-ONLY.",
             file=sys.stderr,
         )
         print(file=sys.stderr)

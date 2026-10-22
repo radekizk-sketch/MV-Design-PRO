@@ -272,12 +272,16 @@ KOD_KROKU_NA_ROWNANIE: dict[str, tuple[str, ...]] = {
 
 
 def rownanie_kroku(kod: str, wzor_latex: str) -> EquationDefinition:
-    """Równanie rejestru dla kroku śladu: kod kroku + IDENTYCZNY wzór (odmowa przy rozjeździe)."""
+    """Równanie rejestru dla kroku śladu: kod kroku + IDENTYCZNY wzór.
+
+    Rozjazd wzoru kroku solvera z rejestrem jest błędem programu (rejestr i solver to dwa pliki
+    jednego wydania), nie odmową danych użytkownika — stąd asercja, nie ``ValueError``
+    (``scripts/polykanie_wyjatkow_guard.py``, druga połowa)."""
     for equation_id in KOD_KROKU_NA_ROWNANIE[kod]:
         rownanie = OHL_EQUATIONS[equation_id]
         if rownanie.latex == wzor_latex:
             return rownanie
-    raise ValueError(
+    raise AssertionError(
         f"Krok śladu {kod!r} ma wzór spoza rejestru równań dowodu parametrów linii — "
         "rejestr i solver rozjechały się."
     )

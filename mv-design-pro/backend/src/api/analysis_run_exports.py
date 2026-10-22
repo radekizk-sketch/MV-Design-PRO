@@ -31,10 +31,12 @@ from enm.canonical_analysis import CanonicalRun
 from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException, status
 from fastapi.responses import Response
+from network_model.catalog.wartosci_robocze import zdanie_parametru_maszyny_pl
 from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka
 from network_model.reporting.czcionki import zarejestruj_czcionki
+from network_model.solvers.machine_sc_iec60909 import zdanie_zalozenia_krzywej_pl
 
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
@@ -729,6 +731,30 @@ def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, ...]:
     zrodlo_tb = row_data.get("tb_zrodlo")
     if isinstance(zrodlo_tb, dict) and zrodlo_tb.get("opis_pl"):
         linie = (*linie, f"Czas wyłączenia tb: {zrodlo_tb['opis_pl']}")
+    # Karta PODSTAWA-Q: μ/q maszyn wyznaczone na założeniu inżynierskim — osobna linia na
+    # założenie (szerokość PDF); I_b na samej normie nie dodaje linii (raport bez zmian).
+    zalozenia = row_data.get("zalozenia_zaniku")
+    if isinstance(zalozenia, list):
+        linie = (
+            *linie,
+            *(
+                f"Założenie krzywej zaniku Ib: {zdanie_zalozenia_krzywej_pl(wpis)}"
+                for wpis in zalozenia
+                if isinstance(wpis, dict)
+            ),
+        )
+    # Karta PODSTAWA-Q (rozstrz. 3): wartości robocze parametrów maszyn wyspy punktu — linia na
+    # wpis (jedno zdanie z rejestru); punkt bez maszyn z wartościami roboczymi — raport bez zmian.
+    robocze = row_data.get("parametry_robocze_maszyn")
+    if isinstance(robocze, list):
+        linie = (
+            *linie,
+            *(
+                f"Wartość robocza: {zdanie_parametru_maszyny_pl(wpis)}"
+                for wpis in robocze
+                if isinstance(wpis, dict)
+            ),
+        )
     return linie
 
 

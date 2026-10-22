@@ -58,6 +58,10 @@ from __future__ import annotations
 #: Partia integracji obu kart: macierz bilansu wkładów źródeł budowana tym samym predykatem
 #: `siec_zwarciowa=True` co `build_zbus` — człony poprzeczne bilansu wyłącznie z przekładni
 #: poza-znamionowej (pojemności linii i kabli nie wchodzą do sieci zgodnej).
+#: Grupa „IEC 60909" zmieniona zgodą B-01 architekta z 2026-10-22 (karta PODSTAWA-Q,
+#: WYŁĄCZNIE pole addytywne): `zalozenia_zaniku` w wierszu wyniku i w kroku śladu „Ib" —
+#: wpisy μ/q maszyn wyznaczone regułą o rodzaju źródła ZALOZENIE_INZYNIERSKIE (exclude_none;
+#: bez takich wpisów wynik i ślad bit w bit). Zero zmian liczb.
 RDZENIE_B01: dict[str, tuple[str, ...]] = {
     "IEC 60909 (3F/2F/1F, MAX/MIN, wkłady)": (
         "network_model/solvers/short_circuit_iec60909.py",

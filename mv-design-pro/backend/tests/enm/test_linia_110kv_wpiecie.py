@@ -435,15 +435,19 @@ def _bieg(migawka: dict, typ: str, opcje: dict) -> Any:
 def test_zwarcie_impedancja_linii_i_zalozenie_biegu(
     opis: str, geometria: dict | None, robocze: list[str]
 ) -> None:
-    """Bieg zwarć liczy linię dokładnie z R′1, X′1, B′1 wyznaczonych z geometrii.
+    """Bieg zwarć liczy linię dokładnie z R′1 i X′1 wyznaczonych z geometrii.
 
-    Sieć zwarciowa (``network_model/core/ybus.py``) modeluje linię czwórnikiem Π: Z_L = ℓ·(R′1 +
-    jX′1) i Y_L/2 = jℓ·B′1/2 na każdym końcu; odbiór w sieci zwarciowej nie występuje. Z
-    impedancji zwarciowej w A wyznaczamy impedancję zasilania Z_Q, a następnie przewidujemy
-    impedancję zwarciową w B dokładnym rachunkiem obwodu (bez przybliżeń):
+    Sieć zwarciowa zgodna (``network_model/core/ybus.py``, tryb ``siec_zwarciowa=True``) nie
+    zawiera admitancji poprzecznych linii — IEC 60909-0:2016 pkt 5.2 f) (partia zwarć, karta
+    BEZ-POJEMNOSCI): linia wchodzi wyłącznie impedancją podłużną Z_L = ℓ·(R′1 + jX′1), a B′1
+    z geometrii (niezerowe — sprawdzone niżej) do sieci zgodnej nie wchodzi. Odbiór w sieci
+    zwarciowej nie występuje, więc impedancja zwarciowa w B jest dokładnie sumą szeregową:
 
-        1/Z_Q = 1/Z_k(A) − Y_L/2 − 1/(Z_L + 2/Y_L),
-        Z_k(B) = 1 / (Y_L/2 + 1/(Z_L + 1/(1/Z_Q + Y_L/2))).
+        Z_k(B) = Z_k(A) + Z_L.
+
+    Do partii 2 integracji test przewidywał Z_k(B) z czwórnika Π (Y_L/2 = jℓ·B′1/2 na każdym
+    końcu) — model sprzed wycofania pojemności z sieci zwarciowej; intencja (linia liczona
+    dokładnie z parametrów z geometrii, tolerancja względna 1e-9) bez zmian.
 
     Założenie biegu ``line.geometria_wartosc_robocza`` — wyłącznie dla linii z wartością
     roboczą (z linią i polem zmiany).
@@ -466,10 +470,12 @@ def test_zwarcie_impedancja_linii_i_zalozenie_biegu(
             assert zalozenia[0]["parametr"] == "geometria_slupa"
         else:
             assert zalozenia == []
+    # B′1 z geometrii jest niezerowe — gdyby wchodziło do sieci zgodnej (czwórnik Π), Z_k(B)
+    # odbiegałoby od sumy szeregowej o ~1e-3 względnie (pomiar partii 2: R_k(B) 2,8200 Ω
+    # z Π wobec 2,8181 Ω bez pojemności), czyli o rzędy wielkości ponad tolerancję asercji.
+    assert linia["b_siemens_per_km"] > 0.0
     z_l = DLUGOSC_KM * complex(linia["r_ohm_per_km"], linia["x_ohm_per_km"])
-    y_pol = 1j * DLUGOSC_KM * linia["b_siemens_per_km"] / 2.0
-    y_q = 1.0 / wyniki["A"] - y_pol - 1.0 / (z_l + 1.0 / y_pol)
-    z_b = 1.0 / (y_pol + 1.0 / (z_l + 1.0 / (y_q + y_pol)))
+    z_b = wyniki["A"] + z_l
     assert wyniki["B"].real == pytest.approx(z_b.real, rel=1e-9)
     assert wyniki["B"].imag == pytest.approx(z_b.imag, rel=1e-9)
 

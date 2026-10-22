@@ -71,7 +71,10 @@ from enm.models import (
 from enm.nastawy_zabezpieczen import ETYKIETY_JEDNOSTEK_PROGU_PL
 from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyna_raportowa
-from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.branch import TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
@@ -1678,6 +1681,7 @@ def ocena_punktu_rekord(
     odniesienie_biegu: str,
     tolerancja_nn_robocza: bool = False,
     dane_galezi: tuple[DanaPrzyjeta, ...] = (),
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = (),
 ) -> OcenaKryterium:
     """Rekord K: prąd przekaźnika ≥ prąd rozruchowy stopnia (zadziałanie w strefie).
 
@@ -1685,6 +1689,8 @@ def ocena_punktu_rekord(
     tolerancji napięcia (znacznik wiersza biegu): prąd przekaźnika stoi na danej przyjętej.
     ``dane_galezi`` — dane przyjęte gałęzi z wartością roboczą impedancji wchodzącej do prądu
     punktu (znacznik wiersza biegu, karta LINIA-110): ta sama konsekwencja.
+    ``parametry_robocze_maszyn`` — wartości robocze parametrów maszyn wirujących wyspy punktu
+    (karta PODSTAWA-Q, pole wiersza biegu): dana przyjęta, gdy wpływają na I″k punktu.
     """
     braki: list[str] = []
     if wiarygodnosc == NIEWIARYGODNY:
@@ -1728,7 +1734,8 @@ def ocena_punktu_rekord(
                 if tolerancja_nn_robocza
                 else ()
             )
-            + dane_galezi,
+            + dane_galezi
+            + dane_przyjete_maszyn(parametry_robocze_maszyn, wielkosc="ikss"),
         ),
         zakres_waznosci=_zakres_waznosci(wiarygodnosc, powod_wiarygodnosci),
         slad=[
@@ -2051,6 +2058,7 @@ def ocen_zabezpieczenia(
                     odniesienie_biegu=odniesienie_biegu,
                     tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
                     dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
+                    parametry_robocze_maszyn=tuple(wiersz.get("parametry_robocze_maszyn") or ()),
                 )
             )
         if braki_punktow:
@@ -2087,6 +2095,7 @@ def _ocena_punktu(
     odniesienie_biegu: str,
     tolerancja_nn_robocza: bool = False,
     dane_galezi: tuple[DanaPrzyjeta, ...] = (),
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = (),
 ) -> OcenaPunktu:
     slady, decydujacy = czas_urzadzenia(nastawy.stopnie, prad)
     # Stopień odniesienia rekordu i marginesu: decydujący (gdy ruszył) albo najczulszy
@@ -2131,6 +2140,7 @@ def _ocena_punktu(
             odniesienie_biegu=odniesienie_biegu,
             tolerancja_nn_robocza=tolerancja_nn_robocza,
             dane_galezi=dane_galezi,
+            parametry_robocze_maszyn=parametry_robocze_maszyn,
         ),
     )
 

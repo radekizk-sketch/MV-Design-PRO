@@ -326,8 +326,18 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     assert wywod[0]["tekst"].startswith("Model: IEC 60909")
     assert wywod[0]["latex"] is None
     assert wywod[1]["tekst"].startswith("Punkt zwarcia: całkowity prąd I″k")
+    # Karta PODSTAWA-Q (rozstrz. 3): tabliczka „Agregat" nie podaje x″d ani cos φ_rG —
+    # nagłówek niesie zdanie na każdą wartość roboczą (kolejność rejestru), odpowiedź —
+    # wpisy i dane przyjęte (ten sam dobór).
+    assert wywod[2]["tekst"].startswith("Wartość robocza: maszyna „Agregat”: reaktancja")
+    assert wywod[3]["tekst"].startswith("Wartość robocza: maszyna „Agregat”: znamionowy")
+    assert [w["parametr"] for w in dane["parametry_robocze_maszyn"]] == [
+        "xd_subtransient_pu",
+        "cos_phi",
+    ]
+    assert dane["status_danych"] == "UNVALIDATED_INPUT" and len(dane["dane_przyjete"]) == 2
     # Karta #145: separator nazywa maszynę bez kodu typu (`SYNCHRONOUS`).
-    assert wywod[2]["tekst"] == "— Agregat —"
+    assert wywod[4]["tekst"] == "— Agregat —"
     latexy = " ".join(k["latex"] for k in wywod if k["latex"])
     # Wzor ogolny pradu czesciowego (superpozycja Z-bus) + podstawienie z c.
     assert r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk}|\,|Z_m|}" in latexy
@@ -436,7 +446,9 @@ def test_sc3f_contributions_wywod_sekcje_pogrupowane_1do1(tmp_path):
         "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza"
     )
     assert dane["t_min_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
-    assert dane["wywod"][3]["tekst"] == "— Agregat —"
+    # Karta PODSTAWA-Q: po zdaniu t_min — zdania wartości roboczych maszyny (x″d, cos φ_rG).
+    assert [k["tekst"][:16] for k in dane["wywod"][3:5]] == ["Wartość robocza:"] * 2
+    assert dane["wywod"][5]["tekst"] == "— Agregat —"
     assert dane["wywod"][-2]["tekst"].startswith("Suma wkładów maszyn")
     assert "Reguła małych silników" in dane["wywod"][-1]["tekst"]
 
@@ -1001,7 +1013,7 @@ def test_pakiet_dowodowy_kryterium_wylaczania_wg_rodzaju_aparatu_z_katalogu(
 @pytest.mark.parametrize("t_b_s", [0.10, 0.2])
 def test_sc3f_t_b_pomiedzy_wezlami_mu_z_interpolacji_w_wywodzie_i_dowodzie(tmp_path, t_b_s):
     """Karta MU-INTERPOLACJA, realna ścieżka HTTP: t_b = 0,2 s leży między krzywymi μ
-    0,10 s i 0,25 s IEC 60909-0:2016 rozdz. 9. Wywód wkładów i dowód SC3F (pakiet ZIP) pokazują
+    0,10 s i 0,25 s IEC 60909-0:2016 pkt 9.1.1. Wywód wkładów i dowód SC3F (pakiet ZIP) pokazują
     oba węzły, wagę i wynik; μ odpowiedzi = μ kroku dowodu. t_b = 0,10 s (węzeł) — jedna
     krzywa, bez kroku interpolacji."""
     import json
@@ -1027,7 +1039,10 @@ def test_sc3f_t_b_pomiedzy_wezlami_mu_z_interpolacji_w_wywodzie_i_dowodzie(tmp_p
     if t_b_s == 0.2:
         assert slad["regula"] == "INTERPOLACJA"
         assert (slad["wezel_dolny"]["t_min_s"], slad["wezel_gorny"]["t_min_s"]) == (0.10, 0.25)
-        assert "interpolacja liniowa wartości krzywych" in teksty
+        # Karta PODSTAWA-Q: interpolacja μ ma jawną podstawę normy (pkt 9.1.1, cytat).
+        assert slad["podstawa_reguly"] == "NORMA"
+        assert "interpolacja liniowa między krzywymi μ dopuszczona jawnie przez" in teksty
+        assert "pkt 9.1.1" in krok_mu["substitution_latex"]
         assert r"\mu_{0.10} = 0.62" in latexy and r"\mu_{0.25} = 0.56" in latexy
         assert r"\mu_{0.10} = 0.62" in krok_mu["substitution_latex"]
         assert f"{slad['waga']:.4f}" in krok_mu["substitution_latex"]
@@ -1035,6 +1050,58 @@ def test_sc3f_t_b_pomiedzy_wezlami_mu_z_interpolacji_w_wywodzie_i_dowodzie(tmp_p
         assert slad["regula"] == "WEZEL" and slad["waga"] == 0.0
         assert "interpolacja" not in teksty
         assert krok_mu["substitution_latex"].startswith(r"\mu = 0.62 + 0.72")
+
+
+@pytest.mark.parametrize(("t_b_s", "regula"), [(0.10, "WEZEL"), (0.2, "INTERPOLACJA")])
+def test_sc3f_q_silnika_asynchronicznego_podstawa_w_wywodzie_i_dowodzie(tmp_path, t_b_s, regula):
+    """Karta PODSTAWA-Q, realna ścieżka HTTP: generator asynchroniczny klatkowy (`fw_scig`)
+    w miejscu agregatu. Interpolacja q pomiędzy węzłami t_min jest interpretacją inżynierską
+    (IEC 60909-0:2016 pkt 9.1.2 jej nie przewiduje) — endpoint wkładów (ślad + wywód) i dowód
+    SC3F pakietu ZIP mówią to wprost i nigdzie nie przypisują normie zezwolenia; w węźle
+    podstawą jest sama krzywa normy (pkt 9.1.2, wzór (69), rys. 14)."""
+    import json
+    import re
+
+    from enm.mapping import map_enm_to_network_graph
+
+    client, data = _prepare_api_client(tmp_path)
+    enm = _enm_z_maszyna()
+    (agregat,) = enm.generators
+    enm.generators = [agregat.model_copy(update={"gen_type": "fw_scig", "p_mw": 2.0})]
+    graf = map_enm_to_network_graph(enm)
+    assert graf.get_asynchronous_machine_sources()
+    snapshot = {
+        "snapshot": enm.model_dump(mode="json"),
+        "fault_node_id": next(n.id for n in graf.nodes.values() if n.name == "Szyna OZE"),
+        "scenariusz": "MAX",
+    }
+    odpowiedz = client.post("/api/proof/sc3f/contributions", json={**snapshot, "t_min_s": t_b_s})
+    assert odpowiedz.status_code == 200
+    (wklad,) = odpowiedz.json()["contributions"]
+    slad = wklad["slad_q"]
+    assert slad["regula"] == regula
+    assert slad["norma"] == "IEC 60909-0:2016 pkt 9.1.2, wzór (69), rys. 14"
+    zezwolenie = re.compile(r"dopuszcz|zezw", re.IGNORECASE)
+    teksty_q = " ".join(
+        k["tekst"] for k in wklad["wywod"] if k["tekst"].startswith("Współczynnik q")
+    )
+    pakiet = client.post(
+        "/api/proof/sc3f/pack", json={**_payload_sc3f_pack(data, snapshot), "tb_s": t_b_s}
+    )
+    assert pakiet.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(pakiet.content)) as zz:
+        dowod = json.loads(zz.read("proof_pack/proof.json"))
+    (krok_q,) = (k for k in dowod["steps"] if k["equation"]["equation_id"] == "EQ_SC3F_012")
+    assert krok_q["result"]["value"] == wklad["q"] == slad["wynik"]
+    for tekst in (slad["podstawa_reguly_pl"], teksty_q, krok_q["substitution_latex"]):
+        assert "pkt 9.1.2" in tekst and not zezwolenie.search(tekst), tekst
+    if regula == "INTERPOLACJA":
+        assert slad["podstawa_reguly"] == "ZALOZENIE_INZYNIERSKIE"
+        for tekst in (slad["podstawa_reguly_pl"], teksty_q, krok_q["substitution_latex"]):
+            assert "interpretacja inżynierska" in tekst, tekst
+    else:
+        assert slad["podstawa_reguly"] == "NORMA"
+        assert "interpretacja inżynierska" not in teksty_q
 
 
 @pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])

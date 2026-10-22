@@ -65,13 +65,18 @@ from enm.assembler import (
     zloz_wejscie_rozplywu_niesymetrycznego,
     zloz_wejscie_zwarcia,
 )
-from enm.dane_przyjete_galezi import KLUCZ_WIERSZA_DANE_GALEZI, dane_przyjete_galezi_punktow
+from enm.dane_przyjete_galezi import (
+    KLUCZ_WIERSZA_DANE_GALEZI,
+    dane_przyjete_galezi_punktow,
+    dane_przyjete_galezi_wiersza,
+)
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
 from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.mapping import grid_source_graph_id
+from enm.maszyny_robocze import parametry_robocze_maszyn_punktu, wyspy_wezlow_grafu
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import (
     ELEMENT_SPOZA_MODELU,
@@ -119,6 +124,10 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
 )
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
+from network_model.catalog.wartosci_robocze import (
+    dana_przyjeta_tolerancji_nn,
+    dane_przyjete_maszyn,
+)
 from network_model.core.autorytet_wyniku_zwarciowego import KLUCZ_IMPEDANCJI_ZWARCIA
 from network_model.core.branch import Branch
 from network_model.core.czas_wylaczenia import KOD_CZAS_TB_WARTOSC_ROBOCZA, CzasWylaczeniaTb
@@ -433,6 +442,8 @@ KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
         "wklady_pominiete",
         "wklady_zrodel",
         "wklady_zrodel_slad",
+        "zalozenia_zaniku",
+        "parametry_robocze_maszyn",
     }
 )
 
@@ -2596,6 +2607,8 @@ def _execute_short_circuit(
         reportable_fault_node_ids,
         skladowe_zerowe=wejscie.skladowe_zerowe,
     )
+    # Karta PODSTAWA-Q: wyspy grafu RAZ na bieg (maszyny wyspy punktu → dane przyjęte wiersza).
+    wyspy_wezlow = wyspy_wezlow_grafu(graph) if graph.wartosci_robocze_maszyn else {}
     for numer_punktu, node_id in enumerate(reportable_fault_node_ids):
         if kontekst is not None:
             # Punkt przerwania MIEDZY punktami zwarcia (karta DYNAMIKA-W-TLE): postęp w
@@ -2743,6 +2756,13 @@ def _execute_short_circuit(
                 ),
             }
         )
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, zasada nr 4): maszyny wirujące wyspy punktu
+        # liczone z wartościami roboczymi parametrów — addytywnie, WYŁĄCZNIE gdy są.
+        robocze_maszyn = parametry_robocze_maszyn_punktu(
+            wejscie.graph, node_id, short_circuit_type, wyspy=wyspy_wezlow
+        )
+        if robocze_maszyn:
+            payload["parametry_robocze_maszyn"] = robocze_maszyn
         if wejscie.impedancja_zwarcia is not None:
             payload["reporting_limitations"] = [
                 *payload["reporting_limitations"],
@@ -3945,6 +3965,16 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None): pochodzenie t_b punktu, gdy
         # nie pochodzi ze scenariusza projektanta (pola lokalne albo wartość robocza).
         **({"tb_zrodlo": item["tb_zrodlo"]} if item.get("tb_zrodlo") is not None else {}),
+        # Karta PODSTAWA-Q (addytywnie, exclude-None): krzywe zaniku μ/q maszyn wyznaczone na
+        # założeniu inżynierskim — konsument werdyktu I_b ≤ I_cu niesie je w zakresie ważności.
+        **({"zalozenia_zaniku": item["zalozenia_zaniku"]} if item.get("zalozenia_zaniku") else {}),
+        # Karta PODSTAWA-Q (rozstrzygnięcie 3, addytywnie): wartości robocze parametrów maszyn
+        # wirujących wyspy punktu — konsumenci werdyktów niosą je w `dane_przyjete`.
+        **(
+            {"parametry_robocze_maszyn": item["parametry_robocze_maszyn"]}
+            if item.get("parametry_robocze_maszyn")
+            else {}
+        ),
         # Karta SC-IB-ITH-ZRODLA: Ib = SYMETRYCZNY prąd wyłączeniowy IEC 60909-0 rozdz. 9,
         # i_DC(t_b) — składowa nieokresowa rozdz. 10, obie przy t_b punktu (karta
         # TB-WARTOSC-ROBOCZA); None wyłącznie dla wiersza bez solvera / zapisu sprzed kart.
@@ -4273,8 +4303,42 @@ def build_short_circuit_rozplyw(
                     rozplyw[KLUCZ_WKLADOW_ZRODEL], graph_nodes, run.snapshot
                 ),
                 "wklady_zrodel_slad": rozplyw[KLUCZ_SLADU_WKLADOW_ZRODEL],
+                # Partia 2 (uzgodnienie kart WKLAD-ZRODLA, LINIA-110 i PODSTAWA-Q; kontrakt
+                # werdyktu §3): rozpływ i wkłady źródeł są proporcjonalne do I″k TEGO punktu,
+                # więc stoją na tych samych danych przyjętych co wiersz wyniku — jedno źródło
+                # kompletności (`_dane_przyjete_punktu_rozplywu`). Addytywnie, WYŁĄCZNIE gdy są.
+                **_dane_przyjete_punktu_rozplywu(item, graph_nodes.get(target_id) or {}),
             }
     raise BrakZasobuError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
+
+
+def _dane_przyjete_punktu_rozplywu(
+    item: Mapping[str, Any], node: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Status danych i dane przyjęte rozpływu punktu z TEGO SAMEGO wiersza biegu.
+
+    Te same trzy znaczniki wiersza, które niosą werdykty oparte na I″k punktu: tolerancja
+    sieci nN z wartości roboczej (``tolerancja_nn_robocza``), gałęzie z wartością roboczą
+    impedancji (``KLUCZ_WIERSZA_DANE_GALEZI``, karta LINIA-110) i wartości robocze parametrów
+    maszyn wirujących wyspy punktu (``parametry_robocze_maszyn``, karta PODSTAWA-Q, wielkość
+    I″k). Pusty słownik, gdy żadnego nie ma — odpowiedź bit w bit jak przed uzgodnieniem.
+    """
+    nazwa = nazwa_nadana(node.get("name")) or opis_bez_nazwy("buses")
+    dane = (
+        (
+            (dana_przyjeta_tolerancji_nn(miejsce_pl=f"punkt zwarcia: {nazwa}"),)
+            if item.get("tolerancja_nn_robocza")
+            else ()
+        )
+        + dane_przyjete_galezi_wiersza(item)
+        + dane_przyjete_maszyn(item.get("parametry_robocze_maszyn"), wielkosc="ikss")
+    )
+    if not dane:
+        return {}
+    return {
+        "status_danych": "UNVALIDATED_INPUT",
+        "dane_przyjete": [d.model_dump(mode="json") for d in dane],
+    }
 
 
 def scenariusz_biegu_zwarciowego(run: CanonicalRun) -> str | None:
@@ -4890,6 +4954,18 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                         **(
                             {"tb_zrodlo": item["tb_zrodlo"]}
                             if item.get("tb_zrodlo") is not None
+                            else {}
+                        ),
+                        # Karta PODSTAWA-Q: μ/q maszyn na założeniu inżynierskim (addytywnie).
+                        **(
+                            {"zalozenia_zaniku": item["zalozenia_zaniku"]}
+                            if item.get("zalozenia_zaniku")
+                            else {}
+                        ),
+                        # Karta PODSTAWA-Q: wartości robocze parametrów maszyn (addytywnie).
+                        **(
+                            {"parametry_robocze_maszyn": item["parametry_robocze_maszyn"]}
+                            if item.get("parametry_robocze_maszyn")
                             else {}
                         ),
                     },

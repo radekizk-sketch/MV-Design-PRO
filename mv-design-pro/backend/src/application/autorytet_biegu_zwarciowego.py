@@ -114,6 +114,16 @@ class WejscieZwarcioweZBiegu:
     dane_galezi: tuple[DanaPrzyjeta, ...] = ()
     """Karta LINIA-110: dane przyjęte gałęzi z wartością roboczą impedancji wchodzącej do prądu
     punktu (znacznik wiersza biegu ``dane_przyjete_galezi``) — ta sama konsekwencja."""
+    zalozenia_zaniku: tuple[dict[str, Any], ...] = ()
+    """Karta PODSTAWA-Q: krzywe zaniku μ/q maszyn punktu wyznaczone na założeniu inżynierskim
+    (pole wiersza biegu ``zalozenia_zaniku``) — I_b stoi na interpretacji, nie na samej normie.
+    Poza echem i odciskiem: wpis jest funkcją liczb μ, q, t_min i argumentu już w odcisku
+    implementacji, nie wielkością, którą konsument mógłby podmienić."""
+    parametry_robocze_maszyn: tuple[dict[str, Any], ...] = ()
+    """Karta PODSTAWA-Q (rozstrzygnięcie 3): wartości robocze parametrów maszyn wirujących wyspy
+    punktu (pole wiersza biegu ``parametry_robocze_maszyn``) — dane przyjęte werdyktów. Poza echem
+    i odciskiem: wpis jest funkcją migawki modelu (odcisk wejścia) i rejestru wartości roboczych
+    (odcisk implementacji), nie wielkością, którą konsument mógłby podmienić."""
 
     def niezgodnosci_z_echem(self, echo: Mapping[str, Any] | None) -> tuple[str, ...]:
         """Czym liczby przysłane przez konsumenta różnią się od liczb biegu.
@@ -300,6 +310,16 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> Wejs
         wielkosci=wielkosci_do_odcisku(wiersz),
         tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
         dane_galezi=dane_przyjete_galezi_wiersza(wiersz),
+        zalozenia_zaniku=tuple(
+            dict(wpis)
+            for wpis in (wiersz.get("zalozenia_zaniku") or ())
+            if isinstance(wpis, Mapping)
+        ),
+        parametry_robocze_maszyn=tuple(
+            dict(wpis)
+            for wpis in (wiersz.get("parametry_robocze_maszyn") or ())
+            if isinstance(wpis, Mapping)
+        ),
     )
 
 
