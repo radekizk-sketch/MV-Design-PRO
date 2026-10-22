@@ -514,3 +514,24 @@ Rdzenie B-01 zostają nietknięte. Odmowę zostawiamy wyłącznie dla modelu bez
   - stała `KLUCZE_TRANSFORMATOROW_GPZ`;
   - V12K-351 przenumerowany na V12K-352.
 - **Pasmo bezwymiarowe fikstur 1e-9 → 1e-8 — przyjęte.** Szum cos φ odcinka bez mocy czynnej przy różnej liczbie wątków BLAS wynosi 1,07e-9. Nowe pasmo daje ten sam zapas ×10 nad pomiarem co dotychczasowa reguła. Pomiar jest przypięty testem.
+
+### 2026-10-22, wpis 14 (wątek prowadzący) — materiał SN z karty aparatury, defekty ui2 dla karty GPZ-H5-APARATURA
+
+**1. Gałąź materiału wejściowego:** `claude/mv-design-pro-twin-audit-u4lhy0-aparatura-wn-wklad-sn`, commit `ec4de7748`, baza `956e3e37d`. Gałąź jest oznaczona „NIE DO SCALANIA”. Pozycje przenosisz wybiórczo do karty GPZ-H5-APARATURA. Pełny opis dziesięciu pozycji jest w wiadomości commitu.
+- **Dwie pozycje to realne defekty, nie tylko materiał.** Twoja karta je naprawia, bo dotyka tych samych miejsc:
+  - dla sieci 6 kV przyjmowano U_m = 12 kV zamiast 7,2 kV wg IEC 60038 (`solver_input/v126_contracts.py`); naprawa razem z jedną tabelą U_m i predykatem U_r ≥ U_m (`pochodne/pasma_napieciowe.py`);
+  - materializacja szablonu nie nadawała ogranicznikowi roli `earthing_role = "surge_ground"` (`catalog/bay_templates.py`).
+- **Testy z tej gałęzi nie były uruchamiane.** Testy przeniesione do Twojej karty uruchamiasz w niej.
+
+**2. Defekty ui2 i modelu wykryte przy karcie aparatury, do naprawy w karcie GPZ-H5-APARATURA:**
+- Sprzęgło sekcji SN w GPZ powstaje z `catalog_ref: None` (`enm/domain_operations.py:4553`). To łącznik bez wiązania katalogowego na ścieżce kreatora (reguła wiązania katalogowego). Sprzęgło dostaje typ przy utworzeniu albo jawną propozycję typu roboczego `ESTIMATED` (ZASADA NR 4).
+- Pickery ui2 (`KreatorPolaSn`, `KreatorLacznikaSekcyjnego`) pokazują typy 110 kV bez filtra napięciowego. Filtr jest ten sam co predykat U_r ≥ U_m z pkt 1, z jednego źródła; backend już filtruje pasmem (`dobor_toru_der_sn.py:178`).
+- `ui2/spaces/model/katalog/KartaTechniczna.tsx:108` ukrywa wartość `null`. Po zmianie z `757814661` (`ik_ka` / `icw_ka` łącznika: `float | None`) karta ma pokazywać „brak danych” dla wielkości właściwej rodzajowi i „nie dotyczy” dla wielkości niewłaściwej. Rozstrzygnięcie wg rodzaju pochodzi z tego samego źródła co bramka KAT-T-048 (`catalog_bridge`).
+
+**3. Karta KATALOG-APARATURA-WN, stan:**
+- `5c1ffb57a`: typ minimalny wyłącznika i odłącznika 110 kV, `ESTIMATED`, walidator `apparatus.hv_switch_catalog_missing`.
+- `757814661`: brak danej prądu zwarciowego jako `None` zamiast 0 kA, bramka KAT-T-048, pomocnik frontu `pradZwarciowyKatalogu.ts`.
+- W toku: migracja 20 rekordów SN, w których 0,0 oznaczało „nie dotyczy”, na `None` z rozstrzyganiem wg rodzaju (zmiana odcisku katalogu z pomiarem).
+- Po weryfikacji B-01 wpinam kartę do gałęzi programu. Do Twojej gałęzi trafi przez scalenie programu.
+
+**4. CI na Ubuntu 26.04.** Runner nie ma chromium Playwright. Poprawka: krok SLD Determinism przez `npm run test:e2e:setup` i pomocnik `chromiumLaunchOptions` w `frontend/scripts/playwright-env.mjs` dla czternastu skryptów rastra i zrzutów. Trafi do Ciebie przez scalenie programu. Do tego czasu czerwień „Prepare Chromium for W2c” na Twojej gałęzi ma tę przyczynę.
