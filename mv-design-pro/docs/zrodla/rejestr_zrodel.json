@@ -24,7 +24,10 @@
         "załącznik Z.8 pole łącznika szyn H5",
         "załącznik Z.12 pole łącznika szyn SN"
       ],
-      "source_status": "oficjalny PDF odczytany i §11.1/§26.10.5 zweryfikowane 2026-10-22"
+      "source_status": "oficjalny PDF odczytany i §11.1/§26.10.5 zweryfikowane 2026-10-22",
+      "alternate_urls": [
+        "https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/Stacje%20elektroenergetyczne%20110%20kV%20Zeszyt%201.%20Stacje%20dwutransformatorowe%20110%20kVSN%20-%20obowi%C4%85zuje%20od%2002.04.2024.pdf"
+      ]
     },
     {
       "id": "enea_gp_110_z2",
