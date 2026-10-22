@@ -313,6 +313,42 @@ def test_pasmo_bezwymiarowych_dziala_tylko_dla_swojej_klasy_i_tylko_przy_zerze()
     assert PASMO_BEZWYMIAROWYCH / abs(runner - sesja) > 10.0
 
 
+def test_cos_phi_przy_mocy_czynnej_w_pasmie_zera_porownywany_przez_moc_pozorna() -> None:
+    """Pin przeniesienia pasma zera P na cos φ = P/S (``tolerancja_fikstur._moc_pozorna_mva``).
+
+    Iloczyn cech: kształt {metryka nakładki (kod COS_PHI w ``value``), wiersz ``cos_phi`` +
+    ``s_mva``} × para {szum zmierzony (odcinek otwarty na końcu, 1 wobec 4 wątków OpenBLAS),
+    realna zmiana} × skala S {mała, 1 MVA, brak S}. Każda własność osobno da się spełnić złą
+    poprawką (np. globalnym poluzowaniem cos φ), więc test pilnuje wszystkich naraz."""
+    jeden_watek, cztery_watki, s_mva = 2.72936994116e-08, 2.34549972647e-08, 0.00166632051799
+
+    def metryki(cos_phi: float, s: float) -> dict[str, object]:
+        return {
+            "COS_PHI": {"code": "COS_PHI", "value": cos_phi},
+            "P_MW": {"code": "P_MW", "value": cos_phi * s},
+            "S_MVA": {"code": "S_MVA", "value": s},
+        }
+
+    # (1) szum zmierzony przechodzi w obu kształtach — ΔP = Δcos φ·S w paśmie zera.
+    assert roznice_z_tolerancja(metryki(jeden_watek, s_mva), metryki(cztery_watki, s_mva)) == []
+    wiersz = {"cos_phi": jeden_watek, "s_mva": s_mva}
+    assert roznice_z_tolerancja(wiersz, {**wiersz, "cos_phi": cztery_watki}) == []
+    # (2) bez skali S ta sama para nadal pada (pasmo bezwymiarowych 1e-9 jej nie obejmuje) —
+    #     reguła nie jest globalnym poluzowaniem cos φ.
+    assert PASMO_BEZWYMIAROWYCH < abs(jeden_watek - cztery_watki)
+    assert not liczby_rowne(jeden_watek, cztery_watki, "cos_phi")
+    assert roznice_z_tolerancja({"cos_phi": jeden_watek}, {"cos_phi": cztery_watki}) != []
+    # (3) realna zmiana stanu gałęzi pada przy każdej skali S z fikstur.
+    assert roznice_z_tolerancja(metryki(jeden_watek, s_mva), metryki(1.0e-3, s_mva)) != []
+    assert roznice_z_tolerancja(metryki(0.95, 1.0), metryki(0.951, 1.0)) != []
+    # (4) skala schodzi WYŁĄCZNIE do cos φ: inna metryka tego samego obiektu porównywana
+    #     własną klasą (Q różniące się o 3,8e-9 przy wartości 1e-8 to 38 % — pada).
+    q_a, q_b = metryki(0.5, s_mva), metryki(0.5, s_mva)
+    q_a["Q_Mvar"] = {"code": "Q_Mvar", "value": 2.7e-08}
+    q_b["Q_Mvar"] = {"code": "Q_Mvar", "value": 2.3e-08 + 1.0e-8}
+    assert roznice_z_tolerancja(q_a, q_b) != []
+
+
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))
 def test_json_w_repo_rowny_odpowiedzi_backendu(nazwa: str) -> None:
     sciezka = eksport.FIXTURES_DIR / f"{nazwa}.json"

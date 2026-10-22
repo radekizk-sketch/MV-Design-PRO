@@ -19,13 +19,34 @@ from typing import Any
 import pytest
 from enm.domain_operations import execute_domain_operation
 
-from tests.test_catalog_materialization_step4_guardians import (
-    _build_base_network_with_line_catalog,
-)
+from tests.reference_networks.gpz_h5 import TRAFO_110_15, ladunek_gpz_110kv, pusty_model
 
 KABEL_INNY = "cable-base-epr-al-1c-240"
 TRAFO_INNY = "tr-wn-sn-110-15-40mva-yd11"
 SPOZA_KATALOGU = "pozycja-spoza-katalogu"
+
+
+def _build_base_network_with_line_catalog() -> dict[str, Any]:
+    """GPZ ze stroną 110 kV (transformator 110/15 kV z katalogu) i odcinek kabla z katalogu.
+
+    Sieć bazowa testów strażników katalogu (`tests/test_catalog_materialization_step4_guardians.py`)
+    stoi na równoważniku szyn SN — bez transformatora — więc kolekcja `transformers` byłaby tu
+    pusta i połowa iloczynu cech nie miałaby elementu (stan zastany od karty GPZ-MODEL)."""
+    wynik = execute_domain_operation(
+        pusty_model(),
+        "add_grid_source_sn",
+        {"voltage_kv": 15.0, "source_name": "Stacja zasilająca", **ladunek_gpz_110kv(1)},
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    wynik = execute_domain_operation(
+        wynik["snapshot"],
+        "continue_trunk_segment_sn",
+        {"segment": {"rodzaj": "KABEL", "dlugosc_m": 120, "catalog_ref": "cable-tfk-yakxs-3x120"}},
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    enm: dict[str, Any] = wynik["snapshot"]
+    assert [t["catalog_ref"] for t in enm["transformers"]] == [TRAFO_110_15]
+    return enm
 
 
 def _element(enm: dict[str, Any], kolekcja: str) -> dict[str, Any]:

@@ -414,6 +414,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -432,6 +434,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -446,11 +450,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -1468,6 +1470,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -1486,6 +1490,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -1500,11 +1506,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -1524,6 +1528,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -3171,6 +3177,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -3189,6 +3197,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -3203,11 +3213,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -3227,6 +3235,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -3253,6 +3263,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -5522,6 +5534,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -5540,6 +5554,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -5554,11 +5570,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -5578,6 +5592,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -5604,6 +5620,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -5630,6 +5648,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -8521,6 +8541,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -8539,6 +8561,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -8553,11 +8577,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -8577,6 +8599,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -8603,6 +8627,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -8629,6 +8655,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -8655,6 +8683,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -12168,6 +12198,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -12186,6 +12218,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -12200,11 +12234,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -12224,6 +12256,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -12250,6 +12284,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -12276,6 +12312,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -12302,6 +12340,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -12328,6 +12368,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -16463,6 +16505,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -16481,6 +16525,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -16495,11 +16541,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -16519,6 +16563,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -16545,6 +16591,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -16571,6 +16619,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -16597,6 +16647,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -16623,6 +16675,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -16649,6 +16703,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -21406,6 +21462,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -21424,6 +21482,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -21438,11 +21498,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -21462,6 +21520,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -21488,6 +21548,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -21514,6 +21576,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -21540,6 +21604,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -21566,6 +21632,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -21592,6 +21660,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -21618,6 +21688,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -26997,6 +27069,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -27015,6 +27089,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -27029,11 +27105,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -27053,6 +27127,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -27079,6 +27155,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -27105,6 +27183,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -27131,6 +27211,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -27157,6 +27239,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -27183,6 +27267,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -27209,6 +27295,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -27235,6 +27323,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -33236,6 +33326,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -33254,6 +33346,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -33268,11 +33362,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -33292,6 +33384,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -33318,6 +33412,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -33344,6 +33440,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -33370,6 +33468,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -33396,6 +33496,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -33422,6 +33524,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -33448,6 +33552,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -33474,6 +33580,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -33500,6 +33608,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "fbd8bd15-75a2-505d-8d63-c62e6467dffd",
             "meta": {
@@ -40123,6 +40233,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -40141,6 +40253,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -40155,11 +40269,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -40179,6 +40291,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -40205,6 +40319,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -40231,6 +40347,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -40257,6 +40375,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -40283,6 +40403,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -40309,6 +40431,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -40335,6 +40459,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -40361,6 +40487,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -40387,6 +40515,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "fbd8bd15-75a2-505d-8d63-c62e6467dffd",
             "meta": {
@@ -40413,6 +40543,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6d19f9cf-4873-5a19-89f9-bc84ee62d90e",
             "meta": {
@@ -47658,6 +47790,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -47676,6 +47810,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -47690,11 +47826,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -47714,6 +47848,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -47740,6 +47876,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -47766,6 +47904,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -47792,6 +47932,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -47818,6 +47960,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -47844,6 +47988,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -47870,6 +48016,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -47896,6 +48044,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -47922,6 +48072,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "fbd8bd15-75a2-505d-8d63-c62e6467dffd",
             "meta": {
@@ -47948,6 +48100,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6d19f9cf-4873-5a19-89f9-bc84ee62d90e",
             "meta": {
@@ -47974,6 +48128,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "7369a91e-44bb-59c7-914b-56df57264372",
             "meta": {
@@ -55841,6 +55997,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -55859,6 +56017,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -55873,11 +56033,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -55897,6 +56055,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -55923,6 +56083,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -55949,6 +56111,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -55975,6 +56139,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -56001,6 +56167,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -56027,6 +56195,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -56053,6 +56223,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -56079,6 +56251,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -56105,6 +56279,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "fbd8bd15-75a2-505d-8d63-c62e6467dffd",
             "meta": {
@@ -56131,6 +56307,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6d19f9cf-4873-5a19-89f9-bc84ee62d90e",
             "meta": {
@@ -56157,6 +56335,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "7369a91e-44bb-59c7-914b-56df57264372",
             "meta": {
@@ -56183,6 +56363,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "2c074d7e-fae2-5b93-b725-872455bd8712",
             "meta": {
@@ -64672,6 +64854,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -64690,6 +64874,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -64704,11 +64890,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -64728,6 +64912,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -64754,6 +64940,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -64780,6 +64968,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -64806,6 +64996,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -64832,6 +65024,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -64858,6 +65052,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -64884,6 +65080,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -64910,6 +65108,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -64936,6 +65136,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "fbd8bd15-75a2-505d-8d63-c62e6467dffd",
             "meta": {
@@ -64962,6 +65164,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6d19f9cf-4873-5a19-89f9-bc84ee62d90e",
             "meta": {
@@ -64988,6 +65192,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "7369a91e-44bb-59c7-914b-56df57264372",
             "meta": {
@@ -65014,6 +65220,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "2c074d7e-fae2-5b93-b725-872455bd8712",
             "meta": {
@@ -65040,6 +65248,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "cb90aa06-5aa1-5aa5-8ce6-43916ca15529",
             "meta": {
@@ -74151,6 +74361,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -74169,6 +74381,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -74183,11 +74397,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -74207,6 +74419,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -74233,6 +74447,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -74259,6 +74475,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -74285,6 +74503,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -74311,6 +74531,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -74337,6 +74559,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -74363,6 +74587,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -74389,6 +74615,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -74415,6 +74643,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "fbd8bd15-75a2-505d-8d63-c62e6467dffd",
             "meta": {
@@ -74441,6 +74671,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6d19f9cf-4873-5a19-89f9-bc84ee62d90e",
             "meta": {
@@ -74467,6 +74699,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "7369a91e-44bb-59c7-914b-56df57264372",
             "meta": {
@@ -74493,6 +74727,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "2c074d7e-fae2-5b93-b725-872455bd8712",
             "meta": {
@@ -74519,6 +74755,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "cb90aa06-5aa1-5aa5-8ce6-43916ca15529",
             "meta": {
@@ -74545,6 +74783,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6b956867-02df-56da-83f4-cb1d30e2bc5d",
             "meta": {
@@ -84278,6 +84518,8 @@
             "source_mode": "KATALOG",
             "source_side": "SN",
             "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+            "supply_line_name": null,
+            "supplying_station_name": null,
             "tags": [],
             "u_set_pu": null,
             "voltage_hv_kv": null,
@@ -84296,6 +84538,8 @@
             "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [
               {
                 "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -84310,11 +84554,9 @@
             ],
             "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
             "meta": {
-              "gpz_hv_bus_refs": [],
               "gpz_section_count": 1,
               "short_circuit_input_side": "SN",
-              "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-              "wn_sn_transformer_count": 0
+              "short_circuit_mode": "SHORT_CIRCUIT_POWER"
             },
             "name": "GPZ 15 kV",
             "nn_sections": [],
@@ -84334,6 +84576,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "275c7435-0da3-57f3-8056-cc12642d90bc",
             "meta": {
@@ -84360,6 +84604,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88cedc78-3f4e-568e-af7f-ee8a422f4480",
             "meta": {
@@ -84386,6 +84632,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "88c8a23e-1631-5174-b070-2be89f721788",
             "meta": {
@@ -84412,6 +84660,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "f1703320-7608-517d-9e30-5503f60950e0",
             "meta": {
@@ -84438,6 +84688,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4ed5fdaf-b4f9-5286-be7f-5ce7fa2e30a9",
             "meta": {
@@ -84464,6 +84716,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "e42efaa6-cbb6-50cc-b73b-777e38ce4c1a",
             "meta": {
@@ -84490,6 +84744,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "736c34c6-8f9a-5ce5-ad33-e012273dbab1",
             "meta": {
@@ -84516,6 +84772,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "dfca4c6e-ff59-5ba1-b617-ae1763fadcce",
             "meta": {
@@ -84542,6 +84800,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "fbd8bd15-75a2-505d-8d63-c62e6467dffd",
             "meta": {
@@ -84568,6 +84828,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6d19f9cf-4873-5a19-89f9-bc84ee62d90e",
             "meta": {
@@ -84594,6 +84856,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "7369a91e-44bb-59c7-914b-56df57264372",
             "meta": {
@@ -84620,6 +84884,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "2c074d7e-fae2-5b93-b725-872455bd8712",
             "meta": {
@@ -84646,6 +84912,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "cb90aa06-5aa1-5aa5-8ce6-43916ca15529",
             "meta": {
@@ -84672,6 +84940,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "6b956867-02df-56da-83f4-cb1d30e2bc5d",
             "meta": {
@@ -84698,6 +84968,8 @@
             "entry_point_ref": null,
             "external_ports": [],
             "gpz_hv_sections": [],
+            "gpz_reserve_mode": null,
+            "gpz_reserve_transformer_ref": null,
             "gpz_sections": [],
             "id": "4779d744-2a1e-5e7d-a14e-61ce00a74597",
             "meta": {

@@ -119,6 +119,7 @@ function ustawWyniki(enm: EnergyNetworkModel, stan: StanWynikow): void {
       qualityStatus: null,
       proofStatus: null,
       runFinishedAt: null,
+      szynyBezNapiecia: payload.bez_napiecia_refs ?? [],
     });
     useRawResultOverlayStore.getState().setPayload(payload);
   });

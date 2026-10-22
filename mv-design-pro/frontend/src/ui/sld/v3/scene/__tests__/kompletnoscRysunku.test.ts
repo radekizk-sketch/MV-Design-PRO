@@ -185,6 +185,29 @@ describe('iniekcje: wyrocznia kompletności gryzie', () => {
     });
   }
 
+  // Karta GPZ-H5-SLD etap 3 (d): aparat pola rysowany z GAŁĘZI łączeniowej (wyłącznik pola SN
+  // transformatora rezerwowego GPZ H5, rezerwa jawna) — właścicielem symbolu jest pole, gałąź
+  // niesie `deviceRef`; jego drugi koniec to zacisk pola (`terminal_sn`), nie szyna z
+  // `Substation.bus_refs`. Iloczyn: LOD {0, 1, 2} × symbol aparatu {jest, usunięty}.
+  {
+    const enm = wczytaj(resolve(FRONTEND, 'src/ui/sld/v3/canvas/__tests__/fixtures/gpzH5RezerwaJawnaBezLsSn.enm.json'))!;
+    const wylacznik = (enm.branches ?? []).find((g) => g.ref_id.endsWith('/transformer/002/breaker_sn'))!.ref_id;
+    const bezAparatu = (scena: SceneV3): SceneV3 => ({
+      ...scena,
+      symbols: scena.symbols.filter((s) => s.meta?.deviceRef !== wylacznik),
+    });
+    const kategoria = (scena: SceneV3) =>
+      kompletnoscRysunku(scena, enm).pozycje.find((p) => p.ref === wylacznik)?.kategoria;
+    for (const lod of LODY) {
+      it(`GPZ H5 rezerwa jawna @ L${lod}: wyłącznik pola SN TR2 — symbol z deviceRef ⇒ ${lod === 0 ? 'wnętrze zwiniętego GPZ' : 'narysowany'}`, () => {
+        expect(kategoria(buildSceneV3(enm, lod))).toBe(lod === 0 ? 'blok-stacji' : 'narysowany');
+      });
+      it(`GPZ H5 rezerwa jawna @ L${lod}: bez symbolu aparatu ⇒ ${lod === 0 ? 'wnętrze zwiniętego GPZ (zacisk pola w szynach stacji)' : 'niewyjaśniony'}`, () => {
+        expect(kategoria(bezAparatu(buildSceneV3(enm, lod)))).toBe(lod === 0 ? 'blok-stacji' : 'niewyjasniony');
+      });
+    }
+  }
+
   it('ZKSN za GPZ bez symbolu ⇒ niewyjaśniony (a jego wnętrze przestaje być „wnętrzem narysowanego punktu")', () => {
     const enm = macierz('zksn');
     const ref = elementW(enm, 'zksn', 'za GPZ');

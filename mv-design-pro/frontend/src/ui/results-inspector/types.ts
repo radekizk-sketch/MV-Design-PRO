@@ -873,6 +873,7 @@ export const FLAG_LABELS: Record<string, string> = {
   SLACK: 'Węzeł bilansujący',
   VOLTAGE_VIOLATION: 'Naruszenie napięcia',
   OVERLOADED: 'Przeciążenie',
+  BEZ_NAPIECIA: 'Bez napięcia — wyspa bez źródła zasilania',
 };
 
 /**

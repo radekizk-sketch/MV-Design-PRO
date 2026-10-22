@@ -24,6 +24,8 @@ export const ROLE_POL_GPZ: readonly RolaPolaGpz[] = [
   'transformatorowe',
   'sprzeglo',
   'pomiarowe',
+  'uziemiajace',
+  'kompensacyjne',
   'zrodlowe',
 ];
 
@@ -37,6 +39,8 @@ export const ETYKIETA_ROLI_POLA_PL: Readonly<Record<RolaPolaGpz, string>> = {
   transformatorowe: FIELD_ROLE_LABEL_PL.TRANSFORMATOROWE,
   sprzeglo: FIELD_ROLE_LABEL_PL.SPRZEGLO,
   pomiarowe: FIELD_ROLE_LABEL_PL.POMIAROWE,
+  uziemiajace: FIELD_ROLE_LABEL_PL.UZIEMIAJACE,
+  kompensacyjne: FIELD_ROLE_LABEL_PL.KOMPENSACYJNE,
   zrodlowe: FIELD_SOURCE_LABEL_PL,
 };
 

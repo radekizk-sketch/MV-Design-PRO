@@ -49,6 +49,8 @@ function stosZDanychProfilu(
 }
 
 const DER_ROLES = new Set<string>([FIELD_ROLE.DER_PV, FIELD_ROLE.DER_BESS, FIELD_ROLE.DER_FW, FIELD_ROLE.DER_UNKNOWN]);
+/** Pola funkcyjne sekcji SN (karta GPZ-H5-SLD etap 3 (b), jawne role) bez profilu pakietu. */
+const ROLE_FUNKCYJNE_BEZ_PROFILU = new Set<string>([FIELD_ROLE.EARTHING, FIELD_ROLE.CAPACITOR]);
 
 function kindsForStack(stack: readonly string[]): BayPrimaryDeviceKind[] {
   return stack.map((symbolId) => {
@@ -71,6 +73,12 @@ describe('parytet słownika §12.4 z pakietem iec62271 (profile pól)', () => {
       const profileId = referenceProfileIdForFieldRole(role);
       if (DER_ROLES.has(role)) {
         // Udokumentowany wyjątek: mini-bloki DER = symbole źródła.
+        expect(profileId).toBeNull();
+        continue;
+      }
+      if (ROLE_FUNKCYJNE_BEZ_PROFILU.has(role)) {
+        // Udokumentowany wyjątek (lustro backendowego `profile_id_for_bay`): pakiet iec62271
+        // nie ma profilu pola zespołu uziemiającego ani baterii kondensatorów — zero domysłu.
         expect(profileId).toBeNull();
         continue;
       }

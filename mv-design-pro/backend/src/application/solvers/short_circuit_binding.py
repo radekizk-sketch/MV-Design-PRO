@@ -36,6 +36,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from enm.nazwy_elementow import nazwa_elementu
 from enm.tolerancja_nn import dobierz_c_wezla
 from enm.zdania_odmow_rdzenia import nazwy_w_odmowach_rdzenia
 from network_model.core.czas_wylaczenia import (
@@ -46,7 +47,7 @@ from network_model.core.czas_wylaczenia import (
 )
 from network_model.core.graph import NetworkGraph
 from network_model.core.voltage_factor import DoborC, NadpisanieC, Scenario
-from network_model.odmowa_danych import odmowa_rdzenia_b01
+from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     odmowa_wezla_zwarcia_spoza_grafu,
@@ -291,6 +292,18 @@ def wynik_zwarcia_1f_ze_snapshotu(
         rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
+    if fault_node_id in wejscie.wezly_bez_drogi_zerowej:
+        # Karta GPZ-H5: ta sama przyczyna co wiersz biegu (`POWOD_WEZEL_BEZ_DROGI_ZEROWEJ`) —
+        # Z0 węzła nie istnieje, więc dowód zwarcia doziemnego nie powstaje z wartości
+        # algebraicznej, którą macierz ma w tym miejscu wyłącznie dla odwracalności.
+        raise OdmowaDanychError(
+            f"{nazwa_elementu(wejscie.graph.nodes[fault_node_id], 'buses')}: brak drogi prądu "
+            "składowej zerowej do ziemi — punkt neutralny sieci nie jest uziemiony w danych "
+            "modelu (np. uzwojenie w trójkąt transformatora zasilającego bez zespołu "
+            "uziemiającego), na drodze do uziemionego punktu neutralnego brakuje danych "
+            "składowej zerowej (r0, x0 linii i kabli, Z0 źródła) albo pojemności doziemnej B0. "
+            "Zwarcie doziemne w tym węźle nie jest liczone; uzupełnij te dane."
+        )
     # Solver IEC 60909 jest rdzeniem B-01: odmowę wejścia (węzeł zwarcia spoza grafu, gałąź
     # bez nazwy) podnosi rekordem strukturalnym (decyzja O-59) — pierwsza granica składa zdanie
     # z nazwami z grafu solvera (jak bieg kanoniczny), druga tłumaczy inne `ValueError` rdzenia

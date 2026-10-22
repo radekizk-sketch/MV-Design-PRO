@@ -69,6 +69,13 @@ def _gpz(*, z_zaciskami: bool, sekcje: int = 2) -> dict[str, Any]:
         "sections_count": sekcje,
         "line_fields_per_section": 2,
     }
+    if sekcje >= 2:
+        # Karta GPZ-H5: stan normalny łącznika szyn SN jest daną (brak = odmowa). Scena
+        # zajętości pól: jeden równoważnik na sekcji 1, pozostałe sekcje przez łącznik.
+        payload["sn_coupler"] = {
+            "normal_state": "closed",
+            "justification": "Sekcje zasilane jednym równoważnikiem sieci (scena testowa).",
+        }
     if z_zaciskami:
         payload["gpz_line_field_apparatus"] = {"catalog_ref": APARAT}
     return ok(op(pusty.model_dump(mode="json"), "add_grid_source_sn", payload))

@@ -304,6 +304,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'station.voltage_missing': 'stacje',
   'station.nn_outgoing_min_1': 'stacje',
   'station.required_field_missing': 'stacje',
+  'station.gpz_structure_incomplete': 'stacje',
+  'station.szr_sn_with_generation': 'stacje',
   'transformer.connection_missing': 'stacje',
   'nn.bus_missing': 'stacje',
   'nn.main_breaker_missing': 'stacje',
@@ -347,6 +349,11 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
   'nn.source.switch_missing': 'zwarcia',
+  // GPZ-H5 (E067): łącznik szyn spinający niezależne równoważniki — odmowa modelu A. Blokuje
+  // ROZPŁYW i ZWARCIA (`canonical_operations.py`, „rozpływ i zwarcia nie są liczone"; bieg
+  // LOAD_FLOW kończy się 409 — pomiar e2e `sld-gpz-h5-przelaczenia`), więc celem jest
+  // „Do uruchomienia obliczeń", nie „Do obliczeń zwarciowych" (dawniej stał tylko w zwarciach).
+  'source.gpz_coupler_joins_independent_equivalents': 'wspolne',
   'source.sk_min_inconsistent': 'zwarcia',
   'source.sk_min_missing': 'zwarcia',
   'source.u_set_pu_out_of_range': 'zwarcia',

@@ -85,6 +85,17 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "source_mode",
             "parameter_source",
             "notes",
+            # Karta GPZ-H5 (układ ENEA H5): struktura JAWNA — sekcje 110 kV z torami
+            # zasilania, łączniki szyn ze stanem normalnym, transformatory przypisane
+            # sekcja 110 kV → sekcja SN, tryb rezerwy, propozycja składu aparatów pól 110 kV.
+            "hv_sections",
+            "hv_coupler",
+            "sn_coupler",
+            "transformers",
+            "reserve_mode",
+            "reserve_transformer",
+            "reserve_transformer_apparatus",
+            "hv_bay_apparatus_proposal",
         ),
     ),
     "continue_trunk_segment_sn": OperationSpec(
@@ -878,14 +889,18 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
     # równoważniku na szynach SN sekcje bez własnego zasilania zasila wyłącznie sprzęgło,
     # więc otwarte sprzęgło odcina sekcję i jej odpływy. Emiter: walidator ENM E065
     # (`enm/validator.py::_sekcja_gpz_bez_zasilania`, ten sam predykat wyspy co E003).
+    # Karta GPZ-H5 (D2 pkt 4b): poziom OSTRZEŻENIE — część niezasilona nie blokuje biegu;
+    # rozpływ i zwarcia liczą część zasilaną, a szyny odcięte mają w wynikach znacznik
+    # „bez napięcia” (odmowa wyłącznie przy braku jakiegokolwiek źródła — E001).
     "source.gpz_section_unsupplied": ReadinessCodeSpec(
         code="source.gpz_section_unsupplied",
         area=ReadinessArea.SOURCES,
-        priority=1,
-        level=ReadinessLevel.BLOCKER,
+        priority=2,
+        level=ReadinessLevel.WARNING,
         message_pl=(
-            "Sekcja GPZ bez zasilania — sekcja nie ma własnego równoważnika sieci, a "
-            "sprzęgło sekcji jest otwarte (zamknij sprzęgło albo zasil sekcję)"
+            "Sekcja GPZ bez zasilania — sekcja nie ma równoważnika sieci ani transformatora "
+            "pod napięciem, a łącznik szyn jest otwarty; rozpływ i zwarcia liczą część "
+            "zasilaną, sekcja jest w wynikach bez napięcia (zamknij łącznik albo zasil sekcję)"
         ),
         fix_navigation={"panel": "inspector", "tab": "polaczenia"},
     ),
@@ -902,6 +917,54 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "Transformator GPZ bez zasilania od strony 110 kV — za jego szyną 110 kV nie ma "
             "równoważnika sieci, odbioru ani generatora (zbuduj GPZ od nowa z równoważnikiem po "
             "stronie 110 kV albo z równoważnikiem na szynach SN bez transformatorów 110/SN)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "polaczenia"},
+    ),
+    # Karta GPZ-H5 (R6): zamknięty łącznik szyn sekcji (ŁS-110 albo ŁS-SN) łączy w jedną
+    # wyspę NIEZALEŻNE równoważniki sieci (tory L1, L2) — sieci nadrzędnej, która je łączy,
+    # nie ma w modelu. Blokuje rozpływ (dwa węzły bilansujące w wyspie) i zwarcia (suma prądów
+    # niezależnych źródeł bez impedancji sieci nadrzędnej). Emiter: walidator ENM E067
+    # (`enm/topology.py::polaczenia_niezaleznych_zrodel`, rola łącznika `role_lacznikow`).
+    "source.gpz_coupler_joins_independent_equivalents": ReadinessCodeSpec(
+        code="source.gpz_coupler_joins_independent_equivalents",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Zamknięty łącznik szyn GPZ łączy niezależne równoważniki sieci (tory zasilania "
+            "110 kV) — rozpływ i zwarcia nie są liczone (zbuduj wariant ze wspólnym punktem "
+            "zasilania (model B) albo otwórz łącznik szyn)"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "polaczenia"},
+    ),
+    # Karta GPZ-H5 (D2 pkt 5): struktura GPZ niekompletna albo niezgodna z trybem rezerwy —
+    # sekcja 110 kV bez toru zasilania, sekcja SN bez transformatora w stanie normalnym,
+    # sąsiednie sekcje bez łącznika szyn, stan normalny łącznika szyn SN albo wyłącznika
+    # transformatora rezerwowego niezgodny z trybem rezerwy (ENEA Zeszyt 1 §26.10.5).
+    # Emiter: walidator ENM W063 (`enm/validator.py::_niekompletnosc_struktury_gpz`).
+    "station.gpz_structure_incomplete": ReadinessCodeSpec(
+        code="station.gpz_structure_incomplete",
+        area=ReadinessArea.STATIONS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Struktura GPZ niekompletna — brak toru zasilania sekcji 110 kV, transformatora "
+            "sekcji SN, łącznika szyn albo stan łączników niezgodny z trybem rezerwy"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "polaczenia"},
+    ),
+    # Karta GPZ-H5 (ENEA Zeszyt 1 §26.10.4): łącznik szyn SN zamknięty wbrew stanowi
+    # normalnemu (SZR SN) przy źródłach wytwórczych na łączonych sekcjach — SZR musi najpierw
+    # wyłączyć linie w trybie generacji, inaczej jest blokowany. Emiter: walidator ENM W064
+    # (`enm/validator.py::_szr_sn_przy_generacji`).
+    "station.szr_sn_with_generation": ReadinessCodeSpec(
+        code="station.szr_sn_with_generation",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Łącznik szyn SN zamknięty działaniem SZR przy pracujących źródłach wytwórczych — "
+            "SZR SN wymaga wyłączenia linii w trybie generacji, inaczej jest blokowany"
         ),
         fix_navigation={"panel": "inspector", "tab": "polaczenia"},
     ),

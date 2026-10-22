@@ -97,8 +97,15 @@ export function referenceProfileIdForFieldRole(role: FieldRole): string | null {
     case FIELD_ROLE.DER_FW:
     case FIELD_ROLE.DER_UNKNOWN:
       return null;
-    default:
+    // Lustro `profile_id_for_bay`: pola funkcyjne sekcji SN (zespół uziemiający, bateria
+    // kondensatorów) nie mają profilu referencyjnego — zero domysłu.
+    case FIELD_ROLE.EARTHING:
+    case FIELD_ROLE.CAPACITOR:
       return null;
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola bez profilu referencyjnego: ${String(nieobsluzona)}`);
+    }
   }
 }
 

@@ -25,8 +25,10 @@ describe('apparatusContracts — kanon', () => {
     }
   });
 
-  it('13 kanonicznych ról pól (z polem źródła nieokreślonego)', () => {
-    expect(ALL_FIELD_ROLES.length).toBe(13);
+  // Karta GPZ-H5-SLD etap 3 (b): +2 jawne role pól funkcyjnych sekcji SN (zespół uziemiający,
+  // bateria kondensatorów) — dawniej zlewane z polem liniowym.
+  it('15 kanonicznych ról pól (z polem źródła nieokreślonego i polami funkcyjnymi SN)', () => {
+    expect(ALL_FIELD_ROLES.length).toBe(15);
   });
 
   it('wszystkie role pól są SN-side', () => {

@@ -20002,7 +20002,7 @@
   },
   "/api/cases/{case_id}/analysis-eligibility": {
    "get": {
-    "description": "Macierz zdolności uruchomienia analiz (eligibility).\n\nDla każdego typu analizy (SC_3F, SC_2F, SC_1F, LOAD_FLOW) zwraca:\n- status: ELIGIBLE / INELIGIBLE\n- blockers, warnings, info\n- fix_actions (deklaratywne sugestie naprawcze)\n- content_hash (deterministyczny SHA-256)\n\nNiezależna od walidacji i readiness — osobna warstwa.\nDeterministyczny: identyczny ENM -> identyczny wynik.",
+    "description": "Macierz zdolności uruchomienia analiz (eligibility).\n\nDla każdego typu analizy (SC_3F, SC_2F, SC_1F, LOAD_FLOW) zwraca:\n- status: ELIGIBLE / INELIGIBLE\n- blockers, warnings, info\n- fix_actions (deklaratywne sugestie naprawcze)\n- content_hash (deterministyczny SHA-256)\n\nNiezależna od walidacji i readiness — osobna warstwa.\nDeterministyczny: identyczny ENM -> identyczny wynik. `scenario_id` — macierz migawki\nefektywnej scenariusza (`_model_gotowosci`).",
     "operationId": "get_analysis_eligibility_api_cases__case_id__analysis_eligibility_get",
     "parameters": [
      {
@@ -20012,6 +20012,22 @@
       "schema": {
        "title": "Case Id",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "scenario_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Scenario Id"
       }
      }
     ],
@@ -20276,7 +20292,7 @@
   },
   "/api/cases/{case_id}/engineering-readiness": {
    "get": {
-    "description": "Agregacyjny endpoint inżynierskiej gotowości modelu.\n\nŁączy walidację + readiness + fix_action w jeden response\ndla Engineering Readiness Panel.\nNIE zmienia istniejącego /readiness — to nowy endpoint UX.\nDeterministyczny: ten sam ENM → identyczny wynik.",
+    "description": "Agregacyjny endpoint inżynierskiej gotowości modelu.\n\nŁączy walidację + readiness + fix_action w jeden response\ndla Engineering Readiness Panel.\nNIE zmienia istniejącego /readiness — to nowy endpoint UX.\nDeterministyczny: ten sam ENM → identyczny wynik. `scenario_id` — gotowość migawki\nefektywnej scenariusza (`_model_gotowosci`), tej samej, którą policzy bieg.",
     "operationId": "get_engineering_readiness_api_cases__case_id__engineering_readiness_get",
     "parameters": [
      {
@@ -20286,6 +20302,22 @@
       "schema": {
        "title": "Case Id",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "scenario_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Scenario Id"
       }
      }
     ],
@@ -21189,7 +21221,7 @@
   },
   "/api/cases/{case_id}/enm/readiness": {
    "get": {
-    "description": "Zwróć macierz gotowości dla wszystkich typów analiz.",
+    "description": "Zwróć macierz gotowości dla wszystkich typów analiz — modelu bazowego albo migawki\nefektywnej scenariusza `scenario_id` (`_model_gotowosci`).",
     "operationId": "get_enm_readiness_api_cases__case_id__enm_readiness_get",
     "parameters": [
      {
@@ -21199,6 +21231,22 @@
       "schema": {
        "title": "Case Id",
        "type": "string"
+      }
+     },
+     {
+      "in": "query",
+      "name": "scenario_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Scenario Id"
       }
      }
     ],

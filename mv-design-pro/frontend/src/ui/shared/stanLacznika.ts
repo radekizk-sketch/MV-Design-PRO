@@ -12,9 +12,16 @@
  * Dawne kopie stanu (`Corridor.no_point_ref`, `LineRun.nop_station_ref`,
  * `BranchPointSN.switch_state`) są skasowane — żaden czytelnik frontu nie składa stanu
  * łącznika z innego miejsca niż gałąź łącznika.
+ *
+ * Karta GPZ-H5 (wpis 7 koordynacji wątków, pkt 1): pozycja normalna „otwarty” NIE czyni
+ * łącznika punktem podziału sieci. Rozstrzyga ROLA łącznika — `roleLacznikow` jest lustrem
+ * `enm/topology.py::role_lacznikow` (parytet: `backend/schemas/role_lacznikow_parytet_v1.json`,
+ * pytest + vitest). Łącznik szyn stacji (ŁS-110, ŁS-SN, sprzęgło nN) i łącznik pola
+ * transformatorowego normalnie otwarte są podziałem wewnątrz rozdzielni.
  */
 import type { Branch, EnergyNetworkModel, FuseBranch, SwitchBranch } from '../../types/enm';
 import { isFuseBranch, isSwitchBranch } from '../../types/enm';
+import { pasmoNapieciowe, type Pasmo } from '../../ui2/model/pasmaNapieciowe';
 
 export type PolozenieLacznika = 'closed' | 'open';
 
@@ -36,9 +43,131 @@ export function pozycjaNormalna(galaz: Branch | null | undefined): PolozenieLacz
   return galaz.normal_state === 'open' || galaz.normal_state === 'closed' ? galaz.normal_state : null;
 }
 
-/** Czy łącznik jest punktem normalnie otwartym (wyłącznie z `normal_state`). */
-export function czyPunktPodzialu(galaz: Branch | null | undefined): boolean {
-  return pozycjaNormalna(galaz) === 'open';
+/** Rola łącznika z pozycją normalną — te same wartości co stałe `ROLA_*` backendu. */
+export type RolaLacznika =
+  | 'LACZNIK_SZYN_WN'
+  | 'LACZNIK_SZYN_SN'
+  | 'LACZNIK_SZYN_NN'
+  | 'LACZNIK_POLA_TRANSFORMATOROWEGO'
+  | 'PUNKT_PODZIALU';
+
+/** Migawka wystarczająca do wyprowadzenia ról (kolekcje opcjonalne poza gałęziami). */
+export type MigawkaRolLacznikow = Pick<EnergyNetworkModel, 'branches'> &
+  Partial<Pick<EnergyNetworkModel, 'buses' | 'substations' | 'transformers'>>;
+
+const ROLA_WG_PASMA: Readonly<Record<Pasmo, RolaLacznika>> = {
+  WN: 'LACZNIK_SZYN_WN',
+  SN: 'LACZNIK_SZYN_SN',
+  nN: 'LACZNIK_SZYN_NN',
+};
+
+/** Role łączników szyn stacji — podział wewnątrz rozdzielni, nie punkt podziału sieci. */
+export const ROLE_LACZNIKOW_SZYN: ReadonlySet<RolaLacznika> = new Set<RolaLacznika>([
+  'LACZNIK_SZYN_WN',
+  'LACZNIK_SZYN_SN',
+  'LACZNIK_SZYN_NN',
+]);
+
+/**
+ * Szyna → zbiór stacji (lustro `stacje_szyn_rozdzielni`): `Substation.bus_refs` oraz szyny sekcji
+ * z rejestrów `gpz_hv_sections`, `gpz_sections`, `nn_sections`.
+ */
+function szynyStacji(snapshot: MigawkaRolLacznikow): Map<string, Set<string>> {
+  const wynik = new Map<string, Set<string>>();
+  for (const stacja of snapshot.substations ?? []) {
+    const szyny = new Set<string>((stacja.bus_refs ?? []).filter((b) => Boolean(b)));
+    for (const rejestr of [stacja.gpz_hv_sections, stacja.gpz_sections, stacja.nn_sections]) {
+      for (const sekcja of rejestr ?? []) {
+        if (sekcja.bus_ref) szyny.add(sekcja.bus_ref);
+      }
+    }
+    for (const szyna of szyny) {
+      const stacje = wynik.get(szyna) ?? new Set<string>();
+      stacje.add(stacja.ref_id);
+      wynik.set(szyna, stacje);
+    }
+  }
+  return wynik;
+}
+
+function wspolneStacje(a: Set<string> | undefined, b: Set<string> | undefined): string[] {
+  if (!a || !b) return [];
+  return [...a].filter((stacja) => b.has(stacja));
+}
+
+/**
+ * Rola każdego łącznika z pozycją normalną (`ref_id` → rola) — lustro
+ * `enm/topology.py::role_lacznikow`, ta sama reguła i ta sama kolejność rozstrzygania:
+ * oba końce szynami tej samej stacji → łącznik szyn (pasmo napięcia szyny: WN / SN / nN),
+ * przy czym łącznik szyn SN tylko w stacji zasilającej (`station_type === 'gpz'`) — sprzęgło
+ * stacji SN w magistrali leży w torze prądowym magistrali i normalnie otwarte jest punktem
+ * podziału pierścienia; szyna stacji ↔ zacisk transformatora tej stacji spoza jej szyn → łącznik pola
+ * transformatorowego; inny łącznik z `normal_state === 'open'` → punkt podziału; pozostałe
+ * bez roli. Rola nie zależy od bieżącego położenia (`status`).
+ */
+export function roleLacznikow(
+  snapshot: MigawkaRolLacznikow | null | undefined,
+): ReadonlyMap<string, RolaLacznika> {
+  const wynik = new Map<string, RolaLacznika>();
+  if (!snapshot) return wynik;
+  const stacjeSzyn = szynyStacji(snapshot);
+  const stacjeGpz = new Set(
+    (snapshot.substations ?? []).filter((st) => st.station_type === 'gpz').map((st) => st.ref_id),
+  );
+  const trafa = new Map((snapshot.transformers ?? []).map((t) => [t.ref_id, t] as const));
+  const zaciskiPolTr = new Set<string>();
+  for (const stacja of snapshot.substations ?? []) {
+    const szyny = new Set<string>(stacja.bus_refs ?? []);
+    for (const refTr of stacja.transformer_refs ?? []) {
+      const trafo = trafa.get(refTr);
+      if (!trafo) continue;
+      for (const koniec of [trafo.hv_bus_ref, trafo.lv_bus_ref]) {
+        if (!koniec || szyny.has(koniec)) continue;
+        for (const szyna of szyny) zaciskiPolTr.add(`${szyna}\u0000${koniec}`);
+      }
+    }
+  }
+  const napiecie = new Map((snapshot.buses ?? []).map((b) => [b.ref_id, b.voltage_kv] as const));
+  const galezie = [...(snapshot.branches ?? [])].sort((x, y) =>
+    x.ref_id < y.ref_id ? -1 : x.ref_id > y.ref_id ? 1 : 0,
+  );
+  for (const galaz of galezie) {
+    if (!isSwitchBranch(galaz)) continue;
+    const a = galaz.from_bus_ref;
+    const b = galaz.to_bus_ref;
+    const wspolne = wspolneStacje(stacjeSzyn.get(a), stacjeSzyn.get(b));
+    if (wspolne.length > 0) {
+      const u = napiecie.get(a);
+      const pasmo = typeof u === 'number' ? pasmoNapieciowe(u) : null;
+      if (pasmo !== null && (pasmo !== 'SN' || wspolne.some((st) => stacjeGpz.has(st)))) {
+        wynik.set(galaz.ref_id, ROLA_WG_PASMA[pasmo]);
+        continue;
+      }
+    }
+    if (zaciskiPolTr.has(`${a}\u0000${b}`) || zaciskiPolTr.has(`${b}\u0000${a}`)) {
+      wynik.set(galaz.ref_id, 'LACZNIK_POLA_TRANSFORMATOROWEGO');
+      continue;
+    }
+    if (galaz.normal_state === 'open') wynik.set(galaz.ref_id, 'PUNKT_PODZIALU');
+  }
+  return wynik;
+}
+
+/** Rola łącznika w migawce (`null` = zwykły łącznik toru albo element spoza łączników). */
+export function rolaLacznika(
+  snapshot: MigawkaRolLacznikow | null | undefined,
+  galaz: Branch | null | undefined,
+): RolaLacznika | null {
+  if (!galaz) return null;
+  return roleLacznikow(snapshot).get(galaz.ref_id) ?? null;
+}
+
+/** Czy łącznik jest punktem podziału sieci — rola `PUNKT_PODZIALU` z `roleLacznikow`. */
+export function czyPunktPodzialu(
+  snapshot: MigawkaRolLacznikow | null | undefined,
+  galaz: Branch | null | undefined,
+): boolean {
+  return rolaLacznika(snapshot, galaz) === 'PUNKT_PODZIALU';
 }
 
 /**
@@ -87,9 +216,24 @@ export function etykietaPolozenia(status: string | null | undefined): string {
   return status === 'open' || status === 'closed' ? ETYKIETA_POLOZENIA_PL[status] : '—';
 }
 
-/** Etykieta pozycji normalnej — brak deklaracji nazwany wprost, bez domysłu. */
-export function etykietaPozycjiNormalnej(pozycja: PolozenieLacznika | null): string {
-  if (pozycja === 'open') return 'Normalnie otwarty (punkt podziału)';
+/** Co znaczy normalnie otwarty łącznik danej roli (bez roli = punkt podziału). */
+const ZNACZENIE_OTWARCIA_PL: Readonly<Record<RolaLacznika, string>> = {
+  PUNKT_PODZIALU: 'punkt podziału',
+  LACZNIK_SZYN_WN: 'łącznik szyn 110 kV, sekcje pracują osobno',
+  LACZNIK_SZYN_SN: 'łącznik szyn SN, sekcje pracują osobno',
+  LACZNIK_SZYN_NN: 'łącznik szyn nN, sekcje pracują osobno',
+  LACZNIK_POLA_TRANSFORMATOROWEGO: 'pole transformatora odstawione',
+};
+
+/**
+ * Etykieta pozycji normalnej — brak deklaracji nazwany wprost, bez domysłu. Pozycję
+ * „otwarty” opisuje ROLA łącznika (`rolaLacznika`), nie samo pole `normal_state`.
+ */
+export function etykietaPozycjiNormalnej(
+  pozycja: PolozenieLacznika | null,
+  rola: RolaLacznika | null,
+): string {
+  if (pozycja === 'open') return `Normalnie otwarty (${ZNACZENIE_OTWARCIA_PL[rola ?? 'PUNKT_PODZIALU']})`;
   if (pozycja === 'closed') return 'Normalnie zamknięty';
   return 'Niezadeklarowana';
 }
@@ -123,23 +267,28 @@ export function tekstStanuLacznikaSzyn(
   return { glowny, odstepstwo };
 }
 
-/** Punkty normalnie otwarte modelu (po `ref_id`) — lustro `enm.topology.punkty_podzialu`. */
-export function punktyPodzialu(
-  snapshot: Pick<EnergyNetworkModel, 'branches'> | null | undefined,
-): SwitchBranch[] {
+/** Punkty podziału sieci (po `ref_id`) — lustro `enm.topology.punkty_podzialu` (rola). */
+export function punktyPodzialu(snapshot: MigawkaRolLacznikow | null | undefined): SwitchBranch[] {
+  const role = roleLacznikow(snapshot);
   return (snapshot?.branches ?? [])
-    .filter((galaz): galaz is SwitchBranch => czyPunktPodzialu(galaz))
+    .filter(
+      (galaz): galaz is SwitchBranch =>
+        isSwitchBranch(galaz) && role.get(galaz.ref_id) === 'PUNKT_PODZIALU',
+    )
     .sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0));
 }
 
-/** Kandydaci na nowy punkt podziału: łączniki z pozycją normalną, które nim jeszcze nie są. */
+/**
+ * Kandydaci na nowy punkt podziału: łączniki z pozycją normalną, które nim jeszcze nie są
+ * i nie są łącznikiem szyn stacji ani łącznikiem pola transformatorowego — ich stan
+ * normalny jest wejściem stacji (np. operacji tworzenia GPZ), nie punktem pierścienia.
+ */
 export function kandydaciNaPunktPodzialu(
-  snapshot: Pick<EnergyNetworkModel, 'branches'> | null | undefined,
+  snapshot: MigawkaRolLacznikow | null | undefined,
 ): SwitchBranch[] {
+  const role = roleLacznikow(snapshot);
   return (snapshot?.branches ?? [])
-    .filter(
-      (galaz): galaz is SwitchBranch => czyLacznikZPozycjaNormalna(galaz) && !czyPunktPodzialu(galaz),
-    )
+    .filter((galaz): galaz is SwitchBranch => isSwitchBranch(galaz) && !role.has(galaz.ref_id))
     .sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0));
 }
 
@@ -170,10 +319,14 @@ export function lacznikiPortowPunktu(
 }
 
 /** Opis stanu łącznika: położenie i pozycja normalna (np. „Otwarty · normalnie zamknięty"). */
-export function opisStanuLacznika(galaz: SwitchBranch | FuseBranch): string {
+export function opisStanuLacznika(
+  snapshot: MigawkaRolLacznikow | null | undefined,
+  galaz: SwitchBranch | FuseBranch,
+): string {
   const polozenie = etykietaPolozenia(galaz.status);
   if (!czyLacznikZPozycjaNormalna(galaz)) return polozenie;
-  return `${polozenie} · pozycja normalna: ${etykietaPozycjiNormalnej(pozycjaNormalna(galaz)).toLowerCase()}`;
+  const pozycja = etykietaPozycjiNormalnej(pozycjaNormalna(galaz), rolaLacznika(snapshot, galaz));
+  return `${polozenie} · pozycja normalna: ${pozycja.toLowerCase()}`;
 }
 
 /**
@@ -186,7 +339,7 @@ export function opisLacznikowPortow(
 ): string {
   const laczniki = lacznikiPortowPunktu(snapshot, punktRef);
   if (laczniki.length === 0) return 'Brak łączników portów w modelu';
-  return laczniki.map((galaz) => `${galaz.name}: ${opisStanuLacznika(galaz)}`).join('; ');
+  return laczniki.map((galaz) => `${galaz.name}: ${opisStanuLacznika(snapshot, galaz)}`).join('; ');
 }
 
 /** Łącznik wskazany przez obiekt rysunku albo powód, dla którego go nie ma. */

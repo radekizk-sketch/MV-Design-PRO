@@ -46,7 +46,10 @@ from .slownik_komunikatow import opis_obiektu
 #: Typy gałęzi łącznikowych ENM niosące POZYCJĘ NORMALNĄ (`SwitchBranch.type`).
 #: JEDYNA definicja — `enm.models` i operacje łączników importują ją stąd. Bezpiecznik
 #: (`FuseBranch`) jest łącznikiem dla topologii (ma `status`), ale nie jest punktem
-#: podziału sieci i nie ma pozycji normalnej z projektu.
+#: podziału sieci i nie ma pozycji normalnej z projektu. Pozycja normalna „otwarty” NIE
+#: czyni łącznika punktem podziału: rozstrzyga rola z ``enm.topology.role_lacznikow``
+#: (karta GPZ-H5, wpis 7 koordynacji pkt 1) — ``bus_coupler`` między szynami tej samej
+#: stacji jest łącznikiem szyn, a ``punkty_podzialu`` czyta wyłącznie rolę punktu podziału.
 TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM: tuple[str, ...] = (
     "switch",
     "breaker",

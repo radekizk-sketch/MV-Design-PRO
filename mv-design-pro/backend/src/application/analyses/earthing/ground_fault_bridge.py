@@ -9,7 +9,7 @@ zerowej zależnej od grupy połączeń transformatora.
 
 Łańcuch (każde ogniwo to realny kod, zero fabrykacji):
 
-    vector_group ─► build_zero_sequence_zbus (SM-3)
+    vector_group ─► zbuduj_siec_zerowa (SM-3)
                  ─► compute_1ph_short_circuit
                  ─► ShortCircuitResult.ikss_a  (I″k1 = prąd doziemny)
                  ─► build_earthing_ground_fault_input  (TEN most)

@@ -34,20 +34,29 @@ const ROLE_ZRODLOWE_KANONU: readonly BayCanonicalRole[] = ['PV_SN', 'BESS_SN', '
 const ALIASY_MODELU = Object.keys(MODEL_BAY_ROLE_TO_CANONICAL);
 
 describe('kanon nazw ról pól SN', () => {
-  it('dziewięć ról kanonu, każda nazwa „Pole …”, nazwy różne i bez kodów ról', () => {
+  // Karta GPZ-H5 (ENEA Zeszyt 1 §13, zał. Z.2): + pola funkcyjne sekcji SN GPZ — zespół
+  // uziemiający i bateria kondensatorów (kanon backendu `enm/rola_pola_sn.py`).
+  it('jedenaście ról kanonu, każda nazwa „Pole …”, nazwy różne i bez kodów ról', () => {
     expect([...ROLE_KANONU].sort()).toEqual(
-      ['BESS_SN', 'FW_SN', 'LINIA_IN', 'LINIA_ODG', 'LINIA_OUT', 'POMIAROWE', 'PV_SN', 'SPRZEGLO', 'TRANSFORMATOROWE'],
+      [
+        'BESS_SN', 'FW_SN', 'KOMPENSACYJNE', 'LINIA_IN', 'LINIA_ODG', 'LINIA_OUT', 'POMIAROWE',
+        'PV_SN', 'SPRZEGLO', 'TRANSFORMATOROWE', 'UZIEMIAJACE',
+      ],
     );
     const nazwy = [...Object.values(FIELD_ROLE_LABEL_PL), FIELD_SOURCE_LABEL_PL, FIELD_GENERIC_LABEL_PL];
     expect(new Set(nazwy).size).toBe(nazwy.length);
     for (const nazwa of nazwy) {
       expect(nazwa.startsWith('Pole ')).toBe(true);
-      expect(nazwa).not.toMatch(/_|\b(?:IN|OUT|FEEDER|TR|COUPLER|MEASUREMENT|OZE|LINIA|SPRZEGLO)\b/);
+      expect(nazwa).not.toMatch(
+        /_|\b(?:IN|OUT|FEEDER|TR|COUPLER|MEASUREMENT|EARTHING|CAPACITOR|OZE|LINIA|SPRZEGLO)\b/,
+      );
     }
   });
 
   it('mapa aliasów modelu prowadzi wyłącznie na role kanonu i nie zasłania ról kanonu', () => {
-    expect([...ALIASY_MODELU].sort()).toEqual(['COUPLER', 'FEEDER', 'IN', 'MEASUREMENT', 'OUT', 'TR']);
+    expect([...ALIASY_MODELU].sort()).toEqual(
+      ['CAPACITOR', 'COUPLER', 'EARTHING', 'FEEDER', 'IN', 'MEASUREMENT', 'OUT', 'TR'],
+    );
     for (const alias of ALIASY_MODELU) {
       expect(ROLE_KANONU).toContain(MODEL_BAY_ROLE_TO_CANONICAL[alias]);
       expect(ROLE_KANONU).not.toContain(alias);

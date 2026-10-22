@@ -12,6 +12,7 @@ wynik biegu, więc zmienia odcisk. Trzy funkcje hasza wołają jedną regułę.
 
 from __future__ import annotations
 
+import pytest
 from enm.hash import (
     _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE,
     compute_enm_hash,
@@ -19,7 +20,7 @@ from enm.hash import (
     compute_semantic_hash,
     hash_migawki_enm,
 )
-from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source
+from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Substation
 
 
 def _enm(**pola: float) -> EnergyNetworkModel:
@@ -83,6 +84,10 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "u_set_pu",
             "neutral_grounding",
             "lv_voltage_tolerance",
+            # Karta GPZ-H5: tor zasilania 110 kV równoważnika sekcji (linia, stacja
+            # zasilająca) — to samo prawo; odcisk sieci złotych bez zmian (`test_registry`).
+            "supply_line_name",
+            "supplying_station_name",
         ),
         "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
         "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
@@ -108,6 +113,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "metadane_pochodzenia",
             "surge_arresters",
         ),
+        # Karta GPZ-H5: tryb rezerwy transformatorowej GPZ i transformator rezerwowy (ENEA
+        # Zeszyt 1 §26.10.5) — to samo prawo (stacje bez strony 110 kV haszują jak przed kartą).
+        "substations": ("gpz_reserve_mode", "gpz_reserve_transformer_ref"),
         "generators": (
             "dynamika",
             "modele_widmowe",
@@ -184,3 +192,43 @@ def test_blok_dynamiki_odbioru_poza_odciskiem_gdy_none() -> None:
     )
     assert compute_enm_hash(z_blokiem) != compute_enm_hash(bez_bloku)
     assert compute_input_hash(z_blokiem) != compute_input_hash(bez_bloku)
+
+
+@pytest.mark.parametrize(
+    ("kolekcja", "pole", "wartosc"),
+    [
+        ("sources", "supply_line_name", "Linia 110 kV L1"),
+        ("sources", "supplying_station_name", "Stacja zasilająca"),
+        ("substations", "gpz_reserve_mode", "hidden"),
+        ("substations", "gpz_reserve_transformer_ref", "tr2"),
+    ],
+)
+def test_pola_gpz_h5_poza_odciskiem_gdy_none_a_podane_zmieniaja_odcisk(
+    kolekcja: str, pole: str, wartosc: str
+) -> None:
+    """Karta GPZ-H5: tor zasilania 110 kV źródła i tryb rezerwy GPZ. Brak (None) = migawka
+    haszuje jak zapis sprzed karty (klucza nie było); dana PODANA zmienia odcisk (wyznacza
+    nazwy toru i stany normalne łączników)."""
+
+    def model(z_wartoscia: bool) -> EnergyNetworkModel:
+        enm = _enm()
+        enm.substations.append(
+            Substation(ref_id="st1", name="GPZ", station_type="gpz", bus_refs=["b1"])
+        )
+        if z_wartoscia:
+            cel = enm.sources[0] if kolekcja == "sources" else enm.substations[0]
+            setattr(cel, pole, wartosc)
+        return enm
+
+    bez = model(False)
+    migawka = bez.model_dump(mode="json")
+    sprzed_karty = bez.model_dump(mode="json")
+    for element in sprzed_karty[kolekcja]:
+        element.pop(pole)
+    assert pole in migawka[kolekcja][0]
+    assert hash_migawki_enm(migawka) == hash_migawki_enm(sprzed_karty)
+    assert compute_enm_hash(bez) == hash_migawki_enm(sprzed_karty)
+
+    z_dana = model(True)
+    assert compute_enm_hash(z_dana) != compute_enm_hash(bez)
+    assert compute_input_hash(z_dana) != compute_input_hash(bez)

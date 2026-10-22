@@ -157,6 +157,18 @@ function linesFor(
   return lines;
 }
 
+/**
+ * Karta GPZ-H5-SLD (d): linie punktu wyniku ze znacznikiem backendu `BEZ_NAPIECIA`
+ * (`RawOverlayPayload.bez_napiecia_refs`) — STAN, nie liczba: szyna leży w wyspie bez
+ * źródła zasilania w stanie łączników biegu, więc rozpływ nie ma napięcia, a zwarcie nie
+ * ma impedancji do odniesienia. Druga linia to przyczyna (widoczna od LOD 2; L0/L1
+ * pokazują pierwszą). Bez znacznika punkt bez metryk nie dostaje etykiety (zero atrap).
+ */
+export const LINIE_BEZ_NAPIECIA: readonly ResultLabelLine[] = [
+  { prefix: '', text: 'bez napięcia' },
+  { prefix: '', text: 'wyspa bez źródła zasilania' },
+];
+
 // ---------------------------------------------------------------------------
 // Budowniczy CZYSTY: scena + payload (lub null) → wpisy per ownerRef.
 // ---------------------------------------------------------------------------
@@ -246,9 +258,12 @@ export function buildResultLabelsFromScene(
   // główna+rezerwowa+domknięcie ringu dzieli jeden `busResultRef`) i obejmuje
   // przypadki mostu (blok stacji L0 i odcinek szyny SN wskazują TEN SAM punkt).
   const seenResultRefs = new Set<string>();
+  const bezNapiecia = new Set(payload.bez_napiecia_refs ?? []);
   const emit = (ownerRef: string, resultRef: string, kind: ResultLabelKind): void => {
     if (entries[ownerRef] || seenResultRefs.has(resultRef)) return;
-    const lines = linesFor(payload, resultRef, selectResultLabelSpecs(analysis, kind), comparison);
+    const lines = bezNapiecia.has(resultRef)
+      ? LINIE_BEZ_NAPIECIA
+      : linesFor(payload, resultRef, selectResultLabelSpecs(analysis, kind), comparison);
     if (lines.length === 0) return;
     seenResultRefs.add(resultRef);
     entries[ownerRef] = { ownerRef, resultRef, kind, lines, severity: severityOf(payload, resultRef) };

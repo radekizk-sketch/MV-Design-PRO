@@ -41,7 +41,12 @@ const FIKSTURY: Readonly<Record<string, string>> = {
 };
 const LODS: readonly SceneLod[] = [0, 1, 2];
 /** Odczepy prawdziwych odgałęzień sieci referencyjnej (pomiar przed i po regule — bez zmian). */
-const ODCZEPY_SIECI_REFERENCYJNEJ: Readonly<Record<SceneLod, number>> = { 0: 7, 1: 18, 2: 18 };
+// GPZ-H5-SLD etap 3 (scalenie backendu H5): 7/18/18 → 12/23/23 — regeneracja fikstury.
+// DOWÓD 2×2 (sonda karty, ten sam kod): treść sprzed scalenia z samymi nowymi
+// identyfikatorami — 10/21/21 (+3, kolejność remisu pasm odgałęzień); nowa treść GPZ (strona
+// 110 kV jako sekcja modelu, wyższy GPZ) — kolejne +2 (piony odgałęzień przecinają więcej
+// przęseł magistrali); kropki = węzły T we wszystkich sześciu przypadkach.
+const ODCZEPY_SIECI_REFERENCYJNEJ: Readonly<Record<SceneLod, number>> = { 0: 12, 1: 23, 2: 23 };
 
 interface KorytarzEnm {
   readonly ref_id: string;

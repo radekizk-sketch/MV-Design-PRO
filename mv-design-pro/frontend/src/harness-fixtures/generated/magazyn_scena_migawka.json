@@ -554,7 +554,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "dd8a7ccdfe0c53a91ee384621d74937e6f21cdc0aa9805b68ae43adf2b7ccf47",
+    "hash_sha256": "e1fb1afb6f4e98f32ba6c3e8e48df605c8d0425271cef98757a2506155c1779e",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -621,6 +621,8 @@
       "source_mode": "KATALOG",
       "source_side": "SN",
       "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "supply_line_name": null,
+      "supplying_station_name": null,
       "tags": [],
       "u_set_pu": null,
       "voltage_hv_kv": null,
@@ -639,6 +641,8 @@
       "entry_point_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [
         {
           "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
@@ -653,11 +657,9 @@
       ],
       "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
       "meta": {
-        "gpz_hv_bus_refs": [],
         "gpz_section_count": 1,
         "short_circuit_input_side": "SN",
-        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-        "wn_sn_transformer_count": 0
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER"
       },
       "name": "GPZ 110/15",
       "nn_sections": [],

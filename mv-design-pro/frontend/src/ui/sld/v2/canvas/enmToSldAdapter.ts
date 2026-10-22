@@ -39,6 +39,7 @@ import type { GpzViewModel } from '../model/widokSld';
 import type { StationOnRunViewModel, StationSnSectionView } from '../model/widokSld';
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../model/widokPolStacji';
 import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../domain/apparatusContracts';
+import { FIELD_FUNCTION_ROLE_SHORT_TAG } from '../station-rozdzielnia/contract';
 import { stanAparatuZModelu, stanStatusuGalezi, stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
 import {
   derFieldRoleForGenerator,
@@ -61,7 +62,7 @@ import {
   type StationTransformerUnit,
 } from '../../../network-build/stationTransformerSelection';
 import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
-import { punktyPodzialu } from '../../../shared/stanLacznika';
+import { pozycjaNormalna, punktyPodzialu } from '../../../shared/stanLacznika';
 
 // =============================================================================
 // Cable/line run helpers
@@ -1243,7 +1244,7 @@ function normalizeLineRunForLayout(
     segments: expandedSegmentRefs.map((segment_ref, index) => ({ segment_ref, order: index + 1 })),
     stations: [...lineRun.stations],
     // W5-C: stację punktu podziału ciągu wyprowadza `przypiszStacjePunktuPodzialu`
-    // z pozycji normalnej łączników (dawna kopia `LineRun.nop_station_ref` skasowana).
+    // z roli łączników (`punktyPodzialu`; dawna kopia `LineRun.nop_station_ref` skasowana).
     nop_station_ref: null,
     parent_run_ref: lineRun.parent_run_ref ?? null,
     branch_origin_station_ref: lineRun.branch_origin_station_ref ?? null,
@@ -1470,8 +1471,9 @@ function buildSldLineRunsForLayout(
 
 /**
  * W5-C: stacja punktu normalnie otwartego ciągu — PIERWSZA (wg kolejności ciągu) stacja,
- * której pole niesie łącznik z pozycją normalną `'open'` (`ui/shared/stanLacznika.ts::
- * punktyPodzialu` — jedno źródło, pozycja normalna łącznika). Punkt podziału poza stacją
+ * której pole niesie punkt podziału sieci (`ui/shared/stanLacznika.ts::punktyPodzialu` —
+ * jedno źródło: rola `PUNKT_PODZIALU` z `roleLacznikow`, karta GPZ-H5; normalnie otwarty
+ * łącznik szyn stacji, np. ŁS-SN w GPZ H5, nie czyni stacji „stacją NOP”). Punkt podziału poza stacją
  * (łącznik sekcyjny na trasie) nie oznacza żadnej stacji: łącznik jest rysowany jako
  * otwarty z własnego `status`, a kopia „stacji NOP" byłaby domysłem.
  */
@@ -1999,8 +2001,8 @@ function stationFieldRole(
 ): MiniBlockBayDescriptor['fieldRole'] {
   const kanoniczna = fieldRoleFromCatalogRole(getString(bay.field_role));
   if (kanoniczna) return kanoniczna;
-  if (normalizeRole(bay.bay_role) === 'OZE') return rolaPolaZrodlowego(bay, generatoryWgPola);
-  return fieldRoleFromBayRole(bay.bay_role) ?? FIELD_ROLE.LINE_BRANCH;
+  if (bay.bay_role === 'OZE') return rolaPolaZrodlowego(bay, generatoryWgPola);
+  return fieldRoleFromBayRole(bay.bay_role);
 }
 
 function fieldRoleFromCatalogRole(raw: string | undefined): MiniBlockBayDescriptor['fieldRole'] | null {
@@ -2028,6 +2030,12 @@ function fieldRoleFromCatalogRole(raw: string | undefined): MiniBlockBayDescript
     case 'POMIAROWE':
     case 'MEASUREMENT':
       return FIELD_ROLE.MEASUREMENT;
+    case 'UZIEMIAJACE':
+    case 'EARTHING':
+      return FIELD_ROLE.EARTHING;
+    case 'KOMPENSACYJNE':
+    case 'CAPACITOR':
+      return FIELD_ROLE.CAPACITOR;
     case 'PV_SN':
     case 'PV':
     case 'OZE_PV':
@@ -2044,8 +2052,11 @@ function fieldRoleFromCatalogRole(raw: string | undefined): MiniBlockBayDescript
   }
 }
 
-function fieldRoleFromBayRole(raw: string | undefined): MiniBlockBayDescriptor['fieldRole'] | null {
-  const role = normalizeRole(raw);
+/** Rola modelu (`Bay.bay_role`, bez źródłowej `OZE` — tę rozstrzyga rodzaj wytwórców) → rola
+ *  pola na rysunku. Karta GPZ-H5-SLD etap 3: wyliczenie WYCZERPUJĄCE — nowa rola modelu bez
+ *  odwzorowania jest błędem typu, nie cichym polem odgałęźnym (dawne `?? LINE_BRANCH`
+ *  rysowało pole zespołu uziemiającego i baterii kondensatorów jako odgałęzienie). */
+function fieldRoleFromBayRole(role: Exclude<Bay['bay_role'], 'OZE'>): FieldRole {
   switch (role) {
     case 'IN':
       return FIELD_ROLE.LINE_IN;
@@ -2059,14 +2070,14 @@ function fieldRoleFromBayRole(raw: string | undefined): MiniBlockBayDescriptor['
       return FIELD_ROLE.COUPLER;
     case 'MEASUREMENT':
       return FIELD_ROLE.MEASUREMENT;
-    case 'PV_SN':
-      return FIELD_ROLE.DER_PV;
-    case 'BESS_SN':
-      return FIELD_ROLE.DER_BESS;
-    case 'FW_SN':
-      return FIELD_ROLE.DER_FW;
-    default:
-      return null;
+    case 'EARTHING':
+      return FIELD_ROLE.EARTHING;
+    case 'CAPACITOR':
+      return FIELD_ROLE.CAPACITOR;
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola modelu bez odwzorowania na rysunku: ${String(nieobsluzona)}`);
+    }
   }
 }
 
@@ -2084,6 +2095,10 @@ function stationFieldDesignation(bay: Bay, role: FieldRole, index: number): stri
       return 'SPR';
     case FIELD_ROLE.MEASUREMENT:
       return 'POM';
+    case FIELD_ROLE.EARTHING:
+      return FIELD_FUNCTION_ROLE_SHORT_TAG.UZIEMIAJACE;
+    case FIELD_ROLE.CAPACITOR:
+      return FIELD_FUNCTION_ROLE_SHORT_TAG.KOMPENSACYJNE;
     case FIELD_ROLE.DER_PV:
       return 'PV';
     case FIELD_ROLE.DER_BESS:
@@ -2092,8 +2107,16 @@ function stationFieldDesignation(bay: Bay, role: FieldRole, index: number): stri
       return 'FW';
     case FIELD_ROLE.DER_UNKNOWN:
       return 'OZE';
-    default:
+    // Role rysunku (technologia RMU, pole liniowe GPZ) nie pochodzą z `Bay.bay_role` — nazwa
+    // pola z modelu, bez niej pozycja.
+    case FIELD_ROLE.GPZ_LINE_BAY:
+    case FIELD_ROLE.RMU_LINE:
+    case FIELD_ROLE.RMU_TRANSFORMER:
       return getString(bay.name) ?? `Pole SN ${index + 1}`;
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola bez oznaczenia na rysunku: ${String(nieobsluzona)}`);
+    }
   }
 }
 
@@ -2218,12 +2241,16 @@ function aparatyZGaleziPola(
       (typeof klasa === 'string' ? RODZAJ_APARATU_Z_KLASY_WYROBU[klasa.trim().toUpperCase()] : undefined)
       ?? RODZAJ_APARATU_Z_TYPU_GALEZI[galaz.type];
     if (!kind || galaz.type === 'bus_coupler') continue;
+    const normalna = pozycjaNormalna(galaz);
     aparaty.push({
       kind,
       placement: 'MIDSTREAM',
       sectionSide: null,
       deviceRef: galaz.ref_id,
       ...(galaz.type === 'fuse' ? {} : { switchState: stanStatusuGalezi(galaz.status) }),
+      // Karta GPZ-H5-SLD etap 3 (d): pozycja normalna gałęzi łączeniowej (jedno źródło
+      // `shared/stanLacznika.pozycjaNormalna`) — glif pokazuje odstępstwo stanu od niej.
+      ...(normalna ? { pozycjaNormalna: normalna } : {}),
       pochodzenie: 'galaz_pola',
       typeRef: galaz.catalog_ref ?? null,
     });

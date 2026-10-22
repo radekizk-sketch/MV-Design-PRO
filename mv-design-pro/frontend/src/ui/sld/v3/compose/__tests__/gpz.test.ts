@@ -99,6 +99,9 @@ const ROLA_DLA_STOSU: Readonly<Record<CanonicalGpzBay['fieldRole'], RolaPolaGpz>
   TRANSFORMER: 'transformatorowe',
   COUPLER: 'sprzeglo',
   MEASUREMENT: 'pomiarowe',
+  // Karta GPZ-H5-SLD etap 3 (b): jawne role pól funkcyjnych sekcji SN (`rolaPolaGpz`).
+  EARTHING: 'uziemiajace',
+  CAPACITOR: 'kompensacyjne',
   SOURCE: 'zrodlowe',
 };
 
@@ -1381,7 +1384,11 @@ const KLUCZE_DANYCH_POL = ['gpz.bay.panel', 'gpz.status_flags', 'gpz.measurement
 
 describe('GPZ-H5-SLD etap 2 — lista pól GPZ (karta inspektora) zamiast tabeli w geometrii', () => {
   it('każda rola modelu ma etykietę polską (kolejność ról stała)', () => {
-    expect(ROLE_POL_GPZ).toHaveLength(6);
+    // Karta GPZ-H5: pola funkcyjne sekcji SN GPZ (uziemiające, kompensacyjne) są rolami modelu
+    // (`bay_role` EARTHING/CAPACITOR) — 6 → 8.
+    expect(ROLE_POL_GPZ).toHaveLength(8);
+    expect(ROLE_POL_GPZ).toContain('uziemiajace');
+    expect(ROLE_POL_GPZ).toContain('kompensacyjne');
     for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
   });
 

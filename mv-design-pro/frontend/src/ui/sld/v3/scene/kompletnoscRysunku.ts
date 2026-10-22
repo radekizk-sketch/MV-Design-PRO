@@ -16,7 +16,8 @@
  *  · `blok-stacji` — szyny (`Substation.bus_refs`) i transformatory
  *    (`transformer_refs`) NARYSOWANEJ stacji albo GPZ, rysowane jako jej blok; oraz gałąź
  *    o OBU końcach na szynach tej samej stacji ZWINIĘTEJ do symbolu zbiorczego
- *    (`stationCollapsed`/`gpzCollapsed`, L0) — łącznik szyn GPZ jest wnętrzem bloku, nie
+ *    (`stationCollapsed`/`gpzCollapsed`, L0; szyny stacji z lustra `szynyStacji`, z zaciskami
+ *    pól) — łącznik szyn GPZ jest wnętrzem bloku, nie
  *    punktem podziału sieci (karta GPZ-H5-SLD etap 2: GPZ nie rysuje już przy łączniku szyn
  *    znacznika NO, który na L0 był jego jedynym śladem). Stacja ROZWINIĘTA nie zwalnia
  *    gałęzi — tam łącznik szyn musi być narysowany;
@@ -103,7 +104,13 @@ function narysowaneRefy(scene: SceneV3): ReadonlySet<string> {
     refy.add(ref);
     refy.add(ref.split('#')[0]);
   };
-  for (const symbol of scene.symbols) dodaj(symbol.meta?.ownerRef);
+  for (const symbol of scene.symbols) {
+    dodaj(symbol.meta?.ownerRef);
+    // Aparat pola rysowany z GAŁĘZI łączeniowej modelu: właścicielem symbolu jest pole,
+    // a gałąź niesie `deviceRef` (np. wyłącznik pola SN transformatora rezerwowego GPZ H5) —
+    // symbol JEST rysunkiem tej gałęzi.
+    dodaj(symbol.meta?.deviceRef);
+  }
   for (const segment of scene.segments) dodaj(segment.meta?.ownerRef);
   for (const label of scene.labels) dodaj(label.ownerRef);
   for (const ref of scene.meta.drawnStationIds) dodaj(ref);
@@ -153,7 +160,10 @@ export function kompletnoscRysunku(scene: SceneV3, snapshot: EnergyNetworkModel)
   const stacjaZwinietaSzyny = new Map<string, string>();
   for (const stacja of snapshot.substations ?? []) {
     if (!zwinieteStacje.has(stacja.ref_id)) continue;
-    for (const ref of stacja.bus_refs ?? []) stacjaZwinietaSzyny.set(ref, stacja.ref_id);
+    // Szyny stacji z lustra backendu `szynyStacji` (szyny główne ORAZ zaciski pól) — gałąź
+    // między szyną sekcji a zaciskiem pola (wyłącznik pola SN transformatora rezerwowego GPZ
+    // H5) jest wnętrzem zwiniętego bloku tak samo jak łącznik szyn.
+    for (const ref of szynyStacji(snapshot, stacja)) stacjaZwinietaSzyny.set(ref, stacja.ref_id);
   }
 
   const pozycje: PozycjaKompletnosci[] = [];

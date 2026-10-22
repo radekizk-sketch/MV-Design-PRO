@@ -920,8 +920,16 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # odpowiednio 213 i 199. Jedyne liście różne od obu stron to `context.snapshot_hash`
     # i `input_hash` (model wejściowy składa topologię GPZ-MODEL z polami addytywnymi
     # programu). Wynik kontyngencji = wynik GPZ-MODEL.
-    "gn01_promieniowa": "a4b8be670ea780e84ab06ec2ef4a88bcce48dac07aec7e2ea64a04b2c6461261",
-    "gn03_pierscien": "959e81d39106f80572c9ca9b9270f11b5c005ebb93f1ae16059973653ac39433",
+    # 2026-10-22 (karta GPZ-H5-BACKEND, baza `82735bfc1`): gn01 a4b8be67… → b5286495…,
+    # gn03 959e81d3… → c8abdbad…. Pełne widoki z kodu bazy (odtwarza dawny pin) i po karcie
+    # porównane liść po liściu: gn01 — 2 liście zmienione, 406 bez zmian; gn03 — 2 i 337.
+    # Zmienione wyłącznie `context.snapshot_hash` i `input_hash`. Przyczyna (porównanie
+    # modeli wejściowych liść po liściu): stacja GPZ nie niesie już drugiej kopii struktury
+    # w `meta` (`wn_sn_transformer_count`, `gpz_hv_bus_refs` — prawdą są `transformer_refs`
+    # i `gpz_hv_sections`); nowe pola `gpz_reserve_mode`/`gpz_reserve_transformer_ref`
+    # równe `None` są poza odciskiem. Enumeracja, dotkliwości, ranking — identyczne.
+    "gn01_promieniowa": "b528649586bf2ac2b70bde535103a82184e5970b14334017aa8fe422ad009115",
+    "gn03_pierscien": "c8abdbad3688f2c486d25cd9bbad78a0e1a17bfbd1d13a09041ae900f21cf7ab",
 }
 
 

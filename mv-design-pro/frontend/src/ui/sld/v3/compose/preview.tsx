@@ -481,7 +481,8 @@ export interface PreviewSymbol {
   /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń transformatora z grupy połączeń
    *  modelu — dla symbolu `transformer2W` (patrz `symbols/uzwojenia.ts`). */
   readonly uzwojenia?: UzwojeniaTransformatora;
-  /** Pozycja normalna łącznika szyn GPZ (`GlyphProps.pozycjaNormalna`). */
+  /** Pozycja normalna łącznika (łącznik szyn, sprzęgło, łącznik toru, aparat pola z gałęzi
+   *  łączeniowej) — `GlyphProps.pozycjaNormalna`. */
   readonly pozycjaNormalna?: 'open' | 'closed';
   readonly meta?: PreviewElementMeta;
 }

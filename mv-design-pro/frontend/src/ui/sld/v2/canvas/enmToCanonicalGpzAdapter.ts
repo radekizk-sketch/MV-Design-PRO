@@ -654,7 +654,15 @@ function mapBayRoleToFieldRole(role: Bay['bay_role']): BayFieldRole {
     // GPZ-PARYTET cz. 3 (pkt 1): pole źródłowe — gramatyka pola kablowego + glif rodzaju
     // źródła (`rolaZrodla`); dawniej zlewane z polem liniowym odpływowym.
     case 'OZE': return 'SOURCE';
-    default: return 'LINE_OUT';
+    // Karta GPZ-H5-SLD etap 3: pola funkcyjne sekcji SN mają własne role; dawna gałąź
+    // `default → 'LINE_OUT'` rysowała je jako pole liniowe. Wyliczenie wyczerpujące — nowa
+    // rola modelu bez odwzorowania jest błędem typu.
+    case 'EARTHING': return 'EARTHING';
+    case 'CAPACITOR': return 'CAPACITOR';
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola GPZ bez odwzorowania na rysunku: ${String(nieobsluzona)}`);
+    }
   }
 }
 
@@ -677,6 +685,12 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
       return { cb: 'Q0', dsBus: 'Q1', ct: 'T1' };
     case 'MEASUREMENT':
       return { dsBus: 'Q1', es: 'Q8' };
+    // Pola funkcyjne powstają BEZ aparatów (operacja GPZ, `_pola_funkcyjne_sekcji`) — rola
+    // nie przesądza składu, więc nie niesie oznaczeń Q; aparaty i ich oznaczenia wyłącznie
+    // z rekordów modelu.
+    case 'EARTHING':
+    case 'CAPACITOR':
+      return {};
   }
 }
 
@@ -705,6 +719,8 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
     case 'TR': return 'transformatorowe';
     case 'COUPLER': return 'sprzeglo';
     case 'MEASUREMENT': return 'pomiarowe';
+    case 'EARTHING': return 'uziemiajace';
+    case 'CAPACITOR': return 'kompensacyjne';
     case 'OZE': return 'zrodlowe';
   }
 }

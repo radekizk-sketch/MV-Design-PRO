@@ -1936,7 +1936,19 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # K6a: kontrakt topologii zasilenia; W5-C: `close_ref`, `no_point_refs`, stan danych
     # wyposazenia pola) − 3 nazwy skasowane przez UI/UX (`field_spec`, `no_point_ref`,
     # `nop_station_ref`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4337." in wyjscie, wyjscie
+    # Karta GPZ-H5-BACKEND (2026-10-22): 4337 -> 4355 — POMIAR `contract_fields()` na bazie
+    # karty `82735bfc1` (`git archive`: 4337, pin zgodny) i na drzewie karty (4355). Roznica
+    # zbiorow +18, -0: kontrakt GPZ H5 operacji `add_grid_source_sn` (`hv_sections`,
+    # `hv_coupler`, `sn_coupler`, `sections_count`, `reserve_mode`, `reserve_transformer`,
+    # `reserve_transformer_apparatus`, `hv_bay_apparatus_proposal`), dane stacji i zrodla
+    # (`gpz_reserve_mode`, `gpz_reserve_transformer_ref`, `supply_line_name`,
+    # `supplying_station_name`), siec skladowej zerowej (`wezly_bez_drogi_zerowej`), grupy
+    # zrodel i laczniki polaczen niezaleznych rownowaznikow (`grupy_zrodel`, `laczniki`),
+    # szablon (`gpz_uklad`, `dane_projektu`, `podpowiedz_pl`). Nowe pole `sections_count`
+    # odslonilo zastane `payload.get("sections_count", ...) or 1` (zadane 0 -> po cichu jedna
+    # sekcja) — naprawione u zrodla (odmowa zakresu), nie dopisane do budzetu. PASS
+    # niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4355." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2202,7 +2214,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): 580 programu + 6 plikow enm
         # (W5-B 3, GPZ-PARYTET 1, W5-C 3 − 1 skasowany) + 1 application (K6a) + 1 api (W5-C)
         # = 588. POMIAR guardem na drzewie scalonym i na obu rodzicach (577 / 580).
-        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta GPZ-H5-BACKEND (2026-10-22): 588 -> 590 (+2 enm: `enm/rezerwa_gpz.py` — tryb
+        # rezerwy i stany normalne łączników szyn GPZ, `enm/czyszczenie_odwolan.py` — jedno
+        # czyszczenie odwołań kasowanego elementu); pomiar guardem na drzewie karty.
+        "Przeskanowano 590 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2465,7 +2480,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): enm 62 bazy wspolnej + 6 UI/UX
         # + 3 programu (`zdania_odmow_rdzenia.py`, `uziom_instalacji.py`, `tolerancja_nn.py`)
         # = 71; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=71, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta GPZ-H5-BACKEND (2026-10-22): enm 71 -> 73 (+2 `rezerwa_gpz.py`,
+        # `czyszczenie_odwolan.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=73, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

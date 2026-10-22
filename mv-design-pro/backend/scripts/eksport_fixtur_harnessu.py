@@ -4095,7 +4095,7 @@ _ZRODLA_BACKENDU = BACKEND_DIR / "src"
 #: (`section/{order}`, `bay/{idx + 1}/{field_index + 1}`) — segment liczbowy,
 #: który etykieta zapasowa frontu dokleja do poprzedniego członu.
 _ZMIENNE_NUMERYCZNE = frozenset(
-    {"idx", "order", "ordinal", "index", "i", "role_index", "field_index"}
+    {"idx", "order", "ordinal", "index", "i", "role_index", "field_index", "cela"}
 )
 
 
@@ -4105,7 +4105,11 @@ def _wartosci_zmiennych_segmentu() -> dict[tuple[str, str], tuple[str, ...]]:
     Klucz: (funkcja budująca identyfikator, wyrażenie w klamrach). Wartości czytane
     z tych samych map i typów, z których operacja je bierze — nie przepisane ręcznie.
     """
-    from enm.domain_operations import _NN_SOURCE_KIND_MAP, _SN_FIELD_ROLE_TO_BAY_ROLE
+    from enm.domain_operations import (
+        _NN_SOURCE_KIND_MAP,
+        _SN_FIELD_ROLE_TO_BAY_ROLE,
+        POLA_FUNKCYJNE_SEKCJI_SN_GPZ,
+    )
     from enm.domain_operations_v2 import _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO
     from enm.models import BranchPointSN
 
@@ -4121,7 +4125,61 @@ def _wartosci_zmiennych_segmentu() -> dict[tuple[str, str], tuple[str, ...]]:
         ("append_station_on_endpoint", "field_role.lower()"): tuple(
             rola.lower() for rola in _SN_FIELD_ROLE_TO_BAY_ROLE
         ),
+        # Karta GPZ-H5: pola funkcyjne sekcji SN GPZ (zespół uziemiający, bateria, pomiar).
+        ("add_grid_source_sn", "rola_funkcyjna.lower()"): tuple(
+            rola.lower() for rola in POLA_FUNKCYJNE_SEKCJI_SN_GPZ
+        ),
     }
+
+
+def _parametry_funkcji(funkcja: ast.FunctionDef | ast.AsyncFunctionDef) -> list[str]:
+    return [a.arg for a in (*funkcja.args.posonlyargs, *funkcja.args.args)]
+
+
+def _najglebsza_funkcja(
+    funkcje: list[ast.FunctionDef | ast.AsyncFunctionDef], wezel: ast.AST
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    linia = getattr(wezel, "lineno", 0)
+    obejmujace = [f for f in funkcje if f.lineno <= linia <= (f.end_lineno or f.lineno)]
+    return max(obejmujace, key=lambda f: f.lineno, default=None)
+
+
+def _argumenty_parametru(
+    funkcje: list[ast.FunctionDef | ast.AsyncFunctionDef],
+    wlasciciel: ast.FunctionDef | ast.AsyncFunctionDef,
+    parametr: str,
+    miejsce: str,
+) -> list[tuple[ast.expr, ast.FunctionDef | ast.AsyncFunctionDef]]:
+    """Identyfikator budowany z PARAMETRU funkcji (karta GPZ-H5: lokalna `_pole_struktury`
+    dostaje ścieżkę identyfikatora pola od wołającego) — zbiór wartości to argumenty
+    KAŻDEGO wywołania tej funkcji w module, rozwijane w funkcji wołającej. Wywołanie, które
+    nie podaje parametru wprost, kończy eksport błędem z miejscem w kodzie."""
+    pozycja = _parametry_funkcji(wlasciciel).index(parametr)
+    wynik: list[tuple[ast.expr, ast.FunctionDef | ast.AsyncFunctionDef]] = []
+    for funkcja in funkcje:
+        for wezel in ast.walk(funkcja):
+            if not (
+                isinstance(wezel, ast.Call)
+                and isinstance(wezel.func, ast.Name)
+                and wezel.func.id == wlasciciel.name
+            ):
+                continue
+            if _najglebsza_funkcja(funkcje, wezel) is not funkcja:
+                continue
+            argument: ast.expr | None = None
+            if pozycja < len(wezel.args):
+                argument = wezel.args[pozycja]
+            else:
+                argument = next((k.value for k in wezel.keywords if k.arg == parametr), None)
+            if argument is None:
+                raise ValueError(
+                    f"{miejsce}: wywołanie `{wlasciciel.name}` (linia {wezel.lineno}) nie podaje "
+                    f"parametru `{parametr}` identyfikatora elementu wprost."
+                )
+            wynik.append((argument, funkcja))
+    if not wynik:
+        raise ValueError(f"{miejsce}: funkcja `{wlasciciel.name}` nie ma wywołań w module.")
+    return wynik
 
 
 def _czy_numeryczne(wyrazenie: ast.expr) -> bool:
@@ -4130,18 +4188,38 @@ def _czy_numeryczne(wyrazenie: ast.expr) -> bool:
 
 
 def _wartosci_z_petli(funkcja: ast.AST, nazwa: str) -> tuple[str, ...] | None:
-    """Wartości zmiennej pętli `for <nazwa> in (<literały>)` w tej samej funkcji."""
+    """Wartości zmiennej pętli w tej samej funkcji: `for <nazwa> in (<literały>)` albo pętla
+    z rozpakowaniem krotek `for a, <nazwa>, b in ((…, "x", …), (…, "y", …))` — wtedy zbiór to
+    literały z pozycji `<nazwa>` w każdej krotce (karta GPZ-H5: łączniki szyn 110 kV i SN
+    budowane jedną pętlą z przedrostkiem identyfikatora w krotce)."""
     for wezel in ast.walk(funkcja):
-        if (
-            isinstance(wezel, ast.For)
-            and isinstance(wezel.target, ast.Name)
-            and wezel.target.id == nazwa
-            and isinstance(wezel.iter, ast.Tuple | ast.List)
-            and all(
+        if not isinstance(wezel, ast.For) or not isinstance(wezel.iter, ast.Tuple | ast.List):
+            continue
+        if isinstance(wezel.target, ast.Name) and wezel.target.id == nazwa:
+            if all(
                 isinstance(e, ast.Constant) and isinstance(e.value, str) for e in wezel.iter.elts
-            )
-        ):
-            return tuple(str(e.value) for e in wezel.iter.elts)  # type: ignore[attr-defined]
+            ):
+                return tuple(str(e.value) for e in wezel.iter.elts)  # type: ignore[attr-defined]
+            continue
+        if not isinstance(wezel.target, ast.Tuple):
+            continue
+        pozycje = [
+            i
+            for i, cel in enumerate(wezel.target.elts)
+            if isinstance(cel, ast.Name) and cel.id == nazwa
+        ]
+        if len(pozycje) != 1:
+            continue
+        (pozycja,) = pozycje
+        wartosci: list[str] = []
+        for krotka in wezel.iter.elts:
+            if not isinstance(krotka, ast.Tuple) or len(krotka.elts) != len(wezel.target.elts):
+                return None
+            element = krotka.elts[pozycja]
+            if not (isinstance(element, ast.Constant) and isinstance(element.value, str)):
+                return None
+            wartosci.append(element.value)
+        return tuple(wartosci)
     return None
 
 
@@ -4257,12 +4335,31 @@ def segmenty_referencji_modelu() -> dict[str, Any]:
                     and len(wezel.args) == 3
                 ):
                     prefiks, _, sciezka_lokalna = wezel.args
-                    czesci: list[ast.expr] = [prefiks, ast.Constant("/")]
-                    if isinstance(sciezka_lokalna, ast.JoinedStr):
-                        czesci.extend(sciezka_lokalna.values)
-                    else:
-                        czesci.append(sciezka_lokalna)
-                    segmenty.update(_segmenty_szablonu(czesci, funkcja, funkcja.name, miejsce))
+                    warianty: list[tuple[ast.expr, ast.FunctionDef | ast.AsyncFunctionDef]] = [
+                        (sciezka_lokalna, funkcja)
+                    ]
+                    if isinstance(sciezka_lokalna, ast.Name):
+                        wlasciciel = _najglebsza_funkcja(funkcje, wezel)
+                        if wlasciciel is not None and sciezka_lokalna.id in _parametry_funkcji(
+                            wlasciciel
+                        ):
+                            if wlasciciel is not funkcja:
+                                # Rozwijane raz — przy przejściu funkcji, której to parametr.
+                                continue
+                            warianty = _argumenty_parametru(
+                                funkcje, wlasciciel, sciezka_lokalna.id, miejsce
+                            )
+                    for wariant, funkcja_wariantu in warianty:
+                        czesci: list[ast.expr] = [prefiks, ast.Constant("/")]
+                        if isinstance(wariant, ast.JoinedStr):
+                            czesci.extend(wariant.values)
+                        else:
+                            czesci.append(wariant)
+                        segmenty.update(
+                            _segmenty_szablonu(
+                                czesci, funkcja_wariantu, funkcja_wariantu.name, miejsce
+                            )
+                        )
                     pliki.add(wzgledna)
                 elif isinstance(wezel, ast.JoinedStr) and len(wezel.values) >= 2:
                     pierwszy, drugi = wezel.values[0], wezel.values[1]
@@ -4990,16 +5087,11 @@ def _fabryka_sceny_geometrii_stacji(wariant: str) -> Any:
     return lambda: _scena_geometrii_stacji(wariant)
 
 
-def geometria_stacji_gpz_110kv() -> dict[str, Any]:
-    """Karta GPZ-MODEL × GEOMETRIA-STACJI: GPZ z równoważnikiem 110 kV, dwie sekcje SN ze
-    sprzęgłem i dwa transformatory 110/15 kV na wspólnej szynie WN
-    (`scena_geometrii_stacji.zbuduj_gpz_110kv`) jako odpowiedź operacji — migawka + widoki
-    logiczne."""
+def _odpowiedz_operacji_modelu(enm: dict[str, Any]) -> dict[str, Any]:
+    """Model jako odpowiedź operacji (`refresh_snapshot`) — migawka + widoki logiczne."""
     from enm.domain_operations import execute_domain_operation
 
-    from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_110kv
-
-    model = EnergyNetworkModel.model_validate(zbuduj_gpz_110kv())
+    model = EnergyNetworkModel.model_validate(enm)
     _fiksuj_niedeterminizm_sceny_zwarcia(model)
     odpowiedz = execute_domain_operation(
         enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
@@ -5007,6 +5099,29 @@ def geometria_stacji_gpz_110kv() -> dict[str, Any]:
     return canonicalize_json(
         {"snapshot": odpowiedz["snapshot"], "logical_views": odpowiedz["logical_views"]}
     )
+
+
+def geometria_stacji_gpz_110kv() -> dict[str, Any]:
+    """Karta GPZ-MODEL × GEOMETRIA-STACJI (kontrakt karty GPZ-H5): GPZ H5 110/15 kV — dwie
+    sekcje szyn 110 kV z łącznikiem, dwa transformatory przypisane jawnie sekcja 110 kV →
+    sekcja SN, dwie sekcje SN z łącznikiem, po dwa pola liniowe na sekcję
+    (`scena_geometrii_stacji.zbuduj_gpz_110kv`) jako odpowiedź operacji."""
+    from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_110kv
+
+    return _odpowiedz_operacji_modelu(zbuduj_gpz_110kv())
+
+
+def _fabryka_przypadku_h5(reserve_mode: str) -> Any:
+    """Karta GPZ-H5: przypadek odbiorowy H5 110/15 kV (`tests.reference_networks.gpz_h5`) —
+    tory L1/L2 i odbiory z przykładowymi danymi przypadku testowego, tryb rezerwy
+    transformatorowej `reserve_mode` (ukryta / jawna, ENEA Zeszyt 1 §26.10.5)."""
+
+    def _fikstura() -> dict[str, Any]:
+        from tests.reference_networks.gpz_h5 import zbuduj_h5
+
+        return _odpowiedz_operacji_modelu(zbuduj_h5(reserve_mode=reserve_mode))
+
+    return _fikstura
 
 
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
@@ -5062,6 +5177,8 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
         for wariant in ("zamkniete", "otwarte", "bez_wyposazenia")
     },
     "geometria_stacji_gpz_110kv": geometria_stacji_gpz_110kv,
+    "gpz_h5_przypadek_odbiorowy": _fabryka_przypadku_h5("hidden"),
+    "gpz_h5_przypadek_odbiorowy_rezerwa_jawna": _fabryka_przypadku_h5("explicit"),
 }
 
 

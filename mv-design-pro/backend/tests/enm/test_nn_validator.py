@@ -91,7 +91,10 @@ def test_e060_strzela_gdy_odbior_odciety() -> None:
     e060 = [i for i in issues if i.code == "E060"]
     assert len(e060) == 1
     assert e060[0].element_refs == ["l1", "b1"]
-    assert e060[0].severity == "BLOCKER"
+    # Karta GPZ-H5 (R7): część sieci bez źródła NIE blokuje biegu — ta sama klasa co E003/E065;
+    # bieg liczy część zasilaną, odbiór odcięty jest w wynikach bez napięcia. Intencja testu
+    # (odbiór odcięty jest wskazany jawnie) bez zmian.
+    assert e060[0].severity == "IMPORTANT"
 
 
 def test_e060_lv_inv_08_otwarty_lacznik_przerywa_sciezke() -> None:

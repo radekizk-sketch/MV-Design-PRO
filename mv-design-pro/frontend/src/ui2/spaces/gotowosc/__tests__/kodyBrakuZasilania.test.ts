@@ -53,6 +53,18 @@ describe('kody braku zasilania — oba grupowania gotowości (iloczyn)', () => {
     }
   }
 
+  // Karta GPZ-H5-SLD etap 3 (d): E067 (zamknięty łącznik szyn spina niezależne równoważniki)
+  // blokuje KAŻDY bieg (rozpływ i zwarcia) — panel „Do uruchomienia obliczeń"; w budowie sieci
+  // to stan łączeniowy („Eksploatacja"), naprawa = otwarcie łącznika albo model B.
+  for (const postac of ['kanoniczny', 'walidatora'] as const) {
+    const kanon = 'source.gpz_coupler_joins_independent_equivalents';
+    const issue = postac === 'kanoniczny' ? zgloszenie(kanon) : zgloszenie('E067', kanon);
+    it(`E067 (${postac}: ${issue.code}) — panel: „Do uruchomienia obliczeń", budowa: „Eksploatacja"`, () => {
+      expect(grupujProblemyWgCelu([issue]).map((g) => g.cel)).toEqual(['wspolne']);
+      expect(kategoriaBlokera(issue.code, issue.canonical_code)).toBe('eksploatacja');
+    });
+  }
+
   it('parametry zwarciowe źródła zostają w grupie zwarć (granica klasy)', () => {
     expect(celDlaKodu('source.sk3_invalid')).toBe('zwarcia');
     expect(celDlaKodu('source.sk_min_missing')).toBe('zwarcia');

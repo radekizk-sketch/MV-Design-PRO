@@ -863,7 +863,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "bb3b1bf6d0f4d732636c5f63d7bc01813fe70cf29d226a1e653ec0068283b620",
+    "hash_sha256": "fa1dc3d96f567921802afdccb23a218196ab705882ac83e92117c549e0ec88d0",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -980,6 +980,8 @@
       "source_mode": "KATALOG",
       "source_side": "SN",
       "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "supply_line_name": null,
+      "supplying_station_name": null,
       "tags": [],
       "u_set_pu": null,
       "voltage_hv_kv": null,
@@ -998,6 +1000,8 @@
       "entry_point_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [
         {
           "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
@@ -1012,11 +1016,9 @@
       ],
       "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
       "meta": {
-        "gpz_hv_bus_refs": [],
         "gpz_section_count": 1,
         "short_circuit_input_side": "SN",
-        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-        "wn_sn_transformer_count": 0
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER"
       },
       "name": "GPZ 110/15",
       "nn_sections": [],
@@ -1036,6 +1038,8 @@
       "entry_point_ref": null,
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [],
       "id": "ffa01c59-5d5f-5ac0-b639-6d306801d9d4",
       "meta": {

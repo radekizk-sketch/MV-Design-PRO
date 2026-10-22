@@ -34,6 +34,7 @@ from network_model.core.topologia import (
     scal_wezly,
     skladowe_spojne,
 )
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 from .models import (
     Cable,
@@ -217,21 +218,57 @@ def szyny_sekcji_gpz(snapshot: EnergyNetworkModel | Mapping[str, object]) -> fro
     )
 
 
-def transformatory_zasilajace_gpz(
+def stacje_transformatorow_zasilajacych_gpz(
     snapshot: EnergyNetworkModel | Mapping[str, object],
-) -> frozenset[str]:
-    """`ref_id` transformatorów WN/SN zasilających GPZ — strona dolna na szynie sekcji SN GPZ.
+) -> Mapping[str, str]:
+    """`ref_id` transformatora WN/SN zasilającego GPZ → `ref_id` jego stacji GPZ.
 
     Karta GPZ-MODEL: JEDNO źródło predykatu dla walidatora (E066 — transformator GPZ bez
     zasilania od strony 110 kV) i dla operacji, które szukają transformatora „stacji"
     (transformator blokowy źródła przekształtnikowego): transformator zasilający GPZ jest
-    granicą zasilania sieci SN, nigdy transformatorem blokowym ani stacyjnym SN/nN."""
-    sekcje = szyny_sekcji_gpz(snapshot)
-    return frozenset(
-        str(_pole(t, "ref_id"))
-        for t in _kolekcja(snapshot, "transformers")
-        if str(_pole(t, "lv_bus_ref")) in sekcje
+    granicą zasilania sieci SN, nigdy transformatorem blokowym ani stacyjnym SN/nN.
+
+    Karta GPZ-H5: transformator należy do GPZ, gdy jego strona dolna leży na szynie sekcji
+    SN GPZ ALBO gdy jest w rejestrze `transformer_refs` stacji GPZ. Druga droga obejmuje
+    transformator rezerwowy rezerwy jawnej (ENEA Zeszyt 1 §26.10.5) — jego strona dolna to
+    zacisk przed normalnie otwartym wyłącznikiem pola SN, nie szyna sekcji — oraz
+    transformator stacji GPZ, której szyna SN nie ma wpisu w `gpz_sections`. Przynależność
+    i stacja pochodzą z TEJ SAMEJ funkcji (predykaty parami): czytelnik nie wyprowadza
+    stacji drugą drogą (dawny walidator E066 szukał jej po szynie sekcji i dla transformatora
+    z rejestru kończył się `KeyError`). Pierwszeństwo ma szyna sekcji (połączenie fizyczne),
+    potem rejestr; stacje i transformatory w kolejności `ref_id`."""
+    stacje_gpz = sorted(
+        (
+            stacja
+            for stacja in _kolekcja(snapshot, "substations")
+            if _pole(stacja, "station_type") == "gpz"
+        ),
+        key=lambda stacja: str(_pole(stacja, "ref_id")),
     )
+    stacja_sekcji: dict[str, str] = {}
+    for stacja in stacje_gpz:
+        for sekcja in _kolekcja(stacja, "gpz_sections"):
+            szyna = _pole(sekcja, "bus_ref")
+            if szyna:
+                stacja_sekcji.setdefault(str(szyna), str(_pole(stacja, "ref_id")))
+    wynik: dict[str, str] = {}
+    for trafo in sorted(_kolekcja(snapshot, "transformers"), key=lambda t: str(_pole(t, "ref_id"))):
+        szyna_dolna = str(_pole(trafo, "lv_bus_ref"))
+        if szyna_dolna in stacja_sekcji:
+            wynik[str(_pole(trafo, "ref_id"))] = stacja_sekcji[szyna_dolna]
+    for stacja in stacje_gpz:
+        for ref in _kolekcja(stacja, "transformer_refs"):
+            wynik.setdefault(str(ref), str(_pole(stacja, "ref_id")))
+    znane = {str(_pole(t, "ref_id")) for t in _kolekcja(snapshot, "transformers")}
+    return {ref: stacja for ref, stacja in sorted(wynik.items()) if ref in znane}
+
+
+def transformatory_zasilajace_gpz(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+) -> frozenset[str]:
+    """`ref_id` transformatorów WN/SN zasilających GPZ — klucze
+    `stacje_transformatorow_zasilajacych_gpz` (jedno źródło przynależności i stacji)."""
+    return frozenset(stacje_transformatorow_zasilajacych_gpz(snapshot))
 
 
 def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
@@ -287,25 +324,216 @@ def derive(snapshot: EnergyNetworkModel | Mapping[str, object]) -> TopologyView:
 
 
 # ---------------------------------------------------------------------------
+# Karta GPZ-H5: rola łącznika — JEDNO źródło prawdy (walidator, scenariusze, API)
+# ---------------------------------------------------------------------------
+
+#: Łącznik szyn sekcji 110 kV GPZ (ŁS-110 układu H5).
+ROLA_LACZNIK_SZYN_WN = "LACZNIK_SZYN_WN"
+#: Łącznik szyn sekcji SN GPZ (ŁS-SN układu H5).
+ROLA_LACZNIK_SZYN_SN = "LACZNIK_SZYN_SN"
+#: Łącznik szyn sekcji rozdzielnicy nN (``Substation.nn_sections``).
+ROLA_LACZNIK_SZYN_NN = "LACZNIK_SZYN_NN"
+#: Łącznik pola transformatorowego: między szyną stacji a zaciskiem transformatora TEJ stacji
+#: (np. wyłącznik pola SN transformatora rezerwowego GPZ, rezerwa jawna ENEA §26.10.5).
+ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO = "LACZNIK_POLA_TRANSFORMATOROWEGO"
+#: Punkt podziału sieci: łącznik normalnie otwarty (``normal_state == "open"``), który nie
+#: łączy dwóch szyn tej samej stacji i nie jest łącznikiem pola transformatorowego.
+ROLA_PUNKT_PODZIALU = "PUNKT_PODZIALU"
+
+#: Role łączników szyn stacji — łącznik WEWNĄTRZ rozdzielni, nie punkt podziału sieci.
+ROLE_LACZNIKOW_SZYN: frozenset[str] = frozenset(
+    {ROLA_LACZNIK_SZYN_WN, ROLA_LACZNIK_SZYN_SN, ROLA_LACZNIK_SZYN_NN}
+)
+
+_ROLA_WG_PASMA: dict[str, str] = {
+    "WN": ROLA_LACZNIK_SZYN_WN,
+    "SN": ROLA_LACZNIK_SZYN_SN,
+    "nN": ROLA_LACZNIK_SZYN_NN,
+}
+
+
+def stacje_szyn_rozdzielni(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+) -> Mapping[str, frozenset[str]]:
+    """Szyna → zbiór ``ref_id`` stacji, do których należy (po ``ref_id`` szyny).
+
+    Szyną stacji jest szyna z ``Substation.bus_refs`` oraz szyna sekcji z jawnych
+    rejestrów sekcji (``gpz_hv_sections``, ``gpz_sections``, ``nn_sections``) — rejestry
+    dokładane, bo archiwalny model może nie powtarzać szyny sekcji w ``bus_refs``.
+    Zbiór, a nie jedna stacja: szyna wpisana do dwóch stacji nie może po cichu należeć
+    do tej, która wypadła pierwsza w kolejności."""
+    wynik: dict[str, set[str]] = {}
+    for stacja in _kolekcja(snapshot, "substations"):
+        ref_stacji = str(_pole(stacja, "ref_id"))
+        szyny = {str(b) for b in _kolekcja(stacja, "bus_refs") if b}
+        for rejestr in ("gpz_hv_sections", "gpz_sections", "nn_sections"):
+            for sekcja in _kolekcja(stacja, rejestr):
+                szyna = _pole(sekcja, "bus_ref")
+                if szyna:
+                    szyny.add(str(szyna))
+        for szyna in szyny:
+            wynik.setdefault(szyna, set()).add(ref_stacji)
+    return {szyna: frozenset(stacje) for szyna, stacje in wynik.items()}
+
+
+def role_lacznikow(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+) -> Mapping[str, str]:
+    """Rola każdego łącznika z pozycją normalną (``ref_id`` → rola), po ``ref_id``.
+
+    Reguła (jedna, bez domysłu; rozstrzygnięcie architekta, wpis 7 koordynacji wątków
+    2026-10-22, pkt 1): łącznik, którego OBA końce są szynami TEJ SAMEJ stacji
+    (``stacje_szyn_rozdzielni``), jest łącznikiem szyn — pasmo napięcia szyny
+    (``pasmo_napieciowe``: WN ≥ 110 kV, SN, nN ≤ 1 kV) rozstrzyga 110 kV / SN / nN.
+    Doprecyzowanie z pomiaru: łącznik szyn SN jest łącznikiem szyn
+    wyłącznie w stacji zasilającej (``station_type == "gpz"``). W stacji SN w magistrali
+    (sekcyjna, rozdzielcza, SN/nN) sekcja A niesie pole zasilające, a sekcja B pole odpływowe
+    (``insert_station_on_segment_sn``), więc sprzęgło leży w torze prądowym magistrali —
+    jego otwarcie rozcina magistralę jak łącznik sekcyjny w ciągu i normalnie otwarte jest
+    punktem podziału pierścienia (bez tego walidator I005 meldował pierścień rozcięty
+    w stacji sekcyjnej jako pierścień bez punktu podziału).
+    Łącznik między szyną stacji (``Substation.bus_refs``) a zaciskiem transformatora tej
+    stacji (``transformer_refs``), który sam nie jest szyną stacji, jest łącznikiem pola
+    transformatorowego — jego otwarcie odstawia transformator, nie dzieli sieci. Każdy inny
+    łącznik z ``normal_state == "open"`` jest punktem podziału sieci; łącznik bez tych
+    warunków nie ma roli (zwykły łącznik toru). Rola NIE zależy od ``status``
+    (bieżącego położenia) — zamknięcie łącznika w scenariuszu nie zmienia, czym jest.
+    """
+    stacje_szyn = stacje_szyn_rozdzielni(snapshot)
+    stacje_gpz = {
+        str(_pole(st, "ref_id"))
+        for st in _kolekcja(snapshot, "substations")
+        if _pole(st, "station_type") == "gpz"
+    }
+    trafa = {str(_pole(t, "ref_id")): t for t in _kolekcja(snapshot, "transformers")}
+    zaciski_pol_tr: set[tuple[str, str]] = set()
+    for stacja in _kolekcja(snapshot, "substations"):
+        szyny_tej_stacji = {str(b) for b in _kolekcja(stacja, "bus_refs")}
+        for ref_tr in _kolekcja(stacja, "transformer_refs"):
+            trafo = trafa.get(str(ref_tr))
+            if trafo is None:
+                continue
+            for koniec in (_pole(trafo, "hv_bus_ref"), _pole(trafo, "lv_bus_ref")):
+                if koniec and str(koniec) not in szyny_tej_stacji:
+                    zaciski_pol_tr.update((s, str(koniec)) for s in szyny_tej_stacji)
+    napiecie = {
+        str(_pole(b, "ref_id")): _pole(b, "voltage_kv") for b in _kolekcja(snapshot, "buses")
+    }
+    wynik: dict[str, str] = {}
+    for galaz in sorted(_kolekcja(snapshot, "branches"), key=lambda g: str(_pole(g, "ref_id"))):
+        if _pole(galaz, "type") not in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM:
+            continue
+        ref = str(_pole(galaz, "ref_id"))
+        a = str(_pole(galaz, "from_bus_ref"))
+        b = str(_pole(galaz, "to_bus_ref"))
+        wspolne = stacje_szyn.get(a, frozenset()) & stacje_szyn.get(b, frozenset())
+        if wspolne:
+            u = napiecie.get(a)
+            pasmo = pasmo_napieciowe(float(u)) if isinstance(u, int | float) else None
+            if pasmo is not None and (pasmo != "SN" or bool(wspolne & stacje_gpz)):
+                wynik[ref] = _ROLA_WG_PASMA[pasmo]
+                continue
+        if (a, b) in zaciski_pol_tr or (b, a) in zaciski_pol_tr:
+            wynik[ref] = ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO
+            continue
+        if _pole(galaz, "normal_state") == "open":
+            wynik[ref] = ROLA_PUNKT_PODZIALU
+    return wynik
+
+
+@dataclass(frozen=True)
+class PolaczenieNiezaleznychZrodel:
+    """Zamknięte łączniki szyn sekcji łączące wyspy z NIEZALEŻNYMI równoważnikami sieci.
+
+    ``laczniki`` — zamknięte łączniki szyn (po ``ref_id``), których otwarcie rozdziela
+    źródła wyspy; ``grupy_zrodel`` — źródła sieciowe po rozdzieleniu (każda grupa to
+    jeden niezależny równoważnik albo równoważniki już połączone gałęzią sieci)."""
+
+    laczniki: tuple[str, ...]
+    grupy_zrodel: tuple[tuple[str, ...], ...]
+
+
+def polaczenia_niezaleznych_zrodel(
+    snapshot: EnergyNetworkModel | Mapping[str, object],
+) -> tuple[PolaczenieNiezaleznychZrodel, ...]:
+    """Wyspy, w których źródła sieciowe łączy WYŁĄCZNIE zamknięty łącznik szyn sekcji.
+
+    Karta GPZ-H5 (R6): dwa tory zasilania 110 kV (L1, L2) to dwa NIEZALEŻNE równoważniki
+    sieci — ich impedancje są znane z osobna, ale sieć nadrzędna, która je łączy, nie
+    jest w modelu. Zamknięcie łącznika szyn 110 kV albo SN tworzy wyspę, w której rozpływ
+    i zwarcie liczyłyby sumę niezależnych źródeł — fikcję. Predykat: w wyspie z ≥ 2
+    źródłami sieciowymi otwórz WSZYSTKIE zamknięte łączniki szyn sekcji
+    (``role_lacznikow``); jeśli źródła rozpadają się na ≥ 2 składowe, wyspa łączy
+    niezależne równoważniki. Wszystkie łączniki naraz — inaczej oba łączniki zamknięte
+    (ŁS-110 i ŁS-SN) tworzą oczko, w którym otwarcie jednego niczego nie rozdziela.
+    Źródła połączone gałęzią sieci (linia, kabel, transformator poza łącznikiem szyn)
+    są JEDNĄ siecią z jawną impedancją — ten przypadek liczy zwarcie (decyzja OD-7)."""
+    role = role_lacznikow(snapshot)
+    podzial = podziel_krawedzie(snapshot)
+    laczniki_szyn = {
+        k.ref_id
+        for k in podzial.w_ruchu
+        if k.rodzaj == "lacznik" and role.get(k.ref_id) in ROLE_LACZNIKOW_SZYN
+    }
+    if not laczniki_szyn:
+        return ()
+    widok = derive(snapshot)
+    zrodla_szyny: dict[str, list[str]] = {}
+    for zrodlo in _kolekcja(snapshot, "sources"):
+        zrodla_szyny.setdefault(str(_pole(zrodlo, "bus_ref")), []).append(
+            str(_pole(zrodlo, "ref_id"))
+        )
+    skladowe = skladowe_spojne(
+        podzial.szyny,
+        ((k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.ref_id not in laczniki_szyn),
+    )
+    skladowa_szyny = {szyna: indeks for indeks, sk in enumerate(skladowe) for szyna in sk}
+    wynik: list[PolaczenieNiezaleznychZrodel] = []
+    for wyspa in widok.wyspy:
+        if len(wyspa.zrodla_sieciowe) < 2:
+            continue
+        grupy: dict[int, list[str]] = {}
+        for szyna in wyspa.szyny:
+            for zrodlo in zrodla_szyny.get(szyna, ()):
+                grupy.setdefault(skladowa_szyny[szyna], []).append(zrodlo)
+        if len(grupy) < 2:
+            continue
+        szyny_wyspy = set(wyspa.szyny)
+        laczniki = tuple(
+            sorted(
+                k.ref_id
+                for k in podzial.w_ruchu
+                if k.ref_id in laczniki_szyn
+                and k.szyna_a in szyny_wyspy
+                and skladowa_szyny[k.szyna_a] != skladowa_szyny[k.szyna_b]
+            )
+        )
+        wynik.append(
+            PolaczenieNiezaleznychZrodel(
+                laczniki=laczniki,
+                grupy_zrodel=tuple(sorted(tuple(sorted(g)) for g in grupy.values())),
+            )
+        )
+    return tuple(sorted(wynik, key=lambda p: p.laczniki))
+
+
+# ---------------------------------------------------------------------------
 # W5-C: punkty podziału — WYPROWADZANE z pozycji normalnej łączników
 # ---------------------------------------------------------------------------
 
 
 def punkty_podzialu(snapshot: EnergyNetworkModel | Mapping[str, object]) -> tuple[str, ...]:
-    """Punkty normalnie otwarte sieci: łączniki z ``normal_state == "open"`` (po ``ref_id``).
+    """Punkty normalnie otwarte sieci: łączniki roli ``PUNKT_PODZIALU`` (po ``ref_id``).
 
     JEDYNE źródło punktów podziału (W5-C): pozycja normalna łącznika
-    (``SwitchBranch.normal_state``). Dawna kopia przy magistrali
+    (``SwitchBranch.normal_state``) — z rolą z ``role_lacznikow`` (karta GPZ-H5): łącznik
+    szyn sekcji stacji (ŁS-110, ŁS-SN, sprzęgło rozdzielnicy nN) normalnie otwarty NIE jest
+    punktem podziału sieci, tylko rezerwą wewnątrz rozdzielni. Dawna kopia przy magistrali
     (``Corridor.no_point_ref``) jest skasowana — konsumenci (walidator I005, widok
     korytarzy, tor zasilania, widoki logiczne) czytają ten akcesor.
     """
     return tuple(
-        sorted(
-            str(_pole(g, "ref_id"))
-            for g in _kolekcja(snapshot, "branches")
-            if _pole(g, "type") in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
-            and _pole(g, "normal_state") == "open"
-        )
+        sorted(ref for ref, rola in role_lacznikow(snapshot).items() if rola == ROLA_PUNKT_PODZIALU)
     )
 
 
@@ -370,9 +598,13 @@ def poprzednie_punkty_podzialu(
     szyny, krawedzie, konce = _graf_konfiguracji_normalnej(
         snapshot, wymuszony_zamkniety=lacznik_ref
     )
+    # Karta GPZ-H5: kandydatem jest wyłącznie punkt podziału sieci — łącznik szyn sekcji
+    # stacji (normalnie otwarty ŁS-SN między sekcjami, z których wychodzi pierścień) nie
+    # jest punktem podziału i przeniesienie punktu nie może go cicho zamknąć.
+    punkty = set(punkty_podzialu(snapshot))
     wynik: list[str] = []
     for ref, (a, b) in sorted(konce.items()):
-        if ref == lacznik_ref:
+        if ref == lacznik_ref or ref not in punkty:
             continue
         mosty = krawedzie_kazdej_drogi(szyny, krawedzie, a, b)
         if mosty is not None and lacznik_ref in mosty:

@@ -288,7 +288,22 @@ describe('C — kontrola czułości wyroczni', () => {
     // (`gpz/…/substation#name-row-N`) mają TĘ SAMĄ bazę refu, co kreska szyny WN
     // (`gpz/…/substation#hv-bus`). Dziedziczenie bez filtru „czy ten napis mówi
     // o szynie" podmieniłoby menu stacji GPZ na menu sekcji szyny 110 kV.
-    const { enm } = SIECI[0];
+    // GPZ-H5-SLD etap 3: od scalenia backendu H5 strona 110 kV GPZ jest SEKCJĄ modelu,
+    // a jej szyna ma bazę refu sekcji (`gpz/…/hv_section/NNN#hv-bus`) — w fiksturach
+    // generatora pułapka zniknęła strukturalnie (asercja niżej). Ścieżka bez sekcji 110 kV
+    // w modelu (`compose/gpz.ts`: `${props.id}#hv-bus`, baza = stacja) nadal istnieje
+    // w kompozycji, więc kontrola czułości ćwiczy ją na tej samej sieci bez
+    // `gpz_hv_sections` — tam baza napisu nazwy GPZ NAPRAWDĘ niesie ref szyny WN.
+    const { enm: zSekcjami } = SIECI[0];
+    const wgBazySekcji = buildKanonicznyRefSzynyWgBazy(buildSceneV3(zSekcjami, 2).segments);
+    const gpzRef = (zSekcjami.substations ?? []).find((s) => s.station_type === 'gpz')!.ref_id;
+    expect(wgBazySekcji.get(gpzRef), 'z sekcjami 110 kV baza stacji GPZ nie niesie szyny WN').toBeUndefined();
+    const enm: EnergyNetworkModel = {
+      ...zSekcjami,
+      substations: (zSekcjami.substations ?? []).map((s) =>
+        s.station_type === 'gpz' ? { ...s, gpz_hv_sections: [] } : s,
+      ),
+    };
     const scene = buildSceneV3(enm, 2);
     const wgBazy = buildKanonicznyRefSzynyWgBazy(scene.segments);
     const nazwaGpz = scene.labels.find(
@@ -337,7 +352,11 @@ describe('D — pokrycie iloczynu cech', () => {
     'tor×galaz',
     'tor×pole',
     'aparat×pole',
-    'aparat×transformator',
+    // GPZ-H5-SLD etap 3: dawna para `aparat×transformator` pochodziła WYŁĄCZNIE z aparatów
+    // pola TR GPZ, które nie miało rekordu pola w modelu (ownerRef = transformator, sonda:
+    // `…/transformer/001/wn_sn` na L1/L2 starych fikstur). Backend H5 zakłada pola TR po
+    // obu stronach (`transformer/NNN/bay_wn`, `bay_sn`), więc te aparaty kotwiczą się na
+    // SWOIM polu — test E niżej przypina to wprost; para wypadła z wymagań z tej przyczyny.
     'transformator×pole',
     'zrodlo×zrodlo',
   ];
@@ -574,4 +593,45 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
     }
     expect(sprawdzonych, 'nie ma czego porównywać — para kreska↔napis musi być realna').toBeGreaterThan(50);
   });
+});
+
+// ---------------------------------------------------------------------------
+// E. APARAT POLA TR GPZ KOTWICZY SIĘ NA SWOIM POLU (GPZ-H5-SLD etap 3)
+// ---------------------------------------------------------------------------
+
+describe('E — aparat pola TR GPZ × strona transformatora (WN/SN) × LOD → kotwica „pole" tego pola', () => {
+  for (const { nazwa, enm } of SIECI) {
+    const polaTr = new Set(
+      (enm.bays ?? []).filter((b) => /\/transformer\/\d+\/bay_(wn|sn)$/.test(b.ref_id)).map((b) => b.ref_id),
+    );
+    for (const lod of [1, 2] as const) {
+      it(`${nazwa} LOD ${lod}: każdy aparat pola TR (bay_wn, bay_sn) → pole o tym samym refie`, () => {
+        // Kontrola wejścia: fikstura generatora niesie pola TR po obu stronach.
+        expect([...polaTr].some((r) => r.endsWith('/bay_wn'))).toBe(true);
+        expect([...polaTr].some((r) => r.endsWith('/bay_sn'))).toBe(true);
+        const scene = buildSceneV3(enm, lod);
+        const index = buildCanvasModelIndex(enm);
+        const areas = buildCanvasHitAreas({
+          symbols: scene.symbols,
+          segments: scene.segments,
+          labels: [] as never,
+          resultMarkers: [],
+          scale: 1,
+        });
+        const strony = new Set<string>();
+        for (const area of areas) {
+          if (area.klasa !== 'aparat' || !polaTr.has(area.ownerRef ?? '')) continue;
+          const wynik = resolveCanvasMenuSubject(
+            { klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind, busRef: undefined },
+            index,
+          );
+          expect(kotwicaWyniku(wynik), area.testId).toBe('pole');
+          expect(wynik.stan === 'temat' ? wynik.temat.modelRef : null, area.testId).toBe(area.ownerRef);
+          strony.add(area.ownerRef!.slice(area.ownerRef!.lastIndexOf('_') + 1));
+        }
+        // Obie strony transformatora ćwiczone (nie pusty zbiór).
+        expect([...strony].sort()).toEqual(['sn', 'wn']);
+      });
+    }
+  }
 });

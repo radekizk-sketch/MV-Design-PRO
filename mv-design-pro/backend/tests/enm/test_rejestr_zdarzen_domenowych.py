@@ -65,6 +65,25 @@ def _typy_zrodel_nn() -> set[str]:
     return {spec[-1] for spec in _NN_SOURCE_KIND_MAP.values()}
 
 
+def _typy_lokalnej_emisji_gpz() -> set[str]:
+    """``add_grid_source_sn`` emituje przez lokalną ``_zdarzenie(event_type, …)`` — typy to
+    literały pierwszego argumentu KAŻDEGO wywołania (wywołanie z typem nie-literałem = błąd
+    testu, bo zbiór typów przestałby być wyprowadzalny)."""
+    (modul,) = (m for s, m in _moduly() if s.name == "domain_operations.py")
+    typy: set[str] = set()
+    for wezel in ast.walk(modul):
+        if (
+            isinstance(wezel, ast.Call)
+            and isinstance(wezel.func, ast.Name)
+            and wezel.func.id == "_zdarzenie"
+        ):
+            stale = _stale(wezel.args[0]) if wezel.args else None
+            assert stale is not None, ast.unparse(wezel)
+            typy.update(stale)
+    assert typy, "brak typów zdarzeń budowy GPZ"
+    return typy
+
+
 #: ZAMKNIĘTA lista pośrednich źródeł typu zdarzenia: (plik, NAJBLIŻSZA funkcja) → zbiór
 #: typów. Zmienna przy ``"event_type"`` poza tą listą to błąd testu (nowa pośredniość
 #: bez wpisu — typ spoza rejestru przeszedłby niezauważony).
@@ -73,6 +92,9 @@ POSREDNIE: dict[tuple[str, str], Callable[[], set[str]]] = {
     # `_NN_SOURCE_KIND_MAP`; wołający wpisują go do zdarzenia.
     ("domain_operations.py", "insert_station_on_segment_sn"): _typy_zrodel_nn,
     ("domain_operations.py", "append_station_on_endpoint"): _typy_zrodel_nn,
+    # Budowa GPZ (karta GPZ-H5): lokalna funkcja emisji `_zdarzenie(event_type, …)`
+    # w `add_grid_source_sn`; typy to literały jej wywołań.
+    ("domain_operations.py", "_zdarzenie"): _typy_lokalnej_emisji_gpz,
     # Źródło przekształtnikowe SN: typ z `_resolve_converter_defaults`.
     ("domain_operations_v2.py", "add_converter_source"): _typy_konwertera,
     # Lokalna funkcja emisji `_emit(event_type_name, …)` w `_add_converter_source_der_sn`:

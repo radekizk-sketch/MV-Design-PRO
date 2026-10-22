@@ -3,7 +3,7 @@
 
 Łańcuch dowodzony (każde ogniwo to REALNY kod produkcyjny, zero fabrykacji):
 
-    vector_group ─► build_zero_sequence_zbus (SM-3, ``enm.mapping``)
+    vector_group ─► zbuduj_siec_zerowa (SM-3, ``enm.mapping``)
                  ─► z0_bus
                  ─► ShortCircuitIEC60909Solver.compute_1ph_short_circuit
                  ─► ShortCircuitResult.ikss_a  (I″k1 na szynie nN)
@@ -43,7 +43,7 @@ from __future__ import annotations
 import math
 
 import pytest
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
 from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
 from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.short_circuit_iec60909 import (
@@ -108,7 +108,7 @@ def _run_1ph_on_lv(vector_group: str, c_factor: float = 1.1) -> ShortCircuitResu
     )
     graph = map_enm_to_network_graph(enm)
     lv_node = next(n.id for n in graph.nodes.values() if n.name == "LV")
-    z0_bus = build_zero_sequence_zbus(enm, graph)
+    z0_bus = zbuduj_siec_zerowa(enm, graph).z0_bus
     result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
         graph=graph,
         fault_node_id=lv_node,

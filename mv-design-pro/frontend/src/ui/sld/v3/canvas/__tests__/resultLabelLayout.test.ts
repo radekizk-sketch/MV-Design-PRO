@@ -24,6 +24,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 const singleHop = new Set(orientedSegmentRefs(enm).keys());
+// GPZ-H5-SLD etap 3 (sonda agregatów po scaleniu backendu H5): jedyne skupisko sieci
+// referencyjnej tworzyły kotwice transformatora WN/SN i WSPÓLNEJ szyny WN stacji
+// (`…/substation#hv-bus`). Od H5 generator buduje stronę 110 kV jako sekcję modelu —
+// szyna WN stoi przy swoim polu, a skupisko znika (0 agregatów na tej sieci, przypięte
+// niżej). Wspólna szyna WN nadal występuje w modelach bez sekcji 110 kV; taki model
+// wydaje backend jako sieć złotą harnessu (`siec_zlota_scena_migawka.json`, eksport
+// `backend/scripts/eksport_fixtur_harnessu.py`) i to na nim agregacja ma realny skutek.
+const enmSzynyWnWspolnej = JSON.parse(
+  readFileSync(resolve(here, '..', '..', '..', '..', '..', 'harness-fixtures', 'generated', 'siec_zlota_scena_migawka.json'), 'utf8'),
+) as EnergyNetworkModel;
 
 /** Priorytet klasy (mniejsza = wyższy) — musi być spójny z RESULT_LABEL_PRIORITY. */
 const RANK: Record<string, number> = { source: 0, transformer: 1, branch: 2, bus: 3 };
@@ -42,8 +52,12 @@ function metricsForKind(kind: string): RawOverlayElement['metrics'] {
 }
 
 /** Buduje PEŁNY payload rozpływu z realnych refów sceny danego LOD. */
-function fullPayload(lod: 0 | 1 | 2): { scene: ReturnType<typeof buildSceneV3>; payload: RawOverlayPayload } {
-  const scene = buildSceneV3(enm, lod);
+function fullPayload(
+  lod: 0 | 1 | 2,
+  model: EnergyNetworkModel = enm,
+): { scene: ReturnType<typeof buildSceneV3>; payload: RawOverlayPayload } {
+  const scene = buildSceneV3(model, lod);
+  const singleHop = new Set(orientedSegmentRefs(model).keys());
   const elements: Record<string, RawOverlayElement> = {};
   for (const s of scene.symbols) {
     const k = s.meta?.elementKind;
@@ -141,11 +155,22 @@ describe('layoutResultLabels — R2 priorytety / agregacja / metryki', () => {
     }
   });
 
+  it('wym.14 agregacja × kształt szyny WN: sekcja 110 kV przy polu → 0 skupisk; wspólna szyna WN stacji → skupisko TR + szyna WN', () => {
+    const zSekcja = fullPayload(2);
+    const layoutSekcji = layoutResultLabels(zSekcja.scene, buildResultLabelsFromScene(zSekcja.scene, zSekcja.payload, singleHop), [], 2);
+    expect(layoutSekcji.aggregates).toEqual([]);
+    const wspolna = fullPayload(2, enmSzynyWnWspolnej);
+    const singleHopWspolnej = new Set(orientedSegmentRefs(enmSzynyWnWspolnej).keys());
+    const layoutWspolnej = layoutResultLabels(wspolna.scene, buildResultLabelsFromScene(wspolna.scene, wspolna.payload, singleHopWspolnej), [], 2);
+    expect(layoutWspolnej.aggregates.map((a) => a.members.map((m) => m.kind))).toEqual([['transformer', 'bus']]);
+    expect(layoutWspolnej.aggregates[0].members[1].ownerRef.endsWith('#hv-bus')).toBe(true);
+  });
+
   it('wym.14 agregacja: skupisko bliskich kotwic → marker „+N wyniki"; członkowie posortowani po (ranga, ref) i NIEobecni w placements', () => {
-    const { scene, payload } = fullPayload(2);
-    const byRef = buildResultLabelsFromScene(scene, payload, singleHop);
+    const { scene, payload } = fullPayload(2, enmSzynyWnWspolnej);
+    const byRef = buildResultLabelsFromScene(scene, payload, new Set(orientedSegmentRefs(enmSzynyWnWspolnej).keys()));
     const layout = layoutResultLabels(scene, byRef, [], 2);
-    // Fixtura referencyjna zawiera ≥1 skupisko (bramka: agregacja ma realny skutek).
+    // Fixtura zawiera ≥1 skupisko (bramka: agregacja ma realny skutek).
     expect(layout.aggregates.length).toBeGreaterThan(0);
     const placedRefs = new Set(layout.placements.map((p) => p.ownerRef));
     for (const agg of layout.aggregates) {

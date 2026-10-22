@@ -29,6 +29,7 @@ import {
   opisLacznikowPortow,
   pozycjaNormalna,
   punktyPodzialu,
+  rolaLacznika,
 } from '../../shared/stanLacznika';
 import type { Branch, BranchPointSN, EnergyNetworkModel } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
@@ -503,7 +504,7 @@ export function NopSurface({ surface }: SurfaceProps): JSX.Element {
       : null;
     return czyLacznikZPozycjaNormalna(galaz) ? galaz : null;
   }, [snapshot, ref]);
-  const lacznikJestPunktem = czyPunktPodzialu(lacznik);
+  const lacznikJestPunktem = czyPunktPodzialu(snapshot, lacznik);
 
   return (
     <div data-testid="nop-surface" className="flex h-full w-full flex-col p-4">
@@ -518,7 +519,7 @@ export function NopSurface({ surface }: SurfaceProps): JSX.Element {
             <KeyValue label="Bieżące położenie" value={etykietaPolozenia(lacznik.status)} />
             <KeyValue
               label="Pozycja normalna"
-              value={etykietaPozycjiNormalnej(pozycjaNormalna(lacznik))}
+              value={etykietaPozycjiNormalnej(pozycjaNormalna(lacznik), rolaLacznika(snapshot, lacznik))}
             />
           </div>
         ) : null}

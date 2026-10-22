@@ -1,34 +1,43 @@
-"""GPZ (rola A, „Zasilanie sieci") — 3 szablony z równoważnikiem sieci na szynach SN.
+"""GPZ (rola A, „Zasilanie sieci") — szablony stacji zasilających 110/SN.
 
 V12T-016 (rejestr długu): rola A miała ZERO szablonów — projektant zaczynający
 projekt od Głównego Punktu Zasilania (źródło sieci SN, korzeń modelu) nie miał
 gotowego pakietu katalogowego, mimo że maszyneria domenowa istniała
-(`enm/domain_operations.py::add_grid_source_sn`, „pierwszy krok budowy sieci SN")
-i katalog równoważników systemowych SN (`mv_source_catalog.py::SOURCE_SYSTEM_TYPES`,
-„Warunki przyłączenia / standard OSD") był w katalogu produkcyjnym.
+(`enm/domain_operations.py::add_grid_source_sn`, „pierwszy krok budowy sieci SN").
 
 Droga zabudowy JEST INNA niż pozostałych kategorii: GPZ jest KORZENIEM modelu
 (nie wstawia się „w segment", bo żadnego segmentu jeszcze nie ma), więc
-`apply.py` rozpoznaje `category == GPZ_110_SN` i woła `add_grid_source_sn`
-zamiast `insert_station_on_segment_sn`.
+`apply.py` rozpoznaje kategorię korzenia i woła `add_grid_source_sn` zamiast
+`insert_station_on_segment_sn`.
 
-Układ: dwie sekcje szyn SN ze sprzęgłem międzysekcyjnym (`bus_coupler`, powstaje
-automatycznie dla `sections_count >= 2`).
+Dwa układy (karta GPZ-H5, `TemplateSchema.gpz_uklad`):
 
-GRANICA ZASILANIA SN (karta GPZ-MODEL, rozstrzygnięcie architekta §0.2): równoważnik
-systemowy z katalogu (`ZRODLO_SN`) jest podany „z warunków przyłączenia" — Sk3/R/X
-WIDZIANE z szyny SN GPZ, więc już zawiera impedancję transformatorów 110/SN.
-Granicą modelu są wtedy szyny SN GPZ: transformatory 110/SN NIE są elementami modelu
-obliczeniowego i szablon ich nie tworzy (dawne szablony „2×16 MVA / 2×25 MVA"
-materializowały transformatory OBOK równoważnika — rysunek sugerował zasilanie przez
-transformatory, którego obliczenie nie miało). Równoważnik stoi na sekcji 1; sekcja 2
-jest zasilana przez sprzęgło (otwarte sprzęgło = blokada gotowości E065 „sekcja GPZ
-bez zasilania"). GPZ z transformatorami 110/SN buduje kreator źródła zasilania
-z równoważnikiem po stronie 110 kV.
+1. **ENEA H5 — wzorzec podstawowy** (`GPZ_UKLAD_H5`; ENEA Operator, Zeszyt 1 „Stacje
+   110 kV” §11.1: dwie linie 110 kV, dwa pola transformatorowe, jedno pole łącznika szyn;
+   stacja z jedną linią 110 kV nie jest dopuszczona). Strona 110 kV jest w modelu:
+   dwie sekcje szyn 110 kV, każda z WŁASNYM torem zasilania L1/L2 (linia, stacja
+   zasilająca, równoważnik sieci — DANE PROJEKTU, szablon ich nie niesie i bez nich
+   odmawia), łącznik szyn 110 kV ze stanem normalnym z danych (ENEA nie określa stanu
+   domyślnego), transformatory 110/SN z katalogu przypisane JAWNIE: TR1 sekcja 110 kV 1 →
+   sekcja SN 1, TR2 sekcja 110 kV 2 → sekcja SN 2 (liczba transformatorów może być
+   ograniczona do jednego — §11.1). Tryb rezerwy transformatorowej (§26.10.5: ukryta albo
+   jawna) jest wyborem projektanta, nie domyślną szablonu. Na każdej sekcji SN pola
+   funkcyjne (§13, zał. Z.2): zespołu uziemiającego, baterii kondensatorów i pomiaru
+   napięcia — BEZ aparatów i bez elementów (element powstaje wyłącznie z danych); łącznik
+   szyn SN w dwóch celach (zał. Z.2). Skład aparatów pól 110 kV z §11.1 trafia do modelu
+   jako PROPOZYCJA szablonu (`meta.apparatus_proposal`, `modelled: False`), nie jako
+   aparaty modelu.
+2. **Równoważnik sieci na szynach SN** (`GPZ_UKLAD_ROWNOWAZNIK_SN`): granica modelu = szyny
+   SN (karta GPZ-MODEL). Każda sekcja SN ma WŁASNY równoważnik z katalogu (warunki
+   przyłączenia OSD — Sk3 widziana z szyn sekcji, zawiera impedancję transformatora
+   110/SN zasilającego tę sekcję), łącznik szyn SN normalnie OTWARTY. Uzasadnienie:
+   rezerwa ukryta ENEA Zeszyt 1 §26.10.5 — każdy transformator zasila swoją sekcję,
+   łącznik szyn SN otwarty; dawny układ „jeden równoważnik na sekcji 1, sekcja 2 przez
+   zamknięte sprzęgło” opisywał stan, który w układzie normalnym GPZ nie występuje.
 
-Uziemienie punktu neutralnego: `isolated` (sieć izolowana) — najczęstszy,
-bezparametrowy wybór dla polskich sieci SN 15/20 kV (nie wymaga fabrykowania
-R/X rezystora/dławika, którego katalog produkcyjny nie niesie).
+Uziemienie punktu neutralnego SN: dana projektu (`params_override['grounding']`, ENEA
+Zeszyt 1 §16 — sposób pracy punktu neutralnego wg projektu dla sekcji). Szablon nie
+zakłada sieci izolowanej: brak danej = odmowa zwarcia doziemnego z przyczyną.
 """
 
 from __future__ import annotations
@@ -38,24 +47,108 @@ from application.station_templates._choices import (
     GPZ_SOURCE_OPTIONS_20,
     PROT_FEEDER_OPTIONS,
     SN_APPARATUS_OPTIONS,
+    SN_APPARATUS_OPTIONS_24KV,
+    TR_WN_SN_OPTIONS_15,
+    TR_WN_SN_OPTIONS_20,
 )
 from application.station_templates.schema import (
+    GPZ_UKLAD_H5,
+    GPZ_UKLAD_ROWNOWAZNIK_SN,
     BayRoleSpec,
     CatalogChoice,
+    DanaProjektuSzablonu,
     StationTemplate,
     TemplateCategory,
     TemplateParamFloat,
     TemplateParamInt,
     TemplateSchema,
 )
+from enm.rezerwa_gpz import (
+    NAZWA_TRYBU_REZERWY_PL,
+    PODPOWIEDZ_STANU_LACZNIKA_SZYN_WN_PL,
+    PODPOWIEDZ_TRYBU_REZERWY_PL,
+    PODSTAWA_STANU_LACZNIKA_SZYN_WN_PL,
+    PODSTAWA_TRYBU_REZERWY_PL,
+    TRYB_REZERWY_JAWNEJ,
+    TRYBY_REZERWY,
+)
+
+#: Pola funkcyjne każdej sekcji SN GPZ H5 (ENEA Zeszyt 1 §13, zał. Z.2) — role operacji
+#: `add_grid_source_sn` (`gpz_sections[].function_bays`).
+POLA_FUNKCYJNE_SEKCJI_H5: tuple[str, ...] = ("EARTHING", "CAPACITOR", "MEASUREMENT")
+
+#: Liczba cel łącznika szyn SN GPZ H5 (ENEA Zeszyt 1, zał. Z.2).
+CELE_LACZNIKA_SN_H5 = 2
+
+#: Dane projektu szablonu H5 — pola wejścia z podpowiedzią i podstawą, bez wartości domyślnej
+#: (wpis 7 koordynacji pkt 6). `apply.py::_ladunek_gpz_h5` przekazuje do operacji WYŁĄCZNIE
+#: klucze tej listy (`klucz_ladunku`) — deklaracja i przekazanie z jednego źródła.
+DANE_PROJEKTU_H5: tuple[DanaProjektuSzablonu, ...] = (
+    DanaProjektuSzablonu(
+        klucz="hv_sections",
+        podpowiedz_pl=(
+            "Dla każdej z dwóch sekcji szyn 110 kV tor zasilania: nazwa linii 110 kV, stacja "
+            "zasilająca i równoważnik sieci z warunków przyłączenia OSD (Sk″ max i min, R/X, "
+            "składowa zerowa)"
+        ),
+        podstawa_pl=(
+            "Wymagania techniczne ENEA Operator, Zeszyt 1, §11.1 — układ H5 ma dwie linie "
+            "zasilające 110 kV, stacja z jedną linią 110 kV nie jest dopuszczona"
+        ),
+    ),
+    DanaProjektuSzablonu(
+        klucz="hv_coupler.normal_state",
+        podpowiedz_pl=PODPOWIEDZ_STANU_LACZNIKA_SZYN_WN_PL,
+        podstawa_pl=PODSTAWA_STANU_LACZNIKA_SZYN_WN_PL,
+        wartosci=(("open", "otwarty"), ("closed", "zamknięty")),
+    ),
+    DanaProjektuSzablonu(
+        klucz="hv_coupler.justification",
+        podpowiedz_pl="Dlaczego łącznik szyn 110 kV pracuje normalnie zamknięty",
+        podstawa_pl=PODSTAWA_STANU_LACZNIKA_SZYN_WN_PL,
+        warunek_pl="wymagane przy stanie normalnym „zamknięty”",
+    ),
+    DanaProjektuSzablonu(
+        klucz="reserve_mode",
+        podpowiedz_pl=PODPOWIEDZ_TRYBU_REZERWY_PL,
+        podstawa_pl=PODSTAWA_TRYBU_REZERWY_PL,
+        wartosci=tuple((tryb, NAZWA_TRYBU_REZERWY_PL[tryb]) for tryb in TRYBY_REZERWY),
+    ),
+    DanaProjektuSzablonu(
+        klucz="reserve_transformer",
+        podpowiedz_pl="Numer transformatora rezerwowego (nieobciążonego w normalnej pracy)",
+        podstawa_pl=PODSTAWA_TRYBU_REZERWY_PL,
+        warunek_pl=f"wymagane przy trybie „{NAZWA_TRYBU_REZERWY_PL[TRYB_REZERWY_JAWNEJ]}”",
+    ),
+    DanaProjektuSzablonu(
+        klucz="reserve_transformer_apparatus",
+        podpowiedz_pl=(
+            "Wyłącznik pola SN transformatora rezerwowego z katalogu — normalnie otwarty"
+        ),
+        podstawa_pl=PODSTAWA_TRYBU_REZERWY_PL,
+        warunek_pl=f"wymagane przy trybie „{NAZWA_TRYBU_REZERWY_PL[TRYB_REZERWY_JAWNEJ]}”",
+    ),
+)
+
+#: Propozycja składu aparatów pól 110 kV (ENEA Zeszyt 1 §11.1) — oznaczenia aparatów:
+#: OSZ(U) odłącznik szynowy (z uziemnikiem), W wyłącznik, PIU przekładnik prądowy,
+#: OL(U) odłącznik liniowy (z uziemnikiem), OGR ogranicznik przepięć, OS(U) odłącznik
+#: sekcyjny (z uziemnikiem). Propozycja szablonu, NIE aparaty modelu.
+PROPOZYCJA_APARATOW_110_H5: dict[str, object] = {
+    "basis": "ENEA Operator, Zeszyt 1 „Stacje 110 kV” §11.1 (układ H5)",
+    "line": ["OSZ(U)", "W", "PIU", "OL(U)", "OGR"],
+    "transformer": ["OSZ(U)", "W", "PIU", "OGR"],
+    "coupler": ["OS(U)", "W", "PIU", "(U)OS"],
+}
 
 
-def _gpz(
+def _gpz_rownowaznik_sn(
     tpl_id: str,
     name_pl: str,
     description_pl: str,
     *,
     source_options: tuple[CatalogChoice, ...],
+    apparatus_options: tuple[CatalogChoice, ...],
     line_fields_per_section: int,
     use_case: str,
 ) -> StationTemplate:
@@ -84,13 +177,15 @@ def _gpz(
                 label_pl="Liczba pól liniowych na sekcję",
             ),
             sn_bay_roles=(
-                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja A)"),
-                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja B)"),
-                BayRoleSpec(role="COUPLER", okreslenie_pl="sekcyjnego (mostek H5)"),
+                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja 1)"),
+                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja 2)"),
+                BayRoleSpec(role="COUPLER", okreslenie_pl="szyn SN (normalnie otwarty)"),
             ),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
-            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
+            sn_bay_apparatus_options=apparatus_options,
             grid_source_options=source_options,
+            protection_settings_default="tpl_feeder_15kv_sectional",
+            gpz_uklad=GPZ_UKLAD_ROWNOWAZNIK_SN,
             # GPZ zasila sieć SN — bez własnej strony nN.
             nn_feeders_count=TemplateParamInt(
                 default=0, min_value=0, max_value=0, label_pl="Bez odpływów nN"
@@ -99,43 +194,139 @@ def _gpz(
             nn_load_default_kw=TemplateParamFloat(
                 default=0.0, min_value=0.0, max_value=0.0, unit="kW", label_pl="Bez odbioru nN"
             ),
+        ),
+    )
+
+
+def _gpz_h5(
+    tpl_id: str,
+    name_pl: str,
+    description_pl: str,
+    *,
+    transformer_options: tuple[CatalogChoice, ...],
+    apparatus_options: tuple[CatalogChoice, ...],
+    line_fields_per_section: int,
+    use_case: str,
+) -> StationTemplate:
+    return StationTemplate(
+        id=tpl_id,
+        name_pl=name_pl,
+        category=TemplateCategory.GPZ_110_SN,
+        description_pl=description_pl,
+        use_case_pl=use_case,
+        nc_rfg_type=None,
+        icon="station-gpz",
+        tags=("GPZ", "zasilanie sieci", "korzeń modelu", "ENEA H5", "strona 110 kV"),
+        schema=TemplateSchema(
+            transformer_options=transformer_options,
+            # ENEA §11.1: dwa pola transformatorowe; liczba transformatorów może być
+            # ograniczona do jednego (sekcja SN 2 zasilana wtedy łącznikiem szyn SN —
+            # wyłącznie przy rezerwie jawnej, inaczej odmowa operacji).
+            transformer_count=TemplateParamInt(
+                default=2,
+                min_value=1,
+                max_value=2,
+                label_pl="Liczba transformatorów 110/SN (pola transformatorowe H5)",
+            ),
+            sn_bays_count=TemplateParamInt(
+                default=line_fields_per_section,
+                min_value=1,
+                max_value=12,
+                label_pl="Liczba pól liniowych na sekcję SN",
+            ),
+            sn_bay_roles=(
+                BayRoleSpec(role="TR", okreslenie_pl="(sekcja 1)"),
+                BayRoleSpec(role="TR", okreslenie_pl="(sekcja 2)"),
+                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja 1)"),
+                BayRoleSpec(role="FEEDER", okreslenie_pl="(sekcja 2)"),
+                BayRoleSpec(role="EARTHING"),
+                BayRoleSpec(role="CAPACITOR"),
+                BayRoleSpec(role="MEASUREMENT", okreslenie_pl="napięcia szyn"),
+                BayRoleSpec(role="COUPLER", okreslenie_pl="szyn SN (dwie cele)"),
+            ),
+            sn_bay_protection_options=PROT_FEEDER_OPTIONS,
+            sn_bay_apparatus_options=apparatus_options,
             protection_settings_default="tpl_feeder_15kv_sectional",
+            gpz_uklad=GPZ_UKLAD_H5,
+            dane_projektu=DANE_PROJEKTU_H5,
+            # GPZ zasila sieć SN — bez własnej strony nN.
+            nn_feeders_count=TemplateParamInt(
+                default=0, min_value=0, max_value=0, label_pl="Bez odpływów nN"
+            ),
+            nn_feeder_cb_options=(),
+            nn_load_default_kw=TemplateParamFloat(
+                default=0.0, min_value=0.0, max_value=0.0, unit="kW", label_pl="Bez odbioru nN"
+            ),
         ),
     )
 
 
 GPZ_110_SN_TEMPLATES = (
-    _gpz(
-        "tpl_gpz_sn_15_2s_4p",
-        "GPZ 15 kV, dwie sekcje SN ze sprzęgłem, 4 pola liniowe na sekcję",
-        "Główny Punkt Zasilania zasilany równoważnikiem sieci na szynach SN 15 kV "
-        "(warunki przyłączenia OSD): dwie sekcje szyn SN, sprzęgło międzysekcyjne, "
-        "po 4 pola liniowe na sekcji. Transformatory 110/SN są zawarte w równoważniku "
-        "i nie są elementami modelu.",
-        source_options=GPZ_SOURCE_OPTIONS_15,
+    _gpz_h5(
+        "tpl_gpz_h5_110_15_2x25mva",
+        "GPZ 110/15 kV w układzie H5, 2 × 25 MVA",
+        "Główny Punkt Zasilania 110/15 kV w układzie H5 (ENEA Operator, Zeszyt 1 §11.1): "
+        "dwie linie 110 kV (tory zasilania L1 i L2 z danych projektu), dwie sekcje szyn "
+        "110 kV z łącznikiem szyn, dwa transformatory 110/15 kV z katalogu przypisane "
+        "jawnie do sekcji, dwie sekcje SN z łącznikiem szyn SN w dwóch celach, na każdej "
+        "sekcji SN pola zespołu uziemiającego, baterii kondensatorów i pomiaru napięcia.",
+        transformer_options=TR_WN_SN_OPTIONS_15,
+        apparatus_options=SN_APPARATUS_OPTIONS,
         line_fields_per_section=4,
-        use_case="Średniej wielkości GPZ zasilający obszar dystrybucyjny SN 15 kV "
-        "(miasto powiatowe, kilka magistrali wiejskich).",
+        use_case="Typowa stacja 110/15 kV OSD z dwoma liniami zasilającymi 110 kV "
+        "i rezerwą transformatorową.",
     ),
-    _gpz(
-        "tpl_gpz_sn_15_2s_6p",
-        "GPZ 15 kV, dwie sekcje SN ze sprzęgłem, 6 pól liniowych na sekcję",
-        "Duży Główny Punkt Zasilania zasilany równoważnikiem sieci na szynach SN 15 kV: "
-        "dwie sekcje szyn SN, sprzęgło międzysekcyjne, po 6 pól liniowych na sekcji. "
-        "Transformatory 110/SN są zawarte w równoważniku i nie są elementami modelu.",
+    _gpz_h5(
+        "tpl_gpz_h5_110_20_2x25mva",
+        "GPZ 110/20 kV w układzie H5, 2 × 25 MVA",
+        "Główny Punkt Zasilania 110/20 kV w układzie H5 (ENEA Operator, Zeszyt 1 §11.1): "
+        "dwie linie 110 kV (tory zasilania L1 i L2 z danych projektu), dwie sekcje szyn "
+        "110 kV z łącznikiem szyn, dwa transformatory 110/20 kV z katalogu przypisane "
+        "jawnie do sekcji, dwie sekcje SN z łącznikiem szyn SN w dwóch celach, na każdej "
+        "sekcji SN pola zespołu uziemiającego, baterii kondensatorów i pomiaru napięcia.",
+        transformer_options=TR_WN_SN_OPTIONS_20,
+        apparatus_options=SN_APPARATUS_OPTIONS_24KV,
+        line_fields_per_section=4,
+        use_case="Typowa stacja 110/20 kV OSD z dwoma liniami zasilającymi 110 kV "
+        "i rezerwą transformatorową.",
+    ),
+    _gpz_rownowaznik_sn(
+        "tpl_gpz_sn_15_2s_4p",
+        "GPZ 15 kV — równoważnik na szynach SN, dwie sekcje, 4 pola liniowe na sekcję",
+        "Główny Punkt Zasilania opisany równoważnikami sieci na szynach SN 15 kV "
+        "(warunki przyłączenia OSD): dwie sekcje szyn SN, każda z własnym równoważnikiem, "
+        "łącznik szyn SN normalnie otwarty, po 4 pola liniowe na sekcji. Transformatory "
+        "110/SN są zawarte w równoważnikach i nie są elementami modelu.",
         source_options=GPZ_SOURCE_OPTIONS_15,
+        apparatus_options=SN_APPARATUS_OPTIONS,
+        line_fields_per_section=4,
+        use_case="GPZ zasilający obszar dystrybucyjny SN 15 kV, gdy OSD podał warunki "
+        "przyłączenia na szynach SN (strona 110 kV poza zakresem projektu).",
+    ),
+    _gpz_rownowaznik_sn(
+        "tpl_gpz_sn_15_2s_6p",
+        "GPZ 15 kV — równoważnik na szynach SN, dwie sekcje, 6 pól liniowych na sekcję",
+        "Duży Główny Punkt Zasilania opisany równoważnikami sieci na szynach SN 15 kV: "
+        "dwie sekcje szyn SN, każda z własnym równoważnikiem, łącznik szyn SN normalnie "
+        "otwarty, po 6 pól liniowych na sekcji. Transformatory 110/SN są zawarte "
+        "w równoważnikach i nie są elementami modelu.",
+        source_options=GPZ_SOURCE_OPTIONS_15,
+        apparatus_options=SN_APPARATUS_OPTIONS,
         line_fields_per_section=6,
         use_case="Duży GPZ obszaru miejskiego/przemysłowego SN 15 kV z wieloma "
-        "magistralami odpływowymi.",
+        "magistralami odpływowymi, warunki przyłączenia na szynach SN.",
     ),
-    _gpz(
+    _gpz_rownowaznik_sn(
         "tpl_gpz_sn_20_2s_4p",
-        "GPZ 20 kV, dwie sekcje SN ze sprzęgłem, 4 pola liniowe na sekcję",
-        "Główny Punkt Zasilania zasilany równoważnikiem sieci na szynach SN 20 kV: "
-        "dwie sekcje szyn SN, sprzęgło międzysekcyjne, po 4 pola liniowe na sekcji. "
-        "Transformatory 110/SN są zawarte w równoważniku i nie są elementami modelu.",
+        "GPZ 20 kV — równoważnik na szynach SN, dwie sekcje, 4 pola liniowe na sekcję",
+        "Główny Punkt Zasilania opisany równoważnikami sieci na szynach SN 20 kV: dwie "
+        "sekcje szyn SN, każda z własnym równoważnikiem, łącznik szyn SN normalnie "
+        "otwarty, po 4 pola liniowe na sekcji. Transformatory 110/SN są zawarte "
+        "w równoważnikach i nie są elementami modelu.",
         source_options=GPZ_SOURCE_OPTIONS_20,
+        apparatus_options=SN_APPARATUS_OPTIONS_24KV,
         line_fields_per_section=4,
-        use_case="Średniej wielkości GPZ zasilający obszar dystrybucyjny SN 20 kV.",
+        use_case="GPZ zasilający obszar dystrybucyjny SN 20 kV, warunki przyłączenia "
+        "na szynach SN.",
     ),
 )

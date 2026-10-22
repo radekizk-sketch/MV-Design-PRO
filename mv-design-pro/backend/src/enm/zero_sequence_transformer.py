@@ -4,7 +4,7 @@ połączeń (IEC 60909-0:2016 § 6, składowe symetryczne) — karta SM-3 (V12K-
 Zdolność ADDYTYWNA: buduje wkład transformatora do sieci składowej zerowej
 (Y0/Z0) na podstawie grupy wektorowej ``vector_group`` oraz konfiguracji
 uziemienia punktów neutralnych (``hv_neutral``/``lv_neutral``). Przed tą kartą
-transformatory były w budowniczym Z0 (``enm.mapping.build_zero_sequence_zbus``)
+transformatory były w budowniczym Z0 (``enm.mapping.zbuduj_siec_zerowa``)
 CAŁKOWICIE POMIJANE — grupa połączeń nie sterowała realnie ścieżką prądu
 zerowego. Tu wprowadzamy standardową tablicę połączeń sekwencji zerowej.
 

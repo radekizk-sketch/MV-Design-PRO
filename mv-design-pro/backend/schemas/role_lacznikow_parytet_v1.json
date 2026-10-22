@@ -1,0 +1,1840 @@
+{
+  "wersja": 1,
+  "opis": "Rola łącznika (enm.topology.role_lacznikow) — tablica parytetu backend × front (ui/shared/stanLacznika.ts::roleLacznikow). Generator: tests/enm/test_role_lacznikow_parytet.py.",
+  "przypadki": [
+    {
+      "nazwa": "ls110_open",
+      "rodzaj": "LS_110",
+      "stan": "open",
+      "lacznik": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/apparatus",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "status": "open",
+            "normal_state": "open"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn"
+            ],
+            "transformer_refs": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/wn_sn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/wn_sn"
+            ],
+            "gpz_hv_sections": [
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn"
+              },
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn"
+              }
+            ],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn"
+              },
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/wn_sn",
+            "hv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "lv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn"
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/wn_sn",
+            "hv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "lv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn"
+          }
+        ]
+      },
+      "role": {
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001": "LACZNIK_SZYN_SN",
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001": "LACZNIK_SZYN_WN"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/apparatus"
+      ]
+    },
+    {
+      "nazwa": "ls110_closed",
+      "rodzaj": "LS_110",
+      "stan": "closed",
+      "lacznik": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_coupler/001",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/001/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/002/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/001/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/002/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/002/bus_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/001/001/apparatus",
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/001/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/001/bus_sn",
+            "to_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/001/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/002/001/apparatus",
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/002/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/002/bus_sn",
+            "to_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/002/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/coupler/001",
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/001/bus_sn",
+            "to_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/002/bus_sn",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_coupler/001",
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/001/bus_wn",
+            "to_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/002/bus_wn",
+            "status": "closed",
+            "normal_state": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/001/bus_sn",
+              "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/002/bus_sn",
+              "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/001/bus_wn",
+              "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/002/bus_wn"
+            ],
+            "transformer_refs": [
+              "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/transformer/001/wn_sn",
+              "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/transformer/002/wn_sn"
+            ],
+            "gpz_hv_sections": [
+              {
+                "bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/001/bus_wn"
+              },
+              {
+                "bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/002/bus_wn"
+              }
+            ],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/001/bus_sn"
+              },
+              {
+                "bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/002/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/transformer/001/wn_sn",
+            "hv_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/001/bus_wn",
+            "lv_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/001/bus_sn"
+          },
+          {
+            "ref_id": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/transformer/002/wn_sn",
+            "hv_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_section/002/bus_wn",
+            "lv_bus_ref": "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/section/002/bus_sn"
+          }
+        ]
+      },
+      "role": {
+        "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/coupler/001": "LACZNIK_SZYN_SN",
+        "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/hv_coupler/001": "LACZNIK_SZYN_WN"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/001/001/apparatus",
+        "gpz/7b0ff1bd8ebb09f857ad10fb2a29c6f7/bay/002/001/apparatus"
+      ]
+    },
+    {
+      "nazwa": "lssn_open",
+      "rodzaj": "LS_SN",
+      "stan": "open",
+      "lacznik": "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/apparatus",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001",
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "status": "open",
+            "normal_state": "open"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn"
+            ],
+            "transformer_refs": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/wn_sn",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/wn_sn"
+            ],
+            "gpz_hv_sections": [
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn"
+              },
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn"
+              }
+            ],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn"
+              },
+              {
+                "bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/wn_sn",
+            "hv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "lv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn"
+          },
+          {
+            "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/wn_sn",
+            "hv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "lv_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn"
+          }
+        ]
+      },
+      "role": {
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001": "LACZNIK_SZYN_SN",
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001": "LACZNIK_SZYN_WN"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
+        "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/apparatus"
+      ]
+    },
+    {
+      "nazwa": "lssn_closed",
+      "rodzaj": "LS_SN",
+      "stan": "closed",
+      "lacznik": "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "status": "closed",
+            "normal_state": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+            "status": "open",
+            "normal_state": "open"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn"
+            ],
+            "transformer_refs": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/wn_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/wn_sn"
+            ],
+            "gpz_hv_sections": [
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn"
+              },
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn"
+              }
+            ],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn"
+              },
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/wn_sn",
+            "hv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "lv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn"
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/wn_sn",
+            "hv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "lv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn"
+          }
+        ]
+      },
+      "role": {
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001": "LACZNIK_SZYN_SN",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001": "LACZNIK_SZYN_WN",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn": "LACZNIK_POLA_TRANSFORMATOROWEGO"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus"
+      ]
+    },
+    {
+      "nazwa": "pole_tr_open",
+      "rodzaj": "POLE_TR",
+      "stan": "open",
+      "lacznik": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "status": "closed",
+            "normal_state": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+            "status": "open",
+            "normal_state": "open"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn"
+            ],
+            "transformer_refs": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/wn_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/wn_sn"
+            ],
+            "gpz_hv_sections": [
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn"
+              },
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn"
+              }
+            ],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn"
+              },
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/wn_sn",
+            "hv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "lv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn"
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/wn_sn",
+            "hv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "lv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn"
+          }
+        ]
+      },
+      "role": {
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001": "LACZNIK_SZYN_SN",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001": "LACZNIK_SZYN_WN",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn": "LACZNIK_POLA_TRANSFORMATOROWEGO"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus"
+      ]
+    },
+    {
+      "nazwa": "pole_tr_closed",
+      "rodzaj": "POLE_TR",
+      "stan": "closed",
+      "lacznik": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "voltage_kv": 110.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+            "status": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "status": "closed",
+            "normal_state": "closed"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
+            "type": "bus_coupler",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn",
+            "type": "breaker",
+            "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+            "status": "closed",
+            "normal_state": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn"
+            ],
+            "transformer_refs": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/wn_sn",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/wn_sn"
+            ],
+            "gpz_hv_sections": [
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn"
+              },
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn"
+              }
+            ],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn"
+              },
+              {
+                "bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/wn_sn",
+            "hv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "lv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn"
+          },
+          {
+            "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/wn_sn",
+            "hv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "lv_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn"
+          }
+        ]
+      },
+      "role": {
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001": "LACZNIK_SZYN_SN",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001": "LACZNIK_SZYN_WN",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/breaker_sn": "LACZNIK_POLA_TRANSFORMATOROWEGO"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/apparatus",
+        "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/apparatus"
+      ]
+    },
+    {
+      "nazwa": "magistrala_brak",
+      "rodzaj": "MAGISTRALA",
+      "stan": null,
+      "lacznik": "sw/272c96c8579873cb48c3346c95b6ab09/switch",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "bus/272c96c8579873cb48c3346c95b6ab09/switch_node",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/272c96c8579873cb48c3346c95b6ab09/switch_node_2",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment",
+            "type": "cable",
+            "from_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "to_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment_SL",
+            "ref_id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment_SL",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/272c96c8579873cb48c3346c95b6ab09/switch_node",
+            "status": "closed"
+          },
+          {
+            "id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment_SR",
+            "ref_id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment_SR",
+            "type": "cable",
+            "from_bus_ref": "bus/272c96c8579873cb48c3346c95b6ab09/switch_node_2",
+            "to_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "sw/272c96c8579873cb48c3346c95b6ab09/switch",
+            "ref_id": "sw/272c96c8579873cb48c3346c95b6ab09/switch",
+            "type": "switch",
+            "from_bus_ref": "bus/272c96c8579873cb48c3346c95b6ab09/switch_node",
+            "to_bus_ref": "bus/272c96c8579873cb48c3346c95b6ab09/switch_node_2",
+            "status": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": []
+      },
+      "role": {},
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "sw/272c96c8579873cb48c3346c95b6ab09/switch"
+      ]
+    },
+    {
+      "nazwa": "magistrala_open",
+      "rodzaj": "MAGISTRALA",
+      "stan": "open",
+      "lacznik": "sw/a9402123892bb21a828a084db4aa9744/switch",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/a9402123892bb21a828a084db4aa9744/switch_node",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/a9402123892bb21a828a084db4aa9744/switch_node_2",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node_2",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "ref_id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "type": "cable",
+            "from_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "ref_id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SL",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SL",
+            "type": "cable",
+            "from_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "to_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SL",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SL",
+            "type": "cable",
+            "from_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node_2",
+            "to_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SR",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SR",
+            "type": "cable",
+            "from_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node_2",
+            "to_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "ref_id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "sw/a9402123892bb21a828a084db4aa9744/switch",
+            "ref_id": "sw/a9402123892bb21a828a084db4aa9744/switch",
+            "type": "switch",
+            "from_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node",
+            "to_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node_2",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "sw/dcb6ba55cecf6d1455bedbace7e9f910/switch",
+            "ref_id": "sw/dcb6ba55cecf6d1455bedbace7e9f910/switch",
+            "type": "switch",
+            "from_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node",
+            "to_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node_2",
+            "status": "closed",
+            "normal_state": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": []
+      },
+      "role": {
+        "sw/a9402123892bb21a828a084db4aa9744/switch": "PUNKT_PODZIALU"
+      },
+      "punkty_podzialu": [
+        "sw/a9402123892bb21a828a084db4aa9744/switch"
+      ],
+      "kandydaci": [
+        "sw/dcb6ba55cecf6d1455bedbace7e9f910/switch"
+      ]
+    },
+    {
+      "nazwa": "magistrala_closed",
+      "rodzaj": "MAGISTRALA",
+      "stan": "closed",
+      "lacznik": "sw/dcb6ba55cecf6d1455bedbace7e9f910/switch",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/a9402123892bb21a828a084db4aa9744/switch_node",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/a9402123892bb21a828a084db4aa9744/switch_node_2",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node_2",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "ref_id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "type": "cable",
+            "from_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "ref_id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SL",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SL",
+            "type": "cable",
+            "from_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "to_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SL",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SL",
+            "type": "cable",
+            "from_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node_2",
+            "to_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SR",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_SR_SR",
+            "type": "cable",
+            "from_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node_2",
+            "to_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "ref_id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "sw/a9402123892bb21a828a084db4aa9744/switch",
+            "ref_id": "sw/a9402123892bb21a828a084db4aa9744/switch",
+            "type": "switch",
+            "from_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node",
+            "to_bus_ref": "bus/a9402123892bb21a828a084db4aa9744/switch_node_2",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "sw/dcb6ba55cecf6d1455bedbace7e9f910/switch",
+            "ref_id": "sw/dcb6ba55cecf6d1455bedbace7e9f910/switch",
+            "type": "switch",
+            "from_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node",
+            "to_bus_ref": "bus/dcb6ba55cecf6d1455bedbace7e9f910/switch_node_2",
+            "status": "closed",
+            "normal_state": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          }
+        ],
+        "transformers": []
+      },
+      "role": {
+        "sw/a9402123892bb21a828a084db4aa9744/switch": "PUNKT_PODZIALU"
+      },
+      "punkty_podzialu": [
+        "sw/a9402123892bb21a828a084db4aa9744/switch"
+      ],
+      "kandydaci": [
+        "sw/dcb6ba55cecf6d1455bedbace7e9f910/switch"
+      ]
+    },
+    {
+      "nazwa": "stacja_sekcyjna_brak",
+      "rodzaj": "STACJA_SEKCYJNA",
+      "stan": null,
+      "lacznik": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/nn_bus",
+            "voltage_kv": 0.4
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "ref_id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "type": "cable",
+            "from_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "ref_id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_L",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_L",
+            "type": "cable",
+            "from_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_R",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_R",
+            "type": "cable",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "to_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "ref_id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+            "type": "bus_coupler",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "status": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/station",
+            "station_type": "sectional",
+            "bus_refs": [
+              "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+              "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+              "stn/2ffd734262474d30c86c413039c2c46c/nn_bus"
+            ],
+            "transformer_refs": [
+              "stn/2ffd734262474d30c86c413039c2c46c/transformer"
+            ],
+            "gpz_hv_sections": [],
+            "gpz_sections": [],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/transformer",
+            "hv_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "lv_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/nn_bus"
+          }
+        ]
+      },
+      "role": {
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003": "LACZNIK_POLA_TRANSFORMATOROWEGO"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": [
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001"
+      ]
+    },
+    {
+      "nazwa": "stacja_sekcyjna_open",
+      "rodzaj": "STACJA_SEKCYJNA",
+      "stan": "open",
+      "lacznik": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/nn_bus",
+            "voltage_kv": 0.4
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "ref_id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "type": "cable",
+            "from_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "ref_id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_L",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_L",
+            "type": "cable",
+            "from_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_R",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_R",
+            "type": "cable",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "to_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "ref_id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+            "type": "bus_coupler",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "status": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/station",
+            "station_type": "sectional",
+            "bus_refs": [
+              "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+              "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+              "stn/2ffd734262474d30c86c413039c2c46c/nn_bus"
+            ],
+            "transformer_refs": [
+              "stn/2ffd734262474d30c86c413039c2c46c/transformer"
+            ],
+            "gpz_hv_sections": [],
+            "gpz_sections": [],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/transformer",
+            "hv_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "lv_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/nn_bus"
+          }
+        ]
+      },
+      "role": {
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler": "PUNKT_PODZIALU",
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003": "LACZNIK_POLA_TRANSFORMATOROWEGO"
+      },
+      "punkty_podzialu": [
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler"
+      ],
+      "kandydaci": [
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001"
+      ]
+    },
+    {
+      "nazwa": "stacja_sekcyjna_closed",
+      "rodzaj": "STACJA_SEKCYJNA",
+      "stan": "closed",
+      "lacznik": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/nn_bus",
+            "voltage_kv": 0.4
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "voltage_kv": 15.0
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "voltage_kv": 15.0
+          }
+        ],
+        "branches": [
+          {
+            "id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "ref_id": "seg/454f9492166fb097c3ff547e7fe448ec/segment",
+            "type": "cable",
+            "from_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "ref_id": "seg/775dce027cd1e1e9c4d31840668100a3/ring_closure",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/454f9492166fb097c3ff547e7fe448ec/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_L",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_L",
+            "type": "cable",
+            "from_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "status": "closed"
+          },
+          {
+            "id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_R",
+            "ref_id": "seg/90bed551ab0b50097132ae1f768f7f5f/segment_R",
+            "type": "cable",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "to_bus_ref": "bus/90bed551ab0b50097132ae1f768f7f5f/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "ref_id": "seg/e7b22308bc3d1355902ec3eabb5e616e/segment",
+            "type": "cable",
+            "from_bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn",
+            "to_bus_ref": "bus/e7b22308bc3d1355902ec3eabb5e616e/downstream",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+            "type": "bus_coupler",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "status": "closed",
+            "normal_state": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/000",
+            "status": "open",
+            "normal_state": "open"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/001",
+            "status": "closed"
+          },
+          {
+            "id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003",
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003",
+            "type": "breaker",
+            "from_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+            "to_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "status": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/substation",
+            "station_type": "gpz",
+            "bus_refs": [
+              "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [
+              {
+                "bus_ref": "gpz/8e9e863f856439cc7c3bdc59bf4fbb39/section/001/bus_sn"
+              }
+            ],
+            "nn_sections": []
+          },
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/station",
+            "station_type": "sectional",
+            "bus_refs": [
+              "stn/2ffd734262474d30c86c413039c2c46c/sn_bus",
+              "stn/2ffd734262474d30c86c413039c2c46c/sn_bus_b",
+              "stn/2ffd734262474d30c86c413039c2c46c/nn_bus"
+            ],
+            "transformer_refs": [
+              "stn/2ffd734262474d30c86c413039c2c46c/transformer"
+            ],
+            "gpz_hv_sections": [],
+            "gpz_sections": [],
+            "nn_sections": []
+          }
+        ],
+        "transformers": [
+          {
+            "ref_id": "stn/2ffd734262474d30c86c413039c2c46c/transformer",
+            "hv_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/sn_field_terminal/003",
+            "lv_bus_ref": "stn/2ffd734262474d30c86c413039c2c46c/nn_bus"
+          }
+        ]
+      },
+      "role": {
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000": "PUNKT_PODZIALU",
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/003": "LACZNIK_POLA_TRANSFORMATOROWEGO"
+      },
+      "punkty_podzialu": [
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/000"
+      ],
+      "kandydaci": [
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_coupler",
+        "stn/2ffd734262474d30c86c413039c2c46c/sn_field_breaker/001"
+      ]
+    },
+    {
+      "nazwa": "nn_brak",
+      "rodzaj": "SPRZEGLO_NN",
+      "stan": null,
+      "lacznik": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "nn/0305362c25d978377161bddc379f8f3d/section_bus",
+            "voltage_kv": 0.4
+          },
+          {
+            "ref_id": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+            "voltage_kv": 0.4
+          }
+        ],
+        "branches": [
+          {
+            "id": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+            "ref_id": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+            "type": "bus_coupler",
+            "from_bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+            "to_bus_ref": "nn/0305362c25d978377161bddc379f8f3d/section_bus",
+            "status": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
+            "station_type": "rozdzielnica_nn",
+            "bus_refs": [
+              "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [],
+            "nn_sections": [
+              {
+                "bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus"
+              },
+              {
+                "bus_ref": "nn/0305362c25d978377161bddc379f8f3d/section_bus"
+              }
+            ]
+          }
+        ],
+        "transformers": []
+      },
+      "role": {
+        "nn/0305362c25d978377161bddc379f8f3d/section_coupler": "LACZNIK_SZYN_NN"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": []
+    },
+    {
+      "nazwa": "nn_open",
+      "rodzaj": "SPRZEGLO_NN",
+      "stan": "open",
+      "lacznik": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "nn/0305362c25d978377161bddc379f8f3d/section_bus",
+            "voltage_kv": 0.4
+          },
+          {
+            "ref_id": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+            "voltage_kv": 0.4
+          }
+        ],
+        "branches": [
+          {
+            "id": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+            "ref_id": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+            "type": "bus_coupler",
+            "from_bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+            "to_bus_ref": "nn/0305362c25d978377161bddc379f8f3d/section_bus",
+            "status": "open",
+            "normal_state": "open"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
+            "station_type": "rozdzielnica_nn",
+            "bus_refs": [
+              "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [],
+            "nn_sections": [
+              {
+                "bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus"
+              },
+              {
+                "bus_ref": "nn/0305362c25d978377161bddc379f8f3d/section_bus"
+              }
+            ]
+          }
+        ],
+        "transformers": []
+      },
+      "role": {
+        "nn/0305362c25d978377161bddc379f8f3d/section_coupler": "LACZNIK_SZYN_NN"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": []
+    },
+    {
+      "nazwa": "nn_closed",
+      "rodzaj": "SPRZEGLO_NN",
+      "stan": "closed",
+      "lacznik": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+      "migawka": {
+        "buses": [
+          {
+            "ref_id": "nn/0305362c25d978377161bddc379f8f3d/section_bus",
+            "voltage_kv": 0.4
+          },
+          {
+            "ref_id": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+            "voltage_kv": 0.4
+          }
+        ],
+        "branches": [
+          {
+            "id": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+            "ref_id": "nn/0305362c25d978377161bddc379f8f3d/section_coupler",
+            "type": "bus_coupler",
+            "from_bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus",
+            "to_bus_ref": "nn/0305362c25d978377161bddc379f8f3d/section_bus",
+            "status": "closed",
+            "normal_state": "closed"
+          }
+        ],
+        "substations": [
+          {
+            "ref_id": "nn/c25020028ba761efaf39ad8d1717ad5a/board",
+            "station_type": "rozdzielnica_nn",
+            "bus_refs": [
+              "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus"
+            ],
+            "transformer_refs": [],
+            "gpz_hv_sections": [],
+            "gpz_sections": [],
+            "nn_sections": [
+              {
+                "bus_ref": "nn/c25020028ba761efaf39ad8d1717ad5a/board_bus"
+              },
+              {
+                "bus_ref": "nn/0305362c25d978377161bddc379f8f3d/section_bus"
+              }
+            ]
+          }
+        ],
+        "transformers": []
+      },
+      "role": {
+        "nn/0305362c25d978377161bddc379f8f3d/section_coupler": "LACZNIK_SZYN_NN"
+      },
+      "punkty_podzialu": [],
+      "kandydaci": []
+    }
+  ]
+}

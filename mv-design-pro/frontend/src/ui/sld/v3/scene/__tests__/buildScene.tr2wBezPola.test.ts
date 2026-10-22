@@ -290,9 +290,19 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // 56…224 → 56…160 (szerokość z pól, nie z tabeli), tor pola 001 x 80 → 112 (pasmo
   // oznaczenia po lewej, `compose/gpz.ts`), „Pole liniowe GPZ 1.1" obrócone (rect 112×15 →
   // 15×112); kabel GPZ → S01 zaczyna się w nowym torze pola, jego podpis 296,424 → 288,224.
+  // AKTUALIZACJA ŚWIADOMA (GPZ-H5-SLD etap 3, 2026-10-22, scalenie backendu H5): fikstura
+  // przegenerowana z API — GPZ ma stronę 110 kV jako sekcję modelu (`gpz_hv_sections`: szyna
+  // `bus_wn`, pole liniowe 110 kV z torem zasilania „Linia 110 kV zasilająca", pole WN i pole
+  // SN transformatora); ziarno GPZ się zmieniło, więc ref-y GPZ są nowe. DOWÓD (sonda: ten sam
+  // kod, fikstura sprzed scalenia vs po nim; symbole rodzaj + x + y i etykiety tekst + rect
+  // POZA GPZ unormowane do lewego górnego symbolu): rysunek poza GPZ IDENTYCZNY na L0/L1/L2,
+  // świat przesunięty o (+504, +72); w GPZ +1 sylwetka „?" (pole liniowe 110 kV bez aparatów),
+  // etykiety „Szyna WN · 110 kV" i „Źródło GPZ 110 kV" → „Sekcja 110 kV 1", nazwa pola 110 kV,
+  // tor zasilania i kierunek (L1 20 → 23, L2 28 → 31); jedyna różnica poza GPZ — podpis kabla
+  // GPZ↔S01 na L2 przesunięty o 88 w prawo (pole GPZ w nowym miejscu względem stacji).
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '136d4392335cd520eac1ece62b58bdb7',
-    2: 'fa0243497876d9afdd0e84f284b00fe8',
+    1: '69a4683180fee40196e5ec598d2c5bf1',
+    2: 'd7d59691951690c4caf1f70642990f4c',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

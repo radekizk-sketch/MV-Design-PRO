@@ -1,0 +1,1072 @@
+{
+ "analysis_type": "LOAD_FLOW",
+ "contract_version": "1.0",
+ "created_at": "2026-10-22T16:55:23.039917+00:00",
+ "deterministic_signature": "508668722bc486890648000330385734c82f9da48414b14ff23351b745ccad0c",
+ "element_results": [
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 14.844104990590127
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001/terminal",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001/terminal",
+   "element_type": "Bus",
+   "values": {
+    "angle_deg": 28.495021290436092,
+    "bus_id": "1033ffb1-d57e-5735-957a-c68c060568f8",
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001/terminal",
+    "flags": [],
+    "graph_role": null,
+    "name": "Zacisk odpływowy Pole liniowe GPZ 1.1",
+    "synthetic": false,
+    "u_kv": 14.844104990590127,
+    "u_pu": 0.9896069993726752,
+    "un_kv": 15.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/002/001/terminal",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/002/001/terminal",
+   "element_type": "Bus",
+   "values": {
+    "angle_deg": null,
+    "bus_id": "72c1a53f-7307-563f-a108-185eaac5d0e5",
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/002/001/terminal",
+    "flags": [
+     "BEZ_NAPIECIA"
+    ],
+    "graph_role": null,
+    "name": "Zacisk odpływowy Pole liniowe GPZ 2.1",
+    "synthetic": false,
+    "u_kv": null,
+    "u_pu": null,
+    "un_kv": 15.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/coupler/001/bay_cell_1",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/coupler/001/bay_cell_1",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 14.844104990590127
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_coupler/001/bay",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_coupler/001/bay",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 110.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bay_line",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bay_line",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 110.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
+   "element_type": "Bus",
+   "values": {
+    "angle_deg": 0.0,
+    "bus_id": "79c79b2a-2b85-57c2-9d83-9b2f977fdea0",
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
+    "flags": [
+     "SLACK"
+    ],
+    "graph_role": null,
+    "name": "Szyna GPZ WN S1 110 kV",
+    "synthetic": false,
+    "u_kv": 110.0,
+    "u_pu": 1.0,
+    "un_kv": 110.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/source",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/source",
+   "element_type": "Source",
+   "values": {
+    "bus_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
+    "cos_phi": 0.9400506994811056,
+    "p_injected_mw": 6.0078421601188,
+    "q_injected_mvar": 2.17954498521582,
+    "s_mva": 6.390976745653231
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bay_line",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bay_line",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 110.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
+   "element_type": "Bus",
+   "values": {
+    "angle_deg": 0.0,
+    "bus_id": "2f0f9ae7-d9b8-5c33-be78-3c4383b7b7ef",
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
+    "flags": [
+     "SLACK"
+    ],
+    "graph_role": null,
+    "name": "Szyna GPZ WN S2 110 kV",
+    "synthetic": false,
+    "u_kv": 110.0,
+    "u_pu": 1.0,
+    "un_kv": 110.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/source",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/source",
+   "element_type": "Source",
+   "values": {
+    "bus_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
+    "cos_phi": 1.0,
+    "p_injected_mw": 2.0816681711721685e-14,
+    "q_injected_mvar": 0.0,
+    "s_mva": 2.0816681711721685e-14
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/capacitor",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/capacitor",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 14.844104990590127
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/earthing",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/earthing",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 14.844104990590127
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/measurement",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/measurement",
+   "element_type": "Bay",
+   "values": {
+    "u_kv": 14.844104990590127
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn",
+   "element_type": "Bus",
+   "values": {
+    "angle_deg": 28.495021290436092,
+    "bus_id": "ea0b6ba6-203b-52ed-8e37-31625c73ced4",
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn",
+    "flags": [],
+    "graph_role": null,
+    "name": "Szyna GPZ S1 15 kV",
+    "synthetic": false,
+    "u_kv": 14.844104990590127,
+    "u_pu": 0.9896069993726752,
+    "un_kv": 15.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn",
+   "element_type": "Bus",
+   "values": {
+    "angle_deg": null,
+    "bus_id": "f5558d66-454a-5b24-821c-423eb4b3e426",
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn",
+    "flags": [
+     "BEZ_NAPIECIA"
+    ],
+    "graph_role": null,
+    "name": "Szyna GPZ S2 15 kV",
+    "synthetic": false,
+    "u_kv": null,
+    "u_pu": null,
+    "un_kv": 15.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/substation",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/substation",
+   "element_type": "Substation",
+   "values": {
+    "alarm_count": 0,
+    "p_supply_mw": 6.0078421601188206,
+    "q_supply_mvar": 2.17954498521582
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_sn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_sn",
+   "element_type": "Bay",
+   "values": {
+    "feeder_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/wn_sn",
+    "i_a": 245.9888096325015,
+    "loading_pct": 25.563906982612878,
+    "p_from_mw": -6.000000000036196,
+    "q_from_mvar": -1.9999999998587252,
+    "u_kv": 14.844104990590127
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_wn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_wn",
+   "element_type": "Bay",
+   "values": {
+    "feeder_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/wn_sn",
+    "i_a": 33.543928586250225,
+    "loading_pct": 25.563906982612878,
+    "p_from_mw": 6.007842160118789,
+    "q_from_mvar": 2.17954498521582,
+    "u_kv": 110.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/wn_sn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/wn_sn",
+   "element_type": "Branch",
+   "values": {
+    "branch_id": "b5c02384-e560-5b3b-bde5-d35e18a14f08",
+    "cos_phi": 0.9400506994811055,
+    "delta_u_kv": null,
+    "delta_u_pct": 1.0393000627324844,
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/wn_sn",
+    "flags": [],
+    "from_bus": "79c79b2a-2b85-57c2-9d83-9b2f977fdea0",
+    "graph_role": null,
+    "i_a": 33.543928586250225,
+    "i_do_a": 245.9888096325015,
+    "loading_pct": 25.563906982612878,
+    "loading_powod_braku_pl": null,
+    "losses_p_mw": 0.007842160082592642,
+    "losses_q_mvar": 0.17954498535709473,
+    "name": "TR1 110/15 kV",
+    "p_from_mw": 6.007842160118789,
+    "p_mw": 6.007842160118789,
+    "p_to_mw": -6.000000000036196,
+    "q_from_mvar": 2.17954498521582,
+    "q_mvar": 2.17954498521582,
+    "q_to_mvar": -1.9999999998587252,
+    "s_mva": 6.390976745653219,
+    "synthetic": false,
+    "to_bus": "ea0b6ba6-203b-52ed-8e37-31625c73ced4"
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_sn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_sn",
+   "element_type": "Bay",
+   "values": {
+    "feeder_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/wn_sn",
+    "i_a": 0.0,
+    "loading_pct": 0.0,
+    "p_from_mw": 0.0,
+    "q_from_mvar": 0.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_wn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_wn",
+   "element_type": "Bay",
+   "values": {
+    "feeder_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/wn_sn",
+    "i_a": 0.0,
+    "loading_pct": 0.0,
+    "p_from_mw": 0.0,
+    "q_from_mvar": 0.0,
+    "u_kv": 110.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/terminal_sn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/terminal_sn",
+   "element_type": "Bus",
+   "values": {
+    "angle_deg": 29.999999999999996,
+    "bus_id": "ed22c080-5090-50ed-bf71-0041c8db3f21",
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/terminal_sn",
+    "flags": [],
+    "graph_role": null,
+    "name": "Zacisk pola SN TR2",
+    "synthetic": false,
+    "u_kv": 15.0,
+    "u_pu": 1.0,
+    "un_kv": 15.0
+   }
+  },
+  {
+   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/wn_sn",
+   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/wn_sn",
+   "element_type": "Branch",
+   "values": {
+    "branch_id": "76dd8ad4-8afd-5176-9532-fb038546ac85",
+    "cos_phi": null,
+    "delta_u_kv": null,
+    "delta_u_pct": 0.0,
+    "element_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/wn_sn",
+    "flags": [],
+    "from_bus": "2f0f9ae7-d9b8-5c33-be78-3c4383b7b7ef",
+    "graph_role": null,
+    "i_a": 0.0,
+    "i_do_a": 0.0,
+    "loading_pct": 0.0,
+    "loading_powod_braku_pl": null,
+    "losses_p_mw": 0.0,
+    "losses_q_mvar": 0.0,
+    "name": "TR2 110/15 kV",
+    "p_from_mw": 0.0,
+    "p_mw": 0.0,
+    "p_to_mw": 0.0,
+    "q_from_mvar": 0.0,
+    "q_mvar": 0.0,
+    "q_to_mvar": 0.0,
+    "s_mva": 0.0,
+    "synthetic": false,
+    "to_bus": "ed22c080-5090-50ed-bf71-0041c8db3f21"
+   }
+  }
+ ],
+ "global_results": {
+  "analysis_type": "load_flow",
+  "applicability_status": "applicable",
+  "converged": true,
+  "dopuszczalnosc_raportowa": false,
+  "max_v_pu": 1.0,
+  "min_v_pu": 0.9896069993726752,
+  "proof_ref": "proof:power-flow:02bfcc317ec220f60c77b45659acc3fcb34ee3ced8d72008cbd30600dc048b49",
+  "proof_status": "complete",
+  "quality_status": "partial",
+  "reporting_status": "reportable",
+  "slack_p_mw": 6.007842160118821,
+  "slack_q_mvar": 2.17954498521582,
+  "solver_method": "newton-raphson",
+  "total_losses_p_mw": 0.007842160082592586,
+  "total_losses_q_mvar": 0.17954498535709476
+ },
+ "overlay_payload": {
+  "elements": {
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001/terminal": {
+    "badges": [],
+    "kind": "bus",
+    "metrics": {
+     "ANGLE_DEG": {
+      "code": "ANGLE_DEG",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "°",
+      "value": 28.495021290436092
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/001/001/terminal",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/002/001/terminal": {
+    "badges": [],
+    "kind": "bus",
+    "metrics": {},
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/bay/002/001/terminal",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/coupler/001/bay_cell_1": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/coupler/001/bay_cell_1",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_coupler/001/bay": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 110.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_coupler/001/bay",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bay_line": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 110.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bay_line",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn": {
+    "badges": [],
+    "kind": "bus",
+    "metrics": {
+     "ANGLE_DEG": {
+      "code": "ANGLE_DEG",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "°",
+      "value": 0.0
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 110.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/source": {
+    "badges": [],
+    "kind": "generator",
+    "metrics": {
+     "COS_PHI": {
+      "code": "COS_PHI",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "",
+      "value": 0.9400506994811056
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 6.0078421601188
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 2.17954498521582
+     },
+     "S_MVA": {
+      "code": "S_MVA",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "MVA",
+      "value": 6.390976745653231
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/source",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bay_line": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 110.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bay_line",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn": {
+    "badges": [],
+    "kind": "bus",
+    "metrics": {
+     "ANGLE_DEG": {
+      "code": "ANGLE_DEG",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "°",
+      "value": 0.0
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 110.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/source": {
+    "badges": [],
+    "kind": "generator",
+    "metrics": {
+     "COS_PHI": {
+      "code": "COS_PHI",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "",
+      "value": 1.0
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 2.0816681711721685e-14
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 0.0
+     },
+     "S_MVA": {
+      "code": "S_MVA",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "MVA",
+      "value": 2.0816681711721685e-14
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/source",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/capacitor": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/capacitor",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/earthing": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/earthing",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/measurement": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bay_function/measurement",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn": {
+    "badges": [],
+    "kind": "bus",
+    "metrics": {
+     "ANGLE_DEG": {
+      "code": "ANGLE_DEG",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "°",
+      "value": 28.495021290436092
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn": {
+    "badges": [],
+    "kind": "bus",
+    "metrics": {},
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/substation": {
+    "badges": [],
+    "kind": "substation",
+    "metrics": {
+     "ALARM_COUNT": {
+      "code": "ALARM_COUNT",
+      "format_hint": "fixed0",
+      "source": "solver",
+      "unit": "",
+      "value": 0
+     },
+     "P_SUPPLY_MW": {
+      "code": "P_SUPPLY_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 6.0078421601188206
+     },
+     "Q_SUPPLY_Mvar": {
+      "code": "Q_SUPPLY_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 2.17954498521582
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/substation",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_sn": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "I_A": {
+      "code": "I_A",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "A",
+      "value": 245.9888096325015
+     },
+     "LOADING_PCT": {
+      "code": "LOADING_PCT",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "%",
+      "value": 25.563906982612878
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": -6.000000000036196
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": -1.9999999998587252
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 14.844104990590127
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_sn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_wn": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "I_A": {
+      "code": "I_A",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "A",
+      "value": 33.543928586250225
+     },
+     "LOADING_PCT": {
+      "code": "LOADING_PCT",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "%",
+      "value": 25.563906982612878
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 6.007842160118789
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 2.17954498521582
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 110.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/bay_wn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/wn_sn": {
+    "badges": [],
+    "kind": "branch",
+    "metrics": {
+     "COS_PHI": {
+      "code": "COS_PHI",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "",
+      "value": 0.9400506994811055
+     },
+     "DELTA_U_PCT": {
+      "code": "DELTA_U_PCT",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "%",
+      "value": 1.0393000627324844
+     },
+     "I_A": {
+      "code": "I_A",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "A",
+      "value": 33.543928586250225
+     },
+     "LOADING_PCT": {
+      "code": "LOADING_PCT",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "%",
+      "value": 25.563906982612878
+     },
+     "LOSSES_P_MW": {
+      "code": "LOSSES_P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 0.007842160082592642
+     },
+     "LOSSES_Q_Mvar": {
+      "code": "LOSSES_Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 0.17954498535709473
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 6.007842160118789
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 2.17954498521582
+     },
+     "S_MVA": {
+      "code": "S_MVA",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "MVA",
+      "value": 6.390976745653219
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/001/wn_sn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_sn": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "I_A": {
+      "code": "I_A",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "A",
+      "value": 0.0
+     },
+     "LOADING_PCT": {
+      "code": "LOADING_PCT",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "%",
+      "value": 0.0
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 0.0
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 0.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_sn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_wn": {
+    "badges": [],
+    "kind": "bay",
+    "metrics": {
+     "I_A": {
+      "code": "I_A",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "A",
+      "value": 0.0
+     },
+     "LOADING_PCT": {
+      "code": "LOADING_PCT",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "%",
+      "value": 0.0
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 0.0
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 0.0
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 110.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/bay_wn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/terminal_sn": {
+    "badges": [],
+    "kind": "bus",
+    "metrics": {
+     "ANGLE_DEG": {
+      "code": "ANGLE_DEG",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "°",
+      "value": 29.999999999999996
+     },
+     "U_kV": {
+      "code": "U_kV",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "kV",
+      "value": 15.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/terminal_sn",
+    "severity": "INFO"
+   },
+   "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/wn_sn": {
+    "badges": [],
+    "kind": "branch",
+    "metrics": {
+     "DELTA_U_PCT": {
+      "code": "DELTA_U_PCT",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "%",
+      "value": 0.0
+     },
+     "I_A": {
+      "code": "I_A",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "A",
+      "value": 0.0
+     },
+     "LOADING_PCT": {
+      "code": "LOADING_PCT",
+      "format_hint": "fixed1",
+      "source": "solver",
+      "unit": "%",
+      "value": 0.0
+     },
+     "LOSSES_P_MW": {
+      "code": "LOSSES_P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 0.0
+     },
+     "LOSSES_Q_Mvar": {
+      "code": "LOSSES_Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 0.0
+     },
+     "P_MW": {
+      "code": "P_MW",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "MW",
+      "value": 0.0
+     },
+     "Q_Mvar": {
+      "code": "Q_Mvar",
+      "format_hint": "fixed4",
+      "source": "solver",
+      "unit": "Mvar",
+      "value": 0.0
+     },
+     "S_MVA": {
+      "code": "S_MVA",
+      "format_hint": "fixed2",
+      "source": "solver",
+      "unit": "MVA",
+      "value": 0.0
+     }
+    },
+    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/transformer/002/wn_sn",
+    "severity": "INFO"
+   }
+  },
+  "legend": {
+   "entries": [
+    {
+     "description": "Element poprawny, wyniki dostępne",
+     "label": "Poprawne",
+     "severity": "INFO"
+    },
+    {
+     "description": "Element z ostrzeżeniami walidacji",
+     "label": "Ostrzeżenie",
+     "severity": "WARNING"
+    },
+    {
+     "description": "Element wymaga uwagi",
+     "label": "Ważne",
+     "severity": "IMPORTANT"
+    },
+    {
+     "description": "Element uniemożliwia poprawne obliczenia",
+     "label": "Blokujące",
+     "severity": "BLOCKER"
+    }
+   ],
+   "title": "Legenda wyników"
+  },
+  "warnings": [
+   {
+    "code": "E065",
+    "element_ref": null,
+    "message": "Sekcja GPZ bez zasilania: sekcja „Sekcja SN B” (GPZ „GPZ H5 110/15 kV”) nie ma własnego równoważnika sieci, a sprzęgło „Sprzęgło sekcji GPZ 1-2” jest otwarte — szyny sekcji i zasilane z niej odpływy są odcięte od źródła. Rozpływ mocy i zwarcia liczą część zasilaną; sekcja odcięta jest w wynikach bez napięcia.",
+    "severity": "IMPORTANT"
+   },
+   {
+    "code": "I001",
+    "element_ref": null,
+    "message": "Łącznik „Sprzęgło sekcji GPZ 1-2” jest otwarty wbrew pozycji normalnej (zamkniętej) — odcina część sieci.",
+    "severity": "INFO"
+   },
+   {
+    "code": "I001",
+    "element_ref": null,
+    "message": "Łącznik „Łącznik szyn 110 kV GPZ 1-2” jest łącznikiem szyn 110 kV normalnie otwartym — sekcje 110 kV pracują osobno, to podział wewnątrz rozdzielni, nie punkt podziału sieci.",
+    "severity": "INFO"
+   },
+   {
+    "code": "I001",
+    "element_ref": null,
+    "message": "Łącznik „Wyłącznik pola SN TR2 (rezerwa jawna)” jest łącznikiem pola transformatorowego normalnie otwartym — transformator jest odstawiony (rezerwa), to nie jest punkt podziału sieci.",
+    "severity": "INFO"
+   },
+   {
+    "code": "I004",
+    "element_ref": null,
+    "message": "Magistrala „Magistrala 01” nie ma odcinków.",
+    "severity": "INFO"
+   }
+  ]
+ },
+ "run_finished_at": "2026-10-22T16:48:27.502158+00:00",
+ "run_id": "d8ddaea3-7397-4fcb-95aa-bf78ffae5e7e",
+ "solver_input_hash": "7348b920cf16eb80bc0cbb4d91ef3a30141a880423b947a68fb57cc464d80585"
+}

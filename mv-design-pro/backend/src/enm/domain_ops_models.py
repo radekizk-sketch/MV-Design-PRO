@@ -361,6 +361,8 @@ class SNFieldSpec(_FrozenBase):
         "TRANSFORMATOROWE",
         "SPRZEGLO",
         "POMIAROWE",
+        "UZIEMIAJACE",
+        "KOMPENSACYJNE",
     ]
     """Rola pola SN w rozdzielnicy.
 
@@ -783,12 +785,55 @@ class AddGridSourceSNPayload(_FrozenBase):
     """Kanoniczne powiązanie katalogowe z typem źródła systemowego."""
 
     manual_equivalent: dict[str, Any] | None = None
-    """Ręczna umowa równoważna dla źródła GPZ, gdy katalog nie jest używany."""
+    """Ręczny równoważnik sieci dla źródła GPZ, gdy katalog nie jest używany."""
 
     lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
     """Tolerancja napięcia sieci nN, gdy źródło przyłączono wprost do szyny nN (wiersz nN
     tabeli 1 IEC 60909-0) → ``Source.lv_voltage_tolerance``; szyna źródła spoza pasma nN
     albo wartość spoza słownika to odmowa `source.invalid_lv_voltage_tolerance`."""
+
+    sections_count: int | None = None
+    """Liczba sekcji szyn SN GPZ (1–4)."""
+
+    gpz_sections: list[dict[str, Any]] | None = None
+    """Jawne sekcje SN: `name`, `bus_name`, `line_fields_count`, `bays`, `supply` (równoważnik
+    sekcji przy łączniku szyn SN normalnie otwartym, bez strony 110 kV), `function_bays`
+    (pola funkcyjne ENEA Zeszyt 1 §13: `EARTHING`, `CAPACITOR`, `MEASUREMENT`)."""
+
+    sn_coupler: dict[str, Any] | None = None
+    """Łącznik szyn SN: `name`, `cells` (1 albo 2, ENEA zał. Z.2); bez strony 110 kV także
+    `normal_state` (`open`/`closed`) i `justification` (wymagane przy `closed`). Ze stroną
+    110 kV stan normalny wynika z `reserve_mode`."""
+
+    hv_sections: list[dict[str, Any]] | None = None
+    """Karta GPZ-H5: sekcje szyn 110 kV (1–4), każda z torem `supply`: `line_name`,
+    `supplying_station_name`, `manual_equivalent` (Sk″ max/min, R/X, Z0/Z1 albo R0/X0,
+    `hv_voltage_kv`). Brak danych = odmowa nazwana, nigdy wartość domyślna."""
+
+    hv_coupler: dict[str, Any] | None = None
+    """Łącznik szyn 110 kV: `normal_state` (`open`/`closed`, bez domyślnego — ENEA nie
+    określa stanu normalnego), `justification` (wymagane przy `closed`), `name`."""
+
+    transformers: list[dict[str, Any]] | None = None
+    """Transformatory 110/SN: `hv_section`, `sn_section` (numery od 1 — przypisanie JAWNE),
+    typ z katalogu (`transformer_catalog_ref`/`transformer_catalog_binding` albo
+    `transformer_sn_mva`), regulacja zaczepów (`transformer_*`), `name`."""
+
+    reserve_mode: Literal["hidden", "explicit"] | None = None
+    """Tryb rezerwy transformatorowej (ENEA Zeszyt 1 §26.10.5) — wymagany przy ≥ 2 sekcjach
+    SN albo ≥ 2 transformatorach; wyznacza stan normalny łącznika szyn SN."""
+
+    reserve_transformer: int | None = None
+    """Numer transformatora rezerwowego (rezerwa jawna, ≥ 2 transformatory)."""
+
+    reserve_transformer_apparatus: dict[str, Any] | None = None
+    """Wyłącznik pola SN transformatora rezerwowego z katalogu (`catalog_ref` albo
+    `catalog_binding`) — normalnie otwarty."""
+
+    hv_bay_apparatus_proposal: dict[str, Any] | None = None
+    """Propozycja szablonu składu aparatów pól 110 kV (`basis`, `line`, `transformer`,
+    `coupler` — listy oznaczeń), zapisywana w `meta.apparatus_proposal` pola z
+    `modelled: False` — NIE są to aparaty modelu."""
 
 
 class SegmentSpec(_FrozenBase):
@@ -1099,7 +1144,9 @@ class AddSnBayPayload(_FrozenBase):
     station_ref: str | None = None
     """Opcjonalna referencja stacji/GPZ/ZKSN zawierającej szynę."""
 
-    bay_role: Literal["IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"] = "FEEDER"
+    bay_role: Literal[
+        "IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE", "EARTHING", "CAPACITOR"
+    ] = "FEEDER"
     """Rola pola w kontrakcie ENM."""
 
     funkcja_pomiaru: Literal["UKLAD_ENERGII", "NAPIECIA_SZYN"] | None = None

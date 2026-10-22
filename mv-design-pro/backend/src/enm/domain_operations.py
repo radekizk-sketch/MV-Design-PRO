@@ -59,6 +59,7 @@ from network_model.pochodne.pasma_napieciowe import (
 )
 from pydantic import ValidationError
 
+from .czyszczenie_odwolan import oczysc_odwolania_po_usunieciu
 from .deklaracje_modulu import POLA_NC_RFG_GENERATORA, pola_nc_rfg_generatora
 from .dynamika_z_katalogu import synchronizuj_dynamike_z_wiazan
 from .fazy_odbioru import KOD_BLEDU_FAZ, waliduj_fazy_odbioru
@@ -88,14 +89,12 @@ from .pola import (
     BladPola,
     czy_pole_nn,
     dodaj_pole,
-    pola,
     pola_stacji,
     pola_wg_szyny,
     pola_zksn_z_portow,
     poziom_pol,
     punkt_przylaczenia_pola,
     stacja_pola,
-    usun_pole,
     zacisk_pola,
     zbuduj_pole,
     zmien_pole,
@@ -107,8 +106,26 @@ from .pole_katalogowe import (
     aparaty_pola_z_referencji,
     rozwiaz_aparaty_pola,
 )
+from .rezerwa_gpz import (
+    NAZWA_TRYBU_REZERWY_PL,
+    PODPOWIEDZ_STANU_LACZNIKA_SZYN_SN_PL,
+    PODPOWIEDZ_STANU_LACZNIKA_SZYN_WN_PL,
+    PODPOWIEDZ_TRYBU_REZERWY_PL,
+    PODSTAWA_STANU_LACZNIKA_SZYN_WN_PL,
+    PODSTAWA_TRYBU_REZERWY_PL,
+    STAN_NORMALNY_WYLACZNIKA_TR_REZERWOWEGO,
+    TRYB_REZERWY_JAWNEJ,
+    TRYBY_REZERWY,
+    UZASADNIENIE_ZAMKNIECIA_REZERWY_JAWNEJ,
+    stan_normalny_lacznika_szyn_sn,
+)
 from .rodzaj_stacji import TYPY_STACJI_SN_NN
-from .rola_pola_sn import ROLA_POLA_SN_Z_ALIASU, kanoniczna_rola_pola_sn, nazwa_roli_pola_sn
+from .rola_pola_sn import (
+    ROLA_POLA_SN_Z_ALIASU,
+    kanoniczna_rola_pola_sn,
+    nazwa_roli_pola_sn,
+    nazwa_roli_pola_sn_z_okresleniem,
+)
 from .slownik_komunikatow import (
     NAZWY_FUNKCJI_POMIARU_PL,
     NAZWY_KOLEKCJI_PL,
@@ -164,6 +181,7 @@ from .zajetosc_pol import (
 )
 from .zrodlo_zwarcie import (
     PASMO_U_SET_PU,
+    STRONA_ROWNOWAZNIKA_WN,
     klucz_mocy_zwarciowej,
     strona_rownowaznika,
     u_set_pu_w_pasmie,
@@ -513,6 +531,10 @@ INWENTARZ_DEKLARACJI_KATALOGOWYCH: dict[str, str] = {
         "źródło i transformator WN/SN: _materialize_catalog_payload; "
         "aparat pola liniowego: _brama_katalogowa_aparatu_sn"
     ),
+    "_dane_zrodla_gpz": (
+        "równoważnik sieci GPZ (każdej sekcji 110 kV albo szyn SN): pozycja wołającego "
+        "przeszła _materialize_catalog_payload; bez wiązania — tryb ekspercki"
+    ),
     "continue_trunk_segment_sn": "odcinek magistrali: _materialize_catalog_payload",
     "start_branch_segment_sn": "odcinek odgałęzienia: _materialize_catalog_payload",
     "connect_secondary_ring_sn": "odcinek powiązania pierścieniowego: _materialize_catalog_payload",
@@ -583,8 +605,10 @@ def _gpz_line_field_branch_type(apparatus_kind: object) -> str:
     return "breaker"
 
 
-def _normalize_gpz_line_field_apparatus(payload: dict[str, Any]) -> dict[str, Any] | None:
-    raw = payload.get("gpz_line_field_apparatus")
+def _normalize_gpz_line_field_apparatus(
+    payload: dict[str, Any], klucz: str = "gpz_line_field_apparatus"
+) -> dict[str, Any] | None:
+    raw = payload.get(klucz)
     if not isinstance(raw, dict):
         return None
 
@@ -702,6 +726,10 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
                 "line_fields_count": line_fields_count,
                 "bay_template_ref": section_template_ref,
                 "bays": bays,
+                # Karta GPZ-H5: własny równoważnik sekcji SN (łącznik szyn SN normalnie
+                # otwarty) — rozstrzyga `add_grid_source_sn` (`_rozstrzygnij_zasilanie_gpz`).
+                "supply": entry.get("supply"),
+                "function_bays": entry.get("function_bays"),
             }
         )
 
@@ -710,7 +738,6 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
 
 
 MAX_GPZ_LINE_FIELDS_PER_SECTION = 12
-MAX_GPZ_WN_SN_TRANSFORMERS = 4
 GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER = {
     (15, 10): "tr-wn-sn-110-15-10mva-yd11",
     (15, 16): "tr-wn-sn-110-15-16mva-yd11",
@@ -752,81 +779,19 @@ KOD_TRANSFORMATOR_POZA_GRANICA_SN = "source.transformer_requires_hv_equivalent"
 
 
 def _klucze_transformatorow_gpz(payload: dict[str, Any]) -> list[str]:
-    """Klucze ładunku `add_grid_source_sn`, które ŻĄDAJĄ transformatora WN/SN GPZ.
+    """Klucze NAJWYŻSZEGO poziomu ładunku `add_grid_source_sn` opisujące transformator 110/SN.
 
-    Rodzina kluczy jest zamknięta prefiksem `transformer_` (liczba, typ katalogowy,
-    tabliczka, nazwy `transformer_{n}_name`, regulacja zaczepów) oraz `hv_voltage_kv`
-    na najwyższym poziomie ładunku — para `hv_voltage_kv` + `transformer_sn_mva`
-    wybiera pozycję katalogu transformatora. Jawne `transformer_count: 0` nie jest
-    żądaniem (opisuje brak transformatorów)."""
-    klucze: list[str] = []
-    for klucz in sorted(payload):
-        wartosc = payload[klucz]
-        if wartosc is None:
-            continue
-        if not (klucz.startswith("transformer_") or klucz == "hv_voltage_kv"):
-            continue
-        if klucz == "transformer_count" and wartosc == 0 and not isinstance(wartosc, bool):
-            continue
-        klucze.append(klucz)
-    return klucze
-
-
-def _granica_zasilania_gpz(
-    payload: dict[str, Any], strona_rownowaznika: str
-) -> int | dict[str, Any]:
-    """Granica zasilania SN modelu GPZ — liczba transformatorów WN/SN albo odmowa.
-
-    Karta GPZ-MODEL (rozstrzygnięcia architekta §0.1–§0.2):
-
-    * Równoważnik sieci po stronie 110 kV (`HV_110`): transformatory WN/SN SĄ elementami
-      modelu — od 1 do `MAX_GPZ_WN_SN_TRANSFORMERS`, liczba podana jawnie
-      (`transformer_count`). Wszystkie łączą JEDNĄ wspólną szynę 110 kV (na niej
-      równoważnik) z sekcjami SN; rozpływ przez każdy z nich i wkłady zwarciowe wynikają
-      z solvera dla rzeczywistego stanu sprzęgła SN.
-    * Równoważnik na szynach SN (`SN`): granicą modelu są szyny SN GPZ. Moc zwarciowa
-      podana na szynach SN już zawiera impedancję transformatorów, więc transformatory
-      NIE są elementami modelu obliczeniowego — operacja ich nie tworzy, a ładunek, który
-      ich żąda (`_klucze_transformatorow_gpz`), jest odmawiany z przyczyną i wskazaniem
-      trybu 110 kV. Inaczej rysunek sugerowałby zasilanie, którego obliczenie nie ma,
-      a każda przyszła zmiana groziłaby podwójnym uwzględnieniem impedancji.
-    """
-    zadane = _klucze_transformatorow_gpz(payload)
-    if strona_rownowaznika != "HV_110":
-        if zadane:
-            return _error_response(
-                "Równoważnik sieci podany na szynach SN GPZ (moc zwarciowa widziana z szyn "
-                "SN) zawiera już impedancję transformatorów 110/SN — w tym trybie "
-                "transformatory nie są elementami modelu obliczeniowego i nie powstają. "
-                "Usuń dane transformatorów 110/SN (liczba, typ z katalogu, regulacja "
-                "zaczepów) albo podaj równoważnik sieci po stronie 110 kV (tryb ekspercki, "
-                "strona 110 kV) — wtedy transformatory łączą wspólną szynę 110 kV "
-                "z sekcjami SN.",
-                KOD_TRANSFORMATOR_POZA_GRANICA_SN,
-            )
-        return 0
-    surowa = payload.get("transformer_count")
-    liczba = (
-        surowa
-        if isinstance(surowa, int) and not isinstance(surowa, bool)
-        else (
-            int(surowa)
-            if isinstance(surowa, float) and surowa.is_integer()
-            else (
-                int(surowa.strip())
-                if isinstance(surowa, str) and surowa.strip().isdigit()
-                else None
-            )
-        )
-    )
-    if liczba is None or liczba < 1 or liczba > MAX_GPZ_WN_SN_TRANSFORMERS:
-        return _error_response(
-            "Równoważnik sieci po stronie 110 kV zasila sekcje SN przez transformatory "
-            f"110/SN — podaj ich liczbę od 1 do {MAX_GPZ_WN_SN_TRANSFORMERS} w polu "
-            f"{pole('transformer_count', 'add_grid_source_sn')}.",
-            "source.invalid_transformer_count",
-        )
-    return liczba
+    Karta GPZ-H5: transformatory 110/SN GPZ istnieją wyłącznie jako wpisy `transformers`
+    (sekcja 110 kV, sekcja SN, typ z katalogu) GPZ ze stroną 110 kV. Rodzina kluczy
+    zamknięta prefiksem `transformer_` (dawna liczba `transformer_count` z cyklicznym
+    przypisaniem do sekcji, typ, tabliczka, regulacja zaczepów) oraz `hv_voltage_kv` na
+    najwyższym poziomie — każdy z nich jest odmawiany z przyczyną, nigdy ignorowany."""
+    return [
+        klucz
+        for klucz in sorted(payload)
+        if payload[klucz] is not None
+        and (klucz.startswith("transformer_") or klucz == "hv_voltage_kv")
+    ]
 
 
 def _resolve_gpz_wn_sn_transformer_catalog_ref(
@@ -1834,13 +1799,6 @@ def _line_run_ref_for_segments(enm: dict[str, Any], segment_refs: list[str]) -> 
     return None
 
 
-def _czy_pole_startu_ciagu(rekord: dict[str, Any]) -> bool:
-    role = str(rekord.get("bay_role", "")).upper()
-    if role not in {"OUT", "FEEDER", "IN"}:
-        return False
-    return True
-
-
 def _sn_bus_refs_for_substation(enm: dict[str, Any], substation: dict[str, Any]) -> list[str]:
     bus_index = {bus.get("ref_id"): bus for bus in enm.get("buses", [])}
     bus_refs = [ref for ref in substation.get("bus_refs", []) if isinstance(ref, str)]
@@ -1954,8 +1912,14 @@ def _resolve_initial_trunk_start_field(
     )
 
     # Karta POLE-ZAJĘTE: automatyczny wybór startu pomija pola zajęte (jedno źródło prawdy).
+    # Karta GPZ-H5: kandydat startu = pole liniowe SN (`_czy_pole_liniowe_sn`) — TEN SAM
+    # predykat, którym `continue_trunk_segment_sn` sprawdza start. Dawny predykat dopuszczał
+    # rolę IN, więc w GPZ ze stroną 110 kV (źródło na szynie 110 kV) wybierał pole zasilające
+    # 110 kV, które operacja zaraz odrzucała (`trunk.source_field_not_line_bay`).
     def _wolne_pole_startu(rekord: dict[str, Any]) -> bool:
-        return _czy_pole_startu_ciagu(rekord) and not _pole_liniowe_zajete(enm, rekord)
+        return _czy_pole_liniowe_sn(enm, rekord.get("ref_id")) and not _pole_liniowe_zajete(
+            enm, rekord
+        )
 
     for bus_ref in source_bus_refs:
         for rekord in pola_sn_wg_szyny.get(bus_ref, []):
@@ -2346,17 +2310,7 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
             corridor_segment_refs.add(seg)
 
     branch_points = {bp.get("bus_ref"): bp for bp in enm.get("branch_points", [])}
-    pola_sn_wg_szyny = _pola_sn_wg_szyny(enm)
     kontekst_terminali = _kontekst_terminali(enm)
-    source_bus_refs = sorted(
-        {
-            bus_ref
-            for source in enm.get("sources", [])
-            if isinstance(source, dict)
-            for bus_ref in [source.get("bus_ref")]
-            if isinstance(bus_ref, str)
-        }
-    )
 
     # Build trunks with terminals
     trunks = []
@@ -2396,17 +2350,11 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
                     }
                 )
         else:
-            for bus_ref in source_bus_refs:
-                start_field = next(
-                    (
-                        rekord
-                        for rekord in pola_sn_wg_szyny.get(bus_ref, [])
-                        if _czy_pole_startu_ciagu(rekord)
-                    ),
-                    None,
-                )
-                if start_field is None:
-                    continue
+            # Karta GPZ-H5: zacisk startu pustej magistrali to TO SAMO pole, z którego
+            # `continue_trunk_segment_sn` bez wskazania wyprowadzi pierwszy odcinek — jedno
+            # źródło prawdy (`_resolve_initial_trunk_start_field`), nie drugi predykat.
+            start_field = _resolve_initial_trunk_start_field(enm, c.get("ref_id"))
+            if start_field is not None:
                 terminals.append(
                     {
                         "element_id": start_field["ref_id"],
@@ -2414,11 +2362,10 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
                         "trunk_id": c.get("ref_id"),
                         "branch_id": None,
                         "status": "OTWARTY",
-                        "bus_ref": bus_ref,
+                        "bus_ref": start_field.get("bus_ref"),
                         "station_ref": start_field.get("substation_ref"),
                     }
                 )
-                break
 
         embedded_objects: list[dict[str, Any]] = []
         for seg_ref in segments:
@@ -3706,7 +3653,7 @@ def _resolve_manual_source_equivalent(
         return None
     if not isinstance(manual, dict):
         return _error_response(
-            "Ręczna umowa równoważna źródła GPZ ma nieprawidłowy format.",
+            "Ręczny równoważnik sieci źródła GPZ ma nieprawidłowy format.",
             "source.manual_equivalent_invalid",
         )
 
@@ -3759,7 +3706,7 @@ def _resolve_manual_source_equivalent(
     ):
         if surowe is not None and znormalizowane is None:
             return _error_response(
-                f"Ręczna umowa równoważna GPZ: {pole(klucz)} musi być liczbą dodatnią "
+                f"Ręczny równoważnik sieci GPZ: {pole(klucz)} musi być liczbą dodatnią "
                 f"(podano {surowe!r}).",
                 "source.manual_equivalent_invalid",
             )
@@ -3770,7 +3717,7 @@ def _resolve_manual_source_equivalent(
     u_set_pu = _as_positive_number(u_set_surowe)
     if u_set_surowe is not None and (u_set_pu is None or not u_set_pu_w_pasmie(u_set_pu)):
         return _error_response(
-            f"Ręczna umowa równoważna GPZ: {pole('u_set_pu', 'add_grid_source_sn')} "
+            f"Ręczny równoważnik sieci GPZ: {pole('u_set_pu', 'add_grid_source_sn')} "
             "musi być liczbą z przedziału "
             f"{PASMO_U_SET_PU[0]:g}–{PASMO_U_SET_PU[1]:g} p.u. (podano {u_set_surowe!r}).",
             "source.manual_equivalent_invalid",
@@ -3778,7 +3725,7 @@ def _resolve_manual_source_equivalent(
 
     if sn_voltage_kv is None:
         return _error_response(
-            "Ręczna umowa równoważna GPZ wymaga dodatniego napięcia znamionowego SN — "
+            "Ręczny równoważnik sieci GPZ wymaga dodatniego napięcia znamionowego SN — "
             f"uzupełnij pole {pole('voltage_kv', 'add_grid_source_sn')}.",
             "source.manual_equivalent_incomplete",
         )
@@ -3789,7 +3736,7 @@ def _resolve_manual_source_equivalent(
     # Warunek na samej wartosci zweza typ do `float` w calej reszcie funkcji.
     if voltage_kv is None:
         return _error_response(
-            "Ręczna umowa równoważna GPZ WN/SN wymaga dodatniego napięcia strony WN — "
+            "Ręczny równoważnik sieci GPZ WN/SN wymaga dodatniego napięcia strony WN — "
             f"uzupełnij pole {pole('hv_voltage_kv', 'add_grid_source_sn')}.",
             "source.manual_equivalent_incomplete",
         )
@@ -3817,7 +3764,7 @@ def _resolve_manual_source_equivalent(
         x_ohm = _as_positive_number(manual.get("x_ohm", payload.get("x_ohm")))
         if r_ohm is None or x_ohm is None:
             return _error_response(
-                "Ręczna umowa równoważna GPZ w trybie impedancyjnym wymaga parametrów R i X.",
+                "Ręczny równoważnik sieci GPZ w trybie impedancyjnym wymaga parametrów R i X.",
                 "source.manual_equivalent_incomplete",
             )
 
@@ -3847,17 +3794,17 @@ def _resolve_manual_source_equivalent(
         if sk3_mva is None and ik3_ka is None:
             if input_side == "HV_110":
                 return _error_response(
-                    "Ręczna umowa równoważna GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk″ "
+                    "Ręczny równoważnik sieci GPZ WN/SN wymaga dodatniej mocy zwarciowej Sk″ "
                     "albo prądu Ik″ na szynie 110 kV.",
                     "source.manual_equivalent_incomplete",
                 )
             return _error_response(
-                "Ręczna umowa równoważna GPZ wymaga dodatniej mocy zwarciowej Sk″ albo prądu Ik″.",
+                "Ręczny równoważnik sieci GPZ wymaga dodatniej mocy zwarciowej Sk″ albo prądu Ik″.",
                 "source.manual_equivalent_incomplete",
             )
         if rx_ratio is None:
             return _error_response(
-                "Ręczna umowa równoważna GPZ wymaga dodatniego stosunku R/X.",
+                "Ręczny równoważnik sieci GPZ wymaga dodatniego stosunku R/X.",
                 "source.manual_equivalent_incomplete",
             )
         # Dane MIN sprzeczne z MAX (ten sam warunek co walidator `sources.sk_min_exceeds_max`,
@@ -3914,26 +3861,626 @@ def _resolve_manual_source_equivalent(
     return resolved
 
 
+#: Klucze JEDNEGO toru zasilania równoważnikiem sieci (karta GPZ-H5): na najwyższym poziomie
+#: ładunku `add_grid_source_sn` (GPZ z jednym równoważnikiem) albo we wpisie `supply` sekcji
+#: SN / sekcji 110 kV (GPZ z równoważnikiem na sekcję). Jedna lista dla budowy i odmowy.
+KLUCZE_ZASILANIA_GPZ: tuple[str, ...] = (
+    "catalog_ref",
+    "catalog_binding",
+    "manual_equivalent",
+    "grounding",
+    "zero_sequence",
+    "lv_voltage_tolerance",
+)
+
+#: Kody odmów struktury GPZ (karta GPZ-H5, układ ENEA H5) — rejestr `READINESS_CODES`.
+KOD_GPZ_STAN_LACZNIKA_WYMAGANY = "source.gpz_coupler_state_required"
+KOD_GPZ_UZASADNIENIE_ZAMKNIECIA = "source.gpz_coupler_justification_required"
+KOD_GPZ_ZASILANIE_NA_SEKCJE = "source.gpz_supply_per_section_required"
+KOD_GPZ_SEKCJE_WN_WYMAGANE = "source.gpz_hv_sections_required"
+KOD_GPZ_SEKCJE_WN_LICZBA = "source.invalid_hv_sections_count"
+KOD_GPZ_TOR_ZASILANIA_NIEPELNY = "source.gpz_supply_track_incomplete"
+KOD_GPZ_TRANSFORMATORY_WYMAGANE = "source.gpz_transformers_required"
+KOD_GPZ_TRANSFORMATOR_SEKCJA = "source.gpz_transformer_section_invalid"
+KOD_GPZ_TRYB_REZERWY_WYMAGANY = "source.gpz_reserve_mode_required"
+KOD_GPZ_STAN_SN_Z_TRYBU_REZERWY = "source.gpz_sn_coupler_state_from_reserve_mode"
+KOD_GPZ_TRANSFORMATOR_REZERWOWY = "source.gpz_reserve_transformer_required"
+KOD_GPZ_POLE_FUNKCYJNE = "source.gpz_function_bay_invalid"
+KOD_GPZ_CELE_LACZNIKA = "source.gpz_coupler_cells_invalid"
+KOD_GPZ_PROPOZYCJA_APARATOW = "source.gpz_apparatus_proposal_invalid"
+KOD_GPZ_SEKCJA_SN_BEZ_ZASILANIA = "source.gpz_sn_section_without_supply"
+KOD_GPZ_SEKCJA_SN_Z_DWOCH_TOROW = "source.gpz_sn_section_two_hv_supplies"
+
+#: Stany łącznika szyn GPZ w ładunku (`sn_coupler.normal_state`, `hv_coupler.normal_state`).
+_STANY_LACZNIKA_GPZ = ("open", "closed")
+
+
+def _lista_pol_gpz(klucze: Iterable[str], spojnik: str = "i") -> str:
+    """Nazwy pól formularza GPZ dla kluczy z ŁADUNKU (mogą być spoza kontraktu): klucz bez
+    wpisu w słowniku nazw pól nie jest wypisywany kodem — zastępuje go „pozostałe dane”."""
+    nazwy: list[str] = []
+    nieznane = False
+    for klucz in klucze:
+        try:
+            nazwy.append(pole(klucz, "add_grid_source_sn"))
+        except KeyError:
+            nieznane = True
+    if nieznane:
+        nazwy.append("pozostałe dane spoza formularza")
+    return lista_pl(nazwy, spojnik)
+
+
+def _klucze_zasilania_obecne(zrodlo: Mapping[str, Any]) -> list[str]:
+    """Klucze toru zasilania (`KLUCZE_ZASILANIA_GPZ`) niosące wartość w `zrodlo`."""
+    return [k for k in KLUCZE_ZASILANIA_GPZ if zrodlo.get(k) is not None]
+
+
+def _stan_lacznika_gpz(
+    surowy: object, *, klucz: str, opis_pl: str, podpowiedz_pl: str, podstawa_pl: str
+) -> dict[str, Any] | tuple[str, str | None, str | None]:
+    """`{normal_state, name?, justification?}` łącznika szyn GPZ → (stan, nazwa, uzasadnienie).
+
+    Karta GPZ-H5: stan normalny łącznika szyn jest DANĄ projektu (ENEA Zeszyt 1 §26.8.4 nie
+    ustala stanu łącznika szyn 110 kV; stan łącznika szyn SN bez strony 110 kV wynika
+    z przyjętej rezerwy, §26.10.5), nie domyślnym „zamkniętym”. Brak = odmowa nazwana
+    z podpowiedzią (co daje każda wartość) i podstawą; stan zamknięty jako normalny wymaga
+    uzasadnienia zapisanego w modelu (meta łącznika)."""
+    if not isinstance(surowy, dict) or surowy.get("normal_state") not in _STANY_LACZNIKA_GPZ:
+        return _error_response(
+            f"{opis_pl}: podaj stan normalny łącznika (otwarty albo zamknięty) w polu "
+            f"{pole(f'{klucz}.normal_state', 'add_grid_source_sn')} — układ wielosekcyjny "
+            f"nie ma stanu domyślnego. {podpowiedz_pl}. Podstawa: {podstawa_pl}.",
+            KOD_GPZ_STAN_LACZNIKA_WYMAGANY,
+        )
+    stan = str(surowy["normal_state"])
+    nazwa = nazwa_nadana(surowy.get("name"))
+    uzasadnienie_surowe = surowy.get("justification")
+    uzasadnienie = (
+        uzasadnienie_surowe.strip()
+        if isinstance(uzasadnienie_surowe, str) and uzasadnienie_surowe.strip()
+        else None
+    )
+    if stan == "closed" and uzasadnienie is None:
+        return _error_response(
+            f"{opis_pl}: stan normalny „zamknięty” łączy sekcje w jedną wyspę — podaj "
+            f"uzasadnienie w polu {pole(f'{klucz}.justification', 'add_grid_source_sn')} "
+            "(np. sekcje zasilane jednym równoważnikiem).",
+            KOD_GPZ_UZASADNIENIE_ZAMKNIECIA,
+        )
+    return stan, nazwa, uzasadnienie
+
+
+def _rozstrzygnij_zasilanie_gpz(
+    zasilanie: dict[str, Any],
+    *,
+    voltage_kv: float,
+    opis_pl: str,
+) -> dict[str, Any]:
+    """Jeden tor zasilania GPZ → dane źródła (`Source`) albo odmowa nazwana.
+
+    `zasilanie` — ładunek operacji (GPZ z jednym równoważnikiem) albo wpis `supply` sekcji;
+    klucze `KLUCZE_ZASILANIA_GPZ` oraz `source_mode`/`parameter_source`/`overrides`.
+    Wynik: `materialized_params`, `catalog_ref`, `binding_payload`, `manual_equivalent`,
+    `grounding`, `zero_sequence` (dwa ostatnie do ziarna identyfikatorów). Ten sam kod dla
+    każdego toru — reguły danych równoważnika (W5-A uziemienie, K7 dane MIN, brama
+    katalogowa) nie mają drugiej kopii dla sekcji."""
+    manual_equivalent = _resolve_manual_source_equivalent({**zasilanie, "voltage_kv": voltage_kv})
+    if isinstance(manual_equivalent, dict) and manual_equivalent.get("error"):
+        return manual_equivalent
+
+    # W5-A (jedna reprezentacja uziemienia): opis punktu neutralnego sieci SN
+    # zasilanej z równoważnika trafia WYŁĄCZNIE na `Source.neutral_grounding`
+    # (nie na szyny, nie do meta stacji). Słownik typów i predykat spójności
+    # (rezystor bez R_N, dławik bez X_N) są TE SAME, które czyta walidator
+    # (E-W5-01) i model składowej zerowej — odmowa nazwana na wejściu.
+    grounding_payload = zasilanie.get("grounding")
+    grounding_config: dict[str, Any] | None = None
+    if grounding_payload is not None:
+        if not isinstance(grounding_payload, dict):
+            return _error_response(
+                f"{opis_pl}: konfiguracja uziemienia ma nieprawidłowy format.",
+                "source.invalid_grounding",
+            )
+        grounding_type = grounding_payload.get("type")
+        if grounding_type not in TYPY_PUNKTU_NEUTRALNEGO:
+            return _error_response(
+                f"{pole('grounding.type', 'add_grid_source_sn')}: nieznany typ. Dozwolone: "
+                f"{lista_pl(ETYKIETA_PL_PUNKTU_NEUTRALNEGO[t] for t in TYPY_PUNKTU_NEUTRALNEGO)}.",
+                "source.invalid_grounding",
+            )
+        grounding_config = {"type": grounding_type}
+        if isinstance(grounding_payload.get("r_ohm"), int | float):
+            grounding_config["r_ohm"] = float(grounding_payload["r_ohm"])
+        if isinstance(grounding_payload.get("x_ohm"), int | float):
+            grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
+        blad_uziemienia_gpz = blad_konfiguracji_uziemienia(
+            grounding_type, grounding_config.get("r_ohm"), grounding_config.get("x_ohm")
+        )
+        if blad_uziemienia_gpz is not None:
+            return _error_response(
+                f"Uziemienie punktu neutralnego GPZ: {blad_uziemienia_gpz}.",
+                "source.invalid_grounding",
+            )
+
+    zero_sequence_payload = zasilanie.get("zero_sequence")
+    zero_sequence_config: dict[str, bool | float] | None = None
+    if zero_sequence_payload is not None:
+        if not isinstance(zero_sequence_payload, dict):
+            return _error_response(
+                f"{opis_pl}: parametry składowej zerowej mają nieprawidłowy format.",
+                "source.invalid_zero_sequence",
+            )
+        zero_sequence_config = {"enabled": bool(zero_sequence_payload.get("enabled", False))}
+        for key in ("r0_ohm", "x0_ohm", "z0_z1_ratio"):
+            if isinstance(zero_sequence_payload.get(key), int | float):
+                zero_sequence_config[key] = float(zero_sequence_payload[key])
+
+    catalog_binding = zasilanie.get("catalog_binding")
+    binding_payload = None
+    if manual_equivalent is not None:
+        catalog_ref = None
+        materialized_params: dict[str, Any] = {
+            "voltage_rating_kv": manual_equivalent["voltage_kv"],
+            "sk3_mva": manual_equivalent.get("sk3_mva"),
+            "rx_ratio": manual_equivalent["rx_ratio"],
+            "short_circuit_model": manual_equivalent["short_circuit_model"],
+            "short_circuit_mode": manual_equivalent["short_circuit_mode"],
+            "short_circuit_input_side": manual_equivalent.get("short_circuit_input_side", "SN"),
+            "sn_voltage_kv": manual_equivalent.get("sn_voltage_kv"),
+            "voltage_hv_kv": manual_equivalent.get("voltage_hv_kv"),
+            "sk3_hv_mva": manual_equivalent.get("sk3_hv_mva"),
+            "manual_equivalent": True,
+        }
+        if manual_equivalent.get("ik3_ka") is not None:
+            materialized_params["ik3_ka"] = manual_equivalent["ik3_ka"]
+        for key in (
+            "r_ohm",
+            "x_ohm",
+            "r0_ohm",
+            "x0_ohm",
+            "z0_z1_ratio",
+            "sk3_min_mva",
+            "ik3_min_ka",
+            "rx_ratio_min",
+            "u_set_pu",
+        ):
+            if manual_equivalent.get(key) is not None:
+                materialized_params[key] = manual_equivalent[key]
+    else:
+        catalog_ref_required = _require_catalog_ref(
+            zasilanie.get("catalog_ref"),
+            catalog_binding,
+            opis_pl,
+            pole("catalog_ref", "add_grid_source_sn"),
+        )
+        if isinstance(catalog_ref_required, dict):
+            return catalog_ref_required
+        catalog_ref = catalog_ref_required
+        materialization = _materialize_catalog_payload(
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            default_namespace="ZRODLO_SN",
+        )
+        if isinstance(materialization, dict):
+            return materialization
+        binding_payload, materialized_params = materialization
+        if not materialized_params.get("short_circuit_model"):
+            materialized_params["short_circuit_model"] = "short_circuit_power"
+        if not materialized_params.get("short_circuit_mode"):
+            materialized_params["short_circuit_mode"] = "SHORT_CIRCUIT_POWER"
+    if zero_sequence_config:
+        for key in ("r0_ohm", "x0_ohm", "z0_z1_ratio"):
+            if zero_sequence_config.get(key) is not None:
+                materialized_params[key] = zero_sequence_config[key]
+    return {
+        "catalog_ref": catalog_ref,
+        "binding_payload": binding_payload,
+        "materialized_params": materialized_params,
+        "manual_equivalent": manual_equivalent,
+        "grounding": grounding_config,
+        "zero_sequence": zero_sequence_config,
+    }
+
+
+def _dane_zrodla_gpz(
+    zasilanie: dict[str, Any],
+    rozstrzygniete: dict[str, Any],
+    *,
+    ref_id: str,
+    name: str,
+    bus_ref: str,
+    napiecie_szyny_kv: float,
+    substation_ref: str,
+    gpz_section_id: str | None,
+    source_identity: str | None,
+    solution_ref: object,
+) -> dict[str, Any]:
+    """Rekord `Source` równoważnika GPZ (ładunek `create_device`) albo odmowa nazwana."""
+    materialized_params = rozstrzygniete["materialized_params"]
+    binding_payload = rozstrzygniete["binding_payload"]
+    source_data: dict[str, Any] = {
+        "device_type": "source",
+        "ref_id": ref_id,
+        "name": name,
+        "bus_ref": bus_ref,
+        "substation_ref": substation_ref,
+        "gpz_section_id": gpz_section_id,
+        "source_side": materialized_params.get("short_circuit_input_side", "SN"),
+        "model": materialized_params.get("short_circuit_model", "short_circuit_power"),
+        "catalog_ref": rozstrzygniete["catalog_ref"],
+        "materialized_params": materialized_params,
+        "meta": {
+            "source_id": source_identity,
+            "solution_ref": solution_ref,
+            "catalog_role": "GPZ_110_SN",
+        },
+    }
+    if rozstrzygniete["grounding"] is not None:
+        # Karta GPZ-MODEL: Z0 równoważnika NIE jest wyprowadzane z transformatora WN/SN —
+        # przy równoważniku na szynach SN transformatora nie ma w modelu (Z0 widziane z szyn
+        # SN jest daną równoważnika, `zero_sequence`), a przy równoważniku 110 kV punkt
+        # neutralny SN opisuje transformator modelu (uzwojenie i jego uziemienie,
+        # `enm/zero_sequence_transformer.py`). Brak Z0 przy punkcie uziemionym = E-W5-01.
+        source_data["neutral_grounding"] = rozstrzygniete["grounding"]
+    if binding_payload is not None:
+        _apply_catalog_metadata(source_data, binding_payload, default_namespace="ZRODLO_SN")
+    elif rozstrzygniete["manual_equivalent"] is not None:
+        source_data["source_mode"] = zasilanie.get("source_mode") or "EKSPERCKI_RECZNY"
+        source_data["parameter_source"] = zasilanie.get("parameter_source") or "MANUAL_EQUIVALENT"
+    # Znacznik pochodzenia z payloadu NIE MOŻE awansować źródła do katalogu.
+    # Bez `binding_payload` tabliczka pochodzi z ręcznego ekwiwalentu zwarciowego,
+    # więc „KATALOG"/„CATALOG" byłoby w migawce zdaniem nieprawdziwym — ta sama
+    # klasa defektu co aparat pola deklarujący katalog bez materializacji.
+    if binding_payload is None and (
+        str(zasilanie.get("source_mode") or "").strip().upper() == "KATALOG"
+        or str(zasilanie.get("parameter_source") or "").strip().upper() == "CATALOG"
+    ):
+        return _error_response(
+            "Źródło bez wiązania katalogowego nie może deklarować pochodzenia "
+            f"katalogowego. Wskaż pozycję z katalogu {nazwa_kategorii_katalogu('ZRODLO_SN')} "
+            "albo zostaw tryb ekspercki (ręczny ekwiwalent zwarciowy).",
+            "catalog.ref_required",
+        )
+    if zasilanie.get("source_mode"):
+        source_data["source_mode"] = zasilanie["source_mode"]
+    if zasilanie.get("parameter_source"):
+        source_data["parameter_source"] = zasilanie["parameter_source"]
+    if isinstance(zasilanie.get("overrides"), list):
+        source_data["overrides"] = zasilanie["overrides"]
+    for key in (
+        "sk3_mva",
+        "ik3_ka",
+        "rx_ratio",
+        # CV-4.3 K7: dane scenariusza MIN.
+        "sk3_min_mva",
+        "ik3_min_ka",
+        "rx_ratio_min",
+        "u_set_pu",
+        "r_ohm",
+        "x_ohm",
+        "r0_ohm",
+        "x0_ohm",
+        "z0_z1_ratio",
+        "sn_voltage_kv",
+        "voltage_hv_kv",
+        "sk3_hv_mva",
+    ):
+        if materialized_params.get(key) is not None:
+            source_data[key] = materialized_params[key]
+
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródło przyłączone WPROST do szyny nN (ekwiwalent
+    # ręczny `skip_hv_transformer` na napięciu nN — sieć nN bez transformatora w modelu) jest
+    # drugim nośnikiem tolerancji napięcia sieci nN (+6 % / +10 %, wiersz nN tabeli 1
+    # IEC 60909-0). Ten sam predykat zapisu co edycja parametrów źródła; brak = brak
+    # deklaracji (odmowa zwarcia nN z akcją naprawczą, nigdy wiersz tabeli po cichu).
+    tolerancja_zrodla = zasilanie.get("lv_voltage_tolerance")
+    if tolerancja_zrodla is not None:
+        powod_tolerancji = _powod_odmowy_tolerancji_nn(
+            tolerancja_zrodla, napiecie_szyny_kv, element_pl="źródło"
+        )
+        if powod_tolerancji is not None:
+            return _error_response(powod_tolerancji, "source.invalid_lv_voltage_tolerance")
+        source_data["lv_voltage_tolerance"] = tolerancja_zrodla
+    return source_data
+
+
+def _lacznik_szyn_gpz(
+    *,
+    ref_id: str,
+    name: str,
+    from_bus_ref: str,
+    to_bus_ref: str,
+    normal_state: str,
+    uzasadnienie: str | None,
+    substation_ref: str,
+) -> dict[str, Any]:
+    """Łącznik szyn sekcji GPZ (`bus_coupler`): położenie bieżące = stan normalny z projektu.
+
+    Rola (łącznik szyn 110 kV / SN) NIE jest zapisywana — wyprowadza ją
+    `enm.topology.role_lacznikow` z napięcia szyn i rejestru sekcji (jedno źródło prawdy).
+    Uzasadnienie stanu normalnego „zamknięty” jest daną projektu (meta łącznika)."""
+    meta: dict[str, Any] = {"gpz_substation_ref": substation_ref}
+    if uzasadnienie is not None:
+        meta["normal_state_justification"] = uzasadnienie
+    return {
+        "ref_id": ref_id,
+        "name": name,
+        "type": "bus_coupler",
+        "from_bus_ref": from_bus_ref,
+        "to_bus_ref": to_bus_ref,
+        "status": normal_state,
+        "normal_state": normal_state,
+        "catalog_ref": None,
+        "catalog_namespace": None,
+        "parameter_source": None,
+        "source_mode": None,
+        "materialized_params": None,
+        "overrides": [],
+        "r_ohm": None,
+        "x_ohm": None,
+        "meta": meta,
+    }
+
+
+def _wpisy_sekcji_wn_gpz(payload: dict[str, Any]) -> list[dict[str, Any]] | dict[str, Any]:
+    """`hv_sections` ładunku → lista wpisów sekcji 110 kV albo odmowa nazwana.
+
+    Każdy wpis: `name?`, `bus_name?`, `line_field_name?` i `supply` — tor zasilania: linia
+    110 kV (`line_name`), stacja zasilająca (`supplying_station_name`) i równoważnik sieci
+    widziany z szyny sekcji (`manual_equivalent`: Sk″ max/min, R/X max/min, Z0/Z1 albo
+    R0/X0; napięcie `hv_voltage_kv`). Brak danych = odmowa, nigdy wartość domyślna."""
+    surowe = payload.get("hv_sections")
+    if not isinstance(surowe, list) or not 1 <= len(surowe) <= 4:
+        return _error_response(
+            f"{pole('hv_sections', 'add_grid_source_sn')}: GPZ ze stroną 110 kV ma od 1 do 4 "
+            "sekcji szyn 110 kV, każda z własnym torem zasilania.",
+            KOD_GPZ_SEKCJE_WN_LICZBA,
+        )
+    wpisy: list[dict[str, Any]] = []
+    for indeks, wpis in enumerate(surowe):
+        numer = indeks + 1
+        if not isinstance(wpis, dict):
+            return _error_response(
+                f"Sekcja 110 kV {numer}: wpis ma nieprawidłowy format.",
+                KOD_GPZ_SEKCJE_WN_LICZBA,
+            )
+        zasilanie = wpis.get("supply")
+        if not isinstance(zasilanie, dict):
+            return _error_response(
+                f"Sekcja 110 kV {numer}: podaj tor zasilania w polu "
+                f"{pole('hv_sections.supply', 'add_grid_source_sn')} — linię 110 kV, stację "
+                "zasilającą i równoważnik sieci.",
+                KOD_GPZ_TOR_ZASILANIA_NIEPELNY,
+            )
+        linia = nazwa_nadana(zasilanie.get("line_name"))
+        stacja = nazwa_nadana(zasilanie.get("supplying_station_name"))
+        brakujace = [
+            klucz
+            for klucz, wartosc in (
+                ("hv_sections.supply.line_name", linia),
+                ("hv_sections.supply.supplying_station_name", stacja),
+                ("hv_sections.supply.manual_equivalent", zasilanie.get("manual_equivalent")),
+            )
+            if wartosc is None
+        ]
+        if brakujace:
+            return _error_response(
+                f"Sekcja 110 kV {numer}: tor zasilania niepełny — uzupełnij "
+                f"{lista_pl((pole(k, 'add_grid_source_sn') for k in brakujace), 'i')}.",
+                KOD_GPZ_TOR_ZASILANIA_NIEPELNY,
+            )
+        rownowaznik = zasilanie["manual_equivalent"]
+        if not isinstance(rownowaznik, dict):
+            return _error_response(
+                "Ręczny równoważnik sieci źródła GPZ ma nieprawidłowy format.",
+                "source.manual_equivalent_invalid",
+            )
+        klucze_obce = sorted(
+            k
+            for k in zasilanie
+            if k
+            not in {
+                *KLUCZE_ZASILANIA_GPZ,
+                "line_name",
+                "supplying_station_name",
+                "name",
+                "source_mode",
+                "parameter_source",
+                "overrides",
+            }
+        )
+        if zasilanie.get("catalog_ref") is not None or zasilanie.get("catalog_binding"):
+            klucze_obce.append("catalog_ref")
+        if klucze_obce:
+            return _error_response(
+                f"Sekcja 110 kV {numer}: tor zasilania 110 kV opisuje równoważnik sieci z "
+                "warunków przyłączenia (Sk″, R/X, Z0) — nie przyjmuje "
+                f"{_lista_pol_gpz(klucze_obce, 'ani')}.",
+                KOD_GPZ_TOR_ZASILANIA_NIEPELNY,
+            )
+        wpisy.append(
+            {
+                "name": nazwa_nadana(wpis.get("name")),
+                "bus_name": nazwa_nadana(wpis.get("bus_name")),
+                "line_field_name": nazwa_nadana(wpis.get("line_field_name")),
+                "line_name": linia,
+                "supplying_station_name": stacja,
+                "supply": {
+                    **zasilanie,
+                    "manual_equivalent": {
+                        **rownowaznik,
+                        "short_circuit_input_side": STRONA_ROWNOWAZNIKA_WN,
+                    },
+                },
+            }
+        )
+    return wpisy
+
+
+def _wpisy_transformatorow_gpz(
+    payload: dict[str, Any], *, liczba_sekcji_wn: int, liczba_sekcji_sn: int
+) -> list[dict[str, Any]] | dict[str, Any]:
+    """`transformers` ładunku → lista wpisów `(hv_section, sn_section, typ)` albo odmowa.
+
+    Przypisanie sekcja 110 kV → sekcja SN jest JAWNE (numery sekcji od 1), bez cyklu po
+    liczbie transformatorów. Typ z katalogu: `transformer_catalog_ref` /
+    `transformer_catalog_binding` albo para `transformer_sn_mva` + napięcie toru
+    (`_resolve_gpz_wn_sn_transformer_catalog_ref`); regulacja zaczepów — klucze
+    `transformer_*` wpisu (`_build_gpz_tap_changer`)."""
+    surowe = payload.get("transformers")
+    if not isinstance(surowe, list) or not surowe:
+        return _error_response(
+            "Sekcje 110 kV zasilają sekcje SN przez transformatory 110/SN — podaj je w polu "
+            f"{pole('transformers', 'add_grid_source_sn')}: dla każdego sekcję 110 kV, "
+            "sekcję SN i typ z katalogu.",
+            KOD_GPZ_TRANSFORMATORY_WYMAGANE,
+        )
+    wpisy: list[dict[str, Any]] = []
+    for indeks, wpis in enumerate(surowe):
+        numer = indeks + 1
+        if not isinstance(wpis, dict):
+            return _error_response(
+                f"Transformator {numer}: wpis ma nieprawidłowy format.",
+                KOD_GPZ_TRANSFORMATOR_SEKCJA,
+            )
+        sekcja_wn = wpis.get("hv_section")
+        sekcja_sn = wpis.get("sn_section")
+        if (
+            isinstance(sekcja_wn, bool)
+            or isinstance(sekcja_sn, bool)
+            or not isinstance(sekcja_wn, int)
+            or not isinstance(sekcja_sn, int)
+            or not 1 <= sekcja_wn <= liczba_sekcji_wn
+            or not 1 <= sekcja_sn <= liczba_sekcji_sn
+        ):
+            return _error_response(
+                f"Transformator {numer}: wskaż sekcję 110 kV (1–{liczba_sekcji_wn}) w polu "
+                f"{pole('transformers.hv_section', 'add_grid_source_sn')} i sekcję SN "
+                f"(1–{liczba_sekcji_sn}) w polu "
+                f"{pole('transformers.sn_section', 'add_grid_source_sn')}.",
+                KOD_GPZ_TRANSFORMATOR_SEKCJA,
+            )
+        wpisy.append({**wpis, "hv_section": sekcja_wn, "sn_section": sekcja_sn})
+    return wpisy
+
+
+#: Pola funkcyjne sekcji SN GPZ (ENEA Zeszyt 1 §13, zał. Z.2) → rola pola modelu. Pole
+#: pomiaru napięcia to pole pomiarowe z funkcją `NAPIECIA_SZYN` (przekładniki napięciowe
+#: sekcji), nie układ pomiarowy energii.
+POLA_FUNKCYJNE_SEKCJI_SN_GPZ: dict[str, str] = {
+    "EARTHING": "EARTHING",
+    "CAPACITOR": "CAPACITOR",
+    "MEASUREMENT": "MEASUREMENT",
+}
+
+#: Klucze propozycji składu aparatów pól 110 kV (ENEA Zeszyt 1 §11.1) → rodzaj pola.
+KLUCZE_PROPOZYCJI_APARATOW_110: tuple[str, ...] = ("line", "transformer", "coupler")
+
+
+def _pola_funkcyjne_sekcji(entry: dict[str, Any], numer: int) -> list[str] | dict[str, Any]:
+    """`gpz_sections[].function_bays` → lista ról pól funkcyjnych sekcji albo odmowa.
+
+    Pole powstaje BEZ aparatu i bez elementu (zespół uziemiający, bateria kondensatorów) —
+    element modelu powstaje wyłącznie z danych (osobną operacją), nigdy z szablonu."""
+    surowe = entry.get("function_bays")
+    if surowe is None:
+        return []
+    if not isinstance(surowe, list):
+        return _error_response(
+            f"Sekcja SN {numer}: {pole('gpz_sections.function_bays', 'add_grid_source_sn')} "
+            "ma nieprawidłowy format.",
+            KOD_GPZ_POLE_FUNKCYJNE,
+        )
+    role: list[str] = []
+    for wpis in surowe:
+        rola = str(wpis).strip().upper() if isinstance(wpis, str) else ""
+        if rola not in POLA_FUNKCYJNE_SEKCJI_SN_GPZ or rola in role:
+            return _error_response(
+                f"Sekcja SN {numer}: pole funkcyjne „{wpis}” — dozwolone (każde raz): "
+                f"{lista_pl(nazwa_roli_pola_sn(r) for r in POLA_FUNKCYJNE_SEKCJI_SN_GPZ)}.",
+                KOD_GPZ_POLE_FUNKCYJNE,
+            )
+        role.append(rola)
+    return role
+
+
+def _propozycja_aparatow_110(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """`hv_bay_apparatus_proposal` → propozycja szablonu składu aparatów pól 110 kV.
+
+    Propozycja (ENEA Zeszyt 1 §11.1) jest JAWNIE odróżniona od aparatów modelu: trafia do
+    `meta.apparatus_proposal` pola 110 kV z `modelled: False` — schemat może ją pokazać jako
+    propozycję szablonu, obliczenia jej nie czytają, a aparat modelu powstaje wyłącznie
+    operacją wyposażenia pola (karta K3, zasada trzech przypadków SLD_CAD_SPEC_V3 §12)."""
+    surowa = payload.get("hv_bay_apparatus_proposal")
+    if surowa is None:
+        return None
+    if not isinstance(surowa, dict):
+        return _error_response(
+            f"{pole('hv_bay_apparatus_proposal', 'add_grid_source_sn')} ma nieprawidłowy format.",
+            KOD_GPZ_PROPOZYCJA_APARATOW,
+        )
+    podstawa = nazwa_nadana(surowa.get("basis"))
+    obce = sorted(k for k in surowa if k not in {*KLUCZE_PROPOZYCJI_APARATOW_110, "basis"})
+    sklady: dict[str, list[str]] = {}
+    for klucz in KLUCZE_PROPOZYCJI_APARATOW_110:
+        sklad = surowa.get(klucz)
+        if sklad is None:
+            continue
+        if (
+            not isinstance(sklad, list)
+            or not sklad
+            or not all(isinstance(a, str) and a.strip() for a in sklad)
+        ):
+            obce.append(klucz)
+            continue
+        sklady[klucz] = [a.strip() for a in sklad]
+    if podstawa is None or obce or not sklady:
+        return _error_response(
+            "Propozycja składu aparatów pól 110 kV wymaga podstawy (pole „basis”) i niepustych "
+            "list oznaczeń aparatów dla pól: liniowego, transformatorowego, łącznika szyn.",
+            KOD_GPZ_PROPOZYCJA_APARATOW,
+        )
+    return {"basis": podstawa, **sklady}
+
+
 # ---------------------------------------------------------------------------
 # 1. add_grid_source_sn
 # ---------------------------------------------------------------------------
 
 
 def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj źródło zasilania (GPZ) — pierwszy krok budowy sieci SN."""
+    """Dodaj stację zasilającą GPZ — pierwszy krok budowy sieci SN.
+
+    Karta GPZ-H5 (układ ENEA H5, struktura JAWNA, bez cyklu i bez domyślnych):
+
+    * GPZ z równoważnikiem na szynach SN (granica modelu = szyny SN): jedna sekcja SN
+      z równoważnikiem z ładunku; przy ≥ 2 sekcjach SN stan normalny łącznika szyn SN
+      (`sn_coupler`) jest daną — otwarty: każda sekcja ma własny równoważnik
+      (`gpz_sections[].supply`); zamknięty (z uzasadnieniem): jeden równoważnik z ładunku
+      na sekcji 1, pozostałe zasila łącznik.
+    * GPZ ze stroną 110 kV (`hv_sections`): sekcje szyn 110 kV, każda z własnym torem
+      zasilania (linia, stacja zasilająca, równoważnik sieci), łącznik szyn 110 kV
+      (`hv_coupler`) ze stanem normalnym, transformatory 110/SN z katalogu przypisane
+      jawnie sekcja 110 kV → sekcja SN (`transformers`), łącznik szyn SN (`sn_coupler`).
+      Pola 110 kV (liniowe, transformatorowe, łącznika) i SN (transformatorowe, łącznika)
+      powstają BEZ aparatów domyślnych (karta K3) — aparat wybiera projektant.
+    """
     odmowa = _odmowa_typu_ladunku(
         payload, "add_grid_source_sn", {"voltage_kv": "liczba", "sections_count": "calkowita"}
     )
     if odmowa is not None:
         return odmowa
     voltage_kv = payload.get("voltage_kv")
-    manual_equivalent = _resolve_manual_source_equivalent(payload)
-    if isinstance(manual_equivalent, dict) and manual_equivalent.get("error"):
-        return manual_equivalent
-    manual_source_mode = manual_equivalent is not None
+    tryb_wn = payload.get("hv_sections") is not None
     gpz_section_entries = _normalize_gpz_section_entries(payload)
-    sections_count = int(payload.get("sections_count", len(gpz_section_entries) or 1) or 1)
-    if len(gpz_section_entries) != sections_count:
+    # Liczba sekcji SN = liczba wpisów sekcji: jawne `gpz_sections` (bez nich jeden wpis —
+    # rozdzielnica niesekcjonowana, `_normalize_gpz_section_entries`). Zadane `sections_count`
+    # (typ sprawdzony wyżej) różne od liczby wpisów odbudowuje wpisy do tej liczby; zadane 0
+    # NIE jest zamieniane na 1 — trafia do odmowy zakresu `source.invalid_sections_count`.
+    sections_count = len(gpz_section_entries)
+    zadana_liczba_sekcji = payload.get("sections_count")
+    if zadana_liczba_sekcji is not None and int(zadana_liczba_sekcji) != sections_count:
+        sections_count = int(zadana_liczba_sekcji)
         requested_line_fields_count = _read_gpz_line_fields_count({}, payload)
         gpz_section_entries = [
             {
@@ -3943,6 +4490,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "line_field_name": None,
                 "line_field_names": [],
                 "line_fields_count": requested_line_fields_count,
+                "supply": None,
             }
             for index in range(sections_count)
         ]
@@ -3966,17 +4514,319 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 ),
                 "source.invalid_line_fields_count",
             )
-    if manual_equivalent is not None and (voltage_kv is None or voltage_kv <= 0):
-        voltage_kv = manual_equivalent["voltage_kv"]
+
+    # Łącznik szyn SN: stan normalny jest daną projektu przy ≥ 2 sekcjach SN. GPZ z
+    # równoważnikiem na szynach SN — `sn_coupler.normal_state` wprost; GPZ ze stroną 110 kV —
+    # stan WYPROWADZONY z trybu rezerwy transformatorowej (`enm.rezerwa_gpz`, niżej).
+    sn_coupler: tuple[str, str | None, str | None] | None = None
+    sn_coupler_raw = payload.get("sn_coupler")
+    cele_lacznika_sn: int | None = None
+    if isinstance(sn_coupler_raw, dict) and sn_coupler_raw.get("cells") is not None:
+        cele = sn_coupler_raw.get("cells")
+        if isinstance(cele, bool) or cele not in (1, 2) or sections_count < 2:
+            return _error_response(
+                f"{pole('sn_coupler.cells', 'add_grid_source_sn')}: łącznik szyn SN zajmuje "
+                "jedną albo dwie cele rozdzielnicy (ENEA Zeszyt 1, zał. Z.2) i istnieje tylko "
+                "przy ≥ 2 sekcjach SN.",
+                KOD_GPZ_CELE_LACZNIKA,
+            )
+        cele_lacznika_sn = int(cele)
+    if sections_count >= 2 and not tryb_wn:
+        stan = _stan_lacznika_gpz(
+            sn_coupler_raw,
+            klucz="sn_coupler",
+            opis_pl="Łącznik szyn SN GPZ",
+            podpowiedz_pl=PODPOWIEDZ_STANU_LACZNIKA_SZYN_SN_PL,
+            podstawa_pl=PODSTAWA_TRYBU_REZERWY_PL,
+        )
+        if isinstance(stan, dict):
+            return stan
+        sn_coupler = stan
+    if not tryb_wn:
+        obce_rezerwy = [
+            k
+            for k in ("reserve_mode", "reserve_transformer", "reserve_transformer_apparatus")
+            if payload.get(k) is not None
+        ]
+        if obce_rezerwy:
+            return _error_response(
+                "Tryb rezerwy transformatorowej dotyczy transformatorów 110/SN — w GPZ z "
+                "równoważnikiem na szynach SN transformatorów nie ma w modelu. Usuń "
+                f"{_lista_pol_gpz(obce_rezerwy)} albo zbuduj GPZ ze stroną "
+                f"110 kV ({pole('hv_sections', 'add_grid_source_sn')}).",
+                KOD_TRANSFORMATOR_POZA_GRANICA_SN,
+            )
+    zasilanie_na_sekcje_sn = not tryb_wn and sn_coupler is not None and sn_coupler[0] == "open"
+    zasilania_sekcji = [entry.get("supply") for entry in gpz_section_entries]
+
+    # Granica zasilania (karta GPZ-MODEL + GPZ-H5): transformatory 110/SN istnieją wyłącznie
+    # w GPZ ze stroną 110 kV i wyłącznie jako wpisy `transformers`; tor zasilania leży albo
+    # na najwyższym poziomie ładunku (jeden równoważnik), albo w sekcjach — nigdy w obu.
+    if not tryb_wn:
+        zadane_tr = _klucze_transformatorow_gpz(payload)
+        if zadane_tr or payload.get("transformers") is not None:
+            return _error_response(
+                "Równoważnik sieci podany na szynach SN GPZ (moc zwarciowa widziana z szyn "
+                "SN) zawiera już impedancję transformatorów 110/SN — w tym trybie "
+                "transformatory nie są elementami modelu obliczeniowego i nie powstają. "
+                "Usuń dane transformatorów 110/SN albo zbuduj GPZ ze stroną 110 kV "
+                f"({pole('hv_sections', 'add_grid_source_sn')}: sekcje 110 kV z torami "
+                "zasilania, transformatory 110/SN przypisane do sekcji).",
+                KOD_TRANSFORMATOR_POZA_GRANICA_SN,
+            )
+        rownowaznik_glowny = payload.get("manual_equivalent")
+        if (
+            isinstance(rownowaznik_glowny, dict)
+            and strona_rownowaznika(rownowaznik_glowny, payload) == STRONA_ROWNOWAZNIKA_WN
+        ):
+            return _error_response(
+                "Równoważnik sieci po stronie 110 kV opisuje tor zasilania sekcji szyn 110 kV "
+                f"— podaj go w {pole('hv_sections', 'add_grid_source_sn')} (linia 110 kV, "
+                "stacja zasilająca, Sk″, R/X, Z0) razem z transformatorami 110/SN.",
+                KOD_GPZ_SEKCJE_WN_WYMAGANE,
+            )
+    if tryb_wn or zasilanie_na_sekcje_sn:
+        obecne = _klucze_zasilania_obecne(payload)
+        if obecne:
+            return _error_response(
+                "GPZ z równoważnikiem na sekcję: tor zasilania podaje się przy sekcji "
+                f"({_lista_pol_gpz(['hv_sections' if tryb_wn else 'gpz_sections.supply'])}), "
+                f"nie na najwyższym poziomie ładunku — usuń {_lista_pol_gpz(obecne)}.",
+                KOD_GPZ_ZASILANIE_NA_SEKCJE,
+            )
+    if tryb_wn or not zasilanie_na_sekcje_sn:
+        if any(z is not None for z in zasilania_sekcji):
+            return _error_response(
+                "Sekcja SN GPZ ma własny równoważnik wyłącznie przy łączniku szyn SN "
+                "normalnie otwartym i równoważniku na szynach SN — usuń "
+                f"{pole('gpz_sections.supply', 'add_grid_source_sn')}.",
+                KOD_GPZ_ZASILANIE_NA_SEKCJE,
+            )
+    else:
+        brak = [i + 1 for i, z in enumerate(zasilania_sekcji) if not isinstance(z, dict)]
+        if brak:
+            return _error_response(
+                "Łącznik szyn SN normalnie otwarty: każda sekcja SN ma własny równoważnik "
+                f"sieci — uzupełnij {pole('gpz_sections.supply', 'add_grid_source_sn')}: "
+                + lista_pl(
+                    (
+                        opis_nazwy(gpz_section_entries[n - 1].get("name"), f"sekcja SN {n}")
+                        for n in brak
+                    ),
+                    "i",
+                )
+                + ".",
+                KOD_GPZ_SEKCJA_SN_BEZ_ZASILANIA,
+            )
+
+    hv_entries: list[dict[str, Any]] = []
+    hv_coupler: tuple[str, str | None, str | None] | None = None
+    transformer_entries: list[dict[str, Any]] = []
+    if tryb_wn:
+        wpisy_wn = _wpisy_sekcji_wn_gpz(payload)
+        if isinstance(wpisy_wn, dict):
+            return wpisy_wn
+        hv_entries = wpisy_wn
+        if len(hv_entries) >= 2:
+            stan = _stan_lacznika_gpz(
+                payload.get("hv_coupler"),
+                klucz="hv_coupler",
+                opis_pl="Łącznik szyn 110 kV GPZ",
+                podpowiedz_pl=PODPOWIEDZ_STANU_LACZNIKA_SZYN_WN_PL,
+                podstawa_pl=PODSTAWA_STANU_LACZNIKA_SZYN_WN_PL,
+            )
+            if isinstance(stan, dict):
+                return stan
+            hv_coupler = stan
+        zadane_tr = _klucze_transformatorow_gpz(payload)
+        if zadane_tr:
+            return _error_response(
+                "Transformatory 110/SN podaje się wpisami "
+                f"{pole('transformers', 'add_grid_source_sn')} (sekcja 110 kV, sekcja SN, typ "
+                f"z katalogu) — usuń {_lista_pol_gpz(zadane_tr)}.",
+                KOD_GPZ_TRANSFORMATORY_WYMAGANE,
+            )
+        wpisy_tr = _wpisy_transformatorow_gpz(
+            payload, liczba_sekcji_wn=len(hv_entries), liczba_sekcji_sn=sections_count
+        )
+        if isinstance(wpisy_tr, dict):
+            return wpisy_tr
+        transformer_entries = wpisy_tr
+        # Tryb rezerwy transformatorowej (ENEA Zeszyt 1 §26.10.5) — JAWNY wybór projektanta,
+        # gdy jest co rezerwować (≥ 2 sekcje SN albo ≥ 2 transformatory); stan normalny
+        # łącznika szyn SN i wyłącznika pola SN transformatora rezerwowego z niego wynika.
+        tryb_rezerwy = payload.get("reserve_mode")
+        wymaga_rezerwy = sections_count >= 2 or len(transformer_entries) >= 2
+        if tryb_rezerwy is None and wymaga_rezerwy:
+            return _error_response(
+                "GPZ z dwiema sekcjami SN albo dwoma transformatorami 110/SN: wybierz tryb "
+                f"rezerwy transformatorowej w polu {pole('reserve_mode', 'add_grid_source_sn')} "
+                f"— standard nie wyróżnia żadnego. {PODPOWIEDZ_TRYBU_REZERWY_PL} "
+                f"Podstawa: {PODSTAWA_TRYBU_REZERWY_PL}.",
+                KOD_GPZ_TRYB_REZERWY_WYMAGANY,
+            )
+        if tryb_rezerwy is not None and tryb_rezerwy not in TRYBY_REZERWY:
+            return _error_response(
+                f"{pole('reserve_mode', 'add_grid_source_sn')}: nieznany tryb rezerwy — "
+                f"dozwolone: {lista_pl(NAZWA_TRYBU_REZERWY_PL[t] for t in TRYBY_REZERWY)}.",
+                KOD_GPZ_TRYB_REZERWY_WYMAGANY,
+            )
+        if isinstance(sn_coupler_raw, dict) and (
+            sn_coupler_raw.get("normal_state") is not None
+            or sn_coupler_raw.get("justification") is not None
+        ):
+            return _error_response(
+                "GPZ ze stroną 110 kV: stan normalny łącznika szyn SN wynika z trybu rezerwy "
+                f"({pole('reserve_mode', 'add_grid_source_sn')}) — usuń "
+                f"{pole('sn_coupler.normal_state', 'add_grid_source_sn')}.",
+                KOD_GPZ_STAN_SN_Z_TRYBU_REZERWY,
+            )
+        if sections_count >= 2:
+            assert tryb_rezerwy is not None  # wymaga_rezerwy
+            stan_sn = stan_normalny_lacznika_szyn_sn(str(tryb_rezerwy))
+            sn_coupler = (
+                stan_sn,
+                (
+                    nazwa_nadana(sn_coupler_raw.get("name"))
+                    if isinstance(sn_coupler_raw, dict)
+                    else None
+                ),
+                UZASADNIENIE_ZAMKNIECIA_REZERWY_JAWNEJ if stan_sn == "closed" else None,
+            )
+        indeks_rezerwowego: int | None = None
+        rezerwowy_surowy = payload.get("reserve_transformer")
+        if tryb_rezerwy == TRYB_REZERWY_JAWNEJ and len(transformer_entries) >= 2:
+            if (
+                isinstance(rezerwowy_surowy, bool)
+                or not isinstance(rezerwowy_surowy, int)
+                or not 1 <= rezerwowy_surowy <= len(transformer_entries)
+            ):
+                return _error_response(
+                    "Rezerwa jawna: wskaż transformator rezerwowy (1–"
+                    f"{len(transformer_entries)}) w polu "
+                    f"{pole('reserve_transformer', 'add_grid_source_sn')} — jego wyłącznik pola "
+                    "SN jest normalnie otwarty.",
+                    KOD_GPZ_TRANSFORMATOR_REZERWOWY,
+                )
+            indeks_rezerwowego = rezerwowy_surowy
+        elif rezerwowy_surowy is not None or payload.get("reserve_transformer_apparatus"):
+            return _error_response(
+                "Transformator rezerwowy wskazuje się wyłącznie przy rezerwie jawnej z co "
+                "najmniej dwoma transformatorami — usuń "
+                f"{_lista_pol_gpz(['reserve_transformer', 'reserve_transformer_apparatus'])}.",
+                KOD_GPZ_TRANSFORMATOR_REZERWOWY,
+            )
+        # Zasilanie sekcji SN w stanie normalnym — JEDEN predykat dla obu trybów: grupa sekcji
+        # SN połączonych łącznikiem w stanie normalnym (otwarty: każda sekcja osobno, zamknięty:
+        # wszystkie razem) jest zasilana transformatorami PRACUJĄCYMI (bez rezerwowego) z
+        # dokładnie jednej sekcji 110 kV — zero: sekcja bez zasilania, dwie: stałe połączenie
+        # niezależnych torów L1/L2 przez szyny SN.
+        if sn_coupler is not None and sn_coupler[0] == "closed":
+            grupy_sn = [set(range(1, sections_count + 1))]
+        else:
+            grupy_sn = [{n} for n in range(1, sections_count + 1)]
+        pracujace = [t for i, t in enumerate(transformer_entries) if i + 1 != indeks_rezerwowego]
+        for grupa in grupy_sn:
+            tory_grupy = {t["hv_section"] for t in pracujace if t["sn_section"] in grupa}
+            sekcje_pl = lista_pl((str(n) for n in sorted(grupa)), "i")
+            if len(tory_grupy) > 1:
+                return _error_response(
+                    f"Sekcja SN {sekcje_pl} jest w stanie normalnym zasilana transformatorami "
+                    "z różnych sekcji 110 kV — łączyłaby na stałe dwa niezależne tory "
+                    "zasilania (L1, L2) przez szyny SN. Zasil sekcję transformatorami jednej "
+                    "sekcji 110 kV albo wybierz rezerwę jawną z transformatorem rezerwowym.",
+                    KOD_GPZ_SEKCJA_SN_Z_DWOCH_TOROW,
+                )
+            if not tory_grupy:
+                return _error_response(
+                    f"Sekcja SN {sekcje_pl} nie ma w stanie normalnym transformatora 110/SN "
+                    "pod napięciem — byłaby bez zasilania. Przypisz jej transformator albo "
+                    "wybierz rezerwę jawną (łącznik szyn SN normalnie zamknięty).",
+                    KOD_GPZ_SEKCJA_SN_BEZ_ZASILANIA,
+                )
+        aparat_rezerwowego: dict[str, Any] | None = None
+        if indeks_rezerwowego is not None:
+            aparat_rezerwowego = _normalize_gpz_line_field_apparatus(
+                payload, "reserve_transformer_apparatus"
+            )
+            if aparat_rezerwowego is None:
+                return _error_response(
+                    "Rezerwa jawna: wyłącznik pola SN transformatora rezerwowego wybierz z "
+                    f"katalogu {nazwa_kategorii_katalogu('APARAT_SN')} w polu "
+                    f"{pole('reserve_transformer_apparatus', 'add_grid_source_sn')} — model "
+                    "nie dobiera aparatu domyślnego.",
+                    KOD_GPZ_TRANSFORMATOR_REZERWOWY,
+                )
+            materializacja_rezerwowego = _brama_katalogowa_aparatu_sn(
+                aparat_rezerwowego["catalog_ref"],
+                catalog_binding=aparat_rezerwowego["catalog_binding"],
+                opis_pl="Wyłącznik pola SN transformatora rezerwowego",
+            )
+            if isinstance(materializacja_rezerwowego, dict):
+                return materializacja_rezerwowego
+            (
+                aparat_rezerwowego["catalog_binding"],
+                aparat_rezerwowego["materialized_params"],
+            ) = materializacja_rezerwowego
+    else:
+        tryb_rezerwy = None
+        indeks_rezerwowego = None
+        aparat_rezerwowego = None
+
+    pola_funkcyjne_sekcji: list[list[str]] = []
+    for indeks, entry in enumerate(gpz_section_entries):
+        role_funkcyjne = _pola_funkcyjne_sekcji(entry, indeks + 1)
+        if isinstance(role_funkcyjne, dict):
+            return role_funkcyjne
+        pola_funkcyjne_sekcji.append(role_funkcyjne)
+    propozycja_aparatow = _propozycja_aparatow_110(payload)
+    if isinstance(propozycja_aparatow, dict) and propozycja_aparatow.get("error"):
+        return propozycja_aparatow
+    if propozycja_aparatow is not None and not tryb_wn:
+        return _error_response(
+            "Propozycja składu aparatów pól 110 kV dotyczy GPZ ze stroną 110 kV "
+            f"({pole('hv_sections', 'add_grid_source_sn')}).",
+            KOD_GPZ_PROPOZYCJA_APARATOW,
+        )
+
+    # Napięcie SN GPZ: z ładunku, z równoważnika (GPZ z jednym równoważnikiem), z ustawień
+    # projektu, z katalogu źródła — w tej kolejności; nigdy z założenia.
+    zasilanie_glowne = not tryb_wn and not zasilanie_na_sekcje_sn
+    if zasilanie_glowne and (voltage_kv is None or voltage_kv <= 0):
+        manual_glowny = _resolve_manual_source_equivalent(payload)
+        if isinstance(manual_glowny, dict) and manual_glowny.get("error"):
+            return manual_glowny
+        if manual_glowny is not None:
+            voltage_kv = manual_glowny["voltage_kv"]
     if voltage_kv is None or voltage_kv <= 0:
         # Pobierz napięcie z jawnych ustawień projektu (ENM defaults)
         voltage_kv = enm.get("header", {}).get("defaults", {}).get("sn_nominal_kv")
+    if (
+        zasilanie_glowne
+        and (voltage_kv is None or voltage_kv <= 0)
+        and payload.get("manual_equivalent") is None
+    ):
+        katalog_ref = _require_catalog_ref(
+            payload.get("catalog_ref"),
+            payload.get("catalog_binding"),
+            "Źródło systemowe GPZ",
+            pole("catalog_ref", "add_grid_source_sn"),
+        )
+        if isinstance(katalog_ref, str):
+            materializacja = _materialize_catalog_payload(
+                catalog_ref=katalog_ref,
+                catalog_binding=payload.get("catalog_binding"),
+                default_namespace="ZRODLO_SN",
+            )
+            if not isinstance(materializacja, dict):
+                voltage_kv = materializacja[1].get("voltage_rating_kv")
     if voltage_kv is None or voltage_kv <= 0:
         return _error_response(
             "Brak napięcia znamionowego SN GPZ — uzupełnij pole "
             f"{pole('voltage_kv', 'add_grid_source_sn')}.",
             "source.missing_voltage",
         )
+    voltage_kv = float(voltage_kv)
 
     source_identity_raw = (
         payload.get("source_id")
@@ -4018,130 +4868,36 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     "source.already_exists",
                 )
 
-    # W5-A (jedna reprezentacja uziemienia): opis punktu neutralnego sieci SN
-    # zasilanej z równoważnika trafia WYŁĄCZNIE na `Source.neutral_grounding`
-    # (nie na szyny, nie do meta stacji). Słownik typów i predykat spójności
-    # (rezystor bez R_N, dławik bez X_N) są TE SAME, które czyta walidator
-    # (E-W5-01) i model składowej zerowej — odmowa nazwana na wejściu.
-    grounding_payload = payload.get("grounding")
-    grounding_config: dict[str, Any] | None = None
-    if grounding_payload is not None:
-        if not isinstance(grounding_payload, dict):
-            return _error_response(
-                "Konfiguracja uziemienia GPZ ma nieprawidłowy format.",
-                "source.invalid_grounding",
-            )
-        grounding_type = grounding_payload.get("type")
-        if grounding_type not in TYPY_PUNKTU_NEUTRALNEGO:
-            return _error_response(
-                f"{pole('grounding.type', 'add_grid_source_sn')}: nieznany typ. Dozwolone: "
-                f"{lista_pl(ETYKIETA_PL_PUNKTU_NEUTRALNEGO[t] for t in TYPY_PUNKTU_NEUTRALNEGO)}.",
-                "source.invalid_grounding",
-            )
-        grounding_config = {"type": grounding_type}
-        if isinstance(grounding_payload.get("r_ohm"), int | float):
-            grounding_config["r_ohm"] = float(grounding_payload["r_ohm"])
-        if isinstance(grounding_payload.get("x_ohm"), int | float):
-            grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
-        blad_uziemienia_gpz = blad_konfiguracji_uziemienia(
-            grounding_type, grounding_config.get("r_ohm"), grounding_config.get("x_ohm")
-        )
-        if blad_uziemienia_gpz is not None:
-            return _error_response(
-                f"Uziemienie punktu neutralnego GPZ: {blad_uziemienia_gpz}.",
-                "source.invalid_grounding",
-            )
-
-    zero_sequence_payload = payload.get("zero_sequence")
-    zero_sequence_config: dict[str, bool | float] | None = None
-    if zero_sequence_payload is not None:
-        if not isinstance(zero_sequence_payload, dict):
-            return _error_response(
-                "Parametry składowej zerowej GPZ mają nieprawidłowy format.",
-                "source.invalid_zero_sequence",
-            )
-        zero_sequence_config = {"enabled": bool(zero_sequence_payload.get("enabled", False))}
-        for key in ("r0_ohm", "x0_ohm", "z0_z1_ratio"):
-            if isinstance(zero_sequence_payload.get(key), int | float):
-                zero_sequence_config[key] = float(zero_sequence_payload[key])
-
-    catalog_binding = payload.get("catalog_binding")
-    binding_payload = None
-    if manual_equivalent is not None:
-        catalog_ref = None
-        materialized_params = {
-            "voltage_rating_kv": manual_equivalent["voltage_kv"],
-            "sk3_mva": manual_equivalent.get("sk3_mva"),
-            "rx_ratio": manual_equivalent["rx_ratio"],
-            "short_circuit_model": manual_equivalent["short_circuit_model"],
-            "short_circuit_mode": manual_equivalent["short_circuit_mode"],
-            "short_circuit_input_side": manual_equivalent.get("short_circuit_input_side", "SN"),
-            "sn_voltage_kv": manual_equivalent.get("sn_voltage_kv"),
-            "voltage_hv_kv": manual_equivalent.get("voltage_hv_kv"),
-            "sk3_hv_mva": manual_equivalent.get("sk3_hv_mva"),
-            "manual_equivalent": True,
-        }
-        if manual_equivalent.get("ik3_ka") is not None:
-            materialized_params["ik3_ka"] = manual_equivalent["ik3_ka"]
-        for key in (
-            "r_ohm",
-            "x_ohm",
-            "r0_ohm",
-            "x0_ohm",
-            "z0_z1_ratio",
-            "sk3_min_mva",
-            "ik3_min_ka",
-            "rx_ratio_min",
-            "u_set_pu",
-        ):
-            if manual_equivalent.get(key) is not None:
-                materialized_params[key] = manual_equivalent[key]
+    # Tory zasilania: (opis, ładunek toru) w kolejności tworzenia źródeł.
+    if tryb_wn:
+        tory = [
+            (f"Tor zasilania 110 kV sekcji {i + 1}", entry["supply"])
+            for i, entry in enumerate(hv_entries)
+        ]
+    elif zasilanie_na_sekcje_sn:
+        tory = [
+            (f"Źródło systemowe GPZ sekcji {i + 1}", dict(zasilanie))
+            for i, zasilanie in enumerate(zasilania_sekcji)
+            if isinstance(zasilanie, dict)
+        ]
     else:
-        catalog_ref_required = _require_catalog_ref(
-            payload.get("catalog_ref"),
-            catalog_binding,
-            "Źródło systemowe GPZ",
-            pole("catalog_ref", "add_grid_source_sn"),
+        tory = [("Źródło systemowe GPZ", payload)]
+    rozstrzygniete_tory: list[dict[str, Any]] = []
+    for opis_toru, zasilanie in tory:
+        rozstrzygniety = _rozstrzygnij_zasilanie_gpz(
+            zasilanie, voltage_kv=voltage_kv, opis_pl=opis_toru
         )
-        if isinstance(catalog_ref_required, dict):
-            return catalog_ref_required
-        catalog_ref = catalog_ref_required
-        materialization = _materialize_catalog_payload(
-            catalog_ref=catalog_ref,
-            catalog_binding=catalog_binding,
-            default_namespace="ZRODLO_SN",
-        )
-        if isinstance(materialization, dict):
-            return materialization
-        binding_payload, materialized_params = materialization
-        if not materialized_params.get("short_circuit_model"):
-            materialized_params["short_circuit_model"] = "short_circuit_power"
-        if not materialized_params.get("short_circuit_mode"):
-            materialized_params["short_circuit_mode"] = "SHORT_CIRCUIT_POWER"
-    if zero_sequence_config:
-        for key in ("r0_ohm", "x0_ohm", "z0_z1_ratio"):
-            if zero_sequence_config.get(key) is not None:
-                materialized_params[key] = zero_sequence_config[key]
-    if (voltage_kv is None or voltage_kv <= 0) and materialized_params.get(
-        "voltage_rating_kv"
-    ) is not None:
-        voltage_kv = materialized_params["voltage_rating_kv"]
-    if voltage_kv is None or voltage_kv <= 0:
-        voltage_kv = enm.get("header", {}).get("defaults", {}).get("sn_nominal_kv")
-    if voltage_kv is None or voltage_kv <= 0:
-        return _error_response(
-            "Brak napięcia znamionowego SN GPZ — uzupełnij pole "
-            f"{pole('voltage_kv', 'add_grid_source_sn')}.",
-            "source.missing_voltage",
-        )
-    # Granica zasilania SN (karta GPZ-MODEL): strona równoważnika rozstrzyga, czy
-    # transformatory WN/SN są elementami modelu — jedno źródło prawdy dla budowy
-    # (niżej) i dla odmowy (tu), przed utworzeniem jakiegokolwiek elementu.
-    strona_rownowaznika = str(materialized_params.get("short_circuit_input_side") or "SN")
-    granica = _granica_zasilania_gpz(payload, strona_rownowaznika)
-    if isinstance(granica, dict):
-        return granica
-    transformer_count = granica
+        if rozstrzygniety.get("error"):
+            return rozstrzygniety
+        strona = str(rozstrzygniety["materialized_params"].get("short_circuit_input_side") or "SN")
+        if not tryb_wn and strona == STRONA_ROWNOWAZNIKA_WN:
+            return _error_response(
+                f"{opis_toru}: równoważnik po stronie 110 kV podaje się w "
+                f"{pole('hv_sections', 'add_grid_source_sn')} razem z transformatorami 110/SN.",
+                KOD_GPZ_SEKCJE_WN_WYMAGANE,
+            )
+        rozstrzygniete_tory.append(rozstrzygniety)
+
     line_field_apparatus = _normalize_gpz_line_field_apparatus(payload)
     if line_field_apparatus is not None:
         # BRAMA KATALOGOWA aparatu pola liniowego stacji zasilającej (dług 7
@@ -4173,20 +4929,42 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     gpz_switchgear_family_ref = _opt_str(payload.get("switchgear_family_ref"))
     gpz_manufacturer_ref = _opt_str(payload.get("manufacturer_ref"))
 
-    seed = _compute_seed(
-        {
-            "op": "add_grid_source_sn",
-            "catalog_ref": catalog_ref,
-            "voltage_kv": voltage_kv,
-            "sections_count": sections_count,
-            "source_identity": source_identity or "primary",
-            "source_name": display_name,
-            "manual_equivalent": manual_equivalent or None,
-            "grounding": grounding_config,
-            "zero_sequence": zero_sequence_config,
-        }
-    )
-    source_ref = _make_id("gpz", seed, "source/main")
+    glowny = rozstrzygniete_tory[0]
+    czesci_ziarna: dict[str, Any] = {
+        "op": "add_grid_source_sn",
+        "catalog_ref": glowny["catalog_ref"] if zasilanie_glowne else None,
+        "voltage_kv": voltage_kv,
+        "sections_count": sections_count,
+        "source_identity": source_identity or "primary",
+        "source_name": display_name,
+        "manual_equivalent": (glowny["manual_equivalent"] or None) if zasilanie_glowne else None,
+        "grounding": glowny["grounding"] if zasilanie_glowne else None,
+        "zero_sequence": glowny["zero_sequence"] if zasilanie_glowne else None,
+    }
+    # Karta GPZ-H5: struktura wielotorowa wchodzi do ziarna identyfikatorów WYŁĄCZNIE, gdy
+    # jest — GPZ jednosekcyjny z jednym równoważnikiem ma te same identyfikatory co przed kartą.
+    if sn_coupler is not None:
+        czesci_ziarna["sn_coupler"] = list(sn_coupler)
+    if not zasilanie_glowne:
+        czesci_ziarna["supplies"] = [
+            {
+                "catalog_ref": t["catalog_ref"],
+                "manual_equivalent": t["manual_equivalent"] or None,
+                "grounding": t["grounding"],
+                "zero_sequence": t["zero_sequence"],
+            }
+            for t in rozstrzygniete_tory
+        ]
+    if tryb_wn:
+        czesci_ziarna["hv_sections"] = [
+            [e["line_name"], e["supplying_station_name"]] for e in hv_entries
+        ]
+        czesci_ziarna["hv_coupler"] = list(hv_coupler) if hv_coupler is not None else None
+        czesci_ziarna["transformers"] = [
+            [t["hv_section"], t["sn_section"]] for t in transformer_entries
+        ]
+        czesci_ziarna["reserve"] = [tryb_rezerwy, indeks_rezerwowego]
+    seed = _compute_seed(czesci_ziarna)
     substation_ref = _make_id("gpz", seed, "substation")
     corridor_ref = _make_id("gpz", seed, "corridor_01")
     gpz_sections: list[dict[str, Any]] = []
@@ -4212,9 +4990,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "line_fields_count": line_fields_count,
                 "line_field_refs": [],
                 "bus_ref": section_bus_ref,
-                # Równoważnik wprost na szynie sekcji wyłącznie w trybie SN (sekcja 1);
-                # w trybie 110 kV sekcje zasila transformator, nie źródło.
-                "incoming_source_ref": source_ref if idx == 0 and transformer_count == 0 else None,
+                "incoming_source_ref": None,
                 "left_coupler_ref": None,
                 "right_coupler_ref": None,
                 "bay_template_ref": entry.get("bay_template_ref"),
@@ -4225,10 +5001,18 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         gpz_section_bus_names.append(section_bus_name)
 
     new_enm = kopia_graniczna_enm(enm)
-    created = []
-    events = []
-    audit = []
+    created: list[str] = []
+    events: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
     ev_seq = 0
+
+    def _zdarzenie(event_type: str, element_id: str, akcja: str | None = None) -> None:
+        nonlocal ev_seq
+        created.append(element_id)
+        ev_seq += 1
+        events.append({"event_seq": ev_seq, "event_type": event_type, "element_id": element_id})
+        if akcja is not None:
+            audit.append({"step": ev_seq, "action": akcja, "element_id": element_id})
 
     # Create GPZ sections (SN buses)
     for idx, section in enumerate(gpz_sections):
@@ -4252,86 +5036,23 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "source.bus_creation_failed",
             )
         new_enm = result.enm
-        created.append(section["bus_ref"])
-        ev_seq += 1
-        events.append(
-            {
-                "event_seq": ev_seq,
-                "event_type": "BUS_CREATED",
-                "element_id": section["bus_ref"],
-            }
-        )
-        audit.append(
-            {
-                "step": ev_seq,
-                "action": f"Utworzono sekcje GPZ {idx + 1}",
-                "element_id": section["bus_ref"],
-            }
-        )
+        _zdarzenie("BUS_CREATED", section["bus_ref"], f"Utworzono sekcje GPZ {idx + 1}")
 
-    # Karta FAB-G (Zero-Debt, zero fabrykacji — domyka dług 7 rejestru
-    # V12K-315, ta sama klasa defektu co D2/`add_transformer_sn_nn`): tabliczka
-    # transformatora(ów) WN/SN GPZ (moc, napięcie górne, uk/pk/p0/i0, grupa)
-    # pochodzi WYŁĄCZNIE z typu katalogowego — jawnego `transformer_catalog_ref`
-    # albo pary `hv_voltage_kv` + `transformer_sn_mva`, która jednoznacznie
-    # wskazuje pozycję w mapie. Bez jednego z nich operacja jest odrzucona
-    # (`catalog.ref_required`, `_resolve_gpz_wn_sn_transformer_catalog_ref`)
-    # PRZED utworzeniem jakiegokolwiek elementu stacji.
-    #
-    # Karta GPZ-MODEL (granica zasilania SN): transformatory powstają WYŁĄCZNIE przy
-    # równoważniku po stronie 110 kV (`_granica_zasilania_gpz`). Wszystkie łączą JEDNĄ
-    # wspólną szynę 110 kV (kanon `Substation.gpz_hv_sections`: pusta lista = jedna
-    # szyna WN) z sekcją SN `lv_bus_ref`; równoważnik stoi na tej szynie. Napięcie
-    # szyny 110 kV i górnego uzwojenia pochodzą z TEJ SAMEJ liczby katalogowej
-    # (`voltage_hv_kv` typu transformatora), więc szyna i transformatory nie mogą się
-    # rozjechać. Dawna szyna 110 kV na transformator (bez połączeń między nimi)
-    # i równoważnik wyłącznie na szynie TR1 zostawiały TR2…TRn bez zasilania.
-    gpz_transformer_refs: list[str] = []
-    gpz_hv_bus_refs: list[str] = []
-    hv_bus_ref: str | None = None
-    if transformer_count > 0:
-        rownowaznik_hv_kv = materialized_params.get("voltage_hv_kv")
-        transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
-            payload,
-            voltage_kv=voltage_kv,
-            hv_voltage_kv=(
-                float(rownowaznik_hv_kv) if isinstance(rownowaznik_hv_kv, int | float) else None
-            ),
-        )
-        if isinstance(transformer_catalog_ref, dict):
-            return transformer_catalog_ref
-        transformer_catalog_binding = payload.get("transformer_catalog_binding")
-        materialization = _materialize_catalog_payload(
-            catalog_ref=transformer_catalog_ref,
-            catalog_binding=transformer_catalog_binding,
-            default_namespace="TRAFO_SN_NN",
-        )
-        if isinstance(materialization, dict):
-            return materialization
-        transformer_binding_payload, transformer_materialized_params = materialization
-        # `voltage_hv_kv` jest polem WYMAGANYM kontraktu TransformerType
-        # (network_model/catalog/types.py) — zawsze obecne po udanej
-        # materializacji, więc szyna 110 kV dostaje realną daną katalogową.
-        hv_bus_voltage_kv = float(transformer_materialized_params["voltage_hv_kv"])
-        if isinstance(rownowaznik_hv_kv, int | float) and not math.isclose(
-            float(rownowaznik_hv_kv), hv_bus_voltage_kv
-        ):
-            return _error_response(
-                f"Napięcie równoważnika sieci ({float(rownowaznik_hv_kv):g} kV) różni się od "
-                f"napięcia górnego transformatora 110/SN z katalogu ({hv_bus_voltage_kv:g} kV) — "
-                "równoważnik i transformatory muszą stać na tej samej szynie WN. Popraw "
-                f"{pole('hv_voltage_kv', 'add_grid_source_sn')} albo wybierz inny typ "
-                "transformatora.",
-                "source.hv_voltage_mismatch",
-            )
-
-        hv_bus_ref = _make_id("gpz", seed, "hv_section/001/bus_wn")
+    # Sekcje szyn 110 kV (karta GPZ-H5): każda z własną szyną i własnym torem zasilania.
+    # Napięcie szyny = napięcie równoważnika toru (Sk″ podane przy U_nQ); zgodność
+    # z napięciem górnym transformatorów sekcji sprawdzana niżej (`source.hv_voltage_mismatch`).
+    gpz_hv_sections: list[dict[str, Any]] = []
+    for idx, entry in enumerate(hv_entries):
+        order = idx + 1
+        napiecie_wn = float(rozstrzygniete_tory[idx]["materialized_params"]["voltage_hv_kv"])
+        hv_bus_ref = _make_id("gpz", seed, f"hv_section/{order:03d}/bus_wn")
         result = create_node(
             new_enm,
             {
                 "ref_id": hv_bus_ref,
-                "name": f"Szyna GPZ WN {hv_bus_voltage_kv:g} kV",
-                "voltage_kv": hv_bus_voltage_kv,
+                "name": nazwa_nadana(entry["bus_name"])
+                or f"Szyna GPZ WN S{order} {napiecie_wn:g} kV",
+                "voltage_kv": napiecie_wn,
                 "zone": "GPZ",
                 "tags": ["gpz_hv_bus"],
                 "meta": {
@@ -4343,41 +5064,150 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
         if not result.success:
             return _error_response(
-                f"Nie udało się utworzyć szyny {hv_bus_voltage_kv:g} kV GPZ: "
+                f"Nie udało się utworzyć szyny {napiecie_wn:g} kV GPZ: "
                 f"{result.issues[0].message_pl if result.issues else '?'}",
                 "source.transformer_hv_bus_failed",
             )
         new_enm = result.enm
-        created.append(hv_bus_ref)
-        ev_seq += 1
-        events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": hv_bus_ref})
-        audit.append(
+        _zdarzenie(
+            "BUS_CREATED", hv_bus_ref, f"Utworzono szynę WN GPZ sekcji {order} {napiecie_wn:g} kV"
+        )
+        gpz_hv_sections.append(
             {
-                "step": ev_seq,
-                "action": f"Utworzono szynę WN GPZ {hv_bus_voltage_kv:g} kV",
-                "element_id": hv_bus_ref,
+                "section_id": _make_id("gpz", seed, f"hv_section/{order:03d}"),
+                "order": idx,
+                "name": nazwa_nadana(entry["name"]) or f"Sekcja 110 kV {order}",
+                "line_field_name": nazwa_nadana(entry["line_field_name"])
+                or f"Pole liniowe 110 kV {entry['line_name']}",
+                "bus_ref": hv_bus_ref,
+                "incoming_source_ref": None,
+                "left_coupler_ref": None,
+                "right_coupler_ref": None,
             }
         )
-        gpz_hv_bus_refs.append(hv_bus_ref)
 
-    for index in range(transformer_count):
-        assert hv_bus_ref is not None  # transformer_count > 0 ⇒ szyna WN utworzona wyżej
+    # Karta FAB-G (Zero-Debt, zero fabrykacji — domyka dług 7 rejestru V12K-315): tabliczka
+    # transformatora 110/SN GPZ (moc, napięcie górne, uk/pk/p0/i0, grupa) pochodzi WYŁĄCZNIE
+    # z typu katalogowego wpisu `transformers` (`transformer_catalog_ref` albo para
+    # `transformer_sn_mva` + napięcie toru, `_resolve_gpz_wn_sn_transformer_catalog_ref`).
+    # Karta GPZ-H5: przypisanie sekcja 110 kV → sekcja SN jest JAWNE we wpisie (bez cyklu);
+    # strona górna leży na szynie SWOJEJ sekcji 110 kV, dolna — na szynie swojej sekcji SN.
+    gpz_transformer_refs: list[str] = []
+    for index, entry in enumerate(transformer_entries):
         order = index + 1
+        sekcja_wn = gpz_hv_sections[entry["hv_section"] - 1]
+        section = gpz_sections[entry["sn_section"] - 1]
+        napiecie_toru = float(
+            rozstrzygniete_tory[entry["hv_section"] - 1]["materialized_params"]["voltage_hv_kv"]
+        )
+        transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
+            entry, voltage_kv=voltage_kv, hv_voltage_kv=napiecie_toru
+        )
+        if isinstance(transformer_catalog_ref, dict):
+            return transformer_catalog_ref
+        materialization = _materialize_catalog_payload(
+            catalog_ref=transformer_catalog_ref,
+            catalog_binding=entry.get("transformer_catalog_binding"),
+            default_namespace="TRAFO_SN_NN",
+        )
+        if isinstance(materialization, dict):
+            return materialization
+        transformer_binding_payload, transformer_materialized_params = materialization
+        # `voltage_hv_kv` jest polem WYMAGANYM kontraktu TransformerType
+        # (network_model/catalog/types.py) — zawsze obecne po udanej materializacji.
+        napiecie_gorne_kv = float(transformer_materialized_params["voltage_hv_kv"])
+        if not math.isclose(napiecie_toru, napiecie_gorne_kv):
+            return _error_response(
+                f"Napięcie równoważnika sieci sekcji 110 kV {entry['hv_section']} "
+                f"({napiecie_toru:g} kV) różni się od napięcia górnego transformatora 110/SN "
+                f"z katalogu ({napiecie_gorne_kv:g} kV) — równoważnik i transformator muszą "
+                f"stać na tej samej szynie WN. Popraw "
+                f"{pole('hv_voltage_kv', 'add_grid_source_sn')} toru albo wybierz inny typ "
+                "transformatora.",
+                "source.hv_voltage_mismatch",
+            )
         transformer_ref = _make_id("gpz", seed, f"transformer/{order:03d}/wn_sn")
-        section = gpz_sections[index % len(gpz_sections)]
-        transformer = {
+        szyna_dolna = section["bus_ref"]
+        if order == indeks_rezerwowego:
+            # Rezerwa jawna (ENEA Zeszyt 1 §26.10.5): transformator rezerwowy stoi za WŁASNYM
+            # wyłącznikiem pola SN (aparat z katalogu), normalnie otwartym — strona dolna na
+            # zacisku pola, nie na szynie sekcji; zamknięcie wyłącznika (scenariusz SZR)
+            # włącza transformator na sekcję.
+            assert aparat_rezerwowego is not None
+            szyna_dolna = _make_id("gpz", seed, f"transformer/{order:03d}/terminal_sn")
+            wynik_zacisku = create_node(
+                new_enm,
+                {
+                    "ref_id": szyna_dolna,
+                    "name": f"Zacisk pola SN TR{order}",
+                    "voltage_kv": voltage_kv,
+                    "zone": "GPZ",
+                    "tags": ["helper_bus", "field_terminal"],
+                    "meta": {
+                        "visual_role": "FIELD_TERMINAL",
+                        "render_on_sld": False,
+                        "show_in_project_tree": False,
+                        "field_ref": _make_id("gpz", seed, f"transformer/{order:03d}/bay_sn"),
+                        "station_ref": substation_ref,
+                        "gpz_section_id": section["section_id"],
+                    },
+                },
+            )
+            if not wynik_zacisku.success:
+                return _error_response(
+                    "Nie udało się utworzyć zacisku pola SN transformatora rezerwowego: "
+                    f"{wynik_zacisku.issues[0].message_pl if wynik_zacisku.issues else '?'}",
+                    "source.field_terminal_failed",
+                )
+            new_enm = wynik_zacisku.enm
+            _zdarzenie("FIELD_TERMINAL_CREATED_SN", szyna_dolna)
+            wylacznik_ref = _make_id("gpz", seed, f"transformer/{order:03d}/breaker_sn")
+            wylacznik: dict[str, Any] = {
+                "ref_id": wylacznik_ref,
+                "name": f"Wyłącznik pola SN TR{order} (rezerwa jawna)",
+                "type": "breaker",
+                "from_bus_ref": section["bus_ref"],
+                "to_bus_ref": szyna_dolna,
+                "status": STAN_NORMALNY_WYLACZNIKA_TR_REZERWOWEGO,
+                "normal_state": STAN_NORMALNY_WYLACZNIKA_TR_REZERWOWEGO,
+                "r_ohm": 0.0,
+                "x_ohm": 0.0,
+                "catalog_ref": aparat_rezerwowego["catalog_ref"],
+                "tags": ["gpz_field_device"],
+                "meta": {
+                    "field_ref": _make_id("gpz", seed, f"transformer/{order:03d}/bay_sn"),
+                    "station_ref": substation_ref,
+                    "bay_role": "TR",
+                    "apparatus_kind": "BREAKER",
+                    "terminal_bus_ref": szyna_dolna,
+                    "requires_catalog_binding": False,
+                    "catalog_binding": copy.deepcopy(aparat_rezerwowego["catalog_binding"]),
+                },
+                "materialized_params": copy.deepcopy(aparat_rezerwowego["materialized_params"]),
+            }
+            _apply_catalog_metadata(
+                wylacznik, aparat_rezerwowego["catalog_binding"], default_namespace="APARAT_SN"
+            )
+            wynik_wylacznika = create_branch(new_enm, wylacznik)
+            if not wynik_wylacznika.success:
+                return _error_response(
+                    "Nie udało się utworzyć wyłącznika pola SN transformatora rezerwowego: "
+                    f"{wynik_wylacznika.issues[0].message_pl if wynik_wylacznika.issues else '?'}",
+                    "source.field_apparatus_failed",
+                )
+            new_enm = wynik_wylacznika.enm
+            _zdarzenie("FIELD_DEVICE_CREATED_SN", wylacznik_ref)
+        transformer: dict[str, Any] = {
             "ref_id": transformer_ref,
-            "name": payload.get(f"transformer_{order}_name")
-            or f"TR{order} {hv_bus_voltage_kv:g}/{voltage_kv:g} kV",
+            "name": nazwa_nadana(entry.get("name"))
+            or f"TR{order} {napiecie_gorne_kv:g}/{voltage_kv:g} kV",
             "tags": ["gpz_wn_sn_transformer"],
             "meta": {
                 "gpz_substation_ref": substation_ref,
-                "gpz_section_id": section["section_id"],
-                "gpz_section_order": section["order"],
                 "visual_role": "GPZ_WN_SN_TRANSFORMER",
             },
-            "hv_bus_ref": hv_bus_ref,
-            "lv_bus_ref": section["bus_ref"],
+            "hv_bus_ref": sekcja_wn["bus_ref"],
+            "lv_bus_ref": szyna_dolna,
             "ulv_kv": float(voltage_kv),
             "catalog_ref": transformer_catalog_ref,
             "overrides": [],
@@ -4389,12 +5219,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
         _apply_materialized_transformer_fields(transformer, transformer_materialized_params)
         transformer["meta"]["catalog_role"] = "TRANSFORMATOR_WN_SN"
-        # V12K-045 (OLTC F3): canonical tap changer materialized from the payload
+        # V12K-045 (OLTC F3): canonical tap changer materialized from the entry
         # (regulated per its own SN busbar). Absent when regulation not requested.
-        gpz_tap_changer = _build_gpz_tap_changer(payload, controlled_bus_ref=section["bus_ref"])
+        gpz_tap_changer = _build_gpz_tap_changer(entry, controlled_bus_ref=szyna_dolna)
         if gpz_tap_changer is not None:
-            # Kontrakt domenowy zaczepów sprawdzany PRZED zapisem (karta KD-3):
-            # wartość spoza kontraktu zapisywała się dotąd cicho.
+            # Kontrakt domenowy zaczepów sprawdzany PRZED zapisem (karta KD-3).
             blad_zaczepow = _blad_zaczepow(gpz_tap_changer)
             if blad_zaczepow is not None:
                 return _error_response(
@@ -4404,172 +5233,120 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             transformer["tap_changer"] = gpz_tap_changer
         new_enm.setdefault("transformers", []).append(transformer)
         gpz_transformer_refs.append(transformer_ref)
-        created.append(transformer_ref)
-        ev_seq += 1
-        events.append(
-            {
-                "event_seq": ev_seq,
-                "event_type": "TRANSFORMER_CREATED",
-                "element_id": transformer_ref,
-            }
-        )
-        audit.append(
-            {
-                "step": ev_seq,
-                "action": f"Utworzono transformator WN/SN TR{order}",
-                "element_id": transformer_ref,
-            }
+        _zdarzenie(
+            "TRANSFORMER_CREATED", transformer_ref, f"Utworzono transformator WN/SN TR{order}"
         )
 
-    # Równoważnik: na wspólnej szynie 110 kV (tryb 110 kV) albo na szynie sekcji 1
-    # (tryb SN — sekcje bez własnego zasilania zasila wyłącznie sprzęgło; przy
-    # otwartym sprzęgle walidator zgłasza „sekcja GPZ bez zasilania", E065).
-    source_bus_ref = hv_bus_ref if hv_bus_ref is not None else gpz_section_bus_refs[0]
-    # Nazwa domyślna niesie napięcie szyny, NA KTÓREJ stoi równoważnik (110 kV albo SN) —
-    # „Źródło GPZ 15 kV" na szynie 110 kV opisywałoby granicę zasilania, której model nie ma.
-    napiecie_szyny_zrodla_kv = hv_bus_voltage_kv if hv_bus_ref is not None else voltage_kv
-    source_data = {
-        "device_type": "source",
-        "ref_id": source_ref,
-        "name": nazwa_nadana(payload.get("source_name"))
-        or nazwa_nadana(payload.get("name_pl"))
-        or f"Źródło GPZ {napiecie_szyny_zrodla_kv:g} kV",
-        "bus_ref": source_bus_ref,
-        "substation_ref": substation_ref,
-        "gpz_section_id": (
-            gpz_sections[0]["section_id"]
-            if gpz_sections and source_bus_ref == gpz_section_bus_refs[0]
-            else None
+    # Równoważniki sieci: jeden na tor zasilania — na szynie sekcji 110 kV (tor linii),
+    # na szynie sekcji SN (łącznik SN otwarty) albo na szynie sekcji 1 (jeden równoważnik).
+    source_refs: list[str] = []
+    for idx, rozstrzygniety in enumerate(rozstrzygniete_tory):
+        order = idx + 1
+        if tryb_wn:
+            sekcja_toru = gpz_hv_sections[idx]
+            wpis_wn = hv_entries[idx]
+            ref_zrodla = _make_id("gpz", seed, f"hv_section/{order:03d}/source")
+            napiecie_szyny = float(rozstrzygniety["materialized_params"]["voltage_hv_kv"])
+            nazwa_zrodla = (
+                nazwa_nadana(wpis_wn["supply"].get("name"))
+                or f"{wpis_wn['line_name']} ({wpis_wn['supplying_station_name']})"
+            )
+            sekcja_zrodla_id = None
+        elif zasilanie_na_sekcje_sn:
+            sekcja_toru = gpz_sections[idx]
+            ref_zrodla = _make_id("gpz", seed, f"section/{order:03d}/source")
+            napiecie_szyny = voltage_kv
+            nazwa_zrodla = (
+                nazwa_nadana(tory[idx][1].get("name")) or f"Źródło GPZ {voltage_kv:g} kV S{order}"
+            )
+            sekcja_zrodla_id = sekcja_toru["section_id"]
+        else:
+            sekcja_toru = gpz_sections[0]
+            ref_zrodla = _make_id("gpz", seed, "source/main")
+            napiecie_szyny = voltage_kv
+            nazwa_zrodla = (
+                nazwa_nadana(payload.get("source_name"))
+                or nazwa_nadana(payload.get("name_pl"))
+                or f"Źródło GPZ {voltage_kv:g} kV"
+            )
+            sekcja_zrodla_id = sekcja_toru["section_id"]
+        source_data = _dane_zrodla_gpz(
+            tory[idx][1],
+            rozstrzygniety,
+            ref_id=ref_zrodla,
+            name=nazwa_zrodla,
+            bus_ref=sekcja_toru["bus_ref"],
+            napiecie_szyny_kv=napiecie_szyny,
+            substation_ref=substation_ref,
+            gpz_section_id=sekcja_zrodla_id,
+            source_identity=source_identity,
+            solution_ref=payload.get("solution_ref"),
+        )
+        if source_data.get("error"):
+            return source_data
+        if tryb_wn:
+            source_data["supply_line_name"] = hv_entries[idx]["line_name"]
+            source_data["supplying_station_name"] = hv_entries[idx]["supplying_station_name"]
+        result = create_device(new_enm, source_data)
+        if not result.success:
+            return _error_response(
+                f"Nie udało się utworzyć źródła: {result.issues[0].message_pl if result.issues else '?'}",
+                "source.creation_failed",
+            )
+        new_enm = result.enm
+        sekcja_toru["incoming_source_ref"] = ref_zrodla
+        source_refs.append(ref_zrodla)
+        _zdarzenie("SOURCE_CREATED", ref_zrodla, "Utworzono źródło zasilania")
+
+    # Łączniki szyn: 110 kV między sąsiednimi sekcjami 110 kV i SN między sekcjami SN;
+    # położenie bieżące = stan normalny z projektu (rola wyprowadzana z topologii).
+    lacznik_refs_wn: list[str] = []
+    lacznik_refs_sn: list[str] = []
+    for rejestr, stan_lacznika, prefiks, nazwa_domyslna, refy, akcja_audytu in (
+        (
+            gpz_hv_sections,
+            hv_coupler,
+            "hv_coupler",
+            "Łącznik szyn 110 kV GPZ",
+            lacznik_refs_wn,
+            "Utworzono łącznik szyn 110 kV GPZ",
         ),
-        "source_side": materialized_params.get("short_circuit_input_side", "SN"),
-        "model": materialized_params.get("short_circuit_model", "short_circuit_power"),
-        "catalog_ref": catalog_ref,
-        "materialized_params": materialized_params,
-        "meta": {
-            "source_id": source_identity,
-            "solution_ref": payload.get("solution_ref"),
-            "catalog_role": "GPZ_110_SN",
-        },
-    }
-    if grounding_config is not None:
-        # Karta GPZ-MODEL: Z0 równoważnika NIE jest wyprowadzane z transformatora WN/SN —
-        # przy równoważniku na szynach SN transformatora nie ma w modelu (Z0 widziane z szyn
-        # SN jest daną równoważnika, `zero_sequence`), a przy równoważniku 110 kV punkt
-        # neutralny SN opisuje transformator modelu (uzwojenie i jego uziemienie,
-        # `enm/zero_sequence_transformer.py`). Brak Z0 przy punkcie uziemionym = E-W5-01.
-        source_data["neutral_grounding"] = grounding_config
-    if binding_payload is not None:
-        _apply_catalog_metadata(source_data, binding_payload, default_namespace="ZRODLO_SN")
-    elif manual_source_mode:
-        source_data["source_mode"] = payload.get("source_mode") or "EKSPERCKI_RECZNY"
-        source_data["parameter_source"] = payload.get("parameter_source") or "MANUAL_EQUIVALENT"
-    # Znacznik pochodzenia z payloadu NIE MOŻE awansować źródła do katalogu.
-    # Bez `binding_payload` tabliczka pochodzi z ręcznego ekwiwalentu zwarciowego,
-    # więc „KATALOG"/„CATALOG" byłoby w migawce zdaniem nieprawdziwym — ta sama
-    # klasa defektu co aparat pola deklarujący katalog bez materializacji.
-    if binding_payload is None and (
-        str(payload.get("source_mode") or "").strip().upper() == "KATALOG"
-        or str(payload.get("parameter_source") or "").strip().upper() == "CATALOG"
+        (
+            gpz_sections,
+            sn_coupler,
+            "coupler",
+            "Sprzęgło sekcji GPZ",
+            lacznik_refs_sn,
+            "Utworzono sprzęgło sekcyjne GPZ",
+        ),
     ):
-        return _error_response(
-            "Źródło bez wiązania katalogowego nie może deklarować pochodzenia "
-            f"katalogowego. Wskaż pozycję z katalogu {nazwa_kategorii_katalogu('ZRODLO_SN')} "
-            "albo zostaw tryb ekspercki (ręczny ekwiwalent zwarciowy).",
-            "catalog.ref_required",
-        )
-    if payload.get("source_mode"):
-        source_data["source_mode"] = payload["source_mode"]
-    if payload.get("parameter_source"):
-        source_data["parameter_source"] = payload["parameter_source"]
-    if isinstance(payload.get("overrides"), list):
-        source_data["overrides"] = payload["overrides"]
-    for key in (
-        "sk3_mva",
-        "ik3_ka",
-        "rx_ratio",
-        # CV-4.3 K7: dane scenariusza MIN.
-        "sk3_min_mva",
-        "ik3_min_ka",
-        "rx_ratio_min",
-        "u_set_pu",
-        "r_ohm",
-        "x_ohm",
-        "r0_ohm",
-        "x0_ohm",
-        "z0_z1_ratio",
-        "sn_voltage_kv",
-        "voltage_hv_kv",
-        "sk3_hv_mva",
-    ):
-        if materialized_params.get(key) is not None:
-            source_data[key] = materialized_params[key]
-
-    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródło przyłączone WPROST do szyny nN (ekwiwalent
-    # ręczny `skip_hv_transformer` na napięciu nN — sieć nN bez transformatora w modelu) jest
-    # drugim nośnikiem tolerancji napięcia sieci nN (+6 % / +10 %, wiersz nN tabeli 1
-    # IEC 60909-0). Ten sam predykat zapisu co edycja parametrów źródła; brak = brak
-    # deklaracji (odmowa zwarcia nN z akcją naprawczą, nigdy wiersz tabeli po cichu).
-    tolerancja_zrodla = payload.get("lv_voltage_tolerance")
-    if tolerancja_zrodla is not None:
-        napiecie_szyny_zrodla = (
-            voltage_kv
-            if source_bus_ref in gpz_section_bus_refs
-            else materialized_params.get("voltage_hv_kv")
-        )
-        powod_tolerancji = _powod_odmowy_tolerancji_nn(
-            tolerancja_zrodla, napiecie_szyny_zrodla, element_pl="źródło"
-        )
-        if powod_tolerancji is not None:
-            return _error_response(powod_tolerancji, "source.invalid_lv_voltage_tolerance")
-        source_data["lv_voltage_tolerance"] = tolerancja_zrodla
-
-    result = create_device(new_enm, source_data)
-    if not result.success:
-        return _error_response(
-            f"Nie udało się utworzyć źródła: {result.issues[0].message_pl if result.issues else '?'}",
-            "source.creation_failed",
-        )
-    new_enm = result.enm
-    created.append(source_ref)
-    ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "SOURCE_CREATED", "element_id": source_ref})
-    audit.append({"step": ev_seq, "action": "Utworzono źródło zasilania", "element_id": source_ref})
-
-    for idx in range(1, len(gpz_sections)):
-        left_section = gpz_sections[idx - 1]
-        right_section = gpz_sections[idx]
-        coupler_ref = _make_id("gpz", seed, f"coupler/{idx:03d}")
-        coupler_name = (
-            nazwa_nadana(payload.get("gpz_coupler_name")) or f"Sprzęgło sekcji GPZ {idx}-{idx + 1}"
-        )
-        new_enm.setdefault("branches", []).append(
-            {
-                "ref_id": coupler_ref,
-                "name": coupler_name,
-                "type": "bus_coupler",
-                "from_bus_ref": left_section["bus_ref"],
-                "to_bus_ref": right_section["bus_ref"],
-                "status": "closed",
-                "catalog_ref": None,
-                "catalog_namespace": None,
-                "parameter_source": None,
-                "source_mode": None,
-                "materialized_params": None,
-                "overrides": [],
-                "r_ohm": None,
-                "x_ohm": None,
-            }
-        )
-        left_section["right_coupler_ref"] = coupler_ref
-        right_section["left_coupler_ref"] = coupler_ref
-        created.append(coupler_ref)
-        ev_seq += 1
-        events.append(
-            {"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": coupler_ref}
-        )
-        audit.append(
-            {"step": ev_seq, "action": "Utworzono sprzęgło sekcyjne GPZ", "element_id": coupler_ref}
-        )
+        for idx in range(1, len(rejestr)):
+            assert stan_lacznika is not None  # ≥ 2 sekcje ⇒ stan normalny rozstrzygnięty
+            stan_normalny, nazwa, uzasadnienie = stan_lacznika
+            lewa = rejestr[idx - 1]
+            prawa = rejestr[idx]
+            coupler_ref = _make_id("gpz", seed, f"{prefiks}/{idx:03d}")
+            wiele = len(rejestr) > 2
+            coupler_name = (
+                f"{nazwa} {idx}-{idx + 1}"
+                if nazwa and wiele
+                else nazwa or f"{nazwa_domyslna} {idx}-{idx + 1}"
+            )
+            new_enm.setdefault("branches", []).append(
+                _lacznik_szyn_gpz(
+                    ref_id=coupler_ref,
+                    name=coupler_name,
+                    from_bus_ref=lewa["bus_ref"],
+                    to_bus_ref=prawa["bus_ref"],
+                    normal_state=stan_normalny,
+                    uzasadnienie=uzasadnienie,
+                    substation_ref=substation_ref,
+                )
+            )
+            lewa["right_coupler_ref"] = coupler_ref
+            prawa["left_coupler_ref"] = coupler_ref
+            refy.append(coupler_ref)
+            _zdarzenie("BRANCH_CREATED", coupler_ref, akcja_audytu)
 
     pola_gpz: list[dict[str, Any]] = []
     for idx, section in enumerate(gpz_sections):
@@ -4636,15 +5413,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         "source.field_terminal_failed",
                     )
                 new_enm = result.enm
-                created.append(terminal_bus_ref)
-                ev_seq += 1
-                events.append(
-                    {
-                        "event_seq": ev_seq,
-                        "event_type": "FIELD_TERMINAL_CREATED_SN",
-                        "element_id": terminal_bus_ref,
-                    }
-                )
+                _zdarzenie("FIELD_TERMINAL_CREATED_SN", terminal_bus_ref)
 
                 apparatus_binding = line_field_apparatus["catalog_binding"]
                 apparatus_data = {
@@ -4688,15 +5457,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         "source.field_apparatus_failed",
                     )
                 new_enm = result.enm
-                created.append(apparatus_ref)
-                ev_seq += 1
-                events.append(
-                    {
-                        "event_seq": ev_seq,
-                        "event_type": "FIELD_DEVICE_CREATED_SN",
-                        "element_id": apparatus_ref,
-                    }
-                )
+                _zdarzenie("FIELD_DEVICE_CREATED_SN", apparatus_ref)
                 equipment_refs = [apparatus_ref]
                 zacisk_pola_gpz = terminal_bus_ref
                 field_meta.update(
@@ -4762,25 +5523,177 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 )
             )
 
+    # Pola struktury H5 (karta GPZ-H5, K3): pole liniowe 110 kV każdej sekcji, pola
+    # transformatorowe po obu stronach transformatora i pola łączników szyn — BEZ aparatów
+    # domyślnych (aparat wybiera projektant operacją wyposażenia pola).
+    def _pole_struktury(
+        lokalny: str,
+        nazwa: str,
+        rola: str,
+        szyna: str,
+        sekcja_id: str,
+        elementy: list[str],
+        tag: str,
+        *,
+        zacisk: str | None = None,
+        funkcja_pomiaru: str | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> None:
+        dodaj_pole(
+            new_enm,
+            zbuduj_pole(
+                ref_id=_make_id("gpz", seed, lokalny),
+                name=nazwa,
+                bay_role=rola,
+                bus_ref=szyna,
+                substation_ref=substation_ref,
+                terminal_bus_ref=zacisk,
+                gpz_section_id=sekcja_id,
+                equipment_refs=elementy,
+                switchgear_family_ref=gpz_switchgear_family_ref,
+                manufacturer_ref=gpz_manufacturer_ref,
+                funkcja_pomiaru=funkcja_pomiaru,
+                tags=[tag],
+                meta=meta,
+            ),
+        )
+
+    def _meta_propozycji(rodzaj: str) -> dict[str, Any] | None:
+        """Propozycja szablonu składu aparatów pola 110 kV — jawnie NIE aparaty modelu."""
+        if propozycja_aparatow is None or rodzaj not in propozycja_aparatow:
+            return None
+        return {
+            "apparatus_proposal": {
+                "basis": propozycja_aparatow["basis"],
+                "apparatus": list(propozycja_aparatow[rodzaj]),
+                "modelled": False,
+            }
+        }
+
+    for idx, sekcja_wn in enumerate(gpz_hv_sections):
+        _pole_struktury(
+            f"hv_section/{idx + 1:03d}/bay_line",
+            str(sekcja_wn["line_field_name"]),
+            "IN",
+            sekcja_wn["bus_ref"],
+            sekcja_wn["section_id"],
+            [],
+            "gpz_hv_line_field",
+            meta=_meta_propozycji("line"),
+        )
+    for index, entry in enumerate(transformer_entries):
+        trafo_ref = gpz_transformer_refs[index]
+        trafo = next(t for t in new_enm["transformers"] if t["ref_id"] == trafo_ref)
+        sekcja_wn = gpz_hv_sections[entry["hv_section"] - 1]
+        section = gpz_sections[entry["sn_section"] - 1]
+        _pole_struktury(
+            f"transformer/{index + 1:03d}/bay_wn",
+            nazwa_roli_pola_sn_z_okresleniem("TRANSFORMATOROWE", f"110 kV {trafo['name']}"),
+            "TR",
+            sekcja_wn["bus_ref"],
+            sekcja_wn["section_id"],
+            [trafo_ref],
+            "gpz_hv_transformer_field",
+            meta=_meta_propozycji("transformer"),
+        )
+        rezerwowy = index + 1 == indeks_rezerwowego
+        _pole_struktury(
+            f"transformer/{index + 1:03d}/bay_sn",
+            nazwa_roli_pola_sn_z_okresleniem("TRANSFORMATOROWE", f"SN {trafo['name']}"),
+            "TR",
+            section["bus_ref"],
+            section["section_id"],
+            (
+                [trafo_ref, _make_id("gpz", seed, f"transformer/{index + 1:03d}/breaker_sn")]
+                if rezerwowy
+                else [trafo_ref]
+            ),
+            "gpz_sn_transformer_field",
+            zacisk=str(trafo["lv_bus_ref"]) if rezerwowy else None,
+        )
+    for rejestr, refy, prefiks, tag in (
+        (gpz_hv_sections, lacznik_refs_wn, "hv_coupler", "gpz_hv_coupler_field"),
+        (gpz_sections, lacznik_refs_sn, "coupler", "gpz_sn_coupler_field"),
+    ):
+        for idx, coupler_ref in enumerate(refy):
+            lacznik = next(b for b in new_enm["branches"] if b["ref_id"] == coupler_ref)
+            if prefiks == "coupler" and cele_lacznika_sn == 2:
+                # Łącznik szyn SN w dwóch celach (ENEA Zeszyt 1, zał. Z.2): cela po stronie
+                # każdej z łączonych sekcji — oba pola wskazują TEN SAM łącznik modelu.
+                for cela, sekcja in ((1, rejestr[idx]), (2, rejestr[idx + 1])):
+                    _pole_struktury(
+                        f"{prefiks}/{idx + 1:03d}/bay_cell_{cela}",
+                        nazwa_roli_pola_sn_z_okresleniem(
+                            "SPRZEGLO", f"{lacznik['name']} — cela {cela}"
+                        ),
+                        "COUPLER",
+                        sekcja["bus_ref"],
+                        sekcja["section_id"],
+                        [coupler_ref],
+                        tag,
+                        meta={"gpz_coupler_cell": cela, "gpz_coupler_cells": 2},
+                    )
+                continue
+            _pole_struktury(
+                f"{prefiks}/{idx + 1:03d}/bay",
+                nazwa_roli_pola_sn_z_okresleniem("SPRZEGLO", lacznik["name"]),
+                "COUPLER",
+                rejestr[idx]["bus_ref"],
+                rejestr[idx]["section_id"],
+                [coupler_ref],
+                tag,
+                meta=(
+                    _meta_propozycji("coupler")
+                    if prefiks == "hv_coupler"
+                    else ({"gpz_coupler_cells": 1} if cele_lacznika_sn == 1 else None)
+                ),
+            )
+    # Pola funkcyjne sekcji SN (ENEA Zeszyt 1 §13, zał. Z.2): zespół uziemiający, bateria
+    # kondensatorów, pomiar napięcia — pola BEZ aparatów i bez elementów (element powstaje
+    # wyłącznie z danych osobną operacją; pole nie zakłada impedancji uziemienia ani mocy
+    # baterii).
+    for idx, section in enumerate(gpz_sections):
+        for rola_funkcyjna in pola_funkcyjne_sekcji[idx]:
+            rola_pola = POLA_FUNKCYJNE_SEKCJI_SN_GPZ[rola_funkcyjna]
+            _pole_struktury(
+                f"section/{idx + 1:03d}/bay_function/{rola_funkcyjna.lower()}",
+                f"{nazwa_roli_pola_sn(rola_pola)} {section['name']}",
+                rola_pola,
+                section["bus_ref"],
+                section["section_id"],
+                [],
+                "gpz_sn_function_field",
+                funkcja_pomiaru="NAPIECIA_SZYN" if rola_pola == "MEASUREMENT" else None,
+            )
+
     # Create substation (GPZ)
+    entry_point_ref = gpz_hv_sections[0]["bus_ref"] if gpz_hv_sections else gpz_section_bus_refs[0]
+    strona_stacji = (
+        STRONA_ROWNOWAZNIKA_WN
+        if tryb_wn
+        else str(glowny["materialized_params"].get("short_circuit_input_side") or "SN")
+    )
     new_enm.setdefault("substations", []).append(
         {
             "ref_id": substation_ref,
             "name": display_name,
             "station_type": "gpz",
-            "bus_refs": gpz_section_bus_refs + gpz_hv_bus_refs,
+            "bus_refs": gpz_section_bus_refs + [s["bus_ref"] for s in gpz_hv_sections],
             "transformer_refs": gpz_transformer_refs,
-            "entry_point_ref": source_bus_ref,
+            "entry_point_ref": entry_point_ref,
             "gpz_sections": gpz_sections,
+            "gpz_hv_sections": gpz_hv_sections,
+            "gpz_reserve_mode": tryb_rezerwy,
+            "gpz_reserve_transformer_ref": (
+                gpz_transformer_refs[indeks_rezerwowego - 1]
+                if indeks_rezerwowego is not None
+                else None
+            ),
             "tags": [],
             "meta": {
                 "gpz_section_count": len(gpz_sections),
-                "wn_sn_transformer_count": len(gpz_transformer_refs),
-                "short_circuit_mode": materialized_params.get("short_circuit_mode"),
-                "short_circuit_input_side": materialized_params.get(
-                    "short_circuit_input_side", "SN"
-                ),
-                "gpz_hv_bus_refs": gpz_hv_bus_refs,
+                "short_circuit_mode": glowny["materialized_params"].get("short_circuit_mode"),
+                "short_circuit_input_side": strona_stacji,
                 **(
                     {"switchgear_family_ref": gpz_switchgear_family_ref}
                     if gpz_switchgear_family_ref
@@ -4790,11 +5703,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             },
         }
     )
-    created.append(substation_ref)
-    ev_seq += 1
-    events.append(
-        {"event_seq": ev_seq, "event_type": "STATION_CREATED", "element_id": substation_ref}
-    )
+    _zdarzenie("STATION_CREATED", substation_ref)
 
     # Create corridor (trunk)
     new_enm.setdefault("corridors", []).append(
@@ -4807,11 +5716,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "meta": {},
         }
     )
-    created.append(corridor_ref)
-    ev_seq += 1
-    events.append(
-        {"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": corridor_ref}
-    )
+    _zdarzenie("LOGICAL_VIEWS_UPDATED", corridor_ref)
 
     first_line_field = next(
         (
@@ -10624,106 +11529,13 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     deleted_bus_refs = {
         ref for ref in deleted_set if ref in {b.get("ref_id") for b in enm.get("buses", [])}
     }
-    deleted_transformer_refs = {
-        ref for ref in deleted_set if ref in {t.get("ref_id") for t in enm.get("transformers", [])}
-    }
 
-    # Corridor cleanup for removed branches.
-    if deleted_branch_refs:
-        for corridor in new_enm.get("corridors", []):
-            ordered = corridor.get("ordered_segment_refs")
-            if isinstance(ordered, list):
-                corridor["ordered_segment_refs"] = [
-                    seg for seg in ordered if seg not in deleted_branch_refs
-                ]
-
-    # Pola, którym zniknęła szyna, aparat albo transformator: pole na skasowanej szynie znika
-    # razem z nią, aparat/transformator skasowany wypada z `equipment_refs`, skasowany zacisk
-    # przestaje być zaciskiem pola (rekord nie wskazuje szyny, której nie ma).
-    if deleted_branch_refs or deleted_bus_refs or deleted_transformer_refs:
-        for rekord in list(pola(new_enm)):
-            ref_pola = str(rekord.get("ref_id"))
-            if rekord.get("bus_ref") in deleted_bus_refs:
-                usun_pole(new_enm, ref_pola)
-                deleted_set.add(ref_pola)
-                continue
-            equipment_refs = [
-                ref
-                for ref in rekord.get("equipment_refs") or []
-                if ref not in deleted_branch_refs and ref not in deleted_transformer_refs
-            ]
-            zacisk = rekord.get("terminal_bus_ref")
-            zmiany: dict[str, Any] = {}
-            if equipment_refs != list(rekord.get("equipment_refs") or []):
-                zmiany["equipment_refs"] = equipment_refs
-            if zacisk in deleted_bus_refs:
-                zmiany["terminal_bus_ref"] = None
-            if zmiany:
-                zmien_pole(new_enm, ref_pola, **zmiany)
-
-    # Cleanup references in station and branch-point structures.
-    if deleted_bus_refs or deleted_transformer_refs:
-        substations_to_delete: set[str] = set()
-        for sub in new_enm.get("substations", []):
-            sub_ref = sub.get("ref_id")
-            sub_bus_ref = sub.get("bus_ref")
-            sub_tr_refs = sub.get("transformer_refs") or []
-            has_deleted_transformer = any(ref in deleted_transformer_refs for ref in sub_tr_refs)
-            if sub_bus_ref in deleted_bus_refs or has_deleted_transformer:
-                if isinstance(sub_ref, str):
-                    substations_to_delete.add(sub_ref)
-
-        if substations_to_delete:
-            new_enm["substations"] = [
-                sub
-                for sub in new_enm.get("substations", [])
-                if sub.get("ref_id") not in substations_to_delete
-            ]
-            deleted_set.update(substations_to_delete)
-
-    if deleted_branch_refs or deleted_bus_refs:
-        branch_points_to_delete: set[str] = set()
-        for bp in new_enm.get("branch_points", []):
-            bp_ref = bp.get("ref_id")
-            if (
-                bp.get("parent_segment_id") in deleted_branch_refs
-                or bp.get("bus_ref") in deleted_bus_refs
-            ):
-                if isinstance(bp_ref, str):
-                    branch_points_to_delete.add(bp_ref)
-                continue
-
-            branch_occupied = bp.get("branch_occupied")
-            if isinstance(branch_occupied, dict):
-                bp["branch_occupied"] = {
-                    key: value
-                    for key, value in branch_occupied.items()
-                    if value not in deleted_branch_refs
-                }
-
-        if branch_points_to_delete:
-            new_enm["branch_points"] = [
-                bp
-                for bp in new_enm.get("branch_points", [])
-                if bp.get("ref_id") not in branch_points_to_delete
-            ]
-            deleted_set.update(branch_points_to_delete)
-
-    # Pole nie istnieje bez właściciela: stacja albo punkt rozgałęzienia ZKSN skasowany (wprost
-    # albo kaskadą) zabiera swoje pola — dawniej pola stacji żyły w jej `meta` i znikały
-    # z nią same, a rekord pola zostawałby wiszący.
-    stacje_po = {s.get("ref_id") for s in new_enm.get("substations", []) if isinstance(s, dict)}
-    punkty_po = {
-        bp.get("ref_id") for bp in new_enm.get("branch_points", []) if isinstance(bp, dict)
-    }
-    for rekord in list(pola(new_enm)):
-        wlasciciel_stacja = rekord.get("substation_ref")
-        wlasciciel_punkt = rekord.get("branch_point_ref")
-        if (wlasciciel_stacja and wlasciciel_stacja not in stacje_po) or (
-            wlasciciel_punkt and wlasciciel_punkt not in punkty_po
-        ):
-            usun_pole(new_enm, str(rekord["ref_id"]))
-            deleted_set.add(str(rekord["ref_id"]))
+    # Odwołania do usuniętych elementów — JEDNA funkcja dla obu dróg kasowania (ta operacja
+    # i `/enm/ops` w `enm/topology_ops.py`): korytarze, pola, stacje (kontener — zostaje ze
+    # strukturą), punkty rozgałęzienia, pola bez właściciela, przekładniki i zabezpieczenia.
+    deleted_set |= oczysc_odwolania_po_usunieciu(
+        new_enm, deleted_set, deleted_bus_refs, deleted_branch_refs
+    )
 
     # Decyzja O-53: usunięcie transformatora albo aparatu łączeniowego między sekcjami nN
     # zmniejsza moc transformacji zasilającą źródła — ta sama kontrola co zmiana mocy
@@ -10733,39 +11545,6 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     blad_mocy = odmowa_kontroli_mocy_po_zmianie(enm, new_enm)
     if blad_mocy is not None:
         return blad_mocy
-
-    # Karta W5-B (kaskada KLASY odwołań, nie instancji): przekładnik stoi na szynie i wskazuje
-    # pole (`Measurement.bus_ref`/`bay_ref`), zabezpieczenie działa na wyłącznik
-    # (`ProtectionAssignment.breaker_ref`) — usunięcie szyny, pola albo wyłącznika usuwa
-    # elementy, które bez nich nie istnieją fizycznie. Dawniej zostawały z odwołaniem do
-    # elementu, którego nie ma (przekładnik „w polu" usuniętej stacji).
-    if deleted_set:
-        usuniete_pola = deleted_set & {str(b.get("ref_id")) for b in enm.get("bays", [])}
-        przekladniki = [
-            m
-            for m in new_enm.get("measurements", [])
-            if m.get("bus_ref") in deleted_bus_refs or m.get("bay_ref") in usuniete_pola
-        ]
-        refy_przekladnikow = {str(m.get("ref_id")) for m in przekladniki}
-        if refy_przekladnikow:
-            new_enm["measurements"] = [
-                m
-                for m in new_enm.get("measurements", [])
-                if str(m.get("ref_id")) not in refy_przekladnikow
-            ]
-            deleted_set.update(refy_przekladnikow)
-        zabezpieczenia = {
-            str(pa.get("ref_id"))
-            for pa in new_enm.get("protection_assignments", [])
-            if pa.get("breaker_ref") in deleted_branch_refs
-        }
-        if zabezpieczenia:
-            new_enm["protection_assignments"] = [
-                pa
-                for pa in new_enm.get("protection_assignments", [])
-                if str(pa.get("ref_id")) not in zabezpieczenia
-            ]
-            deleted_set.update(zabezpieczenia)
 
     deleted_ids = sorted(deleted_set)
     for event_seq, ref in enumerate(deleted_ids, start=1):
@@ -10823,8 +11602,8 @@ def _szyny_stron_gpz(enm: dict[str, Any], sub: dict[str, Any]) -> tuple[set[str]
     """Szyny stacji GPZ o UDOWODNIONEJ stronie: (WN, SN).
 
     Dowód pochodzi z RELACJI modelu, nie z progu napięciowego:
-      * strona WN — `hv_bus_ref` transformatorów tej stacji oraz zadeklarowane
-        `meta.gpz_hv_bus_refs`;
+      * strona WN — `hv_bus_ref` transformatorów tej stacji oraz `bus_ref` sekcji
+        110 kV (`gpz_hv_sections`, karta GPZ-H5);
       * strona SN — `lv_bus_ref` tych transformatorów oraz `bus_ref` istniejących
         sekcji SN (`gpz_sections`).
     Szyna nienależąca do żadnego z tych zbiorów NIE ma dowodu strony (np. nowa
@@ -10832,7 +11611,9 @@ def _szyny_stron_gpz(enm: dict[str, Any], sub: dict[str, Any]) -> tuple[set[str]
     """
     transformer_refs = set(sub.get("transformer_refs") or [])
     wn: set[str] = {
-        ref for ref in (sub.get("meta", {}) or {}).get("gpz_hv_bus_refs", []) or [] if ref
+        section.get("bus_ref")
+        for section in (sub.get("gpz_hv_sections") or [])
+        if section.get("bus_ref")
     }
     sn: set[str] = {
         section.get("bus_ref")

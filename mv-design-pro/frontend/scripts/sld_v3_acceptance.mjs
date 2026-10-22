@@ -617,7 +617,21 @@ const EXPECTED_STATION_COUNT = 53;
 // `belowY` = dół ramy + 3×GRID): zejście 344 → 584 zamiast 544 → 616. Na L1/L2 korytarz
 // leży pod portem i trasa jest prosta — suma bez zmian. Pełne oznaczenie pola ma
 // pierwszeństwo przed krótszym zejściem L0 (precedens GEOMETRIA-STACJI „jog-trasy").
-const VERTICAL_LENGTH_BASELINE = { 0: 21912, 1: 44352, 2: 44352 };
+// GPZ-H5-SLD etap 3 (2026-10-22): 21912/44352/44352 → 21112/43592/43592 (SPADEK −800/−760/
+// −760, zapadka w dół) — scalenie backendu karty GPZ H5 (`88557ceb7`) przegenerowało fiksturę
+// `sldSubstrate52s` (jawna struktura 110 kV: sekcje WN, łącznik szyn, pola transformatorów).
+// DOWÓD (sonda pionów liść po liściu, kod karty × fikstura sprzed/po scaleniu): kod karty
+// na fiksturze sprzed scalenia daje dokładnie dawne wartości per przyczyna na każdym LOD;
+// całą zmianę niesie fikstura. Na L0 jog wyjścia z GPZ `seg/2ec2ba47…` 240+104 (dawniej
+// 240+40): GPZ z kolumną 110 kV jest wyższy.
+// bbox arkusza 8024 → 8968, łamanie wierszy magistrali 6+6 → 5+7. Łącznik wierszy (przęsło
+// ciągłe klasy `snTrunk` z kreskami ciągu dalszego, `emitSheetContinuationMarks`) był dawniej
+// JEDNYM pionem „rezerwacja-kanalu" `…/segment_L_R` x=7872 (L0 2704), teraz to pion
+// „rezerwacja-kanalu" `seg/8701f14b…/segment_R` (632) i pion „jog-trasy" przęsła
+// „Magistrala 9" `seg/f80649eb…/segment` x=7184 (L0 1704, L1 1824, L2 1792) — ten sam
+// łącznik wierszy na innym przęśle, inna przyczyna, krótsza suma. Piony na L1/L2 „footprint"
+// 1936 → 1976 (+40): nowe zejścia struktury 110 kV GPZ (`#hv-`, `#tr-`) i `lv-drop`.
+const VERTICAL_LENGTH_BASELINE = { 0: 21112, 1: 43592, 2: 43592 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -677,10 +691,14 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // GPZ-H5-SLD etap 2 (2026-10-22): L0 „rezerwacja-kanalu" 21248 → 21392 (+144,
   // `…/segment_L` 96 → 240) i „jog-trasy" 88 → 280 (+192, `…/segment` 88 → 280) — objazd
   // przęsła GPZ→S01 pod ramą strefy GPZ (atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  0: { footprint: 32, 'rezerwacja-kanalu': 21392, 'jog-trasy': 280, 'slupek-terminalny': 208 },
+  // GPZ-H5-SLD etap 3 (2026-10-22, zmierzone po scaleniu `88557ceb7`): „rezerwacja-kanalu"
+  // 21392/42048/42048 → 18824/39424/39456, „jog-trasy" 280/160/160 → 2048/1984/1952,
+  // „footprint" L1/L2 1936 → 1976 — łącznik wierszy arkusza przeszedł z „rezerwacji kanału"
+  // do „jogu trasy" na innym przęśle (atrybucja przy `VERTICAL_LENGTH_BASELINE`).
+  0: { footprint: 32, 'rezerwacja-kanalu': 18824, 'jog-trasy': 2048, 'slupek-terminalny': 208 },
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  1: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
-  2: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  1: { footprint: 1976, 'rezerwacja-kanalu': 39424, 'jog-trasy': 1984, 'slupek-terminalny': 208 },
+  2: { footprint: 1976, 'rezerwacja-kanalu': 39456, 'jog-trasy': 1952, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -804,7 +822,13 @@ const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 // komórek spada marginalnie: zmierzone L2 0.022805 (L0 0.013808 i L1 0.022240
 // zostają nad dotychczasową podłogą — bez korekty). Podłoga = NOWA zmierzona
 // wartość minus ~0.00005 na jitter metryk tekstu (ta sama reguła co S7-P1/P4).
-const SHEET_FILL_FLOOR = { 0: 0.01374, 1: 0.02223, 2: 0.02275 };
+// GPZ-H5-SLD etap 3 (2026-10-22): OBNIŻONA 0.01374/0.02223/0.02275 → 0.013575/0.020344/
+// 0.021049. Przyczyna: fikstura przegenerowana w scaleniu `88557ceb7` (jawna struktura 110 kV
+// GPZ, łamanie wierszy 6+6 → 5+7) poszerza bbox arkusza 8024 → 8968 o REALNĄ treść (dłuższy
+// wiersz 7 przęseł), a długość tras spadła (piony −800/−760/−760 i poziomy) — zmierzone
+// 0.013625/0.020394/0.021099. Kod karty na fiksturze sprzed scalenia daje dawne wartości.
+// Podłoga = NOWA zmierzona wartość minus 0.00005 na jitter metryk tekstu (reguła S7-P1/P4).
+const SHEET_FILL_FLOOR = { 0: 0.013575, 1: 0.020344, 2: 0.021049 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —

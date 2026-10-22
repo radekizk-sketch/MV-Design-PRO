@@ -147,15 +147,25 @@ class EligibilityService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _readiness_blocker() -> AnalysisEligibilityIssue:
-        """ELIG_NOT_READY: model not ready for any analysis."""
+    def _readiness_blocker(readiness: ReadinessResult) -> AnalysisEligibilityIssue:
+        """ELIG_NOT_READY: model not ready for any analysis.
+
+        Karta GPZ-H5 (werdykt wyjaśnialny): blokada niesie PRZYCZYNY — zdania blokad
+        gotowości (np. E067 „zamknięty łącznik szyn łączy niezależne równoważniki”), a nie
+        samo odesłanie do panelu; dawniej macierz zdolności scenariusza z zamkniętym ŁS-110
+        mówiła wyłącznie „model nie jest gotowy”. Pierwszy element blokady wskazuje
+        `element_ref` (nawigacja), kolejność zdań = kolejność blokad walidatora."""
+        przyczyny = [b.message_pl for b in readiness.blockers if b.message_pl]
+        pierwszy = next((b for b in readiness.blockers if b.element_refs), None)
         return AnalysisEligibilityIssue(
             code="ELIG_NOT_READY",
             severity=IssueSeverity.BLOCKER,
             message_pl=(
-                "Model sieci nie jest gotowy do obliczeń. "
-                "Rozwiąż blokady w panelu gotowości inżynieryjnej."
+                "Model sieci nie jest gotowy do obliczeń"
+                + (": " + " ".join(przyczyny) if przyczyny else ".")
+                + " Rozwiąż blokady w panelu gotowości inżynieryjnej."
             ),
+            element_ref=pierwszy.element_refs[0] if pierwszy is not None else None,
         )
 
     # ------------------------------------------------------------------
@@ -172,7 +182,7 @@ class EligibilityService:
 
         # A: Global gate
         if not readiness.ready:
-            blockers.append(self._readiness_blocker())
+            blockers.append(self._readiness_blocker(readiness))
 
         # B1: Source required
         self._check_source_present(enm, blockers)
@@ -213,7 +223,7 @@ class EligibilityService:
 
         # A: Global gate
         if not readiness.ready:
-            blockers.append(self._readiness_blocker())
+            blockers.append(self._readiness_blocker(readiness))
 
         # SC_3F prerequisites (reuse checks)
         self._check_source_present(enm, blockers)
@@ -253,7 +263,7 @@ class EligibilityService:
 
         # A: Global gate
         if not readiness.ready:
-            blockers.append(self._readiness_blocker())
+            blockers.append(self._readiness_blocker(readiness))
 
         # SC_3F prerequisites
         self._check_source_present(enm, blockers)
@@ -290,7 +300,7 @@ class EligibilityService:
 
         # A: Global gate
         if not readiness.ready:
-            blockers.append(self._readiness_blocker())
+            blockers.append(self._readiness_blocker(readiness))
 
         # E1: Source required
         self._check_source_present(enm, blockers)
@@ -367,7 +377,7 @@ class EligibilityService:
 
         # A: Global gate
         if not readiness.ready:
-            blockers.append(self._readiness_blocker())
+            blockers.append(self._readiness_blocker(readiness))
 
         # F1: upstream Thevenin sieci SN dzieli DOKŁADNIE ten sam Z-bus co
         # SC_3F (`fault_loop.service._upstream_thevenin_lv_component` woła
@@ -407,7 +417,7 @@ class EligibilityService:
 
         # A: Global gate
         if not readiness.ready:
-            blockers.append(self._readiness_blocker())
+            blockers.append(self._readiness_blocker(readiness))
 
         # FAULT_LOOP_NN prerequisites (SWZ liczy Ik_min na TEJ SAMEJ pętli —
         # `swz.service.build_swz_view` woła wprost `fault_loop.service`

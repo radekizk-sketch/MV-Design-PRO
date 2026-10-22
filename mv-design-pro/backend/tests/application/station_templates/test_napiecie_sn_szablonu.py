@@ -78,10 +78,12 @@ def test_szablon_gpz_bierze_napiecie_z_rownowaznika_sieci_na_szynach_sn() -> Non
 
 
 def test_szablon_wpinany_bierze_napiecie_ze_strony_gornej_transformatora() -> None:
+    # Wpinany = wchodzi w segment magistrali (ten sam predykat co oferta kreatora); GPZ H5
+    # ma transformator 110/SN, ale jest korzeniem modelu — jego SN to strona DOLNA.
     wpinane = [
         t
         for t in list_templates()
-        if not t.schema.grid_source_options
+        if template_wchodzi_w_segment(t)
         and resolve_template_default_transformer_choice(t) is not None
     ]
     assert wpinane, "brak szablonów z transformatorem — test straciłby przedmiot"
@@ -90,6 +92,25 @@ def test_szablon_wpinany_bierze_napiecie_ze_strony_gornej_transformatora() -> No
         assert transformator is not None
         napiecie_gn_kv, _ = transformer_voltages_kv(transformator.catalog_ref)
         assert sn_voltage_kv(szablon) == napiecie_gn_kv
+
+
+def test_szablon_gpz_h5_bierze_napiecie_ze_strony_dolnej_transformatora_110_sn() -> None:
+    """Karta GPZ-H5: GPZ w układzie H5 ma stronę 110 kV w modelu — napięciem pracy sekcji SN
+    jest napięcie DOLNE domyślnego transformatora 110/SN z katalogu, a górne to 110 kV."""
+    h5 = [
+        t
+        for t in list_templates()
+        if not template_wchodzi_w_segment(t) and t.schema.transformer_options
+    ]
+    assert sorted(t.id for t in h5) == ["tpl_gpz_h5_110_15_2x25mva", "tpl_gpz_h5_110_20_2x25mva"]
+    for szablon in h5:
+        assert not szablon.schema.grid_source_options, szablon.id
+        transformator = resolve_template_default_transformer_choice(szablon)
+        assert transformator is not None, szablon.id
+        napiecie_gn_kv, napiecie_dn_kv = transformer_voltages_kv(transformator.catalog_ref)
+        assert napiecie_gn_kv == 110.0, szablon.id
+        assert sn_voltage_kv(szablon) == napiecie_dn_kv, szablon.id
+    assert sorted(sn_voltage_kv(t) for t in h5) == [15.0, 20.0]
 
 
 def test_szablon_kompensacji_bierze_napiecie_z_rekordu_baterii() -> None:
@@ -123,20 +144,23 @@ def test_pole_jest_w_kontrakcie_strukturalnym() -> None:
         ("tpl_abonencka_630kva_pomiar_20kv", 20.0),
         ("tpl_kompensacja_0v6mvar_15kv", 15.0),
         ("tpl_gpz_sn_15_2s_4p", 15.0),
+        ("tpl_gpz_h5_110_15_2x25mva", 15.0),
+        ("tpl_gpz_h5_110_20_2x25mva", 20.0),
     ],
 )
 def test_pomiar_rozkladu_napiec_jest_przypiety(template_id: str, oczekiwane_kv: float) -> None:
     """Pomiar z 2026-10-15: 71 szablonów = 62 × 15 kV + 3 × 20 kV + 6 obojętnych
-    (2 szablony wiatrowe 15 kV wycofane, `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`)."""
+    (2 szablony wiatrowe 15 kV wycofane, `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`). Pomiar
+    2026-10-22 (karta GPZ-H5): 73 = 63 × 15 kV + 4 × 20 kV + 6 obojętnych."""
     szablon = next(t for t in list_templates() if t.id == template_id)
     assert sn_voltage_kv(szablon) == oczekiwane_kv
 
 
 def test_rozklad_napiec_zgadza_sie_z_pomiarem_w_docstringu() -> None:
     napiecia = [sn_voltage_kv(t) for t in list_templates()]
-    assert len(napiecia) == 71
-    assert napiecia.count(15.0) == 62
-    assert napiecia.count(20.0) == 3
+    assert len(napiecia) == 73
+    assert napiecia.count(15.0) == 63
+    assert napiecia.count(20.0) == 4
     assert napiecia.count(None) == 6
 
 
@@ -156,11 +180,13 @@ def test_rola_szablonu_w_modelu_jest_czescia_kontraktu_oferty() -> None:
 
 def test_korzenie_modelu_to_dokladnie_szablony_gpz() -> None:
     """Pomiar 2026-09-17 przypięty: korzeniem modelu jest dziś WYŁĄCZNIE kategoria
-    GPZ 110/SN — 3 szablony z 71. Dołożenie kategorii korzenia bez aktualizacji
+    GPZ 110/SN — 3 szablony z 71; 2026-10-22 (karta GPZ-H5): 5 z 73. Dołożenie kategorii korzenia bez aktualizacji
     `KATEGORIE_KORZENIA_MODELU` zapali ten test, zamiast po cichu wpuścić szablon
     do kreatora wcięcia w magistralę."""
     korzenie = sorted(t.id for t in list_templates() if not template_wchodzi_w_segment(t))
     assert korzenie == [
+        "tpl_gpz_h5_110_15_2x25mva",
+        "tpl_gpz_h5_110_20_2x25mva",
         "tpl_gpz_sn_15_2s_4p",
         "tpl_gpz_sn_15_2s_6p",
         "tpl_gpz_sn_20_2s_4p",

@@ -39,6 +39,7 @@ from typing import Any, Literal
 from network_model.core.topologia import ma_cykl, polaczone, poziomy, przeglad_wszerz
 from network_model.nazwy import jest_nazwa
 
+from .czyszczenie_odwolan import oczysc_odwolania_po_usunieciu
 from .load_zip_model import model_odbioru, zip_odbioru_z_parametrow_materializacji
 from .nastawy_zabezpieczen import bledy_nastaw, normalizuj_nastawy
 from .nazwy_elementow import nazwa_galezi_bez_nazwy, opis_bez_nazwy
@@ -786,6 +787,9 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "z0_z1_ratio",
             "neutral_grounding",
             "lv_voltage_tolerance",
+            # Karta GPZ-H5: tożsamość toru zasilania 110 kV (linia, stacja zasilająca).
+            "supply_line_name",
+            "supplying_station_name",
         ):
             if opt in data:
                 src_data[opt] = data[opt]
@@ -882,6 +886,43 @@ def delete_device(enm: dict[str, Any], device_type: str, ref_id: str) -> Topolog
 
     enm[coll] = [x for x in enm[coll] if x.get("ref_id") != ref_id]
     return TopologyOpResult(True, enm, "delete_device", issues, ref_id)
+
+
+# ---------------------------------------------------------------------------
+# Kasowanie z poziomu użytkownika (karta GPZ-H5): prymityw + sprzątanie odwołań
+# ---------------------------------------------------------------------------
+#
+# `delete_node`/`delete_branch`/`delete_device` są PRYMITYWAMI operacji złożonych, które
+# podmieniają element jego częściami (wstawienie stacji w odcinek, podział i scalenie
+# odcinków) i same przepinają odwołania (pozycja w korytarzu, pola) — sprzątanie w prymitywie
+# zgubiłoby pozycję odcinka w korytarzu, zanim operacja wstawi w nią części. Kasowanie
+# ŻĄDANE PRZEZ UŻYTKOWNIKA (`POST /enm/ops`) idzie przez funkcje niżej: ten sam prymityw
+# i ta sama funkcja sprzątania co `delete_element` (stacja zostaje ze strukturą, sekcje,
+# pola, porty, korytarze i pomiary nie wskazują usuniętego elementu).
+
+
+def usun_wezel(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
+    """Usuń szynę na żądanie użytkownika — prymityw ``delete_node`` + sprzątanie odwołań."""
+    wynik = delete_node(enm, ref_id)
+    if wynik.success:
+        oczysc_odwolania_po_usunieciu(wynik.enm, {ref_id}, {ref_id}, set())
+    return wynik
+
+
+def usun_galaz(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
+    """Usuń gałąź (odcinek, łącznik) na żądanie użytkownika — prymityw + sprzątanie odwołań."""
+    wynik = delete_branch(enm, ref_id)
+    if wynik.success:
+        oczysc_odwolania_po_usunieciu(wynik.enm, {ref_id}, set(), {ref_id})
+    return wynik
+
+
+def usun_urzadzenie(enm: dict[str, Any], device_type: str, ref_id: str) -> TopologyOpResult:
+    """Usuń urządzenie (transformator, źródło, odbiór, generator) na żądanie użytkownika."""
+    wynik = delete_device(enm, device_type, ref_id)
+    if wynik.success:
+        oczysc_odwolania_po_usunieciu(wynik.enm, {ref_id}, set(), set())
+    return wynik
 
 
 # ---------------------------------------------------------------------------

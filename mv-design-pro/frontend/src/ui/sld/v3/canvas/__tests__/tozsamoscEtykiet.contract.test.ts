@@ -140,7 +140,9 @@ describe('KD-11 §1 — klasyfikacja etykiet pochodzi z DANYCH SCENY', () => {
     // SEKCJI („S01 · Sekcja 1 · 15 kV"), a pasmo nazw pokazuje NAZWĘ stacji.
     // Intencja testu bez zmian: sprawdzamy, że KAŻDY nośnik tożsamości bloku
     // jest sklasyfikowany jako tożsamość — pod nowym adresem kodu stacji.
-    const oczekiwane = ['GPZ 15 kV · 110/15 kV', 'TR1', 'Sekcja 1 · 15 kV', 'Szyna WN · 110 kV'];
+    // GPZ-H5-SLD etap 3: strona 110 kV fikstury jest sekcją modelu — opis szyny WN to
+    // nazwa sekcji 110 kV z backendu („Sekcja 110 kV 1"), dawniej „Szyna WN · 110 kV".
+    const oczekiwane = ['GPZ 15 kV · 110/15 kV', 'TR1', 'Sekcja 1 · 15 kV', 'Sekcja 110 kV 1'];
     for (const tekst of oczekiwane) {
       expect(role.get(tekst), `„${tekst}" powinno być tożsamością`).toBe('tozsamosc');
     }

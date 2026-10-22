@@ -64,7 +64,9 @@ def _base_enm():
                 "name": "Sub A",
                 "station_type": "mv_lv",
                 "kind": "mv_station",
-                "bus_ref": "bus/a",
+                # Kontrakt `Substation`: szyny stacji to `bus_refs` (dawny klucz `bus_ref`
+                # spoza kontraktu był jedynym, co czytał predykat kasowania stacji).
+                "bus_refs": ["bus/a"],
                 "transformer_refs": [],
             }
         ],

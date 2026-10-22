@@ -185,9 +185,15 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // GPZ-H5-SLD etap 2 (2026-10-22): L0 21576 → 21912 (+336) — objazd przęsła GPZ→S01 pod
     // ramą strefy GPZ pogłębioną pełnym pasmem oznaczenia pola; L1/L2 bez zmian. Atrybucja
     // liść po liściu przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21912);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(44352);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(44352);
+    // GPZ-H5-SLD etap 3 (2026-10-22, scalenie backendu H5): 21912/44352/44352 →
+    // 21112/43592/43592 — sonda 2×2 na kodzie po scaleniu: fikstura SPRZED scalenia daje
+    // dokładnie 21912/44352/44352 (kod nie zmienia tej miary), ta sama treść z samymi
+    // nowymi identyfikatorami — 21112/43552/43552 (−800: remis kolejności ciągów po
+    // `id`), nowa treść GPZ (sekcja 110 kV z polem liniowym, pola TR po obu stronach) —
+    // L0 ±0, L1/L2 +40 (zaczep pola do szyny sekcji 110 kV).
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21112);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(43592);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(43592);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

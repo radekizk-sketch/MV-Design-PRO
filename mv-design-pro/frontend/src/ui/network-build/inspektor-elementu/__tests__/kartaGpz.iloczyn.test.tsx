@@ -180,6 +180,7 @@ function ustawBieg(stan: StanBiegu): void {
       qualityStatus: null,
       proofStatus: null,
       runFinishedAt: null,
+      szynyBezNapiecia: payload.bez_napiecia_refs ?? [],
     });
     useRawResultOverlayStore.getState().setPayload(payload);
   });

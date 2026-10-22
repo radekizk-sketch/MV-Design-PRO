@@ -131,8 +131,14 @@ export interface GlyphProps {
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
    *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
   readonly uzwojenia?: UzwojeniaTransformatora;
-  /** Karta GPZ-H5-SLD etap 2 (wymaganie 4): pozycja normalna łącznika szyn — WYŁĄCZNIE
-   *  glify toru poziomego `lineSwitch`/`lineBreaker` ją czytają. Stan rzeczywisty niesie
+  /** Karta GPZ-H5-SLD etap 2 (wymaganie 4), etap 3 (d): pozycja normalna łącznika
+   *  (`Branch.normal_state` przez `shared/stanLacznika.pozycjaNormalna`) — KAŻDY glif
+   *  łączeniowy ją czyta (łącznik szyn, łącznik toru, aparat pola z gałęzi łączeniowej:
+   *  `lineSwitch`, `lineBreaker`, `breaker`, `recloser`, `disconnector`, `loadBreakSwitch`,
+   *  `earthSwitch`, `fuseSwitch`); atrybuty `data-pozycja-normalna`/`data-odstepstwo` nadaje
+   *  wspólne `glyphGroupProps`. Dawniej czytały ją wyłącznie glify toru poziomego, więc
+   *  wyłącznik pola SN transformatora rezerwowego GPZ zamknięty w wariancie awaryjnym nie
+   *  różnił się na schemacie od stanu normalnego. Stan rzeczywisty niesie
    *  geometria noża/korpusu (`state`) i podpis słowny; pozycja normalna jest drugorzędna
    *  (drugi wiersz podpisu tylko przy odstępstwie, `shared/stanLacznika.tekstStanuLacznikaSzyn`),
    *  a ODSTĘPSTWO glif wyróżnia geometrią: przerywaną ramką wokół aparatu (`data-odstepstwo`). */
@@ -144,6 +150,7 @@ function glyphGroupProps(id: SymbolId, props: GlyphProps) {
     'data-symbol-canon': id,
     'data-switch-state': props.state,
     transform: `translate(${props.x}, ${props.y})`,
+    ...atrybutyPozycjiNormalnej(props),
   } as const;
 }
 
@@ -188,6 +195,7 @@ export function BreakerGlyph(props: GlyphProps): JSX.Element {
       />
       <line x1={8} y1={0} x2={8} y2={2} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={14} x2={8} y2={16} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <RamkaOdstepstwa props={props} width={16} height={16} />
     </g>
   );
 }
@@ -224,6 +232,7 @@ export function RecloserGlyph(props: GlyphProps): JSX.Element {
         strokeWidth={w}
       />
       <line x1={8} y1={20} x2={8} y2={24} stroke={stroke(props)} strokeWidth={w} />
+      <RamkaOdstepstwa props={props} width={16} height={24} />
     </g>
   );
 }
@@ -242,6 +251,7 @@ export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
       />
       <line x1={4} y1={18} x2={12} y2={18} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <RamkaOdstepstwa props={props} width={16} height={24} />
     </g>
   );
 }
@@ -270,6 +280,7 @@ export function LoadBreakSwitchGlyph(props: GlyphProps): JSX.Element {
       />
       <line x1={4} y1={18} x2={12} y2={18} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <RamkaOdstepstwa props={props} width={16} height={24} />
     </g>
   );
 }
@@ -297,6 +308,7 @@ export function EarthSwitchGlyph(props: GlyphProps): JSX.Element {
       <line x1={2} y1={17} x2={14} y2={17} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={4} y1={20} x2={12} y2={20} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={6} y1={23} x2={10} y2={23} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <RamkaOdstepstwa props={props} width={16} height={24} />
     </g>
   );
 }
@@ -374,6 +386,7 @@ export function FuseSwitchGlyph(props: GlyphProps): JSX.Element {
       <rect x={5} y={10} width={6} height={12} fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={10} x2={8} y2={22} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={8} y1={22} x2={8} y2={32} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <RamkaOdstepstwa props={props} width={16} height={32} />
     </g>
   );
 }
@@ -608,7 +621,7 @@ export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'unknown';
   const bladeEnd = state === 'open' ? { x: 18, y: 0 } : { x: 22, y: 8 };
   return (
-    <g {...glyphGroupProps('lineSwitch', props)} {...atrybutyPozycjiNormalnej(props)}>
+    <g {...glyphGroupProps('lineSwitch', props)}>
       <line x1={0} y1={8} x2={10} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <circle data-punkt-obrotu="true" cx={10} cy={8} r={1.8} fill={stroke(props)} />
       <line
@@ -632,7 +645,7 @@ export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
 export function LineBreakerGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'unknown';
   return (
-    <g {...glyphGroupProps('lineBreaker', props)} {...atrybutyPozycjiNormalnej(props)}>
+    <g {...glyphGroupProps('lineBreaker', props)}>
       <rect
         x={2} y={2} width={12} height={12}
         fill={state === 'closed' ? stroke(props) : 'none'}

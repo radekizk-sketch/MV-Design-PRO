@@ -28,6 +28,7 @@ from domain.generator_validation import (
     moc_pozorna_z_nastawy_mva,
 )
 from enm.rola_pola_sn import nazwa_roli_pola_sn_z_okresleniem
+from enm.slownik_komunikatow import pole
 from network_model.pochodne import (
     kw_na_mw,
     moc_pozorna_z_czynnej_i_biernej_mva,
@@ -153,6 +154,35 @@ class BayRoleSpec:
 
 
 @dataclass(frozen=True)
+class DanaProjektuSzablonu:
+    """Pole wejścia, które szablon WYMAGA od projektanta i którego NIE wypełnia (karta GPZ-H5,
+    wpis 7 koordynacji pkt 6): stan normalny łącznika szyn 110 kV, tryb rezerwy, tory zasilania.
+
+    `klucz` — ścieżka pola ładunku operacji `operacja` (np. ``hv_coupler.normal_state``);
+    nazwa pola pochodzi ze słownika nazw pól operacji (`enm.slownik_komunikatow.pole`), więc
+    formularz i komunikat odmowy nazywają je tym samym słowem. `wartosci` — dozwolone wartości
+    z nazwą (pusta krotka = dana złożona albo tekst). Brak wartości domyślnej jest cechą
+    kontraktu: szablon nie ma pola `default`. `warunek_pl` — kiedy dana jest wymagana
+    (pusty = zawsze)."""
+
+    klucz: str
+    podpowiedz_pl: str
+    podstawa_pl: str
+    operacja: str = "add_grid_source_sn"
+    wartosci: tuple[tuple[str, str], ...] = ()
+    warunek_pl: str = ""
+
+    @property
+    def label_pl(self) -> str:
+        return pole(self.klucz, self.operacja)
+
+    @property
+    def klucz_ladunku(self) -> str:
+        """Klucz najwyższego poziomu ładunku operacji, pod którym leży dana."""
+        return self.klucz.split(".", 1)[0]
+
+
+@dataclass(frozen=True)
 class DerKindSpec:
     """DER inverter kind option."""
 
@@ -264,6 +294,24 @@ class TemplateSchema:
     # `insert_station_on_segment_sn`). Pusta krotka dla wszystkich pozostałych
     # kategorii — addytywne pole.
     grid_source_options: tuple[CatalogChoice, ...] = ()
+
+    # Układ GPZ (karta GPZ-H5) — `GPZ_UKLAD_H5`: strona 110 kV w modelu (dwa tory zasilania
+    # L1/L2 z danych projektu, transformatory 110/SN z `transformer_options` przypisane jawnie
+    # sekcja 110 kV → sekcja SN); `GPZ_UKLAD_ROWNOWAZNIK_SN`: równoważnik z katalogu
+    # (`grid_source_options`) na KAŻDEJ sekcji SN. `None` dla pozostałych kategorii.
+    gpz_uklad: str | None = None
+
+    # Dane projektu wymagane przez szablon i NIE wypełniane przez niego (karta GPZ-H5) —
+    # pola wejścia z podpowiedzią i podstawą. Pusta krotka dla szablonów bez takich danych.
+    dane_projektu: tuple[DanaProjektuSzablonu, ...] = ()
+
+
+#: Układ ENEA H5 (ENEA Operator, Zeszyt 1 „Stacje 110 kV” §11.1): dwie linie 110 kV, dwa pola
+#: transformatorowe, jedno pole łącznika szyn — strona 110 kV jest w modelu obliczeniowym.
+GPZ_UKLAD_H5 = "H5"
+#: GPZ z równoważnikiem sieci z katalogu na każdej sekcji SN (granica modelu = szyny SN).
+GPZ_UKLAD_ROWNOWAZNIK_SN = "ROWNOWAZNIK_SN"
+GPZ_UKLADY: tuple[str, ...] = (GPZ_UKLAD_H5, GPZ_UKLAD_ROWNOWAZNIK_SN)
 
 
 def transformer_voltages_kv(transformer_ref: str | None) -> tuple[float | None, float | None]:
@@ -1089,7 +1137,9 @@ def sn_voltage_kv(template: StationTemplate) -> float | None:
     1. szablon GPZ (niesie `grid_source_options`, droga `add_grid_source_sn`)
        TWORZY szynę SN — jego napięciem SN jest napięcie znamionowe domyślnego
        równoważnika sieci na szynach SN (`grid_source_voltage_kv`; transformatory
-       110/SN są poza modelem — granica zasilania SN, karta GPZ-MODEL);
+       110/SN są poza modelem — granica zasilania SN, karta GPZ-MODEL), a szablon
+       GPZ H5 (`gpz_uklad == GPZ_UKLAD_H5`) — napięcie strony DOLNEJ domyślnego
+       transformatora 110/SN;
     2. szablon wpinany w segment magistrali (`insert_station_on_segment_sn`)
        WYMAGA szyny o napięciu strony GÓRNEJ swojego transformatora SN/nN;
     3. szablon bez transformatora, za to z baterią kondensatorów (kompensacja)
@@ -1109,8 +1159,16 @@ def sn_voltage_kv(template: StationTemplate) -> float | None:
     równoważnika sieci szablonu —, `tpl_kompensacja_1v8mvar_20kv`,
     `tpl_abonencka_630kva_pomiar_20kv`), napięciowo obojętne — 6 (3 rozdzielnie
     sieciowe + 3 warianty rezerwy zasilania). Pomiar 2026-10-15 po wycofaniu 2 szablonów
-    wiatrowych 15 kV: 71 szablonów, 15 kV — 62 (pin: `test_napiecie_sn_szablonu`).
+    wiatrowych 15 kV: 71 szablonów, 15 kV — 62. Pomiar 2026-10-22 (karta GPZ-H5-BACKEND, dwa
+    wzorce GPZ ENEA H5): 73 szablony, 15 kV — 63, 20 kV — 4, obojętne — 6 (pin:
+    `test_napiecie_sn_szablonu`).
     """
+    if template.schema.gpz_uklad == GPZ_UKLAD_H5:
+        # GPZ H5 TWORZY szyny SN po stronie DOLNEJ swoich transformatorów 110/SN.
+        transformator_h5 = resolve_template_default_transformer_choice(template)
+        if transformator_h5 is None:
+            return None
+        return transformer_voltages_kv(transformator_h5.catalog_ref)[1]
     if template.schema.grid_source_options:
         zrodlo = _domyslna_opcja(template.schema.grid_source_options)
         return grid_source_voltage_kv(zrodlo.catalog_ref if zrodlo is not None else None)
@@ -1248,6 +1306,20 @@ def _schema_to_dict(schema: TemplateSchema) -> dict:
         "manufacturer_profile_default": schema.manufacturer_profile_default,
         "shunt_capacitor_options": [_choice_to_dict(c) for c in schema.shunt_capacitor_options],
         "grid_source_options": [_choice_to_dict(c) for c in schema.grid_source_options],
+        "gpz_uklad": schema.gpz_uklad,
+        "dane_projektu": [_dana_projektu_to_dict(d) for d in schema.dane_projektu],
+    }
+
+
+def _dana_projektu_to_dict(d: DanaProjektuSzablonu) -> dict:
+    return {
+        "klucz": d.klucz,
+        "operacja": d.operacja,
+        "label_pl": d.label_pl,
+        "podpowiedz_pl": d.podpowiedz_pl,
+        "podstawa_pl": d.podstawa_pl,
+        "wartosci": [{"wartosc": w, "label_pl": n} for w, n in d.wartosci],
+        "warunek_pl": d.warunek_pl,
     }
 
 

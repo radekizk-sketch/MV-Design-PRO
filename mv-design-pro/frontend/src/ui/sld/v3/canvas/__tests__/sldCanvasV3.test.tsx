@@ -1537,8 +1537,18 @@ describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
   };
   const smallByRef = buildResultLabelsFromScene(sceneL2, smallPayload, singleHop);
 
-  /** PEŁNY payload rozpływu z realnych refów (produkuje ≥1 agregat na fixturze). */
+  /** GPZ-H5-SLD etap 3: sieć referencyjna po scaleniu backendu H5 nie ma skupiska (strona
+   *  110 kV jest sekcją modelu, szyna WN stoi przy swoim polu — sonda w
+   *  `resultLabelLayout.test.ts`). Agregat realnie powstaje na modelu ze WSPÓLNĄ szyną WN
+   *  stacji, który backend wydaje jako sieć złotą harnessu — na niej ćwiczymy marker. */
+  const enmAgregacji = JSON.parse(
+    readFileSync(resolve(here, '..', '..', '..', '..', '..', 'harness-fixtures', 'generated', 'siec_zlota_scena_migawka.json'), 'utf8'),
+  ) as EnergyNetworkModel;
+
+  /** PEŁNY payload rozpływu z realnych refów (produkuje ≥1 agregat na `enmAgregacji`). */
   function buildFullByRef(): Record<string, ReturnType<typeof buildResultLabelsFromScene>[string]> {
+    const sceneL2 = buildSceneV3(enmAgregacji, 2);
+    const singleHop = new Set(orientedSegmentRefs(enmAgregacji).keys());
     const elements: Record<string, RawOverlayElement> = {};
     for (const s of sceneL2.symbols) {
       const k = s.meta?.elementKind;
@@ -1621,11 +1631,11 @@ describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
   it('wym.14 agregacja: marker „+N wyniki" renderuje się; klik rozwija popover z listą; ponowny klik zwija', () => {
     const fullByRef = buildFullByRef();
     // Bramka: layout produkuje ≥1 agregat na tej fixturze (skutek realny).
-    const layout = layoutResultLabels(sceneL2, fullByRef, [], 2);
+    const layout = layoutResultLabels(buildSceneV3(enmAgregacji, 2), fullByRef, [], 2);
     expect(layout.aggregates.length).toBeGreaterThan(0);
     const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: fullByRef };
     const { container } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enmAgregacji} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
     );
     const toggle = container.querySelector('[data-testid="sld-v3-result-aggregate-toggle-0"]');
     expect(toggle).toBeTruthy();
@@ -1651,10 +1661,10 @@ describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
     const fullByRef = buildFullByRef();
     const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: fullByRef };
     const { container: without } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+      <SldCanvasV3 snapshot={enmAgregacji} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
     );
     const { container: withAgg } = render(
-      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+      <SldCanvasV3 snapshot={enmAgregacji} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
     );
     for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
       expect(withAgg.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(

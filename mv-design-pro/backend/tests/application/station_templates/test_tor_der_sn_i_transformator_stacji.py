@@ -16,7 +16,7 @@ POWÓD (karta GPT-478, rozstrzygnięcie architekta 2026-10-15, pomiar przed napr
 * `int(...)` w podglądzie i zastosowaniu obcinał 2,7 → 2, a tekst dawał błąd 500.
 
 ILOCZYN CECH (KLASA NIE INSTANCJA):
-* {każdy z 71 szablonów} × {parametry domyślne} → brak odmowy, transformator stacji
+* {każdy z 73 szablonów} × {parametry domyślne} → brak odmowy, transformator stacji
   pokrywa odbiory i źródła nN × liczba transformatorów, każdy tor DER-SN ma TR blokowy
   o mocy ≥ moc wymagana jednostki (bezpiecznik nie wyzwala się dla żadnego szablonu);
 * {każdy szablon z DER-SN} × {każda technologia} × {każda pozycja katalogu opcji} → tor
@@ -62,8 +62,9 @@ _Z_TOREM_SN = tuple(
 
 def test_iloczyn_nie_jest_pusty() -> None:
     # Pomiar 2026-10-15 po przeprojektowaniu składów: 71 szablonów (2 wiatrowe wycofane,
-    # `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`), 17 z jednostkami po stronie SN.
-    assert len(_WSZYSTKIE) == 71
+    # `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`), 17 z jednostkami po stronie SN. Pomiar
+    # 2026-10-22 (karta GPZ-H5): 73 — doszły szablony GPZ H5 110/15 i 110/20 kV.
+    assert len(_WSZYSTKIE) == 73
     assert len(_Z_TOREM_SN) == 17
     assert len(_Z_TOREM_SN) >= 1
 

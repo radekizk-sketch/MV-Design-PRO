@@ -610,7 +610,7 @@
   "pliki": {
     "public/test-fixtures/gpzFeeder.enm.json": {
       "/enm": {
-        "stn/ae500cc40ddc6117f9a58f2d2403d6f8/station": {
+        "stn/24c226faa61d1fc38c2277dd93d9de9c/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -620,7 +620,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/d9bee08221b591b1c3fd1b75bcf25afa/station": {
+        "stn/ed2ea901eb81393c8ddbe0023f54676b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -634,7 +634,7 @@
     },
     "public/test-fixtures/nnBoardDemo.enm.json": {
       "/enm": {
-        "stn/a656b1088178ad9de2f4d09adca4e15c/station": {
+        "stn/0c211ae9e4bbad2020cc3906fe1260ed/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -648,7 +648,7 @@
     },
     "public/test-fixtures/sldSubstrate52s.enm.json": {
       "/enm": {
-        "stn/0267ed51de5f440e96ca02cd8f4a2ce4/station": {
+        "stn/02b1351946124030c7642ed7e5b68a32/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -658,7 +658,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/03658f87b4cfcb26a0498e0aa15ae14e/station": {
+        "stn/053dcd3b5c74e47a2146137104241ce0/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -668,7 +668,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/07b93a6ed93e0c115b5c94c6758e191b/station": {
+        "stn/0573d774e9f81f0a009d57054d319976/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -678,27 +678,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/087c41e26c6ea597e18223d3a4c620c7/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/0a2066f9707739e7a647dfffe2fc7ae4/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/0db1fc2b2202a6fac252a1894d354185/station": {
+        "stn/098d411f7c758b4941061c36f6be4c20/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -708,7 +688,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/1279905b7a471e38591b00d71b922bac/station": {
+        "stn/10bb626464b28151525fba6135de1bcf/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -718,17 +698,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/161502688ba086b88570e83b752d670d/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/16a09f79ec733c22d707f4bf2f5d5b40/station": {
+        "stn/13b4732b19f0abe541e975ad2e51aa4a/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -738,37 +708,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/22459f32a87efa533f427a5a1137bdf1/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/228af6c58fa4757538e84a7c9c4bd3dd/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/29f56bf6d80dbcb8329677b381ac1bc7/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/2da858360e54ca60c58a2c1dd7f1b978/station": {
+        "stn/199aea15573df8c6e10afef70f5606e0/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -778,7 +718,77 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/2f0ea223f1f72857253530c6ff1b7f53/station": {
+        "stn/1d08e739167359e6834dbe01a50e763d/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/209d222d3ef486a38405b143b2a8bd2f/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/274ce2a4c815bf4ee55eb7b54c984f5c/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/2a9cbede8553a66e2df7577f4003b0c3/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/2b382e7fa4da25af35ed0a9c0bb36bce/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/389e2390b89310177d9cc376b244718e/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/43a200de2c89436544c441ec5c7e3285/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -788,47 +798,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/3321ce564c863d22314b9b05c44192aa/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/361e17ecdf6d8e16cddc2defa647a5ce/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/3caf6e73ff8a50298c82b8550c9f3723/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/45f62a888ac2952e224812cb91d01667/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/47c663304e299976a604a5bc9b1f3d10/station": {
+        "stn/44aa0ee35fd2315876056bcc68a3980d/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -838,7 +808,37 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/4855938b6610860be13ebb55f622855b/station": {
+        "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/4b7118514fa4bb71f540a6a888eef43a/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/4c555f183c75c8f826be5744222698ff/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -848,47 +848,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/4d160f5be4d26b67be2969172189abcb/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/4d2a5c6e35ac63c7e46d50094eb30089/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/57f25a032a6a522932ca0e73c2f517c7/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/6313d9ba88f5fccd2a21056f95111f32/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/63db6734977dd742f41f0608537cbe9b/station": {
+        "stn/4d03c5a21ffa5638b2e4627626a835a5/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -898,7 +858,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/66aa8ed987882f6e36cc1fdbd1f2576c/station": {
+        "stn/4d4b5352c95f46f436cff0b78e578357/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -908,7 +868,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/6c721503e14889602ff3c5a22dccf0ec/station": {
+        "stn/526d751d4c6b988f3884ca3854deee2e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -918,7 +878,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/70ef6d6e111999a1694ff605bfb846c5/station": {
+        "stn/5b70068942fde50b62c9b6de84be940e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -928,57 +888,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/77dc43906517b1c6b7136b962cfde765/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/7f5edfcc88e46d1b11cee1e58d5df722/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/88be75c72bc2dd32f183f19222c95b8c/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/8cdc566c7868fa8cd9e38c576ad2d735/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/9a3c8ada255fe3509ee88f6d6c2eed3a/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/9d60b92ff9e075a6db59a6dc8bb586c4/station": {
+        "stn/5def7b80c06af702b176f0dee0d4392c/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -988,17 +898,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/9de61c8e8e89d051b194fefffe67489b/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/9f2fb51197ec1e3c0cc788fc730e6fb7/station": {
+        "stn/5e584c708e66035fcdef69cd25087291/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -1008,17 +908,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/a6c3fe9a47b2917412ff7c660fc3ccee/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/bcf7acbcefe4a77b8d49e32601756f6d/station": {
+        "stn/5f12674f6820409599760dbb1534ed2b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1028,7 +918,17 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/c35346e302720b54552b21f15aa9c155/station": {
+        "stn/5f9af052d72ebfe1de155ea37bf59a78/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/60da521b2b332de1de50adcaebeb4202/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -1038,7 +938,27 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/d25389ae0f9649390846bfcda8f8666a/station": {
+        "stn/6639cf33bef64e78f931bf1442f9fb3f/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/6a58a6a78548361dbcb721ce575b9d2a/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/7140ac8547c9c31018c60c64a3ba3e48/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1048,7 +968,17 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/d3e9c8e3e865a64c5867c7c84f1d9aba/station": {
+        "stn/72ee4bf2fecf5b43ec645c10fa12e46e/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/79b1cd3c74d1d83a2aa36130db12f8e2/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1058,7 +988,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/d70e474423d7cc7e395d3d6ad2f5a9ec/station": {
+        "stn/7ce13a3c23d4de7463601005e3318e7f/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1068,7 +998,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/d71e567f79d8c6e111cd07a0cb345604/station": {
+        "stn/7cea11943e0f42d6bbf418b8a618b64a/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1078,7 +1008,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/db5fd079947b09d3173ef57e603eb5c7/station": {
+        "stn/96b2dc6257a9b86ef54b529a9bd814e0/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1088,7 +1018,47 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/db93fbce84cf8c4a5bfb1859c6263a37/station": {
+        "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/b7d195695733564f67265edfd5058e2f/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/be62dca499a53468061996c609632547/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/c5740accd6ac7011ba046df27d5ba8c4/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1098,7 +1068,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/dcb48bfabd3a15737fa8bae301051dc9/station": {
+        "stn/c9b56cb35ad4450bc8fd580a0b1f4480/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1108,7 +1078,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/dfaf055d2d3a1b434c401925197e74ae/station": {
+        "stn/cff3a38dfcb94f4333a801a69f69dd15/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1118,7 +1088,17 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/e5022ce65a2076b08794233821e3d4db/station": {
+        "stn/d0e271c1dd839192f0b167509c8eb75e/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/d356206e0d4ab4c292613bd61fb0ab67/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1128,7 +1108,17 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/e53a1ec5fc8f38d7cbe9b60d00233231/station": {
+        "stn/d83d6fed2c76a53f44c0b91ef5984179/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/dad7c97b3dbb96dd1156d76ece9454bf/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1138,7 +1128,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/e62036c587408b82388185d2fef765a1/station": {
+        "stn/e3c5062ec50150c24ed55158c066b51e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1148,7 +1138,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/eacbe35074d08b25ca9e2260a1244fe4/station": {
+        "stn/fba1104aa9c32b57119b2796470a20b8/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -1158,25 +1148,35 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/f265b78f89ea946e98cb487263f2ed14/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
+        "stn/fbb7640354e032dc2a807c55b9b552d6/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
           "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
           "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
+          "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/f2ba4dacfa5c142bd24b6ee19dadb37d/station": {
+        "stn/fddfa5d016ab9d19567a169741078cf9/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
           "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/ff236ebd7c982151f0a145edfd600f05/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
         }
       }
     },
@@ -2964,7 +2964,7 @@
     },
     "src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json": {
       "/enm": {
-        "stn/0267ed51de5f440e96ca02cd8f4a2ce4/station": {
+        "stn/02b1351946124030c7642ed7e5b68a32/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -2974,7 +2974,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/03658f87b4cfcb26a0498e0aa15ae14e/station": {
+        "stn/053dcd3b5c74e47a2146137104241ce0/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -2984,7 +2984,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/07b93a6ed93e0c115b5c94c6758e191b/station": {
+        "stn/0573d774e9f81f0a009d57054d319976/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -2994,27 +2994,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/087c41e26c6ea597e18223d3a4c620c7/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/0a2066f9707739e7a647dfffe2fc7ae4/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/0db1fc2b2202a6fac252a1894d354185/station": {
+        "stn/098d411f7c758b4941061c36f6be4c20/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3024,7 +3004,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/1279905b7a471e38591b00d71b922bac/station": {
+        "stn/10bb626464b28151525fba6135de1bcf/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3034,17 +3014,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/161502688ba086b88570e83b752d670d/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/16a09f79ec733c22d707f4bf2f5d5b40/station": {
+        "stn/13b4732b19f0abe541e975ad2e51aa4a/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3054,37 +3024,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/22459f32a87efa533f427a5a1137bdf1/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/228af6c58fa4757538e84a7c9c4bd3dd/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/29f56bf6d80dbcb8329677b381ac1bc7/station": {
-          "deklaracja": "branch",
-          "pola_liniowe": 3,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
-          "rodzaj": "branch",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 0,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/2da858360e54ca60c58a2c1dd7f1b978/station": {
+        "stn/199aea15573df8c6e10afef70f5606e0/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3094,7 +3034,77 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/2f0ea223f1f72857253530c6ff1b7f53/station": {
+        "stn/1d08e739167359e6834dbe01a50e763d/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/209d222d3ef486a38405b143b2a8bd2f/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/274ce2a4c815bf4ee55eb7b54c984f5c/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/2a9cbede8553a66e2df7577f4003b0c3/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/2b382e7fa4da25af35ed0a9c0bb36bce/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/389e2390b89310177d9cc376b244718e/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/43a200de2c89436544c441ec5c7e3285/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3104,47 +3114,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/3321ce564c863d22314b9b05c44192aa/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/361e17ecdf6d8e16cddc2defa647a5ce/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/3caf6e73ff8a50298c82b8550c9f3723/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/45f62a888ac2952e224812cb91d01667/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/47c663304e299976a604a5bc9b1f3d10/station": {
+        "stn/44aa0ee35fd2315876056bcc68a3980d/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3154,7 +3124,37 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/4855938b6610860be13ebb55f622855b/station": {
+        "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/4b7118514fa4bb71f540a6a888eef43a/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/4c555f183c75c8f826be5744222698ff/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3164,47 +3164,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/4d160f5be4d26b67be2969172189abcb/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/4d2a5c6e35ac63c7e46d50094eb30089/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/57f25a032a6a522932ca0e73c2f517c7/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/6313d9ba88f5fccd2a21056f95111f32/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/63db6734977dd742f41f0608537cbe9b/station": {
+        "stn/4d03c5a21ffa5638b2e4627626a835a5/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3214,7 +3174,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/66aa8ed987882f6e36cc1fdbd1f2576c/station": {
+        "stn/4d4b5352c95f46f436cff0b78e578357/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3224,7 +3184,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/6c721503e14889602ff3c5a22dccf0ec/station": {
+        "stn/526d751d4c6b988f3884ca3854deee2e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3234,7 +3194,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/70ef6d6e111999a1694ff605bfb846c5/station": {
+        "stn/5b70068942fde50b62c9b6de84be940e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3244,57 +3204,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/77dc43906517b1c6b7136b962cfde765/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/7f5edfcc88e46d1b11cee1e58d5df722/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/88be75c72bc2dd32f183f19222c95b8c/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/8cdc566c7868fa8cd9e38c576ad2d735/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/9a3c8ada255fe3509ee88f6d6c2eed3a/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/9d60b92ff9e075a6db59a6dc8bb586c4/station": {
+        "stn/5def7b80c06af702b176f0dee0d4392c/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3304,17 +3214,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/9de61c8e8e89d051b194fefffe67489b/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/9f2fb51197ec1e3c0cc788fc730e6fb7/station": {
+        "stn/5e584c708e66035fcdef69cd25087291/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3324,17 +3224,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/a6c3fe9a47b2917412ff7c660fc3ccee/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/bcf7acbcefe4a77b8d49e32601756f6d/station": {
+        "stn/5f12674f6820409599760dbb1534ed2b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3344,7 +3234,17 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/c35346e302720b54552b21f15aa9c155/station": {
+        "stn/5f9af052d72ebfe1de155ea37bf59a78/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/60da521b2b332de1de50adcaebeb4202/station": {
           "deklaracja": "branch",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3354,7 +3254,27 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/d25389ae0f9649390846bfcda8f8666a/station": {
+        "stn/6639cf33bef64e78f931bf1442f9fb3f/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/6a58a6a78548361dbcb721ce575b9d2a/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/7140ac8547c9c31018c60c64a3ba3e48/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3364,7 +3284,17 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/d3e9c8e3e865a64c5867c7c84f1d9aba/station": {
+        "stn/72ee4bf2fecf5b43ec645c10fa12e46e/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/79b1cd3c74d1d83a2aa36130db12f8e2/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3374,7 +3304,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/d70e474423d7cc7e395d3d6ad2f5a9ec/station": {
+        "stn/7ce13a3c23d4de7463601005e3318e7f/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3384,7 +3314,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/d71e567f79d8c6e111cd07a0cb345604/station": {
+        "stn/7cea11943e0f42d6bbf418b8a618b64a/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3394,7 +3324,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/db5fd079947b09d3173ef57e603eb5c7/station": {
+        "stn/96b2dc6257a9b86ef54b529a9bd814e0/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3404,7 +3334,47 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/db93fbce84cf8c4a5bfb1859c6263a37/station": {
+        "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/b7d195695733564f67265edfd5058e2f/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/be62dca499a53468061996c609632547/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/c5740accd6ac7011ba046df27d5ba8c4/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3414,7 +3384,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/dcb48bfabd3a15737fa8bae301051dc9/station": {
+        "stn/c9b56cb35ad4450bc8fd580a0b1f4480/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3424,7 +3394,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/dfaf055d2d3a1b434c401925197e74ae/station": {
+        "stn/cff3a38dfcb94f4333a801a69f69dd15/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3434,7 +3404,17 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/e5022ce65a2076b08794233821e3d4db/station": {
+        "stn/d0e271c1dd839192f0b167509c8eb75e/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/d356206e0d4ab4c292613bd61fb0ab67/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3444,7 +3424,17 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/e53a1ec5fc8f38d7cbe9b60d00233231/station": {
+        "stn/d83d6fed2c76a53f44c0b91ef5984179/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/dad7c97b3dbb96dd1156d76ece9454bf/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3454,7 +3444,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/e62036c587408b82388185d2fef765a1/station": {
+        "stn/e3c5062ec50150c24ed55158c066b51e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3464,7 +3454,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/eacbe35074d08b25ca9e2260a1244fe4/station": {
+        "stn/fba1104aa9c32b57119b2796470a20b8/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3474,31 +3464,41 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/f265b78f89ea946e98cb487263f2ed14/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
+        "stn/fbb7640354e032dc2a807c55b9b552d6/station": {
+          "deklaracja": "branch",
+          "pola_liniowe": 3,
           "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
+          "przyczyna_pl": "rozdzielnica SN ma 3 pola liniowe",
+          "rodzaj": "branch",
           "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
+          "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": true
         },
-        "stn/f2ba4dacfa5c142bd24b6ee19dadb37d/station": {
+        "stn/fddfa5d016ab9d19567a169741078cf9/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
           "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/ff236ebd7c982151f0a145edfd600f05/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
         }
       }
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-add_sn_bay.enm.json": {
       "/enm": {
-        "stn/885d2eb948f80ab1765ba89be1491d7c/station": {
+        "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3512,7 +3512,7 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-insert_station_on_segment_sn.enm.json": {
       "/enm": {
-        "stn/885d2eb948f80ab1765ba89be1491d7c/station": {
+        "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3526,7 +3526,7 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/b2Droga-start_branch_segment_sn.enm.json": {
       "/enm": {
-        "stn/885d2eb948f80ab1765ba89be1491d7c/station": {
+        "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3540,7 +3540,7 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/b2DuzaPo.enm.json": {
       "/enm": {
-        "stn/02c02da3e20ffca29359940dcd736939/station": {
+        "stn/00a35237e385065555deedc5f76de64e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3550,7 +3550,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/05363213961cad844e5963e0a389a648/station": {
+        "stn/0e2d41a60cd0fc00d1811e924e1d14dc/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3560,7 +3560,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/2b065d5926ba59fbc46152421375f32f/station": {
+        "stn/19dbcb7a05e9ba711b9be8f2de9d46df/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3570,7 +3570,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/663b8e39d04c4ed73eda1f2caa7edcdc/station": {
+        "stn/1a9856f7338a70e0e95d26c64353f6aa/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3580,7 +3580,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/7e199ae40fd4c77ea9b784a5fbb383bf/station": {
+        "stn/48e6de0ab102e8c98e3a5a79d06a06c3/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3590,7 +3590,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/96e7d82e4d77225f375b5727719f68de/station": {
+        "stn/69b8b6d3b31511e9a1fa17875b1dfbe5/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3600,7 +3600,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/9f0ec1345d7e7ffda7d01028bd8bef10/station": {
+        "stn/79118b4e52168983171c5ac3c68981dd/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3610,7 +3610,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/a7d7594e57d98c98c626204be1f30d00/station": {
+        "stn/9566b3bb5a02448f2cebf794cda9b56b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3620,7 +3620,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/acf00ef4a403c5cd6cdbb7f671e5af3d/station": {
+        "stn/9a89d1cb110d31a66ef070ec58b7f3b6/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3630,7 +3630,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/bd432d56c4b5ba64270d17bc8510e298/station": {
+        "stn/ac1b2f4661f6a6ed5fba7c15b293a796/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3640,7 +3640,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/dbfe29ccb7a4259e6d7221481536eeda/station": {
+        "stn/b4d244847380adbb4cf5e90747402c58/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3650,7 +3650,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/df4bd43754d8639852fb7f333934db3b/station": {
+        "stn/b51dfbe4f92878a686ff46ac973159a2/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3660,7 +3660,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/fc0a2fb3866e8ce1988f741142d25d9e/station": {
+        "stn/e6be266be0c803b03e1e541afe8f5007/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3670,7 +3670,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/fd7a06b91d0ec7548456277b9416b10c/station": {
+        "stn/fb16fae018901bcfd07815daa27a6cc1/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3684,7 +3684,7 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/b2DuzaPrzed.enm.json": {
       "/enm": {
-        "stn/02c02da3e20ffca29359940dcd736939/station": {
+        "stn/00a35237e385065555deedc5f76de64e/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3694,7 +3694,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/05363213961cad844e5963e0a389a648/station": {
+        "stn/0e2d41a60cd0fc00d1811e924e1d14dc/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3704,7 +3704,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/2b065d5926ba59fbc46152421375f32f/station": {
+        "stn/19dbcb7a05e9ba711b9be8f2de9d46df/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3714,7 +3714,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/663b8e39d04c4ed73eda1f2caa7edcdc/station": {
+        "stn/1a9856f7338a70e0e95d26c64353f6aa/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3724,7 +3724,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/96e7d82e4d77225f375b5727719f68de/station": {
+        "stn/69b8b6d3b31511e9a1fa17875b1dfbe5/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3734,7 +3734,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/9f0ec1345d7e7ffda7d01028bd8bef10/station": {
+        "stn/79118b4e52168983171c5ac3c68981dd/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3744,7 +3744,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/a7d7594e57d98c98c626204be1f30d00/station": {
+        "stn/9566b3bb5a02448f2cebf794cda9b56b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3754,7 +3754,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/acf00ef4a403c5cd6cdbb7f671e5af3d/station": {
+        "stn/9a89d1cb110d31a66ef070ec58b7f3b6/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3764,7 +3764,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/bd432d56c4b5ba64270d17bc8510e298/station": {
+        "stn/ac1b2f4661f6a6ed5fba7c15b293a796/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3774,7 +3774,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/dbfe29ccb7a4259e6d7221481536eeda/station": {
+        "stn/b4d244847380adbb4cf5e90747402c58/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3784,7 +3784,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/df4bd43754d8639852fb7f333934db3b/station": {
+        "stn/b51dfbe4f92878a686ff46ac973159a2/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3794,7 +3794,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/fc0a2fb3866e8ce1988f741142d25d9e/station": {
+        "stn/e6be266be0c803b03e1e541afe8f5007/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3804,7 +3804,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/fd7a06b91d0ec7548456277b9416b10c/station": {
+        "stn/fb16fae018901bcfd07815daa27a6cc1/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3818,7 +3818,7 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/b2MalaPo.enm.json": {
       "/enm": {
-        "stn/04651959d6bce6c332642e4f5048d0b0/station": {
+        "stn/474db5a2ecacd8e9c64b1f713eadc38f/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3828,7 +3828,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/15ec590199593aedd97bb7794dd02000/station": {
+        "stn/7b8e464acd3603619648f493d0665498/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3838,7 +3838,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/5a5162352a7a96891da4bfaa813076c8/station": {
+        "stn/e3e6aaee929b7db2e414a711be353cfd/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3852,7 +3852,7 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/b2MalaPrzed.enm.json": {
       "/enm": {
-        "stn/15ec590199593aedd97bb7794dd02000/station": {
+        "stn/7b8e464acd3603619648f493d0665498/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3862,7 +3862,7 @@
           "wyprowadzenia_polaczone": 0,
           "zgodny_z_deklaracja": false
         },
-        "stn/5a5162352a7a96891da4bfaa813076c8/station": {
+        "stn/e3e6aaee929b7db2e414a711be353cfd/station": {
           "deklaracja": "inline",
           "pola_liniowe": 3,
           "pola_nierozpoznane": [],
@@ -3876,7 +3876,7 @@
     },
     "src/ui/sld/v3/canvas/__tests__/fixtures/s92Bieg.enm.json": {
       "": {
-        "stn/e175ec51477c27677da547384cfababc/station": {
+        "stn/13b784d7c258af49d492d46a1d1fd09b/station": {
           "deklaracja": "branch",
           "pola_liniowe": 4,
           "pola_nierozpoznane": [],
@@ -3890,17 +3890,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-lacznik.enm.json": {
       "/enm": {
-        "stn/6075a765b1c19e8835e225fb7a891c12/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/6158c2950b46f59fa12ba32db33a383f/station": {
+        "stn/6aa0fb8b109a295ba120ce6c1fda365a/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3909,22 +3899,22 @@
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
+        },
+        "stn/f31bc733687c624fc61bd7ac31099122/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
         }
       }
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-slup.enm.json": {
       "/enm": {
-        "stn/1aac3dcf8f90ea05b076bc2d4a09eb85/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/1ca971e52ede46184a162664fdbfd0b6/station": {
+        "stn/300504535f2e56b0c197d0ae2b54c6e6/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3934,17 +3924,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/23cd7fa0275c5b7fb91cf3621d75c464/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
-          "rodzaj": "inline",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 2,
-          "zgodny_z_deklaracja": true
-        },
-        "stn/e86f78f86f26c6934663867816f4130b/station": {
+        "stn/6c1a4f535b1fd916eed98693b540000b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3954,7 +3934,27 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/fbc4d27941e94a7b03779c755575bf10/station": {
+        "stn/c45f7f18b79295bce44119d94e1c8fac/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, oba prowadzą do sąsiednich stacji",
+          "rodzaj": "inline",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 2,
+          "zgodny_z_deklaracja": true
+        },
+        "stn/cda3e478a333e37dcb6cad9ad9a9b823/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/e53046d73a526dfacc8b7a14a8877c85/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3968,7 +3968,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-wezel.enm.json": {
       "/enm": {
-        "stn/a7caf2f7359a3922248142a74018d199/station": {
+        "stn/4d72ad01b91c322ed5f853910b7a6762/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3978,7 +3978,7 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/e7293959a70cd6dcebcd700accd9a068/station": {
+        "stn/7482e9b7e06eff0b6c2854670c05e5f1/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -3992,7 +3992,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/elementyCiagu-zksn.enm.json": {
       "/enm": {
-        "stn/6075a765b1c19e8835e225fb7a891c12/station": {
+        "stn/6aa0fb8b109a295ba120ce6c1fda365a/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4002,7 +4002,37 @@
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
         },
-        "stn/6158c2950b46f59fa12ba32db33a383f/station": {
+        "stn/85fba7b77463b0b9153f55bb5d418919/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/88abdcc8b78e56ef8812780f8866c340/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/8b233f0c95ef4e935ee01c1d1f0b248a/station": {
+          "deklaracja": "inline",
+          "pola_liniowe": 2,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 1,
+          "zgodny_z_deklaracja": false
+        },
+        "stn/f31bc733687c624fc61bd7ac31099122/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4011,42 +4041,12 @@
           "sprzeglo": false,
           "wyprowadzenia_polaczone": 2,
           "zgodny_z_deklaracja": true
-        },
-        "stn/68ac9ff70674fa86039f9a70c3a683fe/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/825dd01827860a6bbea74fd1fe138487/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
-        },
-        "stn/a5f8be9c1b6264cdd998ece632d0fb11/station": {
-          "deklaracja": "inline",
-          "pola_liniowe": 2,
-          "pola_nierozpoznane": [],
-          "przyczyna_pl": "rozdzielnica SN ma 2 pola liniowe, ale tylko jedno prowadzi do innej stacji (pole wolne albo zakończone wiszącym odcinkiem)",
-          "rodzaj": "terminal",
-          "sprzeglo": false,
-          "wyprowadzenia_polaczone": 1,
-          "zgodny_z_deklaracja": false
         }
       }
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/gpzFeeder.enm.json": {
       "/enm": {
-        "stn/ae500cc40ddc6117f9a58f2d2403d6f8/station": {
+        "stn/24c226faa61d1fc38c2277dd93d9de9c/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4056,7 +4056,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/d9bee08221b591b1c3fd1b75bcf25afa/station": {
+        "stn/ed2ea901eb81393c8ddbe0023f54676b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4070,7 +4070,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json": {
       "/enm": {
-        "stn/ae500cc40ddc6117f9a58f2d2403d6f8/station": {
+        "stn/24c226faa61d1fc38c2277dd93d9de9c/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4080,7 +4080,7 @@
           "wyprowadzenia_polaczone": 1,
           "zgodny_z_deklaracja": false
         },
-        "stn/d9bee08221b591b1c3fd1b75bcf25afa/station": {
+        "stn/ed2ea901eb81393c8ddbe0023f54676b/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4094,7 +4094,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/openBranch.enm.json": {
       "/enm": {
-        "stn/a656b1088178ad9de2f4d09adca4e15c/station": {
+        "stn/0c211ae9e4bbad2020cc3906fe1260ed/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4108,7 +4108,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/openTrunkChain.enm.json": {
       "/enm": {
-        "stn/709b330e6195072d50c999810decd888/station": {
+        "stn/63dbe99d8fcb6d2415d6a2bcd555db88/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4176,7 +4176,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/stacjaPolePomiarowe.enm.json": {
       "/enm": {
-        "stn/b2904594a55a273351e46fd8c613116c/station": {
+        "stn/dc5fede1289656db0c3bccb97d062592/station": {
           "deklaracja": "inline",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],
@@ -4190,7 +4190,7 @@
     },
     "src/ui/sld/v3/scene/__tests__/fixtures/stacjaPomiar1000.enm.json": {
       "/enm": {
-        "sub/74b61dfe0dd2de5e5798a29c9465431a/substation": {
+        "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation": {
           "deklaracja": "terminal",
           "pola_liniowe": 2,
           "pola_nierozpoznane": [],

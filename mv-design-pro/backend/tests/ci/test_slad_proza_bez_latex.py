@@ -44,7 +44,7 @@ from enm.canonical_analysis import (
     pobierz_slad_rozplywu_biegu,
     reset_canonical_runs,
 )
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
 from enm.store import reset_enm_store, set_enm
 from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.conductor_thermal_withstand import (
@@ -118,11 +118,11 @@ def _slad_solvera(typ: str) -> list[dict[str, Any]]:
         wynik = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(**wspolne)
     elif typ == "1F":
         wynik = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            **wspolne, z0_bus=build_zero_sequence_zbus(enm, graf)
+            **wspolne, z0_bus=zbuduj_siec_zerowa(enm, graf).z0_bus
         )
     else:
         wynik = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-            **wspolne, z0_bus=build_zero_sequence_zbus(enm, graf)
+            **wspolne, z0_bus=zbuduj_siec_zerowa(enm, graf).z0_bus
         )
     return [dict(krok) for krok in wynik.white_box_trace] + [
         dict(krok) for krok in (getattr(wynik, "branch_flow_trace", None) or [])

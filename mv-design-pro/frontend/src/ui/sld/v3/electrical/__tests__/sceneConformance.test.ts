@@ -192,6 +192,13 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
       justification: 'łączniki WEWNĘTRZNE toru transformatora GPZ (port uzwojenia HV → pole → szyna) — compose/gpz.ts, transformator ma JEDEN hv_bus_ref/lv_bus_ref w ENM, nie osobne gałęzie dla każdego odcinka rysunku.',
     },
     {
+      // Karta GPZ-H5-SLD etap 3: pole sekcji 110 kV (`gpz_hv_sections`, pole liniowe
+      // zasilające) zaczepia dolny port swojego stosu do szyny sekcji — `Bay.bus_ref` pola,
+      // nie gałąź ENM (ta sama rola co `#descent` pola SN, odwrócony kierunek).
+      match: (r) => r.endsWith('#hv-bus-tap'),
+      justification: 'zaczep stosu pola sekcji 110 kV do szyny tej sekcji — compose/gpz.ts (rząd pól nad szyną WN), pole ma JEDEN bus_ref, port→szyna nie jest gałęzią ENM.',
+    },
+    {
       match: (r) => r.endsWith('#grid-source-drop'),
       justification: 'zejście z portu symbolu źródła sieciowego (gridSource) do jego bus_ref — Source ENM ma JEDEN bus_ref, nie osobną gałąź do szyny.',
     },

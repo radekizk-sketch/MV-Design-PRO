@@ -47,6 +47,10 @@ export interface RawOverlayPayload {
    *  V12K-159 wym. 6-7 wymaga timestampu w danych pochodzenia). `null`/brak ⇒ badge
    *  pochodzenia NIE renderuje wiersza czasu (uczciwy brak, nie fabrykacja). */
   readonly run_finished_at?: string | null;
+  /** Karta GPZ-H5-SLD (d): refy elementów ze znacznikiem backendu `BEZ_NAPIECIA` (wiersze
+   *  `element_results` tego samego `results/v1` — szyna wyspy bez źródła zasilania).
+   *  Brak pola = wynik bez znaczników (np. migawka wyniku domeny nN). */
+  readonly bez_napiecia_refs?: readonly string[];
 }
 
 interface RawResultOverlayStore {

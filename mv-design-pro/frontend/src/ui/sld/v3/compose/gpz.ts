@@ -81,7 +81,8 @@ import {
   symbolIdForPrimaryDeviceKind,
   type BayApparatusSource,
 } from './apparatusSequence';
-import { FIELD_ROLE } from '../../v2/domain/apparatusContracts';
+import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
+import { klasaOznacznikaPola } from './directions';
 import type { RolaPolaZrodlowego } from '../../v2/model/polaZModelu';
 import {
   PROTECTION_ANNOTATION_DIAMETER,
@@ -188,8 +189,10 @@ export interface ComposedGpzSymbolInstance {
   /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu — WYŁĄCZNIE
    *  dla symbolu `transformer2W`; przechodzi przez scenę do glifu. */
   readonly uzwojenia?: UzwojeniaTransformatora;
-  /** Pozycja normalna łącznika szyn (`CanonicalGpzCoupler.normalState`) — WYŁĄCZNIE glify
-   *  łączników szyn; przechodzi przez scenę do glifu (`GlyphProps.pozycjaNormalna`). */
+  /** Pozycja normalna łącznika: łącznika szyn (`CanonicalGpzCoupler.normalState`) albo
+   *  aparatu pola z gałęzi łączeniowej (`BayPrimaryDeviceView.pozycjaNormalna`, np. wyłącznik
+   *  pola SN transformatora rezerwowego H5); przechodzi przez scenę do glifu
+   *  (`GlyphProps.pozycjaNormalna`). */
   readonly pozycjaNormalna?: 'open' | 'closed';
   /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): ref rekordu aparatu tej
    *  pozycji stosu (`BayPrimaryDevice.device_ref` albo ref gałęzi pola) — stos GPZ jest
@@ -557,6 +560,7 @@ function buildFieldStack(
     state: spec.device?.switchState,
     deviceRef: spec.device?.deviceRef,
     linkedRef: spec.device?.linkedRef,
+    ...(spec.device?.pozycjaNormalna ? { pozycjaNormalna: spec.device.pozycjaNormalna } : {}),
   });
   const metaPozycji = (spec: FieldApparatusSpec, index: number): GpzElementMeta => ({
     parityKeys: spec.parityKeys,
@@ -767,14 +771,37 @@ function fieldColumnRequiredWidth(bay: CanonicalGpzBay, spec: readonly FieldAppa
  *  (`Bay.bay_number`, potem `feeder_short_name`) zawsze wygrywają; OSTATNI
  *  fallback = deterministyczny licznik per klasa roli w kolejności
  *  kompozycji sekcji (F01… liniowe, FT1… TR, FS1… sprzęgła, FP1…
- *  pomiarowe) — pole bez ŻADNEGO oznacznika w danych przestaje być
+ *  pomiarowe, FG1… źródłowe, FU1… zespołu uziemiającego, FK1… baterii kondensatorów) — pole bez ŻADNEGO oznacznika w danych przestaje być
  *  anonimowe. Kolejność fallbacków zachowuje FIX-A (dedup feederName)
  *  i geometrię fixtury referencyjnej 1:1. */
 function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, number>): string {
-  const cls = role === 'TRANSFORMER' ? 'FT' : role === 'COUPLER' ? 'FS' : role === 'MEASUREMENT' ? 'FP' : 'F';
+  const cls = klasaOznacznikaPola(rolaRysunkuPolaGpz(role));
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
+}
+
+/** Rola pola GPZ → rola pola rysunku stacji — wyłącznie po to, by klasa oznacznika
+ *  pozycyjnego pochodziła z JEDNEJ konwencji całego rysunku (`klasaOznacznikaPola`,
+ *  `compose/directions.ts`). Karta GPZ-H5-SLD etap 3: dawniej GPZ miał własną kopię tej
+ *  konwencji, w której pole źródłowe dostawało klasę liniową `F` (w stacji `FG`), a pola
+ *  funkcyjne — przez rolę liniową — także `F`. Wyliczenie wyczerpujące. */
+function rolaRysunkuPolaGpz(role: BayFieldRole): FieldRole {
+  switch (role) {
+    case 'LINE_IN': return FIELD_ROLE.LINE_IN;
+    case 'LINE_OUT': return FIELD_ROLE.LINE_OUT;
+    case 'LINE_BRANCH': return FIELD_ROLE.LINE_BRANCH;
+    case 'TRANSFORMER': return FIELD_ROLE.TRANSFORMER;
+    case 'COUPLER': return FIELD_ROLE.COUPLER;
+    case 'MEASUREMENT': return FIELD_ROLE.MEASUREMENT;
+    case 'SOURCE': return FIELD_ROLE.DER_UNKNOWN;
+    case 'EARTHING': return FIELD_ROLE.EARTHING;
+    case 'CAPACITOR': return FIELD_ROLE.CAPACITOR;
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola GPZ bez klasy oznacznika: ${String(nieobsluzona)}`);
+    }
+  }
 }
 
 /**
@@ -1402,9 +1429,11 @@ interface PlanSekcjiWn {
 
 /** Tekst opisu szyny sekcji 110 kV — „⟨nazwa sekcji⟩ · 110 kV" (napięcie z modelu). */
 function tekstSekcjiWn(section: CanonicalGpzHvSection): string {
-  return section.busVoltageKv != null
-    ? `${section.label} · ${liczbaRysunkuPl(section.busVoltageKv)} kV`
-    : section.label;
+  if (section.busVoltageKv == null) return section.label;
+  const napiecie = `${liczbaRysunkuPl(section.busVoltageKv)} kV`;
+  // Karta GPZ-H5-SLD etap 3: nazwa nadana przez backend (`Sekcja 110 kV 1`,
+  // `add_grid_source_sn`) już niesie napięcie — drugi człon „· 110 kV" powtarzałby je.
+  return section.label.includes(napiecie) ? section.label : `${section.label} · ${napiecie}`;
 }
 
 /** Podpis odbioru sekcji GPZ: nazwa z modelu i dane wejściowe P/Q (`Load.p_mw`/`q_mvar`). */

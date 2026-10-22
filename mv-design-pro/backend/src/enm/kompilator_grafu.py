@@ -160,8 +160,9 @@ def dodaj_zrodlo_slack(
     """Dodaj szynę bilansującą jako ekwiwalent ręczny WPROST na jej własnym
     napięciu — równoważnik na szynach SN (CV-4.3 K1: sieć referencyjna z
     literatury JEST szczytem modelu, bez nadrzędnego układu 110 kV, którego
-    publikacja nie opisuje; granica zasilania SN `enm/domain_operations.py::
-    _granica_zasilania_gpz` — bez transformatorów WN/SN). Zwraca (enm, bus_ref
+    publikacja nie opisuje; granica zasilania SN — tryb równoważnika na szynach SN
+    operacji `enm/domain_operations.py::add_grid_source_sn`, bez transformatorów WN/SN).
+    Zwraca (enm, bus_ref
     źródła/GPZ).
 
     ``u_set_pu`` — napięcie zadane szyny bilansującej z literatury (MATPOWER ``Vm``

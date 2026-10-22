@@ -1712,6 +1712,9 @@ function composeRowStation(
     // GPZ-PARYTET cz. 2 (pkt 1): uzwojenia transformatorów stacji (pole TR, TR bez pola,
     // TR blokowy DER) przepuszczone świadomie — ta sama jawna lista pól co GPZ.
     uzwojenia: s.uzwojenia,
+    // Karta GPZ-H5-SLD etap 3 (d): pozycja normalna łącznika (sprzęgło sekcji, aparat pola
+    // z gałęzi łączeniowej) — ta sama jawna lista pól co GPZ (`gpzSymbolToPreview`).
+    ...(s.pozycjaNormalna ? { pozycjaNormalna: s.pozycjaNormalna } : {}),
     meta: {
       // F9.4: DER nie mają `bayRef` (nie należą do żadnego pola) — `testId`/
       // `ownerRef` spadają na `sourceRef` (`SldSourceView.id`, WHITE BOX).
@@ -5361,25 +5364,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // Każdy przypadek dostaje na L1/L2 podpis „NO" (t3). Łącznik w polu stacji, którą
   // adapter oznaczył znacznikiem NO (`isNop`), zostaje przy reprezentacji stacji
   // (symbol L1/L2, znacznik glifu L0) — bez drugiego symbolu z tej sekcji.
-  // Po operacjach łączników punkt podziału to wyłącznie łącznik z pozycją normalną
-  // „otwarty” (`SwitchBranch.normal_state`) — jedna prawda z `punktyPodzialu`
-  // (lustro `enm.topology.punkty_podzialu`); dawne `Corridor.no_point_ref` skasowane.
-  // Karta GPZ-H5-SLD etap 2 (rozstrzygnięcie architekta, KOORDYNACJA_WATKOW wpis 7 pkt 1):
-  // łącznik szyn GPZ (ŁS 110 kV, ŁS SN — oba końce na szynach tej samej stacji) NIE jest
-  // punktem podziału sieci. Kompozycja GPZ rysuje go własnym symbolem łącznika, który
-  // niesie stan rzeczywisty geometrią i stan normalny drugorzędnie (wymaganie 4), więc
-  // znacznik NO przy nim był drugą, fałszywą reprezentacją (różowe kółko „NO" w ramce GPZ,
-  // skarga właściciela B-02). Zbiór wykluczony = łączniki, które kompozycja GPZ rysuje jako
-  // łączniki szyn (`CanonicalGpzProps.couplers`/`hvCouplers`, gałęzie `bus_coupler` między
-  // sekcjami) — fakt rysunku, nie druga funkcja roli. Funkcję roli łącznika (backend +
-  // lustro TS) dostarcza karta backendu; po jej scaleniu `punktyPodzialu` sam pominie
-  // łączniki szyn, a to wykluczenie stanie się puste.
-  const lacznikiSzynGpz = new Set(
-    [...(gpzData?.couplers ?? []), ...(gpzData?.hvCouplers ?? [])].map((c) => c.couplerId),
-  );
-  const refyNop = punktyPodzialu(snapshot)
-    .map((g) => g.ref_id)
-    .filter((ref) => !lacznikiSzynGpz.has(ref));
+  // Po operacjach łączników punkt podziału to wyłącznie łącznik normalnie otwarty Z ROLĄ
+  // punktu podziału — jedna prawda z `punktyPodzialu` (rola z `roleLacznikow`, lustro
+  // `enm.topology.role_lacznikow`, karta GPZ-H5): normalnie otwarty łącznik szyn stacji
+  // (ŁS-110, ŁS-SN) nie dostaje znacznika „NO”; dawne `Corridor.no_point_ref` skasowane.
+  const refyNop = punktyPodzialu(snapshot).map((g) => g.ref_id);
   if (refyNop.length > 0) {
     const stacjaSzynyNop = new Map<string, string>();
     for (const st of snapshot.substations ?? []) for (const bus of st.bus_refs ?? []) stacjaSzynyNop.set(bus, st.ref_id);
@@ -6058,8 +6047,10 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
 // Karta GPZ-H5-SLD: oznaczenie sekcji z modelu (`GPZSection.name`) w zapisie operatorów —
 // numer arabski, rzymski („Sekcja II") albo litera („Sekcja A"); słownik nadal ZAMKNIĘTY
 // (jeden token po „Sekcja", dowolna fraza nie przechodzi).
+// Karta GPZ-H5-SLD etap 3: sekcja 110 kV z nazwą nadaną przez backend niesie napięcie przed
+// numerem („Sekcja 110 kV 1", `add_grid_source_sn`) — wtedy bez członu „· V kV".
 const BUSBAR_LABEL_TEXT_PATTERN =
-  /^(?:[^\s·]{1,16} · )?(?:Sekcja (?:\d+|[IVX]+|[A-Z])|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
+  /^(?:(?:[^\s·]{1,16} · )?(?:Sekcja (?:\d+|[IVX]+|[A-Z])|Szyna WN)(?: · \d+(?:,\d+)? kV)?|Sekcja \d+(?:,\d+)? kV (?:\d+|[IVX]+|[A-Z]))$/;
 
 // S9-12 (klasa C-8): zamknięta gramatyka etykiety szyny nN PRODUCENTA DER
 // (`compose/station.ts` `composeDerSnChain` → `stationLvBusbarLabelText`,

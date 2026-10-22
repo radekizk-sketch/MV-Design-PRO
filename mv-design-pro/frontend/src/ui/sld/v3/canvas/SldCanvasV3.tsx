@@ -1503,6 +1503,9 @@ const RESULT_LABEL_AGGREGATION_RADIUS = 5 * GRID;
 
 export interface ResultLabelPlacement {
   readonly ownerRef: string;
+  /** Ref PUNKTU WYNIKU (klucz `payload.elements`, `ResultLabelEntry.resultRef`) — różny od
+   *  `ownerRef` dla szyn o refie rysunkowym (sekcje GPZ, szyny stacji). */
+  readonly resultRef: string;
   readonly kind: ResultLabelKind;
   readonly lines: readonly ResultLabelLine[];
   /** Górny-lewy róg bloku etykiety (tło + linie). */
@@ -1592,7 +1595,8 @@ export interface ResultLabelLayout {
  *  ekran ↔ eksport (wym. 18). Glif w kolorze linii (bez osobnego tokenu). */
 function resultLabelLineText(line: ResultLabelLine): string {
   const trend = line.trend ? ` ${RESULT_LABEL_TREND_GLYPH[line.trend]}` : '';
-  return `${line.prefix} ${line.text}${trend}`;
+  // Linia stanu bez prefiksu wielkości (np. „bez napięcia”) — bez wiodącej spacji.
+  return `${line.prefix ? `${line.prefix} ` : ''}${line.text}${trend}`;
 }
 
 /** Etykieta PL klasy właściciela (do popovera agregatu; zero kodenames). */
@@ -1691,6 +1695,8 @@ interface ResultLabelUnit {
   readonly lines: readonly ResultLabelLine[];
   readonly anchor: ResultLabelAnchor;
   readonly rank: number;
+  /** Ref punktu wyniku (`ResultLabelEntry.resultRef`) — atrybut `data-result-ref` bloku. */
+  readonly resultRef: string;
   /** R3 (wym. 9) — severity elementu (przenoszone z `ResultLabelEntry` do
    *  placement/agregatu na potrzeby progów kolorystycznych). */
   readonly severity: string;
@@ -1838,7 +1844,7 @@ export function layoutResultLabels(
       };
     }
     if (!anchor) continue;
-    units.push({ ownerRef: ref, kind: entry.kind, lines, anchor, rank: RESULT_LABEL_PRIORITY[entry.kind], severity: entry.severity });
+    units.push({ ownerRef: ref, kind: entry.kind, lines, anchor, rank: RESULT_LABEL_PRIORITY[entry.kind], severity: entry.severity, resultRef: entry.resultRef });
   }
   units.sort((a, b) => (a.rank - b.rank) || (a.ownerRef < b.ownerRef ? -1 : a.ownerRef > b.ownerRef ? 1 : 0));
 
@@ -1928,6 +1934,7 @@ export function layoutResultLabels(
     anchorDistances.push(Math.hypot(res.x + block.width / 2 - unit.anchor.cx, res.y + block.height / 2 - unit.anchor.cy));
     placements.push({
       ownerRef: unit.ownerRef,
+      resultRef: unit.resultRef,
       kind: unit.kind,
       lines: unit.lines,
       x: res.x,
@@ -2013,6 +2020,7 @@ function SceneResultLabelNode(props: {
     <g
       data-testid={`sld-v3-result-label-${index}`}
       data-result-owner-ref={placement.ownerRef}
+      data-result-ref={placement.resultRef}
       data-result-kind={placement.kind}
       data-result-label-placed={placement.labelPlaced ? 'true' : 'false'}
       data-result-stale={stale ? 'true' : 'false'}

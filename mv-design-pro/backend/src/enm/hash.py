@@ -70,6 +70,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "u_set_pu",
         "neutral_grounding",
         "lv_voltage_tolerance",
+        # Karta GPZ-H5: tożsamość toru zasilania 110 kV (linia, stacja zasilająca). `None` =
+        # źródło bez toru 110 kV — poza odciskiem (źródła sprzed karty haszują jak przed nią).
+        "supply_line_name",
+        "supplying_station_name",
     ),
     # Karta W5-D (F-1): fazy przylaczenia odbioru. `None` = odbior trojfazowy
     # symetryczny (jedyne znaczenie, jakie `Load` mial przed karta) — poza odciskiem;
@@ -123,6 +127,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # modulu. `None` = dana nieustalona (ocena wymagan nazywa brak) — nie jest trescia
     # modelu; podana wartosc zmienia wynik oceny zgodnosci NC RfG, wiec zmienia odcisk.
     # + odbior Pakietu C (plan AB O-50): deklaracje modulu dla testow NC RfG — to samo prawo.
+    # Karta GPZ-H5: tryb rezerwy transformatorowej GPZ i transformator rezerwowy. `None` = GPZ
+    # bez strony 110 kV / bez rezerwy — poza odciskiem (stacje sprzed karty haszują jak przed
+    # nią); podany tryb jest treścią modelu (wyznacza stany normalne łączników).
+    "substations": ("gpz_reserve_mode", "gpz_reserve_transformer_ref"),
     "generators": (
         "dynamika",
         "modele_widmowe",

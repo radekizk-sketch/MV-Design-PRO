@@ -2,7 +2,8 @@
 SLD Substrate Builder — ≥52-station MV network for SLD render testing (M-05).
 
 Builds a deterministic MV network:
-  - GPZ: 110 kV network equivalent (3000 MVA) + one 110/15 kV 25 MVA transformer
+  - GPZ: one 110 kV section with its supply track (3000 MVA) + one 110/15 kV 25 MVA
+    transformer assigned explicitly 110 kV section 1 → MV section 1 (card GPZ-H5)
   - Trunk magistrala: 22 segments (mix cable + overhead)
   - 12 trunk stations (type C with LINIA_ODG bay for laterals)
   - Laterals from every trunk station: 2-3 lateral stations each
@@ -421,23 +422,37 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         enm,
         "add_grid_source_sn",
         {
-            # Karta GPZ-MODEL: równoważnik sieci po stronie 110 kV (Sk″ = 3000 MVA,
-            # R/X = 0,1) i jeden transformator 110/15 kV 25 MVA na wspólnej szynie WN.
-            # Do tej karty substrat podawał równoważnik 250 MVA na szynach SN i ŻĄDAŁ
-            # transformatora (`hv_voltage_kv` + `transformer_sn_mva`) — rysunek niósł
-            # szynę 110 kV i transformator bez zasilania. Kontrakty SLD substratu badają
-            # kolumnę WN bloku GPZ (tabliczka TR, szyna WN), więc przepisanie wybiera
-            # tryb, w którym transformator JEST elementem modelu obliczeniowego.
+            # Karta GPZ-MODEL + GPZ-H5: strona 110 kV w modelu — jedna sekcja szyn 110 kV
+            # z torem zasilania (Sk″ = 3000 MVA, R/X = 0,1; przykładowe dane przypadku
+            # testowego) i jeden transformator 110/15 kV 25 MVA przypisany jawnie sekcja
+            # 110 kV 1 → sekcja SN 1. Kontrakty SLD substratu badają kolumnę WN bloku GPZ
+            # (tabliczka TR, szyna WN), więc substrat wybiera tryb, w którym transformator
+            # JEST elementem modelu obliczeniowego. Układ H5 (dwa tory) ma własny przypadek
+            # odbiorowy (`tests/reference_networks/gpz_h5.py`).
             "voltage_kv": 15.0,
             "source_name": "GPZ Referencyjny 110 kV",
-            "manual_equivalent": {
-                "short_circuit_input_side": "HV_110",
-                "hv_voltage_kv": 110.0,
-                "sk3_hv_mva": 3000.0,
-                "rx_ratio": 0.1,
-            },
-            "transformer_count": 1,
-            "transformer_catalog_ref": _GPZ_WN_SN_TRANSFORMER_REF,
+            "hv_sections": [
+                {
+                    "supply": {
+                        "line_name": "Linia 110 kV zasilająca",
+                        "supplying_station_name": (
+                            "Stacja zasilająca — przykładowe dane przypadku testowego"
+                        ),
+                        "manual_equivalent": {
+                            "hv_voltage_kv": 110.0,
+                            "sk3_hv_mva": 3000.0,
+                            "rx_ratio": 0.1,
+                        },
+                    }
+                }
+            ],
+            "transformers": [
+                {
+                    "hv_section": 1,
+                    "sn_section": 1,
+                    "transformer_catalog_ref": _GPZ_WN_SN_TRANSFORMER_REF,
+                }
+            ],
         },
     )
 

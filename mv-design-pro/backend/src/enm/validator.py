@@ -36,8 +36,10 @@ from .interlock_rules import earthing_interlock_violation
 from .migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
+    Branch,
     Cable,
     EnergyNetworkModel,
+    Generator,
     GPZSection,
     GroundingConfig,
     OverheadLine,
@@ -49,6 +51,13 @@ from .models import (
 from .pola import czy_pole_nn, pola_stacji, pole_aparatu, poziom_pol, stacja_pola
 from .pola import pole as pole_modelu
 from .pole_transformatorowe import komunikat_braku_pola, transformatory_bez_pola_sn
+from .rezerwa_gpz import (
+    NAZWA_TRYBU_REZERWY_PL,
+    PODSTAWA_TRYBU_REZERWY_PL,
+    STAN_NORMALNY_WYLACZNIKA_TR_REZERWOWEGO,
+    TRYB_REZERWY_JAWNEJ,
+    stan_normalny_lacznika_szyn_sn,
+)
 from .rodzaj_stacji import (
     KOD_WALIDATORA_RODZAJ_NIEZGODNY,
     KOD_WALIDATORA_ROLA_POLA_NIEROZPOZNANA,
@@ -79,10 +88,18 @@ from .slownik_komunikatow import (
     pole,
 )
 from .topology import (
+    ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
+    ROLA_LACZNIK_SZYN_NN,
+    ROLA_LACZNIK_SZYN_SN,
+    ROLA_LACZNIK_SZYN_WN,
+    ROLA_PUNKT_PODZIALU,
+    PolaczenieNiezaleznychZrodel,
     derive,
     podziel_krawedzie,
+    polaczenia_niezaleznych_zrodel,
     punkty_podzialu_korytarza,
-    transformatory_zasilajace_gpz,
+    role_lacznikow,
+    stacje_transformatorow_zasilajacych_gpz,
 )
 from .tor_pola import (
     KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
@@ -208,13 +225,18 @@ def _sekcja_gpz_bez_zasilania(
         else "żadna zamknięta gałąź nie łączy jej z sekcją zasilaną"
     )
     cel = otwarte_sprzegla[0].ref_id if otwarte_sprzegla else sekcje_wyspy[0][1].bus_ref
+    # Karta GPZ-H5 (R7): sekcja bez źródła NIE blokuje biegu — rozpływ i zwarcia liczą część
+    # zasilaną, a sekcja odcięta jest w wynikach „bez napięcia” (flaga `BEZ_NAPIECIA`
+    # wiersza szyny, powód `fault_node_without_reference_impedance` wiersza zwarcia).
+    # Odmowę biegu daje wyłącznie model bez żadnego źródła (E001).
     return ValidationIssue(
         code="E065",
-        severity=SEVERITY_BLOCKER,
+        severity=SEVERITY_IMPORTANT,
         message_pl=(
             f"Sekcja GPZ bez zasilania: {opis_sekcji} ({opis_obiektu(stacja, 'GPZ')}) nie ma "
             f"własnego równoważnika sieci, a {przyczyna} — szyny sekcji i zasilane z niej "
-            "odpływy są odcięte od źródła."
+            "odpływy są odcięte od źródła. Rozpływ mocy i zwarcia liczą część zasilaną; "
+            "sekcja odcięta jest w wynikach bez napięcia."
         ),
         element_refs=[
             *(sekcja.bus_ref for _stacja, sekcja in sekcje_wyspy),
@@ -237,12 +259,17 @@ def transformatory_gpz_bez_zasilania_wn(
     `gpz_sections`) jest elementem modelu WYŁĄCZNIE wtedy, gdy jego strona górna jest
     zasilana od strony sieci WN — przy równoważniku po stronie 110 kV. Przy równoważniku na
     szynach SN operacja `add_grid_source_sn` transformatora nie tworzy
-    (`domain_operations._granica_zasilania_gpz`, kod
+    (`domain_operations.add_grid_source_sn`, kod
     `source.transformer_requires_hv_equivalent`), bo moc zwarciowa szyn SN zawiera już jego
     impedancję. Model zapisany przed kartą (albo złożony z pominięciem operacji) może jednak
     nieść transformator do martwej szyny pomocniczej 110 kV: rysunek pokazuje tor zasilania,
     którego obliczenie nie ma. Model NIE jest migrowany (zasady inżynierskie repo) —
     walidator wskazuje transformator.
+
+    Karta GPZ-H5: transformator, którego strona górna leży na szynie ZADEKLAROWANEJ sekcji
+    110 kV (`Substation.gpz_hv_sections`), nie jest transformatorem do martwej szyny
+    pomocniczej — sekcja ma własny tor zasilania, a jego brak w wariancie (L1 wyłączona,
+    scenariusz SC-02) jest stanem „bez napięcia” (E065, W063), nie fikcją rysunku.
 
     Predykat: składowa spójna szyny górnej w grafie elementów „w ruchu" (jedno źródło
     krawędzi `enm.topology.podziel_krawedzie`) BEZ transformatorów WN/SN GPZ — inaczej
@@ -253,10 +280,22 @@ def transformatory_gpz_bez_zasilania_wn(
     benchmarkowe: węzeł bilansujący na sekcji, sieć 345 kV za transformatorem), przenosi moc
     w górę — żaden z nich nie jest fikcją. Wynik: (transformator, GPZ, szyna górna),
     kolejność po `ref_id` transformatora."""
-    sekcje_gpz = _sekcje_gpz_wg_szyny(enm)
-    refy_gpz = transformatory_zasilajace_gpz(enm)
+    stacja_transformatora = stacje_transformatorow_zasilajacych_gpz(enm)
+    refy_gpz = frozenset(stacja_transformatora)
+    stacje_po_ref = {stacja.ref_id: stacja for stacja in enm.substations}
+    szyny_sekcji_wn = {
+        sekcja.bus_ref
+        for stacja in enm.substations
+        if stacja.station_type == "gpz"
+        for sekcja in stacja.gpz_hv_sections
+    }
     trafa_gpz = sorted(
-        (t for t in enm.transformers if t.ref_id in refy_gpz), key=lambda t: t.ref_id
+        (
+            t
+            for t in enm.transformers
+            if t.ref_id in refy_gpz and t.hv_bus_ref not in szyny_sekcji_wn
+        ),
+        key=lambda t: t.ref_id,
     )
     if not trafa_gpz:
         return []
@@ -272,7 +311,7 @@ def transformatory_gpz_bez_zasilania_wn(
         for element in kolekcja
     }
     return [
-        (trafo, sekcje_gpz[trafo.lv_bus_ref][0], trafo.hv_bus_ref)
+        (trafo, stacje_po_ref[stacja_transformatora[trafo.ref_id]], trafo.hv_bus_ref)
         for trafo in trafa_gpz
         if szyny_zywe.isdisjoint(skladowa_szyny.get(trafo.hv_bus_ref, (trafo.hv_bus_ref,)))
     ]
@@ -307,12 +346,318 @@ def _transformator_gpz_bez_zasilania_wn(
         element_refs=[trafo.ref_id, szyna_wn],
         wizard_step_hint="K1",
         suggested_fix=(
-            "Zbuduj GPZ od nowa: z równoważnikiem sieci po stronie 110 kV (wspólna szyna "
-            "110 kV, transformatory 110/SN do sekcji SN) albo z równoważnikiem na szynach SN "
+            "Zbuduj GPZ od nowa: ze stroną 110 kV (sekcje szyn 110 kV z torami zasilania, "
+            "transformatory 110/SN przypisane do sekcji) albo z równoważnikiem na szynach SN "
             "bez transformatorów 110/SN."
         ),
         fix_action=FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=trafo.ref_id),
     )
+
+
+#: Kod walidatora (karta GPZ-H5, R6): zamknięty łącznik szyn łączy niezależne równoważniki.
+KOD_LACZNIK_LACZY_NIEZALEZNE_ROWNOWAZNIKI = "E067"
+#: Kod walidatora (karta GPZ-H5): struktura GPZ niekompletna (tor, transformator, łącznik).
+KOD_STRUKTURA_GPZ_NIEKOMPLETNA = "W063"
+#: Karta GPZ-H5 (ENEA Zeszyt 1 §26.10.4): łącznik szyn SN zamknięty wbrew stanowi normalnemu
+#: (działanie SZR SN / przełączenie rezerwy ukrytej) przy źródłach wytwórczych na łączonych
+#: sekcjach — SZR wymaga uprzedniego wyłączenia linii w trybie generacji, inaczej jest blokowany.
+KOD_SZR_SN_PRZY_GENERACJI = "W064"
+
+
+#: E067: nazwa łącznika w zdaniu — po roli z ``role_lacznikow``.
+_OPIS_LACZNIKA_SZYN: dict[str, str] = {
+    ROLA_LACZNIK_SZYN_WN: "łącznik szyn 110 kV",
+    ROLA_LACZNIK_SZYN_SN: "łącznik szyn SN",
+    ROLA_LACZNIK_SZYN_NN: "łącznik szyn nN",
+}
+
+
+def _lacznik_laczy_niezalezne_rownowazniki(
+    enm: EnergyNetworkModel, polaczenie: PolaczenieNiezaleznychZrodel
+) -> ValidationIssue:
+    """Zgłoszenie E067 — zamknięty łącznik szyn sekcji łączy niezależne równoważniki sieci.
+
+    Dotyczy rozpływu I zwarć (BLOCKER walidacji modelu liczonego — `ocen_model_biegu`):
+    rozpływ miałby dwie szyny bilansujące w jednej wyspie, a zwarcie zsumowałoby prądy
+    niezależnych źródeł, jakby sieć nadrzędna łączyła je impedancją zerową."""
+    galezie = {g.ref_id: g for g in enm.branches}
+    zrodla = {z.ref_id: z for z in enm.sources}
+    role = role_lacznikow(enm)
+    laczniki = [galezie[ref] for ref in polaczenie.laczniki if ref in galezie]
+    opis_lacznikow = lista_pl(
+        (
+            opis_obiektu(
+                g,
+                _OPIS_LACZNIKA_SZYN.get(role.get(g.ref_id) or "", "łącznik szyn"),
+            )
+            for g in laczniki
+        ),
+        "i",
+    )
+    opis_grup = lista_pl(
+        (
+            lista_pl((opis_obiektu(zrodla.get(ref), "źródło") for ref in grupa), "i")
+            for grupa in polaczenie.grupy_zrodel
+        ),
+        "oraz",
+    )
+    cel = laczniki[0].ref_id if laczniki else None
+    return ValidationIssue(
+        code=KOD_LACZNIK_LACZY_NIEZALEZNE_ROWNOWAZNIKI,
+        severity=SEVERITY_BLOCKER,
+        message_pl=(
+            f"Zamknięty {opis_lacznikow} łączy w jedną wyspę niezależne równoważniki sieci: "
+            f"{opis_grup}. Każdy równoważnik opisuje sieć 110 kV widzianą przez własny tor "
+            "zasilania; sieci nadrzędnej, która je łączy, nie ma w modelu — rozpływ mocy "
+            "miałby dwa węzły bilansujące w jednej wyspie, a zwarcie zsumowałoby prądy "
+            "niezależnych źródeł. Rozpływ i zwarcia nie są liczone — zbuduj wariant ze "
+            "wspólnym punktem zasilania (model B) albo otwórz łącznik szyn."
+        ),
+        element_refs=[*polaczenie.laczniki, *(r for g in polaczenie.grupy_zrodel for r in g)],
+        wizard_step_hint="K1",
+        suggested_fix=(
+            "Zbuduj wariant ze wspólnym punktem zasilania (model B): jeden równoważnik sieci "
+            "na szynie 110 kV stacji zasilającej i jawne linie L1, L2 do sekcji 110 kV GPZ — "
+            "albo otwórz łącznik szyn (stan normalny układu H5)."
+        ),
+        fix_action=FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=cel),
+    )
+
+
+def _niekompletnosc_struktury_gpz(enm: EnergyNetworkModel) -> list[ValidationIssue]:
+    """W063 — struktura GPZ niekompletna albo niezgodna z trybem rezerwy (karta GPZ-H5).
+
+    Sprawdzane z JAWNYCH rejestrów stacji i grafu (nie z drugiej kopii):
+
+    * sekcja 110 kV bez toru zasilania (równoważnika linii) na szynie;
+    * sekcja SN GPZ ze stroną 110 kV, do której w STANIE NORMALNYM nie dochodzi żaden
+      transformator 110/SN (grupa sekcji połączonych normalnie zamkniętymi łącznikami szyn SN
+      bez transformatora pracującego na szynie sekcji) — np. po usunięciu transformatora;
+    * sąsiednie sekcje bez łącznika szyn;
+    * brak trybu rezerwy transformatorowej przy ≥ 2 sekcjach SN po stronie 110 kV, stan
+      normalny łącznika szyn SN niezgodny z trybem (`enm.rezerwa_gpz` — ta sama funkcja, którą
+      zapisuje operacja budowy) albo transformator rezerwowy bez normalnie otwartego
+      wyłącznika pola SN.
+
+    Sekcja 110 kV bez transformatora NIE jest brakiem: ENEA Zeszyt 1 §11.1 dopuszcza
+    ograniczenie liczby transformatorów (układ H5 z jednym transformatorem). Ostrzeżenie:
+    model zostaje policzalny (część zasilana), a projektant widzi, czego układowi brakuje."""
+    wynik: list[ValidationIssue] = []
+    galezie = {g.ref_id: g for g in enm.branches}
+    szyny_zrodel = {z.bus_ref for z in enm.sources}
+    trafa = {t.ref_id: t for t in enm.transformers}
+    for stacja in sorted(enm.substations, key=lambda s: s.ref_id):
+        if stacja.station_type != "gpz":
+            continue
+        braki: list[tuple[str, str]] = []
+        for sekcja in stacja.gpz_hv_sections:
+            nazwa = opis_nazwy(sekcja.name, "sekcja 110 kV")
+            if sekcja.bus_ref not in szyny_zrodel:
+                braki.append(
+                    (sekcja.bus_ref, f"{nazwa} nie ma toru zasilania (równoważnika linii)")
+                )
+        sekcje_sn = sorted(stacja.gpz_sections, key=lambda s: s.order)
+        if stacja.gpz_hv_sections:
+            dolne_stacji = {trafa[r].lv_bus_ref for r in stacja.transformer_refs if r in trafa}
+            # Grupy sekcji SN w stanie normalnym (łącznik szyn SN normalnie zamknięty łączy).
+            grupy: list[list[GPZSection]] = []
+            for sekcja in sekcje_sn:
+                lacznik = galezie.get(sekcja.left_coupler_ref or "")
+                if grupy and isinstance(lacznik, SwitchBranch) and lacznik.normal_state == "closed":
+                    grupy[-1].append(sekcja)
+                else:
+                    grupy.append([sekcja])
+            for grupa in grupy:
+                if not any(s.bus_ref in dolne_stacji for s in grupa):
+                    for sekcja in grupa:
+                        braki.append(
+                            (
+                                sekcja.bus_ref,
+                                f"{opis_nazwy(sekcja.name, 'sekcja SN')} nie ma w stanie "
+                                "normalnym transformatora 110/SN pod napięciem",
+                            )
+                        )
+        for rejestr, opis_strony in (
+            (stacja.gpz_hv_sections, "110 kV"),
+            (stacja.gpz_sections, "SN"),
+        ):
+            uporzadkowane = sorted(rejestr, key=lambda s: s.order)
+            for lewa, prawa in zip(uporzadkowane, uporzadkowane[1:], strict=False):
+                if lewa.right_coupler_ref not in galezie:
+                    braki.append(
+                        (
+                            lewa.bus_ref,
+                            f"między {opis_nazwy(lewa.name, 'sekcja')} a "
+                            f"{opis_nazwy(prawa.name, 'sekcja')} nie ma łącznika szyn "
+                            f"{opis_strony}",
+                        )
+                    )
+        braki.extend(_niezgodnosc_trybu_rezerwy(stacja, galezie, trafa))
+        if not braki:
+            continue
+        wynik.append(
+            ValidationIssue(
+                code=KOD_STRUKTURA_GPZ_NIEKOMPLETNA,
+                severity=SEVERITY_IMPORTANT,
+                message_pl=(
+                    f"Struktura {opis_obiektu(stacja, 'GPZ')} jest niekompletna: "
+                    f"{'; '.join(opis_pl for _ref, opis_pl in braki)}."
+                ),
+                element_refs=[stacja.ref_id, *dict.fromkeys(ref for ref, _opis in braki)],
+                wizard_step_hint="K1",
+                suggested_fix=(
+                    "Uzupełnij GPZ: tor zasilania każdej sekcji 110 kV, transformator 110/SN "
+                    "zasilający sekcje SN, łącznik szyn między sekcjami i stany normalne "
+                    "łączników zgodne z trybem rezerwy — albo usuń niepotrzebną sekcję."
+                ),
+                fix_action=FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=stacja.ref_id),
+            )
+        )
+    return wynik
+
+
+def _niezgodnosc_trybu_rezerwy(
+    stacja: Substation,
+    galezie: dict[str, Branch],
+    trafa: dict[str, Transformer],
+) -> list[tuple[str, str]]:
+    """Braki W063 trybu rezerwy (ENEA Zeszyt 1 §26.10.5) — stan normalny łączników wobec
+    trybu z `enm.rezerwa_gpz` (ta sama funkcja wyprowadza stan przy budowie GPZ)."""
+    braki: list[tuple[str, str]] = []
+    if not stacja.gpz_hv_sections:
+        return braki
+    tryb = stacja.gpz_reserve_mode
+    if tryb is None:
+        if len(stacja.gpz_sections) >= 2:
+            braki.append(
+                (
+                    stacja.ref_id,
+                    "nie wybrano trybu rezerwy transformatorowej (rezerwa ukryta albo jawna, "
+                    f"{PODSTAWA_TRYBU_REZERWY_PL})",
+                )
+            )
+        return braki
+    oczekiwany = stan_normalny_lacznika_szyn_sn(tryb)
+    for sekcja in sorted(stacja.gpz_sections, key=lambda s: s.order):
+        lacznik = galezie.get(sekcja.right_coupler_ref or "")
+        if isinstance(lacznik, SwitchBranch) and lacznik.normal_state != oczekiwany:
+            braki.append(
+                (
+                    lacznik.ref_id,
+                    f"{opis_obiektu(lacznik, 'łącznik szyn SN')} ma stan normalny "
+                    f"„{'zamknięty' if lacznik.normal_state == 'closed' else 'otwarty'}”, a "
+                    f"{NAZWA_TRYBU_REZERWY_PL[tryb]} wymaga "
+                    f"„{'zamknięty' if oczekiwany == 'closed' else 'otwarty'}”",
+                )
+            )
+    ref_rezerwowego = stacja.gpz_reserve_transformer_ref
+    if ref_rezerwowego is None:
+        return braki
+    trafo = trafa.get(ref_rezerwowego)
+    szyny_sn = {s.bus_ref for s in stacja.gpz_sections}
+    wylacznik = (
+        next(
+            (
+                g
+                for g in galezie.values()
+                if isinstance(g, SwitchBranch)
+                and {g.from_bus_ref, g.to_bus_ref} & szyny_sn
+                and trafo.lv_bus_ref in (g.from_bus_ref, g.to_bus_ref)
+            ),
+            None,
+        )
+        if trafo is not None and trafo.lv_bus_ref not in szyny_sn
+        else None
+    )
+    if (
+        tryb != TRYB_REZERWY_JAWNEJ
+        or wylacznik is None
+        or wylacznik.normal_state != STAN_NORMALNY_WYLACZNIKA_TR_REZERWOWEGO
+    ):
+        braki.append(
+            (
+                ref_rezerwowego,
+                "transformator rezerwowy (rezerwa jawna) nie ma normalnie otwartego wyłącznika "
+                "pola SN",
+            )
+        )
+    return braki
+
+
+def _szr_sn_przy_generacji(enm: EnergyNetworkModel) -> list[ValidationIssue]:
+    """W064 — łącznik szyn SN zamknięty wbrew stanowi normalnemu przy generacji na sekcjach.
+
+    Przypadek: rezerwa ukryta (łącznik szyn SN normalnie otwarty) i scenariusz działania SZR
+    SN (łącznik zamknięty, `status != normal_state`), a w wyspie łącznika pracuje źródło
+    wytwórcze (`generators`, np. OZE/BESS przyłączone do linii sekcji). ENEA Zeszyt 1
+    §26.10.4: SZR SN musi najpierw wyłączyć linie pracujące w trybie generacji — inaczej SZR
+    jest blokowany; wynik scenariusza bez tego wyłączenia nie odpowiada pracy automatyki.
+    Ostrzeżenie (nie blokada): obliczenie układu jest fizycznie poprawne, a projektant widzi,
+    że opisany stan nie powstanie z działania SZR."""
+    role = role_lacznikow(enm)
+    widok = derive(enm)
+    wyspa_szyny = {szyna: i for i, w in enumerate(widok.wyspy) for szyna in w.szyny}
+    generatory_wysp: dict[int, list[Generator]] = {}
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        wyspa = wyspa_szyny.get(gen.bus_ref)
+        if wyspa is not None:
+            generatory_wysp.setdefault(wyspa, []).append(gen)
+    wynik: list[ValidationIssue] = []
+    for galaz in sorted(enm.branches, key=lambda g: g.ref_id):
+        if (
+            not isinstance(galaz, SwitchBranch)
+            or role.get(galaz.ref_id) != ROLA_LACZNIK_SZYN_SN
+            or galaz.normal_state != "open"
+            or galaz.status != "closed"
+        ):
+            continue
+        generatory = generatory_wysp.get(wyspa_szyny.get(galaz.from_bus_ref, -1), [])
+        if not generatory:
+            continue
+        wynik.append(
+            ValidationIssue(
+                code=KOD_SZR_SN_PRZY_GENERACJI,
+                severity=SEVERITY_IMPORTANT,
+                message_pl=(
+                    f"{opis_obiektu(galaz, 'Łącznik szyn SN')} jest zamknięty wbrew stanowi "
+                    "normalnemu (działanie SZR SN), a w łączonej części sieci pracują źródła "
+                    f"wytwórcze: {lista_pl((opis_obiektu(g, 'źródło') for g in generatory), 'i')}. Wymagania techniczne ENEA "
+                    "Operator, Zeszyt 1, §26.10.4: SZR SN najpierw wyłącza linie pracujące "
+                    "w trybie generacji, inaczej jest blokowany — ten stan nie powstanie "
+                    "z działania SZR."
+                ),
+                element_refs=[galaz.ref_id],
+                wizard_step_hint="K1",
+                suggested_fix=(
+                    "W scenariuszu SZR wyłącz linie ze źródłami wytwórczymi na sekcjach "
+                    "(wyłączenie z ruchu) albo przywróć stan normalny łącznika szyn SN."
+                ),
+                fix_action=FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=galaz.ref_id),
+            )
+        )
+    return wynik
+
+
+#: I001: co znaczy łącznik normalnie otwarty — po roli z ``role_lacznikow`` (karta GPZ-H5).
+_PRZYCZYNA_NORMALNIE_OTWARTEGO: dict[str, str] = {
+    ROLA_PUNKT_PODZIALU: "jest punktem normalnie otwartym — dzieli sieć",
+    ROLA_LACZNIK_SZYN_WN: (
+        "jest łącznikiem szyn 110 kV normalnie otwartym — sekcje 110 kV pracują osobno, "
+        "to podział wewnątrz rozdzielni, nie punkt podziału sieci"
+    ),
+    ROLA_LACZNIK_SZYN_SN: (
+        "jest łącznikiem szyn SN normalnie otwartym — sekcje SN pracują osobno, "
+        "to podział wewnątrz rozdzielni, nie punkt podziału sieci"
+    ),
+    ROLA_LACZNIK_SZYN_NN: (
+        "jest łącznikiem szyn nN normalnie otwartym — sekcje nN pracują osobno, "
+        "to podział wewnątrz rozdzielni, nie punkt podziału sieci"
+    ),
+    ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO: (
+        "jest łącznikiem pola transformatorowego normalnie otwartym — transformator jest "
+        "odstawiony (rezerwa), to nie jest punkt podziału sieci"
+    ),
+}
 
 
 class ENMValidator:
@@ -338,6 +683,13 @@ class ENMValidator:
         # GPZ-MODEL: transformator WN/SN GPZ bez równoważnika sieci po stronie 110 kV (E066)
         for trafo, stacja, szyna_wn in transformatory_gpz_bez_zasilania_wn(enm):
             issues.append(_transformator_gpz_bez_zasilania_wn(enm, trafo, stacja, szyna_wn))
+        # GPZ-H5: zamknięty łącznik szyn łączy niezależne równoważniki sieci (E067)
+        for polaczenie in polaczenia_niezaleznych_zrodel(enm):
+            issues.append(_lacznik_laczy_niezalezne_rownowazniki(enm, polaczenie))
+        # GPZ-H5: struktura GPZ niekompletna (W063) — np. po usunięciu transformatora
+        issues.extend(_niekompletnosc_struktury_gpz(enm))
+        # GPZ-H5: SZR SN (łącznik szyn SN zamknięty wbrew stanowi normalnemu) przy generacji
+        issues.extend(_szr_sn_przy_generacji(enm))
         # POLA-W-TORZE: element na szynie głównej stacji z pominięciem pola, które mu służy
         self._check_zasada_toru(enm, issues)
         # ETYKIETA-STACJI-PRZELOTOWEJ: deklaracja rodzaju stacji wobec topologii (§19.3)
@@ -1461,10 +1813,17 @@ class ENMValidator:
         # I001: Łącznik otwarty
         # W5-C: komunikat nazywa, czy otwarcie to pozycja normalna (punkt podziału),
         # odejście od pozycji normalnej, czy stan bez zadeklarowanej pozycji normalnej.
+        # Karta GPZ-H5 (wpis 7 koordynacji, pkt 1): normalnie otwarty łącznik nazywa ROLA
+        # z jednej funkcji `role_lacznikow` — łącznik szyn stacji i łącznik pola
+        # transformatorowego nie są punktem podziału sieci, choć ich pozycja normalna
+        # to „otwarty”.
+        role = role_lacznikow(enm)
         for branch in enm.branches:
             if isinstance(branch, SwitchBranch) and branch.status == "open":
                 if branch.normal_state == "open":
-                    przyczyna = "jest punktem normalnie otwartym — dzieli sieć"
+                    przyczyna = _PRZYCZYNA_NORMALNIE_OTWARTEGO[
+                        role.get(branch.ref_id, ROLA_PUNKT_PODZIALU)
+                    ]
                 elif branch.normal_state == "closed":
                     przyczyna = (
                         "jest otwarty wbrew pozycji normalnej (zamkniętej) — odcina część sieci"
@@ -2067,14 +2426,19 @@ class ENMValidator:
                     # (jeden fakt — jeden kod).
                     issues.append(_sekcja_gpz_bez_zasilania(enm, sekcje_wyspy, island_refs))
                     continue
+                # Karta GPZ-H5 (R7): wyspa bez źródła NIE blokuje biegu — część zasilana jest
+                # liczona, wyspa odcięta jest w wynikach „bez napięcia”; odmowa biegu
+                # wyłącznie przy modelu bez żadnego źródła (E001).
                 issues.append(
                     ValidationIssue(
                         code="E003",
-                        severity=SEVERITY_BLOCKER,
+                        severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"Wyspa sieci odcięta od źródła zasilania: "
                             f"{', '.join(opis_obiektu(szyny_wg_ref.get(ref), 'szyna') for ref in island_refs[:5])}"
-                            f"{f' i {len(island_refs) - 5} więcej' if len(island_refs) > 5 else ''}."
+                            f"{f' i {len(island_refs) - 5} więcej' if len(island_refs) > 5 else ''}"
+                            " — rozpływ mocy i zwarcia liczą część zasilaną; wyspa odcięta jest "
+                            "w wynikach bez napięcia."
                         ),
                         element_refs=island_refs[:10],
                         wizard_step_hint="K4",
@@ -2245,12 +2609,19 @@ class ENMValidator:
         # wyłącznik główny nN roli IN); pole z jawną rolą liniową SN (`field_role`
         # LINIA_IN/LINIA_OUT) na szynie nN jest naruszeniem, które ta reguła zgłasza.
         # Pole ZKSN nie należy do stacji.
+        # Karta GPZ-H5: pole na szynie 110 kV (pasmo WN — pole liniowe toru zasilania GPZ
+        # L1/L2) nie jest polem rozdzielnicy SN: stacja 110/SN z polami liniowymi 110 kV
+        # i polami odpływowymi SN to stacja transformatorowa, nie przelotowa — ciągłość SN
+        # przez nią nie istnieje i reguła jej nie dotyczy.
         poziom = poziom_pol(enm)
+        napiecie_szyny = {b.ref_id: b.voltage_kv for b in enm.buses}
         bays_by_station: dict[str, list] = {}
         for bay in enm.bays:
             if bay.substation_ref is None:
                 continue
             if czy_pole_nn(enm, bay, poziom) and bay.field_role not in _ROLE_LINIOWE_SN:
+                continue
+            if pasmo_napieciowe(napiecie_szyny.get(bay.bus_ref)) == "WN":
                 continue
             bays_by_station.setdefault(bay.substation_ref, []).append(bay)
 
@@ -2768,7 +3139,9 @@ class ENMValidator:
                energizuje nN przez transformator w TYM SAMYM grafie (LV-INV-05);
                Generator NIE jest tu zrodlem energizacji (analogicznie do
                istniejacego E003 — Generator moze zniknac z case'u jako stan
-               laczników, Source jest siecia).
+               laczników, Source jest siecia). Karta GPZ-H5 (R7): IMPORTANT, nie
+               BLOCKER — ta sama klasa co E003/E065 (czesc sieci bez zrodla): bieg
+               liczy czesc zasilana, odbior odciety jest w wynikach bez napiecia.
         E061 - galaz z OBOMA koncami w pasmie nN bez wiazania katalogowego
                KABEL_NN/APARAT_NN (catalog_ref); wyjatek: galaz z automigracji
                promocji pol nN (meta `nn_promocja_bez_wiazania_katalogowej`,
@@ -2824,11 +3197,12 @@ class ENMValidator:
             issues.append(
                 ValidationIssue(
                     code="E060",
-                    severity=SEVERITY_BLOCKER,
+                    severity=SEVERITY_IMPORTANT,
                     message_pl=(
                         f"{opis_obiektu(load, 'Odbiór nN')} na szynie "
                         f"({opis_obiektu(bus_by_ref.get(load.bus_ref), 'szyna')}) nie ma ciągłej ścieżki "
-                        "(przez zamknięte gałęzie/transformatory) do żadnego źródła zasilania."
+                        "(przez zamknięte gałęzie/transformatory) do żadnego źródła zasilania — "
+                        "bieg liczy część zasilaną, odbiór jest w wynikach bez napięcia."
                     ),
                     element_refs=[load.ref_id, load.bus_ref],
                     wizard_step_hint="K6",
@@ -2853,11 +3227,12 @@ class ENMValidator:
             issues.append(
                 ValidationIssue(
                     code="E060",
-                    severity=SEVERITY_BLOCKER,
+                    severity=SEVERITY_IMPORTANT,
                     message_pl=(
                         f"{opis_obiektu(gen, 'Źródło nN')} na szynie "
                         f"({opis_obiektu(bus_by_ref.get(gen.bus_ref), 'szyna')}) nie ma ciągłej ścieżki "
-                        "(przez zamknięte gałęzie/transformatory) do reszty sieci zasilanej."
+                        "(przez zamknięte gałęzie/transformatory) do reszty sieci zasilanej — "
+                        "bieg liczy część zasilaną, źródło jest w wynikach bez napięcia."
                     ),
                     element_refs=[gen.ref_id, gen.bus_ref],
                     wizard_step_hint="K6",

@@ -1092,7 +1092,10 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
    ze spacją}) × ścieżka (funkcja czysta, adapter end-to-end).
    --------------------------------------------------------------------------- */
 
-const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = ['IN', 'OUT', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE'];
+// Karta GPZ-H5: pola funkcyjne sekcji SN GPZ H5 (ENEA Zeszyt 1 §13) — EARTHING, CAPACITOR.
+const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = [
+  'IN', 'OUT', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE', 'EARTHING', 'CAPACITOR',
+];
 
 describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)', () => {
   const OCZEKIWANA = {
@@ -1103,6 +1106,8 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
     COUPLER: 'sprzeglo',
     MEASUREMENT: 'pomiarowe',
     OZE: 'zrodlowe',
+    EARTHING: 'uziemiajace',
+    CAPACITOR: 'kompensacyjne',
   } as const;
 
   for (const rola of ROLE_ENM) {

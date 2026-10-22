@@ -304,6 +304,19 @@ function zakresWlasciciela(scene: SceneV3, ref: string): { min: number; max: num
   return Number.isFinite(min) ? { min, max } : null;
 }
 
+/** Czy polilinia niosąca dany ref ma punkt WEWNĄTRZ ramy GPZ (obie osie) — tylko takie
+ *  przęsło (wyjście z pola liniowego GPZ) przycina produkcja do prawej krawędzi ramy.
+ *  Łącznik ciągu dalszego biegnący przez cały wiersz arkusza pod GPZ nie wchodzi w ramę. */
+function wchodziWRameGpz(scene: SceneV3, ref: string): boolean {
+  const z = scene.meta.gpzZone;
+  if (!z) return false;
+  return scene.segments.some(
+    (g) =>
+      g.meta?.ownerRef?.replace(/#tee-\d+$/, '') === ref &&
+      g.points.some((p) => p.x >= z.x && p.x < z.x + z.width && p.y >= z.y && p.y <= z.y + z.height),
+  );
+}
+
 /** Zakres Y polilinii niosącej dany ref — bliźniak `zakresWlasciciela`, tylko
  *  w drugiej osi. Podpis lateralu jest ROTOWANY i biegnie WZDŁUŻ pionu, więc
  *  „wzdłuż swojego odcinka" znaczy dla niego to samo w Y, co dla przęsła w X. */
@@ -333,9 +346,20 @@ describe('SLOT-DRYF-PRZĘSŁA §3 — podpis przęsła stoi na swoim kablu (scen
       if (lod === 2) expect(podpisy.length).toBeGreaterThanOrEqual(30);
       else expect(podpisy).toEqual([]);
 
+      // GPZ-H5-SLD etap 3 (lustro reguły produkcji `odsunPodpisOdElementowGpz`,
+      // `scene/buildScene.ts`): przęsło wychodzące z GPZ zaczyna się w polu liniowym WEWNĄTRZ
+      // ramy GPZ; wewnątrz ramy położenie podpisu rozstrzyga reguła przeszkód GPZ (podpis
+      // przesuwa się w prawo za każdy element GPZ, który przecina — po scaleniu backendu H5
+      // tabliczka TR stoi w wierszu podpisów). Wyrocznia „podpis na swoim kablu" ocenia więc
+      // kabel od prawej krawędzi ramy GPZ — tam, gdzie reguła przeszkód już nie działa.
+      const prawaRamyGpz = scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : null;
       for (const l of podpisy) {
         const ref = l.ownerRef.replace(/#segment-label$/, '');
-        const kabel = zakresWlasciciela(scene, ref);
+        const pelny = zakresWlasciciela(scene, ref);
+        const kabel = pelny && prawaRamyGpz != null && pelny.max > prawaRamyGpz
+          && wchodziWRameGpz(scene, ref)
+          ? { min: prawaRamyGpz, max: pelny.max }
+          : pelny;
         expect(kabel, `kabel dla ${l.ownerRef}`).not.toBeNull();
         const x0 = l.rect.x;
         const x1 = l.rect.x + l.rect.width;

@@ -1106,6 +1106,11 @@ export interface Substation extends ENMElement {
   /** Phase 0A audit fix 8/8: GPZ HV side (110 kV) sekcje — eliminuje
    *  synthesize w adapterze SLD. */
   gpz_hv_sections?: GPZSection[] | null;
+  /** GPZ H5 (ENEA Zeszyt 1 §26.10.5): tryb rezerwy transformatorowej — `hidden` (łącznik szyn
+   *  SN normalnie otwarty) albo `explicit` (łącznik szyn SN normalnie zamknięty, transformator
+   *  rezerwowy z wyłącznikiem pola SN normalnie otwartym). Brak = GPZ bez strony 110 kV. */
+  gpz_reserve_mode?: 'hidden' | 'explicit' | null;
+  gpz_reserve_transformer_ref?: string | null;
   /** V12K-230: rodzaj konstrukcji stacji (wplywa na dobor aparatury i osprzetu). */
   construction_type?: 'wnetrzowa' | 'kontenerowa' | 'slupowa' | 'prefabrykowana' | 'inna' | null;
   /** B-4: oznaczenie stacji na dokumentacji (np. "ST-15/0,4-01"). Addytywne. */
@@ -1153,7 +1158,16 @@ export interface OgranicznikPrzepiecPola {
  * szyny `bus_ref` (`ui/shared/polaStacji.ts::czyPoleNn`, lustro `enm.pola.czy_pole_nn`).
  */
 export interface Bay extends ENMElement {
-  bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
+  bay_role:
+    | 'IN'
+    | 'OUT'
+    | 'TR'
+    | 'COUPLER'
+    | 'FEEDER'
+    | 'MEASUREMENT'
+    | 'OZE'
+    | 'EARTHING'
+    | 'CAPACITOR';
   /** Stacja właściciela (pole SN/nN); `null` dla pola ZKSN. */
   substation_ref?: string | null;
   /** Punkt rozgałęzienia właściciela (pole rozdzielnicy odgałęźnej ZKSN); `null` dla pola stacji. */
@@ -1235,6 +1249,8 @@ export type BayCanonicalRole =
   | 'LINIA_ODG'
   | 'SPRZEGLO'
   | 'POMIAROWE'
+  | 'UZIEMIAJACE'
+  | 'KOMPENSACYJNE'
   | 'PV_SN'
   | 'BESS_SN'
   | 'FW_SN';
