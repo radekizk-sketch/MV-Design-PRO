@@ -248,6 +248,20 @@ export interface OwnedLabel {
    *  nie mieć. Geometrycznie neutralna — `rect` bez zmian. */
   readonly placement?: SimpleAnchorPlacement;
   /**
+   * K2b×K3: OBRYS SYMBOLU, przy którym etykieta stoi [świat] — ten sam prostokąt,
+   * który scena zgłasza jako przeszkodę rysunku (`symbolRect`). Strona
+   * zadeklarowana (`placement`) leży jak dotąd w slocie `rect`; strony
+   * ZASTĘPCZE planu etykiet (`canvas/labelLegibility.ts`, `stronyWKolejnosci`)
+   * stoją przy tym obrysie — „podpis obok symbolu", nie „slot przesunięty na
+   * symbol". Bez obrysu strona zastępcza była liczona od slotu, więc dla
+   * pisma powiększonego (podłoga opisów celu kadru, do 4× rozmiaru klasy t2)
+   * każda z nich nachodziła na własny symbol etykiety i odpadała z definicji.
+   * `undefined` = etykieta nie stoi przy pojedynczym symbolu (tor, pasmo,
+   * rezerwacja kolumny) — strony zastępcze liczone od slotu, jak dotąd.
+   * Geometrycznie neutralne dla sceny: `rect` bez zmian.
+   */
+  readonly obrysKotwicy?: V3Rect;
+  /**
    * BLOK-PUSTY: SZEROKOŚĆ REZERWACJI, w której napis wolno POWIĘKSZYĆ
    * (`canvas/labelLegibility.ts`, tryb ratunkowy KD-11: przy oddaleniu pismo
    * tożsamości rośnie do rozmiaru minimalnego czytelnego). Dla wiersza pasma
@@ -707,6 +721,26 @@ export interface SimpleAnchoredOwnerInput {
    *  LOD dla etykiety opisującej element w stanie błędu/UNRESOLVED.
    *  `undefined` = bez zmiany. */
   readonly unresolved?: boolean;
+  /** K2b×K3: obrys symbolu, przy którym stoi etykieta (ten sam układ współrzędnych
+   *  co `anchor`) — przenoszony 1:1 na `OwnedLabel.obrysKotwicy`. Przesunięcie
+   *  kotwicy przesuwa go razem z nią (`przesunKotwiczonaEtykiete`). */
+  readonly obrysKotwicy?: V3Rect;
+}
+
+/** Przesunięcie etykiety zakotwiczonej o (dx, dy): kotwica i obrys symbolu
+ *  RAZEM — jedno miejsce, żeby para nie mogła się rozjechać. */
+export function przesunKotwiczonaEtykiete(
+  owner: SimpleAnchoredOwnerInput,
+  dx: number,
+  dy: number,
+): SimpleAnchoredOwnerInput {
+  return {
+    ...owner,
+    anchor: { x: owner.anchor.x + dx, y: owner.anchor.y + dy },
+    ...(owner.obrysKotwicy !== undefined
+      ? { obrysKotwicy: { ...owner.obrysKotwicy, x: owner.obrysKotwicy.x + dx, y: owner.obrysKotwicy.y + dy } }
+      : {}),
+  };
 }
 
 function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
@@ -763,6 +797,8 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     ...(owner.ctPurpose !== undefined ? { ctPurpose: owner.ctPurpose } : {}),
     // T2-LOD: passthrough wyjątku bezwzględnego LOD (błąd/UNRESOLVED).
     ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
+    // K2b×K3: obrys symbolu kotwicy — strony zastępcze planu etykiet.
+    ...(owner.obrysKotwicy !== undefined ? { obrysKotwicy: owner.obrysKotwicy } : {}),
   };
 }
 

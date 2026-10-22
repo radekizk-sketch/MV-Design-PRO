@@ -259,6 +259,85 @@ function prostokatTuszu(
   return anchoredRect(slot, rotated ? wpoprzek : wzdluz, rotated ? wzdluz : wpoprzek, placement);
 }
 
+/**
+ * K2b×K3 — STRONA ZASTĘPCZA PRZY SYMBOLU. Prostokąt tuszu po stronie `placement`
+ * OBRYSU symbolu, przy którym etykieta stoi (`OwnedLabel.obrysKotwicy`), z tym
+ * samym prześwitem, jaki scena dała stronie zadeklarowanej (zmierzonym między
+ * obrysem a slotem sceny — jedno źródło, bez drugiej stałej).
+ *
+ * DLACZEGO NIE OD SLOTU. Strona zastępcza liczona od slotu (`prostokatTuszu`)
+ * dla etykiety „pod symbolem" to prostokąt wyśrodkowany na slocie: „nad"
+ * kończy się na dolnej krawędzi slotu, „z prawej" zaczyna się na jego lewej
+ * krawędzi. Dopóki pismo rosło tylko do progu czytelności, prostokąt był niski
+ * i mijał symbol; podłoga opisów celu kadru (K2b, do 4× rozmiaru klasy t2)
+ * daje wiersz wyższy niż prześwit pod symbolem, więc KAŻDA strona zastępcza
+ * nachodziła na własny symbol etykiety i odpadała z definicji. Pomiar na
+ * fiksturze referencyjnej po K3 (L1, skala 0,3, kadr stacji): 11 podpisów DER
+ * rysowanych poniżej 13 px, choć sufit proporcji klasy dopuszcza podłogę.
+ */
+type WyrownaniePrzySymbolu = 'srodek' | 'poczatek' | 'koniec';
+/** Kolejność wyrównań wzdłuż boku obrysu: wyśrodkowany, potem do krawędzi
+ *  początkowej (góra / lewo), potem do końcowej (dół / prawo). Wiersz pisma
+ *  powiększonego bywa wyższy od symbolu, więc wyśrodkowany wystaje nad i pod
+ *  obrys — wyrównanie do krawędzi zostawia wolną jedną ze stron (pomiar: dwa
+ *  źródła nN obok siebie, podpis lewego nad symbolem, prawego z prawej). */
+const WYROWNANIA_PRZY_SYMBOLU: readonly WyrownaniePrzySymbolu[] = ['srodek', 'poczatek', 'koniec'];
+
+function prostokatPrzySymbolu(
+  label: OwnedLabel,
+  obrys: V3Rect,
+  text: string,
+  fontSize: number,
+  placement: SimpleAnchorPlacement,
+  wyrownanie: WyrownaniePrzySymbolu,
+): V3Rect {
+  const rotated = label.rotated === true;
+  const wzdluz = measureTextWidth(text, fontSize);
+  const wpoprzek = wysokoscWiersza(fontSize);
+  const width = rotated ? wpoprzek : wzdluz;
+  const height = rotated ? wzdluz : wpoprzek;
+  const slot = label.rect;
+  const przeswitSceny = (() => {
+    switch (label.placement) {
+      case 'below':
+        return slot.y - (obrys.y + obrys.height);
+      case 'above':
+        return obrys.y - (slot.y + slot.height);
+      case 'right':
+        return slot.x - (obrys.x + obrys.width);
+      case 'left':
+        return obrys.x - (slot.x + slot.width);
+      default:
+        return 0;
+    }
+  })();
+  const przeswit = Math.max(0, przeswitSceny);
+  // Położenie wzdłuż boku obrysu: oś pozioma dla stron „nad/pod", pionowa dla
+  // „z lewej/z prawej".
+  const x =
+    wyrownanie === 'srodek'
+      ? obrys.x + obrys.width / 2 - width / 2
+      : wyrownanie === 'poczatek'
+        ? obrys.x
+        : obrys.x + obrys.width - width;
+  const y =
+    wyrownanie === 'srodek'
+      ? obrys.y + obrys.height / 2 - height / 2
+      : wyrownanie === 'poczatek'
+        ? obrys.y
+        : obrys.y + obrys.height - height;
+  switch (placement) {
+    case 'above':
+      return { x, y: obrys.y - przeswit - height, width, height };
+    case 'below':
+      return { x, y: obrys.y + obrys.height + przeswit, width, height };
+    case 'left':
+      return { x: obrys.x - przeswit - width, y, width, height };
+    case 'right':
+      return { x: obrys.x + obrys.width + przeswit, y, width, height };
+  }
+}
+
 const NAME_ROW_SUFFIX = /#name-row-\d+$/;
 
 /**
@@ -326,6 +405,12 @@ interface Dopasowanie {
  * potem przeciwna (napis znad szyny idzie pod szynę), na końcu dwie
  * prostopadłe. Prostokąt zawsze rośnie OD kotwicy, więc prześwit od toru/
  * symbolu jest zachowany na każdej z nich; zmienia się wyłącznie ZWROT.
+ *
+ * K2b×K3: dla etykiety stojącej przy SYMBOLU (`OwnedLabel.obrysKotwicy`) strony
+ * inne niż zadeklarowana liczone są od OBRYSU symbolu (`prostokatPrzySymbolu`),
+ * a nie od slotu — inaczej „nad" i „z boku" etykiety „pod symbolem" leżały na
+ * tym symbolu, gdy tylko wiersz pisma był wyższy od prześwitu pod nim (pismo
+ * podłogi opisów celu kadru). Przypięte: `__tests__/stronyPrzySymbolu.test.ts`.
  *
  * DLACZEGO CZTERY, A NIE DWIE. Pomiar na fixturze referencyjnej (L1 @0,51):
  * podpisy DER („PV 500 kW", 4 sztuki) nie mieszczą się ani pod symbolem, ani
@@ -423,42 +508,70 @@ function najlepszeDopasowanie(
     return wynik;
   };
 
-  const proboj = (placement: OwnedLabel['placement']): Dopasowanie | null => {
-    const prostokatDla = (text: string): V3Rect =>
-      prostokatTuszu(slot, text, fontSize, rotated, placement);
+  const proboj = (placement: OwnedLabel['placement'], przyObrysie: boolean): Dopasowanie | null => {
+    // K2b×K3: `przyObrysie` — strona zastępcza etykiety stojącej przy symbolu,
+    // liczona od OBRYSU symbolu (`prostokatPrzySymbolu`), w trzech wyrównaniach
+    // wzdłuż boku obrysu (środek, początek, koniec). Inaczej — od slotu sceny.
+    const obrys = label.obrysKotwicy;
+    const przySymbolu = przyObrysie && obrys !== undefined && placement !== undefined && placement !== label.placement;
+    const wyrownania: readonly (WyrownaniePrzySymbolu | null)[] = przySymbolu ? WYROWNANIA_PRZY_SYMBOLU : [null];
+    const prostokatDla = (text: string, wyrownanie: WyrownaniePrzySymbolu | null): V3Rect =>
+      przySymbolu && wyrownanie !== null && placement !== undefined
+        ? prostokatPrzySymbolu(label, obrys, text, fontSize, placement, wyrownanie)
+        : prostokatTuszu(slot, text, fontSize, rotated, placement);
 
-    const pelny = prostokatDla(tekstBazowy);
-    if (tekstBazowy.length > 0 && wolne(pelny)) {
-      return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true };
-    }
-
-    // (2) wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI [px świata].
-    let lo = 1;
-    let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize)) - 1);
-    let najlepszy: Dopasowanie | null = null;
-    while (lo <= hi) {
-      const mid = Math.floor((lo + hi) / 2);
-      const text = skroc(mid);
-      if (text.length === 0) {
-        lo = mid + 1; // za wąsko na jakąkolwiek formę — szukamy szerzej
-        continue;
-      }
-      const rect = prostokatDla(text);
-      if (wolne(rect)) {
-        najlepszy = { text, rect, fontSize, enlarged: true };
-        lo = mid + 1;
-      } else {
-        hi = mid - 1;
+    // (1) pełny tekst — każde wyrównanie po kolei, zanim cokolwiek skrócimy.
+    if (tekstBazowy.length > 0) {
+      for (const wyrownanie of wyrownania) {
+        const pelny = prostokatDla(tekstBazowy, wyrownanie);
+        if (wolne(pelny)) return { text: tekstBazowy, rect: pelny, fontSize, enlarged: true };
       }
     }
-    return najlepszy;
+
+    // (2) wyszukiwanie połówkowe po DOSTĘPNEJ SZEROKOŚCI [px świata] — dla
+    // każdego wyrównania osobno (prostokąt zakotwiczony: węższy ⊆ szerszy).
+    for (const wyrownanie of wyrownania) {
+      let lo = 1;
+      let hi = Math.max(1, Math.ceil(measureTextWidth(tekstBazowy, fontSize)) - 1);
+      let najlepszy: Dopasowanie | null = null;
+      while (lo <= hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        const text = skroc(mid);
+        if (text.length === 0) {
+          lo = mid + 1; // za wąsko na jakąkolwiek formę — szukamy szerzej
+          continue;
+        }
+        const rect = prostokatDla(text, wyrownanie);
+        if (wolne(rect)) {
+          najlepszy = { text, rect, fontSize, enlarged: true };
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      if (najlepszy) return najlepszy;
+    }
+    return null;
   };
 
   const strony = stronyWKolejnosci(label.placement);
-  if (strony.length === 0) return proboj(label.placement);
+  if (strony.length === 0) return proboj(label.placement, false);
   for (const strona of strony) {
-    const dopasowanie = proboj(strona);
+    const dopasowanie = proboj(strona, false);
     if (dopasowanie) return dopasowanie;
+  }
+  // K2b×K3 — DRUGIE PRZEJŚCIE: strony przy OBRYSIE symbolu, dopiero gdy żadna
+  // strona liczona od slotu (z pełnym tekstem ani skróconym) nie ma miejsca.
+  // Kolejność celowa: wszędzie tam, gdzie plan dotąd coś znajdował, wynik jest
+  // bajtowo ten sam (pomiar: odciski planu bez zmian poza przypadkami, w których
+  // pierwsze przejście kończyło się porzuceniem albo postacią zapasową); strona
+  // przy symbolu zabiera miejsce sąsiadom tylko zamiast utraty etykiety.
+  if (label.obrysKotwicy !== undefined) {
+    for (const strona of strony) {
+      if (strona === label.placement) continue;
+      const dopasowanie = proboj(strona, true);
+      if (dopasowanie) return dopasowanie;
+    }
   }
   return null;
 }

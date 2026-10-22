@@ -396,6 +396,16 @@ const OPEN_RUN_PIECE_SPAN = 6 * GRID;
 const OPEN_TERMINAL_TICK_HALF = GRID;
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
+/** Obrys symbolu `noPoint` wyśrodkowanego w punkcie (cx, cy) — JEDNO źródło dla
+ *  symbolu i dla `obrysKotwicy` jego podpisu „NO" (K2b×K3, strony zastępcze planu). */
+function obrysPunktuNo(cx: number, cy: number): V3Rect {
+  return {
+    x: snapToGrid(cx - NO_POINT_SIZE / 2),
+    y: snapToGrid(cy - NO_POINT_SIZE / 2),
+    width: SYMBOL_DEFS.noPoint.width,
+    height: SYMBOL_DEFS.noPoint.height,
+  };
+}
 const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
 /** F9.3 (spec §14.4): gabaryt akcentu węzła rozgałęzienia — patrz
  *  `symbols/defs.ts` (32×32, 4×GRID, WIĘKSZY niż `junction` bazowy 16×16). */
@@ -3813,11 +3823,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           labelClass: 't3',
           anchor: { x: col.tapX, y: rowLayout.busAxisY },
           placement: 'below',
+          // K2b×K3: obrys symbolu NO — strony zastępcze planu etykiet stoją przy nim.
+          obrysKotwicy: obrysPunktuNo(col.tapX, rowLayout.busAxisY),
         });
         allSymbols.push({
           symbolId: 'noPoint',
-          x: snapToGrid(col.tapX - NO_POINT_SIZE / 2),
-          y: snapToGrid(rowLayout.busAxisY - NO_POINT_SIZE / 2),
+          x: obrysPunktuNo(col.tapX, rowLayout.busAxisY).x,
+          y: obrysPunktuNo(col.tapX, rowLayout.busAxisY).y,
           meta: { testId: `sld-v3-nop-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'apparatus' },
         });
       }
@@ -4464,11 +4476,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             labelClass: 't3',
             anchor: { x: col.tapX, y: feederLayout.busAxisY },
             placement: 'below',
+            // K2b×K3: obrys symbolu NO — strony zastępcze planu etykiet stoją przy nim.
+            obrysKotwicy: obrysPunktuNo(col.tapX, feederLayout.busAxisY),
           });
           allSymbols.push({
             symbolId: 'noPoint',
-            x: snapToGrid(col.tapX - NO_POINT_SIZE / 2),
-            y: snapToGrid(feederLayout.busAxisY - NO_POINT_SIZE / 2),
+            x: obrysPunktuNo(col.tapX, feederLayout.busAxisY).x,
+            y: obrysPunktuNo(col.tapX, feederLayout.busAxisY).y,
             meta: { testId: `sld-v3-nop-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'apparatus' },
           });
         }
@@ -4796,11 +4810,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           labelClass: 't3',
           anchor: { x: col.tapX, y: layout.busAxisY },
           placement: 'below',
+          // K2b×K3: obrys symbolu NO — strony zastępcze planu etykiet stoją przy nim.
+          obrysKotwicy: obrysPunktuNo(col.tapX, layout.busAxisY),
         });
         allSymbols.push({
           symbolId: 'noPoint',
-          x: snapToGrid(col.tapX - NO_POINT_SIZE / 2),
-          y: snapToGrid(layout.busAxisY - NO_POINT_SIZE / 2),
+          x: obrysPunktuNo(col.tapX, layout.busAxisY).x,
+          y: obrysPunktuNo(col.tapX, layout.busAxisY).y,
           meta: { testId: `sld-v3-nop-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'apparatus' },
         });
       }
@@ -5216,10 +5232,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         );
         continue;
       }
+      const obrysNo = obrysPunktuNo(kotwica.x, kotwica.y);
       allSymbols.push({
         symbolId: 'noPoint',
-        x: snapToGrid(kotwica.x - NO_POINT_SIZE / 2),
-        y: snapToGrid(kotwica.y - NO_POINT_SIZE / 2),
+        x: obrysNo.x,
+        y: obrysNo.y,
         meta: { testId: `sld-v3-nop-${nopRef}`, ownerRef: nopRef, elementKind: 'apparatus' },
       });
       // Podpis „NO" na L1/L2 — jak NO stacji (GS-1): na L0 (mapa sieci, skala
@@ -5235,6 +5252,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           ? { x: kotwica.x, y: snapToGrid(kotwica.y - NO_POINT_SIZE / 2) }
           : { x: kotwica.x, y: kotwica.y },
         placement: podpisNad ? 'above' : 'below',
+        // K2b×K3: obrys symbolu NO — strony zastępcze planu etykiet stoją przy nim.
+        obrysKotwicy: obrysNo,
       });
     }
   }

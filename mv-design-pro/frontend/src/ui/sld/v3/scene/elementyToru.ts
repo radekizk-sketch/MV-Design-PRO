@@ -176,6 +176,11 @@ export function elementyToru(
           ? { x: a.x, y: y + def.height }
           : { x: snapToGrid(x + def.width + GRID + measureLabelWidth(galaz.name, 't3') / 2), y: a.y },
         placement: 'below',
+        // K2b×K3: obrys glifu łącznika — strony zastępcze planu etykiet stoją przy
+        // nim. Tylko łącznik na torze POZIOMYM: tam podpis stoi pod glifem; na
+        // torze pionowym stoi obok glifu (kotwica na prawo), więc „pod" nie jest
+        // stroną glifu i strony zastępcze zostają liczone od slotu.
+        ...(poziomy ? { obrysKotwicy: { x, y, width: def.width, height: def.height } } : {}),
       });
     }
   }
