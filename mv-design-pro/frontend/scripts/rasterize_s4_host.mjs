@@ -12,12 +12,13 @@
 //    itself is untouched, only this proof PNG is resized.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 
 const dir = process.env.CANON_OUT ?? '/tmp/canon';
 const TARGET_W = 1800;
 const TARGET_H = 1100;
 
-const browser = await chromium.launch();
+const browser = await chromium.launch(chromiumLaunchOptions());
 const page = await browser.newPage({ deviceScaleFactor: 2 });
 for (const f of readdirSync(dir).filter((x) => x.endsWith('.svg')).sort()) {
   const svg = readFileSync(`${dir}/${f}`, 'utf8');

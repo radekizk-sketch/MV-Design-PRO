@@ -12,6 +12,7 @@
  *   - GN20 project as most recent (run seed-gn20.mjs first)
  */
 import { chromium } from 'playwright';
+import { chromiumLaunchOptions } from './playwright-env.mjs';
 import { mkdir } from 'node:fs/promises';
 
 const OUT = process.env.OUT_DIR ?? '/home/user/MV-Design-PRO/mv-design-pro/docs/audit/visual_iteration_K20';
@@ -21,7 +22,7 @@ const CASE_ID = process.env.CASE_ID ?? '1a97f232-1c67-4828-986d-1096f4978792';
 
 async function main() {
   await mkdir(OUT, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch(chromiumLaunchOptions({ headless: true }));
 
   for (const { name, w, h } of [
     { name: '1920x1080', w: 1920, h: 1080 },
