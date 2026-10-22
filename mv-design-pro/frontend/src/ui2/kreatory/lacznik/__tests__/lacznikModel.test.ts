@@ -61,6 +61,16 @@ describe('lacznikModel — payload', () => {
     const payload = zbudujPayload(dane({ normal_state: 'closed' }), { segment_id: 'seg-1' });
     expect(payload.normal_state).toBe('closed');
   });
+
+  it('pozycja niezadeklarowana nie trafia do ładunku; close_ref wyłącznie przy pozycji otwartej', () => {
+    const bez = zbudujPayload(dane({ normal_state: '', close_ref: 'sw-nop' }), { segment_id: 'seg-1' });
+    expect(bez).not.toHaveProperty('normal_state');
+    expect(bez).not.toHaveProperty('close_ref');
+    const zamkniety = zbudujPayload(dane({ normal_state: 'closed', close_ref: 'sw-nop' }), { segment_id: 'seg-1' });
+    expect(zamkniety).not.toHaveProperty('close_ref');
+    const otwarty = zbudujPayload(dane({ normal_state: 'open', close_ref: ' sw-nop ' }), { segment_id: 'seg-1' });
+    expect(otwarty).toMatchObject({ normal_state: 'open', close_ref: 'sw-nop' });
+  });
 });
 
 describe('lacznikModel — formatery', () => {

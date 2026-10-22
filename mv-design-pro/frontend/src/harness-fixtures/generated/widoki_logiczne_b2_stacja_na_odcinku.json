@@ -75,7 +75,7 @@
       "corridor_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/ee557b308d55bd55bbc81d4776c4ba5b/segment",
         "seg/628c3045f7504084cacf6921ccb4d391/segment_L",

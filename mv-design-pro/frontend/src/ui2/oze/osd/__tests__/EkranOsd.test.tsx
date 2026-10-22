@@ -243,10 +243,13 @@ describe('EkranOsd — zapis trybu pracy źródła (K5-B / H-3 pkt 5)', () => {
     fireEvent.click(screen.getByTestId('mvd-osd-tryb-zapisz'));
 
     await vi.waitFor(() =>
-      expect(wykonaj).toHaveBeenCalledWith('case-osd', 'set_source_operating_mode', {
-        source_ref: 'gen_sync',
-        mode: 'odstawione',
-      }),
+      expect(wykonaj).toHaveBeenCalledWith(
+        'case-osd',
+        'set_source_operating_mode',
+        { source_ref: 'gen_sync', mode: 'odstawione' },
+        // W5-C: jeden toast sukcesu — zdanie ekranu idzie do magazynu.
+        { komunikatSukcesuPl: OSD_STRINGS.trybZapisano },
+      ),
     );
     expect(screen.queryByTestId('mvd-osd-tryb-blad')).not.toBeInTheDocument();
     useAppStateStore.setState({ activeCaseId: null } as never);

@@ -78,10 +78,6 @@ export function sanitizeReadinessMessage(
   snapshot: EnergyNetworkModel | null,
 ): string {
   return message
-    .replace(
-      /ZKSN\s+['"]?bp\/[^\s'"]+['"]?\s+nie\s+ma\s+stanu\s+łącznika\s+\(switch_state\)\.?/gi,
-      'ZKSN wymaga wskazania stanu normalnego łącznika.',
-    )
     .replace(/\bodcinek\s+SN\s+SN\b/gi, 'odcinek SN')
     .replace(/Gałąź\s+'([^']+)'/g, (_match, ref: string) => publicElementLabel(snapshot, ref))
     .replace(/Źródło\s+'([^']+)'/g, (_match, ref: string) => publicElementLabel(snapshot, ref))
@@ -91,8 +87,7 @@ export function sanitizeReadinessMessage(
     )
     .replace(/\b(gpz|seg|stn|bus|bay|branch|source|load|pv|bess|fw|tr|trafo|bp)\/[^\s,;.]+/gi, (ref: string) =>
       publicElementLabel(snapshot, ref),
-    )
-    .replace(/\bswitch_state\b/gi, 'stan normalny łącznika');
+    );
 }
 
 export function fallbackFixActionFromBlocker(blocker: {

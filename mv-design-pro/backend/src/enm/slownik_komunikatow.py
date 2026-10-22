@@ -190,6 +190,17 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "przepnij_element_na_pole:element_ref": "Element do przepięcia",  # przepiecie-na-pole/strings.ts element
     "przepnij_element_na_pole:field_ref": "Pole docelowe",  # przepiecie-na-pole/strings.ts pole
     "set_normal_open_point:switch_ref": "Punkt normalnie otwarty (NOP)",  # pierscien/strings.ts nopTytul
+    # W5-C: operacje stanu łączeniowego i wyposażenia pola SN.
+    "set_normal_open_point:close_ref": "Dotychczasowy punkt podziału do zamknięcia",  # pierscien/strings.ts zamknijPoprzedni
+    "open_switch:switch_ref": "Łącznik do otwarcia",
+    "close_switch:switch_ref": "Łącznik do zamknięcia",
+    "insert_section_switch_sn:normal_state": "Pozycja normalna",  # lacznik/strings.ts stan
+    "insert_section_switch_sn:close_ref": "Dotychczasowy punkt podziału do zamknięcia",  # lacznik/strings.ts zamknijPoprzedni
+    "update_element_parameters:normal_state": "Pozycja normalna łącznika",
+    "switch_state": "Stan normalny łączników odgałęzienia",
+    "set_bay_equipment:mode": "Sposób wyposażenia pola",
+    "set_bay_equipment:devices": "Aparaty pola",
+    "set_bay_equipment:bay_template_ref": "Szablon pola",
     "tap_changer.control_mode": "Tryb sterowania",  # zrodlo/strings.ts oltcTryb
     "tap_changer.regulated_winding": "Regulowane uzwojenie",  # zrodlo/strings.ts oltcUzwojenie
     "tap_changer.regulation_type": "Rodzaj regulacji",  # zrodlo/strings.ts oltcTyp; transformator regTyp

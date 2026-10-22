@@ -14,7 +14,16 @@ import type { SldMenuContext } from '../../context-menu/SldContextMenuController
 import type { ResultStatus } from '../../types';
 import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../types/enm';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
-import { getMenuActions, type SldMenuAction } from '../v2/command/SldCommandService';
+import {
+  getMenuActions,
+  type SldMenuAction,
+  type StanLacznikaMenu,
+} from '../v2/command/SldCommandService';
+import {
+  czyLacznikZPozycjaNormalna,
+  czyPunktPodzialu,
+  lacznikTematu,
+} from '../../shared/stanLacznika';
 import type { CanvasMenuSubject } from '../v3/canvas/canvasMenuSubject';
 import {
   parseGpzApparatusSelectionId,
@@ -29,7 +38,9 @@ import {
  *  - „Pokaż wyniki" — aktywny przypadek ma wynik (świeży albo nieaktualny); bez wyniku
  *    pozycja jest nieaktywna z przyczyną;
  *  - agregat/UPS stacji — stacja ma szynę nN (FK `substation.bus_refs`, pasmo nN);
- *  - rodzaj aparatu z kompozytu `⟨pole⟩#⟨rodzaj⟩`, gdy ref go niesie.
+ *  - rodzaj aparatu z kompozytu `⟨pole⟩#⟨rodzaj⟩`, gdy ref go niesie;
+ *  - stan łącznika pola/aparatu (W5-C) — TEN SAM resolver `lacznikTematu`, którym
+ *    wykonawca wybiera łącznik operacji `open_switch`/`close_switch`/`set_normal_open_point`.
  */
 export function kontekstDostepnosciAkcji(
   snapshot: EnergyNetworkModel | null,
@@ -51,11 +62,15 @@ export function kontekstDostepnosciAkcji(
   );
   const hasResults = activeCaseResultStatus !== 'NONE';
   const apparatusKind = parseGpzApparatusSelectionId(temat.modelRef)?.apparatusKind;
+  const lacznik = temat.menuKind === 'bay' || temat.menuKind === 'apparatus'
+    ? stanLacznikaMenu(snapshot, temat.modelRef)
+    : undefined;
   const wspolne: SldMenuContext = {
     trunkStartAvailable,
     branchStartAvailable,
     hasResults,
     ...(apparatusKind === undefined ? {} : { apparatusKind }),
+    ...(lacznik === undefined ? {} : { lacznik }),
   };
   if (temat.kotwica !== 'stacja') return wspolne;
   const station = (snapshot?.substations ?? []).find(
@@ -69,6 +84,21 @@ export function kontekstDostepnosciAkcji(
     return bus != null && wPasmieNn(bus.voltage_kv);
   });
   return { ...wspolne, stationHasNnBus };
+}
+
+/** W5-C: stan łącznika obiektu menu; `undefined` = brak migawki (brak pomiaru). */
+export function stanLacznikaMenu(
+  snapshot: EnergyNetworkModel | null,
+  modelRef: string,
+): StanLacznikaMenu | undefined {
+  if (!snapshot) return undefined;
+  const wynik = lacznikTematu(snapshot, modelRef);
+  if (!wynik.lacznik) return { powodBrakuPl: wynik.powodPl };
+  return {
+    status: wynik.lacznik.status,
+    maPozycjeNormalna: czyLacznikZPozycjaNormalna(wynik.lacznik),
+    jestPunktemPodzialu: czyPunktPodzialu(wynik.lacznik),
+  };
 }
 
 /** Działania obiektu — ta sama lista dla menu kanwy i paska inspektora. */

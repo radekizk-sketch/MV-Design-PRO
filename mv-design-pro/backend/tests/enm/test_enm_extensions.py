@@ -162,18 +162,19 @@ class TestCorridor:
             ordered_segment_refs=["line_1", "line_2", "line_3"],
         )
         assert corr.corridor_type == "radial"
-        assert corr.no_point_ref is None
 
     def test_create_ring(self):
+        # W5-C: punkt podziału NIE jest polem magistrali (dawne `no_point_ref`) — to
+        # pozycja normalna łącznika (`SwitchBranch.normal_state`), wyprowadzana
+        # akcesorem `enm.topology.punkty_podzialu_korytarza`.
         corr = Corridor(
             ref_id="corr_b",
             name="Magistrala B",
             corridor_type="ring",
             ordered_segment_refs=["line_4", "line_5"],
-            no_point_ref="junc_no",
         )
         assert corr.corridor_type == "ring"
-        assert corr.no_point_ref == "junc_no"
+        assert "no_point_ref" not in Corridor.model_fields
 
 
 # ============================================================================

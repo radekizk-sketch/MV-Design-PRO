@@ -37,6 +37,24 @@ describe('zksnModel — torowość i wariant', () => {
 });
 
 describe('zksnModel — payload', () => {
+  it.each([
+    [undefined, undefined],
+    [null, undefined],
+    ['', undefined],
+    ['nieznany', undefined],
+    ['OPEN', 'open'],
+    ['OTWARTY', 'open'],
+    ['CLOSED', 'closed'],
+    ['closed', 'closed'],
+  ])('pozycja normalna łączników portów %s → %s (brak = niezadeklarowana, bez domysłu „zamknięty")', (wejscie, oczekiwana) => {
+    const payload = zbudujPayload(dane(), { segment_id: 'seg-1', switch_state: wejscie });
+    if (oczekiwana === undefined) {
+      expect(payload).not.toHaveProperty('switch_state');
+    } else {
+      expect(payload.switch_state).toBe(oczekiwana);
+    }
+  });
+
   it('buduje payload z liczbą portów i katalogiem mv_branch_points', () => {
     const payload = zbudujPayload(
       dane({ polozenie: 0.4, branch_ports_count: 2, nazwa: 'ZK-3' }),

@@ -376,7 +376,7 @@ function TrunksSection({
             >
               <span className="font-medium">M{index + 1}</span>
               <span className={mutedTextClass}>{trunk.segments.length} segm.</span>
-              {trunk.no_point_ref && <span className="text-eng-amber text-[10px]">NOP</span>}
+              {trunk.no_point_refs.length > 0 && <span className="text-eng-amber text-[10px]">NOP</span>}
               <button
                 type="button"
                 onClick={() => handleInsertStation(trunk)}

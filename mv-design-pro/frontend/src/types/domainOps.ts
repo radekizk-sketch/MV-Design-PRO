@@ -41,6 +41,12 @@ export const CANONICAL_OPERATION_NAMES = [
   // POLA-W-TORZE: akcja naprawcza kontroli W042 — element z szyny głównej stacji na zacisk pola.
   'przepnij_element_na_pole',
   'set_normal_open_point',
+  // W5-C: bieżące położenie łącznika w modelu bazowym (pozycja normalna bez zmian) —
+  // karta łącznika i menu pola/aparatu na kanwie.
+  'open_switch',
+  'close_switch',
+  // W5-C: wyposażenie pola SN (tryb katalog / szablon / wyczyść) — karta pola E-11.
+  'set_bay_equipment',
   'add_transformer_sn_nn',
   'assign_catalog_to_element',
   'update_element_parameters',

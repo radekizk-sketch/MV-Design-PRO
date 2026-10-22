@@ -19,7 +19,6 @@ import { useEffect, useMemo, useState } from 'react';
 import './osd.css';
 import type { SourceOperatingMode } from '../../../types/domainOps';
 import { useAppStateStore } from '../../../ui/app-state';
-import { notify } from '../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -263,10 +262,13 @@ function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
     setZapisywanie(true);
     setBlad(null);
     try {
-      const odpowiedz = await executeDomainOperation(caseId, 'set_source_operating_mode', {
-        source_ref: sourceRef,
-        mode: tryb,
-      });
+      // Jeden toast sukcesu — z magazynu (zdanie ekranu zamiast ogólnego).
+      const odpowiedz = await executeDomainOperation(
+        caseId,
+        'set_source_operating_mode',
+        { source_ref: sourceRef, mode: tryb },
+        { komunikatSukcesuPl: OSD_STRINGS.trybZapisano },
+      );
       if (!odpowiedz) {
         setBlad(useSnapshotStore.getState().error ?? OSD_STRINGS.trybBladZapisu);
         return;
@@ -275,7 +277,6 @@ function SekcjaTrybuPracy({ sourceRef }: { sourceRef: string }) {
         setBlad(odpowiedz.error);
         return;
       }
-      notify(OSD_STRINGS.trybZapisano, 'success');
     } catch (err) {
       setBlad(err instanceof Error ? err.message : OSD_STRINGS.trybBladZapisu);
     } finally {

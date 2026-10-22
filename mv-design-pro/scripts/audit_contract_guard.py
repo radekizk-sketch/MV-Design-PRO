@@ -135,8 +135,6 @@ def main() -> int:
             "PropertyGrid",
             "ProtectionModal",
             "LoadDERModal",
-            "PVInverterModal",
-            "BESSInverterModal",
             "MeasurementModal",
             "TransformerStationModal",
         }

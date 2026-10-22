@@ -1723,91 +1723,50 @@ class TestPVBESSTransformerGate:
 
 
 class TestSetNormalOpenPoint:
+    """Kontrakt po karcie W5-C: punkt podziału = ``normal_state`` ŁĄCZNIKA.
+
+    Dawny kontrakt przyjmował ``segment_ref`` (kabel!), otwierał go i zapisywał
+    ``corridor.no_point_ref`` w pierwszej z brzegu magistrali. Teraz operacja wymaga
+    łącznika (``switch_ref``), a punkt podziału czyta akcesor ``punkty_podzialu`` —
+    iloczyn cech operacji jest w ``tests/enm/test_operacje_lacznikow.py``.
+    """
+
     def test_set_normal_open_point(self):
-        """Build network with ring. Set NOP.
+        from enm.topology import punkty_podzialu
 
-        Assert: switch status is 'open'.
-        Assert: corridor no_point_ref is set.
-        """
-        # Build a network with at least 3 segments for ring potential
-        _, snapshot = _build_gpz_plus_segments(3)
+        from tests.enm.siec_lacznikowa import galaz, pierscien_z_nop
 
-        # Get the last bus and try to connect back to form a ring
-        buses = snapshot.get("buses", [])
-        branches = snapshot.get("branches", [])
-
-        # Find the last bus in the corridor (end of trunk)
-        corridors = snapshot.get("corridors", [])
-        if corridors:
-            corridors[0].get("ordered_segment_refs", [])
-
-        # Get first and last bus for ring connection
-        first_bus = buses[0].get("ref_id") if buses else None
-        last_bus = buses[-1].get("ref_id") if len(buses) > 1 else None
-
-        # Try to connect ring with explicit endpoints
-        result_ring = execute_domain_operation(
-            enm_dict=snapshot,
-            op_name="connect_secondary_ring_sn",
-            payload={
-                "from_bus_ref": last_bus,
-                "to_bus_ref": first_bus,
-                "segment": {
-                    "rodzaj": "KABEL",
-                    "dlugosc_m": 200,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
-                },
-            },
-        )
-
-        ring_snapshot = snapshot
-        if result_ring.get("snapshot"):
-            ring_snapshot = result_ring["snapshot"]
-
-        # Now set normal open point
-        # Pick a segment ref for NOP
-        corridors_now = ring_snapshot.get("corridors", [])
-        nop_segment_ref = None
-        if corridors_now:
-            segs = corridors_now[0].get("ordered_segment_refs", [])
-            if segs:
-                nop_segment_ref = segs[-1]
-
-        if nop_segment_ref is None and branches:
-            nop_segment_ref = branches[-1].get("ref_id")
-
-        assert nop_segment_ref is not None, "Need a segment ref for NOP"
-
+        siec = pierscien_z_nop()
         result = execute_domain_operation(
-            enm_dict=ring_snapshot,
+            enm_dict=siec.enm,
             op_name="set_normal_open_point",
-            payload={"segment_ref": nop_segment_ref},
+            payload={"switch_ref": siec.cel},
         )
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         s = result["snapshot"]
+        assert galaz(s, siec.cel)["normal_state"] == "open"
+        assert galaz(s, siec.cel)["status"] == "open"
+        assert galaz(s, siec.poprzedni_nop)["normal_state"] == "closed"
+        assert galaz(s, siec.poprzedni_nop)["status"] == "closed"
+        assert punkty_podzialu(s) == (siec.cel,)
+        assert all("no_point_ref" not in c for c in s.get("corridors", []))
 
-        # Verify switch status is "open" OR the segment has open status
-        found_open = False
-        for branch in s.get("branches", []):
-            if branch.get("ref_id") == nop_segment_ref:
-                if branch.get("status") == "open":
-                    found_open = True
-                    break
-            # Also check if a new switch was inserted
-            if branch.get("type") in ("switch", "breaker", "disconnector"):
-                if branch.get("status") == "open":
-                    found_open = True
+    def test_odcinek_kabla_nie_jest_punktem_podzialu(self):
+        from tests.enm.siec_lacznikowa import pierscien_z_nop
 
-        assert found_open, "Expected at least one element with status='open' after NOP"
-
-        # Verify corridor no_point_ref is set
-        corridors_final = s.get("corridors", [])
-        has_no_point = any(
-            c.get("no_point_ref") is not None and c.get("no_point_ref") != ""
-            for c in corridors_final
+        siec = pierscien_z_nop()
+        kabel = next(b["ref_id"] for b in siec.enm["branches"] if b.get("type") == "cable")
+        dawny = execute_domain_operation(
+            enm_dict=siec.enm, op_name="set_normal_open_point", payload={"segment_ref": kabel}
         )
-        assert has_no_point, "corridor.no_point_ref should be set after set_normal_open_point"
+        assert dawny.get("error_code") == "nop.switch_missing"
+        assert dawny.get("snapshot") is None
+        jako_lacznik = execute_domain_operation(
+            enm_dict=siec.enm, op_name="set_normal_open_point", payload={"switch_ref": kabel}
+        )
+        assert jako_lacznik.get("error_code") == "nop.not_a_switch"
+        assert jako_lacznik.get("snapshot") is None
 
 
 # ===========================================================================

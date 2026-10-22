@@ -641,7 +641,7 @@ class TestCatalogGateInsertZKSN:
                 "segment_id": seg_ref,
                 "catalog_ref": CATALOG_ZKSN,
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                "switch_state": "CLOSED",
+                "switch_state": "closed",
             },
         )
         assert result.get("snapshot") is not None, f"Błąd: {result.get('error')}"

@@ -21,15 +21,22 @@ describe('fixActionRouting', () => {
     expect(resolveFallbackOperation('ELIG_SC3_MISSING_IMPEDANCE')).toBe('assign_catalog_to_element');
     expect(resolveFallbackOperation('ELIG_LF_NO_LOADS_OR_GENERATORS')).toBe('add_converter_source');
     expect(resolveFallbackOperation('line.missing_impedance')).toBe('assign_catalog_to_element');
-    expect(resolveFallbackOperation('switch.missing_normal_state')).toBe('update_element_parameters');
     expect(resolveFallbackOperation('branch_point.invalid_parent_medium')).toBe('insert_branch_pole_on_segment_sn');
     expect(resolveFallbackOperation('zksn.branch_count_invalid')).toBe('insert_zksn_on_segment_sn');
     expect(resolveFallbackOperation('bess.missing_transformer')).toBe('add_transformer_sn_nn');
     expect(resolveFallbackOperation('missing_generator')).toBe('add_converter_source');
     expect(resolveFallbackOperation('generator.missing_power')).toBe('add_converter_source');
     expect(resolveFallbackOperation('pv.control_mode_missing')).toBe('add_converter_source');
-    expect(resolveFallbackOperation('ring.not_configured')).toBe('set_normal_open_point');
   });
+
+  // W5-C: kody stanu łącznika bez emitera w backendzie nie mają skrótu naprawczego —
+  // pierścień bez punktu podziału naprawia `ring.nop_required` (akcjeNaprawcze ui2).
+  it.each(['switch.missing_normal_state', 'ring.not_configured'])(
+    'skasowany kod %s nie ma operacji naprawczej',
+    (kod) => {
+      expect(resolveFallbackOperation(kod)).toBeNull();
+    },
+  );
 
   it('returns null for unknown operation codes', () => {
     expect(resolveFallbackOperation('totally.unknown')).toBeNull();

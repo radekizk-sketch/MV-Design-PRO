@@ -292,6 +292,7 @@
         "station_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/station"
       },
       "name": "Wyłącznik pola SN 3",
+      "normal_state": null,
       "overrides": [],
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
@@ -327,6 +328,7 @@
         "station_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/station"
       },
       "name": "Wyłącznik pola SN 2",
+      "normal_state": null,
       "overrides": [],
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
@@ -430,6 +432,7 @@
         "nn_promocja_bez_wiazania_katalogowej": true
       },
       "name": "Wyłącznik główny nN",
+      "normal_state": null,
       "overrides": [],
       "parameter_source": null,
       "r_ohm": null,
@@ -463,6 +466,7 @@
         "station_ref": "stn/684df5fd0b6bdc2f779f62c4db799e50/station"
       },
       "name": "Wyłącznik pola SN 1",
+      "normal_state": null,
       "overrides": [],
       "parameter_source": "CATALOG",
       "r_ohm": 0.0,
@@ -569,6 +573,7 @@
         "nn_promocja_bez_wiazania_katalogowej": true
       },
       "name": "Odpływ nN 1",
+      "normal_state": null,
       "overrides": [],
       "parameter_source": null,
       "r_ohm": null,
@@ -763,7 +768,6 @@
       "id": "48e7285a-4c31-5b01-9d87-dd323c2a08f9",
       "meta": {},
       "name": "Magistrala 01",
-      "no_point_ref": null,
       "ordered_segment_refs": [
         "seg/4364e2842858577811ebef3369cbea20/segment_L",
         "seg/4364e2842858577811ebef3369cbea20/segment_R"
@@ -795,7 +799,6 @@
       "branch_origin_station_ref": null,
       "id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/corridor_01",
       "name": "Magistrala 01",
-      "nop_station_ref": null,
       "parent_run_ref": null,
       "run_kind": "main_trunk",
       "segments": [

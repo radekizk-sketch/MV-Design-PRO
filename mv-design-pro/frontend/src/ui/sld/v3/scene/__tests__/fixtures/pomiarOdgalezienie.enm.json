@@ -2187,11 +2187,9 @@
       }
      ],
      "source_run_ref": null,
-     "source_segment_id": "seg/b8db725119733ac46ca169398b6b01fc/segment_R",
-     "switch_state": "closed"
+     "source_segment_id": "seg/b8db725119733ac46ca169398b6b01fc/segment_R"
     },
     "source_mode": "KATALOG",
-    "switch_state": "closed",
     "tags": []
    },
    {
@@ -2302,11 +2300,9 @@
       }
      ],
      "source_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
-     "source_segment_id": "seg/33f2ac0de75846abe094e46a64b63638/segment",
-     "switch_state": "closed"
+     "source_segment_id": "seg/33f2ac0de75846abe094e46a64b63638/segment"
     },
     "source_mode": "KATALOG",
-    "switch_state": "closed",
     "tags": []
    }
   ],
@@ -2333,6 +2329,7 @@
      "station_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station"
     },
     "name": "Wyłącznik pola SN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -2368,6 +2365,7 @@
      "station_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station"
     },
     "name": "Wyłącznik pola SN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -2403,6 +2401,7 @@
      "station_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station"
     },
     "name": "Wyłącznik pola SN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -2509,6 +2508,7 @@
      "nn_promocja_bez_wiazania_katalogowej": true
     },
     "name": "Wyłącznik główny nN",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": null,
     "r_ohm": null,
@@ -2560,6 +2560,7 @@
      "nn_field_migrowany_z": "stn/60906c356e0f9a3e6946ccbf17a52c29/nn_feeder/000"
     },
     "name": "Odpływ nN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -2611,6 +2612,7 @@
      "nn_field_migrowany_z": "stn/60906c356e0f9a3e6946ccbf17a52c29/nn_feeder/001"
     },
     "name": "Odpływ nN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -2662,6 +2664,7 @@
      "nn_field_migrowany_z": "stn/60906c356e0f9a3e6946ccbf17a52c29/nn_feeder/002"
     },
     "name": "Odpływ nN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -2713,6 +2716,7 @@
      "nn_field_migrowany_z": "stn/60906c356e0f9a3e6946ccbf17a52c29/nn_feeder/003"
     },
     "name": "Odpływ nN 4",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -2746,6 +2750,7 @@
      "station_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station"
     },
     "name": "Wyłącznik pola SN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -2781,6 +2786,7 @@
      "station_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station"
     },
     "name": "Wyłącznik pola SN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -2816,6 +2822,7 @@
      "station_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station"
     },
     "name": "Wyłącznik pola SN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -2997,6 +3004,7 @@
      "nn_promocja_bez_wiazania_katalogowej": true
     },
     "name": "Wyłącznik główny nN",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": null,
     "r_ohm": null,
@@ -3048,6 +3056,7 @@
      "nn_field_migrowany_z": "stn/c16428a6c5b18ea62371d813e0a3d084/nn_feeder/000"
     },
     "name": "Odpływ nN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3099,6 +3108,7 @@
      "nn_field_migrowany_z": "stn/c16428a6c5b18ea62371d813e0a3d084/nn_feeder/001"
     },
     "name": "Odpływ nN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3150,6 +3160,7 @@
      "nn_field_migrowany_z": "stn/c16428a6c5b18ea62371d813e0a3d084/nn_feeder/002"
     },
     "name": "Odpływ nN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3183,6 +3194,7 @@
      "station_ref": "stn/b90fe112224f1de151746da1e8b35949/station"
     },
     "name": "Wyłącznik pola SN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -3218,6 +3230,7 @@
      "station_ref": "stn/b90fe112224f1de151746da1e8b35949/station"
     },
     "name": "Wyłącznik pola SN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -3253,6 +3266,7 @@
      "station_ref": "stn/b90fe112224f1de151746da1e8b35949/station"
     },
     "name": "Wyłącznik pola SN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -3288,6 +3302,7 @@
      "station_ref": "stn/b90fe112224f1de151746da1e8b35949/station"
     },
     "name": "Wyłącznik pola SN 4",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -3323,6 +3338,7 @@
      "station_ref": "stn/b90fe112224f1de151746da1e8b35949/station"
     },
     "name": "Wyłącznik pola SN 5",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -3504,6 +3520,7 @@
      "nn_promocja_bez_wiazania_katalogowej": true
     },
     "name": "Wyłącznik główny nN",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": null,
     "r_ohm": null,
@@ -3555,6 +3572,7 @@
      "nn_field_migrowany_z": "stn/b90fe112224f1de151746da1e8b35949/nn_feeder/000"
     },
     "name": "Odpływ nN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3606,6 +3624,7 @@
      "nn_field_migrowany_z": "stn/b90fe112224f1de151746da1e8b35949/nn_feeder/001"
     },
     "name": "Odpływ nN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3657,6 +3676,7 @@
      "nn_field_migrowany_z": "stn/b90fe112224f1de151746da1e8b35949/nn_feeder/002"
     },
     "name": "Odpływ nN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3708,6 +3728,7 @@
      "nn_field_migrowany_z": "stn/b90fe112224f1de151746da1e8b35949/nn_feeder/003"
     },
     "name": "Odpływ nN 4",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3759,6 +3780,7 @@
      "nn_field_migrowany_z": "stn/b90fe112224f1de151746da1e8b35949/nn_feeder/004"
     },
     "name": "Odpływ nN 5",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -3941,6 +3963,7 @@
      "visual_role": "BRANCH_POINT_INTERNAL_SWITCH"
     },
     "name": "Łącznik portu odgałęźnego 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": null,
     "r_ohm": 0.0,
@@ -4054,6 +4077,7 @@
      "station_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation"
     },
     "name": "Wyłącznik pola SN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -4089,6 +4113,7 @@
      "station_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation"
     },
     "name": "Wyłącznik pola SN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -4124,6 +4149,7 @@
      "station_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation"
     },
     "name": "Wyłącznik pola SN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -4149,6 +4175,7 @@
      "nn_promocja_bez_wiazania_katalogowej": true
     },
     "name": "Wyłącznik główny nN",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": null,
     "r_ohm": null,
@@ -4200,6 +4227,7 @@
      "nn_field_migrowany_z": "stn/ed9391b0cd05c80ed6631c0043c6b682/nn_feeder/000"
     },
     "name": "Odpływ nN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -4251,6 +4279,7 @@
      "nn_field_migrowany_z": "stn/ed9391b0cd05c80ed6631c0043c6b682/nn_feeder/001"
     },
     "name": "Odpływ nN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -4302,6 +4331,7 @@
      "nn_field_migrowany_z": "stn/ed9391b0cd05c80ed6631c0043c6b682/nn_feeder/002"
     },
     "name": "Odpływ nN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -4353,6 +4383,7 @@
      "nn_field_migrowany_z": "stn/ed9391b0cd05c80ed6631c0043c6b682/nn_feeder/003"
     },
     "name": "Odpływ nN 4",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -4499,6 +4530,7 @@
      "visual_role": "BRANCH_POINT_INTERNAL_SWITCH"
     },
     "name": "Łącznik portu odgałęźnego 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": null,
     "r_ohm": 0.0,
@@ -4594,6 +4626,7 @@
      "station_ref": "sub/ac04375d68166f4e570661e425317f57/substation"
     },
     "name": "Wyłącznik pola SN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -4629,6 +4662,7 @@
      "station_ref": "sub/ac04375d68166f4e570661e425317f57/substation"
     },
     "name": "Wyłącznik pola SN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -4664,6 +4698,7 @@
      "station_ref": "sub/ac04375d68166f4e570661e425317f57/substation"
     },
     "name": "Wyłącznik pola SN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -4699,6 +4734,7 @@
      "station_ref": "sub/ac04375d68166f4e570661e425317f57/substation"
     },
     "name": "Wyłącznik pola SN 4",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": 0.0,
@@ -4724,6 +4760,7 @@
      "nn_promocja_bez_wiazania_katalogowej": true
     },
     "name": "Wyłącznik główny nN",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": null,
     "r_ohm": null,
@@ -4775,6 +4812,7 @@
      "nn_field_migrowany_z": "stn/ac04375d68166f4e570661e425317f57/nn_feeder/000"
     },
     "name": "Odpływ nN 1",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -4826,6 +4864,7 @@
      "nn_field_migrowany_z": "stn/ac04375d68166f4e570661e425317f57/nn_feeder/001"
     },
     "name": "Odpływ nN 2",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -4877,6 +4916,7 @@
      "nn_field_migrowany_z": "stn/ac04375d68166f4e570661e425317f57/nn_feeder/002"
     },
     "name": "Odpływ nN 3",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -4928,6 +4968,7 @@
      "nn_field_migrowany_z": "stn/ac04375d68166f4e570661e425317f57/nn_feeder/003"
     },
     "name": "Odpływ nN 4",
+    "normal_state": null,
     "overrides": [],
     "parameter_source": "CATALOG",
     "r_ohm": null,
@@ -6001,7 +6042,6 @@
     "id": "cc476396-6e72-5e20-9ede-764f215ad46c",
     "meta": {},
     "name": "Magistrala 01",
-    "no_point_ref": null,
     "ordered_segment_refs": [
      "seg/b8db725119733ac46ca169398b6b01fc/segment_L",
      "seg/b8db725119733ac46ca169398b6b01fc/segment_R_L_zksn",
@@ -6021,7 +6061,6 @@
     "id": "d5880924-f050-5b21-b15a-b81a7bd76216",
     "meta": {},
     "name": "Odgałęzienie SN kablowe",
-    "no_point_ref": null,
     "ordered_segment_refs": [
      "seg/5cd9f05534de8c7d86e3ee8f6938aa28/branch_segment"
     ],
@@ -6033,7 +6072,6 @@
     "id": "333dcce7-03e9-5647-9b46-e3f413320ad9",
     "meta": {},
     "name": "Odgałęzienie SN napowietrzne",
-    "no_point_ref": null,
     "ordered_segment_refs": [
      "seg/5975cf96fdeff556ceb7cd0cf7207178/branch_segment"
     ],
@@ -6052,7 +6090,7 @@
    },
    "description": null,
    "enm_version": "1.0",
-   "hash_sha256": "cef8351a32da066837b54ba8dce22c5841c915c1a2ba0c57cacef019d692fe93",
+   "hash_sha256": "7a445dd46c83db80a0c7370b075bd8b434df8a8db3f637a96ce27ea48b4e7af4",
    "name": "Sieć pokazowa — pomiar w odgałęzieniu",
    "revision": 16,
    "updated_at": "2026-08-06T00:00:00Z"
@@ -6064,7 +6102,6 @@
     "branch_origin_station_ref": null,
     "id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
     "name": "Magistrala 01",
-    "nop_station_ref": null,
     "parent_run_ref": null,
     "run_kind": "main_trunk",
     "segments": [
@@ -6097,7 +6134,6 @@
     "branch_origin_station_ref": "bp/f34f1e61877283e7534184a0647a6f99/zksn",
     "id": "corridor/d96a5487e3718d286c841c8ceb4613ef/branch",
     "name": "Odgałęzienie SN kablowe",
-    "nop_station_ref": null,
     "parent_run_ref": null,
     "run_kind": "branch",
     "segments": [
@@ -6114,7 +6150,6 @@
     "branch_origin_station_ref": "bp/830947bd1a7a197126dce059a393aad4/branch_pole",
     "id": "corridor/e1452ed31618e86df2512de14682411a/branch",
     "name": "Odgałęzienie SN napowietrzne",
-    "nop_station_ref": null,
     "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
     "run_kind": "branch",
     "segments": [

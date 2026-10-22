@@ -325,7 +325,6 @@ export function appendLateralBranch(
     starting_port_ref: `${newFieldRef}.BRANCH`,
     segments: ct.segments.map((s: any) => ({ segment_ref: s.segment_ref, order: s.order })),
     stations: [],
-    nop_station_ref: null,
     parent_run_ref: null,
     branch_origin_station_ref: newFieldRef,
   });

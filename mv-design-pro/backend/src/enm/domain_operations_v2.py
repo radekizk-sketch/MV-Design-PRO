@@ -125,6 +125,7 @@ from .nazwy_elementow import (
     nazwa_nadana_pozycji_katalogu,
     opis_bez_nazwy,
 )
+from .operacje_lacznikow import close_switch, open_switch, set_normal_open_point
 from .pola import (
     dodaj_pole,
     pola_nn_stacji,
@@ -173,6 +174,7 @@ from .topology_ops import (
 )
 from .tor_pola import szyny_stacji
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
+from .wyposazenie_pola import set_bay_equipment
 
 
 def _opis_pola(enm: dict[str, Any], field_ref: object, rodzaj: str = "Pole") -> str:
@@ -8166,6 +8168,28 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         True,
         "druga droga wskazania pozycji",
     ),
+    # Zasilenie rozdzielnicy nN (`payload.supply`) — ten sam materializator kabla nN co
+    # `add_nn_cable_segment` (`_add_nn_cable_segment_internal`), więc te same dwie drogi
+    # wskazania. Pozycja była czytana bez wiersza inwentarza (skan handlerów widział tylko
+    # ciało handlera, nie funkcje, które on woła — karta W5-C rozszerzyła skan).
+    PozycjaBramyKatalogowejV2("add_nn_distribution_board", "supply.catalog_ref", "KABEL_NN", True),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_distribution_board",
+        "supply.catalog_binding",
+        "KABEL_NN",
+        True,
+        "druga droga wskazania pozycji",
+    ),
+    # W5-C: wyposażenie pola SN — aparat rodzaju z katalogiem SN wskazuje pozycję
+    # przestrzeni tego rodzaju (`enm.wyposazenie_pola.PRZESTRZEN_KATALOGU_APARATU`),
+    # sprawdzaną bramą istnienia `_pozycja_katalogu`.
+    PozycjaBramyKatalogowejV2(
+        "set_bay_equipment",
+        "devices[].catalog_ref",
+        "APARAT_SN|CT|VT|OGRANICZNIK_SN",
+        True,
+        "przestrzeń wynika z rodzaju aparatu (`kind`) wpisu listy",
+    ),
 )
 
 #: Klucze payloadu z referencją katalogową, które operacjom V2 wolno czytać.
@@ -8239,6 +8263,12 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "set_nn_cable_laying_conditions",
         "remove_nn_element",
         "copy_nn_feeder",
+        # W5-C: stan łączeniowy (jedna prawda — `enm/operacje_lacznikow.py`)
+        "open_switch",
+        "close_switch",
+        "set_normal_open_point",
+        # W5-C: wyposażenie pola SN (`enm/wyposazenie_pola.py`)
+        "set_bay_equipment",
         # Universal
         "rename_element",
         "set_label",
@@ -8277,6 +8307,10 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "set_nn_cable_laying_conditions": set_nn_cable_laying_conditions,
     "remove_nn_element": remove_nn_element,
     "copy_nn_feeder": copy_nn_feeder,
+    "open_switch": open_switch,
+    "close_switch": close_switch,
+    "set_normal_open_point": set_normal_open_point,
+    "set_bay_equipment": set_bay_equipment,
     "rename_element": rename_element,
     "set_label": set_label,
     "set_connection_conditions": set_connection_conditions,

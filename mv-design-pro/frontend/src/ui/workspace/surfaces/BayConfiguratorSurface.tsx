@@ -8,6 +8,11 @@
  * projektowe i wywód pola, katalog producenta (`useKatalogPola`) i jawne zaciski `Bay.ports`.
  * Schemat pola to `BayWindowSchematic` z tego samego modelu.
  *
+ * Karta W5-C: wyposażenie pola SN (aparaty pierwotne) ustawia tu `EdytorWyposazeniaPola` —
+ * jedyny dostawca operacji `set_bay_equipment` (katalog / szablon pola / usunięcie), ze
+ * stanem danych i danymi przyjętymi z modelu odczytu pola. Pole nN ma własne operacje
+ * rozdzielnicy nN — edytora SN dla niego nie ma (backend odmówiłby `bay_equipment.bay_not_mv`).
+ *
  * Korekta 2026-10-15: dawna powierzchnia renderowała pusty szkielet ośmiu zakładek z tekstem
  * zastępczym i oceniała pole regułami frontu na kontekście DOPISANYM w przeglądarce (rola
  * domyślna „OUT", sekcje sprzęgła `SEC-1/SEC-2`, „pole rezerwowe" przy braku pola) — werdykt
@@ -16,10 +21,12 @@
 import { useMemo } from 'react';
 
 import { BayWindowSchematic } from '../../field/BayWindowSchematic';
+import { EdytorWyposazeniaPola } from '../../field/EdytorWyposazeniaPola';
 import { useFieldReadModel } from '../../field/useFieldReadModel';
 import { useKatalogPola } from '../../field/useKatalogPola';
 import { buildBaySections, SectionBlock } from '../../network-build/InspectorEngineeringView';
 import { useAppStateStore } from '../../app-state';
+import { czyPoleNn } from '../../shared/polaStacji';
 import { fieldRoleLabelOrNullPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useProblemyGotowosci } from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
@@ -113,6 +120,18 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
                 executeDomainOperation={executeDomainOperation}
               />
             ))}
+            {bayInModel && !czyPoleNn(snapshot, bayInModel) ? (
+              <EdytorWyposazeniaPola
+                key={bayInModel.ref_id}
+                bay={bayInModel}
+                snapshot={snapshot}
+                stanDanych={item?.canonical_model.base_model.equipment_data_state ?? null}
+                danePrzyjete={item?.canonical_model.base_model.equipment_assumed_data ?? []}
+                activeCaseId={activeCaseId}
+                executeDomainOperation={executeDomainOperation}
+                bladStore={() => useSnapshotStore.getState().error}
+              />
+            ) : null}
           </div>
           {item && (
             <div className="min-w-0">

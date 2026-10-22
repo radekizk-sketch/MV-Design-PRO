@@ -19,7 +19,6 @@ import { useEffect, useMemo, useState } from 'react';
 import './obszar.css';
 import type { GenLimits } from '../../../types/enm';
 import { useAppStateStore } from '../../../ui/app-state';
-import { notify } from '../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
@@ -274,10 +273,13 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
         q_min_mvar: qMinLiczba,
         q_max_mvar: qMaxLiczba,
       };
-      const odpowiedz = await executeDomainOperation(caseId, 'update_element_parameters', {
-        element_ref: generator.ref_id,
-        parameters: { limits: limity },
-      });
+      // Jeden toast sukcesu — z magazynu (zdanie ekranu zamiast ogólnego).
+      const odpowiedz = await executeDomainOperation(
+        caseId,
+        'update_element_parameters',
+        { element_ref: generator.ref_id, parameters: { limits: limity } },
+        { komunikatSukcesuPl: OBSZAR_STRINGS.limityZapisano },
+      );
       if (!odpowiedz) {
         setBlad(useSnapshotStore.getState().error ?? OBSZAR_STRINGS.limityBladZapisu);
         return;
@@ -288,7 +290,6 @@ function SekcjaLimitowQ({ dane }: { dane: WidokObszaruPQ }) {
         setBlad(odpowiedz.error);
         return;
       }
-      notify(OBSZAR_STRINGS.limityZapisano, 'success');
     } catch (err) {
       setBlad(err instanceof Error ? err.message : OBSZAR_STRINGS.limityBladZapisu);
     } finally {

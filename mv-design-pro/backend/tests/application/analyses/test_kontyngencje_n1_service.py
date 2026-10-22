@@ -875,8 +875,15 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # liście w gn01 i gn03. Różnica modelu wejściowego: pola rozdzielnic w kolekcji `bays`
     # (W5-B) złożone z usunięciem cienia deklaracji rodzaju stacji z `meta` (integracja).
     # Wynik kontyngencji identyczny.
+    # 2026-10-21 (karta W5-C, jedna prawda stanu łączeniowego): gn01 bez zmiany, gn03
+    # 5c5ded2b… → 5ac3a589…. Pełne widoki z kodu bazy `d98bdad3e` i po karcie porównane
+    # liść po liściu: IDENTYCZNY zbiór kluczy, różnią się WYŁĄCZNIE `context.snapshot_hash`
+    # i `input_hash`. Jedyna różnica modelu wejściowego: punkt podziału pierścienia żyje
+    # na łączniku (`normal_state="open"`), magistrala nie niesie kopii `no_point_ref`
+    # (haszowanej dotąd wartością, teraz jak `null`), ciąg nie niesie `nop_station_ref`.
+    # Położenie łącznika (`status="open"`), enumeracja, dotkliwości i ranking bez zmian.
     "gn01_promieniowa": "1d65e0b8fe7765283f5cb7d969cc718977ad100771447dc50a824898c59dcea3",
-    "gn03_pierscien": "5c5ded2b83b0ef3e509d14f88abe1bfa647abc0299e2b245ae818610514f1637",
+    "gn03_pierscien": "5ac3a5897eccd155822f81b2c292933216ab5783a48729001f11d6d0e476436f",
 }
 
 

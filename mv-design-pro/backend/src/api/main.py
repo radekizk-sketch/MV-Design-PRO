@@ -46,6 +46,7 @@ from api.readiness_registry import router as readiness_registry_router
 from api.reference_engine import router as reference_engine_router
 from api.reference_patterns import router as reference_patterns_router
 from api.result_contract_v1 import router as result_contract_v1_router
+from api.scenariusze_laczeniowe import router as scenariusze_laczeniowe_router
 from api.sld_overrides import router as sld_overrides_router
 from api.solver_capabilities import router as solver_capabilities_router
 from api.solver_input import router as solver_input_router
@@ -150,6 +151,7 @@ app.include_router(comparison_router)
 app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)
 app.include_router(dynamika_router)
+app.include_router(scenariusze_laczeniowe_router)
 app.include_router(document_store_router)
 app.include_router(equipment_checks_router)
 app.include_router(zwarcia_porownania_router)

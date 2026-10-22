@@ -1219,6 +1219,47 @@ export function selectGridSourceSnFieldCandidates(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+export type KategoriaBlokera = 'topologia' | 'katalogi' | 'eksploatacja' | 'analiza';
+
+/**
+ * Kategoria blokera gotowości z jego kodu — JEDNA reguła dla licznika budowy
+ * (`selectBlockersByCategory`) i przeglądu zbiorczego (`ReadinessBlockersReview`); dawniej
+ * dwie kopie tych samych warunków (W5-C: rozjechały się przy kasacji tokenu `switch_state`).
+ */
+export function kategoriaBlokera(kod: string): KategoriaBlokera {
+  const code = kod.toLowerCase();
+  if (
+    code.includes('topology')
+    || code.includes('island')
+    || code.includes('disconnected')
+    || code.includes('voltage_mismatch')
+    || code.includes('grounding')
+    || code.includes('isolated')
+  ) {
+    return 'topologia';
+  }
+  if (
+    code.includes('catalog')
+    || code.includes('missing_type')
+    || code.includes('no_catalog')
+    || code.includes('impedance')
+    || code.includes('zero_seq')
+    || code.includes('missing_rating')
+  ) {
+    return 'katalogi';
+  }
+  if (
+    code.includes('nop')
+    || code.includes('normal_state')
+    || code.includes('coupler')
+    || code.includes('tap_position')
+    || code.includes('operating')
+  ) {
+    return 'eksploatacja';
+  }
+  return 'analiza';
+}
+
 export function selectBlockersByCategory(
   readinessOrIssues: ReadinessInfo | Pick<ReadinessIssue, 'code'>[] | null,
 ): {
@@ -1235,37 +1276,7 @@ export function selectBlockersByCategory(
   if (blockers.length === 0) return result;
 
   for (const b of blockers) {
-    const code = b.code.toLowerCase();
-    if (
-      code.includes('topology')
-      || code.includes('island')
-      || code.includes('disconnected')
-      || code.includes('voltage_mismatch')
-      || code.includes('grounding')
-      || code.includes('isolated')
-    ) {
-      result.topologia += 1;
-    } else if (
-      code.includes('catalog')
-      || code.includes('missing_type')
-      || code.includes('no_catalog')
-      || code.includes('impedance')
-      || code.includes('zero_seq')
-      || code.includes('missing_rating')
-    ) {
-      result.katalogi += 1;
-    } else if (
-      code.includes('switch_state')
-      || code.includes('nop')
-      || code.includes('normal_state')
-      || code.includes('coupler')
-      || code.includes('tap_position')
-      || code.includes('operating')
-    ) {
-      result.eksploatacja += 1;
-    } else {
-      result.analiza += 1;
-    }
+    result[kategoriaBlokera(b.code)] += 1;
     result.total += 1;
   }
 

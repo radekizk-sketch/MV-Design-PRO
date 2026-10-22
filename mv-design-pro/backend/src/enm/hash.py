@@ -73,7 +73,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # W5-A: układ sieci nN typowany na transformatorze (w miejsce
     # dawnego klucza meta stacji) i układ uziemienia ekranu kabla.
     "transformers": ("lv_earthing_system",),
-    "branches": ("screen_bonding",),
+    # + W5-C: pozycja normalna łącznika (punkt normalnie otwarty). `None` =
+    # niezadeklarowana — poza odciskiem (gałęzie sprzed karty haszują jak przed nią);
+    # zadeklarowana jest treścią modelu i stanem łączeniowym (odcisk przełączeń).
+    "branches": ("screen_bonding", "normal_state"),
     # Karta W5-B: pola typowane rekordu pola rozdzielnicy (dawne klucze wpisu
     # dawny słownik pól SN w `meta` stacji). `None`/pusta lista = dana nienadana — poza odciskiem, zeby rekordy
     # `bays` istniejace przed karta (stacja konca ciagu) haszowaly jak przed nia; wartosc
@@ -126,7 +129,25 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
 #: wartosc, zmienia odcisk (wartosc przeniesiona na `Source.neutral_grounding`) —
 #: to zmiana swiadoma, nazwana w raporcie migracji (`enm/uziemienie.py`).
 #: Przypiete testem `tests/enm/test_hash_w5_uziemienie.py`.
-_POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {"buses": ("grounding",)}
+#: W5-C: `Corridor.no_point_ref` skasowane (punkt podziału = `SwitchBranch.normal_state`) —
+#: ta sama zasada; magistrala bez punktu podziału haszuje jak przed kartą, magistrala,
+#: która go wskazywała, zmienia odcisk (pozycja przeniesiona na łącznik — raport
+#: `enm/stan_normalny.py`). Przypięte testem `tests/enm/test_stan_normalny_lacznikow.py`.
+#: `BranchPointSN.switch_state` skasowane tak samo (kopia stanu łączników portów); punkt
+#: rozgałęzienia z wartością (dawne uzupełnianie wpisywało „closed" domyślnie) zmienia
+#: odcisk — usunięcie kopii nazywa raport migracji.
+_POLA_SKASOWANE_W_ODCISKU: dict[str, tuple[str, ...]] = {
+    "buses": ("grounding",),
+    "corridors": ("no_point_ref",),
+    "branch_points": ("switch_state",),
+}
+
+#: W5-C: pola SKASOWANE z kolekcji `line_runs` — kolekcja stoi poza `_ELEMENT_KEYS`
+#: (jej `id` wchodzi do odcisku, pin `tests/enm/test_polityka_hash_kolekcji.py`), więc
+#: osobny wpis tej samej reguły „skasowane jako `null`": `LineRun.nop_station_ref` była
+#: martwą kopią punktu podziału (zawsze `null` w zapisie, bo ciąg powstaje z nowej
+#: magistrali), a jej zniknięcie nie może przestawić odcisku żadnej migawki z ciągiem.
+_POLA_SKASOWANE_W_ODCISKU_CIAGOW: tuple[str, ...] = ("nop_station_ref",)
 
 #: Karta W5-B: pola-LISTY rekordu pola dodane po zamrozeniu odciskow, ktorych wartosc
 #: domyslna to pusta lista (nie `None`). Pusta lista = dana nienadana — poza odciskiem
@@ -181,6 +202,11 @@ def _strip_uuids(payload: dict[str, Any]) -> dict[str, Any]:
             for item in payload[key]:
                 if isinstance(item, dict):
                     _postac_kanoniczna_elementu(item, key)
+    if isinstance(payload.get("line_runs"), list):
+        for ciag in payload["line_runs"]:
+            if isinstance(ciag, dict):
+                for pole in _POLA_SKASOWANE_W_ODCISKU_CIAGOW:
+                    ciag.setdefault(pole, None)
     return payload
 
 
@@ -340,22 +366,31 @@ def _input_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
     )
     _strip_uuids(data)
     # Switching state nie powinno wplywac na input_hash (V12S-010 ortogonalnosc).
+    # W5-C: pozycja normalna lacznika jest stanem laczeniowym tak samo jak `status`.
     for branch in data.get("branches", []):
         if isinstance(branch, dict):
             branch.pop("status", None)
+            branch.pop("normal_state", None)
     return data
 
 
 def _switching_snapshot_payload(enm: EnergyNetworkModel) -> dict[str, Any]:
-    """TYLKO stany lacznikow — galezie z polem 'status' (open/closed)."""
+    """TYLKO stany lacznikow — galezie z polem 'status' (open/closed).
+
+    W5-C (ADR-017: odcisk przelaczen z PELNEGO stanu lacznikow): zadeklarowana
+    pozycja normalna (`normal_state`) wchodzi do odcisku obok `status`; `None` poza
+    odciskiem (gałęzie sprzed karty haszuja jak przed nia).
+    """
     raw = enm.model_dump(mode="json", exclude={"header"})
-    return {
-        "branches": [
-            {"ref_id": b.get("ref_id"), "status": b.get("status")}
-            for b in raw.get("branches", [])
-            if "status" in b
-        ],
-    }
+    galezie: list[dict[str, Any]] = []
+    for b in raw.get("branches", []):
+        if "status" not in b:
+            continue
+        rekord = {"ref_id": b.get("ref_id"), "status": b.get("status")}
+        if b.get("normal_state") is not None:
+            rekord["normal_state"] = b["normal_state"]
+        galezie.append(rekord)
+    return {"branches": galezie}
 
 
 # ---------------------------------------------------------------------------
@@ -493,7 +528,7 @@ def _kopia_pod_hash(snapshot: dict[str, Any]) -> dict[str, Any]:
     for klucz, wartosc in snapshot.items():
         if klucz == "header" and isinstance(wartosc, dict):
             data[klucz] = {k: v for k, v in wartosc.items() if k not in _POLA_NAGLOWKA_POZA_HASHEM}
-        elif klucz in _ELEMENT_KEYS and isinstance(wartosc, list):
+        elif (klucz in _ELEMENT_KEYS or klucz == "line_runs") and isinstance(wartosc, list):
             data[klucz] = [dict(item) if isinstance(item, dict) else item for item in wartosc]
         else:
             data[klucz] = wartosc

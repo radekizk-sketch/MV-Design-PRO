@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { buildOperationContext } from '../operationContext';
 import { pole } from '../../../test/pola';
 import {
-  resolveNopCandidates,
   resolveBranchSourceContextFromOperation,
   resolveElementNetworkContext,
 } from '../operationContextResolvers';
@@ -781,34 +780,33 @@ describe('buildOperationContext', () => {
 
     expect(context.terminalA_id).toBe('bus-ring-a');
     expect(context.terminalB_id).toBe('bus-ring-b');
-    expect(Array.isArray(context.nop_candidates)).toBe(true);
+    // W5-C: kandydatów NOP kreator czyta z bieżącej migawki — kontekst ich nie zamraża.
+    expect(context).not.toHaveProperty('nop_candidates');
   });
 
-  it('nie buduje kandydatow NOP z lokalnego branch.type bez widoku logicznego', () => {
-    expect(resolveNopCandidates(snapshot, null)).toEqual([]);
-  });
-
-  it('buduje kandydatow NOP z logicalViews.no_point_ref, a nie z typu galezi', () => {
-    const candidates = resolveNopCandidates(snapshot, {
-      ...logicalViews,
-      trunks: [
-        {
-          corridor_ref: 'trunk-1',
-          corridor_type: 'main',
-          segments: [],
-          no_point_ref: 'sw-a',
-          terminals: [],
-        },
-      ],
-    } as any);
-
-    expect(candidates).toEqual([
-      {
-        id: 'sw-a',
-        label: 'Lacznik A',
-        elementType: 'NORMAL_OPEN_POINT',
-      },
-    ]);
+  // W5-C: kontekst `set_normal_open_point` wskazuje łącznik nowego punktu podziału tylko
+  // wtedy, gdy wskazany element jest łącznikiem z pozycją normalną (switch / disconnector);
+  // kabel, bezpiecznik i element spoza modelu dają `null` (kreator każe wybrać z listy).
+  it.each([
+    ['sw-a', 'sw-a'],
+    ['sw-b', 'sw-b'],
+    ['line-1', null],
+    ['fuse-x', null],
+    ['nie-istnieje', null],
+  ])('set_normal_open_point: element %s → switch_ref %s', (elementId, oczekiwany) => {
+    const zBezpiecznikiem = {
+      ...snapshot,
+      branches: [...snapshot.branches, { ref_id: 'fuse-x', name: 'Bezpiecznik', type: 'fuse' }],
+    };
+    const context = buildOperationContext({
+      canonicalOp: 'set_normal_open_point',
+      elementId,
+      elementType: 'Switch',
+      snapshot: zBezpiecznikiem as any,
+      logicalViews,
+    });
+    expect(context.switch_ref).toBe(oczekiwany);
+    expect(context).not.toHaveProperty('nop_candidates');
   });
 
   it('adapter add_converter_source dziedziczy kontekst nn z resolvera kanonicznego', () => {

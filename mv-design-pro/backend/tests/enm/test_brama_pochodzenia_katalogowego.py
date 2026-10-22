@@ -443,7 +443,7 @@ def test_pelny_lancuch_operacji_nie_zostawia_ani_jednej_tabliczki_znikad() -> No
             "segment_id": str(kable[0]["ref_id"]),
             "catalog_ref": REF_ZKSN,
             "insert_at": {"mode": "RATIO", "value": 0.5},
-            "switch_state": "CLOSED",
+            "switch_state": "closed",
         },
     )
     assert tabliczki_znikad(snapshot) == []

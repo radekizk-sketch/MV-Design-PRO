@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from enm.slownik_komunikatow import opis_operacji, pole
+from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
 from enm.zrodlo_zwarcie import tryb_danych
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
@@ -660,6 +661,14 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_nn_switch_device", "catalog_binding", "APARAT_NN", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_ref", "APARAT_NN", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_binding", "APARAT_NN", True),
+    # Zasilenie rozdzielnicy nN — LUSTRO `_add_nn_cable_segment_internal` (ta sama para
+    # dróg wskazania co `add_nn_cable_segment`, w bloku `supply`).
+    PozycjaBramyApi("add_nn_distribution_board", "supply.catalog_ref", "KABEL_NN", True),
+    PozycjaBramyApi("add_nn_distribution_board", "supply.catalog_binding", "KABEL_NN", True),
+    # W5-C: wyposażenie pola SN — przestrzeń z rodzaju aparatu wpisu listy (tryb `katalog`).
+    PozycjaBramyApi(
+        "set_bay_equipment", "devices[].catalog_ref", "APARAT_SN|CT|VT|OGRANICZNIK_SN", True
+    ),
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN (V2) ------------------
     PozycjaBramyApi(
         "add_converter_source",
@@ -1048,6 +1057,36 @@ def _referencje_dodatkowe(
             or payload.get("catalog_ref"),
             payload.get("catalog_binding"),
         )
+
+    if operation == "add_nn_distribution_board":
+        # LUSTRO `enm.domain_operations_v2._add_nn_cable_segment_internal` wołanej dla
+        # `payload.supply` (`_require_catalog_ref`: jawna referencja → wiązanie).
+        zasilenie = payload.get("supply")
+        if isinstance(zasilenie, dict):
+            _dodaj(
+                "Kabel zasilający rozdzielnicy nN",
+                "KABEL_NN",
+                zasilenie.get("catalog_ref"),
+                zasilenie.get("catalog_binding"),
+            )
+
+    if operation == "set_bay_equipment" and payload.get("mode") == "katalog":
+        # LUSTRO `enm.wyposazenie_pola._sprawdz_aparat`: wyłącznie tryb `katalog` czyta
+        # `devices`, a pozycję sprawdza w przestrzeni RODZAJU aparatu. Rodzaj bez
+        # katalogu SN z podaną referencją odrzuca warstwa domenowa własnym kodem
+        # (`bay_equipment.catalog_not_applicable`) — nie ma tu przestrzeni do pytania.
+        aparaty = payload.get("devices")
+        for numer, aparat in enumerate(aparaty if isinstance(aparaty, list) else [], start=1):
+            if not isinstance(aparat, dict):
+                continue
+            rodzaj = str(aparat.get("kind"))
+            przestrzen_aparatu = PRZESTRZEN_KATALOGU_APARATU.get(rodzaj)
+            if przestrzen_aparatu is not None:
+                _dodaj(
+                    f"Aparat {numer} ({NAZWY_RODZAJOW_APARATU_POLA_PL[rodzaj]})",
+                    przestrzen_aparatu,
+                    aparat.get("catalog_ref"),
+                )
 
     # Karta AB-H0 §0.7.3: karta widmowa projektu wskazuje typ przekształtnika
     # (`urzadzenie_ref`) — ten sam typ, który operacja sprawdza w katalogu MODELU

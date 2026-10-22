@@ -214,8 +214,13 @@ def check_modal_registry() -> list[str]:
     # `KreatorZrodloZasilania` (ui2) jest jedynym, żywym dostawcą operacji
     # `add_grid_source_sn`, patrz `dialog_completeness_guard.py`), więc próg
     # zmierzony do NOWEJ, poprawnej liczby (10 → 9) zamiast zamrożenia starej.
-    if len(ids) < 9:
-        return [f"Modal registry has only {len(ids)} entries/components; expected at least 9"]
+    # Karta W5-C (jedna prawda stanu łącznika): `SectionSwitchModal`, `PVInverterModal`
+    # i `BESSInverterModal` usunięte jako martwy kod — zero konsumentów w `src`/`e2e`
+    # poza samym eksportem rejestru (grep przed kasacją); łącznik sekcyjny wstawia kreator
+    # magistrali i operacje łączników, PV/BESS — kreator `zrodlo-oze` (ui2, dostawca
+    # w `nn_source_menu_guard.py`). Próg zmierzony do nowej liczby (9 → 6).
+    if len(ids) < 6:
+        return [f"Modal registry has only {len(ids)} entries/components; expected at least 6"]
     return []
 
 

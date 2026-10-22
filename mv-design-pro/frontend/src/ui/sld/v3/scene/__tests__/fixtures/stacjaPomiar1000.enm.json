@@ -644,11 +644,9 @@
             }
           ],
           "source_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
-          "source_segment_id": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment",
-          "switch_state": "closed"
+          "source_segment_id": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment"
         },
         "source_mode": "KATALOG",
-        "switch_state": "closed",
         "tags": []
       }
     ],
@@ -905,6 +903,7 @@
           "visual_role": "BRANCH_POINT_INTERNAL_SWITCH"
         },
         "name": "Łącznik portu odgałęźnego 1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": null,
         "r_ohm": 0.0,
@@ -1018,6 +1017,7 @@
           "station_ref": "sub/a52682b095377b622b5590d712712e52/substation"
         },
         "name": "Wyłącznik pola SN 1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -1053,6 +1053,7 @@
           "station_ref": "sub/a52682b095377b622b5590d712712e52/substation"
         },
         "name": "Wyłącznik pola SN 3",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -1088,6 +1089,7 @@
           "station_ref": "sub/a52682b095377b622b5590d712712e52/substation"
         },
         "name": "Wyłącznik pola SN 2",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -1123,6 +1125,7 @@
           "station_ref": "sub/a52682b095377b622b5590d712712e52/substation"
         },
         "name": "Wyłącznik pola SN 4",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -1148,6 +1151,7 @@
           "nn_promocja_bez_wiazania_katalogowej": true
         },
         "name": "Wyłącznik główny nN",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": null,
         "r_ohm": null,
@@ -1199,6 +1203,7 @@
           "nn_field_migrowany_z": "stn/a52682b095377b622b5590d712712e52/nn_feeder/000"
         },
         "name": "Odpływ nN 1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
@@ -1250,6 +1255,7 @@
           "nn_field_migrowany_z": "stn/a52682b095377b622b5590d712712e52/nn_feeder/001"
         },
         "name": "Odpływ nN 2",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
@@ -1301,6 +1307,7 @@
           "nn_field_migrowany_z": "stn/a52682b095377b622b5590d712712e52/nn_feeder/002"
         },
         "name": "Odpływ nN 3",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
@@ -1352,6 +1359,7 @@
           "nn_field_migrowany_z": "stn/a52682b095377b622b5590d712712e52/nn_feeder/003"
         },
         "name": "Odpływ nN 4",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
@@ -1664,7 +1672,6 @@
         "id": "cc476396-6e72-5e20-9ede-764f215ad46c",
         "meta": {},
         "name": "Magistrala 01",
-        "no_point_ref": null,
         "ordered_segment_refs": [
           "seg/0aede0deeed18986f8463a0147379b6d/segment",
           "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_L_zksn",
@@ -1678,7 +1685,6 @@
         "id": "ee16108a-f1c4-5313-95d2-2d316e926674",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
-        "no_point_ref": null,
         "ordered_segment_refs": [
           "seg/075377a5d7297c0ba5060d4b31fec786/branch_segment"
         ],
@@ -1697,7 +1703,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "13ba75ffd64584e2647c3a4ed23a6e2588044846271007f231dd44d760ec82ae",
+      "hash_sha256": "dfda9d18ac94a1652a594824532c03fb1fab986770ac67ffbb55ea893f87694b",
       "name": "Stacja z pomiarem za ZKSN",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1709,7 +1715,6 @@
         "branch_origin_station_ref": null,
         "id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
         "name": "Magistrala 01",
-        "nop_station_ref": null,
         "parent_run_ref": null,
         "run_kind": "main_trunk",
         "segments": [
@@ -1734,7 +1739,6 @@
         "branch_origin_station_ref": "bp/d96c14ede72bd08d4b69b7bb66618ef9/zksn",
         "id": "corridor/23e2e01d5ec80de261a0079ce8dcbfe3/branch",
         "name": "Odgałęzienie SN kablowe",
-        "nop_station_ref": null,
         "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
         "run_kind": "branch",
         "segments": [

@@ -21,13 +21,12 @@ const KONTEKST: KontekstPierscienia = {
   terminalA_label: 'Szyna A',
   terminalB_id: 'bus-b',
   terminalB_label: 'Szyna B',
-  kandydaciNop: [{ id: 'sw-1', label: 'Ł1' }],
 };
 
 describe('pierscienModel — zaciski', () => {
   it('wykrywa obecność obu zacisków', () => {
-    expect(maZaciski({ kandydaciNop: [] })).toBe(false);
-    expect(maZaciski({ terminalA_id: 'a', kandydaciNop: [] })).toBe(false);
+    expect(maZaciski({})).toBe(false);
+    expect(maZaciski({ terminalA_id: 'a' })).toBe(false);
     expect(maZaciski(KONTEKST)).toBe(true);
   });
 });
@@ -72,6 +71,13 @@ describe('pierscienModel — payload domknięcia', () => {
 describe('pierscienModel — payload NOP + formatery', () => {
   it('buduje payload set_normal_open_point', () => {
     expect(zbudujPayloadNop(dane({ nop_ref: 'sw-9' }))).toEqual({ switch_ref: 'sw-9' });
+    // `close_ref` wyłącznie, gdy projektant wskazał punkt do zamknięcia (pusty = backend
+    // zamyka jedyny poprzedni punkt pierścienia albo odmawia przy wieloznaczności).
+    expect(zbudujPayloadNop(dane({ nop_ref: 'sw-9', close_ref: ' sw-1 ' }))).toEqual({
+      switch_ref: 'sw-9',
+      close_ref: 'sw-1',
+    });
+    expect(zbudujPayloadNop(dane({ nop_ref: 'sw-9', close_ref: '  ' }))).toEqual({ switch_ref: 'sw-9' });
   });
   it('formatuje długość', () => {
     expect(fmtDlugosc(300)).toBe('300 m');

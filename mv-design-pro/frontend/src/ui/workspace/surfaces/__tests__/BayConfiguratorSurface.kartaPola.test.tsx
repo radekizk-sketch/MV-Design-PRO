@@ -46,10 +46,13 @@ function surface(entityRef: string | null): WorkspaceSurfaceDescriptor {
   };
 }
 
-function snapshot(ports: Port[] | null): EnergyNetworkModel {
+function snapshot(ports: Port[] | null, napiecieSzynyKv: number | null = null): EnergyNetworkModel {
   return {
     header: { revision: 3 },
-    buses: [], branches: [], transformers: [], sources: [], loads: [], generators: [],
+    buses: napiecieSzynyKv === null
+      ? []
+      : [{ id: 'bus-1', ref_id: 'bus-1', name: 'Szyna', voltage_kv: napiecieSzynyKv, phase_system: '3ph' }],
+    branches: [], transformers: [], sources: [], loads: [], generators: [],
     substations: [{ id: 'st-1', ref_id: 'st-1', name: 'Stacja 1', bus_refs: ['bus-1'] }],
     bays: [{
       id: 'bay-1', ref_id: 'bay_ref_1', name: 'Pole liniowe 1', bay_role: 'OUT',
@@ -99,6 +102,10 @@ function item(templateRef: string | null, familyRef: string | null): FieldReadMo
         source_endpoint: null,
         bay_template_ref: templateRef,
         switchgear_family_ref: familyRef,
+        equipment_data_state: 'PROPOZYCJA',
+        equipment_assumed_data: [
+          { nazwa_pl: 'Wyłącznik Q1', wartosc: 'CB', powod_pl: 'aparat z szablonu pola bez pozycji katalogowej', jakosc: 'ESTIMATED' },
+        ],
       },
       runtime_state: null,
       scenario_state: null,
@@ -178,17 +185,24 @@ function podstawFetch(odp: Odpowiedzi) {
     if (u.startsWith('/api/catalog/complete-bay-templates')) return json(odp.szablony ?? [SZABLON]);
     if (u.startsWith('/api/catalog/switchgear-families')) return json(odp.rodziny ?? [rodzina('repo_verified')]);
     if (u.startsWith('/api/catalog/manufacturers')) return json(PRODUCENCI);
+    // Karta W5-C: katalog aparatów pola SN — odpytywany dopiero po „Zmień wyposażenie".
+    if (
+      u.startsWith('/api/catalog/mv-apparatus-types') || u.startsWith('/api/catalog/ct-types')
+      || u.startsWith('/api/catalog/vt-types') || u.startsWith('/api/catalog/surge-arrester-types')
+    ) {
+      return json([]);
+    }
     return json({}, 404);
   });
   vi.stubGlobal('fetch', stub);
   return stub;
 }
 
-function ustawModel(ports: Port[] | null = null): void {
+function ustawModel(ports: Port[] | null = null, napiecieSzynyKv: number | null = null): void {
   licznikPrzypadku += 1;
   // Unikalny przypadek na test: pamięć `field-view` jest kluczowana przypadkiem i rewizją.
   useAppStateStore.setState({ activeCaseId: `case-karta-${licznikPrzypadku}` });
-  useSnapshotStore.setState({ snapshot: snapshot(ports) });
+  useSnapshotStore.setState({ snapshot: snapshot(ports, napiecieSzynyKv) });
 }
 
 function wartosc(klucz: string): string {
@@ -334,5 +348,49 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
       'update_element_parameters',
       { element_ref: 'bay-1', parameters: { name: 'Pole L-7' } },
     );
+  });
+  // Karta W5-C: wyposażenie pola SN — stan danych i dane przyjęte z modelu odczytu pola,
+  // zapis natywnym klikiem przez operację `set_bay_equipment` magazynu. Iloczyn:
+  // napięcie szyny pola {SN 15 kV, brak napięcia w migawce, nN 0,4 kV} → edytor
+  // {jest, jest, brak} (pole nN ma własne operacje nN, nie wyposażenie pola SN).
+  it.each([
+    [15, true],
+    [null, true],
+    [0.4, false],
+  ])('szyna pola %s kV: edytor wyposażenia SN obecny = %s', async (napiecie, obecny) => {
+    podstawFetch({ pole: item(null, null) });
+    ustawModel(null, napiecie);
+    render(<BayConfiguratorSurface surface={surface('bay-1')} />);
+    await screen.findByTestId('bay-card-sections');
+    expect(screen.queryByTestId('wyposazenie-pola') !== null).toBe(obecny);
+  });
+
+  it('wyposażenie pola: stan danych z modelu pola i zapis operacją magazynu', async () => {
+    const stub = podstawFetch({ pole: item(null, null) });
+    ustawModel(null, 15);
+    const operacja = vi.fn().mockResolvedValue({
+      snapshot: {},
+      wyposazenie_pola: { bay_ref: 'bay_ref_1', stan_danych: 'BRAK_DANYCH', aparaty: [], dane_przyjete: [] },
+    });
+    useSnapshotStore.setState({ executeDomainOperation: operacja });
+    const user = userEvent.setup();
+    render(<BayConfiguratorSurface surface={surface('bay-1')} />);
+    await waitFor(() =>
+      expect(screen.getByTestId('wyposazenie-pola-stan').getAttribute('data-stan')).toBe('PROPOZYCJA'),
+    );
+    expect(screen.getByTestId('wyposazenie-pola-dane-przyjete')).toHaveTextContent('Wyłącznik Q1');
+    expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/mv-apparatus-types'))).toBe(false);
+    await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
+    await waitFor(() =>
+      expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/mv-apparatus-types'))).toBe(true),
+    );
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'wyczysc');
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    expect(operacja).toHaveBeenCalledWith(
+      useAppStateStore.getState().activeCaseId,
+      'set_bay_equipment',
+      { bay_ref: 'bay_ref_1', mode: 'wyczysc' },
+    );
+    expect(await screen.findByTestId('wyposazenie-pola-wynik')).toHaveAttribute('data-stan', 'BRAK_DANYCH');
   });
 });

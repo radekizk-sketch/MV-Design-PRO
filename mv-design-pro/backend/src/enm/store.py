@@ -40,7 +40,7 @@ from enm.dziennik_zmian import (
     wyczysc_dziennik,
 )
 from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
-from enm.hash import compute_enm_hash
+from enm.hash import compute_enm_hash, hash_migawki_enm
 from enm.migrations.field_specs_promocja import migruj as promuj_pola_do_bays
 from enm.migrations.field_specs_promocja import wymaga_migracji as niesie_dawne_wpisy_pol
 from enm.migrations.promocja_aparatow_nn import migruj as promuj_aparaty_nn
@@ -64,6 +64,7 @@ from enm.scenariusze import (
     przenies_katalog_scenariuszy_pod_klucz,
     usun_wszystkie_scenariusze,
 )
+from enm.stan_normalny import RaportMigracjiPunktowPodzialu, raport_migracji_punktow_podzialu
 from enm.uziemienie import RaportMigracjiUziemienia, raport_migracji_uziemienia
 from pydantic import ValidationError
 
@@ -183,17 +184,26 @@ def _load_persisted_enm(klucz: str) -> EnergyNetworkModel | None:
         return None
 
 
-def _raport_migracji_uziemienia_z_nosnika(klucz: str) -> RaportMigracjiUziemienia | None:
-    """W5-A: co migracja uziemienia (walidator modelu) zrobiła z migawką z nośnika.
+def _opis_migracji_zapisu_zastanego(snapshot: dict[str, Any]) -> tuple[str | None, list[str]]:
+    """Co migracje zapisu zastanego (walidator modelu) zrobiły z migawką z nośnika.
 
-    Sama migracja biegnie w `EnergyNetworkModel` (jedno miejsce dla każdej drogi
-    wczytania); magazyn liczy raport z TEJ SAMEJ surowej migawki, żeby utratę
-    (np. `Bus.grounding` bez źródła) nazwać w dzienniku zmian, a nie zgubić cicho.
+    Same migracje biegną w `EnergyNetworkModel` (jedno miejsce dla każdej drogi
+    wczytania); magazyn liczy raporty z TEJ SAMEJ surowej migawki, żeby skutek nazwać
+    w dzienniku zmian, a utratę — także w logu, nigdy cicho. W5-A: uziemienie
+    (np. `Bus.grounding` bez źródła); W5-C: punkty podziału (`Corridor.no_point_ref`
+    → `SwitchBranch.normal_state`). Zwraca (opis do dziennika albo `None`, utraty).
     """
-    snapshot = _surowa_migawka_z_nosnika(klucz)
-    if snapshot is None:
-        return None
-    return raport_migracji_uziemienia(snapshot, uklady_nn=UKLADY_SIECI_NN)
+    raport_uziemienia: RaportMigracjiUziemienia = raport_migracji_uziemienia(
+        snapshot, uklady_nn=UKLADY_SIECI_NN
+    )
+    raport_punktow: RaportMigracjiPunktowPodzialu = raport_migracji_punktow_podzialu(snapshot)
+    opisy: list[str] = []
+    utracone: list[str] = []
+    for raport in (raport_uziemienia, raport_punktow):
+        if raport.zmieniono:
+            opisy.append(raport.opis_pl())
+            utracone.extend(raport.utracone)
+    return (" ‖ ".join(opisy) if opisy else None), utracone
 
 
 def _persist_enm(klucz: str, enm: EnergyNetworkModel) -> None:
@@ -297,13 +307,15 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
     # tworzy model domyslny, migruje format i uzupelnia dane katalogowe, a wynik
     # ZAPISUJE (`set_enm` nizej). Bez blokady dwa rownolegle odczyty swiezego
     # przypadku utworzylyby dwa rozne modele domyslne.
-    raport_uziemienia: RaportMigracjiUziemienia | None = None
+    opis_migracji: str | None = None
+    utracone_w_migracji: list[str] = []
     if klucz not in _enm_store:
+        surowa = _surowa_migawka_z_nosnika(klucz)
         persisted = _load_persisted_enm(klucz)
-        if persisted is not None:
-            raport_uziemienia = _raport_migracji_uziemienia_z_nosnika(klucz)
+        if persisted is not None and surowa is not None:
+            opis_migracji, utracone_w_migracji = _opis_migracji_zapisu_zastanego(surowa)
             _enm_store[klucz] = persisted
-            _uzgodnij_po_wczytaniu(klucz, persisted)
+            _uzgodnij_po_wczytaniu(klucz, persisted, hash_zapisanej_tresci=hash_migawki_enm(surowa))
         else:
             # Model domyślny bez nazwy dostaje opis rodzaju, nie fragment klucza magazynu
             # (dawniej `f"Model sieci - {klucz[:8]}"` = dosłownie „Model sieci - projekt:"
@@ -327,19 +339,19 @@ def _get_enm_pod_blokada(klucz: str) -> EnergyNetworkModel:
         # podniesienia rewizji; pin `test_store_concurrency.py::
         # test_automigracja_nie_zostawia_awansowanej_rewizji_po_nieudanym_zapisie`).
         _enm_store[klucz] = completed
-    # W5-A: migracja uziemienia do jednej reprezentacji wykonała się w walidatorze
-    # modelu przy wczytaniu; tu jej skutek trafia do dziennika zmian jako rewizja z
-    # nazwanym opisem (przeniesione / UTRACONE / usunięte klucze meta), a utrata
+    # W5-A (uziemienie) i W5-C (punkty podziału): migracje zapisu zastanego wykonały
+    # się w walidatorze modelu przy wczytaniu; tu ich skutek trafia do dziennika zmian
+    # jako rewizja z nazwanym opisem (przeniesione / usunięte / UTRACONE), a utrata
     # dodatkowo do logu — model po migracji jest ZAPISYWANY, więc biegnie raz.
-    if raport_uziemienia is not None and raport_uziemienia.zmieniono:
-        if raport_uziemienia.utracone:
+    if opis_migracji is not None:
+        if utracone_w_migracji:
             logger.warning(
-                "migracja_uziemienia klucz=%s UTRACONE=%s", klucz, raport_uziemienia.utracone
+                "migracja_zapisu_zastanego klucz=%s UTRACONE=%s", klucz, utracone_w_migracji
             )
         return set_enm(
             klucz,
             completed,
-            zrodlo_zmiany=ZrodloZmiany(operacja=None, opis_pl=raport_uziemienia.opis_pl()),
+            zrodlo_zmiany=ZrodloZmiany(operacja=None, opis_pl=opis_migracji),
         )
     if zmieniony_po_odczycie:
         return set_enm(klucz, completed)
@@ -488,7 +500,9 @@ def _set_enm_pod_blokada(
     return enm
 
 
-def _uzgodnij_po_wczytaniu(klucz: str, persisted: EnergyNetworkModel) -> None:
+def _uzgodnij_po_wczytaniu(
+    klucz: str, persisted: EnergyNetworkModel, *, hash_zapisanej_tresci: str
+) -> None:
     """Po wczytaniu HEAD z nosnika: indeks migawek zgodny z HEAD, dziennik bez luki
     dla rewizji biezacej (CV-2; wolane RAZ na proces i klucz, pod blokada twin).
 
@@ -497,7 +511,7 @@ def _uzgodnij_po_wczytaniu(klucz: str, persisted: EnergyNetworkModel) -> None:
     nazywajacym brak przyczyny wprost (`OPIS_WPISU_ODTWORZONEGO`) — nigdy ze
     zgadnieta operacja.
     """
-    raport = uzgodnij_indeks(klucz, persisted)
+    raport = uzgodnij_indeks(klucz, persisted, hash_zapisanej_tresci=hash_zapisanej_tresci)
     if raport.cokolwiek:
         logger.info(
             "uzgodnienie_migawek klucz=%s rewizja=%s osierocone=%s odtworzona=%s "
@@ -516,7 +530,9 @@ def _uzgodnij_po_wczytaniu(klucz: str, persisted: EnergyNetworkModel) -> None:
             operacja=None,
             opis_pl=OPIS_WPISU_ODTWORZONEGO,
             znacznik_czasu=persisted.header.updated_at,
-            hash_sha256=compute_enm_hash(persisted),
+            # Odcisk ZAPISANEJ treści rewizji bieżącej (sprzed migracji zapisu
+            # zastanego) — ten sam, który niesie jej migawka w `.rev/`.
+            hash_sha256=hash_zapisanej_tresci,
         ).zatwierdz()
 
 

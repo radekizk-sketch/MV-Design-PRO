@@ -70,7 +70,7 @@ from .slownik_komunikatow import (
     opis_obiektu,
     pole,
 )
-from .topology import derive
+from .topology import derive, punkty_podzialu_korytarza
 from .tor_pola import (
     KOD_WALIDATORA_ELEMENT_OMIJA_POLE,
     OPERACJA_PRZEPIECIA,
@@ -1247,16 +1247,23 @@ class ENMValidator:
 
     def _check_info(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
         # I001: Łącznik otwarty
+        # W5-C: komunikat nazywa, czy otwarcie to pozycja normalna (punkt podziału),
+        # odejście od pozycji normalnej, czy stan bez zadeklarowanej pozycji normalnej.
         for branch in enm.branches:
             if isinstance(branch, SwitchBranch) and branch.status == "open":
+                if branch.normal_state == "open":
+                    przyczyna = "jest punktem normalnie otwartym — dzieli sieć"
+                elif branch.normal_state == "closed":
+                    przyczyna = (
+                        "jest otwarty wbrew pozycji normalnej (zamkniętej) — odcina część sieci"
+                    )
+                else:
+                    przyczyna = "jest otwarty — odcina część sieci"
                 issues.append(
                     ValidationIssue(
                         code="I001",
                         severity=SEVERITY_INFO,
-                        message_pl=(
-                            f"{opis_obiektu(branch, 'Łącznik')} jest otwarty — odcina część "
-                            "sieci."
-                        ),
+                        message_pl=f"{opis_obiektu(branch, 'Łącznik')} {przyczyna}.",
                         element_refs=[branch.ref_id],
                         wizard_step_hint="K3",
                     )
@@ -1462,8 +1469,12 @@ class ENMValidator:
                 )
 
         # I005: Pierścień bez punktu NO
+        # W5-C: punkt podziału magistrali wyprowadzany z pozycji normalnej łączników
+        # (`punkty_podzialu_korytarza`), nie z dawnej kopii przy magistrali.
         for corr in enm.corridors:
-            if corr.corridor_type == "ring" and not corr.no_point_ref:
+            if corr.corridor_type == "ring" and not punkty_podzialu_korytarza(
+                enm, corr.ordered_segment_refs
+            ):
                 issues.append(
                     ValidationIssue(
                         code="I005",

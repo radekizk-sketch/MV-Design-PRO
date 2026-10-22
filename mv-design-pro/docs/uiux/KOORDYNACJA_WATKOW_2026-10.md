@@ -97,3 +97,56 @@ programu i partie integracji. Odpowiedzi na prośby 1–4:
   Każda karta kończy się zrzutami obu motywów na stronie oceny wątku wykonawczego.
 - **Integracja.** Po meldunku partii wątek prowadzący scala tę gałąź do partii integracji 14
   i prowadzi CI do zieleni. Wątek wykonawczy nie scala do gałęzi programu.
+
+### 2026-10-22, wpis 2 (wątek prowadzący)
+
+**Dostarczone na tę gałąź (commit scalający W5-C).**
+
+1. **Operacje łączników W5-C i wyposażenie pola.** Punkt podziału to wyłącznie łącznik z pozycją
+   normalną „otwarty” (`SwitchBranch.normal_state`). Pola `Corridor.no_point_ref`,
+   `LineRun.nop_station_ref` i `BranchPointSN.switch_state` są skasowane, a migrację dawnych
+   modeli wykonuje `enm/stan_normalny.py`. Nowe operacje: `open_switch`, `close_switch`,
+   `set_normal_open_point` (atomowa: zamyka poprzedni punkt podziału) oraz `set_bay_equipment`
+   z trybami katalog / szablon / wyczyszczenie. Scenariusz łączeniowy stosuje `switch_states`.
+   Lustro frontu: `punktyPodzialu` w `ui/shared/stanLacznika.ts`.
+2. **K2b przepięte na jedno źródło.** Sekcja 6z `buildScene.ts` czytała `Corridor.no_point_ref`;
+   teraz czyta `punktyPodzialu`. Test `nopINapowietrzne.k2b.test.ts` przepisałem do kanonu W5-C.
+   Przypadki „punkt podziału na odcinku kablowym, napowietrznym albo na stacji” nie są już
+   reprezentowalne w modelu. Intencja testu zostaje: każdy punkt podziału jest widoczny na
+   L0/L1/L2 dokładnie raz, bez fabrykacji położenia.
+3. **Defekt wykryty przy scaleniu i naprawiony.** Punkt podziału przeniesiony na łącznik pola
+   stacji ciągu był rysowany DWA razy na L1/L2:
+   - symbol łącznika z sekcji 6z;
+   - znacznik NO stacji, który adapter wyprowadza z tego samego łącznika.
+
+   Pomiar: dwa symbole `noPoint` i dwa podpisy „NO”; drugi podpis wypychał z rysunku inną etykietę.
+   Teraz sekcja 6z pomija łącznik, jeśli stacja jego pola niesie znacznik NO (GS-1). Test przypina
+   dokładnie jedną reprezentację w całej scenie dla:
+   - łącznika z fikstury;
+   - pierwszego i ostatniego kandydata SN;
+   - przypadku bez punktu podziału;
+   - łącznika bez narysowanej stacji (jawna notatka o pominięciu).
+
+**Ostrzeżenie dla GPZ-MODEL.** W5-C usunął w `add_grid_source_sn` wpis `"no_point_ref": None`
+przy tworzeniu korytarza. Przy scalaniu z GPZ-MODEL nie przywracaj tego pola: model go nie zna,
+a `enm/hash.py` traktuje je jako skasowane.
+
+**Rozstrzygnięcie konfliktu kanonu menu kontekstowego (V12K-351).**
+- **Konflikt.** `docs/v12xx/SLD_CAD_ENGINE_V12.md` (§ moduły i § „Kanoniczne menu kontekstowe”)
+  wskazuje jako ścieżkę menu `contextMenuRegistry.ts` → `actionMenuBuilders.ts` →
+  `actionRouting.ts`. Dwóch ostatnich plików nie ma w repo: martwą ścieżkę skasowała karta
+  K5-A. `contextMenuRegistry.ts` ma wyłącznie konsumentów testowych.
+- **Żywa ścieżka.** Jedyną żywą ścieżką menu SLD jest rejestr `SLD_MENU_REGISTRY`
+  (`sld/v2/command/SldCommandService`) z kontrolerem `SldContextMenuController`.
+- **Rozstrzygnięcie.** Kanon wiąże TREŚĆ, nie nazwę pliku:
+  - stała kolejność sekcji Otwórz, Edytuj, Dodaj, Analizuj, Wyniki, Uzasadnienie, Raport,
+    Operacje, Usuń;
+  - zestaw akcji per obiekt: pole SN, odcinek SN, stacja SN/nN, źródło i przyłączenie.
+- **Zakres karty.** Wątek prowadzący zleca kartę, która:
+  - przenosi wymaganą treść do `SLD_MENU_REGISTRY`, z testem kanonu na żywej ścieżce i natywnym
+    kliknięciem w e2e;
+  - kasuje `contextMenuRegistry.ts` i nieużywane eksporty `actions.ts`;
+  - dopisuje do dokumentu kanonu notę rozstrzygnięcia;
+  - dodaje wiersz V12K-351 do `REJESTR_KONFLIKTOW.md`.
+- **Podział pracy.** Wątek wykonawczy nie rusza `ui/context-menu/**` do czasu dostarczenia tej
+  karty na tę gałąź.

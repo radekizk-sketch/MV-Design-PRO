@@ -243,8 +243,10 @@ def _iloczyn_pol() -> dict[str, Any]:
     pole stacji nN, pole ZKSN} × {z własnym zaciskiem, bez zacisku, zacisk = szyna pola} ×
     {rola IN / OUT / OUT+LINIA_ODG / FEEDER+LINIA_ODG / TR / COUPLER / MEASUREMENT / OZE /
     rezerwa (pole bez aparatu)}, plus pole na szynie bez napięcia (poziom nieznany = SN), pole
-    stacji spoza modelu (stacja pola = brak) i identyfikatory podane NIE w porządku
-    leksykalnym (kolejność ``wg_szyny`` z rangi roli, potem ``ref_id``)."""
+    stacji spoza modelu (stacja pola = brak), pole stacji GPZ na szynie w paśmie nN (GPZ nigdy
+    nie ma pól nN — wyjątek ``czy_pole_nn``; lustro frontu go nie miało, karta W5-C) i
+    identyfikatory podane NIE w porządku leksykalnym (kolejność ``wg_szyny`` z rangi roli,
+    potem ``ref_id``)."""
     role: list[tuple[str, str, str | None]] = [
         ("in", "IN", "LINIA_IN"),
         ("out", "OUT", "LINIA_OUT"),
@@ -310,16 +312,21 @@ def _iloczyn_pol() -> dict[str, Any]:
     bays.append(
         {"ref_id": "Q/pole-obcej", "substation_ref": "Q/brak", "bus_ref": "S/sn", "bay_role": "IN"}
     )
+    bays.append(
+        {"ref_id": "G/gpz/pole", "substation_ref": "G/gpz", "bus_ref": "G/nn", "bay_role": "OUT"}
+    )
     return {
         "buses": [
             {"ref_id": "S/sn", "voltage_kv": 15.0},
             {"ref_id": "S/nn", "voltage_kv": 0.4},
             {"ref_id": "S/bez-napiecia", "voltage_kv": None},
             {"ref_id": "P/szyna", "voltage_kv": 15.0},
+            {"ref_id": "G/nn", "voltage_kv": 0.4},
         ],
         "substations": [
             {"ref_id": "S/stacja", "station_type": "mv_lv", "bus_refs": ["S/sn", "S/nn"]},
             {"ref_id": "S/pusta", "station_type": "mv_lv", "bus_refs": []},
+            {"ref_id": "G/gpz", "station_type": "gpz", "bus_refs": ["G/nn"]},
         ],
         "branch_points": [{"ref_id": "P/zksn", "branch_point_type": "zksn", "bus_ref": "P/szyna"}],
         "bays": bays,

@@ -1,5 +1,8 @@
 /**
  * Testy kreatora „Łącznik sekcyjny SN" — realna ścieżka użytkownika, Zero-Debt §5.
+ *
+ * Karta W5-C, iloczyn: pozycja normalna {niezadeklarowana (domyślna), zamknięta, otwarta} ×
+ * `close_ref` {brak punktów podziału w modelu, punkt istnieje i pominięty, punkt wskazany}.
  */
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
@@ -14,7 +17,11 @@ const navigateToSldMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let context: Record<string, unknown> = { segment_id: 'seg-1', segmentLabel: 'Odcinek A' };
-const snapshotState = { error: null as string | null, executeDomainOperation: executeDomainOperationMock };
+const snapshotState = {
+  error: null as string | null,
+  executeDomainOperation: executeDomainOperationMock,
+  snapshot: null as unknown,
+};
 
 vi.mock('../../../../ui/app-state', () => ({
   useAppStateStore: (selector: (s: typeof appState) => unknown) => selector(appState),
@@ -63,6 +70,7 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
     appState.activeCaseId = 'case-1';
     context = { segment_id: 'seg-1', segmentLabel: 'Odcinek A' };
     snapshotState.error = null;
+    snapshotState.snapshot = null;
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
@@ -85,11 +93,14 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
         expect.objectContaining({
           segment_id: 'seg-1',
           insert_at: { mode: 'RATIO', value: 0.5 },
-          normal_state: 'closed',
           catalog_binding: expect.objectContaining({ catalog_namespace: 'APARAT_SN', catalog_item_id: 'app-1' }),
         }),
       );
     });
+    // Pozycja normalna niezadeklarowana (domyślna) — ładunek jej NIE deklaruje (dawny
+    // domyślny „closed" deklarował pozycję, której projektant nie wybrał).
+    expect(executeDomainOperationMock.mock.calls[0][2]).not.toHaveProperty('normal_state');
+    expect(executeDomainOperationMock.mock.calls[0][2]).not.toHaveProperty('close_ref');
     expect(closeFormMock).toHaveBeenCalled();
   });
 
@@ -158,5 +169,34 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-lacznik')).toHaveAttribute('data-status', 'ladowanie');
     expect(screen.getByTestId('mvd-kreator-walidacja').textContent).toMatch(/[Łł]adowanie katalogu/);
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['zamknięta', 'closed', null, { normal_state: 'closed' }],
+    ['otwarta, close_ref pominięty', 'open', '', { normal_state: 'open' }],
+    ['otwarta, close_ref wskazany', 'open', 'sw-nop', { normal_state: 'open', close_ref: 'sw-nop' }],
+  ])('pozycja %s → ładunek operacji', async (_opis, stan, closeRef, oczekiwany) => {
+    snapshotState.snapshot = {
+      branches: [
+        { ref_id: 'sw-nop', id: 'sw-nop', name: 'Łącznik NOP', type: 'switch', status: 'open', normal_state: 'open' },
+        { ref_id: 'sw-2', id: 'sw-2', name: 'Łącznik 2', type: 'switch', status: 'closed', normal_state: 'closed' },
+      ],
+    };
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorLacznikaSekcyjnego />);
+    await pick();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-lacznik-stan'), stan);
+    if (stan === 'open') {
+      const wybor = screen.getByTestId('mvd-kreator-lacznik-close-wybor');
+      // Kandydaci `close_ref` = punkty podziału modelu (z pozycji normalnej), nie każdy łącznik.
+      expect(Array.from(wybor.querySelectorAll('option')).map((o) => o.getAttribute('value'))).toEqual(['', 'sw-nop']);
+      if (closeRef) await userEvent.selectOptions(wybor, closeRef);
+    } else {
+      expect(screen.queryByTestId('mvd-kreator-lacznik-close-wybor')).toBeNull();
+    }
+    await userEvent.click(screen.getByTestId('mvd-kreator-lacznik-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const ladunek = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
+    expect({ normal_state: ladunek.normal_state, ...(ladunek.close_ref ? { close_ref: ladunek.close_ref } : {}) }).toEqual(oczekiwany);
   });
 });

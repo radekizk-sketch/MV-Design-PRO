@@ -41,6 +41,7 @@ from enm.topology import (
     TopologyView,
     derive,
     podziel_krawedzie,
+    punkty_podzialu,
 )
 from enm.tor_pola import szyny_stacji
 from network_model.core.topologia import drogi_proste
@@ -883,18 +884,19 @@ def _drogi(
                     elementy=petla,
                 )
             )
-            for korytarz in sorted(kontekst.enm.corridors, key=lambda c: c.ref_id):
-                if korytarz.no_point_ref and korytarz.no_point_ref in petla:
+            # W5-C: punkt podziału = łącznik o pozycji normalnej otwartej
+            # (`punkty_podzialu`); leży w pętli dróg pewnych, więc jest zamknięty.
+            for punkt in punkty_podzialu(kontekst.enm):
+                if punkt in petla:
                     przyczyny.append(
                         PrzyczynaTopologii(
                             kod=KOD_PUNKT_PODZIALU_ZAMKNIETY,
                             opis=(
-                                f"Magistrala {korytarz.ref_id} wskazuje punkt podziału "
-                                f"{korytarz.no_point_ref}, ale ten element jest w modelu "
-                                "zamknięty — o stanie łączeniowym rozstrzyga model, nie "
-                                "deklaracja magistrali."
+                                f"Łącznik {punkt} ma pozycję normalną otwartą (punkt "
+                                "podziału), ale w modelu jest zamknięty — o rozpływie "
+                                "rozstrzyga stan bieżący łącznika, nie pozycja normalna."
                             ),
-                            elementy=[korytarz.no_point_ref, korytarz.ref_id],
+                            elementy=[punkt],
                         )
                     )
         drogi += drogi_zrodla

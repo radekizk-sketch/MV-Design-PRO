@@ -331,6 +331,8 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     "x0_ohm_per_km": "Reaktancja zerowa [Ω/km]",
     "b0_siemens_per_km": "Susceptancja zerowa [S/km]",
     "rated_current_a": "Prąd znamionowy [A]",
+    # W5-C: pozycja normalna łącznika (punkt normalnie otwarty = „open")
+    "normal_state": "Pozycja normalna łącznika",
     "conductor_material": "Materiał przewodu",
     "cross_section_mm2": "Przekrój [mm²]",
     "n_parallel": "Liczba torów równoległych",
@@ -363,7 +365,6 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     # magistrale, ciagi linii, stacje, pola
     "corridor_type": "Rodzaj magistrali",
     "ordered_segment_refs": "Kolejność odcinków magistrali",
-    "no_point_ref": "Punkt normalnie otwarty",
     "segments": "Odcinki ciągu linii",
     "stations": "Stacje na ciągu linii",
     "station_type": "Rodzaj stacji",

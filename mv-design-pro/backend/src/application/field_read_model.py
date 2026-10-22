@@ -43,6 +43,7 @@ from enm.nastawy_zabezpieczen import (
 )
 from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
 from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
+from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
 from network_model.core.uziemienie import TypPunktuNeutralnego
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
@@ -200,6 +201,10 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
             bay_template_ref=bay.bay_template_ref,
             switchgear_family_ref=bay.switchgear_family_ref,
+            equipment_data_state=stan_danych_wyposazenia(list(bay.primary_devices)),
+            equipment_assumed_data=dane_przyjete_wyposazenia(
+                [device.model_dump(mode="json") for device in bay.primary_devices]
+            ),
         )
 
         project_results = _build_project_results(
@@ -477,12 +482,25 @@ _POLECENIE_W_TOKU = frozenset({"oczekuje", "przyjete"})
 
 def _stan_lacznika_w_modelu(
     device: BayPrimaryDevice, branches: dict[str, Branch]
-) -> Literal["zamkniety", "otwarty"] | None:
-    """Stan łącznika zapisany w MODELU (gałąź łączeniowa aparatu) — dana projektowa."""
+) -> tuple[Literal["zamkniety", "otwarty"], Literal["zamkniety", "otwarty"] | None] | None:
+    """Stan łącznika zapisany w MODELU (gałąź łączeniowa aparatu) — dana projektowa.
+
+    Zwraca (bieżące położenie z ``status``, pozycja normalna z ``normal_state`` albo
+    ``None``, gdy niezadeklarowana) — W5-C: dwa pojęcia z dwóch pól gałęzi, nigdy jedno
+    udające drugie (dawniej położenie normalne było kopią bieżącego, więc alarm
+    niezgodności z modelu nie mógł się zapalić)."""
     branch = branches.get(device.linked_ref or device.device_ref)
     if not isinstance(branch, SwitchBranch):
         return None
-    return "zamkniety" if branch.status == "closed" else "otwarty"
+    biezace: Literal["zamkniety", "otwarty"] = (
+        "zamkniety" if branch.status == "closed" else "otwarty"
+    )
+    normalne: Literal["zamkniety", "otwarty"] | None = (
+        None
+        if branch.normal_state is None
+        else ("zamkniety" if branch.normal_state == "closed" else "otwarty")
+    )
+    return biezace, normalne
 
 
 def _polecenie_w_toku(bay: Bay, device_ref: str) -> Literal["zamknij", "otworz"] | None:
@@ -522,9 +540,12 @@ def _zloz_stan_ruchowy(
     polozenie_normalne: dict[str, Literal["zamkniety", "otwarty"]] = {}
     for device in devices:
         rekord = runtime_state_record(bay, device.device_ref)
-        stan_modelu = _stan_lacznika_w_modelu(device, branches) if device.is_controllable else None
-        if stan_modelu is not None:
-            polozenie_normalne[device.device_ref] = stan_modelu
+        stan_w_modelu = (
+            _stan_lacznika_w_modelu(device, branches) if device.is_controllable else None
+        )
+        stan_modelu = stan_w_modelu[0] if stan_w_modelu is not None else None
+        if stan_w_modelu is not None and stan_w_modelu[1] is not None:
+            polozenie_normalne[device.device_ref] = stan_w_modelu[1]
         if rekord is None and stan_modelu is None:
             continue
         polecenie = _polecenie_w_toku(bay, device.device_ref)
@@ -575,7 +596,8 @@ def _build_operating_state(
     normal_position: Literal["zamkniety", "otwarty"],
     switch_state: BaySwitchState,
 ) -> BayOperatingState:
-    """Położenie normalne = stan łącznika w modelu; bieżące = stan aparatu (źródło albo model);
+    """Położenie normalne = pozycja normalna łącznika w modelu (``normal_state``); bieżące =
+    stan aparatu (źródło albo ``status`` w modelu);
     alarm niezgodności = znane bieżące różne od normalnego (porównanie, nie telemetria)."""
     current_position: Literal["zamkniety", "otwarty", "nieznany"] = (
         "zamkniety"

@@ -458,13 +458,20 @@ def test_model_bez_generatorow_i_kondensatorow_bajty_bazy() -> None:
 
     Skróty zmierzone na bazie d6c26c3f (przed kartami C i C2) i po C2 — identyczne.
     Zmiana tych bajtów wymaga dowodu semantycznego w commicie, nie przepięcia skrótu.
+
+    2026-10-21 (karta W5-C): EQ 81e048d5… → 37bae631…, TP bez zmian. Porównanie EQ z bazy
+    `d98bdad3e` i po karcie wiersz po wierszu: różnią się WYŁĄCZNIE dwa wiersze — sprzęgło
+    (``status=closed``, pozycja normalna niezadeklarowana) i bezpiecznik (``status=open``)
+    niosą ``Switch.open`` [SSH, bieżące położenie] zamiast ``Switch.normalOpen`` [EQ]
+    wyprowadzanego dawniej z położenia. Iloczyn obu atrybutów:
+    ``tests/cgmes/test_cgmes_stan_lacznika.py``.
     """
     import hashlib
 
     enm = build_golden_enm().model_copy(update={"generators": []})
     eq, tp = _eq_tp_z_paczki(enm)
     assert hashlib.sha256(eq).hexdigest() == (
-        "81e048d51ed011cfda3d01a2898d3f4489a06f6f800e3e322dda3a420dc40d8b"
+        "37bae631c7508f89ee32980345867edaef085a3ea108f95776d0ebc57ee0d44f"
     )
     assert hashlib.sha256(tp).hexdigest() == (
         "017360fa12246b715487abf123f4c19b7fc08c1148262d72f3ef776d6f1d520b"
