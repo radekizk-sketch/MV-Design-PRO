@@ -13,6 +13,8 @@ nie z uruchomienia testowanego kodu.
 
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 from application.analyses.protection.czas_wylaczenia_galezi import (
     ZRODLO_BRAK_APARATU,
@@ -36,6 +38,7 @@ from network_model.core.grid_source import GridShortCircuitSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.solvers.short_circuit_contributions import (
+    NAZWA_WKLADU_POMINIETEGO,
     ShortCircuitBranchContribution,
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
@@ -494,3 +497,70 @@ def test_wynik_jest_deterministyczny() -> None:
     pierwszy = wyznacz_czasy_wylaczenia(**argumenty)
     drugi = wyznacz_czasy_wylaczenia(**argumenty)
     assert pierwszy == drugi
+
+
+# ---------------------------------------------------------------------------
+# Karta PROG-ZERA-WKLADOW: gałąź, której każdy wkład to wkład pominięty
+# ---------------------------------------------------------------------------
+
+
+def _sc_result_kabel_b_pominiety() -> ShortCircuitResult:
+    """Rdzeń opublikował wkład tylko dla kabla A; każdy wkład do kabla B spełnił
+    |I| < 1e-6 A i trafił do zestawienia wkładów pominiętych (nie na listę)."""
+    pelny = _sc_result(prad_a=400.0)
+    assert pelny.branch_contributions is not None
+    return dataclasses.replace(
+        pelny,
+        branch_contributions=[w for w in pelny.branch_contributions if w.branch_id == "kabel_A"],
+    )
+
+
+@pytest.mark.parametrize(
+    ("sciezka", "graf", "nastawy", "zrodlo"),
+    [
+        (
+            "brak_aparatu",
+            lambda: _graf(stan_cb1=SwitchState.OPEN),
+            lambda: _nastawy(_zabezpieczenie()),
+            ZRODLO_BRAK_APARATU,
+        ),
+        ("brak_nastaw", _graf, _nastawy, ZRODLO_BRAK_NASTAW),
+        (
+            "nastawy_niegotowe",
+            _graf,
+            lambda: _nastawy(_zabezpieczenie(time_multiplier=None)),
+            ZRODLO_BRAK_NASTAW,
+        ),
+        (
+            "ponizej_rozruchu",
+            _graf,
+            lambda: _nastawy(_zabezpieczenie()),
+            ZRODLO_PONIZEJ_ROZRUCHU,
+        ),
+    ],
+)
+def test_galaz_z_wkladem_pominietym_nie_wykazuje_pradu_zero(
+    sciezka: str, graf, nastawy, zrodlo: str
+) -> None:
+    """Iloczyn: ścieżka bez czasu {brak aparatu, brak nastaw, nastawy niegotowe, poniżej
+    rozruchu} × gałąź {opublikowana (kabel A), pominięta (kabel B)}.
+
+    Gałąź pominięta NIE pokazuje prądu 0 A (``prad_galezi_a`` = None) — jej wkłady to
+    wkłady pominięte na podstawie tolerancji numerycznej, nie zero. Gałąź opublikowana
+    pokazuje swój prąd jak dotąd. Wniosek (brak czasu, źródło) jest ten sam co przy surowym
+    prądzie poniżej progu.
+    """
+    czasy = wyznacz_czasy_wylaczenia(
+        graph=graf(), sc_result=_sc_result_kabel_b_pominiety(), nastawy_aparatow=nastawy()
+    )
+    assert czasy["kabel_B"].tk_s is None
+    assert czasy["kabel_B"].zrodlo == zrodlo
+    assert czasy["kabel_B"].prad_galezi_a is None
+    assert czasy["kabel_A"].prad_galezi_a == pytest.approx(400.0)
+    if sciezka == "ponizej_rozruchu":
+        assert NAZWA_WKLADU_POMINIETEGO in czasy["kabel_B"].powod_pl
+        assert "0.0 A" not in czasy["kabel_B"].powod_pl
+        assert "Prąd gałęzi 400.0 A" in czasy["kabel_A"].powod_pl
+        assert NAZWA_WKLADU_POMINIETEGO not in czasy["kabel_A"].powod_pl
+    slad = slad_czasu(czasy, tk_s_zalozony=1.0)
+    assert slad["kabel_B"]["prad_galezi_a"] is None

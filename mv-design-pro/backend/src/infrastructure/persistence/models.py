@@ -436,6 +436,14 @@ class CanonicalRunBranchFlowORM(Base):
     branch_flow_trace_json: Mapped[list[dict[str, Any]] | None] = mapped_column(
         DeterministicJSON(), nullable=True
     )
+    #: Zestawienie wkładów pominiętych na podstawie tolerancji numerycznej (|I| < 1e-6 A,
+    #: `results[].wklady_pominiete`, karta PROG-ZERA-WKLADOW) — ta sama klasa ładunku co
+    #: wkłady. Kolumna ADDYTYWNA (nullable): ``None`` = punkt bez wkładów pominiętych albo
+    #: wiersz zapisany przed jej dodaniem; dokładana do istniejącej bazy przez `db.init_db`
+    #: (`_dolacz_kolumny_addytywne`).
+    wklady_pominiete_json: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        DeterministicJSON(), nullable=True
+    )
 
 
 class CanonicalRunTimeSeriesORM(Base):

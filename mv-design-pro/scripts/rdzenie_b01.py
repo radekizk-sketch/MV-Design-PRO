@@ -34,6 +34,13 @@ from __future__ import annotations
 #: TB-WARTOSC-ROBOCZA (ta sama pozycja (n)): t_b rozstrzygany PER PUNKT ZWARCIA (scenariusz
 #: projektanta > pola lokalne > wartość robocza z pochodzeniem), brak t_b nie blokuje. Sankcje:
 #: `solver_boundary_guard.SANCTIONED_CHANGES`; odcisk: `guard_references/solver_hashes.json`.
+#: Grupa „IEC 60909" zmieniona warunkową zgodą B-01 właściciela z 2026-10-21 (karta
+#: PROG-ZERA-WKLADOW, WYŁĄCZNIE klasa numerycznie pomijalnych wkładów gałęziowych): predykaty
+#: list wkładów gałęziowych i śladu podziału prądu w obu torach (falownikowym i Thevenina)
+#: z `<= 0` na jeden próg |I| < 1e-6 A (`PROG_WKLADU_POMIJALNEGO_A`, jedyna definicja
+#: w `short_circuit_contributions.py`) + addytywne zestawienie `wklady_pominiete` (pole wyniku
+#: exclude_none i krok śladu). Algorytmy IEC 60909, μ/q, t_b, c i tolerancje bez zmian;
+#: wielkości główne korpusu golden bit w bit. Każda inna zmiana rdzenia = nowa decyzja.
 RDZENIE_B01: dict[str, tuple[str, ...]] = {
     "IEC 60909 (3F/2F/1F, MAX/MIN, wkłady)": (
         "network_model/solvers/short_circuit_iec60909.py",

@@ -207,6 +207,8 @@ export function EkranZwarc({
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
         flows={rozplyw.flows}
+        pominiete={rozplyw.pominiete}
+        progA={rozplyw.progA}
         blad={rozplyw.blad}
         ladowanie={rozplyw.ladowanie}
         trybZaawansowania={trybZaawansowania}

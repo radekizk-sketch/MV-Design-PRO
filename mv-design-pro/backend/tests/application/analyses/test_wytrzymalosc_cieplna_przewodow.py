@@ -22,6 +22,8 @@ from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.solvers.short_circuit_contributions import (
+    NAZWA_WKLADU_POMINIETEGO,
+    OPIS_PROGU_WKLADU_POMIJALNEGO,
     ShortCircuitBranchContribution,
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
@@ -393,10 +395,11 @@ def test_summary_does_not_count_unavailable_as_pass() -> None:
     assert view.summary.pass_count + view.summary.fail_count + view.summary.unavailable_count == 2
 
 
-def test_zero_current_branch_not_on_fault_path_is_real_zero_not_missing() -> None:
+def test_branch_without_published_contribution_is_pass_not_missing_and_not_zero() -> None:
     """Galaz obecna w grafie, ale bez wpisu w branch_contributions (gdy pole
-    NIE jest None) oznacza realny brak przeplywu - prad = 0.0 A, PASS (0 <= I_dop),
-    NIE UNAVAILABLE."""
+    NIE jest None): kazdy wklad zrodla do niej to „wklad pominiety na podstawie
+    tolerancji numerycznej (|I| < 1e-6 A)” (karta PROG-ZERA-WKLADOW) - PASS, NIE
+    UNAVAILABLE, i NIE prad 0 A: pozycja nie podaje wartosci, tylko granice progu."""
     graph = _graph_with_two_cables()
     catalog = _catalog_with_cable_type()
     sc_result = _sc_result(
@@ -410,14 +413,14 @@ def test_zero_current_branch_not_on_fault_path_is_real_zero_not_missing() -> Non
                 i_contrib_a=15000.0,
                 direction="from_to",
             ),
-            # Brak wpisu dla cable_B (solver pominal i_contrib_a <= 0).
+            # Brak wpisu dla cable_B (rdzen pominal wklad |I| < 1e-6 A).
         ],
     )
 
     view = build_conductor_thermal_withstand_view(sc_result, graph, catalog)
     by_id = {item.branch_id: item for item in view.items}
 
-    assert by_id["cable_B"].i_fault_a == 0.0
+    assert by_id["cable_B"].i_fault_a is None
     assert by_id["cable_B"].status == "PASS"
 
 
@@ -492,13 +495,13 @@ def test_determinism_two_calls_identical_result() -> None:
 
 
 def test_galaz_poza_droga_zwarcia_ma_jawne_uzasadnienie_statusu() -> None:
-    """PASS z zerowego pradu MUSI byc odroznialny od PASS z rachunku kryterium.
+    """PASS galezi bez opublikowanego wkladu MUSI byc odroznialny od PASS z rachunku.
 
-    Rozstrzygniecie warstwy interpretacji: prad 0 A jest dla solvera fazy 1 brakiem
-    danej (zero nie jest wielkoscia fizyczna tam, gdzie zwarcie liczymy), ale analiza
-    WIE, ze zero jest realne — solver pomija wklady i_contrib_a <= 0, a lista wkladow
-    istnieje. Status jest wiec PASS, lecz z jawnym uzasadnieniem i bez wielkosci
-    kryterialnych (nie ma czego porownywac).
+    Rozstrzygniecie warstwy interpretacji: lista wkladow istnieje, a galezi na niej nie
+    ma, wiec kazdy wklad zrodla do niej to „wklad pominiety na podstawie tolerancji
+    numerycznej (|I| < 1e-6 A)” (karta PROG-ZERA-WKLADOW). Status PASS z jawnym
+    uzasadnieniem, ktore nazywa wklad pominiety i prog z JEDYNEJ definicji (nie wlasny
+    tekst progu), bez wielkosci kryterialnych i BEZ pradu 0 A (wklad pominiety to nie zero).
     """
     graph = _graph_with_two_cables()
     catalog = _catalog_with_cable_type()
@@ -521,9 +524,12 @@ def test_galaz_poza_droga_zwarcia_ma_jawne_uzasadnienie_statusu() -> None:
 
     poza_droga = by_id["cable_B"]
     assert poza_droga.status == "PASS"
-    assert poza_droga.i_fault_a == 0.0
+    assert poza_droga.i_fault_a is None
     assert poza_droga.uzasadnienie_pl is not None
     assert "poza drogą zwarcia" in poza_droga.uzasadnienie_pl
+    assert NAZWA_WKLADU_POMINIETEGO in poza_droga.uzasadnienie_pl
+    assert OPIS_PROGU_WKLADU_POMIJALNEGO in poza_droga.uzasadnienie_pl
+    assert "0 A" not in poza_droga.uzasadnienie_pl
     # Brak wielkosci kryterialnych — nie udajemy, ze cokolwiek policzono.
     assert poza_droga.i_permissible_a is None
     assert poza_droga.utilization is None

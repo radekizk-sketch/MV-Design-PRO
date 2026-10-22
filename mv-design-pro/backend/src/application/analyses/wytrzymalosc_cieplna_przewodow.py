@@ -26,9 +26,12 @@ ZRODLA DANYCH (plik:linia w kodzie zrodlowym, stan na 2026-07-25):
   OPCJONALNE - ``None``, gdy solver uruchomiony bez
   ``include_branch_contributions=True`` (domyslnie ``False``) -
   ``network_model/solvers/short_circuit_iec60909.py:1049``. Gdy pole NIE jest
-  ``None``, a galaz nie ma zadnego wpisu, oznacza to realny zerowy przeplyw
-  pradu zwarciowego przez ta galaz (solver pomija wpisy z ``i_contrib_a <= 0``,
-  patrz ``short_circuit_iec60909.py:934``) - NIE jest to brak danych.
+  ``None``, a galaz nie ma zadnego wpisu, oznacza to, ze kazdy wklad zrodla do tej
+  galezi jest „wkladem pominietym na podstawie tolerancji numerycznej (|I| < 1e-6 A)”
+  (rdzen odklada go do zestawienia ``wklady_pominiete`` z surowa wartoscia, jedyna
+  definicja progu ``PROG_WKLADU_POMIJALNEGO_A`` w ``short_circuit_contributions``,
+  karta PROG-ZERA-WKLADOW) - galaz poza droga zwarcia. NIE jest to brak danych i NIE
+  jest to prad zerowy: wynik podaje granice, nie zero.
 - czas trwania zwarcia: DWA zrodla, w jawnej kolejnosci pierwszenstwa.
   (1) Czas WYZNACZONY Z NASTAW zabezpieczenia danej galezi -
   ``application/analyses/protection/czas_wylaczenia_galezi.czasy_dla_modelu``,
@@ -69,6 +72,9 @@ from typing import Any
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
 from application.analyses.prad_zwarciowy_galezi import (
+    galaz_bez_opublikowanego_wkladu,
+)
+from application.analyses.prad_zwarciowy_galezi import (
     prad_zwarciowy_galezi as _branch_fault_current_a,
 )
 from application.analyses.protection.czas_wylaczenia_galezi import (
@@ -102,7 +108,11 @@ from network_model.solvers.conductor_thermal_withstand import (
     ConductorThermalInput,
     check_conductor_thermal_withstand,
 )
-from network_model.solvers.short_circuit_contributions import ShortCircuitBranchContribution
+from network_model.solvers.short_circuit_contributions import (
+    NAZWA_WKLADU_POMINIETEGO,
+    OPIS_PROGU_WKLADU_POMIJALNEGO,
+    ShortCircuitBranchContribution,
+)
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
@@ -315,27 +325,31 @@ def build_conductor_thermal_withstand_view(
             branch, catalog
         )
 
-        # Galaz o ZEROWYM przeplywie pradu zwarciowego nie lezy na drodze zwarcia.
-        # Kryterium cieplne jest dla niej spelnione trywialnie (0 <= I_dop), ale NIE
-        # wynika to z rachunku — solver fazy 1 slusznie traktuje prad 0 jako brak
-        # danej (zero nie jest wielkoscia fizyczna w miejscu, gdzie zwarcie liczymy).
-        # Rozstrzygniecie nalezy do warstwy INTERPRETACJI: tutaj wiemy, ze zero jest
-        # realne, bo solver pomija wklady i_contrib_a <= 0, a lista wkladow istnieje.
-        if i_fault_a == 0.0:
+        # Galaz bez OPUBLIKOWANEGO wkladu zrodla nie lezy na drodze zwarcia: kazdy wklad
+        # zrodla do niej jest „wkladem pominietym na podstawie tolerancji numerycznej
+        # (|I| < 1e-6 A)” (karta PROG-ZERA-WKLADOW). Kryterium cieplne jest spelnione
+        # trywialnie (prad ponizej 1e-6 A na zrodlo wobec I_dop rzedu kA), ale NIE wynika
+        # to z rachunku. Prad NIE jest zerem — pozycja nie podaje wartosci (None), tylko
+        # granice w uzasadnieniu; solver fazy 1 slusznie nie przyjmuje pradu 0 jako danej.
+        if galaz_bez_opublikowanego_wkladu(sc_result, branch_id):
             items.append(
                 ConductorThermalWithstandItem(
                     branch_id=branch_id,
                     branch_name=nazwa_elementu(branch, "branches"),
                     status="PASS",
-                    i_fault_a=0.0,
+                    i_fault_a=None,
                     i_permissible_a=None,
                     utilization=None,
                     s_min_mm2=None,
                     applied_cross_section_mm2=cross_section_mm2,
                     missing_codes=(),
                     uzasadnienie_pl=(
-                        "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; "
-                        "kryterium cieplne spełnione trywialnie."
+                        "Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to "
+                        f"{NAZWA_WKLADU_POMINIETEGO} (zestawienie wkładów pominiętych "
+                        "w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — "
+                        f"dla każdego źródła spełnia {OPIS_PROGU_WKLADU_POMIJALNEGO}, "
+                        "pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium "
+                        "cieplne spełnione trywialnie."
                     ),
                     czas_wylaczenia=slad_czasu,
                 )

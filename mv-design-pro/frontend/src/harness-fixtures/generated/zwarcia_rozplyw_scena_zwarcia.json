@@ -15,17 +15,6 @@
         "direction": "to_from"
       },
       {
-        "branch_id": "line_b_c",
-        "branch_name": "Linia SN 1",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_sn_c",
-        "to_node_name": "Stacja C SN",
-        "i_ka": 3.72926849873e-19,
-        "direction": "brak"
-      },
-      {
         "branch_id": "tr_hv_sn",
         "branch_name": "TR 110/15",
         "source_id": "THEVENIN_GRID",
@@ -35,28 +24,6 @@
         "to_node_name": "Szyna SN",
         "i_ka": 8.31160967663,
         "direction": "from_to"
-      },
-      {
-        "branch_id": "tr_hv_sn",
-        "branch_name": "TR 110/15",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_hv",
-        "from_node_name": "GPZ 110 kV",
-        "to_node_id": "bus_sn_main",
-        "to_node_name": "Szyna SN",
-        "i_ka": 2.04408000899e-18,
-        "direction": "brak"
-      },
-      {
-        "branch_id": "tr_sn_nn",
-        "branch_name": "TR 15/0.4",
-        "source_id": "THEVENIN_GRID",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_nn",
-        "to_node_name": "Szyna nN",
-        "i_ka": 1.44287867872e-16,
-        "direction": "brak"
       },
       {
         "branch_id": "tr_sn_nn",
@@ -168,37 +135,6 @@
         "notes": null
       },
       {
-        "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
-        "title": "Prąd zwarciowy Thevenina w gałęzi TR 15/0.4",
-        "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
-        "inputs": {
-          "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-          "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "y_series_pu": {
-            "re": 0.0330249074427,
-            "im": -0.140202372994
-          },
-          "ik_thevenin_a": 8953.06173407
-        },
-        "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0330249-j0.140202| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 8953.06",
-        "result": {
-          "fraction": 1.61160362966e-17,
-          "i_contrib_a": 1.44287867872e-13,
-          "direction": "to_from"
-        },
-        "notes": null
-      },
-      {
         "key": "thevenin_flow_balance",
         "title": "Suma kontrolna bilansu prądu w węźle zwarcia (KCL)",
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
@@ -213,8 +149,64 @@
           "fraction_sum": 0.928353888704
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 4 (sieć zastępcza: 1; falowniki: 3).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 1.44e-13,
+          "suma_fazorowa_pominietych_thevenin_a": {
+            "re": -1.42e-13,
+            "im": -1.75e-14
+          },
+          "liczba_pominietych_falownik": 3,
+          "suma_modulow_pominietych_falownik_a": 2.41e-15
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
       }
     ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "line_b_c",
+        "branch_name": "Linia SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 3.72e-19,
+        "kat_deg": -48.0
+      },
+      {
+        "branch_id": "tr_hv_sn",
+        "branch_name": "TR 110/15",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 2.04e-18,
+        "kat_deg": -40.2
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 1.44e-16,
+        "kat_deg": -173.0
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -458,8 +450,48 @@
           "fraction_sum": 0.00586012314973
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 2 (sieć zastępcza: 1; falowniki: 1).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 0.0,
+          "suma_fazorowa_pominietych_thevenin_a": {
+            "re": 0.0,
+            "im": 0.0
+          },
+          "liczba_pominietych_falownik": 1,
+          "suma_modulow_pominietych_falownik_a": 0.0
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
       }
     ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 0.0,
+        "kat_deg": null
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -714,6 +746,8 @@
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
       }
     ],
+    "wklady_pominiete": null,
+    "prog_wkladu_pominietego_a": 1e-06,
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -801,17 +835,6 @@
         "direction": "to_from"
       },
       {
-        "branch_id": "line_b_c",
-        "branch_name": "Linia SN 1",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_sn_c",
-        "to_node_name": "Stacja C SN",
-        "i_ka": 3.72926849873e-19,
-        "direction": "brak"
-      },
-      {
         "branch_id": "tr_hv_sn",
         "branch_name": "TR 110/15",
         "source_id": "THEVENIN_GRID",
@@ -821,28 +844,6 @@
         "to_node_name": "Szyna SN",
         "i_ka": 8.31160967663,
         "direction": "from_to"
-      },
-      {
-        "branch_id": "tr_hv_sn",
-        "branch_name": "TR 110/15",
-        "source_id": "gen_pv",
-        "from_node_id": "bus_hv",
-        "from_node_name": "GPZ 110 kV",
-        "to_node_id": "bus_sn_main",
-        "to_node_name": "Szyna SN",
-        "i_ka": 2.04408000899e-18,
-        "direction": "brak"
-      },
-      {
-        "branch_id": "tr_sn_nn",
-        "branch_name": "TR 15/0.4",
-        "source_id": "THEVENIN_GRID",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_nn",
-        "to_node_name": "Szyna nN",
-        "i_ka": 1.44287867872e-16,
-        "direction": "brak"
       },
       {
         "branch_id": "tr_sn_nn",
@@ -954,37 +955,6 @@
         "notes": null
       },
       {
-        "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
-        "title": "Prąd zwarciowy Thevenina w gałęzi TR 15/0.4",
-        "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
-        "inputs": {
-          "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-          "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "v_from_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "v_to_pu": {
-            "re": -0.0240620560069,
-            "im": -0.472287338676
-          },
-          "y_series_pu": {
-            "re": 0.0330249074427,
-            "im": -0.140202372994
-          },
-          "ik_thevenin_a": 8953.06173407
-        },
-        "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0330249-j0.140202| * 8953.06",
-        "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 8953.06",
-        "result": {
-          "fraction": 1.61160362966e-17,
-          "i_contrib_a": 1.44287867872e-13,
-          "direction": "to_from"
-        },
-        "notes": null
-      },
-      {
         "key": "thevenin_flow_balance",
         "title": "Suma kontrolna bilansu prądu w węźle zwarcia (KCL)",
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
@@ -999,8 +969,64 @@
           "fraction_sum": 0.0718863982865
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 4 (sieć zastępcza: 1; falowniki: 3).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 1.44e-13,
+          "suma_fazorowa_pominietych_thevenin_a": {
+            "re": -1.42e-13,
+            "im": -1.75e-14
+          },
+          "liczba_pominietych_falownik": 3,
+          "suma_modulow_pominietych_falownik_a": 2.41e-15
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
       }
     ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "line_b_c",
+        "branch_name": "Linia SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 3.72e-19,
+        "kat_deg": -48.0
+      },
+      {
+        "branch_id": "tr_hv_sn",
+        "branch_name": "TR 110/15",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 2.04e-18,
+        "kat_deg": -40.2
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 1.44e-16,
+        "kat_deg": -173.0
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",
@@ -1123,17 +1149,6 @@
       {
         "branch_id": "tr_sn_nn",
         "branch_name": "TR 15/0.4",
-        "source_id": "THEVENIN_GRID",
-        "from_node_id": "bus_sn_b",
-        "from_node_name": "Stacja B SN",
-        "to_node_id": "bus_nn",
-        "to_node_name": "Szyna nN",
-        "i_ka": 1.11948406438e-16,
-        "direction": "brak"
-      },
-      {
-        "branch_id": "tr_sn_nn",
-        "branch_name": "TR 15/0.4",
         "source_id": "gen_pv",
         "from_node_id": "bus_sn_b",
         "from_node_name": "Stacja B SN",
@@ -1241,37 +1256,6 @@
         "notes": null
       },
       {
-        "key": "thevenin_flow_158eec95-939b-5b35-97ad-9433334b5506",
-        "title": "Prąd zwarciowy Thevenina w gałęzi TR 15/0.4",
-        "formula_latex": "I_{\\text{gał}} = \\left| (\\underline{V}_i - \\underline{V}_j)\\,\\underline{y}_{ij} \\right| \\cdot I_k''^{(Th)}",
-        "inputs": {
-          "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
-          "from_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
-          "to_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-          "v_from_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
-          },
-          "v_to_pu": {
-            "re": 0.00352986021756,
-            "im": -0.436353928066
-          },
-          "y_series_pu": {
-            "re": 0.0330249074427,
-            "im": -0.140202372994
-          },
-          "ik_thevenin_a": 4603.47193319
-        },
-        "substitution": "|(0.00352986-j0.436354 - 0.00352986-j0.436354) * 0.0330249-j0.140202| * 4603.47",
-        "substitution_latex": "\\left| \\left(\\left(0.00352986 - j 0.436354\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(0.0330249 - j 0.140202\\right)\\right| \\cdot 4603.47",
-        "result": {
-          "fraction": 2.43182554521e-17,
-          "i_contrib_a": 1.11948406438e-13,
-          "direction": "to_from"
-        },
-        "notes": null
-      },
-      {
         "key": "thevenin_flow_balance",
         "title": "Suma kontrolna bilansu prądu w węźle zwarcia (KCL)",
         "formula_latex": "\\sum_{\\text{gał} \\to k} I_{\\text{gał}} = I_k''^{(Th)}",
@@ -1286,8 +1270,48 @@
           "fraction_sum": 0.856633646257
         },
         "notes": "KCL: suma modułów współczynników gałęzi wchodzących do węzła zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+      },
+      {
+        "key": "wklady_pominiete",
+        "title": "Wkłady pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A)",
+        "formula_latex": "\\left| \\underline{I}_{\\text{gał}} \\right| < I_{\\text{próg}} = 10^{-6}\\,\\mathrm{A}",
+        "inputs": {
+          "prog_a": 1e-06
+        },
+        "substitution": "Liczba wkładów gałęziowych pominiętych: 2 (sieć zastępcza: 1; falowniki: 1).",
+        "substitution_latex": null,
+        "result": {
+          "liczba_pominietych_thevenin": 1,
+          "suma_modulow_pominietych_thevenin_a": 1.11e-13,
+          "suma_fazorowa_pominietych_thevenin_a": {
+            "re": -1.02e-13,
+            "im": -4.33e-14
+          },
+          "liczba_pominietych_falownik": 1,
+          "suma_modulow_pominietych_falownik_a": 0.0
+        },
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
       }
     ],
+    "wklady_pominiete": [
+      {
+        "branch_id": "cab_main_b",
+        "branch_name": "Kabel SN 1",
+        "source_id": "gen_pv",
+        "tor": "falownik",
+        "i_ka": 0.0,
+        "kat_deg": null
+      },
+      {
+        "branch_id": "tr_sn_nn",
+        "branch_name": "TR 15/0.4",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": 1.11e-16,
+        "kat_deg": -157.0
+      }
+    ],
+    "prog_wkladu_pominietego_a": 1e-06,
     "analysis_case_context": {
       "case_ref": "case-demo",
       "case_kind": "ZWARCIOWY_MAKS",

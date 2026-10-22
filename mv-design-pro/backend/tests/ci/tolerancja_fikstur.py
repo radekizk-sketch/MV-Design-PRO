@@ -226,34 +226,20 @@ def _klucz_wielkosci(rodzic: dict[str, object], klucz: str) -> str:
     return klucz
 
 
-#: Listy wpisów rozpływu zwarciowego, które solver (FROZEN, B-01) buduje progiem zerowym na
-#: liczbie (`if i_mag <= 0: continue` / `if i_a <= 0: continue` w
-#: `short_circuit_iec60909.py::_build_branch_contributions_for_*`): gałąź o prądzie
-#: DOKŁADNIE 0 nie wchodzi do listy, a o 1e-17 wchodzi — długość listy jest funkcją szumu
-#: numerycznego maszyny. POMIAR: CI na `ed3afa480`, scena zwarć, punkt `80c21edb…`:
-#: `branch_contributions` 5 (fikstura) wobec 6 (runner) i `branch_flow_trace` 4 wobec 5 —
-#: nadmiarowy wpis to źródło THEVENIN_GRID przez TR SN/nN o `i_ka` 1,4e-17 (kierunek „brak").
-#: Wpisy w paśmie zera (`PASMO_ZERA_FIXTUR`) są z porównania WYŁĄCZONE po obu stronach;
-#: wpis o prądzie realnym, którego brakuje, nadal jest różnicą. Lista ZAMKNIĘTA — pin:
-#: `test_wpisy_rozplywu_w_pasmie_zera_nie_wchodza_do_porownania`.
-POLA_LIST_WPISOW_ROZPLYWU: frozenset[str] = frozenset({"branch_contributions", "branch_flow_trace"})
-
-
-def _prad_wpisu_rozplywu(wpis: object) -> float | None:
-    """Prąd wpisu rozpływu: `i_ka` (wkład gałęzi, kA) albo `result.i_contrib_a` (ślad, A)."""
-    if not isinstance(wpis, dict):
-        return None
-    wynik = wpis.get("result")
-    kandydat = wynik.get("i_contrib_a") if isinstance(wynik, dict) else wpis.get("i_ka")
-    if isinstance(kandydat, bool) or not isinstance(kandydat, int | float):
-        return None
-    return float(kandydat)
-
-
-def _bez_wpisow_szumu(lista: list[object]) -> list[object]:
-    return [
-        w for w in lista if (p := _prad_wpisu_rozplywu(w)) is None or abs(p) > PASMO_ZERA_FIXTUR
-    ]
+#: Pola wpisu zestawienia ``wklady_pominiete`` (karta PROG-ZERA-WKLADOW) poza porównaniem
+#: międzymaszynowym. Lista ZAMKNIĘTA — pin: `test_kat_wkladu_pominietego_poza_porownaniem`.
+#: POWÓD, NIE WYGODA: wpis zestawienia to „wkład pominięty na podstawie tolerancji
+#: numerycznej (|I| < 1e-6 A)” — jego moduł leży z definicji poniżej jedynego progu
+#: (`PROG_WKLADU_POMIJALNEGO_A` = 1e-6 A = 1e-9 kA, czyli wewnątrz `PASMO_ZERA_FIXTUR`,
+#: pin relacji w teście), więc `i_ka` porównuje się dalej pasmem zera. KĄT fazora o module
+#: rzędu reszty zmiennoprzecinkowej jest funkcją tej reszty: ta sama gałąź daje na jednej
+#: maszynie fazor DOKŁADNIE 0 (kąt `None`), na drugiej 1,4e-17 kA (kąt dowolny). SKŁAD
+#: zestawienia (gałąź, źródło, tor, kolejność) i długość listy porównuje się ŚCIŚLE — to
+#: nie jest pasmo na długość listy (dawne obejście `POLA_LIST_WPISOW_ROZPLYWU` usunięte
+#: wraz z naprawą u źródła).
+POLA_KATA_WKLADU_POMINIETEGO: frozenset[str] = frozenset({"kat_deg"})
+#: Klucz listy zestawienia wkładów pominiętych w odpowiedzi rozpływu.
+KLUCZ_ZESTAWIENIA_POMINIETYCH = "wklady_pominiete"
 
 
 def roznice_z_tolerancja(
@@ -277,13 +263,12 @@ def roznice_z_tolerancja(
         return [
             r
             for k in zloty
+            if not (klucz == KLUCZ_ZESTAWIENIA_POMINIETYCH and k in POLA_KATA_WKLADU_POMINIETEGO)
             for r in roznice_z_tolerancja(
                 zloty[k], teraz[k], f"{sciezka}.{k}", _klucz_wielkosci(zloty, k)
             )
         ]
     if isinstance(zloty, list) and isinstance(teraz, list):
-        if klucz in POLA_LIST_WPISOW_ROZPLYWU:
-            zloty, teraz = _bez_wpisow_szumu(zloty), _bez_wpisow_szumu(teraz)
         if len(zloty) != len(teraz):
             return [f"{sciezka}: długość listy {len(zloty)} != {len(teraz)}"]
         return [

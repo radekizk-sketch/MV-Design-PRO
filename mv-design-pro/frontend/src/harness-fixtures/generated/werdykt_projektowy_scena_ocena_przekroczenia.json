@@ -549,8 +549,8 @@
           "margines_jednostka": "",
           "margines_wzor_latex": "",
           "uwaga_pl": null,
-          "uzasadnienie_pl": "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
-          "wniosek_pl": "Wymaganie spełnione: Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.",
+          "uzasadnienie_pl": "Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
+          "wniosek_pl": "Wymaganie spełnione: Gałąź poza drogą zwarcia: każdy wkład źródła do tej gałęzi to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) (zestawienie wkładów pominiętych w rozpływie punktu). Prąd gałęzi nie jest wykazywany jako zero — dla każdego źródła spełnia |I| < 1e-6 A, pomijalnie mało wobec prądu dopuszczalnego przewodu; kryterium cieplne spełnione trywialnie.",
           "dowod": {
             "run_id": "run-sc-scena-przekroczenia",
             "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"

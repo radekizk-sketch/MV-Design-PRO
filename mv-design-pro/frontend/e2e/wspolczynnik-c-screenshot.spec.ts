@@ -85,7 +85,7 @@ const CREATOR: Record<Scena, string> = {
  */
 async function rozplywIPodzialPunktuNn(page: Page): Promise<void> {
   const rozplyw = page.getByTestId('mvd-zwarcia-rozplyw');
-  await expect(rozplyw.getByTestId('mvd-wyn-tabela')).toContainText('TR 15/0.4');
+  await expect(rozplyw.getByTestId('mvd-zwarcia-rozplyw-tabela')).toContainText('TR 15/0.4');
   await expect(rozplyw.getByTestId('mvd-zwarcia-rozplyw-blad')).toHaveCount(0);
   const slad = page.getByTestId('mvd-zwarcia-slad-rozplywu');
   await expect(slad.getByTestId('mvd-zwarcia-slad-rozplywu-lista')).toBeVisible();

@@ -35,6 +35,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from application.analyses.prad_zwarciowy_galezi import (
+    galaz_bez_opublikowanego_wkladu,
+)
+from application.analyses.prad_zwarciowy_galezi import (
     prad_zwarciowy_galezi as _prad_galezi,
 )
 from application.analyses.protection.ocena_nadpradowa import (
@@ -49,6 +52,7 @@ from network_model.core.graph import NetworkGraph
 from network_model.core.switch import SwitchState, SwitchType
 from network_model.core.topologia import przeglad_wszerz_od
 from network_model.nazwy import nazwa_nadana
+from network_model.solvers.short_circuit_contributions import NAZWA_WKLADU_POMINIETEGO
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
 # ---------------------------------------------------------------------------
@@ -288,6 +292,14 @@ def wyznacz_czasy_wylaczenia(
             )
             continue
 
+        # Karta PROG-ZERA-WKLADOW: gałąź bez opublikowanego wkładu — każdy wkład źródła to
+        # „wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A)”. Rachunek
+        # rozruchu dostaje sumę wkładów opublikowanych (0.0 — żaden stopień nie rusza, ten
+        # sam wniosek co przy surowym prądzie poniżej 1e-6 A), ale ślad NIE wykazuje prądu
+        # 0 A: `prad_galezi_a` = None, a powód nazywa wkład pominięty i granicę progu.
+        pominieta = galaz_bez_opublikowanego_wkladu(sc_result, branch_id)
+        prad_pokazany = None if pominieta else prad
+
         aparat_id = znajdz_aparat_chroniacy(graph, branch_id)
         if aparat_id is None:
             wynik[branch_id] = CzasWylaczeniaGalezi(
@@ -298,7 +310,7 @@ def wyznacz_czasy_wylaczenia(
                     "Na drodze od zasilania do tej gałęzi nie ma wyłącznika ani reclosera, "
                     "więc żaden aparat nie wyznacza czasu trwania zwarcia."
                 ),
-                prad_galezi_a=prad,
+                prad_galezi_a=prad_pokazany,
             )
             continue
 
@@ -316,7 +328,7 @@ def wyznacz_czasy_wylaczenia(
                 ),
                 urzadzenie_ref=aparat_id,
                 urzadzenie_nazwa=nazwa_aparatu,
-                prad_galezi_a=prad,
+                prad_galezi_a=prad_pokazany,
             )
             continue
 
@@ -328,7 +340,7 @@ def wyznacz_czasy_wylaczenia(
                 powod_pl=" ".join(b.komunikat_pl for b in nastawy.braki),
                 urzadzenie_ref=aparat_id,
                 urzadzenie_nazwa=nazwa_aparatu,
-                prad_galezi_a=prad,
+                prad_galezi_a=prad_pokazany,
             )
             continue
 
@@ -340,14 +352,23 @@ def wyznacz_czasy_wylaczenia(
                 tk_s=None,
                 zrodlo=ZRODLO_PONIZEJ_ROZRUCHU,
                 powod_pl=(
-                    f"Prąd gałęzi {prad:.1f} A nie przekracza progu rozruchowego "
-                    f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
-                    f"{najczulszy.etykieta_pl}, więc to zabezpieczenie nie zadziała."
+                    (
+                        f"Każdy wkład źródła do tej gałęzi to {NAZWA_WKLADU_POMINIETEGO}, "
+                        f"więc prąd gałęzi nie przekracza progu rozruchowego "
+                        f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+                        f"{najczulszy.etykieta_pl} — to zabezpieczenie nie zadziała."
+                    )
+                    if pominieta
+                    else (
+                        f"Prąd gałęzi {prad:.1f} A nie przekracza progu rozruchowego "
+                        f"{najczulszy.prog_pierwotny_a:g} A najczulszego stopnia "
+                        f"{najczulszy.etykieta_pl}, więc to zabezpieczenie nie zadziała."
+                    )
                 ),
                 urzadzenie_ref=aparat_id,
                 urzadzenie_nazwa=nazwa_aparatu,
                 funkcja=najczulszy.funkcja,
-                prad_galezi_a=prad,
+                prad_galezi_a=prad_pokazany,
                 prad_rozruchowy_a=najczulszy.prog_pierwotny_a,
                 krzywa=najczulszy.krzywa,
                 tms=najczulszy.tms,

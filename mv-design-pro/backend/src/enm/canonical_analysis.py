@@ -108,6 +108,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
     KLUCZ_SLADU_ROZPLYWU,
+    KLUCZ_WKLADOW_POMINIETYCH,
     KLUCZE_ROZPLYWU,
     canonical_run_repository_scope,
 )
@@ -163,6 +164,7 @@ from network_model.solvers.power_flow_unbalanced import (
     UnbalancedPowerFlowResult,
     solve_unbalanced_backward_forward_sweep,
 )
+from network_model.solvers.short_circuit_contributions import PROG_WKLADU_POMIJALNEGO_A
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitResult,
@@ -301,7 +303,7 @@ _KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"c_factor", "un_v
 #: Poddrzewa śladu White Box wiersza — zerowane bez wykazu ścieżek (setki wpisów bez
 #: wartości diagnostycznej; wykaz `non_physical_fields` nazywa pola KONTRAKTU).
 _KLUCZE_SLADU_WIERSZA_ZWARCIA: frozenset[str] = frozenset(
-    {"white_box_trace", "branch_contributions", "branch_flow_trace"}
+    {"white_box_trace", "branch_contributions", "branch_flow_trace", "wklady_pominiete"}
 )
 
 
@@ -410,7 +412,8 @@ KLUCZE_WIERSZA_ZWARCIA: tuple[str, ...] = (
 )
 
 #: Klucze ``to_dict()`` dołączane WYŁĄCZNIE gdy solver je policzył (exclude-None):
-#: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n.
+#: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n, zestawienie wkładów
+#: pominiętych na podstawie tolerancji numerycznej (karta PROG-ZERA-WKLADOW).
 KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
     {
         "z1_ohm",
@@ -421,6 +424,7 @@ KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
         "n_factor",
         "i_dc_a",
         "tb_zrodlo",
+        "wklady_pominiete",
     }
 )
 
@@ -905,6 +909,21 @@ def pobierz_slad_rozplywu_biegu(
     albo zapis sprzed dodania kolumny śladu — nigdy pusta lista udająca „ślad pusty".
     """
     return _rozplyw_punktu(run, fault_node_id, uow_factory)[1]
+
+
+def pobierz_wklady_pominiete_biegu(
+    run: CanonicalRun,
+    fault_node_id: str,
+    *,
+    uow_factory: Callable[[], Any] | None = None,
+) -> list[dict[str, Any]] | None:
+    """Zestawienie wkładów pominiętych punktu (|I| < 1e-6 A, karta PROG-ZERA-WKLADOW).
+
+    Ta sama klasa ładunku i ta sama kolejność źródeł co `pobierz_rozplyw_biegu`
+    (`_rozplyw_punktu`). ``None``: punkt bez wkładów pominiętych (rdzeń nie emituje pustego
+    zestawienia), bieg policzony bez wkładów albo punkt nieznany.
+    """
+    return _rozplyw_punktu(run, fault_node_id, uow_factory)[2]
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
@@ -2438,8 +2457,9 @@ _POLA_SPOJNOSCI_WKLADOW: tuple[str, ...] = ("ikss_a", "ip_a", "ith_a", "sk_mva",
 
 def _policz_rozplyw_punktu_na_zadanie(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None] | None:
-    """Wkłady gałęziowe + ślad podziału prądu JEDNEGO punktu policzone z wejścia biegu.
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None, list[dict[str, Any]] | None] | None:
+    """Wkłady gałęziowe + ślad podziału prądu + wkłady pominięte JEDNEGO punktu policzone
+    z wejścia biegu.
 
     PERF-SC-50 (krok 3): bieg kanoniczny nie liczy iloczynu źródło×gałąź dla każdego
     z punktów zwarcia (92 % bajtów biegu sieci 50 stacji); punkt wybrany przez
@@ -2487,19 +2507,20 @@ def _policz_rozplyw_punktu_na_zadanie(
     slad_surowy = odtworzony.get(KLUCZ_SLADU_ROZPLYWU)
     # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY) — ta sama granica co bieg.
     slad = kroki_zwarcia_w_kontrakcie(slad_surowy) if slad_surowy is not None else None
+    pominiete = odtworzony.get(KLUCZ_WKLADOW_POMINIETYCH)
     with canonical_run_repository_scope() as repository:
-        repository.zapisz_rozplyw_punktu(run.id, fault_node_id, wklady, slad)
-    return wklady, slad
+        repository.zapisz_rozplyw_punktu(run.id, fault_node_id, wklady, slad, pominiete)
+    return wklady, slad, pominiete
 
 
 def _rozplyw_punktu(
     run: CanonicalRun, fault_node_id: str, uow_factory: Callable[[], Any] | None
-) -> tuple[list[dict[str, Any]] | None, list[dict[str, Any]] | None]:
-    """(wkłady, ślad) punktu — JEDNA prawda dostępu dla obu akcesorów.
+) -> tuple[list[dict[str, Any]] | None, list[dict[str, Any]] | None, list[dict[str, Any]] | None]:
+    """(wkłady, ślad, wkłady pominięte) punktu — JEDNA prawda dostępu dla akcesorów.
 
     Kolejność źródeł: (1) inline w artefakcie (świeży bieg `in_run`, zapis sprzed
     rozdzielenia), (2) osobna tabela rozpływu, (3) PERF-SC-50: obliczenie na żądanie
-    z wejścia biegu (utrwalane w (2)). Brak flagi dostępności → (None, None): bieg
+    z wejścia biegu (utrwalane w (2)). Brak flagi dostępności → (None, None, None): bieg
     policzony bez wkładów albo nieznany punkt — uczciwy brak.
     """
     for item in (run.raw_result or {}).get("results", []):
@@ -2508,19 +2529,25 @@ def _rozplyw_punktu(
         inline = item.get(KLUCZ_ROZPLYWU)
         if inline is not None:
             slad_inline = item.get(KLUCZ_SLADU_ROZPLYWU)
-            return list(inline), (list(slad_inline) if slad_inline is not None else None)
+            pominiete_inline = item.get(KLUCZ_WKLADOW_POMINIETYCH)
+            return (
+                list(inline),
+                list(slad_inline) if slad_inline is not None else None,
+                list(pominiete_inline) if pominiete_inline is not None else None,
+            )
         if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
-            return None, None
+            return None, None, None
         with canonical_run_repository_scope() as repository:
             z_tabeli = repository.get_branch_flows(run.id, fault_node_id)
             slad_z_tabeli = repository.get_branch_flow_trace(run.id, fault_node_id)
+            pominiete_z_tabeli = repository.get_wklady_pominiete(run.id, fault_node_id)
         if z_tabeli is not None:
-            return z_tabeli, slad_z_tabeli
+            return z_tabeli, slad_z_tabeli, pominiete_z_tabeli
         policzone = _policz_rozplyw_punktu_na_zadanie(run, fault_node_id, uow_factory)
         if policzone is None:
-            return None, None
+            return None, None, None
         return policzone
-    return None, None
+    return None, None, None
 
 
 def _execute_short_circuit(
@@ -2615,8 +2642,8 @@ def _execute_short_circuit(
             # PERF-SC-50 (krok 3): wiersz NIE niesie wkładów ani śladu podziału prądu —
             # tylko flagę dostępności; treść liczy `pobierz_rozplyw_biegu` z tego samego
             # wejścia (assembler deterministyczny) i utrwala w `canonical_run_branch_flows`.
-            payload.pop(KLUCZ_ROZPLYWU, None)
-            payload.pop(KLUCZ_SLADU_ROZPLYWU, None)
+            for klucz_rozplywu in KLUCZE_ROZPLYWU:
+                payload.pop(klucz_rozplywu, None)
             payload[KLUCZ_DOSTEPNOSCI_ROZPLYWU] = True
         # Kontrakt pol kroku sladu (karta DOWOD-CIEPLNY): granica aplikacji zdejmuje
         # kopie LaTeX-u rdzenia B-01 z pola prozy `substitution` PO KLUCZU KROKU —
@@ -3915,13 +3942,6 @@ def _wpis_grafu(mapa: dict[str, Any], klucz: object) -> dict[str, Any]:
     return mapa.get(klucz, {}) if isinstance(klucz, str) else {}
 
 
-#: Próg prądu numerycznie zerowego w projekcji rozpływu zwarciowego [kA] = 1 µA.
-#: Poniżej niego kierunek z solvera jest artefaktem arytmetyki (znak ~0), nie
-#: wielkością fizyczną — patrz docstring projekcji rozpływu. Próg prezentacyjny,
-#: nie korekta wyniku: `i_ka` w wierszu pozostaje surową wartością solvera.
-PROG_PRADU_ZEROWEGO_KA = 1e-9
-
-
 def _sc_rozplyw_galeziowy(
     raw: list[dict[str, Any]] | None,
     graph_nodes: dict[str, Any],
@@ -3935,14 +3955,13 @@ def _sc_rozplyw_galeziowy(
     rozpływ prądu od źródła zastępczego (Thevenin / sieć nadrzędna,
     `_build_branch_contributions_for_thevenin`, source_id="THEVENIN_GRID").
     WYŁĄCZNIE projekcje prezentacyjne (A→kA, nazwy z grafu przebiegu) — zero
-    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera, z jednym wyjątkiem
-    prezentacyjnym: gałąź o prądzie NUMERYCZNIE ZEROWYM (|I| < PROG_PRADU_ZEROWEGO_KA)
-    dostaje token "brak" — solver wyznacza kierunek ze znaku różnicy napięć, a dla
-    prądu rzędu 1e-18 kA znak zależy od platformy (CI 2026-09-16, run 5030: ten sam
-    commit dał "from_to" na jednym runnerze i "to_from" na drugim). Strzałka na
-    zerowym prądzie nie niesie treści inżynierskiej; FE token nieznany renderuje
-    parą węzłów bez strzałki. Sort deterministyczny
-    (branch_id, source_id). Starsze wyniki bez pola → None (uczciwy brak);
+    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera. Projekcja NIE klasyfikuje
+    wkładów i nie ma własnego progu: wkład numerycznie pomijalny (|I| < 1e-6 A —
+    jedyna definicja `PROG_WKLADU_POMIJALNEGO_A` w `short_circuit_contributions`) rdzeń
+    odkłada do zestawienia `wklady_pominiete` i nie publikuje go na tej liście (karta
+    PROG-ZERA-WKLADOW; dawny token kierunku "brak" dla |I| < 1e-9 kA był drugim progiem
+    tej samej klasy). Sort deterministyczny (branch_id, source_id). Starsze wyniki bez
+    pola → None (uczciwy brak);
     pusta lista = policzono, brak wkładów w żadnej gałęzi (sieć bez źródła
     zastępczego i bez falowników niosących prąd).
 
@@ -3989,15 +4008,43 @@ def _sc_rozplyw_galeziowy(
                 "to_node_id": to_wpis.get("element_id") or to_key,
                 "to_node_name": nazwa_nadana(to_wpis.get("name")) or opis_bez_nazwy("buses"),
                 "i_ka": i_ka,
-                "direction": (
-                    "brak"
-                    if i_ka is not None and abs(i_ka) < PROG_PRADU_ZEROWEGO_KA
-                    else entry.get("direction")
-                ),
+                "direction": entry.get("direction"),
             }
         )
     flows.sort(key=lambda flow: (flow["branch_id"] or "", flow["source_id"] or ""))
     return flows
+
+
+def _sc_wklady_pominiete(
+    raw: list[dict[str, Any]] | None, graph_branches: dict[str, Any]
+) -> list[dict[str, Any]] | None:
+    """Zestawienie wkładów pominiętych punktu (karta PROG-ZERA-WKLADOW) — projekcja.
+
+    Ta sama projekcja prezentacyjna co lista wkładów (`_sc_rozplyw_galeziowy`): ``ref_id``
+    gałęzi z grafu przebiegu, nazwa z modelu, prąd A→kA, ten sam sort (branch_id,
+    source_id). Każdy wpis to „wkład pominięty na podstawie tolerancji numerycznej
+    (|I| < 1e-6 A)” — surowe |I| (3 cyfry znaczące) i kąt fazora z rdzenia bez zmian
+    treści. ``None`` = punkt bez wkładów pominiętych albo bieg bez wkładów.
+    """
+    if raw is None:
+        return None
+    wpisy: list[dict[str, Any]] = []
+    for entry in raw:
+        branch_key = entry.get("branch_id")
+        branch = _wpis_grafu(graph_branches, branch_key)
+        wpisy.append(
+            {
+                "branch_id": branch.get("element_id") or branch_key,
+                "branch_name": nazwa_nadana(branch.get("name"))
+                or opis_galezi_grafu_bez_nazwy(branch),
+                "source_id": entry.get("source_id"),
+                "tor": entry.get("tor"),
+                "i_ka": _amps_to_ka(entry.get("i_a")),
+                "kat_deg": entry.get("kat_deg"),
+            }
+        )
+    wpisy.sort(key=lambda wpis: (wpis["branch_id"] or "", wpis["source_id"] or ""))
+    return wpisy
 
 
 def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
@@ -4113,7 +4160,7 @@ def build_short_circuit_rozplyw(
     for item in raw_result.get("results", []):
         if item.get("fault_node_id") == target_id:
             # PERF-SC-50: wkłady i ślad JEDNYM odczytem/obliczeniem punktu (`_rozplyw_punktu`).
-            wklady, slad = _rozplyw_punktu(run, target_id, uow_factory)
+            wklady, slad, pominiete = _rozplyw_punktu(run, target_id, uow_factory)
             return {
                 "run_id": str(run.id),
                 "target_id": target_id,
@@ -4123,6 +4170,13 @@ def build_short_circuit_rozplyw(
                 # kroki solvera bez projekcji. `None` = uczciwy brak (patrz
                 # `pobierz_slad_rozplywu_biegu`).
                 "branch_flow_trace": slad,
+                # Karta PROG-ZERA-WKLADOW: wkłady pominięte na podstawie tolerancji
+                # numerycznej — ta sama klasa ładunku; próg jako ODBICIE jedynej definicji
+                # (warstwa prezentacji nie ma własnej stałej).
+                "wklady_pominiete": _sc_wklady_pominiete(pominiete, graph_branches),
+                "prog_wkladu_pominietego_a": (
+                    PROG_WKLADU_POMIJALNEGO_A if wklady is not None else None
+                ),
             }
     raise BrakZasobuError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 

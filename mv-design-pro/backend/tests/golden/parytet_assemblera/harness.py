@@ -94,15 +94,20 @@ def _bieg(
 
 #: Klucze poddrzew śladu White Box per węzeł zwarcia (``results[i].*``). Poddrzewo
 #: śladu NIE wchodzi do porównania między maszynami W OGÓLE — ani liczby, ani
-#: struktura. Solver (FROZEN, B-01) buduje listy śladu progiem zerowym na liczbie
-#: (``if i_a <= 0: continue`` / ``if i_mag <= 0: continue`` w
-#: ``_build_branch_contributions_for_*``), więc gałąź o prądzie DOKŁADNIE 0 na
-#: jednej maszynie i 10⁻¹⁷ na drugiej wchodzi do listy albo nie — długość listy,
-#: pozycja wpisu bilansu KCL i obecność notatek (``notes``: ``None``/napis) są
-#: funkcją szumu. Pomiar: CI run 4876 na ``40e49c22`` — 155 wpisów SC
-#: (G00/G03/G04/G05/G08) z innym szkieletem przy ZEROWEJ rozbieżności liczb
-#: kontraktu; sonda lokalna (szum 10⁻¹² na ``np.linalg.inv``) odtwarza klasę:
-#: G04/00 ``branch_contributions`` 9 vs 10, ``branch_flow_trace`` 6 vs 7. Rozmiar
+#: struktura. HISTORIA: do karty PROG-ZERA-WKLADOW (2026-10-21) solver (FROZEN, B-01)
+#: budował listy wkładów i śladu progiem ``<= 0`` na liczbie, więc gałąź o prądzie
+#: DOKŁADNIE 0 na jednej maszynie i 10⁻¹⁷ na drugiej wchodziła do listy albo nie (CI run
+#: 4876 na ``40e49c22`` — 155 wpisów SC z innym szkieletem przy ZEROWEJ rozbieżności liczb
+#: kontraktu; G04/00 ``branch_contributions`` 9 vs 10, ``branch_flow_trace`` 6 vs 7). Od
+#: tej karty jeden próg |I| < 1e-6 A (``PROG_WKLADU_POMIJALNEGO_A``) odcina szum (pomiar
+#: korpusu: szum ≤ 2,5·10⁻⁸ A, sygnał ≥ 1,0001·10⁻⁶ A), więc SKŁAD i kolejność list są
+#: przenośne; maska zostaje z dwóch innych powodów: (1) WARTOŚCI wkładów pominiętych
+#: (``wklady_pominiete``) to szum zależny od maszyny z natury — zestawienie podaje je
+#: audytowo, nie jako wielkość fizyczną; (2) ``white_box_trace`` niesie liczby
+#: sformatowane w napisach (podstawienia), których tolerancja liczbowa nie obejmie. Od
+#: PERF-SC-50 bieg domyślny (``on_demand``) nie niesie w wierszu wkładów, śladu podziału
+#: ani zestawienia pominiętych (tylko flagę dostępności) — maska działa na biegach
+#: ``in_run``. Rozmiar
 #: (sieć G00/00, 52 stacje, SC 3F): per węzeł zwarcia ``branch_contributions``
 #: 2 906 liczb / 0,8 MB, ``branch_flow_trace`` 1 579, ``white_box_trace`` 628 —
 #: razem 549 k liczb / 108 MB JSON na JEDEN bieg; liczby kontraktu (``ikss_a``,
@@ -126,7 +131,7 @@ def _bieg(
 #: definicji zależny od maszyny. Po naprawie bliźniaka (zbieżność w 5 iteracjach, parytet z
 #: pandapower) maska jest zbędna — klucz wraca do porównania.
 KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
-    {"branch_contributions", "branch_flow_trace", "white_box_trace"}
+    {"branch_contributions", "branch_flow_trace", "white_box_trace", "wklady_pominiete"}
 )
 #: Tolerancja porównania liczb kontraktu między maszynami (jednostki kontraktu:
 #: MW, Mvar, kV, kA, A, pu, Ω, s). ATOL = 10⁻⁶ jednostki (1 W, 1 mV, 1 mA):

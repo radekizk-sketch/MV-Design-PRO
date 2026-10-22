@@ -420,9 +420,13 @@ def test_czyszczenie_biegow_usuwa_rozplyw() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_klasa_rozplywu_ma_dwa_klucze() -> None:
-    """Deklaracja klasy jest przypięta testem (zmiana zbioru = świadoma decyzja)."""
-    assert KLUCZE_ROZPLYWU == ("branch_contributions", "branch_flow_trace")
+def test_klasa_rozplywu_ma_trzy_klucze() -> None:
+    """Deklaracja klasy jest przypięta testem (zmiana zbioru = świadoma decyzja).
+
+    Karta PROG-ZERA-WKLADOW dołożyła zestawienie wkładów pominiętych na podstawie
+    tolerancji numerycznej (`wklady_pominiete`) — ten sam iloczyn źródło×gałąź co wkłady,
+    więc ten sam mechanizm „wytnij z wiersza / oddaj na żądanie"."""
+    assert KLUCZE_ROZPLYWU == ("branch_contributions", "branch_flow_trace", "wklady_pominiete")
 
 
 def test_slad_solvera_towarzyszy_wkladom() -> None:

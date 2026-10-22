@@ -182,6 +182,25 @@ export interface ShortCircuitBranchFlow {
 }
 
 /**
+ * Wpis zestawienia „wkład pominięty na podstawie tolerancji numerycznej" (karta
+ * PROG-ZERA-WKLADOW) — para źródło×gałąź, której |I| jest poniżej progu rdzenia
+ * (`PROG_WKLADU_POMIJALNEGO_A`, odbicie w `prog_wkladu_pominietego_a` odpowiedzi
+ * rozpływu). Projekcja `_sc_wklady_pominiete` (`enm/canonical_analysis.py`): surowe
+ * |I| obcięte do 3 cyfr znaczących w stronę zera (kA), kąt fazora (°, `null` dla
+ * fazora zerowego). To NIE jest zero ani wkład z listy — tabela rozpływu go nie
+ * pokazuje; zestawienie stoi osobno.
+ */
+export interface WkladPominietyRozplywu {
+  branch_id: string;
+  branch_name: string;
+  source_id: string;
+  /** Tor rdzenia, którym policzono wkład: sieć zastępcza albo superpozycja falownikowa. */
+  tor: 'thevenin' | 'falownik';
+  i_ka: number;
+  kat_deg: number | null;
+}
+
+/**
  * Single short-circuit result row.
  */
 export interface ShortCircuitRow {
@@ -686,6 +705,15 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   direction: 'Kierunek przepływu prądu zwarciowego',
   fraction_sum: 'Suma współczynników gałęzi dopływających do węzła zwarcia',
   sum_into_fault_a: 'Suma prądów gałęzi dopływających do węzła zwarcia',
+  // Krok `wklady_pominiete` (karta PROG-ZERA-WKLADOW): wkład pominięty na podstawie
+  // tolerancji numerycznej — nie zero; próg czytany z kroku (odbicie jedynej definicji
+  // rdzenia), nie ze stałej frontu.
+  prog_a: 'Próg wkładu pominiętego na podstawie tolerancji numerycznej',
+  liczba_pominietych_thevenin: 'Liczba wkładów pominiętych — sieć zastępcza (Thevenin)',
+  liczba_pominietych_falownik: 'Liczba wkładów pominiętych — źródła falownikowe',
+  suma_modulow_pominietych_thevenin_a: 'Suma modułów wkładów pominiętych — sieć zastępcza',
+  suma_modulow_pominietych_falownik_a: 'Suma modułów wkładów pominiętych — źródła falownikowe',
+  suma_fazorowa_pominietych_thevenin_a: 'Suma fazorowa wkładów pominiętych — sieć zastępcza',
   s_rt_mva: 'Moc znamionowa transformatora SrT',
   u_rt_hv_kv: 'Napięcie znamionowe strony górnej UrTHV',
   u_rt_lv_kv: 'Napięcie znamionowe strony dolnej UrTLV',
@@ -737,6 +765,10 @@ export const TRACE_VALUE_UNITS: Record<string, string> = {
   ik_thevenin_a: 'A',
   i_contrib_a: 'A',
   sum_into_fault_a: 'A',
+  prog_a: 'A',
+  suma_modulow_pominietych_thevenin_a: 'A',
+  suma_modulow_pominietych_falownik_a: 'A',
+  suma_fazorowa_pominietych_thevenin_a: 'A',
   v_nodes_pu: 'j.w.',
   v_from_pu: 'j.w.',
   v_to_pu: 'j.w.',

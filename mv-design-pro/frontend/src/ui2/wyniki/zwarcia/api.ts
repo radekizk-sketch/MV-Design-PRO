@@ -20,6 +20,7 @@ import type {
   ShortCircuitResults,
   ShortCircuitRow,
   TraceStep,
+  WkladPominietyRozplywu,
 } from '../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { KrokWywodu, PozycjaWalidacji, SekcjaWywodu } from '../wzorzec';
@@ -282,6 +283,19 @@ export interface RozplywOdpowiedz {
   readonly target_id: string;
   readonly branch_contributions: readonly ShortCircuitBranchFlow[] | null;
   readonly branch_flow_trace: readonly TraceStep[] | null;
+  /**
+   * Karta PROG-ZERA-WKLADOW: zestawienie wkładów pominiętych na podstawie tolerancji
+   * numerycznej — pary źródło×gałąź policzone przez rdzeń, ale poniżej progu (nie
+   * zero, nie na liście `branch_contributions`). `null`/brak = punkt bez takich
+   * wpisów albo bieg bez wkładów.
+   */
+  readonly wklady_pominiete?: readonly WkladPominietyRozplywu[] | null;
+  /**
+   * Próg wkładu pominiętego w A — ODBICIE jedynej definicji rdzenia
+   * (`PROG_WKLADU_POMIJALNEGO_A`); frontend nie ma własnej stałej progu.
+   * `null` = bieg bez wkładów gałęziowych.
+   */
+  readonly prog_wkladu_pominietego_a?: number | null;
 }
 
 /** Pobiera rozpływ gałęziowy JEDNEGO punktu zwarcia (ref węzła w zapytaniu). */
@@ -300,6 +314,8 @@ export async function fetchRozplywZwarciowy(
 interface WpisRozplywu {
   readonly flows: ShortCircuitBranchFlow[];
   readonly trace: TraceStep[] | null;
+  readonly pominiete: WkladPominietyRozplywu[];
+  readonly progA: number | null;
 }
 
 /**
@@ -311,6 +327,14 @@ interface WpisRozplywu {
 export interface RozplywZeSladem {
   readonly flows: ShortCircuitBranchFlow[] | null;
   readonly trace: TraceStep[] | null;
+  /**
+   * Wkłady pominięte na podstawie tolerancji numerycznej (karta PROG-ZERA-WKLADOW) —
+   * ta sama odpowiedź co `flows`/`trace`. `null` = brak danych (wiersz inline, starszy
+   * wynik, pobieranie, błąd); `[]` = policzono, punkt bez wkładów pominiętych.
+   */
+  readonly pominiete: WkladPominietyRozplywu[] | null;
+  /** Próg z odpowiedzi (odbicie definicji rdzenia, A); `null` = brak danych. */
+  readonly progA: number | null;
   /** Błąd pobrania (HTTP/sieć) rozpoznany OSOBNO od „brak danych" — uczciwy stan, nie cisza. */
   readonly blad: boolean;
   /** Pobieranie danych punktu w toku — stan ODRĘBNY od „starszy wynik bez danych" i od błędu. */
@@ -361,6 +385,8 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
             [punkt]: {
               flows: [...(odpowiedz.branch_contributions ?? [])],
               trace: odpowiedz.branch_flow_trace ? [...odpowiedz.branch_flow_trace] : null,
+              pominiete: [...(odpowiedz.wklady_pominiete ?? [])],
+              progA: odpowiedz.prog_wkladu_pominietego_a ?? null,
             },
           }));
       })
@@ -374,12 +400,24 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
     };
   }, [runId, punkt, inline, dostepny, cache]);
 
-  if (inline !== null) return { flows: inline, trace: null, blad: false, ladowanie: false };
-  if (!punkt || !dostepny) return { flows: null, trace: null, blad: false, ladowanie: false };
+  const bezZestawienia = { pominiete: null, progA: null } as const;
+  if (inline !== null)
+    return { flows: inline, trace: null, ...bezZestawienia, blad: false, ladowanie: false };
+  if (!punkt || !dostepny)
+    return { flows: null, trace: null, ...bezZestawienia, blad: false, ladowanie: false };
   const wpis = cache[punkt];
-  if (wpis === undefined) return { flows: null, trace: null, blad: false, ladowanie: true };
-  if (wpis === 'blad') return { flows: null, trace: null, blad: true, ladowanie: false };
-  return { flows: wpis.flows, trace: wpis.trace, blad: false, ladowanie: false };
+  if (wpis === undefined)
+    return { flows: null, trace: null, ...bezZestawienia, blad: false, ladowanie: true };
+  if (wpis === 'blad')
+    return { flows: null, trace: null, ...bezZestawienia, blad: true, ladowanie: false };
+  return {
+    flows: wpis.flows,
+    trace: wpis.trace,
+    pominiete: wpis.pominiete,
+    progA: wpis.progA,
+    blad: false,
+    ladowanie: false,
+  };
 }
 
 // ---------------------------------------------------------------------------

@@ -33,6 +33,10 @@ KLUCZ_ROZPLYWU = "branch_contributions"
 #: iloczyn źródło×gałąź co wkłady, tylko opisany krok po kroku (zmierzone na
 #: sieci S: ślad jest ~5× większy od wkładów, które objaśnia).
 KLUCZ_SLADU_ROZPLYWU = "branch_flow_trace"
+#: Klucz zestawienia wkładów gałęziowych pominiętych na podstawie tolerancji numerycznej
+#: (|I| < 1e-6 A, karta PROG-ZERA-WKLADOW) — ten sam iloczyn źródło×gałąź co wkłady (wpis
+#: dla każdej gałęzi, której wkład od źródła nie wszedł na listę), więc ta sama klasa ładunku.
+KLUCZ_WKLADOW_POMINIETYCH = "wklady_pominiete"
 #: KLASA „ładunek per gałąź jednego punktu zwarcia" — JEDNO źródło prawdy dla
 #: wszystkich mechanizmów, które ten ładunek wycinają z wiersza (zapis rozdzielony,
 #: świeże wiersze odpowiedzi POST) i oddają na żądanie (rozpływ punktu). Przegląd
@@ -40,7 +44,13 @@ KLUCZ_SLADU_ROZPLYWU = "branch_flow_trace"
 #: `branch_contributions`, a `branch_flow_trace` — ten sam mechanizm, ten sam
 #: wzrost O(punkty×gałęzie) — został w wierszu; odpowiedź POST świeżego biegu na
 #: sieci 50 stacji urosła do 105 MB przy bramce 60 MB (E2E full, 2026-09-05).
-KLUCZE_ROZPLYWU: tuple[str, ...] = (KLUCZ_ROZPLYWU, KLUCZ_SLADU_ROZPLYWU)
+#: Karta PROG-ZERA-WKLADOW: zestawienie wkładów pominiętych dołączone do klasy — rośnie
+#: O(punkty×gałęzie×źródła) jak wkłady, które uzupełnia.
+KLUCZE_ROZPLYWU: tuple[str, ...] = (
+    KLUCZ_ROZPLYWU,
+    KLUCZ_SLADU_ROZPLYWU,
+    KLUCZ_WKLADOW_POMINIETYCH,
+)
 #: Znacznik: rozpływ dla tego punktu zwarcia ISTNIEJE i leży w osobnej tabeli.
 #: Odróżnia zapis rozdzielony od starszego wyniku policzonego BEZ wkładów.
 KLUCZ_DOSTEPNOSCI_ROZPLYWU = "branch_contributions_available"
@@ -51,9 +61,10 @@ def _rozdziel_rozplyw(
 ) -> tuple[dict[str, Any] | None, dict[str, dict[str, Any]]]:
     """Artefakt biegu → (artefakt BEZ rozpływu, rozpływ per punkt zwarcia).
 
-    Rozpływ punktu = CAŁA klasa `KLUCZE_ROZPLYWU`: wkłady (`branch_contributions`)
-    i ich ślad WHITE BOX (`branch_flow_trace`) wędrują razem — słownik
-    ``{"contributions": [...], "trace": [...] | None}`` per punkt.
+    Rozpływ punktu = CAŁA klasa `KLUCZE_ROZPLYWU`: wkłady (`branch_contributions`),
+    ich ślad WHITE BOX (`branch_flow_trace`) i zestawienie wkładów pominiętych
+    (`wklady_pominiete`) wędrują razem — słownik
+    ``{"contributions": [...], "trace": [...] | None, "pominiete": [...] | None}`` per punkt.
 
     Rozpływ gałęziowy to iloczyn źródło×gałąź liczony dla KAŻDEGO punktu zwarcia
     (zmierzone na sieci 50 stacji: 104 punkty × 11 506 wpisów), a konsument
@@ -86,6 +97,7 @@ def _rozdziel_rozplyw(
         rozplyw[fault_node_id] = {
             "contributions": item[KLUCZ_ROZPLYWU],
             "trace": item.get(KLUCZ_SLADU_ROZPLYWU),
+            "pominiete": item.get(KLUCZ_WKLADOW_POMINIETYCH),
         }
         wiersze.append(
             {
@@ -278,6 +290,7 @@ class CanonicalRunRepository:
                     fault_node_id=fault_node_id,
                     contributions_json=punkt["contributions"],
                     branch_flow_trace_json=punkt["trace"],
+                    wklady_pominiete_json=punkt["pominiete"],
                 )
             )
 
@@ -287,6 +300,7 @@ class CanonicalRunRepository:
         fault_node_id: str,
         contributions: list[dict[str, Any]],
         trace: list[dict[str, Any]] | None,
+        pominiete: list[dict[str, Any]] | None = None,
     ) -> None:
         """Utrwal rozpływ JEDNEGO punktu policzony na żądanie (PERF-SC-50, krok 3).
 
@@ -307,6 +321,7 @@ class CanonicalRunRepository:
                 fault_node_id=fault_node_id,
                 contributions_json=contributions,
                 branch_flow_trace_json=trace,
+                wklady_pominiete_json=pominiete,
             )
         )
 
@@ -330,6 +345,20 @@ class CanonicalRunRepository:
         Brak wpisu albo wpis zapisany przed dodaniem kolumny → None (uczciwy brak).
         """
         stmt = select(CanonicalRunBranchFlowORM.branch_flow_trace_json).where(
+            CanonicalRunBranchFlowORM.run_id == run_id,
+            CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
+        )
+        return self._session.execute(stmt).scalar_one_or_none()
+
+    def get_wklady_pominiete(self, run_id: UUID, fault_node_id: str) -> list[Any] | None:
+        """Zestawienie wkładów pominiętych (|I| < 1e-6 A) JEDNEGO punktu z osobnej tabeli.
+
+        Ta sama klasa ładunku co wkłady (`KLUCZE_ROZPLYWU`), ten sam magazyn i ta sama
+        jedna prawda dostępu (`enm.canonical_analysis.pobierz_wklady_pominiete_biegu`).
+        ``None``: punkt bez wkładów pominiętych (rdzeń nie emituje pustego zestawienia),
+        brak wpisu albo wpis zapisany przed dodaniem kolumny.
+        """
+        stmt = select(CanonicalRunBranchFlowORM.wklady_pominiete_json).where(
             CanonicalRunBranchFlowORM.run_id == run_id,
             CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
         )

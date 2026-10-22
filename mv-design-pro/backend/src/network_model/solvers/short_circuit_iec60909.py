@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import cmath
+import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -25,9 +27,18 @@ from network_model.solvers.machine_sc_iec60909 import (
     compute_machine_contributions,
 )
 from network_model.solvers.short_circuit_contributions import (
+    NAZWA_WKLADU_POMINIETEGO,
+    OPIS_PROGU_WKLADU_POMIJALNEGO,
+    OPIS_PROGU_WKLADU_POMIJALNEGO_LATEX,
+    PROG_WKLADU_POMIJALNEGO_A,
+    TOR_FALOWNIK,
+    TOR_THEVENIN,
     ShortCircuitBranchContribution,
     ShortCircuitSourceContribution,
     SourceType,
+    WkladPominiety,
+    jest_wkladem_pominietym,
+    zaokraglij_cyfry_znaczace,
 )
 from network_model.solvers.short_circuit_core import (
     ShortCircuitPostProcessResult,
@@ -127,6 +138,10 @@ OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     # projektanta (pola lokalne albo wartość robocza). Wynik z t_b projektanta serializuje się
     # bajt w bajt jak przed kartą; jego pochodzenie niesie konfiguracja biegu.
     "tb_zrodlo",
+    # Karta PROG-ZERA-WKLADOW (zgoda B-01 właściciela z 2026-10-21, addytywnie, exclude-None):
+    # zestawienie wkładów pominiętych na podstawie tolerancji numerycznej (|I| < 1e-6 A) —
+    # obecne WYŁĄCZNIE, gdy policzono wkłady gałęziowe i choć jeden wkład został pominięty.
+    "wklady_pominiete",
 ]
 
 
@@ -161,12 +176,16 @@ class ShortCircuitResult:
             addytywnie — każdy wynik solvera ją niesie)
         tb_zrodlo: dict | None - pochodzenie t_b punktu (addytywnie, exclude-None; ``None``
             dla t_b ze scenariusza projektanta)
+        wklady_pominiete: list[WkladPominiety] | None - zestawienie wkładów gałęziowych
+            pominiętych na podstawie tolerancji numerycznej (|I| < 1e-6 A; addytywnie,
+            exclude-None — ``None``, gdy wkładów nie liczono albo żaden nie był pominięty)
         sk_mva: float - moc zwarciowa Sk'' [MVA]
         ik_thevenin_a: float - wkład sieci Thevenina [A]
         ik_inverters_a: float - wkład źródeł falownikowych [A]
         ik_total_a: float - całkowity prąd zwarciowy [A]
         contributions: list[ShortCircuitSourceContribution] - wkłady źródeł
         branch_contributions: list[ShortCircuitBranchContribution] | None - wkłady gałęzi
+            o |I| ≥ 1e-6 A (wkład o |I| < 1e-6 A jest pominięty — `wklady_pominiete`)
         white_box_trace: list[dict] - szczegółowy ślad obliczeń
 
     Aliasy (dla kompatybilności):
@@ -232,6 +251,11 @@ class ShortCircuitResult:
     # Karta TB-WARTOSC-ROBOCZA (addytywnie): pochodzenie t_b punktu zwarcia; None = t_b ze
     # scenariusza projektanta (payload bez klucza, bajt w bajt jak przed kartą).
     tb_zrodlo: dict[str, Any] | None = None
+    # Karta PROG-ZERA-WKLADOW (zgoda B-01 z 2026-10-21, addytywnie): wkłady gałęziowe
+    # pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A) — NIE zera; surowe |I|
+    # i kąt fazora w zapisie deterministycznym. None = wkładów nie liczono albo żaden nie
+    # był pominięty (payload bez klucza, bajt w bajt jak przed kartą).
+    wklady_pominiete: list[WkladPominiety] | None = None
 
     # -------------------------------------------------------------------------
     # Aliasy dla kompatybilności wstecznej (preferuj canonical: ikss_a, ip_a, ...)
@@ -360,6 +384,9 @@ class ShortCircuitResult:
         # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None): pochodzenie t_b punktu.
         if self.tb_zrodlo is not None:
             data["tb_zrodlo"] = serialize_value(dict(self.tb_zrodlo))
+        # Karta PROG-ZERA-WKLADOW (addytywnie, exclude-None): zestawienie wkładów pominiętych.
+        if self.wklady_pominiete is not None:
+            data["wklady_pominiete"] = [w.to_dict() for w in self.wklady_pominiete]
         return data
 
 
@@ -525,6 +552,7 @@ class ShortCircuitIEC60909Solver:
         z_f: complex | None = None,
         z_equiv_metaliczne: complex | None = None,
         ikss_metaliczny_a: float | None = None,
+        wklady_pominiete: list[WkladPominiety] | None = None,
     ) -> ShortCircuitResult:
         ik_total = ikss_thevenin + ik_inverters
         return ShortCircuitResult(
@@ -560,6 +588,7 @@ class ShortCircuitIEC60909Solver:
             poza_zakresem_iec60909=True if z_f is not None else None,
             i_dc_a=i_dc_a,
             tb_zrodlo=ShortCircuitIEC60909Solver._zrodlo_tb_wiersza(czas_tb, ib_przypadek),
+            wklady_pominiete=wklady_pominiete,
         )
 
     @staticmethod
@@ -1285,7 +1314,7 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         short_circuit_type: ShortCircuitType,
         tlumienie_petli: float | None = None,
-    ) -> list[ShortCircuitBranchContribution]:
+    ) -> tuple[list[ShortCircuitBranchContribution], list[WkladPominiety]]:
         """
         Wkłady falowników do prądów gałęzi (superpozycja Z-bus, moduły RMS).
 
@@ -1294,19 +1323,28 @@ class ShortCircuitIEC60909Solver:
         ``f = (V_i − V_j)·y_ij`` (admitancja szeregowa w per-unit, SPÓJNA z
         macierzą Y-bus), a prąd gałęzi ``I = |f| · I_wkład``. ``I_wkład`` to
         wkład falownika PRZENIESIONY do węzła zwarcia (V12K-184).
+
+        Klasyfikacja wkładu (karta PROG-ZERA-WKLADOW, zgoda B-01 z 2026-10-21) — JEDEN
+        predykat `jest_wkladem_pominietym` (|I| < 1e-6 A): wkład gałęzi o takim prądzie to
+        „wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A)” — nie trafia
+        do listy wkładów, tylko do zwracanego zestawienia wkładów pominiętych (surowe |I|
+        i kąt fazora). Ten sam predykat na wkładzie przeniesionym źródła: źródło, którego
+        wkład do zwarcia jest pomijalny, nie rozprowadza prądu po gałęziach (surowa wartość
+        stoi w `contributions` wyniku). Zwraca (wkłady, wkłady pominięte).
         """
         sources = graph.get_inverter_sources()
         if not sources:
-            return []
+            return [], []
 
         from network_model.solvers.short_circuit_core import build_zbus
 
         builder, z_bus = build_zbus(graph)
         contributions: list[ShortCircuitBranchContribution] = []
+        pominiete: list[WkladPominiety] = []
 
         fault_index = builder.node_id_to_index.get(fault_node_id)
         if fault_index is None:
-            return []
+            return [], []
         factors = ShortCircuitIEC60909Solver._inverter_transfer_factors(
             graph, fault_node_id, builder=builder, z_bus=z_bus
         )
@@ -1315,6 +1353,8 @@ class ShortCircuitIEC60909Solver:
             i_terminal = ShortCircuitIEC60909Solver._inverter_contribution_for_type(
                 source, short_circuit_type
             )
+            # Dana wejściowa źródła (k·I_rN z deklaracji; 0.0 = źródło nie zasila zwarć tego
+            # rodzaju), nie wkład policzony — predykat dziedziny danej, nie tolerancji.
             if i_terminal <= 0:
                 continue
             source_index = builder.node_id_to_index.get(source.node_id)
@@ -1323,7 +1363,7 @@ class ShortCircuitIEC60909Solver:
             i_contrib = ShortCircuitIEC60909Solver._wklad_z_tlumieniem(
                 i_terminal * factors.get(source.id, 0.0), tlumienie_petli
             )
-            if i_contrib <= 0:
+            if jest_wkladem_pominietym(i_contrib):
                 continue
 
             # FIX (karta W-C, Zero-Debt): wektor iniekcji MUSI mieć wymiar macierzy
@@ -1357,7 +1397,16 @@ class ShortCircuitIEC60909Solver:
                 # (V12K-186); dla a = 1 redukuje się do (V_from − V_to)·y.
                 i_branch = (v_from / (ratio * ratio) - v_to / ratio) * y_series * i_contrib
                 i_mag = abs(i_branch)
-                if i_mag <= 0:
+                if jest_wkladem_pominietym(i_mag):
+                    pominiete.append(
+                        WkladPominiety.z_wartosci(
+                            tor=TOR_FALOWNIK,
+                            source_id=source.id,
+                            branch_id=branch_id,
+                            i_a=float(i_mag),
+                            fazor_a=complex(i_branch),
+                        )
+                    )
                     continue
                 direction = "from_to" if abs(v_from) >= abs(v_to) else "to_from"
                 contributions.append(
@@ -1372,7 +1421,8 @@ class ShortCircuitIEC60909Solver:
                 )
 
         contributions.sort(key=lambda item: (item.source_id, item.branch_id))
-        return contributions
+        pominiete.sort(key=lambda item: (item.source_id, item.branch_id))
+        return contributions, pominiete
 
     @staticmethod
     def _series_admittance_pu(builder: object, branch: object) -> tuple[complex, float] | None:
@@ -1402,7 +1452,7 @@ class ShortCircuitIEC60909Solver:
         graph: NetworkGraph,
         fault_node_id: str,
         ik_thevenin_a: float,
-    ) -> tuple[list[ShortCircuitBranchContribution], list[dict]]:
+    ) -> tuple[list[ShortCircuitBranchContribution], list[dict], list[WkladPominiety]]:
         """Rozpływ prądu zwarciowego źródła zastępczego (Thevenin / sieć
         nadrzędna) po gałęziach — WHITE BOX (V12K-132, pkt 7 karty właściciela).
 
@@ -1418,19 +1468,27 @@ class ShortCircuitIEC60909Solver:
         ``Ik''(Thevenin)`` zależnego od typu zwarcia (spójnie z torem
         superpozycji, który też skaluje jeden podział pu wielkością per typ).
 
-        Zwraca (wkłady per gałąź, ślad WHITE BOX). ``ik_thevenin_a <= 0`` (brak
-        źródła zastępczego) → ([], []) — uczciwy brak, jak tor superpozycji dla
-        sieci bez falowników.
+        Klasyfikacja wkładu (karta PROG-ZERA-WKLADOW, zgoda B-01 z 2026-10-21) — JEDEN
+        predykat `jest_wkladem_pominietym` (|I| < 1e-6 A), ten sam co w torze falownikowym:
+        gałąź o takim prądzie to „wkład pominięty na podstawie tolerancji numerycznej
+        (|I| < 1e-6 A)” — bez wpisu na liście wkładów i bez kroku śladu
+        ``thevenin_flow_<gałąź>``, z wpisem w zwracanym zestawieniu wkładów pominiętych
+        (surowe |I| i kąt fazora). Suma kontrolna KCL obejmuje gałęzie OPUBLIKOWANE — ten
+        sam zbiór co lista wkładów i kroki śladu.
+
+        Zwraca (wkłady per gałąź, ślad WHITE BOX, wkłady pominięte). Pomijalny
+        ``ik_thevenin_a`` (brak źródła zastępczego) → ([], [], []) — uczciwy brak, jak tor
+        superpozycji dla sieci bez falowników; surowa wartość stoi w `contributions` wyniku.
         """
-        if ik_thevenin_a <= 0:
-            return [], []
+        if jest_wkladem_pominietym(ik_thevenin_a):
+            return [], [], []
 
         from network_model.solvers.short_circuit_core import build_zbus
 
         builder, z_bus = build_zbus(graph)
         fault_index = builder.node_id_to_index.get(fault_node_id)
         if fault_index is None:
-            return [], []
+            return [], [], []
 
         # Iniekcja jednostkowa w węźle zwarcia (współczynniki podziału prądu).
         i_inj = np.zeros(z_bus.shape[0], dtype=complex)
@@ -1438,6 +1496,7 @@ class ShortCircuitIEC60909Solver:
         v_nodes = z_bus @ i_inj
 
         contributions: list[ShortCircuitBranchContribution] = []
+        pominiete: list[WkladPominiety] = []
         tracer = WhiteBoxTracer()
         tracer.add(
             key="thevenin_flow_setup",
@@ -1479,7 +1538,16 @@ class ShortCircuitIEC60909Solver:
             fraction = (v_from / (ratio * ratio) - v_to / ratio) * y_series_pu
             f_mag = float(abs(fraction))
             i_a = f_mag * ik_thevenin_a
-            if i_a <= 0:
+            if jest_wkladem_pominietym(i_a):
+                pominiete.append(
+                    WkladPominiety.z_wartosci(
+                        tor=TOR_THEVENIN,
+                        source_id=THEVENIN_GRID_SOURCE_ID,
+                        branch_id=branch_id,
+                        i_a=i_a,
+                        fazor_a=complex(fraction) * ik_thevenin_a,
+                    )
+                )
                 continue
             # Kierunek: prąd zwarciowy płynie DO węzła zwarcia. W iniekcji
             # jednostkowej |V| rośnie w stronę zwarcia (największe |V| = węzeł
@@ -1565,7 +1633,8 @@ class ShortCircuitIEC60909Solver:
                 "zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
             ),
         )
-        return contributions, tracer.to_list()
+        pominiete.sort(key=lambda item: (item.source_id, item.branch_id))
+        return contributions, tracer.to_list(), pominiete
 
     @staticmethod
     def _build_branch_contributions(
@@ -1574,19 +1643,92 @@ class ShortCircuitIEC60909Solver:
         short_circuit_type: ShortCircuitType,
         ik_thevenin_a: float,
         tlumienie_petli: float | None = None,
-    ) -> tuple[list[ShortCircuitBranchContribution], list[dict]]:
+    ) -> tuple[list[ShortCircuitBranchContribution], list[dict], list[WkladPominiety]]:
         """Łączy wkłady gałęziowe: superpozycja falownikowa (istniejąca,
         BEZ ZMIAN) + rozpływ Thevenina (V12K-132, addytywnie). Deterministyczny
         sort ``(source_id, branch_id)`` — wpisy falownikowe zachowują swoje
-        wartości bajt-w-bajt (source_id inwertera vs "THEVENIN_GRID")."""
-        inverter = ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
-            graph, fault_node_id, short_circuit_type, tlumienie_petli
+        wartości bajt-w-bajt (source_id inwertera vs "THEVENIN_GRID").
+
+        Wkłady pominięte obu torów (|I| < 1e-6 A, karta PROG-ZERA-WKLADOW) — ten sam sort;
+        niepuste zestawienie dokłada do śladu krok `wklady_pominiete` z bilansem per tor."""
+        inverter, pominiete_fal = (
+            ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+                graph, fault_node_id, short_circuit_type, tlumienie_petli
+            )
         )
-        thevenin, trace = ShortCircuitIEC60909Solver._build_branch_contributions_for_thevenin(
-            graph, fault_node_id, ik_thevenin_a
+        thevenin, trace, pominiete_th = (
+            ShortCircuitIEC60909Solver._build_branch_contributions_for_thevenin(
+                graph, fault_node_id, ik_thevenin_a
+            )
         )
         combined = sorted(inverter + thevenin, key=lambda item: (item.source_id, item.branch_id))
-        return combined, trace
+        pominiete = sorted(
+            pominiete_fal + pominiete_th, key=lambda item: (item.source_id, item.branch_id)
+        )
+        if pominiete:
+            trace = [*trace, ShortCircuitIEC60909Solver._krok_wkladow_pominietych(pominiete)]
+        return combined, trace, pominiete
+
+    @staticmethod
+    def _krok_wkladow_pominietych(pominiete: list[WkladPominiety]) -> dict[str, Any]:
+        """Krok śladu WHITE BOX: wkłady pominięte na podstawie tolerancji numerycznej.
+
+        Bilans per tor źródła z wartości zestawienia (te same 3 cyfry znaczące co wpisy,
+        więc krok jest funkcją zestawienia, nie szumu poniżej trzeciej cyfry): liczba
+        wpisów i suma modułów (górne ograniczenie prądu pominiętego); dla toru sieci
+        zastępczej także suma fazorowa — wszystkie jej wpisy odnoszą kąt do JEDNEGO prądu
+        I_k''(Th). Toru falowników nie sumuje się fazorowo: kąt wpisu jest odniesiony do
+        prądu WŁASNEGO źródła (rdzeń przenosi wkład falownika jako moduł), więc suma
+        fazorów różnych źródeł nie miałaby treści fizycznej. Zestawienie wpisów (gałąź,
+        surowe |I|, kąt, tor) stoi w polu wyniku ``wklady_pominiete``.
+        """
+        wejscie: dict[str, Any] = {"prog_a": PROG_WKLADU_POMIJALNEGO_A}
+        wynik: dict[str, Any] = {}
+        opisy: list[str] = []
+        for tor in (TOR_THEVENIN, TOR_FALOWNIK):
+            wpisy = [w for w in pominiete if w.tor == tor]
+            if not wpisy:
+                continue
+            wynik[f"liczba_pominietych_{tor}"] = len(wpisy)
+            wynik[f"suma_modulow_pominietych_{tor}_a"] = zaokraglij_cyfry_znaczace(
+                float(sum(w.i_a for w in wpisy))
+            )
+            if tor == TOR_THEVENIN:
+                suma_fazorowa = complex(
+                    sum(
+                        0j if w.kat_deg is None else cmath.rect(w.i_a, math.radians(w.kat_deg))
+                        for w in wpisy
+                    )
+                )
+                wynik[f"suma_fazorowa_pominietych_{tor}_a"] = complex(
+                    zaokraglij_cyfry_znaczace(suma_fazorowa.real),
+                    zaokraglij_cyfry_znaczace(suma_fazorowa.imag),
+                )
+            opisy.append(
+                f"{'sieć zastępcza' if tor == TOR_THEVENIN else 'falowniki'}: {len(wpisy)}"
+            )
+        tracer = WhiteBoxTracer()
+        tracer.add(
+            key="wklady_pominiete",
+            title=f"Wkłady pominięte na podstawie tolerancji numerycznej "
+            f"({OPIS_PROGU_WKLADU_POMIJALNEGO})",
+            formula_latex=(
+                r"\left| \underline{I}_{\text{gał}} \right| < "
+                + OPIS_PROGU_WKLADU_POMIJALNEGO_LATEX
+            ),
+            inputs=wejscie,
+            substitution=(
+                f"Liczba wkładów gałęziowych pominiętych: {len(pominiete)} ({'; '.join(opisy)})."
+            ),
+            result=wynik,
+            notes=(
+                f"Każdy taki wpis to {NAZWA_WKLADU_POMINIETEGO} — nie zero: surowy moduł "
+                "prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu "
+                "wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych "
+                "ani do sumy kontrolnej bilansu w węźle zwarcia."
+            ),
+        )
+        return tracer.to_list()[0]
 
     @staticmethod
     def _sprawdz_impedancje_przejscia(
@@ -1789,7 +1931,7 @@ class ShortCircuitIEC60909Solver:
             ik_total_a=ik_total,
             tlumienie_petli=tlumienie_petli,
         )
-        branch_contributions, branch_flow_trace = (
+        branch_contributions, branch_flow_trace, wklady_pominiete = (
             ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
@@ -1798,7 +1940,7 @@ class ShortCircuitIEC60909Solver:
                 tlumienie_petli=tlumienie_petli,
             )
             if include_branch_contributions
-            else (None, None)
+            else (None, None, None)
         )
         return ShortCircuitIEC60909Solver._compute_fault_result(
             short_circuit_type=short_circuit_type,
@@ -1824,6 +1966,7 @@ class ShortCircuitIEC60909Solver:
             z_f=core.z_f,
             z_equiv_metaliczne=core.z_equiv_metaliczne,
             ikss_metaliczny_a=ikss_metaliczny_a,
+            wklady_pominiete=wklady_pominiete or None,
         )
 
     @staticmethod

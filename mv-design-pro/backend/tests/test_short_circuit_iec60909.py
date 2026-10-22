@@ -968,6 +968,10 @@ def test_branch_contributions_option_does_not_change_existing_fields():
     # branch_contributions. Poza tą parą payload musi być bajt-w-bajt identyczny.
     assert "branch_flow_trace" not in base
     assert with_bc.pop("branch_flow_trace"), "opcja włączona → niepusty ślad rozpływu"
+    # Karta PROG-ZERA-WKLADOW: zestawienie wkładów pominiętych (|I| < 1e-6 A) jest tą samą
+    # parą sprzężoną z opcją — bez opcji klucza nie ma (exclude-None).
+    assert "wklady_pominiete" not in base
+    with_bc.pop("wklady_pominiete", None)
     assert with_bc == base
 
 
@@ -1235,12 +1239,12 @@ def test_thevenin_addition_preserves_inverter_entries_byte_for_byte():
         for bc in (result.branch_contributions or [])
         if bc.source_id != THEVENIN_GRID_SOURCE_ID
     ]
-    expected = [
-        bc.to_dict()
-        for bc in ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+    wklady_falownikow, _pominiete = (
+        ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
             graph, "C", ShortCircuitType.THREE_PHASE
         )
-    ]
+    )
+    expected = [bc.to_dict() for bc in wklady_falownikow]
     assert inverter_entries == expected
     # Oba tory obecne: falownikowy ORAZ Thevenina.
     assert inverter_entries, "wkłady falownikowe obecne"

@@ -1896,7 +1896,12 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # dane przyjete Ik1_min doboru aparatu nN, `powod_propozycji` i `rozstrzygniecie` —
     # rozstrzygniecie tolerancji sieci nN per wyspa, `tolerancja_nn_robocza` — znacznik wiersza
     # wyniku SC), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4284." in wyjscie, wyjscie
+    # Karta PROG-ZERA-WKLADOW (2026-10-21): 4284 -> 4286 — POMIAR `contract_fields()` na bazie
+    # karty `8f20bdd3c` (`git archive`: 4284, pin zgodny) i na drzewie karty (4286). Roznica
+    # zbiorow +2 (`wklady_pominiete` — addytywne pole wyniku SC z zestawieniem wkladow
+    # pominietych na podstawie tolerancji numerycznej, `wklady_pominiete_json` — kolumna
+    # artefaktu rozplywu), -0. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4286." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

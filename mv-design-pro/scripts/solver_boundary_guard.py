@@ -126,6 +126,27 @@ SANCTIONED_CHANGES = {
         "czasu pol lokalnych; martwe compute_ikss_3ph (0 uzyc) usuniete. Testy "
         "tests/network_model/solvers/test_czas_tb_punktu_zwarcia.py. Wpis do usuniecia po "
         "scaleniu do main."
+        " Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
+        "klasa numerycznie pomijalnych wkladow galeziowych): predykaty list "
+        "branch_contributions i branch_flow_trace w _build_branch_contributions_for_inverters"
+        " i _build_branch_contributions_for_thevenin z `<= 0` na wspolny "
+        "`jest_wkladem_pominietym` (|I| < PROG_WKLADU_POMIJALNEGO_A = 1e-6 A, jedna definicja w "
+        "short_circuit_contributions); bramka danych i_terminal <= 0 zostaje. Addytywnie: pole "
+        "wyniku wklady_pominiete (exclude_none, OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS) i krok "
+        "sladu `wklady_pominiete` (sumy per tor, 3 cyfry znaczace w strone zera). Zero zmian "
+        "algorytmow i wielkosci glownych: korpus golden przed/po 0 roznic bit w bit (Ik'', ip,"
+        " Ith, Ib, Sk'', Zk, Z1/Z2/Z0, kappa, m/n, i_DC, wklady zrodel, skrot white_box_trace)."
+        " Testy tests/network_model/solvers/test_prog_wkladu_pominietego.py. Wpis do usuniecia"
+        " po scaleniu do main."
+    ),
+    "backend/src/network_model/solvers/short_circuit_contributions.py": (
+        "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
+        "klasa numerycznie pomijalnych wkladow galeziowych): JEDYNA definicja progu "
+        "PROG_WKLADU_POMIJALNEGO_A = 1e-6 A (= 1e-9 kA) z predykatem jest_wkladem_pominietym "
+        "(abs(I) < PROG, nie <=), nazwa „wklad pominiety na podstawie tolerancji numerycznej"
+        " (|I| < 1e-6 A)” i rekord WkladPominiety (tor, zrodlo, galaz, surowe |I| i kat fazora"
+        " obciete do 3 cyfr znaczacych w strone zera). Dataclassy wkladow bez zmian. Wpis do "
+        "usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/short_circuit_core.py": (
         "Decyzja B-01 partii integracji 9 (delegacja O-59, klasa par. 12.2 (k)): jadro "

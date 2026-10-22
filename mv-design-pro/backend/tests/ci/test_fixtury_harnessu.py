@@ -44,9 +44,11 @@ from enm.models import EnergyNetworkModel
 
 from tests.ci.tolerancja_fikstur import (
     HEX_SKROTU,
+    KLUCZ_ZESTAWIENIA_POMINIETYCH,
     PASMO_BEZWYMIAROWYCH,
+    PASMO_ZERA_FIXTUR,
     POLA_BEZWYMIAROWE_OGRANICZONE,
-    POLA_LIST_WPISOW_ROZPLYWU,
+    POLA_KATA_WKLADU_POMINIETEGO,
     POLA_SKROTOW_NIEPRZENOSNYCH,
     POLA_TEKSTU_Z_LICZBAMI,
     RTOL_FIXTUR,
@@ -197,24 +199,66 @@ def _slad(prad_a: float) -> dict[str, object]:
 @pytest.mark.parametrize(
     "pole,wpis", [("branch_contributions", _wklad), ("branch_flow_trace", _slad)]
 )
-@pytest.mark.parametrize("szum_po_stronie_fikstury", [True, False])
-def test_wpisy_rozplywu_w_pasmie_zera_nie_wchodza_do_porownania(
-    pole: str, wpis: object, szum_po_stronie_fikstury: bool
+@pytest.mark.parametrize("nadmiar_po_stronie_fikstury", [True, False])
+def test_listy_rozplywu_porownywane_scisle(
+    pole: str, wpis: object, nadmiar_po_stronie_fikstury: bool
 ) -> None:
-    """Iloczyn cech: {wkład gałęzi, ślad podziału} × {szum po stronie fikstury, po stronie
-    backendu} × {wpis szumu (1,4e-17), wpis realny (0,002)}. Solver buduje te listy progiem
-    `<= 0`, więc wpis o prądzie 1e-17 jest obecny na jednej maszynie, a na drugiej nie —
-    długość listy nie może wywracać porównania; brak wpisu o prądzie REALNYM nadal tak."""
+    """Karta PROG-ZERA-WKLADOW: naprawa u źródła (jeden próg |I| < 1e-6 A w rdzeniu) usuwa
+    obejście z `8f20bdd3c` — długość list rozpływu znów jest różnicą. Iloczyn cech: {wkład
+    gałęzi, ślad podziału} × {nadmiarowy wpis po stronie fikstury, po stronie backendu} ×
+    {wpis o prądzie w paśmie zera (1,4e-17), wpis realny (0,002)}: KAŻDY nadmiarowy wpis jest
+    różnicą. Rdzeń nie publikuje już wpisu 1,4e-17 na żadnej maszynie, więc taki rozjazd
+    znaczyłby regresję progu, nie szum — maskowanie go byłoby testem maskującym defekt."""
     stale = [wpis(81.9)]  # type: ignore[operator]
-    szum = [*stale, wpis(1.4e-17)]  # type: ignore[operator]
-    realny = [*stale, wpis(0.002)]  # type: ignore[operator]
-    a, b = (szum, stale) if szum_po_stronie_fikstury else (stale, szum)
-    assert roznice_z_tolerancja({pole: a}, {pole: b}) == []
-    a, b = (realny, stale) if szum_po_stronie_fikstury else (stale, realny)
-    assert roznice_z_tolerancja({pole: a}, {pole: b}) != []
-    # klasa zamknięta: ta sama lista pod INNYM kluczem nadal porównywana długością
-    assert roznice_z_tolerancja({"inne": szum}, {"inne": stale}) != []
-    assert POLA_LIST_WPISOW_ROZPLYWU == {"branch_contributions", "branch_flow_trace"}
+    for nadmiar in (wpis(1.4e-17), wpis(0.002)):  # type: ignore[operator]
+        dluzsza = [*stale, nadmiar]
+        a, b = (dluzsza, stale) if nadmiar_po_stronie_fikstury else (stale, dluzsza)
+        assert roznice_z_tolerancja({pole: a}, {pole: b}) == [
+            f"$.{pole}: długość listy {len(a)} != {len(b)}"
+        ]
+
+
+def _pominiety(i_ka: float, kat_deg: float | None, branch_id: str = "tr_sn_nn") -> dict:
+    return {
+        "branch_id": branch_id,
+        "branch_name": "TR SN/nN",
+        "source_id": "THEVENIN_GRID",
+        "tor": "thevenin",
+        "i_ka": i_ka,
+        "kat_deg": kat_deg,
+    }
+
+
+def test_kat_wkladu_pominietego_poza_porownaniem() -> None:
+    """Iloczyn cech zestawienia `wklady_pominiete`: {kąt None vs liczba, liczba vs inna
+    liczba} — poza porównaniem (kąt fazora o module reszty zmiennoprzecinkowej);
+    {moduł w paśmie zera, skład: inna gałąź, długość listy} — nadal porównywane ściśle.
+    Ten sam klucz `kat_deg` POZA zestawieniem jest porównywany normalnie (lista zamknięta,
+    klasa pola, nie nazwa)."""
+    from network_model.solvers.short_circuit_contributions import PROG_WKLADU_POMIJALNEGO_A
+
+    # Relacja progu i pasma zera: każdy moduł wpisu pominiętego [kA] leży w paśmie zera.
+    assert PROG_WKLADU_POMIJALNEGO_A / 1000.0 <= PASMO_ZERA_FIXTUR
+    assert POLA_KATA_WKLADU_POMINIETEGO == {"kat_deg"}
+    assert KLUCZ_ZESTAWIENIA_POMINIETYCH == "wklady_pominiete"
+    k = KLUCZ_ZESTAWIENIA_POMINIETYCH
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: [_pominiety(1.4e-17, 37.2)]}) == []
+    )
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(1e-12, -12.0)]}, {k: [_pominiety(2e-12, 171.0)]}) == []
+    )
+    # skład: inna gałąź = różnica
+    assert (
+        roznice_z_tolerancja(
+            {k: [_pominiety(0.0, None)]}, {k: [_pominiety(0.0, None, branch_id="inna")]}
+        )
+        != []
+    )
+    # długość listy = różnica (wpis pominięty na jednej maszynie, brak na drugiej)
+    assert roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: []}) != []
+    # ten sam kąt POZA zestawieniem — porównywany
+    assert roznice_z_tolerancja({"inne": [{"kat_deg": 37.2}]}, {"inne": [{"kat_deg": 12.0}]}) != []
 
 
 def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
@@ -964,7 +1008,12 @@ def test_cieplna_scena_ocena_ma_pozycje_z_realnym_pradem_i_dowod_na_niej() -> No
     _run_idy_nie_sa_uuid(wynik)
     items = wynik["ocena"]["items"]
     assert len(items) >= 1
-    najwiekszy = max(items, key=lambda p: (p["i_fault_a"], p["branch_id"]))
+    # Karta PROG-ZERA-WKLADOW: pozycja gałęzi poza drogą zwarcia nie podaje prądu (None —
+    # wkład pominięty na podstawie tolerancji numerycznej to nie zero), więc maksimum
+    # liczy się po pozycjach z prądem.
+    z_pradem = [p for p in items if p["i_fault_a"] is not None]
+    assert z_pradem, "co najmniej jedna galaz musi niesc prad zwarcia"
+    najwiekszy = max(z_pradem, key=lambda p: (p["i_fault_a"], p["branch_id"]))
     assert najwiekszy["i_fault_a"] > 0.0, "co najmniej jedna galaz musi niesc realny prad zwarcia"
     dowody = eksport.cieplna_scena_dowody()["dowody"]
     # Karta #145: dowód dla KAŻDEGO wiersza oceny (projektant klika dowolną gałąź) —

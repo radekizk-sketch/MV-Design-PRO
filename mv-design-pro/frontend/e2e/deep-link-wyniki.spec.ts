@@ -369,7 +369,7 @@ test('po DONE jawny klik „Wyniki i dowody" ląduje w ui2 z zakładką wg rodza
   // „niedostępny" (regresja dostawcy) ani „pusty" (sieć MA źródło zastępcze,
   // więc rozpływ od sieci nadrzędnej istnieje).
   await expect(page.getByTestId('mvd-zwarcia-rozplyw')).toBeVisible();
-  await expect(page.getByTestId('mvd-zwarcia-rozplyw').locator('table')).toBeVisible({
+  await expect(page.getByTestId('mvd-zwarcia-rozplyw-tabela').locator('table')).toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByTestId('mvd-zwarcia-rozplyw-brak')).toHaveCount(0);

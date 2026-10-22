@@ -14,7 +14,8 @@ from __future__ import annotations
 from analysis.sanity_bounds.short_circuit_bounds import evaluate_short_circuit_current
 from api.v125_contracts import _stable_hash
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
-from enm.canonical_analysis import PROG_PRADU_ZEROWEGO_KA, _sc_rozplyw_galeziowy
+from enm import canonical_analysis
+from enm.canonical_analysis import _sc_rozplyw_galeziowy
 
 _WEZLY = {"a": {"name": "Szyna A"}, "b": {"name": "Szyna B"}}
 _GALEZIE = {"g1": {"name": "Kabel A-B"}}
@@ -31,23 +32,19 @@ def _wpis(i_contrib_a: float, direction: str) -> dict:
     }
 
 
-def test_prad_numerycznie_zerowy_nie_ma_kierunku() -> None:
-    """|I| < 1 µA → token „brak" niezależnie od znaku, który dał solver."""
-    for direction in ("from_to", "to_from"):
-        wynik = _sc_rozplyw_galeziowy([_wpis(1.97e-15, direction)], _WEZLY, _GALEZIE)
-        assert wynik is not None
-        assert wynik[0]["direction"] == "brak"
-        assert wynik[0]["i_ka"] == 1.97e-18  # surowa wartość zostaje (bez korekty)
-
-
-def test_prad_realny_zachowuje_kierunek_solvera() -> None:
-    """Dokładnie na progu i powyżej: kierunek wprost z solvera, bez interpretacji."""
-    na_progu = _sc_rozplyw_galeziowy(
-        [_wpis(PROG_PRADU_ZEROWEGO_KA * 1000.0, "to_from")], _WEZLY, _GALEZIE
-    )
-    assert na_progu is not None and na_progu[0]["direction"] == "to_from"
-    realny = _sc_rozplyw_galeziowy([_wpis(5.0, "from_to")], _WEZLY, _GALEZIE)
-    assert realny is not None and realny[0]["direction"] == "from_to"
+def test_projekcja_nie_ma_wlasnego_progu_kierunek_wprost_z_rdzenia() -> None:
+    """Karta PROG-ZERA-WKLADOW (wymaganie 1, predykaty parami): dawny token „brak" dla
+    |I| < 1e-9 kA był DRUGIM progiem tej samej klasy co filtr rdzenia. Dziś klasyfikację
+    robi wyłącznie rdzeń (`PROG_WKLADU_POMIJALNEGO_A`), a projekcja przenosi kierunek
+    i prąd bez interpretacji — także dla wpisu, który rdzeń by odrzucił (projekcja go
+    nie poprawia, bo go nigdy nie dostaje)."""
+    assert not hasattr(canonical_analysis, "PROG_PRADU_ZEROWEGO_KA")
+    for prad_a in (1.97e-15, 1e-6, 5.0):
+        for direction in ("from_to", "to_from"):
+            wynik = _sc_rozplyw_galeziowy([_wpis(prad_a, direction)], _WEZLY, _GALEZIE)
+            assert wynik is not None
+            assert wynik[0]["direction"] == direction
+            assert wynik[0]["i_ka"] == prad_a / 1000.0
     brak = _sc_rozplyw_galeziowy([_wpis(None, "from_to")], _WEZLY, _GALEZIE)  # type: ignore[arg-type]
     assert brak is not None and brak[0]["direction"] == "from_to"  # brak prądu ≠ zero
 
