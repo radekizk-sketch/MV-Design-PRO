@@ -121,10 +121,10 @@ def compute_ikss(
 
 
 def _thermal_mn_factors(kappa: float, tk_s: float, f_hz: float = 50.0) -> tuple[float, float]:
-    """Wspolczynniki cieplne m (skladowa DC) i n (skladowa AC) — IEC 60909-0 §4.7/§12.
+    """Wspolczynniki cieplne m (skladowa DC) i n (skladowa AC) — IEC 60909-0:2016 §14 i załącznik A.
 
     I_th = I_k'' * sqrt(m + n) (norma; patrz rowniez
-    docs/proof/NORMATIVE_COMPLETION_PACK_IEC_60909.md §4.7 i
+    docs/proof/NORMATIVE_COMPLETION_PACK_IEC_60909.md (IEC 2016 §14) i
     docs/proof_engine/EQUATIONS_IEC60909_SC3F.md EQ_SC3F_008 — TA SAMA formula
     jest juz udokumentowana jako wiazaca i uzyta w proof_generator.py dla
     SC1/SC3F, ale do audytu fizyki fala G (2026-07) NIE byla uzyta tutaj — ten
