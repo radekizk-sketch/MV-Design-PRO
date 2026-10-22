@@ -920,8 +920,23 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # odpowiednio 213 i 199. Jedyne liście różne od obu stron to `context.snapshot_hash`
     # i `input_hash` (model wejściowy składa topologię GPZ-MODEL z polami addytywnymi
     # programu). Wynik kontyngencji = wynik GPZ-MODEL.
-    "gn01_promieniowa": "a4b8be670ea780e84ab06ec2ef4a88bcce48dac07aec7e2ea64a04b2c6461261",
-    "gn03_pierscien": "959e81d39106f80572c9ca9b9270f11b5c005ebb93f1ae16059973653ac39433",
+    # 2026-10-22 (karta MENU-KANON, commit 5 — ciągi liniowe spójne z odcinkami): gn01
+    # 1d65e0b8… → d9cbc723…, gn03 5ac3a589… → a9d5cf5d…. Pełne widoki z kodu HEAD
+    # `ca1c32017` (odtwarzają dokładnie poprzednie piny) i po karcie porównane liść po liściu:
+    # różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu
+    # wejściowego: `line_runs[0].segments` — odcinek podzielony wstawieniem stacji jest w ciągu
+    # zastąpiony połówkami `…_L`/`…_R` z przenumerowanym `order` (dotąd ciąg wskazywał
+    # usunięty odcinek). Enumeracja, dotkliwości, odbiory bez zasilania i ranking identyczne.
+    # 2026-10-22 (scalenie karty MENU-KANON `5bff32b4b` z gałęzią UI/UX `7f0fbfa86` po
+    # GPZ-MODEL): gn01 → 1494a965…, gn03 → 6918a4db…. Pełne widoki z kodu trzech drzew
+    # (UI/UX, MENU-KANON, scalone; dwa pierwsze odtwarzają dokładnie swoje piny a4b8be67…/
+    # 959e81d3… i d9cbc723…/a9d5cf5d…) porównane liść po liściu: drzewo scalone różni się od
+    # UI/UX WYŁĄCZNIE `context.snapshot_hash` i `input_hash` (ciąg liniowy z połówkami
+    # `…_L`/`…_R` karty MENU-KANON), od MENU-KANON — tym samym zbiorem liści co GPZ-MODEL
+    # (gn01 405, gn03 215: kontyngencja fikcyjna „TR1 110/15 kV" znika). Wynik
+    # kontyngencji = wynik UI/UX (GPZ-MODEL).
+    "gn01_promieniowa": "1494a9655012b6a19b6f6f63037dbc4be987cd84403fd8eff834ad1aee6e2a98",
+    "gn03_pierscien": "6918a4db0ab6e763581070a2fb19a74cae42f8c2f52c07186bb4c162053b2476",
 }
 
 

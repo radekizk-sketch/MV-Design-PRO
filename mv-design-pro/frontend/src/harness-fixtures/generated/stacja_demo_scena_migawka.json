@@ -766,7 +766,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "f830f8dcc77a0e25ee444ebe59740922fe4e0213add69425842930409d3da8db",
+    "hash_sha256": "2992b1712809c425f3a3dddcdcba12cde97d3d1218911c34d8f2b552716cdc4f",
     "name": "Projekt demonstracyjny",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -783,7 +783,11 @@
       "segments": [
         {
           "order": 1,
-          "segment_ref": "seg/4364e2842858577811ebef3369cbea20/segment"
+          "segment_ref": "seg/4364e2842858577811ebef3369cbea20/segment_L"
+        },
+        {
+          "order": 2,
+          "segment_ref": "seg/4364e2842858577811ebef3369cbea20/segment_R"
         }
       ],
       "starting_bay_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",

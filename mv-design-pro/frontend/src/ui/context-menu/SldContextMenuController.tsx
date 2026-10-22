@@ -2,8 +2,9 @@
  * SldContextMenuController — most między SLD_MENU_REGISTRY (`SldCommandService`)
  * a komponentem `<ContextMenu>` w UI/context-menu.
  *
- * Etap 1 dostarcza klikalne menu kontekstowe dla wszystkich 10 typów obiektów SLD
- * (background/gpz/section/bay/cable_segment_sn/overhead_line_sn/station/der_pv/der_bess/der_fw).
+ * Dostarcza klikalne menu kontekstowe dla każdego rodzaju obiektu SLD
+ * (`SldElementKindForMenu`). Pozycje idą w kolejności rejestru, z nagłówkiem
+ * sekcji kanonu (`SEKCJE_MENU_SLD`, V12K-352) przy każdej zmianie sekcji.
  *
  * Container (SldWorkspaceContainer) podaje:
  *   - aktywne żądanie menu (request)
@@ -17,13 +18,12 @@
 import { useCallback } from 'react';
 
 import {
-  SLD_MENU_REGISTRY,
   getMenuActions,
   type SldElementKindForMenu,
   type SldMenuAction,
   type StanLacznikaMenu,
 } from '../sld/v2/command/SldCommandService';
-import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
+import type { ContextMenuAction, OperatingMode } from '../types';
 import { publicTechnicalLabel } from '../shared/publicTechnicalLabels';
 import { ContextMenu } from './ContextMenu';
 
@@ -58,6 +58,8 @@ export interface SldMenuContext {
   /** W5-C: stan łącznika obiektu (`akcjeElementu.ts::stanLacznikaMenu`) — ten sam
    *  resolver (`lacznikTematu`) wybiera łącznik dla wykonawcy akcji. */
   readonly lacznik?: StanLacznikaMenu;
+  /** Schemat nN: powody blokady pozycji wykonywanych wprost (`lv-domain/operacjeNn.ts`). */
+  readonly powodyBlokadyNn?: Readonly<Partial<Record<string, string | null>>>;
 }
 
 export interface SldContextMenuControllerProps {
@@ -91,33 +93,10 @@ const KIND_HEADER_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   // Karta SLD-P (GAP P-1): nagłówek generyczny — kanwa v3 nie rozróżnia
   // podtypu DER (patrz SldCommandService.ts `SLD_MENU_REGISTRY.der`).
   der: 'Źródło OZE / generator',
-};
-
-/** Mapowanie SldElementKindForMenu → ElementType (używane wyłącznie do nagłówka fallback). */
-const KIND_TO_ELEMENT_TYPE: Readonly<Record<SldElementKindForMenu, ElementType>> = {
-  background: 'Bus',
-  gpz: 'Source',
-  section: 'Bus',
-  bay: 'BaySN',
-  apparatus: 'Switch',
-  cable_segment_sn: 'LineBranch',
-  overhead_line_sn: 'LineBranch',
-  station: 'Station',
-  zksn: 'ZKSN',
-  branch_pole: 'BranchPole',
-  der_pv: 'PVInverter',
-  der_bess: 'BESSInverter',
-  der_fw: 'Generator',
-  // Karta SLD-P (GAP P-1): TA SAMA wartość co `elementTypeForKind('der')` w
-  // `SldCanvasV3Workspace.tsx` (jedna prawda mapowania kind→ElementType).
-  der: 'Generator',
-};
-
-const SECTION_LABEL_PL: Readonly<Record<NonNullable<SldMenuAction['group']>, string>> = {
-  budowa: 'Budowa',
-  edycja: 'Edycja',
-  widok: 'Widok',
-  usun: 'Usuń',
+  nn_cable: 'Odcinek kabla nN',
+  nn_apparatus: 'Aparat nN',
+  nn_terminal: 'Zacisk nN',
+  nn_load: 'Odbiór nN',
 };
 
 function toContextMenuActions(
@@ -128,9 +107,8 @@ function toContextMenuActions(
     id: action.id,
     actionKey: action.id,
     label: action.labelPl,
-    section: action.group ? SECTION_LABEL_PL[action.group] : undefined,
+    section: action.section,
     enabled: !action.disabled,
-    visible: true,
     blockedReason: action.disabledReasonPl,
     handler: bind(action),
     testId: `sld-menu-${action.id}`,
@@ -159,15 +137,12 @@ export function SldContextMenuController(
     handleActionClick,
   );
 
+  // `getMenuActions` mapuje pozycje `SLD_MENU_REGISTRY` 1:1 — pusta lista to rodzaj
+  // obiektu bez menu, więc menu się nie otwiera (zamiast pustej ramki).
   if (actions.length === 0) {
-    // Bezpiecznik — registry zawsze ma min. 3 akcje per kind, ale zachowujemy spójność.
-    const defaultActions = SLD_MENU_REGISTRY[request.kind] ?? [];
-    if (defaultActions.length === 0) {
-      return null;
-    }
+    return null;
   }
 
-  const elementType = KIND_TO_ELEMENT_TYPE[request.kind];
   const publicElementName = elementName
     ? publicTechnicalLabel(elementName, KIND_HEADER_PL[request.kind])
     : null;
@@ -180,8 +155,6 @@ export function SldContextMenuController(
       isOpen={true}
       x={request.clientX}
       y={request.clientY}
-      elementType={elementType}
-      elementName={publicElementName ?? KIND_HEADER_PL[request.kind]}
       headerText={headerText}
       mode={mode}
       actions={actions}

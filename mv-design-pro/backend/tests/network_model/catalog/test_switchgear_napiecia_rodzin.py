@@ -185,7 +185,7 @@ def test_komunikat_bledu_mowi_co_karta_deklaruje() -> None:
 
 
 # ---------------------------------------------------------------------------
-# KANAŁ 2 — operacja domenowa `add_sn_bay_from_catalog`
+# KANAŁ 2 — operacja domenowa `add_sn_bay` z polem z katalogu rozdzielnic
 # ---------------------------------------------------------------------------
 
 
@@ -235,7 +235,7 @@ def test_operacja_domenowa_bramkuje_napiecie_iloczyn_cech(
     }
 
     przed = copy.deepcopy(snapshot)
-    odpowiedz = execute_domain_operation(snapshot, "add_sn_bay_from_catalog", payload)
+    odpowiedz = execute_domain_operation(snapshot, "add_sn_bay", payload)
 
     if przechodzi:
         assert not odpowiedz.get("error"), odpowiedz.get("error")
@@ -277,7 +277,7 @@ def test_proba_i_wykonanie_daja_ten_sam_werdykt_napieciowy(
     }
 
     przed = copy.deepcopy(snapshot)
-    odpowiedz = execute_domain_operation(snapshot, "add_sn_bay_from_catalog", payload)
+    odpowiedz = execute_domain_operation(snapshot, "add_sn_bay", payload)
 
     assert odpowiedz.get("error_code") == KOD_NIEZGODNOSCI
     assert odpowiedz["dry_run"] is True
@@ -295,7 +295,7 @@ def test_brak_napiecia_szyny_odbija_wlasnym_kodem_przed_brama_rodziny() -> None:
 
     odpowiedz = execute_domain_operation(
         snapshot,
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         {
             "station_ref": stacja_ref,
             "bus_ref": szyna_ref,

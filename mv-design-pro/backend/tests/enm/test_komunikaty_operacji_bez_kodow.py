@@ -978,7 +978,7 @@ def _male_pierwsze(tekst: str) -> str:
         ),
         (
             slownik.NAZWY_RODZAJOW_ZABEZPIECZENIA_PL,
-            "ui2/adapters/inspectorAdapter.ts",
+            "ui/shared/etykietyZabezpieczen.ts",
             "ETYKIETA_RODZAJU_ZABEZPIECZENIA",
             _male_pierwsze,
         ),
@@ -1261,17 +1261,6 @@ def _przypadki(
         ),
         (
             PrzypadekBledu(
-                "pole z katalogu bez wyboru katalogowego",
-                "add_sn_bay_from_catalog",
-                "brak katalogu",
-                "sn.pole_katalogowe_niezgodne",
-                slownik.nazwa_pola("complete_bay_template_ref"),
-            ),
-            snap,
-            {"bus_ref": koniec_ref},
-        ),
-        (
-            PrzypadekBledu(
                 "źródło przekształtnikowe bez technologii",
                 "add_converter_source",
                 "brak pola",
@@ -1365,7 +1354,7 @@ def test_sprzecznosc_topologii_nazywa_elementy_nazwa_z_modelu(
     ):
         rola = execute_domain_operation(
             copy.deepcopy(stan_nn),
-            "add_sn_bay_from_catalog",
+            "add_sn_bay",
             {"bus_ref": szyna_sn, "dry_run": True, **ladunek},
         )
         assert rola.get("error_code") == "sn.pole_katalogowe_niezgodne", rola
@@ -1426,9 +1415,14 @@ _PRZYPADKI_BRAMY_API: tuple[tuple[str, dict[str, Any], str, tuple[str, ...]], ..
         "add_transformer_sn_nn",
         {},
         "catalog.ref_required",
-        (slownik.nazwa_pola("catalog_ref", "add_transformer_sn_nn"),),
+        (slownik.nazwa_pola("transformer_catalog_ref", "add_transformer_sn_nn"),),
     ),
-    ("add_transformer_sn_nn", {"catalog_ref": _TRAFO + _LITEROWKA}, "catalog.item_not_found", ()),
+    (
+        "add_transformer_sn_nn",
+        {"transformer_catalog_ref": _TRAFO + _LITEROWKA},
+        "catalog.item_not_found",
+        (),
+    ),
     (
         "add_transformer_sn_nn",
         {

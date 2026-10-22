@@ -32,6 +32,10 @@ vi.mock('../../../../ui/network-build/station-templates', () => ({
   ),
 }));
 
+vi.mock('../karty-widmowe/PanelKartWidmowych', () => ({
+  PanelKartWidmowych: () => <div data-testid="atrapa-karty-widmowe" />,
+}));
+
 import { ModelWarsztat } from '../ModelWarsztat';
 
 describe('U2 #2 — warsztat przestrzeni Model', () => {
@@ -81,6 +85,14 @@ describe('U2 #2 — warsztat przestrzeni Model', () => {
     render(<ModelWarsztat />);
     fireEvent.keyDown(screen.getByTestId('mvd-model-zakladka-schemat'), { key: 'ArrowRight' });
     expect(screen.getByTestId('mvd-model-wlasciwosci-pusto')).toBeTruthy();
+  });
+
+  it('zakładka „Karty widmowe" otwiera panel kart widmowych urządzeń', () => {
+    render(<ModelWarsztat />);
+    expect(screen.queryByTestId('atrapa-karty-widmowe')).toBeNull();
+    fireEvent.click(screen.getByTestId('mvd-model-zakladka-karty'));
+    expect(screen.getByTestId('atrapa-karty-widmowe')).toBeTruthy();
+    expect(screen.getByTestId('mvd-model-zakladka-karty').getAttribute('aria-selected')).toBe('true');
   });
 
   it('zakładki mają semantykę tablist/tab z aria-selected', () => {

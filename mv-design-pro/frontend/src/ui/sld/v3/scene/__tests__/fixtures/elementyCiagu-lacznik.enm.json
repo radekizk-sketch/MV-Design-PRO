@@ -2179,7 +2179,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "2ca6919e360f8cdb97aff937c8429be04bdbeb78e1ef105b9c9f88a505de5685",
+      "hash_sha256": "c0d5c5f2de7b8961fc969d5c95ff64cd3007350b24c56cfafa0d993b4c22f644",
       "name": "Elementy ciągu — lacznik",
       "revision": 14,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2196,23 +2196,43 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/9b8873546a846fb83c44d912e88505fd/segment"
+            "segment_ref": "seg/9b8873546a846fb83c44d912e88505fd/segment_SL"
           },
           {
             "order": 2,
-            "segment_ref": "seg/bfb561d0ac7b2537ca6922bc37f17d87/segment"
+            "segment_ref": "seg/9b8873546a846fb83c44d912e88505fd/segment_SR"
           },
           {
             "order": 3,
-            "segment_ref": "seg/b310f5341385822660e142d0eab9aec9/segment"
+            "segment_ref": "seg/bfb561d0ac7b2537ca6922bc37f17d87/segment_L"
           },
           {
             "order": 4,
-            "segment_ref": "seg/f6829ef845b85f878eee68223be9fe55/segment"
+            "segment_ref": "seg/bfb561d0ac7b2537ca6922bc37f17d87/segment_R"
           },
           {
             "order": 5,
-            "segment_ref": "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment"
+            "segment_ref": "seg/b310f5341385822660e142d0eab9aec9/segment_SL"
+          },
+          {
+            "order": 6,
+            "segment_ref": "seg/b310f5341385822660e142d0eab9aec9/segment_SR"
+          },
+          {
+            "order": 7,
+            "segment_ref": "seg/f6829ef845b85f878eee68223be9fe55/segment_L"
+          },
+          {
+            "order": 8,
+            "segment_ref": "seg/f6829ef845b85f878eee68223be9fe55/segment_R"
+          },
+          {
+            "order": 9,
+            "segment_ref": "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment_SL"
+          },
+          {
+            "order": 10,
+            "segment_ref": "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment_SR"
           }
         ],
         "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",

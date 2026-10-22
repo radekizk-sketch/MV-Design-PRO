@@ -46,13 +46,22 @@ PASMO_ZERA_FIXTUR = 1e-8
 #: znikomy. POMIAR (CI run 35305960018, job `pytest`, commit 07d93d01):
 #: `koordynacja $.rows[2].cos_phi` 3.9231140792499414e-07 (sesja) wobec
 #: 3.923647677786405e-07 (runner) = 5,336e-11 BEZWZGLEDNIE (1,36e-4 wzglednie,
-#: tuz nad RTOL). Pasmo 1e-9 to zapas x18,7 nad tym pomiarem.
+#: tuz nad RTOL). Dawne pasmo 1e-9 bylo zapasem x18,7 nad tym pomiarem.
+#: POMIAR 2 (scalenie karty MENU-KANON z galezia UI/UX, 2026-10-22): nakladka rozplywu
+#: `s92Rozplyw.overlay.json`, `elements.seg/a9bc…/segment_R.metrics.COS_PHI.value`
+#: (odcinek bez mocy czynnej) — 2.41665643322e-08 przy 4 watkach BLAS (generator
+#: uruchamiany wprost) wobec 2.52370154876e-08 przy 1 watku BLAS (proces roboczy
+#: pytest-xdist, `tests/conftest.py`) = 1,0705e-09 BEZWZGLEDNIE, ten sam kod i ta sama
+#: maszyna (odtworzone na kodzie galezi UI/UX sprzed scalenia — dlug zastany, nie
+#: skutek scalenia). Pelna regresja `-n 2` byla czerwona na tym jednym liściu. Pasmo
+#: 1e-8 to zapas x9,3 nad najwiekszym pomiarem (limit karty: x10) — pin w
+#: `test_pasmo_bezwymiarowych_dziala_tylko_dla_swojej_klasy_i_tylko_przy_zerze`.
 #: DLACZEGO TO NIE OSLEPIA TESTU: regula dziala jako ALTERNATYWA obok tolerancji
-#: wzglednej, wiec jedyne, co traci porownanie, to czulosc PONIZEJ 1e-9 W
-#: WARTOSCI BEZWZGLEDNEJ — piec rzedow ponizej czwartego miejsca po przecinku,
-#: ktore te wielkosci pokazuja na ekranie, i osiem rzedow ponizej progow
+#: wzglednej, wiec jedyne, co traci porownanie, to czulosc PONIZEJ 1e-8 W
+#: WARTOSCI BEZWZGLEDNEJ — cztery rzedy ponizej czwartego miejsca po przecinku,
+#: ktore te wielkosci pokazuja na ekranie, i siedem rzedow ponizej progow
 #: normowych (cos phi 0,90/0,95). Zadna realna regresja nie miesci sie ponizej.
-PASMO_BEZWYMIAROWYCH = 1e-9
+PASMO_BEZWYMIAROWYCH = 1e-8
 
 #: Pola z klasy wyzej. Lista ZAMKNIETA — pin: `test_listy_pol_wylaczonych_sa_zamkniete`.
 #: Czlonkostwo rozstrzyga DEFINICJA wielkosci (iloraz ograniczony do [-1, 1]),

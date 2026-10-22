@@ -131,7 +131,7 @@ programu i partie integracji. Odpowiedzi na prośby 1–4:
 przy tworzeniu korytarza. Przy scalaniu z GPZ-MODEL nie przywracaj tego pola: model go nie zna,
 a `enm/hash.py` traktuje je jako skasowane.
 
-**Rozstrzygnięcie konfliktu kanonu menu kontekstowego (V12K-351).**
+**Rozstrzygnięcie konfliktu kanonu menu kontekstowego (V12K-352).** Numer zarezerwowany pierwotnie jako V12K-351; przy scaleniu karty MENU-KANON z gałęzią UI/UX (2026-10-22) okazał się zajęty przez wiersz zasady nr 4 wniesiony scaleniem gałęzi programu, więc wiersz menu nosi V12K-352.
 - **Konflikt.** `docs/v12xx/SLD_CAD_ENGINE_V12.md` (§ moduły i § „Kanoniczne menu kontekstowe”)
   wskazuje jako ścieżkę menu `contextMenuRegistry.ts` → `actionMenuBuilders.ts` →
   `actionRouting.ts`. Dwóch ostatnich plików nie ma w repo: martwą ścieżkę skasowała karta
@@ -147,7 +147,7 @@ a `enm/hash.py` traktuje je jako skasowane.
     kliknięciem w e2e;
   - kasuje `contextMenuRegistry.ts` i nieużywane eksporty `actions.ts`;
   - dopisuje do dokumentu kanonu notę rozstrzygnięcia;
-  - dodaje wiersz V12K-351 do `REJESTR_KONFLIKTOW.md`.
+  - dodaje wiersz V12K-352 do `REJESTR_KONFLIKTOW.md`.
 - **Podział pracy.** Wątek wykonawczy nie rusza `ui/context-menu/**` do czasu dostarczenia tej
   karty na tę gałąź.
 
@@ -169,7 +169,7 @@ Jest to funkcja istniejąca tylko w testach, czyli dług według ZASADY NR 1.
 - wiersze 193–252: tabele nazw ikon obszarów, obiektów i analiz.
 
 Ikony wpinasz we wszystkie te miejsca, które dziś istnieją:
-- menu kontekstowe SLD (`SLD_MENU_REGISTRY` po karcie V12K-351);
+- menu kontekstowe SLD (`SLD_MENU_REGISTRY` po karcie V12K-352);
 - `ui/shared/Breadcrumbs.tsx`;
 - wyszukiwanie `ui2/search`;
 - nagłówki ekranów;
@@ -193,7 +193,7 @@ wykonawczy go nie wystawia.
 kontekstowego. Pliki `ui/context-menu/**` i `SldCommandService.ts` rusza wyłącznie ta karta.
 
 **Stan pozostałych prac wątku prowadzącego.**
-- Karta menu kontekstowego V12K-351: dwa commity są gotowe i zweryfikowane
+- Karta menu kontekstowego V12K-352: dwa commity są gotowe i zweryfikowane
   (tsc, strażniki, vitest 344 plików / 6261 testów). Trzeci commit dotyczy dziewięciu operacji
   domenowych bez toku pracy:
   - operacje dublujące zdolność dostępną inną drogą są kasowane;
@@ -304,7 +304,7 @@ Pakiet A–D jest PRZYJĘTY jako plan wykonawczy karty GPZ-MODEL, z poniższymi 
 **6. Stany normalne łączników H5.** Zgodnie z odczytem stan ŁS-110 jest jawnym wejściem projektu (wartość przypadku odbiorczego: otwarty), a stan ŁS-SN wynika z wybranego sposobu rezerwowania (§26.10.5). W operacji tworzenia GPZ oba są polami wejścia z podpowiedzią i podstawą, a nie stałą szablonu.
 
 **7. Kolejność scalania w gorących plikach.**
-- Karta MENU-KANON (V12K-351) ma na swojej gałęzi pięć commitów. Kasują one m.in. `switchgear_config` i operacje-duble. Dopasowują też specyfikacje 28 operacji do odczytów handlerów i naprawiają nadawców `line_fields_count` → `line_fields_per_section` w `enm/kompilator_grafu.py` i `application/station_templates/apply.py`. Bez tej naprawy GPZ z szablonu dostawał po cichu jedno pole liniowe na sekcję.
+- Karta MENU-KANON (V12K-352) ma na swojej gałęzi pięć commitów. Kasują one m.in. `switchgear_config` i operacje-duble. Dopasowują też specyfikacje 28 operacji do odczytów handlerów i naprawiają nadawców `line_fields_count` → `line_fields_per_section` w `enm/kompilator_grafu.py` i `application/station_templates/apply.py`. Bez tej naprawy GPZ z szablonu dostawał po cichu jedno pole liniowe na sekcję.
 - Karta dodaje w testach czujnik, który zamienia klucz ładunku spoza kontraktu operacji w błąd testu.
 - Wątek prowadzący wypycha te commity na tę gałąź po swojej weryfikacji. Wątek wykonawczy scala je PRZED zmianami D1 w `station_templates/**` i `domain_operations.py`. Nowe pola wejścia GPZ H5 dopisuje do `OperationSpec`, bo inaczej czujnik czerwienieje.
 

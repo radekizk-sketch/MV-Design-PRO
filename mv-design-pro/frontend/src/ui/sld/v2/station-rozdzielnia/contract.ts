@@ -319,8 +319,8 @@ export interface StationFieldDescriptor {
  * The nN-side block of a transformer station (STEP 2). It is a SECOND voltage
  * level: an nN busbar fed by the SN/nN transformer through the nN main breaker,
  * with outgoing feeders (ODPLYW_NN) carrying load and an optional PV field
- * (ZRODLO_NN_PV) that backfeeds the bus. Mirrors the ENM `NNBlockSpec` /
- * `NNFeederSpec` taxonomy (domain_ops_models.py).
+ * (ZRODLO_NN_PV) that backfeeds the bus. Mirrors the `nn_block` of the station
+ * operations (`outgoing_feeders_nn[].feeder_role`, `domain/canonical_operations.py`).
  *
  * Per the ZERO-SECOND-TRUTH rule, NO power values live here — the renderer reads
  * each feeder's / PV's active power and direction from the frozen-solver
@@ -329,7 +329,7 @@ export interface StationFieldDescriptor {
 export interface StationNNFeeder {
   /** Stable id (click target). */
   readonly feederId: string;
-  /** nN feeder role (ENM `NNFeederSpec.feeder_role`). */
+  /** nN feeder role (`nn_block.outgoing_feeders_nn[].feeder_role`). */
   readonly role: 'ODPLYW_NN' | 'ODPLYW_REZERWOWY' | 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS';
   /** Short feeder name. */
   readonly feederName?: string;
@@ -347,7 +347,7 @@ export interface StationTransformer {
   readonly vectorGroup: string;
   /** Rated power label (e.g. "630 kVA"). */
   readonly ratingLabel?: string;
-  /** Whether an on-load tap changer is present (ENM `TransformerSpec.tap_changer_present`). */
+  /** Whether a tap changer is present (ENM `Transformer.tap_changer`, `enm/models.py`). */
   readonly tapChanger?: boolean;
 }
 

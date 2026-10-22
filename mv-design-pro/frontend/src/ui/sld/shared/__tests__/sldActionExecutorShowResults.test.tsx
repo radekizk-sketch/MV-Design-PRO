@@ -104,7 +104,9 @@ describe('useSldActionExecutor — show-results → zakładka „Rozpływ" (D-2)
 
   it('kontrola separacji: show-readiness nadal otwiera powierzchnię E-04 (bez zmian)', async () => {
     const user = userEvent.setup();
-    render(<Harness actionId="show-readiness" kind="station" elementId="station/ST-1" />);
+    // V12K-352: `show-readiness` żyje w menu tła i sekcji (globalna lista braków E-04);
+    // stacja ma własną pozycję `show-station-readiness` (karta „Gotowość" konfiguratora).
+    render(<Harness actionId="show-readiness" kind="section" elementId="bus/SN-1" />);
 
     await user.click(screen.getByRole('button', { name: 'wykonaj akcję' }));
 

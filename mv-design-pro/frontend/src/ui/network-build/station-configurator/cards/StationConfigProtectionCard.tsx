@@ -7,6 +7,11 @@
  *  - wytrzymałość zwarciowa aparatury I_dyn / I_th (IEC 60909) —
  *    `WalidacjaWytrzymalosciAparaturySekcja` (K7-B, 2026-07-31).
  * Karta zestawia dane pól i pokazuje odpowiedzi; reguła NOT-A-SOLVER.
+ *
+ * Przekaźniki pochodzą z modelu (`przekaznikiStacji.ts`: `Bay.protection_ref` →
+ * `ProtectionAssignment`). Dawne sekcje „Automatyka”, „Uzależnienia łączeniowe” i „Sterowanie”
+ * usunięte: zasilała je stała bez źródła w modelu (pusta lista, `false`, „lokalne”) — automatykę
+ * i blokady pola pokazuje ekran zabezpieczeń i automatyki z read-modelu pól.
  */
 
 import { useEffect, useState } from 'react';
@@ -22,14 +27,10 @@ export interface ProtectionRow {
   readonly typePl: string;
   readonly functionsPl: readonly string[];  // np. ["50/51", "51N", "67"]
   readonly settingsCount: number;
+  /** `ProtectionAssignment.is_enabled` — zabezpieczenie wyłączone w modelu jest widoczne jako takie. */
+  readonly enabled: boolean;
   /** Naprawa eng.20: catalog_ref VT używanego dla pól zabezpieczeniowych. */
   readonly vtCatalogRef?: string | null;
-}
-
-export interface AutomationFlag {
-  readonly id: string;
-  readonly labelPl: string;
-  readonly enabled: boolean;
 }
 
 /** Naprawa eng.18: dane wytrzymałości aparatury w polu (z katalogu device_withstand). */
@@ -43,9 +44,6 @@ export interface DeviceWithstandRow {
 
 export interface StationConfigProtectionCardProps {
   readonly relays: readonly ProtectionRow[];
-  readonly automation: readonly AutomationFlag[];
-  readonly interlocksConfigured: boolean;
-  readonly controlMode?: 'lokalne' | 'zdalne' | 'lokalne_zablokowane' | 'odstawione';
   /** Naprawa eng.20: typ uziemienia neutralnego SN — wymagane do walidacji VT. */
   readonly mvNeutralGroundingType?: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
   /** Naprawa eng.18: lista aparatów do walidacji wytrzymałości. */
@@ -59,9 +57,6 @@ export function StationConfigProtectionCard(
 ): JSX.Element {
   const {
     relays,
-    automation,
-    interlocksConfigured,
-    controlMode,
     mvNeutralGroundingType,
     deviceWithstandRows,
     onChangeVt,
@@ -97,7 +92,8 @@ export function StationConfigProtectionCard(
         <div className="text-[10px] font-medium text-scada-muted">Przekaźniki ({relays.length})</div>
         {relays.length === 0 ? (
           <div className="italic text-scada-muted">
-            Zabezpieczenia dodaje się z wariantu pola SN albo pakietu zabezpieczeniowego.
+            Pola SN tej stacji nie mają przypiętych zabezpieczeń — zabezpieczenie dodaje się z menu
+            pola SN albo z wariantu pola z pakietem zabezpieczeniowym.
           </div>
         ) : (
           <table className="w-full text-[11px]">
@@ -114,7 +110,14 @@ export function StationConfigProtectionCard(
               {relays.map((r) => (
                 <tr key={r.relayId} data-testid={`relay-row-${r.relayId}`} className="border-b border-scada-border/40">
                   <td className="font-mono">{r.bayDesignation}</td>
-                  <td>{r.typePl}</td>
+                  <td>
+                    {r.typePl}
+                    {!r.enabled && (
+                      <span data-testid={`relay-wylaczone-${r.relayId}`} className="ml-1 text-status-warn">
+                        (wyłączone w modelu)
+                      </span>
+                    )}
+                  </td>
                   <td className="font-mono text-[10px]">{r.functionsPl.join(', ')}</td>
                   <td className="text-right font-mono">{r.settingsCount}</td>
                   <td>
@@ -146,21 +149,6 @@ export function StationConfigProtectionCard(
         )}
       </div>
 
-      <div data-testid="protection-automation">
-        <div className="text-[10px] font-medium text-scada-muted">Automatyka</div>
-        <div className="grid grid-cols-2 gap-1">
-          {automation.map((a) => (
-            <div
-              key={a.id}
-              data-testid={`automation-${a.id}`}
-              className={`rounded border border-scada-border px-2 py-1 ${a.enabled ? 'text-status-ok' : 'text-scada-muted'}`}
-            >
-              {a.enabled ? '✓' : '○'} {a.labelPl}
-            </div>
-          ))}
-        </div>
-      </div>
-
       <WalidacjaVtPolaSekcja
         pola={relays.map((r) => ({
           bayDesignation: r.bayDesignation,
@@ -170,19 +158,6 @@ export function StationConfigProtectionCard(
       />
 
       <WalidacjaWytrzymalosciAparaturySekcja pola={deviceWithstandRows ?? []} />
-
-      <div className="flex justify-between border-t border-scada-border pt-1.5 text-[11px]">
-        <div>
-          <span className="text-scada-muted">Uzależnienia łączeniowe: </span>
-          <span className={interlocksConfigured ? 'text-status-ok' : 'text-status-warn'}>
-            {interlocksConfigured ? 'skonfigurowane' : 'do konfiguracji'}
-          </span>
-        </div>
-        <div>
-          <span className="text-scada-muted">Sterowanie: </span>
-          <span className="text-scada-text">{controlMode ?? '—'}</span>
-        </div>
-      </div>
     </div>
   );
 }

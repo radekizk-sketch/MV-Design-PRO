@@ -1517,7 +1517,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "597ca3f5dc3e7fb1f80fc8977f006e59c0dfd1a57049e4a729ca08ba0012f4fe",
+      "hash_sha256": "46ec731adcd4283c3fb7ef40b98b7dd7c6460030d3b1a6489f248589dc3cd438",
       "name": "GPZ z magistralą i odgałęzieniem",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1534,7 +1534,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/88ced29037bd5e349790a5f668820445/segment"
+            "segment_ref": "seg/88ced29037bd5e349790a5f668820445/segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/88ced29037bd5e349790a5f668820445/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
@@ -1550,7 +1554,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment"
+            "segment_ref": "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_R"
           }
         ],
         "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",

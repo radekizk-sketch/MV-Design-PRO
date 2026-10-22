@@ -210,7 +210,7 @@ async function main() {
         bus_ref: snBus.ref_id,
         bay_role: 'LINE_OUT',
         catalog_ref: 'sw-ls-abb-nal-12kv-630a',
-        designation_q: 'Q01',
+        field_name: 'Q01',
       },
     },
   });
@@ -231,7 +231,7 @@ async function main() {
         bus_ref: snBus.ref_id, // ta sama szyna SN (sec 1+2 współdzielą bus)
         bay_role: 'LINE_OUT',
         catalog_ref: 'sw-ls-abb-nal-12kv-630a',
-        designation_q: 'Q02',
+        field_name: 'Q02',
       },
     },
   });

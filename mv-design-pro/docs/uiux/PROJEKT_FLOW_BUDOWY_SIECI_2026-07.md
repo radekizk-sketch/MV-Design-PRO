@@ -56,7 +56,7 @@ GPZ ─▶ magistrala SN ─▶ [ZKSN / słup rozgałęźny] ─▶ stacja SN/nN
 | Nastawy przekaźnika | `update_relay_settings` | funkcje 50/51/… | TCC (`calculate_tcc_curve`) | ✅ E-27 |
 
 Operacje wspólne (edycja): `assign_catalog_to_element`, `update_element_parameters`,
-`rename_element`, `set_label`, `delete_element` — używane w inspektorze/property-grid,
+`rename_element`, `set_label` (obie skasowane 2026-10-22 jako duble `update_element_parameters`), `delete_element` — używane w inspektorze/property-grid,
 nie jako osobne kreatory.
 
 ---

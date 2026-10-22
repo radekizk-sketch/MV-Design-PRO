@@ -135,7 +135,7 @@ drogą:**
 
 `update_relay_settings`, `link_relay_to_field`, `calculate_tcc_curve`, `validate_selectivity`,
 `set_source_operating_mode`, `set_dynamic_profile`, `rename_element`,
-`set_label` (8 operacji; `set_connection_conditions` opisana osobno w C.3 — TA operacja
+`set_label` (8 operacji; [korekta 2026-10-22, karta MENU-KANON, V12K-352: `set_dynamic_profile`, `rename_element`, `set_label`, `remove_nn_element`, `add_sn_bay_from_catalog` skasowane jako duble — nazwa/etykieta przez `update_element_parameters`, usuwanie przez `delete_element`, profil dynamiki przez `set_der_catalog_bindings`, `dry_run` pola w `add_sn_bay`] `set_connection_conditions` opisana osobno w C.3 — TA operacja
 MA realnego wywołującego, mimo tej samej blokady).
 
 Cztery z pierwotnej listy 17 miały funkcjonalność pod inną, nie-kanoniczną ścieżką REST

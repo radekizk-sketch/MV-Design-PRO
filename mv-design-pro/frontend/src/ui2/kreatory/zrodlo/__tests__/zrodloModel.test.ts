@@ -6,6 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { kluczeSpozaKontraktu } from '../../../../test/kontraktLadunkuOperacji';
+
 import {
   DANE_DOMYSLNE,
   punktNeutralnySnTransformatora,
@@ -245,6 +247,7 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.transformer_sn_mva).toBeUndefined();
     expect(payload.transformer_uk_percent).toBeUndefined();
     expect(payload.transformer_vector_group).toBeUndefined();
+    expect(kluczeSpozaKontraktu('add_grid_source_sn', payload)).toEqual([]);
   });
 
   it('bez regulacji payload nie niesie kluczy OLTC (kompat./determinizm)', () => {

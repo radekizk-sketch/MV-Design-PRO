@@ -49,6 +49,7 @@ import {
   SLD_MENU_REGISTRY,
   powodBrakuStartuCiagu,
   toastBus,
+  type SekcjaMenuSld,
   type SldElementKindForMenu,
 } from '../v2/command/SldCommandService';
 import { useShellStore } from '../../../ui2/shell/useShellStore';
@@ -58,6 +59,7 @@ import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import { polaStacji } from '../../shared/polaStacji';
 import { czyLacznikZPozycjaNormalna, lacznikTematu } from '../../shared/stanLacznika';
+import type { OperacjaNn } from '../v3/lv-domain/operacjeNn';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -82,6 +84,13 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'configure-cts-vts': 'E-11',
   'configure-protection': 'E-11',
   'open-station-config': 'E-13',
+  // V12K-352: karty konfiguratora stacji otwierane wprost (`ACTION_DEFAULT_CARD` niżej).
+  'show-station-nn': 'E-13',
+  'edit-station-bays': 'E-13',
+  'edit-station-transformer': 'E-13',
+  'show-station-readiness': 'E-13',
+  // V12K-352: karta odcinka (Otwórz) — karta domyślna „Identyfikacja".
+  'open-segment-card': 'E-12',
   // Etap 4: sieć terenowa (odcinki SN, ZK SN, słupy, NOP, odgałęzienia):
   'edit-laying': 'E-12',
   'edit-line': 'E-12',
@@ -118,6 +127,19 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
 export const ACTION_DEFAULT_CARD: Readonly<Record<string, string>> = {
   'show-sc-source': 'hv-side',
   'show-sc-data': 'hv-side',
+  // V12K-352: pozycje menu stacji i odcinka obiecują KONKRETNĄ kartę konfiguratora —
+  // dotąd cztery pozycje odcinka („Zmień katalog", „Edytuj parametry ułożenia/linii",
+  // „Pokaż obciążalność cieplną") otwierały tę samą kartę „Identyfikacja". Klucze kart
+  // pochodzą z konfiguratorów (`StationConfigCardId`, `SegmentCardId`); konfigurator
+  // odrzuca klucz spoza swojej listy i otwiera kartę domyślną.
+  'show-station-nn': 'nn-switchgear',
+  'edit-station-bays': 'bays',
+  'edit-station-transformer': 'transformer',
+  'show-station-readiness': 'readiness',
+  'change-catalog': 'catalog',
+  'edit-laying': 'route',
+  'edit-line': 'route',
+  'show-thermal': 'rating',
 };
 
 export function routeSurfaceLabelPl(screenCode: string): string {
@@ -200,6 +222,11 @@ export const DELETE_ACTION_OBJECT_LABEL_PL: Readonly<Record<string, string>> = {
   'delete-pv': 'źródło PV',
   'delete-bess': 'magazyn BESS',
   'delete-fw': 'farmę wiatrową',
+  // Schemat nN stacji (portal domeny nN): ta sama operacja `delete_element`.
+  'delete-nn-cable': 'odcinek kabla nN',
+  'delete-nn-apparatus': 'aparat nN',
+  'delete-nn-terminal': 'zacisk nN wraz z dochodzącymi do niego gałęziami',
+  'delete-nn-load': 'odbiór nN',
 };
 
 export function isSldDeleteAction(actionId: string): boolean {
@@ -208,13 +235,6 @@ export function isSldDeleteAction(actionId: string): boolean {
 
 /** `id` w postaci `${bayRef}#${apparatusKind}` (konwencja GPZ canonical
  *  overlay, `SldWorkspaceContainer.buildGpzApparatusOverlayTargets`). */
-/** W5-C: pozycje menu zmieniające stan łącznika (blokowane w trybie podglądu). */
-const POZYCJE_ZMIANY_STANU_LACZNIKA: ReadonlySet<string> = new Set([
-  'open-switch',
-  'close-switch',
-  'set-normal-open-point',
-]);
-
 export function parseGpzApparatusSelectionId(id: string): { bayRef: string; apparatusKind: string } | null {
   const marker = id.lastIndexOf('#');
   if (marker <= 0 || marker === id.length - 1) return null;
@@ -293,6 +313,19 @@ export function elementTypeForSldKind(kind: SldElementKindForMenu): ElementType 
       return 'BESSInverter';
     case 'der_fw':
       return 'Generator';
+    // V12K-352: generyczne źródło OZE (podtyp nierozpoznany) to ten sam rekord
+    // `generators[]` modelu — TA SAMA wartość co `KIND_TO_ELEMENT_TYPE.der`
+    // w `SldContextMenuController` i `elementTypeForKind('der')` kanwy v3.
+    case 'der':
+      return 'Generator';
+    case 'nn_cable':
+      return 'SegmentNN';
+    case 'nn_apparatus':
+      return 'Switch';
+    case 'nn_terminal':
+      return 'BusNN';
+    case 'nn_load':
+      return 'LoadNN';
     case 'background':
     default:
       return null;
@@ -302,6 +335,9 @@ export function elementTypeForSldKind(kind: SldElementKindForMenu): ElementType 
 function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): string {
   if (actionId === 'conscious-split-on-segment') {
     return 'Otwieram świadomy podział odcinka z podglądem skutków topologicznych.';
+  }
+  if (actionId === 'edit-source-module') {
+    return 'Otwieram edycję danych modułu wytwórczego.';
   }
   switch (op) {
     case 'continue_trunk_segment_sn':
@@ -327,8 +363,16 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
     // K5-A (H-4): komunikaty nowych wejść menu kanwy.
     case 'add_shunt_compensator_sn':
       return 'Otwieram formularz baterii kondensatorów SN.';
+    case 'add_load_sn':
+      return 'Otwieram formularz odbioru SN.';
+    case 'add_generator_sn':
+      return 'Otwieram formularz generatora synchronicznego SN.';
     case 'add_surge_arrester_sn':
       return 'Otwieram formularz ogranicznika przepięć SN.';
+    case 'set_nn_cable_laying_conditions':
+      return 'Otwieram formularz warunków ułożenia kabla nN.';
+    case 'split_nn_segment':
+      return 'Otwieram formularz podziału odcinka kabla nN.';
     case 'add_genset_nn':
       return 'Otwieram formularz agregatu prądotwórczego nN.';
     case 'add_ups_nn':
@@ -472,6 +516,17 @@ export function resolveBranchStartAvailability(
     .fromRef.trim().length > 0;
 }
 
+/**
+ * Akcje sekcji, których operacja przyjmuje KANONICZNY Bus ref (`bus_ref`) — szyna sekcji
+ * na scenie v3 jest kompozytem `${stationRef}#sn-bus` (patrz niżej).
+ */
+const AKCJE_SEKCJI_NA_SZYNIE_KANONICZNEJ: ReadonlySet<string> = new Set([
+  'add-compensator',
+  'add-arrester',
+  'add-load-sn',
+  'add-sync-generator',
+]);
+
 /** Akcje menu kanwy i paska działań inspektora → operacja domenowa formularza. */
 const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> = {
   'add-bay': 'add_sn_bay',
@@ -494,9 +549,18 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
   // realne operacje domenowe (operationFormRegistry + operationContext już
   // je obsługują; brakowało WYŁĄCZNIE tych wpisów).
   'add-compensator': 'add_shunt_compensator_sn',
+  'add-load-sn': 'add_load_sn',
+  'add-sync-generator': 'add_generator_sn',
   'add-arrester': 'add_surge_arrester_sn',
   'add-genset': 'add_genset_nn',
   'add-ups': 'add_ups_nn',
+  // V12K-352: dane modułu wytwórczego NC RfG generatora — kreator „Edycja parametrów
+  // elementu" (`ui2/kreatory/edycja-parametrow`), operacja `update_element_parameters`
+  // szuka elementu po `element_ref` we wszystkich kolekcjach modelu (`generators[]`).
+  'edit-source-module': 'update_element_parameters',
+  // Schemat nN stacji: edycja istniejącego odcinka kabla nN (kontekst `segment_ref`).
+  'set-nn-laying': 'set_nn_cable_laying_conditions',
+  'split-nn-segment': 'split_nn_segment',
 };
 
 /**
@@ -556,7 +620,7 @@ export function buildSldOperationContext(
   // K5-A: szyna SN stacji na scenie v3 to odcinek sekcji `${busRef}#sn-bus` —
   // rozwiązujemy kanoniczny Bus ref realnym FK `substation.bus_refs`
   // (szyna GPZ niesie kanoniczny ref już z `meta.busRef` w Workspace).
-  if (kind === 'section' && (actionId === 'add-compensator' || actionId === 'add-arrester')) {
+  if (kind === 'section' && AKCJE_SEKCJI_NA_SZYNIE_KANONICZNEJ.has(actionId)) {
     operationElementId = resolveCanonicalSectionBusRef(operationElementId, snapshot);
   }
 
@@ -666,20 +730,89 @@ export function resolveTrunkStartAvailability(
 }
 
 /**
+ * V12K-352 (kanon menu kontekstowego, „każda akcja ma wykonawcę"): rodzaj gałęzi
+ * wykonawcy, która obsłuży pozycję menu danego rodzaju obiektu. JEDNO źródło prawdy
+ * dla dwóch miejsc: hook `useSldActionExecutor` wybiera gałąź WYŁĄCZNIE przez tę
+ * funkcję (`switch` niżej), a test kanonu menu sprawdza nią KAŻDĄ pozycję
+ * `SLD_MENU_REGISTRY` × rodzaj obiektu. Dwie niezależne listy („menu ma pozycję",
+ * „wykonawca ma gałąź") nie mogą się rozjechać, bo nie istnieją. `null` = pozycja
+ * bez wykonawcy — martwy klik, który test kanonu i `dead_click_guard` odrzucają.
+ */
+export type WykonawcaAkcjiMenu =
+  | 'usuniecie'
+  | 'stan-lacznika'
+  | 'zgodnosc-ncrfg'
+  | 'wyniki-rozplywu'
+  | 'wklady-zwarciowe'
+  | 'nawigacja'
+  | 'operacja'
+  | 'kreator-zrodla-stacji'
+  | 'pomiary-pola'
+  | 'operacja-nn';
+
+export function wykonawcaAkcjiMenu(
+  actionId: string,
+  kind: SldElementKindForMenu,
+): WykonawcaAkcjiMenu | null {
+  if (isSldDeleteAction(actionId)) return 'usuniecie';
+  if (actionId === 'open-switch' || actionId === 'close-switch') return 'stan-lacznika';
+  if (actionId === 'show-ncrfg') return 'zgodnosc-ncrfg';
+  if (actionId === 'show-results') return 'wyniki-rozplywu';
+  if (actionId === 'show-sc-contributions') return 'wklady-zwarciowe';
+  if (Object.prototype.hasOwnProperty.call(ACTION_TO_SCREEN, actionId)) return 'nawigacja';
+  if (actionId === 'insert-gpz') return 'operacja';
+  if (opByAction[actionId] !== undefined && elementTypeForSldKind(kind) !== null) return 'operacja';
+  if (actionId === 'add-source' && kind === 'station') return 'kreator-zrodla-stacji';
+  if (actionId === 'show-measurements' && kind === 'bay') return 'pomiary-pola';
+  if (actionId === 'merge-nn-segments' || actionId === 'copy-nn-feeder') return 'operacja-nn';
+  return null;
+}
+
+/**
+ * V12K-352: sekcje menu, których pozycje ZMIENIAJĄ model (budowa, operacje łączeniowe
+ * i topologiczne, usuwanie). Tryb podglądu schematu blokuje je z jednego źródła —
+ * sekcji pozycji w rejestrze — zamiast listy prefiksów identyfikatorów, która
+ * przepuszczała „Zakończ ciąg w stacji" i „Podziel odcinek".
+ */
+const SEKCJE_ZMIENIAJACE_MODEL: ReadonlySet<SekcjaMenuSld> = new Set<SekcjaMenuSld>([
+  'Dodaj',
+  'Operacje',
+  'Usuń',
+]);
+
+export function czyAkcjaZmieniaModel(actionId: string, kind: SldElementKindForMenu): boolean {
+  const pozycja = (SLD_MENU_REGISTRY[kind] ?? []).find((akcja) => akcja.id === actionId);
+  return pozycja !== undefined && SEKCJE_ZMIENIAJACE_MODEL.has(pozycja.section);
+}
+
+/** Operacja bezpośrednia nN wywołana bez ładunku z portalu nN (spoza schematu nN). */
+export const POWOD_BRAKU_SCHEMATU_NN_PL =
+  'Tę operację wykonuje się z menu schematu nN stacji — otwórz schemat nN i wskaż obiekt.';
+
+const KOMUNIKAT_BRAKU_KONTEKSTU_PL = (actionId: string): string =>
+  `Akcja "${actionId}" wymaga kompletnego kontekstu obiektu albo danych katalogowych. Otwórz kartę techniczną zaznaczonego elementu i uzupełnij wskazane pola.`;
+
+/**
  * Wykonawca akcji domenowych menu/drawera SLD — JEDNA implementacja dla v2 i
- * v3 (ARCH-3). Kolejność gałęzi (NIE zmieniać — semantyka 1:1 z oryginałem
- * `SldWorkspaceContainer.handleAction`): readOnly-guard → delete (z
- * potwierdzeniem `notify` sticky) → nawigacja (`ACTION_TO_SCREEN`) →
- * `buildSldOperationContext` (formularze operacji domenowych) → add-source
- * stacji (skrót do E-13 karty DER) → show-measurements pola (skrót do panelu
- * inspektora `field_measurements`) → fallback techniczny. Karta W2-B: gałąź
- * „roadmap hint" (`ACTION_ROADMAP_HINT_PL`) USUNIĘTA w całości — każdy klucz
- * tabeli miał realnego dostawcę (inwentarz w komentarzu przy
- * `DELETE_ACTION_OBJECT_LABEL_PL`).
+ * v3 (ARCH-3). Gałąź wybiera `wykonawcaAkcjiMenu` (V12K-352); kolejność
+ * rozstrzygania w tej funkcji odpowiada dawnej kolejności gałęzi
+ * `SldWorkspaceContainer.handleAction`: delete (z potwierdzeniem `notify`
+ * sticky) → stan łącznika → zgodność NC RfG → wyniki → wkłady zwarciowe →
+ * nawigacja (`ACTION_TO_SCREEN`) → `buildSldOperationContext` (formularze
+ * operacji domenowych) → add-source stacji (skrót do E-13 karty DER) →
+ * show-measurements pola (skrót do panelu inspektora `field_measurements`).
+ * Karta W2-B: gałąź „roadmap hint" (`ACTION_ROADMAP_HINT_PL`) USUNIĘTA w
+ * całości — każdy klucz tabeli miał realnego dostawcę (inwentarz w komentarzu
+ * przy `DELETE_ACTION_OBJECT_LABEL_PL`).
  */
 export function useSldActionExecutor(
   { readOnly }: { readonly readOnly: boolean },
-): (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => void {
+): (
+  actionId: string,
+  kind: SldElementKindForMenu,
+  elementId: string | null,
+  operacjaNn?: OperacjaNn,
+) => void {
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
@@ -694,218 +827,259 @@ export function useSldActionExecutor(
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
 
   return useCallback(
-    (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
-      if (readOnly && (actionId.startsWith('delete-') || actionId.startsWith('insert-')
-          || actionId.startsWith('add-') || actionId.startsWith('extend-')
-          || actionId.startsWith('start-') || POZYCJE_ZMIANY_STANU_LACZNIKA.has(actionId)
-          || actionId === 'continue-trunk'
-          || actionId === 'continue-trunk-from-endpoint')) {
+    (actionId: string, kind: SldElementKindForMenu, elementId: string | null, operacjaNn?: OperacjaNn) => {
+      if (readOnly && czyAkcjaZmieniaModel(actionId, kind)) {
         notify('Tryb podglądu schematu — przełącz na edycję, aby budować sieć.', 'warning');
         return;
       }
 
-      if (isSldDeleteAction(actionId)) {
-        if (!activeCaseId) {
-          notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
-          return;
-        }
-        if (!elementId) {
-          notify('Nie wskazano obiektu do usunięcia. Zaznacz element na schemacie i ponów akcję.', 'warning');
-          return;
-        }
+      switch (wykonawcaAkcjiMenu(actionId, kind)) {
+        case 'usuniecie': {
+          if (!activeCaseId) {
+            notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+            return;
+          }
+          if (!elementId) {
+            notify('Nie wskazano obiektu do usunięcia. Zaznacz element na schemacie i ponów akcję.', 'warning');
+            return;
+          }
 
-        const objectLabel = DELETE_ACTION_OBJECT_LABEL_PL[actionId] ?? 'element';
-        const executeDelete = () => {
-          // Jeden toast sukcesu — z magazynu, ze zdaniem nazywającym usunięty obiekt.
-          void executeDomainOperation(
-            activeCaseId,
-            'delete_element',
-            { element_ref: elementId, action_id: actionId, source: 'sld_context_menu' },
-            { komunikatSukcesuPl: `Usunięto ${objectLabel} z modelu sieci.` },
-          ).then((response: unknown) => {
-            const result = response as { error?: unknown } | null;
-            if (result?.error) {
-              notify(`Nie usunięto elementu: ${String(result.error)}`, 'error');
-              return;
-            }
-            selectElement(null);
+          const objectLabel = DELETE_ACTION_OBJECT_LABEL_PL[actionId] ?? 'element';
+          const executeDelete = () => {
+            // Jeden toast sukcesu — z magazynu, ze zdaniem nazywającym usunięty obiekt.
+            void executeDomainOperation(
+              activeCaseId,
+              'delete_element',
+              { element_ref: elementId },
+              { komunikatSukcesuPl: `Usunięto ${objectLabel} z modelu sieci.` },
+            ).then((response: unknown) => {
+              const result = response as { error?: unknown } | null;
+              if (result?.error) {
+                notify(`Nie usunięto elementu: ${String(result.error)}`, 'error');
+                return;
+              }
+              selectElement(null);
+            });
+          };
+          notify(`Potwierdź usunięcie: ${objectLabel}. Operacja zostanie zapisana w historii zmian.`, {
+            type: 'warning',
+            sticky: true,
+            actions: [
+              { label: 'Usuń', variant: 'danger', onClick: executeDelete },
+              { label: 'Anuluj', onClick: () => undefined },
+            ],
           });
-        };
-        notify(`Potwierdź usunięcie: ${objectLabel}. Operacja zostanie zapisana w historii zmian.`, {
-          type: 'warning',
-          sticky: true,
-          actions: [
-            { label: 'Usuń', variant: 'danger', onClick: executeDelete },
-            { label: 'Anuluj', onClick: () => undefined },
-          ],
-        });
-        return;
-      }
+          return;
+        }
 
-      // 0a) W5-C: otwarcie/zamknięcie łącznika — operacje kanoniczne `open_switch` /
-      //     `close_switch` na łączniku obiektu (`lacznikTematu`, ten sam resolver co
-      //     dostępność pozycji w menu). Zmieniają WYŁĄCZNIE bieżące położenie; pozycja
-      //     normalna (punkt podziału) zostaje bez zmian.
-      if (actionId === 'open-switch' || actionId === 'close-switch') {
-        if (!activeCaseId) {
-          notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+        // W5-C: otwarcie/zamknięcie łącznika — operacje kanoniczne `open_switch` /
+        // `close_switch` na łączniku obiektu (`lacznikTematu`, ten sam resolver co
+        // dostępność pozycji w menu). Zmieniają WYŁĄCZNIE bieżące położenie; pozycja
+        // normalna (punkt podziału) zostaje bez zmian.
+        case 'stan-lacznika': {
+          if (!activeCaseId) {
+            notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+            return;
+          }
+          const wynik = lacznikTematu(snapshot, elementId);
+          if (!wynik.lacznik) {
+            notify(wynik.powodPl, 'warning');
+            return;
+          }
+          const operacja = actionId === 'open-switch' ? 'open_switch' : 'close_switch';
+          // Sukces potwierdza centralny komunikat magazynu (`operationSuccessMessages`); tu
+          // wyłącznie odmowa (menu schematu nie ma własnego miejsca na błąd operacji).
+          void executeDomainOperation(activeCaseId, operacja, { switch_ref: wynik.lacznik.ref_id }).then(
+            (odpowiedz) => {
+              if (!odpowiedz || odpowiedz.error) {
+                notify(odpowiedz?.error ?? 'Nie zmieniono stanu łącznika.', 'error');
+              }
+            },
+          );
           return;
         }
-        const wynik = lacznikTematu(snapshot, elementId);
-        if (!wynik.lacznik) {
-          notify(wynik.powodPl, 'warning');
+
+        // Zgodność NC RfG (karta P-1, luka F-E7): realny dostawca to macierz
+        // wymogów NC RfG ui2 — deep-link międzypowłokowy do zakładki „ncrfg"
+        // warsztatu Wyników (wzorzec V12K-106: `setWynikiTab` + zmiana
+        // przestrzeni). Kontekst modułu przenosimy z akcji: element SLD niesie
+        // `Generator.ref_id` (ENM); macierz dopasowuje moduł po derRef albo po
+        // nazwie, więc przekazujemy nazwę generatora ze snapshotu (wspólny
+        // klucz kreatora DER), a przy jej braku surowy ref — zero fabrykacji.
+        case 'zgodnosc-ncrfg': {
+          const generator = elementId
+            ? (snapshot?.generators ?? []).find(
+                (gen) => gen.ref_id === elementId || gen.id === elementId,
+              )
+            : undefined;
+          setWynikiTab('ncrfg', generator?.name ?? elementId ?? null);
+          setActiveSpace('wyniki');
+          toastBus.publish('info', 'Otworzono macierz wymogów NC RfG w przestrzeni Wyniki.');
           return;
         }
-        const operacja = actionId === 'open-switch' ? 'open_switch' : 'close_switch';
-        // Sukces potwierdza centralny komunikat magazynu (`operationSuccessMessages`); tu
-        // wyłącznie odmowa (menu schematu nie ma własnego miejsca na błąd operacji).
-        void executeDomainOperation(activeCaseId, operacja, { switch_ref: wynik.lacznik.ref_id }).then(
-          (odpowiedz) => {
+
+        // Wyniki elementu (karta D-2, decyzja właściciela AskUserQuestion
+        // 2026-07-22): realny dostawca to warsztat Wyników, zakładka
+        // „Rozpływ" — deep-link międzypowłokowy (wzorzec P-1 `show-ncrfg`:
+        // `setWynikiTab` + zmiana przestrzeni), z kontekstem = ref elementu
+        // klikniętego na schemacie. `EkranRozplywu` dopasowuje ref
+        // LITERALNIE do `bus_id`/`branch_id` realnego wyniku rozpływu (zero
+        // fabrykacji tabeli mapowań rodzaj elementu → zakładka); apparatus
+        // bez własnej tożsamości fizycznej przenosi ref pola macierzystego
+        // (jak w gałęzi nawigacyjnej niżej).
+        case 'wyniki-rozplywu': {
+          const apparatusSelection = kind === 'apparatus' && elementId
+            ? parseGpzApparatusSelectionId(elementId)
+            : null;
+          const navigationElementId = apparatusSelection?.bayRef ?? elementId;
+          setWynikiTab('rozplyw', navigationElementId ?? null);
+          setActiveSpace('wyniki');
+          toastBus.publish('info', 'Otworzono wyniki rozpływu w przestrzeni Wyniki.');
+          return;
+        }
+
+        // V12K-352: wkłady źródeł do prądu zwarciowego — zakładka „Zwarcia" warsztatu
+        // Wyników (rozbicie wkładów per punkt zwarcia z `POST /api/proof/sc3f/contributions`,
+        // `ui2/wyniki/zwarcia`). Zakładka nie przyjmuje kontekstu elementu: wkład źródła
+        // jest wierszem tabeli wkładów KAŻDEGO punktu zwarcia, nie osobnym widokiem.
+        case 'wklady-zwarciowe': {
+          setWynikiTab('zwarcia');
+          setActiveSpace('wyniki');
+          toastBus.publish('info', 'Otworzono wyniki zwarciowe z wkładami źródeł w przestrzeni Wyniki.');
+          return;
+        }
+
+        // Akcje nawigacyjne — otwórz istniejącą powierzchnię.
+        case 'nawigacja': {
+          const screenCode = ACTION_TO_SCREEN[actionId];
+          const apparatusSelection = kind === 'apparatus' && elementId
+            ? parseGpzApparatusSelectionId(elementId)
+            : null;
+          let navigationElementId = apparatusSelection?.bayRef ?? elementId;
+          // Karta W2-B ('show-sc-data' z menu sekcji): elementId to szyna
+          // sekcji, nie ref Source — dane zwarciowe WN mieszkają na Source
+          // rozdzielni-właścicielki tej szyny. Rozwiązanie REALNYM FK
+          // (`resolveGpzSourceRefForSectionBus`); nierozwiązywalne = uczciwa
+          // degradacja, ref zostaje nietknięty (jak `resolveCanonicalSectionBusRef`
+          // wyżej). Dla 'show-sc-source' (kind='gpz') elementId już JEST refem
+          // Source — resolver go zwraca bez zmian (gałąź `directSource`).
+          if (navigationElementId && (actionId === 'show-sc-source' || actionId === 'show-sc-data')) {
+            navigationElementId = resolveGpzSourceRefForSectionBus(snapshot, navigationElementId)
+              ?? navigationElementId;
+          }
+          const defaultCard = ACTION_DEFAULT_CARD[actionId];
+          openRouteSurface(screenCode as Parameters<typeof openRouteSurface>[0], {
+            entityRef: navigationElementId ?? null,
+            subjectKind: 'helper_context',
+            ...(defaultCard ? { payload: { defaultCard } } : {}),
+          });
+          toastBus.publish('info', `Otworzono ${routeSurfaceLabelPl(screenCode)}.`);
+          return;
+        }
+
+        case 'operacja': {
+          const operationContext = buildSldOperationContext(
+            actionId,
+            kind,
+            elementId,
+            snapshot,
+            logicalViews,
+          );
+          if (operationContext) {
+            openOperationForm(operationContext.op, operationContext.context);
+            notify(operationContext.messagePl, 'info');
+            return;
+          }
+          // KARTA S95-START: kontynuacja ciągu bez punktu startu — uczciwy powód (ten sam
+          // tekst co przy zablokowanej pozycji menu), nigdy kreator z trwale zablokowanym
+          // zapisem ani komunikat techniczny z identyfikatorem akcji.
+          if (isTrunkContinuationAction(actionId)) {
+            notify(powodBrakuStartuCiagu(kind), 'warning');
+            return;
+          }
+          // W5-C: punkt normalnie otwarty bez łącznika z pozycją normalną — powód z
+          // resolvera (ten sam tekst, którym menu blokuje pozycję).
+          if (actionId === 'set-normal-open-point') {
+            const wynik = lacznikTematu(snapshot, elementId);
+            notify(
+              wynik.powodPl
+                ?? 'Bezpiecznik nie ma pozycji normalnej — punktem podziału jest wyłącznik, rozłącznik, odłącznik albo sprzęgło.',
+              'warning',
+            );
+            return;
+          }
+          notify(KOMUNIKAT_BRAKU_KONTEKSTU_PL(actionId), 'warning');
+          return;
+        }
+
+        // Faza G: 'add-source' z menu stacji → otwiera E-13 Karta 7 i prosi
+        // o kreator DER. Stację identyfikuje elementId (kontekst SLD).
+        case 'kreator-zrodla-stacji': {
+          if (!elementId) {
+            notify(KOMUNIKAT_BRAKU_KONTEKSTU_PL(actionId), 'warning');
+            return;
+          }
+          openRouteSurface('E-13', {
+            entityRef: elementId,
+            subjectKind: 'helper_context',
+            payload: { defaultCard: 'der-sources' },
+          });
+          // Wystawiamy intent — controller w E-13 (StationConfiguratorSurface)
+          // pokaże menu wyboru kindu (PV/BESS/FW) lub bezpośrednio uruchomi
+          // kreator. Domyślnie sugerujemy PV; user wybiera w E-13.
+          notify(
+            'Otwarto kartę "Układy PV/BESS/FW" stacji. Użyj osobnych przycisków "Dodaj PV", "Dodaj BESS" albo "Dodaj FW", aby uruchomić właściwy kreator.',
+            'info',
+          );
+          return;
+        }
+
+        // Karta W2-B (klasa ACTION_ROADMAP_HINT_PL): 'show-measurements' z
+        // menu pola → panel inspektora 'field_measurements' (E-11, "Pomiary
+        // pola") — `network-build/networkBuildStore.ts::openInspectorPanel`.
+        // Deep-link zamiast dwóch kliknięć (otwórz pole → "Pomiary pola").
+        case 'pomiary-pola': {
+          if (!elementId) {
+            notify(KOMUNIKAT_BRAKU_KONTEKSTU_PL(actionId), 'warning');
+            return;
+          }
+          openInspectorPanel('field_measurements', elementId, 'BaySN');
+          toastBus.publish('info', 'Otworzono pomiary pola.');
+          return;
+        }
+
+        // Schemat nN: scalenie odcinków przy zacisku i kopia odpływu — operacje bez
+        // parametrów poza wskazanym obiektem, więc bez okna. Ładunek przynosi portal nN,
+        // wyliczony TĄ SAMĄ funkcją i na TYM SAMYM grafie projekcji, z których menu
+        // wyliczyło blokadę pozycji (`lv-domain/operacjeNn.ts`); wykonawca nie odtwarza
+        // topologii nN z modelu ENM. Bez ładunku (wywołanie spoza schematu nN) — odmowa.
+        case 'operacja-nn': {
+          if (!activeCaseId) {
+            notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+            return;
+          }
+          const operacja: OperacjaNn = operacjaNn ?? { ok: false, powodPl: POWOD_BRAKU_SCHEMATU_NN_PL };
+          if (!operacja.ok) {
+            notify(operacja.powodPl, 'warning');
+            return;
+          }
+          void executeDomainOperation(activeCaseId, operacja.op, operacja.payload, {
+            komunikatSukcesuPl: operacja.komunikatSukcesuPl,
+          }).then((odpowiedz) => {
             if (!odpowiedz || odpowiedz.error) {
-              notify(odpowiedz?.error ?? 'Nie zmieniono stanu łącznika.', 'error');
+              notify(odpowiedz?.error ?? useSnapshotStore.getState().error ?? 'Operacja nie została wykonana.', 'error');
             }
-          },
-        );
-        return;
-      }
-
-      // 0) Zgodność NC RfG (karta P-1, luka F-E7): realny dostawca to macierz
-      //    wymogów NC RfG ui2 — deep-link międzypowłokowy do zakładki „ncrfg"
-      //    warsztatu Wyników (wzorzec V12K-106: `setWynikiTab` + zmiana
-      //    przestrzeni). Kontekst modułu przenosimy z akcji: element SLD niesie
-      //    `Generator.ref_id` (ENM); macierz dopasowuje moduł po derRef albo po
-      //    nazwie, więc przekazujemy nazwę generatora ze snapshotu (wspólny
-      //    klucz kreatora DER), a przy jej braku surowy ref — zero fabrykacji.
-      if (actionId === 'show-ncrfg') {
-        const generator = elementId
-          ? (snapshot?.generators ?? []).find(
-              (gen) => gen.ref_id === elementId || gen.id === elementId,
-            )
-          : undefined;
-        setWynikiTab('ncrfg', generator?.name ?? elementId ?? null);
-        setActiveSpace('wyniki');
-        toastBus.publish('info', 'Otworzono macierz wymogów NC RfG w przestrzeni Wyniki.');
-        return;
-      }
-
-      // 0b) Wyniki elementu (karta D-2, decyzja właściciela AskUserQuestion
-      //     2026-07-22): realny dostawca to warsztat Wyników, zakładka
-      //     „Rozpływ" — deep-link międzypowłokowy (wzorzec P-1 `show-ncrfg`:
-      //     `setWynikiTab` + zmiana przestrzeni), z kontekstem = ref elementu
-      //     klikniętego na schemacie. `EkranRozplywu` dopasowuje ref
-      //     LITERALNIE do `bus_id`/`branch_id` realnego wyniku rozpływu (zero
-      //     fabrykacji tabeli mapowań rodzaj elementu → zakładka); apparatus
-      //     bez własnej tożsamości fizycznej przenosi ref pola macierzystego
-      //     (jak w gałęzi nawigacyjnej niżej). Koniec celowania w legacy
-      //     powierzchnię E-24 („Profile operatora i źródeł" w rejestrze
-      //     ekranów — realny dostawca INNEGO ekranu, nie wyników obliczeń).
-      if (actionId === 'show-results') {
-        const apparatusSelection = kind === 'apparatus' && elementId
-          ? parseGpzApparatusSelectionId(elementId)
-          : null;
-        const navigationElementId = apparatusSelection?.bayRef ?? elementId;
-        setWynikiTab('rozplyw', navigationElementId ?? null);
-        setActiveSpace('wyniki');
-        toastBus.publish('info', 'Otworzono wyniki rozpływu w przestrzeni Wyniki.');
-        return;
-      }
-
-      // 1) Akcje nawigacyjne — otwórz istniejącą powierzchnię.
-      const screenCode = ACTION_TO_SCREEN[actionId];
-      if (screenCode) {
-        const apparatusSelection = kind === 'apparatus' && elementId
-          ? parseGpzApparatusSelectionId(elementId)
-          : null;
-        let navigationElementId = apparatusSelection?.bayRef ?? elementId;
-        // Karta W2-B ('show-sc-data' z menu sekcji): elementId to szyna
-        // sekcji, nie ref Source — dane zwarciowe WN mieszkają na Source
-        // rozdzielni-właścicielki tej szyny. Rozwiązanie REALNYM FK
-        // (`resolveGpzSourceRefForSectionBus`); nierozwiązywalne = uczciwa
-        // degradacja, ref zostaje nietknięty (jak `resolveCanonicalSectionBusRef`
-        // wyżej). Dla 'show-sc-source' (kind='gpz') elementId już JEST refem
-        // Source — resolver go zwraca bez zmian (gałąź `directSource`).
-        if (navigationElementId && (actionId === 'show-sc-source' || actionId === 'show-sc-data')) {
-          navigationElementId = resolveGpzSourceRefForSectionBus(snapshot, navigationElementId)
-            ?? navigationElementId;
+          });
+          return;
         }
-        const defaultCard = ACTION_DEFAULT_CARD[actionId];
-        openRouteSurface(screenCode as Parameters<typeof openRouteSurface>[0], {
-          entityRef: navigationElementId ?? null,
-          subjectKind: 'helper_context',
-          ...(defaultCard ? { payload: { defaultCard } } : {}),
-        });
-        toastBus.publish('info', `Otworzono ${routeSurfaceLabelPl(screenCode)}.`);
-        return;
-      }
 
-      const operationContext = buildSldOperationContext(
-        actionId,
-        kind,
-        elementId,
-        snapshot,
-        logicalViews,
-      );
-      if (operationContext) {
-        openOperationForm(operationContext.op, operationContext.context);
-        notify(operationContext.messagePl, 'info');
-        return;
+        // Pozycja bez wykonawcy (test kanonu menu i `dead_click_guard` nie
+        // dopuszczają jej do rejestru) — komunikat zamiast cichego braku reakcji.
+        case null: {
+          notify(KOMUNIKAT_BRAKU_KONTEKSTU_PL(actionId), 'warning');
+          return;
+        }
       }
-      // KARTA S95-START: kontynuacja ciągu bez punktu startu — uczciwy powód (ten sam
-      // tekst co przy zablokowanej pozycji menu), nigdy kreator z trwale zablokowanym
-      // zapisem ani komunikat techniczny z identyfikatorem akcji.
-      if (isTrunkContinuationAction(actionId)) {
-        notify(powodBrakuStartuCiagu(kind), 'warning');
-        return;
-      }
-
-      // 1b) Faza G: 'add-source' z menu stacji → otwiera E-13 Karta 7 i prosi
-      //     o kreator DER. Stację identyfikuje elementId (kontekst SLD).
-      if (actionId === 'add-source' && kind === 'station' && elementId) {
-        openRouteSurface('E-13', {
-          entityRef: elementId,
-          subjectKind: 'helper_context',
-          payload: { defaultCard: 'der-sources' },
-        });
-        // Wystawiamy intent — controller w E-13 (StationConfiguratorSurface)
-        // pokaże menu wyboru kindu (PV/BESS/FW) lub bezpośrednio uruchomi
-        // kreator. Domyślnie sugerujemy PV; user wybiera w E-13.
-        notify(
-          'Otwarto kartę "Układy PV/BESS/FW" stacji. Użyj osobnych przycisków "Dodaj PV", "Dodaj BESS" albo "Dodaj FW", aby uruchomić właściwy kreator.',
-          'info',
-        );
-        return;
-      }
-
-      // 1c) Karta W2-B (klasa ACTION_ROADMAP_HINT_PL): 'show-measurements' z
-      //     menu pola → panel inspektora 'field_measurements' (E-11, "Pomiary
-      //     pola") — `network-build/networkBuildStore.ts::openInspectorPanel`.
-      //     Deep-link zamiast dwóch kliknięć (otwórz pole → "Pomiary pola").
-      if (actionId === 'show-measurements' && kind === 'bay' && elementId) {
-        openInspectorPanel('field_measurements', elementId, 'BaySN');
-        toastBus.publish('info', 'Otworzono pomiary pola.');
-        return;
-      }
-
-      // 4) W5-C: punkt normalnie otwarty bez łącznika z pozycją normalną — powód z
-      //    resolvera (ten sam tekst, którym menu blokuje pozycję).
-      if (actionId === 'set-normal-open-point') {
-        const wynik = lacznikTematu(snapshot, elementId);
-        notify(
-          wynik.powodPl
-            ?? 'Bezpiecznik nie ma pozycji normalnej — punktem podziału jest wyłącznik, rozłącznik, odłącznik albo sprzęgło.',
-          'warning',
-        );
-        return;
-      }
-
-      // 5) Fallback techniczny: akcja ma handler informacyjny, ale nie ma pełnego
-      // kontekstu ENM/katalogu do wykonania operacji.
-      notify(
-        `Akcja "${actionId}" wymaga kompletnego kontekstu obiektu albo danych katalogowych. Otwórz kartę techniczną zaznaczonego elementu i uzupełnij wskazane pola.`,
-        'warning',
-      );
-      // Konsumujemy parametr kind, żeby spełnić noUnusedParameters w trybie strict.
-      void kind;
     },
     [activeCaseId, executeDomainOperation, logicalViews, openInspectorPanel, openOperationForm, openRouteSurface, readOnly, selectElement, setActiveSpace, setWynikiTab, snapshot],
   );

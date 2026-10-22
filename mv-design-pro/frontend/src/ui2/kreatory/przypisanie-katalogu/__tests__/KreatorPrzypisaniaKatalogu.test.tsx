@@ -7,6 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorPrzypisaniaKatalogu } from '../KreatorPrzypisaniaKatalogu';
+import { kluczeSpozaKontraktu } from '../../../../test/kontraktLadunkuOperacji';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -67,7 +68,6 @@ describe('KreatorPrzypisaniaKatalogu — realna ścieżka', () => {
         'assign_catalog_to_element',
         expect.objectContaining({
           element_ref: 'branch-1',
-          source_mode: 'KATALOG',
           catalog_binding: expect.objectContaining({ catalog_namespace: 'KABEL_SN', catalog_item_id: 'kabel_sn_3x120_al' }),
         }),
       );
@@ -85,7 +85,8 @@ describe('KreatorPrzypisaniaKatalogu — realna ścieżka', () => {
 
     await waitFor(() => {
       const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;
-      expect(payload).toMatchObject({ element_ref: 'branch-1', catalog_item_id: 'linia_sn_70al', source_mode: 'KATALOG' });
+      expect(payload).toEqual({ element_ref: 'branch-1', catalog_item_id: 'linia_sn_70al' });
+      expect(kluczeSpozaKontraktu('assign_catalog_to_element', payload)).toEqual([]);
       expect(payload).not.toHaveProperty('catalog_binding');
     });
   });

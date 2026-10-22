@@ -1212,7 +1212,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d",
+    "hash_sha256": "ee6f4370f733ada173c680946477ef230687fc74d6abd5fb437d72b999b2fbcf",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1229,10 +1229,14 @@
       "segments": [
         {
           "order": 1,
-          "segment_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment"
+          "segment_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_L"
         },
         {
           "order": 2,
+          "segment_ref": "seg/51282a49a0ce98c68ae691a5b2120ce6/segment_R"
+        },
+        {
+          "order": 3,
           "segment_ref": "seg/fab0e40bf1455775b1286ab17b598f58/segment"
         }
       ],

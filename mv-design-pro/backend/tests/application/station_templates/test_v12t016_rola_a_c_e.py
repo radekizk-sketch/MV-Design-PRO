@@ -70,7 +70,7 @@ def _magistrala(
             "voltage_kv": voltage_kv,
             "catalog_ref": source_ref,
             "sections_count": 1,
-            "line_fields_count": 1,
+            "line_fields_per_section": 1,
             "gpz_line_field_apparatus": {
                 "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "apparatus_kind": "BREAKER",
@@ -472,3 +472,28 @@ def test_blad_programu_przy_zapisie_szablonu_wybucha(
     monkeypatch.setattr(api_enm, "_set_enm", _awaria_zapisu("AttributeError"))
     with pytest.raises(AttributeError, match="błąd programu"):
         _zastosuj(tpl_id, voltage_kv, klucz_suffix="-zapis-obcy")
+
+
+@pytest.mark.parametrize(
+    "tpl_id",
+    sorted(t.id for t in list_templates_by_category(TemplateCategory.GPZ_110_SN)),
+)
+def test_gpz_ma_tyle_pol_liniowych_ile_deklaruje_szablon(tpl_id: str) -> None:
+    """Liczba pól liniowych na sekcję szablonu GPZ (``sn_bays_count``) trafia do operacji
+    kluczem kontraktu ``line_fields_per_section``. Dawniej szablon wysyłał ją kluczem poziomu
+    sekcji (``line_fields_count``), którego handler na poziomie ładunku nie czyta — GPZ
+    „4 pola na sekcję” dostawał po cichu jedno pole na sekcję."""
+    from application.station_templates.apply import _GPZ_SECTIONS_COUNT
+    from enm.pola import pola_stacji
+
+    template = get_template(tpl_id)
+    assert template is not None
+    pola_na_sekcje = template.schema.sn_bays_count.default
+    assert pola_na_sekcje > 1  # inaczej test nie odróżnia wartości od domyślnej 1
+    _wynik, klucz = _zastosuj(tpl_id, 0.0)
+    model = get_enm(klucz).model_dump(mode="json")
+    (gpz,) = (s for s in model["substations"] if str(s["ref_id"]).startswith("gpz/"))
+    pola_liniowe = [
+        p for p in pola_stacji(model, gpz["ref_id"]) if "gpz_line_field" in (p.get("tags") or [])
+    ]
+    assert len(pola_liniowe) == _GPZ_SECTIONS_COUNT * pola_na_sekcje

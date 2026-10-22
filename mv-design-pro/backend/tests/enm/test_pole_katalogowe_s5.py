@@ -2,10 +2,10 @@
 
 Kanon: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §2–§5 oraz §7 etap S5.
 Pole SN jest KOMPLETNĄ JEDNOSTKĄ FUNKCJONALNĄ konkretnej rodziny rozdzielnicy,
-a nie parą „rola + pojedynczy aparat". Operacja `add_sn_bay_from_catalog`
+a nie parą „rola + pojedynczy aparat". Operacja `add_sn_bay` z wyborem katalogowym
 konsumuje jednostkę katalogową (katalogowe pole rodziny modułowej albo jednostkę
-bloku fabrycznego RMU) i zapisuje pole do ENM przez tę samą ścieżkę pisania,
-którą ma `add_sn_bay`.
+bloku fabrycznego RMU) i zapisuje pole do ENM tą samą ścieżką pisania, co pole
+zadeklarowane rolą i aparatem.
 
 ILOCZYN CECH (reguła KLASA, NIE INSTANCJA §2 — testujemy klasę, nie przykład
 z karty). Tablica `PRZYPADKI` niesie pełny iloczyn:
@@ -65,7 +65,7 @@ from tests.enm.test_brama_katalogowa_operacji_v2 import (
     _szyna_sn_ref,
 )
 
-OPERACJA = "add_sn_bay_from_catalog"
+OPERACJA = "add_sn_bay"
 KOD_NIEZGODNOSCI = "sn.pole_katalogowe_niezgodne"
 
 #: Rodzina modułowa 15 kV (fikstura sieci jest siecią 15 kV) z polem

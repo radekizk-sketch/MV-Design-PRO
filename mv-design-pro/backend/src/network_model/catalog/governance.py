@@ -235,8 +235,12 @@ def wymagalnosc_katalogu(
             (`add_generator_sn`, generator SYNCHRONICZNY, komentarz „K1.2 —
             element fizyczny, bez wyjatku dla generatorow", kod
             `generator.catalog_required`) I `add_converter_source`
-            (generator PV/BESS/FW, w `CATALOG_REQUIRED_OPERATIONS`) —
-            zaden tor tworzenia generatora nie ma wyjatku od katalogu.
+            (generator PV/BESS/FW, w `CATALOG_REQUIRED_OPERATIONS`). Tryb
+            `EKSPERCKI_RECZNY` generatora synchronicznego (jawna tabliczka
+            `manual_params`, ZASADA NR 4) jest WEWNETRZNA logika operacji
+            `add_generator_sn` — ten sam uklad co wyjatek `add_nn_load` przy
+            rodzaju ``load`` nizej: os `tworzenie` opisuje wymog bramy operacji
+            dla elementu bez danych, nie tryby reczne tej bramy.
 
     Returns:
         `WymagalnoscKatalogu` z poziomem na kazdej z trzech osi.
@@ -286,8 +290,10 @@ def wymagalnosc_katalogu(
 
     if znormalizowany == "generator":
         # Tworzenie BLOCKER dla KAZDEGO gen_type — patrz docstring parametru
-        # `gen_type` powyzej (`add_generator_sn` + `add_converter_source`,
-        # zaden wyjatek). Walidacja/import zaleza od klasyfikacji zwarciowej.
+        # `gen_type` powyzej (`add_generator_sn` + `add_converter_source`; tryb
+        # reczny tabliczki generatora synchronicznego to wewnetrzna logika
+        # operacji, jak przy `add_nn_load`). Walidacja/import zaleza od
+        # klasyfikacji zwarciowej.
         if _generator_przeksztaltnikowy(gen_type):
             # Walidacja WARNING, kod W010 (NOWY, ta karta) — E009 milczal dla
             # generatorow (`enm/validator.py:697-772` nie iteruje
@@ -322,7 +328,7 @@ def wymagalnosc_katalogu(
 
     if znormalizowany in {"switch", "fuse", "measurement", "protection"}:
         # Tworzenie BLOCKER — `api/domain_ops_policy.py:38-61`: lacznik pola
-        # (`add_sn_bay`, `add_sn_bay_from_catalog`, `insert_section_switch_sn`,
+        # (`add_sn_bay`, `insert_section_switch_sn`,
         # `add_nn_switch_device` [switch LUB fuse — device_class],
         # `add_nn_section_coupler`), CT/VT (`add_ct`/`add_vt`), przekaznik
         # (`add_relay`) — wszystkie w `CATALOG_REQUIRED_OPERATIONS`.

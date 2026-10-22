@@ -206,13 +206,16 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     [branchPoint, openOperationForm],
   );
 
+  // Dobór z katalogu otwiera kreator przypisania (jak karty transformatora i łącznika).
+  // Dawne wywołanie wysyłało `element_id` bez wskazania pozycji katalogu — operacja czyta
+  // `element_ref` i wiązanie, więc przycisk zawsze kończył się odmową.
   const handleAssignCatalog = useCallback(() => {
-    if (!activeCaseId || !branchPoint) return;
-    executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
-      element_id: branchPoint.ref_id,
+    if (!branchPoint) return;
+    openOperationForm('assign_catalog_to_element', {
+      element_ref: branchPoint.ref_id,
       element_type: 'branch_point',
     });
-  }, [activeCaseId, branchPoint, executeDomainOperation]);
+  }, [branchPoint, openOperationForm]);
 
   // W5-C: dawna akcja „Ustaw stan łącznika" otwierała edycję parametrów PUNKTU (bez pola
   // stanu — fantom). Stan żyje na gałęzi łącznika portu; zmienia go `open_switch` /

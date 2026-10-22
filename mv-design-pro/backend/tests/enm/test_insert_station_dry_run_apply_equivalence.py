@@ -89,7 +89,6 @@ def test_dry_run_returns_preview_metadata() -> None:
             "dry_run": True,
             "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
         },
     )
     assert response.get("error") is None, response.get("error")
@@ -123,7 +122,6 @@ def test_dry_run_does_not_mutate_original_enm() -> None:
             "dry_run": True,
             "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
         },
     )
 
@@ -146,7 +144,6 @@ def test_dry_run_preview_returns_no_snapshot() -> None:
             "dry_run": True,
             "station": {"name": "X", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
         },
     )
     assert "snapshot" not in response
@@ -163,7 +160,6 @@ def test_apply_inserts_station_with_id_matching_preview() -> None:
         "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "station": {"name": "Stacja DET", "station_type": "inline", "nn_voltage_kv": 0.4},
         "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-        "nn_voltage_kv": 0.4,
     }
     # 1. Dry-run preview — bierzemy 2 niezależne kopie żeby preview NIE wpływał na apply.
     preview_response = _exec_op(
@@ -205,7 +201,6 @@ def test_apply_creates_changes_consistent_with_preview() -> None:
         "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "station": {"name": "Stacja CHANGES", "station_type": "inline", "nn_voltage_kv": 0.4},
         "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-        "nn_voltage_kv": 0.4,
     }
 
     preview = _exec_op(
@@ -239,7 +234,6 @@ def test_apply_without_dry_run_default_unchanged_behavior() -> None:
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Apply", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
         },
     )
     assert apply_response.get("error") is None

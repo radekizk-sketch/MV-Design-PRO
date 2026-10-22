@@ -526,7 +526,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "domain/readiness.py",
     "domain/result_contract_v1.py",
     "domain/results.py",
-    "domain/switchgear_config.py",
     "domain/validation.py",
     "domain/zwarcia_porownanie.py",
     "infrastructure/cgmes/cgmes_importer.py",
@@ -1233,7 +1232,6 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     "enm/domain_operations.py": {
         "D:dictor:payload.dlugosc_m": 2,
         "D:dictor:segment.dlugosc_m": 1,
-        "F:dictget:insert_at.value": 4,
         "F:dictget:nn_block.outgoing_feeders_nn_count": 1,
         "F:dictget:s.order": 3,
         "F:dictget:seed.max_position": 1,
@@ -1269,6 +1267,18 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # syntaktycznie wypadl z wzorca skanera. Dlug ZMALAL -> zapadka obnizona
         # (ta sama zasada co "dlug-zmalal" w `backend_no_physics_guard.py`).
         "H:local:payload.nn_voltage_kv": 1,
+        # Karta MENU-KANON (2026-10-22), forma H, DLUG ZASTANY UJAWNIONY (nie nowy): liczba pol
+        # liniowych sekcji GPZ (`line_fields_per_section`, brak = 1). Na galezi bazowej ta
+        # sama wartosc zastepcza stala w petli po krotce synonimow (`for key in (...): ...
+        # continue` + `return 1`), ktorej skaner nie widzi; skasowanie synonimow bez nadawcy
+        # (spec operacji = klucze czytane przez handler) zmienilo ksztalt na forme H. Kreator
+        # zrodla GPZ wysyla pole zawsze; wartosc zastepcza dotyczy ladunkow bez kreatora.
+        # Scalenie z galezia UI/UX (2026-10-22): dawny drugi wpis
+        # "H:local:payload.transformer_count" ZDJETY — karta GPZ-MODEL zastapila wartosc
+        # zastepcza (brak = min(2, liczba sekcji)) odmowa `source.invalid_transformer_count`
+        # w `_granica_zasilania_gpz` (transformatory 110/SN istnieja tylko z rownowaznikiem
+        # po stronie 110 kV i jawna liczba); dlug usuniety, nie zmalal cicho.
+        "H:local:payload.line_fields_per_section": 1,
     },
     # Karta RATCHET-DICT-READ (2026-08-13), zaktualizowana kartą FAB-D1
     # (klasa A6-12, 2026-09) — „watek nN" domknięty, plik odblokowany do edycji.

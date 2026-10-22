@@ -66,6 +66,7 @@ import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
+import { ETYKIETA_RODZAJU_ZABEZPIECZENIA } from '../../ui/shared/etykietyZabezpieczen';
 import {
   etykietaPozycjiNormalnej,
   opisLacznikowPortow,
@@ -445,15 +446,6 @@ function wlasciwosciPomiaru(el: Measurement): WierszWlasciwosci[] {
     w('Montaż VT', el.vt_mounting ?? null),
   ]);
 }
-
-const ETYKIETA_RODZAJU_ZABEZPIECZENIA: Readonly<Record<string, string>> = {
-  overcurrent: 'Nadprądowe',
-  earth_fault: 'Ziemnozwarciowe',
-  directional_overcurrent: 'Nadprądowe kierunkowe',
-  distance: 'Odległościowe',
-  differential: 'Różnicowe',
-  custom: 'Niestandardowe',
-};
 
 function wlasciwosciZabezpieczenia(el: ProtectionAssignment): WierszWlasciwosci[] {
   return bezNulli([

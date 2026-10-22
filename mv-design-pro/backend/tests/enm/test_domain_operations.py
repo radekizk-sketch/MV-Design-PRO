@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import itertools
 
+import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.hash import compute_enm_hash
 from enm.migrations.field_specs_promocja import (
@@ -1740,6 +1741,9 @@ class TestSetNormalOpenPoint:
         assert punkty_podzialu(s) == (siec.cel,)
         assert all("no_point_ref" not in c for c in s.get("corridors", []))
 
+    # Celowo dawny klucz `segment_ref` (spoza kontraktu): punkt podziału wskazuje
+    # wyłącznie łącznik — ładunek z dawnym kluczem kończy się odmową, nie skutkiem.
+    @pytest.mark.ladunek_spoza_kontraktu
     def test_odcinek_kabla_nie_jest_punktem_podzialu(self):
         from tests.enm.siec_lacznikowa import pierscien_z_nop
 

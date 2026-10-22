@@ -131,7 +131,8 @@ def _zastosuj_szablon(
         template, overrides=overrides, catalog_profile=None
     )
     nn_kv = transformer_voltages_kv(transformator)[1] or 0.4
-    station_spec = {"name_pl": template.name_pl, "sn_voltage_kv": 15, "nn_voltage_kv": nn_kv}
+    # Ten sam kształt co `apply.py` (bez `sn_voltage_kv` — napięcie SN z topologii).
+    station_spec = {"name": template.name_pl, "nn_voltage_kv": nn_kv}
     transformer_spec = {"transformer_catalog_ref": transformator}
     nn_block = {"outgoing_feeders_nn_count": 2, "outgoing_feeders_nn": []}
     klasa = _klasa_przylaczenia(role)

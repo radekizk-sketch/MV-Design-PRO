@@ -129,7 +129,6 @@ def _add_der_sn_block(
                     "snapshot_mapping_version": "1.0",
                 },
             },
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": sn_ref,
             "mv_field_configuration": {
                 "switching_device": "CB",

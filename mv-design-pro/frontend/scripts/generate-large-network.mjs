@@ -94,7 +94,9 @@ async function build() {
     // source_technology steruje renderem (PV/BESS/FW), nie binding.
     const r = await op(caseId, 'add_converter_source', {
       source_technology: tech, connection_variant: variant, station_ref: station.ref_id,
-      p_install_mw: 1.5, catalog_binding: bind('FALOWNIK', 'inv-pv-1500'),
+      // Moc zainstalowana 1,5 MW z pozycji katalogu (dawny klucz `p_install_mw` był
+      // spoza kontraktu operacji — handler go nie czytał).
+      catalog_binding: bind('FALOWNIK', 'inv-pv-1500'),
     });
     if (!r.error) counts.der++;
     else counts.derFail = (counts.derFail ?? 0) + 1;

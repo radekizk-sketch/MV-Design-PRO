@@ -198,7 +198,7 @@ def siec_magistrali(
             "add_load_sn",
             {
                 "bus_ref": szyna_nn,
-                "name": "Odbiór stacji",
+                "load_name": "Odbiór stacji",
                 "active_power_kw": MOC_ODBIORU_STACJI_KW,
                 "cos_phi": COS_PHI_ODBIORU_STACJI,
             },

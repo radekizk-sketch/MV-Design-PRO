@@ -305,7 +305,6 @@ def _uruchom(tor: str, pole_ref: str, rodzina_ref: str | None) -> dict[str, Any]
                 "station": {
                     "name": "Stacja konca ciagu",
                     "station_type": "terminal",
-                    "sn_voltage_kv": 15.0,
                     "nn_voltage_kv": 0.4,
                 },
                 "sn_fields": [pole_konca],

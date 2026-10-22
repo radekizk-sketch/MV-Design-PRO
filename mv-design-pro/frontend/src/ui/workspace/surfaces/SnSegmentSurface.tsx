@@ -10,7 +10,7 @@
  * insert_station_on_segment_sn - Etap 6 (insert tool).
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useActiveCaseId } from '../../app-state/store';
@@ -34,6 +34,23 @@ const CARD_LABELS: Record<SegmentCardId, string> = {
   route: 'Trasa i ułożenie',
   rating: 'Obciążalność',
 };
+
+/**
+ * V12K-352: karta startowa z deep-linku `payload.defaultCard` (wzorzec
+ * `stationDefaultCard`/`gpzDefaultCard`). Pozycje menu odcinka („Zmień katalog",
+ * „Edytuj parametry ułożenia/linii", „Pokaż obciążalność cieplną") i pasek inspektora
+ * („Otwórz konfigurację odcinka (trasa)") obiecują KONKRETNĄ kartę — dotąd konfigurator
+ * ignorował payload i zawsze otwierał „Identyfikację". Klucz spoza listy = karta domyślna.
+ */
+function segmentDefaultCard(routeState: WorkspaceSurfaceDescriptor['routeState'] | undefined): SegmentCardId {
+  const payload = routeState?.payload;
+  const defaultCard = payload && typeof payload === 'object'
+    ? (payload as Record<string, unknown>).defaultCard
+    : null;
+  return typeof defaultCard === 'string' && Object.prototype.hasOwnProperty.call(CARD_LABELS, defaultCard)
+    ? (defaultCard as SegmentCardId)
+    : 'identification';
+}
 
 interface SegmentData {
   designation: string;
@@ -380,7 +397,13 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
-  const [activeCard, setActiveCard] = useState<SegmentCardId>('identification');
+  const routeState = surface.routeState;
+  const [activeCard, setActiveCard] = useState<SegmentCardId>(() => segmentDefaultCard(routeState));
+  // Ponowne wejście deep-linkiem (nowy `routeState` tej samej powierzchni) otwiera kartę,
+  // którą obiecała pozycja menu — także gdy okno odcinka jest już otwarte.
+  useEffect(() => {
+    setActiveCard(segmentDefaultCard(routeState));
+  }, [routeState]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [data, setData] = useState<SegmentData>(() => ({
     designation: '',
@@ -456,7 +479,6 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     void executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
       element_ref: segmentRef,
       catalog_binding: buildCatalogBinding(selectedCatalogNamespace, catalogItemId),
-      source_mode: 'KATALOG',
     });
   };
   const openEndpointOperation = (operation: 'insert_station_on_segment_sn' | 'insert_zksn_on_segment_sn' | 'insert_branch_pole_on_segment_sn') => {

@@ -227,7 +227,7 @@ def _zastosuj_gpz_pod_blokada(
         "voltage_kv": voltage_kv,
         "catalog_ref": source_ref,
         "sections_count": _GPZ_SECTIONS_COUNT,
-        "line_fields_count": line_fields_per_section,
+        "line_fields_per_section": line_fields_per_section,
         "gpz_line_field_apparatus": {
             "catalog_ref": apparatus_ref,
             "apparatus_kind": "BREAKER",
@@ -325,7 +325,9 @@ def _zastosuj_szablon_pod_blokada(
 
     nn_voltage_kv = transformer_voltages_kv(transformer_ref)[1] or 0.4
     station_spec: dict[str, Any] = {
-        "name_pl": template.name_pl,
+        # `station.name` — klucz czytany przez OBIE drogi zabudowy (wcięcie w odcinek
+        # i koniec ciągu); dawny `name_pl` czytało tylko wcięcie, na końcu ciągu przepadał.
+        "name": template.name_pl,
         # BEZ `sn_voltage_kv` jawnego (KLASA NIE INSTANCJA, V12T-016): sztywne
         # `15` przesłaniało topologiczne dziedziczenie napięcia z segmentu
         # (`insert_station_on_segment_sn`: „Napięcia — topologiczne
@@ -480,7 +482,6 @@ def _zastosuj_szablon_pod_blokada(
                 enm_dict=enm_dict,
                 op_name="add_nn_load",
                 payload={
-                    "station_ref": station_ref,
                     "bus_nn_ref": nn_bus_ref,
                     "feeder_ref": feeder_ref,
                     "catalog_ref": load_catalog_ref,
@@ -1261,7 +1262,6 @@ def _topologia_toru_der_sn(tor: TorJednostkiDerSn, sn_bus_ref: str) -> dict[str,
             "catalog_ref": tor.transformator_ref,
             "catalog_binding": _catalog_binding("TRAFO_SN_NN", tor.transformator_ref),
         },
-        "has_dedicated_mv_field": True,
         "mv_bus_ref": sn_bus_ref,
         "mv_field_configuration": {
             "switching_device": tor.lacznik_pola,

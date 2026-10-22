@@ -585,7 +585,7 @@ class TestCatalogGateInsertBranchPole:
             op_name="insert_branch_pole_on_segment_sn",
             payload={
                 "segment_id": seg_ref,
-                "catalog_binding": {"namespace": "mv_branch_points"},  # brak item_id
+                "catalog_binding": {"catalog_namespace": "mv_branch_points"},  # brak item_id
             },
         )
 
@@ -756,7 +756,7 @@ class TestCatalogGateInsertSectionSwitch:
             op_name="insert_section_switch_sn",
             payload={
                 "segment_id": seg_ref,
-                "catalog_binding": {"namespace": "APARAT_SN"},  # brak item_id
+                "catalog_binding": {"catalog_namespace": "APARAT_SN"},  # brak item_id
             },
         )
 

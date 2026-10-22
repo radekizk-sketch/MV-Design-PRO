@@ -769,8 +769,10 @@ def test_zapis_tolerancji_niepoprawnej_przy_tworzeniu_transformatora_odmawia(
 
 def _dodaj_zrodlo(napiecie_kv: float, **pola: Any) -> dict[str, Any]:
     """Nowe źródło sieciowe operacją ``add_grid_source_sn`` (ręczny ekwiwalent wprost na
-    własnym napięciu, ``skip_hv_transformer``) — drugi nośnik tolerancji sieci nN, gdy szyna
-    źródła leży w paśmie nN."""
+    własnym napięciu, bez transformatorów 110/SN) — drugi nośnik tolerancji sieci nN, gdy
+    szyna źródła leży w paśmie nN. Ładunek niesie wyłącznie klucze kontraktu operacji
+    (scalenie z kartą MENU-KANON: synonim ``line_fields_count`` i martwa flaga
+    ``skip_hv_transformer`` skasowane — czujnik ładunków spoza kontraktu)."""
     return execute_domain_operation(
         _migawka(EnergyNetworkModel(header=ENMHeader(name="Źródło"))),
         "add_grid_source_sn",
@@ -780,9 +782,8 @@ def _dodaj_zrodlo(napiecie_kv: float, **pola: Any) -> dict[str, Any]:
                 "sn_voltage_kv": napiecie_kv,
                 "sk3_mva": _SK_NN_MVA,
                 "rx_ratio": 0.1,
-                "skip_hv_transformer": True,
             },
-            "line_fields_count": 1,
+            "line_fields_per_section": 1,
             "source_name": "Sieć zasilająca",
             **pola,
         },

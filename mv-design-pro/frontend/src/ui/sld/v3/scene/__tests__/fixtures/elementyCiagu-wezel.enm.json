@@ -1750,7 +1750,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "e5336ed83db0cdf5eabc693ae62b82444d09604748d22dde578904a7c76cadf3",
+      "hash_sha256": "89f33466244e3340239aba35ba0e58f14218ba6dee36af4853860b99f8f83f5b",
       "name": "Elementy ciągu — wezel",
       "revision": 11,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1771,18 +1771,26 @@
           },
           {
             "order": 2,
-            "segment_ref": "seg/89f17f7a40ba8c570e6450fb6befad28/segment"
+            "segment_ref": "seg/89f17f7a40ba8c570e6450fb6befad28/segment_L"
           },
           {
             "order": 3,
-            "segment_ref": "seg/ec3ba3353dc35170c47ed008ff76542d/segment"
+            "segment_ref": "seg/89f17f7a40ba8c570e6450fb6befad28/segment_R"
           },
           {
             "order": 4,
-            "segment_ref": "seg/b0f1ae33313e54e9a0ff545b2e4b52bf/segment"
+            "segment_ref": "seg/ec3ba3353dc35170c47ed008ff76542d/segment"
           },
           {
             "order": 5,
+            "segment_ref": "seg/b0f1ae33313e54e9a0ff545b2e4b52bf/segment_L"
+          },
+          {
+            "order": 6,
+            "segment_ref": "seg/b0f1ae33313e54e9a0ff545b2e4b52bf/segment_R"
+          },
+          {
+            "order": 7,
             "segment_ref": "seg/55651b7664474b4abaa4d10c0301b29b/segment"
           }
         ],

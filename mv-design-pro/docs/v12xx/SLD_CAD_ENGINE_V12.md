@@ -15,8 +15,9 @@ Pelny GPZ z transformatorem WN/SN jest rowniez jawnym sprzezeniem domen. Tor WN 
 | `SldStationLayoutEngine.ts` | Buduje deterministyczny model CAD stacji SN/nN: pola SN, szyna SN, transformator, szyna nN i odplywy nN. |
 | `FieldBlockRenderer.tsx` | Renderuje stacje jako uklad techniczny CAD, a nie kafel. |
 | `SldLevelOfDetailEngine.ts` | Definiuje poziomy LOD-0..LOD-7 oraz mapowanie do dotychczasowych pasm widocznosci. |
-| `contextMenuRegistry.ts` | Definiuje kanoniczne menu pola SN, odcinka SN, stacji SN/nN i zrodel/przylaczen w stalych sekcjach technicznych. |
-| `actionMenuBuilders.ts` | Buduje aktywne menu SLD z kanonicznego rejestru, zachowujac zaawansowane akcje inzynierskie jako rozszerzenia po sekcjach kanonicznych. |
+| `ui/sld/v2/command/SldCommandService.ts` | `SLD_MENU_REGISTRY` — jedyny rejestr menu kontekstowego SLD: pozycje per rodzaj obiektu w stalych sekcjach kanonu (`SEKCJE_MENU_SLD`), `getMenuActions` dokleja blokady z kontekstu. |
+| `ui/context-menu/SldContextMenuController.tsx` + `ContextMenu.tsx` | Renderuja menu z `SLD_MENU_REGISTRY` z naglowkami sekcji w kolejnosci rejestru (`data-testid="context-menu-sekcja"`). |
+| `ui/sld/shared/sldActionExecutor.ts` | Wykonawca pozycji menu: `wykonawcaAkcjiMenu` przypisuje kazdej pozycji realny cel (operacja domenowa, nawigacja, usuniecie, stan lacznika, zgodnosc NC RfG, wyniki), `czyAkcjaZmieniaModel` blokuje tryb podgladu z sekcji pozycji. |
 | `SldSemanticMinimap.tsx` | Renderuje mini-mape jako widok systemowy `LOD-0`, niezalezny od szczegolow aparaturowych glownej kanwy. |
 
 ## Reguly topologiczne
@@ -35,58 +36,21 @@ Pelny GPZ z transformatorem WN/SN jest rowniez jawnym sprzezeniem domen. Tor WN 
 
 ## Kanoniczne menu kontekstowe
 
-Menu kontekstowe jest rejestrem technicznym, a nie zbiorem luznych etykiet w komponentach. Sekcje maja stala kolejnosc: `Otworz`, `Edytuj`, `Dodaj`, `Analizuj`, `Wyniki`, `Uzasadnienie`, `Raport`, `Operacje`, `Usun`.
+Menu kontekstowe jest rejestrem technicznym, a nie zbiorem luznych etykiet w komponentach. Sekcje maja stala kolejnosc: `Otworz`, `Edytuj`, `Dodaj`, `Analizuj`, `Wyniki`, `Uzasadnienie`, `Raport`, `Operacje`, `Usun` (stala `SEKCJE_MENU_SLD`, kazda pozycja niesie wymagane pole `section`).
 
-| Obiekt SLD | Rejestr | Zakres |
+Jedyna sciezka menu: `SLD_MENU_REGISTRY` (`ui/sld/v2/command/SldCommandService.ts`) -> `SldContextMenuController.tsx` -> `useSldActionExecutor` (`ui/sld/shared/sldActionExecutor.ts`), wpiety w `SldCanvasV3Workspace` i pasek dzialan inspektora (`PanelElementuKanwy.tsx`, grupy z tej samej stalej sekcji).
+
+| Obiekt SLD | Rodzaj w rejestrze | Zakres (pozycje w kolejnosci sekcji) |
 |---|---|---|
-| Pole SN | `FIELD_SN_MENU_ACTIONS` | inspektor, konfiguracja pola, aparatura, zabezpieczenia, automatyka, wyprowadzenie odcinka, wyniki, uzasadnienie, raport, operacje lacznikowe, usuniecie |
-| Odcinek SN | `SEGMENT_SN_MENU_ACTIONS` | inspektor, edycja odcinka, typ katalogowy, wstawienie stacji/ZKSN/slupa, podzial, kontynuacja magistrali, wyniki, uzasadnienie, usuniecie |
-| Stacja SN/nN | `STATION_SN_NN_MENU_ACTIONS` | inspektor, kreator prosty i zaawansowany, pola SN, transformator, strona nN, obciazenia, zrodla, wyniki, uzasadnienie, raport, usuniecie |
-| Zrodlo i przylaczenie | `SOURCE_CONNECTION_MENU_ACTIONS` | profil operatora, profil zrodla, Q(U), cos phi(P), FRT/LVRT/HVRT, zgodnosc przylaczeniowa, wklad zwarciowy, wyniki, uzasadnienie, raport |
+| Pole SN | `bay` (pasek inspektora), `apparatus` (aparat pola na kanwie) | Otworz: okno pola, pomiary pola; Edytuj: aparatura, przekladniki CT/VT, zabezpieczenia; Dodaj: wyprowadzenie odcinka (odgalezienie / ciag), ogranicznik przepieci, stacja na koncu; Wyniki; Uzasadnienie; Operacje: otworz / zamknij lacznik, punkt normalnie otwarty; Usun pole |
+| Odcinek SN | `cable_segment_sn`, `overhead_line_sn` | Otworz: karta odcinka; Edytuj: typ katalogowy, trasa / ulozenie, zmiana rodziny kabel <-> linia; Dodaj: kontynuacja ciagu, stacja, ZKSN (kabel) albo slup rozgalezny (linia), punkt podzialu; Analizuj: obciazalnosc cieplna; Wyniki; Uzasadnienie; Operacje: swiadomy podzial ciagu; Usun odcinek |
+| Stacja SN/nN | `station` | Otworz: konfigurator stacji, strona nN; Edytuj: pola SN, transformator; Dodaj: kontynuacja ciagu, odgalezienie, zrodlo PV/BESS/FW, obciazenie, agregat, UPS; Analizuj: gotowosc stacji; Wyniki; Uzasadnienie; Usun stacje |
+| Zrodlo i przylaczenie | `der_pv`, `der_bess`, `der_fw`, `der` | Otworz: konfigurator zrodla; Edytuj: dane modulu zrodla (`update_element_parameters`); Analizuj: FRT/HVRT, zgodnosc NC RfG; Wyniki: wyniki zrodla, wklady zwarciowe zrodel; Uzasadnienie; Usun zrodlo |
 
-Akcje edycyjne sa mapowane w `actionRouting.ts` na operacje domenowe albo jawne przejscia nawigacyjne. Akcja bez mapowania nie moze przejsc testow kanonu menu.
+Kazda pozycja ma realnego wykonawce (`wykonawcaAkcjiMenu` != null): operacje domenowa, przejscie nawigacyjne do konkretnej karty (`defaultCard`), usuniecie z potwierdzeniem albo dedykowana galaz. Pozycja bez wykonawcy nie przechodzi testu kanonu ani `scripts/dead_click_guard.py`. Pozycja `Usun` jest zawsze ostatnia.
 
-Aktywne menu odcinka SN i stacji SN/nN nie omijaja rejestru. `buildSegmentSNContextMenu` i `buildStationContextMenu` zaczynaja od kanonicznych akcji `contextMenuRegistry.ts`, a dopiero potem dopinaja szczegolowe akcje projektowe. Akcja `Usun` pozostaje na koncu menu, zeby nie mieszac operacji destrukcyjnej z edycja i analiza.
+Nota rozstrzygniecia V12K-352 (2026-10-22): poprzednia wersja tego rozdzialu wskazywala sciezke `contextMenuRegistry.ts` -> `actionMenuBuilders.ts` -> `actionRouting.ts`. Dwa ostatnie moduly skasowala karta K5-A, a `contextMenuRegistry.ts` mial wylacznie konsumentow testowych (zgodnosc z kanonem pilnowaly testy martwego modulu). Kanon wiaze TRESC (kolejnosc sekcji i zakres akcji per obiekt), nie nazwe pliku: obowiazuje na zywym `SLD_MENU_REGISTRY`, martwy rejestr skasowany. Pozycje kanonu bez realnej operacji backendu albo realnego przejscia nie sa dokladane (regula phantom): `Dodaj do raportu` (generator buduje raport calego projektu, brak raportu w zakresie elementu), `Edytuj automatyke pola` (brak powierzchni automatyki pola), `Pokaz wartosci na SLD` (nakladka wynikow jest globalna, nie jest akcja obiektu), `Edytuj punkt przylaczenia` (warunki przylaczenia to dane projektu `ConnectionConditions`, V12K-348; obiekt `GridConnectionPoint` po W5-T), edycja Q(U), cos phi(P) i profilu operatora z menu zrodla (karta regulatora w konfiguratorze zrodla jest tylko do odczytu, a tryb pracy zrodla edytuje ekran OSD bez wskazania zrodla). Szczegoly: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-352.
 
-## Pipeline
-
-1. ENM jest jedynym zrodlem prawdy.
-2. `SldCadEngineV12` uruchamia projekcje ENM do symboli i polaczen SLD.
-3. Ten sam przebieg buduje `SldCadGraph` z wezlami, portami i krawedziami.
-4. Kazdy port ma `ownerRefId`, domene napieciowa, napiecie znamionowe, role i kierunek.
-5. Kazda krawedz przechodzi przez `SldVoltageDomainGuard`.
-6. Wynik projekcji zawiera `lodLevel` oraz jasny profil wydruku technicznego.
-7. Warstwa wynikowa moze zmienic LOD na `LOD-6`, ale nie moze zmienic geometrii.
-
-## Workflow GPZ i pola SN
-
-Pusty SLD nie prowadzi juz przez stary menubar ani instrukcje typu `Siec -> Dodaj GPZ`. Widok startowy ma formalny komunikat `Brak zrodla zasilania`, opis wymaganej przyczyny i dwie jawne akcje: `Utworz GPZ uproszczony` oraz `Utworz GPZ pelny`.
-
-Po utworzeniu GPZ kanwa ma materializowac rozdzielnie SN:
-
-- nazwa i parametry GPZ jako kontekst techniczny,
-- pozioma szyna SN z sekcjami,
-- pola SN jako pionowe tory pod szyna,
-- sprzeglo sekcji `6-7` jako osobny uklad lacznikowy,
-- port `BAY_SN_OUT` jako jedyny punkt wyprowadzenia dalszego odcinka SN z pola.
-
-Zaznaczone pole SN ma pokazywac ramke wyboru w stylu CAD/SCADA oraz blok wartosci wynikowych przy polu. Brak aktywnych wynikow jest jawny (`--` z atrybutem statusu `brak`) i nie podszywa sie pod obliczenia zerowe. Wlaczenie lub brak nakladki wynikowej nie moze zmieniac geometrii pola, szyny ani sprzegla.
-
-Warstwa stacji SN/nN nie renderuje rozdzielni GPZ jako osobnego bloku stacyjnego na kanwie. Jezeli projekcja ENM zawiera lancuch pol z rola `GPZ_LINE_BAY`, jest on reprezentowany przez kompozycję rozdzielni GPZ `SldCanvasV3` (`frontend/src/ui/sld/v3/compose/gpz.ts`), a nie przez kompozycję pól stacji SN/nN (`frontend/src/ui/sld/v3/compose/station.ts`). GPZ pozostaje zrodlem i rozdzielnia SN; stacja SN/nN jest osobnym typem obiektu sieciowego.
-
-## Kanon praktyczny ze stacji elektroenergetycznych
-
-Zasady wykonawcze wynikajace z kanonu stacji elektroenergetycznych sa traktowane jako wymagania projektowe SLD, a nie jako opis pomocniczy:
-
-- GPZ na kanwie jest zrodlem zasilania i rozdzielnia SN z szynami, sekcjami, polami liniowymi, transformatorowymi, pomiarowymi i sprzeglowymi. Nie jest renderowany jako stacja SN/nN.
-- Rozdzielnica danego poziomu napiecia zawiera szyny zbiorcze, aparaty laczeniowe, zabezpieczenia, pomiary, sterowanie i sygnalizacje; nie moze byc zastepowana pojedyncza ikona.
-- Pole rozdzielcze jest torem aparaturowym zaleznym od funkcji pola. Pole liniowe, transformatorowe, pomiarowe i sprzeglowe nie moga byc rysowane tym samym symbolem bez roznic funkcjonalnych.
-- Szyna zbiorcza jest glowna osia rozdzialu energii. Odejscia liniowe i transformatorowe wychodza z szyny przez pola, a nie bezposrednio z dowolnego bloku graficznego.
-- Sprzeglo sekcji jest osobnym polem laczacym sekcje szyn, z wlasna aparatura i stanem laczeniowym. Nie jest zwyklym odcinkiem sieci SN.
-- Poziomy napiecia sa oddzielnymi domenami. SN laczy sie z nN tylko przez transformator SN/nN, a tor nN nie moze byc kontynuacja magistrali SN.
-- Tory glowne przenosza energie i musza byc odroznione od obwodow wtornych: zabezpieczen, pomiarow, sterowania, sygnalizacji, blokad i telemechaniki.
-- Operacje laczeniowe musza uwzgledniac identyfikacje pola, stan wylacznika i odlacznikow, blokady, uziemienie, brak napiecia oraz kolejnosc ruchowa. UI nie moze redukowac ich do prostego przelacznika bez kontekstu.
-- Alarmy, znaczniki pracy, uziemienia przenosne, wskazania beznapieciowe, wyniki i proof sa nakladkami lub wpisami audytu. Nie zmieniaja geometrii bazowego SLD.
 - Nawigator i Inspektor techniczny musza umiec prowadzic po GPZ, polach, liniach, polach poza stacjami, ciagach beznapieciowych, punktach zasilania, lokalizacjach zwarc i zdarzeniach ruchowych.
 
 ## Testy akceptacyjne
@@ -99,7 +63,9 @@ Zasady wykonawcze wynikajace z kanonu stacji elektroenergetycznych sa traktowane
 | `SldLevelOfDetailEngine.test.ts` | LOD-0..LOD-7, tryb wynikowy, tryb audytowy |
 | `SldSemanticMinimap.test.tsx` | mini-mapa deklaruje `LOD-0` i zachowuje widok systemowy |
 | `sld-gpz-bay-render.test.tsx` | GPZ, szyny, pola SN i sprzeglo 6-7 |
-| `context-menu-segment-station.test.ts` | kanoniczne akcje odcinka SN i stacji SN/nN, ikony, `testId`, handlery i blokady |
+| `kanonMenuKontekstowego.test.tsx` | kazdy rodzaj `SLD_MENU_REGISTRY` x {kolejnosc sekcji, kazda pozycja ma wykonawce, `Usun` na koncu, naglowki sekcji wyrenderowane w kolejnosci kanonu}, zakres kanonu per obiekt |
+| `kanonMenuWykonawca.test.tsx` | natywne klikniecia pozycji kanonu: karta konfiguratora (`defaultCard`), formularz `update_element_parameters`, zakladka zwarc, blokada trybu podgladu dla kazdej pozycji sekcji Dodaj / Operacje / Usun |
+| `e2e/kanon-menu-sld.spec.ts` | realny backend: natywny prawy klik w aparat pola na kanwie SLD v3, kolejnosc sekcji, klik pozycji zmieniajacej model i stan modelu po stronie backendu |
 
 ## Kryterium wizualne
 

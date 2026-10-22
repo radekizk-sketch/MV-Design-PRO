@@ -12,11 +12,10 @@
  *
  * Działanie testowane na pozycji „Pokaż wyniki", bo jej dostępność wynika z TEGO SAMEGO
  * statusu wyników co sekcja „Wyniki" (`kontekstDostepnosciAkcji`: brak przebiegu ⇒ pozycja
- * nieaktywna z przyczyną). Dwa rodzaje nie mają w rejestrze menu pozycji z warunkiem
- * dostępności, więc wariant „niedostępne" nie istnieje dla nich w produkcie i test przypina
- * TEN fakt (wszystkie pozycje aktywne) zamiast go udawać:
+ * nieaktywna z przyczyną). Dwa rodzaje mają osobny przypadek:
  *  - źródło OZE (`der_pv`/`der_bess`/`der_fw`): działanie dostępne = „Pokaż zgodność
- *    przyłączeniową" (macierz NC RfG w przestrzeni Wyniki);
+ *    przyłączeniową" (macierz NC RfG w przestrzeni Wyniki); jedyną pozycją warunkową jest
+ *    „Pokaż wyniki" (V12K-352 — test przypina, że bez wyników nieaktywna jest TYLKO ona);
  *  - węzeł SN: brak tematu menu kanwy (punkt odgałęźny świadomie bez menu,
  *    `canvasMenuSubject.ts`), działaniem jest wejście do karty węzła.
  */
@@ -292,11 +291,17 @@ describe.each(PRZYPADKI)('inspektor elementu kanwy: $nazwa', (przypadek) => {
 
   if (przypadek.rodzaj === 'generator') {
     for (const stan of ['brak', 'nieaktualne', 'wartosc'] as const) {
-      it(`działanie dostępne (wyniki: ${stan}): „Pokaż zgodność przyłączeniową" otwiera macierz NC RfG; rejestr źródła nie ma pozycji warunkowych`, () => {
+      it(`działanie dostępne (wyniki: ${stan}): „Pokaż zgodność przyłączeniową" otwiera macierz NC RfG; jedyną pozycją warunkową źródła jest „Pokaż wyniki"`, () => {
         kliknij();
         ustawWyniki(przypadek.enm, stan);
         const pasek = screen.getByTestId('inspektor-dzialania');
-        expect(pasek.querySelectorAll('[aria-disabled="true"]')).toHaveLength(0);
+        // V12K-352: menu źródła dostało „Pokaż wyniki" (kanon: wyniki źródła) — pozycja
+        // bramkowana stanem wyników, jak w każdym innym rodzaju obiektu. Pozostałe
+        // pozycje źródła są bezwarunkowe.
+        const nieaktywne = [...pasek.querySelectorAll('[aria-disabled="true"]')].map((el) =>
+          el.getAttribute('data-testid'),
+        );
+        expect(nieaktywne).toEqual(stan === 'brak' ? ['inspektor-akcja-show-results'] : []);
         fireEvent.click(within(pasek).getByTestId('inspektor-akcja-show-ncrfg'));
         expect(useShellStore.getState().activeSpace).toBe('wyniki');
         expect(useShellStore.getState().wynikiTab).toBe('ncrfg');

@@ -25,8 +25,8 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   wartoscZeSlownika: '— wybierz wartość ze słownika —',
   dodajWiersz: 'Dodaj parametr',
   usunWiersz: 'Usuń',
-  powod: 'Uzasadnienie zmiany (opcjonalnie)',
-  powodPlaceholder: 'np. korekta wg pomiaru terenowego',
+  powod: 'Uzasadnienie wartości projektanta (opcjonalnie)',
+  powodPlaceholder: 'np. karta producenta, tabliczka aparatu istniejącego',
 
   kontrolaTytul: 'Kontrola edycji',
   wierszElement: 'Element',

@@ -144,6 +144,14 @@ Per szyna nN:
 | Bilans P/Q | wnioskowane |
 | Status danych | wnioskowane |
 
+**Stan wdrożenia (2026-10-22, zasada zero fabrykacji).** Wiersze rozdzielnic nN i odbiorów
+pochodzą z atomowej projekcji domeny nN backendu (`GET …/enm/lv-domain/{station_ref}/projection/v1`,
+`graph.sections` / `graph.devices` / `graph.loads`; front: `station-configurator/stronaNnStacji.ts`):
+sekcja (rozdzielnica główna / podrozdzielnica), napięcie, zasilania, sprzęgła, odpływy wg rodzaju
+rozstrzygniętego przez backend z zawartości poddrzewa. Stan pobrania (brak przypadku, ładowanie,
+błąd, brak domeny) jest pokazywany wprost. Wiersze „Bilans P/Q” i „Status danych” per rozdzielnica
+nie mają źródła w backendzie i nie są wyświetlane.
+
 ---
 
 ## 9. Karta 7: Odbiory
@@ -162,6 +170,10 @@ Per odbiór:
 | Priorytet zasilania | enum |
 | Status danych | wnioskowane |
 
+**Stan wdrożenia (2026-10-22).** Tabela pokazuje pola modelu odbioru (`Load`): nazwę, szynę
+przyłączenia, P i Q. „cos φ” (wyprowadzony z P i Q byłby obliczeniem w warstwie prezentacji),
+„Priorytet zasilania” i „Status danych” nie mają pola w modelu odbioru i nie są wyświetlane.
+
 ---
 
 ## 10. Karta 8: Zabezpieczenia i automatyka
@@ -172,6 +184,12 @@ Per odbiór:
 - Sterowanie lokalne / zdalne.
 - Sygnały SCADA (mapping).
 - Status danych dla selektywności.
+
+**Stan wdrożenia (2026-10-22).** Przekaźniki pól SN pochodzą z modelu (`Bay.protection_ref` →
+`ProtectionAssignment`, rodzaj, kody funkcji nastaw, liczba nastaw, stan włączenia;
+`station-configurator/przekaznikiStacji.ts`). Automatyka, blokady łączeniowe i tryb sterowania
+pola są prezentowane na ekranie zabezpieczeń i automatyki z read-modelu pól, nie w konfiguratorze
+stacji — dawne stałe konfiguratora („do konfiguracji”, „lokalne”, pusta lista automatyki) usunięte.
 
 ---
 
@@ -184,6 +202,12 @@ Per odbiór:
 - Telepomiary.
 - Wartości chwilowe (jeśli warstwa wyników włączona): I, U, P, Q, energia.
 - Status braków pomiarowych.
+
+**Stan wdrożenia (2026-10-22).** Przekładniki CT/VT pól stacji z modelu (`Measurement.bay_ref`,
+`przekladnikiStacji.ts`); krok „Pola pomiarowe” pokazuje pola z rolą pomiarową i deklaracją pomiaru
+(`Bay.funkcja_pomiaru` / `Bay.rodzaj_pomiaru`, kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`
+§5; `polaPomiaroweStacji.ts`). Liczniki energii i telepomiary nie mają obiektu w modelu ENM — dawne
+stałe „0” usunięte; krok „SCADA i infrastruktura” skasowany, bo zasilały go wyłącznie takie stałe.
 
 ---
 

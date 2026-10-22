@@ -1,7 +1,7 @@
 {
   "_meta": {
     "branch_count": 89,
-    "builder_snapshot_hash": "509507f92e883aaa9c17068acecc83e38e1c34877a0da6a1f356c921512bb762",
+    "builder_snapshot_hash": "1f65e02f1d954b9f40f880eabde481bef655587541a968bb5d0a484d93dc2e0f",
     "der_count": 20,
     "der_types": [
       "bess",
@@ -44155,7 +44155,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "509507f92e883aaa9c17068acecc83e38e1c34877a0da6a1f356c921512bb762",
+      "hash_sha256": "1f65e02f1d954b9f40f880eabde481bef655587541a968bb5d0a484d93dc2e0f",
       "name": "SLD Substrate 52 stacji",
       "revision": 0,
       "updated_at": "2026-05-29T00:00:00Z"
@@ -44176,87 +44176,135 @@
           },
           {
             "order": 2,
-            "segment_ref": "seg/30fd2abfe1e8153762173982902118a2/segment"
+            "segment_ref": "seg/30fd2abfe1e8153762173982902118a2/segment_L"
           },
           {
             "order": 3,
-            "segment_ref": "seg/92877b7399e3628daf0e9cbd6bc6194f/segment"
+            "segment_ref": "seg/30fd2abfe1e8153762173982902118a2/segment_R"
           },
           {
             "order": 4,
-            "segment_ref": "seg/dfd57619732e36171c04db0a9df77c68/segment"
+            "segment_ref": "seg/92877b7399e3628daf0e9cbd6bc6194f/segment"
           },
           {
             "order": 5,
-            "segment_ref": "seg/ceebb99b6e37bc85047280272ee8e60a/segment"
+            "segment_ref": "seg/dfd57619732e36171c04db0a9df77c68/segment"
           },
           {
             "order": 6,
-            "segment_ref": "seg/68f3cf81ea2cf503a2256a6887e0578f/segment"
+            "segment_ref": "seg/ceebb99b6e37bc85047280272ee8e60a/segment_L_L"
           },
           {
             "order": 7,
-            "segment_ref": "seg/4cc9ab380d76a80fb3451ffc96f0aa2b/segment"
+            "segment_ref": "seg/ceebb99b6e37bc85047280272ee8e60a/segment_L_R_L"
           },
           {
             "order": 8,
-            "segment_ref": "seg/3378b4a98a03309a73d8751d1698c3a3/segment"
+            "segment_ref": "seg/ceebb99b6e37bc85047280272ee8e60a/segment_L_R_R"
           },
           {
             "order": 9,
-            "segment_ref": "seg/b2c76b5ca84d7786392ebe542394dc75/segment"
+            "segment_ref": "seg/ceebb99b6e37bc85047280272ee8e60a/segment_R"
           },
           {
             "order": 10,
-            "segment_ref": "seg/c4f283564b7fc3b32e33af7bfa4c8bb1/segment"
+            "segment_ref": "seg/68f3cf81ea2cf503a2256a6887e0578f/segment"
           },
           {
             "order": 11,
-            "segment_ref": "seg/dda1994af6b6c039af2659f6570ebe32/segment"
+            "segment_ref": "seg/4cc9ab380d76a80fb3451ffc96f0aa2b/segment"
           },
           {
             "order": 12,
-            "segment_ref": "seg/f5058cf708092f685c17761dc3b42f1c/segment"
+            "segment_ref": "seg/3378b4a98a03309a73d8751d1698c3a3/segment_L"
           },
           {
             "order": 13,
-            "segment_ref": "seg/71883c20d085df377ee49d19cb579d87/segment"
+            "segment_ref": "seg/3378b4a98a03309a73d8751d1698c3a3/segment_R"
           },
           {
             "order": 14,
-            "segment_ref": "seg/5d437c83ea3c01b9e9c89c27e66eeccf/segment"
+            "segment_ref": "seg/b2c76b5ca84d7786392ebe542394dc75/segment"
           },
           {
             "order": 15,
-            "segment_ref": "seg/bb163cbd1832126dbc15ff6d32716c5d/segment"
+            "segment_ref": "seg/c4f283564b7fc3b32e33af7bfa4c8bb1/segment"
           },
           {
             "order": 16,
-            "segment_ref": "seg/9328f387d6c4361b082a3d84566dfe55/segment"
+            "segment_ref": "seg/dda1994af6b6c039af2659f6570ebe32/segment_L_L"
           },
           {
             "order": 17,
-            "segment_ref": "seg/7189b33df9bec53e82f5bbf5ba414ad8/segment"
+            "segment_ref": "seg/dda1994af6b6c039af2659f6570ebe32/segment_L_R"
           },
           {
             "order": 18,
-            "segment_ref": "seg/00fc5392ce26505fa57185b8ff278a83/segment"
+            "segment_ref": "seg/dda1994af6b6c039af2659f6570ebe32/segment_R"
           },
           {
             "order": 19,
-            "segment_ref": "seg/83331e653b367970d6ad64bf33787222/segment"
+            "segment_ref": "seg/f5058cf708092f685c17761dc3b42f1c/segment"
           },
           {
             "order": 20,
-            "segment_ref": "seg/7cdc3ca80a03285ecce6595efacd746c/segment"
+            "segment_ref": "seg/71883c20d085df377ee49d19cb579d87/segment"
           },
           {
             "order": 21,
-            "segment_ref": "seg/e8dbdb38bdd750a196d24cf98172cce1/segment"
+            "segment_ref": "seg/5d437c83ea3c01b9e9c89c27e66eeccf/segment"
           },
           {
             "order": 22,
-            "segment_ref": "seg/6275da2fa468b7f2b4aca0e40261843d/segment"
+            "segment_ref": "seg/bb163cbd1832126dbc15ff6d32716c5d/segment_L"
+          },
+          {
+            "order": 23,
+            "segment_ref": "seg/bb163cbd1832126dbc15ff6d32716c5d/segment_R"
+          },
+          {
+            "order": 24,
+            "segment_ref": "seg/9328f387d6c4361b082a3d84566dfe55/segment"
+          },
+          {
+            "order": 25,
+            "segment_ref": "seg/7189b33df9bec53e82f5bbf5ba414ad8/segment"
+          },
+          {
+            "order": 26,
+            "segment_ref": "seg/00fc5392ce26505fa57185b8ff278a83/segment_L_L"
+          },
+          {
+            "order": 27,
+            "segment_ref": "seg/00fc5392ce26505fa57185b8ff278a83/segment_L_R_L"
+          },
+          {
+            "order": 28,
+            "segment_ref": "seg/00fc5392ce26505fa57185b8ff278a83/segment_L_R_R"
+          },
+          {
+            "order": 29,
+            "segment_ref": "seg/00fc5392ce26505fa57185b8ff278a83/segment_R"
+          },
+          {
+            "order": 30,
+            "segment_ref": "seg/83331e653b367970d6ad64bf33787222/segment"
+          },
+          {
+            "order": 31,
+            "segment_ref": "seg/7cdc3ca80a03285ecce6595efacd746c/segment"
+          },
+          {
+            "order": 32,
+            "segment_ref": "seg/e8dbdb38bdd750a196d24cf98172cce1/segment"
+          },
+          {
+            "order": 33,
+            "segment_ref": "seg/6275da2fa468b7f2b4aca0e40261843d/segment_L"
+          },
+          {
+            "order": 34,
+            "segment_ref": "seg/6275da2fa468b7f2b4aca0e40261843d/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/371e5db9fef444f53336c1a460729f65/bay/001/001",
@@ -44272,7 +44320,19 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment"
+            "segment_ref": "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/4855938b6610860be13ebb55f622855b/sn_field/002",
@@ -44288,7 +44348,23 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment"
+            "segment_ref": "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment_R_R_R_L"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/e42f7922322d32cf7aaf765cda708f16/branch_segment_R_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/9f2fb51197ec1e3c0cc788fc730e6fb7/sn_field/002",
@@ -44304,7 +44380,19 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/01a20b171cd616a1e37f812b6a2ed1bc/branch_segment"
+            "segment_ref": "seg/01a20b171cd616a1e37f812b6a2ed1bc/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/01a20b171cd616a1e37f812b6a2ed1bc/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/01a20b171cd616a1e37f812b6a2ed1bc/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/01a20b171cd616a1e37f812b6a2ed1bc/branch_segment_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/29f56bf6d80dbcb8329677b381ac1bc7/sn_field/002",
@@ -44320,7 +44408,19 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/21a0bddd26b8d860a64c18e1dd0e7a39/branch_segment"
+            "segment_ref": "seg/21a0bddd26b8d860a64c18e1dd0e7a39/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/21a0bddd26b8d860a64c18e1dd0e7a39/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/21a0bddd26b8d860a64c18e1dd0e7a39/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/21a0bddd26b8d860a64c18e1dd0e7a39/branch_segment_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/22459f32a87efa533f427a5a1137bdf1/sn_field/002",
@@ -44336,7 +44436,23 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/430076b255026cb573b95788b0a50ae4/branch_segment"
+            "segment_ref": "seg/430076b255026cb573b95788b0a50ae4/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/430076b255026cb573b95788b0a50ae4/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/430076b255026cb573b95788b0a50ae4/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/430076b255026cb573b95788b0a50ae4/branch_segment_R_R_R_L"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/430076b255026cb573b95788b0a50ae4/branch_segment_R_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/c35346e302720b54552b21f15aa9c155/sn_field/002",
@@ -44352,7 +44468,23 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment"
+            "segment_ref": "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_L_SL"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_L_SR"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/087c41e26c6ea597e18223d3a4c620c7/sn_field/002",
@@ -44368,7 +44500,23 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/9f510d126c2ac454bd53023989d4d565/branch_segment"
+            "segment_ref": "seg/9f510d126c2ac454bd53023989d4d565/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/9f510d126c2ac454bd53023989d4d565/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/9f510d126c2ac454bd53023989d4d565/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/9f510d126c2ac454bd53023989d4d565/branch_segment_R_R_R_L"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/9f510d126c2ac454bd53023989d4d565/branch_segment_R_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/161502688ba086b88570e83b752d670d/sn_field/002",
@@ -44384,7 +44532,19 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment"
+            "segment_ref": "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/47c663304e299976a604a5bc9b1f3d10/sn_field/002",
@@ -44400,7 +44560,19 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment"
+            "segment_ref": "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/9d60b92ff9e075a6db59a6dc8bb586c4/sn_field/002",
@@ -44416,7 +44588,23 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment"
+            "segment_ref": "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_R_R_R_L"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_R_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/0a2066f9707739e7a647dfffe2fc7ae4/sn_field/002",
@@ -44432,7 +44620,19 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/eef87edda57b6ee688d4f45f9506d955/branch_segment"
+            "segment_ref": "seg/eef87edda57b6ee688d4f45f9506d955/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/eef87edda57b6ee688d4f45f9506d955/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/eef87edda57b6ee688d4f45f9506d955/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/eef87edda57b6ee688d4f45f9506d955/branch_segment_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/63db6734977dd742f41f0608537cbe9b/sn_field/002",
@@ -44448,7 +44648,23 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/231d55173c8d5b45cfa95895613eef00/branch_segment"
+            "segment_ref": "seg/231d55173c8d5b45cfa95895613eef00/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/231d55173c8d5b45cfa95895613eef00/branch_segment_R_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/231d55173c8d5b45cfa95895613eef00/branch_segment_R_R_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/231d55173c8d5b45cfa95895613eef00/branch_segment_R_R_R_L"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/231d55173c8d5b45cfa95895613eef00/branch_segment_R_R_R_R"
           }
         ],
         "starting_bay_ref": "stn/228af6c58fa4757538e84a7c9c4bd3dd/sn_field/002",

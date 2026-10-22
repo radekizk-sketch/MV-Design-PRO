@@ -120,7 +120,9 @@ describe('SldContextMenuController — most SLD_MENU_REGISTRY ↔ ContextMenu', 
     expect(screen.getByText('Stacja transformatorowa SN/nN')).toBeInTheDocument();
     expect(document.body.textContent ?? '').not.toContain('stn/773474baab70d0771fbaaca1aeb891e3/station');
     expect(screen.getByText('Dodaj źródło PV/BESS/FW z katalogu')).toBeInTheDocument();
-    expect(screen.getByText('Pokaż konfigurację stacji')).toBeInTheDocument();
+    // V12K-352: dawna pozycja show-readiness (globalny ekran gotowości) zastąpiona sprawdzeniem
+    // gotowości TEJ stacji w jej konfiguratorze (karta readiness).
+    expect(screen.getByText('Sprawdź gotowość stacji')).toBeInTheDocument();
   });
 
   it('typ DER → poprawne polskie nagłówki', () => {

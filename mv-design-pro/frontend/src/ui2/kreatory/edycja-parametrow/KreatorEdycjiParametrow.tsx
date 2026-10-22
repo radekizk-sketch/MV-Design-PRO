@@ -2,7 +2,11 @@
  * Kreator „Edycja parametrów elementu" (update_element_parameters) — ui2, kreatory/rama.
  *
  * Ekspercki override pól elementu. Zapis = operacja domenowa `update_element_parameters`,
- * której kontrakt to `element_ref` + `parameters` (mapa) + opcjonalny `reason`.
+ * której kontrakt to `element_ref` + `parameters` (mapa). Dawne pole „Uzasadnienie zmiany"
+ * wysyłało `reason` na poziomie ładunku, którego operacja nie czyta i żaden ekran nie pokazuje —
+ * kontrolka-widmo usunięta (kontrakt kluczy: `harness-fixtures/generated/kontrakt_ladunkow_operacji.json`).
+ * Uzasadnienie istnieje wyłącznie w sekcji wartości projektanta aparatu SN, gdzie backend czyta
+ * je jako `overrides[].reason`.
  *
  * Naprawa długu (Zero-Debt §1): stary formularz w trybie prostym wysyłał klucz `updates`,
  * którego handler `update_element_parameters` NIE czyta (czyta `parameters`) — zapis był
@@ -203,6 +207,8 @@ export function KreatorEdycjiParametrow() {
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
     { klucz: initialKey, wartosc: readString(context?.value) },
   ]);
+  // Uzasadnienie wartości projektanta aparatu SN — czytane przez backend jako
+  // `overrides[].reason` (`_nadpisania_aparatu_sn`); poza sekcją aparatu nie istnieje.
   const [powod, setPowod] = useState('');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   // Brak słownika z backendu = pole tekstowe (backend i tak waliduje E-W5-02).
@@ -326,7 +332,6 @@ export function KreatorEdycjiParametrow() {
     }, { ...zmianyNcRfg });
     if (zmianaAparatu && wynikAparatu?.rodzaj === 'lista') parameters.overrides = wynikAparatu.nadpisania;
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };
-    if (powod.trim()) payload.reason = powod.trim();
 
     setBladGlobalny(null);
     try {
@@ -363,7 +368,9 @@ export function KreatorEdycjiParametrow() {
           },
         ]
       : []),
-    { etykieta: T.wierszPowod, stan: powod.trim() ? 'kompletne' : 'ostrzezenie', wartosc: powod.trim() ? 'Podane' : 'Brak' },
+    ...(formularzAparatu
+      ? [{ etykieta: T.wierszPowod, stan: powod.trim() ? ('kompletne' as const) : ('ostrzezenie' as const), wartosc: powod.trim() ? 'Podane' : 'Brak' }]
+      : []),
   ];
 
   const aside = (
@@ -435,6 +442,13 @@ export function KreatorEdycjiParametrow() {
               />
             ))}
           </KreatorSiatka>
+          <PoleTekstowe
+            etykieta={T.powod}
+            wartosc={powod}
+            onZmiana={setPowod}
+            placeholder={T.powodPlaceholder}
+            testid="mvd-kreator-edycja-powod"
+          />
         </KreatorSekcja>
       ) : null}
 
@@ -488,14 +502,6 @@ export function KreatorEdycjiParametrow() {
         >
           {T.dodajWiersz}
         </button>
-
-        <PoleTekstowe
-          etykieta={T.powod}
-          wartosc={powod}
-          onZmiana={setPowod}
-          placeholder={T.powodPlaceholder}
-          testid="mvd-kreator-edycja-powod"
-        />
 
         <PanelTeorii
           tytul={T.teoriaTytul}

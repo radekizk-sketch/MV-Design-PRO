@@ -186,7 +186,7 @@ async function main() {
             bay_role: 'LINE_OUT',
             // namespace APARAT_SN syntezowane z catalog_ref per domain_ops_policy.py:212
             catalog_ref: 'sw-ls-abb-nal-12kv-630a',
-            designation_q: 'Q01',
+            field_name: 'Q01',
           },
         },
       });
@@ -278,7 +278,7 @@ async function main() {
             payload: {
               endpoint_bus_ref: endpointBusRef,
               station: {
-                name_pl: 'Stacja S01 (15/0.4 kV)',
+                name: 'Stacja S01 (15/0.4 kV)',
                 // Backend wymaga: inline, branch, terminal, sectional lub A-D
                 station_type: 'inline',
                 // Napięcia — topologiczne dziedziczenie z segmentu, jawne dla pewności

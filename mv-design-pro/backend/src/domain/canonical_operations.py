@@ -7,16 +7,16 @@ Data: 2026-02-17
 
 REGULA: Ten modul jest JEDYNYM ZRODLEM PRAWDY dla:
 - nazw kanonicznych operacji
-- mapowania aliasow
+- pol ladunku operacji (required/optional/klucze zastepcze = odczyty handlera)
 - kodow gotowosci
-- kontraktu odpowiedzi
 """
 
 from __future__ import annotations
 
 import enum
+import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 # ============================================================
@@ -57,7 +57,7 @@ class OperationSpec:
 # Full registry of ALL canonical operations (count enforced by
 # scripts/canonical_ops_guard.py: registry <-> handler dicts, both directions)
 CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
-    # --- SN Network (7 operations) ---
+    # --- SN Network (12 operations) ---
     "add_grid_source_sn": OperationSpec(
         canonical_name="add_grid_source_sn",
         category=OperationCategory.SN_NETWORK,
@@ -65,26 +65,65 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=("voltage_kv",),
         optional_fields=(
-            "source_name",
-            "sk3_mva",
-            "ik3_ka",
-            "rx_ratio",
-            # CV-4.3 K7: dane zwarciowe scenariusza MIN (IEC 60909-0:2016 eq. 6 z c_min).
-            "sk3_min_mva",
-            "ik3_min_ka",
-            "rx_ratio_min",
-            "catalog_ref",
             "catalog_binding",
-            "sections_count",
+            "catalog_ref",
+            "gpz_coupler_name",
+            "gpz_line_field_apparatus",
+            "gpz_line_field_name",
+            "gpz_section_name",
             "gpz_sections",
-            "line_fields_per_section",
             "grounding",
-            "zero_sequence",
+            "hv_voltage_kv",
+            "line_fields_per_section",
+            "lv_voltage_tolerance",
+            "ik3_ka",
+            "ik3_min_ka",
             "manual_equivalent",
-            "short_circuit_mode",
-            "source_mode",
+            "manufacturer_ref",
+            "name_pl",
+            "overrides",
             "parameter_source",
-            "notes",
+            "r0_ohm",
+            "r_ohm",
+            "rx_ratio",
+            "rx_ratio_min",
+            "sections_count",
+            "short_circuit_input_side",
+            "short_circuit_mode",
+            "sk3_hv_mva",
+            "sk3_min_mva",
+            "sk3_mva",
+            "solution_ref",
+            "source_id",
+            "source_mode",
+            "source_name",
+            "switchgear_family_ref",
+            "transformer_catalog_binding",
+            "transformer_catalog_ref",
+            "transformer_control_mode",
+            "transformer_controlled_bus_ref",
+            "transformer_count",
+            "transformer_deadband_kv",
+            "transformer_delay_seconds",
+            "transformer_ldc_enabled",
+            "transformer_ldc_r_ohm",
+            "transformer_ldc_x_ohm",
+            "transformer_regulated_winding",
+            "transformer_regulation_type",
+            "transformer_sn_mva",
+            "transformer_tap_changer_catalog_ref",
+            "transformer_tap_current_position",
+            "transformer_tap_max_position",
+            "transformer_tap_min_position",
+            "transformer_tap_neutral_position",
+            "transformer_tap_step_percent",
+            "transformer_voltage_setpoint_kv",
+            "transformer_{order}_name",
+            "u_set_pu",
+            "x0_ohm",
+            "x_ohm",
+            "z0_z1_ratio",
+            "zero_sequence",
         ),
     ),
     "continue_trunk_segment_sn": OperationSpec(
@@ -92,40 +131,87 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.SN_NETWORK,
         description_pl="Kontynuacja segmentu magistrali SN",
         target_layer="Domain / NetworkModel",
-        required_fields=("trunk_ref",),
-        optional_fields=("segment_spec", "geometry_hint"),
+        required_fields=(),
+        optional_fields=(
+            "catalog_binding",
+            "dlugosc_m",
+            "field_ref",
+            "from_terminal_id",
+            "segment",
+            "terminal_id",
+            "trunk_id",
+        ),
     ),
     "insert_station_on_segment_sn": OperationSpec(
         canonical_name="insert_station_on_segment_sn",
         category=OperationCategory.SN_NETWORK,
         description_pl="Wstawienie stacji na istniejącym segmencie SN",
         target_layer="Domain / NetworkModel",
-        required_fields=("trunk_ref", "segment_target", "station_spec"),
-        optional_fields=("sn_fields", "transformer", "nn_block", "embedding_intent"),
+        required_fields=("segment_id",),
+        optional_fields=(
+            "catalog_binding",
+            "construction_type",
+            "designation",
+            "dry_run",
+            "field_apparatus_catalog_ref",
+            "insert_at",
+            "name",
+            "name_pl",
+            "nn_block",
+            "nn_earthing",
+            "sn_fields",
+            "station",
+            "station_auxiliary",
+            "station_name",
+            "station_type",
+            "transformer",
+        ),
     ),
     "start_branch_segment_sn": OperationSpec(
         canonical_name="start_branch_segment_sn",
         category=OperationCategory.SN_NETWORK,
         description_pl="Rozpoczęcie nowego odgałęzienia od magistrali SN",
         target_layer="Domain / NetworkModel",
-        required_fields=("from_port_ref",),
-        optional_fields=("segment_spec", "branch_role"),
+        required_fields=(),
+        optional_fields=(
+            "catalog_binding",
+            "dlugosc_m",
+            "from_bus_ref",
+            "from_ref",
+            "segment",
+        ),
     ),
     "insert_section_switch_sn": OperationSpec(
         canonical_name="insert_section_switch_sn",
         category=OperationCategory.SN_NETWORK,
         description_pl="Wstawienie łącznika sekcyjnego na segmencie SN",
         target_layer="Domain / NetworkModel",
-        required_fields=("segment_id", "switch_type"),
-        optional_fields=("insert_at", "normal_state", "close_ref", "catalog_binding"),
+        required_fields=("segment_id",),
+        optional_fields=(
+            "catalog_binding",
+            "catalog_ref",
+            "close_ref",
+            "insert_at",
+            "normal_state",
+            "switch_name",
+            "switch_type",
+        ),
     ),
     "connect_secondary_ring_sn": OperationSpec(
         canonical_name="connect_secondary_ring_sn",
         category=OperationCategory.SN_NETWORK,
         description_pl="Zamknięcie pierścienia wtórnego",
         target_layer="Domain / NetworkModel",
-        required_fields=("a_ref", "b_ref"),
-        optional_fields=("nop_required",),
+        required_fields=(
+            "from_bus_ref",
+            "to_bus_ref",
+        ),
+        optional_fields=(
+            "catalog_binding",
+            "dlugosc_m",
+            "ring_name",
+            "segment",
+        ),
     ),
     "przepnij_element_na_pole": OperationSpec(
         canonical_name="przepnij_element_na_pole",
@@ -185,64 +271,100 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
     "add_sn_bay": OperationSpec(
         canonical_name="add_sn_bay",
         category=OperationCategory.SN_NETWORK,
-        description_pl="Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego",
-        target_layer="Domain / NetworkModel",
-        required_fields=("bus_ref",),
-        optional_fields=(
-            "station_ref",
-            "field_name",
-            "bay_role",
-            "apparatus_kind",
-            "gpz_section_id",
-            "catalog_binding",
-            "earthing_role",
-        ),
-    ),
-    "add_sn_bay_from_catalog": OperationSpec(
-        canonical_name="add_sn_bay_from_catalog",
-        category=OperationCategory.SN_NETWORK,
         description_pl=(
-            "Dodanie pola SN z katalogu rozdzielnic: kompletne pole rodziny "
-            "modułowej albo jednostka bloku fabrycznego RMU"
+            "Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu "
+            "rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego "
+            "RMU) z trybem próby (werdykt konfiguracji bez zapisu)"
         ),
         target_layer="Domain / NetworkModel",
-        required_fields=("bus_ref",),
+        required_fields=(),
         optional_fields=(
-            "station_ref",
+            "apparatus_kind",
+            "bay_kind",
+            "bay_role",
+            "bay_template_ref",
+            "bus_ref",
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
             "complete_bay_template_ref",
+            "dry_run",
+            "earthing_role",
+            "existing_field_ref",
             "factory_configuration_ref",
             "factory_unit_index",
-            "switchgear_family_ref",
             "field_name",
+            "field_ref",
+            "funkcja_pomiaru",
             "gpz_section_id",
-            "catalog_binding",
+            "manufacturer_ref",
             "protection_ref",
-            "earthing_role",
+            "rodzaj_pomiaru",
+            "source_refs",
+            "source_status",
+            "station_ref",
+            "switchgear_family_ref",
+            "tags",
         ),
     ),
-    # --- Station & nN (6 operations) ---
+    # --- Station & nN (5 operations) ---
     "add_transformer_sn_nn": OperationSpec(
         canonical_name="add_transformer_sn_nn",
         category=OperationCategory.STATION_NN,
         description_pl="Dodanie transformatora SN/nN",
         target_layer="Domain / NetworkModel",
-        required_fields=("hv_bus_ref", "lv_bus_ref"),
-        optional_fields=("catalog_binding", "model_flags"),
+        required_fields=(),
+        optional_fields=(
+            "catalog_binding",
+            "hv_bus_ref",
+            "hv_voltage_kv",
+            "lv_bus_ref",
+            "lv_voltage_kv",
+            "lv_voltage_tolerance",
+            "pk_kw",
+            "sn_mva",
+            "station_ref",
+            "transformer_catalog_ref",
+            "transformer_control_mode",
+            "transformer_controlled_bus_ref",
+            "transformer_deadband_kv",
+            "transformer_delay_seconds",
+            "transformer_ldc_enabled",
+            "transformer_ldc_r_ohm",
+            "transformer_ldc_x_ohm",
+            "transformer_regulated_winding",
+            "transformer_regulation_type",
+            "transformer_tap_changer_catalog_ref",
+            "transformer_tap_current_position",
+            "transformer_tap_max_position",
+            "transformer_tap_min_position",
+            "transformer_tap_neutral_position",
+            "transformer_tap_step_percent",
+            "transformer_voltage_setpoint_kv",
+            "uhv_kv",
+            "uk_percent",
+            "ulv_kv",
+            "vector_group",
+        ),
     ),
     "add_nn_outgoing_field": OperationSpec(
         canonical_name="add_nn_outgoing_field",
         category=OperationCategory.STATION_NN,
         description_pl="Dodanie pola nN z jawną intencją odpływu albo pola źródłowego",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_nn_bus_ref",),
+        required_fields=("bus_nn_ref",),
         optional_fields=(
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "feeder_role",
             "field_name",
-            "field_type",
             "field_role",
             "source_field_kind",
-            "catalog_binding",
-            "creates_nn_segment",
-            "length_m",
+            "station_ref",
+            "tags",
         ),
     ),
     "add_nn_load": OperationSpec(
@@ -250,18 +372,51 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.STATION_NN,
         description_pl="Dodanie obciążenia na szynie nN",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_nn_bus_ref",),
         # `phases` (W5-D, `enm/models.py::PhaseSet`): fazy przyłączenia odbioru;
         # brak = trójfazowy symetryczny (jedyne dotychczasowe znaczenie odbioru).
-        optional_fields=("load_type", "p_kw", "q_kvar", "cos_phi", "profile", "phases"),
+        # `source_mode` czyta brama katalogowa API (`_uses_manual_nn_load` — jawna
+        # deklaracja trybu eksperckiego bez pozycji katalogu), nie handler.
+        required_fields=("feeder_ref",),
+        optional_fields=(
+            "a_p",
+            "a_q",
+            "active_power_kw",
+            "b_p",
+            "b_q",
+            "bus_nn_ref",
+            "c_p",
+            "c_q",
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "connection_type",
+            "cos_phi",
+            "earth_electrode_r_ohm",
+            "f0_hz",
+            "k_pf",
+            "k_qf",
+            "load_kind",
+            "load_name",
+            "phases",
+            "reactive_power_kvar",
+            "source_mode",
+            "v0_pu",
+        ),
     ),
     "assign_catalog_to_element": OperationSpec(
         canonical_name="assign_catalog_to_element",
         category=OperationCategory.UNIVERSAL,
         description_pl="Przypisanie typu katalogowego do elementu",
         target_layer="Domain / Catalog",
-        required_fields=("element_ref", "catalog_item_id"),
-        optional_fields=("catalog_item_version", "policy"),
+        required_fields=("element_ref",),
+        optional_fields=(
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "catalog_ref",
+        ),
         creates_elements=False,
     ),
     "update_element_parameters": OperationSpec(
@@ -272,7 +427,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("element_ref", "parameters"),
         creates_elements=False,
     ),
-    # --- OZE nN (5 operations) ---
+    # --- OZE nN (7 operations) ---
     "add_converter_source": OperationSpec(
         canonical_name="add_converter_source",
         category=OperationCategory.OZE_NN,
@@ -281,15 +436,44 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=(
             "source_technology",
             "connection_variant",
-            "station_ref",
-            "bus_nn_ref",
         ),
         optional_fields=(
-            "placement",
-            "existing_field_ref",
-            "source_field",
+            "battery_catalog_ref",
+            "bess_mode",
+            "blocking_transformer_ref",
+            "bus_nn_ref",
             "catalog_binding",
+            "catalog_ref",
+            "control_mode",
+            "cos_phi",
+            "data_umowy_przylaczeniowej",
+            "deklaracje_modulu",
+            "der_topology",
+            "existing_field_ref",
+            "frequency_droop_percent",
+            "has_hvrt_curve",
+            "has_lvrt_curve",
+            "lfsm_deadband_hz",
+            "loadability_pu",
             "materialized_params",
+            "modul_istniejacy",
+            "mv_bus_ref",
+            "nastawy_zabezpieczen",
+            "placement",
+            "power_setpoint_mw",
+            "q_max_mvar",
+            "q_min_mvar",
+            "qu_deadband_high_pu",
+            "qu_deadband_low_pu",
+            "qu_slope_pu_per_pu",
+            "quantity",
+            "simultaneity_factor",
+            "soc_max_percent",
+            "soc_min_percent",
+            "source_field",
+            "source_name",
+            "station_ref",
+            "u_set_pu",
         ),
     ),
     "add_genset_nn": OperationSpec(
@@ -297,31 +481,42 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.OZE_NN,
         description_pl="Dodanie zespołu prądotwórczego na szynie nN",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_nn_bus_ref",),
-        optional_fields=("rated_power_kva", "cos_phi", "catalog_binding"),
+        required_fields=(
+            "bus_nn_ref",
+            "genset_spec",
+        ),
+        optional_fields=(
+            "existing_field_ref",
+            "placement",
+            "source_field",
+            "station_ref",
+        ),
     ),
     "add_ups_nn": OperationSpec(
         canonical_name="add_ups_nn",
         category=OperationCategory.OZE_NN,
         description_pl="Dodanie zasilacza UPS na szynie nN",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_nn_bus_ref",),
-        optional_fields=("rated_power_kva", "backup_time_min", "catalog_binding"),
+        required_fields=(
+            "bus_nn_ref",
+            "ups_spec",
+        ),
+        optional_fields=(
+            "existing_field_ref",
+            "placement",
+            "source_field",
+            "station_ref",
+        ),
     ),
     "set_source_operating_mode": OperationSpec(
         canonical_name="set_source_operating_mode",
         category=OperationCategory.OZE_NN,
         description_pl="Ustawienie trybu pracy źródła nN",
         target_layer="Domain / NetworkModel",
-        required_fields=("source_ref", "operating_mode"),
-        creates_elements=False,
-    ),
-    "set_dynamic_profile": OperationSpec(
-        canonical_name="set_dynamic_profile",
-        category=OperationCategory.OZE_NN,
-        description_pl="Przypisanie profilu dynamicznego do źródła",
-        target_layer="Domain / NetworkModel",
-        required_fields=("source_ref", "profile"),
+        required_fields=(
+            "source_ref",
+            "mode",
+        ),
         creates_elements=False,
     ),
     # V12K-238: wiązania wytwórcy wybierane PO jego utworzeniu (konfigurator DER).
@@ -336,18 +531,16 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=("generator_ref",),
         optional_fields=(
-            "protection_catalog_ref",
-            "ct_catalog_ref",
-            "vt_catalog_ref",
-            "dynamic_model_ref",
-            "nc_rfg_profile_ref",
-            "lvrt_curve_ref",
-            "hvrt_curve_ref",
-            "pf_curve_ref",
             "bess_operation_mode_refs",
-            # Karta AB-H0 §0.7.6: lista id kart widmowych — modele materializowane do
-            # `Generator.modele_widmowe` (referencja NIE trafia do materialized_params).
+            "ct_catalog_ref",
+            "dynamic_model_ref",
+            "hvrt_curve_ref",
             "karty_widmowe_ref",
+            "lvrt_curve_ref",
+            "nc_rfg_profile_ref",
+            "pf_curve_ref",
+            "protection_catalog_ref",
+            "vt_catalog_ref",
         ),
         creates_elements=False,
     ),
@@ -382,16 +575,23 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.PROTECTION,
         description_pl="Dodanie przekładnika prądowego (CT)",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_field_ref",),
+        required_fields=(),
         optional_fields=(
-            "ratio",
             "accuracy_class",
+            "bay_ref",
+            "breaker_ref",
             "burden_va",
             "catalog_binding",
-            # W3-B (mapa 4 #3): obwód wtórny — koniec liczenia „na kartce".
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "connection",
+            "field_ref",
+            "name",
             "obwod_wtorny",
-            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: kotwica przy wyłączniku liniowym bez pola.
-            "breaker_ref",
+            "purpose",
+            "ratio_primary_a",
+            "ratio_secondary_a",
         ),
     ),
     "add_vt": OperationSpec(
@@ -399,13 +599,20 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.PROTECTION,
         description_pl="Dodanie przekładnika napięciowego (VT)",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_field_ref",),
+        required_fields=("field_ref",),
         optional_fields=(
-            "ratio",
             "accuracy_class",
+            "burden_va",
             "catalog_binding",
-            # W3-B (mapa 4 #3): obwód wtórny + uzwojenie, którego dotyczy.
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "connection",
+            "name",
             "obwod_wtorny",
+            "purpose",
+            "ratio_primary_v",
+            "ratio_secondary_v",
             "vt_uzwojenie",
         ),
     ),
@@ -417,7 +624,10 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         # projektant (treść komunikatu operacji, karta #142) — bez kodów.
         description_pl=("Zapis obwodu wtórnego przekładnika CT/VT na już istniejącym przekładniku"),
         target_layer="Domain / NetworkModel",
-        required_fields=("measurement_ref", "obwod_wtorny"),
+        required_fields=(
+            "measurement_ref",
+            "obwod_wtorny",
+        ),
         optional_fields=("vt_uzwojenie",),
         creates_elements=False,
     ),
@@ -426,14 +636,21 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.PROTECTION,
         description_pl="Dodanie przekaźnika zabezpieczeniowego",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_ct_ref",),
+        required_fields=(),
         optional_fields=(
-            "relay_type",
-            "manufacturer",
-            "catalog_binding",
-            "settings",
-            # Karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik liniowy bez pola jako kotwica.
+            "bay_ref",
             "breaker_ref",
+            "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "ct_ref",
+            "field_ref",
+            "name",
+            "protection",
+            "relay_type",
+            "settings",
+            "vt_ref",
         ),
     ),
     "update_protection_settings": OperationSpec(
@@ -446,30 +663,13 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("protection_ref", "settings"),
         creates_elements=False,
     ),
-    # --- Universal (4 operations) ---
+    # --- Universal (13 operations) ---
     "delete_element": OperationSpec(
         canonical_name="delete_element",
         category=OperationCategory.UNIVERSAL,
         description_pl="Usunięcie elementu z modelu sieci",
         target_layer="Domain / NetworkModel",
         required_fields=("element_ref",),
-        optional_fields=("cascade",),
-        creates_elements=False,
-    ),
-    "rename_element": OperationSpec(
-        canonical_name="rename_element",
-        category=OperationCategory.UNIVERSAL,
-        description_pl="Zmiana nazwy elementu",
-        target_layer="Domain / NetworkModel",
-        required_fields=("element_ref", "new_name"),
-        creates_elements=False,
-    ),
-    "set_label": OperationSpec(
-        canonical_name="set_label",
-        category=OperationCategory.UNIVERSAL,
-        description_pl="Ustawienie etykiety pola rozdzielnicy (krótka nazwa odpływu) na schemacie SLD",
-        target_layer="Application / SLD",
-        required_fields=("element_ref", "label"),
         creates_elements=False,
     ),
     "set_connection_conditions": OperationSpec(
@@ -478,6 +678,11 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy)",
         target_layer="Domain / NetworkModel",
         required_fields=(),
+        optional_fields=(
+            "moc_przylaczeniowa_mw",
+            "tryb_pracy",
+            "wymagany_cos_phi",
+        ),
         creates_elements=False,
     ),
     "append_station_on_endpoint": OperationSpec(
@@ -487,13 +692,22 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
-            "endpoint_bus_ref",
-            "run_ref",
-            "station",
-            "station_name",
-            "transformer",
-            "nn_voltage_kv",
+            "construction_type",
+            "designation",
             "dry_run",
+            "endpoint_bus_ref",
+            "field_apparatus_catalog_ref",
+            "nn_block",
+            "nn_earthing",
+            "nn_voltage_kv",
+            "run_ref",
+            "sn_fields",
+            "station",
+            "station_auxiliary",
+            "station_name",
+            "station_type",
+            "switchgear",
+            "transformer",
         ),
         creates_elements=True,
     ),
@@ -502,14 +716,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.SN_NETWORK,
         description_pl="Wstawienie słupa odgałęźnego na segmencie SN",
         target_layer="Domain / NetworkModel",
-        required_fields=(),
+        required_fields=("segment_id",),
         optional_fields=(
-            "segment_id",
-            "segment_ref",
-            "catalog_ref",
+            "branch_ports_count",
             "catalog_binding",
-            "switch_state",
+            "catalog_namespace",
+            "catalog_ref",
+            "catalog_version",
             "insert_at",
+            "materialized_params",
+            "name",
+            "source_mode",
+            "switch_state",
         ),
         creates_elements=True,
     ),
@@ -518,14 +736,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.SN_NETWORK,
         description_pl="Wstawienie złącza kablowego SN (ZK-SN) na segmencie SN",
         target_layer="Domain / NetworkModel",
-        required_fields=(),
+        required_fields=("segment_id",),
         optional_fields=(
-            "segment_id",
-            "segment_ref",
-            "catalog_ref",
+            "branch_ports_count",
             "catalog_binding",
-            "switch_state",
+            "catalog_namespace",
+            "catalog_ref",
+            "catalog_version",
             "insert_at",
+            "materialized_params",
+            "name",
+            "source_mode",
+            "switch_state",
         ),
         creates_elements=True,
     ),
@@ -570,12 +792,14 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
-            "bus_ref",
             "bus_nn_ref",
-            "catalog_ref",
+            "bus_ref",
             "catalog_binding",
-            "status",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
             "name",
+            "status",
         ),
         creates_elements=True,
     ),
@@ -586,18 +810,29 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=("bus_ref",),
         optional_fields=(
+            "a_p",
+            "a_q",
             "active_power_kw",
-            "p_mw",
-            "reactive_power_kvar",
-            "q_mvar",
-            "cos_phi",
-            "catalog_ref",
+            "b_p",
+            "b_q",
+            "c_p",
+            "c_q",
             "catalog_binding",
-            "load_name",
-            "load_kind",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
             "connection_type",
-            # W5-D: fazy przyłączenia (`PhaseSet`); brak = trójfazowy symetryczny.
+            "cos_phi",
+            "f0_hz",
+            "k_pf",
+            "k_qf",
+            "load_kind",
+            "load_name",
+            "p_mw",
             "phases",
+            "q_mvar",
+            "reactive_power_kvar",
+            "v0_pu",
         ),
         creates_elements=True,
     ),
@@ -608,15 +843,23 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "Dodanie generatora synchronicznego wprost na szynę SN/WN (bez przekształtnika)"
         ),
         target_layer="Domain / NetworkModel",
-        required_fields=("bus_ref", "p_mw", "catalog_ref"),
+        required_fields=(
+            "bus_ref",
+            "p_mw",
+        ),
         optional_fields=(
             "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
             "control_mode",
-            "u_set_pu",
-            "q_min_mvar",
-            "q_max_mvar",
-            "q_mvar",
+            "manual_params",
             "name",
+            "q_max_mvar",
+            "q_min_mvar",
+            "q_mvar",
+            "source_name",
+            "u_set_pu",
         ),
         creates_elements=True,
     ),
@@ -627,12 +870,14 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=(),
         optional_fields=(
-            "field_ref",
             "bay_ref",
             "bus_ref",
-            "station_ref",
-            "catalog_ref",
             "catalog_binding",
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_ref",
+            "field_ref",
+            "station_ref",
         ),
         creates_elements=True,
     ),
@@ -645,22 +890,26 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         mutates_model=False,
         creates_elements=False,
     ),
-    # --- nN Network (9 operations, karta P0.1, C §4.1) ---
+    # --- nN Network (8 operations, karta P0.1, C §4.1) ---
     "add_nn_cable_segment": OperationSpec(
         canonical_name="add_nn_cable_segment",
         category=OperationCategory.NN_NETWORK,
         description_pl="Dodanie odcinka kabla nN od szyny/pola do nowej lub istniejącej szyny nN",
         target_layer="Domain / NetworkModel",
-        required_fields=("from_bus_ref", "length_m"),
+        required_fields=(
+            "from_bus_ref",
+            "length_m",
+        ),
         optional_fields=(
-            "from_ref",
-            "to_bus_ref",
-            "catalog_ref",
+            "cable_laying_conditions",
             "catalog_binding",
+            "catalog_ref",
             "n_parallel",
             "name",
-            "cable_laying_conditions",
+            "ref_id",
             "screen_bonding",
+            "to_bus_name",
+            "to_bus_ref",
         ),
         creates_elements=True,
     ),
@@ -730,15 +979,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=(),
         creates_elements=False,
     ),
-    "remove_nn_element": OperationSpec(
-        canonical_name="remove_nn_element",
-        category=OperationCategory.NN_NETWORK,
-        description_pl="Usunięcie elementu nN (kabel/aparat/szyna-liść/odbiór) z walidacją spójności",
-        target_layer="Domain / NetworkModel",
-        required_fields=("element_ref",),
-        optional_fields=(),
-        creates_elements=False,
-    ),
     "copy_nn_feeder": OperationSpec(
         canonical_name="copy_nn_feeder",
         category=OperationCategory.NN_NETWORK,
@@ -753,10 +993,760 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
 # Canonical operation names as frozen set (for guards)
 CANONICAL_OP_NAMES: frozenset[str] = frozenset(CANONICAL_OPERATIONS.keys())
 
+# Klucze zastępcze pola WYMAGANEGO: handler przyjmuje pole wymagane ALBO jeden z kluczy
+# zastępczych (np. ``payload.get("source_ref") or payload.get("element_ref")``). Jedna prawda
+# z handlerem: zbiór required ∪ optional ∪ klucze zastępcze operacji jest RÓWNY zbiorowi
+# kluczy ładunku czytanych przez handler — przypina
+# tests/ci/test_spec_operacji_rowna_odczytom_handlera.py (analiza AST handlerów enm/**).
+# Nazwa z ``{…}`` (np. ``transformer_{order}_name``) to rodzina kluczy numerowanych.
 REQUIRED_FIELD_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "add_nn_cable_segment": {"from_bus_ref": ("from_ref",)},
+    "add_vt": {"field_ref": ("bay_ref",)},
+    "insert_branch_pole_on_segment_sn": {"segment_id": ("segment_ref",)},
+    "insert_station_on_segment_sn": {"segment_id": ("segment_ref",)},
+    "insert_zksn_on_segment_sn": {"segment_id": ("segment_ref",)},
+    "set_der_catalog_bindings": {"generator_ref": ("source_ref",)},
+    "set_measurement_secondary_circuit": {"measurement_ref": ("ref_id",)},
+    "set_source_operating_mode": {"source_ref": ("element_ref",)},
+}
+
+
+@dataclass(frozen=True)
+class KsztaltObiektu:
+    """Kształt obiektu zagnieżdżonego ładunku — słownika albo KAŻDEGO elementu listy słowników.
+
+    ``pola``: klucze czytane przez handler (i bramę katalogową API dla wiązań);
+    ``zagniezdzone``: kształty obiektów pod kluczami tego obiektu (poziom niżej).
+    Nazwa z ``{…}`` (np. ``{side}_r_ohm``) to rodzina kluczy.
+    """
+
+    pola: frozenset[str]
+    zagniezdzone: Mapping[str, KsztaltObiektu] = field(default_factory=dict)
+
+
+#: Wiązanie katalogowe — JEDEN kształt w każdej operacji: pola ``CatalogBinding``
+#: (``network_model/catalog/types.py``), które czyta brama katalogowa API
+#: (``CatalogBinding.from_dict``, ``validate_catalog_binding``), oraz ``catalog_ref`` —
+#: identyfikator pozycji czytany z wiązania przez handlery i bramę (``_ref_z_wiazania``).
+#: Test ``tests/ci/test_spec_operacji_rowna_odczytom_handlera.py`` przypina: odczyty
+#: wiązań w handlerach ⊆ ten kształt, a kształt = pola ``CatalogBinding`` ∪ odczyty.
+_WIAZANIE_KATALOGOWE = KsztaltObiektu(
+    pola=frozenset(
+        {
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "catalog_ref",
+            "materialize",
+            "snapshot_mapping_version",
+        }
+    )
+)
+
+#: Kształty obiektów zagnieżdżonych ładunku operacji (poziom 1 i głębiej) — JEDNA prawda
+#: z handlerem jak pola najwyższego poziomu: kształt każdego obiektu = klucze czytane przez
+#: handler (analiza AST ``tests/ci/odczyty_ladunku_handlerow.py``, przechodnio przez
+#: funkcje ``enm/**``, pętle po listach obiektów i kopie ``{**x, k: v}``), przypięte testem
+#: ``test_spec_operacji_rowna_odczytom_handlera.py``. Obiekt, którego odczytów analiza nie
+#: domyka (handler odczytuje klucze wyliczane w biegu), NIE ma tu kształtu — test wylicza
+#: takie obiekty z przyczyną. Czujnik ``klucze_spoza_kontraktu`` sprawdza każdy poziom.
+KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
+    "add_converter_source": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "der_topology": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "block_transformer",
+                    "connection_level",
+                    "connection_method",
+                    "has_block_transformer",
+                    "has_manufacturer_lv_switchgear",
+                    "inverter_output_voltage_kv",
+                    "lv_switchgear_variant",
+                    "mv_bus_ref",
+                    "mv_field_configuration",
+                    "simultaneity_factor",
+                }
+            ),
+            zagniezdzone={
+                "block_transformer": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "catalog_binding",
+                            "catalog_ref",
+                            "loadability_pu",
+                            "lv_voltage_tolerance",
+                            "primary_voltage_kv",
+                            "rated_power_mva",
+                            "secondary_voltage_kv",
+                            "uk_percent",
+                            "vector_group",
+                        }
+                    ),
+                ),
+                "mv_field_configuration": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "apparatus_catalog_binding",
+                            "bay_template_ref",
+                            "cable_catalog_binding",
+                            "cable_catalog_ref",
+                            "cable_head",
+                            "cable_laying_conditions",
+                            "cable_length_km",
+                            "cable_screen_bonding",
+                            "ct",
+                            "earthing_switch",
+                            "field_name",
+                            "protection_relay",
+                            "surge_arrester",
+                            "switching_device",
+                            "vt",
+                        }
+                    ),
+                    zagniezdzone={
+                        "apparatus_catalog_binding": _WIAZANIE_KATALOGOWE,
+                        "cable_laying_conditions": KsztaltObiektu(
+                            pola=frozenset(
+                                {"f_grunt", "f_grupa", "f_wiazka", "opis_pl", "set_name"}
+                            ),
+                        ),
+                    },
+                ),
+            },
+        ),
+        "source_field": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "add_ct": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_generator_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "manual_params": KsztaltObiektu(
+            pola=frozenset({"q_max_mvar", "q_min_mvar", "rated_kv", "rated_mva"}),
+        ),
+    },
+    "add_genset_nn": {
+        "genset_spec": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "fuel_type",
+                    "operation_mode",
+                    "power_factor",
+                    "rated_power_kw",
+                    "rated_voltage_kv",
+                    "source_name",
+                }
+            ),
+        ),
+        "source_field": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
     "add_grid_source_sn": {
-        "voltage_kv": ("sn_voltage_kv",),
-    }
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "gpz_line_field_apparatus": KsztaltObiektu(
+            pola=frozenset({"apparatus_kind", "catalog_binding", "catalog_item_id", "catalog_ref"}),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+        "grounding": KsztaltObiektu(
+            pola=frozenset({"r_ohm", "type", "x_ohm"}),
+        ),
+        "manual_equivalent": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "hv_voltage_kv",
+                    "ik3_ka",
+                    "ik3_min_ka",
+                    "r0_ohm",
+                    "r_ohm",
+                    "rx_ratio",
+                    "rx_ratio_min",
+                    "short_circuit_input_side",
+                    "short_circuit_mode",
+                    "sk3_hv_mva",
+                    "sk3_min_mva",
+                    "sk3_mva",
+                    "sn_voltage_kv",
+                    "u_set_pu",
+                    "voltage_hv_kv",
+                    "x0_ohm",
+                    "x_ohm",
+                    "z0_z1_ratio",
+                }
+            ),
+        ),
+        "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
+        "zero_sequence": KsztaltObiektu(
+            pola=frozenset({"enabled", "r0_ohm", "x0_ohm", "z0_z1_ratio"}),
+        ),
+    },
+    "add_load_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_cable_segment": {
+        "cable_laying_conditions": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "ambient_temperature_c",
+                    "circuit_count",
+                    "environment",
+                    "insulation",
+                    "soil_thermal_resistivity_km_w",
+                }
+            ),
+        ),
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_distribution_board": {
+        "supply": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "cable_laying_conditions",
+                    "catalog_binding",
+                    "catalog_ref",
+                    "from_bus_ref",
+                    "from_ref",
+                    "length_m",
+                    "n_parallel",
+                    "name",
+                    "ref_id",
+                    "screen_bonding",
+                    "to_bus_name",
+                }
+            ),
+            zagniezdzone={
+                "cable_laying_conditions": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "ambient_temperature_c",
+                            "circuit_count",
+                            "environment",
+                            "insulation",
+                            "soil_thermal_resistivity_km_w",
+                        }
+                    ),
+                ),
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "add_nn_load": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_outgoing_field": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_rcd": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_section_coupler": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_switch_device": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_relay": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "protection": KsztaltObiektu(
+            pola=frozenset({"catalog_item_id", "catalog_item_version", "catalog_ref"}),
+        ),
+    },
+    "add_shunt_compensator_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_sn_bay": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_surge_arrester_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_transformer_sn_nn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_ups_nn": {
+        "source_field": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+        "ups_spec": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "backup_time_min",
+                    "battery_type",
+                    "operation_mode",
+                    "rated_power_kw",
+                    "source_name",
+                }
+            ),
+        ),
+    },
+    "add_vt": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "append_station_on_endpoint": {
+        "nn_block": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "cos_phi",
+                    "loadability_pu",
+                    "nn_configuration",
+                    "outgoing_feeders_nn",
+                    "outgoing_feeders_nn_count",
+                    "simultaneity_factor",
+                    "source_converter_catalog_ref",
+                    "source_converter_kind",
+                    "source_converter_name",
+                    "source_protection",
+                }
+            ),
+            zagniezdzone={
+                "source_protection": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "analysis_scope",
+                            "breaker_role",
+                            "device_catalog_ref",
+                            "device_label",
+                            "protected_object",
+                        }
+                    ),
+                ),
+            },
+        ),
+        "nn_earthing": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "lv_system",
+                    "lv_voltage_tolerance",
+                    "neutral_point",
+                    "{side}_neutral_point",
+                    "{side}_r_ohm",
+                    "{side}_x_ohm",
+                }
+            ),
+        ),
+        "sn_fields": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "apparatus_catalog_ref",
+                    "bay_kind",
+                    "bay_template_ref",
+                    "catalog_bindings",
+                    "equipment",
+                    "equipment_refs",
+                    "factory_configuration_ref",
+                    "factory_unit_index",
+                    "field_role",
+                    "funkcja_pomiaru",
+                    "manufacturer_ref",
+                    "protection_ref",
+                    "rodzaj_pomiaru",
+                    "source_refs",
+                    "source_status",
+                    "switchgear_family_ref",
+                }
+            ),
+        ),
+        "station": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "construction_type",
+                    "designation",
+                    "name",
+                    "nn_earthing",
+                    "nn_voltage_kv",
+                    "station_auxiliary",
+                    "station_type",
+                    "switchgear",
+                }
+            ),
+            zagniezdzone={
+                "nn_earthing": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "lv_system",
+                            "lv_voltage_tolerance",
+                            "neutral_point",
+                            "{side}_neutral_point",
+                            "{side}_r_ohm",
+                            "{side}_x_ohm",
+                        }
+                    ),
+                ),
+                "station_auxiliary": KsztaltObiektu(
+                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+                ),
+                "switchgear": KsztaltObiektu(
+                    pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
+                ),
+            },
+        ),
+        "station_auxiliary": KsztaltObiektu(
+            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+        ),
+        "transformer": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "catalog_binding",
+                    "catalog_ref",
+                    "create",
+                    "n_parallel",
+                    "transformer_catalog_ref",
+                    "transformer_control_mode",
+                    "transformer_controlled_bus_ref",
+                    "transformer_deadband_kv",
+                    "transformer_delay_seconds",
+                    "transformer_ldc_enabled",
+                    "transformer_ldc_r_ohm",
+                    "transformer_ldc_x_ohm",
+                    "transformer_regulated_winding",
+                    "transformer_regulation_type",
+                    "transformer_tap_changer_catalog_ref",
+                    "transformer_tap_current_position",
+                    "transformer_tap_max_position",
+                    "transformer_tap_min_position",
+                    "transformer_tap_neutral_position",
+                    "transformer_tap_step_percent",
+                    "transformer_voltage_setpoint_kv",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "assign_catalog_to_element": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "connect_secondary_ring_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "segment": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "catalog_ref", "dlugosc_m", "rodzaj", "screen_bonding"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "continue_trunk_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "segment": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "b0_siemens_per_km",
+                    "bus_name",
+                    "catalog_binding",
+                    "catalog_ref",
+                    "dlugosc_m",
+                    "name",
+                    "r0_ohm_per_km",
+                    "rodzaj",
+                    "screen_bonding",
+                    "x0_ohm_per_km",
+                    "zero_sequence",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+                "zero_sequence": KsztaltObiektu(
+                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
+                ),
+            },
+        ),
+    },
+    "insert_branch_pole_on_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+    },
+    "insert_section_switch_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+    },
+    "insert_station_on_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+        "nn_block": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "cos_phi",
+                    "loadability_pu",
+                    "nn_configuration",
+                    "outgoing_feeders_nn",
+                    "outgoing_feeders_nn_count",
+                    "simultaneity_factor",
+                    "source_converter_catalog_ref",
+                    "source_converter_kind",
+                    "source_converter_name",
+                    "source_protection",
+                }
+            ),
+            zagniezdzone={
+                "source_protection": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "analysis_scope",
+                            "breaker_role",
+                            "device_catalog_ref",
+                            "device_label",
+                            "protected_object",
+                        }
+                    ),
+                ),
+            },
+        ),
+        "nn_earthing": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "lv_system",
+                    "lv_voltage_tolerance",
+                    "neutral_point",
+                    "{side}_neutral_point",
+                    "{side}_r_ohm",
+                    "{side}_x_ohm",
+                }
+            ),
+        ),
+        "sn_fields": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "apparatus_catalog_ref",
+                    "bay_kind",
+                    "bay_template_ref",
+                    "equipment",
+                    "factory_configuration_ref",
+                    "factory_unit_index",
+                    "field_role",
+                    "funkcja_pomiaru",
+                    "manufacturer_ref",
+                    "protection_ref",
+                    "rodzaj_pomiaru",
+                    "source_refs",
+                    "source_status",
+                    "switchgear_family_ref",
+                }
+            ),
+        ),
+        "station": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "construction_type",
+                    "designation",
+                    "name",
+                    "name_pl",
+                    "nn_earthing",
+                    "nn_voltage_kv",
+                    "sn_voltage_kv",
+                    "station_auxiliary",
+                    "station_name",
+                    "station_type",
+                    "switchgear",
+                }
+            ),
+            zagniezdzone={
+                "nn_earthing": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "lv_system",
+                            "lv_voltage_tolerance",
+                            "neutral_point",
+                            "{side}_neutral_point",
+                            "{side}_r_ohm",
+                            "{side}_x_ohm",
+                        }
+                    ),
+                ),
+                "station_auxiliary": KsztaltObiektu(
+                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+                ),
+                "switchgear": KsztaltObiektu(
+                    pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
+                ),
+            },
+        ),
+        "station_auxiliary": KsztaltObiektu(
+            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+        ),
+        "transformer": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "catalog_binding",
+                    "create",
+                    "n_parallel",
+                    "transformer_catalog_ref",
+                    "transformer_control_mode",
+                    "transformer_controlled_bus_ref",
+                    "transformer_deadband_kv",
+                    "transformer_delay_seconds",
+                    "transformer_ldc_enabled",
+                    "transformer_ldc_r_ohm",
+                    "transformer_ldc_x_ohm",
+                    "transformer_regulated_winding",
+                    "transformer_regulation_type",
+                    "transformer_tap_changer_catalog_ref",
+                    "transformer_tap_current_position",
+                    "transformer_tap_max_position",
+                    "transformer_tap_min_position",
+                    "transformer_tap_neutral_position",
+                    "transformer_tap_step_percent",
+                    "transformer_voltage_setpoint_kv",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "insert_zksn_on_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+    },
+    "set_bay_equipment": {
+        "devices": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_ref", "designation", "earthing_role", "kind", "linked_ref", "placement"}
+            ),
+        ),
+    },
+    "set_nn_cable_laying_conditions": {
+        "cable_laying_conditions": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "ambient_temperature_c",
+                    "circuit_count",
+                    "environment",
+                    "insulation",
+                    "soil_thermal_resistivity_km_w",
+                }
+            ),
+        ),
+    },
+    "start_branch_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "segment": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "b0_siemens_per_km",
+                    "bus_name",
+                    "catalog_binding",
+                    "catalog_ref",
+                    "dlugosc_m",
+                    "name",
+                    "r0_ohm_per_km",
+                    "rodzaj",
+                    "screen_bonding",
+                    "x0_ohm_per_km",
+                    "zero_sequence",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+                "zero_sequence": KsztaltObiektu(
+                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
+                ),
+            },
+        ),
+    },
+}
+
+
+@dataclass(frozen=True)
+class SkutekCiagu:
+    """Skutek operacji w ciągach liniowych migawki (``line_runs``, ``enm/models.py::LineRun``).
+
+    ``klucz_ladunku``: klucz ładunku wskazujący ciąg (id ciągu = ``ref_id`` magistrali
+    ``corridors``) albo ``None``, gdy operacja wyznacza ciąg sama.
+    """
+
+    klucz_ladunku: str | None
+    opis_pl: str
+
+
+_PODZIAL_ODCINKA_W_CIAGU = (
+    "Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, "
+    "numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali "
+    "i ciągu)."
+)
+
+#: Operacje ZMIENIAJĄCE ciągi liniowe ``line_runs`` — JEDNA prawda z handlerami: zbiór
+#: operacji, których handler (przechodnio przez funkcje ``enm/**``) dociera do funkcji
+#: zapisujących ciągi, jest RÓWNY kluczom tego słownika (analiza AST, test
+#: ``tests/ci/test_ciagi_liniowe_operacji.py``), a w łańcuchu przykładów dokumentu kontraktu
+#: każda operacja, po której ciągi się zmieniły, jest tu wymieniona.
+#: Ciąg liniowy to magistrala albo odgałęzienie jako uporządkowana lista odcinków kabla/linii
+#: (``segments``) i stacji (``stations``) z początkiem w polu (``starting_bay_ref``,
+#: ``starting_port_ref``); id ciągu = ``ref_id`` magistrali. Odcinki ciągu istnieją w
+#: ``branches``, stacje — w ``substations`` (``tests/enm/test_ciagi_liniowe_spojne.py``).
+#: Operacje NIE prowadzą listy ``stations`` ciągu: stacje ciągu (przelotowe i końcowa)
+#: wyprowadza się z końcówek jego odcinków (SLD ``inferStationRefsForSegments``) — jedna prawda;
+#: lista z zapisu zastanego traci stację usuniętą (``delete_element``).
+CIAGI_LINIOWE: dict[str, SkutekCiagu] = {
+    "add_grid_source_sn": SkutekCiagu(
+        None,
+        "Zakłada ciąg magistrali GPZ (`run_kind` `main_trunk`, id = id magistrali, bez odcinków) "
+        "z początkiem w pierwszym polu liniowym GPZ i jego zacisku.",
+    ),
+    "continue_trunk_segment_sn": SkutekCiagu(
+        "trunk_id",
+        "Dopisuje utworzony odcinek na koniec ciągu `trunk_id` (brak albo nieznana magistrala → "
+        "pierwsza magistrala modelu); ciąg zakładany, gdy magistrala go nie ma (początek: "
+        "`field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu "
+        "i numer `order`.",
+    ),
+    "start_branch_segment_sn": SkutekCiagu(
+        None,
+        "Zakłada ciąg odgałęzienia (`run_kind` `branch`) z utworzonym odcinkiem; początek "
+        "i `branch_origin_station_ref` = element początku (`from_ref`), `parent_run_ref` = ciąg "
+        "odcinków punktu rozgałęzienia (początek `bp/…`).",
+    ),
+    "insert_station_on_segment_sn": SkutekCiagu(
+        None,
+        _PODZIAL_ODCINKA_W_CIAGU + " Stacja nie jest odcinkiem ciągu.",
+    ),
+    "insert_section_switch_sn": SkutekCiagu(
+        None,
+        _PODZIAL_ODCINKA_W_CIAGU
+        + " Łącznik nie jest odcinkiem ciągu (magistrala wymienia go między połówkami).",
+    ),
+    "insert_zksn_on_segment_sn": SkutekCiagu(
+        None, _PODZIAL_ODCINKA_W_CIAGU + " Wstawienie na końcu odcinka nie dzieli go."
+    ),
+    "insert_branch_pole_on_segment_sn": SkutekCiagu(
+        None, _PODZIAL_ODCINKA_W_CIAGU + " Wstawienie na końcu odcinka nie dzieli go."
+    ),
+    "delete_element": SkutekCiagu(
+        None,
+        "Usuwa z `segments` i `stations` każdego ciągu odcinki i stacje usunięte wprost albo "
+        "kaskadą (numeracja `order` od nowa) — para do czyszczenia magistral; ciąg bez odcinków "
+        "zostaje razem z magistralą.",
+    ),
 }
 
 
@@ -2974,91 +3964,73 @@ def get_blockers_for_analysis(analysis_type: str) -> tuple[str, ...]:
 
 
 # ============================================================
-# 4. RESPONSE CONTRACT
+# 4. VALIDATION HELPERS
 # ============================================================
 
 
-@dataclass(frozen=True)
-class OperationResponseContract:
-    """Canonical response contract for ALL domain operations.
+def klucze_kontraktu(op_name: str) -> frozenset[str]:
+    """Klucze ładunku, które operacja przyjmuje: pola wymagane, opcjonalne i zastępcze."""
+    spec = CANONICAL_OPERATIONS[resolve_operation_name(op_name)]
+    zastepcze = {
+        klucz
+        for klucze in REQUIRED_FIELD_ALIASES.get(spec.canonical_name, {}).values()
+        for klucz in klucze
+    }
+    return frozenset(spec.required_fields) | frozenset(spec.optional_fields) | zastepcze
 
-    Every operation MUST return this structure.
+
+def _w_kontrakcie(klucz: str, pola: frozenset[str]) -> bool:
+    """Klucz należy do pól — wprost albo do rodziny ``prefiks_{x}_sufiks``."""
+    if klucz in pola:
+        return True
+    for wzor in pola:
+        if "{" not in wzor:
+            continue
+        czesci = re.split(r"(\{[^}]*\})", wzor)
+        wyrazenie = "".join(".+" if c.startswith("{") else re.escape(c) for c in czesci)
+        if re.fullmatch(wyrazenie, klucz):
+            return True
+    return False
+
+
+def _obce_w_obiekcie(
+    obiekt: object, ksztalt: KsztaltObiektu, sciezka: str, wynik: list[str]
+) -> None:
+    elementy: list[tuple[str, object]]
+    if isinstance(obiekt, dict):
+        elementy = [(sciezka, obiekt)]
+    elif isinstance(obiekt, list):
+        elementy = [(f"{sciezka}[{i}]", e) for i, e in enumerate(obiekt)]
+    else:
+        return  # napis/liczba w miejscu obiektu rozstrzyga handler (odmowa typu)
+    for prefiks, element in elementy:
+        if not isinstance(element, dict):
+            continue
+        for klucz, wartosc in element.items():
+            if not _w_kontrakcie(klucz, ksztalt.pola):
+                wynik.append(f"{prefiks}.{klucz}")
+            elif klucz in ksztalt.zagniezdzone:
+                _obce_w_obiekcie(wartosc, ksztalt.zagniezdzone[klucz], f"{prefiks}.{klucz}", wynik)
+
+
+def klucze_spoza_kontraktu(op_name: str, payload: dict[str, Any]) -> list[str]:
+    """Klucze ładunku spoza kontraktu operacji — wysłane, a nieczytane przez nikogo.
+
+    Specyfikacja pól jest RÓWNA kluczom czytanym przez handler (i bramę API —
+    ``tests/ci/test_spec_operacji_rowna_odczytom_handlera.py``), więc klucz spoza niej
+    przepada bez śladu: tak liczba pól liniowych GPZ wysłana pod nazwą innego poziomu
+    dawała po cichu jedno pole zamiast wielu. Obiekty zagnieżdżone (``segment``,
+    ``station.switchgear``, elementy ``sn_fields``…) sprawdzane są kształtem
+    ``KSZTALTY_ZAGNIEZDZONE`` — ścieżka klucza obcego: ``segment.catalog_binding.x``,
+    ``sn_fields[1].x``.
     """
-
-    snapshot: Mapping[str, object]  # New ENM snapshot (immutable)
-    logical_views: dict[str, Any]  # Deterministic projections
-    readiness: dict[str, Any]  # Readiness codes with priorities
-    fix_actions: list[dict[str, Any]]  # Fix action list
-    changes: dict[str, list[str]]  # created/updated/deleted element IDs
-    selection_hint: dict[str, Any] | None  # What to select after operation
-    audit_trail: list[str]  # Human-readable audit log
-    domain_events: list[dict[str, Any]]  # Machine-readable events
-    materialized_params: dict[str, Any]  # Catalog-resolved parameters
-    layout: dict[str, Any]  # layout_hash + render data
-
-
-# ============================================================
-# 5. TRUNK CONTRACT (for SN operations)
-# ============================================================
-
-
-class CutMode(enum.Enum):
-    FRACTION = "FRACTION"
-    DISTANCE_M = "DISTANCE_M"
-    WORLD_POINT = "WORLD_POINT"
-
-
-class CutThresholdPolicy(enum.Enum):
-    PRZYKLEJ_DO_WEZLA = "PRZYKLEJ_DO_WEZLA"
-    ODRZUC_Z_BLEDEM = "ODRZUC_Z_BLEDEM"
-
-
-class CutPortPolicy(enum.Enum):
-    PRZYKLEJ_DO_PORTU = "PRZYKLEJ_DO_PORTU"
-    PRZYKLEJ_DO_WEZLA = "PRZYKLEJ_DO_WEZLA"
-
-
-class TieBreaker(enum.Enum):
-    SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID = "SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID"
-
-
-class EmbeddingContinuity(enum.Enum):
-    CIAGLOSC_IN_OUT = "CIAGLOSC_IN_OUT"
-    ODNOGA = "ODNOGA"
-
-
-@dataclass(frozen=True)
-class CutResolutionPolicy:
-    snap_to_existing_node_threshold_m: float
-    if_within_threshold: CutThresholdPolicy
-    if_hits_port_exactly: CutPortPolicy
-    deterministic_tie_breaker: TieBreaker
-
-
-@dataclass(frozen=True)
-class SegmentTarget:
-    segment_id: str
-    segment_length: dict[str, Any]  # {value, unit:"m"}
-    cut: dict[str, Any]  # {mode, fraction_0_1 | distance_m | world_point}
-    cut_resolution_policy: CutResolutionPolicy
-
-
-@dataclass(frozen=True)
-class TrunkRef:
-    trunk_id: str
-    terminal_id: str
-    segment_order_index_expected: int | None = None
-
-
-@dataclass(frozen=True)
-class EmbeddingIntent:
-    continuity: EmbeddingContinuity
-    branch_ports_allowed: bool = False
-
-
-# ============================================================
-# 6. VALIDATION HELPERS
-# ============================================================
+    nazwa = resolve_operation_name(op_name)
+    pola = klucze_kontraktu(nazwa)
+    wynik = [k for k in payload if not _w_kontrakcie(k, pola)]
+    for klucz, ksztalt in KSZTALTY_ZAGNIEZDZONE.get(nazwa, {}).items():
+        if klucz in payload:
+            _obce_w_obiekcie(payload[klucz], ksztalt, klucz, wynik)
+    return sorted(wynik)
 
 
 def validate_operation_payload(op_name: str, payload: dict[str, Any]) -> list[str]:
@@ -3079,7 +4051,7 @@ def validate_operation_payload(op_name: str, payload: dict[str, Any]) -> list[st
 
         if aliases:
             errors.append(
-                f"Brak wymaganego pola: {field_name} (alias kompatybilności: {', '.join(aliases)})"
+                f"Brak wymaganego pola: {field_name} (albo klucza zastępczego: {', '.join(aliases)})"
             )
         else:
             errors.append(f"Brak wymaganego pola: {field_name}")

@@ -321,6 +321,12 @@ def check_legacy_catalog_payloads(root: Path = PROJECT_ROOT) -> list[Violation]:
             context_window = "\n".join(lines[max(0, line_no - 8) : line_no])
             if "connect_secondary_ring_sn" in context_window:
                 continue
+            # Ta sama przyczyna co wyjatek `AddNNCableSegmentPayload` w domainOps.ts wyzej:
+            # `add_nn_cable_segment` przyjmuje `from_bus_ref` (szyna nN albo koniec odcinka)
+            # jako BIEZACY kontrakt operacji nN (karta MENU-KANON, e2e menu schematu nN) —
+            # nie powrot legacy wzorca SN, w ktory celuje regula.
+            if "'add_nn_cable_segment'" in context_window:
+                continue
 
             violations.append(
                 Violation(

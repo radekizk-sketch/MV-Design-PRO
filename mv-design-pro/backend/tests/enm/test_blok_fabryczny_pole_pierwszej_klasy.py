@@ -7,14 +7,14 @@ nazewnictwami tej samej prawdy:
   wpisu pola — operacja wcięcia w odcinek gubiła ją bez śladu, operacja końca
   ciągu przepisywała ją do `field_spec` jako martwy słownik, którego NIKT nie
   czytał;
-* operacja `add_sn_bay_from_catalog` miała `factory_configuration_ref` +
+* operacja katalogowa pola (dziś plan katalogowy `add_sn_bay`) miała `factory_configuration_ref` +
   `factory_unit_index` jako pola pierwszej klasy payloadu, ale wyniku swojego
   rozstrzygnięcia NIE ZAPISYWAŁA — blok widać było wyłącznie w podglądzie trybu
   próby, czyli w odpowiedzi, która niczego nie utrwala.
 
 Skutek zmierzony przed naprawą: zapis stacji z rodziny o torze BLOK_RMU kończył
 się twardym błędem `sn.pole_katalogowe_niezgodne` z komunikatem „uzyj operacji
-add_sn_bay_from_catalog z factory_configuration_ref i factory_unit_index" —
+<operacja katalogowa pola> z factory_configuration_ref i factory_unit_index" —
 operacji, której kreator nie woła, przy nazwie pola, której nie wysyłał. Tor
 BLOK_RMU kreatora stacji nie miał drogi zapisu.
 
@@ -160,11 +160,7 @@ def _payload_stacji(sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
         "sn_fields": sn_fields,
         "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
         "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
-        "nn_block": {
-            "create_nn_bus": True,
-            "main_breaker_nn": True,
-            "outgoing_feeders_nn_count": 1,
-        },
+        "nn_block": {"outgoing_feeders_nn_count": 1},
     }
 
 
@@ -214,7 +210,7 @@ def _uruchom(operacja: str, sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
                 "catalog_namespace": "APARAT_SN",
                 "catalog_item_id": CATALOG_APARAT_SN,
             }
-            odpowiedz = execute_domain_operation(snapshot, "add_sn_bay_from_catalog", payload)
+            odpowiedz = execute_domain_operation(snapshot, "add_sn_bay", payload)
             if odpowiedz.get("error"):
                 return odpowiedz
             snapshot = odpowiedz["snapshot"]
@@ -389,6 +385,9 @@ def test_blok_spoza_katalogu_konczy_sie_twardym_bledem(operacja: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+# Ładunek CELOWO niesie usuniętą metadaną `sn_fields[].catalog_bindings` — test
+# pilnuje, że żaden handler jej nie czyta; czujnik ładunku melduje to zgodnie z prawdą.
+@pytest.mark.ladunek_spoza_kontraktu
 def test_zadna_operacja_nie_czyta_bloku_z_metadanej_wiazan() -> None:
     """Wybór bloku podany DAWNĄ drogą nie działa — nie ma warstwy zgodności.
 

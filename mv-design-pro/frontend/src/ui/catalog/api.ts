@@ -3,6 +3,7 @@ import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker'
 import type { Manufacturer } from './manufacturer';
 import type { FactoryConfigurationWire, SwitchgearFamily } from './SwitchgearFamilyPicker';
 import { executeDomainOp } from '../topology/domainApi';
+import type { KartaWidmowa } from '../../types/enm';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
@@ -23,6 +24,7 @@ import type {
   SwitchEquipmentType,
   ShuntCapacitorCatalogType,
   SurgeArresterCatalogType,
+  SynchronousGeneratorCatalogType,
   TapChangerCatalogType,
   TransformerType,
   TypeCategory,
@@ -263,6 +265,23 @@ export async function fetchLvCableTypes(): Promise<LVCableType[]> {
 
 export async function fetchLoadTypes(): Promise<LoadCatalogType[]> {
   return fetchCatalogJson<LoadCatalogType[]>('/api/catalog/load-types');
+}
+
+/**
+ * Generatory synchroniczne SN (przestrzeń `GENERATOR_SN`) — typy przyjmowane przez operację
+ * `add_generator_sn`. Lista projektanta: backend pomija pozycje benchmarków.
+ */
+/**
+ * Karty widmowe KATALOGU STATYCZNEGO (`GET /api/catalog/karty-widmowe`, karta AB-H0 §0.7) —
+ * karty z dokumentem producenta. Karty PROJEKTU niesie model (`katalog_projektu.karty_widmowe`),
+ * nie ta lista.
+ */
+export async function fetchKartyWidmowe(): Promise<KartaWidmowa[]> {
+  return fetchCatalogJson<KartaWidmowa[]>('/api/catalog/karty-widmowe');
+}
+
+export async function fetchSynchronousGeneratorTypes(): Promise<SynchronousGeneratorCatalogType[]> {
+  return fetchCatalogJson<SynchronousGeneratorCatalogType[]>('/api/catalog/synchronous-generator-types');
 }
 
 /**
@@ -737,7 +756,6 @@ export async function assignTypeToBranch(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: branchId,
     catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-    source_mode: 'KATALOG',
   });
 }
 
@@ -749,7 +767,6 @@ export async function assignTypeToTransformer(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: transformerId,
     catalog_binding: buildCatalogBinding('TRAFO_SN_NN', typeId),
-    source_mode: 'KATALOG',
   });
 }
 
@@ -762,7 +779,6 @@ export async function assignEquipmentTypeToSwitch(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: switchId,
     catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-    source_mode: 'KATALOG',
   });
 }
 

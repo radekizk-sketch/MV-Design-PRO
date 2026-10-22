@@ -2579,7 +2579,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "949470824ba88a70087167834d7b7546f56c4fc4eed04069e91b881c886405e5",
+      "hash_sha256": "d92379715112f84c248ce1f405684cd93838bcec8f48769520d7b168735e07fe",
       "name": "Stacja z rozdzielnicą nN",
       "revision": 41,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2596,7 +2596,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/27539daaa659fbadd21b511d7f4ec96e/segment"
+            "segment_ref": "seg/27539daaa659fbadd21b511d7f4ec96e/segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/27539daaa659fbadd21b511d7f4ec96e/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",

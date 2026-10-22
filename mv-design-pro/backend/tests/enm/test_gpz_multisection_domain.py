@@ -310,7 +310,7 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
     czyli na rozdzielnicy PIERŚCIENIOWEJ (RMU) składanej z bloków fabrycznych.
     Jako rozdzielnica GPZ (110/SN, punkt zasilania) jest to błąd inżynierski:
     GPZ używa wyłącznie rodzin o torze MODULARNYM (rozdzielnice pierwotne).
-    Rodziny blokowe mają własny kanał — `add_sn_bay_from_catalog` z
+    Rodziny blokowe mają własny kanał — `add_sn_bay` z
     `factory_configuration_ref` — i kanał pól GPZ odrzuca je twardym błędem
     (patrz `test_pola_v1_przez_resolver.py`). Dane poprawiono na ZPUE RELF
     (tor MODULARNY), zachowując wszystkie sprawdzane wiązania.

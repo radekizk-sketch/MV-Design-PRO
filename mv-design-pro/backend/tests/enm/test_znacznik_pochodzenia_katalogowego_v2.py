@@ -201,7 +201,6 @@ def _payload_der_sn_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def _payload_kompensator_obca(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
-        "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
         "catalog_binding": _wiazanie(REF_KOMPENSATOR),
     }
@@ -439,7 +438,8 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
     ZnacznikPochodzenia(
         "add_sn_bay",
         "add_sn_bay",
-        ("add_sn_bay",),
+        # Pisarz pola SN obu planów operacji `add_sn_bay` (deklaracja i katalog).
+        ("_zapisz_pole_sn",),
         _payload_sn_bay_obca,
         _znaczniki_aparatu_pola_sn,
         {"element": "APARAT_SN", "meta.catalog_binding": "APARAT_SN"},

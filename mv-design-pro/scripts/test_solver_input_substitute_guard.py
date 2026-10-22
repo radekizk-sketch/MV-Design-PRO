@@ -1936,7 +1936,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # K6a: kontrakt topologii zasilenia; W5-C: `close_ref`, `no_point_refs`, stan danych
     # wyposazenia pola) − 3 nazwy skasowane przez UI/UX (`field_spec`, `no_point_ref`,
     # `nop_station_ref`). PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4337." in wyjscie, wyjscie
+    # Karta MENU-KANON cz. 4 (2026-10-22): 4218 -> 4193 — POMIAR `contract_fields()` na drzewie karty i na HEAD
+    # (`git archive`), roznica zbiorow +0, −25: skasowany cien konfiguracji rozdzielnicy
+    # (`api/switchgear_config.py`, `domain/switchgear_config.py`) i modele ladunku `insert_at`
+    # trybu ANCHOR / kontraktu magistrali w `domain_ops_models`, ktorych zaden handler nie czytal.
+    # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 4337 (UI/UX) − 23 = 4314 — POMIAR
+    # guardem na drzewie scalonym (MENU-KANON zdjal cien `switchgear_config` i modele
+    # `insert_at`/magistrali; galaz UI/UX dolozyla w miedzyczasie pola GPZ-MODEL i programu).
+    assert "Pol kontraktow wejsciowych: 4314." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2202,7 +2209,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): 580 programu + 6 plikow enm
         # (W5-B 3, GPZ-PARYTET 1, W5-C 3 − 1 skasowany) + 1 application (K6a) + 1 api (W5-C)
         # = 588. POMIAR guardem na drzewie scalonym i na obu rodzicach (577 / 580).
-        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta MENU-KANON cz. 4 (2026-10-22): 577 -> 576 (−1 skasowany `api/switchgear_config.py`). POMIAR guardem.
+        # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 588 − 1 (`api/switchgear_config.py`)
+        # = 587. POMIAR guardem na drzewie scalonym.
+        "Przeskanowano 587 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2279,7 +2289,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # definicja I_th) oraz `B:ifexp:m.ir_a` (2) w `solvers/machine_sc_iec60909.py` (plik
     # wypada; krotnosc 0 za niefizyczny prad znamionowy -> odmowa). POMIAR guardem na drzewie
     # karty.
-    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 225." in wyjscie, wyjscie
+    # Karta MENU-KANON cz. 4 (2026-10-22): 51/236 -> 51/234 — enm −2: wpis `insert_at.value` (4) zdjety razem
+    # z jedna regula `wspolczynnik_podzialu` (odmowa zamiast wartosci zastepczej), +2 nowe
+    # odczyty liczby pol. POMIAR guardem.
+    # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 47/225 (UI/UX) -> 47/222 — enm −3:
+    # wpis `insert_at.value` (4) zdjety przez MENU-KANON, +1 `line_fields_per_section`;
+    # wpis `transformer_count` NIE wraca (GPZ-MODEL odmawia braku liczby). POMIAR guardem.
+    assert "Zapadka dlugu (fizyczne): 47 plikow, suma 222." in wyjscie, wyjscie
     assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
@@ -2465,7 +2481,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): enm 62 bazy wspolnej + 6 UI/UX
         # + 3 programu (`zdania_odmow_rdzenia.py`, `uziom_instalacji.py`, `tolerancja_nn.py`)
         # = 71; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie scalonym.
-        "  enm: pliki_skanowane=71, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta MENU-KANON cz. 4 (2026-10-22): enm dlug 7/67 -> 7/65 (jw.). POMIAR guardem.
+        # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): enm 71 plikow, dlug 7/67 -> 7/64
+        # (jw.). POMIAR guardem na drzewie scalonym.
+        "  enm: pliki_skanowane=71, dlug=7 plikow/suma 64, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2575,6 +2594,7 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         "wykluczenia=4 plikow/suma 10",
         # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
         # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Karta MENU-KANON cz. 4 (2026-10-22): api 64 -> 63 (−1 `api/switchgear_config.py`). POMIAR guardem.
         # Scalenie W5-B z integracja PR477-481 (2026-10-16): application 248, dlug 30/90; api
         # dlug 1/2 — POMIAR guardem na drzewie scalonym, identyczny z drzewem integracji
         # (rodzic 2; przypiete tam 247 / 29/89 / api 2/3 bylo nieaktualne wobec rejestru
@@ -2586,7 +2606,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `api/odmowa_http.py` partii 10 bez przypiecia); dlug i wykluczenia BEZ ZMIAN. POMIAR.
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): api 63 bazy wspolnej + 1 UI/UX
         # (`scenariusze_laczeniowe.py`) + 1 programu (`odmowa_http.py`) = 65. POMIAR guardem.
-        "  api: pliki_skanowane=65, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 65 − 1 (`switchgear_config.py`)
+        # = 64. POMIAR guardem na drzewie scalonym.
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
     ]
     for linia in per_korzen:
         assert linia in wyjscie, f"Brak pinowanej sumy per korzen: {linia!r}\n{wyjscie}"

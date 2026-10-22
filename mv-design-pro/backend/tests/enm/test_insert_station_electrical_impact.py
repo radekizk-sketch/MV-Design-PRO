@@ -76,7 +76,6 @@ def _exec_dry_run(snap: dict[str, Any], seg_id: str, **kwargs: Any) -> dict[str,
         "dry_run": True,
         "station": {"name": "Stacja", "station_type": "inline", "nn_voltage_kv": 0.4},
         "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-        "nn_voltage_kv": 0.4,
         **kwargs,
     }
     return execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)

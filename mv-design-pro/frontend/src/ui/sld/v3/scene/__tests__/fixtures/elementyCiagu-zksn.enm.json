@@ -5072,7 +5072,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "cadcb8aee9cf8d5bbd7f15711a8a14e58ffe64fbf20c6f50c5a6de4c82f62ac9",
+      "hash_sha256": "e531f3d7336424b0bead1088e6177f74afb5f47c4d5f3543b598113c0bb52d41",
       "name": "Elementy ciągu — zksn",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -5097,26 +5097,34 @@
           },
           {
             "order": 3,
-            "segment_ref": "seg/bfb561d0ac7b2537ca6922bc37f17d87/segment"
+            "segment_ref": "seg/bfb561d0ac7b2537ca6922bc37f17d87/segment_L"
           },
           {
             "order": 4,
-            "segment_ref": "seg/b310f5341385822660e142d0eab9aec9/segment_L_zksn"
+            "segment_ref": "seg/bfb561d0ac7b2537ca6922bc37f17d87/segment_R"
           },
           {
             "order": 5,
-            "segment_ref": "seg/b310f5341385822660e142d0eab9aec9/segment_R_zksn"
+            "segment_ref": "seg/b310f5341385822660e142d0eab9aec9/segment_L_zksn"
           },
           {
             "order": 6,
-            "segment_ref": "seg/f6829ef845b85f878eee68223be9fe55/segment"
+            "segment_ref": "seg/b310f5341385822660e142d0eab9aec9/segment_R_zksn"
           },
           {
             "order": 7,
-            "segment_ref": "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment_L_zksn"
+            "segment_ref": "seg/f6829ef845b85f878eee68223be9fe55/segment_L"
           },
           {
             "order": 8,
+            "segment_ref": "seg/f6829ef845b85f878eee68223be9fe55/segment_R"
+          },
+          {
+            "order": 9,
+            "segment_ref": "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment_L_zksn"
+          },
+          {
+            "order": 10,
             "segment_ref": "seg/9e6fe81bdcc4c5dc947b3a1c1e853ffe/segment_R_zksn"
           }
         ],
@@ -5133,7 +5141,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/9cc784d4b07403052586652b8eac0f35/branch_segment"
+            "segment_ref": "seg/9cc784d4b07403052586652b8eac0f35/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/9cc784d4b07403052586652b8eac0f35/branch_segment_R"
           }
         ],
         "starting_bay_ref": "bp/fbbfde486f682d983d163da758767d53/zksn",
@@ -5149,7 +5161,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/e5538ef5f71422009848289f9c89808c/branch_segment"
+            "segment_ref": "seg/e5538ef5f71422009848289f9c89808c/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/e5538ef5f71422009848289f9c89808c/branch_segment_R"
           }
         ],
         "starting_bay_ref": "bp/e51c97148656cdc731d80913c6c03825/zksn",
@@ -5165,7 +5181,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/157644508f6e3a9585acef59af226370/branch_segment"
+            "segment_ref": "seg/157644508f6e3a9585acef59af226370/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/157644508f6e3a9585acef59af226370/branch_segment_R"
           }
         ],
         "starting_bay_ref": "bp/2a586a953986d8db53c8e2fe70384feb/zksn",

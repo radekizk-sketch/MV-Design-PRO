@@ -407,7 +407,6 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
                     "materialize": True,
                 },
             },
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": _szyna_sn_ref(snapshot),
             "mv_field_configuration": {
                 "switching_device": "CB",
@@ -438,7 +437,6 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def _payload_kompensator(snapshot: dict[str, Any]) -> dict[str, Any]:
     return {
-        "station_ref": _stacja_ref(snapshot),
         "bus_ref": _szyna_sn_ref(snapshot),
         "catalog_binding": {
             "catalog_namespace": "KOMPENSATOR_SN",
@@ -723,9 +721,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     PrzypadekIniekcji(
         "catalog_binding", "add_sn_bay", _payload_sn_bay, lambda p: _zepsuj_klucz(p, "catalog_ref")
     ),
+    # Plan pola z katalogu rozdzielnic tej samej operacji (wybór katalogowy w payloadzie).
     PrzypadekIniekcji(
         "catalog_binding",
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         _payload_sn_bay_z_katalogu,
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),

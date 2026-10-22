@@ -60,8 +60,10 @@ import {
   mocLabel,
   paletaMono,
   paletaNnDlaMotywu,
+  PAS_TRAFIENIA_KABLA_PX,
   plFixed,
   plNumber,
+  PROMIEN_TRAFIENIA_ZACISKU_PX,
   snKvaLabel,
   tokenyCss,
   tonStanuZasilania,
@@ -88,6 +90,7 @@ import type {
   LvDomainVoltageProfileRow,
   LvEnergizationState,
 } from './types';
+import type { TrafienieNn } from './operacjeNn';
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 800 } as const;
 const HEADER_ALLOWANCE_PX = 96;
@@ -128,6 +131,23 @@ export interface LvDomainViewProps {
   readonly mono?: boolean;
   /** Element wybrany na start (podświetlenie toru zasilania). */
   readonly initialSelectedRef?: string | null;
+  /** Menu kontekstowe obiektu rysunku (prawy klik): rodzaj węzła albo krawędzi i ref
+   *  z atrybutów `data-node-kind` / `data-edge-kind` / `data-owner-ref`. Brak = rysunek
+   *  bez menu (druk, podgląd testowy). */
+  readonly onMenuKontekstowe?: (trafienie: TrafienieNn, clientX: number, clientY: number) => void;
+}
+
+/** Najbliższy przodek trafionego elementu SVG niosący rodzaj obiektu i jego ref. */
+function trafienieZezdarzenia(target: EventTarget | null): TrafienieNn | null {
+  const element = target instanceof Element ? target.closest('[data-owner-ref]') : null;
+  if (!element) return null;
+  const ref = element.getAttribute('data-owner-ref');
+  if (!ref) return null;
+  return {
+    ref,
+    rodzajWezla: element.getAttribute('data-node-kind') ?? undefined,
+    rodzajKrawedzi: element.getAttribute('data-edge-kind') ?? undefined,
+  };
 }
 
 function textHalo(ctx: KontekstRysunku): {
@@ -389,6 +409,7 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
     theme = 'dark_scada',
     mono = false,
     initialSelectedRef = null,
+    onMenuKontekstowe,
   } = props;
   const view = projection.graph;
   const [activeOverlay, setActiveOverlay] = useState<LvDomainOverlayId | null>(initialOverlay);
@@ -618,7 +639,17 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       <div data-testid="lv-domain-scroll" data-scroll={fit.scroll ? 'true' : 'false'} style={{ width: viewportWidth, height: canvasHeight, overflow: fit.scroll ? 'auto' : 'hidden', flex: '0 0 auto' }}>
       <svg data-testid="lv-domain-svg" data-fit-scale={fit.s} width={svgWidth} height={svgHeight} viewBox={`0 0 ${svgWidth} ${svgHeight}`} style={{ display: 'block' }}>
         <rect x={0} y={0} width={svgWidth} height={svgHeight} fill={paleta.tlo} />
-        <g data-testid="lv-domain-world" transform={`translate(${fit.tx} ${fit.ty}) scale(${fit.s})`}>
+        <g
+          data-testid="lv-domain-world"
+          transform={`translate(${fit.tx} ${fit.ty}) scale(${fit.s})`}
+          onContextMenu={onMenuKontekstowe ? (event) => {
+            const trafienie = trafienieZezdarzenia(event.target);
+            if (!trafienie) return;
+            event.preventDefault();
+            event.stopPropagation();
+            onMenuKontekstowe(trafienie, event.clientX, event.clientY);
+          } : undefined}
+        >
           <g data-testid="lv-domain-highlight">
             {scene.edges.filter((e) => highlighted.has(e.ref)).map((edge) => (
               ctx.widoczne('podswietlenieToru') ? (
@@ -810,6 +841,11 @@ function TerminalNode({ node, ctx, onSelect }: { readonly node: LvDomainSceneNod
   return (
     <g data-testid={`lv-domain-node-${node.ref}`} data-node-kind={node.kind} data-owner-ref={node.ref} data-energization={energization} data-degree={degree} onClick={() => onSelect(node.ref)} style={{ cursor: 'pointer' }}>
       <title>{`${node.label} · ${energization ?? '—'}`}</title>
+      {/* Obszar trafienia zacisku — także zacisku stopnia 2, który nie ma kropki (styk dwóch
+          kabli, cel „Scal odcinki”). Bez niego pas trafienia kabla przykrywał zacisk i menu
+          zacisku było nieosiągalne myszą (wykryte biegiem e2e `menu-schematu-nn.spec.ts`).
+          Promień większy od połowy pasa kabla: w środku zacisku wygrywa zacisk. */}
+      <circle data-testid={`lv-domain-node-hit-${node.ref}`} cx={node.x} cy={node.y} r={ctx.sp(PROMIEN_TRAFIENIA_ZACISKU_PX)} fill="transparent" stroke="none" pointerEvents="all" />
       {showDot && ctx.widoczne('zaciskToru') && node.symbolId ? (
         <CadSymbol id={node.symbolId} x={node.x - center.x * k} y={node.y - center.y * k} scale={k} ink={tonStanuZasilania(energization, ctx.paleta)} paper={ctx.paleta.tlo} strokePx={LINE_SCREEN_PX.secondary} />
       ) : null}
@@ -1116,8 +1152,13 @@ function SceneEdgeLine({ edge, scene, ctx }: { readonly edge: LvDomainSceneEdge;
     }
   }
   return (
-    <g data-testid={`lv-domain-edge-${edge.ref}`} data-edge-kind={edge.kind} data-energization={energization} data-connectivity={typeof edge.meta?.connectivity === 'string' ? edge.meta.connectivity : undefined}>
+    <g data-testid={`lv-domain-edge-${edge.ref}`} data-edge-kind={edge.kind} data-owner-ref={isCable ? edge.ref : undefined} data-energization={energization} data-connectivity={typeof edge.meta?.connectivity === 'string' ? edge.meta.connectivity : undefined}>
       <path d={sciezkaOrtogonalna(x1, y1, x2, y2)} fill="none" stroke={stroke} strokeWidth={width} strokeDasharray={dash} strokeLinecap={isCable ? 'round' : undefined} strokeLinejoin="round" />
+      {isCable ? (
+        // Pas trafienia kabla (niewidoczny, szerszy od kreski) — prawy klik w kabel nie
+        // wymaga celowania w kreskę o szerokości 1–2 px.
+        <path data-testid={`lv-domain-edge-hit-${edge.ref}`} d={sciezkaOrtogonalna(x1, y1, x2, y2)} fill="none" stroke="transparent" strokeWidth={ctx.sp(PAS_TRAFIENIA_KABLA_PX)} pointerEvents="stroke" />
+      ) : null}
       {isBoundaryLink ? <path d={`M ${x2} ${y2} l ${-ctx.sp(9)} ${-ctx.sp(4)} l 0 ${ctx.sp(8)} Z`} fill={ctx.paleta.kreskaGranicy} stroke="none" /> : null}
       {energization === 'UNKNOWN' && !isRelayLink ? (
         // Znak „?" PO LEWEJ pionu — po prawej biegną etykiety (nazwy sekcji,

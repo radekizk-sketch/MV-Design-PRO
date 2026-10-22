@@ -14,7 +14,7 @@ ZPUE RELF, ABB UniGear ZS1, Siemens NXAir). Rodziny o torze BLOK_RMU (SafeRing,
 RM6, TPM) to rozdzielnice wtórne/kompaktowe — składa się je z BLOKÓW
 fabrycznych, więc wskazanie pojedynczej celki takiej rodziny jest błędem
 inżynierskim i kanał V1 odrzuca je twardym polskim błędem wskazującym kanał
-bloków (`add_sn_bay_from_catalog` + `factory_configuration_ref`).
+bloków (`add_sn_bay` + `factory_configuration_ref`).
 
 ILOCZYN CECH (reguła KLASA, NIE INSTANCJA §2) — testy poniżej pokrywają:
 {rodzina MODULARNA → pełna kompozycja aparatów z referencjami katalogowymi}
@@ -270,7 +270,7 @@ def test_rodzina_blokowa_jest_odrzucona_z_wskazaniem_kanalu_blokow(tor: str) -> 
     # Karta #142: kanał bloków nazwany polami formularza, bez nazwy operacji i klucza.
     assert "z bloków fabrycznych" in komunikat
     assert "„Blok fabryczny”" in komunikat
-    assert "add_sn_bay_from_catalog" not in komunikat
+    assert "add_sn_bay" not in komunikat
     assert "factory_configuration_ref" not in komunikat
     # Operacja meldująca błąd nie zostawia skutku: brak migawki i brak elementów.
     assert odpowiedz.get("snapshot") is None
@@ -457,7 +457,8 @@ MIEJSCA_BUDOWY_POLA: dict[str, dict[str, int]] = {
         "domain_operations.py:add_grid_source_sn": 1,  # pola sekcji GPZ
         "domain_operations.py:insert_station_on_segment_sn": 2,  # pole sprzęgła + pozostałe
         "domain_operations.py:append_station_on_endpoint": 1,  # pola z payloadu kreatora
-        "domain_operations_v2.py:add_sn_bay": 1,  # operacja katalogowa pola SN
+        # pisarz pola SN obu planów operacji `add_sn_bay` (deklaracja i katalog)
+        "domain_operations_v2.py:_zapisz_pole_sn": 1,
         "domain_operations_v2.py:_add_converter_source_der_sn": 1,  # pole źródłowe DER-SN
     },
     "bez_szablonu": {

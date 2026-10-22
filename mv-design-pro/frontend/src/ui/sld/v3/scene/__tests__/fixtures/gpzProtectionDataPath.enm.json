@@ -1716,7 +1716,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "a5c519b4a5039cae7b7fecdf6df63c4a3fb49e590b792fb092652e5874bc1d62",
+      "hash_sha256": "9ca485b14ce5d8c10fa96d3b307db3b1a3520bb14a1882561fcebf1906220750",
       "name": "GPZ — ścieżka danych (pola, CT, zabezpieczenia)",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1733,7 +1733,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/88ced29037bd5e349790a5f668820445/segment"
+            "segment_ref": "seg/88ced29037bd5e349790a5f668820445/segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/88ced29037bd5e349790a5f668820445/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
@@ -1749,7 +1753,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment"
+            "segment_ref": "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/f31c2d6beb2fb5ea74648308abfaa4d5/branch_segment_R"
           }
         ],
         "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",

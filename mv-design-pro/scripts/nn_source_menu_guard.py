@@ -123,11 +123,21 @@ class Violation(NamedTuple):
 
 
 def extract_registry_block(content: str) -> str | None:
-    """Zwraca tekst literalu SLD_MENU_REGISTRY (do domykajacego `};`)."""
-    start = content.find("SLD_MENU_REGISTRY")
-    if start < 0:
+    """Zwraca tekst pozycji menu: listy pomocnicze `POZYCJE_*` + literal SLD_MENU_REGISTRY.
+
+    V12K-352: rejestr sklada sie z tablic per rodzaj ORAZ wspolnych list `POZYCJE_*`
+    rozwijanych w nie (`...POZYCJE_ZRODLA_WYNIKI`), a nazwa rejestru pada wczesniej
+    w komentarzu dokumentacyjnym — kotwica na pierwszym wystapieniu nazwy gubila
+    kategorie `station`. Blok zaczyna sie od pierwszej deklaracji listy pozycji
+    i konczy na domykajacym `};` rejestru, wiec kontrola etykiet obejmuje wszystkie
+    pozycje.
+    """
+    registry_start = content.find("export const SLD_MENU_REGISTRY")
+    if registry_start < 0:
         return None
-    end = content.find("};", start)
+    helper_start = content.find("const POZYCJE_")
+    start = helper_start if 0 <= helper_start < registry_start else registry_start
+    end = content.find("};", registry_start)
     if end < 0:
         return None
     return content[start:end]

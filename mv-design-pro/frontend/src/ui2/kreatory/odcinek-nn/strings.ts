@@ -9,7 +9,7 @@ export const ODCINEK_NN_STRINGS = {
   odznaka: 'Nowy odcinek',
 
   brakStartuTytul: 'Brak punktu startowego',
-  brakStartuOpis: 'Wskaż szynę nN (w drzewie nN STUDIO albo na schemacie), z której ma wychodzić odcinek.',
+  brakStartuOpis: 'Wskaż szynę nN na schemacie (rozdzielnica albo zacisk nN), z której ma wychodzić odcinek.',
 
   sekcjaTypTytul: 'Kabel',
   typPomoc: 'Typ kabla z katalogu nN (KABEL_NN) — parametry R/X/Iz pochodzą z pozycji katalogowej '
@@ -55,7 +55,7 @@ export const ODCINEK_NN_STRINGS = {
   podgladBlad: 'Podgląd spadku napięcia niedostępny — spróbuj ponownie.',
   izPrimaBrak: 'Podgląd obciążalności skorygowanej (Iz′) warunkami ułożenia nie jest jeszcze dostępny '
     + 'z tego kreatora — brakuje dedykowanego endpointu podglądu dla nN (solver `wspolczynniki_nn` liczy '
-    + 'korektę wyłącznie przy zapisie operacji). Iz′ zobaczysz w tabeli ODCINKI po zapisaniu odcinka.',
+    + 'korektę przy każdym odczycie modelu). Iz′ policzy backend w ocenie obciążalności po zapisaniu odcinka.',
 
   paramSekcjaNormowa: 'Parametry z katalogu',
   paramPrzekroj: 'Przekrój',
@@ -88,7 +88,7 @@ export const ODCINEK_NN_STRINGS = {
 
   teoriaTytul: 'Dobór przekroju kabla nN',
   teoriaOpis: 'Kryteria doboru: obciążalność prądowa (Ib ≤ In ≤ Iz′) i dopuszczalny spadek napięcia — '
-    + 'oba weryfikowane osobno (Iz′ przy doborze zabezpieczenia, ΔU w tym podglądzie i w tabeli ODCINKI).',
+    + 'oba weryfikowane osobno (Iz′ przy doborze zabezpieczenia, ΔU w tym podglądzie i w wynikach rozpływu).',
   teoriaWymog: 'PN-HD 60364-5-52 (obciążalność), IEC 60364-4-43 (dobór zabezpieczenia z Iz′)',
   teoriaPodstawa: 'Norma',
 } as const;

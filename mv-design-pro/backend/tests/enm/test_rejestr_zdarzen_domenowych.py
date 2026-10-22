@@ -65,6 +65,25 @@ def _typy_zrodel_nn() -> set[str]:
     return {spec[-1] for spec in _NN_SOURCE_KIND_MAP.values()}
 
 
+def _typy_zrodel_dyspozycyjnych() -> set[str]:
+    """``_zdarzenia_ze_zrodlem(zdarzenia_pola, typ, ref)``: typ zdarzenia źródła to literał
+    drugiego argumentu każdego wywołania (agregat, UPS); zdarzenia pola mają typy z literałów
+    podoperacji pola (zebrane skanem literałów)."""
+    (modul,) = (m for s, m in _moduly() if s.name == "domain_operations_v2.py")
+    typy: set[str] = set()
+    for wezel in ast.walk(modul):
+        if (
+            isinstance(wezel, ast.Call)
+            and isinstance(wezel.func, ast.Name)
+            and wezel.func.id == "_zdarzenia_ze_zrodlem"
+        ):
+            stale = _stale(wezel.args[1])
+            assert stale is not None, ast.unparse(wezel)
+            typy.update(stale)
+    assert typy, "brak wywołań _zdarzenia_ze_zrodlem"
+    return typy
+
+
 #: ZAMKNIĘTA lista pośrednich źródeł typu zdarzenia: (plik, NAJBLIŻSZA funkcja) → zbiór
 #: typów. Zmienna przy ``"event_type"`` poza tą listą to błąd testu (nowa pośredniość
 #: bez wpisu — typ spoza rejestru przeszedłby niezauważony).
@@ -82,6 +101,8 @@ POSREDNIE: dict[tuple[str, str], Callable[[], set[str]]] = {
     # Zdarzenia pól przekazane z podoperacji (`field_events`): ich typy pochodzą
     # z literałów słowników zdarzeń tych podoperacji (zebrane skanem literałów).
     ("domain_operations_v2.py", "add_converter_source#field_events"): set,
+    # Agregat/UPS nN w polu: zdarzenia pola + zdarzenie źródła o typie z argumentu.
+    ("domain_operations_v2.py", "_zdarzenia_ze_zrodlem"): _typy_zrodel_dyspozycyjnych,
 }
 
 

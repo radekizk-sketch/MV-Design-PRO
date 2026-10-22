@@ -21,15 +21,6 @@ export {
 // Property Grid
 export { PropertyGrid, getFieldDefinitions, SECTION_LABELS, SECTION_ORDER } from './property-grid';
 
-// Context Menu
-export {
-  ContextMenu,
-  buildContextMenuActions,
-  buildBusContextMenu,
-  buildNetworkModelContextMenu,
-  getContextMenuHeader,
-} from './context-menu';
-
 // Type Catalog
 export {
   TypePicker,

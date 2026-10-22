@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.pole_katalogowe import czy_wybor_katalogowy
 from enm.slownik_komunikatow import opis_operacji, pole
 from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
 from enm.zrodlo_zwarcie import klucz_mocy_zwarciowej, strona_rownowaznika, tryb_danych
@@ -31,7 +32,6 @@ CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
     {
         "add_grid_source_sn",
         "add_sn_bay",
-        "add_sn_bay_from_catalog",
         "continue_trunk_segment_sn",
         "insert_branch_pole_on_segment_sn",
         "start_branch_segment_sn",
@@ -110,10 +110,14 @@ def _extract_binding_from_container(
 def _segment_namespace(segment: Any) -> str | None:
     if not isinstance(segment, dict):
         return None
-    segment_kind = segment.get("rodzaj") or segment.get("segment_kind") or segment.get("type")
-    if segment_kind in {"KABEL", "KABEL_SN", "cable"}:
+    # Rodzaj odcinka czytany TYM SAMYM kluczem i słownikiem co handler (``segment.rodzaj``:
+    # ``KABEL`` / ``LINIA_NAPOWIETRZNA``) — dawne zamienniki bramy (``segment_kind``,
+    # ``type``, ``KABEL_SN``, ``cable``…) handler pomijał, więc brama wybierała przestrzeń
+    # katalogu z klucza, którego operacja nie czyta.
+    segment_kind = segment.get("rodzaj", "KABEL")  # domyślny rodzaj handlera
+    if segment_kind == "KABEL":
         return "KABEL_SN"
-    if segment_kind in {"LINIA_NAPOWIETRZNA", "LINIA_SN", "line_overhead"}:
+    if segment_kind == "LINIA_NAPOWIETRZNA":
         return "LINIA_SN"
     return None
 
@@ -207,6 +211,23 @@ def _uses_manual_nn_load(payload: dict[str, Any]) -> bool:
     return payload.get("source_mode") == "EKSPERCKI_RECZNY"
 
 
+#: Pole pozycji katalogu transformatora SN/nN — klucz czytany przez handler i nazwa pola
+#: formularza w odmowie bramy („wybierz ją w polu …”). Odmowa nazywa pole, które projektant
+#: ma w formularzu; dawniej każda operacja dostawała ogólne „Typ z katalogu” (``catalog_ref``),
+#: także transformator, którego handler ``catalog_ref`` nie czyta.
+_POLE_POZYCJI_TRANSFORMATORA = "transformer_catalog_ref"
+_OPERACJE_POZYCJI_TRANSFORMATORA = frozenset(
+    {"add_transformer_sn_nn", "insert_station_on_segment_sn", "append_station_on_endpoint"}
+)
+
+
+def pole_pozycji_katalogu(operation: str) -> str:
+    """Klucz pola pozycji katalogu, które odmowa bramy każe wypełnić."""
+    if operation in _OPERACJE_POZYCJI_TRANSFORMATORA:
+        return _POLE_POZYCJI_TRANSFORMATORA
+    return "catalog_ref"
+
+
 def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     """Extract catalog_binding from payload, preferring canonical nested contracts."""
 
@@ -227,7 +248,7 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         candidate = _extract_binding_from_container(
             payload.get("transformer"),
             namespace="TRAFO_SN_NN",
-            ref_keys=("transformer_catalog_ref",),
+            ref_keys=(_POLE_POZYCJI_TRANSFORMATORA,),
         )
         if candidate is not None:
             return candidate
@@ -239,16 +260,18 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         candidate = _extract_binding_from_container(
             payload.get("transformer"),
             namespace="TRAFO_SN_NN",
-            ref_keys=("transformer_catalog_ref", "catalog_ref"),
+            ref_keys=(_POLE_POZYCJI_TRANSFORMATORA, "catalog_ref"),
         )
         if candidate is not None:
             return candidate
 
     if operation == "add_transformer_sn_nn":
+        # Klucze = klucze czytane przez handler (`transformer_catalog_ref`, `catalog_binding`);
+        # `catalog_ref` handler pomija — brama nie może go przyjmować (test spec = handler).
         candidate = _extract_binding_from_container(
             payload,
             namespace="TRAFO_SN_NN",
-            ref_keys=("transformer_catalog_ref", "catalog_ref"),
+            ref_keys=(_POLE_POZYCJI_TRANSFORMATORA,),
         )
         if candidate is not None:
             return candidate
@@ -271,11 +294,9 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         if candidate is not None:
             return candidate
 
-    # Aparat glowny pola SN: ta sama pozycja katalogu dla obu drog dokladania
-    # pola (deklaracja rola+aparat oraz materializacja z katalogu rodzin). Brama
-    # kluczujaca po nazwie operacji musi znac OBIE, inaczej ta sama literowka
-    # daje raz 422, a raz `HTTP 200` z kodem bledu w tresci.
-    if operation in {"add_sn_bay", "add_sn_bay_from_catalog"}:
+    # Aparat glowny pola SN: ta sama pozycja katalogu dla obu planow pola operacji
+    # `add_sn_bay` (deklaracja rola+aparat oraz materializacja z katalogu rodzin).
+    if operation == "add_sn_bay":
         candidate = _extract_binding_from_container(
             payload,
             namespace="APARAT_SN",
@@ -578,7 +599,6 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("insert_section_switch_sn", "catalog_binding", "APARAT_SN", True),
     # --- Transformator SN/nN wolnostojący (V1) ------------------------------
     PozycjaBramyApi("add_transformer_sn_nn", "transformer_catalog_ref", "TRAFO_SN_NN", True),
-    PozycjaBramyApi("add_transformer_sn_nn", "catalog_ref", "TRAFO_SN_NN", True),
     PozycjaBramyApi(
         "add_transformer_sn_nn",
         "transformer_tap_changer_catalog_ref",
@@ -661,7 +681,6 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_relay", "catalog_ref", "ZABEZPIECZENIE", True),
     PozycjaBramyApi("add_relay", "protection.catalog_item_id", "ZABEZPIECZENIE", True),
     PozycjaBramyApi("add_sn_bay", "catalog_binding", "APARAT_SN", True),
-    PozycjaBramyApi("add_sn_bay_from_catalog", "catalog_binding", "APARAT_SN", True),
     PozycjaBramyApi("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
     # Aparat pola nN (odpływ albo pole źródłowe) — wskazanie OPCJONALNE, ale czytane przez
     # operację (`_wiazanie_aparatu_pola_nn`: wiązanie na polu dla promocji aparatów nN),
@@ -792,15 +811,6 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
         "rozjazd, przed którym broni ta karta. Istnienie sprawdza warstwa domenowa "
         "przy materializacji gałęzi i transformatora; rozszerzenie kontraktu bramy o "
         "migawkę jest osobną kartą.",
-    ),
-    PozycjaBramyApi(
-        "update_element_parameters",
-        "catalog_binding",
-        "",
-        False,
-        "jak `assign_catalog_to_element`: przestrzeń pochodzi z elementu w migawce, "
-        "której brama nie dostaje. Operacja aktualizuje parametry istniejącego "
-        "elementu, a jego wiązanie katalogowe zostało zbramkowane przy tworzeniu.",
     ),
 )
 
@@ -1414,11 +1424,12 @@ def _proba_konfiguracji_pola_bez_zapisu(operation: str, payload: dict[str, Any])
     """Próba konfiguracji pola katalogowego, która NICZEGO nie tworzy.
 
     Wymóg wiązania katalogowego chroni ELEMENT, który operacja zapisuje do
-    modelu. `add_sn_bay_from_catalog` w trybie próby nie zapisuje niczego —
-    zwraca werdykt zgodności konfiguracji katalogowej (rodzina · pole · blok ·
-    jednostka), czyli rozstrzyga krok, który w konfiguratorze POPRZEDZA wybór
-    konkretnej pozycji aparatu. Żądanie pozycji aparatu do werdyktu o niczym
-    zablokowałoby dokładnie ten krok.
+    modelu. `add_sn_bay` z wyborem katalogowym (`czy_wybor_katalogowy` — TEN SAM
+    predykat, którym operacja wybiera plan pola z katalogu) w trybie próby nie zapisuje
+    niczego — zwraca werdykt zgodności konfiguracji katalogowej (rodzina · pole · blok ·
+    jednostka · napięcie szyny), czyli rozstrzyga krok, który w kreatorze pola
+    POPRZEDZA wybór konkretnej pozycji aparatu. Żądanie pozycji aparatu do werdyktu
+    o niczym zablokowałoby dokładnie ten krok.
 
     Wyjątek dotyczy WYŁĄCZNIE braku wiązania: próba, która wiązanie PODAJE,
     przechodzi pełną walidację i materializację jak każde inne żądanie —
@@ -1426,7 +1437,9 @@ def _proba_konfiguracji_pola_bez_zapisu(operation: str, payload: dict[str, Any])
     sam kształt, co wyjątek `append_station_on_endpoint` bez transformatora:
     brama pilnuje elementów, które naprawdę powstają.
     """
-    return operation == "add_sn_bay_from_catalog" and bool(payload.get("dry_run"))
+    return (
+        operation == "add_sn_bay" and bool(payload.get("dry_run")) and czy_wybor_katalogowy(payload)
+    )
 
 
 def validate_and_materialize_catalog_binding(
@@ -1523,7 +1536,7 @@ def validate_and_materialize_catalog_binding(
                         "code": "catalog.ref_required",
                         "message_pl": (
                             f"Operacja {opis_operacji(operation)} wymaga pozycji katalogu — "
-                            f"wybierz ją w polu {pole('catalog_ref', operation)}."
+                            f"wybierz ją w polu {pole(pole_pozycji_katalogu(operation), operation)}."
                         ),
                     }
                 ],

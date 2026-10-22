@@ -14,10 +14,6 @@ function genset(over: Partial<ZrodloDyspozycyjneFormData> = {}): ZrodloDyspozycy
     ...DANE_DOMYSLNE,
     bus_nn_ref: 'bus-nn',
     placement: 'NEW_FIELD',
-    new_field_switch_kind: 'WYLACZNIK',
-    new_field_switch_state: 'ZAMKNIETY',
-    new_field_voltage_nn_kv: 0.4,
-    catalog_item_id: 'gs-1',
     rated_power_kw: 250,
     rated_voltage_kv: 0.4,
     power_factor: 0.8,
@@ -31,10 +27,6 @@ function ups(over: Partial<ZrodloDyspozycyjneFormData> = {}): ZrodloDyspozycyjne
     ...DANE_DOMYSLNE,
     bus_nn_ref: 'bus-nn',
     placement: 'NEW_FIELD',
-    new_field_switch_kind: 'WYLACZNIK',
-    new_field_switch_state: 'ZAMKNIETY',
-    new_field_voltage_nn_kv: 0.4,
-    catalog_item_id: 'ups-1',
     rated_power_kw: 100,
     backup_time_min: 15,
     ups_operation_mode: 'ONLINE',
@@ -60,10 +52,8 @@ describe('zrodloDyspozycyjneModel — walidacja', () => {
     expect(walidujFormularz(ups(), 'UPS').length).toBe(0);
     expect(walidujFormularz(ups({ backup_time_min: 0 }), 'UPS').some((e) => e.field === 'backup_time_min')).toBe(true);
   });
-  it('nowe pole wymaga aparatu, stanu i napięcia nN', () => {
-    const b = walidujFormularz(genset({ new_field_switch_kind: null, new_field_voltage_nn_kv: null }), 'GENSET');
-    expect(b.some((e) => e.field === 'new_field_switch_kind')).toBe(true);
-    expect(b.some((e) => e.field === 'new_field_voltage_nn_kv')).toBe(true);
+  it('nowe pole bez aparatu katalogowego przechodzi (aparat opcjonalny, jak w handlerze)', () => {
+    expect(walidujFormularz(genset({ new_field_switch_catalog_ref: null }), 'GENSET')).toEqual([]);
   });
   it('istniejące pole wymaga wskazania pola', () => {
     const b = walidujFormularz(genset({ placement: 'EXISTING_FIELD', existing_field_ref: null }), 'GENSET');
@@ -74,29 +64,56 @@ describe('zrodloDyspozycyjneModel — walidacja', () => {
 describe('zrodloDyspozycyjneModel — payload', () => {
   const kontekst = { station_ref: 'st-1', station_label: 'Stacja A' };
 
-  it('agregat: genset_spec + source_field dla nowego pola', () => {
-    const payload = zbudujPayload(genset({ source_name: 'Agregat R' }), 'GENSET', kontekst);
+  // Klucze najwyższego poziomu = klucze czytane przez `add_genset_nn`/`add_ups_nn`
+  // (`CANONICAL_OPERATIONS`, przypięte `test_spec_operacji_rowna_odczytom_handlera.py`).
+  // Klucz spoza tego zbioru byłby polem, które handler pomija bez śladu.
+  it.each([
+    ['GENSET', 'genset_spec'],
+    ['UPS', 'ups_spec'],
+  ] as const)('%s: klucze ładunku = odczyty handlera', (kind, spec) => {
+    const dane = kind === 'GENSET' ? genset() : ups();
+    expect(Object.keys(zbudujPayload(dane, kind, kontekst)).sort()).toEqual(
+      ['bus_nn_ref', 'existing_field_ref', 'placement', 'source_field', spec, 'station_ref'].sort(),
+    );
+  });
+
+  it('agregat: genset_spec z tabliczki, bez katalogu źródła', () => {
+    const payload = zbudujPayload(
+      genset({ source_name: 'Agregat R', fuel_type: 'DIESEL' }),
+      'GENSET',
+      kontekst,
+    );
     expect(payload).toMatchObject({
       bus_nn_ref: 'bus-nn',
       station_ref: 'st-1',
       placement: 'NEW_FIELD',
       existing_field_ref: null,
-      genset_spec: expect.objectContaining({
-        catalog_item_id: 'gs-1',
-        rated_power_kw: 250,
-        power_factor: 0.8,
-        operation_mode: 'PRACA_AWARYJNA',
-        source_name: 'Agregat R',
-      }),
     });
-    const sf = payload.source_field as Record<string, unknown>;
-    expect(sf.source_field_kind).toBe('AGREGAT');
-    expect((sf.switch_spec as Record<string, unknown>).switch_kind).toBe('WYLACZNIK');
+    expect(payload.genset_spec).toEqual({
+      rated_power_kw: 250,
+      rated_voltage_kv: 0.4,
+      power_factor: 0.8,
+      operation_mode: 'PRACA_AWARYJNA',
+      fuel_type: 'DIESEL',
+      source_name: 'Agregat R',
+    });
+  });
+
+  it.each([
+    ['GENSET', 'AGREGAT'],
+    ['UPS', 'UPS'],
+  ] as const)('%s: nowe pole — source_field w kształcie czytanym przez backend', (kind, rodzajPola) => {
+    const dane = kind === 'GENSET' ? genset() : ups();
+    expect(zbudujPayload({ ...dane, new_field_name: ' Pole R ' }, kind, kontekst).source_field).toEqual({
+      source_field_kind: rodzajPola,
+      field_name: 'Pole R',
+      catalog_binding: null,
+    });
   });
 
   it('UPS: ups_spec + brak source_field dla istniejącego pola', () => {
     const payload = zbudujPayload(
-      ups({ placement: 'EXISTING_FIELD', existing_field_ref: 'field-9' }),
+      ups({ placement: 'EXISTING_FIELD', existing_field_ref: 'field-9', battery_type: 'VRLA' }),
       'UPS',
       kontekst,
     );
@@ -104,14 +121,20 @@ describe('zrodloDyspozycyjneModel — payload', () => {
       placement: 'EXISTING_FIELD',
       existing_field_ref: 'field-9',
       source_field: null,
-      ups_spec: expect.objectContaining({ backup_time_min: 15, operation_mode: 'ONLINE' }),
+    });
+    expect(payload.ups_spec).toEqual({
+      rated_power_kw: 100,
+      backup_time_min: 15,
+      operation_mode: 'ONLINE',
+      battery_type: 'VRLA',
+      source_name: null,
     });
   });
 
   it('source_field niesie powiązanie katalogowe aparatu (APARAT_NN) gdy wskazane', () => {
     const payload = zbudujPayload(genset({ new_field_switch_catalog_ref: 'lv-7' }), 'GENSET', kontekst);
     const sf = payload.source_field as Record<string, unknown>;
-    expect((sf.switch_spec as Record<string, Record<string, unknown>>).catalog_binding).toMatchObject({
+    expect(sf.catalog_binding).toMatchObject({
       catalog_namespace: 'APARAT_NN',
       catalog_item_id: 'lv-7',
     });

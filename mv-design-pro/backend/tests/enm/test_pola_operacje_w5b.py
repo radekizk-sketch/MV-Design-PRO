@@ -10,7 +10,8 @@ Od W5-B każde pole jest JEDNYM rekordem `bays` budowanym `enm.pola.zbuduj_pole`
 ILOCZYN CECH (reguła KLASA, NIE INSTANCJA):
 {rola: LINIA_IN, LINIA_OUT, LINIA_ODG, TR, SPRZĘGŁO, POMIAR, OZE, rezerwa}
 × {poziom: SN, nN, ZKSN}
-× {operacja: utwórz (drogi budowy), edytuj (rename/set_label/update/assign_catalog),
+× {operacja: utwórz (drogi budowy), edytuj (nazwa/etykieta/parametry przez
+   update_element_parameters, assign_catalog),
    usuń (puste / z zależnościami / kaskada), wczytaj z archiwum (dawne klucze → migracja)}.
 Każdy przypadek idzie ścieżką natywną: payload → `execute_domain_operation` → migawka.
 """
@@ -228,7 +229,7 @@ def test_pola_zksn_jako_rekordy_punktu_rozgalezienia() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Edytuj — rename / set_label / update / assign_catalog × SN / nN
+# Edytuj — nazwa / etykieta / parametry (update_element_parameters) / assign_catalog × SN / nN
 # ---------------------------------------------------------------------------
 
 
@@ -243,14 +244,23 @@ def _pole_nn_odplyw(snap: dict[str, Any]) -> dict[str, Any]:
 
 
 @pytest.mark.parametrize("poziom", ["SN", "nN"])
-def test_rename_i_etykieta_pola_przez_jedynego_pisarza(poziom: str) -> None:
+def test_nazwa_i_etykieta_pola_przez_jedynego_pisarza(poziom: str) -> None:
+    """Nazwa i etykieta pola (krótka nazwa odpływu) — jedna operacja `update_element_parameters`
+    (dawne `rename_element`/`set_label` skasowane jako duplikaty tej samej zdolności).
+    """
     snap = _wstawiona_stacja()
     rekord = _pole_sn(snap, "LINIA_OUT") if poziom == "SN" else _pole_nn_odplyw(snap)
     po_nazwie = _op(
-        snap, "rename_element", {"element_ref": rekord["ref_id"], "new_name": "Pole Sady"}
+        snap,
+        "update_element_parameters",
+        {"element_ref": rekord["ref_id"], "parameters": {"name": "Pole Sady"}},
     )
     assert pole(po_nazwie, rekord["ref_id"])["name"] == "Pole Sady"
-    po_etykiecie = _op(po_nazwie, "set_label", {"element_ref": rekord["ref_id"], "label": "SADY"})
+    po_etykiecie = _op(
+        po_nazwie,
+        "update_element_parameters",
+        {"element_ref": rekord["ref_id"], "parameters": {"feeder_short_name": "SADY"}},
+    )
     assert pole(po_etykiecie, rekord["ref_id"])["feeder_short_name"] == "SADY"
     # Rekord po zmianach dalej przechodzi kontrakt `Bay` (pisarz waliduje).
     EnergyNetworkModel.model_validate(po_etykiecie)
@@ -263,17 +273,22 @@ KOLEKCJE_BEZ_ETYKIETY = ("buses", "branches", "transformers", "sources", "substa
 
 @pytest.mark.parametrize("kolekcja", KOLEKCJE_BEZ_ETYKIETY)
 def test_etykieta_elementu_bez_etykiety_to_odmowa_bez_skutku(kolekcja: str) -> None:
-    """Dawniej `set_label` zapisywał klucz `label` na rekordzie elementu spoza pól i meldował
-    sukces, a walidacja modelu gubiła ten klucz (kontrakt `ENMElement` go nie ma) — fałszywy
-    sukces bez skutku. Teraz: nazwana odmowa, model nietknięty."""
+    """Etykieta (krótka nazwa odpływu) na elemencie, którego kontrakt jej nie ma, to nazwana
+    odmowa bez skutku — nigdy sukces, po którym walidacja modelu po cichu gubi klucz (dawny
+    defekt `set_label`; ta sama klasa dla kolekcji bez listy dopuszczonych parametrów:
+    szyny i źródła przyjmowały dowolny klucz)."""
     snap = _wstawiona_stacja()
     element = snap[kolekcja][0]
     wynik = execute_domain_operation(
-        snap, "set_label", {"element_ref": element["ref_id"], "label": "ETYKIETA"}
+        snap,
+        "update_element_parameters",
+        {
+            "element_ref": element["ref_id"],
+            "parameters": {"feeder_short_name": "ETYKIETA"},
+        },
     )
-    assert wynik["error_code"] == "label.element_without_label"
+    assert wynik["error_code"] == "params.key_not_allowed"
     assert element["ref_id"] not in (wynik.get("error") or "")
-    assert "nazwę" in (wynik.get("error") or "")
     assert "ETYKIETA" not in str(wynik.get("snapshot") or {})
 
 
@@ -680,7 +695,7 @@ def _gpz_04kv() -> dict[str, Any]:
                 "sk3_mva": 5.0,
                 "rx_ratio": 0.1,
             },
-            "line_fields_count": 2,
+            "line_fields_per_section": 2,
             "source_name": "LV MAIN",
         },
     )

@@ -425,7 +425,8 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
     const topo = zbudujDerTopology(DER_SN, 'bus_sn_1');
     expect(topo.connection_level).toBe('sn');
     expect(topo.has_block_transformer).toBe(true);
-    expect(topo.has_dedicated_mv_field).toBe(true);
+    // Pole SN toru DER powstaje zawsze (backend) — flaga nie jest daną ładunku.
+    expect(topo).not.toHaveProperty('has_dedicated_mv_field');
     expect(topo.mv_bus_ref).toBe('bus_sn_1');
     expect(topo.inverter_output_voltage_kv).toBe(0.4);
     expect(topo.lv_switchgear_variant).toBe('multi-feeder');

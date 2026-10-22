@@ -131,7 +131,9 @@ export function buildOperationContext({
         context.station_ref = elementContext.stationRef;
       }
       break;
-    case 'add_shunt_compensator_sn': {
+    case 'add_shunt_compensator_sn':
+    case 'add_load_sn':
+    case 'add_generator_sn': {
       if (elementType === 'Bus') {
         context.bus_ref = elementId;
         const bus = snapshot?.buses?.find(
@@ -197,6 +199,11 @@ export function buildOperationContext({
       context.transformer_block_reason = transformerContext.blockReason;
       break;
     }
+    // Edycja istniejącego odcinka kabla nN (menu kabla na schemacie nN stacji).
+    case 'set_nn_cable_laying_conditions':
+    case 'split_nn_segment':
+      context.segment_ref = elementId;
+      break;
     case 'add_genset_nn':
       context.source_field_kind = 'AGREGAT';
       break;

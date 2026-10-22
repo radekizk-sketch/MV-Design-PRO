@@ -131,3 +131,48 @@ def test_todo_a_owned_paths_are_clean_on_real_repo() -> None:
     )
     naruszenia = [v for v in naruszenia if v.path not in guard.TODO_FIXME_FILE_EXEMPTIONS]
     assert naruszenia == [], [f"{v.path}:{v.line_no}: {v.context}" for v in naruszenia]
+
+
+def _spec_e2e(tmp_path: Path, tresc: str) -> Path:
+    e2e = tmp_path / "frontend" / "e2e"
+    e2e.mkdir(parents=True)
+    (e2e / "przyklad.spec.ts").write_text(tresc, encoding="utf-8")
+    return tmp_path
+
+
+def _reguly(naruszenia: list[guard.Violation]) -> list[str]:
+    return sorted(v.rule for v in naruszenia)
+
+
+def test_e2e_from_bus_ref_operacji_nn_jest_biezacym_kontraktem(tmp_path: Path) -> None:
+    """`add_nn_cable_segment` przyjmuje `from_bus_ref` — wyjatek wiazany z nazwa operacji."""
+    root = _spec_e2e(
+        tmp_path,
+        "await op(request, caseId, 'add_nn_cable_segment', {\n"
+        "  from_bus_ref: szyna, length_m: 40.0, catalog_binding: wiazanie,\n"
+        "});\n",
+    )
+    assert guard.check_legacy_catalog_payloads(root) == []
+
+
+def test_e2e_from_bus_ref_poza_operacja_nn_jest_naruszeniem(tmp_path: Path) -> None:
+    root = _spec_e2e(
+        tmp_path,
+        "await op(request, caseId, 'continue_trunk_segment_sn', {\n  from_bus_ref: szyna,\n});\n",
+    )
+    assert _reguly(guard.check_legacy_catalog_payloads(root)) == [
+        "legacy from_bus_ref payload field in active frontend types/e2e"
+    ]
+
+
+def test_e2e_catalog_ref_w_operacji_nn_nadal_naruszeniem(tmp_path: Path) -> None:
+    """Wyjatek `from_bus_ref` NIE przepuszcza `catalog_ref` (kanon: `catalog_binding`)."""
+    root = _spec_e2e(
+        tmp_path,
+        "await op(request, caseId, 'add_nn_cable_segment', {\n"
+        "  from_bus_ref: szyna, catalog_ref: KABEL,\n"
+        "});\n",
+    )
+    assert _reguly(guard.check_legacy_catalog_payloads(root)) == [
+        "legacy catalog_ref payload field in active frontend types/e2e"
+    ]

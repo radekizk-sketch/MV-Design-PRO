@@ -10,6 +10,7 @@ mutującej.
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import pytest
@@ -912,6 +913,9 @@ def test_set_nn_cable_laying_conditions_odrzuca_nieznana_kombinacje() -> None:
     assert wynik["error_code"] == "nn.cable_laying_conditions_invalid"
 
 
+# Ładunek CELOWO w dawnej składni SN (klucze spoza kontraktu kabla nN) — test przypina
+# odmowę; czujnik ładunku zapisuje wpis, nie zamienia go w błąd.
+@pytest.mark.ladunek_spoza_kontraktu
 def test_set_nn_cable_laying_conditions_odrzuca_stara_skladnie_sn() -> None:
     """Nazwany zestaw SN (`wlasne`) nie jest juz rozpoznawany dla kabla nN — payload
     SN-owy trafia w gałąź string/nieznana-nazwa, nie w obiekt opisu tablicowego."""
@@ -943,25 +947,29 @@ def test_set_nn_cable_laying_conditions_odrzuca_stara_skladnie_sn() -> None:
 
 
 # ---------------------------------------------------------------------------
-# remove_nn_element
+# Usuwanie elementów nN — jedna operacja usuwania modelu (`delete_element`)
 # ---------------------------------------------------------------------------
+# Dawna `remove_nn_element` dublowała `delete_element` (kabel / aparat / szyna / odbiór nN)
+# i nie miała żadnego wywołania w interfejsie; skasowana. Intencje jej testów przechodzą na
+# `delete_element`, którą menu schematu nN woła pozycją „Usuń".
 
 
-def test_remove_nn_element_zakazuje_usuniecia_szyny_z_przylaczami() -> None:
-    snap = _board()
+def _odbior_nn(snap: dict) -> tuple[dict, str]:
     bus1 = _stacja(snap)["bus_refs"][0]
+    wynik = _wykonaj(snap, "add_nn_outgoing_field", {"bus_nn_ref": bus1, "field_name": "Odpływ"})
+    snap = wynik["snapshot"]
+    field_ref = wynik["changes"]["created_element_ids"][0]
     wynik = _wykonaj(
         snap,
-        "add_nn_cable_segment",
-        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+        "add_nn_load",
+        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej (FAB-D1 D5).
+        {"feeder_ref": field_ref, "active_power_kw": 2.0, "cos_phi": 0.9},
     )
-    snap = wynik["snapshot"]  # bus1 ma teraz przyłącze (kabel) — usunięcie musi być zakazane
-
-    wynik = _blad(snap, "remove_nn_element", {"element_ref": bus1})
-    assert wynik["error_code"] == "nn.remove_bus_has_connections"
+    snap = wynik["snapshot"]
+    return snap, snap["loads"][-1]["ref_id"]
 
 
-def test_remove_nn_element_usuwa_galaz_i_potem_lisc() -> None:
+def test_usuniecie_kabla_nn_zostawia_szyne_konca_a_potem_usuwa_lisc() -> None:
     snap = _board()
     bus1 = _stacja(snap)["bus_refs"][0]
     wynik = _wykonaj(
@@ -973,42 +981,83 @@ def test_remove_nn_element_usuwa_galaz_i_potem_lisc() -> None:
     kabel_ref = snap["branches"][-1]["ref_id"]
     bus2 = snap["branches"][-1]["to_bus_ref"]
 
-    wynik = _wykonaj(snap, "remove_nn_element", {"element_ref": kabel_ref})
+    wynik = _wykonaj(snap, "delete_element", {"element_ref": kabel_ref})
     snap = wynik["snapshot"]
     assert kabel_ref not in [b["ref_id"] for b in snap["branches"]]
-    assert bus2 in [
-        b["ref_id"] for b in snap["buses"]
-    ]  # szyna zostaje osierocona, nie kasowana kaskadowo
+    assert bus2 in [b["ref_id"] for b in snap["buses"]]  # usunięcie gałęzi nie kasuje szyny
 
-    wynik = _wykonaj(snap, "remove_nn_element", {"element_ref": bus2})
+    wynik = _wykonaj(snap, "delete_element", {"element_ref": bus2})
     snap = wynik["snapshot"]
     assert bus2 not in [b["ref_id"] for b in snap["buses"]]
 
 
-def test_remove_nn_element_usuwa_odbior() -> None:
+def test_usuniecie_zacisku_nn_kasuje_kaskada_dolaczone_galezie() -> None:
+    """Szyna z przyłączami: usunięcie (po potwierdzeniu w interfejsie) zabiera gałęzie,
+    które bez niej nie mają końca — jak dla każdej szyny modelu."""
     snap = _board()
     bus1 = _stacja(snap)["bus_refs"][0]
-    wynik = _wykonaj(snap, "add_nn_outgoing_field", {"bus_nn_ref": bus1, "field_name": "Odpływ"})
-    snap = wynik["snapshot"]
-    field_ref = wynik["changes"]["created_element_ids"][0]
-    wynik = _wykonaj(
+    snap = _wykonaj(
         snap,
-        "add_nn_load",
-        # cos_phi jawny: `add_nn_load` wymaga rozstrzygalnej mocy biernej
-        # (FAB-D1 D5) — ten test sprawdza usuwanie odbioru, nie moc bierną.
-        {"feeder_ref": field_ref, "active_power_kw": 2.0, "cos_phi": 0.9},
-    )
-    snap = wynik["snapshot"]
-    load_ref = snap["loads"][-1]["ref_id"]
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+    )["snapshot"]
+    kabel_ref = snap["branches"][-1]["ref_id"]
+    bus2 = snap["branches"][-1]["to_bus_ref"]
+    snap = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus2, "length_m": 5.0, "catalog_ref": REF_KABEL_NN},
+    )["snapshot"]
+    kabel_dalej = snap["branches"][-1]["ref_id"]
 
-    wynik = _wykonaj(snap, "remove_nn_element", {"element_ref": load_ref})
-    snap = wynik["snapshot"]
-    assert snap["loads"] == []
+    wynik = _wykonaj(snap, "delete_element", {"element_ref": bus2})
+    usuniete = set(wynik["changes"]["deleted_element_ids"])
+    assert {bus2, kabel_ref, kabel_dalej} <= usuniete
+    refy_galezi = {b["ref_id"] for b in wynik["snapshot"]["branches"]}
+    assert kabel_ref not in refy_galezi and kabel_dalej not in refy_galezi
 
 
-def test_remove_nn_element_element_nieistniejacy() -> None:
-    wynik = _blad(_board(), "remove_nn_element", {"element_ref": "nie-istnieje"})
-    assert wynik["error_code"] == "nn.remove_element_not_found"
+def test_usuniecie_odbioru_nn() -> None:
+    snap, load_ref = _odbior_nn(_board())
+    wynik = _wykonaj(snap, "delete_element", {"element_ref": load_ref})
+    assert wynik["snapshot"]["loads"] == []
+
+
+def test_usuniecie_szyny_czysci_liste_szyn_i_sekcje_stacji() -> None:
+    """Szyna skasowana znika z `bus_refs` i z sekcji nN stacji — bez wiszących odwołań
+    (kontrola, którą niosła skasowana `remove_nn_element`, teraz w `delete_element`)."""
+    snap = _board()
+    stacja = _stacja(snap)
+    snap = _wykonaj(
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": stacja["ref_id"], "catalog_ref": REF_APARAT_NN},
+    )["snapshot"]
+    stacja = _stacja(snap)
+    sekcja_2 = max(stacja["nn_sections"], key=lambda s: s["order"])["bus_ref"]
+
+    wynik = _wykonaj(snap, "delete_element", {"element_ref": sekcja_2})
+    stacja_po = _stacja(wynik["snapshot"])
+    assert all(sekcja["bus_ref"] != sekcja_2 for sekcja in stacja_po["nn_sections"])
+    assert len(stacja_po["nn_sections"]) == len(stacja["nn_sections"]) - 1
+
+
+def test_usuniecie_szyny_czysci_liste_szyn_stacji_ktora_zostaje() -> None:
+    """Szyna wymieniona w `bus_refs` stacji, która po usunięciu zostaje (szyna nie jest jej
+    szyną główną ani nie zabiera transformatora), znika z tej listy — model zapisany z taką
+    listą (archiwum, import) nie zostaje z odwołaniem do szyny, której nie ma."""
+    snap = _board()
+    bus1 = _stacja(snap)["bus_refs"][0]
+    snap = _wykonaj(
+        snap,
+        "add_nn_cable_segment",
+        {"from_bus_ref": bus1, "length_m": 10.0, "catalog_ref": REF_KABEL_NN},
+    )["snapshot"]
+    bus2 = snap["branches"][-1]["to_bus_ref"]
+    _stacja(snap)["bus_refs"].append(bus2)
+
+    wynik = _wykonaj(snap, "delete_element", {"element_ref": bus2})
+    assert _stacja(wynik["snapshot"])["bus_refs"] == [bus1]
 
 
 # ---------------------------------------------------------------------------
@@ -1122,6 +1171,28 @@ def test_copy_nn_feeder_wymaga_aparatu_laczeniowego() -> None:
 
     wynik = _blad(snap, "copy_nn_feeder", {"feeder_apparatus_ref": kabel_ref})
     assert wynik["error_code"] == "nn.copy_feeder_wrong_root"
+
+
+def test_copy_nn_feeder_odrzuca_sprzeglo_sekcji() -> None:
+    """Sprzęgło sekcji nie jest aparatem odpływowym — „poddrzewo" za nim to cała sąsiednia
+    sekcja rozdzielnicy z jej odpływami. Ta sama reguła blokuje pozycję „Kopiuj odpływ"
+    w menu schematu nN (`operacjeNn.ts`, test `operacjeNn.test.ts`): predykaty parami.
+    """
+    snap = _board()
+    stacja = _stacja(snap)
+    snap = _wykonaj(
+        snap,
+        "add_nn_section_coupler",
+        {"station_ref": stacja["ref_id"], "catalog_ref": REF_APARAT_NN},
+    )["snapshot"]
+    sekcje = sorted(_stacja(snap)["nn_sections"], key=lambda s: s["order"])
+    sprzeglo_ref = sekcje[1]["coupler_ref"]
+    przed = copy.deepcopy(snap)
+
+    wynik = _blad(snap, "copy_nn_feeder", {"feeder_apparatus_ref": sprzeglo_ref})
+    assert wynik["error_code"] == "nn.copy_feeder_wrong_root"
+    assert "sprzęgłem sekcji" in wynik["error"]
+    assert snap == przed
 
 
 # ---------------------------------------------------------------------------

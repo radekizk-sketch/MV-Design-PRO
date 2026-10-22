@@ -1317,7 +1317,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "2d3b4373f668680e2649d90dde5496cc74552bf799d0312cabc6f8cd8cfb08e9",
+      "hash_sha256": "1c9bd8fb710f747ac89cdc6886dea4d1fef6ccae6309f25d693fdedd9e610d14",
       "name": "Drogi operacji budowy",
       "revision": 9,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1338,10 +1338,14 @@
           },
           {
             "order": 2,
-            "segment_ref": "seg/319231e7ab73f91a142f24546e888ddd/segment"
+            "segment_ref": "seg/319231e7ab73f91a142f24546e888ddd/segment_L"
           },
           {
             "order": 3,
+            "segment_ref": "seg/319231e7ab73f91a142f24546e888ddd/segment_R"
+          },
+          {
+            "order": 4,
             "segment_ref": "seg/908556526fbac181d1be24f1f0a3f251/segment"
           }
         ],

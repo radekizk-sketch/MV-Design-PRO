@@ -1,16 +1,19 @@
 /**
  * Model kreatora „Źródło dyspozycyjne nN (agregat / UPS)" — ui2, kreatory/rama.
  *
- * Dodaje agregat prądotwórczy albo UPS do rozdzielni nN. Katalog-first
- * (SYSTEM_ZRODLOWY dla agregatu/UPS, APARAT_NN dla aparatu pola). Zapis =
- * operacja domenowa `add_genset_nn` albo `add_ups_nn`. Kontrakt payloadu bez
- * zmian względem legacy `AddDispatchableSourceForm` (GensetModal / UPSModal).
+ * Dodaje agregat prądotwórczy albo UPS do rozdzielni nN. Zapis = operacja domenowa
+ * `add_genset_nn` albo `add_ups_nn`; ładunek = DOKŁADNIE to, co handler czyta
+ * (`enm/domain_operations_v2.py`): `bus_nn_ref`, `station_ref`, `placement`,
+ * `existing_field_ref`, `source_field` {`field_name`, `source_field_kind`,
+ * `catalog_binding` aparatu APARAT_NN} oraz `genset_spec` / `ups_spec` z tabliczki.
+ * Rodzaj i stan aparatu pola wynikają z pozycji katalogu aparatu, napięcie pola —
+ * z szyny; katalog źródła nie istnieje (parametry z tabliczki, ZASADA NR 4).
  */
+
+import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 
 export type DispatchableKind = 'GENSET' | 'UPS';
 export type SourcePlacement = 'NEW_FIELD' | 'EXISTING_FIELD';
-export type NNSwitchKind = 'WYLACZNIK' | 'ROZLACZNIK' | 'BEZPIECZNIK';
-export type NNSwitchState = 'OTWARTY' | 'ZAMKNIETY';
 export type GensetOperationMode = 'PRACA_CIAGLA' | 'PRACA_AWARYJNA' | 'PRACA_SZCZYTOWA' | 'WYLACZONE';
 export type GensetFuelType = 'DIESEL' | 'GAZ' | 'BIOPALIWO' | 'INNY';
 export type UpsOperationMode = 'ONLINE' | 'LINE_INTERACTIVE' | 'OFFLINE' | 'WYLACZONE';
@@ -20,14 +23,10 @@ export interface ZrodloDyspozycyjneFormData {
   bus_nn_ref: string;
   placement: SourcePlacement;
   existing_field_ref: string | null;
-  // Nowe pole przyłączeniowe (placement=NEW_FIELD)
-  new_field_switch_kind: NNSwitchKind | null;
-  new_field_switch_state: NNSwitchState | null;
+  // Nowe pole przyłączeniowe (placement=NEW_FIELD): aparat z katalogu APARAT_NN
   new_field_switch_catalog_ref: string | null;
-  new_field_voltage_nn_kv: number | null;
   new_field_name: string;
-  // Parametry źródła
-  catalog_item_id: string | null;
+  // Parametry źródła (tabliczka)
   rated_power_kw: number | null;
   // Agregat
   rated_voltage_kv: number | null;
@@ -50,12 +49,8 @@ export const DANE_DOMYSLNE: ZrodloDyspozycyjneFormData = {
   bus_nn_ref: '',
   placement: 'NEW_FIELD',
   existing_field_ref: null,
-  new_field_switch_kind: null,
-  new_field_switch_state: null,
   new_field_switch_catalog_ref: null,
-  new_field_voltage_nn_kv: null,
   new_field_name: '',
-  catalog_item_id: null,
   rated_power_kw: null,
   rated_voltage_kv: null,
   power_factor: null,
@@ -85,20 +80,6 @@ export function walidujFormularz(data: ZrodloDyspozycyjneFormData, kind: Dispatc
   if (data.placement === 'EXISTING_FIELD' && !data.existing_field_ref) {
     errors.push({ field: 'existing_field_ref', message: 'Wybór pola przyłączeniowego jest wymagany.' });
   }
-  if (data.placement === 'NEW_FIELD') {
-    if (!data.new_field_switch_kind) {
-      errors.push({ field: 'new_field_switch_kind', message: 'Rodzaj aparatu pola jest wymagany.' });
-    }
-    if (!data.new_field_switch_state) {
-      errors.push({ field: 'new_field_switch_state', message: 'Stan normalny aparatu jest wymagany.' });
-    }
-    if (data.new_field_voltage_nn_kv === null || data.new_field_voltage_nn_kv <= 0) {
-      errors.push({ field: 'new_field_voltage_nn_kv', message: 'Napięcie nN (kV) musi być > 0.' });
-    }
-  }
-  if (!data.catalog_item_id) {
-    errors.push({ field: 'catalog_item_id', message: kind === 'UPS' ? 'Katalog UPS jest wymagany.' : 'Katalog agregatu jest wymagany.' });
-  }
   if (data.rated_power_kw === null || data.rated_power_kw <= 0) {
     errors.push({ field: 'rated_power_kw', message: 'Moc znamionowa (kW) musi być > 0.' });
   }
@@ -123,7 +104,8 @@ export function walidujFormularz(data: ZrodloDyspozycyjneFormData, kind: Dispatc
   return errors;
 }
 
-/** Buduje specyfikację nowego pola źródłowego (tylko placement=NEW_FIELD). */
+/** Specyfikacja nowego pola źródłowego (tylko placement=NEW_FIELD) — klucze czytane przez
+ *  `_append_converter_field_if_needed` (ta sama droga co pole źródła przekształtnikowego). */
 function zbudujPoleZrodlowe(
   data: ZrodloDyspozycyjneFormData,
   kind: DispatchableKind,
@@ -131,20 +113,8 @@ function zbudujPoleZrodlowe(
   if (data.placement !== 'NEW_FIELD') return null;
   return {
     source_field_kind: kind === 'GENSET' ? 'AGREGAT' : 'UPS',
-    switch_spec: {
-      switch_kind: data.new_field_switch_kind,
-      normal_state: data.new_field_switch_state,
-      catalog_binding: data.new_field_switch_catalog_ref
-        ? {
-            catalog_namespace: 'APARAT_NN',
-            catalog_item_id: data.new_field_switch_catalog_ref,
-            catalog_item_version: '2024.1',
-          }
-        : null,
-    },
-    voltage_nn_kv: data.new_field_voltage_nn_kv,
     field_name: data.new_field_name.trim() || null,
-    field_label: data.new_field_name.trim() || null,
+    catalog_binding: normalizeCatalogBinding(data.new_field_switch_catalog_ref, 'APARAT_NN') ?? null,
   };
 }
 
@@ -165,7 +135,6 @@ export function zbudujPayload(
     return {
       ...wspolne,
       genset_spec: {
-        catalog_item_id: data.catalog_item_id,
         rated_power_kw: data.rated_power_kw,
         rated_voltage_kv: data.rated_voltage_kv,
         power_factor: data.power_factor,
@@ -178,7 +147,6 @@ export function zbudujPayload(
   return {
     ...wspolne,
     ups_spec: {
-      catalog_item_id: data.catalog_item_id,
       rated_power_kw: data.rated_power_kw,
       backup_time_min: data.backup_time_min,
       operation_mode: data.ups_operation_mode,

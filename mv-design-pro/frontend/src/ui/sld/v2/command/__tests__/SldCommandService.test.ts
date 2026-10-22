@@ -24,10 +24,13 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     }
   });
 
-  it('menu pustego schematu (background) ma "Wstaw główny punkt zasilania" jako pierwszą akcję', () => {
-    const actions = SLD_MENU_REGISTRY.background;
-    expect(actions[0].id).toBe('insert-gpz');
-    expect(actions[0].labelPl).toBe('Wstaw główny punkt zasilania');
+  // Intencja: na pustym schemacie jedyną akcją budującą jest wstawienie GPZ. Od V12K-352 sekcja
+  // „Otwórz" (katalogi) poprzedza „Dodaj", więc pilnujemy pierwszeństwa w sekcji budowy.
+  it('menu pustego schematu (background) ma "Wstaw główny punkt zasilania" jako pierwszą i jedyną akcję sekcji Dodaj', () => {
+    const dodaj = SLD_MENU_REGISTRY.background.filter((a) => a.section === 'Dodaj');
+    expect(dodaj).toHaveLength(1);
+    expect(dodaj[0].id).toBe('insert-gpz');
+    expect(dodaj[0].labelPl).toBe('Wstaw główny punkt zasilania');
   });
 
   it('menu sekcji (section) NIE pokazuje "Wyprowadź ciąg główny" (zakaz briefa §2 pkt 8)', () => {

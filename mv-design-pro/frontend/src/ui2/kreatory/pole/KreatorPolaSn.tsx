@@ -64,6 +64,7 @@ import {
 } from '../stacja/KartaWyposazeniaPola';
 import { naglowekRodziny, torRodziny, wyposazenieSzablonu } from '../stacja/konfiguratorRozdzielnicy';
 import { STACJA_STRINGS as ST } from '../stacja/strings';
+import { pobierzPodgladStacji } from '../stacja/stacjaPodglad';
 import { POLE_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
@@ -216,6 +217,59 @@ export function KreatorPolaSn() {
   );
 
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+
+  // Werdykt konfiguracji katalogowej PRZED zapisem — tryb próby TEJ SAMEJ operacji
+  // (`add_sn_bay` z `dry_run`), która wykona zapis: walidator rodziny backendu (karta
+  // rodziny, napięcie szyny, rola pola z katalogu). UI nie liczy żadnej reguły zgodności.
+  const [kontrolaKatalogowa, setKontrolaKatalogowa] = useState<
+    { readonly stan: 'sprawdzanie' | 'zgodna' | 'niezgodna'; readonly komunikat: string } | null
+  >(null);
+  // Ładunek próby jako TEKST — efekt zależy od WARTOŚCI ładunku, nie od tożsamości obiektów
+  // kontekstu (nowy obiekt kontekstu przy każdym renderze nie może wyzwalać nowej próby).
+  const ladunekProby = useMemo(
+    () => (dane.bay_template_ref ? JSON.stringify(zbudujPayload(dane, kontekst)) : null),
+    [dane, kontekst],
+  );
+  useEffect(() => {
+    if (!activeCaseId || !hasSzyne || !ladunekProby) {
+      setKontrolaKatalogowa(null);
+      return undefined;
+    }
+    const kontroler = new AbortController();
+    setKontrolaKatalogowa({ stan: 'sprawdzanie', komunikat: T.kontrolaKatalogowaSprawdzanie });
+    const zwloka = setTimeout(() => {
+      pobierzPodgladStacji(activeCaseId, 'add_sn_bay', JSON.parse(ladunekProby) as Record<string, unknown>, {
+        signal: kontroler.signal,
+      })
+        .then((podglad) => {
+          if (kontroler.signal.aborted) return;
+          const { werdykt, zrodlo_opis_pl: opis, bay_role: rola } = podglad.raw;
+          // Szablon spoza katalogu rozdzielnic (bez werdyktu) — kontrola katalogowa nie dotyczy.
+          setKontrolaKatalogowa(
+            werdykt === 'VALID'
+              ? {
+                  stan: 'zgodna',
+                  komunikat: T.kontrolaKatalogowaZgodna(
+                    String(opis ?? ''),
+                    rolaLabel(String(rola ?? '') as RolaPola) || String(rola ?? ''),
+                  ),
+                }
+              : null,
+          );
+        })
+        .catch((blad: unknown) => {
+          if (kontroler.signal.aborted) return;
+          setKontrolaKatalogowa({
+            stan: 'niezgodna',
+            komunikat: T.kontrolaKatalogowaNiezgodna(blad instanceof Error ? blad.message : String(blad)),
+          });
+        });
+    }, 300);
+    return () => {
+      clearTimeout(zwloka);
+      kontroler.abort();
+    };
+  }, [activeCaseId, hasSzyne, ladunekProby]);
 
   const onZapisz = useCallback(async () => {
     if (!hasSzyne) {
@@ -398,6 +452,11 @@ export function KreatorPolaSn() {
             </KreatorSiatka>
             {dane.switchgear_family_ref && opcjeSzablonow.length === 0 ? (
               <KreatorInfo>{T.szablonBrak}</KreatorInfo>
+            ) : null}
+            {kontrolaKatalogowa ? (
+              <div data-testid="mvd-kreator-pole-kontrola-katalogowa" data-stan={kontrolaKatalogowa.stan}>
+                <KreatorInfo>{kontrolaKatalogowa.komunikat}</KreatorInfo>
+              </div>
             ) : null}
 
             {/* KONFIGURATOR-POL-RMU (etap S3) — TEN SAM model katalogowego pola,

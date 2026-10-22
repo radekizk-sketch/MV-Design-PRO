@@ -121,7 +121,6 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
             "field_apparatus_catalog_ref": CATALOG_FIELD_APPARATUS,
             "station": {"name": "Stacja S1", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
             "nn_block": {"outgoing_feeders_nn_count": liczba_odplywow_nn},
             # Tolerancja sieci nN (+6 %, wiersz nN tabeli 1 IEC 60909-0) — bez niej zwarcie
             # w sieci z wyspą nN liczy się na wartości roboczej +10 % (założenie biegu

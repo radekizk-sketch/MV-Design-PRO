@@ -386,7 +386,6 @@ def test_wstawienie_stacji_na_odcinku_zachowuje_dane_cieplne_obu_polowek() -> No
             "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja SN/nN", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-            "nn_voltage_kv": 0.4,
         },
     )
     assert not wynik.get("error"), f"{wynik.get('error')} ({wynik.get('error_code')})"

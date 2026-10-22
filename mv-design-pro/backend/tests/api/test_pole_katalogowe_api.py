@@ -4,7 +4,7 @@ Kanon: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §7 etap S5; karta S5 §
 pkt 3 („rozszerzenie ISTNIEJĄCEJ trasy operacji domenowych, żadnych nowych
 równoległych tras do tej samej prawdy").
 
-Operacja `add_sn_bay_from_catalog` NIE ma własnej trasy: wchodzi tą samą
+Pole z katalogu rozdzielnic (operacja `add_sn_bay` z wyborem katalogowym) NIE ma własnej trasy: wchodzi tą samą
 końcówką, co każda operacja domenowa (`POST /api/cases/{id}/enm/domain-ops`),
 więc dziedziczy jej blokadę współbieżności, dziennik zmian i bramę katalogową.
 Ten moduł dowodzi TRZECH własności tej drogi:
@@ -154,7 +154,7 @@ def test_tryb_proby_zwraca_werdykt_i_niczego_nie_zapisuje(klient: TestClient) ->
     wynik = _operacja(
         klient,
         case_id,
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         {
             "bus_ref": _szyna_sn(snapshot),
             "complete_bay_template_ref": POLE_KATALOGOWE,
@@ -186,7 +186,7 @@ def test_wykonanie_zapisuje_pole_z_wyposazeniem_katalogowym(klient: TestClient) 
     wynik = _operacja(
         klient,
         case_id,
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         {
             "bus_ref": _szyna_sn(snapshot),
             "complete_bay_template_ref": POLE_KATALOGOWE,
@@ -223,7 +223,7 @@ def test_konfiguracja_spoza_katalogu_nie_zmienia_modelu(klient: TestClient) -> N
     wynik = _operacja(
         klient,
         case_id,
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         {
             "bus_ref": _szyna_sn(snapshot),
             # Rodzina pierścieniowa nie składa się z pojedynczych celek (§3).
@@ -256,7 +256,7 @@ def test_brama_katalogowa_obejmuje_nowa_operacje(klient: TestClient) -> None:
         f"/api/cases/{case_id}/enm/domain-ops",
         json={
             "operation": {
-                "name": "add_sn_bay_from_catalog",
+                "name": "add_sn_bay",
                 "payload": {
                     "bus_ref": _szyna_sn(snapshot),
                     "complete_bay_template_ref": POLE_KATALOGOWE,
@@ -288,7 +288,7 @@ def test_proba_z_nieistniejaca_pozycja_aparatu_takze_konczy_sie_422(
         f"/api/cases/{case_id}/enm/domain-ops",
         json={
             "operation": {
-                "name": "add_sn_bay_from_catalog",
+                "name": "add_sn_bay",
                 "payload": {
                     "bus_ref": _szyna_sn(snapshot),
                     "complete_bay_template_ref": POLE_KATALOGOWE,

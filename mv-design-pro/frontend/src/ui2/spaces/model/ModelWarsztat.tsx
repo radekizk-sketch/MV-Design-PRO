@@ -1,8 +1,10 @@
 /**
  * Warsztat przestrzeni „Model sieci" (scalenie U2 #2, zarządca).
  *
- * Dwa widoki przełączane zakładkami: „Sieć na schemacie" (most legacy — kanwa SLD,
- * własność wątku SLD) i „Szablony stacji" (nowe okno E3.1). „Zastosuj i edytuj"
+ * Widoki przełączane zakładkami: „Sieć na schemacie" (most legacy — kanwa SLD,
+ * własność wątku SLD), „Właściwości", „Szablony stacji" (nowe okno E3.1), „Katalog typów"
+ * i „Karty widmowe" (karty widmowe urządzeń: wczytanie karty projektu i przypisanie kart
+ * do generatorów — `karty-widmowe/PanelKartWidmowych.tsx`). „Zastosuj i edytuj"
  * otwiera ISTNIEJĄCY kreator zastosowania szablonu (StationTemplateWizard —
  * pełny przepływ: wybór wariantu → odcinek → parametry → apply na backendzie),
  * z preselekcją szablonu wskazanego w przeglądarce (E3.2 — prop
@@ -18,6 +20,7 @@ import { useShellStore } from '../../shell/useShellStore';
 import { PrzegladarkaSzablonow } from './szablony';
 import { WlasciwosciModelu } from './WlasciwosciModelu';
 import { KatalogPanel } from './katalog';
+import { PanelKartWidmowych } from './karty-widmowe/PanelKartWidmowych';
 import type { ElementUzycia } from './katalog';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { emituj } from '../../events';
@@ -35,6 +38,7 @@ const ZAKLADKI = [
   { id: 'wlasciwosci', etykieta: T.zakladkaWlasciwosci, tylkoEkspercki: false },
   { id: 'szablony', etykieta: T.zakladkaSzablony, tylkoEkspercki: false },
   { id: 'katalog', etykieta: T.zakladkaKatalog, tylkoEkspercki: false },
+  { id: 'karty', etykieta: T.zakladkaKartyWidmowe, tylkoEkspercki: false },
   { id: 'diagnostyka', etykieta: T.zakladkaDiagnostyka, tylkoEkspercki: true },
 ] as const;
 
@@ -127,6 +131,7 @@ export function ModelWarsztat() {
             }}
           />
         )}
+        {zakladka === 'karty' && <PanelKartWidmowych />}
       </div>
       {kreatorOtwarty && (
         <div

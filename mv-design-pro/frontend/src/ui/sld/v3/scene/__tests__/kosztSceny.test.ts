@@ -536,6 +536,35 @@ interface OdciskiLod {
  *    `obrysKotwicy` i drugie przejście stron przy obrysie symbolu ze styku K2b×K3, reguła
  *    W2C planu); dalej sondą ich nie rozkładano. Etykiet sceny jak w GPZ-MODEL: 55/520/914
  *    (referencyjna) i 108/1030/1816 (podwojona), czyli bez etykiet zgubionych ani dodanych.
+ *
+ * AKTUALIZACJA ŚWIADOMA (MENU-KANON commit 5, 2026-10-22) — przeliczone odciski; z 54 wpisów
+ * tablicy 38 zmienionych, 16 bez zmian (L0: declutter i 7 z 7 planów w obu sieciach). Pomiar
+ * (archiwa `git archive` przebiegane zrzutem pełnych scen L0/L1/L2 obu sieci w trybie budżetów):
+ * ostatni zielony punkt `f6eb035ad^`, PIERWSZY czerwony `f6eb035ad` (UIUX-K2b „kadr wyłącznie
+ * celu…"; czerwień przeniesiona scaleniem `650565274` bez przeliczenia, bo test biegnie wyłącznie
+ * w kroku budżetów). Dwa wkłady, zmierzone porównaniem pełnych scen:
+ *  · K2b (`buildScene.ts`, kod SLD): 8 odcinków napowietrznych sieci referencyjnej dostaje
+ *    w `meta` `lineType: 'overhead'` (współrzędne bez zmian; na L1/L2 11 odcinków razem
+ *    z odgałęzieniami „#tee"), a łącznik sekcyjny NO poza stacją („Łącznik sekcyjny NO
+ *    (rezerwa)") jest rysowany symbolem `noPoint` na L0/L1/L2 z etykietą „NO" na L1/L2
+ *    (przypięte w `nopINapowietrzne.k2b.test.ts`); w sieci podwojonej po dwie kopie. Zmienia
+ *    scenę L0/L1/L2 i declutter L1/L2.
+ *  · Ta karta (DANE, kod SLD nietknięty): ciągi liniowe fikstury odwołują się do połówek
+ *    podzielonych odcinków zamiast do skasowanego odcinka (spójność `line_runs` po podziale
+ *    odcinka). Sieć referencyjna — sceny bajtowo identyczne z bazą `650565274`; sieć podwojona —
+ *    wyłącznie `meta`: kopia ciągu z odwołaniem wiszącym dawała naruszenie grafu
+ *    `DEVICE_TERMINAL_UNRESOLVED` i notatkę STOP, teraz `electricalGraphStatus` `SLD_VALID`
+ *    i jedna notatka (łamanie arkusza). Geometria, etykiety, declutter i plany bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (scalenie karty MENU-KANON `5bff32b4b` z gałęzią UI/UX `7f0fbfa86`,
+ * 2026-10-22) — wartości tablicy z gałęzi UI/UX (GPZ-MODEL), zmienione wyłącznie 3 odciski
+ * SCENY sieci podwojonej (L0/L1/L2); declutter, plany i cała sieć referencyjna bez zmian
+ * (zielone w kroku budżetów). Pomiar: pełne sceny podwojonej sieci L0/L1/L2 zrzucone z kodu
+ * gałęzi UI/UX (`git archive`) i z drzewa scalonego, porównane liść po liściu — różnią się
+ * WYŁĄCZNIE `meta`, 7 liści na każdym LOD: `electricalGraphStatus` SLD_INVALID → SLD_VALID,
+ * znika naruszenie `DEVICE_TERMINAL_UNRESOLVED` („Magistrala 1" wskazywała skasowany odcinek)
+ * i jego notatka STOP, zostaje notatka łamania arkusza. To dokładnie wkład danych karty
+ * MENU-KANON opisany wyżej, nałożony na scenę GPZ-MODEL.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
@@ -581,7 +610,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
   ],
   podwojona: [
     {
-      scena: 'b707bab8aef37db6f1e9844ce1e68a16',
+      scena: '8417ad34b7f98bff9a043d8fa5156142',
       declutter: 'fcaad8f6069e583ea05a5a8de5e14a11',
       plany: [
         'b8eea41ccf515f1acc228cd82b6436dd',
@@ -594,7 +623,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: 'ebde20e11332d8891f32a77a26e9afa9',
+      scena: '90661362a6f0ab5e8a1be3bb3ff396a9',
       declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
       plany: [
         'bb96bce423fc0946291bdd36d49ed8c2',
@@ -607,7 +636,7 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '333a946c2d07fe6b49d43012fd586bff',
+      scena: '60589317c4b2576b7bea5a668ec3ed59',
       declutter: 'fd2ac4acf96701c6273059192dddd93f',
       plany: [
         '28965374c394c62b1d414eddfdd5e98a',

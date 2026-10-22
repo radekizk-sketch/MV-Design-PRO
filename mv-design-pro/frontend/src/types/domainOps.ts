@@ -1,22 +1,17 @@
 ﻿/**
  * Typy operacji domenowych — budowa sieci SN od GPZ.
- * Lustrzane odbicie backend domain_ops_models.py.
+ *
+ * Wyłącznie typy, których front faktycznie używa. Jedna prawda pól ładunku to klucze
+ * czytane przez handler operacji (`backend/src/enm/domain_operations*.py`), spisane
+ * w `CANONICAL_OPERATIONS` (`backend/src/domain/canonical_operations.py`) i przypięte
+ * testem `backend/tests/ci/test_spec_operacji_rowna_odczytom_handlera.py`; interfejs
+ * ładunku bez konsumenta nie jest tu utrzymywany (lustro bez użycia rozjeżdżało się
+ * z handlerem bez śladu).
  */
 
 import type { FixActionSurfaceDescriptor } from './fixActionSurface';
-import type { DeklaracjeModulu, NastawyZabezpieczenModulu, PhaseSet } from './enm';
+import type { DeklaracjeModulu, NastawyZabezpieczenModulu } from './enm';
 import type { UziemienieEkranuKabla } from './uziemienie';
-
-// --- Envelope ---
-export interface DomainOpEnvelope {
-  project_id: string;
-  snapshot_base_hash: string;
-  operation: {
-    name: CanonicalOpName;
-    idempotency_key: string;
-    payload: Record<string, unknown>;
-  };
-}
 
 // --- Canonical operation names ---
 //
@@ -57,6 +52,9 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_ups_nn',
   'add_shunt_compensator_sn',
   'add_surge_arrester_sn',
+  // Odbiór i generator synchroniczny wprost na szynie SN — menu sekcji na schemacie.
+  'add_load_sn',
+  'add_generator_sn',
   'add_nn_load',
   // P0.9 (nN STUDIO, karta F §3): odcinek/rozdzielnica/aparat/sekcja nN — operacje
   // ISTNIEJĄ w backendzie od P0.1 (enm/domain_operations_v2.py), brak wpisu tutaj
@@ -69,17 +67,21 @@ export const CANONICAL_OPERATION_NAMES = [
   // W5-E-TTIT: wyłącznik różnicowoprądowy (RCD) w torze instalacji odbiorczej nN —
   // operacja ISTNIEJE w backendzie (enm/domain_operations_v2.py::add_nn_rcd).
   'add_nn_rcd',
-  // K5-B (H-3): nastawy trybu pracy źródła i profil dynamiczny — obie operacje
-  // ISTNIEJĄ w backendzie (V2_CANONICAL_OPS, enm/domain_operations_v2.py);
-  // brak wpisu tutaj czynił je niewywoływalnymi z UI (assertCanonicalOpName).
+  // Menu kontekstowe schematu nN stacji (odcinek kablowy, aparat odpływowy, zacisk).
+  'split_nn_segment',
+  'merge_nn_segments',
+  'copy_nn_feeder',
+  // K5-B (H-3): nastawy trybu pracy źródła — operacja ISTNIEJE w backendzie
+  // (V2_CANONICAL_OPS, enm/domain_operations_v2.py); brak wpisu tutaj czynił ją
+  // niewywoływalną z UI (assertCanonicalOpName).
   'set_source_operating_mode',
-  'set_dynamic_profile',
   'add_ct',
   'add_vt',
   'add_relay',
-  // Karta CT-JEDEN-WERDYKT: zapis obwodu wtórnego ISTNIEJĄCEGO przekładnika (edytor nastaw
-  // zabezpieczenia) — operacja w V2_CANONICAL_OPS backendu od W3-B; bez wpisu tutaj sekcja
-  // obwodu byłaby martwa (assertCanonicalOpName), a wiarygodność punktu oceny nieustalona.
+  // Karta CT-JEDEN-WERDYKT: zapis obwodu wtórnego ISTNIEJĄCEGO przekładnika (obciążenie,
+  // przewody, klasa) — edytor nastaw zabezpieczenia oraz edytor na karcie pola E-11;
+  // operacja w V2_CANONICAL_OPS backendu od W3-B; bez wpisu tutaj sekcja obwodu byłaby
+  // martwa (assertCanonicalOpName), a wiarygodność punktu oceny nieustalona.
   'set_measurement_secondary_circuit',
   // Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu.
   'update_protection_settings',
@@ -88,6 +90,12 @@ export const CANONICAL_OPERATION_NAMES = [
   // Karta modeli odbiorów: wiązanie odbioru z profilem modelu dynamicznego (ekran dynamiki,
   // akcja naprawcza `load.dynamika_missing`) — operacja w V2_CANONICAL_OPS backendu.
   'set_load_dynamic_binding',
+  // Karta widmowa z pliku do katalogu projektu — panel „Karty widmowe" przestrzeni Model.
+  'dodaj_karte_widmowa_projektu',
+  // Wiązania katalogowe wytwórcy; klucz `karty_widmowe_ref` (przypisanie kart widmowych do
+  // generatora) idzie przez domain-ops z panelu „Karty widmowe" — końcówka wiązań wytwórcy
+  // (`/generators/{ref}/bindings`) tego klucza nie niesie.
+  'set_der_catalog_bindings',
   // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
   'add_gpz_section',
   'update_gpz_section',
@@ -228,40 +236,13 @@ export interface DomainEvent {
 }
 
 // --- InsertAt ---
-export type InsertAtMode = 'RATIO' | 'ODLEGLOSC_OD_POCZATKU_M' | 'ANCHOR';
+// Tryby czytane przez handlery operacji wstawienia (`wspolczynnik_podzialu`,
+// backend/src/enm/domain_operations.py) — tryb spoza słownika kończy się odmową.
+export type InsertAtMode = 'RATIO' | 'ODLEGLOSC_OD_POCZATKU_M';
 
 export interface InsertAt {
   mode: InsertAtMode;
-  value: number | AnchorValue;
-}
-
-export interface AnchorValue {
-  anchor_id: string;
-  offset_m: number;
-}
-
-// --- Insert at UI labels (mapping) ---
-export function mapUILabelToInsertAt(label: string, value?: number): InsertAt {
-  switch (label) {
-    case 'SRODEK_ODCINKA':
-      return { mode: 'RATIO', value: 0.5 };
-    case 'PODZIAL_WSPOLCZYNNIKIEM':
-      return { mode: 'RATIO', value: value ?? 0.5 };
-    case 'ODLEGLOSC_OD_POCZATKU':
-      return { mode: 'ODLEGLOSC_OD_POCZATKU_M', value: value ?? 0 };
-    default:
-      return { mode: 'RATIO', value: 0.5 };
-  }
-}
-
-// --- Segment spec ---
-export interface SegmentSpec {
-  rodzaj: 'KABEL' | 'LINIA_NAPOWIETRZNA';
-  dlugosc_m: number;
-  name: string | null;
-  catalog_binding?: CatalogBindingPayload | null;
-  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
-  catalog_ref?: string | null;
+  value: number;
 }
 
 export interface CatalogBindingPayload {
@@ -270,64 +251,6 @@ export interface CatalogBindingPayload {
   catalog_item_version: string;
   materialize?: boolean;
   snapshot_mapping_version?: string;
-}
-
-// --- Station ---
-export type StationType = 'inline' | 'branch' | 'terminal' | 'sectional';
-
-export interface StationSpec {
-  station_type: StationType;
-  station_role: 'STACJA_SN_NN';
-  station_name: string | null;
-  sn_voltage_kv: number;
-  nn_voltage_kv: number;
-}
-
-// --- SN Field ---
-export type SNFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO';
-
-export interface SNFieldSpec {
-  field_role: SNFieldRole;
-  catalog_bindings: CatalogBindings | null;
-}
-
-export interface CatalogBindings {
-  line_catalog_ref: string | null;
-  switch_catalog_ref: string | null;
-  ct_catalog_ref: string | null;
-  vt_catalog_ref: string | null;
-}
-
-// --- Transformer ---
-export interface TransformerSpec {
-  create: true;
-  catalog_binding?: CatalogBindingPayload | null;
-  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
-  transformer_catalog_ref?: string | null;
-  model_type: 'DWU_UZWOJENIOWY';
-  tap_changer_present: boolean;
-}
-
-// --- NN Block ---
-export type NNFeederRole =
-  | 'ODPLYW_NN'
-  | 'ODPLYW_REZERWOWY'
-  | 'ZRODLO_NN_PV'
-  | 'ZRODLO_NN_BESS'
-  | 'ZRODLO_NN_FW'
-  | 'ZRODLO_NN_AGREGAT'
-  | 'ZRODLO_NN_UPS';
-
-export interface NNFeederSpec {
-  feeder_role: NNFeederRole;
-  catalog_bindings: CatalogBindings | null;
-}
-
-export interface NNBlockSpec {
-  create_nn_bus: true;
-  main_breaker_nn: true;
-  outgoing_feeders_nn_count: number;
-  outgoing_feeders_nn: NNFeederSpec[];
 }
 
 // =============================================================================
@@ -348,7 +271,15 @@ export interface NNCableLayingConditionsDescription {
   soil_thermal_resistivity_km_w?: number | null;
 }
 
-export type NNCableLayingConditionsPayload = NNCableLayingConditionsDescription | 'warunki katalogowe';
+/**
+ * Opis warunków ułożenia albo jawny powrót do warunków katalogowych. Nazwa zestawu MUSI być
+ * identyczna z backendem (`cable_ampacity_derating.NAZWA_WARUNKI_KATALOGOWE`) — dawna wartość
+ * z odstępem była odrzucana przez parser jako „nieznany zestaw".
+ */
+export const WARUNKI_KATALOGOWE_NN = 'warunki_katalogowe' as const;
+export type NNCableLayingConditionsPayload =
+  | NNCableLayingConditionsDescription
+  | typeof WARUNKI_KATALOGOWE_NN;
 
 export interface AddNNCableSegmentPayload {
   from_bus_ref?: string | null;
@@ -408,6 +339,12 @@ export interface SetNNCableLayingConditionsPayload {
   cable_laying_conditions: NNCableLayingConditionsPayload;
 }
 
+/** Podział odcinka kabla nN nową szyną pośrednią w odległości `split_at_m` od początku. */
+export interface SplitNNSegmentPayload {
+  segment_ref: string;
+  split_at_m: number;
+}
+
 // --- SourceNN Types (FAZA 5: model danych źródeł nN) ---
 
 export type NNSourceType = 'PV_INVERTER' | 'BESS_INVERTER' | 'FW_INVERTER' | 'GENSET' | 'UPS';
@@ -415,56 +352,10 @@ export type NNSourceType = 'PV_INVERTER' | 'BESS_INVERTER' | 'FW_INVERTER' | 'GE
 export type NNSwitchKind = 'WYLACZNIK' | 'ROZLACZNIK' | 'BEZPIECZNIK';
 export type NNSwitchState = 'OTWARTY' | 'ZAMKNIETY';
 
-export interface NNSwitchSpec {
-  switch_kind: NNSwitchKind;
-  normal_state: NNSwitchState;
-  catalog_binding: CatalogBindingPayload | null;
-}
-
-export type SourceFieldKind = 'PV' | 'BESS' | 'FW' | 'AGREGAT' | 'UPS';
-
-export interface NNSourceFieldSpec {
-  source_field_kind: SourceFieldKind;
-  switch_spec: NNSwitchSpec;
-  voltage_nn_kv: number;
-  field_name: string | null;
-  field_label: string | null;
-}
-
-export type PVControlMode = 'STALY_COS_PHI' | 'Q_OD_U' | 'P_OD_U' | 'WYLACZONE';
-export type PVMeasurementPoint = 'UTWORZ_NOWY' | 'UZYJ_ISTNIEJACEGO' | 'BRAK';
-
-export type BESSOperationMode = 'TYLKO_GENERACJA' | 'TYLKO_MAGAZYNOWANIE' | 'DWUKIERUNKOWY' | 'WYLACZONE';
-export type BESSControlStrategy = 'STALA_MOC' | 'PROFIL' | 'REGULACJA_NAPIECIA' | 'REGULACJA_MOCY_BIERNEJ';
 export type ConverterSourceTechnology = 'PV' | 'BESS' | 'FW';
 export type ConverterConnectionVariant = 'nn_side' | 'block_transformer';
 
 export type GensetOperationMode = 'PRACA_CIAGLA' | 'PRACA_AWARYJNA' | 'PRACA_SZCZYTOWA' | 'WYLACZONE';
-
-export interface GensetSpec {
-  catalog_item_id: string | null;
-  catalog_item_version: string | null;
-  rated_power_kw: number;
-  rated_voltage_kv: number;
-  power_factor: number;
-  operation_mode: GensetOperationMode;
-  fuel_type: 'DIESEL' | 'GAZ' | 'BIOPALIWO' | 'INNY' | null;
-  source_name: string | null;
-  source_label: string | null;
-}
-
-export type UPSOperationMode = 'ONLINE' | 'LINE_INTERACTIVE' | 'OFFLINE' | 'WYLACZONE';
-
-export interface UPSSpec {
-  catalog_item_id: string | null;
-  catalog_item_version: string | null;
-  rated_power_kw: number;
-  backup_time_min: number;
-  operation_mode: UPSOperationMode;
-  battery_type: 'LI_ION' | 'VRLA' | 'NICD' | 'INNY' | null;
-  source_name: string | null;
-  source_label: string | null;
-}
 
 export interface MaterializedSourceParams {
   catalog_item_id: string;
@@ -574,7 +465,6 @@ export interface DerTopologyPayload {
   lv_switchgear_variant: LvSwitchgearVariant;
   has_block_transformer: boolean;
   block_transformer: DerBlockTransformerSpec | null;
-  has_dedicated_mv_field: boolean;
   mv_field_configuration: DerMvFieldConfigurationSpec | null;
   mv_bus_ref: string | null;
   // D1 wymaganie 9: jawny „sposób przyłączenia" (ADDYTYWNY — brak → dotychczasowe zachowanie).
@@ -618,110 +508,7 @@ export interface AddConverterSourcePayload {
   deklaracje_modulu?: DeklaracjeModulu | null;
 }
 
-export interface AddGensetNNPayload {
-  bus_nn_ref: string;
-  station_ref: string;
-  placement: SourcePlacement;
-  existing_field_ref: string | null;
-  source_field: NNSourceFieldSpec | null;
-  genset_spec: GensetSpec;
-}
-
-export interface AddUPSNNPayload {
-  bus_nn_ref: string;
-  station_ref: string;
-  placement: SourcePlacement;
-  existing_field_ref: string | null;
-  source_field: NNSourceFieldSpec | null;
-  ups_spec: UPSSpec;
-}
-
-export type NNLoadKind = 'SKUPIONY' | 'ROZPROSZONY';
 export type NNConnectionType = 'JEDNOFAZOWY' | 'TROJFAZOWY';
-
-export interface AddNNLoadPayload {
-  feeder_ref: string;
-  bus_nn_ref: string;
-  load_kind: NNLoadKind;
-  active_power_kw: number;
-  reactive_power_kvar: number | null;
-  cos_phi: number | null;
-  connection_type: NNConnectionType;
-  /**
-   * Fazy przyłączenia (W5-D, `AddNnLoad.phases` w `enm/domain_ops_models.py`):
-   * pomijane = trójfazowy symetryczny; `A`/`B`/`C` = jednofazowy faza–N;
-   * `AB`/`BC`/`CA` = międzyfazowy. Czyta je rozpływ niesymetryczny.
-   */
-  phases?: PhaseSet | null;
-  load_name: string | null;
-  load_label: string | null;
-}
-
-// --- Operation payloads ---
-export interface AddGridSourceSNPayload {
-  source_name?: string;
-  bus_name?: string;
-  voltage_kv: number;
-  sk3_mva?: number;
-  ik3_ka?: number;
-  rx_ratio?: number;
-  /** Dane scenariusza MIN (CV-4.3 K7) — po tej samej stronie co sk3_mva/ik3_ka. */
-  sk3_min_mva?: number;
-  ik3_min_ka?: number;
-  rx_ratio_min?: number;
-  /** Napięcie zadane szyny bilansującej [p.u.]; 0,8–1,2; brak = 1,0. */
-  u_set_pu?: number;
-  catalog_binding?: CatalogBindingPayload | null;
-  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
-  catalog_ref?: string | null;
-}
-
-export interface AddSnBayPayload {
-  bus_ref: string;
-  station_ref?: string | null;
-  bay_role?: 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
-  field_name?: string | null;
-  apparatus_kind?: 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT' | null;
-  gpz_section_id?: string | null;
-  catalog_binding?: CatalogBindingPayload | null;
-  // V12K-058 (G-POLE-R): powiązanie z szablonem pola producenta (Reference Engine).
-  switchgear_family_ref?: string | null;
-  bay_template_ref?: string | null;
-  manufacturer_ref?: string | null;
-}
-
-export interface ContinueTrunkSegmentSNPayload {
-  trunk_id: string;
-  from_terminal_id: string;
-  segment: SegmentSpec;
-  parametry_jawne?: Record<string, unknown>;
-}
-
-export interface InsertStationOnSegmentSNPayload {
-  segment_id: string;
-  insert_at: InsertAt;
-  station: StationSpec;
-  sn_fields: SNFieldSpec[];
-  transformer: TransformerSpec;
-  nn_block: NNBlockSpec;
-}
-
-export interface StartBranchSegmentSNPayload {
-  from_ref: string;
-  from_port?: string;
-  segment: SegmentSpec;
-}
-
-export interface ConnectSecondaryRingSNPayload {
-  from_bus_ref: string;
-  to_bus_ref: string;
-  segment?: SegmentSpec;
-}
-
-export interface SetNormalOpenPointPayload {
-  switch_ref: string;
-  corridor_ref?: string;
-}
 
 // =============================================================================
 // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
@@ -760,10 +547,9 @@ export interface DeleteGpzSectionPayload {
 }
 
 // =============================================================================
-// K5-B (H-3): tryb pracy źródła + profil dynamiczny (lustrzane odbicie
-// backendu: enm/domain_operations_v2.py `set_source_operating_mode` /
-// `set_dynamic_profile` — payload czytany kluczami `source_ref`/`mode` oraz
-// `element_ref`/`profile`).
+// K5-B (H-3): tryb pracy źródła (lustrzane odbicie backendu:
+// enm/domain_operations_v2.py `set_source_operating_mode` — payload czytany
+// kluczami `source_ref`/`mode`).
 // =============================================================================
 
 /** Słownik trybów pracy źródła — 1:1 z `BaySourceEndpoint.operating_mode`
@@ -775,21 +561,4 @@ export type SourceOperatingMode =
   | 'rozladowanie'
   | 'gotowosc'
   | 'odstawione';
-
-export interface SetSourceOperatingModePayload {
-  source_ref: string;
-  mode: SourceOperatingMode;
-}
-
-/** Interpolacja profilu — backend domyślnie 'HOLD' (`set_dynamic_profile`). */
-export interface DynamicProfileSpec {
-  time_unit?: string;
-  points: ReadonlyArray<readonly [number, number]>;
-  interpolation?: string;
-}
-
-export interface SetDynamicProfilePayload {
-  element_ref: string;
-  profile: DynamicProfileSpec;
-}
 

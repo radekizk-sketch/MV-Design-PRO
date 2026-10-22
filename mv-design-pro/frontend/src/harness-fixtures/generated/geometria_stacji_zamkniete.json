@@ -3227,15 +3227,27 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/7f4129b9842edbaedc3eb996f6141f2a/segment"
+            "segment_ref": "seg/7f4129b9842edbaedc3eb996f6141f2a/segment_L"
           },
           {
             "order": 2,
-            "segment_ref": "seg/fe376eaf3dfe7a4ad9606fe2d2f3e71f/segment"
+            "segment_ref": "seg/7f4129b9842edbaedc3eb996f6141f2a/segment_R"
           },
           {
             "order": 3,
-            "segment_ref": "seg/2f1f0b34048eb60224c2557c30055539/segment"
+            "segment_ref": "seg/fe376eaf3dfe7a4ad9606fe2d2f3e71f/segment_L"
+          },
+          {
+            "order": 4,
+            "segment_ref": "seg/fe376eaf3dfe7a4ad9606fe2d2f3e71f/segment_R"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/2f1f0b34048eb60224c2557c30055539/segment_L"
+          },
+          {
+            "order": 6,
+            "segment_ref": "seg/2f1f0b34048eb60224c2557c30055539/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",

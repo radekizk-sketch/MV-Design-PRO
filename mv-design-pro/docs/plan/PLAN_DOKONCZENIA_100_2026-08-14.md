@@ -526,7 +526,7 @@ SIECI 15/20; SafeRing/Rotoblok Air: klasy izolacji Um 12/17,5/24). Karta:
 z transkrypcją per rodzina ZE ŹRÓDŁA (karta producenta — zero zgadywania,
 rodzina bez danych = None z komentarzem); (2) przepisać `family_supports_voltage`
 na jednoznaczną semantykę; (3) WŁĄCZYĆ walidację napięciową w
-`add_sn_bay_from_catalog` (dziś celowo wyłączona — sekcja 10 dokumentu
+`add_sn_bay_from_catalog` (skasowana 2026-10-22 jako dubel `add_sn_bay`, karta MENU-KANON; wtedy celowo wyłączona — sekcja 10 dokumentu
 konfiguratora); (4) testy iloczynu (rodzina sieciowa × klasowa × brak danych).
 Granice: `network_model/catalog/switchgear/**`, `enm/pole_katalogowe.py`,
 testy. UWAGA: nie zlecać równolegle z BLOKI-RMU-5-RODZIN (te same pliki) —

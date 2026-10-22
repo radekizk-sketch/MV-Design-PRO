@@ -121,7 +121,6 @@ class TestNoDefaultLengthBranch:
                 "station_type": "branch",
                 "transformer": {"transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
                 "station": {"nn_voltage_kv": 0.4},
-                "nn_voltage_kv": 0.4,
             },
         )
         assert (

@@ -22,21 +22,51 @@ export type SldElementKindForMenu =
   | 'der_pv'
   | 'der_bess'
   | 'der_fw'
-  | 'der';
+  | 'der'
+  // Schemat nN stacji (portal domeny nN, `sld/v3/lv-domain`): obiekty rysunku nN
+  // zakotwiczone w modelu (`lv-domain/lvMenuSubject.ts`).
+  | 'nn_cable'
+  | 'nn_apparatus'
+  | 'nn_terminal'
+  | 'nn_load';
+
+/**
+ * Kanon menu kontekstowego SLD (`docs/v12xx/SLD_CAD_ENGINE_V12.md` § „Kanoniczne menu
+ * kontekstowe", rozstrzygnięcie V12K-352): sekcje mają STAŁĄ kolejność, a „Usuń" jest
+ * zawsze ostatnia — operacja destrukcyjna nie miesza się z edycją i analizą. Kanon wiąże
+ * TREŚĆ żywego rejestru `SLD_MENU_REGISTRY` (jedynej ścieżki menu: rejestr →
+ * `SldContextMenuController` → `useSldActionExecutor`), nie nazwę pliku. Kolejność pozycji
+ * w rejestrze JEST kolejnością na ekranie — nie ma sortowania w locie, więc test kanonu
+ * (`sld/v2/command/__tests__/kanonMenuKontekstowego.test.ts`) czyta dokładnie to, co widzi
+ * projektant.
+ */
+export const SEKCJE_MENU_SLD = [
+  'Otwórz',
+  'Edytuj',
+  'Dodaj',
+  'Analizuj',
+  'Wyniki',
+  'Uzasadnienie',
+  'Raport',
+  'Operacje',
+  'Usuń',
+] as const;
+
+export type SekcjaMenuSld = (typeof SEKCJE_MENU_SLD)[number];
 
 export interface SldMenuAction {
   readonly id: string;
   readonly labelPl: string;
-  readonly group?: 'budowa' | 'edycja' | 'widok' | 'usun';
+  readonly section: SekcjaMenuSld;
   readonly disabled?: boolean;
   readonly disabledReasonPl?: string;
 }
 
 /** W5-C: pozycje stanu łącznika — JEDNA lista dla menu pola i aparatu. */
 const POZYCJE_STANU_LACZNIKA: readonly SldMenuAction[] = [
-  { id: 'open-switch', labelPl: 'Otwórz łącznik', group: 'edycja' },
-  { id: 'close-switch', labelPl: 'Zamknij łącznik', group: 'edycja' },
-  { id: 'set-normal-open-point', labelPl: 'Ustaw punkt normalnie otwarty', group: 'edycja' },
+  { id: 'open-switch', labelPl: 'Otwórz łącznik', section: 'Operacje' },
+  { id: 'close-switch', labelPl: 'Zamknij łącznik', section: 'Operacje' },
+  { id: 'set-normal-open-point', labelPl: 'Ustaw punkt normalnie otwarty', section: 'Operacje' },
 ];
 
 /**
@@ -70,16 +100,41 @@ export function powodBlokadyStanuLacznika(
   return null;
 }
 
+/**
+ * V12K-352: pozycje wspólne dla wszystkich rodzajów źródła OZE (PV, BESS, farma wiatrowa,
+ * generator bez rozpoznanego podtypu). Żadna nie zależy od podtypu — każda ma realny cel
+ * w wykonawcy (`shared/sldActionExecutor.ts`):
+ *  - `edit-source-module` — kreator „Edycja parametrów elementu" (operacja
+ *    `update_element_parameters`, dane modułu wytwórczego NC RfG generatora);
+ *  - `show-ncrfg` — macierz wymogów NC RfG (zakładka „ncrfg" warsztatu Wyników);
+ *  - `show-results` — zakładka „Rozpływ" warsztatu Wyników z kontekstem elementu;
+ *  - `show-sc-contributions` — zakładka „Zwarcia" warsztatu Wyników (wkłady źródeł
+ *    do prądu zwarciowego w każdym punkcie zwarcia);
+ *  - `show-rationale` — dowody obliczeń (E-36).
+ */
+const POZYCJE_ZRODLA_EDYCJA: readonly SldMenuAction[] = [
+  { id: 'edit-source-module', labelPl: 'Edytuj dane modułu wytwórczego', section: 'Edytuj' },
+];
+const POZYCJE_ZRODLA_OCENA: readonly SldMenuAction[] = [
+  { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', section: 'Analizuj' },
+];
+const POZYCJE_ZRODLA_WYNIKI: readonly SldMenuAction[] = [
+  { id: 'show-results', labelPl: 'Pokaż wyniki źródła OZE', section: 'Wyniki' },
+  { id: 'show-sc-contributions', labelPl: 'Pokaż wkłady zwarciowe źródeł', section: 'Wyniki' },
+  { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', section: 'Uzasadnienie' },
+];
+
 export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly SldMenuAction[]>> = {
   background: [
-    { id: 'insert-gpz', labelPl: 'Wstaw główny punkt zasilania', group: 'budowa' },
-    { id: 'open-catalogs', labelPl: 'Otwórz katalogi techniczne', group: 'widok' },
-    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
+    { id: 'open-catalogs', labelPl: 'Otwórz katalogi techniczne', section: 'Otwórz' },
+    { id: 'insert-gpz', labelPl: 'Wstaw główny punkt zasilania', section: 'Dodaj' },
+    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', section: 'Analizuj' },
   ],
   gpz: [
-    { id: 'open-source', labelPl: 'Edytuj główny punkt zasilania', group: 'edycja' },
-    { id: 'show-sc-source', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
-    { id: 'add-section', labelPl: 'Dodaj sekcję rozdzielni SN', group: 'budowa' },
+    // Karta W2-B: dane zwarciowe źródła mieszkają w karcie „Strona 110 kV" konfiguratora GPZ.
+    { id: 'show-sc-source', labelPl: 'Pokaż dane zwarciowe źródła', section: 'Otwórz' },
+    { id: 'open-source', labelPl: 'Edytuj główny punkt zasilania', section: 'Edytuj' },
+    { id: 'add-section', labelPl: 'Dodaj sekcję rozdzielni SN', section: 'Dodaj' },
     /* Karta S9-5 (audyt B-4 „dalsza budowa nie ma ścieżki na kanwie"): PIERWSZE
      * ogniwo budowy ciągu SN. Źródło GPZ jest jedynym obiektem sieci pustej —
      * bez tych dwóch pozycji projektant nie mógł ruszyć magistrali z rysunku
@@ -88,170 +143,201 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
      * `elementType==='Source'` zwraca szynę SN GPZ jako `from_bus_ref` i
      * `is_first_trunk_segment=true`; `resolveBranchStartOperationContext` — tę
      * samą szynę jako `from_bus_ref` odgałęzienia. */
-    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', group: 'budowa' },
-    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
+    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', section: 'Dodaj' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', section: 'Dodaj' },
   ],
   section: [
-    { id: 'add-bay', labelPl: 'Dodaj pole SN', group: 'budowa' },
+    // Karta W2-B: etykieta była identyczna z 'show-sc-source' menu GPZ mimo innego
+    // przedmiotu akcji (sekcja, nie źródło) — naprawione przy wpięciu realnej nawigacji.
+    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe sekcji', section: 'Otwórz' },
+    { id: 'add-bay', labelPl: 'Dodaj pole SN', section: 'Dodaj' },
     /* Karta S9-5: szyna sekcji jest punktem, z którego ciąg i odgałęzienie
      * wychodzą fizycznie — `elementType==='Bus'` jest obsługiwany przez oba
      * resolvery kontekstu (`continue_trunk_segment_sn`,
      * `start_branch_segment_sn`), więc pozycje mają realne pokrycie. */
-    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', group: 'budowa' },
-    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
+    { id: 'continue-trunk', labelPl: 'Wyprowadź ciąg główny SN', section: 'Dodaj' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', section: 'Dodaj' },
     /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
      * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
-    { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', group: 'budowa' },
-    // Karta W2-B: etykieta byla identyczna z 'show-sc-source' menu GPZ
-    // ('Pokaz dane zwarciowe zrodla') mimo innego przedmiotu akcji (sekcja,
-    // nie zrodlo) — naprawione przy okazji wpiecia realnej nawigacji dla obu
-    // akcji (byly wczesniej dwoma zaslepkami roadmapy, jedna dokladnie
-    // skopiowana etykieta z drugiej).
-    { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe sekcji', group: 'widok' },
-    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
+    { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', section: 'Dodaj' },
+    /* Odbiór i generator synchroniczny przyłączone WPROST do szyny sekcji —
+     * realne operacje `add_load_sn` i `add_generator_sn` (bus_ref = kliknięta szyna). */
+    { id: 'add-load-sn', labelPl: 'Dodaj odbiór SN', section: 'Dodaj' },
+    { id: 'add-sync-generator', labelPl: 'Dodaj generator synchroniczny', section: 'Dodaj' },
+    { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', section: 'Analizuj' },
   ],
   bay: [
-    { id: 'open-bay', labelPl: 'Otwórz okno pola', group: 'edycja' },
-    { id: 'configure-equipment', labelPl: 'Skonfiguruj aparaturę', group: 'edycja' },
-    { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
-    { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
-    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
+    { id: 'open-bay', labelPl: 'Otwórz okno pola', section: 'Otwórz' },
+    { id: 'show-measurements', labelPl: 'Pokaż pomiary pola', section: 'Otwórz' },
+    { id: 'configure-equipment', labelPl: 'Skonfiguruj aparaturę', section: 'Edytuj' },
+    { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', section: 'Edytuj' },
+    { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', section: 'Edytuj' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', section: 'Dodaj' },
     /* K5-A (H-4): ogranicznik przepięć na field_spec pola — realna operacja
      * add_surge_arrester_sn (field_ref = kliknięte pole). */
-    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', group: 'budowa' },
+    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', section: 'Dodaj' },
     /* Phase 0B (operator-grade SLD plan v2): Append-on-Endpoint workflow */
-    { id: 'append-station-on-endpoint', labelPl: 'Zakończ ciąg w stacji', group: 'budowa' },
+    { id: 'append-station-on-endpoint', labelPl: 'Zakończ ciąg w stacji', section: 'Dodaj' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki pola', section: 'Wyniki' },
+    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', section: 'Uzasadnienie' },
     /* W5-C: stan łącznika pola — operacje kanoniczne `open_switch`/`close_switch`
      * i `set_normal_open_point` na JEDYNYM łączniku pola (`lacznikTematu`). Dawna
      * pozycja „Zmień stan łącznika" otwierała kreator punktu podziału z refem POLA jako
      * łącznikiem — backend zawsze odmawiał (martwa pozycja pod mylącą etykietą). */
     ...POZYCJE_STANU_LACZNIKA,
-    { id: 'show-measurements', labelPl: 'Pokaż pomiary pola', group: 'widok' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki pola', group: 'widok' },
-    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', group: 'widok' },
-    { id: 'delete-bay', labelPl: 'Usuń pole', group: 'usun' },
+    { id: 'delete-bay', labelPl: 'Usuń pole', section: 'Usuń' },
   ],
   apparatus: [
-    { id: 'open-bay', labelPl: 'Otwórz kartę pola', group: 'edycja' },
+    { id: 'open-bay', labelPl: 'Otwórz kartę pola', section: 'Otwórz' },
+    { id: 'configure-equipment', labelPl: 'Skonfiguruj aparat', section: 'Edytuj' },
+    { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', section: 'Edytuj' },
+    { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', section: 'Edytuj' },
+    { id: 'extend-trunk', labelPl: 'Wyprowadź ciąg główny z głowicy', section: 'Dodaj' },
+    /* K5-A (H-4): aparat sceny niesie ref pola macierzystego (bayRef) —
+     * ta sama operacja add_surge_arrester_sn co z menu pola. */
+    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', section: 'Dodaj' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki aparatu', section: 'Wyniki' },
+    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', section: 'Uzasadnienie' },
     /* W5-C: aparat łącznikowy (gałąź `switch`/`breaker`/`disconnector`/`bus_coupler`/
      * `fuse` albo aparat pola) — te same trzy operacje stanu co w menu pola. */
     ...POZYCJE_STANU_LACZNIKA,
-    { id: 'configure-equipment', labelPl: 'Skonfiguruj aparat', group: 'edycja' },
-    { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
-    { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
-    { id: 'extend-trunk', labelPl: 'Wyprowadź ciąg główny z głowicy', group: 'budowa' },
-    /* K5-A (H-4): aparat sceny niesie ref pola macierzystego (bayRef) —
-     * ta sama operacja add_surge_arrester_sn co z menu pola. */
-    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', group: 'budowa' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki aparatu', group: 'widok' },
-    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', group: 'widok' },
   ],
   cable_segment_sn: [
-    { id: 'continue-trunk-from-endpoint', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
-    { id: 'insert-station', labelPl: 'Zakończ odcinek stacją SN/nN', group: 'budowa' },
-    { id: 'insert-zksn', labelPl: 'Zakończ odcinek w ZK SN', group: 'budowa' },
-    /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
-    { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
-    { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
+    { id: 'open-segment-card', labelPl: 'Otwórz kartę odcinka', section: 'Otwórz' },
+    { id: 'change-catalog', labelPl: 'Zmień katalog kabla', section: 'Edytuj' },
+    { id: 'edit-laying', labelPl: 'Edytuj parametry ułożenia', section: 'Edytuj' },
+    { id: 'change-family-to-overhead', labelPl: 'Zmień rodzinę na linię napowietrzną SN', section: 'Edytuj' },
+    { id: 'continue-trunk-from-endpoint', labelPl: 'Kontynuuj ciąg główny', section: 'Dodaj' },
+    { id: 'insert-station', labelPl: 'Zakończ odcinek stacją SN/nN', section: 'Dodaj' },
+    { id: 'insert-zksn', labelPl: 'Zakończ odcinek w ZK SN', section: 'Dodaj' },
+    { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', section: 'Dodaj' },
     /* Karta S9-5: pozycja „Wstaw mufę kablową" USUNIĘTA — obietnica bez
      * dostawcy. `CANONICAL_OPS` backendu nie ma operacji wstawienia mufy, a
-     * `Branch.cable_joints` nie ma edytora na żadnym ekranie (sprawdzone
-     * grepem po całym froncie: pole jest tylko CZYTANE — etykieta „mufa" na
-     * rysunku i symbol `jointSleeve`). Klik dawał wyłącznie komunikat „Etap 4
-     * roadmapy", czyli dokładnie martwą pozycję, którą audyt nazywa gorszą od
-     * jej braku (znalezisko E-1, ta sama klasa). Zdolność wraca do menu
-     * RAZEM z operacją domenową, nie wcześniej. */
-    { id: 'change-catalog', labelPl: 'Zmień katalog kabla', group: 'edycja' },
-    { id: 'edit-laying', labelPl: 'Edytuj parametry ułożenia', group: 'edycja' },
-    { id: 'show-thermal', labelPl: 'Pokaż obciążalność cieplną', group: 'widok' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki odcinka', group: 'widok' },
-    { id: 'change-family-to-overhead', labelPl: 'Zmień rodzinę na linię napowietrzną SN', group: 'edycja' },
-    { id: 'delete-segment', labelPl: 'Usuń odcinek', group: 'usun' },
+     * `Branch.cable_joints` nie ma edytora na żadnym ekranie (pole jest tylko
+     * CZYTANE — etykieta „mufa" na rysunku i symbol `jointSleeve`). Zdolność
+     * wraca do menu RAZEM z operacją domenową, nie wcześniej. */
+    { id: 'show-thermal', labelPl: 'Pokaż obciążalność cieplną', section: 'Analizuj' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki odcinka', section: 'Wyniki' },
+    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', section: 'Uzasadnienie' },
+    /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
+    { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', section: 'Operacje' },
+    { id: 'delete-segment', labelPl: 'Usuń odcinek', section: 'Usuń' },
   ],
   overhead_line_sn: [
-    { id: 'continue-trunk-from-endpoint', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
-    { id: 'insert-station', labelPl: 'Zakończ odcinek stacją SN/nN', group: 'budowa' },
-    { id: 'insert-pole', labelPl: 'Zakończ odcinek słupem rozgałęźnym', group: 'budowa' },
-    /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
-    { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
-    { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
-    { id: 'change-catalog', labelPl: 'Zmień katalog przewodu', group: 'edycja' },
-    { id: 'edit-line', labelPl: 'Edytuj parametry linii', group: 'edycja' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki odcinka', group: 'widok' },
-    { id: 'change-family-to-cable', labelPl: 'Zmień rodzinę na kabel SN', group: 'edycja' },
-    { id: 'delete-segment', labelPl: 'Usuń odcinek', group: 'usun' },
+    { id: 'open-segment-card', labelPl: 'Otwórz kartę odcinka', section: 'Otwórz' },
+    { id: 'change-catalog', labelPl: 'Zmień katalog przewodu', section: 'Edytuj' },
+    { id: 'edit-line', labelPl: 'Edytuj parametry linii', section: 'Edytuj' },
+    { id: 'change-family-to-cable', labelPl: 'Zmień rodzinę na kabel SN', section: 'Edytuj' },
+    { id: 'continue-trunk-from-endpoint', labelPl: 'Kontynuuj ciąg główny', section: 'Dodaj' },
+    { id: 'insert-station', labelPl: 'Zakończ odcinek stacją SN/nN', section: 'Dodaj' },
+    { id: 'insert-pole', labelPl: 'Zakończ odcinek słupem rozgałęźnym', section: 'Dodaj' },
+    { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', section: 'Dodaj' },
+    { id: 'show-thermal', labelPl: 'Pokaż obciążalność cieplną', section: 'Analizuj' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki odcinka', section: 'Wyniki' },
+    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', section: 'Uzasadnienie' },
+    { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', section: 'Operacje' },
+    { id: 'delete-segment', labelPl: 'Usuń odcinek', section: 'Usuń' },
   ],
   station: [
-    { id: 'open-station-config', labelPl: 'Otwórz konfigurator stacji', group: 'edycja' },
-    { id: 'continue-trunk', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
-    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
-    { id: 'add-source', labelPl: 'Dodaj źródło PV/BESS/FW z katalogu', group: 'budowa' },
-    { id: 'add-load', labelPl: 'Dodaj obciążenie nN', group: 'budowa' },
+    { id: 'open-station-config', labelPl: 'Otwórz konfigurator stacji', section: 'Otwórz' },
+    /* V12K-352: karty konfiguratora stacji otwierane WPROST (deep-link `defaultCard`,
+     * `ACTION_DEFAULT_CARD` wykonawcy, czytany przez `stationDefaultCard`). Strona nN jest
+     * kartą przeglądową (bilans rozdzielnic i odbiorów) — stąd „Pokaż", nie „Edytuj". */
+    { id: 'show-station-nn', labelPl: 'Pokaż stronę nN stacji', section: 'Otwórz' },
+    { id: 'edit-station-bays', labelPl: 'Edytuj pola SN stacji', section: 'Edytuj' },
+    { id: 'edit-station-transformer', labelPl: 'Edytuj transformator SN/nN', section: 'Edytuj' },
+    { id: 'continue-trunk', labelPl: 'Kontynuuj ciąg główny', section: 'Dodaj' },
+    { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', section: 'Dodaj' },
+    { id: 'add-source', labelPl: 'Dodaj źródło PV/BESS/FW z katalogu', section: 'Dodaj' },
+    { id: 'add-load', labelPl: 'Dodaj obciążenie nN', section: 'Dodaj' },
     /* W5-E-TTIT: ochrona instalacji odbioru nN w układzie TT — realna operacja
      * add_nn_rcd (kreator „Wyłącznik różnicowoprądowy nN" wybiera odbiór). */
-    { id: 'add-rcd', labelPl: 'Dodaj wyłącznik różnicowoprądowy nN', group: 'budowa' },
+    { id: 'add-rcd', labelPl: 'Dodaj wyłącznik różnicowoprądowy nN', section: 'Dodaj' },
     /* K5-A (H-4): źródła dyspozycyjne nN stacji — realne operacje
      * add_genset_nn / add_ups_nn (kreator „Źródło dyspozycyjne nN"). */
-    { id: 'add-genset', labelPl: 'Dodaj agregat prądotwórczy nN', group: 'budowa' },
-    { id: 'add-ups', labelPl: 'Dodaj zasilacz UPS nN', group: 'budowa' },
-    { id: 'show-readiness', labelPl: 'Pokaż konfigurację stacji', group: 'widok' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki stacji', group: 'widok' },
-    { id: 'delete-station', labelPl: 'Usuń stację', group: 'usun' },
+    { id: 'add-genset', labelPl: 'Dodaj agregat prądotwórczy nN', section: 'Dodaj' },
+    { id: 'add-ups', labelPl: 'Dodaj zasilacz UPS nN', section: 'Dodaj' },
+    /* V12K-352: dawna pozycja „Pokaż konfigurację stacji" (`show-readiness`) prowadziła do
+     * GLOBALNEJ listy braków modelu (E-04 nie filtruje po obiekcie) — etykieta obiecywała
+     * stację, a ekran pokazywał całą sieć. Teraz karta „Gotowość" konfiguratora TEJ stacji. */
+    { id: 'show-station-readiness', labelPl: 'Sprawdź gotowość stacji', section: 'Analizuj' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki stacji', section: 'Wyniki' },
+    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', section: 'Uzasadnienie' },
+    { id: 'delete-station', labelPl: 'Usuń stację', section: 'Usuń' },
   ],
   zksn: [
-    { id: 'open-zksn-card', labelPl: 'Otwórz kartę ZK SN', group: 'widok' },
-    { id: 'start-branch', labelPl: 'Wyprowadź odgałęzienie kablowe', group: 'budowa' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki ZK SN', group: 'widok' },
-    { id: 'delete-zksn', labelPl: 'Usuń ZK SN', group: 'usun' },
+    { id: 'open-zksn-card', labelPl: 'Otwórz kartę ZK SN', section: 'Otwórz' },
+    { id: 'start-branch', labelPl: 'Wyprowadź odgałęzienie kablowe', section: 'Dodaj' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki ZK SN', section: 'Wyniki' },
+    { id: 'delete-zksn', labelPl: 'Usuń ZK SN', section: 'Usuń' },
   ],
   branch_pole: [
-    { id: 'open-branch-pole-card', labelPl: 'Otwórz kartę słupa', group: 'widok' },
-    { id: 'start-branch', labelPl: 'Wyprowadź odgałęzienie napowietrzne', group: 'budowa' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki słupa', group: 'widok' },
-    { id: 'delete-branch-pole', labelPl: 'Usuń słup', group: 'usun' },
+    { id: 'open-branch-pole-card', labelPl: 'Otwórz kartę słupa', section: 'Otwórz' },
+    { id: 'start-branch', labelPl: 'Wyprowadź odgałęzienie napowietrzne', section: 'Dodaj' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki słupa', section: 'Wyniki' },
+    { id: 'delete-branch-pole', labelPl: 'Usuń słup', section: 'Usuń' },
   ],
   der_pv: [
-    { id: 'open-pv-config', labelPl: 'Otwórz kartę PV', group: 'edycja' },
-    { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', group: 'widok' },
-    { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
-    { id: 'delete-pv', labelPl: 'Usuń źródło PV', group: 'usun' },
+    { id: 'open-pv-config', labelPl: 'Otwórz kartę PV', section: 'Otwórz' },
+    ...POZYCJE_ZRODLA_EDYCJA,
+    { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', section: 'Analizuj' },
+    ...POZYCJE_ZRODLA_OCENA,
+    ...POZYCJE_ZRODLA_WYNIKI,
+    { id: 'delete-pv', labelPl: 'Usuń źródło PV', section: 'Usuń' },
   ],
   der_bess: [
-    { id: 'open-bess-config', labelPl: 'Otwórz kartę BESS', group: 'edycja' },
-    { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', group: 'widok' },
-    { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
-    { id: 'delete-bess', labelPl: 'Usuń magazyn BESS', group: 'usun' },
+    { id: 'open-bess-config', labelPl: 'Otwórz kartę BESS', section: 'Otwórz' },
+    ...POZYCJE_ZRODLA_EDYCJA,
+    { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', section: 'Analizuj' },
+    ...POZYCJE_ZRODLA_OCENA,
+    ...POZYCJE_ZRODLA_WYNIKI,
+    { id: 'delete-bess', labelPl: 'Usuń magazyn BESS', section: 'Usuń' },
   ],
   der_fw: [
-    { id: 'open-fw-config', labelPl: 'Otwórz kartę FW', group: 'edycja' },
-    { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', group: 'widok' },
-    { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
-    { id: 'delete-fw', labelPl: 'Usuń farmę wiatrową', group: 'usun' },
+    { id: 'open-fw-config', labelPl: 'Otwórz kartę FW', section: 'Otwórz' },
+    ...POZYCJE_ZRODLA_EDYCJA,
+    { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', section: 'Analizuj' },
+    ...POZYCJE_ZRODLA_OCENA,
+    ...POZYCJE_ZRODLA_WYNIKI,
+    { id: 'delete-fw', labelPl: 'Usuń farmę wiatrową', section: 'Usuń' },
   ],
   /**
    * Karta SLD-P (GAP P-1 „menu kontekstowe DER na v3") — DER-MENU-V3: kanwa v3
-   * niesie TERAZ podtyp DER w `meta.derKind` (REALNA wartość `SldSourceView.
-   * kind` z łańcucha adaptera, `SldCanvasV3Workspace.elementKindForMenu`
-   * nagłówek), więc `pv`/`bess`/`wind` trafiają do PEŁNYCH kategorii
-   * `der_pv`/`der_bess`/`der_fw` wyżej (z `open-*-config`/`show-frt-hvrt`/
-   * `delete-*`) BEZ zgadywania. TEN generyczny rejestr `der` obsługuje
-   * WYŁĄCZNIE UCZCIWĄ DEGRADACJĘ: `generator` (brak osobnej kategorii w v2)
-   * oraz `unknown`/brak `derKind` (`Generator.gen_type` nierozpoznany/`null`
-   * — honest-unknown, `domain_no_guessing_guard`: NIGDY domysł podtypu). Niesie
-   * dwie akcje bez zależności od podtypu, z REALNYM celem w `useSldActionExecutor`
-   * (`shared/sldActionExecutor.ts`):
-   *  - `show-ncrfg` — TA SAMA etykieta/id co `der_pv`/`der_bess`/`der_fw`
-   *    wyżej (deep-link do macierzy wymogów NC RfG, karta P-1);
-   *  - `show-results` — wzorzec karty D-2 (deep-link do zakładki „Rozpływ"
-   *    warsztatu Wyników, preselekcja po ref klikniętego elementu).
-   * `open-*-config`/`show-frt-hvrt`/`delete-*` NIE są tu przeniesione (brak
-   * realnego ekranu docelowego bez znanego podtypu) — poprawna degradacja dla
-   * źródła nierozpoznanego, nie regresja v2.
+   * niesie podtyp DER w `meta.derKind` (REALNA wartość `SldSourceView.kind`), więc
+   * `pv`/`bess`/`wind` trafiają do PEŁNYCH kategorii `der_pv`/`der_bess`/`der_fw`
+   * wyżej BEZ zgadywania. TEN generyczny rejestr `der` obsługuje WYŁĄCZNIE UCZCIWĄ
+   * DEGRADACJĘ: `generator` (brak osobnej kategorii) oraz `unknown`/brak `derKind`
+   * (`Generator.gen_type` nierozpoznany/`null` — honest-unknown,
+   * `domain_no_guessing_guard`: NIGDY domysł podtypu). Niesie wyłącznie pozycje
+   * niezależne od podtypu (`POZYCJE_ZRODLA_*` wyżej). `open-*-config`/`show-frt-hvrt`/
+   * `delete-*` NIE są tu przeniesione (brak realnego ekranu docelowego bez znanego
+   * podtypu) — poprawna degradacja dla źródła nierozpoznanego.
    */
-  der: [
-    { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
-    { id: 'show-results', labelPl: 'Pokaż wyniki źródła OZE', group: 'widok' },
+  der: [...POZYCJE_ZRODLA_EDYCJA, ...POZYCJE_ZRODLA_OCENA, ...POZYCJE_ZRODLA_WYNIKI],
+  /*
+   * Schemat nN stacji (portal domeny nN). Każda pozycja ma realną operację domenową:
+   *  - `set-nn-laying` — kreator „Warunki ułożenia kabla nN" (`set_nn_cable_laying_conditions`);
+   *  - `split-nn-segment` — kreator „Podział odcinka kabla nN" (`split_nn_segment`);
+   *  - `merge-nn-segments` — scalenie DWÓCH odcinków przy zacisku (`merge_nn_segments`,
+   *    ładunek z migawki: `lv-domain/operacjeNn.ts`, bez okna — operacja nie ma parametrów);
+   *  - `copy-nn-feeder` — kopia odpływu od aparatu (`copy_nn_feeder`, bez okna);
+   *  - `delete-nn-*` — `delete_element` z potwierdzeniem (kaskada gałęzi dołączonych do
+   *    usuwanego zacisku i sprzątanie list szyn/sekcji stacji robi backend).
+   */
+  nn_cable: [
+    { id: 'set-nn-laying', labelPl: 'Edytuj warunki ułożenia kabla', section: 'Edytuj' },
+    { id: 'split-nn-segment', labelPl: 'Podziel odcinek kabla nN', section: 'Operacje' },
+    { id: 'delete-nn-cable', labelPl: 'Usuń odcinek kabla nN', section: 'Usuń' },
   ],
+  nn_apparatus: [
+    { id: 'copy-nn-feeder', labelPl: 'Kopiuj odpływ', section: 'Operacje' },
+    { id: 'delete-nn-apparatus', labelPl: 'Usuń aparat nN', section: 'Usuń' },
+  ],
+  nn_terminal: [
+    { id: 'merge-nn-segments', labelPl: 'Scal odcinki kabla przy zacisku', section: 'Operacje' },
+    { id: 'delete-nn-terminal', labelPl: 'Usuń zacisk nN', section: 'Usuń' },
+  ],
+  nn_load: [{ id: 'delete-nn-load', labelPl: 'Usuń odbiór nN', section: 'Usuń' }],
 };
 
 /** S9-10: powód blokady „Rozpocznij odgałęzienie" — jeden tekst dla menu kanwy,
@@ -307,12 +393,20 @@ export function getMenuActions(
     /** W5-C: stan łącznika obiektu (pozycje otwórz/zamknij/punkt podziału);
      *  brak klucza = brak pomiaru (bez blokady). */
     readonly lacznik?: StanLacznikaMenu;
+    /** Operacje bez okna na schemacie nN (scal / kopiuj odpływ): powód blokady pozycji
+     *  z TEJ SAMEJ funkcji, która buduje ładunek operacji (`lv-domain/operacjeNn.ts`);
+     *  `null` = pozycja dostępna, brak klucza = brak pomiaru (bez blokady). */
+    readonly powodyBlokadyNn?: Readonly<Partial<Record<string, string | null>>>;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
   const ctx = context ?? {};
 
   return baseActions.map((a) => {
+    const powodNn = ctx.powodyBlokadyNn?.[a.id];
+    if (typeof powodNn === 'string') {
+      return { ...a, disabled: true, disabledReasonPl: powodNn };
+    }
     if (ctx.lacznik && POZYCJE_STANU_LACZNIKA.some((pozycja) => pozycja.id === a.id)) {
       const powod = powodBlokadyStanuLacznika(a.id, ctx.lacznik);
       return powod ? { ...a, disabled: true, disabledReasonPl: powod } : a;

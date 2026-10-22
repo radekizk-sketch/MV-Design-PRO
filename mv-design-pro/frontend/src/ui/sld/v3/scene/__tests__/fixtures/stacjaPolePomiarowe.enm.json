@@ -806,7 +806,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "7b9de5931b4e429ec5c64e95f19c317c746b3edb194cba50eb921e38f67f92c6",
+      "hash_sha256": "059a5c8b29fe98ab68a5178ef2ce8ff644f77a690f25bae6d1b798e20087bbf9",
       "name": "Stacja z polem pomiarowym",
       "revision": 5,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -823,7 +823,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/cd3285aea708b65f4eb56f3d3adb4f95/segment"
+            "segment_ref": "seg/cd3285aea708b65f4eb56f3d3adb4f95/segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/cd3285aea708b65f4eb56f3d3adb4f95/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",

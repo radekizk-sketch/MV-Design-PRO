@@ -202,11 +202,7 @@ def _payload_stacji(sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
         "sn_fields": sn_fields,
         "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
         "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
-        "nn_block": {
-            "create_nn_bus": True,
-            "main_breaker_nn": True,
-            "outgoing_feeders_nn_count": 1,
-        },
+        "nn_block": {"outgoing_feeders_nn_count": 1},
     }
 
 
@@ -462,6 +458,10 @@ def test_pole_domykane_konca_ciagu_niesie_rodzaj_i_status_bez_kodow_zabezpieczen
         )
 
 
+# Klucz `sn_fields[].catalog_bindings` jest W kontrakcie drogi końca ciągu i POZA kontraktem
+# wcięcia w odcinek — test wysyła go obu drogom celowo, żeby przypiąć, że wcięcie go nie
+# czyta (czujnik ładunku zapisuje wpis, nie zamienia go w błąd).
+@pytest.mark.ladunek_spoza_kontraktu
 @pytest.mark.parametrize("tor", TORY_RODZIN)
 def test_powiazania_katalogowe_niesie_wylacznie_droga_konca_ciagu(tor: str) -> None:
     """Druga kopia prawdy pierwszej klasy ma DOKŁADNIE JEDNO miejsce zapisu.
@@ -526,3 +526,42 @@ def test_builder_jest_wlascicielem_struktur_zagniezdzonych(
         f"builder zapisal argument {nazwa_argumentu} PRZEZ REFERENCJE — "
         "wolajacy trzyma uchwyt do wnetrza migawki modelu"
     )
+
+
+@pytest.mark.parametrize("operacja", ["wciecie", "koniec_ciagu"])
+@pytest.mark.parametrize(
+    ("flaga", "transformator"),
+    [({}, True), ({"create": True}, True), ({"create": False}, False)],
+    ids=["brak_flagi", "create_true", "create_false"],
+)
+def test_flaga_create_transformatora_jednakowa_na_obu_drogach(
+    operacja: str, flaga: dict[str, bool], transformator: bool
+) -> None:
+    """`transformer.create` znaczy to samo przy wcięciu i na końcu ciągu (domyślnie prawda).
+
+    Dawniej koniec ciągu flagi nie czytał: ładunek `create: false` z pozycją katalogu
+    dawał stację Z transformatorem, a wcięcie — bez. Iloczyn: droga × {brak, prawda, fałsz}.
+    """
+    # Stacja bez transformatora nie ma pola transformatorowego (pole bez odbiornika).
+    wpisy = [
+        wpis
+        for wpis in _z_metadanymi(_wpisy_toru("MODULARNY"), ())
+        if transformator or wpis["field_role"] != "TRANSFORMATOROWE"
+    ]
+    ladunek = _payload_stacji(wpisy)
+    tr = {k: v for k, v in ladunek["transformer"].items() if k != "create"}
+    ladunek["transformer"] = {**tr, **flaga}
+    if operacja == "wciecie":
+        wynik = execute_domain_operation(
+            _enm_z_odcinkiem(),
+            "insert_station_on_segment_sn",
+            {**ladunek, "segment_id": "seg-1", "insert_at": {"mode": "RATIO", "value": 0.5}},
+        )
+    else:
+        wynik = execute_domain_operation(
+            _enm_z_odcinkiem(),
+            "append_station_on_endpoint",
+            {**ladunek, "endpoint_bus_ref": "bus-b"},
+        )
+    assert wynik.get("error") in (None, ""), wynik
+    assert bool((wynik.get("snapshot") or {}).get("transformers")) is transformator

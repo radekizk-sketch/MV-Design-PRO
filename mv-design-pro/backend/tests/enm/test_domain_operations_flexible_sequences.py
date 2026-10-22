@@ -94,7 +94,7 @@ def test_sequence_continue_continue_insert_station_then_branch():
             # POLA-W-TORZE: pole wyjściowe stacji niesie dalszą połówkę odcinka, więc
             # odgałęzienie ze stacji wychodzi z pola odgałęźnego — stacja odgałęźna (typ C).
             "station_type": "C",
-            "insert_at": {"ratio": 0.5},
+            "insert_at": {"mode": "RATIO", "value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "transformer": {
                 "create": True,
@@ -217,7 +217,6 @@ def test_sequence_reject_clear_and_reassign_catalog_keeps_snapshot_contract_vali
             "catalog_item_id": ALT_CABLE_ID,
             "catalog_namespace": ALT_CABLE_BINDING["catalog_namespace"],
             "catalog_item_version": "2024.1",
-            "source_mode": "KATALOG",
         },
     )
 
@@ -244,7 +243,6 @@ def test_sequence_reassign_catalog_accepts_binding_only_contract():
         {
             "element_ref": target_segment_ref,
             "catalog_binding": ALT_CABLE_BINDING,
-            "source_mode": "KATALOG",
         },
     )
 

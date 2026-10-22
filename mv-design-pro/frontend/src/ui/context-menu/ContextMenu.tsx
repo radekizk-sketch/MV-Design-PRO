@@ -1,32 +1,26 @@
 /**
- * Context Menu Component (PF-style)
+ * Menu kontekstowe schematu (jedyny konsument: `SldContextMenuController`).
  *
- * CANONICAL ALIGNMENT:
- * - wizard_screens.md § 4: Menu Kontekstowe specifications
- * - sld_rules.md § E.2, § E.3: Context Menu patterns
+ * Renderuje pozycje żywego rejestru `SLD_MENU_REGISTRY` w kolejności rejestru,
+ * z nagłówkiem sekcji przy każdej zmianie sekcji (kanon sekcji V12K-352:
+ * `SEKCJE_MENU_SLD`). Sekcja „Usuń" jest wyróżniona i oddzielona separatorem.
+ * Pozycja niedostępna pokazuje powód blokady w podpowiedzi.
  *
- * Features:
- * - Mode-aware action enabling/disabling
- * - Polish labels
- * - Submenu support
- * - Keyboard navigation
+ * V12K-352: obsługa podmenu, ikon, separatorów-pozycji i nagłówka z rodzaju
+ * elementu USUNIĘTA — dostarczały ich wyłącznie skasowane buildery
+ * `context-menu/actions.ts`; żywy rejestr nigdy ich nie używał.
  */
 
 import { Fragment, useEffect, useLayoutEffect, useRef, useCallback, useState } from 'react';
 import { clsx } from 'clsx';
 import { getOperatingModeLabel, normalizeOperatingMode } from '../operatingMode';
-import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
-import { hasTechnicalIcon, TechnicalIcon } from '../icons/technicalIconRegistry';
-import type { TechnicalIconName } from '../icons/technicalIconRegistry';
-import { getContextMenuHeader } from './actions';
+import type { ContextMenuAction, OperatingMode } from '../types';
 
 interface ContextMenuProps {
   isOpen: boolean;
   x: number;
   y: number;
-  elementType: ElementType;
-  elementName: string;
-  headerText?: string;
+  headerText: string;
   mode: OperatingMode;
   actions: ContextMenuAction[];
   onClose: () => void;
@@ -41,8 +35,6 @@ export function ContextMenu({
   isOpen,
   x,
   y,
-  elementType,
-  elementName,
   headerText,
   mode,
   actions,
@@ -100,10 +92,8 @@ export function ContextMenu({
   // Handle action click
   const handleActionClick = useCallback(
     (action: ContextMenuAction) => {
-      if (!action.enabled || action.separator) return;
-      if (action.handler) {
-        action.handler();
-      }
+      if (!action.enabled) return;
+      action.handler();
       onClose();
     },
     [onClose]
@@ -119,8 +109,6 @@ export function ContextMenu({
     zIndex: 1000,
   };
 
-  const visibleActions = actions.filter((action) => action.visible);
-
   return (
     <div
       ref={menuRef}
@@ -131,15 +119,15 @@ export function ContextMenu({
       {/* Header */}
       <div className="border-b border-scada-border bg-scada-surface px-3 py-2">
         <span className="text-sm font-semibold text-scada-text">
-          {headerText ?? getContextMenuHeader(elementType, elementName)}
+          {headerText}
         </span>
       </div>
 
       {/* Actions */}
       <div className="py-1">
-        {visibleActions.map((action, index) => {
-          const prev = visibleActions[index - 1];
-          const showSection = Boolean(action.section && action.section !== prev?.section && !action.separator);
+        {actions.map((action, index) => {
+          const prev = actions[index - 1];
+          const showSection = Boolean(action.section && action.section !== prev?.section);
           // D1: sekcja „Usuń" wizualnie wyróżniona — czerwony nagłówek + osobny separator
           const isDeleteSection = action.section === 'Usuń';
           // Separator nad sekcją „Usuń" — wizualnie oddziela operacje destrukcyjne
@@ -151,6 +139,8 @@ export function ContextMenu({
               )}
               {showSection && (
                 <div
+                  data-testid="context-menu-sekcja"
+                  data-sekcja={action.section}
                   className={clsx(
                     'px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest',
                     isDeleteSection ? 'text-red-400' : 'text-scada-muted',
@@ -196,65 +186,23 @@ interface ContextMenuItemProps {
 }
 
 function ContextMenuItem({ action, onClick, isDestructive = false }: ContextMenuItemProps) {
-  if (action.separator) {
-    return <div className="my-1 border-t border-gray-200" role="separator" />;
-  }
-
-  const hasSubmenu = action.submenu && action.submenu.length > 0;
-
   return (
-    <div className="relative group">
-      <button
-        onClick={onClick}
-        disabled={!action.enabled}
-        data-testid={action.testId}
-        title={!action.enabled ? action.blockedReason : undefined}
-        className={clsx(
-          'flex w-full items-center justify-between px-3 py-1.5 text-left text-sm',
-          !action.enabled && 'cursor-not-allowed text-scada-muted opacity-60',
-          action.enabled && isDestructive && 'text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo hover:text-red-200',
-          action.enabled && !isDestructive && 'text-scada-text hover:bg-scada-hover-nav hover:text-scada-sn',
-        )}
-        role="menuitem"
-      >
-        <span className="flex items-center gap-2">
-          {action.icon && <ContextMenuIcon icon={action.icon} />}
-          <span>{action.label}</span>
-        </span>
-        {hasSubmenu && <span className="text-scada-muted">&gt;</span>}
-      </button>
-
-      {/* Submenu */}
-      {hasSubmenu && action.enabled && (
-        <div className="absolute left-full top-0 hidden group-hover:block ml-0.5">
-          <div className="min-w-[220px] rounded border border-scada-border bg-scada-panel py-1 shadow-lg">
-            {action.submenu!.map((subAction) => (
-              <ContextMenuItem
-                key={subAction.actionKey ?? subAction.id}
-                action={subAction}
-                onClick={() => {
-                  if (subAction.handler) {
-                    subAction.handler();
-                  }
-                }}
-              />
-            ))}
-          </div>
-        </div>
+    <button
+      onClick={onClick}
+      disabled={!action.enabled}
+      data-testid={action.testId}
+      data-sekcja={action.section}
+      title={!action.enabled ? action.blockedReason : undefined}
+      className={clsx(
+        'flex w-full items-center px-3 py-1.5 text-left text-sm',
+        !action.enabled && 'cursor-not-allowed text-scada-muted opacity-60',
+        action.enabled && isDestructive && 'text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo hover:text-red-200',
+        action.enabled && !isDestructive && 'text-scada-text hover:bg-scada-hover-nav hover:text-scada-sn',
       )}
-    </div>
-  );
-}
-
-function ContextMenuIcon({ icon }: { icon: string }) {
-  if (!hasTechnicalIcon(icon)) {
-    return <span aria-hidden="true" className="h-4 w-4" />;
-  }
-
-  return (
-    <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center text-scada-muted">
-      <TechnicalIcon name={icon as TechnicalIconName} size={16} />
-    </span>
+      role="menuitem"
+    >
+      {action.label}
+    </button>
   );
 }
 

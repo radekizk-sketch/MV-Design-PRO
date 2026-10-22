@@ -2186,7 +2186,7 @@
        "role": "odgalezienie"
       }
      ],
-     "source_run_ref": null,
+     "source_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
      "source_segment_id": "seg/b8db725119733ac46ca169398b6b01fc/segment_R"
     },
     "source_mode": "KATALOG",
@@ -6069,7 +6069,7 @@
    },
    "description": null,
    "enm_version": "1.0",
-   "hash_sha256": "8381ac853c05127a0817c67a276fae565ef21046cc520e6d8d6c3962d39049df",
+   "hash_sha256": "b789004622f1ddb7431be55aa2b90acc2d152cba2479e57ddd12b35606a39008",
    "name": "Sieć pokazowa — pomiar w odgałęzieniu",
    "revision": 16,
    "updated_at": "2026-08-06T00:00:00Z"
@@ -6086,22 +6086,38 @@
     "segments": [
      {
       "order": 1,
-      "segment_ref": "seg/b8db725119733ac46ca169398b6b01fc/segment"
+      "segment_ref": "seg/b8db725119733ac46ca169398b6b01fc/segment_L"
      },
      {
       "order": 2,
-      "segment_ref": "seg/0f782dcf2420bc99e8cd15f27c6ffe2a/segment"
+      "segment_ref": "seg/b8db725119733ac46ca169398b6b01fc/segment_R_L_zksn"
      },
      {
       "order": 3,
-      "segment_ref": "seg/a05e4a087b12f3a628c842a89bd91cd1/segment"
+      "segment_ref": "seg/b8db725119733ac46ca169398b6b01fc/segment_R_R_zksn"
      },
      {
       "order": 4,
-      "segment_ref": "seg/33f2ac0de75846abe094e46a64b63638/segment_L_branch_pole"
+      "segment_ref": "seg/0f782dcf2420bc99e8cd15f27c6ffe2a/segment_L"
      },
      {
       "order": 5,
+      "segment_ref": "seg/0f782dcf2420bc99e8cd15f27c6ffe2a/segment_R"
+     },
+     {
+      "order": 6,
+      "segment_ref": "seg/a05e4a087b12f3a628c842a89bd91cd1/segment_L"
+     },
+     {
+      "order": 7,
+      "segment_ref": "seg/a05e4a087b12f3a628c842a89bd91cd1/segment_R"
+     },
+     {
+      "order": 8,
+      "segment_ref": "seg/33f2ac0de75846abe094e46a64b63638/segment_L_branch_pole"
+     },
+     {
+      "order": 9,
       "segment_ref": "seg/33f2ac0de75846abe094e46a64b63638/segment_R_branch_pole"
      }
     ],
@@ -6113,7 +6129,7 @@
     "branch_origin_station_ref": "bp/f34f1e61877283e7534184a0647a6f99/zksn",
     "id": "corridor/d96a5487e3718d286c841c8ceb4613ef/branch",
     "name": "Odgałęzienie SN kablowe",
-    "parent_run_ref": null,
+    "parent_run_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
     "run_kind": "branch",
     "segments": [
      {

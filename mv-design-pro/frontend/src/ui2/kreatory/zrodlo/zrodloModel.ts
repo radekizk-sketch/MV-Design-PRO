@@ -70,7 +70,6 @@ export interface GridSourceFormData {
   short_circuit_mode: ManualSourceShortCircuitMode;
   r_ohm: number | null;
   x_ohm: number | null;
-  notes: string;
   catalog_ref: string | null;
   gpz_section_name: string;
   gpz_line_field_name: string;
@@ -136,7 +135,6 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   short_circuit_mode: 'SHORT_CIRCUIT_POWER',
   r_ohm: null,
   x_ohm: null,
-  notes: '',
   catalog_ref: null,
   gpz_section_name: 'Sekcja',
   gpz_line_field_name: 'Pole liniowe GPZ',
@@ -670,8 +668,9 @@ export function brakImpedancjiUziemienia(data: GridSourceFormData): boolean {
 }
 
 function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown> {
+  // Napięcie SN zastępnika: `sn_voltage_kv` (jedyny klucz napięcia SN czytany w
+  // `manual_equivalent`; dawne `voltage_kv` w tym obiekcie było kopią bez czytelnika).
   const common = {
-    voltage_kv: data.sn_voltage_kv,
     sn_voltage_kv: data.sn_voltage_kv,
     // Napięcie WN jest daną równoważnika wyłącznie po stronie 110 kV.
     ...(data.short_circuit_input_side === 'HV_110' ? { hv_voltage_kv: data.hv_voltage_kv } : {}),

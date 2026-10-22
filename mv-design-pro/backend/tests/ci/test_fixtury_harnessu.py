@@ -309,8 +309,16 @@ def test_pasmo_bezwymiarowych_dziala_tylko_dla_swojej_klasy_i_tylko_przy_zerze()
     assert liczby_rowne(0.95, 0.95 * (1 + 0.5 * RTOL_FIXTUR), "cos_phi")
     assert not liczby_rowne(0.95, 0.95 * (1 + 2 * RTOL_FIXTUR), "cos_phi")
 
-    # (5) zapas nad pomiarem jest taki, jak deklaruje komentarz stalej.
-    assert PASMO_BEZWYMIAROWYCH / abs(runner - sesja) > 10.0
+    # (1b) drugi pomiar: liczba watkow BLAS (4 wobec 1 w procesie roboczym xdist),
+    #      nakladka rozplywu `s92Rozplyw`, cos phi odcinka bez mocy czynnej.
+    watki_4, watki_1 = 2.41665643322e-08, 2.52370154876e-08
+    assert liczby_rowne(watki_4, watki_1, "cos_phi")
+    assert not liczby_rowne(watki_4, watki_1, None)
+
+    # (5) zapas nad NAJWIEKSZYM pomiarem jest taki, jak deklaruje komentarz stalej:
+    #     dodatni i nie wiekszy niz limit karty x10 (pasmo nie rosnie bez pomiaru).
+    najwiekszy = max(abs(runner - sesja), abs(watki_1 - watki_4))
+    assert 1.0 < PASMO_BEZWYMIAROWYCH / najwiekszy <= 10.0
 
 
 @pytest.mark.parametrize("nazwa", sorted(eksport.FIXTURY))

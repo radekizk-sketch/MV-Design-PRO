@@ -918,7 +918,7 @@ export function zbudujWyposazeniePolaDoPayloadu(
  *
  * BLOK FABRYCZNY RMU jedzie POLAMI PIERWSZEJ KLASY payloadu
  * (`factory_configuration_ref` + `factory_unit_index`) — dokładnie tymi samymi
- * nazwami, których używa kontrakt operacji `add_sn_bay_from_catalog`. Dawna
+ * nazwami, których używa operacja `add_sn_bay` (pole z katalogu rozdzielnic). Dawna
  * droga (metadana `catalog_bindings.factory_configuration`) została usunięta:
  * była drugim nazewnictwem tej samej prawdy, którego żadna operacja stacyjna
  * nie czytała, więc rodzina blokowa kończyła zapis twardym błędem katalogowym.
@@ -1169,8 +1169,6 @@ export function zbudujPayload(
   }
 
   const nnBlock: Record<string, unknown> = {
-    create_nn_bus: true,
-    main_breaker_nn: true,
     nn_configuration: data.nn_configuration,
     outgoing_feeders_nn_count: feeders.length,
     outgoing_feeders_nn: feeders,
@@ -1179,37 +1177,32 @@ export function zbudujPayload(
     nnBlock.source_converter_catalog_ref = konwerter.id;
     nnBlock.source_converter_name = konwerter.name;
     nnBlock.source_converter_kind = konwerter.kind;
-    nnBlock.source_converter_un_kv = konwerter.un_kv;
-    nnBlock.source_converter_sn_mva = konwerter.sn_mva;
-    nnBlock.source_converter_pmax_mw = konwerter.pmax_mw;
     if (protection) nnBlock.source_protection = protection;
   }
 
   const nnEarthing = blokUziemienia(data);
   const auxiliary = blokPotrzebWlasnych(data);
 
+  // Klucze = kontrakt obu operacji (`harness-fixtures/generated/kontrakt_ladunkow_operacji.json`,
+  // test `ladunkiKreatorowWKontrakcie`). Nazwa stacji idzie w `station.name` — jedynym
+  // kluczu nazwy czytanym przez OBIE operacje; dawne `name` (poziom ładunku) i
+  // `station.station_name` czytało wyłącznie wcięcie, więc stacja dokładana na końcu ciągu
+  // gubiła nazwę wpisaną przez projektanta. Parametry falownika (Un, Sn, Pmax) i flagi
+  // szyny/wyłącznika nN wynikają z katalogu i z operacji — nie są daną ładunku.
   const commonPayload: Record<string, unknown> = {
-    ...(nazwa ? { name: nazwa } : {}),
     station_type: data.station_type,
     ...(nnEarthing ? { nn_earthing: nnEarthing } : {}),
     ...(auxiliary ? { station_auxiliary: auxiliary } : {}),
     station: {
       station_type: data.station_type,
-      station_role: 'STACJA_SN_NN',
-      ...(nazwa ? { station_name: nazwa } : {}),
+      ...(nazwa ? { name: nazwa } : {}),
       // B-4/B-5: pola tożsamości stacji — addytywne, tylko gdy wypełnione.
       ...(data.designation.trim() ? { designation: data.designation.trim() } : {}),
       ...(data.construction_type ? { construction_type: data.construction_type } : {}),
-      // Napięcie SN tylko gdy znane z rzeczywistej szyny (>0). Nieznane →
-      // pomijamy, backend ustala z szyny odcinka/terminala (jedno źródło prawdy,
-      // zero fabrykacji — P2/P3).
-      ...(kontekst.snVoltageKv > 0 ? { sn_voltage_kv: kontekst.snVoltageKv } : {}),
       nn_voltage_kv: nnVoltage,
       switchgear: {
         manufacturer_ref: rozdzielnica.manufacturerRef,
-        manufacturer_name: rozdzielnica.manufacturerName,
         switchgear_family_ref: rozdzielnica.familyRef,
-        switchgear_family_name: rozdzielnica.familyName,
       },
     },
     sn_fields: rozdzielnica.snFields,
@@ -1217,7 +1210,6 @@ export function zbudujPayload(
       create: true,
       transformer_catalog_ref: catalogItemId,
       ...(transformerBinding ? { catalog_binding: transformerBinding } : {}),
-      model_type: 'DWU_UZWOJENIOWY',
       // Praca równoległa: n_parallel tylko dla ≥2 (pojedynczy → pominięte, G-STK-6).
       ...(data.transformer_units > 1 ? { n_parallel: data.transformer_units } : {}),
       // B-2: zaczepy TYLKO gdy projektant włączył regulację — brak bloku odtwarza
@@ -1238,8 +1230,22 @@ export function zbudujPayload(
   // udział z kontekstu wskazania. Przeliczenie metr↔udział należy do BACKENDU
   // (tryb `ODLEGLOSC_OD_POCZATKU_M` operacji) — UI niczego nie liczy.
   const metry = liczbaDodatniaPL(data.insert_at_m);
+  const stacja = commonPayload.station as Record<string, unknown>;
   return {
     ...commonPayload,
+    // Napięcie SN czyta wyłącznie wcięcie (koniec ciągu bierze je z szyny końca) — i tylko
+    // gdy znane z rzeczywistej szyny (>0); nieznane → backend ustala z szyny odcinka
+    // (jedno źródło prawdy, zero fabrykacji — P2/P3).
+    station: kontekst.snVoltageKv > 0 ? { ...stacja, sn_voltage_kv: kontekst.snVoltageKv } : stacja,
+    // Powiązania katalogowe wpisu pola (`catalog_bindings`) przenosi WYŁĄCZNIE koniec ciągu —
+    // wcięcie ich nie czyta (jedno miejsce zapisu drugiej kopii prawdy pierwszej klasy,
+    // `POLE_POWIAZAN_KATALOGOWYCH` w `enm/domain_operations.py`); szablon pola idzie
+    // polem pierwszej klasy `bay_template_ref`.
+    sn_fields: rozdzielnica.snFields.map((pole) => {
+      const wpis: Record<string, unknown> = { ...pole };
+      delete wpis.catalog_bindings;
+      return wpis;
+    }),
     segment_id: kontekst.segmentId,
     insert_at:
       metry !== null
