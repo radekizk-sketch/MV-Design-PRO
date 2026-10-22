@@ -803,11 +803,11 @@
     },
     "seg/00fc5392ce26505fa57185b8ff278a83/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -5.755041
+      "p_from_mw": -5.75504
     },
     "seg/00fc5392ce26505fa57185b8ff278a83/segment_L_R_L": {
       "direction": "reverse",
-      "p_from_mw": -5.958392
+      "p_from_mw": -5.958391
     },
     "seg/00fc5392ce26505fa57185b8ff278a83/segment_L_R_R": {
       "direction": "reverse",
@@ -871,19 +871,19 @@
     },
     "seg/30fd2abfe1e8153762173982902118a2/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -2.772944
+      "p_from_mw": -2.772909
     },
     "seg/30fd2abfe1e8153762173982902118a2/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -4.182821
+      "p_from_mw": -4.182788
     },
     "seg/3378b4a98a03309a73d8751d1698c3a3/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -6.247504
+      "p_from_mw": -6.247487
     },
     "seg/3378b4a98a03309a73d8751d1698c3a3/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -5.656887
+      "p_from_mw": -5.656871
     },
     "seg/430076b255026cb573b95788b0a50ae4/branch_segment_L": {
       "direction": "forward",
@@ -907,19 +907,11 @@
     },
     "seg/4cc9ab380d76a80fb3451ffc96f0aa2b/segment": {
       "direction": "reverse",
-      "p_from_mw": -6.236209
+      "p_from_mw": -6.23619
     },
     "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_L": {
       "direction": "forward",
       "p_from_mw": 0.060092
-    },
-    "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_L": {
-      "direction": "none",
-      "p_from_mw": 0.0
-    },
-    "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_L_SL": {
-      "direction": "none",
-      "p_from_mw": 0.0
     },
     "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_L_SR": {
       "direction": "none",
@@ -931,7 +923,7 @@
     },
     "seg/5d437c83ea3c01b9e9c89c27e66eeccf/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.011657
+      "p_from_mw": -5.011651
     },
     "seg/6275da2fa468b7f2b4aca0e40261843d/segment_L": {
       "direction": "forward",
@@ -943,19 +935,19 @@
     },
     "seg/68f3cf81ea2cf503a2256a6887e0578f/segment": {
       "direction": "reverse",
-      "p_from_mw": -6.223228
+      "p_from_mw": -6.223207
     },
     "seg/6fc55ebc2fdc3219a6315e560e71568d/segment": {
       "direction": "reverse",
-      "p_from_mw": -2.763208
+      "p_from_mw": -2.76317
     },
     "seg/71883c20d085df377ee49d19cb579d87/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.00511
+      "p_from_mw": -5.005102
     },
     "seg/7189b33df9bec53e82f5bbf5ba414ad8/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.745868
+      "p_from_mw": -5.745865
     },
     "seg/722501a1dc58a9b35e5f34255e339d80/branch_segment_L": {
       "direction": "forward",
@@ -987,11 +979,11 @@
     },
     "seg/92877b7399e3628daf0e9cbd6bc6194f/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.187326
+      "p_from_mw": -4.187294
     },
     "seg/9328f387d6c4361b082a3d84566dfe55/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.738293
+      "p_from_mw": -5.73829
     },
     "seg/9e8194ce6a2202dcac3567c707bf3cd8/branch_segment_L": {
       "direction": "forward",
@@ -1031,7 +1023,7 @@
     },
     "seg/b2c76b5ca84d7786392ebe542394dc75/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.662942
+      "p_from_mw": -5.662927
     },
     "seg/ba3c23635791b79dfb67e1aa8224b0ee/branch_segment_L": {
       "direction": "forward",
@@ -1051,47 +1043,47 @@
     },
     "seg/bb163cbd1832126dbc15ff6d32716c5d/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -5.01952
+      "p_from_mw": -5.019515
     },
     "seg/bb163cbd1832126dbc15ff6d32716c5d/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -5.732622
+      "p_from_mw": -5.732618
     },
     "seg/c4f283564b7fc3b32e33af7bfa4c8bb1/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.67102
+      "p_from_mw": -5.671006
     },
     "seg/ceebb99b6e37bc85047280272ee8e60a/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -4.207525
+      "p_from_mw": -4.207499
     },
     "seg/ceebb99b6e37bc85047280272ee8e60a/segment_L_R_L": {
       "direction": "reverse",
-      "p_from_mw": -4.351987
+      "p_from_mw": -4.351962
     },
     "seg/ceebb99b6e37bc85047280272ee8e60a/segment_L_R_R": {
       "direction": "reverse",
-      "p_from_mw": -4.494781
+      "p_from_mw": -4.494757
     },
     "seg/ceebb99b6e37bc85047280272ee8e60a/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -6.214666
+      "p_from_mw": -6.214643
     },
     "seg/dda1994af6b6c039af2659f6570ebe32/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -5.685925
+      "p_from_mw": -5.685914
     },
     "seg/dda1994af6b6c039af2659f6570ebe32/segment_L_R": {
       "direction": "reverse",
-      "p_from_mw": -4.343071
+      "p_from_mw": -4.343061
     },
     "seg/dda1994af6b6c039af2659f6570ebe32/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -4.99301
+      "p_from_mw": -4.993
     },
     "seg/dfd57619732e36171c04db0a9df77c68/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.199352
+      "p_from_mw": -4.199324
     },
     "seg/e243a31d168593d36a118f9056ffeaaa/branch_segment_L": {
       "direction": "forward",
@@ -1151,7 +1143,19 @@
     },
     "seg/f5058cf708092f685c17761dc3b42f1c/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.996606
+      "p_from_mw": -4.996596
+    },
+    "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_breaker/000": {
+      "direction": "none",
+      "p_from_mw": 0.0
+    },
+    "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_breaker/001": {
+      "direction": "none",
+      "p_from_mw": 0.0
+    },
+    "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_breaker/002": {
+      "direction": "none",
+      "p_from_mw": 0.0
     },
     "stn/03658f87b4cfcb26a0498e0aa15ae14e/sn_field_breaker/000": {
       "direction": "none",
@@ -1840,6 +1844,7 @@
     "nn/aaa2e0707369e46269e7560aec8b31d6/feeder_bus",
     "stn/0267ed51de5f440e96ca02cd8f4a2ce4/nn_bus",
     "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_bus",
+    "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_terminal/000",
     "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_terminal/001",
     "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_terminal/002"
   ],
@@ -1873,7 +1878,6 @@
     "seg/430076b255026cb573b95788b0a50ae4/branch_segment_R_R_R_R",
     "seg/4cc9ab380d76a80fb3451ffc96f0aa2b/segment",
     "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_L",
-    "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_L",
     "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_L_SR",
     "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_R",
     "seg/5d437c83ea3c01b9e9c89c27e66eeccf/segment",
@@ -2167,7 +2171,6 @@
     "nn/fd2c119283d43178b8f69ba4b7d777df/feeder_bus",
     "nn/ffb5875804f6b165818ed19f3e4db33a/feeder_bus",
     "nn/fffefb1af984e22f1ac84c87f67332d6/feeder_bus",
-    "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_terminal/000",
     "stn/03658f87b4cfcb26a0498e0aa15ae14e/nn_bus",
     "stn/03658f87b4cfcb26a0498e0aa15ae14e/sn_bus",
     "stn/03658f87b4cfcb26a0498e0aa15ae14e/sn_field_terminal/000",
@@ -2441,18 +2444,17 @@
     "stn/f2ba4dacfa5c142bd24b6ee19dadb37d/sn_field_terminal/001",
     "stn/f2ba4dacfa5c142bd24b6ee19dadb37d/sn_field_terminal/002"
   ],
-  "enm_hash": "b10334d7243eddd7d3957b81374b9a5d509085949bf58ba740673f7c925582e1",
+  "enm_hash": "1b25179cc3330848717640a36a143975d73ddda208379b666eeab82351f303b8",
   "iterations": 4,
   "open_point_branch_refs": [
     "sw/60fbcc19e136eab0191cf6d5328518c0/switch"
   ],
   "scenario": {
     "out_of_service": [
-      "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_breaker/000",
-      "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_breaker/001",
-      "stn/0267ed51de5f440e96ca02cd8f4a2ce4/sn_field_breaker/002"
+      "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_L",
+      "seg/5108c92f1ba044b46aa6bb056375d5f6/branch_segment_R_R_L_SL"
     ],
-    "scenario_hash": "6966b568a0eeea694441579278b4cb4e94ecc8e3b50e8cad0851a2a4fef68b37",
+    "scenario_hash": "f48ddd5ce851492c6c00936829ace1b5aed211a82674e70b0ca223dfd5baea23",
     "scenario_id": "__maintenance__stn/0267ed51de5f440e96ca02cd8f4a2ce4/station"
   },
   "schema": "sld_power_flow_companion_v1",
