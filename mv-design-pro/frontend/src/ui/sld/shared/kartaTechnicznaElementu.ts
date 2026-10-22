@@ -52,7 +52,7 @@ import {
 import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
-import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
+import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
 
@@ -1140,7 +1140,7 @@ function kartaZrodla(ix: IndeksModelu, g: Generator): KartaTechniczna {
         wiersze: [
           wiersz('wariant', 'Przyłączenie', g.connection_variant ? WARIANT_PRZYLACZENIA_PL[g.connection_variant] ?? null : null),
           wiersz('szyna_przylaczenia', 'Szyna falownika', opisSzyny(ix, g.bus_ref)),
-          wiersz('pole_zrodlowe', blokowy ? 'Pole źródłowe SN' : 'Pole źródłowe nN', nazwaPola(pole)),
+          wiersz('pole_zrodlowe', blokowy ? FIELD_SOURCE_LABEL_PL : 'Pole źródłowe nN', nazwaPola(pole)),
           wiersz(
             'tr_blokowy',
             'Transformator blokowy',

@@ -103,9 +103,18 @@ def _pole(
     *,
     zwloka_s: float | None,
 ) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any] | None, dict[str, Any]]:
-    """Pole: (spec pola, [szyna zacisku, wyłącznik], przypisanie zabezpieczenia|None, CT)."""
+    """Pole: (rekord pola, [szyna zacisku, wyłącznik], przypisanie zabezpieczenia|None, CT).
+
+    Karta W5-B: rekord pola jest typowanym ``Bay`` kolekcji ``bays`` (jedyny nośnik pól).
+    """
     pole_ref = f"pole/{sufiks}"
-    spec = {"field_ref": pole_ref, "name": f"P-{sufiks}", "bay_role": "FEEDER", "bus_ref": szyna_sn}
+    spec = {
+        "ref_id": pole_ref,
+        "name": f"P-{sufiks}",
+        "bay_role": "FEEDER",
+        "substation_ref": STACJA,
+        "bus_ref": szyna_sn,
+    }
     zacisk = {
         "ref_id": f"zacisk/{sufiks}",
         "name": f"Zacisk pola {sufiks}",
@@ -178,9 +187,9 @@ def _migawka_z_polami(
             "name": "Rozdzielnia SN 33 kV",
             "station_type": "mv_lv",
             "bus_refs": [szyna_sn],
-            "meta": {"field_specs": specy},
         }
     )
+    migawka.setdefault("bays", []).extend(specy)
     return migawka, wezel
 
 
