@@ -49,20 +49,6 @@
       "opis_pl": "Kąt napięcia szyny"
     },
     {
-      "klucz": "u_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "przestrzen": "siec",
-      "jednostka": "pu",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "opis_pl": "Moduł napięcia szyny"
-    },
-    {
-      "klucz": "kat_deg@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "przestrzen": "siec",
-      "jednostka": "deg",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "opis_pl": "Kąt napięcia szyny"
-    },
-    {
       "klucz": "u_pu@nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_bus",
       "przestrzen": "siec",
       "jednostka": "pu",
@@ -333,27 +319,6 @@
       "przestrzen": "obserwabla",
       "jednostka": "kod",
       "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-      "opis_pl": "Rozróżnialność odchyłki częstotliwości szyny"
-    },
-    {
-      "klucz": "f_hz@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "przestrzen": "obserwabla",
-      "jednostka": "Hz",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "opis_pl": "Częstotliwość elektryczna szyny"
-    },
-    {
-      "klucz": "u_f_est_hz@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "przestrzen": "obserwabla",
-      "jednostka": "Hz",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "opis_pl": "Oszacowanie błędu numerycznego częstotliwości szyny"
-    },
-    {
-      "klucz": "jakosc_f@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "przestrzen": "obserwabla",
-      "jednostka": "kod",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
       "opis_pl": "Rozróżnialność odchyłki częstotliwości szyny"
     },
     {
@@ -903,48 +868,6 @@
       "opis_pl": "Moc bierna wpływająca do gałęzi zaciskiem końcowym"
     },
     {
-      "klucz": "i_od_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "pu",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Moduł prądu zacisku początkowego gałęzi"
-    },
-    {
-      "klucz": "i_do_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "pu",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Moduł prądu zacisku końcowego gałęzi"
-    },
-    {
-      "klucz": "p_od_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "pu",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Moc czynna wpływająca do gałęzi zaciskiem początkowym"
-    },
-    {
-      "klucz": "q_od_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "pu",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Moc bierna wpływająca do gałęzi zaciskiem początkowym"
-    },
-    {
-      "klucz": "p_do_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "pu",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Moc czynna wpływająca do gałęzi zaciskiem końcowym"
-    },
-    {
-      "klucz": "q_do_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "pu",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Moc bierna wpływająca do gałęzi zaciskiem końcowym"
-    },
-    {
       "klucz": "i_od_pu@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "obserwabla",
       "jednostka": "pu",
@@ -1026,13 +949,6 @@
       "przestrzen": "siec",
       "jednostka": "kod",
       "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-      "opis_pl": "Stan zasilania szyny: 1 zasilana, 0 beznapięciowa, 2 napięcie narzucone (zwarcie metaliczne albo źródło idealne)"
-    },
-    {
-      "klucz": "stan_zasilania@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-      "przestrzen": "siec",
-      "jednostka": "kod",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
       "opis_pl": "Stan zasilania szyny: 1 zasilana, 0 beznapięciowa, 2 napięcie narzucone (zwarcie metaliczne albo źródło idealne)"
     },
     {
@@ -1281,27 +1197,6 @@
       "opis_pl": "Kąt fazora prądu zacisku końcowego gałęzi; brak wartości, gdy moduł prądu nie przekracza tolerancji rozwiązania sieci (fazor nierozróżnialny od zera)"
     },
     {
-      "klucz": "stan_galezi@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "siec",
-      "jednostka": "kod",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Stan gałęzi: 1 załączona, 0 wyłączona"
-    },
-    {
-      "klucz": "i_od_kat_deg@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "deg",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Kąt fazora prądu zacisku początkowego gałęzi; brak wartości, gdy moduł prądu nie przekracza tolerancji rozwiązania sieci (fazor nierozróżnialny od zera)"
-    },
-    {
-      "klucz": "i_do_kat_deg@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "przestrzen": "obserwabla",
-      "jednostka": "deg",
-      "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-      "opis_pl": "Kąt fazora prądu zacisku końcowego gałęzi; brak wartości, gdy moduł prądu nie przekracza tolerancji rozwiązania sieci (fazor nierozróżnialny od zera)"
-    },
-    {
       "klucz": "stan_galezi@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
       "przestrzen": "siec",
       "jednostka": "kod",
@@ -1356,7 +1251,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.631560491,
-      "residuum_kcl_max": 2.45928799e-12,
+      "residuum_kcl_max": 1.76717828e-12,
       "obszary_odciete": [],
       "odbiory_odciete": [],
       "obszary_zasilone_ponownie": [],
@@ -1375,7 +1270,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.545775171,
-      "residuum_kcl_max": 4.35002281e-12,
+      "residuum_kcl_max": 6.12704049e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1402,7 +1297,7 @@
       "przyczyna": "harmonogram",
       "delta_x_nieprzypisane_max": 0.0,
       "delta_y_max": 0.545775171,
-      "residuum_kcl_max": 4.35002281e-12,
+      "residuum_kcl_max": 6.12704049e-12,
       "obszary_odciete": [
         "bus/fab0e40bf1455775b1286ab17b598f58/downstream"
       ],
@@ -1438,19 +1333,19 @@
     "zbiegl": true,
     "kroki": 150,
     "kroki_odrzucone": 0,
-    "max_residuum_f": 3.37144757e-11,
-    "max_residuum_g": 1.5852944e-09,
+    "max_residuum_f": 3.37142484e-11,
+    "max_residuum_g": 1.58529972e-09,
     "czas_obliczen_s": 0.0,
     "integrator": "trapez_niejawny",
     "dt_s": 0.002,
     "tolerancja": 1e-10
   },
   "tozsamosc": {
-    "odcisk_migawki": "9db6d5ae3abcfbf7e3003184590bfae41434a679deee495017f48e07ce3cb656",
-    "odcisk_punktu_pracy": "77b7d6c81dcb8fc3ea910c45a0b2c619328d6485b8ebf80815ab21e8fa41ddf9",
+    "odcisk_migawki": "b736370af9a6d50bac27843e408968fefa049d0270c209d1093e4a2f03aa6209",
+    "odcisk_punktu_pracy": "3640bd7f490cd4ea038d1a2e978b0b531fdef53c2078c4e288484aa4d5ab8e8a",
     "odcisk_nastaw_solvera": "5417f3cf221bb32560f5d4a24f219b51c34d164c0a19a361def9278ecf1c22b0",
     "odcisk_harmonogramu": "93073c2cedca75803fbe0f96e8e654615a5370492e7d5d583eb249ff34267b69",
-    "odcisk_implementacji": "d7f788bb66c7e42c4ee1876b3d80607eb0c4fa93ea77690cb271f4c5022c1efe",
+    "odcisk_implementacji": "2e0676fcfb26412d2f386a95755bb88a5e48708b074017ecc737cafdb2937e6d",
     "wersja_solvera": "DYNAMIKA_RMS_DAE_V1"
   },
   "metryki": [
@@ -1599,26 +1494,6 @@
         "przestrzen": "siec",
         "grupa": "szyna",
         "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "zacisk": null,
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "u_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "wielkosc_pl": "Moduł napięcia",
-        "jednostka": "pu",
-        "przestrzen": "siec",
-        "grupa": "szyna",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "zacisk": null,
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "kat_deg@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "wielkosc_pl": "Kąt napięcia",
-        "jednostka": "deg",
-        "przestrzen": "siec",
-        "grupa": "szyna",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
         "zacisk": null,
         "polozenie_zwarcia": null
       },
@@ -2009,36 +1884,6 @@
         "przestrzen": "obserwabla",
         "grupa": "szyna",
         "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "zacisk": null,
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "f_hz@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "wielkosc_pl": "Częstotliwość elektryczna",
-        "jednostka": "Hz",
-        "przestrzen": "obserwabla",
-        "grupa": "szyna",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "zacisk": null,
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "u_f_est_hz@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "wielkosc_pl": "Oszacowanie błędu numerycznego częstotliwości",
-        "jednostka": "Hz",
-        "przestrzen": "obserwabla",
-        "grupa": "szyna",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "zacisk": null,
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "jakosc_f@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "wielkosc_pl": "Rozróżnialność odchyłki częstotliwości (kod jakości)",
-        "jednostka": "kod",
-        "przestrzen": "obserwabla",
-        "grupa": "szyna",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
         "zacisk": null,
         "polozenie_zwarcia": null
       },
@@ -2823,66 +2668,6 @@
         "polozenie_zwarcia": null
       },
       {
-        "klucz": "i_od_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Moduł prądu zacisku",
-        "jednostka": "pu",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "od",
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "i_do_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Moduł prądu zacisku",
-        "jednostka": "pu",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "do",
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "p_od_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Moc czynna wpływająca do gałęzi zaciskiem",
-        "jednostka": "pu",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "od",
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "q_od_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Moc bierna wpływająca do gałęzi zaciskiem",
-        "jednostka": "pu",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "od",
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "p_do_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Moc czynna wpływająca do gałęzi zaciskiem",
-        "jednostka": "pu",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "do",
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "q_do_pu@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Moc bierna wpływająca do gałęzi zaciskiem",
-        "jednostka": "pu",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "do",
-        "polozenie_zwarcia": null
-      },
-      {
         "klucz": "i_od_pu@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
         "wielkosc_pl": "Moduł prądu zacisku",
         "jednostka": "pu",
@@ -2999,16 +2784,6 @@
         "przestrzen": "siec",
         "grupa": "szyna",
         "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "zacisk": null,
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "stan_zasilania@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "wielkosc_pl": "Stan zasilania (1 zasilana, 0 beznapięciowa, 2 napięcie narzucone)",
-        "jednostka": "kod",
-        "przestrzen": "siec",
-        "grupa": "szyna",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
         "zacisk": null,
         "polozenie_zwarcia": null
       },
@@ -3363,36 +3138,6 @@
         "polozenie_zwarcia": null
       },
       {
-        "klucz": "stan_galezi@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Stan gałęzi (1 załączona, 0 wyłączona)",
-        "jednostka": "kod",
-        "przestrzen": "siec",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": null,
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "i_od_kat_deg@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Kąt fazora prądu zacisku",
-        "jednostka": "deg",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "od",
-        "polozenie_zwarcia": null
-      },
-      {
-        "klucz": "i_do_kat_deg@gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "wielkosc_pl": "Kąt fazora prądu zacisku",
-        "jednostka": "deg",
-        "przestrzen": "obserwabla",
-        "grupa": "galaz",
-        "element_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "zacisk": "do",
-        "polozenie_zwarcia": null
-      },
-      {
         "klucz": "stan_galezi@stn/6e0f3c95dd298f0e3c3774b5c0c955e1/transformer",
         "wielkosc_pl": "Stan gałęzi (1 załączona, 0 wyłączona)",
         "jednostka": "kod",
@@ -3519,28 +3264,6 @@
         "rodzaj_pl": "Źródło sieciowe",
         "kolekcja": "sources",
         "typ": null
-      },
-      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110": {
-        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-        "nazwa": "Szyna 110 kV TR1",
-        "rodzaj_pl": "Szyna",
-        "kolekcja": "buses",
-        "typ": null
-      },
-      "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn": {
-        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/wn_sn",
-        "nazwa": "TR1 110/15 kV",
-        "rodzaj_pl": "Transformator",
-        "kolekcja": "transformers",
-        "typ": null,
-        "zacisk_od": {
-          "szyna_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/transformer/001/bus_110",
-          "szyna_nazwa": "Szyna 110 kV TR1"
-        },
-        "zacisk_do": {
-          "szyna_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-          "szyna_nazwa": "Szyna GPZ S1 15 kV"
-        }
       },
       "load/d274343dd8d90e4fc15e2f65933f1325/sn": {
         "ref_id": "load/d274343dd8d90e4fc15e2f65933f1325/sn",
@@ -4011,7 +3734,7 @@
     "case_ref": "case-demo",
     "case_kind": "DYNAMIKA_CZASOWA",
     "rodzaj_przypadku": "DYNAMIKA_CZASOWA",
-    "snapshot_ref": "920386673cb0dbeacb07cf72df35bbfa353a970031d02da4328d4f03245f6a7c",
+    "snapshot_ref": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d",
     "rewizja_modelu": 2,
     "variant_ref": null,
     "run_ref": "run-dyn-scena-dynamika",
@@ -4036,14 +3759,14 @@
       "project_ref": null,
       "run_ref": "run-dyn-scena-dynamika",
       "analysis_type": "dynamika_rms",
-      "snapshot_ref": "920386673cb0dbeacb07cf72df35bbfa353a970031d02da4328d4f03245f6a7c"
+      "snapshot_ref": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d"
     },
     "reproducibility": {
       "case_ref": "case-demo",
       "analysis_case_ref": "case-demo",
-      "snapshot_ref": "920386673cb0dbeacb07cf72df35bbfa353a970031d02da4328d4f03245f6a7c",
-      "enm_hash": "920386673cb0dbeacb07cf72df35bbfa353a970031d02da4328d4f03245f6a7c",
-      "enm_snapshot_ref": "920386673cb0dbeacb07cf72df35bbfa353a970031d02da4328d4f03245f6a7c",
+      "snapshot_ref": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d",
+      "enm_hash": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d",
+      "enm_snapshot_ref": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d",
       "enm_projection_version": "v12xx.m1.1",
       "variant_ref": null,
       "operating_variant_ref": null,
@@ -4053,19 +3776,19 @@
       "method_version": "canonical_run_v1",
       "formula_set_version": "resultset_dynamic_v2",
       "standard_basis_ref": "DYNAMIKA_RMS_DAE_V1",
-      "input_hash": "b92439d9bedb4fb56da131c1e841cdb7523b14db0b472f66d2b3df7198092009",
-      "result_hash": "23428460c45aa5a861634c6690b7f2502e90bdb01e53e61f375c57c1b1d7def1",
+      "input_hash": "4357689f030b6f25ed83aab3c7590aa613bc67d3846114c7d9f564c13f1b3a59",
+      "result_hash": "5ad72ffa5127ebabcf04c500e961bd6eea388a1ef020e5d37dd8b6a2af3114da",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
       "proof_renderer_version": "white_box_trace_v1",
-      "catalog_snapshot_ref": "920386673cb0dbeacb07cf72df35bbfa353a970031d02da4328d4f03245f6a7c",
-      "catalog_materialization_ref": "catalog-materialization:407a441f7c9f8edbfe10f631932a760222f1f4b8e0edee4466aac589fe27fe5a",
-      "catalog_materialization_hash": "407a441f7c9f8edbfe10f631932a760222f1f4b8e0edee4466aac589fe27fe5a",
+      "catalog_snapshot_ref": "cb6b20149f517c86d71c799938c04f390b12c08b620dbaf62734c077dc9afb8d",
+      "catalog_materialization_ref": "catalog-materialization:01d9b490d678e6ed97c857b5e939220fefd28431b72535e11d756c5677ffaca2",
+      "catalog_materialization_hash": "01d9b490d678e6ed97c857b5e939220fefd28431b72535e11d756c5677ffaca2",
       "catalog_materialization_status": "materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "4c4942ca0565eae3312d8ac82c4507a77562b0b8b3e1dfe70c194bdd287d3aed",
+      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
       "model_revision": 2,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

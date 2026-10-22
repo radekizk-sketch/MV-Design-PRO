@@ -98,8 +98,6 @@ async function dwiePaczki(request: APIRequestContext): Promise<{ przed: Buffer; 
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   const przed = await eksport(request, project.id);
   for (const [idx, nazwa] of ODCINKI.entries()) {

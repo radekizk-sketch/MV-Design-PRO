@@ -144,22 +144,57 @@ def modul_rejestru() -> ModuleType:
     # Kolejnosc: pakiet (pytest pod poetry), potem WLASNY wpis z poprzedniego
     # ladowania plikowego — bez niego kazde wywolanie tworzyloby NOWY modul
     # z NOWYMI klasami enum i `isinstance` mowilby falszywe "nie".
-    juz = sys.modules.get("domain.canonical_operations") or sys.modules.get("_rejestr_kanoniczny")
-    if juz is not None:
+    #
+    # TO SAMO DRZEWO (karta GPZ-MODEL, pomiar w drzewie roboczym): pakiet `domain` bywa
+    # importowalny z INNEGO drzewa — srodowisko poetry wpisuje `backend/src` glownego
+    # checkoutu do `site-packages/*.pth`, wiec w drzewie roboczym `git worktree` goly
+    # `import domain.canonical_operations` czytal rejestr glownego checkoutu (147 kodow
+    # wobec 149 w drzewie) i straznik meldowal falszywy rozjazd. Modul pakietowy jest
+    # przyjmowany WYLACZNIE, gdy jego plik to `REGISTRY_FILE` — ten sam plik, ktory
+    # straznik deklaruje jako rejestr (jedno zrodlo prawdy pary „sciezka ↔ modul").
+    juz = sys.modules.get("domain.canonical_operations")
+    if juz is not None and modul_z_tego_drzewa(juz):
         return juz
-    try:
-        import domain.canonical_operations as pakietowy  # noqa: PLC0415
+    wlasny = sys.modules.get("_rejestr_kanoniczny")
+    if wlasny is not None:
+        return wlasny
+    if pakiet_domain_z_tego_drzewa():
+        # Goły `python3` w CI bez zależności backendu: pakiet jest na ścieżce, ale
+        # `domain/__init__.py` ciągnie pydantic — wtedy ładowanie z pliku niżej.
+        try:
+            import domain.canonical_operations as pakietowy  # noqa: PLC0415
+        except ModuleNotFoundError:
+            pakietowy = None
+        # Pakiet tego drzewa, ale podmoduł mógł już wisieć w `sys.modules` z innego drzewa
+        # (import zwraca wtedy wpis z `sys.modules`, nie plik obok pakietu).
+        if pakietowy is not None and modul_z_tego_drzewa(pakietowy):
+            return pakietowy
+    spec = importlib.util.spec_from_file_location("_rejestr_kanoniczny", REGISTRY_FILE)
+    assert spec and spec.loader
+    m = importlib.util.module_from_spec(spec)
+    # Rejestracja PRZED exec: mechanika dataclasses szuka modulu klasy w
+    # sys.modules przy przetwarzaniu adnotacji (KW_ONLY) i bez wpisu pada.
+    sys.modules[spec.name] = m
+    spec.loader.exec_module(m)
+    return m
 
-        return pakietowy
-    except ModuleNotFoundError:
-        spec = importlib.util.spec_from_file_location("_rejestr_kanoniczny", REGISTRY_FILE)
-        assert spec and spec.loader
-        m = importlib.util.module_from_spec(spec)
-        # Rejestracja PRZED exec: mechanika dataclasses szuka modulu klasy w
-        # sys.modules przy przetwarzaniu adnotacji (KW_ONLY) i bez wpisu pada.
-        sys.modules[spec.name] = m
-        spec.loader.exec_module(m)
-        return m
+
+def modul_z_tego_drzewa(modul: ModuleType) -> bool:
+    """Czy modul rejestru pochodzi z pliku `REGISTRY_FILE` tego drzewa."""
+    plik = getattr(modul, "__file__", None)
+    return plik is not None and Path(plik).resolve() == REGISTRY_FILE.resolve()
+
+
+def pakiet_domain_z_tego_drzewa() -> bool:
+    """Czy `import domain` trafi w pakiet obok `REGISTRY_FILE` (bez wykonywania pakietu:
+    `find_spec` pakietu najwyzszego poziomu nie uruchamia jego `__init__`)."""
+    try:
+        spec = importlib.util.find_spec("domain")
+    except (ImportError, ValueError):
+        return False
+    if spec is None or spec.origin is None:
+        return False
+    return Path(spec.origin).resolve().parent == REGISTRY_FILE.resolve().parent
 
 
 def duplikaty_kluczy_zrodla(zrodlo: str, nazwa_slownika: str = "READINESS_CODES") -> list[str]:

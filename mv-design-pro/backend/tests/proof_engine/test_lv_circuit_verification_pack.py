@@ -70,6 +70,7 @@ def _thermal(ith_a: float = 200.0) -> object:
 def _fault_loop():
     return compute_fault_loop(
         FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="b1",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent("L", 0.128, 0.03),

@@ -7,7 +7,7 @@ wycięcie assemblera ma zachować wynik bit w bit; jedyna dopuszczalna zmiana to
 per sieć, nigdy „naprawa" czerwonego testu regeneracją).
 
 Uruchomienie (z katalogu ``backend``):
-    PYTHONPATH=$PWD python tests/golden/parytet_assemblera/regeneruj.py
+    PYTHONPATH=$PWD:$PWD/src python tests/golden/parytet_assemblera/regeneruj.py
 """
 
 from __future__ import annotations

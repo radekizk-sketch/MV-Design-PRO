@@ -126,7 +126,9 @@ def zastosuj_szablon(sesja: Sesja, template_id: str, segment_ref: str) -> dict[s
             "case_id": sesja.case_id,
             "target_segment_id": segment_ref,
             "insert_at_ratio": 0.5,
-            "params_override": {},
+            # Tolerancja napięcia sieci nN stacji (wiersz nN tabeli 1 IEC 60909-0) — dana
+            # projektanta z bloku `nn_earthing` kreatora; bez niej zwarcie jest odmową.
+            "params_override": {"nn_earthing": {"lv_voltage_tolerance": "PLUS_6"}},
             "catalog_profile": None,
         },
     )
@@ -221,10 +223,9 @@ def zbuduj(tryb: str) -> dict[str, Any]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
-            # Transformator WN/SN GPZ z pozycji katalogu (karta FAB-G: jawna para
-            # napięcie WN + moc, bez domyślnych 25 MVA @ 110 kV po stronie operacji).
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
+            # Równoważnik sieci na szynach SN GPZ z pozycji katalogu (GPZ-MODEL, tryb B):
+            # granica modelu = szyny SN, więc transformatora WN/SN w modelu nie ma — para
+            # napięcie WN + moc TR byłaby fikcją, którą operacja odmawia.
             "catalog_binding": wiazanie("ZRODLO_SN", "src-gpz-15kv-250mva-rx010"),
         },
     )
@@ -259,7 +260,7 @@ def zbuduj(tryb: str) -> dict[str, Any]:
 
     klienci = []
     odmowy = []
-    for template_id, cel in zip(KLIENCI, cele):
+    for template_id, cel in zip(KLIENCI, cele, strict=True):
         if tryb == "przed":
             odmowy.append(sprawdz_odmowe_wciecia(sesja, template_id, cel))
         else:

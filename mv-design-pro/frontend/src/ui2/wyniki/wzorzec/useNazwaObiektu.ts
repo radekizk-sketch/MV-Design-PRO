@@ -68,6 +68,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   sw: 'łącznik',
   switch: 'łącznik',
   switch_device: 'łącznik',
+  rcd: 'wyłącznik różnicowoprądowy',
   tr: 'transformator',
   transformer: 'transformator',
   bay: 'pole',
@@ -96,7 +97,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   sn_bus: 'szyna SN',
   sn_bus_b: 'szyna SN sekcji B',
   nn_bus: 'szyna nN',
-  bus_110: 'szyna 110 kV',
+  bus_wn: 'szyna WN',
   hv_auto: 'szyna strony GN',
   lv_auto: 'szyna strony DN',
   board_bus: 'szyna rozdzielnicy',
@@ -105,6 +106,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   cable_bus: 'szyna na końcu kabla',
   feeder_bus: 'szyna odpływu',
   branch_bus: 'szyna odgałęzienia',
+  rcd_bus: 'szyna za wyłącznikiem różnicowoprądowym',
   producer_nn_bus: 'szyna nN wytwórcy',
   block_hv_bus: 'szyna GN transformatora blokowego',
   downstream: 'węzeł za odcinkiem',
@@ -127,6 +129,7 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   merged: 'po scaleniu',
   // Pola, aparaty i zaciski.
   section: 'sekcja',
+  hv_section: 'sekcja WN',
   coupler: 'sprzęgło',
   sn_coupler: 'sprzęgło SN',
   section_coupler: 'sprzęgło sekcyjne',
@@ -207,8 +210,8 @@ const CZESC_PO_PODZIALE = /^([a-z0-9_]+?)((?:_S?[LR])+)(?:_([a-z_]+))?$/;
 /**
  * Polska nazwa rodzaju obiektu dla JEDNEGO segmentu referencji.
  *
- * Najpierw słownik (wpis jawny wygrywa — `bus_110` to „szyna 110 kV", a nie
- * „szyna 110"), potem reguła `<rodzaj>_<numer>`, potem część odcinka po podziale.
+ * Najpierw słownik (wpis jawny wygrywa z regułą), potem reguła `<rodzaj>_<numer>`,
+ * potem część odcinka po podziale.
  * Segment, którego nie tłumaczy żadna z nich, zostaje BEZ ZMIAN — świadomie:
  * lepiej pokazać go wprost niż zmyślić nazwę. Strażnik
  * `__tests__/slownikSegmentow.test.ts` pilnuje, żeby taki segment nie mógł

@@ -2,7 +2,7 @@
 SLD Substrate Builder — ≥52-station MV network for SLD render testing (M-05).
 
 Builds a deterministic MV network:
-  - GPZ 15 kV / 250 MVA
+  - GPZ: 110 kV network equivalent (3000 MVA) + one 110/15 kV 25 MVA transformer
   - Trunk magistrala: 22 segments (mix cable + overhead)
   - 12 trunk stations (type C with LINIA_ODG bay for laterals)
   - Laterals from every trunk station: 2-3 lateral stations each
@@ -77,7 +77,8 @@ from enm.pola import pola_sn_stacji
 
 _CABLE_REF = "cable-tfk-yakxs-3x120"
 _LINE_REF = "line-base-al-120"  # overhead line 120 mm² Al
-_GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"
+_GPZ_SOURCE_REF = "src-gpz-15kv-250mva-rx010"  # SN equivalent of sibling builders
+_GPZ_WN_SN_TRANSFORMER_REF = "tr-wn-sn-110-15-25mva-yd11"
 _TRAFO_STANDARD = "tr-sn-nn-15-04-630kva-dyn11"  # 630 kVA — standard load station
 _TRAFO_DER_LARGE = "tr-sn-nn-15-04-2500kva-dyn11"  # 2500 kVA — FW/large-DER station
 #: Stacje z konfiguracją mieszaną PV 0,5 MW + BESS 0,5 MW (Σ S_n 1,1 MVA): kontrola O-53
@@ -302,7 +303,7 @@ def _add_trunk_station(
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
+            "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM, "lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
@@ -420,13 +421,23 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         enm,
         "add_grid_source_sn",
         {
+            # Karta GPZ-MODEL: równoważnik sieci po stronie 110 kV (Sk″ = 3000 MVA,
+            # R/X = 0,1) i jeden transformator 110/15 kV 25 MVA na wspólnej szynie WN.
+            # Do tej karty substrat podawał równoważnik 250 MVA na szynach SN i ŻĄDAŁ
+            # transformatora (`hv_voltage_kv` + `transformer_sn_mva`) — rysunek niósł
+            # szynę 110 kV i transformator bez zasilania. Kontrakty SLD substratu badają
+            # kolumnę WN bloku GPZ (tabliczka TR, szyna WN), więc przepisanie wybiera
+            # tryb, w którym transformator JEST elementem modelu obliczeniowego.
             "voltage_kv": 15.0,
-            "source_name": "GPZ Referencyjny 15 kV",
-            "sk3_mva": 250.0,
-            "rx_ratio": 0.1,
-            "catalog_ref": _GPZ_SOURCE_REF,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
+            "source_name": "GPZ Referencyjny 110 kV",
+            "manual_equivalent": {
+                "short_circuit_input_side": "HV_110",
+                "hv_voltage_kv": 110.0,
+                "sk3_hv_mva": 3000.0,
+                "rx_ratio": 0.1,
+            },
+            "transformer_count": 1,
+            "transformer_catalog_ref": _GPZ_WN_SN_TRANSFORMER_REF,
         },
     )
 
@@ -555,7 +566,10 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                         "sn_voltage_kv": 15.0,
                         "nn_voltage_kv": 0.4,
                     },
-                    "nn_earthing": {"lv_system": _NN_EARTHING_SYSTEM},
+                    "nn_earthing": {
+                        "lv_system": _NN_EARTHING_SYSTEM,
+                        "lv_voltage_tolerance": "PLUS_6",
+                    },
                     "sn_fields": [
                         {"field_role": "LINIA_IN"},
                         {"field_role": "LINIA_OUT"},

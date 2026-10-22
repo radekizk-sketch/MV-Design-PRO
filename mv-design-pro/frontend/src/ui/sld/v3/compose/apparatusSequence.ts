@@ -41,9 +41,9 @@
 
 import { APPARATUS_STACK_VERTICAL_GAP, APPARATUS_STACK_LATERAL_TAP } from '../layout/apparatusStack';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
+import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/model/widokPolStacji';
-import type { BayPrimaryDeviceKind } from '../../../../types/enm';
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
 
 /** Znacznik pochodzenia stosu aparatów (audytor DOM `data-apparatus-source`) — `'dane'`
  *  gdy stos zbudowany z rekordów aparatów modelu, `'brak'` gdy model ich nie niesie
@@ -153,16 +153,34 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
 }
 
 /**
+ * Aparaty pola ze ścieżki DANYCH, które dostają symbol pola — w porządku
+ * fizycznym `placement` (`orderByPrimaryPlacement`, `v2/domain/apparatusContracts.ts`)
+ * i bez kindów niemapowalnych (DER). JEDNA sekwencja dla `resolveBayApparatusSymbolIds`
+ * (measure + plan) i `compose/station.ts` `stackItemsForBay` (rysunek + `deviceRef`),
+ * więc parowanie indeksów symbol↔aparat nie zależy od tego, czy producent
+ * deskryptora posortował listę (W2C-PLAN-ETYKIET: skrypt dowodowy W2c podawał
+ * kolejność surową backendu i kompozycja rozkładała laterale na różne kotwice
+ * we wspólnej kolumnie — „TV1" lądował na symbolu uziemnika).
+ */
+export function orderedSymbolPrimaryDevices<T extends { readonly kind: BayPrimaryDeviceKind; readonly placement: BayPrimaryPlacement }>(
+  devices: readonly T[] | undefined,
+): readonly T[] {
+  if (!devices || devices.length === 0) return [];
+  return orderByPrimaryPlacement(devices).filter((d) => symbolIdForPrimaryDeviceKind(d.kind) != null);
+}
+
+/**
  * Rozstrzygnięcie „dane vs brak danych" — JEDNA prawda używana przez `layout/measure.ts`
  * (rezerwacja gabarytu) i `compose/station.ts` (rysunek + `data-apparatus-source`).
- * Ścieżka danych: aparaty mapowalne na symbol pola (po odfiltrowaniu kindów DER) + elementy
- * modelu pola. Brak danych: `symbolePolaBezDanych`. Pole rezerwowe/wolne: bez głowicy
- * kablowej, zakończone `bayReserve` (`zakonczenieRezerwy` — jedno miejsce reguły).
+ * Ścieżka danych: aparaty mapowalne na symbol pola (po odfiltrowaniu kindów DER), w porządku
+ * fizycznym `orderedSymbolPrimaryDevices`, + elementy modelu pola. Brak danych:
+ * `symbolePolaBezDanych`. Pole rezerwowe/wolne: bez głowicy kablowej, zakończone
+ * `bayReserve` (`zakonczenieRezerwy` — jedno miejsce reguły).
  */
 export function resolveBayApparatusSymbolIds(
   bay: Pick<MiniBlockBayDescriptor, 'fieldRole' | 'primaryDevices' | 'reserve' | 'transformerRef'>,
 ): { readonly symbolIds: readonly SymbolId[]; readonly source: BayApparatusSource } {
-  const ids = (bay.primaryDevices ?? [])
+  const ids = orderedSymbolPrimaryDevices(bay.primaryDevices)
     .map((d) => symbolIdForPrimaryDeviceKind(d.kind))
     .filter((id): id is SymbolId => id != null);
   if (ids.length > 0) {

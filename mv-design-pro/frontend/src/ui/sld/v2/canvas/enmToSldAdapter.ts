@@ -19,7 +19,6 @@
 import type {
   BayPrimaryDevice,
   BayPrimaryDeviceKind,
-  BayPrimaryPlacement,
   EnergyNetworkModel,
   LogicalViewsV1,
   Bus,
@@ -39,7 +38,7 @@ import { NAZWA_RODZAJU_STACJI_PL, czyPoleRezerwowe, czyPoleWolne, rodzajStacji }
 import type { GpzViewModel } from '../model/widokSld';
 import type { StationOnRunViewModel, StationSnSectionView } from '../model/widokSld';
 import type { BayPrimaryDeviceView, BayProtectionMarkingView, CtRatingAnnotationView, MiniBlockBayDescriptor, VtMountingAnnotationView } from '../model/widokPolStacji';
-import { FIELD_ROLE, type FieldRole } from '../domain/apparatusContracts';
+import { FIELD_ROLE, orderByPrimaryPlacement, type FieldRole } from '../domain/apparatusContracts';
 import { stanAparatuZModelu, stanStatusuGalezi, stanyAparatowPolaZModelu } from '../model/stanAparatowPola';
 import {
   derFieldRoleForGenerator,
@@ -2131,14 +2130,6 @@ export type BayWithOptionalPrimaryDevices = Bay & {
   readonly primary_devices?: readonly BayPrimaryDevice[];
 };
 
-const PRIMARY_DEVICE_PLACEMENT_ORDER: Readonly<Record<BayPrimaryPlacement, number>> = {
-  UPSTREAM: 0,
-  MIDSTREAM: 1,
-  DOWNSTREAM: 2,
-  OFF_PATH: 3,
-  GROUND_BRANCH: 4,
-};
-
 /**
  * Projekcja `Bay.primary_devices` → `BayPrimaryDeviceView[]`, posortowana wg
  * `placement` (UPSTREAM→MIDSTREAM→DOWNSTREAM→OFF_PATH→GROUND_BRANCH) ze
@@ -2163,14 +2154,10 @@ export function projectBayPrimaryDevices(
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
   if (!devices || devices.length === 0) return aparatyZGaleziPola(bay.equipment_refs ?? [], galezieWgRef);
-  return devices
-    .map((device, sourceIndex) => ({ device, sourceIndex }))
-    .sort((a, b) => {
-      const placementDelta =
-        PRIMARY_DEVICE_PLACEMENT_ORDER[a.device.placement] - PRIMARY_DEVICE_PLACEMENT_ORDER[b.device.placement];
-      return placementDelta !== 0 ? placementDelta : a.sourceIndex - b.sourceIndex;
-    })
-    .map(({ device }): BayPrimaryDeviceView => ({
+  // Porządek fizyczny aparatów — JEDNA funkcja dla adaptera v2 i sekwencji v3
+  // (`orderByPrimaryPlacement`, `v2/domain/apparatusContracts.ts`).
+  return orderByPrimaryPlacement(devices)
+    .map((device): BayPrimaryDeviceView => ({
       kind: device.kind,
       placement: device.placement,
       sectionSide: device.section_side ?? null,

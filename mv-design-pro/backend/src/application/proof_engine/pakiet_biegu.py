@@ -77,9 +77,12 @@ from application.solvers.voltage_drop_binding import (
     OdcinekSpadku,
     odcinki_spadku_napiecia,
 )
-from enm.canonical_analysis import CanonicalRun
+from enm.assembler import impedancja_zwarcia_z_opcji
+from enm.canonical_analysis import CanonicalRun, rozszerzenia_audit2_dla_opcji
 from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_galezi_grafu, nazwy_wezlow_grafu
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB, czas_tb_z_danych
+from network_model.core.voltage_factor import NadpisanieC, Scenario, nadpisanie_c_z_danych
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 #: Rodzaje pakietów dowodowych osiągalne dla biegu kanonicznego.
 RODZAJ_SC3F = "SC3F"
@@ -150,6 +153,20 @@ _POWOD_BRAK_PUNKTOW = (
 
 class PakietBieguError(OdmowaDanychError):
     """Pakietu nie da się zbudować dla tego biegu/punktu (powód po polsku)."""
+
+
+#: Wskazany punkt zwarcia nie należy do biegu (identyfikator w `dane["punkt"]`).
+KOD_PUNKT_SPOZA_BIEGU = "dowod.punkt_zwarcia_spoza_biegu"
+#: Wskazany odcinek nie należy do biegu rozpływu (identyfikator w `dane["odcinek"]`).
+KOD_ODCINEK_SPOZA_BIEGU = "dowod.odcinek_spoza_biegu"
+
+
+class WyborSpozaBieguError(PakietBieguError, OdmowaNazwana):
+    """Wskazany punkt albo odcinek nie należy do biegu (partia integracji 10).
+
+    Zdanie dla projektanta nie niesie identyfikatora — identyfikator wyboru jest polem
+    `dane` odmowy nazwanej, które handler HTTP przenosi do ciała odpowiedzi.
+    """
 
 
 @dataclass(frozen=True)
@@ -350,7 +367,11 @@ def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None)
 
 
 def zbuduj_pakiet_biegu(
-    run: CanonicalRun, *, punkt: str | None = None, nazwa_przypadku: str
+    run: CanonicalRun,
+    *,
+    punkt: str | None = None,
+    nazwa_przypadku: str,
+    uow_factory: Callable[[], Any] | None = None,
 ) -> tuple[str, bytes]:
     """Zbuduj pakiet dowodowy przebiegu: ``(nazwa_pliku, zawartość ZIP)``.
 
@@ -363,6 +384,10 @@ def zbuduj_pakiet_biegu(
     pierwszy z listy biegu (deterministycznie: najmniejszy identyfikator). Punkt
     spoza biegu i rodzaj bez pakietu kończą się ``PakietBieguError`` z powodem po
     polsku — API tłumaczy go na odpowiedź HTTP, a ekran pokazuje wprost.
+
+    ``uow_factory`` — fabryka UnitOfWork wołającego: bieg z konfiguracją audytu 2
+    stacji liczy się z jej rozszerzeniami, więc dowód zwarciowy tego biegu musi je
+    odczytać tak samo (`rozszerzenia_audit2_dla_opcji`) — jedna fizyka biegu i dowodu.
     """
     dostepnosc = dostepnosc_pakietu(run)
     if not dostepnosc["dostepny"]:
@@ -394,17 +419,19 @@ def zbuduj_pakiet_biegu(
     else:
         znaleziony = next((p for p in punkty if p.target_id == punkt), None)
         if znaleziony is None:
-            raise PakietBieguError(
-                f"Punkt zwarcia {punkt} nie występuje w tym przebiegu — "
-                "wybierz punkt z listy wyników."
+            raise WyborSpozaBieguError(
+                "Wskazany punkt zwarcia nie występuje w tym przebiegu — "
+                "wybierz punkt z listy wyników.",
+                kod=KOD_PUNKT_SPOZA_BIEGU,
+                dane={"punkt": punkt},
             )
         wybrany = znaleziony
 
     if rodzaj == RODZAJ_SC3F:
-        zawartosc = _zbuduj_sc3f(run, wybrany, context, naglowek)
+        zawartosc = _zbuduj_sc3f(run, wybrany, context, naglowek, uow_factory)
         nazwa_pliku = f"pakiet_dowodowy_zwarcie_3f__{run.id}__{wybrany.target_id}.zip"
     else:
-        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context, naglowek)
+        zawartosc = _zbuduj_sc_niesymetryczne(run, wybrany, context, naglowek, uow_factory)
         nazwa_pliku = f"pakiet_dowodowy_zwarcia_niesymetryczne__{run.id}__{wybrany.target_id}.zip"
     return nazwa_pliku, zawartosc
 
@@ -426,12 +453,52 @@ def _wersja_solvera(run: CanonicalRun) -> str:
     return str(wersja) if wersja else "nieznana"
 
 
-def _c_factor(run: CanonicalRun) -> float:
-    return float(run.options.get("c_factor", 1.10))
+@dataclass(frozen=True)
+class _ParametryZwarciaBiegu:
+    """Parametry zwarcia ZAPISANE na biegu — ten sam odczyt, co assembler biegu.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): dowód nie dostaje liczby c (dawniej
+    `options.get("c_factor", 1.10)` — 1,10 także dla węzła nN i dla biegu MIN), tylko
+    scenariusz i nadpisanie biegu; c i jego podstawę dobiera warstwa wiązania tą samą
+    regułą co bieg (`voltage_factor.dobierz_c` przez `enm.assembler`).
+
+    Karta SC-IB-ITH-ZRODLA: t_b scenariusza biegu tą samą funkcją co assembler
+    (`czas_tb_z_danych` z klucza opcji biegu); ``None`` = t_b punktu rozstrzyga warstwa
+    wiązania tą samą funkcją co bieg (karta TB-WARTOSC-ROBOCZA: pola lokalne albo wartość
+    robocza) — dowód opisuje I_b i i_DC policzone z TYM SAMYM t_b co wynik na ekranie.
+    """
+
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieC | None
+    tk_s: float
+    tb_s: float | None
+    rozszerzenia_audit2: dict[str, Any] | None
 
 
-def _tk_s(run: CanonicalRun) -> float:
-    return float(run.options.get("thermal_time_seconds", 1.0))
+def _parametry_zwarcia_biegu(
+    run: CanonicalRun, uow_factory: Callable[[], Any] | None
+) -> _ParametryZwarciaBiegu:
+    scenariusz = str(run.options.get("scenario", "max")).strip().upper()
+    if scenariusz not in ("MAX", "MIN"):
+        raise PakietBieguError(
+            f"Bieg zapisał nieznany scenariusz zwarcia {scenariusz!r} — dowodu nie da się złożyć."
+        )
+    return _ParametryZwarciaBiegu(
+        scenariusz="MAX" if scenariusz == "MAX" else "MIN",
+        nadpisanie_c=nadpisanie_c_z_danych(run.options.get("nadpisanie_c")),
+        tk_s=float(run.options.get("thermal_time_seconds", 1.0)),
+        tb_s=czas_tb_z_danych(run.options.get(KLUCZ_OPCJI_CZASU_TB)),
+        rozszerzenia_audit2=rozszerzenia_audit2_dla_opcji(run.options, uow_factory),
+    )
+
+
+def _z_f_ohm(run: CanonicalRun) -> complex | None:
+    """Impedancja przejścia Z_f biegu (karta OD-14) — TEN SAM odczyt opcji co w assemblerze.
+
+    Pakiet dowodowy opisuje bieg, więc liczy się z tą samą Z_f, z którą liczył solver; dowód
+    metaliczny dla biegu z Z_f opisywałby inny prąd niż ten na ekranie wyników.
+    """
+    return impedancja_zwarcia_z_opcji(run.options)
 
 
 @dataclass(frozen=True)
@@ -493,9 +560,11 @@ def _wybierz_odcinek(run: CanonicalRun, punkt: str | None) -> OdcinekSpadku | No
         return odcinki[0] if odcinki else None
     znaleziony = next((o for o in odcinki if o.id_galezi == punkt), None)
     if znaleziony is None:
-        raise PakietBieguError(
-            f"Odcinek {punkt} nie występuje w tym przebiegu jako linia ani kabel o znanej "
-            "impedancji i długości — wybierz odcinek z listy."
+        raise WyborSpozaBieguError(
+            "Wskazany odcinek nie występuje w tym przebiegu jako linia ani kabel o znanej "
+            "impedancji i długości — wybierz odcinek z listy.",
+            kod=KOD_ODCINEK_SPOZA_BIEGU,
+            dane={"odcinek": punkt},
         )
     return znaleziony
 
@@ -596,7 +665,9 @@ def _zbuduj_sc3f(
     punkt: PunktPakietu,
     context: ProofPackContext,
     naglowek: _Naglowek,
+    uow_factory: Callable[[], Any] | None,
 ) -> bytes:
+    parametry = _parametry_zwarcia_biegu(run, uow_factory)
     pack_input = SC3FPackInput(
         project_name=naglowek.projekt,
         case_name=naglowek.przypadek,
@@ -604,8 +675,12 @@ def _zbuduj_sc3f(
         fault_node_id=punkt.target_id,
         run_timestamp=_znacznik_czasu(run),
         solver_version=_wersja_solvera(run),
-        c_factor=_c_factor(run),
-        tk_s=_tk_s(run),
+        scenariusz=parametry.scenariusz,
+        nadpisanie_c=parametry.nadpisanie_c,
+        tk_s=parametry.tk_s,
+        tb_s=parametry.tb_s,
+        rozszerzenia_audit2=parametry.rozszerzenia_audit2,
+        z_f_ohm=_z_f_ohm(run),
     )
     try:
         return SC3FProofPack.generate_zip(pack_input, context)
@@ -618,7 +693,9 @@ def _zbuduj_sc_niesymetryczne(
     punkt: PunktPakietu,
     context: ProofPackContext,
     naglowek: _Naglowek,
+    uow_factory: Callable[[], Any] | None,
 ) -> bytes:
+    parametry = _parametry_zwarcia_biegu(run, uow_factory)
     try:
         pack_input = SCAsymmetricalProofPack.wejscie_ze_snapshotu(
             snapshot=run.snapshot,
@@ -627,8 +704,11 @@ def _zbuduj_sc_niesymetryczne(
             case_name=naglowek.przypadek,
             run_timestamp=_znacznik_czasu(run),
             solver_version=_wersja_solvera(run),
-            c_factor=_c_factor(run),
-            tk_s=_tk_s(run),
+            scenariusz=parametry.scenariusz,
+            nadpisanie_c=parametry.nadpisanie_c,
+            tk_s=parametry.tk_s,
+            rozszerzenia_audit2=parametry.rozszerzenia_audit2,
+            z_f_ohm=_z_f_ohm(run),
         )
     except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc

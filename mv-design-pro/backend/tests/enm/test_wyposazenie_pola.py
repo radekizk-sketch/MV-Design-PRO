@@ -304,8 +304,6 @@ def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-300mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
             "switchgear_family_ref": rodzina,
         },
     )
@@ -550,8 +548,6 @@ def test_rodzina_rozdzielnicy_zaweza_rodzaje_aparatow() -> None:
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-300mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
             "switchgear_family_ref": "ZPUE_WLOSZCZOWA__TPM",
         },
     )

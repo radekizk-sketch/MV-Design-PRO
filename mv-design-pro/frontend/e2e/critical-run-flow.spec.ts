@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { wykonajBiegDoKonca } from './biegi';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -19,9 +20,9 @@ type DomainOpResponse = {
   snapshot?: {
     header?: { hash_sha256?: string };
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    buses?: Array<{ ref_id: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     /** POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): pola CZYTANE nizej zadeklarowane jawnie.
      *  Karta W5-B: pola stacji to rekordy `bays` (`src/types/enm.ts::Bay`). */
     substations?: Array<{ ref_id: string }>;
@@ -155,8 +156,6 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   // Krok 2: Magistrala SN (3 segmenty)
@@ -176,6 +175,8 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
 
   // Krok 3: Wstawienie stacji SN/nN
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
@@ -227,7 +228,16 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     });
   }
 
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycję TRAFO_SN_NN i dane 15/0,4 kV dostaje WYŁĄCZNIE transformator stacji SN/nN
+  // (strona dolna na szynie nN). Pętla obejmowała wcześniej także transformator GPZ
+  // 110/15 kV, przestawiając go na 15/0,4 kV przy szynach 110 kV i 15 kV — spec budował
+  // sieć fizycznie niemożliwą, a backend to przyjmował. Partia integracji 11 dołożyła
+  // walidator E023 (napięcie znamionowe uzwojenia poza pasmem szyny = blokada), więc
+  // taka sieć nie przechodzi już gotowości.
+  // Reguła wyboru — jedna dla wszystkich speców (`transformatoryStacji.ts`).
+  const transformatoryStacji = transformatoryStacjiSnNn(op.snapshot);
+  expect(transformatoryStacji.length, 'stacja SN/nN ma transformator po stronie nN').toBe(1);
+  for (const transformer of transformatoryStacji) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),

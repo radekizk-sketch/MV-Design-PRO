@@ -46,6 +46,7 @@ from tests.ci.tolerancja_fikstur import (
     HEX_SKROTU,
     PASMO_BEZWYMIAROWYCH,
     POLA_BEZWYMIAROWE_OGRANICZONE,
+    POLA_LIST_WPISOW_ROZPLYWU,
     POLA_SKROTOW_NIEPRZENOSNYCH,
     POLA_TEKSTU_Z_LICZBAMI,
     RTOL_FIXTUR,
@@ -183,6 +184,37 @@ def test_tekst_sladu_porownywany_po_strukturze_i_liczbach() -> None:
     assert roznice_z_tolerancja({"tekst": f"bieg {uuid_a}"}, {"tekst": f"bieg {uuid_b}"}) != []
     # Ten sam napis pod kluczem SPOZA listy — porównywany dokładnie.
     assert roznice_z_tolerancja({"opis": sesja}, {"opis": runner}) != []
+
+
+def _wklad(prad_ka: float) -> dict[str, object]:
+    return {"branch_id": "tr_sn_nn", "source_id": "THEVENIN_GRID", "i_ka": prad_ka}
+
+
+def _slad(prad_a: float) -> dict[str, object]:
+    return {"key": "thevenin_flow_x", "result": {"fraction": 0.0, "i_contrib_a": prad_a}}
+
+
+@pytest.mark.parametrize(
+    "pole,wpis", [("branch_contributions", _wklad), ("branch_flow_trace", _slad)]
+)
+@pytest.mark.parametrize("szum_po_stronie_fikstury", [True, False])
+def test_wpisy_rozplywu_w_pasmie_zera_nie_wchodza_do_porownania(
+    pole: str, wpis: object, szum_po_stronie_fikstury: bool
+) -> None:
+    """Iloczyn cech: {wkład gałęzi, ślad podziału} × {szum po stronie fikstury, po stronie
+    backendu} × {wpis szumu (1,4e-17), wpis realny (0,002)}. Solver buduje te listy progiem
+    `<= 0`, więc wpis o prądzie 1e-17 jest obecny na jednej maszynie, a na drugiej nie —
+    długość listy nie może wywracać porównania; brak wpisu o prądzie REALNYM nadal tak."""
+    stale = [wpis(81.9)]  # type: ignore[operator]
+    szum = [*stale, wpis(1.4e-17)]  # type: ignore[operator]
+    realny = [*stale, wpis(0.002)]  # type: ignore[operator]
+    a, b = (szum, stale) if szum_po_stronie_fikstury else (stale, szum)
+    assert roznice_z_tolerancja({pole: a}, {pole: b}) == []
+    a, b = (realny, stale) if szum_po_stronie_fikstury else (stale, realny)
+    assert roznice_z_tolerancja({pole: a}, {pole: b}) != []
+    # klasa zamknięta: ta sama lista pod INNYM kluczem nadal porównywana długością
+    assert roznice_z_tolerancja({"inne": szum}, {"inne": stale}) != []
+    assert POLA_LIST_WPISOW_ROZPLYWU == {"branch_contributions", "branch_flow_trace"}
 
 
 def test_listy_pol_wylaczonych_sa_zamkniete() -> None:
@@ -673,9 +705,13 @@ def test_zwarcia_wklady_pokrywaja_wszystkie_punkty_wynikow() -> None:
 def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
     """Karta W3-G3/Z-3: rozpływ gałęziowy MUSI pokazywać OBA tory — sieci
     nadrzędnej (`THEVENIN_GRID`) i falownika (`gen_pv`) — inaczej fixtura nie
-    zastępuje uczciwie dawnej ręcznej sceny Z-3 (`run-sc-th1-demo`)."""
-    rozplyw = eksport.zwarcia_rozplyw_scena_zwarcia()
-    assert rozplyw["target_id"] == eksport.zwarcia_wyniki_scena_zwarcia()["rows"][0]["target_id"]
+    zastępuje uczciwie dawnej ręcznej sceny Z-3 (`run-sc-th1-demo`). Dotyczy punktu
+    DOMYŚLNEGO ekranu (pierwszy wiersz wyników); kompletność mapy dla wszystkich punktów
+    przypina `test_zwarcia_rozplyw_mapa_obejmuje_kazdy_punkt_biegu`."""
+    mapa = eksport.zwarcia_rozplyw_scena_zwarcia()
+    domyslny = eksport.zwarcia_wyniki_scena_zwarcia()["rows"][0]["target_id"]
+    rozplyw = mapa[domyslny]
+    assert rozplyw["target_id"] == domyslny
     wpisy = rozplyw["branch_contributions"] or []
     zrodla = {wpis["source_id"] for wpis in wpisy}
     assert "THEVENIN_GRID" in zrodla, "brak toru sieci nadrzędnej w rozpływie"
@@ -697,6 +733,33 @@ def test_zwarcia_rozplyw_niesie_tor_sieci_nadrzednej_i_tor_falownika() -> None:
         assert wpis["branch_id"] in refy_galezi_zlotej, (wpis["branch_id"], wpisy)
         assert wpis["from_node_id"] in refy_szyn_zlotej, (wpis["from_node_id"], wpisy)
         assert wpis["to_node_id"] in refy_szyn_zlotej, (wpis["to_node_id"], wpisy)
+
+
+@pytest.mark.parametrize("robocza", [False, True], ids=["deklarowana", "robocza"])
+def test_zwarcia_rozplyw_mapa_obejmuje_kazdy_punkt_biegu(robocza: bool) -> None:
+    """Rozpływ i ślad podziału prądu (jedna odpowiedź `…/short-circuit/rozplyw`) muszą być
+    w fiksturze dla KAŻDEGO punktu zwarcia biegu sceny — makieta harnessu znająca jeden
+    punkt dawała „Nie udało się pobrać" po wyborze innego punktu (zmierzone: szyna nN sceny
+    wartości roboczej). Iloczyn: scena z deklaracją × scena na wartości roboczej; każdy
+    punkt × identyfikator biegu sceny × własny `target_id` × co najmniej jeden tor."""
+    if robocza:
+        wyniki = eksport.zwarcia_wyniki_scena_tolerancja_robocza()
+        mapa = eksport.zwarcia_rozplyw_scena_tolerancja_robocza()
+        run_id = eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    else:
+        wyniki = eksport.zwarcia_wyniki_scena_zwarcia()
+        mapa = eksport.zwarcia_rozplyw_scena_zwarcia()
+        run_id = eksport.RUN_ID_SCENY_ZWARCIA
+    punkty = [row["target_id"] for row in wyniki["rows"]]
+    assert list(mapa) == punkty, "kolejność mapy = kolejność wierszy biegu (determinizm)"
+    nn = [row["target_id"] for row in wyniki["rows"] if "pasmo nN" in row["c_zrodlo"]]
+    assert nn, "scena musi nieść punkt nN — to on pokazywał błąd pobrania"
+    for target_id, odpowiedz in mapa.items():
+        assert odpowiedz["target_id"] == target_id
+        assert odpowiedz["run_id"] == run_id
+        _run_idy_nie_sa_uuid(odpowiedz)
+        wpisy = odpowiedz["branch_contributions"] or []
+        assert any(abs(w["i_ka"]) > 0 for w in wpisy), (target_id, wpisy)
 
 
 def test_zwarcia_pasmo_strona_max_jest_biegiem_kotwicy() -> None:
@@ -724,6 +787,50 @@ def test_zwarcia_pasmo_strona_min_ma_ikss_mniejsze_niz_max_per_szyna() -> None:
     assert set(wiersze_max) == set(wiersze_min)
     for target_id, ikss_min in wiersze_min.items():
         assert ikss_min < wiersze_max[target_id], (target_id, ikss_min, wiersze_max[target_id])
+
+
+def test_scena_tolerancji_roboczej_liczy_na_wartosci_roboczej_wszystkimi_sekcjami() -> None:
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: scena `zwarcia-tolerancja-robocza` — sieć złota bez
+    deklaracji tolerancji sieci nN. Wyniki niosą założenie `fault.c_tolerancja_nn_robocza`
+    wskazujące transformator SN/nN i pole deklaracji; WYŁĄCZNIE wiersz szyny nN ma znacznik
+    i podstawę c „(wartość robocza)"; prąd szyny nN jest większy niż w scenie z deklaracją
+    +6 % (c_max 1,10 > 1,05), szyny SN/WN bez zmiany podstawy; wkłady i rozpływ pochodzą
+    z TEGO SAMEGO biegu (zbiór punktów, identyfikator biegu)."""
+    robocza = eksport.zwarcia_wyniki_scena_tolerancja_robocza()
+    deklarowana = eksport.zwarcia_wyniki_scena_zwarcia()
+    assert robocza["run_id"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    _run_idy_nie_sa_uuid(robocza)
+    (zalozenie,) = (z for z in robocza["zalozenia"] if z["code"] == "fault.c_tolerancja_nn_robocza")
+    assert zalozenie["element_ref"] == "tr_sn_nn"
+    assert zalozenie["element_type"] == "Transformer"
+    assert zalozenie["parametr"] == "lv_voltage_tolerance"
+    assert "fault.c_tolerancja_nn_robocza" not in {z["code"] for z in deklarowana["zalozenia"]}
+    ik_deklarowane = {w["target_id"]: w["ikss_ka"] for w in deklarowana["rows"]}
+    for wiersz in robocza["rows"]:
+        nn = "pasmo nN" in wiersz["c_zrodlo"]
+        assert bool(wiersz.get("tolerancja_nn_robocza")) is nn, wiersz["c_zrodlo"]
+        assert ("(wartość robocza)" in wiersz["c_zrodlo"]) is nn
+        if nn:
+            assert wiersz["ikss_ka"] > ik_deklarowane[wiersz["target_id"]]
+    wklady = eksport.zwarcia_wklady_scena_tolerancja_robocza()
+    assert set(wklady) == {w["target_id"] for w in robocza["rows"]}
+    rozplyw = eksport.zwarcia_rozplyw_scena_tolerancja_robocza()
+    assert set(rozplyw) == {w["target_id"] for w in robocza["rows"]}
+    pasmo = eksport.zwarcia_pasmo_scena_tolerancja_robocza()
+    assert pasmo["run_id_kotwicy"] == eksport.RUN_ID_SCENY_ZWARCIA_ROBOCZA
+    # Migawka sceny = model biegu: transformator SN/nN BEZ deklaracji tolerancji (formularz
+    # „Zmień wartość" nie może pokazać +6 % sieci złotej), nazwy elementów dla mostu nazw.
+    migawka = eksport.zwarcia_migawka_scena_tolerancja_robocza()
+    nn = [t for t in migawka["transformers"] if t["ulv_kv"] < 1.0]
+    assert nn and all(t["lv_voltage_tolerance"] is None for t in nn), nn
+    assert all(t["name"] for t in nn)
+    elementy = {z["element_ref"] for z in robocza["zalozenia"] if z.get("element_ref")}
+    refy_migawki = {
+        e["ref_id"]
+        for klucz in ("transformers", "generators", "buses", "branches", "sources")
+        for e in migawka.get(klucz, [])
+    }
+    assert elementy <= refy_migawki, elementy - refy_migawki
 
 
 # ---------------------------------------------------------------------------
@@ -1216,14 +1323,23 @@ def test_wniosek_zadanie_wskazuje_przebiegi_sceny_i_szyne_sn(
     assert zadanie["nazwa_przypadku"] == eksport.NAZWA_PRZYPADKU_SCEN_OZE
     assert zadanie["wnioskodawca"] is None and zadanie["adres_przylaczenia"] is None
     assert zadanie["operator_id"] == _operator_z_modelu(model)
-    # Węzeł przyłączenia = strona SN transformatora WN/SN GPZ, na napięciu górnej strony
-    # transformatorów blokowych modułów (wyprowadzone z topologii modelu, nie z nazwy szyny).
+    # Węzeł przyłączenia = szyna SN sekcji GPZ, na napięciu górnej strony transformatorów
+    # blokowych modułów (wyprowadzone z topologii modelu, nie z nazwy szyny). GPZ-MODEL:
+    # scena ma równoważnik sieci na szynach SN (tryb B) — granica modelu to szyny SN GPZ,
+    # transformatora WN/SN w modelu nie ma (dawna wersja szukała węzła jako „strony SN TR
+    # GPZ", czyli elementu, którego obliczenie nie zawierało).
     napiecia = {szyna.ref_id: szyna.voltage_kv for szyna in model.buses}
     szyny_wytworcow = {generator.bus_ref for generator in model.generators}
     bloki = [t for t in model.transformers if t.lv_bus_ref in szyny_wytworcow]
-    gpz = [t for t in model.transformers if t.lv_bus_ref not in szyny_wytworcow]
-    assert bloki and gpz
-    assert zadanie["bus_ref"] in {t.lv_bus_ref for t in gpz}
+    sekcje_gpz = {
+        sekcja.bus_ref
+        for stacja in model.substations
+        if stacja.station_type == "gpz"
+        for sekcja in (stacja.gpz_sections or [])
+    }
+    assert bloki and sekcje_gpz
+    assert [t for t in model.transformers if t.lv_bus_ref in sekcje_gpz] == []
+    assert zadanie["bus_ref"] in sekcje_gpz
     assert {napiecia[t.hv_bus_ref] for t in bloki} == {napiecia[zadanie["bus_ref"]]}
     assert [(p["id"], p["analysis_type"], p["status"]) for p in przebiegi] == [
         (zadanie["pf_run_id"], "LOAD_FLOW", "DONE"),

@@ -8,6 +8,13 @@ from typing import Any
 import numpy as np
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
+from network_model.odmowa_danych import (
+    RODZAJ_GALAZ,
+    RODZAJ_WEZEL,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 from network_model.solvers.power_flow_inverter import (
     InverterControl,
     InverterShaping,
@@ -28,6 +35,26 @@ from network_model.solvers.power_flow_zip import (
     zip_factor,
     zip_factor_derivative,
 )
+
+# Kody odmów wejścia rozpływu (rekord strukturalny `RekordOdmowy`, decyzja O-59, plan A/B
+# §12.2 (k)): identyfikatory węzłów i gałęzi stoją w odwołaniach rekordu, nie w treści.
+KOD_MOC_BAZOWA_NIEDODATNIA = "rozplyw.moc_bazowa_niedodatnia"
+KOD_WEZEL_BILANSUJACY_SPOZA_GRAFU = "rozplyw.wezel_bilansujacy_spoza_grafu"
+KOD_ZADANIE_PQ_ZDUBLOWANE = "rozplyw.zadanie_pq_zdublowane"
+KOD_ZADANIE_PV_ZDUBLOWANE = "rozplyw.zadanie_pv_zdublowane"
+KOD_BOCZNIK_ZDUBLOWANY = "rozplyw.bocznik_zdublowany"
+KOD_GRANICE_NAPIECIA_ZDUBLOWANE = "rozplyw.granice_napiecia_zdublowane"
+KOD_PRZEKLADNIA_ZDUBLOWANA = "rozplyw.przekladnia_zdublowana"
+KOD_GRANICE_GALEZI_ZDUBLOWANE = "rozplyw.granice_galezi_zdublowane"
+KOD_WEZEL_BILANSUJACY_Z_ZADANIEM = "rozplyw.wezel_bilansujacy_z_zadaniem"
+KOD_WEZEL_PQ_I_PV = "rozplyw.wezel_pq_i_pv"
+KOD_GRANICE_Q_PV_ODWROCONE = "rozplyw.granice_q_pv_odwrocone"
+KOD_GRANICE_NAPIECIA_ODWROCONE = "rozplyw.granice_napiecia_odwrocone"
+KOD_GRANICA_GALEZI_BEZ_WARTOSCI = "rozplyw.granica_galezi_bez_wartosci"
+KOD_PRZEKLADNIA_GALEZI_SPOZA_GRAFU = "rozplyw.przekladnia_galezi_spoza_grafu"
+KOD_PRZEKLADNIA_NIE_TRANSFORMATORA = "rozplyw.przekladnia_nie_transformatora"
+KOD_GRANICA_GALEZI_SPOZA_GRAFU = "rozplyw.granica_galezi_spoza_grafu"
+KOD_PRZEKLADNIA_NIEDODATNIA = "rozplyw.przekladnia_niedodatnia"
 
 
 def transformer_clock_number(vector_group: str | None) -> int | None:
@@ -325,91 +352,194 @@ def _apply_inverter_jacobian_v2(
         jacobian[n_p + col_q, n_p + col_q] -= qu_dq_dv(c, v_mag[idx])
 
 
-def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
+def _odwolania(rodzaj: str, refs: Iterable[str]) -> tuple[OdwolanieElementu, ...]:
+    return tuple(OdwolanieElementu(rodzaj, ref) for ref in sorted(refs))
+
+
+def odmowy_wejscia(pf_input: PowerFlowInput) -> tuple[list[str], list[RekordOdmowy]]:
+    """Walidacja wejścia rozpływu: ostrzeżenia i odmowy jako rekordy strukturalne.
+
+    Te same predykaty i ta sama kolejność co w `validate_input` (który z niej korzysta);
+    identyfikatory węzłów i gałęzi stoją w `RekordOdmowy.odwolania`, nie w treści (decyzja
+    O-59, plan A/B §12.2 (k)). Zdanie z nazwami z modelu składa warstwa aplikacji.
+    """
     warnings: list[str] = []
-    errors: list[str] = []
+    errors: list[RekordOdmowy] = []
 
     if pf_input.base_mva <= 0:
-        errors.append("base_mva must be > 0")
+        errors.append(
+            RekordOdmowy(KOD_MOC_BAZOWA_NIEDODATNIA, "Moc bazowa rozpływu musi być dodatnia.")
+        )
 
     graph = pf_input.typed_graph()
     if pf_input.slack.node_id not in graph.nodes:
-        errors.append(f"slack node '{pf_input.slack.node_id}' not in graph")
+        errors.append(
+            RekordOdmowy(
+                KOD_WEZEL_BILANSUJACY_SPOZA_GRAFU,
+                "Wskazany węzeł bilansujący nie istnieje w grafie sieci.",
+                _odwolania(RODZAJ_WEZEL, [pf_input.slack.node_id]),
+            )
+        )
 
-    pq_ids = [spec.node_id for spec in pf_input.pq]
-    pv_ids = [spec.node_id for spec in pf_input.pv]
+    pq_ids = [pq_spec.node_id for pq_spec in pf_input.pq]
+    pv_ids = [pv_spec.node_id for pv_spec in pf_input.pv]
     slack_id = pf_input.slack.node_id
 
     duplicate_pq = _find_duplicates(pq_ids)
     if duplicate_pq:
-        errors.append("duplicate PQSpec.node_id entries: " + ", ".join(sorted(duplicate_pq)))
+        errors.append(
+            RekordOdmowy(
+                KOD_ZADANIE_PQ_ZDUBLOWANE,
+                "Węzeł ma więcej niż jedno zadanie mocy odbioru (PQ).",
+                _odwolania(RODZAJ_WEZEL, duplicate_pq),
+            )
+        )
 
     duplicate_pv = _find_duplicates(pv_ids)
     if duplicate_pv:
-        errors.append("duplicate PVSpec.node_id entries: " + ", ".join(sorted(duplicate_pv)))
+        errors.append(
+            RekordOdmowy(
+                KOD_ZADANIE_PV_ZDUBLOWANE,
+                "Węzeł ma więcej niż jedno zadanie węzła napięciowego (PV).",
+                _odwolania(RODZAJ_WEZEL, duplicate_pv),
+            )
+        )
 
-    duplicate_shunts = _find_duplicates([spec.node_id for spec in pf_input.shunts])
+    duplicate_shunts = _find_duplicates([shunt.node_id for shunt in pf_input.shunts])
     if duplicate_shunts:
-        errors.append("duplicate ShuntSpec.node_id entries: " + ", ".join(sorted(duplicate_shunts)))
+        errors.append(
+            RekordOdmowy(
+                KOD_BOCZNIK_ZDUBLOWANY,
+                "Węzeł ma więcej niż jeden bocznik.",
+                _odwolania(RODZAJ_WEZEL, duplicate_shunts),
+            )
+        )
 
-    duplicate_bus_limits = _find_duplicates([spec.node_id for spec in pf_input.bus_limits])
+    duplicate_bus_limits = _find_duplicates([limit.node_id for limit in pf_input.bus_limits])
     if duplicate_bus_limits:
         errors.append(
-            "duplicate BusVoltageLimitSpec.node_id entries: "
-            + ", ".join(sorted(duplicate_bus_limits))
+            RekordOdmowy(
+                KOD_GRANICE_NAPIECIA_ZDUBLOWANE,
+                "Węzeł ma więcej niż jedną parę granic napięcia.",
+                _odwolania(RODZAJ_WEZEL, duplicate_bus_limits),
+            )
         )
 
-    duplicate_taps = _find_duplicates([spec.branch_id for spec in pf_input.taps])
+    duplicate_taps = _find_duplicates([tap.branch_id for tap in pf_input.taps])
     if duplicate_taps:
         errors.append(
-            "duplicate TransformerTapSpec.branch_id entries: " + ", ".join(sorted(duplicate_taps))
+            RekordOdmowy(
+                KOD_PRZEKLADNIA_ZDUBLOWANA,
+                "Transformator ma więcej niż jedną zadaną przekładnię.",
+                _odwolania(RODZAJ_GALAZ, duplicate_taps),
+            )
         )
 
-    duplicate_branch_limits = _find_duplicates([spec.branch_id for spec in pf_input.branch_limits])
+    duplicate_branch_limits = _find_duplicates(
+        [limit.branch_id for limit in pf_input.branch_limits]
+    )
     if duplicate_branch_limits:
         errors.append(
-            "duplicate BranchLimitSpec.branch_id entries: "
-            + ", ".join(sorted(duplicate_branch_limits))
+            RekordOdmowy(
+                KOD_GRANICE_GALEZI_ZDUBLOWANE,
+                "Gałąź ma więcej niż jedną granicę obciążenia.",
+                _odwolania(RODZAJ_GALAZ, duplicate_branch_limits),
+            )
         )
 
     pq_set = set(pq_ids)
     pv_set = set(pv_ids)
     if slack_id in pq_set or slack_id in pv_set:
-        errors.append("slack node cannot also be specified as PQ or PV")
+        errors.append(
+            RekordOdmowy(
+                KOD_WEZEL_BILANSUJACY_Z_ZADANIEM,
+                "Węzeł bilansujący nie może mieć zadania mocy odbioru (PQ) ani węzła "
+                "napięciowego (PV).",
+                _odwolania(RODZAJ_WEZEL, [slack_id]),
+            )
+        )
     overlap = pq_set.intersection(pv_set)
     if overlap:
         errors.append(
-            "node_id cannot be specified as both PQ and PV: " + ", ".join(sorted(overlap))
+            RekordOdmowy(
+                KOD_WEZEL_PQ_I_PV,
+                "Węzeł nie może mieć jednocześnie zadania mocy odbioru (PQ) i węzła "
+                "napięciowego (PV).",
+                _odwolania(RODZAJ_WEZEL, overlap),
+            )
         )
 
-    for spec in pf_input.pv:
-        if spec.q_min_mvar > spec.q_max_mvar:
-            errors.append(f"PVSpec '{spec.node_id}' q_min_mvar must be <= q_max_mvar")
+    for pv_spec in pf_input.pv:
+        if pv_spec.q_min_mvar > pv_spec.q_max_mvar:
+            errors.append(
+                RekordOdmowy(
+                    KOD_GRANICE_Q_PV_ODWROCONE,
+                    "Dolna granica mocy biernej węzła napięciowego (PV) przekracza górną.",
+                    _odwolania(RODZAJ_WEZEL, [pv_spec.node_id]),
+                )
+            )
 
-    for spec in pf_input.bus_limits:
-        if spec.u_min_pu >= spec.u_max_pu:
-            errors.append(f"BusVoltageLimitSpec '{spec.node_id}' requires u_min_pu < u_max_pu")
+    for bus_limit in pf_input.bus_limits:
+        if bus_limit.u_min_pu >= bus_limit.u_max_pu:
+            errors.append(
+                RekordOdmowy(
+                    KOD_GRANICE_NAPIECIA_ODWROCONE,
+                    "Dolna granica napięcia węzła musi być mniejsza od górnej.",
+                    _odwolania(RODZAJ_WEZEL, [bus_limit.node_id]),
+                )
+            )
 
-    for spec in pf_input.branch_limits:
-        if spec.s_max_mva is None and spec.i_max_ka is None:
-            errors.append(f"BranchLimitSpec '{spec.branch_id}' requires s_max_mva or i_max_ka")
+    for branch_limit in pf_input.branch_limits:
+        if branch_limit.s_max_mva is None and branch_limit.i_max_ka is None:
+            errors.append(
+                RekordOdmowy(
+                    KOD_GRANICA_GALEZI_BEZ_WARTOSCI,
+                    "Granica obciążenia gałęzi wymaga mocy dopuszczalnej albo prądu "
+                    "dopuszczalnego.",
+                    _odwolania(RODZAJ_GALAZ, [branch_limit.branch_id]),
+                )
+            )
 
-    for spec in pf_input.taps:
-        if spec.branch_id not in graph.branches:
-            errors.append(f"TransformerTapSpec '{spec.branch_id}' not in graph")
+    for tap in pf_input.taps:
+        if tap.branch_id not in graph.branches:
+            errors.append(
+                RekordOdmowy(
+                    KOD_PRZEKLADNIA_GALEZI_SPOZA_GRAFU,
+                    "Zadana przekładnia wskazuje gałąź, której nie ma w grafie sieci.",
+                    _odwolania(RODZAJ_GALAZ, [tap.branch_id]),
+                )
+            )
             continue
-        branch = graph.branches[spec.branch_id]
+        branch = graph.branches[tap.branch_id]
         if not isinstance(branch, TransformerBranch):
-            errors.append(f"TransformerTapSpec '{spec.branch_id}' must reference a transformer")
+            errors.append(
+                RekordOdmowy(
+                    KOD_PRZEKLADNIA_NIE_TRANSFORMATORA,
+                    "Zadana przekładnia wskazuje gałąź, która nie jest transformatorem.",
+                    _odwolania(RODZAJ_GALAZ, [tap.branch_id]),
+                )
+            )
 
-    for spec in pf_input.branch_limits:
-        if spec.branch_id not in graph.branches:
-            errors.append(f"BranchLimitSpec '{spec.branch_id}' not in graph")
+    for branch_limit in pf_input.branch_limits:
+        if branch_limit.branch_id not in graph.branches:
+            errors.append(
+                RekordOdmowy(
+                    KOD_GRANICA_GALEZI_SPOZA_GRAFU,
+                    "Granica obciążenia wskazuje gałąź, której nie ma w grafie sieci.",
+                    _odwolania(RODZAJ_GALAZ, [branch_limit.branch_id]),
+                )
+            )
 
     if pf_input.slack.u_pu < 0.8 or pf_input.slack.u_pu > 1.2:
         warnings.append("slack.u_pu outside typical range [0.8, 1.2]")
 
     return warnings, errors
+
+
+def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
+    """Ostrzeżenia i treści odmów wejścia (zdania bez identyfikatorów) — `odmowy_wejscia`."""
+    warnings, odmowy = odmowy_wejscia(pf_input)
+    return warnings, [odmowa.tresc for odmowa in odmowy]
 
 
 def build_slack_island(graph: NetworkGraph, slack_node_id: str) -> tuple[list[str], list[str]]:
@@ -514,14 +644,14 @@ def build_power_spec_v2(
         p_spec[idx] = -spec.p_mw / base_mva
         q_spec[idx] = -spec.q_mvar / base_mva
 
-    for spec in pv_specs:
-        if spec.node_id not in node_index_map:
+    for pv_spec in pv_specs:
+        if pv_spec.node_id not in node_index_map:
             continue
-        idx = node_index_map[spec.node_id]
-        p_spec[idx] = -spec.p_mw / base_mva
-        pv_setpoints[idx] = float(spec.u_pu)
-        q_min_pu = spec.q_min_mvar / base_mva
-        q_max_pu = spec.q_max_mvar / base_mva
+        idx = node_index_map[pv_spec.node_id]
+        p_spec[idx] = -pv_spec.p_mw / base_mva
+        pv_setpoints[idx] = float(pv_spec.u_pu)
+        q_min_pu = pv_spec.q_min_mvar / base_mva
+        q_max_pu = pv_spec.q_max_mvar / base_mva
         pv_q_limits[idx] = (q_min_pu, q_max_pu)
 
     return p_spec, q_spec, pv_setpoints, pv_q_limits
@@ -1289,7 +1419,15 @@ def _build_ybus_ohm(
         tap_ratio, tap_source = _resolve_tap_ratio(graph, branch, tap_ratios)
 
         if tap_ratio <= 0:
-            raise ValueError(f"Tap ratio must be > 0 for branch '{branch.id}'")
+            raise OdmowaWejsciaRdzenia(
+                [
+                    RekordOdmowy(
+                        KOD_PRZEKLADNIA_NIEDODATNIA,
+                        "Przekładnia zaczepów transformatora musi być dodatnia.",
+                        _odwolania(RODZAJ_GALAZ, [branch.id]),
+                    )
+                ]
+            )
 
         if tap_source:
             applied_taps.append(

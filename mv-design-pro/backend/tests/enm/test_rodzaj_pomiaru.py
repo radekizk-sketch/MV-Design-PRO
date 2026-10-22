@@ -85,8 +85,6 @@ def _magistrala(liczba_odcinkow: int = 3) -> tuple[dict[str, Any], list[str]]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_binding": _binding("ZRODLO_SN", "src-gpz-15kv-250mva-rx010"),
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     odcinki: list[str] = []
@@ -584,8 +582,6 @@ def test_add_sn_bay_pin_gpz_pomiar_napiecia_szyn_wolny() -> None:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     substation = gpz_snapshot["substations"][0]
@@ -748,8 +744,6 @@ def test_add_sn_bay_rekonfiguracja_pomiaru_na_inna_role_usuwa_atrybuty() -> None
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     substation = gpz_snapshot["substations"][0]

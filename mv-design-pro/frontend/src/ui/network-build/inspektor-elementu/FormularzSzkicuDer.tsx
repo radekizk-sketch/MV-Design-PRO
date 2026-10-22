@@ -492,7 +492,7 @@ export function FormularzSzkicuDer({ dane, derKind }: FormularzSzkicuDerProps): 
           type="button"
           className="mvd-btn"
           data-testid="inspektor-der-przylacz-sn"
-          title="Otwiera kreator źródła po stronie SN (pole SN z aparatem, transformator blokowy, kabel) z tą stacją, technologią i mocą."
+          title="Otwiera konfigurację źródła po stronie SN (pole SN z aparatem, transformator blokowy, kabel) z tą stacją, technologią i mocą."
           disabled={!dane.elementId}
           onClick={przylaczPoStronieSn}
         >

@@ -87,6 +87,12 @@ export interface LvDomainSceneNode {
   /** WYŁĄCZNIE `kind==='bus'`/`'anchorBar'`: lewy i prawy koniec kreski. */
   readonly barLeft?: number;
   readonly barRight?: number;
+  /** WYŁĄCZNIE aparat w pionie pola: wolny pas na oznaczenie po prawej
+   *  symbolu [jednostki świata] — odległość do najbliższej kreski pionowej
+   *  albo symbolu w wierszu etykiety, a dla ostatniej kolumny do krawędzi
+   *  arkusza z rezerwą etykiet. Oznaczenie zajmuje tyle miejsca, ile realnie
+   *  jest na rysunku (arkusz CAD), a nie stały odstęp pola. */
+  readonly wolnyPasPrawy?: number;
 }
 
 export type LvDomainSceneEdgeKind =
@@ -126,6 +132,38 @@ export interface LvDomainScene {
 // ---------------------------------------------------------------------------
 // Etykiety (prezentacja danych modelu — zero fizyki).
 // ---------------------------------------------------------------------------
+
+/** Pół-wysokość wiersza etykiety aparatu [jednostki świata]: kreska pionowa
+ *  albo symbol w tym paśmie zamyka pas oznaczenia po prawej. */
+export const WIERSZ_ETYKIETY_APARATU_POLOWA = 40;
+
+/** Wolny pas oznaczenia aparatu w pionie pola (geometria arkusza, zero
+ *  fizyki): najbliższa kreska pionowa albo symbol po prawej w paśmie wiersza
+ *  etykiety; brak przeszkody = do krawędzi arkusza (rezerwa etykiet §25). */
+export function zWolnymPasemEtykiet(
+  nodes: readonly LvDomainSceneNode[],
+  edges: readonly LvDomainSceneEdge[],
+  sceneWidth: number,
+): LvDomainSceneNode[] {
+  const h = WIERSZ_ETYKIETY_APARATU_POLOWA;
+  return nodes.map((n) => {
+    if (n.kind !== 'apparatus' || n.orientation === 'pozioma') return n;
+    let najblizszy = sceneWidth;
+    for (const e of edges) {
+      if (e.x1 !== e.x2 || e.x1 <= n.x + 1) continue;
+      const gora = Math.min(e.y1, e.y2);
+      const dol = Math.max(e.y1, e.y2);
+      if (dol < n.y - h || gora > n.y + h) continue;
+      najblizszy = Math.min(najblizszy, e.x1);
+    }
+    for (const m of nodes) {
+      if (m === n || m.kind === 'bus' || m.kind === 'anchorBar' || m.x <= n.x + 1) continue;
+      if (Math.abs(m.y - n.y) > h) continue;
+      najblizszy = Math.min(najblizszy, m.x);
+    }
+    return { ...n, wolnyPasPrawy: najblizszy - n.x };
+  });
+}
 
 export function transformerNameplateLabel(t: {
   readonly sn_mva: number;
@@ -503,6 +541,8 @@ export function composeLvDomainScene(
           nosnikStanu: wpis.nosnikStanu,
           deviceKind: device.device_kind,
           nazwaPl: wpis.nazwaPl,
+          // Tabliczka RCD z katalogu (W5-E-TTIT) — opis aparatu na rysunku.
+          ...(device.rcd ? { rcd: device.rcd } : {}),
         },
       });
       const relay = relayByBreaker.get(device.ref_id);
@@ -993,11 +1033,12 @@ export function composeLvDomainScene(
     : edges.map((e) => ({ ...e, x1: e.x1 + shiftX, y1: e.y1 + shiftY, x2: e.x2 + shiftX, y2: e.y2 + shiftY }));
   const maxX = Math.max(T.marginX, ...shiftedNodes.flatMap((n) => [n.x, n.barRight ?? n.x]), ...shiftedEdges.flatMap((e) => [e.x1, e.x2]));
   const maxY = Math.max(T.marginY, ...shiftedNodes.map((n) => n.y), ...shiftedEdges.flatMap((e) => [e.y1, e.y2]));
+  const sceneWidth = maxX + T.marginX + LABEL_RESERVE_RIGHT;
 
   return {
-    nodes: shiftedNodes,
+    nodes: zWolnymPasemEtykiet(shiftedNodes, shiftedEdges, sceneWidth),
     edges: shiftedEdges,
-    width: maxX + T.marginX + LABEL_RESERVE_RIGHT,
+    width: sceneWidth,
     height: maxY + T.marginY + LABEL_RESERVE_BOTTOM,
     stationRef: view.station_ref,
     stationName: view.station_name ?? '',

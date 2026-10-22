@@ -22,6 +22,7 @@ import path from 'node:path';
 
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
  *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
  *  celowalo w typ ZAWEZONY do `null` (zmienna byla dopiero co zainicjowana `null`),
@@ -51,7 +52,8 @@ function nextEntitySuffix(): string {
 type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   branches?: Array<{ ref_id: string; type?: string }>;
-  transformers?: Array<{ ref_id: string }>;
+  transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+  buses?: Array<{ ref_id: string; voltage_kv?: number }>;
 };
 type DomainOpResponse = { error?: string | null; snapshot?: Snapshot };
 
@@ -154,8 +156,6 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};
@@ -174,6 +174,8 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
   expect(segmentRefs.length).toBeGreaterThan(0);
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
@@ -199,7 +201,9 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -331,11 +335,11 @@ test('KD-3 poz. 11: delta na ekranie porównania zwarć = pole z końcówki back
     }>;
   };
   // Kontrakt: wersja raportu — podbicia MINOR addytywne (1.1.0 pola procentowe
-  // KD-3; 1.2.0 element_id nakładki; 1.3.0 wartości B nakładki, S9-13).
+  // KD-3; 1.2.0 element_id nakładki; 1.3.0 wartości B nakładki, S9-13; 1.4.0 I_b, i_DC(t_b), t_b z pochodzeniem).
   // Asercja trzyma DOKŁADNĄ bieżącą wersję, żeby cicha zmiana kontraktu nie
   // przeszła bez podbicia (poprzednio asercja została na 1.1.0 przy backendzie
   // 1.2.0 — test był czerwony na HEAD; naprawa u źródła: wersja z kontraktu).
-  expect(porownanie.report_version).toBe('1.3.0');
+  expect(porownanie.report_version).toBe('1.4.0');
   expect(porownanie.punkty.length).toBeGreaterThan(0);
 
   await expect(page.getByTestId('mvd-porz-wynik')).toBeVisible({ timeout: 20000 });
@@ -492,15 +496,20 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
 
-  // (1) Wyłącznik w torze odcinka — karta odcinka w inspektorze → „Wstaw łącznik sekcyjny" →
-  // kreator z katalogu.
+  // (1) Wyłącznik w torze odcinka — inspektor odcinka → „Wstaw łącznik sekcyjny" → kreator
+  // z katalogu. UI-02b/K6: działanie występuje w inspektorze RAZ — w pasku działań z rejestru
+  // menu kanwy (`inspektor-akcja-<id>`, karta techniczna nie dubluje pozycji paska), a pasek
+  // stoi na końcu inspektora zwinięty; użytkownik rozwija go jednym klikiem.
   const drzewo = page.getByTestId('project-tree');
   await expect(drzewo).toBeVisible({ timeout: 20000 });
   await page.getByTestId('project-tree-search-input').fill('Odcinek 1');
   await drzewo.getByText('Odcinek 1', { exact: true }).first().click();
   const inspektor = page.getByTestId('inspector-engineering');
   await expect(inspektor).toContainText('Odcinek 1');
-  await inspektor.getByRole('button', { name: 'Wstaw łącznik sekcyjny' }).click();
+  await inspektor.getByTestId('inspektor-dzialania-rozwin').click();
+  const wstawLacznik = inspektor.getByTestId('inspektor-akcja-insert-sectional');
+  await expect(wstawLacznik).toHaveText('Wstaw łącznik sekcyjny');
+  await wstawLacznik.click();
   await expect(page.getByTestId('mvd-kreator-lacznik')).toBeVisible();
   await page.getByTestId('mvd-kreator-lacznik-katalog').selectOption(KATALOG_WYLACZNIKA);
   await page.getByTestId('mvd-kreator-lacznik-rodzaj').selectOption('WYLACZNIK');
@@ -563,11 +572,24 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   // Próg pierwotny z backendu (1,5 A wtórnie × 600/5 = 180 A) — front niczego nie przelicza.
   await expect(page.getByTestId(`${prefiks}-overcurrent_51-pierwotny`)).toContainText('180');
 
-  // Nastawa żyje w MODELU: po pełnym przeładowaniu wraca z serwera.
+  // (3a) Obwód wtórny przekładnika — dane jądra nasycenia (karta CT-JEDEN-WERDYKT). Bez
+  // długości i przekroju przewodów wiarygodność punktu jest uczciwie nieustalona; 5 m żyły
+  // 2,5 mm² i przekaźnik 1 VA przy 15 VA / 5P20 dają ALF_eff wielokrotnie powyżej ALF_wym.
+  await page.getByTestId(`${prefiks}-obwod-dlugosc`).fill('5');
+  await page.getByTestId(`${prefiks}-obwod-przekroj`).fill('2.5');
+  await page.getByTestId(`${prefiks}-obwod-dodaj-aparat`).click();
+  await page.getByTestId(`${prefiks}-obwod-aparat-0-nazwa`).fill('Przekaźnik');
+  await page.getByTestId(`${prefiks}-obwod-aparat-0-moc`).fill('1');
+  await page.getByTestId(`${prefiks}-obwod-zapisz`).click();
+  await expect(page.getByTestId(`${prefiks}-obwod-blad`)).toHaveCount(0);
+
+  // Nastawa i obwód żyją w MODELU: po pełnym przeładowaniu wracają z serwera.
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await otworzZabezpieczeniaIAutomatyke(page);
   await expect(page.getByTestId(`${prefiks}-overcurrent_51-tms`)).toHaveValue('0.1', { timeout: 20000 });
+  await expect(page.getByTestId(`${prefiks}-obwod-dlugosc`)).toHaveValue('5');
+  await expect(page.getByTestId(`${prefiks}-obwod-aparat-0-moc`)).toHaveValue('1');
 
   // (4) Bieg zwarciowy realnym klikiem „Oblicz".
   await page.getByRole('button', { name: 'Oblicz', exact: true }).click();

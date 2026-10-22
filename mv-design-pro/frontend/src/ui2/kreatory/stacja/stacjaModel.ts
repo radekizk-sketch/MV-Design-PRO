@@ -15,6 +15,7 @@
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import {
   PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  type TolerancjaNapieciaNn,
   type TypPunktuNeutralnego,
   type UkladSieciNn,
 } from '../../../types/uziemienie';
@@ -47,7 +48,7 @@ import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTempla
 import type {
   CatalogNamespace,
   ConverterType,
-  MVApparatusCatalogType,
+  MVApparatusType,
 } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { TransformerType } from '../../../ui/catalog/types';
@@ -210,9 +211,19 @@ export interface StacjaFormData {
   nn_configuration: NnConfiguration;
   /** Układ sieci nN (uziemienie) — G-STK-1. */
   uklad_sieci_nn: UkladSieciNn;
+  /**
+   * Tolerancja napięcia sieci nN (`nn_earthing.lv_voltage_tolerance` →
+   * `Transformer.lv_voltage_tolerance`) — wiersz nN tabeli 1 IEC 60909-0, z którego backend
+   * dobiera c węzłów nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
+   */
+  tolerancja_napiecia_nn: TolerancjaNapieciaNn;
   /** Typ pracy punktu neutralnego transformatora (strona nN) — G-STK-1. */
   neutral_point: PunktNeutralny;
-  /** Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika (tekst PL, przecinek). */
+  /**
+   * Impedancja uziemienia punktu neutralnego [Ω] — R_N rezystora albo X_N dławika; dla punktu
+   * uziemionego bezpośrednio: rezystancja uziomu stacji R_B (karta W5-E-TTIT — pętla doziemna
+   * układu TT domyka się przez R_B; `lv_r_ohm` → `Transformer.lv_neutral.r_ohm`). Tekst PL, przecinek.
+   */
   neutral_impedance_ohm: string;
   /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN). */
   nn_voltage_kv: number;
@@ -280,6 +291,11 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   // Domyślnie TN-C-S z bezpośrednio uziemionym punktem neutralnym — typowy układ
   // dystrybucyjny nN (PN-HD 60364). Projektant zmienia świadomie.
   uklad_sieci_nn: 'TN-C-S',
+  // Domyślnie +10 % — sieć 230/400 V z dopuszczalnym odchyleniem napięcia +10 %
+  // (IEC 60038, PN-EN 50160). Wartość widoczna w kroku „Uziemienie"; projektant zmienia
+  // świadomie na +6 %, gdy operator deklaruje węższą tolerancję. Bez deklaracji backend
+  // liczy z wartością roboczą +10 % i oznacza ją założeniem `fault.c_tolerancja_nn_robocza`.
+  tolerancja_napiecia_nn: 'PLUS_10',
   neutral_point: 'directly_grounded',
   neutral_impedance_ohm: '',
   nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
@@ -423,6 +439,18 @@ export function walidujFormularz(
         data.neutral_point === 'petersen_coil'
           ? 'Cewka Petersena wymaga dodatniej reaktancji dławika X_N [Ω].'
           : 'Uziemienie przez rezystor wymaga dodatniej rezystancji R_N [Ω].',
+    });
+  }
+  // W5-E-TTIT: układ TT bez rezystancji uziomu stacji R_B = pętla doziemna niepoliczalna
+  // (ten sam warunek co `tt_it.r_b_transformatora` i pre-kontrola ELIG_FLNN_MISSING_TRANSFORMER_R_B).
+  if (
+    data.uklad_sieci_nn === 'TT'
+    && data.neutral_point === 'directly_grounded'
+    && liczbaDodatniaPL(data.neutral_impedance_ohm) === null
+  ) {
+    errors.push({
+      field: 'neutral_impedance_ohm',
+      message: 'Układ TT wymaga dodatniej rezystancji uziomu stacji R_B [Ω] (punkt neutralny uziemiony bezpośrednio).',
     });
   }
   if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {
@@ -963,10 +991,10 @@ export function czyAparaturaKompletna(snFields: readonly StationSnFieldTemplate[
  * kreator nie zgaduje ograniczeń, których backend nie deklaruje.
  */
 export function aparatyDlaPola(
-  aparaty: readonly MVApparatusCatalogType[],
+  aparaty: readonly MVApparatusType[],
   snVoltageKv: number,
   rodzajeDlaRoli: readonly string[] = [],
-): MVApparatusCatalogType[] {
+): MVApparatusType[] {
   const dopuszczalne = new Set(rodzajeDlaRoli);
   return aparaty
     .filter((a) => !(snVoltageKv > 0) || a.u_n_kv + 1e-6 >= snVoltageKv)
@@ -1054,7 +1082,8 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
 }
 
 /**
- * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + typ pracy punktu
+ * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + tolerancja napięcia sieci nN
+ * (`lv_voltage_tolerance`, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) + typ pracy punktu
  * neutralnego + impedancja uziemienia dla wariantów impedancyjnych. Mapuje 1:1
  * na kontrakt operacji (`GroundingConfig.type` + `lv_system`); składowa
  * DOMINUJĄCA spływa pod właściwym kluczem: rezystor → `lv_r_ohm`, cewka
@@ -1064,6 +1093,7 @@ function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | nu
 function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
   const blok: Record<string, unknown> = {
     lv_system: data.uklad_sieci_nn,
+    lv_voltage_tolerance: data.tolerancja_napiecia_nn,
     neutral_point: data.neutral_point,
   };
   if (PUNKTY_NEUTRALNE_IMPEDANCYJNE.has(data.neutral_point)) {
@@ -1071,6 +1101,11 @@ function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
     if (wartosc !== null) {
       blok[data.neutral_point === 'petersen_coil' ? 'lv_x_ohm' : 'lv_r_ohm'] = wartosc;
     }
+  } else if (data.neutral_point === 'directly_grounded') {
+    // Uziom stacji R_B (W5-E-TTIT): rezystancja uziomu punktu neutralnego uziemionego
+    // bezpośrednio — czyta ją pętla doziemna układu TT; podana = `lv_r_ohm`, pusta = brak klucza.
+    const r_b = liczbaDodatniaPL(data.neutral_impedance_ohm);
+    if (r_b !== null) blok.lv_r_ohm = r_b;
   }
   return blok;
 }

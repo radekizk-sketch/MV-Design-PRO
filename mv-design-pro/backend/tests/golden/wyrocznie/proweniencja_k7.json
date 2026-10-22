@@ -4,10 +4,10 @@
       "input_hash": "4e43f0898d4d7f8dc6cc3e3a83906d508e1463aeb11f372086a63812a48a2c50",
       "name": "k7-pandapower-110-15"
     },
-    "lv_tol_percent": 6,
+    "lv_tol_percent": null,
     "most": {
-      "sha256": "0148865c36c3eb36639bcd1049db2e16cc86007fec7e2912033ce031b76bab4d",
-      "wersja": "2"
+      "sha256": "0d0b4acb7d66796aa521b2304144ed3c1bff432d735f5e4ca99a93d60c9715ad",
+      "wersja": "3"
     },
     "pandapower": "3.5.4",
     "zrodla": {
@@ -64,10 +64,10 @@
       "input_hash": "5f7986c0fe19860e16c3d922b2cbec36936092afea3d56905cb000a7b5904a77",
       "name": "k7-pandapower-110-15"
     },
-    "lv_tol_percent": 6,
+    "lv_tol_percent": null,
     "most": {
-      "sha256": "0148865c36c3eb36639bcd1049db2e16cc86007fec7e2912033ce031b76bab4d",
-      "wersja": "2"
+      "sha256": "0d0b4acb7d66796aa521b2304144ed3c1bff432d735f5e4ca99a93d60c9715ad",
+      "wersja": "3"
     },
     "pandapower": "3.5.4",
     "zrodla": {
@@ -124,10 +124,10 @@
       "input_hash": "f4d9eb189913706f087e7ea1ade901a3c64748b10bc31cbc523a5460007ef756",
       "name": "k7-pandapower-110-15"
     },
-    "lv_tol_percent": 6,
+    "lv_tol_percent": null,
     "most": {
-      "sha256": "0148865c36c3eb36639bcd1049db2e16cc86007fec7e2912033ce031b76bab4d",
-      "wersja": "2"
+      "sha256": "0d0b4acb7d66796aa521b2304144ed3c1bff432d735f5e4ca99a93d60c9715ad",
+      "wersja": "3"
     },
     "pandapower": "3.5.4",
     "zrodla": {
@@ -181,13 +181,13 @@
   },
   "nN bez danych MIN": {
     "enm": {
-      "input_hash": "895fc5e0c1765350e7cb6aca4df617b971b572c463601a245d27bd1b506e71c7",
+      "input_hash": "e36fb000e96c96eba16ccbd00f433ec7cffbb1198be3297c5dec898e094039cf",
       "name": "k7-pandapower-nn"
     },
     "lv_tol_percent": 6,
     "most": {
-      "sha256": "0148865c36c3eb36639bcd1049db2e16cc86007fec7e2912033ce031b76bab4d",
-      "wersja": "2"
+      "sha256": "0d0b4acb7d66796aa521b2304144ed3c1bff432d735f5e4ca99a93d60c9715ad",
+      "wersja": "3"
     },
     "pandapower": "3.5.4",
     "zrodla": {
@@ -241,13 +241,13 @@
   },
   "nN z danymi MIN": {
     "enm": {
-      "input_hash": "0a9e8bd1d80c9b59b8f5fea5fed0d72e49949dfe2db5757386dc466a61ef3ce3",
+      "input_hash": "666f82209155da6fdfa9b76171042e1745d5f1ef1946b4f75b8ce56326124a99",
       "name": "k7-pandapower-nn"
     },
     "lv_tol_percent": 6,
     "most": {
-      "sha256": "0148865c36c3eb36639bcd1049db2e16cc86007fec7e2912033ce031b76bab4d",
-      "wersja": "2"
+      "sha256": "0d0b4acb7d66796aa521b2304144ed3c1bff432d735f5e4ca99a93d60c9715ad",
+      "wersja": "3"
     },
     "pandapower": "3.5.4",
     "zrodla": {

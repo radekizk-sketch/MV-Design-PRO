@@ -95,12 +95,6 @@ export interface KrokDowoduModel {
   uwagi: string | null;
   /** Identyfikator elementu modelu do selekcji („Pokaż na schemacie") lub `null`. */
   elementId: string | null;
-  /**
-   * Identyfikatory elementów z danych TEGO kroku, które tytuł solvera wpisuje
-   * wprost („Prąd zwarciowy Thevenina w gałęzi <identyfikator>") — widok składa
-   * tytuł z nazwą elementu w ich miejscu (zapis rdzenia jest zamrożony).
-   */
-  odnosnikiTytulu: string[];
 }
 
 /** Wykładnik potęgi dziesięciu zapisem górnym (liczba bez notacji `e`). */
@@ -244,13 +238,6 @@ function mapujWielkosci(rekord: Record<string, unknown> | undefined): WartoscDow
   });
 }
 
-/** Identyfikatory elementów z danych kroku, które tytuł solvera wpisuje wprost. */
-function odnosnikiWTytule(tytul: string, dane: readonly WartoscDowodu[]): string[] {
-  return dane
-    .map((w) => w.odnosnik)
-    .filter((odnosnik): odnosnik is string => odnosnik !== undefined && tytul.includes(odnosnik));
-}
-
 /**
  * CZYSTY adapter: `TraceStep[]` → model kroków dowodu. Deterministyczny,
  * bez efektów ubocznych. Numer kroku z `step` (gdy jest), inaczej pozycja 1-based.
@@ -270,7 +257,6 @@ export function mapujKroki(kroki: TraceStep[]): KrokDowoduModel[] {
       wynik: mapujWielkosci(krok.result),
       uwagi: krok.notes ?? null,
       elementId: krok.element_id ?? null,
-      odnosnikiTytulu: odnosnikiWTytule(tytul, dane),
     };
   });
 }

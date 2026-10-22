@@ -41,11 +41,8 @@ from network_model.pochodne.skladowe_symetryczne import (
     impedancja_zgodna_ohm,
 )
 from network_model.pochodne.skladowe_zerowe import (
-    PROWENIENCJA_WYPROWADZONE,
     impedancja_punktu_neutralnego_ohm,
-    impedancja_rozproszenia_transformatora_ohm,
     impedancja_rozproszenia_transformatora_pu,
-    impedancja_zerowa_zrodla_z_uziemienia_ohm,
 )
 from network_model.pochodne.wielkosci_pochodne import (
     SQRT2,
@@ -87,7 +84,6 @@ __all__ = [
     "czlon_wykladniczy_kappa",
     "impedancja_odniesiona_do_napiecia_ohm",
     "impedancja_punktu_neutralnego_ohm",
-    "impedancja_rozproszenia_transformatora_ohm",
     "impedancja_rozproszenia_transformatora_pu",
     "impedancja_wlasna_ohm",
     "impedancja_wzajemna_ohm",
@@ -95,7 +91,6 @@ __all__ = [
     "impedancja_z_napiecia_i_mocy_ohm",
     "impedancja_z_napiecia_i_pradu_ohm",
     "impedancja_zerowa_ohm",
-    "impedancja_zerowa_zrodla_z_uziemienia_ohm",
     "impedancja_zgodna_ohm",
     "ka_na_a",
     "km_na_m",
@@ -127,7 +122,6 @@ __all__ = [
     "prad_z_mocy_pozornej_ka",
     "prad_znamionowy_a",
     "prad_znamionowy_z_mocy_czynnej_a",
-    "PROWENIENCJA_WYPROWADZONE",
     "reaktancja_z_jednostek_wzglednych_ohm",
     "rezystancja_w_temperaturze",
     "s_na_ms",

@@ -79,13 +79,23 @@ const POWOD_BIEG_WERDYKTU =
 const POWOD_ZACISK_ZABEZPIECZENIA =
   'Miejsce zabezpieczenia na gałęzi (zacisk początkowy albo końcowy) wskazuje się w nastawach ' +
   'zabezpieczeń na ekranie koordynacji.';
+const POWOD_NADPISANIE_C =
+  'Nadpisanie współczynnika napięciowego c ustawia się w przypadku obliczeń albo w scenariuszu ' +
+  'zwarciowym — wpisz wartość dodatnią z uzasadnieniem albo usuń nadpisanie, wtedy c wynika ' +
+  'z tabeli 1 IEC 60909-0.';
+const POWOD_CZAS_TB =
+  'Czas wyłączenia tb (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) ' +
+  'podaje się w scenariuszu zwarciowym przypadku obliczeń — bez niego obliczenia biorą najkrótszy ' +
+  'czas pól przy szynie punktu zwarcia albo wartość roboczą, a prąd wyłączeniowy Ib przy maszynach ' +
+  'wirujących i składowa nieokresowa iDC (IEC 60909-0 rozdz. 9 i 10) stoją na założeniu.';
 const POWOD_DANE_ZABEZPIECZENIOWE =
   'Wymaganie wynika z funkcji zabezpieczeniowych pola — uzupełnia się je w nastawach na ekranie ' +
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (147 kodów, stan rejestru partii integracji 8). Brak wpisu dla
- * kodu z rejestru jest błędem wykrywanym testem klasy `akcjeNaprawcze.klasa.test.ts`.
+ * KOMPLETNA tabela kodów kanonu (162 kody, stan rejestru po nałożeniu GPZ-MODEL na partie
+ * 9–13). Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
+ * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   // --- Źródła zasilania -----------------------------------------------------
@@ -97,6 +107,18 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'schemat',
     'W jednej wyspie może pracować jedno źródło sieciowe — usuń nadmiarowe źródło z menu ' +
       'kontekstowego elementu na schemacie.',
+  ),
+  // E065 (karta GPZ-MODEL): emiter wskazuje otwarte sprzęgło sekcji — stan łącznika
+  // zmienia edycja parametrów elementu (pole `status`), ta sama co w inspektorze.
+  'source.gpz_section_unsupplied': EDYCJA,
+  // E066 (karta GPZ-MODEL): transformator 110/SN bez równoważnika po stronie 110 kV (model
+  // sprzed karty). Model nie jest migrowany, a żadna pojedyncza operacja nie przebudowuje
+  // GPZ na miejscu — klik prowadzi do transformatora na schemacie, powód mówi, co zrobić.
+  'source.gpz_transformer_hv_unsupplied': przestrzen(
+    'schemat',
+    'Transformator 110/SN istnieje w modelu wyłącznie przy równoważniku sieci po stronie ' +
+      '110 kV — zbuduj GPZ od nowa z równoważnikiem po stronie 110 kV albo z równoważnikiem ' +
+      'na szynach SN bez transformatorów 110/SN.',
   ),
   'source.sk_min_missing': EDYCJA,
   'source.sk_min_inconsistent': EDYCJA,
@@ -156,6 +178,22 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'nn.source.catalog_missing': KATALOG,
   'nn.source.parameters_missing': EDYCJA,
   'nn.measurement.required_missing': formularz('add_ct'),
+  // Ochrona przez samoczynne wyłączenie w układach TT/IT (karta W5-E-TTIT): każde pole jest
+  // edytowalne operacją `update_element_parameters` (R_A odbioru tym samym walidatorem co
+  // kreator odbioru, punkt neutralny nN transformatora, susceptancja zerowa odcinka nN,
+  // napięcie strony dolnej), brak wyłącznika różnicowoprądowego naprawia jego kreator.
+  'nn.brak_r_a': EDYCJA,
+  'nn.brak_r_b': EDYCJA,
+  'nn.brak_rcd': formularz('add_nn_rcd'),
+  'nn.brak_pojemnosci_doziemnej': EDYCJA,
+  'nn.transformer_lv_not_nn_band': EDYCJA,
+  'swz.limit_tt_it_brak_tekstu_normy': {
+    rodzaj: 'odmowa',
+    powodPl:
+      'Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układów TT i IT wymagają tekstu ' +
+      'normy IEC 60364-4-41, którego nie ma w programie — kryterium pozostaje bez podstawy do czasu ' +
+      'dostarczenia tekstu normy; w modelu nie ma czego poprawić.',
+  },
   'apparatus.sn_catalog_missing': KATALOG,
   'apparatus.nn_catalog_missing': KATALOG,
   'load.catalog_missing': KATALOG,
@@ -274,6 +312,16 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'obliczenia',
     'Zwarcie w punkcie na gałęzi ustawia się w scenariuszu zwarciowym przypadku obliczeń.',
   ),
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: sieć nN liczona z wartością roboczą tolerancji
+  // napięcia — deklarację składa transformator albo źródło zasilające sieć nN (pole
+  // `lv_voltage_tolerance`, formularz parametrów tego elementu); nadpisanie c jest parametrem
+  // przypadku albo scenariusza zwarciowego, nie elementu modelu.
+  'fault.c_tolerancja_nn_robocza': EDYCJA,
+  'fault.c_nadpisanie_bez_uzasadnienia': przestrzen('obliczenia', POWOD_NADPISANIE_C),
+  'fault.c_nadpisanie_wartosc_niepoprawna': przestrzen('obliczenia', POWOD_NADPISANIE_C),
+  // Karta SC-IB-ITH-ZRODLA: t_b jest daną scenariusza zwarciowego, nie elementu modelu.
+  'fault.czas_tb_niepoprawny': przestrzen('obliczenia', POWOD_CZAS_TB),
+  'fault.czas_tb_wartosc_robocza': przestrzen('obliczenia', POWOD_CZAS_TB),
   // --- Przypadek, analizy i werdykt ----------------------------------------------------
   'study_case.missing_base_snapshot': przestrzen(
     'obliczenia',
@@ -308,6 +356,15 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'catalog.binding_version_missing': KATALOG,
   'catalog.binding_missing': KATALOG,
   'catalog.item_not_found': KATALOG,
+  // Rekord przekształtnika bez wielkości znamionowej: projektant wskazuje kompletną pozycję
+  // katalogu (typ falownika wyprowadza się dopiero z rekordu z mocą/pojemnością z karty).
+  'catalog.type_incomplete': KATALOG,
+  'catalog.duplicate_id': {
+    rodzaj: 'odmowa',
+    powodPl:
+      'Powtórzona karta widmowa jest wadą samego katalogu, nie modelu — usuwa ją opiekun ' +
+      'biblioteki typów w pliku katalogu; w modelu nie ma czego poprawić.',
+  },
   'catalog.ref_missing': KATALOG,
   'catalog.item_missing': KATALOG,
   'catalog.item_id_missing': KATALOG,

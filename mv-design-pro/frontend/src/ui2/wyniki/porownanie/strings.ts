@@ -322,6 +322,19 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   kolI2tA: 'I²t A',
   kolI2tB: 'I²t B',
   kolI2tD: 'Δ I²t',
+  // Wielkości zależne od czasu wyłączenia t_b i sam t_b punktu (karta TB-WARTOSC-ROBOCZA):
+  // różnica Ib / iDC między przebiegami bywa skutkiem samej zmiany t_b.
+  kolIbA: 'Ib A',
+  kolIbB: 'Ib B',
+  kolIbD: 'Δ Ib',
+  kolIdcA: 'iDC(tb) A',
+  kolIdcB: 'iDC(tb) B',
+  kolIdcD: 'Δ iDC(tb)',
+  kolTbA: 'tb A',
+  kolTbB: 'tb B',
+  kolTbD: 'Δ tb',
+  /** Dopisek przy t_b strony, który jest wartością roboczą (pochodzenie z backendu). */
+  tbRobocza: ' · wartość robocza',
 
   // Stan pusty tabeli
   brakPunktow: 'Brak punktów zwarcia w wybranych przebiegach.',
@@ -347,6 +360,7 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   jednMVA: 'MVA',
   jednOhm: 'Ω',
   jednKA2s: 'kA²·s',
+  jednS: 's',
 
   // Filtr „tylko różnice" (L-14) — czysta prezentacja na danych backendu
   filtrTylkoRoznice: 'Pokaż tylko różnice',
@@ -404,6 +418,16 @@ export function fmtKA2s(n: number): string {
 
 /** Delta energii cieplnej I²t [kA²·s] — 3 miejsca, ze znakiem. */
 export function fmtDeltaKA2s(n: number): string {
+  return fmtDelta(n, 3);
+}
+
+/** Czas wyłączenia t_b [s] — 3 miejsca (spójnie z oknem „Wyniki zwarciowe"). */
+export function fmtCzasTb(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Delta czasu wyłączenia t_b [s] — 3 miejsca, ze znakiem. */
+export function fmtDeltaCzasTb(n: number): string {
   return fmtDelta(n, 3);
 }
 

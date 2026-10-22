@@ -34,10 +34,19 @@ from typing import Any
 import numpy as np
 import pytest
 from api.exception_handlers import register_exception_handlers
+from api.odmowa_http import OdmowaHttpError
 from application.proof_engine.pakiet_biegu import PakietBieguError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
+from network_model.odmowa_danych import (
+    RODZAJ_ELEMENT,
+    OdmowaDanychError,
+    OdmowaNazwana,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+    odmowa_rdzenia_b01,
+)
 from pydantic import BaseModel
 
 from tests.utils.biegi import wykonaj_bieg
@@ -128,6 +137,72 @@ def test_globalny_handler_422_wylacznie_dla_odmowy_danych(
     with caplog.at_level(logging.WARNING, logger="mv_design_pro"):
         odpowiedz = _aplikacja_z_trasa(wyjatek).get("/sonda")
     _sprawdz_wyrocznie(odpowiedz, wyjatek, kod, caplog)
+
+
+@pytest.mark.parametrize(
+    ("nazwa", "fabryka", "klucze"),
+    [
+        ("odmowa_danych", lambda: OdmowaDanychError(KOMUNIKAT), set()),
+        (
+            "odmowa_nazwana",
+            lambda: OdmowaNazwana(KOMUNIKAT, kod="x.kod", dane={"bus_ref": "b1"}),
+            {"kod", "dane"},
+        ),
+        (
+            "odmowa_wejscia_rdzenia",
+            lambda: OdmowaWejsciaRdzenia(
+                [
+                    RekordOdmowy(
+                        "rdzen.kod",
+                        "Szyna bez napięcia znamionowego.",
+                        (OdwolanieElementu(RODZAJ_ELEMENT, "b1"),),
+                    )
+                ],
+                tresc=KOMUNIKAT,
+            ),
+            {"rekordy"},
+        ),
+    ],
+    ids=["odmowa_danych", "odmowa_nazwana", "odmowa_wejscia_rdzenia"],
+)
+@pytest.mark.parametrize(
+    ("droga", "status", "prefiks"),
+    [("globalny_handler", 422, None), ("odmowa_http", 409, None), ("odmowa_http", 404, "Brak")],
+    ids=["globalny_422", "odmowa_http_409", "odmowa_http_404_prefiks"],
+)
+def test_cialo_odmowy_niesie_pola_maszynowe_wylacznie_w_polach(
+    nazwa: str,
+    fabryka: Any,
+    klucze: set[str],
+    droga: str,
+    status: int,
+    prefiks: str | None,
+) -> None:
+    """Partia integracji 10 — iloczyn: klasa odmowy {zwykła, nazwana, rekordy rdzenia} ×
+    droga do klienta {globalny handler 422, `OdmowaHttpError` z innym statusem, z prefiksem}.
+    Identyfikator elementu (`b1`) jest w polu maszynowym (`dane`, `rekordy`), nigdy
+    w `detail`; pola addytywne pojawiają się wyłącznie dla swojej klasy i są TE SAME na obu
+    drogach (jedna funkcja `pola_odmowy`)."""
+    odmowa = fabryka()
+    wyjatek: Exception = (
+        odmowa
+        if droga == "globalny_handler"
+        else OdmowaHttpError(odmowa, status_code=status, prefiks=prefiks)
+    )
+    odpowiedz = _aplikacja_z_trasa(wyjatek).get("/sonda")
+    assert odpowiedz.status_code == status
+    cialo = odpowiedz.json()
+    assert set(cialo) == {"detail", "request_id", "error_type"} | klucze
+    assert cialo["detail"] == (f"{prefiks}: {KOMUNIKAT}" if prefiks else KOMUNIKAT)
+    assert "b1" not in cialo["detail"]
+    if "rekordy" in cialo:
+        assert cialo["rekordy"] == [
+            {
+                "kod": "rdzen.kod",
+                "tresc": "Szyna bez napięcia znamionowego.",
+                "odwolania": [{"rodzaj": RODZAJ_ELEMENT, "ref": "b1"}],
+            }
+        ]
 
 
 def test_globalny_handler_nie_rejestruje_valueerror() -> None:
@@ -280,7 +355,8 @@ def test_bieg_nieistniejacy_to_404_z_komunikatem_odmowy(_czyste_biegi: Any) -> N
     identyfikator = uuid.uuid4()
     odpowiedz = wykonaj_bieg(_surowy_klient(), identyfikator)
     assert odpowiedz.status_code == 404
-    assert odpowiedz.json()["detail"] == f"Run {identyfikator} not found"
+    # Partia integracji 10: treść po polsku, bez identyfikatora (jest w adresie żądania).
+    assert odpowiedz.json()["detail"] == "Bieg obliczeń nie istnieje."
 
 
 # ---------------------------------------------------------------------------
@@ -344,8 +420,6 @@ def test_operacja_domenowa_przez_trase(
                         "voltage_kv": 15.0,
                         "sk3_mva": 250.0,
                         "catalog_ref": "src-gpz-15kv-250mva-rx010",
-                        "hv_voltage_kv": 110.0,
-                        "transformer_sn_mva": 25.0,
                     },
                 }
             },

@@ -47,8 +47,19 @@ from enm.canonical_analysis import (
     galezie_modelu_biegu,
 )
 from enm.canonical_analysis import get_run as get_canonical_run
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    KLUCZ_IMPEDANCJI_ZWARCIA,
+    wynik_poza_zakresem_iec60909,
+)
+from network_model.core.czas_wylaczenia import (
+    CZAS_TB_ROBOCZY_S,
+    KLUCZ_OPCJI_CZASU_TB,
+    ZRODLO_CZASU_TB_ROBOCZEGO,
+    czas_tb_z_danych,
+)
+from network_model.core.voltage_factor import nadpisanie_c_z_danych, opis_c_biegu
 from network_model.nazwy import nazwa_nadana
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import a_na_ka
 
 
@@ -303,10 +314,18 @@ def get_power_flow_result(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise OdmowaDanychError("Przebieg nie jest rozpływem mocy")
     if run.status != "FINISHED":
-        raise OdmowaDanychError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
+        raise OdmowaNazwana(
+            "Przebieg nie jest zakończony.",
+            kod="bieg.niezakonczony",
+            dane={"run_ref": str(run.id), "status": str(run.status)},
+        )
     result_v1 = (run.raw_result or {}).get("result_v1") or None
     if result_v1 is None:
-        raise OdmowaDanychError(f"Wyniki rozpływu mocy nie są dostępne dla przebiegu {run.id}")
+        raise OdmowaNazwana(
+            "Wyniki rozpływu mocy nie są dostępne dla tego przebiegu.",
+            kod="bieg.brak_wynikow_rozplywu",
+            dane={"run_ref": str(run.id)},
+        )
     # Karta W3-J: kryteria napięciowe ADDYTYWNE, budowane ŚWIEŻO z jednego źródła
     # prawdy (`analysis.normative.kryteria_napiecia`) — to konfiguracja, nie wynik
     # fizyczny biegu, więc nie jest przechowywana w `raw_result`. Kopia płytka
@@ -320,9 +339,17 @@ def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise OdmowaDanychError("Przebieg nie jest rozpływem mocy")
     if run.status != "FINISHED":
-        raise OdmowaDanychError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
+        raise OdmowaNazwana(
+            "Przebieg nie jest zakończony.",
+            kod="bieg.niezakonczony",
+            dane={"run_ref": str(run.id), "status": str(run.status)},
+        )
     if run.power_flow_trace is None:
-        raise OdmowaDanychError(f"Ślad obliczeniowy nie jest dostępny dla przebiegu {run.id}")
+        raise OdmowaNazwana(
+            "Ślad obliczeniowy nie jest dostępny dla tego przebiegu.",
+            kod="bieg.brak_sladu",
+            dane={"run_ref": str(run.id)},
+        )
     trace = dict(run.power_flow_trace)
     extended_trace = build_extended_trace(run)
     trace.setdefault("catalog_context", extended_trace.get("catalog_context", []))
@@ -531,16 +558,13 @@ def build_branch_results_response(run: CanonicalRun) -> dict[str, Any]:
 
 
 def _c_factor_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
-    """Współczynnik napięciowy c ZAPISANY na biegu — jawny override ALBO
-    auto-per-węzeł (`enm/assembler.zloz_wejscie_zwarcia`: `options.get("c_factor")`
-    `None` -> AUTO z pasma napięciowego węzła, wartość -> OVERRIDE płaski).
-    Karta UI2 p.7: bez tego pola front nie ma jak odróżnić "policzono z c
-    z konfiguracji tego biegu" od domysłu — `EkranZwarc` czytał c z AKTYWNEGO
-    przypadku, nie z biegu, którego wynik ogląda (dwie różne rzeczy)."""
-    jawny = run.options.get("c_factor")
-    if jawny is not None:
-        return {"tryb": "jawny", "wartosc": float(jawny)}
-    return {"tryb": "auto_per_wezel", "wartosc": None}
+    """Współczynnik napięciowy c ZAPISANY na biegu — nadpisanie z uzasadnieniem ALBO
+    dobór per węzeł z tabeli 1 IEC 60909-0 (`enm/assembler.zloz_wejscie_zwarcia`:
+    `options["nadpisanie_c"]` → nadpisanie; brak → `voltage_factor.dobierz_c` per węzeł).
+    Karta UI2 p.7: front czyta c z KONFIGURACJI TEGO biegu, nie z aktywnego przypadku.
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): dawny tryb „jawny" (płaska liczba bez
+    uzasadnienia) nie istnieje; podstawa c każdego węzła leży w wierszu (`c_zrodlo`)."""
+    return opis_c_biegu(nadpisanie_c_z_danych(run.options.get("nadpisanie_c")))
 
 
 def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
@@ -552,6 +576,30 @@ def _thermal_time_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     if jawny is not None:
         return {"wartosc": float(jawny), "pochodzenie": "opcje_biegu"}
     return {"wartosc": 1.0, "pochodzenie": "domyslna_assemblera"}
+
+
+def _czas_tb_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
+    """Czas wyłączenia t_b [s] ZAPISANY na biegu (karta SC-IB-ITH-ZRODLA) — z opcji biegu
+    (`breaking_time_seconds`, projekcja scenariusza zwarciowego).
+
+    Karta TB-WARTOSC-ROBOCZA: brak t_b w scenariuszu nie jest brakiem danej — t_b
+    rozstrzyga się PER PUNKT ZWARCIA (najkrótszy czas wyłączenia pól lokalnych, inaczej
+    wartość robocza 0,1 s); ``wartosc`` None z pochodzeniem ``punkt_zwarcia`` i zdaniem
+    reguły, a t_b każdego punktu z pochodzeniem niesie wiersz wyniku (``tb_s``,
+    ``tb_zrodlo``). Nigdy liczba udająca t_b biegu."""
+    wartosc = czas_tb_z_danych(run.options.get(KLUCZ_OPCJI_CZASU_TB))
+    if wartosc is None:
+        return {
+            "wartosc": None,
+            "pochodzenie": "punkt_zwarcia",
+            "opis_pl": (
+                "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to "
+                "najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy "
+                "zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza "
+                f"{f'{CZAS_TB_ROBOCZY_S:g}'.replace('.', ',')} s ({ZRODLO_CZASU_TB_ROBOCZEGO})."
+            ),
+        }
+    return {"wartosc": wartosc, "pochodzenie": "opcje_biegu"}
 
 
 def _scenariusz_biegu_zwarcia(run: CanonicalRun) -> str | None:
@@ -580,11 +628,43 @@ def build_konfiguracja_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any]:
     addytywna projekcja `run.options` (ZAPISANE opcje, nie AKTYWNY przypadek
     obliczeniowy). `metoda` jest stałą normatywną rodziny solvera (IEC 60909
     solver_input/eligibility) — nie zgadywanie, jedyna metoda SC w tym repo."""
-    return {
+    konfiguracja: dict[str, Any] = {
         "c_factor": _c_factor_biegu_zwarcia(run),
         "thermal_time_seconds": _thermal_time_biegu_zwarcia(run),
+        "breaking_time_seconds": _czas_tb_biegu_zwarcia(run),
         "metoda": "IEC 60909",
         "scenariusz": _scenariusz_biegu_zwarcia(run),
+    }
+    impedancja = _impedancja_przejscia_biegu_zwarcia(run)
+    if impedancja is not None:
+        konfiguracja["impedancja_przejscia"] = impedancja
+    # Karta TB-WARTOSC-ROBOCZA (addytywnie): scenariusz zwarciowy, z którego powstał bieg
+    # (`opcje_biegu_ze_scenariusza` zapisuje `scenario_id`) — akcja „Zmień wartość" t_b na
+    # ekranie wyników otwiera edycję t_b TEGO scenariusza. Bieg przypadku bez scenariusza
+    # nie ma klucza (akcja prowadzi wtedy do nowego scenariusza z polem t_b).
+    scenario_id = run.options.get("scenario_id")
+    if isinstance(scenario_id, str) and scenario_id:
+        konfiguracja["scenariusz_zwarciowy_id"] = scenario_id
+    return konfiguracja
+
+
+def _impedancja_przejscia_biegu_zwarcia(run: CanonicalRun) -> dict[str, Any] | None:
+    """Z_f ZAPISANA na wyniku biegu (karta OD-14) — z artefaktu, nie z opcji ani domysłu.
+
+    TO SAMO ŹRÓDŁO, z którego warstwa autorytetu odtwarza proweniencję zapisanego biegu
+    (`raw_result[KLUCZ_IMPEDANCJI_ZWARCIA]`, predykat `wynik_poza_zakresem_iec60909`). Klucz
+    pojawia się WYŁĄCZNIE dla biegu przez impedancję przejścia — odpowiedź biegu metalicznego
+    bajt w bajt jak przed kartą. Ekran wyników pokazuje Z_f i zakres ważności obok założeń,
+    a wkłady źródeł pobiera z tą samą Z_f (`fault_impedance` żądania wkładów).
+    """
+    artefakt = run.raw_result or {}
+    if not wynik_poza_zakresem_iec60909(artefakt):
+        return None
+    zapis = artefakt[KLUCZ_IMPEDANCJI_ZWARCIA]
+    return {
+        "r_f_ohm": float(zapis["r_f_ohm"]),
+        "x_f_ohm": float(zapis["x_f_ohm"]),
+        "poza_zakresem_iec60909": True,
     }
 
 
@@ -612,9 +692,9 @@ def build_short_circuit_rozplyw_response(
 #: wyjątku dołączony w `dobierz_pasmo_min_max_zwarcia`) obsłużony osobno niżej.
 _POWOD_NIEDOSTEPNOSCI_PASMA_PL: dict[str, str] = {
     "wspolczynnik_c_recznie_ustawiony": (
-        "Bieg kotwicy ma ręcznie ustawiony współczynnik c (niezależny od pasma "
-        "MAX/MIN) — jednoznaczny bieg przeciwnego scenariusza nie jest policzalny "
-        "automatycznie. Uruchom osobny bieg zwarciowy z automatycznym doborem c."
+        "Bieg kotwicy ma ręczne nadpisanie współczynnika c (z uzasadnieniem, niezależne "
+        "od tabeli 1 IEC 60909-0) — jednoznaczny bieg przeciwnego scenariusza nie jest "
+        "policzalny automatycznie. Uruchom osobny bieg zwarciowy bez nadpisania c."
     ),
     "kotwica_jest_wariantem_scenariusza": (
         "Bieg kotwicy sam jest wariantem scenariusza roboczego (nadpisania modelu) "

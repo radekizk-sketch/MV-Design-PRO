@@ -11,23 +11,31 @@
  * dowiązywał go do cudzej szyny.
  *
  * Ta sama arytmetyka pasma nad szyną SN (`layoutSections`) rezerwuje etykietę sekcji
- * (lewy koniec szyny), grupę wież i blok źródła zasilania na szynach SN — przy prawym
- * końcu szyny SWOJEJ sekcji (`Source.bus_ref`), a nie zawsze sekcji `order = 0` —
- * oraz pas wyłącznika sprzęgła między sekcjami. Dawniej przy dwóch sekcjach blok
- * źródła i etykieta sekcji 2 wchodziły na siebie i silnik etykiet je usuwał.
+ * (lewy koniec szyny), grupę wież i pas wyłącznika sprzęgła między sekcjami.
+ *
+ * Karta GPZ-MODEL: transformatory 110/SN są elementami modelu WYŁĄCZNIE przy
+ * równoważniku sieci po stronie 110 kV — źródło stoi wtedy na wspólnej szynie WN
+ * i wieńczy kolumnę WN (blok źródła przy prawym końcu szyny WN). Dawny wymiar
+ * „źródło na szynie sekcji 1 / sekcji 2" obok transformatorów oraz „zasilanie
+ * dwustronne" dwoma równoważnikami na szynach SN opisywały model, którego backend
+ * już nie wytwarza (równoważnik na szynach SN odmawia transformatorów, a GPZ ma jeden
+ * równoważnik). Blok źródła na szynach SN (tryb bez transformatorów) bada osobny
+ * opis niżej, na migawce wytworzonej przez backend (eksport harnessu, dwie sekcje).
  *
  * Iloczyn cech na realnej ścieżce (migawka ENM → adapter → kompozycja → scena v3):
  * {1, 2, 3 transformatory na sekcji} × {sekcja 1, sekcja 2} × {sekcja 1 z polami
  * fikstury, sekcja 1 bez pól (wąska: zasięg tabliczki wieży sięga sekcji następnej)}
- * × {źródło na szynie sekcji 1, sekcji 2} × {bez sprzęgła, ze sprzęgłem} × LOD {1, 2};
- * druga sekcja zawsze z jednym transformatorem (sąsiad grupy). Kryteria: jeden symbol
- * TR2W na transformator, zejście na szynie SN sekcji docelowej i zaczep na szynie
- * WN, osie rosnące w porządku refów, źródło przy prawym końcu szyny swojej sekcji,
- * wyłącznik sprzęgła między szynami, brak przecięcia prostokątów (symbole
- * i etykiety) wieży, źródła i sprzęgła z czymkolwiek spoza nich, żadna etykieta GPZ
- * nieusunięta przez silnik etykiet, determinizm względem kolejności transformatorów
- * w modelu.
+ * × {bez sprzęgła, ze sprzęgłem} × LOD {1, 2}; druga sekcja zawsze z jednym
+ * transformatorem (sąsiad grupy). Kryteria: jeden symbol TR2W na transformator,
+ * zejście na szynie SN sekcji docelowej i zaczep na szynie WN, osie rosnące
+ * w porządku refów, źródło nad prawym końcem szyny WN, wyłącznik sprzęgła między
+ * szynami, brak przecięcia prostokątów (symbole i etykiety) wieży, źródła i sprzęgła
+ * z czymkolwiek spoza nich, żadna etykieta GPZ nieusunięta przez silnik etykiet,
+ * determinizm względem kolejności transformatorów w modelu.
  */
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import type { Bus, EnergyNetworkModel, Transformer } from '../../../../../types/enm';
@@ -42,7 +50,6 @@ import { buildDerSnFixture } from './fixtures/w2cDerSnFixtures';
 type Sekcja = 1 | 2;
 const LICZBY: readonly (1 | 2 | 3)[] = [1, 2, 3];
 const POLA_SEKCJI_1: readonly boolean[] = [true, false];
-const ZRODLO_NA: readonly Sekcja[] = [1, 2];
 const SPRZEGLO: readonly boolean[] = [false, true];
 const POLE_SPRZEGLA = 'gpz-test/sprzeglo';
 /** GEOMETRIA-STACJI (§0 pkt 2): sprzęgło istnieje z gałęzi `bus_coupler` łączącej szyny
@@ -61,7 +68,6 @@ interface Migawka {
   readonly wgSekcji: ReadonlyMap<0 | Sekcja, readonly string[]>;
   readonly sekcjaId: Readonly<Record<Sekcja, string>>;
   readonly zrodloRef: string;
-  readonly zrodloNa: Sekcja;
   readonly sprzeglo: boolean;
 }
 
@@ -69,19 +75,14 @@ interface Warianty {
   readonly bezSekcji?: number;
   readonly odwroc?: boolean;
   readonly polaSekcji1?: boolean;
-  readonly zrodloNa?: Sekcja;
   readonly sprzeglo?: boolean;
-  /** Drugie źródło (ekwiwalent) na szynie sekcji 2 — zasilanie dwustronne. */
-  readonly drugieZrodlo?: boolean;
 }
-
-const DRUGIE_ZRODLO = 'gpz-test/zrodlo-2';
 
 /** Migawka: GPZ z dwiema sekcjami SN; sekcja `badana` dostaje `liczba` transformatorów,
  *  druga — jeden; `bezSekcji` transformatorów ma szynę SN spoza sekcji GPZ. Kolejność
  *  wstawiania do modelu odwrócona względem refów (porządek ma wynikać z refów). */
 function migawka(badana: Sekcja, liczba: number, w: Warianty = {}): Migawka {
-  const { bezSekcji = 0, odwroc = true, polaSekcji1 = true, zrodloNa = 1, sprzeglo = false, drugieZrodlo = false } = w;
+  const { bezSekcji = 0, odwroc = true, polaSekcji1 = true, sprzeglo = false } = w;
   const { enm } = buildDerSnFixture([]);
   const gpz = enm.substations.find((s) => s.station_type === 'gpz')!;
   const sekcja1 = gpz.gpz_sections![0];
@@ -93,14 +94,10 @@ function migawka(badana: Sekcja, liczba: number, w: Warianty = {}): Migawka {
   );
   gpz.bus_refs.push(SZYNA_SEKCJI_2);
   gpz.gpz_sections!.push({ ...sekcja1, section_id: SEKCJA_2, order: 1, name: 'Sekcja 2', bus_ref: SZYNA_SEKCJI_2, incoming_source_ref: null });
-  // Źródło zasilania GPZ (ekwiwalent na szynach SN) na szynie wybranej sekcji.
-  const zrodlo = enm.sources.find((src) => src.bus_ref === sekcja1.bus_ref)!;
-  if (zrodloNa === 2) {
-    zrodlo.bus_ref = SZYNA_SEKCJI_2;
-    gpz.gpz_sections![1] = { ...gpz.gpz_sections![1], incoming_source_ref: sekcja1.incoming_source_ref };
-    gpz.gpz_sections![0] = { ...sekcja1, incoming_source_ref: null };
-  }
-  if (drugieZrodlo) enm.sources.push({ ...zrodlo, id: DRUGIE_ZRODLO, ref_id: DRUGIE_ZRODLO, bus_ref: SZYNA_SEKCJI_2 });
+  // Źródło zasilania GPZ: równoważnik sieci po stronie 110 kV na wspólnej szynie WN
+  // (górna szyna transformatora fikstury) — jedyny tryb z transformatorami w modelu.
+  const zrodlo = enm.sources.find((src) => src.bus_ref === tr1.hv_bus_ref);
+  expect(zrodlo, 'równoważnik sieci na szynie WN GPZ fikstury').toBeDefined();
   if (sprzeglo) {
     gpz.gpz_sections![0] = { ...gpz.gpz_sections![0], right_coupler_ref: POLE_SPRZEGLA };
     gpz.gpz_sections![1] = { ...gpz.gpz_sections![1], left_coupler_ref: POLE_SPRZEGLA };
@@ -163,8 +160,7 @@ function migawka(badana: Sekcja, liczba: number, w: Warianty = {}): Migawka {
       [0, porzadek(s0)],
     ]),
     sekcjaId: { 1: sekcja1.section_id, 2: SEKCJA_2 },
-    zrodloRef: zrodlo.ref_id,
-    zrodloNa,
+    zrodloRef: zrodlo!.ref_id,
     sprzeglo,
   };
 }
@@ -266,18 +262,20 @@ function sprawdzWieze(m: Migawka, scena: SceneV3): void {
     expect(zaczep.points[0].x).toBeLessThan(Math.max(...hvXs));
   }
   expect(kolizjeWiez(scena, wszystkie, m.zrodloRef)).toEqual([]);
-  // Źródło przy prawym końcu szyny SWOJEJ sekcji: przedłużenie szyny zaczyna się na
-  // jej końcu, zejście źródła na wysokości szyny SN.
-  const szynaZrodla = szynaSekcji(scena, m.sekcjaId[m.zrodloNa]);
+  // Źródło nad prawym końcem szyny WN: przedłużenie szyny WN zaczyna się na jej końcu,
+  // zejście źródła na wysokości szyny WN; żadne przedłużenie szyny SN (źródło nie stoi
+  // na szynach SN).
+  const prawoWN = Math.max(...hvXs);
   const zejscieZrodla = odcinek(scena, `${m.zrodloRef}#grid-source-drop`);
   expect(zejscieZrodla, 'zejście źródła').toBeDefined();
   const dolZrodla = zejscieZrodla!.points[zejscieZrodla!.points.length - 1];
-  expect(dolZrodla.y).toBe(szynaZrodla.y);
-  expect(dolZrodla.x).toBeGreaterThan(szynaZrodla.prawo);
+  expect(dolZrodla.y).toBe(hv.points[0].y);
+  expect(dolZrodla.x).toBeGreaterThan(prawoWN);
   const przedluzenie = scena.segments.find(
-    (g) => g.meta?.ownerRef?.includes('#source-bus-extension') && g.points[0].x === szynaZrodla.prawo,
+    (g) => g.meta?.ownerRef?.endsWith('#hv-bus-source-extension') && g.points[0].x === prawoWN,
   );
-  expect(przedluzenie, 'przedłużenie szyny sekcji źródła do zaczepu').toBeDefined();
+  expect(przedluzenie, 'przedłużenie szyny WN do zaczepu źródła').toBeDefined();
+  expect(scena.segments.filter((g) => g.meta?.ownerRef?.endsWith('#source-bus-extension'))).toEqual([]);
   expect(scena.meta.missingData).not.toContain('gpz.source.unattached');
   expect(scena.labels.some((l) => l.ownerRef.startsWith(`${m.zrodloRef}#system-source-label`))).toBe(true);
   // Wyłącznik sprzęgła między końcem szyny sekcji 1 a początkiem szyny sekcji 2.
@@ -307,19 +305,17 @@ describe('GPZ: wieże transformatorów tej samej sekcji rozłożone bez kolizji 
   for (const liczba of LICZBY) {
     for (const sekcja of SEKCJE) {
       for (const pola of POLA_SEKCJI_1) {
-        for (const zrodloNa of ZRODLO_NA) {
-          for (const sprzeglo of SPRZEGLO) {
-            for (const lod of [1, 2] as const) {
-              const nazwa =
-                `${liczba} TR na sekcji ${sekcja} × sekcja 1 ${pola ? 'z polami' : 'bez pól'} × ` +
-                `źródło na sekcji ${zrodloNa} × ${sprzeglo ? 'ze sprzęgłem' : 'bez sprzęgła'} × L${lod}`;
-              it(nazwa, () => {
-                const m = migawka(sekcja, liczba, { polaSekcji1: pola, zrodloNa, sprzeglo });
-                const scena = buildSceneV3(m.enm, lod);
-                sprawdzWieze(m, scena);
-                expect(scena.meta.missingData.filter((k) => k.startsWith('gpz.transformer.section.missing:'))).toEqual([]);
-              });
-            }
+        for (const sprzeglo of SPRZEGLO) {
+          for (const lod of [1, 2] as const) {
+            const nazwa =
+              `${liczba} TR na sekcji ${sekcja} × sekcja 1 ${pola ? 'z polami' : 'bez pól'} × ` +
+              `źródło na szynie WN × ${sprzeglo ? 'ze sprzęgłem' : 'bez sprzęgła'} × L${lod}`;
+            it(nazwa, () => {
+              const m = migawka(sekcja, liczba, { polaSekcji1: pola, sprzeglo });
+              const scena = buildSceneV3(m.enm, lod);
+              sprawdzWieze(m, scena);
+              expect(scena.meta.missingData.filter((k) => k.startsWith('gpz.transformer.section.missing:'))).toEqual([]);
+            });
           }
         }
       }
@@ -343,36 +339,6 @@ describe('GPZ: wieże transformatorów tej samej sekcji rozłożone bez kolizji 
         expect(scena.meta.missingData.filter((k) => k.startsWith('gpz.transformer.section.missing:')).sort()).toEqual(
           refy.map((ref) => `gpz.transformer.section.missing:${ref}`),
         );
-      });
-    }
-  }
-
-  for (const liczba of LICZBY) {
-    for (const lod of [1, 2] as const) {
-      it(`zasilanie dwustronne: źródło na sekcji 1 i drugie na sekcji 2, ${liczba} TR na sekcji 1, ze sprzęgłem × L${lod}`, () => {
-        const m = migawka(1, liczba, { sprzeglo: true, drugieZrodlo: true });
-        const scena = buildSceneV3(m.enm, lod);
-        sprawdzWieze(m, scena);
-        const szyna2 = szynaSekcji(scena, m.sekcjaId[2]);
-        const zejscie = odcinek(scena, `${DRUGIE_ZRODLO}#grid-source-drop`);
-        expect(zejscie, 'zejście drugiego źródła').toBeDefined();
-        const dol = zejscie!.points[zejscie!.points.length - 1];
-        expect(dol.y).toBe(szyna2.y);
-        expect(dol.x).toBeGreaterThan(szyna2.prawo);
-        const przedluzenia = scena.segments.filter((g) => g.meta?.ownerRef?.endsWith('#source-bus-extension'));
-        expect(przedluzenia.map((g) => g.points[0].x).sort((a, b) => a - b)).toEqual(
-          [szynaSekcji(scena, m.sekcjaId[1]).prawo, szyna2.prawo].sort((a, b) => a - b),
-        );
-        // Drugie źródło nie koliduje z niczym (symbol drugiego źródła jako własna grupa).
-        const symbol = scena.symbols.find((sym) => sym.meta?.testId === `gpz-canonical-source-${DRUGIE_ZRODLO}`)!;
-        const rect = { x: symbol.x, y: symbol.y, width: SYMBOL_DEFS.gridSource.width, height: SYMBOL_DEFS.gridSource.height };
-        const inne = [
-          ...scena.symbols.filter((sym) => sym !== symbol).map((sym) => ({
-            x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height,
-          })),
-          ...scena.labels.map((l) => l.rect),
-        ];
-        expect(inne.filter((r) => rectsOverlap(rect, r))).toEqual([]);
       });
     }
   }
@@ -404,4 +370,60 @@ describe('GPZ: wieże transformatorów tej samej sekcji rozłożone bez kolizji 
       expect(JSON.stringify(c.segments)).toBe(JSON.stringify(a.segments));
     }
   });
+});
+
+/** Migawka GPZ z równoważnikiem sieci na szynach SN, wytworzona przez backend (eksport
+ *  harnessu `punkt_startu_gpz_z_zaciskami_wolne_kilka`: dwie sekcje, sprzęgło, pola
+ *  liniowe, równoważnik na szynie sekcji 1, brak transformatorów 110/SN). */
+function migawkaTrybuSn(stanSprzegla: 'closed' | 'open'): EnergyNetworkModel {
+  const sciezka = resolve(
+    dirname(fileURLToPath(import.meta.url)),
+    '../../../../../harness-fixtures/generated/punkt_startu_gpz_z_zaciskami_wolne_kilka.json',
+  );
+  const enm = (JSON.parse(readFileSync(sciezka, 'utf8')) as { snapshot: EnergyNetworkModel }).snapshot;
+  for (const galaz of enm.branches) {
+    if (galaz.type === 'bus_coupler') galaz.status = stanSprzegla;
+  }
+  return enm;
+}
+
+describe('GPZ z równoważnikiem sieci na szynach SN (karta GPZ-MODEL): blok źródła przy szynie sekcji 1, bez kolumny WN', () => {
+  for (const stan of ['closed', 'open'] as const) {
+    for (const lod of [1, 2] as const) {
+      it(`dwie sekcje × sprzęgło ${stan === 'closed' ? 'zamknięte' : 'otwarte'} × L${lod}`, () => {
+        const enm = migawkaTrybuSn(stan);
+        const gpz = enm.substations.find((st) => st.station_type === 'gpz')!;
+        const [sekcja1, sekcja2] = gpz.gpz_sections!;
+        expect(enm.transformers.filter((t) => gpz.transformer_refs.includes(t.ref_id))).toEqual([]);
+        const zrodlo = enm.sources.find((src) => src.bus_ref === sekcja1.bus_ref);
+        expect(zrodlo, 'równoważnik na szynie sekcji 1').toBeDefined();
+        const scena = buildSceneV3(enm, lod);
+        // Bez transformatorów i bez szyny WN — rysunek nie sugeruje zasilania, którego
+        // model obliczeniowy nie ma.
+        expect(scena.symbols.filter((sym) => sym.symbolId === 'transformer2W' && sym.meta?.testId?.startsWith('gpz-'))).toEqual([]);
+        expect(scena.segments.filter((g) => g.meta?.testId === 'gpz-canonical-hv-bus')).toEqual([]);
+        expect(scena.labels.filter((l) => /^Szyna WN/.test(l.text))).toEqual([]);
+        // Blok źródła przy prawym końcu szyny sekcji 1, przedłużenie szyny do zaczepu.
+        const szyna1 = szynaSekcji(scena, sekcja1.section_id);
+        szynaSekcji(scena, sekcja2.section_id);
+        const zejscie = odcinek(scena, `${zrodlo!.ref_id}#grid-source-drop`);
+        expect(zejscie, 'zejście źródła').toBeDefined();
+        const dol = zejscie!.points[zejscie!.points.length - 1];
+        expect(dol.y).toBe(szyna1.y);
+        expect(dol.x).toBeGreaterThan(szyna1.prawo);
+        expect(
+          scena.segments.find((g) => g.meta?.ownerRef?.endsWith('#source-bus-extension') && g.points[0].x === szyna1.prawo),
+          'przedłużenie szyny sekcji 1 do zaczepu źródła',
+        ).toBeDefined();
+        expect(scena.meta.missingData).not.toContain('gpz.source.unattached');
+        expect(scena.labels.some((l) => l.ownerRef.startsWith(`${zrodlo!.ref_id}#system-source-label`))).toBe(true);
+        // Blok źródła nie koliduje z niczym spoza siebie.
+        expect(kolizjeWiez(scena, [], zrodlo!.ref_id)).toEqual([]);
+        const odrzuconeGpz = scena.meta.stopNotes
+          .filter((n) => n.startsWith('label.declutter:'))
+          .flatMap((n) => n.match(/[a-z-]+:gpz[^,( ]*/g) ?? []);
+        expect(odrzuconeGpz).toEqual([]);
+      });
+    }
+  }
 });

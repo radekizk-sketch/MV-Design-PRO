@@ -98,9 +98,11 @@ describe('V126-JEZYK — słownik segmentów referencji jest ZAMKNIĘTY na realn
     expect(tlumaczSegment('corridor_01')).toBe('ciąg liniowy 01');
     expect(tlumaczSegment('corridor_07')).toBe('ciąg liniowy 07');
     expect(tlumaczSegment('station_12')).toBe('stacja 12');
-    // Wpis JAWNY ma pierwszeństwo przed regułą — inaczej „szyna 110 kV" zsunęłaby
-    // się do „szyna 110" i zniknęłaby jednostka napięcia.
-    expect(tlumaczSegment('bus_110')).toBe('szyna 110 kV');
+    // Szyna WN GPZ (karta GPZ-MODEL: jedna wspólna szyna 110 kV sekcji WN). Dawny
+    // segment `bus_110` (szyna 110 kV per transformator) nie powstaje już w żadnym
+    // identyfikatorze backendu, więc nie ma wpisu w słowniku.
+    expect(tlumaczSegment('hv_section')).toBe('sekcja WN');
+    expect(tlumaczSegment('bus_wn')).toBe('szyna WN');
     // Rodzaj spoza słownika zostaje bez zmian (uczciwość zamiast zmyślania).
     expect(tlumaczSegment('cokolwiek_03')).toBe('cokolwiek_03');
   });

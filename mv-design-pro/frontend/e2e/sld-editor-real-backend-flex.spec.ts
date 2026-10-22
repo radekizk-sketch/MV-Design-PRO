@@ -287,8 +287,6 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   await capture(page, testInfo, '01-after-source');
 
@@ -334,6 +332,8 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   await capture(page, testInfo, '02b-segment-catalog-reassigned');
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[1],
@@ -445,8 +445,6 @@ test('real backend supports flexible operation order combinations', async ({ pag
     voltage_kv: 15.0,
     sk3_mva: 250.0,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   snapshot = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -487,6 +485,8 @@ test('real backend supports flexible operation order combinations', async ({ pag
   const targetSegment = snapshot.snapshot?.corridors?.[0]?.ordered_segment_refs?.[1];
   expect(targetSegment).toBeTruthy();
   await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: targetSegment,

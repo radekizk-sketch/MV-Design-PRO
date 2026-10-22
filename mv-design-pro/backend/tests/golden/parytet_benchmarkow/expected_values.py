@@ -81,9 +81,21 @@ class ExpectedShortCircuit:
     sk_mva: float | None = None
     rtol: float = 2e-2
     note: str = ""
+    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b biegu [s] (``None`` = bieg bez t_b),
+    #: prąd wyłączeniowy symetryczny I_b (IEC 60909-0 rozdz. 9) i składowa nieokresowa
+    #: i_DC(t_b) (rozdz. 10). Pola addytywne — fikstury bez nich bez zmian.
+    tb_s: float | None = None
+    ib_a: float | None = None
+    i_dc_a: float | None = None
+
+    @property
+    def klucz(self) -> str:
+        """Klucz scenariusza: punkt, rodzaj zwarcia i — gdy podany — czas t_b biegu."""
+        baza = f"{self.fault_node_id}__{self.sc_type}"
+        return baza if self.tb_s is None else f"{baza}__tb={self.tb_s:g}"
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        dane: dict[str, object] = {
             "fault_node_id": self.fault_node_id,
             "sc_type": self.sc_type,
             "ikss_a": round(self.ikss_a, 3),
@@ -93,6 +105,13 @@ class ExpectedShortCircuit:
             "rtol": self.rtol,
             "note": self.note,
         }
+        if self.tb_s is not None:
+            dane["tb_s"] = self.tb_s
+        if self.ib_a is not None:
+            dane["ib_a"] = round(self.ib_a, 6)
+        if self.i_dc_a is not None:
+            dane["i_dc_a"] = round(self.i_dc_a, 6)
+        return dane
 
 
 @dataclass(frozen=True)
@@ -193,6 +212,9 @@ def load_expected_values_from_json(path: Path | str) -> ExpectedValues:
             sk_mva=_opcjonalny(item, "sk_mva"),
             rtol=float(item.get("rtol", 2e-2)),
             note=str(item.get("note", "")),
+            tb_s=_opcjonalny(item, "tb_s"),
+            ib_a=_opcjonalny(item, "ib_a"),
+            i_dc_a=_opcjonalny(item, "i_dc_a"),
         )
         for item in data.get("short_circuit", [])
     )

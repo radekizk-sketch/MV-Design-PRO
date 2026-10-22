@@ -286,7 +286,10 @@ def ocen(
 #: na asercję (kierunek wkładu spoza słownika w `prad_zwarciowy_galezi.py`, warunek wstępny
 #: w `catalog/zakresy.py`, defekt pliku katalogu produktu w `catalog/catalog_store.py`), więc
 #: nie wchodzą do pinu.
-PIN_RAISE_VALUEERROR_APLIKACJA = 81
+#: Partia integracji 13 (2026-10-21): 81 -> 80 — POMIAR guardem: nowe niezmienniki programu
+#: karty SC-IB-ITH-ZRODLA (kroki μ/q/i_b dowodu, m/n wyniku, klucz wiersza) jako asercje,
+#: a bliźniaczy niezmiennik zapisu w `wytrzymalosc_cieplna_przewodow._pole_sc` razem z nimi.
+PIN_RAISE_VALUEERROR_APLIKACJA = 80
 
 #: Wywołania dozwolone w bloku `try` parsowania wejścia trasy (poza konstruktorami typów).
 PARSERY_WBUDOWANE = frozenset({"int", "float", "str", "Decimal"})

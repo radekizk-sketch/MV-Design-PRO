@@ -21,6 +21,7 @@ import {
   werdyktPL,
   wyborPrzebieguSkladowych,
 } from '../model';
+import { SKLADOWE_STRINGS } from '../strings';
 
 const WIERSZ: ShortCircuitRow = {
   target_id: 'node-1',
@@ -38,6 +39,7 @@ const WIERSZ: ShortCircuitRow = {
   xr_ratio: 2.41,
   kappa: 1.602,
   c_factor: 1.1,
+  c_zrodlo: 'IEC 60909-0 tab. 1, pasmo SN, MAX',
   tk_s: 1.0,
   reporting_status: 'reportable',
   reporting_status_pl: 'raportowalny',
@@ -260,10 +262,31 @@ describe('naZalozeniaSkladowych / naWierszeSkladowych / werdyktPL', () => {
     expect(zalozenia.map((z) => String(z.wartosc))).toEqual([
       'zwarcie jednofazowe (doziemne)',
       'IEC 60909',
-      '1,10',
+      '1,10 (IEC 60909-0 tab. 1, pasmo SN, MAX)',
       '1,00',
       '1',
     ]);
+  });
+
+  it('c różne per węzeł (SN i nN) → brak jednej liczby; kolumny c i podstawa c w wierszach', () => {
+    const nN = {
+      ...WIERSZ,
+      target_id: 'node-nn',
+      c_factor: 1.05,
+      c_zrodlo: 'IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX',
+    };
+    const zalozenia = naZalozeniaSkladowych([WIERSZ, nN]);
+    expect(zalozenia[2].wartosc).toBe(SKLADOWE_STRINGS.zalWspolczynnikCPerWezel);
+    const [wSn, wNn] = naWierszeSkladowych([WIERSZ, nN]);
+    expect(wSn.c.wartosc).toBe('1,10');
+    expect(wSn.cZrodlo.wartosc).toBe('IEC 60909-0 tab. 1, pasmo SN, MAX');
+    expect(wNn.c.wartosc).toBe('1,05');
+    expect(wNn.cZrodlo.wartosc).toBe('IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX');
+  });
+
+  it('wiersz bez podstawy c (starszy zapis) → kreska w kolumnie, nie domysł', () => {
+    const [w] = naWierszeSkladowych([{ ...WIERSZ, c_zrodlo: undefined }]);
+    expect(w.cZrodlo.wartosc).toBe('—');
   });
 
   it('wiersz tabeli: bilans Zk + werdykt raportowalności PL', () => {

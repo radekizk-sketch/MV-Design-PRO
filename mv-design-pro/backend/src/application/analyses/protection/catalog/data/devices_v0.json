@@ -10,7 +10,7 @@
         "51"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "DT"
       ],
@@ -49,7 +49,7 @@
         "51"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "DT"
       ],
@@ -90,7 +90,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "DT"
       ],
@@ -131,7 +131,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "DT"
       ],
       "i_pickup_51_a_min": 0.05,
@@ -171,7 +171,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "DT"
       ],
@@ -212,7 +212,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_SI"
       ],
       "i_pickup_51_a_min": 0.5,
       "i_pickup_51_a_max": 2000.0,
@@ -250,7 +250,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_SI"
       ],
       "i_pickup_51_a_min": 0.5,
       "i_pickup_51_a_max": 2000.0,
@@ -288,7 +288,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_SI"
       ],
       "i_pickup_51_a_min": 0.5,
       "i_pickup_51_a_max": 2000.0,
@@ -326,7 +326,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_SI"
       ],
       "i_pickup_51_a_min": 0.5,
       "i_pickup_51_a_max": 2000.0,
@@ -364,7 +364,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_SI"
       ],
       "i_pickup_51_a_min": 0.5,
       "i_pickup_51_a_max": 2000.0,
@@ -402,7 +402,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_SI"
       ],
       "i_pickup_51_a_min": 0.5,
       "i_pickup_51_a_max": 2000.0,
@@ -440,7 +440,7 @@
         "51N"
       ],
       "curves_supported": [
-        "IEC_NI"
+        "IEC_SI"
       ],
       "i_pickup_51_a_min": 0.5,
       "i_pickup_51_a_max": 2000.0,
@@ -479,7 +479,7 @@
         "79"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT"
@@ -528,7 +528,7 @@
         "81"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -589,7 +589,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -663,7 +663,7 @@
         "64S"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -741,7 +741,7 @@
         "86"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -794,7 +794,7 @@
         "49"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -849,7 +849,7 @@
         "81"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -911,7 +911,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -982,7 +982,7 @@
         "86"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1039,7 +1039,7 @@
         "85"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1095,7 +1095,7 @@
         "24"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1142,7 +1142,7 @@
         "51"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT"
@@ -1199,7 +1199,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1251,7 +1251,7 @@
         "79"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT"
@@ -1301,7 +1301,7 @@
         "81"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1358,7 +1358,7 @@
         "67N"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1421,7 +1421,7 @@
         "87L"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1492,7 +1492,7 @@
         "78"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1548,7 +1548,7 @@
         "24"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1595,7 +1595,7 @@
         "51"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT"
@@ -1652,7 +1652,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1704,7 +1704,7 @@
         "79"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT"
@@ -1754,7 +1754,7 @@
         "81"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1816,7 +1816,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1887,7 +1887,7 @@
         "86"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1943,7 +1943,7 @@
         "24"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -1998,7 +1998,7 @@
         "81"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2066,7 +2066,7 @@
         "78"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2122,7 +2122,7 @@
         "24"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2189,7 +2189,7 @@
         "86"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2255,7 +2255,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2312,7 +2312,7 @@
         "50BF"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2364,7 +2364,7 @@
         "24"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2426,7 +2426,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2482,7 +2482,7 @@
         "24"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2544,7 +2544,7 @@
         "60"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2603,7 +2603,7 @@
         "81"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2666,7 +2666,7 @@
         "95"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",
@@ -2727,7 +2727,7 @@
         "67N"
       ],
       "curves_supported": [
-        "IEC_NI",
+        "IEC_SI",
         "IEC_VI",
         "IEC_EI",
         "DT",

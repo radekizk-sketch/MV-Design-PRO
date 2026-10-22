@@ -65,8 +65,9 @@ from network_model.solvers.power_flow_types import (
 
 from tests.reference_networks.w3g2_pasma_rozplywu import (
     NAZWA_SZYNY_110,
+    siec_w3g2_z_archiwum,
     tr1_gpz,
-    zbuduj_siec_w3g2,
+    zbuduj_siec_w3g2_dzis,
 )
 
 #: Rozwiązanie zerowe: |U| poniżej tej wartości to numeryczne zero (pomiar: 1e-19…1e-11
@@ -329,18 +330,52 @@ def test_szyna_obciazona_nie_ma_rozwiazania_zerowego() -> None:
         assert not sol.converged or sol.node_u_mag["pq"] > U_ZERO_PU
 
 
-# --- 2. Zmierzony przypadek W3-G2 (receptura speca e2e 1:1) -------------------------
+# --- 2. Zmierzony przypadek W3-G2 (receptura speca e2e 1:1, archiwum sprzed GPZ-MODEL) --
 
 
 @pytest.fixture(scope="module")
 def migawki_w3g2() -> dict[str, dict[str, Any]]:
+    return {
+        "spec": siec_w3g2_z_archiwum(tr1_nadpisany=True),
+        "czysty": siec_w3g2_z_archiwum(tr1_nadpisany=False),
+    }
+
+
+@pytest.mark.parametrize("wariant", ["spec", "czysty"])
+def test_w3g2_archiwum_jest_blokowane_e066_na_tr1(migawki_w3g2, wariant: str) -> None:
+    """Karta GPZ-MODEL: „Szyna 110 kV TR1" to martwa szyna pomocnicza (bez źródła, odbioru
+    i generatora) — walidator ENM wskazuje TR1 zgłoszeniem E066 (BLOCKER), więc ten model
+    nie wchodzi już do biegu; diagnoza niżej mierzy rdzeń na modelu z archiwum."""
+    from enm.models import EnergyNetworkModel
+    from enm.validator import ENMValidator
+
+    model = EnergyNetworkModel.model_validate(migawki_w3g2[wariant])
+    e066 = [z for z in ENMValidator().validate(model).issues if z.code == "E066"]
+    tr1 = tr1_gpz(migawki_w3g2[wariant])
+    assert [z.element_refs for z in e066] == [[tr1["ref_id"], tr1["hv_bus_ref"]]]
+    (szyna_110,) = (b for b in migawki_w3g2[wariant]["buses"] if b["ref_id"] == tr1["hv_bus_ref"])
+    assert szyna_110["name"] == NAZWA_SZYNY_110
+    assert e066[0].severity == "BLOCKER"
+
+
+def test_w3g2_receptura_dzis_nie_ma_szyny_pq_zerowej_mocy_za_tr_gpz() -> None:
+    """Receptura speca na dzisiejszym produkcie (GPZ z równoważnikiem na szynach SN):
+    pętla nadpisująca tabliczkę 630 kVA trafia wyłącznie w transformator stacji, nie ma
+    szyny 110 kV ani TR GPZ, a start płaski zbiega do gałęzi roboczej (moc slacka =
+    odbiór 0,5 MW + straty)."""
     from api.main import app
 
     with TestClient(app) as klient:
-        return {
-            "spec": zbuduj_siec_w3g2(klient, tr1_nadpisany=True),
-            "czysty": zbuduj_siec_w3g2(klient, tr1_nadpisany=False),
-        }
+        migawka = zbuduj_siec_w3g2_dzis(klient)
+    assert [t["name"] for t in migawka["transformers"]] == ["Transformator SN/nN"]
+    assert not [b for b in migawka["buses"] if b["voltage_kv"] == 110.0]
+    pfi = _wejscie(migawka)
+    sol = solve_power_flow_physics(pfi)
+    assert sol.converged and sol.max_mismatch < pfi.options.tolerance
+    assert min(sol.node_u_mag.values()) > 0.95
+    # Ta sama gałąź robocza co archiwum z TR1 nietkniętym (TR1 bez obciążenia nie miał
+    # strat w rdzeniu NR): pomiar 0,5002551 MW.
+    assert sol.slack_power.real * pfi.base_mva == pytest.approx(SLACK_MW_GALAZ_ROBOCZA, abs=1e-5)
 
 
 def _wejscie(snapshot: dict[str, Any]) -> PowerFlowInput:

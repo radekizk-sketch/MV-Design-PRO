@@ -34,11 +34,18 @@ from typing import Any
 from uuid import UUID
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
-from network_model.core.autorytet_wyniku_zwarciowego import ProweniencjaWynikuZwarciowego
+from network_model.core.autorytet_wyniku_zwarciowego import (
+    BlokadaAutorytetu,
+    ProweniencjaWynikuZwarciowego,
+    blokady_zakresu_waznosci,
+    wynik_poza_zakresem_iec60909,
+)
 from network_model.core.wiazanie_wyniku_zwarciowego import (
     WiazanieWynikuZwarciowego,
     wielkosci_do_odcisku,
 )
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
+from network_model.odmowa_danych import OdmowaNazwana
 from network_model.pochodne.jednostki import a_na_ka, v_na_kv
 
 #: Rodzaje biegu kanonicznego, którego artefakt niesie wielkości zwarciowe.
@@ -61,7 +68,21 @@ KLUCZE_ECHA: dict[str, tuple[str, float]] = {
     "ip_ka": ("ip_a", 1000.0),
     "ith_ka": ("ith_a", 1000.0),
     "tk_s": ("tk_s", 1.0),
+    # Karta SC-IB-ITH-ZRODLA: I_b (kryterium wyłączania SN/WN, IEC 62271-100), czas t_b
+    # i składowa nieokresowa i_DC(t_b) — echo porównywane z biegiem jak pozostałe pola.
+    "ib_ka": ("ib_a", 1000.0),
+    "tb_s": ("tb_s", 1.0),
+    "i_dc_ka": ("i_dc_a", 1000.0),
 }
+
+#: Kontrakt ECHA — pola NIELICZBOWE przenoszone 1:1 (klucz konsumenta -> pole wyniku).
+#: Karta TB-WARTOSC-ROBOCZA: ``tb_zrodlo`` (pochodzenie t_b punktu) jest w kontrakcie
+#: klienta (``wielkosci_kontraktu_klienta``) i w odcisku wiązania
+#: (``POLA_WYNIKU_ZWARCIOWEGO``), więc echo musi je przyjmować i porównywać — podmiana
+#: pochodzenia (wartość robocza podana jako projektowa) jest rozbieżnością odcisku.
+#: Zbiór kluczy znanych = ``KLUCZE_ECHA`` ∪ ``KLUCZE_ECHA_NIELICZBOWE`` (jedno źródło dla
+#: przeliczenia i dla wykrywania pól nieznanych).
+KLUCZE_ECHA_NIELICZBOWE: dict[str, str] = {"tb_zrodlo": "tb_zrodlo"}
 
 
 class BiegNiemiarodajnyError(Exception):
@@ -85,6 +106,9 @@ class WejscieZwarcioweZBiegu:
     wiazanie: WiazanieWynikuZwarciowego
     wielkosci: dict[str, Any]
     """Liczby zwarciowe Z ARTEFAKTU BIEGU — to ich wolno użyć, nie tych z żądania."""
+    tolerancja_nn_robocza: bool = False
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: punkt w sieci nN liczonej z wartością roboczą
+    tolerancji napięcia (znacznik wiersza biegu) — liczby stoją na danej przyjętej."""
 
     def niezgodnosci_z_echem(self, echo: Mapping[str, Any] | None) -> tuple[str, ...]:
         """Czym liczby przysłane przez konsumenta różnią się od liczb biegu.
@@ -101,12 +125,13 @@ class WejscieZwarcioweZBiegu:
         """
         if echo is None:
             return ()
-        nieznane = sorted(k for k in echo if k not in KLUCZE_ECHA)
+        znane = set(KLUCZE_ECHA) | set(KLUCZE_ECHA_NIELICZBOWE)
+        nieznane = sorted(k for k in echo if k not in znane)
         roznice = list(self.wiazanie.niezgodnosci(wynik=_wielkosci_z_echa(echo, self.wielkosci)))
         if nieznane:
             roznice.append(
                 f"pola spoza kontraktu wielkości zwarciowych: {', '.join(nieznane)} — "
-                f"porównywalne są wyłącznie {', '.join(sorted(KLUCZE_ECHA))}"
+                f"porównywalne są wyłącznie {', '.join(sorted(znane))}"
             )
         return tuple(roznice)
 
@@ -132,6 +157,9 @@ def _wielkosci_z_echa(echo: Mapping[str, Any], wzorzec: Mapping[str, Any]) -> di
         except (TypeError, ValueError):
             # Wartość nieprzeliczalna zostawiamy jako podaną: odcisk i tak się
             # rozjedzie, a komunikat ma wskazać ROZBIEŻNOŚĆ, nie typ.
+            przeliczone[klucz_pola] = echo[klucz_echa]
+    for klucz_echa, klucz_pola in KLUCZE_ECHA_NIELICZBOWE.items():
+        if klucz_echa in echo and echo[klucz_echa] is not None:
             przeliczone[klucz_pola] = echo[klucz_echa]
     return przeliczone
 
@@ -199,8 +227,42 @@ def _proweniencja_biegu(bieg: Any) -> ProweniencjaWynikuZwarciowego:
     S-2 albo sieć bez czynnych falowników — daje proweniencję MIARODAJNĄ z pustymi
     znacznikami (`ze_znacznikow(())`): brak falowników nie jest brakiem danych.
     """
-    znaczniki = (bieg.raw_result or {}).get("k_sc_znaczniki") or ()
-    return ProweniencjaWynikuZwarciowego.ze_znacznikow(znaczniki)
+    artefakt = bieg.raw_result or {}
+    znaczniki = artefakt.get("k_sc_znaczniki") or ()
+    return ProweniencjaWynikuZwarciowego.ze_znacznikow(
+        znaczniki, poza_zakresem_iec60909=wynik_poza_zakresem_iec60909(artefakt)
+    )
+
+
+def blokady_zakresu_biegu(bieg: Any, zdolnosc: ZdolnoscMiarodajna) -> tuple[BlokadaAutorytetu, ...]:
+    """Blokady zakresu ważności (SI-117, karta OD-14) zapisanego biegu dla zdolności.
+
+    Dla konsumentów biegu zwarciowego, którzy biorą bieg wskazany albo najnowszy (energia
+    łuku, siła sieci, migotanie, wniosek do OSD, wytrzymałość cieplna przewodów, nastawy,
+    werdykt projektowy, karta pola): JEDNO źródło decyzji „wolno użyć wyniku z Z_f" —
+    ta sama proweniencja i ta sama lista zdolności co bramka autorytetu.
+    """
+    return blokady_zakresu_waznosci(zdolnosc, _proweniencja_biegu(bieg))
+
+
+def wymagaj_zakresu_biegu(bieg: Any, zdolnosc: ZdolnoscMiarodajna) -> None:
+    """Odmowa nazwana (kod SI-117, API 422), gdy bieg z Z_f trafia do zdolności, której
+    kontrakt OD-14 go zabrania — dla konsumentów, których kontraktem błędu jest
+    `OdmowaDanychError`. Decyzja z `blokady_zakresu_biegu` (jedno źródło)."""
+    for blokada in blokady_zakresu_biegu(bieg, zdolnosc):
+        raise OdmowaNazwana(
+            blokada.komunikat_pl,
+            kod=blokada.kod,
+            dane={"zdolnosc": str(blokada.zdolnosc)},
+        )
+
+
+def bieg_w_zakresie_iec60909(bieg: Any) -> bool:
+    """Czy bieg zwarciowy jest zwarciem metalicznym (w zakresie IEC 60909) — dla selekcji
+    „najnowszego biegu zwarciowego" przez widoki, które same nie wybierają biegu (werdykt
+    projektowy, karta pola, reguły aparatury generatora). Ten sam predykat co proweniencja
+    (`wynik_poza_zakresem_iec60909`)."""
+    return not wynik_poza_zakresem_iec60909(bieg.raw_result)
 
 
 def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> WejscieZwarcioweZBiegu:
@@ -231,6 +293,7 @@ def wejscie_zwarciowe_z_biegu(*, run_id: str | None, punkt_zwarcia: str) -> Wejs
         proweniencja=_proweniencja_biegu(bieg),
         wiazanie=wiazanie,
         wielkosci=wielkosci_do_odcisku(wiersz),
+        tolerancja_nn_robocza=bool(wiersz.get("tolerancja_nn_robocza")),
     )
 
 
@@ -257,6 +320,9 @@ def wielkosci_kontraktu_klienta(wielkosci_biegu: Mapping[str, Any]) -> dict[str,
     ip_a = _na_liczbe(wielkosci_biegu.get("ip_a"))
     ith_a = _na_liczbe(wielkosci_biegu.get("ith_a"))
     tk_s = wielkosci_biegu.get("tk_s")
+    ib_a = _na_liczbe(wielkosci_biegu.get("ib_a"))
+    tb_s = _na_liczbe(wielkosci_biegu.get("tb_s"))
+    i_dc_a = _na_liczbe(wielkosci_biegu.get("i_dc_a"))
 
     wynik: dict[str, Any] = {}
     if un_v is not None:
@@ -269,6 +335,19 @@ def wielkosci_kontraktu_klienta(wielkosci_biegu: Mapping[str, Any]) -> dict[str,
         wynik["ith_ka"] = a_na_ka(ith_a)
     if tk_s is not None:
         wynik["tk_s"] = tk_s
+    # Karta SC-IB-ITH-ZRODLA: None (wiersz bez solvera / zapis bez pola) NIE wchodzi do
+    # kontraktu — kryterium wyłączania widzi brak I_b jako brak podstawy, nie jako liczbę.
+    if ib_a is not None:
+        wynik["ib_ka"] = a_na_ka(ib_a)
+    if tb_s is not None:
+        wynik["tb_s"] = tb_s
+    if i_dc_a is not None:
+        wynik["i_dc_ka"] = a_na_ka(i_dc_a)
+    # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (dowód doboru nazywa założenie) —
+    # addytywnie, tylko gdy t_b nie pochodzi ze scenariusza projektanta.
+    tb_zrodlo = wielkosci_biegu.get("tb_zrodlo")
+    if isinstance(tb_zrodlo, Mapping):
+        wynik["tb_zrodlo"] = dict(tb_zrodlo)
     return wynik
 
 
@@ -353,7 +432,10 @@ def wejscie_koordynacji_z_biegow(
     proweniencja_max = _proweniencja_biegu(bieg_max)
     proweniencja_min = _proweniencja_biegu(bieg_min)
     proweniencja_obu = ProweniencjaWynikuZwarciowego.ze_znacznikow(
-        tuple(proweniencja_max.znaczniki_k_sc) + tuple(proweniencja_min.znaczniki_k_sc)
+        tuple(proweniencja_max.znaczniki_k_sc) + tuple(proweniencja_min.znaczniki_k_sc),
+        poza_zakresem_iec60909=(
+            proweniencja_max.poza_zakresem_iec60909 or proweniencja_min.poza_zakresem_iec60909
+        ),
     )
 
     return WejscieKoordynacjiZBiegow(

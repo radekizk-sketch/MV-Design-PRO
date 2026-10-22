@@ -16,6 +16,7 @@ operacjami domenowymi, prądy przekaźników z biegów MAX/MIN.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
@@ -49,6 +50,7 @@ from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm, reset_enm_store, set_enm
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 
 from tests.golden.enm_builders.zabezpieczenia_magistrali import (
     NAZWA_ZABEZPIECZENIA_Q1,
@@ -172,13 +174,21 @@ def test_pary_jawne_zgodne_z_topologia_rowne_parom_z_topologii() -> None:
 
 
 class _Ocena:
-    def __init__(self, t: float | None, prad: float) -> None:
+    """Pola ``OcenaPunktu`` czytane przez porównanie pary — także rekord oceny punktu
+    (``ocena.dowod.status_danych``), z którego zdanie bierze dane przyjęte prądu punktu."""
+
+    def __init__(self, t: float | None, prad: float, *, robocza: bool = False) -> None:
         self.t_zadzialania_s = t
         self.prad_przekaznika_a = prad
         self.punkt_ref = "P"
         self.nazwa_punktu_pl = "Szyna P"
+        dane = (dana_przyjeta_tolerancji_nn(miejsce_pl="punkt zwarcia Szyna P"),) if robocza else ()
+        self.ocena = SimpleNamespace(
+            dowod=SimpleNamespace(status_danych=SimpleNamespace(dane_przyjete=dane))
+        )
 
 
+@pytest.mark.parametrize("robocza", [False, True])
 @pytest.mark.parametrize(
     ("t_pod", "t_nad", "stan", "margines"),
     [
@@ -195,12 +205,22 @@ def test_porownanie_punktu_iloczyn_cech(
     t_nad: float | None,
     stan: StanPary,
     margines: float | None,
+    robocza: bool,
 ) -> None:
-    """Iloczyn {kto zadziała} × {odstęp powyżej / poniżej wymaganego / ujemny}: rekord niesie
-    FAKT (stan pary) i liczby, bez werdyktu (P-06) — także odstęp mniejszy od wymaganego
-    albo ujemny nie jest nazwany „nieskoordynowane", tylko pokazany liczbą obok wymaganej."""
+    """Iloczyn {kto zadziała} × {odstęp powyżej / poniżej wymaganego / ujemny} × {sieć
+    zadeklarowana, sieć nN na wartości roboczej tolerancji}: rekord niesie FAKT (stan pary)
+    i liczby, bez werdyktu (P-06) — także odstęp mniejszy od wymaganego albo ujemny nie jest
+    nazwany „nieskoordynowane", tylko pokazany liczbą obok wymaganej. Punkt liczony z
+    wartością roboczą (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — zdanie nazywa daną przyjętą."""
     para = ParaSelektywnosci(nadrzedne_ref="nad", podrzedne_ref="pod")
-    wynik = _porownanie(para, _Ocena(t_pod, 1000.0), _Ocena(t_nad, 1001.0), 0.2)  # type: ignore[arg-type]
+    wynik = _porownanie(
+        para,
+        _Ocena(t_pod, 1000.0, robocza=robocza),  # type: ignore[arg-type]
+        _Ocena(t_nad, 1001.0, robocza=robocza),  # type: ignore[arg-type]
+        0.2,
+    )
+    assert ("tolerancja napięcia sieci nN (punkt zwarcia Szyna P)" in wynik.notes_pl) is robocza
+    assert ("nie potwierdzony dowód" in wynik.notes_pl) is robocza
     assert wynik.stan is stan
     assert not hasattr(wynik, "verdict")
     slownik = wynik.to_dict()

@@ -7,6 +7,7 @@
 
 import type {
   RolaUziemnika,
+  TolerancjaNapieciaNn,
   TypPunktuNeutralnego,
   UkladSieciNn,
   UziemienieEkranuKabla,
@@ -98,7 +99,7 @@ export interface ProtectionSetting {
     | 'IEC_SI'
     | 'IEC_VI'
     | 'IEC_EI'
-    | 'IEC_LI'
+    | 'IEC_LTI'
     | 'IEEE_MI'
     | 'IEEE_VI'
     | 'IEEE_EI'
@@ -136,7 +137,7 @@ export type CatalogSourceMode = 'KATALOG' | 'MIGRACJA' | 'EKSPERCKI_RECZNY';
 export interface ParameterOverride {
   key: string;
   value: number | string;
-  reason?: string;
+  reason?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -389,6 +390,11 @@ export interface Transformer extends ENMElement {
   lv_neutral?: GroundingConfig | null;
   /** W5-A: układ sieci nN zasilanej z tego transformatora (jedyny nośnik; brak = odmowa E063). */
   lv_earthing_system?: UkladSieciNn | null;
+  /** Tolerancja napięcia sieci nN zasilanej z tego transformatora — wiersz nN tabeli 1
+   * IEC 60909-0 (+6 % → c 1,05/0,95; +10 % → c 1,10/0,90). Brak = wartość robocza rejestru
+   * (+10 %), oznaczona założeniem biegu `fault.c_tolerancja_nn_robocza` (karta
+   * TOLERANCJA-NN-WARTOSC-ROBOCZA) — nie blokuje zwarć. */
+  lv_voltage_tolerance?: TolerancjaNapieciaNn | null;
   tap_position?: number | null;
   tap_min?: number | null;
   tap_max?: number | null;
@@ -439,8 +445,10 @@ export interface Source extends ENMElement {
   r0_ohm?: number | null;
   x0_ohm?: number | null;
   z0_z1_ratio?: number | null;
-  c_max?: number | null;
-  c_min?: number | null;
+  /** Tolerancja napięcia sieci nN dla źródła na szynie nN (wiersz nN tabeli 1 IEC 60909-0).
+   * Dawne `c_max`/`c_min` źródła usunięte — fantom bez konsumenta (karta
+   * WSPOLCZYNNIK-C-JEDEN-NOSNIK: c dobiera backend per węzeł). */
+  lv_voltage_tolerance?: TolerancjaNapieciaNn | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   parameter_source?: ParameterSourceWithManualEquivalent | null;
@@ -467,6 +475,12 @@ export interface Load extends ENMElement {
   q_mvar: number;
   model: 'pq' | 'zip';
   phases?: PhaseSet | null;
+  /**
+   * Rezystancja uziomu instalacji odbiorczej R_A [Ω] (karta W5-E-TTIT, `Load.earth_electrode_r_ohm`):
+   * pętla doziemna układu TT domyka się przez ten uziom; brak = analiza TT odmawia kodem
+   * `nn.brak_r_a` (nie podstawia wartości). Pole addytywne, poza hashem modelu, gdy puste.
+   */
+  earth_electrode_r_ohm?: number | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   quantity?: number | null;

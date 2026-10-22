@@ -43,6 +43,7 @@ from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.niezmienniki_katalogu import KODY_TWARDE, OdmowaKatalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, CatalogNamespace
+from network_model.odmowa_danych import OdmowaNazwana
 from pydantic import BaseModel
 
 from tests.dziedziny import fabryki as f
@@ -332,8 +333,12 @@ def test_repozytorium_odczyt_filtr_i_sortowanie() -> None:
 
 
 def test_repozytorium_odrzuca_kolizje_i_karte_niepoprawna() -> None:
-    with pytest.raises(ValueError, match="catalog.duplicate_id"):
+    with pytest.raises(OdmowaNazwana, match="dwa razy") as powtorzona:
         _repo(karty_widmowe=[_rekord(id="k"), _rekord(id="k")])
+    # Partia integracji 10: kod i oznaczenie karty w polach, treść opisuje kartę producentem,
+    # modelem i wersją.
+    assert powtorzona.value.kod == "catalog.duplicate_id"
+    assert powtorzona.value.dane == {"karta_id": "k"}
     with pytest.raises(OdmowaKatalogu) as wyjatek:
         _repo(karty_widmowe=[_z_modelem(skladowe=[])])
     assert wyjatek.value.kod == "KAT-T-014"

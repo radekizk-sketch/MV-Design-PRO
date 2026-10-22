@@ -67,6 +67,7 @@ function koncowkaNoza(id: CadSymbolId, state: CadSwitchState): { x: number; y: n
 const ZE_STANEM: readonly CadSymbolId[] = [
   'cad.wylacznik',
   'cad.wylacznikInstalacyjny',
+  'cad.wylacznikRoznicowopradowy',
   'cad.odlacznik',
   'cad.rozlacznik',
   'cad.lacznik',
@@ -88,8 +89,8 @@ const LITERY_NORMATYWNE: Partial<Record<CadSymbolId, readonly string[]>> = {
 };
 
 describe('rejestr symboli CAD — kontrakt R2', () => {
-  it('ma 19 symboli, każdy z odniesieniem normatywnym, nazwą polską, typem domenowym i statusem; ŻADEN nie jest NORMATIVE_VERIFIED bez porównania z bazą IEC', () => {
-    expect(CAD_SYMBOL_IDS).toHaveLength(19);
+  it('ma 20 symboli, każdy z odniesieniem normatywnym, nazwą polską, typem domenowym i statusem; ŻADEN nie jest NORMATIVE_VERIFIED bez porównania z bazą IEC', () => {
+    expect(CAD_SYMBOL_IDS).toHaveLength(20);
     for (const id of CAD_SYMBOL_IDS) {
       const def = ELECTRICAL_CAD_SYMBOL_REGISTRY[id];
       expect(def.symbolId).toBe(id);
@@ -243,6 +244,22 @@ describe('rejestr symboli CAD — kontrakt R2', () => {
     // Łącznik ogólny: sam nóż, bez kwalifikatorów.
     expect(pozaPrzegubem('cad.lacznik')).toEqual([]);
     expect(wPrzegubie('cad.lacznik')).toEqual([]);
+
+    // Wyłącznik różnicowoprądowy (W5-E-TTIT): krzyżyk wyłącznika jak w 'cad.wylacznik' (nieruchomy),
+    // nic przy nożu; w korpusie rdzeń sumacyjny (elipsa) NA przewodzie dolnym pod przegubem i
+    // sprzężenie kreskowe (osobne kreski) od rdzenia do napędu styku — wszystko poza przegubem.
+    expect(pozaPrzegubem('cad.wylacznikRoznicowopradowy')).toEqual(pozaPrzegubem('cad.wylacznik'));
+    expect(wPrzegubie('cad.wylacznikRoznicowopradowy')).toEqual([]);
+    const rcd = ELECTRICAL_CAD_SYMBOL_REGISTRY['cad.wylacznikRoznicowopradowy'];
+    const przegubRcd = przeguby('cad.wylacznikRoznicowopradowy', 'closed')[0];
+    const rdzen = rcd.body.filter((p): p is Extract<CadPrimitive, { k: 'path' }> => p.k === 'path');
+    expect(rdzen, 'jeden rdzeń sumacyjny').toHaveLength(1);
+    const yRdzenia = Number(/^M [\d.]+ ([\d.]+)/.exec(rdzen[0].d)?.[1]);
+    expect(yRdzenia).toBeGreaterThan(przegubRcd.cy);
+    expect(yRdzenia).toBeLessThan(rcd.nominalHeight);
+    const sprzezenie = rcd.body.filter((p): p is Kreska => p.k === 'line' && !(p.x1 === 8 && p.x2 === 8));
+    expect(sprzezenie.length, 'sprzężenie mechaniczne rysowane kreskami').toBeGreaterThanOrEqual(4);
+    for (const k of sprzezenie) expect(Math.max(k.x1, k.x2)).toBeGreaterThan(8); // po PRAWEJ stronie osi toru
   });
 
   it('pierwowzór właściciela (R2.1): przekształtnik z „3~" po stronie AC (zacisk u góry) i „=" po stronie DC; PV i magazyn = przekształtnik NAD źródłem', () => {

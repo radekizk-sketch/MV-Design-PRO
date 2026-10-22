@@ -170,6 +170,22 @@ def _fix_graph_island(
     )
 
 
+def _fix_gpz_section_unsupplied(
+    element_id: str | None,
+    _et: str | None,
+) -> FixAction:
+    """E065: nawigacja do otwartego sprzęgła sekcji GPZ (albo szyny sekcji)."""
+    return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=element_id)
+
+
+def _fix_gpz_transformer_hv_unsupplied(
+    element_id: str | None,
+    _et: str | None,
+) -> FixAction:
+    """E066: nawigacja do transformatora WN/SN GPZ bez równoważnika po stronie 110 kV."""
+    return FixAction(action_type="NAVIGATE_TO_ELEMENT", element_ref=element_id)
+
+
 # ---------------------------------------------------------------------------
 # Load flow validation codes
 # ---------------------------------------------------------------------------
@@ -346,6 +362,8 @@ _FIX_ACTION_MAP: dict[
     "bess.transformer_required": _fix_bess_transformer_required,
     # Topology warnings
     "E003": _fix_graph_island,
+    "E065": _fix_gpz_section_unsupplied,
+    "E066": _fix_gpz_transformer_hv_unsupplied,
     "W005": _fix_topology_ref_invalid,
     "W006": _fix_topology_ref_invalid,
     "W007": _fix_topology_ref_invalid,
@@ -375,6 +393,8 @@ KNOWN_BLOCKER_CODES: frozenset[str] = frozenset(
         "E001",
         "E002",
         "E003",
+        "E065",
+        "E066",
         "E004",
         "E005",
         "E006",

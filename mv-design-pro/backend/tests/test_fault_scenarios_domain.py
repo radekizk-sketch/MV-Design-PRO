@@ -14,11 +14,12 @@ from uuid import uuid4
 
 import pytest
 from domain.fault_scenario import (
-    FaultImpedanceType,
     FaultLocation,
+    FaultMode,
     FaultScenario,
     FaultScenarioValidationError,
     FaultType,
+    ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
 )
@@ -37,6 +38,7 @@ def _make_scenario(
         name=name,
         fault_type=fault_type,
         location=FaultLocation(element_ref=element_ref, location_type="BUS"),
+        config=ShortCircuitConfig(scenariusz="MAX"),
     )
 
 
@@ -81,6 +83,7 @@ class TestFaultScenarioDomain:
                 name="",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-1", location_type="BUS"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_validate_whitespace_name_fails(self):
@@ -91,6 +94,7 @@ class TestFaultScenarioDomain:
                 name="   ",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-1", location_type="BUS"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_validate_empty_element_ref_fails(self):
@@ -101,12 +105,14 @@ class TestFaultScenarioDomain:
                 name="Scenariusz",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="", location_type="BUS"),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
-    def test_fault_impedance_type_default(self):
-        """Default fault_impedance_type is METALLIC."""
+    def test_fault_mode_default(self):
+        """Domyślny tryb zwarcia to METALLIC; `fault_mode` jest JEDYNYM polem trybu."""
         s = _make_scenario()
-        assert s.fault_impedance_type == FaultImpedanceType.METALLIC
+        assert s.fault_mode == FaultMode.METALLIC
+        assert "fault_impedance_type" not in s.to_dict()
 
     def test_created_at_updated_at_set(self):
         """created_at and updated_at are set on creation."""
@@ -125,7 +131,7 @@ class TestFaultScenarioDomain:
         assert restored.fault_type == original.fault_type
         assert restored.location.element_ref == original.location.element_ref
         assert restored.content_hash == original.content_hash
-        assert restored.fault_impedance_type == original.fault_impedance_type
+        assert restored.fault_mode == original.fault_mode
         assert restored.created_at == original.created_at
 
     def test_canonical_json_sorted(self):
@@ -136,16 +142,23 @@ class TestFaultScenarioDomain:
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA-256 hex
 
-    def test_sc1f_requires_z0_bus_data(self):
-        """SC_1F without z0_bus_data raises validation error."""
-        with pytest.raises(FaultScenarioValidationError, match="impedancji zerowej"):
-            new_fault_scenario(
-                study_case_id=FIXED_CASE_ID,
-                name="SC1F test",
-                fault_type=FaultType.SC_1F,
-                location=FaultLocation(element_ref="bus-1", location_type="BUS"),
-                z0_bus_data=None,
-            )
+    def test_sc1f_powstaje_bez_danych_impedancji_w_scenariuszu(self):
+        """Partia integracji 10: Z0 pochodzi z MODELU sieci, nie ze scenariusza.
+
+        Dawne pole `z0_bus_data` było wymagane dla SC_1F, a żaden bieg go nie czytał (fantom);
+        brak Z0 w modelu rozstrzyga brama gotowości ENM (`ocen_model_biegu`), przypięta testem
+        kwalifikowalności `tests/api/test_bieg_zwarcia_przez_impedancje_przejscia.py`.
+        """
+        s = new_fault_scenario(
+            study_case_id=FIXED_CASE_ID,
+            name="SC1F test",
+            fault_type=FaultType.SC_1F,
+            location=FaultLocation(element_ref="bus-1", location_type="BUS"),
+            config=ShortCircuitConfig(scenariusz="MAX"),
+        )
+        assert s.fault_type == FaultType.SC_1F
+        assert "z0_bus_data" not in s.to_dict()
+        assert "arc_params" not in s.to_dict()
 
     def test_branch_requires_position(self):
         """BRANCH location requires position in (0,1)."""
@@ -157,6 +170,7 @@ class TestFaultScenarioDomain:
                 location=FaultLocation(
                     element_ref="branch-1", location_type="BRANCH", position=None
                 ),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )
 
     def test_bus_no_position(self):
@@ -167,4 +181,5 @@ class TestFaultScenarioDomain:
                 name="Bus test",
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="bus-1", location_type="BUS", position=0.5),
+                config=ShortCircuitConfig(scenariusz="MAX"),
             )

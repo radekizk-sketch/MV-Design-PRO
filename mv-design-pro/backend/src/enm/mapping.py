@@ -38,7 +38,12 @@ from network_model.core.machine import (
 )
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.core.voltage_factor import Scenario, c_for_node
+from network_model.core.voltage_factor import (
+    Scenario,
+    TolerancjaNapieciaNn,
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
 from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_DEKLARACJA,
     K_SC_ZRODLO_NIEPOPRAWNE,
@@ -46,7 +51,7 @@ from network_model.core.wklad_zwarciowy_przeksztaltnika import (
     K_SC_ZRODLO_PRAD_NIEPOPRAWNY,
 )
 from network_model.core.ybus import AdmittanceMatrixBuilder
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     impedancja_z_napiecia_i_mocy_ohm,
     ka_na_a,
@@ -75,7 +80,14 @@ from .models import (
 )
 from .models import TapChanger as EnmTapChanger
 from .nazwy_elementow import nazwa_elementu
+from .slownik_komunikatow import opis_elementu, opis_obiektu
+from .tolerancja_nn import WyspaNn, wyspy_wezlow_nn
 from .zrodlo_zwarcie import KOD_SK_MIN_BRAK, TrybDanych, dodatnia, tryb_danych
+
+#: Kody odmów nazwanych mapowania ENM → graf (identyfikatory w `dane`, nigdy w treści —
+#: partia integracji 10).
+KOD_DWA_GENERATORY_REGULACJI_NAPIECIA = "mapping.dwa_generatory_regulacji_napiecia"
+KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA = "mapping.szyna_bilansujaca_z_regulacja_napiecia"
 
 
 def _odmowa_zrodla_bez_szyny(source_ref: str, bus_ref: str) -> str:
@@ -188,8 +200,15 @@ def impedancja_zasilania_systemowego(
     sk3_min_mva: float | None = None,
     ik3_min_ka: float | None = None,
     rx_ratio_min: float | None = None,
+    tolerancja_nn: TolerancjaNapieciaNn | None = None,
+    tolerancja_nn_robocza: bool = False,
 ) -> tuple[complex, dict[str, Any]] | None:
     """Impedancja zgodna zasilania systemowego Z_Q [Ω] + ślad WHITE BOX wyprowadzenia.
+
+    ``tolerancja_nn`` — klasa tolerancji sieci nN węzła Q (``enm.tolerancja_nn``); czytana
+    wyłącznie dla węzła Q w paśmie nN (wiersz nN tabeli 1), dla SN/WN bez znaczenia.
+    ``tolerancja_nn_robocza`` — klasa jest wartością roboczą rejestru (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA): podstawa c w śladzie mówi to wprost, a ślad niesie znacznik.
 
     IEC 60909-0:2016 §6.2.1 eq. (6): Z_Q = c·U_nQ / (√3·I''_kQ) = c·U_nQ²/S''_kQ —
     współczynnik napięciowy c (Tab. 1, pasmo napięcia węzła przyłączenia Q,
@@ -254,7 +273,7 @@ def impedancja_zasilania_systemowego(
     if uzyj_min:
         assert tryb_min is not None
         tryb_uzyty = tryb_min
-        c = c_for_node(u_nq_kv, "MIN")
+        c = c_for_node(u_nq_kv, "MIN", tolerancja_nn=tolerancja_nn)
         sk_deklarowane, ik_deklarowane = sk3_min_mva, ik3_min_ka
         etykieta = f"{tryb_uzyty.value}_MIN"
         if dodatnia(rx_ratio_min):
@@ -268,7 +287,7 @@ def impedancja_zasilania_systemowego(
             )
     else:
         tryb_uzyty = tryb
-        c = c_for_node(u_nq_kv, "MAX")
+        c = c_for_node(u_nq_kv, "MAX", tolerancja_nn=tolerancja_nn)
         sk_deklarowane, ik_deklarowane = sk3_mva, ik3_ka
         etykieta = tryb_uzyty.value if scenario == "MAX" else f"{tryb_uzyty.value}_MAX_JAKO_MIN"
         if dodatnia(rx_ratio):
@@ -301,6 +320,12 @@ def impedancja_zasilania_systemowego(
         **({"ik3_ka": ik} if ik is not None else {}),
         "c": c,
         "pasmo_c": "SN/WN" if powyzej_pasma_nn(u_nq_kv) else "nN",
+        "c_zrodlo": zrodlo_c_z_tabeli(
+            u_nq_kv,
+            "MIN" if uzyj_min else "MAX",
+            tolerancja_nn=tolerancja_nn,
+            tolerancja_nn_robocza=tolerancja_nn_robocza,
+        ),
         "rx_ratio": rx,
         "rx_ratio_zrodlo": rx_zrodlo,
         "z_q_abs_ohm": z_abs,
@@ -312,6 +337,8 @@ def impedancja_zasilania_systemowego(
             + "); X_Q = Z_Q/√(1+(R/X)²); R_Q = X_Q·(R/X)"
         ),
     }
+    if tolerancja_nn_robocza and not powyzej_pasma_nn(u_nq_kv):
+        slad["tolerancja_nn_robocza"] = True
     if scenario == "MIN" and not uzyj_min:
         slad["zalozenie"] = KOD_SK_MIN_BRAK
         slad["zalozenie_opis"] = (
@@ -323,9 +350,18 @@ def impedancja_zasilania_systemowego(
 
 
 def impedancja_zrodla_sieciowego(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
+    tolerancja_nn_robocza: bool = False,
 ) -> tuple[complex, dict[str, Any]] | None:
-    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``."""
+    """Z_Q + ślad dla ``Source`` ENM — wrapper nad ``impedancja_zasilania_systemowego``.
+
+    ``tolerancja_nn`` — klasa tolerancji sieci nN szyny źródła (``enm.tolerancja_nn``:
+    deklaracja albo wartość robocza, ``tolerancja_nn_robocza``), jawnie podawana przez
+    wołającego (``None`` poza pasmem nN)."""
     return impedancja_zasilania_systemowego(
         ref_id=source.ref_id,
         r_ohm=source.r_ohm,
@@ -338,19 +374,42 @@ def impedancja_zrodla_sieciowego(
         sk3_min_mva=source.sk3_min_mva,
         ik3_min_ka=source.ik3_min_ka,
         rx_ratio_min=source.rx_ratio_min,
+        tolerancja_nn=tolerancja_nn,
+        tolerancja_nn_robocza=tolerancja_nn_robocza,
     )
 
 
+def _tolerancje_nn(wyspy_nn: dict[str, WyspaNn]) -> dict[str, TolerancjaNapieciaNn]:
+    """Klasa tolerancji sieci nN per szyna nN — z jednej mapy wysp (``wyspy_wezlow_nn``)."""
+    return {ref: wyspa.tolerancja for ref, wyspa in wyspy_nn.items()}
+
+
+def _robocza_nn(wyspy_nn: dict[str, WyspaNn], bus_ref: str) -> bool:
+    """Czy klasa tolerancji szyny jest wartością roboczą — ta sama mapa wysp co klasa."""
+    wyspa = wyspy_nn.get(bus_ref)
+    return wyspa is not None and wyspa.robocza
+
+
 def _source_positive_impedance_ohm(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
 ) -> complex | None:
     """Impedancja zgodna Z_Q [Ω] albo ``None`` — patrz ``impedancja_zrodla_sieciowego``."""
-    wynik = impedancja_zrodla_sieciowego(source, bus_voltage_kv, scenario)
+    wynik = impedancja_zrodla_sieciowego(
+        source, bus_voltage_kv, scenario, tolerancja_nn=tolerancja_nn
+    )
     return None if wynik is None else wynik[0]
 
 
 def _source_zero_impedance_ohm(
-    source: Source, bus_voltage_kv: float, scenario: Scenario = "MAX"
+    source: Source,
+    bus_voltage_kv: float,
+    scenario: Scenario = "MAX",
+    *,
+    tolerancja_nn: TolerancjaNapieciaNn | None,
 ) -> complex | None:
     """Z0 źródła: jawne R0/X0 (fizyczne, bez scenariusza) albo (Z0/Z1)·Z_Q(scenariusz)."""
     if source.r0_ohm is not None and source.x0_ohm is not None:
@@ -358,7 +417,9 @@ def _source_zero_impedance_ohm(
     if not dodatnia(source.z0_z1_ratio):
         return None
     assert source.z0_z1_ratio is not None
-    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
+    z1 = _source_positive_impedance_ohm(
+        source, bus_voltage_kv, scenario, tolerancja_nn=tolerancja_nn
+    )
     if z1 is None:
         return None
     return z1 * source.z0_z1_ratio
@@ -396,6 +457,8 @@ def _assemble_zero_sequence_y0(
     przerwie / boczniku do ziemi prądu zerowego.
     """
     from network_model.whitebox.tracer import WhiteBoxTracer
+
+    tolerancje_nn = _tolerancje_nn(wyspy_wezlow_nn(enm))
 
     from .zero_sequence_transformer import (
         ZeroSeqConnection,
@@ -532,7 +595,9 @@ def _assemble_zero_sequence_y0(
         # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
         # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
         # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
-        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv, scenario)
+        z0_source_ohm = _source_zero_impedance_ohm(
+            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+        )
         if z0_source_ohm is None:
             continue
         if z0_source_ohm == 0:
@@ -624,6 +689,12 @@ def build_zero_sequence_zbus(
     przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
     """
     _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph, scenario)
+    if size == 0:
+        # Graf bez węzłów (sieć pusta albo bez węzła z odniesieniem) — macierz 0x0 jest
+        # odwrotnością samej siebie. ``matrix_rank`` na tablicy zerowego rozmiaru rzucał
+        # surowy ``ValueError`` numpy (pomiar partii integracji 11: koperta wejścia zwarcia
+        # 1F pustego przypadku kończyła się 500 zamiast kopertą z pustym payloadem, jak 3F).
+        return np.zeros((0, 0), dtype=complex)
     if np.linalg.matrix_rank(y0_bus) < size:
         raise OdmowaDanychError(
             "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
@@ -766,6 +837,10 @@ def _add_generator_sc_sources(
 
     tracer = WhiteBoxTracer()
     bus_voltage_by_ref = {b.ref_id: b.voltage_kv for b in enm.buses}
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c_max we wzorze K_G maszyny synchronicznej z tabeli 1
+    # dla tolerancji sieci nN szyny maszyny — ten sam predykat co węzły grafu.
+    wyspy_nn = wyspy_wezlow_nn(enm)
+    tolerancje_nn = _tolerancje_nn(wyspy_nn)
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
         gen_type = gen.gen_type
         if gen_type is None:
@@ -832,6 +907,8 @@ def _add_generator_sc_sources(
                 "sr_mva": sr_mva,
                 "ur_kv": un_kv,
                 "cos_phi_r": cos_phi_r,
+                "tolerancja_nn": tolerancje_nn.get(gen.bus_ref),
+                "tolerancja_nn_robocza": _robocza_nn(wyspy_nn, gen.bus_ref),
             }
             if isinstance(xd, int | float) and xd > 0:
                 sync_kwargs["xd_subtransient_pu"] = float(xd)
@@ -952,12 +1029,20 @@ def build_grid_source_trace(
     ma bocznika Y_Q w grafie (``map_enm_to_network_graph``): jeden predykat.
     """
     napiecie = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    wyspy_nn = wyspy_wezlow_nn(enm)
+    tolerancje_nn = _tolerancje_nn(wyspy_nn)
     slad: list[dict[str, Any]] = []
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         u_kv = napiecie.get(source.bus_ref, 0.0)
         if u_kv <= 0:
             continue
-        wynik = impedancja_zrodla_sieciowego(source, u_kv, scenario)
+        wynik = impedancja_zrodla_sieciowego(
+            source,
+            u_kv,
+            scenario,
+            tolerancja_nn=tolerancje_nn.get(source.bus_ref),
+            tolerancja_nn_robocza=_robocza_nn(wyspy_nn, source.bus_ref),
+        )
         if wynik is None or wynik[0] == 0:
             continue
         slad.append(wynik[1])
@@ -982,6 +1067,11 @@ def map_enm_to_network_graph(
     This is a pure, deterministic function: same ENM → same NetworkGraph.
     """
     graph = NetworkGraph()
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN per szyna — JEDEN predykat
+    # (`enm.tolerancja_nn`); węzły nN niosą ją do doboru c, źródła nN do Z_Q (eq. 6). Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa i jej pochodzenie z TEJ SAMEJ wyspy.
+    wyspy_nn = wyspy_wezlow_nn(enm)
+    tolerancje_nn = _tolerancje_nn(wyspy_nn)
 
     # Collect source bus refs for SLACK identification
     source_bus_refs: set[str] = {s.bus_ref for s in enm.sources}
@@ -1047,11 +1137,15 @@ def map_enm_to_network_graph(
         if not generator_reguluje_napiecie(gen):
             continue
         if gen.bus_ref in bus_voltage_control_gen_ref:
-            raise OdmowaDanychError(
-                f"Szyna '{gen.bus_ref}' ma więcej niż jeden generator w trybie "
-                f"regulacji napięcia ('{bus_voltage_control_gen_ref[gen.bus_ref]}' i "
-                f"'{gen.ref_id}') — kontrakt rozpływu dopuszcza jedną nastawę "
-                "napięcia na węzeł."
+            pierwszy_ref = bus_voltage_control_gen_ref[gen.bus_ref]
+            # Partia integracji 10: nazwy z modelu w treści, identyfikatory w `dane`.
+            raise OdmowaNazwana(
+                f"{opis_elementu(enm, gen.bus_ref, 'Szyna')} ma więcej niż jeden generator "
+                f"w trybie regulacji napięcia ({opis_elementu(enm, pierwszy_ref, 'generator')}"
+                f" i {opis_obiektu(gen, 'generator')}) — kontrakt rozpływu dopuszcza jedną "
+                "nastawę napięcia na węzeł.",
+                kod=KOD_DWA_GENERATORY_REGULACJI_NAPIECIA,
+                dane={"element_ref": gen.bus_ref, "generatory_ref": (pierwszy_ref, gen.ref_id)},
             )
         u_set_raw = meta.get("u_set_pu")
         bus_voltage_control[gen.bus_ref] = (
@@ -1088,17 +1182,22 @@ def map_enm_to_network_graph(
             # (moduł I kąt) — nie może JEDNOCZEŚNIE być węzłem PV regulowanym przez
             # generator (dwie sprzeczne nastawy modułu napięcia tej samej szyny).
             if has_voltage_control:
-                raise OdmowaDanychError(
-                    f"Szyna bilansująca '{bus.ref_id}' nie może być jednocześnie "
-                    f"węzłem regulacji napięcia generatora "
-                    f"'{bus_voltage_control_gen_ref[bus.ref_id]}' — szyna SLACK ma "
-                    "już zadane napięcie źródła zasilania."
+                generator_ref = bus_voltage_control_gen_ref[bus.ref_id]
+                raise OdmowaNazwana(
+                    f"{opis_obiektu(bus, 'Szyna bilansująca')} nie może być jednocześnie "
+                    "węzłem regulacji napięcia "
+                    f"({opis_elementu(enm, generator_ref, 'generator')}) — szyna SLACK ma "
+                    "już zadane napięcie źródła zasilania.",
+                    kod=KOD_SZYNA_BILANSUJACA_Z_REGULACJA_NAPIECIA,
+                    dane={"element_ref": bus.ref_id, "generator_ref": generator_ref},
                 )
             node = Node(
                 id=node_id,
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.SLACK,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
+                tolerancja_nn_robocza=_robocza_nn(wyspy_nn, bus.ref_id),
                 voltage_magnitude=1.0,
                 voltage_angle=0.0,
                 active_power=p if p != 0.0 else None,
@@ -1120,6 +1219,8 @@ def map_enm_to_network_graph(
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PV,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
+                tolerancja_nn_robocza=_robocza_nn(wyspy_nn, bus.ref_id),
                 voltage_magnitude=bus_voltage_control[bus.ref_id],
                 active_power=p,
                 reactive_power=q if q != 0.0 else None,
@@ -1130,6 +1231,8 @@ def map_enm_to_network_graph(
                 name=nazwa_elementu(bus, "buses"),
                 node_type=NodeType.PQ,
                 voltage_level=bus.voltage_kv,
+                tolerancja_nn=tolerancje_nn.get(bus.ref_id),
+                tolerancja_nn_robocza=_robocza_nn(wyspy_nn, bus.ref_id),
                 active_power=p,
                 reactive_power=q,
                 zip_coeffs=bus_zip,
@@ -1315,6 +1418,10 @@ def map_enm_to_network_graph(
                 trafo.tap_step_percent if trafo.tap_step_percent is not None else 2.5
             ),
             tap_changer=tap_changer,
+            # K_T (IEC 60909-0 eq. 12a): c_max strony dolnej z klasy tolerancji SIECI nN tej
+            # strony — ten sam predykat (`enm.tolerancja_nn`), z którego węzły nN biorą c
+            # (deklaracja wyspy albo wartość robocza; wejście i wyjście z jednego źródła).
+            tolerancja_nn_dolna=tolerancje_nn.get(trafo.lv_bus_ref),
         )
         graph.add_branch(tb)
 
@@ -1346,7 +1453,9 @@ def map_enm_to_network_graph(
         # DRUGA, dosłowna kopia obliczenia (z własnym literałem R/X = 0,1): dwie
         # kopie tej samej reguły to defekt czekający na zmianę jednej z nich, a
         # różnica między nimi byłaby niewidoczna, bo obie dawały „jakąś" liczbę.
-        z_ohm = _source_positive_impedance_ohm(source, bus_voltage_kv, scenario)
+        z_ohm = _source_positive_impedance_ohm(
+            source, bus_voltage_kv, scenario, tolerancja_nn=tolerancje_nn.get(source.bus_ref)
+        )
         if z_ohm is None or z_ohm == 0:
             continue
 

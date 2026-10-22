@@ -1239,9 +1239,19 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // referencyjnej nie ma w modelu pól WN TR ani TR, więc tor transformatora niesie dwie
     // sylwetki braku danych zamiast aparatów z konwencji (DS+CB+CT / DS+CB+CT+ES): odcinek
     // pole TR → szyna SN 48 → 40 px.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22752);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45984);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45984);
+    // GPZ-MODEL (2026-10-22, na bazie GEOMETRIA-STACJI i W5-C): 22752/45984/45984 →
+    // 23168/46400/46400 (+416 jednolicie) — REGENERACJA fikstury, nie zmiana układu. Substrat
+    // dostaje GPZ z równoważnikiem 110 kV i transformatorem WN/SN (tryb A,
+    // `sld_substrate_52s.py`) zamiast fikcji „równoważnik na szynach SN + TR obok"; ziarno GPZ
+    // obejmuje ładunek operacji, a od niego pochodzą identyfikatory WSZYSTKICH odcinków
+    // i stacji (precedens SLD-SUBSTRAT wyżej). DOWÓD 2×2 (sonda karty): kod karty na fiksturze
+    // bazy `f7235700e` daje dokładnie 22752/45984/45984 (kod ±0), a TREŚĆ fikstury bazy
+    // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
+    // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
+    // `id.localeCompare`, nie trasowanie.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23168);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46400);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46400);
   });
 });
 

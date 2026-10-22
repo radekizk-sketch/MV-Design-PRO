@@ -82,7 +82,7 @@ def _kotwica(run_id: UUID | None = None) -> CanonicalRun:
         snapshot=_siec().model_dump(mode="json"),
         validation={},
         readiness={},
-        options={"fault_type": "3F", "c_factor": 1.10, "thermal_time_seconds": 1.0},
+        options={"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0},
     )
     run.finished_at = run.created_at
     _execute_short_circuit(run)
@@ -128,7 +128,6 @@ def test_zbuduj_pakiet_nastaw_zawiera_dowod_zrodlo_wykaz_odcisk() -> None:
         _kotwica(),
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         zacisk_zabezpieczenia="od",
         nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
@@ -155,14 +154,13 @@ def test_zbuduj_pakiet_nastaw_pieciu_pol_nastaw_pochodzi_z_silnika_nie_z_zaszyte
         kotwica,
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         zacisk_zabezpieczenia="od",
         nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
     proof = json.loads(_rozpakuj(zawartosc)["proof_pack/proof.json"])
 
     wejscie = zbuduj_wejscie_nastaw(
-        kotwica, line_id="ln1", next_bus_id="b_b", c_min=1.0, zacisk_zabezpieczenia="od"
+        kotwica, line_id="ln1", next_bus_id="b_b", zacisk_zabezpieczenia="od"
     )
     wynik = ProtectionSettingsEngine.calculate(wejscie.engine_input)
 
@@ -180,7 +178,6 @@ def test_dwa_pobrania_tego_samego_biegu_sa_bajt_w_bajt_identyczne() -> None:
         _kotwica(run_id),
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         zacisk_zabezpieczenia="od",
         nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
@@ -188,7 +185,6 @@ def test_dwa_pobrania_tego_samego_biegu_sa_bajt_w_bajt_identyczne() -> None:
         _kotwica(run_id),
         line_id="ln1",
         next_bus_id="b_b",
-        c_min=1.0,
         zacisk_zabezpieczenia="od",
         nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
     )
@@ -201,7 +197,6 @@ def test_linia_nieznana_konczy_sie_pakiet_nastaw_error() -> None:
             _kotwica(),
             line_id="nieznana",
             next_bus_id="b_b",
-            c_min=1.0,
             zacisk_zabezpieczenia="od",
             nazwa_przypadku="Przypadek bazowy — szczyt zimowy",
         )
@@ -243,7 +238,7 @@ def _kotwica_sieci(siec: EnergyNetworkModel) -> CanonicalRun:
         snapshot=siec.model_dump(mode="json"),
         validation={},
         readiness={},
-        options={"fault_type": "3F", "c_factor": 1.10, "thermal_time_seconds": 1.0},
+        options={"fault_type": "3F", "scenario": "max", "thermal_time_seconds": 1.0},
     )
     run.finished_at = run.created_at
     _execute_short_circuit(run)
@@ -325,7 +320,6 @@ def test_kazda_reklamowana_para_dostepnosci_daje_nastawy_na_kazdej_sieci_rejestr
                         kotwica,
                         line_id=pozycja["line_id"],
                         next_bus_id=szyna,
-                        c_min=1.0,
                         # Wskazanie tylko tam, gdzie dostepnosc go wymaga — gdy model
                         # rozstrzyga, budowa bierze zacisk z modelu.
                         zacisk_zabezpieczenia=(

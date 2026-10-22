@@ -320,6 +320,8 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
       return 'Otwieram formularz dodania pola SN.';
     case 'add_nn_load':
       return 'Otwieram formularz dodania obciążenia nN.';
+    case 'add_nn_rcd':
+      return 'Otwieram formularz wyłącznika różnicowoprądowego nN.';
     case 'set_normal_open_point':
       return 'Otwieram formularz punktu normalnie otwartego.';
     // K5-A (H-4): komunikaty nowych wejść menu kanwy.
@@ -484,6 +486,7 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
   'insert-pole': 'insert_branch_pole_on_segment_sn',
   'insert-sectional': 'insert_section_switch_sn',
   'add-load': 'add_nn_load',
+  'add-rcd': 'add_nn_rcd',
   // W5-C: punkt normalnie otwarty na łączniku obiektu (`lacznikTematu`); otwarcie i
   // zamknięcie łącznika to dedykowana gałąź wykonawcy (operacja bez formularza).
   'set-normal-open-point': 'set_normal_open_point',

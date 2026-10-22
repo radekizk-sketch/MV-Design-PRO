@@ -37,21 +37,19 @@
 
 ### 2.1 solver_diff_guard.py (NEW — PR-32)
 
-**Purpose**: Ensure SC solver code is never modified by Protection PRs.
+**Purpose**: Ensure the frozen B-01 cores are never modified without an owner decision.
 
-**Protected paths**:
-```
-backend/src/network_model/solvers/short_circuit_iec60909.py
-backend/src/network_model/solvers/power_flow_newton.py
-backend/src/network_model/solvers/power_flow_gauss_seidel.py
-backend/src/network_model/solvers/power_flow_fast_decoupled.py
-backend/src/network_model/solvers/ybus_builder.py
-```
+**Protected paths** (stan od decyzji B-01 partii integracji 9, delegacja O-59): rozwinięcie
+JEDNEJ listy rdzeni B-01 `scripts/rdzenie_b01.py` — wpis-plik to plik, wpis-katalog to każdy
+plik w nim (bez `__pycache__`). Wcześniejsza ręczna lista (tu dawniej pięć ścieżek, w tym
+nieistniejący `ybus_builder.py`; w kodzie osiem plików) nie obejmowała grup NC RfG
+z profilami, FRT/HVRT, WLS, stanu fazowego SN ani V12.6. Samotest:
+`scripts/test_solver_diff_guard.py`.
 
 **Algorithm**:
-1. Compute SHA-256 of each protected file
-2. Compare against stored reference hashes
-3. If any hash differs → FAIL with explicit diff path
+1. Rozwiń listę B-01 do zbioru plików i policz SHA-256 każdego
+2. Porównaj z odciskiem `scripts/guard_references/solver_hashes.json` w obie strony
+3. Plik zmieniony, usunięty albo nowy (w rdzeniu, bez odcisku) → FAIL z jawną ścieżką
 
 **Exit codes**: 0 (clean), 1 (violation), 2 (reference file missing)
 

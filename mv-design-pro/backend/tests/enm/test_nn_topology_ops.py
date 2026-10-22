@@ -253,8 +253,6 @@ def test_add_nn_cable_segment_odrzuca_szyne_poza_pasmem_nn() -> None:
             "voltage_kv": 15.0,
             "sk3_mva": 100.0,
             "catalog_ref": REF_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snap = wynik["snapshot"]
@@ -533,8 +531,6 @@ def test_add_nn_section_coupler_odrzuca_stacje_zlego_typu() -> None:
             "voltage_kv": 15.0,
             "sk3_mva": 100.0,
             "catalog_ref": REF_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     stacje_gpz = [s for s in snap["substations"] if s.get("station_type") == "gpz"]

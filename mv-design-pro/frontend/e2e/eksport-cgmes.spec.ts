@@ -98,8 +98,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [300, 250].entries()) {
@@ -126,6 +124,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     // bez niego opisywal siec, ktorej kreator by nie zbudowal.
     sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN deklaruje tolerancję napięcia (PN-EN 60038:
+    // +10 %, domyślna kreatora stacji) — bez niej zwarcie w sieci nN ma odmowę nazwaną.
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
   });
 
   return { projectId: project.id, projectName, caseId, caseName };

@@ -52,8 +52,6 @@ class TestGN01SNProsta:
                 "sk3_mva": 500.0,
                 "rx_ratio": 0.1,
                 "catalog_ref": "src-gpz-15kv-500mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -133,8 +131,6 @@ class TestGN02SNODG:
             {
                 "voltage_kv": 15.0,
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -217,8 +213,6 @@ class TestGN03SNRingNOP:
             {
                 "voltage_kv": 15.0,
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert r.get("error") is None, f"GPZ failed: {r.get('error')}"
@@ -300,8 +294,6 @@ class TestRepeatability:
                     "voltage_kv": 15.0,
                     "sk3_mva": 500.0,
                     "catalog_ref": "src-gpz-15kv-500mva-rx010",
-                    "hv_voltage_kv": 110.0,
-                    "transformer_sn_mva": 25.0,
                 },
             )
             assert r.get("error") is None, f"GPZ failed: {r.get('error')}"

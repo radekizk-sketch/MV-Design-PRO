@@ -258,7 +258,7 @@ def _nastawy(*przypisania: ProtectionAssignment) -> dict:
 
 
 def test_czas_z_charakterystyki_odwrotnej_zgadza_sie_z_rachunkiem_recznym() -> None:
-    """DOWOD LICZBOWY (IEC 60255-151 tab. 1, krzywa SI: A = 0,14; B = 0,02).
+    """DOWOD LICZBOWY (IEC 60255-151 zał. A tab. A.1, krzywa SI: A = 0,14; B = 0,02).
 
     I = 6000 A, Is = 600 A => M = 10; TMS = 0,2
     t = 0,2 * 0,14 / (10^0,02 - 1) = 0,028 / 0,047128... = 0,59412... s

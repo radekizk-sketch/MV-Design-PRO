@@ -152,8 +152,6 @@ async function buildNetworkWithSinglePhaseLoad(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   let op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -181,7 +179,7 @@ async function buildNetworkWithSinglePhaseLoad(
     // Odbiór potrzeb własnych (G-STK-3) = jedyny odbiór sieci; niżej dostaje fazę A.
     station_auxiliary: { active_power_kw: 5.0, cos_phi: 0.95 },
     // Układ uziemienia sieci nN (G-STK-1): bez niego stacja z odbiorem nN jest E063.
-    nn_earthing: { lv_system: 'TN-S' },
+    nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
   });
 
   const loads = op.snapshot?.loads ?? [];

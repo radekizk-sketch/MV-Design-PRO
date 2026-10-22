@@ -54,7 +54,7 @@ Legenda stanu: **PEŁNY** = realny solver + test + podpięcie API · **CZĘŚCIO
 | Rozpływ w szeregu czasowym (QSTS) | CZĘŚCIOWY | Korekta CV-3.2, 58e520ce: cytowana operacja `run_time_series_power_flow` (`enm/domain_operations_v2.py`) byla fantomem zapisujacym `study_cases[]` do nieistniejacego pola ENM -- usunieta procedura 7 krokow, nigdy nie byla PEŁNA. Realny, embrionalny odpowiednik: `run_annual_oltc_profile` (`network_model/solvers/power_flow_oltc_studies.py`, `enm/canonical_analysis.py`) -- jeden globalny `load_scale` per krok, bez magazynu serii/profili per element (patrz `docs/twin/MV_DESIGN_PRO_DIGITAL_TWIN_AUDIT.md` A2-12). |
 | Zabezpieczenia nadprądowe/IDMT (50/51, TCC) | PEŁNY | `protection_iec60255.py`, `protection/curves/` |
 | Sanity-checks nastaw (27/59/59N, 81U/81O/ROCOF, 50/51, SPZ) | PEŁNY | `application/analyses/protection/sanity_checks/rules.py` |
-| Pętla zwarcia IEC 60364 (TN-S/TN-C/TN-C-S) | CZĘŚCIOWY | `solvers/fault_loop_iec60364.py` — TT/IT: `NotImplementedError` (501) |
+| Pętla zwarcia IEC 60364 (TN-S/TN-C/TN-C-S/TT/IT) | PEŁNY (TT/IT od W5-E-TTIT 2026-10-15) | `solvers/fault_loop_iec60364.py` (dyspozycja po układzie) + `solvers/petla_zwarcia_tt_it.py`; dawne `NotImplementedError` (501) dla TT/IT skasowane |
 | **FRT / LVRT / HVRT (RMS time-domain)** | **PEŁNY** | `solvers/frt_hvrt/engine.py:run_frt_hvrt` (trajektoria V/Iq/P, margines, p-recovery) |
 | **Stabilność dynamiczna RMS** | **PEŁNY** | `solvers/stability_rms/engine.py` |
 | **NC RfG / PTPiREE — bateria zgodności** | **PEŁNY** | `solvers/ncrfg_ptpiree/engine.py` (36 KB; LFSM-O/U, FSM, FRT, P-recovery, Q(U), harmoniczne) + API `/api/ncrfg-tests` |
@@ -132,7 +132,7 @@ istnieje** (zostały domknięte w pracach V12.3–V12.6).
 | # | Pozycja | Uwaga |
 |---|---|---|
 | D-10 | `ncrfg_compliance/checker.py` — `DYNAMIC_TEST_IDS` (T8/T10/T11/T16/T17/T18) zwracają `no_module` | Ścieżka **nie podpięta do API**; zastąpiona przez kompletny `solvers/ncrfg_ptpiree` (podpięty do `/api/ncrfg-tests`). Do scalenia/wygaszenia, niski priorytet |
-| D-11 | API 501 `NOT_IMPLEMENTED`: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` (TT/IT) | Częściowo by-design (TT/IT poza MVP IEC 60364). Do decyzji zakresowej **Rozstrzygnięte 2026-09-30 (O-68):** DOCX 501 — kasacja czterech gałęzi `except ImportError → 501` (`power_flow_runs.py:490, :628`; `power_flow_comparisons.py:508, :648`; python-docx twardą zależnością) w karcie API-DOCX-501; TT/IT → karta W5-E-TTIT (jedno wejście `fault_loop_iec60364`, limity = dane właściciela P-C) |
+| D-11 | API 501 `NOT_IMPLEMENTED`: `power_flow_comparisons`, `power_flow_runs`, `fault_loop` (TT/IT) | `fault_loop` TT/IT ROZSTRZYGNIĘTE (O-59 D-11-fault_loop-TT-IT) i wykonane kartą W5-E-TTIT — pętla doziemna TT/IT liczona, brak danej = odmowa nazwana kodem (nie 501) |
 
 ---
 

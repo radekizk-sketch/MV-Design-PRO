@@ -173,7 +173,7 @@ from diagnostics.preflight import (  # noqa: E402
     build_preflight_from_diagnostic_report,
 )
 from domain.result_builder_v1 import METRYKI_ELEMENTOW_WYNIKU  # noqa: E402
-from domain.study_case import StudyCase  # noqa: E402
+from domain.study_case import StudyCase, new_study_case  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
     build_execution_result_set,
     build_short_circuit_results,
@@ -342,7 +342,11 @@ def _wiazanie_katalogowe(przestrzen: str, pozycja: str) -> dict[str, Any]:
 def _gpz_sceny_oze(nazwa_projektu: str) -> tuple[dict[str, Any], str, str]:
     """GPZ 110/15 kV jako punkt przyłączenia scen OZE — zbudowany operacją
     `add_grid_source_sn` (ta sama, którą woła kreator źródła zasilania).
-    Zwraca `(enm, ref stacji, ref szyny SN)`."""
+    Zwraca `(enm, ref stacji, ref szyny SN)`.
+
+    Karta GPZ-MODEL: równoważnik sieci na szynach SN (katalog źródła 15 kV, 250 MVA) —
+    transformatory 110/15 kV NIE są wtedy elementami modelu (dawniej scena dokładała
+    wiszący transformator 110/15 kV bez zasilania po stronie 110 kV)."""
     enm = EnergyNetworkModel(header=ENMHeader(name=nazwa_projektu)).model_dump(mode="json")
     enm = _operacja_domenowa_sceny(
         enm,
@@ -353,8 +357,6 @@ def _gpz_sceny_oze(nazwa_projektu: str) -> tuple[dict[str, Any], str, str]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     stacja = next(s["ref_id"] for s in enm["substations"] if s["ref_id"].endswith("/substation"))
@@ -396,6 +398,9 @@ def _dodaj_modul_oze_sn(
                 "catalog_binding": _wiazanie_katalogowe(
                     "TRANSFORMATOR_SN_NN", modul["transformator_blokowy"]
                 ),
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN wyjścia falownika +6 % (wiersz
+                # c 1,05/0,95 tabeli 1 IEC 60909-0) — dana kreatora OZE, nie domyślka.
+                "lv_voltage_tolerance": "PLUS_6",
             },
             "has_dedicated_mv_field": True,
             "mv_bus_ref": szyna_sn,
@@ -489,11 +494,58 @@ _UUID_SCENY_POLA_OZE = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SC
 
 
 def _enm_sceny_pola_oze() -> EnergyNetworkModel:
-    """Model scen „wiazania"/„frt": GPZ 110/15 kV + farma PV 1 MW w polu SN
-    (operacja `add_converter_source`, wariant z transformatorem blokowym) z
-    wiązaniami katalogowymi zapisanymi operacją `set_der_catalog_bindings` —
-    dokładnie tak, jak robi to projektant w konfiguratorze wytwórcy."""
-    enm, stacja, szyna_sn = _gpz_sceny_oze("Przyłączenie farmy PV 8 MW")
+    """Model scen „wiazania"/„frt": GPZ 110/15 kV → kabel 500 m → stacja wytwórcy
+    15/0,8 kV z jedynym transformatorem → farma PV 1 MW w polu SN stacji (operacja
+    `add_converter_source`, wariant z transformatorem blokowym — jedyny transformator
+    stacji wytwórcy) z wiązaniami katalogowymi zapisanymi operacją
+    `set_der_catalog_bindings` — dokładnie tak, jak robi to projektant w konfiguratorze
+    wytwórcy.
+
+    Karta GPZ-MODEL: dawniej farma stała w polu SN GPZ, a za „transformator blokowy"
+    operacja brała transformator 110/15 kV GPZ (jedyny transformator stacji GPZ). Ten
+    transformator jest granicą zasilania sieci, nie torem źródła — operacja odmawia go
+    dziś (`generator.block_transformer_missing`), więc scena stawia farmę tam, gdzie
+    transformator blokowy istnieje: w stacji wytwórcy za kablem z pola GPZ."""
+    enm, _stacja_gpz, _szyna_gpz = _gpz_sceny_oze("Przyłączenie farmy PV 8 MW")
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 500,
+                "name": "Linia kablowa farmy PV",
+                "catalog_ref": _KATALOG_KABLA_KOORD,
+            }
+        },
+    )
+    koniec_kabla = str(
+        [galaz for galaz in enm["branches"] if galaz.get("type") in ("cable", "line_overhead")][-1][
+            "to_bus_ref"
+        ]
+    )
+    enm = _operacja_domenowa_sceny(
+        enm,
+        "append_station_on_endpoint",
+        {
+            "endpoint_bus_ref": koniec_kabla,
+            "station": {"name": "Stacja wytwórcy PV", "station_type": "terminal"},
+            "nn_voltage_kv": 0.8,
+            "sn_fields": [{"field_role": "LINIA_IN"}, {"field_role": "TRANSFORMATOROWE"}],
+            "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
+            "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_OZE},
+            "nn_block": {"outgoing_feeders_nn_count": 1},
+        },
+    )
+    stacja_wytworcy = next(s for s in enm["substations"] if s.get("station_type") != "gpz")
+    stacja = str(stacja_wytworcy["ref_id"])
+    szyna_sn = next(
+        b["ref_id"]
+        for b in enm["buses"]
+        if b["ref_id"] in stacja_wytworcy["bus_refs"]
+        and abs(float(b["voltage_kv"]) - 15.0) < 1e-9
+        and "/sn_field_terminal/" not in b["ref_id"]
+    )
     enm = _operacja_domenowa_sceny(
         enm,
         "add_converter_source",
@@ -1266,6 +1318,13 @@ RUN_ID_SCENY_ZWARCIA = "run-sc-scena-zwarcia"
 #: biegu, jak reszta stabilizacji w tym pliku.
 _UUID_KOTWICY_SCENY_ZWARCIA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZWARCIA)
 
+#: Identyfikator biegu sceny `zwarcia-tolerancja-robocza` (karta
+#: TOLERANCJA-NN-WARTOSC-ROBOCZA) — ta sama zasada przypięcia co kotwica wyżej.
+RUN_ID_SCENY_ZWARCIA_ROBOCZA = "run-sc-scena-zwarcia-robocza"
+_UUID_KOTWICY_SCENY_ZWARCIA_ROBOCZA = uuid5(
+    NAMESPACE_URL, "mv-design-pro:harness:" + RUN_ID_SCENY_ZWARCIA_ROBOCZA
+)
+
 
 #: Znacznik czasu STABILNY nagłówka ENM (`ENMHeader.created_at`/`updated_at`,
 #: `default_factory=lambda: datetime.now(UTC)` w `enm/models.py`) — patrz
@@ -1317,7 +1376,7 @@ def _fiksuj_niedeterminizm_sceny_zwarcia(enm: EnergyNetworkModel) -> None:
     enm.header.updated_at = _CZAS_NAGLOWKA_SCENY_ZWARCIA
 
 
-def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
+def _bieg_sceny_zwarcia(*, robocza: bool = False) -> tuple[Any, EnergyNetworkModel, str]:
     """Bieg zwarciowy KOTWICY scen `zwarcia`/`zwarcia-rozplyw` — realny
     `short_circuit_sn` (tor kanoniczny `create_run`/`execute_run`, jak
     `_werdykt_projektowy_scena` obok) na sieci złotej `build_golden_enm`
@@ -1340,13 +1399,24 @@ def _bieg_sceny_zwarcia() -> tuple[Any, EnergyNetworkModel, str]:
     dokładnie w żądanie, które scena wyśle.
 
     `reset_*` PRZED i PO — nie zostawia stanu innym fixturom (ten skrypt
-    liczy wiele scen w jednym procesie)."""
+    liczy wiele scen w jednym procesie).
+
+    `robocza=True` (karta TOLERANCJA-NN-WARTOSC-ROBOCZA, scena
+    `zwarcia-tolerancja-robocza`): TA SAMA sieć złota z transformatorem SN/nN BEZ
+    deklaracji tolerancji napięcia sieci nN — bieg liczy na wartości roboczej rejestru
+    (+10 %, c 1,10/0,90) i zapisuje założenie `fault.c_tolerancja_nn_robocza`; własny
+    przypięty `id` biegu (`_UUID_KOTWICY_SCENY_ZWARCIA_ROBOCZA`)."""
     reset_canonical_runs()
     reset_enm_store()
     try:
         enm = build_golden_enm()
+        if robocza:
+            for transformator in enm.transformers:
+                if transformator.ulv_kv < 1.0:
+                    transformator.lv_voltage_tolerance = None
         _fiksuj_niedeterminizm_sceny_zwarcia(enm)
-        with _zamrozona_tozsamosc_biegu(_UUID_KOTWICY_SCENY_ZWARCIA):
+        uuid_biegu = _UUID_KOTWICY_SCENY_ZWARCIA_ROBOCZA if robocza else _UUID_KOTWICY_SCENY_ZWARCIA
+        with _zamrozona_tozsamosc_biegu(uuid_biegu):
             set_enm(CASE_ID_HARNESSU, enm)
             # `datetime` zamrożony TU (nie tylko `uuid4`) — karta HARNESS-RESZTA
             # (kontynuacja) dopisała konsumentów tego biegu (`cieplna_scena_wynik`/
@@ -1384,18 +1454,29 @@ def zwarcia_wyniki_scena_zwarcia() -> dict[str, Any]:
     (`build_short_circuit_results_response` — TA SAMA funkcja, którą woła
     końcówka `api/analysis_runs.py::get_short_circuit_results`), kształt 1:1
     z tym, co czyta `useResultsInspectorStore.shortCircuitResults`."""
-    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    return _wyniki_sceny_zwarcia(robocza=False)
+
+
+def _wyniki_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
     widok = build_short_circuit_results_response(run)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): _run_id_sceny_zwarcia(robocza)})
+
+
+def _run_id_sceny_zwarcia(robocza: bool) -> str:
+    return RUN_ID_SCENY_ZWARCIA_ROBOCZA if robocza else RUN_ID_SCENY_ZWARCIA
 
 
 def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
     """Mapa `target_id → odpowiedź` `POST /api/proof/sc3f/contributions` dla
     WSZYSTKICH punktów zwarcia biegu kotwicy — TĄ SAMĄ funkcją, którą woła
     końcówka (`sc3f_contributions`, `api/proof_pack.py`), z DOKŁADNIE
-    domyślnymi parametrami klienta (`c_factor=1.10`, `t_min_s=0.10` —
-    `frontend/src/ui2/wyniki/zwarcia/api.ts::fetchWkladyZwarciowe` ich nie
-    nadpisuje).
+    parametrami klienta: scenariusz oglądanego biegu (`MAX`) i t_min = t_b TEGO biegu
+    (karta SC-IB-ITH-ZRODLA: `fetchWkladyZwarciowe` wysyła `t_min_s` wyłącznie z
+    `konfiguracja.breaking_time_seconds` biegu; bieg kotwicy nie ma t_b, więc żądanie
+    go nie niesie — μ/q/i_b maszyn o krotności > 2 są `None`, a nie liczone z dawnej
+    cichej stałej 0,10 s); c z tabeli 1 IEC 60909-0 dla pasma i tolerancji sieci węzła (karta
+    WSPOLCZYNNIK-C-JEDEN-NOSNIK — dawna liczba `c_factor` z żądania skasowana).
 
     Sieć złota niesie JEDNĄ maszynę konwencjonalną (`gen_sync`, synchroniczna)
     — `compute_machine_contributions` rozbija WYŁĄCZNIE maszyny wirujące z
@@ -1405,27 +1486,51 @@ def zwarcia_wklady_scena_zwarcia() -> dict[str, Any]:
     (`zwarcia_rozplyw_scena_zwarcia` + pole `ik_inverters_ka` wiersza), nie ta
     końcówka. Zmierzone bezpośrednio (`compute_machine_contributions` na
     KAŻDYM z 5 punktów sieci złotej) — nie założone."""
-    run, enm, _target_id = _bieg_sceny_zwarcia()
+    return _wklady_sceny_zwarcia(robocza=False)
+
+
+def _wklady_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
     snapshot = enm.model_dump(mode="json")
     rows = build_short_circuit_results(run)["rows"]
     return {
         row["target_id"]: sc3f_contributions(
-            SCContributionsRequest(snapshot=snapshot, fault_node_id=row["target_id"])
+            # Scenariusz OGLĄDANEGO biegu kotwicy (`options={}` → MAX) — kontrakt karty
+            # WSPOLCZYNNIK-C-JEDEN-NOSNIK: c z tabeli 1 dla pasma węzła, nie liczba z żądania.
+            SCContributionsRequest(
+                snapshot=snapshot, fault_node_id=row["target_id"], scenariusz="MAX"
+            )
         )
         for row in rows
     }
 
 
 def zwarcia_rozplyw_scena_zwarcia() -> dict[str, Any]:
-    """Odpowiedź `GET …/results/short-circuit/rozplyw?target_id=` dla punktu
-    zwarcia DOMYŚLNEGO sceny (`build_short_circuit_rozplyw_response` — TA SAMA
-    funkcja, którą woła końcówka `api/analysis_runs.py::
-    get_short_circuit_rozplyw`; sekcja `RozplywZwarciowy`) — niesie tor sieci
-    nadrzędnej (`THEVENIN_GRID`, przez gałąź `TR 110/15`) ORAZ tor falownika
-    (`gen_pv`, przez gałąź `TR 15/0.4`), jak dotychczasowa scena Z-3."""
-    run, _enm, target_id = _bieg_sceny_zwarcia()
-    widok = build_short_circuit_rozplyw_response(run, target_id)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+    """Mapa `target_id → odpowiedź` `GET …/results/short-circuit/rozplyw?target_id=`
+    dla WSZYSTKICH punktów zwarcia biegu kotwicy (`build_short_circuit_rozplyw_response` —
+    TA SAMA funkcja, którą woła końcówka `api/analysis_runs.py::get_short_circuit_rozplyw`;
+    sekcje `RozplywZwarciowy` i `SladPodzialuPradu` czytają tę jedną odpowiedź).
+
+    Kształt jak `zwarcia_wklady_scena_zwarcia`: wybór DOWOLNEGO punktu na ekranie (w tym
+    szyny nN) dostaje realny rozpływ TEGO SAMEGO biegu, a nie błąd pobrania z makiety
+    znającej jeden punkt (napotkany defekt klasy: makieta harnessu serwowała wyłącznie
+    punkt domyślny, więc punkt nN sceny wartości roboczej pokazywał „Nie udało się
+    pobrać"). Punkt domyślny (`Szyna SN`) niesie tor sieci nadrzędnej (`THEVENIN_GRID`,
+    przez gałąź `TR 110/15`) ORAZ tor falownika (`gen_pv`, przez gałąź `TR 15/0.4`),
+    jak dotychczasowa scena Z-3."""
+    return _rozplyw_sceny_zwarcia(robocza=False)
+
+
+def _rozplyw_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
+    rows = build_short_circuit_results(run)["rows"]
+    zamiana = {str(run.id): _run_id_sceny_zwarcia(robocza)}
+    return {
+        row["target_id"]: _ustabilizuj_identyfikatory(
+            build_short_circuit_rozplyw_response(run, row["target_id"]), zamiana
+        )
+        for row in rows
+    }
 
 
 def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
@@ -1436,9 +1541,50 @@ def zwarcia_pasmo_scena_zwarcia() -> dict[str, Any]:
     (wariant w pamięci `bieg_wariantu` z TEJ SAMEJ migawki kotwicy — dzieli
     `id` z kotwicą, więc jedna stabilizacja tekstowa zamienia OBA
     `run_id`/`bieg_bazowy_id`/`run_id_kotwicy` naraz)."""
-    run, _enm, _target_id = _bieg_sceny_zwarcia()
+    return _pasmo_sceny_zwarcia(robocza=False)
+
+
+def _pasmo_sceny_zwarcia(*, robocza: bool) -> dict[str, Any]:
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=robocza)
     widok = build_short_circuit_band_response(run)
-    return _ustabilizuj_identyfikatory(widok, {str(run.id): RUN_ID_SCENY_ZWARCIA})
+    return _ustabilizuj_identyfikatory(widok, {str(run.id): _run_id_sceny_zwarcia(robocza)})
+
+
+# Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351) — scena
+# `zwarcia-tolerancja-robocza`: komplet czterech odpowiedzi ekranu zwarć (wyniki, wkłady
+# i rozpływ każdego punktu, pasmo MIN/MAX) z REALNEGO biegu na sieci złotej BEZ deklaracji
+# tolerancji sieci nN — wszystkie sekcje ekranu liczone na tej samej wartości roboczej
+# (żadna nie miesza liczb biegu z deklaracją +6 %).
+
+
+def zwarcia_wyniki_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Wyniki biegu na wartości roboczej — z założeniem `fault.c_tolerancja_nn_robocza`."""
+    return _wyniki_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_wklady_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Wkłady źródeł (ta sama końcówka co scena `zwarcia`) dla biegu na wartości roboczej."""
+    return _wklady_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_rozplyw_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Rozpływ KAŻDEGO punktu biegu na wartości roboczej (mapa `target_id → odpowiedź`)."""
+    return _rozplyw_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_pasmo_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Pasmo MIN/MAX biegu na wartości roboczej (strona MIN — wariant w pamięci)."""
+    return _pasmo_sceny_zwarcia(robocza=True)
+
+
+def zwarcia_migawka_scena_tolerancja_robocza() -> dict[str, Any]:
+    """Migawka ZATWIERDZONA biegu sceny `zwarcia-tolerancja-robocza` (`run.snapshot` złożony
+    jak końcówka `/snapshot`) — zasiew `useSnapshotStore` sceny: most nazw wyników nazywa
+    elementy nazwami modelu (karta #145, nie identyfikatorami), a formularz akcji „Zmień
+    wartość" widzi transformator SN/nN BEZ deklaracji tolerancji — TEN model, na którym
+    policzono bieg, nie sieć złotą z deklaracją +6 %."""
+    run, _enm, _target_id = _bieg_sceny_zwarcia(robocza=True)
+    return canonicalize_json(_catalog_completed_snapshot(run.snapshot))
 
 
 # ---------------------------------------------------------------------------
@@ -1539,6 +1685,10 @@ def _gpz_feeder_enm_z_falownikiem() -> EnergyNetworkModel:
     for transformator in enm.transformers:
         if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
             transformator.lv_earthing_system = "TN-C-S"
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: ta sama zasada dla tolerancji napięcia sieci nN
+        # (wiersz nN tabeli 1 IEC 60909-0) — scena deklaruje +6 % jawnie.
+        if transformator.ulv_kv < 1.0 and transformator.lv_voltage_tolerance is None:
+            transformator.lv_voltage_tolerance = "PLUS_6"
     enm.generators = [
         *enm.generators,
         Generator(
@@ -1996,8 +2146,6 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -2028,6 +2176,9 @@ def _enm_sceny_oze_analiz() -> dict[str, Any]:
             "field_apparatus_catalog_ref": _KATALOG_APARATU_KOORD,
             "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_OZE},
             "nn_block": {"outgoing_feeders_nn_count": 1},
+            # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN stacji (+6 %, wiersz
+            # c 1,05/0,95 tabeli 1 IEC 60909-0) — kanał kreatora stacji `nn_earthing`.
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
         },
     )
     stacja = next(s for s in enm["substations"] if s.get("station_type") != "gpz")
@@ -2724,7 +2875,6 @@ def koordynacja_scena_nastawy() -> dict[str, Any]:
             bieg_max,
             line_id=pozycja["line_id"],
             next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
-            c_min=1.0,
             zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
             nazwa_przypadku=NAZWA_PRZYPADKU_SCENY_KOORD,
         )
@@ -2744,7 +2894,6 @@ def koordynacja_scena_nastawy_dopasowanie() -> dict[str, Any]:
             device_id=_APARAT_DOPASOWANIA_KOORD,
             line_id=pozycja["line_id"],
             next_bus_id=pozycja["nastepne_szyny_wg_zacisku"][ZACISK_ZABEZPIECZENIA_SCENY_KOORD][0],
-            c_min=1.0,
             zacisk_zabezpieczenia=ZACISK_ZABEZPIECZENIA_SCENY_KOORD,
             nazwa_przypadku=NAZWA_PRZYPADKU_SCENY_KOORD,
         )
@@ -3621,8 +3770,6 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -3656,6 +3803,9 @@ def _enm_sceny_lom() -> EnergyNetworkModel:
             ],
             "transformer": {"create": True, "transformer_catalog_ref": _KATALOG_TRAFO_SCENY_LOM},
             "nn_block": {"outgoing_feeders_nn_count": 1},
+            # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN stacji (+6 %, wiersz
+            # c 1,05/0,95 tabeli 1 IEC 60909-0) — kanał kreatora stacji `nn_earthing`.
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
             "station": {
                 "station_type": "B",
                 "station_name": "Stacja wytwórcy",
@@ -3822,6 +3972,8 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
                     "catalog_binding": _wiazanie_katalogowe_sceny(
                         "TRAFO_SN_NN", _TRANSFORMATOR_BLOKOWY_SCENY_V126
                     ),
+                    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: sieć nN wyjścia falownika +6 %.
+                    "lv_voltage_tolerance": "PLUS_6",
                 },
                 "has_dedicated_mv_field": True,
                 "mv_bus_ref": "bus_sn_b",
@@ -4031,10 +4183,48 @@ def _segmenty_szablonu(
     wynik: list[str] = []
     for warianty in segmenty:
         for segment in warianty:
-            if segment in ("", "{n}"):
+            # Segment liczbowy znika — także LITERALNY (`hv_section/001/bus_wn`), nie tylko
+            # zmienna numeryczna: front dokleja numer do poprzedniego członu (pomiar realnych
+            # referencji w `slownikSegmentow.test.ts` pomija `^\d+$` tą samą regułą).
+            if segment in ("", "{n}") or segment.isdigit():
                 continue
             wynik.append(segment.replace("_{n}", "_1").replace("{n}", "1"))
     return wynik
+
+
+def punkt_neutralny_sn_grup_polaczen() -> dict[str, Any]:
+    """Punkt neutralny sieci SN, który daje transformator WN/SN każdej grupy słownika
+    IEC 60076-1 bez konfiguracji ``lv_neutral`` (karta GPZ-MODEL) — wyrocznia lustra
+    ``punktNeutralnySnTransformatora`` kreatora źródła. Liczy go TEN SAM model połączeń
+    składowej zerowej, który czyta zwarcie 1F i walidator (E-W5-01):
+    droga zerowa po stronie SN (szeregowa albo bocznik dolny) ⇒ ``directly_grounded``,
+    inaczej ``isolated``."""
+    from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076
+    from enm.models import Transformer
+    from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
+
+    wynik: dict[str, str] = {}
+    for grupa in sorted(GRUPY_POLACZEN_IEC60076):
+        model = build_transformer_zero_seq_model(
+            Transformer(
+                ref_id="tr",
+                name="tr",
+                hv_bus_ref="wn",
+                lv_bus_ref="sn",
+                sn_mva=25.0,
+                uhv_kv=110.0,
+                ulv_kv=15.0,
+                uk_percent=11.0,
+                pk_kw=120.0,
+                vector_group=grupa,
+            )
+        )
+        droga_sn = model.connection in (
+            ZeroSeqConnection.SERIES_THROUGH,
+            ZeroSeqConnection.LV_SHUNT_GROUND,
+        )
+        wynik[grupa] = "directly_grounded" if droga_sn else "isolated"
+    return {"grupy": wynik}
 
 
 def segmenty_referencji_modelu() -> dict[str, Any]:
@@ -4264,8 +4454,6 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": _KATALOG_ZRODLA_KOORD,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     enm = _operacja_domenowa_sceny(
@@ -4311,6 +4499,10 @@ def stacja_demo_scena_migawka() -> dict[str, Any]:
     for transformator in model.transformers:
         if transformator.ulv_kv < 1.0 and transformator.lv_earthing_system is None:
             transformator.lv_earthing_system = "TN-C-S"
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: ta sama zasada dla tolerancji napięcia sieci nN
+        # (wiersz nN tabeli 1 IEC 60909-0) — scena deklaruje +6 % jawnie.
+        if transformator.ulv_kv < 1.0 and transformator.lv_voltage_tolerance is None:
+            transformator.lv_voltage_tolerance = "PLUS_6"
     # Model SERWOWANY przez magazyn (`_model_serwowany`, który sam przypina identyfikatory
     # i zegar) — ten, który zwraca `GET …/enm` projektu zbudowanego tymi operacjami.
     return canonicalize_json(_model_serwowany(model).model_dump(mode="json"))
@@ -4798,12 +4990,63 @@ def _fabryka_sceny_geometrii_stacji(wariant: str) -> Any:
     return lambda: _scena_geometrii_stacji(wariant)
 
 
+def geometria_stacji_gpz_110kv() -> dict[str, Any]:
+    """Karta GPZ-MODEL × GEOMETRIA-STACJI: GPZ z równoważnikiem 110 kV, dwie sekcje SN ze
+    sprzęgłem i dwa transformatory 110/15 kV na wspólnej szynie WN
+    (`scena_geometrii_stacji.zbuduj_gpz_110kv`) jako odpowiedź operacji — migawka + widoki
+    logiczne."""
+    from enm.domain_operations import execute_domain_operation
+
+    from tests.reference_networks.scena_geometrii_stacji import zbuduj_gpz_110kv
+
+    model = EnergyNetworkModel.model_validate(zbuduj_gpz_110kv())
+    _fiksuj_niedeterminizm_sceny_zwarcia(model)
+    odpowiedz = execute_domain_operation(
+        enm_dict=model.model_dump(mode="json"), op_name="refresh_snapshot", payload={}
+    )
+    return canonicalize_json(
+        {"snapshot": odpowiedz["snapshot"], "logical_views": odpowiedz["logical_views"]}
+    )
+
+
 def _fabryka_sceny_punktu_startu(rodzaj: str, stan: str) -> Any:
     return lambda: _scena_punktu_startu(rodzaj, stan)
 
 
 def _fabryka_widokow_fikstury(nazwa: str) -> Any:
     return lambda: _widoki_logiczne_fikstury_frontu(nazwa)
+
+
+# ---------------------------------------------------------------------------
+# Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — scena „karta-przypadku”. Przypadek obliczeniowy
+# z fabryki domeny (`new_study_case`, konfiguracja domyślna backendu) w kształcie
+# `StudyCase.to_dict()` — konfiguracja bez pól c i t_k (nośnikiem c jest scenariusz
+# zwarciowy), liczby z domeny, nie wpisane ręcznie w harnessie. Identyfikatory i znaczniki
+# czasu ustabilizowane (determinizm fixtury); status wyników dokleja harness jak warstwa API.
+# ---------------------------------------------------------------------------
+
+#: Identyfikatory przypadku i projektu sceny — te same, którymi harness adresuje końcówki
+#: przypadku (`/study-cases/case-demo/...`); UUID projektu tylko dla fabryki domeny.
+ID_PRZYPADKU_SCENY_KARTA = "case-demo"
+ID_PROJEKTU_SCENY_KARTA = "proj-demo"
+_UUID_PROJEKTU_SCENY_KARTA = uuid5(NAMESPACE_URL, "mv-design-pro:harness:proj-demo")
+_CZAS_SCENY_KARTA = datetime(2026, 10, 1, 10, 0, tzinfo=UTC)
+
+
+def przypadek_scena_karta() -> dict[str, Any]:
+    """Przypadek sceny „karta-przypadku” (`StudyCase.to_dict()` z fabryki domeny)."""
+    przypadek = new_study_case(
+        project_id=_UUID_PROJEKTU_SCENY_KARTA,
+        name="Stan normalny",
+        description="Przypadek obliczeniowy sieci SN/nN — założenia biegu zwarciowego i rozpływu.",
+        is_active=True,
+    )
+    widok = przypadek.to_dict()
+    widok["id"] = ID_PRZYPADKU_SCENY_KARTA
+    widok["project_id"] = ID_PROJEKTU_SCENY_KARTA
+    widok["created_at"] = _CZAS_SCENY_KARTA.isoformat()
+    widok["updated_at"] = _CZAS_SCENY_KARTA.isoformat()
+    return widok
 
 
 FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
@@ -4818,6 +5061,7 @@ FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
         f"geometria_stacji_{wariant}": _fabryka_sceny_geometrii_stacji(wariant)
         for wariant in ("zamkniete", "otwarte", "bez_wyposazenia")
     },
+    "geometria_stacji_gpz_110kv": geometria_stacji_gpz_110kv,
 }
 
 
@@ -4856,6 +5100,7 @@ FIXTURY: dict[str, Any] = {
     "identyfikatory_grafu": identyfikatory_grafu,
     "katalogi_odniesien_v126": katalogi_odniesien_v126,
     "segmenty_referencji_modelu": segmenty_referencji_modelu,
+    "punkt_neutralny_sn_grup_polaczen": punkt_neutralny_sn_grup_polaczen,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,
@@ -4863,6 +5108,11 @@ FIXTURY: dict[str, Any] = {
     "zwarcia_wklady_scena_zwarcia": zwarcia_wklady_scena_zwarcia,
     "zwarcia_rozplyw_scena_zwarcia": zwarcia_rozplyw_scena_zwarcia,
     "zwarcia_pasmo_scena_zwarcia": zwarcia_pasmo_scena_zwarcia,
+    "zwarcia_wyniki_scena_tolerancja_robocza": zwarcia_wyniki_scena_tolerancja_robocza,
+    "zwarcia_wklady_scena_tolerancja_robocza": zwarcia_wklady_scena_tolerancja_robocza,
+    "zwarcia_rozplyw_scena_tolerancja_robocza": zwarcia_rozplyw_scena_tolerancja_robocza,
+    "zwarcia_pasmo_scena_tolerancja_robocza": zwarcia_pasmo_scena_tolerancja_robocza,
+    "zwarcia_migawka_scena_tolerancja_robocza": zwarcia_migawka_scena_tolerancja_robocza,
     "falowniki_rozplyw_scena_gpz_feeder_wynik": falowniki_rozplyw_scena_gpz_feeder_wynik,
     "stan_fazowy_scena_wyniki": stan_fazowy_scena_wyniki,
     "dynamika_scena_opis": dynamika_scena_opis,
@@ -4933,6 +5183,7 @@ FIXTURY: dict[str, Any] = {
     "diagnoza_scena_preflight": diagnoza_scena_preflight,
     "diagnoza_scena_przebieg": diagnoza_scena_przebieg,
     "diagnoza_scena_bieg": diagnoza_scena_bieg,
+    "przypadek_scena_karta": przypadek_scena_karta,
     **FIXTURY_PUNKTU_STARTU,
 }
 

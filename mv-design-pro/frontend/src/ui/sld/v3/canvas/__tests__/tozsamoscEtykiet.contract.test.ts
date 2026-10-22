@@ -37,6 +37,7 @@ import {
   plannedLabelObstacleCollisions,
 } from '../labelLegibility';
 import {
+  enlargedFontSizeWithinProportion,
   isLabelReadableAtScale,
   LABEL_TYPOGRAPHY,
   MIN_READABLE_LABEL_SCREEN_PX,
@@ -158,14 +159,33 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
       const scale = skalaDopasowania(sceny, lod);
       const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), scale, sheetSizeFor(scene));
 
+      // Karta GPZ-MODEL: GPZ fikstury to odtąd model obliczeniowo prawdziwy (równoważnik
+      // sieci po stronie 110 kV, transformator 110/15 kV) — źródło wieńczy kolumnę WN.
+      // Pomiar na drzewie scalonym z GEOMETRIA-STACJI (baza `f7235700e`): skala
+      // dopasowania L2 = 0,4034, czyli POWYŻEJ sufitu proporcji klasy t4
+      // (9 px / (8 × 3) = 0,375, `LabelTypography.maxEnlargement`) — oznaczniki aparatów
+      // t4 mają proporcjonalny rozmiar i MUSZĄ się narysować. Blok GPZ jest węższy po
+      // stronie SN (źródło przeszło do kolumny WN), więc pierwsze pole S01 stoi tuż za
+      // ostatnim polem GPZ; oznacznik „Q1" tego pola rysuje się dzięki regule (f) planu
+      // (ustąpienie skracalnego sąsiada, `labelLegibility.ts` `ustapSasiadow`), bez niej
+      // ginął od kolizji z powiększonym „Pole liniowe GPZ 1.2". Gdy skala spada poniżej
+      // sufitu klasy, plan odrzuca tożsamość JAWNIE (`droppedIdentity`, wskaźnik
+      // „Ukryto N opisów"), zgodnie z kontraktem PROPORCJE. Kontrakt KD-11 bez zmian intencji: KAŻDA tożsamość,
+      // którą da się narysować proporcjonalnie, JEST narysowana, a odrzucone są
+      // DOKŁADNIE te, których klasa przekracza sufit (jedno źródło prawdy:
+      // `enlargedFontSizeWithinProportion`) — żadna nie ginie od kolizji ani progu.
       const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc');
+      const ponadSufitem = (l: (typeof tozsamosci)[number]): boolean =>
+        enlargedFontSizeWithinProportion(l.labelClass, scale) === null;
       const narysowaneTozsamosci = new Set(
         plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc').map((p) => p.label.ownerRef),
       );
-      expect(tozsamosci.length).toBeGreaterThan(0);
-      const brakujace = tozsamosci.filter((l) => !narysowaneTozsamosci.has(l.ownerRef));
+      expect(tozsamosci.filter((l) => !ponadSufitem(l)).length).toBeGreaterThan(0);
+      const brakujace = tozsamosci.filter((l) => !ponadSufitem(l) && !narysowaneTozsamosci.has(l.ownerRef));
       expect(brakujace.map((l) => `${l.ownerKind}:${l.text}`)).toEqual([]);
-      expect(plan.droppedIdentity).toEqual([]);
+      expect(plan.droppedIdentity.map((l) => l.ownerRef).sort()).toEqual(
+        tozsamosci.filter(ponadSufitem).map((l) => l.ownerRef).sort(),
+      );
 
       // Licznik „Ukryto N opisów" = wyłącznie dane szczegółowe.
       expect(plan.hiddenDetail.every((l) => l.labelRole === 'dane')).toBe(true);
@@ -254,8 +274,13 @@ describe('KD-11 §4 (bramka 3) — wyrocznie GRYZĄ', () => {
     // tyle podpisów. Ta liczba jest miarą defektu z odbioru KD-8.
     const scene = sceny[1];
     const scale = skalaDopasowania(sceny, 1);
+    // Karta GPZ-MODEL: tożsamości klasy ponad sufitem proporcji odrzuca kontrakt
+    // PROPORCJE (test bramki 1 wyżej) — miarą defektu KD-8 są te, które da się narysować.
     const ukryteTozsamosci = scene.labels.filter(
-      (l) => l.labelRole === 'tozsamosc' && !isLabelReadableAtScale(l.labelClass, scale),
+      (l) =>
+        l.labelRole === 'tozsamosc' &&
+        !isLabelReadableAtScale(l.labelClass, scale) &&
+        enlargedFontSizeWithinProportion(l.labelClass, scale) !== null,
     );
     expect(ukryteTozsamosci.length).toBeGreaterThan(0);
     // …a kontrakt wyżej wymaga, żeby po naprawie było ich ZERO w planie.

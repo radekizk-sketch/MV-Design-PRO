@@ -102,8 +102,6 @@ async function siecZPolem(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: katalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: OdpowiedzOperacji = {};
   for (const [idx, dlugosc] of [300, 250].entries()) {
@@ -119,6 +117,8 @@ async function siecZPolem(
   const odcinki = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(odcinki.length).toBeGreaterThan(1);
   await operacja(request, studyCase.id, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: CB_ID,
     segment_id: odcinki[1],
     station_type: 'B',

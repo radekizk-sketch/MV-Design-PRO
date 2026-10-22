@@ -502,8 +502,6 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
           catalog_item_id: 'src-gpz-15kv-250mva-rx010',
           catalog_item_version: '2024.1',
         },
-        hv_voltage_kv: 110.0,
-        transformer_sn_mva: 25.0,
       },
     });
 
@@ -536,7 +534,7 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
           sn_voltage_kv: 15.0,
           nn_voltage_kv: 0.4,
           station_auxiliary: { active_power_kw: 10.0, cos_phi: 0.95 },
-          nn_earthing: { lv_system: 'TN-S' },
+          nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
         },
         sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
         transformer: {
@@ -624,8 +622,6 @@ async function zbudujSiecZeStacja(
       catalog_item_id: 'src-gpz-15kv-250mva-rx010',
       catalog_item_version: '2024.1',
     },
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   const magistrala = await operacja('continue_trunk_segment_sn', {
     segment: {
@@ -649,7 +645,7 @@ async function zbudujSiecZeStacja(
       sn_voltage_kv: 15.0,
       nn_voltage_kv: 0.4,
       station_auxiliary: { active_power_kw: 10.0, cos_phi: 0.95 },
-      nn_earthing: { lv_system: 'TN-S' },
+      nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
     },
     sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: {

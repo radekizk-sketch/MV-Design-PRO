@@ -1504,7 +1504,7 @@
     }
   },
   "ssci_impedance": {
-    "message_pl": "Analiza SSCI (Z_grid/Z_conv) wymaga przeksztaltnika (falownika) w modelu. Brak przeksztaltnika — analiza niewykonana.",
+    "message_pl": "Analiza SSCI (Z_grid/Z_conv) wymaga przekształtnika (falownika) w modelu. Brak przekształtnika — analiza niewykonana.",
     "missing_fields": [
       "converter"
     ],

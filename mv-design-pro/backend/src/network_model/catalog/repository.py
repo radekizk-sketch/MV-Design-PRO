@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 
 from dziedziny.karta_widmowa import KartaWidmowa
-from network_model.nazwy import nazwa_nadana
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
+from network_model.odmowa_danych import OdmowaNazwana
 from network_model.pochodne import mva_na_kva, mw_na_kw
 
 from .karty_widmowe import karta_widmowa_z_rekordu
@@ -25,6 +25,7 @@ from .types import (
     LVBreakerMcbType,
     LVCableType,
     LVFuseLinkType,
+    LVRcdType,
     MVApparatusType,
     ProtectionCurve,
     ProtectionDeviceType,
@@ -47,7 +48,19 @@ def _converter_kind_value(record: dict) -> str:
     return str(raw_kind).upper()
 
 
-def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> float:
+#: Kod odmowy derywacji typu falownika z niekompletnego rekordu konwertera.
+KOD_TYP_NIEKOMPLETNY = "catalog.type_incomplete"
+#: Kod odmowy powtórzonej karty widmowej w katalogu.
+KOD_KARTA_POWTORZONA = "catalog.duplicate_id"
+#: Pole znamionowe rekordu konwertera → opis dla człowieka (treść odmowy nie niesie klucza).
+OPISY_POL_ZNAMIONOWYCH: dict[str, str] = {
+    "sn_mva": "moc znamionowa pozorna S_n",
+    "pmax_mw": "moc czynna maksymalna P_max",
+    "e_kwh": "pojemność energetyczna E",
+}
+
+
+def _wymagana_moc_znamionowa(params: dict, field: str, *, record: dict) -> float:
     """Odczytaj pole znamionowe wymagane do derywacji falownika z ConverterType.
 
     Karta FAB-D2 (D6): brak `sn_mva`/`pmax_mw`/`e_kwh` w rekordzie konwertera
@@ -56,9 +69,12 @@ def _wymagana_moc_znamionowa(params: dict, field: str, *, type_id: object) -> fl
     """
     wartosc = params.get(field)
     if wartosc is None:
-        raise OdmowaDanychError(
-            f"catalog.type_incomplete: brak pola '{field}' w rekordzie konwertera "
-            f"id={type_id!r} — derywacja typu falownika odrzucona (nie 0)."
+        raise OdmowaNazwana(
+            f"{opis_rodzaju_i_nazwy('Typ przekształtnika', record.get('name'))} nie ma pola "
+            f"„{OPISY_POL_ZNAMIONOWYCH[field]}” — typ falownika nie zostaje wyprowadzony "
+            "(brak danej to nie zero).",
+            kod=KOD_TYP_NIEKOMPLETNY,
+            dane={"type_id": record.get("id"), "pole": field},
         )
     return float(wartosc)
 
@@ -203,10 +219,10 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                 "params": {
                     "un_kv": params.get("un_kv"),
                     "s_n_kva": mva_na_kva(
-                        _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                        _wymagana_moc_znamionowa(params, "sn_mva", record=record)
                     ),
                     "p_max_kw": mw_na_kw(
-                        _wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id"))
+                        _wymagana_moc_znamionowa(params, "pmax_mw", record=record)
                     ),
                     "cos_phi_min": params.get("cosphi_min"),
                     "cos_phi_max": params.get("cosphi_max"),
@@ -233,7 +249,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
         if _converter_kind_value(record) != "BESS":
             continue
         params = dict(record.get("params") or {})
-        p_max_kw = mw_na_kw(_wymagana_moc_znamionowa(params, "pmax_mw", type_id=record.get("id")))
+        p_max_kw = mw_na_kw(_wymagana_moc_znamionowa(params, "pmax_mw", record=record))
         derived.append(
             {
                 "id": record.get("id"),
@@ -242,9 +258,9 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                     "un_kv": params.get("un_kv"),
                     "p_charge_kw": p_max_kw,
                     "p_discharge_kw": p_max_kw,
-                    "e_kwh": _wymagana_moc_znamionowa(params, "e_kwh", type_id=record.get("id")),
+                    "e_kwh": _wymagana_moc_znamionowa(params, "e_kwh", record=record),
                     "s_n_kva": mva_na_kva(
-                        _wymagana_moc_znamionowa(params, "sn_mva", type_id=record.get("id"))
+                        _wymagana_moc_znamionowa(params, "sn_mva", record=record)
                     ),
                     "manufacturer": params.get("manufacturer"),
                     "dynamic_profile_id": params.get("dynamic_profile_id"),
@@ -279,6 +295,7 @@ class CatalogRepository:
     lv_apparatus_types: dict[str, LVApparatusType] = field(default_factory=dict)
     lv_breaker_mcb_types: dict[str, LVBreakerMcbType] = field(default_factory=dict)
     lv_fuse_link_types: dict[str, LVFuseLinkType] = field(default_factory=dict)
+    lv_rcd_types: dict[str, LVRcdType] = field(default_factory=dict)
     ct_types: dict[str, CTType] = field(default_factory=dict)
     vt_types: dict[str, VTType] = field(default_factory=dict)
     source_system_types: dict[str, SourceSystemType] = field(default_factory=dict)
@@ -317,6 +334,7 @@ class CatalogRepository:
         lv_apparatus_types: Iterable[dict] | None = None,
         lv_breaker_mcb_types: Iterable[dict] | None = None,
         lv_fuse_link_types: Iterable[dict] | None = None,
+        lv_rcd_types: Iterable[dict] | None = None,
         ct_types: Iterable[dict] | None = None,
         vt_types: Iterable[dict] | None = None,
         source_system_types: Iterable[dict] | None = None,
@@ -398,6 +416,11 @@ class CatalogRepository:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
             return LVFuseLinkType.from_dict(data)
+
+        def _build_lv_rcd_type(record: dict) -> LVRcdType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return LVRcdType.from_dict(data)
 
         def _build_ct_type(record: dict) -> CTType:
             data = {"id": record.get("id"), "name": record.get("name")}
@@ -510,6 +533,9 @@ class CatalogRepository:
             lv_fuse_link_types={
                 str(item.id): item
                 for item in map(_build_lv_fuse_link_type, list(lv_fuse_link_types or []))
+            },
+            lv_rcd_types={
+                str(item.id): item for item in map(_build_lv_rcd_type, list(lv_rcd_types or []))
             },
             ct_types={str(item.id): item for item in map(_build_ct_type, list(ct_types or []))},
             vt_types={str(item.id): item for item in map(_build_vt_type, list(vt_types or []))},
@@ -642,6 +668,12 @@ class CatalogRepository:
     def get_lv_fuse_link_type(self, type_id: str) -> LVFuseLinkType | None:
         return self.lv_fuse_link_types.get(str(type_id))
 
+    def list_lv_rcd_types(self) -> list[LVRcdType]:
+        return self._sorted(self.lv_rcd_types.values())
+
+    def get_lv_rcd_type(self, type_id: str) -> LVRcdType | None:
+        return self.lv_rcd_types.get(str(type_id))
+
     def list_ct_types(self) -> list[CTType]:
         return self._sorted(self.ct_types.values())
 
@@ -745,7 +777,13 @@ def _karty_bez_kolizji(karty: list[KartaWidmowa]) -> dict[str, KartaWidmowa]:
     wynik: dict[str, KartaWidmowa] = {}
     for karta in karty:
         if karta.id in wynik:
-            raise OdmowaDanychError(f"catalog.duplicate_id: karta widmowa '{karta.id}' powtórzona.")
+            raise OdmowaNazwana(
+                f"Karta widmowa {karta.producent} {karta.model_urzadzenia} (wersja "
+                f"{karta.wersja}) jest w katalogu dwa razy pod tym samym oznaczeniem — jedna "
+                "karta to jeden dokument.",
+                kod=KOD_KARTA_POWTORZONA,
+                dane={"karta_id": karta.id},
+            )
         wynik[karta.id] = karta
     return wynik
 
@@ -785,6 +823,7 @@ def get_default_mv_catalog() -> CatalogRepository:
         get_all_lv_breaker_mcb_types,
         get_all_lv_cable_types,
         get_all_lv_fuse_link_types,
+        get_all_lv_rcd_types,
         get_all_protection_curves,
         get_all_protection_device_types,
         get_all_protection_setting_templates,
@@ -825,6 +864,7 @@ def get_default_mv_catalog() -> CatalogRepository:
         lv_apparatus_types=get_all_lv_apparatus_types(),
         lv_breaker_mcb_types=get_all_lv_breaker_mcb_types(),
         lv_fuse_link_types=get_all_lv_fuse_link_types(),
+        lv_rcd_types=get_all_lv_rcd_types(),
         ct_types=get_all_ct_types(),
         vt_types=get_all_vt_types(),
         source_system_types=get_all_source_system_types(),

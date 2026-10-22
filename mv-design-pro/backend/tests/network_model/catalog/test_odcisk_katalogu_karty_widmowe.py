@@ -74,6 +74,11 @@ from tests.dziedziny import fabryki as f
 #: pozycji istniejących. Poprzednia wartość:
 #: 001314a4d39aaad8faedd59a538eb8a06888ac2b4305776208247d2a4ee425cc.
 ODCISK_SPRZED_KARTY = "1a8bcd4ba4a73c5dfb14a1f0315f82492a820cbb785226991432f8636f0cae56"
+#: Karta W5-E-TTIT (2026-09-30, scalona w partii 9): nowa przestrzeń `lv_rcd_types` (56
+#: rekordów RCCB, IEC 61008-1). Dowód: zrzut kanoniczny BEZ tej przestrzeni daje DOKŁADNIE
+#: `ODCISK_SPRZED_KARTY` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
+#: poniżej (przeliczona na drzewie partii 9, po katalogu z proweniencją i torze V112).
+ODCISK_PO_W5E_TTIT = "e83ee88bce1a45b0ef7e57931612c100764968c4fcd42281b133215fc3b1c062"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -111,7 +116,11 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_SPRZED_KARTY
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_W5E_TTIT
+    bez_rcd = {
+        przestrzen: postac for przestrzen, postac in zrzut.items() if przestrzen != "lv_rcd_types"
+    }
+    assert _odcisk_zrzutu(bez_rcd) == ODCISK_SPRZED_KARTY
 
 
 def test_pole_skasowane_zostaje_w_zrzucie_jako_null() -> None:

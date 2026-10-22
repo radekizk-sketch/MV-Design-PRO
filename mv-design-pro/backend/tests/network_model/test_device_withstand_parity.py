@@ -11,7 +11,8 @@ przeniosla ten rachunek do backendu (reguła NOT-A-SOLVER) i podlaczyla ekran do
 CZEGO PILNUJE TEN TEST. Sam RACHUNEK jest zamrozony — formula i jej wyniki nie
 moga sie zmienic przy zadnym refaktorze:
 
-    I_th_eff = I_th_rated * sqrt(t_rated / max(t_clearing, 0,01))
+    I_th_eff = I_th_rated                            dla t_clearing <= t_rated
+    I_th_eff = I_th_rated * sqrt(t_rated / t_clearing)  dla t_clearing >= t_rated
     wykorzystanie I_dyn [%] = I_peak / I_dyn_rated * 100
     wykorzystanie I_th  [%] = I_th_obl / I_th_eff * 100
 
@@ -32,6 +33,16 @@ wiec ZNAMIONA sie zmienily (zachowawczo w dol — nizszy limit moze werdykt tylk
 zaostrzyc, nigdy falszywie zaliczyc), a wraz z nimi wykorzystanie I_dyn w
 przypadkach ponizej. RACHUNEK zostal nietkniety: kolumny wykorzystania I_th sa
 identyczne co do ostatniej cyfry przed i po karcie.
+
+AKTUALIZACJA RACHUNKU I_th (karta WYTRZYMALOSC-PRAD-POLA, 2026-10) — UCZCIWIE O ZMIANIE.
+Rachunek przeniesiony z UI przeliczal prad krotkotrwaly aparatu na czas wylaczenia
+W OBIE STRONY: przy t_wyl krotszym od t_rated limit ROSL jak sqrt(t_rated/t_wyl)
+(szyna 50 kA/1 s „wytrzymywala" 111,8 kA przy 0,2 s, rozlacznik 25 kA/1 s — 250 kA przy
+0,005 s po przycieciu czasu do 0,01 s). IEC 60865-1 (wytrzymalosc cieplna urzadzen
+elektrycznych) dopuszcza przeliczenie tylko W DOL: I_th <= I_thr dla T_k <= T_kr. Trzy
+przypadki ponizej z czasem krotszym od znamionowego zmienily wiec wykorzystanie I_th
+(zachowawczo w gore), a dwa z nich werdykt (z „wytrzymala" na bloker). Przypadki z czasem
+rownym albo dluzszym od znamionowego sa identyczne co do ostatniej cyfry.
 """
 
 from __future__ import annotations
@@ -83,16 +94,16 @@ PARITY_CASES = [
         240.0,
     ),
     (
-        "SF6 31,5 kA/3s — skalowanie I_th przy t=0,5 s podnosi limit",
+        "SF6 31,5 kA/3s — t=0,5 s krotszy od znamionowego NIE podnosi limitu ponad I_th",
         "wstd_breaker_sf6_15_31_5",
         50.0,
         60.0,
         0.5,
+        False,
         True,
-        True,
-        True,
+        False,
         63.49206349206349,
-        77.76157913597392,
+        190.47619047619045,
     ),
     (
         "SF6 31,5 kA/3s — przy t znamionowym 3 s limit nie wystarcza",
@@ -107,7 +118,7 @@ PARITY_CASES = [
         190.47619047619045,
     ),
     (
-        "szyna 2000 A — krotki czas wylaczania t=0,2 s",
+        "szyna 2000 A — krotki czas wylaczania t=0,2 s: limit = I_th 50 kA",
         "wstd_busbar_15_2000_50",
         100.0,
         40.0,
@@ -116,19 +127,19 @@ PARITY_CASES = [
         True,
         True,
         80.0,
-        35.77708763999664,
+        80.0,
     ),
     (
-        "rozlacznik — t ponizej progu 0,01 s jest ograniczane do 0,01 s",
+        "rozlacznik — t=0,005 s nie daje limitu 250 kA: limit = I_th 25 kA",
         "wstd_switch_load_15_25",
         60.0,
         30.0,
         0.005,
+        False,
         True,
-        True,
-        True,
+        False,
         96.0,
-        12.0,
+        120.0,
     ),
 ]
 

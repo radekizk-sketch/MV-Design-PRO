@@ -17,7 +17,7 @@ const KODY_KRZYWYCH_MODELU = [
   'IEC_SI',
   'IEC_VI',
   'IEC_EI',
-  'IEC_LI',
+  'IEC_LTI',
   'IEEE_MI',
   'IEEE_VI',
   'IEEE_EI',

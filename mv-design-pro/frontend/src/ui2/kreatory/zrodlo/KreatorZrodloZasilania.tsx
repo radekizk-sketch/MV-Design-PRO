@@ -75,6 +75,9 @@ import {
   opisUziemienia,
   pasujeRodzajAparatu,
   scalDanePoczatkowe,
+  transformatoryWModelu,
+  trybParametruZwarciowego,
+  typyUziemieniaDozwolone,
   walidujFormularz,
   wierszeGotowosci,
   zbudujOznaczenieGpz,
@@ -387,6 +390,22 @@ export function KreatorZrodloZasilania() {
     }));
   }, [filtrowaneTransformatory, dane.transformer_catalog_ref]);
 
+  // Karta GPZ-MODEL: przy równoważniku 110 kV punkt neutralny SN wynika z grupy
+  // połączeń transformatora 110/SN — kreator opisuje go zgodnie z modelem, zamiast
+  // pozwolić na opis, którego zwarcie 1F nie przeczyta (backend: E-W5-01).
+  const dozwoloneUziemienia = useMemo(() => typyUziemieniaDozwolone(dane), [dane]);
+  useEffect(() => {
+    if (dozwoloneUziemienia === null || dozwoloneUziemienia.length !== 1) return;
+    const [jedyny] = dozwoloneUziemienia;
+    setDane((p) => (p.grounding_type === jedyny ? p : { ...p, grounding_type: jedyny }));
+  }, [dozwoloneUziemienia]);
+  const opcjeUziemienia = useMemo(
+    () => (dozwoloneUziemienia === null
+      ? T.typyUziemienia
+      : T.typyUziemienia.filter((o) => dozwoloneUziemienia.includes(o.id as TypPunktuNeutralnego))),
+    [dozwoloneUziemienia],
+  );
+
   const zadaniePodgladu = useMemo(() => zbudujZadaniePodgladu(dane), [dane]);
   useEffect(() => {
     if (zadaniePodgladu === null) {
@@ -504,7 +523,8 @@ export function KreatorZrodloZasilania() {
 
   const indeksKroku = Math.max(0, KROKI.findIndex((k) => k.id === krok));
   const hv = dane.manual_mode && dane.short_circuit_input_side === 'HV_110';
-  const impedancja = dane.manual_mode && dane.short_circuit_mode === 'IMPEDANCE';
+  const impedancja = trybParametruZwarciowego(dane) === 'IMPEDANCE';
+  const zTransformatorami = transformatoryWModelu(dane);
 
   const etykietaIk1 = statusPodgladu === 'loading'
     ? 'obliczanie…'
@@ -811,7 +831,13 @@ export function KreatorZrodloZasilania() {
         </>
       ) : null}
 
-      {krok === 'transformatory' ? (
+      {krok === 'transformatory' && !zTransformatorami ? (
+        <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
+          <KreatorInfo testid="mvd-kreator-zrodlo-transformatory-poza-modelem">{T.transformatoryPozaModelem}</KreatorInfo>
+        </KreatorSekcja>
+      ) : null}
+
+      {krok === 'transformatory' && zTransformatorami ? (
         <>
         <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
           <KreatorInfo>{T.transformatoryOpis}</KreatorInfo>
@@ -935,11 +961,17 @@ export function KreatorZrodloZasilania() {
               etykieta={T.uziemienie}
               wartosc={dane.grounding_type}
               onZmiana={(v) => zmien('grounding_type', v as TypPunktuNeutralnego)}
-              opcje={T.typyUziemienia}
+              opcje={opcjeUziemienia}
               pomoc={opisUziemienia(dane.grounding_type)}
+              blad={bladDlaPola('grounding_type')}
               testid="mvd-kreator-zrodlo-uziemienie"
             />
           </KreatorSiatka>
+          {dozwoloneUziemienia !== null ? (
+            <KreatorInfo testid="mvd-kreator-zrodlo-uziemienie-z-transformatora">
+              {T.uziemienieZTransformatora(dane.transformer_vector_group)}
+            </KreatorInfo>
+          ) : null}
           {(dane.grounding_type === 'resistor_grounded' || dane.grounding_type === 'petersen_coil') ? (
             <PoleLiczbowe
               etykieta={dane.grounding_type === 'petersen_coil' ? T.uziemienieX : T.uziemienieR}
@@ -1047,7 +1079,7 @@ export function KreatorZrodloZasilania() {
           />
           <RzadWartosci etykieta={T.norma} wartosc="IEC 60909:2016" />
           <RzadWartosci etykieta={T.czestotliwosc} wartosc="50 Hz" />
-          <RzadWartosci etykieta={`${T.cMax} / ${T.cMin}`} wartosc="1,10 / 1,00" />
+          <RzadWartosci etykieta={T.wspolczynnikC} wartosc={T.wspolczynnikCPodstawa} testid="mvd-kreator-zrodlo-podstawa-c" />
         </KreatorSekcja>
       ) : null}
 
@@ -1058,7 +1090,11 @@ export function KreatorZrodloZasilania() {
           <RzadWartosci etykieta={T.napiecieSn} wartosc={`${formatujLiczbe(dane.sn_voltage_kv, 0)} kV`} />
           <RzadWartosci etykieta={T.trybZrodlaTytul} wartosc={dane.manual_mode ? T.trybReczny : T.trybKatalog} />
           <RzadWartosci etykieta={T.liczbaSekcji} wartosc={String(dane.sections_count)} />
-          <RzadWartosci etykieta={T.liczbaTrafo} wartosc={String(dane.transformer_count)} />
+          <RzadWartosci
+            etykieta={T.liczbaTrafo}
+            wartosc={zTransformatorami ? String(dane.transformer_count) : T.transformatoryPozaModelemKrotko}
+            testid="mvd-kreator-zrodlo-przeglad-trafo"
+          />
           <RzadWartosci etykieta={T.uziemienie} wartosc={T.typyUziemienia.find((o) => o.id === dane.grounding_type)?.etykieta ?? dane.grounding_type} />
           <KreatorNastepnyKrok opis={T.nastepnyOpis} testid="mvd-kreator-zrodlo-nastepny" />
         </KreatorSekcja>

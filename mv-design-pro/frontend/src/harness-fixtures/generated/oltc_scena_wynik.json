@@ -1,6 +1,6 @@
 {
   "analysis_type": "LOAD_FLOW",
-  "deterministic_signature": "acdeb7a7df2ccc127b043ab150255227e4903c778eee19e3be89338518824141",
+  "deterministic_signature": "24894dc518fb2a2233e82ccdfd272e1208dc5a33691284ff11289deeb527d3be",
   "element_results": [
     {
       "element_ref": "bus_hv",
@@ -182,7 +182,7 @@
       "values": {
         "branch_id": "7bf296a0-8f1c-5c72-9760-6987d84d6a4a",
         "cos_phi": 0.994907303403,
-        "delta_u_kv": 94.607892247,
+        "delta_u_kv": null,
         "delta_u_pct": -2.61405168653,
         "element_id": "tr_hv_sn",
         "flags": [],
@@ -218,7 +218,7 @@
       "values": {
         "branch_id": "158eec95-939b-5b35-97ad-9433334b5506",
         "cos_phi": 0.315298824937,
-        "delta_u_kv": 14.9860892,
+        "delta_u_kv": null,
         "delta_u_pct": 1.10813359491,
         "element_id": "tr_sn_nn",
         "flags": [],

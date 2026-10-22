@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
 from enm.canonical_analysis import list_runs_for_case
 from enm.interlock_rules import blokady_zamkniecia, runtime_state_record
 from enm.models import (
@@ -135,8 +136,16 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     generators_by_bus = _group_generators_by_bus(enm.generators)
 
     finished_runs = [run for run in list_runs_for_case(case_id) if run.status == "FINISHED"]
+    # Karta OD-14: wynik pola wiąże najnowszy bieg zwarcia METALICZNEGO (IEC 60909); bieg przez
+    # impedancję przejścia Z_f nie jest „wynikiem zwarciowym pola" (ten sam predykat co
+    # proweniencja biegu, `bieg_w_zakresie_iec60909`).
     latest_sc_run = next(
-        (run for run in finished_runs if run.analysis_type == "short_circuit_sn"), None
+        (
+            run
+            for run in finished_runs
+            if run.analysis_type == "short_circuit_sn" and bieg_w_zakresie_iec60909(run)
+        ),
+        None,
     )
     latest_pf_run = next((run for run in finished_runs if run.analysis_type == "PF"), None)
 

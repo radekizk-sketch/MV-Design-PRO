@@ -4,7 +4,7 @@
  *
  * DLACZEGO TUTAJ, A NIE W PRZYPADKU OBLICZENIOWYM (rozstrzygnięcie pomiarem):
  *  - `StudyCaseConfig` (`backend/src/domain/study_case.py`) przechowuje WYŁĄCZNIE
- *    parametry obliczeniowe solverów (c_max/c_min, base_mva, tolerancja,
+ *    parametry obliczeniowe solverów (base_mva, tolerancja,
  *    tryb wejścia zwarciowego…). Pomiar: w całym backendzie poza pakietem
  *    `reference_engine` nie ma ANI JEDNEGO pola `pack_id`/`pack_ids` — przypadek
  *    nie zna pojęcia „wybrany pakiet referencyjny";

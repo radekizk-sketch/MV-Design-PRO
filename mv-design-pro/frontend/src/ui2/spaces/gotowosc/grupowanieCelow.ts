@@ -263,6 +263,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // DOKŁADNY (nie fallback prefiksu), żeby kod był tu widoczny i policzalny:
   // fallback grupuje milcząco, więc kod spoza rejestru wyglądałby jak obsłużony.
   'catalog.item_not_found': 'wspolne',
+  'catalog.type_incomplete': 'wspolne',
+  'catalog.duplicate_id': 'wspolne',
   'catalog.ref_missing': 'wspolne',
   'catalog.item_missing': 'wspolne',
   'catalog.item_id_missing': 'wspolne',
@@ -296,6 +298,13 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'transformer.connection_missing': 'stacje',
   'nn.bus_missing': 'stacje',
   'nn.main_breaker_missing': 'stacje',
+  // Karta W5-E-TTIT: odmowy nazwane pętli doziemnej TT/IT (dane stacji/odbioru/odcinka)
+  // oraz pasmo nN transformatora — obszar STATIONS rejestru.
+  'nn.brak_r_a': 'stacje',
+  'nn.brak_r_b': 'stacje',
+  'nn.brak_rcd': 'stacje',
+  'nn.brak_pojemnosci_doziemnej': 'stacje',
+  'nn.transformer_lv_not_nn_band': 'stacje',
   'apparatus.sn_catalog_missing': 'stacje',
   'apparatus.nn_catalog_missing': 'stacje',
   // GENERATORS (:639-668, :795-820) — poza wyjątkiem OSD wyżej
@@ -310,6 +319,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   // ANALYSIS (:717-734)
   'study_case.missing_base_snapshot': 'wspolne',
   'analysis.blocked_by_readiness': 'wspolne',
+  // Karta W5-E-TTIT: limit napięcia dotykowego TT/IT spoza repozytorium (BRAK_PODSTAWY) —
+  // kryterium SWZ ocenia pętlę zwarcia nN, więc cel „zwarcia".
+  'swz.limit_tt_it_brak_tekstu_normy': 'zwarcia',
 
   // KARTA-UI2 §1 p. 13 (test parytetu `grupowanieCelow.parytetRejestru.test.ts`
   // ujawnił 76 kodów kanonu dodanych do rejestru PO napisaniu tabeli powyżej —
@@ -326,6 +338,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.source.field_missing': 'zwarcia',
   'nn.source.parameters_missing': 'zwarcia',
   'nn.source.switch_missing': 'zwarcia',
+  'source.gpz_section_unsupplied': 'zwarcia',
+  'source.gpz_transformer_hv_unsupplied': 'zwarcia',
   'source.multiple_grid_sources_in_island': 'zwarcia',
   'source.sk_min_inconsistent': 'zwarcia',
   'source.sk_min_missing': 'zwarcia',
@@ -357,6 +371,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'nn.voltage_missing': 'stacje',
   'transformer.bay_missing': 'stacje',
   'transformer.lv_earthing_system_missing': 'stacje',
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: tolerancja napięcia sieci nN (+6 %/+10 %)
+  // deklarowana na transformatorze stacji — wzorzec `lv_earthing_system` (obszar STATIONS).
+  'fault.c_tolerancja_nn_robocza': 'stacje',
   // GENERATORS (rozplyw)
   'bess.energy_module_missing': 'rozplyw',
   'bess.soc_limits_invalid': 'rozplyw',
@@ -387,6 +404,12 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'vt.secondary_circuit_missing': 'zabezpieczenia',
   // ANALYSIS (wspolne)
   'fault.location_on_branch_requires_assembler': 'wspolne',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: odmowy nadpisania c scenariusza (obszar ANALYSIS).
+  'fault.c_nadpisanie_bez_uzasadnienia': 'wspolne',
+  'fault.c_nadpisanie_wartosc_niepoprawna': 'wspolne',
+  // Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b scenariusza zwarciowego (obszar ANALYSIS).
+  'fault.czas_tb_niepoprawny': 'wspolne',
+  'fault.czas_tb_wartosc_robocza': 'wspolne',
   'oltc.deadband_missing': 'wspolne',
   'oltc.target_voltage_missing': 'wspolne',
   'power_flow.unbalanced_element_unsupported': 'wspolne',

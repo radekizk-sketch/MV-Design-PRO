@@ -35,7 +35,8 @@ LOSSY_BOUNDARY: tuple[str, ...] = (
     "catalog_ref / catalog_namespace / parameter_source / source_mode",
     "materialized_params and ParameterOverride lists",
     "OZE connection_variant / station_ref / blocking_transformer_ref / n_parallel",
-    "Source c_max / c_min and controller bandwidths",
+    "Source/Transformer lv_voltage_tolerance (nN row of IEC 60909-0 Table 1) and controller "
+    "bandwidths",
     "Switch series impedance (r_ohm/x_ohm) — CIM Switch carries no impedance",
     "ENM topology helpers: Junction, Corridor, BranchPointSN, LineRun, "
     "ConnectionNode, CableJoint, Bay, Measurement, ProtectionAssignment",

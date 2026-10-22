@@ -15,7 +15,7 @@ class ElektrometalEtangoVendorAdapter(VendorAdapter):
 
     def supported_devices(self) -> tuple[str, ...]:
         return (
-            # Legacy V0 entries (rated 400-2000, IEC_NI only) — kept dla wstecznej zgodności
+            # Legacy V0 entries (rated 400-2000, IEC_SI only) — kept dla wstecznej zgodności
             "EM_ETANGO_400_V0",
             "EM_ETANGO_600_V0",
             "EM_ETANGO_800_V0",

@@ -52,17 +52,26 @@ function derSymbolOf(scene: SceneV3, genRef: string) {
 describe('DER-MENU-V3 A — meta.derKind płynie adapter→compose→scene (REALNA wartość, zero re-derywacji)', () => {
   it('DER rozpoznane z fixtury (pv_inverter/bess/wind_inverter) niosą meta.derKind = pv/bess/wind', () => {
     const scene = buildSceneV3(enm, 2);
-    // Identyfikatory przepięte przy regeneracji fikstury (karta SLD-SUBSTRAT): ziarno źródła nN
-    // dziedziczy identyfikator stacji, a ten identyfikator odcinka, którego ziarno obejmuje od
-    // CV-4.3 K1 (11aebfaa) typ katalogowy i nazwę — te same trzy źródła (pozycje 1:1 w zrzucie ENM).
-    const expected: ReadonlyArray<readonly [string, DerSourceKind]> = [
-      ['pv/1a97d7da678ce5c05a1154434dde1f0b/converter', 'pv'],
-      ['bess/fb4d74b660f1f6827d3e753898e94881/converter', 'bess'],
-      ['fw/57995ab5097afda9976c9f5bddaed9ba/converter', 'wind'],
-    ];
-    for (const [genRef, kind] of expected) {
-      expect(derSymbolOf(scene, genRef)?.meta?.derKind).toBe(kind);
+    // GPZ-MODEL (2026-10-21): bez literałów identyfikatorów — regeneracja fikstury (ziarno GPZ
+    // z równoważnikiem 110 kV) przepina ref-y wszystkich źródeł, a literały wskazywały sieć,
+    // której produkt już nie wytwarza. Wyrocznia z DANYCH: KAŻDY generator fikstury, który ma
+    // symbol DER na rysunku, niesie rodzaj z `gen_type` wg kontraktu (pv_inverter→pv,
+    // bess→bess, wind_inverter→wind), a każdy z trzech rodzajów jest na rysunku co najmniej raz.
+    const RODZAJ: Readonly<Record<string, DerSourceKind>> = {
+      pv_inverter: 'pv',
+      bess: 'bess',
+      wind_inverter: 'wind',
+    };
+    const narysowane = new Set<DerSourceKind>();
+    for (const gen of enm.generators ?? []) {
+      const symbol = derSymbolOf(scene, gen.ref_id);
+      if (!symbol) continue;
+      const oczekiwany = RODZAJ[String(gen.gen_type)];
+      expect(oczekiwany, `${gen.ref_id}: gen_type ${String(gen.gen_type)}`).toBeDefined();
+      expect(symbol.meta?.derKind, gen.ref_id).toBe(oczekiwany);
+      narysowane.add(oczekiwany);
     }
+    expect([...narysowane].sort()).toEqual(['bess', 'pv', 'wind']);
   });
 
   it('gen_type=synchronous ⇒ meta.derKind=generator (osobny rodzaj v2 SldSourceView, glif derGenerator)', () => {

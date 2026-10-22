@@ -87,6 +87,7 @@ from .domain_operations import (
     _nazwa_pola_w_modelu,
     _odmowa_typu_ladunku,
     _opt_float_any,
+    _powod_odmowy_tolerancji_nn,
     _require_catalog_ref,
     _require_transformer_fields,
     _response,
@@ -159,11 +160,13 @@ from .slownik_komunikatow import (
     nazwa_technologii_zrodla,
     opis_elementu,
     opis_nazwy,
+    opis_obiektu,
     opis_pozycji_katalogu,
     pole,
     w_cudzyslowie,
     wartosc_w_zdaniu,
 )
+from .topology import transformatory_zasilajace_gpz
 from .topology_ops import (
     attach_protection,
     create_branch,
@@ -173,6 +176,7 @@ from .topology_ops import (
     delete_node,
 )
 from .tor_pola import szyny_stacji
+from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .wylaczniki_liniowe import PowodOdmowyKotwicy, odmowa_kotwicy_wylacznika
 from .wyposazenie_pola import set_bay_equipment
 
@@ -2991,6 +2995,13 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if blad_faz is not None:
         return _error_response(blad_faz, KOD_BLEDU_FAZ)
 
+    # Karta W5-E-TTIT: uziom instalacji odbiorczej R_A (`Load.earth_electrode_r_ohm`) —
+    # jeden walidator dla wszystkich pisarzy odbioru (`enm/uziom_instalacji.py`). Brak =
+    # dana nieobecna: pole NIE jest dopisywane (migawka jak przed kartą).
+    r_a_ohm, blad_r_a = waliduj_r_a(payload.get("earth_electrode_r_ohm"))
+    if blad_r_a is not None:
+        return _error_response(blad_r_a, KOD_BLEDU_R_A)
+
     # Karta FAB-D1 (D5 sibling): `Load.q_mvar` jest polem WYMAGANYM kontraktu
     # (`enm/models.py`) — bez jawnej mocy biernej i bez cosφ, z którego dałoby
     # się ją wyprowadzić, operacja NIE fabrykuje 0 Mvar (praca przy cosφ=1 to
@@ -3039,6 +3050,9 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # Ta sama zasada dla faz (W5-D): odbiór bez wskazanej fazy = migawka bez klucza.
     if fazy is not None:
         nowy_odbior["phases"] = fazy
+    # Ta sama zasada dla R_A (W5-E-TTIT): brak deklaracji = migawka bez klucza.
+    if r_a_ohm is not None:
+        nowy_odbior["earth_electrode_r_ohm"] = r_a_ohm
 
     new_enm = kopia_graniczna_enm(enm)
     new_enm.setdefault("loads", []).append(nowy_odbior)
@@ -3529,6 +3543,140 @@ def add_nn_switch_device(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         selection_type="branch",
         events=[
             {"event_seq": 1, "event_type": "NN_SWITCH_DEVICE_CREATED", "element_id": branch_ref}
+        ],
+    )
+
+
+_PRZESTRZEN_RCD_NN = "APARAT_NN_RCD"
+
+
+def add_nn_rcd(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Karta W5-E-TTIT: wyłącznik różnicowoprądowy (RCD) w torze zasilania instalacji odbiorczej.
+
+    Ochrona przeciwporażeniowa w układzie TT opiera się na RCD chroniącym instalację odbiorcy
+    (IEC 60364-4-41 §411.5), więc RCD jest APARATEM W TORZE PRĄDOWYM (POLA-W-TORZE), nie
+    atrybutem odbioru: operacja tworzy szynę zacisków instalacji, przenosi na nią odbiór i
+    wstawia między dotychczasową szynę odbioru a nowe zaciski gałąź `SwitchBranch`
+    (typ ``switch``, bezimpedancyjna) z wiązaniem katalogowym `APARAT_NN_RCD`
+    (I_Δn, rodzaj prądu różnicowego, czasy wyłączenia zmaterializowane z katalogu). Trasa BFS
+    pętli zwarcia (`application/analyses/fault_loop/route.py`) widzi RCD jako ostatni aparat
+    przed punktem — to jest RCD „najbliższy uszkodzeniu", który czyta werdykt SWZ TT/IT.
+    """
+    load_ref = payload.get("load_ref")
+    if not isinstance(load_ref, str) or not load_ref.strip():
+        return _error_response(
+            f"Uzupełnij pole {pole('load_ref', 'add_nn_rcd')} — wskaż odbiór nN, którego "
+            "instalację chroni wyłącznik różnicowoprądowy.",
+            "nn.rcd_load_missing",
+        )
+    load_ref = load_ref.strip()
+    odbior = next(
+        (
+            ld
+            for ld in enm.get("loads", [])
+            if isinstance(ld, dict) and ld.get("ref_id") == load_ref
+        ),
+        None,
+    )
+    if odbior is None:
+        return _error_response(
+            "Wskazany odbiór nN nie istnieje w modelu sieci.", "nn.rcd_load_not_found"
+        )
+    bus_ref = str(odbior.get("bus_ref") or "")
+    voltage_kv = _bus_voltage_kv(enm, bus_ref)
+    if voltage_kv is None:
+        return _error_response(
+            f"{opis_nazwy(odbior.get('name'), 'Odbiór')} nie ma szyny w modelu sieci.",
+            "nn.rcd_load_bus_not_found",
+        )
+    if not w_pasmie_nn(voltage_kv):
+        return _error_response(
+            f"Wyłącznik różnicowoprądowy dotyczy instalacji nN ({OPIS_PASMA_NN}); "
+            f"{opis_nazwy(odbior.get('name'), 'odbiór')} jest na szynie {voltage_kv:g} kV.",
+            "nn.rcd_not_nn_band",
+        )
+
+    catalog_ref = _require_catalog_ref(
+        payload_ref=payload.get("catalog_ref"),
+        payload_binding=payload.get("catalog_binding"),
+        opis_pl="Wyłącznik różnicowoprądowy nN",
+        pole_pl=pole("catalog_ref", "add_nn_rcd"),
+    )
+    if isinstance(catalog_ref, dict):
+        return catalog_ref
+    materialization = _materialize_catalog_payload(
+        catalog_ref=catalog_ref,
+        catalog_binding=payload.get("catalog_binding"),
+        default_namespace=_PRZESTRZEN_RCD_NN,
+    )
+    if isinstance(materialization, dict):
+        return _blad_pozycji_katalogu(materialization, "Wyłącznik różnicowoprądowy nN")
+    binding_payload, materialized_params = materialization
+    if binding_payload.get("catalog_namespace", _PRZESTRZEN_RCD_NN) != _PRZESTRZEN_RCD_NN:
+        return _error_response(
+            f"Pole {pole('catalog_ref', 'add_nn_rcd')}: wyłącznik różnicowoprądowy wymaga "
+            f"pozycji z przestrzeni katalogu {_PRZESTRZEN_RCD_NN}.",
+            "nn.rcd_namespace_invalid",
+        )
+
+    seed = _compute_seed({"op": "nn_rcd", "load": load_ref, "ref": catalog_ref})
+    nowa_szyna_ref = _make_id("nn", seed, "rcd_bus")
+    rcd_ref = _make_id("nn", seed, "rcd")
+    nazwa_odbioru = nazwa_nadana(odbior.get("name")) or "odbiór nN"
+
+    new_enm = kopia_graniczna_enm(enm)
+    wynik_szyny = create_node(
+        new_enm,
+        {
+            "ref_id": nowa_szyna_ref,
+            "name": f"Zaciski instalacji: {nazwa_odbioru}",
+            "voltage_kv": voltage_kv,
+            "meta": {"visual_role": "NN_INSTALLATION_TERMINALS"},
+        },
+    )
+    if not wynik_szyny.success:
+        return _error_response(
+            "Nie udało się utworzyć zacisków instalacji odbiorczej: "
+            f"{wynik_szyny.issues[0].message_pl if wynik_szyny.issues else '?'}",
+            "nn.rcd_bus_failed",
+        )
+    new_enm = wynik_szyny.enm
+
+    branch_data: dict[str, Any] = {
+        "ref_id": rcd_ref,
+        "name": nazwa_nadana(payload.get("name")) or f"RCD: {nazwa_odbioru}",
+        "type": "switch",
+        "from_bus_ref": bus_ref,
+        "to_bus_ref": nowa_szyna_ref,
+        "status": "closed",
+        "r_ohm": 0.0,
+        "x_ohm": 0.0,
+        "meta": {"device_role": "RCD", "load_ref": load_ref},
+        "catalog_ref": catalog_ref,
+    }
+    _apply_catalog_metadata(branch_data, binding_payload, default_namespace=_PRZESTRZEN_RCD_NN)
+    branch_data["materialized_params"] = copy.deepcopy(materialized_params) or None
+    wynik_galezi = create_branch(new_enm, branch_data)
+    if not wynik_galezi.success:
+        return _error_response(
+            "Nie udało się utworzyć wyłącznika różnicowoprądowego: "
+            f"{wynik_galezi.issues[0].message_pl if wynik_galezi.issues else '?'}",
+            "nn.rcd_failed",
+        )
+    new_enm = wynik_galezi.enm
+    for ld in new_enm.get("loads", []):
+        if isinstance(ld, dict) and ld.get("ref_id") == load_ref:
+            ld["bus_ref"] = nowa_szyna_ref
+
+    return _response(
+        new_enm,
+        created=[nowa_szyna_ref, rcd_ref],
+        updated=[load_ref],
+        selection_id=rcd_ref,
+        selection_type="branch",
+        events=[
+            {"event_seq": 1, "event_type": "BUS_CREATED", "element_id": nowa_szyna_ref},
+            {"event_seq": 2, "event_type": "NN_RCD_CREATED", "element_id": rcd_ref},
         ],
     )
 
@@ -5477,6 +5625,18 @@ def _materialize_der_block_transformer(
     tr_data["catalog_ref"] = catalog_ref
     _apply_catalog_metadata(tr_data, binding_payload, default_namespace=przestrzen_katalogu)
     _apply_materialized_transformer_fields(tr_data, materialized_params)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: strona wtórna TR blokowego (wyjście falownika,
+    # pasmo nN) to sieć nN — jej tolerancja napięcia (+6 % / +10 %, wiersz nN tabeli 1
+    # IEC 60909-0) wybiera c węzłów tej sieci i c_max we wzorze K_T TEGO transformatora.
+    # Ten sam predykat zapisu co stacja i edycja parametrów; brak = brak deklaracji.
+    tolerancja_nn = spec.get("lv_voltage_tolerance")
+    powod_tolerancji = _powod_odmowy_tolerancji_nn(
+        tolerancja_nn, tr_data.get("ulv_kv"), element_pl="transformator blokowy źródła"
+    )
+    if powod_tolerancji is not None:
+        return None, _error_response(powod_tolerancji, "der.invalid_lv_voltage_tolerance")
+    if tolerancja_nn is not None:
+        tr_data["lv_voltage_tolerance"] = tolerancja_nn
     brak_pol_tr_der = _require_transformer_fields(tr_data)
     if brak_pol_tr_der is not None:
         return None, brak_pol_tr_der
@@ -6401,11 +6561,18 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
                     # na zacisku pola TR, dolna za wyłącznikiem głównym nN) — przynależność
                     # szyn do stacji z jednego źródła (`enm.tor_pola.szyny_stacji`).
                     station_buses = set(szyny_stacji(enm, station_for_auto))
+                    # GPZ-MODEL: transformator zasilający GPZ (110/SN, strona dolna na
+                    # sekcji SN GPZ) jest granicą zasilania sieci, nigdy transformatorem
+                    # blokowym źródła — jedno źródło predykatu z walidatorem (E066).
+                    zasilajace_gpz = transformatory_zasilajace_gpz(enm)
                     station_transformers = [
                         tr
                         for tr in enm.get("transformers", [])
-                        if tr.get("hv_bus_ref") in station_buses
-                        or tr.get("lv_bus_ref") in station_buses
+                        if (
+                            tr.get("hv_bus_ref") in station_buses
+                            or tr.get("lv_bus_ref") in station_buses
+                        )
+                        and tr.get("ref_id") not in zasilajace_gpz
                     ]
                     if len(station_transformers) == 1:
                         blocking_transformer_ref = station_transformers[0].get("ref_id")
@@ -6437,6 +6604,13 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         if transformer is None:
             return _error_response(
                 "Nie znaleziono transformatora blokowego dla źródła przekształtnikowego.",
+                "generator.block_transformer_invalid",
+            )
+        if transformer.get("ref_id") in transformatory_zasilajace_gpz(enm):
+            return _error_response(
+                f"{opis_obiektu(transformer, 'Transformator')} zasila sekcję SN GPZ od strony "
+                "110 kV — jest granicą zasilania sieci, a nie transformatorem blokowym źródła. "
+                "Wskaż transformator blokowy źródła albo przyłącz źródło polem SN.",
                 "generator.block_transformer_invalid",
             )
         if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():
@@ -8158,6 +8332,10 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         True,
         "druga droga wskazania pozycji",
     ),
+    PozycjaBramyKatalogowejV2("add_nn_rcd", "catalog_ref", _PRZESTRZEN_RCD_NN, True),
+    PozycjaBramyKatalogowejV2(
+        "add_nn_rcd", "catalog_binding", _PRZESTRZEN_RCD_NN, True, "druga droga wskazania pozycji"
+    ),
     PozycjaBramyKatalogowejV2(
         "add_nn_section_coupler", "catalog_ref", _PRZESTRZEN_APARATU_POLA_NN, True
     ),
@@ -8257,6 +8435,7 @@ V2_CANONICAL_OPS: frozenset[str] = frozenset(
         "add_nn_cable_segment",
         "add_nn_distribution_board",
         "add_nn_switch_device",
+        "add_nn_rcd",
         "add_nn_section_coupler",
         "split_nn_segment",
         "merge_nn_segments",
@@ -8301,6 +8480,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_nn_cable_segment": add_nn_cable_segment,
     "add_nn_distribution_board": add_nn_distribution_board,
     "add_nn_switch_device": add_nn_switch_device,
+    "add_nn_rcd": add_nn_rcd,
     "add_nn_section_coupler": add_nn_section_coupler,
     "split_nn_segment": split_nn_segment,
     "merge_nn_segments": merge_nn_segments,

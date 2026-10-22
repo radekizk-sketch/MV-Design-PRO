@@ -196,8 +196,13 @@ describe('Check B — KOMPLETNOŚĆ: każda krawędź przewodząca sceny jest (a
       justification: 'zejście z portu symbolu źródła sieciowego (gridSource) do jego bus_ref — Source ENM ma JEDEN bus_ref, nie osobną gałąź do szyny.',
     },
     {
-      match: (r) => r.endsWith('#source-bus-extension'),
-      justification: 'przedłużenie szyny WN pod symbol źródła (rezerwacja miejsca rysunkowego) — compose/gpz.ts, nie odpowiada żadnej gałęzi ENM.',
+      // Karta GPZ-MODEL: obie strony zaczepu źródła — szyna SN sekcji (`#source-bus-extension`,
+      // równoważnik na szynach SN) i szyna WN (`#hv-bus-source-extension`, równoważnik po
+      // stronie 110 kV) — ta sama para sufiksów co produkcyjny predykat szyny przedłużonej
+      // w `scene/buildScene.ts` (predykaty parami). Dawny wpis znał tylko pierwszy sufiks,
+      // a jego uzasadnienie mówiło o szynie WN.
+      match: (r) => r.endsWith('#source-bus-extension') || r.endsWith('#hv-bus-source-extension'),
+      justification: 'przedłużenie szyny pod zaczep symbolu źródła (szyna SN sekcji albo szyna WN — strona z Source.bus_ref; rezerwacja miejsca rysunkowego) — compose/gpz.ts `rysujBlokZrodel`, nie odpowiada żadnej gałęzi ENM.',
     },
     {
       match: (r) => r.includes('#lv-drop-'),

@@ -50,7 +50,8 @@
  * niżej woła `resolveBayApparatusSymbolIds` (`./apparatusSequence`, JEDNA
  * prawda współdzielona z `layout/measure.ts`): gdy `bay.primaryDevices`
  * niesie ≥1 aparat mapowalny na symbol pola, stos budowany Z DANYCH
- * (uporządkowanych już przez adapter wg `placement`); inaczej JEDNA sylwetka
+ * (porządkowanych wg `placement` w `orderedSymbolPrimaryDevices`, niezależnie od producenta
+ * deskryptora); inaczej JEDNA sylwetka
  * „brak danych wyposażenia pola" (GEOMETRIA-STACJI §0 pkt 4 — konwencja roli
  * skasowana, zero aparatu z domysłu). KAŻDA instancja
  * symbolu niesie `apparatusSource` (`'dane' | 'brak'`, spec §12.1
@@ -121,6 +122,7 @@ import {
   planBayApparatus,
   resolveBayApparatusSymbolIds,
   stackFootprint,
+  orderedSymbolPrimaryDevices,
   symbolIdForPrimaryDeviceKind,
   type BayApparatusSource,
 } from './apparatusSequence';
@@ -181,13 +183,14 @@ function stackItemsForBay(
   bay: MiniBlockBayDescriptor,
 ): { readonly items: readonly StackItemSpec[]; readonly source: BayApparatusSource } {
   const { symbolIds, source } = resolveBayApparatusSymbolIds(bay);
-  // Ta sama filtracja co `resolveBayApparatusSymbolIds` (kind→symbol mapowalny, DER-kindy
-  // odfiltrowane, głowica pola rezerwowego usunięta TYM SAMYM predykatem
-  // `czyGlowicaRezerwy`) — rekordy dowiązują się 1:1 do początku sekwencji, za nimi stoją
-  // elementy modelu pola i zakończenie rezerwy.
+  // TA SAMA sekwencja co `resolveBayApparatusSymbolIds` (porządek `placement` + filtr
+  // kind→symbol, `orderedSymbolPrimaryDevices` — niezależnie od kolejności w deskryptorze),
+  // głowica pola rezerwowego usunięta TYM SAMYM predykatem `czyGlowicaRezerwy` — rekordy
+  // dowiązują się 1:1 do początku sekwencji, za nimi stoją elementy modelu pola
+  // i zakończenie rezerwy.
   const devices =
     source === 'dane'
-      ? (bay.primaryDevices ?? []).filter((d) => {
+      ? orderedSymbolPrimaryDevices(bay.primaryDevices).filter((d) => {
           const id = symbolIdForPrimaryDeviceKind(d.kind);
           return id != null && !czyGlowicaRezerwy(id, bay.reserve);
         })

@@ -119,6 +119,8 @@ import ast
 import sys
 from pathlib import Path
 
+from guard_parsowanie import sparsuj_plik, uruchom  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku  # noqa: E402
@@ -613,12 +615,7 @@ def main() -> int:
     # sam skan naruszen (`check_file`) czytaja to samo `drzewa[path]`.
     drzewa: dict[Path, ast.AST] = {}
     for path in pliki:
-        try:
-            drzewa[path] = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        except (OSError, UnicodeDecodeError):
-            continue
-        except SyntaxError as exc:
-            print(f"WARN: {path}:{exc.lineno}: nie da sie sparsowac ({exc.msg})")
+        drzewa[path] = sparsuj_plik(path)
 
     eksporty = zbuduj_eksporty(pliki, drzewa)
 
@@ -675,4 +672,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

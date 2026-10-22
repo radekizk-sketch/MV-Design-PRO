@@ -11,15 +11,6 @@ export const ZRODLO_STRINGS = {
   odznakaNowy: 'Nowy GPZ',
   odznakaEdycja: 'Edycja GPZ',
 
-  // Zakres wariantu.
-  zakresTytul: 'Zakres wariantu GPZ',
-  zakresZrodloSn: 'Źródło SN',
-  zakresWnSn: 'GPZ WN/SN',
-  zakresInfo:
-    'Wariant „Źródło SN": parametry zwarciowe, uziemienie i pola liniowe pochodzą z pakietu '
-    + 'katalogowego GPZ. Pełny układ WN/SN (sekcje 110 kV, transformatory, składowa zerowa) '
-    + 'konfigurujesz w wariancie „GPZ WN/SN".',
-
   // Katalog.
   katalogTytul: 'Źródło danych i katalog',
   katalogPole: 'Typ źródła z katalogu',
@@ -43,6 +34,9 @@ export const ZRODLO_STRINGS = {
   uziemienie: 'Uziemienie punktu neutralnego',
   uziemienieR: 'R uziemienia',
   uziemienieX: 'X cewki',
+  uziemienieZTransformatora: (grupa: string | null): string => (grupa
+    ? `Przy równoważniku sieci 110 kV punkt neutralny sieci SN jest punktem neutralnym uzwojenia SN transformatorów 110/SN (grupa ${grupa}) — opis wynika z grupy połączeń. Sieć SN uziemioną przez transformator uziemiający opisz równoważnikiem na szynach SN z R0/X0.`
+    : 'Przy równoważniku sieci 110 kV punkt neutralny sieci SN wynika z grupy połączeń transformatora 110/SN — wybierz transformator z katalogu.'),
 
   // Parametry zwarciowe.
   zwarcieTytul: 'Parametry zwarciowe na szynach SN',
@@ -80,8 +74,12 @@ export const ZRODLO_STRINGS = {
   normyTytul: 'Parametry normowe',
   norma: 'Norma obliczeniowa',
   czestotliwosc: 'Częstotliwość',
-  cMax: 'Współczynnik napięcia c (maks.)',
-  cMin: 'Współczynnik napięcia c (min.)',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c nie jest parametrem źródła — jedynym nośnikiem jest
+  // tabela 1 IEC 60909-0 per węzeł (pasmo napięcia, tolerancja nN) i scenariusz MAX/MIN
+  // przypadku obliczeniowego. Dawna stała „1,10 / 1,00" była fałszywa dla sieci nN.
+  wspolczynnikC: 'Współczynnik napięcia c',
+  wspolczynnikCPodstawa:
+    'IEC 60909-0 tab. 1 per węzeł — wg pasma napięcia i scenariusza MAX/MIN przypadku obliczeniowego',
 
   // Sekcje (advanced).
   sekcjeTytul: 'Sekcje szyn GPZ',
@@ -167,8 +165,19 @@ export const ZRODLO_STRINGS = {
 
   // Transformatory.
   transformatoryOpis:
-    'Liczba i typ transformatorów 110/SN zasilających szyny GPZ. Parametry (Sn, uk, grupa '
-    + 'połączeń) pochodzą z katalogu — wynik zwarciowy liczy backend.',
+    'Liczba i typ transformatorów 110/SN łączących wspólną szynę 110 kV (na niej równoważnik '
+    + 'sieci) z sekcjami SN — transformator n zasila sekcję n (po kolei, cyklicznie). Parametry '
+    + '(Sn, uk, grupa połączeń) pochodzą z katalogu; rozpływ przez każdy transformator i wkłady '
+    + 'zwarciowe liczy backend dla rzeczywistego stanu sprzęgła.',
+  transformatoryPozaModelem:
+    'Równoważnik sieci podany na szynach SN (z katalogu albo ręcznie po stronie SN) to moc '
+    + 'zwarciowa widziana z szyn SN — zawiera już impedancję transformatorów 110/SN. Granicą '
+    + 'modelu są wtedy szyny SN GPZ: transformatory 110/SN nie są elementami obliczeń i kreator '
+    + 'ich nie tworzy. Równoważnik zasila sekcję 1; kolejne sekcje zasila sprzęgło. Aby '
+    + 'zamodelować transformatory 110/SN (rozpływ przez każdy z nich, wkłady zwarciowe, '
+    + 'regulacja zaczepów), wybierz w kroku „Źródło” ręczny ekwiwalent (ekspercki) po stronie '
+    + '110 kV — transformatory połączą wtedy wspólną szynę 110 kV z sekcjami SN.',
+  transformatoryPozaModelemKrotko: 'W równoważniku SN (poza modelem)',
   transformatorKatalog: 'Typ transformatora 110/SN z katalogu',
   transformatorPlaceholder: '— transformator domyślny (dobór automatyczny) —',
   transformatorBlad: 'Nie udało się pobrać katalogu transformatorów.',

@@ -22,6 +22,7 @@ from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState
+from network_model.odmowa_danych import OdmowaNazwana
 
 # =============================================================================
 # Helper functions for creating test objects
@@ -137,9 +138,15 @@ class TestAddNodeSlackConstraint:
         assert graph.get_slack_node_ids() == ["SLACK1", "SLACK2"]
 
         # Wybór JEDNEJ szyny bilansującej z dwóch jest niejednoznaczny — jawna odmowa
-        # z instrukcją (a nie ciche wzięcie pierwszej).
-        with pytest.raises(ValueError, match="SLACK1, SLACK2"):
+        # z instrukcją (a nie ciche wzięcie pierwszej). Partia integracji 10: zdanie nazywa
+        # węzły nazwami z modelu, identyfikatory są w polu `dane` odmowy, nigdy w treści.
+        with pytest.raises(OdmowaNazwana) as odmowa:
             graph.get_slack_node()
+        tresc = str(odmowa.value)
+        assert "„GPZ Główny”" in tresc and "„GPZ Zapasowy”" in tresc
+        assert "SLACK1" not in tresc and "SLACK2" not in tresc
+        assert odmowa.value.kod == "graf.wiele_wezlow_bilansujacych"
+        assert odmowa.value.dane["wezly_ref"] == ("SLACK1", "SLACK2")
 
     def test_add_multiple_pq_nodes_allowed(self):
         """Dodanie wielu węzłów PQ powinno się powieść."""
@@ -167,8 +174,12 @@ class TestAddNodeSlackConstraint:
 
         graph.add_node(pq1)
 
-        with pytest.raises(ValueError, match="już istnieje"):
+        # Partia integracji 10: nazwa z modelu w treści, identyfikator wyłącznie w `dane`.
+        with pytest.raises(OdmowaNazwana, match="Węzeł „Inny węzeł” występuje w grafie") as odm:
             graph.add_node(pq2)
+        assert odm.value.kod == "graf.element_powtorzony"
+        assert odm.value.dane == {"element_ref": "A"}
+        assert "'A'" not in str(odm.value)
 
 
 # =============================================================================
@@ -193,7 +204,7 @@ class TestAddBranchNodeExistence:
         # Próba dodania gałęzi do nieistniejącego węzła B
         branch = create_line_branch("AB", "A", "B")
 
-        with pytest.raises(ValueError, match="nie istnieje"):
+        with pytest.raises(OdmowaNazwana, match="nie należy do grafu sieci"):
             graph.add_branch(branch)
 
         # Sprawdź, że gałąź nie została dodana
@@ -208,8 +219,11 @@ class TestAddBranchNodeExistence:
 
         branch = create_line_branch("AB", "A", "B")
 
-        with pytest.raises(ValueError, match="'A'.*nie istnieje"):
+        with pytest.raises(OdmowaNazwana, match="węzeł początkowy nie należy") as odm:
             graph.add_branch(branch)
+        assert odm.value.kod == "graf.wezel_spoza_grafu"
+        assert odm.value.dane == {"element_ref": "AB", "wezel_ref": "A"}
+        assert str(odm.value).startswith("Gałąź „Line Branch”")
 
     def test_add_branch_to_node_not_exists(self):
         """Gałąź z nieistniejącym węzłem końcowym rzuca ValueError."""
@@ -220,8 +234,9 @@ class TestAddBranchNodeExistence:
 
         branch = create_line_branch("AB", "A", "B")
 
-        with pytest.raises(ValueError, match="'B'.*nie istnieje"):
+        with pytest.raises(OdmowaNazwana, match="węzeł końcowy nie należy") as odm:
             graph.add_branch(branch)
+        assert odm.value.dane == {"element_ref": "AB", "wezel_ref": "B"}
 
     def test_add_branch_self_loop_raises(self):
         """Gałąź łącząca węzeł sam ze sobą rzuca ValueError."""
@@ -576,8 +591,10 @@ class TestRemoveOperations:
         """Usunięcie nieistniejącego węzła rzuca ValueError."""
         graph = NetworkGraph()
 
-        with pytest.raises(ValueError, match="nie istnieje"):
+        with pytest.raises(OdmowaNazwana, match="nie ma w grafie sieci") as odm:
             graph.remove_node("NONEXISTENT")
+        assert odm.value.dane == {"wezel_ref": "NONEXISTENT"}
+        assert "NONEXISTENT" not in str(odm.value)
 
     def test_remove_nonexistent_branch_raises(self):
         """Usunięcie nieistniejącej gałęzi rzuca ValueError."""
@@ -615,7 +632,7 @@ class TestGetSlackNode:
         pq = create_pq_node("PQ1")
         graph.add_node(pq)
 
-        with pytest.raises(ValueError, match="Brak węzła SLACK"):
+        with pytest.raises(OdmowaNazwana, match="nie ma węzła bilansującego"):
             graph.get_slack_node()
 
 

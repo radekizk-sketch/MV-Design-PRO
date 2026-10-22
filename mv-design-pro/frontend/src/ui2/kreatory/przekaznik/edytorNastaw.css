@@ -109,3 +109,22 @@
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+/* Obwód wtórny przekładnika (karta CT-JEDEN-WERDYKT) — sekcja w ramie stopnia. */
+.mvd-edytor-nastaw-legenda {
+  padding: 0 4px;
+  font: 600 10.5px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--mvd-muted);
+}
+
+.mvd-edytor-nastaw-usun {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 4px 12px;
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}

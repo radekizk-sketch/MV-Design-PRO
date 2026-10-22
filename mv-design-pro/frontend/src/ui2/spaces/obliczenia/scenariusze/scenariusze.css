@@ -153,3 +153,11 @@
   font-size: 12.5px;
   color: var(--mvd-ok);
 }
+
+/* Karta TB-WARTOSC-ROBOCZA: edycja t_b scenariusza w wierszu listy. */
+.mvd-scen-tb-edycja {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px;
+}

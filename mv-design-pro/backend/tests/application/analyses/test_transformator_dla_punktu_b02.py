@@ -114,10 +114,10 @@ class TestIk1MinDoboruAparatu:
     @pytest.mark.parametrize("sprzeglo", ["open", "closed"])
     def test_ik1_min_liczone_od_tr2(self, sprzeglo: str) -> None:
         enm = _stacja(sprzeglo)
-        ik, u0, missing, reason, kod_odmowy = _ik1_min_i_u0(enm, REF_STACJA, PUNKT_B)
-        assert (missing, reason, kod_odmowy) == ([], None, None)
-        assert ik is not None and u0 is not None
-        assert ik == pytest.approx(_ik_min_od(enm, "tr2"))
+        obwod = _ik1_min_i_u0(enm, REF_STACJA, PUNKT_B)
+        assert (obwod.missing_data, obwod.reason_pl, obwod.kod_odmowy) == ([], None, None)
+        assert obwod.ik1_min_a is not None and obwod.u0_v is not None
+        assert obwod.ik1_min_a == pytest.approx(_ik_min_od(enm, "tr2"))
 
 
 class TestPakietDowodowyObwodu:
@@ -213,9 +213,14 @@ class TestOdcietaPodszynaNieUniewaznaStacji:
     def test_punkt_na_odcietej_podszynie_to_brak_trasy_nie_osobliwosc(self) -> None:
         enm = zbuduj_stacje_nn(transformatory=2, sprzeglo="open", wyspa_odcieta=True)
         assert build_fault_loop_view_at_point(enm, REF_STACJA, "wyspa")["missing_data"] == ["route"]
-        ik, u0, missing, reason, kod_odmowy = _ik1_min_i_u0(enm, REF_STACJA, "wyspa")
-        assert (ik, u0, missing, kod_odmowy) == (None, None, ["route"], None)
-        assert reason
+        obwod = _ik1_min_i_u0(enm, REF_STACJA, "wyspa")
+        assert (obwod.ik1_min_a, obwod.u0_v, obwod.missing_data, obwod.kod_odmowy) == (
+            None,
+            None,
+            ["route"],
+            None,
+        )
+        assert obwod.reason_pl
 
 
 class TestSekcjaRaportu:

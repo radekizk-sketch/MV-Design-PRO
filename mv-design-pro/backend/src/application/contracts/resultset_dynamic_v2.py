@@ -387,6 +387,12 @@ def zbuduj_resultset_dynamiczny_v2(
     wolajacy scala oba zrodla przed wywolaniem tej funkcji z `z_probkami=True`).
     """
     surowy = wynik.model_dump(mode="json")
+    # Pole addytywne karty AB-1b.3b (rekordy założeń rdzenia) wychodzi WYŁĄCZNIE niepuste
+    # (wzorzec `exclude_none`): ładunek biegu bez założeń rdzenia ma bajty sprzed karty —
+    # kontrakt FROZEN bez podbicia wersji (decyzja B-01 partii integracji 9). Odczyt
+    # zapisanego ładunku bez klucza daje wartość domyślną modelu (pusta krotka).
+    if not surowy["zalozenia_rdzenia"]:
+        del surowy["zalozenia_rdzenia"]
     if not z_probkami:
         surowy["os_czasu_s"] = []
         surowy["strona_probki"] = []

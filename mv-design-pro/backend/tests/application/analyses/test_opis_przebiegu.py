@@ -39,10 +39,12 @@ def test_kazdy_rodzaj_przebiegu_kanonicznego_ma_polska_nazwe_i_odwrotnie() -> No
 
 
 def test_kazdy_stan_przebiegu_kanonicznego_ma_polska_nazwe() -> None:
-    """Stany przebiegu (`run.status`/`status=` w module przebiegów; `validation.status`
+    """Stany przebiegu (`run.status`/`status=` w module przebiegów; `validation.status`/`walidacja.status`
     to inny słownik — walidacja, nie przebieg) mają polską nazwę."""
     tekst = KANONICZNY.read_text(encoding="utf-8")
-    stany = set(re.findall(r'(?<!validation)\.status\s*(?:==|!=|=)\s*"([A-Z_]+)"', tekst))
+    stany = set(
+        re.findall(r'(?<!validation)(?<!walidacja)\.status\s*(?:==|!=|=)\s*"([A-Z_]+)"', tekst)
+    )
     stany |= set(re.findall(r'\bstatus="([A-Z_]+)"', tekst))
     assert stany, "brak stanów w module przebiegów"
     assert stany <= set(STANY_PRZEBIEGU_PL), sorted(stany - set(STANY_PRZEBIEGU_PL))

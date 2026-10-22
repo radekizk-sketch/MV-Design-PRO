@@ -228,6 +228,15 @@ def _swz_feeder_rows(
     for feeder in feeders:
         breaker_ref = str(feeder.get("feeder_root_branch_ref", ""))
         worst_bus_ref = feeder.get("worst_point_bus_ref")
+        if not worst_bus_ref:
+            # Odpływ bez policzalnego najgorszego punktu (każdy punkt odmówił — np. TT bez RCD,
+            # karta W5-E-TTIT): werdykt liczony dla punktu NAJDALSZEGO topologicznie, żeby
+            # odpowiedź niosła KOD odmowy nazwanej tego punktu, a nie ogólnik.
+            punkty = [p for p in feeder.get("points", []) if isinstance(p, dict)]
+            if punkty:
+                # `hop_count` jest polem obowiązkowym punktu (`LvPointResult`) — bez zapasu.
+                najdalszy = max(punkty, key=lambda p: (int(p["hop_count"]), str(p["bus_ref"])))
+                worst_bus_ref = najdalszy.get("bus_ref")
         if worst_bus_ref:
             swz = build_swz_view(
                 enm,
@@ -294,6 +303,7 @@ def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
     missing_data: list[str] = []
     statuses: list[str] = []
     reason_pl: str | None = None
+    kod_odmowy: str | None = None
     network_system: str | None = None
     for trafo in transformers:
         view = build_feeder_fault_loop_view_for_transformer(enm, station_ref, trafo.ref_id)
@@ -302,6 +312,8 @@ def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
         network_system = view.get("network_system")
         if reason_pl is None and view.get("reason_pl"):
             reason_pl = str(view["reason_pl"])
+        if kod_odmowy is None and view.get("kod_odmowy"):
+            kod_odmowy = str(view["kod_odmowy"])
         missing_data.extend(f"{trafo.ref_id}:{item}" for item in view.get("missing_data", []))
         rows.append(
             {
@@ -309,6 +321,10 @@ def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
                 "nn_bus_ref": trafo.lv_bus_ref,
                 "status": status,
                 "missing_data": [str(item) for item in view.get("missing_data", [])],
+                # Karta W5-E-TTIT: kod odmowy nazwanej transformatora (dane TT/IT, pasmo) —
+                # dotąd gubiony w wierszu (agent-inwentarz 2026-09-30).
+                "kod_odmowy": view.get("kod_odmowy"),
+                "reason_pl": view.get("reason_pl"),
                 "feeders": _swz_feeder_rows(
                     enm, station_ref, trafo.ref_id, list(view.get("feeders", []))
                 ),
@@ -325,6 +341,7 @@ def _swz_snapshot(enm: EnergyNetworkModel, station_ref: str) -> dict[str, Any]:
     return {
         "status": status,
         "reason_pl": reason_pl,
+        "kod_odmowy": kod_odmowy,
         "missing_data": sorted(set(missing_data)),
         "network_system": network_system,
         "transformers": rows,

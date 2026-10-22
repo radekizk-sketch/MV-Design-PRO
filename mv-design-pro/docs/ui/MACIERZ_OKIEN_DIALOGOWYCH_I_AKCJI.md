@@ -8,7 +8,7 @@
 | Warstwa           | Prezentacja (Dialogi UI) -> Domena (Operacje)    |
 | Jezyk             | Polski (bez anglicyzmow w naglowkach/etykietach) |
 
-> **REGULA**: Ten dokument definiuje kompletna matryca 17 okien dialogowych (A--Q)
+> **REGULA**: Ten dokument definiuje kompletna matryca 18 okien dialogowych (A--R)
 > systemu MV-DESIGN-PRO. Kazdy dialog jest jednoznacznie powiazany z operacja domenowa
 > z `ENM_OP_CONTRACTS_CANONICAL_FULL.md`. Zadne okno dialogowe nie moze istniec
 > bez odpowiadajacej mu operacji domenowej.
@@ -18,7 +18,7 @@
 ## Spis tresci
 
 1. [Matryca obiekt -- akcja -- dialog](#1-matryca-obiekt--akcja--dialog)
-2. [Szczegolowy opis 17 dialogow (A--Q)](#2-szczegolowy-opis-17-dialogow)
+2. [Szczegolowy opis 18 dialogow (A--R)](#2-szczegolowy-opis-18-dialogow)
 3. [Standardowy uklad dialogu](#3-standardowy-uklad-dialogu)
 4. [Regula: zatwierdzenie = operacja domenowa](#4-regula-zatwierdzenie--operacja-domenowa)
 5. [Referencje](#5-referencje)
@@ -48,10 +48,11 @@
 | Szyna nN                         | "Dodaj UPS"                     | **O**        | Dodaj UPS                    | `add_ups_nn`                    | (brak BLOCKER-ow przy kompletnych danych)               |
 | Pole rozdzielcze SN/nN           | "Dodaj przekladnik"             | **P**        | Dodaj CT/VT                  | `add_ct` / `add_vt`            | `protection.ct_missing` -> usuniecie                    |
 | Pole rozdzielcze SN/nN           | "Dodaj przekaznik"              | **Q**        | Dodaj przekaznik             | `add_relay`                     | `protection.relay_missing` -> usuniecie                 |
+| Stacja / strona nN / odbior nN   | "Dodaj wylacznik roznicowopradowy nN" | **R** | Dodaj wylacznik roznicowopradowy nN | `add_nn_rcd`         | `nn.brak_rcd` -> usuniecie (uklad TT)                   |
 
 ---
 
-## 2. Szczegolowy opis 17 dialogow
+## 2. Szczegolowy opis 18 dialogow
 
 ### Dialog A: Dodaj zrodlo GPZ
 
@@ -565,9 +566,40 @@ Pola dynamiczne -- zaleznie od typu elementu:
 
 ---
 
+### Dialog R: Dodaj wylacznik roznicowopradowy nN
+
+| Pole                          | Opis                                          |
+|-------------------------------|-----------------------------------------------|
+| **Identyfikator dialogu**     | R                                             |
+| **Nazwa dialogu (PL)**       | Dodaj wylacznik roznicowopradowy nN            |
+| **Operacja kanoniczna**       | `add_nn_rcd`                                   |
+| **Komponent**                 | `ui2/kreatory/rcd-nn/KreatorRcdNn.tsx`         |
+| **Wyzwalacz**                 | Menu stacji na SLD: "Dodaj wylacznik roznicowopradowy nN"; karta rozdzielnicy nN stacji; panel procesu (sekcja odbiorow nN); akcja naprawcza kodu `nn.brak_rcd` |
+
+Cel inzynierski: w ukladzie TT ochrone przez samoczynne wylaczenie zasilania realizuje
+wylacznik roznicowopradowy (IEC 60364-4-41 §411.5). Operacja wstawia RCD jako aparat w torze
+(galaz `switch` z wiazaniem katalogowym `APARAT_NN_RCD`) miedzy dotychczasowa szyna odbioru
+a nowymi zaciskami instalacji, na ktore przenosi odbior. Ocena SWZ ukladu TT czyta RCD
+najblizszy punktowi obwodu; bez RCD analiza odmawia kodem `nn.brak_rcd`.
+
+#### Pola formularza
+
+| Pole                | Typ        | Jednostka | Wymagane | Walidacja                                   | Opis                              |
+|---------------------|------------|-----------|----------|---------------------------------------------|-----------------------------------|
+| Odbior nN           | wybor      | --        | TAK      | odbior na szynie w pasmie nN (`load_ref`)   | Instalacja chroniona wylacznikiem |
+| Typ z katalogu      | wybor      | --        | TAK      | pozycja `APARAT_NN_RCD` (`catalog_ref`)     | Etykieta: nazwa · I_Δn [mA] · typ · In |
+| Nazwa wylacznika    | tekst      | --        | NIE      | pominieta = nazwa nadana przez backend      | `name`                            |
+
+Parametry typu (tylko odczyt rekordu `GET /api/catalog/lv-rcd-types`): I_Δn, rodzaj pradu
+roznicowego (AC / A / F / B), selektywnosc (typ S), czasy wylaczenia t_a przy I_Δn, 2·I_Δn,
+5·I_Δn, minimalny czas niezadzialania (typ S), In, Un, podstawa danych. Payload:
+`{ load_ref, catalog_ref, name? }`.
+
+---
+
 ## 3. Standardowy uklad dialogu
 
-Kazdy dialog (A--Q) stosuje jednolity uklad sekcji:
+Kazdy dialog (A--R) stosuje jednolity uklad sekcji:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -658,6 +690,7 @@ Kazde klikniecie przycisku "Zatwierdz" w dialogu:
 | Data       | Wersja | Opis                                                       |
 |------------|--------|-------------------------------------------------------------|
 | 2026-02-17 | 1.0    | Utworzenie dokumentu -- kompletna matryca 17 dialogow A--Q   |
+| 2026-10-15 | 1.1    | Dialog R: wylacznik roznicowopradowy nN (`add_nn_rcd`, karta W5-E-TTIT) |
 
 ---
 

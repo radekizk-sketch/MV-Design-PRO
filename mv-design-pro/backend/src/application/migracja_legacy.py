@@ -156,7 +156,8 @@ def graf_z_modelu_legacy(
                     )
                     continue
                 raise OdmowaMigracji(
-                    f"{element}: typ katalogowy '{type_ref}' nie występuje w katalogu statycznym"
+                    f"{element}: typ katalogowy wskazany w modelu zastanym nie występuje "
+                    "w katalogu statycznym"
                 )
             if rodzaj == "cable":
                 raise OdmowaMigracji(
@@ -199,8 +200,8 @@ def graf_z_modelu_legacy(
             if type_ref:
                 if type_ref not in katalog.transformer_types:
                     raise OdmowaMigracji(
-                        f"{element}: typ katalogowy '{type_ref}' nie występuje w katalogu "
-                        "transformatorów"
+                        f"{element}: typ katalogowy wskazany w modelu zastanym nie występuje "
+                        "w katalogu transformatorów"
                     )
                 transformatory.append(
                     TransformatorSpec(identyfikator, od, do, str(type_ref), name=nazwa_galezi)
@@ -250,7 +251,7 @@ def graf_z_modelu_legacy(
             )
         wezel_id = str(zrodlo["node_id"])
         if wezel_id not in napiecia:
-            raise OdmowaMigracji(f"{element}: węzeł '{wezel_id}' nie istnieje w modelu zastanym")
+            raise OdmowaMigracji(f"{element}: węzeł przyłączenia nie istnieje w modelu zastanym")
         if payload.get("sk3_mva") is None and payload.get("ik3_ka") is None:
             raise OdmowaMigracji(f"{element}: brak mocy zwarciowej Sk'' i prądu Ik''")
         rekordy_zrodel.append(
@@ -280,7 +281,7 @@ def graf_z_modelu_legacy(
         element = f"odbiór '{nazwa_odbioru}'"
         wezel_id = str(odbior["node_id"])
         if wezel_id not in napiecia:
-            raise OdmowaMigracji(f"{element}: węzeł '{wezel_id}' nie istnieje w modelu zastanym")
+            raise OdmowaMigracji(f"{element}: węzeł przyłączenia nie istnieje w modelu zastanym")
         rekordy_odbiorow.append(
             OdbiorSpec(
                 lit=wezel_id,

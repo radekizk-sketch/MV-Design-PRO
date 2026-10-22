@@ -2165,7 +2165,18 @@ export function composeGpz(
     const left = candidatesX.length > 0 ? snapToGrid(Math.min(...candidatesX) - SECTION_MARGIN) : originX;
     const right = candidatesX.length > 0 ? snapToGrid(Math.max(...candidatesX) + SECTION_MARGIN) : originX + 4 * GRID;
     const busLeft = left;
-    const busRight = right;
+    // Karta GPZ-MODEL: etykieta szyny WN stoi nad LEWYM końcem szyny, wyśrodkowana na
+    // nim (`placement: 'above'`), a blok źródła zaczepia się przy PRAWYM końcu — ta sama
+    // arytmetyka co pasmo sekcji SN (`layoutSections`: etykieta → treść → blok źródła).
+    // GPZ z jednym transformatorem ma szynę WN krótszą niż połowa etykiety, więc bez tej
+    // rezerwy symbol źródła wchodził na „Szyna WN · 110 kV" i silnik etykiet ją usuwał
+    // (dawniej źródło stało na szynach SN obok transformatora bez zasilania i kolizja
+    // nie występowała). Szyna sięga co najmniej prawego końca etykiety + GRID.
+    const hvBusLabelText = hvBusVoltageKv != null ? `Szyna WN · ${liczbaRysunkuPl(hvBusVoltageKv)} kV` : null;
+    const busRight =
+      hvBusLabelText != null
+        ? Math.max(right, busLeft + snapUp(Math.ceil(measureLabelWidth(hvBusLabelText, 't2') / 2)) + GRID)
+        : right;
     hvBusRightEdge = busRight;
     hvSourceAttach = { rightX: busRight };
 
@@ -2186,14 +2197,14 @@ export function composeGpz(
     // jest napięciem szyny ŹRÓDŁA i dla ekwiwalentu SN niosłoby 15 kV na
     // etykiecie szyny WN) albo `hvSections[0].busVoltageKv` (ścieżka
     // `gpz_hv_sections` niepuste) — gdy żadne nieobecne, brak etykiety.
-    if (hvBusVoltageKv != null) {
+    if (hvBusLabelText != null) {
       sectionLabels.push({
         ownerRef: `${props.id}#hv-bus-label`,
         ownerKind: 'busbar-voltage',
         // F13.1 (przejęcie nadzorcy): forma zamknięta „Szyna WN · V kV" —
         // spójna z `BUSBAR_LABEL_TEXT_PATTERN` (buildScene.ts, §19.2+§21.1);
         // samo „110 kV" łamało wzorzec (malformed-text w busbar_label_probe).
-        text: `Szyna WN · ${liczbaRysunkuPl(hvBusVoltageKv)} kV`,
+        text: hvBusLabelText,
         labelClass: 't2',
         anchor: { x: busLeft, y: hvBusY },
         placement: 'above',

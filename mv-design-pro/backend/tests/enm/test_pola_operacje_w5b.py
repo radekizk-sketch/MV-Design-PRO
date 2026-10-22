@@ -679,7 +679,6 @@ def _gpz_04kv() -> dict[str, Any]:
                 "sn_voltage_kv": 0.4,
                 "sk3_mva": 5.0,
                 "rx_ratio": 0.1,
-                "skip_hv_transformer": True,
             },
             "line_fields_count": 2,
             "source_name": "LV MAIN",

@@ -882,8 +882,46 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # na łączniku (`normal_state="open"`), magistrala nie niesie kopii `no_point_ref`
     # (haszowanej dotąd wartością, teraz jak `null`), ciąg nie niesie `nop_station_ref`.
     # Położenie łącznika (`status="open"`), enumeracja, dotkliwości i ranking bez zmian.
-    "gn01_promieniowa": "1d65e0b8fe7765283f5cb7d969cc718977ad100771447dc50a824898c59dcea3",
-    "gn03_pierscien": "5ac3a5897eccd155822f81b2c292933216ab5783a48729001f11d6d0e476436f",
+    # 2026-10-16 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): gn01 5306b64d… → 99081f49…, gn03
+    # 2cacc16c… → e77ef288…. Pełne widoki z kodu bazy `bd3a87f4` (odtwarzają dokładnie
+    # poprzednie piny) i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacje
+    # sieci referencyjnych deklarują tolerancję napięcia sieci nN
+    # (`Transformer.lv_voltage_tolerance` = PLUS_6). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne. Następnie gn01 99081f49… → 881afd52…: stacja „Stacja B1
+    # Referencyjna" deklaruje tolerancję kanałem operacji (`nn_earthing.lv_voltage_tolerance`
+    # = PLUS_6); widok z budowniczym bez tej deklaracji odtwarza 99081f49…, a porównanie
+    # liść po liściu daje WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # 2026-10-22 (scalenie gałęzi programu, partie 9–13, z gałęzią UI/UX — W5-B, W5-C):
+    # gn01 → 35f9706f…, gn03 → 81a508db…. Pełne widoki z kodu obu rodziców scalenia
+    # (odtwarzają dokładnie swoje piny: UI/UX 1d65e0b8…/5ac3a589…, program 881afd52…/e77ef288…)
+    # i z drzewa scalonego porównane liść po liściu: IDENTYCZNY zbiór kluczy, względem KAŻDEGO
+    # rodzica różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash` w obu sieciach.
+    # Różnica modelu wejściowego: złożenie pól w `bays` i stanu normalnego łącznika
+    # (`normal_state`, UI/UX) z tolerancją napięcia sieci nN stacji (program). Enumeracja,
+    # dotkliwości i ranking identyczne.
+    # 2026-10-21 (karta GPZ-MODEL, na bazie W5-C): gn01 1d65e0b8… → e8fb5ebe…, gn03
+    # 5ac3a589… → fc0f32f2…. Pełne widoki z kodu bazy karty (`f7235700e`) i po karcie
+    # porównane liść po liściu. Przyczyna: obie sieci podają równoważnik sieci NA SZYNACH SN
+    # (katalog źródła 15 kV), a dawny ładunek dokładał do niego wiszący transformator
+    # 110/15 kV z szyną 110 kV BEZ zasilania po stronie 110 kV; karta zakazuje tego
+    # połączenia (transformatory 110/SN są poza modelem w tym trybie). Skutek w widoku: znika
+    # kontyngencja fikcyjna „TR1 110/15 kV" (podsumowanie 6 → 5 kontyngencji, wszystkie
+    # rozstrzygnięte), a w śladzie pozostałych `transformatory_baza`/`transformatory_wariant`
+    # i `szyny_zasilane` maleją o ten transformator i jego szynę 110 kV (gn01 „Odcinek 1":
+    # `iteracje` NR 1 → 0, bo wyspa bilansująca to sama szyna SN). Dotkliwości,
+    # przeciążenia, naruszenia napięcia, odbiory bez zasilania, przypadek bazowy i ranking
+    # pozostałych kontyngencji — identyczne.
+    # 2026-10-22 (nałożenie GPZ-MODEL `73e56f4ad` na drzewo scalone programu): gn01 →
+    # a4b8be67…, gn03 → 959e81d3…. Pełne widoki z kodu czterech drzew (baza `f7235700e`,
+    # program `182d7df30`, GPZ-MODEL `73e56f4ad`, drzewo scalone; każde z trzech pierwszych
+    # odtwarza dokładnie swój pin) porównane liść po liściu: w gn01 403 liście zmienione
+    # przez GPZ-MODEL mają na drzewie scalonym wartość GPZ-MODEL, 159 bez zmian; w gn03
+    # odpowiednio 213 i 199. Jedyne liście różne od obu stron to `context.snapshot_hash`
+    # i `input_hash` (model wejściowy składa topologię GPZ-MODEL z polami addytywnymi
+    # programu). Wynik kontyngencji = wynik GPZ-MODEL.
+    "gn01_promieniowa": "a4b8be670ea780e84ab06ec2ef4a88bcce48dac07aec7e2ea64a04b2c6461261",
+    "gn03_pierscien": "959e81d39106f80572c9ca9b9270f11b5c005ebb93f1ae16059973653ac39433",
 }
 
 

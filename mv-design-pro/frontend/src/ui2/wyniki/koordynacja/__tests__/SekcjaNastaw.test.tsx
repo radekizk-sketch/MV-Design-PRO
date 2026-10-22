@@ -135,8 +135,9 @@ const WYNIK_NASTAW = {
   },
   wejscie: {
     kotwica_run_id: 'run-sc-max',
-    c_max: 1.1,
-    c_min: 1.0,
+    scenariusz_kotwicy: 'MAX',
+    c_kotwicy: { tryb: 'auto_per_wezel', wartosc: null, uzasadnienie: null },
+    c_wariantu_min: 'IEC 60909-0 tab. 1, scenariusz MIN (per węzeł)',
     line_id: 'ln1',
     next_bus_id: 'b_b',
     zacisk_zabezpieczenia: 'od',
@@ -224,7 +225,7 @@ afterEach(() => {
 });
 
 describe('SekcjaNastaw — brak kotwicy', () => {
-  it('zero SC_3F DONE runs: stan zerowy z akcją "Uruchom zwarcie 3F (c_max)"', async () => {
+  it('zero SC_3F DONE runs: stan zerowy z akcją "Uruchom zwarcie 3F (scenariusz MAX)"', async () => {
     ustawKontekst();
     mockDomyslny();
     render(<SekcjaNastaw caseId="case-1" />);
@@ -353,7 +354,17 @@ describe('SekcjaNastaw — wynik', () => {
     const url = new URL(String(wywolanie?.[0]), 'http://localhost');
     expect(url.searchParams.get('linia')).toBe('ln1');
     expect(url.searchParams.get('nastepna_szyna')).toBe('b_b');
-    expect(url.searchParams.get('c_min')).toBe('1');
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: zapytanie nie niesie fantomowego `c_min`
+    // (backend go nie przyjmuje) — wariant minimalny to scenariusz MIN per węzeł.
+    expect(url.searchParams.has('c_min')).toBe(false);
+    expect(screen.queryByTestId('mvd-koordynacja-nastawy-param-c-min')).toBeNull();
+    // Podstawa c nastaw z proweniencji backendu — widoczna przy wyniku.
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-podstawa-c-kotwica').textContent).toBe(
+      'scenariusz MAX, c: IEC 60909-0 tab. 1 per węzeł',
+    );
+    expect(screen.getByTestId('mvd-koordynacja-nastawy-podstawa-c-min').textContent).toBe(
+      'IEC 60909-0 tab. 1, scenariusz MIN (per węzeł)',
+    );
     expect(url.searchParams.get('zacisk_zabezpieczenia')).toBe('od');
     // Miejsce zabezpieczenia w wyniku — etykieta z backendu i źródło.
     expect(screen.getByTestId('mvd-koordynacja-nastawy-wynik-zacisk').textContent).toContain(

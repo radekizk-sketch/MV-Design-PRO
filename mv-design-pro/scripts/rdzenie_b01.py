@@ -12,9 +12,11 @@ w 35 plikach) z uzasadnieniem „B-01", którego lista właściciela nie daje.
 Kontrakty wyników (reguła 6 CLAUDE.md: `ShortCircuitResult`, `PowerFlowResult`) obowiązują
 niezależnie od tej listy: zmiana wyłącznie addytywna albo z podbiciem wersji.
 
-Podzbiór pilnowany odciskiem SHA-256: `solver_diff_guard.PROTECTED_FILES`. Samotest
-`test_rdzenie_b01.py` przypina, że jest on podzbiorem tej listy, że każdy wpis wskazuje
-istniejący plik albo katalog i że dokumenty wskazujące granicę B-01 odsyłają do tego pliku.
+Odcisk SHA-256 (`solver_diff_guard.PROTECTED_FILES`) obejmuje CAŁĄ listę — od decyzji B-01
+partii integracji 9 jest jej rozwinięciem (wpis-katalog = każdy plik w nim), nie ręcznym
+podzbiorem. Samotest `test_rdzenie_b01.py` przypina, że odcisk nie wychodzi poza listę, że
+każdy wpis wskazuje istniejący plik albo katalog i że dokumenty wskazujące granicę B-01
+odsyłają do tego pliku; `test_solver_diff_guard.py` — że odcisk jest rozwinięciem listy.
 """
 
 from __future__ import annotations
@@ -23,6 +25,15 @@ from __future__ import annotations
 #: Wpis „Stabilność RMS" (`network_model/solvers/stability_rms/`) zdjęty razem z kasacją
 #: solvera — decyzja B-01 z 2026-09-30 (delegacja właściciela, O-59), pozycja (i) planu A/B
 #: §12.2; nawrót ścieżki pilnuje `legacy_public_path_guard.check_abp1_dynamika_resurrection`.
+#: Grupa „IEC 60909" zmieniona decyzją B-01 pozycja (n) planu A/B (delegacja właściciela O-59,
+#: odbiór przez sesję główną z niezależną weryfikacją; karta SC-IB-ITH-ZRODLA): I_b jako
+#: symetryczny prąd wyłączeniowy IEC 60909-0:2016 rozdz. 9 (μ·q z `machine_sc_iec60909`),
+#: addytywna składowa nieokresowa i_DC(t_b) (rozdz. 10), jedno źródło I_th (n = 1) także dla
+#: toru dowodowego SC1
+#: (`short_circuit_asymmetrical_quantities.py`, chroniony w `solver_boundary_guard`). Karta
+#: TB-WARTOSC-ROBOCZA (ta sama pozycja (n)): t_b rozstrzygany PER PUNKT ZWARCIA (scenariusz
+#: projektanta > pola lokalne > wartość robocza z pochodzeniem), brak t_b nie blokuje. Sankcje:
+#: `solver_boundary_guard.SANCTIONED_CHANGES`; odcisk: `guard_references/solver_hashes.json`.
 RDZENIE_B01: dict[str, tuple[str, ...]] = {
     "IEC 60909 (3F/2F/1F, MAX/MIN, wkłady)": (
         "network_model/solvers/short_circuit_iec60909.py",

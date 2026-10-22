@@ -150,6 +150,9 @@ const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
   add_nn_cable_segment: 'Wybierz typ kabla nN z katalogu przed utworzeniem odcinka.',
   add_nn_switch_device: 'Wybierz aparat nN z katalogu przed dodaniem go do toru.',
   add_nn_section_coupler: 'Wybierz aparat nN (sprzęgło) z katalogu przed dodaniem sekcji.',
+  // W5-E-TTIT: wyłącznik różnicowoprądowy — brama backendu (`domain_ops_policy.py`,
+  // przestrzeń APARAT_NN_RCD) wymaga `catalog_ref` ALBO `catalog_binding`, jak aparat nN.
+  add_nn_rcd: 'Wybierz wyłącznik różnicowoprądowy z katalogu przed dodaniem go do instalacji odbioru.',
   // Karta D4 — rekonsyliacja rozjazdu `ROZJAZD_WYMOGU_KATALOGU_ZNANY`
   // (`add_nn_load`): katalog-first domyślne, jak dla `add_grid_source_sn`
   // (`hasCatalogBinding(...) || hasManualNnLoad(...)` — TEN SAM wzorzec
@@ -210,6 +213,7 @@ export function validateCatalogFirst(op: string, payload: Payload): string | nul
     case 'add_nn_cable_segment':
     case 'add_nn_switch_device':
     case 'add_nn_section_coupler':
+    case 'add_nn_rcd':
       return hasCatalogBinding(payload.catalog_binding) || isNonEmptyString(payload.catalog_ref)
         ? null
         : REQUIRED_CATALOG_MESSAGE[normalizedOp];

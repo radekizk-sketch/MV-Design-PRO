@@ -72,15 +72,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 25.0,
           "idyn_ka": 52.5,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 16.575,
-            "ikss_ka": 16.575,
-            "ip_ka": 32.177,
-            "ith_ka": 16.659,
+            "ib_ka": 15.826,
+            "ikss_ka": 15.826,
+            "ip_ka": 30.722,
+            "ith_ka": 15.906,
             "kappa": 1.373,
             "rx_ratio": 0.3406,
-            "sk_mva": 11.48,
+            "sk_mva": 10.96,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -141,7 +141,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 400.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.015406707313
@@ -149,9 +149,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 16575.1431015
+                  "ikss_a": 15825.6639851
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.0154067}",
+                "substitution_latex": "\\frac{1.05 \\cdot 400 \\cdot 0.57735}{0.0154067}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -172,61 +172,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 16575.1431015,
+                  "ikss_a": 15825.6639851,
                   "kappa": 1.37269725085
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 32177.1109727
+                  "ip_a": 30722.1568554
                 },
-                "substitution_latex": "1.3727 \\cdot \\sqrt{2} \\cdot 16575.1",
+                "substitution_latex": "1.3727 \\cdot \\sqrt{2} \\cdot 15825.7",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 2.25053581114e-05,
-                  "ikss_a": 16575.1431015,
-                  "kappa": 1.37269725085,
-                  "ta_s": 0.00934425989142,
-                  "tb_s": 0.1
+                  "ikss_a": 15825.6639851,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 16575.1431021
+                  "ib_a": 15825.6639851
                 },
-                "substitution_latex": "16575.1 \\cdot \\sqrt{1 + \\left((1.3727 - 1) \\cdot 2.25054e-05\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "15825.7",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 15739.0614447,
+                  "rx_ratio": 0.340647509682,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 2.25053581114e-05,
+                  "wykladnik": 10.7017571388
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.500933131423
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 15739.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.340648}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 16575.1431015,
+                  "ikss_a": 15825.6639851,
                   "m_factor": 0.0101318267291,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 16658.8997232
+                  "ith_a": 15905.6333792
                 },
-                "substitution_latex": "16575.1 \\cdot \\sqrt{0.0101318 + 1}",
+                "substitution_latex": "15825.7 \\cdot \\sqrt{0.0101318 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 16575.1431015,
+                  "ikss_a": 15825.6639851,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 11.4835959978
+                  "sk_mva": 10.9643416343
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 16575.1 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 15825.7 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -341,21 +356,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 2.25053581114e-05,
                   "ikss_a": 14326.7057522,
-                  "kappa": 1.37269725085,
-                  "ta_s": 0.00934425989142,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 14326.7057527
+                  "ib_a": 14326.7057522
                 },
-                "substitution_latex": "14326.7 \\cdot \\sqrt{1 + \\left((1.3727 - 1) \\cdot 2.25054e-05\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "14326.7",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 14240.1032119,
+                  "rx_ratio": 0.340647509682,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 2.25053581114e-05,
+                  "wykladnik": 10.7017571388
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.453225214144
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 14240.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.340648}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -397,7 +427,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.4,
           "verification": {
             "icw_ka": 25.0,
-            "ikss_max_ka": 16.575,
+            "ikss_max_ka": 15.826,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -519,21 +549,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50689891918e-07,
                   "ikss_a": 9469.59255784,
-                  "kappa": 1.23866591694,
-                  "ta_s": 0.00636616589285,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9469.59255784
                 },
-                "substitution_latex": "9469.59 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9469.59",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9467.28315676,
+                  "rx_ratio": 0.5000025,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50689891918e-07,
+                  "wykladnik": 15.7080418078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00201755083335
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -567,12 +612,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.179,
-            "ith_ka": 8.207,
+            "ikss_ka": 8.609,
+            "ith_ka": 8.639,
             "kappa": 1.239,
-            "sk_mva": 212.49,
+            "sk_mva": 223.67,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -633,7 +678,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.00623159611
@@ -641,9 +686,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8178.5994001
+                  "ikss_a": 8608.93045268
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -664,61 +709,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8178.5994001,
+                  "ikss_a": 8608.93045268,
                   "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 14326.7644927
+                  "ip_a": 15080.5918099
                 },
-                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8178.6",
+                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8608.93",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50689891918e-07,
-                  "ikss_a": 8178.5994001,
-                  "kappa": 1.23866591694,
-                  "ta_s": 0.00636616589285,
-                  "tb_s": 0.1
+                  "ikss_a": 8608.93045268,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 8178.5994001
+                  "ib_a": 8608.93045268
                 },
-                "substitution_latex": "8178.6 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8608.93",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8606.6210516,
+                  "rx_ratio": 0.5000025,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50689891918e-07,
+                  "wykladnik": 15.7080418078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00183413712122
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8178.5994001,
+                  "ikss_a": 8608.93045268,
                   "m_factor": 0.00697987437408,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8207.09256506
+                  "ith_a": 8638.92283445
                 },
-                "substitution_latex": "8178.6 \\cdot \\sqrt{0.00697987 + 1}",
+                "substitution_latex": "8608.93 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8178.5994001,
+                  "ikss_a": 8608.93045268,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 212.486245436
+                  "sk_mva": 223.666574143
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8178.6 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8608.93 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -880,15 +940,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 40.0,
           "idyn_ka": 84.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 28.848,
-            "ikss_ka": 27.405,
-            "ip_ka": 73.997,
-            "ith_ka": 28.81,
+            "ib_ka": 26.237,
+            "ikss_ka": 26.237,
+            "ip_ka": 70.844,
+            "ith_ka": 27.582,
             "kappa": 1.909,
             "rx_ratio": 0.0324,
-            "sk_mva": 18.99,
+            "sk_mva": 18.18,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -949,7 +1009,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 400.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.00988842242368
@@ -957,9 +1017,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 27404.7855539
+                  "ikss_a": 26237.0557696
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00988842}",
+                "substitution_latex": "\\frac{1.05 \\cdot 400 \\cdot 0.57735}{0.00988842}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -980,61 +1040,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 27404.7855539,
+                  "ikss_a": 26237.0557696,
                   "kappa": 1.90928518729
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 73996.6756239
+                  "ip_a": 70843.64522
                 },
-                "substitution_latex": "1.90929 \\cdot \\sqrt{2} \\cdot 27404.8",
+                "substitution_latex": "1.90929 \\cdot \\sqrt{2} \\cdot 26237.1",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.361609250479,
-                  "ikss_a": 27404.7855539,
-                  "kappa": 1.90928518729,
-                  "ta_s": 0.0983099469466,
-                  "tb_s": 0.1
+                  "ikss_a": 26237.0557696,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 28848.1853781
+                  "ib_a": 26237.0557696
                 },
-                "substitution_latex": "27404.8 \\cdot \\sqrt{1 + \\left((1.90929 - 1) \\cdot 0.361609\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "26237.1",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 24522.3254701,
+                  "rx_ratio": 0.032378197331,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.361609250479,
+                  "wykladnik": 1.01719106872
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 12540.5383871
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 24522.3 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.0323782}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 27404.7855539,
+                  "ikss_a": 26237.0557696,
                   "m_factor": 0.105156344353,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 28809.668999
+                  "ith_a": 27582.0765225
                 },
-                "substitution_latex": "27404.8 \\cdot \\sqrt{0.105156 + 1}",
+                "substitution_latex": "26237.1 \\cdot \\sqrt{0.105156 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 27404.7855539,
+                  "ikss_a": 26237.0557696,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 18.98659238
+                  "sk_mva": 18.1775654536
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 27404.8 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 26237.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -1149,21 +1224,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.361609250479,
                   "ikss_a": 23901.596201,
-                  "kappa": 1.90928518729,
-                  "ta_s": 0.0983099469466,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 25160.4843499
+                  "ib_a": 23901.596201
                 },
-                "substitution_latex": "23901.6 \\cdot \\sqrt{1 + \\left((1.90929 - 1) \\cdot 0.361609\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "23901.6",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 22186.8659016,
+                  "rx_ratio": 0.032378197331,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.361609250479,
+                  "wykladnik": 1.01719106872
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 11346.2013979
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 22186.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.0323782}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1205,7 +1295,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.4,
           "verification": {
             "icw_ka": 40.0,
-            "ikss_max_ka": 27.405,
+            "ikss_max_ka": 26.237,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -1327,21 +1417,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50689891918e-07,
                   "ikss_a": 9513.00929808,
-                  "kappa": 1.23866591694,
-                  "ta_s": 0.00636616589285,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9513.00929808
                 },
-                "substitution_latex": "9513.01 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9513.01",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9467.28315676,
+                  "rx_ratio": 0.5000025,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50689891918e-07,
+                  "wykladnik": 15.7080418078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00201755083335
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1375,12 +1480,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.222,
-            "ith_ka": 8.251,
+            "ikss_ka": 8.652,
+            "ith_ka": 8.682,
             "kappa": 1.239,
-            "sk_mva": 213.61,
+            "sk_mva": 224.79,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -1441,7 +1546,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.00623159611
@@ -1449,9 +1554,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8222.01614034
+                  "ikss_a": 8652.34719292
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -1472,61 +1577,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8222.01614034,
+                  "ikss_a": 8652.34719292,
                   "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 14402.8192524
+                  "ip_a": 15156.6465696
                 },
-                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8222.02",
+                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8652.35",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50689891918e-07,
-                  "ikss_a": 8222.01614034,
-                  "kappa": 1.23866591694,
-                  "ta_s": 0.00636616589285,
-                  "tb_s": 0.1
+                  "ikss_a": 8652.34719292,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 8222.01614034
+                  "ib_a": 8652.34719292
                 },
-                "substitution_latex": "8222.02 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8652.35",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8606.6210516,
+                  "rx_ratio": 0.5000025,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50689891918e-07,
+                  "wykladnik": 15.7080418078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00183413712122
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8222.01614034,
+                  "ikss_a": 8652.34719292,
                   "m_factor": 0.00697987437408,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8250.66056352
+                  "ith_a": 8682.4908329
                 },
-                "substitution_latex": "8222.02 \\cdot \\sqrt{0.00697987 + 1}",
+                "substitution_latex": "8652.35 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8222.01614034,
+                  "ikss_a": 8652.34719292,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 213.614245436
+                  "sk_mva": 224.794574143
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8222.02 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8652.35 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -1753,21 +1873,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50689891918e-07,
                   "ikss_a": 9536.56518906,
-                  "kappa": 1.23866591694,
-                  "ta_s": 0.00636616589285,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 9536.56518906
                 },
-                "substitution_latex": "9536.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9536.57",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9467.28315676,
+                  "rx_ratio": 0.5000025,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50689891918e-07,
+                  "wykladnik": 15.7080418078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00201755083335
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9467.28 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -1801,12 +1936,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.246,
-            "ith_ka": 8.274,
+            "ikss_ka": 8.676,
+            "ith_ka": 8.706,
             "kappa": 1.239,
-            "sk_mva": 214.23,
+            "sk_mva": 225.41,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -1839,7 +1974,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.00623159611
@@ -1847,9 +1982,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8245.57203132
+                  "ikss_a": 8675.9030839
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00623}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.00623}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -1870,61 +2005,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8245.57203132,
+                  "ikss_a": 8675.9030839,
                   "kappa": 1.23866591694
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 14444.0830051
+                  "ip_a": 15197.9103223
                 },
-                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8245.57",
+                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 8675.9",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50689891918e-07,
-                  "ikss_a": 8245.57203132,
-                  "kappa": 1.23866591694,
-                  "ta_s": 0.00636616589285,
-                  "tb_s": 0.1
+                  "ikss_a": 8675.9030839,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 8245.57203132
+                  "ib_a": 8675.9030839
                 },
-                "substitution_latex": "8245.57 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.5069e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8675.9",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8606.6210516,
+                  "rx_ratio": 0.5000025,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50689891918e-07,
+                  "wykladnik": 15.7080418078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00183413712122
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8606.62 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500003}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8245.57203132,
+                  "ikss_a": 8675.9030839,
                   "m_factor": 0.00697987437408,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8274.29852013
+                  "ith_a": 8706.12878951
                 },
-                "substitution_latex": "8245.57 \\cdot \\sqrt{0.00697987 + 1}",
+                "substitution_latex": "8675.9 \\cdot \\sqrt{0.00697987 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8245.57203132,
+                  "ikss_a": 8675.9030839,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 214.226245436
+                  "sk_mva": 225.406574143
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8245.57 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8675.9 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -2032,21 +2182,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50692623132e-07,
                   "ikss_a": 7351.80921809,
-                  "kappa": 1.23866629541,
-                  "ta_s": 0.00636617323839,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
                   "ib_a": 7351.80921809
                 },
-                "substitution_latex": "7351.81 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "7351.81",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 7282.52718579,
+                  "rx_ratio": 0.500001923077,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50692623132e-07,
+                  "wykladnik": 15.7080236832
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00155199066656
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 7282.53 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2080,12 +2245,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 6.359,
-            "ith_ka": 6.381,
+            "ikss_ka": 6.69,
+            "ith_ka": 6.713,
             "kappa": 1.239,
-            "sk_mva": 165.2,
+            "sk_mva": 173.81,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -2118,7 +2283,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.30810077307
@@ -2126,9 +2291,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 6358.73732912
+                  "ikss_a": 6689.76129211
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.3081}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.3081}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -2149,61 +2314,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 6358.73732912,
+                  "ikss_a": 6689.76129211,
                   "kappa": 1.23866629541
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 11138.8460986
+                  "ip_a": 11718.7135767
                 },
-                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 6358.74",
+                "substitution_latex": "1.23867 \\cdot \\sqrt{2} \\cdot 6689.76",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 1.50692623132e-07,
-                  "ikss_a": 6358.73732912,
-                  "kappa": 1.23866629541,
-                  "ta_s": 0.00636617323839,
-                  "tb_s": 0.1
+                  "ikss_a": 6689.76129211,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 6358.73732912
+                  "ib_a": 6689.76129211
                 },
-                "substitution_latex": "6358.74 \\cdot \\sqrt{1 + \\left((1.23867 - 1) \\cdot 1.50693e-07\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "6689.76",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 6620.47925981,
+                  "rx_ratio": 0.500001923077,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 1.50692623132e-07,
+                  "wykladnik": 15.7080236832
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 0.00141090060596
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 6620.48 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.500002}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 6358.73732912,
+                  "ikss_a": 6689.76129211,
                   "m_factor": 0.00697988209956,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 6380.89035839
+                  "ith_a": 6713.06756661
                 },
-                "substitution_latex": "6358.74 \\cdot \\sqrt{0.00697988 + 1}",
+                "substitution_latex": "6689.76 \\cdot \\sqrt{0.00697988 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 6358.73732912,
+                  "ikss_a": 6689.76129211,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 165.20484189
+                  "sk_mva": 173.805096727
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 6358.74 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 6689.76 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -2471,15 +2651,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 30.507,
-            "ikss_ka": 30.507,
-            "ip_ka": 66.581,
-            "ith_ka": 30.756,
+            "ib_ka": 29.199,
+            "ikss_ka": 29.199,
+            "ip_ka": 63.727,
+            "ith_ka": 29.437,
             "kappa": 1.543,
             "rx_ratio": 0.2092,
-            "sk_mva": 42.27,
+            "sk_mva": 40.46,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -2540,7 +2720,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 800.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.0176560362375
@@ -2548,9 +2728,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 30507.0793291
+                  "ikss_a": 29199.0841224
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.017656}",
+                "substitution_latex": "\\frac{1.05 \\cdot 800 \\cdot 0.57735}{0.017656}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -2571,61 +2751,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 30507.0793291,
+                  "ikss_a": 29199.0841224,
                   "kappa": 1.54324883185
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 66581.1950762
+                  "ip_a": 63726.5172135
                 },
-                "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 30507.1",
+                "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 29199.1",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00140023260304,
-                  "ikss_a": 30507.0793291,
-                  "kappa": 1.54324883185,
-                  "ta_s": 0.0152181130472,
-                  "tb_s": 0.1
+                  "ikss_a": 29199.0841224,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 30507.0881552
+                  "ib_a": 29199.0841224
                 },
-                "substitution_latex": "30507.1 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "29199.1",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 27467.8993403,
+                  "rx_ratio": 0.209165147608,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00140023260304,
+                  "wykladnik": 6.57111691114
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 54.3927016632
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 27467.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 30507.0793291,
+                  "ikss_a": 29199.0841224,
                   "m_factor": 0.0163883968735,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 30756.0445011
+                  "ith_a": 29437.3748786
                 },
-                "substitution_latex": "30507.1 \\cdot \\sqrt{0.0163884 + 1}",
+                "substitution_latex": "29199.1 \\cdot \\sqrt{0.0163884 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 30507.0793291,
+                  "ikss_a": 29199.0841224,
                   "un_v": 800.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 42.2718491108
+                  "sk_mva": 40.4594377876
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 30507.1 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 29199.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -2740,21 +2935,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00140023260304,
                   "ikss_a": 26583.0937091,
-                  "kappa": 1.54324883185,
-                  "ta_s": 0.0152181130472,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 26583.1013999
+                  "ib_a": 26583.0937091
                 },
-                "substitution_latex": "26583.1 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "26583.1",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 24851.9089269,
+                  "rx_ratio": 0.209165147608,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00140023260304,
+                  "wykladnik": 6.57111691114
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 49.212444362
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 24851.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2796,7 +3006,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.8,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 30.507,
+            "ikss_max_ka": 29.199,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -2918,21 +3128,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
                   "ikss_a": 9561.11591093,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 9561.38304714
+                  "ib_a": 9561.11591093
                 },
-                "substitution_latex": "9561.12 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9561.12",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9468.78605588,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 151.908920213
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -2966,12 +3191,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.27,
-            "ith_ka": 8.368,
+            "ikss_ka": 8.7,
+            "ith_ka": 8.804,
             "kappa": 1.659,
-            "sk_mva": 214.86,
+            "sk_mva": 226.04,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -3032,7 +3257,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.00607188561
@@ -3040,9 +3265,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8269.9178124
+                  "ikss_a": 8700.31717857
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -3063,61 +3288,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8269.9178124,
+                  "ikss_a": 8700.31717857,
                   "kappa": 1.658955589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 19402.1988482
+                  "ip_a": 20411.9663303
                 },
-                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8269.92",
+                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8700.32",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
-                  "ikss_a": 8269.9178124,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "ikss_a": 8700.31717857,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 8270.14887272
+                  "ib_a": 8700.31717857
                 },
-                "substitution_latex": "8269.92 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8700.32",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8607.98732353,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 138.099018375
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8269.9178124,
+                  "ikss_a": 8700.31717857,
                   "m_factor": 0.0239751154653,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8368.46674769
+                  "ith_a": 8803.99499183
                 },
-                "substitution_latex": "8269.92 \\cdot \\sqrt{0.0239751 + 1}",
+                "substitution_latex": "8700.32 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8269.9178124,
+                  "ikss_a": 8700.31717857,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 214.858767382
+                  "sk_mva": 226.040870929
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8269.92 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8700.32 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -3483,15 +3723,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 34.77,
-            "ikss_ka": 34.77,
-            "ip_ka": 75.429,
-            "ith_ka": 35.046,
+            "ib_ka": 33.347,
+            "ikss_ka": 33.347,
+            "ip_ka": 72.342,
+            "ith_ka": 33.611,
             "kappa": 1.534,
             "rx_ratio": 0.2151,
-            "sk_mva": 24.09,
+            "sk_mva": 23.1,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -3580,7 +3820,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 400.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.00811421165161
@@ -3588,9 +3828,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 33191.920163
+                  "ikss_a": 31768.860736
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00811421}",
+                "substitution_latex": "\\frac{1.05 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -3611,61 +3851,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 33191.920163,
+                  "ikss_a": 31768.860736,
                   "kappa": 1.53399842218
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 72006.5971841
+                  "ip_a": 68919.4101088
                 },
-                "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 33191.9",
+                "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 31768.9",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00116166049336,
-                  "ikss_a": 33191.920163,
-                  "kappa": 1.53399842218,
-                  "ta_s": 0.0147974856709,
-                  "tb_s": 0.1
+                  "ikss_a": 31768.860736,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 33191.9265492
+                  "ib_a": 31768.860736
                 },
-                "substitution_latex": "33191.9 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "31768.9",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 29884.2479678,
+                  "rx_ratio": 0.215110791971,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00116166049336,
+                  "wykladnik": 6.75790483764
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 49.0949191289
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 29884.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 33191.920163,
+                  "ikss_a": 31768.860736,
                   "m_factor": 0.0159397504275,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 33455.4097862
+                  "ith_a": 32021.0535921
                 },
-                "substitution_latex": "33191.9 \\cdot \\sqrt{0.0159398 + 1}",
+                "substitution_latex": "31768.9 \\cdot \\sqrt{0.0159398 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 33191.920163,
+                  "ikss_a": 31768.860736,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 22.9960368493
+                  "sk_mva": 22.0101123573
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 33191.9 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 31768.9 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -3808,21 +4063,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00116166049336,
                   "ikss_a": 28922.7418819,
-                  "kappa": 1.53399842218,
-                  "ta_s": 0.0147974856709,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 28922.7474467
+                  "ib_a": 28922.7418819
                 },
-                "substitution_latex": "28922.7 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "28922.7",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 27038.1291137,
+                  "rx_ratio": 0.215110791971,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00116166049336,
+                  "wykladnik": 6.75790483764
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 44.4192125452
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 27038.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -3864,7 +4134,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.4,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 34.77,
+            "ikss_max_ka": 33.347,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -3874,15 +4144,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 14.478,
-            "ikss_ka": 14.478,
-            "ip_ka": 31.368,
-            "ith_ka": 14.593,
+            "ib_ka": 13.899,
+            "ikss_ka": 13.899,
+            "ip_ka": 30.112,
+            "ith_ka": 14.009,
             "kappa": 1.532,
             "rx_ratio": 0.2164,
-            "sk_mva": 20.06,
+            "sk_mva": 19.26,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -3971,7 +4241,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 800.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.0398574263259
@@ -3979,9 +4249,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 13674.4800583
+                  "ikss_a": 13095.0645541
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.0398574}",
+                "substitution_latex": "\\frac{1.05 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -4002,61 +4272,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 13674.4800583,
+                  "ikss_a": 13095.0645541,
                   "kappa": 1.53196878069
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 29626.1853213
+                  "ip_a": 28370.8636542
                 },
-                "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 13674.5",
+                "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 13095.1",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00111451303517,
-                  "ikss_a": 13674.4800583,
-                  "kappa": 1.53196878069,
-                  "ta_s": 0.0147073147822,
-                  "tb_s": 0.1
+                  "ikss_a": 13095.0645541,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 13674.4824616
+                  "ib_a": 13095.0645541
                 },
-                "substitution_latex": "13674.5 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "13095.1",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 12167.7255865,
+                  "rx_ratio": 0.216429641235,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00111451303517,
+                  "wykladnik": 6.79933770923
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 19.1782756655
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 12167.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 13674.4800583,
+                  "ikss_a": 13095.0645541,
                   "m_factor": 0.0158435801538,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 13782.3807151
+                  "ith_a": 13198.3932409
                 },
-                "substitution_latex": "13674.5 \\cdot \\sqrt{0.0158436 + 1}",
+                "substitution_latex": "13095.1 \\cdot \\sqrt{0.0158436 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 13674.4800583,
+                  "ikss_a": 13095.0645541,
                   "un_v": 800.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 18.9479153824
+                  "sk_mva": 18.1450537089
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 13674.5 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 13095.1 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -4199,21 +4484,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00111451303517,
                   "ikss_a": 11936.2335459,
-                  "kappa": 1.53196878069,
-                  "ta_s": 0.0147073147822,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 11936.2356438
+                  "ib_a": 11936.2335459
                 },
-                "substitution_latex": "11936.2 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "11936.2",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 11008.8945783,
+                  "rx_ratio": 0.216429641235,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00111451303517,
+                  "wykladnik": 6.79933770923
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 17.3517732212
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 11008.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4255,7 +4555,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.8,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 14.478,
+            "ikss_max_ka": 13.899,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -4405,21 +4705,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
                   "ikss_a": 9561.11591093,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 9561.38304714
+                  "ib_a": 9561.11591093
                 },
-                "substitution_latex": "9561.12 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9561.12",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9468.78605588,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 151.908920213
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -4453,12 +4768,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.27,
-            "ith_ka": 8.368,
+            "ikss_ka": 8.7,
+            "ith_ka": 8.804,
             "kappa": 1.659,
-            "sk_mva": 214.86,
+            "sk_mva": 226.04,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -4547,7 +4862,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.00607188561
@@ -4555,9 +4870,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8269.9178124
+                  "ikss_a": 8700.31717857
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -4578,61 +4893,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8269.9178124,
+                  "ikss_a": 8700.31717857,
                   "kappa": 1.658955589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 19402.1988482
+                  "ip_a": 20411.9663303
                 },
-                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8269.92",
+                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8700.32",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
-                  "ikss_a": 8269.9178124,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "ikss_a": 8700.31717857,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 8270.14887272
+                  "ib_a": 8700.31717857
                 },
-                "substitution_latex": "8269.92 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8700.32",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8607.98732353,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 138.099018375
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8269.9178124,
+                  "ikss_a": 8700.31717857,
                   "m_factor": 0.0239751154653,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8368.46674769
+                  "ith_a": 8803.99499183
                 },
-                "substitution_latex": "8269.92 \\cdot \\sqrt{0.0239751 + 1}",
+                "substitution_latex": "8700.32 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8269.9178124,
+                  "ikss_a": 8700.31717857,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 214.858767382
+                  "sk_mva": 226.040870929
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8269.92 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8700.32 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -5031,15 +5361,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 13.613,
-            "ikss_ka": 13.613,
-            "ip_ka": 29.493,
-            "ith_ka": 13.72,
+            "ib_ka": 13.033,
+            "ikss_ka": 13.033,
+            "ip_ka": 28.237,
+            "ith_ka": 13.136,
             "kappa": 1.532,
             "rx_ratio": 0.2164,
-            "sk_mva": 18.86,
+            "sk_mva": 18.06,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -5100,7 +5430,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 800.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.0398574263259
@@ -5108,9 +5438,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 13612.8200843
+                  "ikss_a": 13033.4045802
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 800 \\cdot 0.57735}{0.0398574}",
+                "substitution_latex": "\\frac{1.05 \\cdot 800 \\cdot 0.57735}{0.0398574}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -5131,61 +5461,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 13612.8200843,
+                  "ikss_a": 13033.4045802,
                   "kappa": 1.53196878069
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 29492.5970746
+                  "ip_a": 28237.2754075
                 },
-                "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 13612.8",
+                "substitution_latex": "1.53197 \\cdot \\sqrt{2} \\cdot 13033.4",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00111451303517,
-                  "ikss_a": 13612.8200843,
-                  "kappa": 1.53196878069,
-                  "ta_s": 0.0147073147822,
-                  "tb_s": 0.1
+                  "ikss_a": 13033.4045802,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 13612.8224768
+                  "ib_a": 13033.4045802
                 },
-                "substitution_latex": "13612.8 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "13033.4",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 12167.7255865,
+                  "rx_ratio": 0.216429641235,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00111451303517,
+                  "wykladnik": 6.79933770923
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 19.1782756655
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 12167.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 13612.8200843,
+                  "ikss_a": 13033.4045802,
                   "m_factor": 0.0158435801538,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 13720.2342033
+                  "ith_a": 13136.2467291
                 },
-                "substitution_latex": "13612.8 \\cdot \\sqrt{0.0158436 + 1}",
+                "substitution_latex": "13033.4 \\cdot \\sqrt{0.0158436 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 13612.8200843,
+                  "ikss_a": 13033.4045802,
                   "un_v": 800.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 18.8624768162
+                  "sk_mva": 18.0596151428
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 13612.8 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 800 \\cdot 13033.4 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -5300,21 +5645,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00111451303517,
                   "ikss_a": 11874.5735719,
-                  "kappa": 1.53196878069,
-                  "ta_s": 0.0147073147822,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 11874.575659
+                  "ib_a": 11874.5735719
                 },
-                "substitution_latex": "11874.6 \\cdot \\sqrt{1 + \\left((1.53197 - 1) \\cdot 0.00111451\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "11874.6",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 11008.8945783,
+                  "rx_ratio": 0.216429641235,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00111451303517,
+                  "wykladnik": 6.79933770923
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 17.3517732212
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 11008.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.21643}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -5356,7 +5716,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.8,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 13.613,
+            "ikss_max_ka": 13.033,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -5478,21 +5838,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
                   "ikss_a": 9061.86247829,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 9062.11566543
+                  "ib_a": 9061.86247829
                 },
-                "substitution_latex": "9061.86 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9061.86",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9017.89148179,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 144.675162107
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9017.89 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -5526,12 +5901,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 7.832,
-            "ith_ka": 7.925,
+            "ikss_ka": 8.242,
+            "ith_ka": 8.34,
             "kappa": 1.659,
-            "sk_mva": 213.66,
+            "sk_mva": 224.84,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -5592,7 +5967,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15750.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.10919425388
@@ -5600,9 +5975,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 7832.1500035
+                  "ikss_a": 8242.05416176
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15750 \\cdot 0.57735}{1.10919}",
+                "substitution_latex": "\\frac{1 \\cdot 15750 \\cdot 0.57735}{1.10919}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -5623,61 +5998,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 7832.1500035,
+                  "ikss_a": 8242.05416176,
                   "kappa": 1.658955589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 18375.1441337
+                  "ip_a": 19336.82745
                 },
-                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 7832.15",
+                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8242.05",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
-                  "ikss_a": 7832.1500035,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "ikss_a": 8242.05416176,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 7832.36883265
+                  "ib_a": 8242.05416176
                 },
-                "substitution_latex": "7832.15 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8242.05",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8198.08316526,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 131.522874643
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8198.08 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 7832.1500035,
+                  "ikss_a": 8242.05416176,
                   "m_factor": 0.0239751154653,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 7925.48225436
+                  "ith_a": 8340.27105831
                 },
-                "substitution_latex": "7832.15 \\cdot \\sqrt{0.0239751 + 1}",
+                "substitution_latex": "8242.05 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 7832.1500035,
+                  "ikss_a": 8242.05416176,
                   "un_v": 15750.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 213.659487382
+                  "sk_mva": 224.841590929
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15750 \\cdot 7832.15 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15750 \\cdot 8242.05 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -6168,15 +6558,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 33.039,
-            "ikss_ka": 33.039,
-            "ip_ka": 71.676,
-            "ith_ka": 33.302,
+            "ib_ka": 31.616,
+            "ikss_ka": 31.616,
+            "ip_ka": 68.588,
+            "ith_ka": 31.867,
             "kappa": 1.534,
             "rx_ratio": 0.2151,
-            "sk_mva": 22.89,
+            "sk_mva": 21.9,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -6237,7 +6627,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 400.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.00811421165161
@@ -6245,9 +6635,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 33039.3582024
+                  "ikss_a": 31616.2987753
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00811421}",
+                "substitution_latex": "\\frac{1.05 \\cdot 400 \\cdot 0.57735}{0.00811421}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -6268,61 +6658,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 33039.3582024,
+                  "ikss_a": 31616.2987753,
                   "kappa": 1.53399842218
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 71675.6290572
+                  "ip_a": 68588.4419819
                 },
-                "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 33039.4",
+                "substitution_latex": "1.534 \\cdot \\sqrt{2} \\cdot 31616.3",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00116166049336,
-                  "ikss_a": 33039.3582024,
-                  "kappa": 1.53399842218,
-                  "ta_s": 0.0147974856709,
-                  "tb_s": 0.1
+                  "ikss_a": 31616.2987753,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 33039.3645592
+                  "ib_a": 31616.2987753
                 },
-                "substitution_latex": "33039.4 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "31616.3",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 29884.2479678,
+                  "rx_ratio": 0.215110791971,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00116166049336,
+                  "wykladnik": 6.75790483764
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 49.0949191289
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 29884.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 33039.3582024,
+                  "ikss_a": 31616.2987753,
                   "m_factor": 0.0159397504275,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 33301.6367329
+                  "ith_a": 31867.2805387
                 },
-                "substitution_latex": "33039.4 \\cdot \\sqrt{0.0159398 + 1}",
+                "substitution_latex": "31616.3 \\cdot \\sqrt{0.0159398 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 33039.3582024,
+                  "ikss_a": 31616.2987753,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 22.8903388224
+                  "sk_mva": 21.9044143305
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 33039.4 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 31616.3 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -6437,21 +6842,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00116166049336,
                   "ikss_a": 28770.1799213,
-                  "kappa": 1.53399842218,
-                  "ta_s": 0.0147974856709,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 28770.1854567
+                  "ib_a": 28770.1799213
                 },
-                "substitution_latex": "28770.2 \\cdot \\sqrt{1 + \\left((1.534 - 1) \\cdot 0.00116166\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "28770.2",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 27038.1291137,
+                  "rx_ratio": 0.215110791971,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00116166049336,
+                  "wykladnik": 6.75790483764
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 44.4192125452
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 27038.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.215111}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -6493,7 +6913,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.4,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 33.039,
+            "ikss_max_ka": 31.616,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -6615,21 +7035,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
                   "ikss_a": 9514.97407741,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 9515.23992443
+                  "ib_a": 9514.97407741
                 },
-                "substitution_latex": "9514.97 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9514.97",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9468.78605588,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 151.908920213
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -6663,12 +7098,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.224,
-            "ith_ka": 8.322,
+            "ikss_ka": 8.654,
+            "ith_ka": 8.757,
             "kappa": 1.659,
-            "sk_mva": 213.66,
+            "sk_mva": 224.84,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -6729,7 +7164,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.00607188561
@@ -6737,9 +7172,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8223.77597888
+                  "ikss_a": 8654.17534506
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -6760,61 +7195,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8223.77597888,
+                  "ikss_a": 8654.17534506,
                   "kappa": 1.658955589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 19293.9446854
+                  "ip_a": 20303.7121675
                 },
-                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8223.78",
+                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8654.18",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
-                  "ikss_a": 8223.77597888,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "ikss_a": 8654.17534506,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 8224.00575001
+                  "ib_a": 8654.17534506
                 },
-                "substitution_latex": "8223.78 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8654.18",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8607.98732353,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 138.099018375
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8223.77597888,
+                  "ikss_a": 8654.17534506,
                   "m_factor": 0.0239751154653,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8321.77506245
+                  "ith_a": 8757.30330659
                 },
-                "substitution_latex": "8223.78 \\cdot \\sqrt{0.0239751 + 1}",
+                "substitution_latex": "8654.18 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8223.77597888,
+                  "ikss_a": 8654.17534506,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 213.659967382
+                  "sk_mva": 224.842070929
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8223.78 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8654.18 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -7263,21 +7713,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
                   "ikss_a": 9745.91418509,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 9746.18648454
+                  "ib_a": 9745.91418509
                 },
-                "substitution_latex": "9745.91 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9745.91",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9468.78605588,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 151.908920213
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9468.79 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -7311,12 +7776,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.455,
-            "ith_ka": 8.555,
+            "ikss_ka": 8.885,
+            "ith_ka": 8.991,
             "kappa": 1.659,
-            "sk_mva": 219.66,
+            "sk_mva": 230.84,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -7433,7 +7898,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 1.00607188561
@@ -7441,9 +7906,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8454.71608656
+                  "ikss_a": 8885.11545274
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{1.00607}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{1.00607}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -7464,61 +7929,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8454.71608656,
+                  "ikss_a": 8885.11545274,
                   "kappa": 1.658955589
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 19835.7573119
+                  "ip_a": 20845.524794
                 },
-                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8454.72",
+                "substitution_latex": "1.65896 \\cdot \\sqrt{2} \\cdot 8885.12",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.0113442026223,
-                  "ikss_a": 8454.71608656,
-                  "kappa": 1.658955589,
-                  "ta_s": 0.0223261706515,
-                  "tb_s": 0.1
+                  "ikss_a": 8885.11545274,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 8454.95231012
+                  "ib_a": 8885.11545274
                 },
-                "substitution_latex": "8454.72 \\cdot \\sqrt{1 + \\left((1.65896 - 1) \\cdot 0.0113442\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "8885.12",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 8607.98732353,
+                  "rx_ratio": 0.142572540161,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0113442026223,
+                  "wykladnik": 4.47904844772
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 138.099018375
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 8607.99 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.142573}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8454.71608656,
+                  "ikss_a": 8885.11545274,
                   "m_factor": 0.0239751154653,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8555.46718075
+                  "ith_a": 8990.9954249
                 },
-                "substitution_latex": "8454.72 \\cdot \\sqrt{0.0239751 + 1}",
+                "substitution_latex": "8885.12 \\cdot \\sqrt{0.0239751 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8454.71608656,
+                  "ikss_a": 8885.11545274,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 219.659967382
+                  "sk_mva": 230.842070929
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8454.72 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8885.12 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -7542,15 +8022,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 39.388,
-            "ikss_ka": 39.388,
-            "ip_ka": 85.963,
-            "ith_ka": 39.709,
+            "ib_ka": 37.871,
+            "ikss_ka": 37.871,
+            "ip_ka": 82.654,
+            "ith_ka": 38.18,
             "kappa": 1.543,
             "rx_ratio": 0.2092,
-            "sk_mva": 47.07,
+            "sk_mva": 45.26,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -7667,7 +8147,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.0131344357073
@@ -7675,9 +8155,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 36022.5065448
+                  "ikss_a": 34505.9903631
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0131344}",
+                "substitution_latex": "\\frac{1.05 \\cdot 690 \\cdot 0.57735}{0.0131344}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -7698,61 +8178,76 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 36022.5065448,
+                  "ikss_a": 34505.9903631,
                   "kappa": 1.54324883185
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 78618.5235734
+                  "ip_a": 75308.7521384
                 },
-                "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 36022.5",
+                "substitution_latex": "1.54325 \\cdot \\sqrt{2} \\cdot 34506",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00140023260304,
-                  "ikss_a": 36022.5065448,
-                  "kappa": 1.54324883185,
-                  "ta_s": 0.0152181130472,
-                  "tb_s": 0.1
+                  "ikss_a": 34505.9903631,
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 36022.5169665
+                  "ib_a": 34505.9903631
                 },
-                "substitution_latex": "36022.5 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "34506",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 31846.8398148,
+                  "rx_ratio": 0.209165147608,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00140023260304,
+                  "wykladnik": 6.57111691114
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 63.0640019284
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 31846.8 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 36022.5065448,
+                  "ikss_a": 34505.9903631,
                   "m_factor": 0.0163883968735,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 36316.4825574
+                  "ith_a": 34787.5902414
                 },
-                "substitution_latex": "36022.5 \\cdot \\sqrt{0.0163884 + 1}",
+                "substitution_latex": "34506 \\cdot \\sqrt{0.0163884 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 36022.5065448,
+                  "ikss_a": 34505.9903631,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 43.0510399705
+                  "sk_mva": 41.2386286473
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 36022.5 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 34506 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -7923,21 +8418,36 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}''",
                 "inputs": {
-                  "exp_factor": 0.00140023260304,
                   "ikss_a": 31472.9579998,
-                  "kappa": 1.54324883185,
-                  "ta_s": 0.0152181130472,
-                  "tb_s": 0.1
+                  "przypadek": "odlegle_od_generatora"
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie odleg\u0142e od generatora (brak maszyn wiruj\u0105cych w sieci): sk\u0142adowa okresowa nie zanika, Ib = Ik'' (IEC 60909-0:2016, rozdz. 9). \u0179r\u00f3d\u0142a przekszta\u0142tnikowe s\u0105 \u017ar\u00f3d\u0142ami pr\u0105dowymi bez zaniku \u2014 ich udzia\u0142 wchodzi do Ib w ca\u0142o\u015bci.",
                 "result": {
-                  "ib_a": 31472.9671053
+                  "ib_a": 31472.9579998
                 },
-                "substitution_latex": "31473 \\cdot \\sqrt{1 + \\left((1.54325 - 1) \\cdot 0.00140023\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "31473",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 28813.8074515,
+                  "rx_ratio": 0.209165147608,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00140023260304,
+                  "wykladnik": 6.57111691114
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 57.0579065066
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 28813.8 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.209165}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -7979,7 +8489,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.69,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 39.388,
+            "ikss_max_ka": 37.871,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -8244,7 +8754,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 10.782,
+            "ib_ka": 10.253,
             "ikss_ka": 10.782,
             "ip_ka": 24.541,
             "ith_ka": 10.89,
@@ -8410,21 +8920,70 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.00488022819533,
+                  "c_factor": 1.1,
                   "ikss_a": 10781.5154016,
-                  "kappa": 1.60950618762,
-                  "ta_s": 0.0187879400178,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.699890536755,
+                      "ikss_czesciowy_a": 446.391515743,
+                      "machine_type": "DFIG",
+                      "mu": 0.764893664388,
+                      "q": 0.57,
+                      "ratio_ik_ir": 5.01015964896,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 176.211126659
+                    },
+                    {
+                      "delta_u_wzgledne": 0.699890536755,
+                      "ikss_czesciowy_a": 446.391515743,
+                      "machine_type": "DFIG",
+                      "mu": 0.764893664388,
+                      "q": 0.57,
+                      "ratio_ik_ir": 5.01015964896,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 176.211126659
+                    },
+                    {
+                      "delta_u_wzgledne": 0.699890536755,
+                      "ikss_czesciowy_a": 446.391515743,
+                      "machine_type": "DFIG",
+                      "mu": 0.764893664388,
+                      "q": 0.57,
+                      "ratio_ik_ir": 5.01015964896,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 176.211126659
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 10781.563098
+                  "ib_a": 10252.8820216
                 },
-                "substitution_latex": "10781.5 \\cdot \\sqrt{1 + \\left((1.60951 - 1) \\cdot 0.00488023\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "10781.5 - 0.699891 \\cdot (1 - 0.764894 \\cdot 0.57) \\cdot 446.392 - 0.699891 \\cdot (1 - 0.764894 \\cdot 0.57) \\cdot 446.392 - 0.699891 \\cdot (1 - 0.764894 \\cdot 0.57) \\cdot 446.392",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 10781.5154016,
+                  "rx_ratio": 0.169422451787,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00488022819533,
+                  "wykladnik": 5.32256329887
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 74.4106220607
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 10781.5 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.169422}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -8458,12 +9017,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 9.311,
-            "ith_ka": 9.405,
+            "ikss_ka": 9.801,
+            "ith_ka": 9.9,
             "kappa": 1.61,
-            "sk_mva": 241.91,
+            "sk_mva": 254.65,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -8580,7 +9139,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.883575182779
@@ -8588,9 +9147,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 9311.30875595
+                  "ikss_a": 9801.37763784
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.883575}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{0.883575}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -8611,94 +9170,143 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 9311.30875595,
+                  "ikss_a": 9801.37763784,
                   "kappa": 1.60950618762
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 21194.2657831
+                  "ip_a": 22309.7534559
                 },
-                "substitution_latex": "1.60951 \\cdot \\sqrt{2} \\cdot 9311.31",
+                "substitution_latex": "1.60951 \\cdot \\sqrt{2} \\cdot 9801.38",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.00488022819533,
-                  "ikss_a": 9311.30875595,
-                  "kappa": 1.60950618762,
-                  "ta_s": 0.0187879400178,
+                  "c_factor": 1.0,
+                  "ikss_a": 9801.37763784,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.699890536755,
+                      "ikss_czesciowy_a": 405.810468857,
+                      "machine_type": "DFIG",
+                      "mu": 0.787628500318,
+                      "q": 0.57,
+                      "ratio_ik_ir": 4.55469058997,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 156.511321239
+                    },
+                    {
+                      "delta_u_wzgledne": 0.699890536755,
+                      "ikss_czesciowy_a": 405.810468857,
+                      "machine_type": "DFIG",
+                      "mu": 0.787628500318,
+                      "q": 0.57,
+                      "ratio_ik_ir": 4.55469058997,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 156.511321239
+                    },
+                    {
+                      "delta_u_wzgledne": 0.699890536755,
+                      "ikss_czesciowy_a": 405.810468857,
+                      "machine_type": "DFIG",
+                      "mu": 0.787628500318,
+                      "q": 0.57,
+                      "ratio_ik_ir": 4.55469058997,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 156.511321239
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 9311.34994827
+                  "ib_a": 9331.84367412
                 },
-                "substitution_latex": "9311.31 \\cdot \\sqrt{1 + \\left((1.60951 - 1) \\cdot 0.00488023\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9801.38 - 0.699891 \\cdot (1 - 0.787629 \\cdot 0.57) \\cdot 405.81 - 0.699891 \\cdot (1 - 0.787629 \\cdot 0.57) \\cdot 405.81 - 0.699891 \\cdot (1 - 0.787629 \\cdot 0.57) \\cdot 405.81",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9801.37763784,
+                  "rx_ratio": 0.169422451787,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00488022819533,
+                  "wykladnik": 5.32256329887
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 67.6460200552
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9801.38 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.169422}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 9311.30875595,
+                  "ikss_a": 9801.37763784,
                   "m_factor": 0.0201976877712,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 9404.87213025
+                  "ith_a": 9899.86540026
                 },
-                "substitution_latex": "9311.31 \\cdot \\sqrt{0.0201977 + 1}",
+                "substitution_latex": "9801.38 \\cdot \\sqrt{0.0201977 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 9311.30875595,
+                  "ikss_a": 9801.37763784,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 241.914897754
+                  "sk_mva": 254.647260794
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9311.31 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9801.38 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 0.763,
+            "ib_contribution_ka": 0.584,
             "ik_contribution_ka": 1.339,
             "is_synchronous_machine": false,
             "machine_type": "DFIG",
             "machines": [
               {
-                "ib_partial_ka": 0.254,
+                "ib_partial_ka": 0.195,
                 "ikss_partial_ka": 0.446,
                 "ir_a": 1936.9,
-                "mu": 1.0,
+                "mu": 0.7649,
                 "node_ref": "WTG_LV_1",
                 "q": 0.57,
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.254,
+                "ib_partial_ka": 0.195,
                 "ikss_partial_ka": 0.446,
                 "ir_a": 1936.9,
-                "mu": 1.0,
+                "mu": 0.7649,
                 "node_ref": "WTG_LV_2",
                 "q": 0.57,
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.254,
+                "ib_partial_ka": 0.195,
                 "ikss_partial_ka": 0.446,
                 "ir_a": 1936.9,
-                "mu": 1.0,
+                "mu": 0.7649,
                 "node_ref": "WTG_LV_3",
                 "q": 0.57,
                 "source_id": "async/WTG_LV_3/1"
@@ -8721,15 +9329,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 63.0,
           "idyn_ka": 132.3,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 46.441,
-            "ikss_ka": 46.441,
-            "ip_ka": 95.852,
-            "ith_ka": 46.738,
+            "ib_ka": 37.544,
+            "ikss_ka": 44.33,
+            "ip_ka": 91.495,
+            "ith_ka": 44.614,
             "kappa": 1.459,
             "rx_ratio": 0.2673,
-            "sk_mva": 55.5,
+            "sk_mva": 52.98,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -8846,7 +9454,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.00943589381666
@@ -8854,9 +9462,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 46440.6300907
+                  "ikss_a": 44329.6923593
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.00943589}",
+                "substitution_latex": "\\frac{1.05 \\cdot 690 \\cdot 0.57735}{0.00943589}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -8877,61 +9485,110 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 46440.6300907,
+                  "ikss_a": 44329.6923593,
                   "kappa": 1.45944188629
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 95851.7194057
+                  "ip_a": 91494.8230691
                 },
-                "substitution_latex": "1.45944 \\cdot \\sqrt{2} \\cdot 46440.6",
+                "substitution_latex": "1.45944 \\cdot \\sqrt{2} \\cdot 44329.7",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.000225088367708,
-                  "ikss_a": 46440.6300907,
-                  "kappa": 1.45944188629,
-                  "ta_s": 0.0119061545173,
+                  "c_factor": 1.05,
+                  "ikss_a": 44329.6923593,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.921982105607,
+                      "ikss_czesciowy_a": 12202.4513416,
+                      "machine_type": "DFIG",
+                      "mu": 0.715894747712,
+                      "q": 0.57,
+                      "ratio_ik_ir": 6.3,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 6659.58643842
+                    },
+                    {
+                      "delta_u_wzgledne": 0.105272243465,
+                      "ikss_czesciowy_a": 1393.28021735,
+                      "machine_type": "DFIG",
+                      "mu": 1.0,
+                      "q": 0.57,
+                      "ratio_ik_ir": 0.71933623201,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 63.06970573
+                    },
+                    {
+                      "delta_u_wzgledne": 0.105272243465,
+                      "ikss_czesciowy_a": 1393.28021735,
+                      "machine_type": "DFIG",
+                      "mu": 1.0,
+                      "q": 0.57,
+                      "ratio_ik_ir": 0.71933623201,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 63.06970573
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 46440.630339
+                  "ib_a": 37543.9665094
                 },
-                "substitution_latex": "46440.6 \\cdot \\sqrt{1 + \\left((1.45944 - 1) \\cdot 0.000225088\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "44329.7 - 0.921982 \\cdot (1 - 0.715895 \\cdot 0.57) \\cdot 12202.5 - 0.105272 \\cdot (1 - 1 \\cdot 0.57) \\cdot 1393.28 - 0.105272 \\cdot (1 - 1 \\cdot 0.57) \\cdot 1393.28",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 44329.6923593,
+                  "rx_ratio": 0.26734903005,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.000225088367708,
+                  "wykladnik": 8.3990174875
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 14.1111616514
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 44329.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.267349}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 46440.6300907,
+                  "ikss_a": 44329.6923593,
                   "m_factor": 0.0128577208094,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 46738.236838
+                  "ith_a": 44613.7715272
                 },
-                "substitution_latex": "46440.6 \\cdot \\sqrt{0.0128577 + 1}",
+                "substitution_latex": "44329.7 \\cdot \\sqrt{0.0128577 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 46440.6300907,
+                  "ikss_a": 44329.6923593,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 55.5018962883
+                  "sk_mva": 52.9790828207
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 46440.6 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 44329.7 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -9102,21 +9759,70 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.000225088367708,
+                  "c_factor": 0.95,
                   "ikss_a": 40107.8168965,
-                  "kappa": 1.45944188629,
-                  "ta_s": 0.0119061545173,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.921982105607,
+                      "ikss_czesciowy_a": 11040.3131186,
+                      "machine_type": "DFIG",
+                      "mu": 0.736192838535,
+                      "q": 0.57,
+                      "ratio_ik_ir": 5.7,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 5907.57031301
+                    },
+                    {
+                      "delta_u_wzgledne": 0.105272243465,
+                      "ikss_czesciowy_a": 1260.58686332,
+                      "machine_type": "DFIG",
+                      "mu": 1.0,
+                      "q": 0.57,
+                      "ratio_ik_ir": 0.650828019437,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 57.0630670891
+                    },
+                    {
+                      "delta_u_wzgledne": 0.105272243465,
+                      "ikss_czesciowy_a": 1260.58686332,
+                      "machine_type": "DFIG",
+                      "mu": 1.0,
+                      "q": 0.57,
+                      "ratio_ik_ir": 0.650828019437,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 57.0630670891
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 40107.817111
+                  "ib_a": 34086.1204493
                 },
-                "substitution_latex": "40107.8 \\cdot \\sqrt{1 + \\left((1.45944 - 1) \\cdot 0.000225088\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "40107.8 - 0.921982 \\cdot (1 - 0.736193 \\cdot 0.57) \\cdot 11040.3 - 0.105272 \\cdot (1 - 1 \\cdot 0.57) \\cdot 1260.59 - 0.105272 \\cdot (1 - 1 \\cdot 0.57) \\cdot 1260.59",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 40107.8168965,
+                  "rx_ratio": 0.26734903005,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.000225088367708,
+                  "wykladnik": 8.3990174875
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 12.7672414941
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 40107.8 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.267349}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -9150,23 +9856,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 6.816,
-            "ik_contribution_ka": 15.703,
+            "ib_contribution_ka": 6.568,
+            "ik_contribution_ka": 14.989,
             "is_synchronous_machine": false,
             "machine_type": "DFIG",
             "machines": [
               {
-                "ib_partial_ka": 5.152,
-                "ikss_partial_ka": 12.784,
+                "ib_partial_ka": 4.979,
+                "ikss_partial_ka": 12.202,
                 "ir_a": 1936.9,
-                "mu": 0.7071,
+                "mu": 0.7159,
                 "node_ref": "WTG_LV_1",
                 "q": 0.57,
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.832,
-                "ikss_partial_ka": 1.46,
+                "ib_partial_ka": 0.794,
+                "ikss_partial_ka": 1.393,
                 "ir_a": 1936.9,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_2",
@@ -9174,8 +9880,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.832,
-                "ikss_partial_ka": 1.46,
+                "ib_partial_ka": 0.794,
+                "ikss_partial_ka": 1.393,
                 "ir_a": 1936.9,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_3",
@@ -9190,7 +9896,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.69,
           "verification": {
             "icw_ka": 63.0,
-            "ikss_max_ka": 46.441,
+            "ikss_max_ka": 44.33,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -9468,7 +10174,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 10.046,
+            "ib_ka": 9.791,
             "ikss_ka": 10.046,
             "ip_ka": 23.238,
             "ith_ka": 10.157,
@@ -9634,21 +10340,70 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.00768435288358,
+                  "c_factor": 1.1,
                   "ikss_a": 10046.2692167,
-                  "kappa": 1.63562528066,
-                  "ta_s": 0.0205399158822,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.677485460758,
+                      "ikss_czesciowy_a": 196.492478696,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.772524282182,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 4.84977312879,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 85.0620464484
+                    },
+                    {
+                      "delta_u_wzgledne": 0.677485460758,
+                      "ikss_czesciowy_a": 196.492478696,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.772524282182,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 4.84977312879,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 85.0620464484
+                    },
+                    {
+                      "delta_u_wzgledne": 0.677485460758,
+                      "ikss_czesciowy_a": 196.492478696,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.772524282182,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 4.84977312879,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 85.0620464484
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 10046.3890532
+                  "ib_a": 9791.08307736
                 },
-                "substitution_latex": "10046.3 \\cdot \\sqrt{1 + \\left((1.63563 - 1) \\cdot 0.00768435\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "10046.3 - 0.677485 \\cdot (1 - 0.772524 \\cdot 0.46732) \\cdot 196.492 - 0.677485 \\cdot (1 - 0.772524 \\cdot 0.46732) \\cdot 196.492 - 0.677485 \\cdot (1 - 0.772524 \\cdot 0.46732) \\cdot 196.492",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 10046.2692167,
+                  "rx_ratio": 0.154971367949,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00768435288358,
+                  "wykladnik": 4.86856911067
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 109.175982862
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 10046.3 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.154971}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -9682,12 +10437,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.676,
-            "ith_ka": 8.772,
+            "ikss_ka": 9.133,
+            "ith_ka": 9.233,
             "kappa": 1.636,
-            "sk_mva": 225.42,
+            "sk_mva": 237.28,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -9804,7 +10559,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.9482405096
@@ -9812,9 +10567,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8676.32341443
+                  "ikss_a": 9132.97201519
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.948241}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{0.948241}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -9835,94 +10590,143 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8676.32341443,
+                  "ikss_a": 9132.97201519,
                   "kappa": 1.63562528066
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 20069.4071919
+                  "ip_a": 21125.691781
                 },
-                "substitution_latex": "1.63563 \\cdot \\sqrt{2} \\cdot 8676.32",
+                "substitution_latex": "1.63563 \\cdot \\sqrt{2} \\cdot 9132.97",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.00768435288358,
-                  "ikss_a": 8676.32341443,
-                  "kappa": 1.63562528066,
-                  "ta_s": 0.0205399158822,
+                  "c_factor": 1.0,
+                  "ikss_a": 9132.97201519,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.677485460758,
+                      "ikss_czesciowy_a": 178.629526087,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.795635024945,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 4.40888466254,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 76.0221151634
+                    },
+                    {
+                      "delta_u_wzgledne": 0.677485460758,
+                      "ikss_czesciowy_a": 178.629526087,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.795635024945,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 4.40888466254,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 76.0221151634
+                    },
+                    {
+                      "delta_u_wzgledne": 0.677485460758,
+                      "ikss_czesciowy_a": 178.629526087,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.795635024945,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 4.40888466254,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 76.0221151634
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 8676.4269096
+                  "ib_a": 8904.9056697
                 },
-                "substitution_latex": "8676.32 \\cdot \\sqrt{1 + \\left((1.63563 - 1) \\cdot 0.00768435\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9132.97 - 0.677485 \\cdot (1 - 0.795635 \\cdot 0.46732) \\cdot 178.63 - 0.677485 \\cdot (1 - 0.795635 \\cdot 0.46732) \\cdot 178.63 - 0.677485 \\cdot (1 - 0.795635 \\cdot 0.46732) \\cdot 178.63",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9132.97201519,
+                  "rx_ratio": 0.154971367949,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00768435288358,
+                  "wykladnik": 4.86856911067
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 99.2508935112
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9132.97 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.154971}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8676.32341443,
+                  "ikss_a": 9132.97201519,
                   "m_factor": 0.0220679393424,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8771.53528781
+                  "ith_a": 9233.1950398
                 },
-                "substitution_latex": "8676.32 \\cdot \\sqrt{0.0220679 + 1}",
+                "substitution_latex": "9132.97 \\cdot \\sqrt{0.0220679 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8676.32341443,
+                  "ikss_a": 9132.97201519,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 225.41749465
+                  "sk_mva": 237.281573316
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8676.32 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9132.97 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 0.275,
+            "ib_contribution_ka": 0.213,
             "ik_contribution_ka": 0.589,
             "is_synchronous_machine": false,
             "machine_type": "ASYNCHRONOUS",
             "machines": [
               {
-                "ib_partial_ka": 0.092,
+                "ib_partial_ka": 0.071,
                 "ikss_partial_ka": 0.196,
                 "ir_a": 880.8,
-                "mu": 1.0,
+                "mu": 0.7725,
                 "node_ref": "WTG_LV_1",
                 "q": 0.4673,
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.092,
+                "ib_partial_ka": 0.071,
                 "ikss_partial_ka": 0.196,
                 "ir_a": 880.8,
-                "mu": 1.0,
+                "mu": 0.7725,
                 "node_ref": "WTG_LV_2",
                 "q": 0.4673,
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.092,
+                "ib_partial_ka": 0.071,
                 "ikss_partial_ka": 0.196,
                 "ir_a": 880.8,
-                "mu": 1.0,
+                "mu": 0.7725,
                 "node_ref": "WTG_LV_3",
                 "q": 0.4673,
                 "source_id": "async/WTG_LV_3/1"
@@ -9945,15 +10749,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 20.563,
-            "ikss_ka": 20.563,
-            "ip_ka": 42.264,
-            "ith_ka": 20.692,
+            "ib_ka": 16.21,
+            "ikss_ka": 19.628,
+            "ip_ka": 40.343,
+            "ith_ka": 19.752,
             "kappa": 1.453,
             "rx_ratio": 0.272,
-            "sk_mva": 24.58,
+            "sk_mva": 23.46,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -10070,7 +10874,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.0213106275296
@@ -10078,9 +10882,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 20562.9258785
+                  "ikss_a": 19628.2474294
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.0213106}",
+                "substitution_latex": "\\frac{1.05 \\cdot 690 \\cdot 0.57735}{0.0213106}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -10101,61 +10905,110 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 20562.9258785,
+                  "ikss_a": 19628.2474294,
                   "kappa": 1.45334593956
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 42263.8357119
+                  "ip_a": 40342.7522705
                 },
-                "substitution_latex": "1.45335 \\cdot \\sqrt{2} \\cdot 20562.9",
+                "substitution_latex": "1.45335 \\cdot \\sqrt{2} \\cdot 19628.2",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.000194456526062,
-                  "ikss_a": 20562.9258785,
-                  "kappa": 1.45334593956,
-                  "ta_s": 0.011702336646,
+                  "c_factor": 1.05,
+                  "ikss_a": 19628.2474294,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.921982105607,
+                      "ikss_czesciowy_a": 5548.90418901,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.715894747712,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 6.3,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 3404.42565398
+                    },
+                    {
+                      "delta_u_wzgledne": 0.0468722062965,
+                      "ikss_czesciowy_a": 282.098080087,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 0.32028267997,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 7.04339206105
+                    },
+                    {
+                      "delta_u_wzgledne": 0.0468722062965,
+                      "ikss_czesciowy_a": 282.098080087,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 0.32028267997,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 7.04339206105
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 20562.9259584
+                  "ib_a": 16209.7349913
                 },
-                "substitution_latex": "20562.9 \\cdot \\sqrt{1 + \\left((1.45335 - 1) \\cdot 0.000194457\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "19628.2 - 0.921982 \\cdot (1 - 0.715895 \\cdot 0.46732) \\cdot 5548.9 - 0.0468722 \\cdot (1 - 1 \\cdot 0.46732) \\cdot 282.098 - 0.0468722 \\cdot (1 - 1 \\cdot 0.46732) \\cdot 282.098",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 19628.2474294,
+                  "rx_ratio": 0.272005408674,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.000194456526062,
+                  "wykladnik": 8.54530193628
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 5.39782803583
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 19628.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.272005}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 20562.9258785,
+                  "ikss_a": 19628.2474294,
                   "m_factor": 0.012640630467,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 20692.4819203
+                  "ith_a": 19751.9145603
                 },
-                "substitution_latex": "20562.9 \\cdot \\sqrt{0.0126406 + 1}",
+                "substitution_latex": "19628.2 \\cdot \\sqrt{0.0126406 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 20562.9258785,
+                  "ikss_a": 19628.2474294,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 24.5750623379
+                  "sk_mva": 23.4580140498
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 20562.9 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 19628.2 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -10326,21 +11179,70 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.000194456526062,
+                  "c_factor": 0.95,
                   "ikss_a": 17758.8905314,
-                  "kappa": 1.45334593956,
-                  "ta_s": 0.011702336646,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.921982105607,
+                      "ikss_czesciowy_a": 5020.43712339,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.736192838535,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 5.7,
+                      "source_id": "async/WTG_LV_1/1",
+                      "ubytek_a": 3036.2876513
+                    },
+                    {
+                      "delta_u_wzgledne": 0.0468722062965,
+                      "ikss_czesciowy_a": 255.231596269,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 0.289779567592,
+                      "source_id": "async/WTG_LV_2/1",
+                      "ubytek_a": 6.37259281714
+                    },
+                    {
+                      "delta_u_wzgledne": 0.0468722062965,
+                      "ikss_czesciowy_a": 255.231596269,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 0.467320066793,
+                      "ratio_ik_ir": 0.289779567592,
+                      "source_id": "async/WTG_LV_3/1",
+                      "ubytek_a": 6.37259281714
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 17758.8906004
+                  "ib_a": 14709.8576945
                 },
-                "substitution_latex": "17758.9 \\cdot \\sqrt{1 + \\left((1.45335 - 1) \\cdot 0.000194457\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "17758.9 - 0.921982 \\cdot (1 - 0.736193 \\cdot 0.46732) \\cdot 5020.44 - 0.0468722 \\cdot (1 - 1 \\cdot 0.46732) \\cdot 255.232 - 0.0468722 \\cdot (1 - 1 \\cdot 0.46732) \\cdot 255.232",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 17758.8905314,
+                  "rx_ratio": 0.272005408674,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.000194456526062,
+                  "wykladnik": 8.54530193628
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 4.88374917527
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 17758.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.272005}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -10374,23 +11276,23 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 2.197,
-            "ik_contribution_ka": 6.404,
+            "ib_contribution_ka": 2.12,
+            "ik_contribution_ka": 6.113,
             "is_synchronous_machine": false,
             "machine_type": "ASYNCHRONOUS",
             "machines": [
               {
-                "ib_partial_ka": 1.921,
-                "ikss_partial_ka": 5.813,
+                "ib_partial_ka": 1.856,
+                "ikss_partial_ka": 5.549,
                 "ir_a": 880.8,
-                "mu": 0.7071,
+                "mu": 0.7159,
                 "node_ref": "WTG_LV_1",
                 "q": 0.4673,
                 "source_id": "async/WTG_LV_1/1"
               },
               {
-                "ib_partial_ka": 0.138,
-                "ikss_partial_ka": 0.296,
+                "ib_partial_ka": 0.132,
+                "ikss_partial_ka": 0.282,
                 "ir_a": 880.8,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_2",
@@ -10398,8 +11300,8 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "async/WTG_LV_2/1"
               },
               {
-                "ib_partial_ka": 0.138,
-                "ikss_partial_ka": 0.296,
+                "ib_partial_ka": 0.132,
+                "ikss_partial_ka": 0.282,
                 "ir_a": 880.8,
                 "mu": 1.0,
                 "node_ref": "WTG_LV_3",
@@ -10414,7 +11316,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.69,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 20.563,
+            "ikss_max_ka": 19.628,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -10678,7 +11580,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 10.165,
+            "ib_ka": 9.949,
             "ikss_ka": 10.165,
             "ip_ka": 23.987,
             "ith_ka": 10.29,
@@ -10760,21 +11662,60 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.0132798856804,
+                  "c_factor": 1.1,
                   "ikss_a": 10164.6436671,
-                  "kappa": 1.66864091037,
-                  "ta_s": 0.0231400879875,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.997558967142,
+                      "ikss_czesciowy_a": 348.764234806,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 0.690781247072,
+                      "q": 1.0,
+                      "ratio_ik_ir": 7.24892849456,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 107.581189927
+                    },
+                    {
+                      "delta_u_wzgledne": 0.997558967142,
+                      "ikss_czesciowy_a": 348.764234806,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 0.690781247072,
+                      "q": 1.0,
+                      "ratio_ik_ir": 7.24892849456,
+                      "source_id": "sync/SN_PCC/2",
+                      "ubytek_a": 107.581189927
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 10165.0443753
+                  "ib_a": 9949.48128729
                 },
-                "substitution_latex": "10164.6 \\cdot \\sqrt{1 + \\left((1.66864 - 1) \\cdot 0.0132799\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "10164.6 - 0.997559 \\cdot (1 - 0.690781 \\cdot 1) \\cdot 348.764 - 0.997559 \\cdot (1 - 0.690781 \\cdot 1) \\cdot 348.764",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 10164.6436671,
+                  "rx_ratio": 0.137557768301,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0132798856804,
+                  "wykladnik": 4.32150474338
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 190.898050298
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 10164.6 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.137558}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -10808,12 +11749,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 8.779,
-            "ith_ka": 8.887,
+            "ikss_ka": 9.241,
+            "ith_ka": 9.355,
             "kappa": 1.669,
-            "sk_mva": 228.07,
+            "sk_mva": 240.08,
             "white_box_trace": [
               {
                 "formula_latex": "Z_k = Z_1",
@@ -10846,7 +11787,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.93719757953
@@ -10854,9 +11795,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 8778.55589435
+                  "ikss_a": 9240.58515195
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.937198}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{0.937198}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -10877,61 +11818,100 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 8778.55589435,
+                  "ikss_a": 9240.58515195,
                   "kappa": 1.66864091037
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 20715.7644206
+                  "ip_a": 21806.0678111
                 },
-                "substitution_latex": "1.66864 \\cdot \\sqrt{2} \\cdot 8778.56",
+                "substitution_latex": "1.66864 \\cdot \\sqrt{2} \\cdot 9240.59",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.0132798856804,
-                  "ikss_a": 8778.55589435,
-                  "kappa": 1.66864091037,
-                  "ta_s": 0.0231400879875,
+                  "c_factor": 1.0,
+                  "ikss_a": 9240.58515195,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.997558967142,
+                      "ikss_czesciowy_a": 317.058395278,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 0.707397966307,
+                      "q": 1.0,
+                      "ratio_ik_ir": 6.58993499506,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 92.5454719253
+                    },
+                    {
+                      "delta_u_wzgledne": 0.997558967142,
+                      "ikss_czesciowy_a": 317.058395278,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 0.707397966307,
+                      "q": 1.0,
+                      "ratio_ik_ir": 6.58993499506,
+                      "source_id": "sync/SN_PCC/2",
+                      "ubytek_a": 92.5454719253
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 8778.90196047
+                  "ib_a": 9055.49420809
                 },
-                "substitution_latex": "8778.56 \\cdot \\sqrt{1 + \\left((1.66864 - 1) \\cdot 0.0132799\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9240.59 - 0.997559 \\cdot (1 - 0.707398 \\cdot 1) \\cdot 317.058 - 0.997559 \\cdot (1 - 0.707398 \\cdot 1) \\cdot 317.058",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9240.58515195,
+                  "rx_ratio": 0.137557768301,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0132798856804,
+                  "wykladnik": 4.32150474338
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 173.543682089
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9240.59 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.137558}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 8778.55589435,
+                  "ikss_a": 9240.58515195,
                   "m_factor": 0.024844219368,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 8886.93505942
+                  "ith_a": 9354.6684836
                 },
-                "substitution_latex": "8778.56 \\cdot \\sqrt{0.0248442 + 1}",
+                "substitution_latex": "9240.59 \\cdot \\sqrt{0.0248442 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 8778.55589435,
+                  "ikss_a": 9240.58515195,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 228.073572391
+                  "sk_mva": 240.077444623
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 8778.56 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9240.59 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -11239,15 +12219,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 65.0,
           "idyn_ka": 136.5,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 61.955,
-            "ikss_ka": 61.955,
-            "ip_ka": 135.014,
-            "ith_ka": 62.457,
+            "ib_ka": 59.205,
+            "ikss_ka": 59.297,
+            "ip_ka": 129.22,
+            "ith_ka": 59.777,
             "kappa": 1.541,
             "rx_ratio": 0.2106,
-            "sk_mva": 42.92,
+            "sk_mva": 41.08,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -11336,7 +12316,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 400.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.00434311097994
@@ -11344,9 +12324,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 61955.3811649
+                  "ikss_a": 59296.6866399
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 400 \\cdot 0.57735}{0.00434311}",
+                "substitution_latex": "\\frac{1.05 \\cdot 400 \\cdot 0.57735}{0.00434311}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -11367,61 +12347,100 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 61955.3811649,
+                  "ikss_a": 59296.6866399,
                   "kappa": 1.54093302843
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 135013.686286
+                  "ip_a": 129219.836877
                 },
-                "substitution_latex": "1.54093 \\cdot \\sqrt{2} \\cdot 61955.4",
+                "substitution_latex": "1.54093 \\cdot \\sqrt{2} \\cdot 59296.7",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.00133667937248,
-                  "ikss_a": 61955.3811649,
-                  "kappa": 1.54093302843,
-                  "ta_s": 0.0151112943334,
+                  "c_factor": 1.05,
+                  "ikss_a": 59296.6866399,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.147982987049,
+                      "ikss_czesciowy_a": 3703.93223196,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 1.0,
+                      "ratio_ik_ir": 1.02646381017,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 0.0
+                    },
+                    {
+                      "delta_u_wzgledne": 0.103747730634,
+                      "ikss_czesciowy_a": 1900.74900806,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 0.535478151306,
+                      "ratio_ik_ir": 0.708919076646,
+                      "source_id": "async/WIND_NN/1",
+                      "ubytek_a": 91.6029635113
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 61955.3973603
+                  "ib_a": 59205.0836764
                 },
-                "substitution_latex": "61955.4 \\cdot \\sqrt{1 + \\left((1.54093 - 1) \\cdot 0.00133668\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "59296.7 - 0.147983 \\cdot (1 - 1 \\cdot 1) \\cdot 3703.93 - 0.103748 \\cdot (1 - 1 \\cdot 0.535478) \\cdot 1900.75",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 55832.5850248,
+                  "rx_ratio": 0.210643694154,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00133667937248,
+                  "wykladnik": 6.61756682078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 105.543132523
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 55832.6 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.210644}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 61955.3811649,
+                  "ikss_a": 59296.6866399,
                   "m_factor": 0.0162744576622,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 62457.4916297
+                  "ith_a": 59777.250012
                 },
-                "substitution_latex": "61955.4 \\cdot \\sqrt{0.0162745 + 1}",
+                "substitution_latex": "59296.7 \\cdot \\sqrt{0.0162745 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 61955.3811649,
+                  "ikss_a": 59296.6866399,
                   "un_v": 400.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 42.923947192
+                  "sk_mva": 41.0819495924
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 61955.4 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 400 \\cdot 59296.7 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -11564,21 +12583,60 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.00133667937248,
+                  "c_factor": 0.95,
                   "ikss_a": 53979.29759,
-                  "kappa": 1.54093302843,
-                  "ta_s": 0.0151112943334,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.147982987049,
+                      "ikss_czesciowy_a": 3351.17678129,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 1.0,
+                      "ratio_ik_ir": 0.928705352055,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 0.0
+                    },
+                    {
+                      "delta_u_wzgledne": 0.103747730634,
+                      "ikss_czesciowy_a": 1719.72529301,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 0.535478151306,
+                      "ratio_ik_ir": 0.641402974108,
+                      "source_id": "async/WIND_NN/1",
+                      "ubytek_a": 82.8788717483
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 53979.3117003
+                  "ib_a": 53896.4187182
                 },
-                "substitution_latex": "53979.3 \\cdot \\sqrt{1 + \\left((1.54093 - 1) \\cdot 0.00133668\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "53979.3 - 0.147983 \\cdot (1 - 1 \\cdot 1) \\cdot 3351.18 - 0.103748 \\cdot (1 - 1 \\cdot 0.535478) \\cdot 1719.73",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 50515.1959748,
+                  "rx_ratio": 0.210643694154,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.00133667937248,
+                  "wykladnik": 6.61756682078
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 95.4914056165
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 50515.2 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.210644}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -11612,25 +12670,25 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 3.472,
+            "ib_contribution_ka": 4.722,
             "ibg_ka": 3.464,
-            "ik_contribution_ka": 9.336,
+            "ik_contribution_ka": 9.069,
             "is_synchronous_machine": false,
-            "machine_ka": 5.872,
+            "machine_ka": 5.605,
             "machine_type": "MIXED",
             "machines": [
               {
-                "ib_partial_ka": 2.406,
-                "ikss_partial_ka": 3.88,
+                "ib_partial_ka": 3.704,
+                "ikss_partial_ka": 3.704,
                 "ir_a": 96.2,
-                "mu": 0.62,
+                "mu": 1.0,
                 "node_ref": "SN_PCC",
                 "q": 1.0,
                 "source_id": "sync/SN_PCC/1"
               },
               {
-                "ib_partial_ka": 1.066,
-                "ikss_partial_ka": 1.991,
+                "ib_partial_ka": 1.018,
+                "ikss_partial_ka": 1.901,
                 "ir_a": 1554.3,
                 "mu": 1.0,
                 "node_ref": "WIND_NN",
@@ -11643,7 +12701,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.4,
           "verification": {
             "icw_ka": 65.0,
-            "ikss_max_ka": 61.955,
+            "ikss_max_ka": 59.297,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }
@@ -11655,7 +12713,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "max": {
             "c_factor": 1.1,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 10.607,
+            "ib_ka": 10.244,
             "ikss_ka": 10.607,
             "ip_ka": 24.814,
             "ith_ka": 10.731,
@@ -11793,21 +12851,60 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.0104955065176,
+                  "c_factor": 1.1,
                   "ikss_a": 10606.8280222,
-                  "kappa": 1.65422859843,
-                  "ta_s": 0.021945185883,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.997558967142,
+                      "ikss_czesciowy_a": 697.528469612,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 0.690781247072,
+                      "q": 1.0,
+                      "ratio_ik_ir": 7.24892849456,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 215.162379853
+                    },
+                    {
+                      "delta_u_wzgledne": 0.699367414309,
+                      "ikss_czesciowy_a": 357.951081089,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.765067398225,
+                      "q": 0.535478151306,
+                      "ratio_ik_ir": 5.00641488199,
+                      "source_id": "async/WIND_NN/1",
+                      "ubytek_a": 147.781090634
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 10607.0780661
+                  "ib_a": 10243.8845517
                 },
-                "substitution_latex": "10606.8 \\cdot \\sqrt{1 + \\left((1.65423 - 1) \\cdot 0.0104955\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "10606.8 - 0.997559 \\cdot (1 - 0.690781 \\cdot 1) \\cdot 697.528 - 0.699367 \\cdot (1 - 0.765067 \\cdot 0.535478) \\cdot 357.951",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 10514.4519791,
+                  "rx_ratio": 0.145047705625,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0104955065176,
+                  "wykladnik": 4.55680806412
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 156.064829545
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 10514.5 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.145048}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -11841,12 +12938,12 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "min": {
-            "c_factor": 0.95,
+            "c_factor": 1.0,
             "case_ref": "ZWARCIOWY_MIN",
-            "ikss_ka": 9.173,
-            "ith_ka": 9.281,
+            "ikss_ka": 9.651,
+            "ith_ka": 9.764,
             "kappa": 1.654,
-            "sk_mva": 238.32,
+            "sk_mva": 250.74,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -11935,7 +13032,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 0.95,
+                  "c_factor": 1.0,
                   "un_v": 15000.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.906017685043
@@ -11943,9 +13040,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 9173.03911595
+                  "ikss_a": 9650.96875137
                 },
-                "substitution_latex": "\\frac{0.95 \\cdot 15000 \\cdot 0.57735}{0.906018}",
+                "substitution_latex": "\\frac{1 \\cdot 15000 \\cdot 0.57735}{0.906018}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -11966,67 +13063,106 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 9173.03911595,
+                  "ikss_a": 9650.96875137,
                   "kappa": 1.65422859843
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 21459.7060074
+                  "ip_a": 22577.7901383
                 },
-                "substitution_latex": "1.65423 \\cdot \\sqrt{2} \\cdot 9173.04",
+                "substitution_latex": "1.65423 \\cdot \\sqrt{2} \\cdot 9650.97",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.0104955065176,
-                  "ikss_a": 9173.03911595,
-                  "kappa": 1.65422859843,
-                  "ta_s": 0.021945185883,
+                  "c_factor": 1.0,
+                  "ikss_a": 9650.96875137,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.997558967142,
+                      "ikss_czesciowy_a": 634.116790556,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 0.707397966307,
+                      "q": 1.0,
+                      "ratio_ik_ir": 6.58993499506,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 185.090943851
+                    },
+                    {
+                      "delta_u_wzgledne": 0.699367414309,
+                      "ikss_czesciowy_a": 325.410073717,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.78781121209,
+                      "q": 0.535478151306,
+                      "ratio_ik_ir": 4.55128625635,
+                      "source_id": "async/WIND_NN/1",
+                      "ubytek_a": 131.574776585
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 9173.25535991
+                  "ib_a": 9334.30303093
                 },
-                "substitution_latex": "9173.04 \\cdot \\sqrt{1 + \\left((1.65423 - 1) \\cdot 0.0104955\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "9650.97 - 0.997559 \\cdot (1 - 0.707398 \\cdot 1) \\cdot 634.117 - 0.699367 \\cdot (1 - 0.787811 \\cdot 0.535478) \\cdot 325.41",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 9558.5927083,
+                  "rx_ratio": 0.145047705625,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.0104955065176,
+                  "wykladnik": 4.55680806412
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 141.877117769
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 9558.59 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.145048}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 9173.03911595,
+                  "ikss_a": 9650.96875137,
                   "m_factor": 0.0235683161382,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 9280.50614222
+                  "ith_a": 9764.0349772
                 },
-                "substitution_latex": "9173.04 \\cdot \\sqrt{0.0235683 + 1}",
+                "substitution_latex": "9650.97 \\cdot \\sqrt{0.0235683 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 9173.03911595,
+                  "ikss_a": 9650.96875137,
                   "un_v": 15000.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 238.32254713
+                  "sk_mva": 250.739523294
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9173.04 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 15000 \\cdot 9650.97 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 0.674,
+            "ib_contribution_ka": 0.628,
             "ibg_ka": 0.092,
             "ik_contribution_ka": 1.148,
             "is_synchronous_machine": false,
@@ -12043,10 +13179,10 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "source_id": "sync/SN_PCC/1"
               },
               {
-                "ib_partial_ka": 0.192,
+                "ib_partial_ka": 0.147,
                 "ikss_partial_ka": 0.358,
                 "ir_a": 1554.3,
-                "mu": 1.0,
+                "mu": 0.7651,
                 "node_ref": "WIND_NN",
                 "q": 0.5355,
                 "source_id": "async/WIND_NN/1"
@@ -12067,15 +13203,15 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "icw_ka": 50.0,
           "idyn_ka": 105.0,
           "max": {
-            "c_factor": 1.1,
+            "c_factor": 1.05,
             "case_ref": "ZWARCIOWY_MAKS",
-            "ib_ka": 39.971,
-            "ikss_ka": 39.971,
-            "ip_ka": 82.661,
-            "ith_ka": 40.23,
+            "ib_ka": 32.411,
+            "ikss_ka": 38.246,
+            "ip_ka": 79.093,
+            "ith_ka": 38.493,
             "kappa": 1.462,
             "rx_ratio": 0.2652,
-            "sk_mva": 47.77,
+            "sk_mva": 45.71,
             "white_box_trace": [
               {
                 "formula_latex": "K_T = 0.95 \\cdot \\frac{c_{max}}{1 + 0.6 \\cdot x_T}",
@@ -12164,7 +13300,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_{k}'' = \\frac{c \\cdot U_n \\cdot k_U}{\\left|Z_k\\right|}",
                 "inputs": {
-                  "c_factor": 1.1,
+                  "c_factor": 1.05,
                   "un_v": 690.0,
                   "voltage_factor": 0.57735026919,
                   "z_equiv_abs_ohm": 0.0115429743161
@@ -12172,9 +13308,9 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "key": "Ikss",
                 "notes": null,
                 "result": {
-                  "ikss_a": 38216.252132
+                  "ikss_a": 36490.6497229
                 },
-                "substitution_latex": "\\frac{1.1 \\cdot 690 \\cdot 0.57735}{0.011543}",
+                "substitution_latex": "\\frac{1.05 \\cdot 690 \\cdot 0.57735}{0.011543}",
                 "title": "Pr\u0105d zwarciowy pocz\u0105tkowy symetryczny"
               },
               {
@@ -12195,61 +13331,100 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
               {
                 "formula_latex": "I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
                 "inputs": {
-                  "ikss_a": 38216.252132,
+                  "ikss_a": 36490.6497229,
                   "kappa": 1.46230692329
                 },
                 "key": "Ip",
                 "notes": null,
                 "result": {
-                  "ip_a": 79031.7552617
+                  "ip_a": 75463.1848326
                 },
-                "substitution_latex": "1.46231 \\cdot \\sqrt{2} \\cdot 38216.3",
+                "substitution_latex": "1.46231 \\cdot \\sqrt{2} \\cdot 36490.6",
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.000240939482356,
-                  "ikss_a": 38216.252132,
-                  "kappa": 1.46230692329,
-                  "ta_s": 0.0120034117059,
+                  "c_factor": 1.05,
+                  "ikss_a": 36490.6497229,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.125677081581,
+                      "ikss_czesciowy_a": 1823.55232941,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 1.0,
+                      "ratio_ik_ir": 0.871741938605,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 0.0
+                    },
+                    {
+                      "delta_u_wzgledne": 0.921982105607,
+                      "ikss_czesciowy_a": 9792.18386296,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.715894747712,
+                      "q": 0.535478151306,
+                      "ratio_ik_ir": 6.3,
+                      "source_id": "async/WIND_NN/1",
+                      "ubytek_a": 5567.28696119
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 38216.252369
+                  "ib_a": 30923.3627618
                 },
-                "substitution_latex": "38216.3 \\cdot \\sqrt{1 + \\left((1.46231 - 1) \\cdot 0.000240939\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "36490.6 - 0.125677 \\cdot (1 - 1 \\cdot 1) \\cdot 1823.55 - 0.921982 \\cdot (1 - 0.715895 \\cdot 0.535478) \\cdot 9792.18",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 36237.6505894,
+                  "rx_ratio": 0.265182844665,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.000240939482356,
+                  "wykladnik": 8.33096476656
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 12.3476128459
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 36237.7 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.265183}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
                 "inputs": {
-                  "ikss_a": 38216.252132,
+                  "ikss_a": 36490.6497229,
                   "m_factor": 0.01296132142,
                   "n_factor": 1.0
                 },
                 "key": "Ith",
                 "notes": null,
                 "result": {
-                  "ith_a": 38463.1213333
+                  "ith_a": 36726.3718843
                 },
-                "substitution_latex": "38216.3 \\cdot \\sqrt{0.0129613 + 1}",
+                "substitution_latex": "36490.6 \\cdot \\sqrt{0.0129613 + 1}",
                 "title": "Pr\u0105d zast\u0119pczy cieplny"
               },
               {
                 "formula_latex": "S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
                 "inputs": {
-                  "ikss_a": 38216.252132,
+                  "ikss_a": 36490.6497229,
                   "un_v": 690.0
                 },
                 "key": "Sk",
                 "notes": null,
                 "result": {
-                  "sk_mva": 45.6728183535
+                  "sk_mva": 43.6105249317
                 },
-                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 38216.3 / 10^6",
+                "substitution_latex": "\\sqrt{3} \\cdot 690 \\cdot 36490.6 / 10^6",
                 "title": "Moc zwarciowa"
               }
             ]
@@ -12392,21 +13567,60 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
                 "title": "Pr\u0105d udarowy"
               },
               {
-                "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+                "formula_latex": "I_b = I_{k}'' - \\sum_m \\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}}\\left(1 - \\mu_m q_m\\right) I''_{k,m}",
                 "inputs": {
-                  "exp_factor": 0.000240939482356,
+                  "c_factor": 0.95,
                   "ikss_a": 33039.4449049,
-                  "kappa": 1.46230692329,
-                  "ta_s": 0.0120034117059,
+                  "maszyny": [
+                    {
+                      "delta_u_wzgledne": 0.125677081581,
+                      "ikss_czesciowy_a": 1649.88067899,
+                      "machine_type": "SYNCHRONOUS",
+                      "mu": 1.0,
+                      "q": 1.0,
+                      "ratio_ik_ir": 0.788718896833,
+                      "source_id": "sync/SN_PCC/1",
+                      "ubytek_a": 0.0
+                    },
+                    {
+                      "delta_u_wzgledne": 0.921982105607,
+                      "ikss_czesciowy_a": 8859.59492363,
+                      "machine_type": "ASYNCHRONOUS",
+                      "mu": 0.736192838535,
+                      "q": 0.535478151306,
+                      "ratio_ik_ir": 5.7,
+                      "source_id": "async/WIND_NN/1",
+                      "ubytek_a": 4948.28544218
+                    }
+                  ],
+                  "przypadek": "z_udzialem_maszyn",
                   "tb_s": 0.1
                 },
                 "key": "Ib",
-                "notes": null,
+                "notes": "Zwarcie z udzia\u0142em maszyn wiruj\u0105cych (IEC 60909-0:2016, rozdz. 9): od Ik'' odejmuje si\u0119 zanik sk\u0142adowej okresowej ka\u017cdej maszyny; \u03bc z krotno\u015bci Ik,m''/Ir,m na zaciskach maszyny i t_min = t_b, q = 1 dla maszyny synchronicznej, q z mocy na par\u0119 biegun\u00f3w dla asynchronicznej; \u0394U''_m \u2014 spadek na reaktancji podprzej\u015bciowej maszyny. \u0179r\u00f3d\u0142a przekszta\u0142tnikowe wchodz\u0105 do Ik'' i Ib bez zaniku.",
                 "result": {
-                  "ib_a": 33039.4451099
+                  "ib_a": 28091.1594627
                 },
-                "substitution_latex": "33039.4 \\cdot \\sqrt{1 + \\left((1.46231 - 1) \\cdot 0.000240939\\right)^2}",
-                "title": "Pr\u0105d zwarciowy do oblicze\u0144 cieplnych"
+                "substitution_latex": "33039.4 - 0.125677 \\cdot (1 - 1 \\cdot 1) \\cdot 1649.88 - 0.921982 \\cdot (1 - 0.736193 \\cdot 0.535478) \\cdot 8859.59",
+                "title": "Pr\u0105d wy\u0142\u0105czeniowy symetryczny"
+              },
+              {
+                "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+                "inputs": {
+                  "f_hz": 50.0,
+                  "ikss_a": 32786.4457713,
+                  "rx_ratio": 0.265182844665,
+                  "tb_s": 0.1,
+                  "wspolczynnik_zaniku": 0.000240939482356,
+                  "wykladnik": 8.33096476656
+                },
+                "key": "iDC",
+                "notes": "Ik'' cz\u0119\u015bci sieci nios\u0105cej sk\u0142adow\u0105 nieokresow\u0105 (sie\u0107 zasilaj\u0105ca i maszyny wiruj\u0105ce); \u017ar\u00f3d\u0142a przekszta\u0142tnikowe nie maj\u0105 sk\u0142adowej nieokresowej (IEC 60909-0:2016). R/X \u2014 ten sam stosunek p\u0119tli zwarcia co we wsp\u00f3\u0142czynniku \u03ba.",
+                "result": {
+                  "i_dc_a": 11.1716497177
+                },
+                "substitution_latex": "\\sqrt{2} \\cdot 32786.4 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.265183}",
+                "title": "Sk\u0142adowa nieokresowa pr\u0105du zwarciowego w chwili t_b"
               },
               {
                 "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
@@ -12440,27 +13654,27 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
             ]
           },
           "source_contribution": {
-            "ib_contribution_ka": 5.071,
+            "ib_contribution_ka": 5.577,
             "ibg_ka": 2.008,
-            "ik_contribution_ka": 14.177,
+            "ik_contribution_ka": 13.624,
             "is_synchronous_machine": false,
-            "machine_ka": 12.169,
+            "machine_ka": 11.616,
             "machine_type": "MIXED",
             "machines": [
               {
-                "ib_partial_ka": 1.187,
-                "ikss_partial_ka": 1.91,
+                "ib_partial_ka": 1.824,
+                "ikss_partial_ka": 1.824,
                 "ir_a": 96.2,
-                "mu": 0.6213,
+                "mu": 1.0,
                 "node_ref": "SN_PCC",
                 "q": 1.0,
                 "source_id": "sync/SN_PCC/1"
               },
               {
-                "ib_partial_ka": 3.884,
-                "ikss_partial_ka": 10.258,
+                "ib_partial_ka": 3.754,
+                "ikss_partial_ka": 9.792,
                 "ir_a": 1554.3,
-                "mu": 0.7071,
+                "mu": 0.7159,
                 "node_ref": "WIND_NN",
                 "q": 0.5355,
                 "source_id": "async/WIND_NN/1"
@@ -12471,7 +13685,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
           "un_kv": 0.69,
           "verification": {
             "icw_ka": 50.0,
-            "ikss_max_ka": 39.971,
+            "ikss_max_ka": 38.246,
             "passed": true,
             "rule": "ikss_max_le_icw"
           }

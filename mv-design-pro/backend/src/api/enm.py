@@ -14,9 +14,9 @@ Routes:
                                               → drogi od źródeł do elementu + sąsiedztwo
   GET  /api/cases/{case_id}/enm/readiness    → ReadinessMatrix (SC/PF/PR)
   POST /api/cases/{case_id}/enm/ops          → Topology operations (atomic graph CRUD)
-  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref:path}
                                               → graf domeny nN (LOD L2, karta T5b)
-  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent
+  GET  /api/cases/{case_id}/enm/lv-domain/{station_ref:path}/upstream-equivalent
                                               → UpstreamEquivalentSnapshot (kotwica SN, karta T5b)
   GET  /api/cases/{case_id}/enm/dziennik-zmian → wpisy dziennika PO wskazanej rewizji
   GET  /api/cases/{case_id}/enm/rewizje/{rewizja}
@@ -44,6 +44,7 @@ from api.domain_ops_policy import (
     validate_and_materialize_catalog_binding,
 )
 from api.klucz_twin_dep import KluczTwin
+from api.odmowa_http import OdmowaHttpError
 from application.analyses.fault_loop.service import (
     build_fault_loop_view_at_point,
     build_feeder_fault_loop_view,
@@ -63,13 +64,8 @@ from application.analyses.lv_domain.upstream_equivalent import (
 )
 from application.analyses.nn_circuit_sheet import build_nn_circuit_sheet
 from application.analyses.nn_device_selection import wybierz_aparat_dla_obwodu_nn
-from application.analyses.protection.czas_wylaczenia_pola import (
-    czasy_wylaczenia_pol_stacji,
-)
 from application.analyses.swz.service import build_swz_view
-from application.analyses.wytrzymalosc_aparatury_pol import (
-    zbuduj_widok_wytrzymalosci_aparatury,
-)
+from application.analyses.wytrzymalosc_aparatury_pol import widok_wytrzymalosci_z_biegu
 from application.cgmes.kompletnosc import ModelNiekompletnyDlaCgmesError
 from application.cgmes.service import export_cgmes
 from application.eligibility_service import EligibilityService
@@ -84,6 +80,10 @@ from application.topologia_zasilenia import (
 )
 from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
+from enm.canonical_analysis import (
+    build_short_circuit_results,
+    scenariusz_biegu_zwarciowego,
+)
 from enm.canonical_analysis import (
     get_run as _get_canonical_run,
 )
@@ -444,23 +444,47 @@ def get_fault_loop_feeders(case_id: str, klucz: KluczTwin, station_ref: str) -> 
     return build_feeder_fault_loop_view(enm, station_ref)
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}")
-def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
-    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
-    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
+# Identyfikatory stacji niosą ukośniki (`stn/<ziarno>/...`, `enm/domain_operations._make_id`),
+# a serwer ASGI dekoduje `%2F` przed dopasowaniem trasy — parametr jednosegmentowy dawał
+# 404 „Not Found” dla KAŻDEJ stacji zbudowanej operacjami domenowymi (portal projekcji nN
+# na żywej aplikacji był martwy; wykryte natywnym klikiem w e2e karty W5-E-TTIT). Konwerter
+# `:path` przyjmuje ukośniki; trasy bardziej szczegółowe (projekcja, kotwica SN) są
+# zarejestrowane PRZED trasą ogólną, bo `:path` jest zachłanny i dopasowałby także
+# sufiksy `/projection/v1` i `/upstream-equivalent`.
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}/projection/v1")
+def get_lv_domain_projection_v1(
+    case_id: str,
+    klucz: KluczTwin,
+    station_ref: str,
+    scenario: UpstreamEquivalentScenario = "MAX",
+    run_id: UUID | None = None,
+) -> dict[str, Any]:
+    """Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.
 
-    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
-    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
-    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
-    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
-    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
-    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
+    Jeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą
+    samą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak
+    daje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego
+    przypadku i być zakończony — nie ma cichego wyboru innego wyniku.
     """
     enm = _get_enm(klucz)
-    return build_lv_domain_view(enm, station_ref)
+    run = None
+    if run_id is not None:
+        run = _get_canonical_run(run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail=f"Nie znaleziono przebiegu {run_id}.")
+    try:
+        return build_lv_domain_projection_v1(
+            enm,
+            case_id,
+            station_ref,
+            scenario=scenario,
+            run=run,
+        )
+    except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
+        raise OdmowaHttpError(exc, status_code=409) from exc
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent")
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}/upstream-equivalent")
 def get_lv_domain_upstream_equivalent(
     case_id: str,
     klucz: KluczTwin,
@@ -493,37 +517,20 @@ def get_lv_domain_upstream_equivalent(
     )
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}/projection/v1")
-def get_lv_domain_projection_v1(
-    case_id: str,
-    klucz: KluczTwin,
-    station_ref: str,
-    scenario: UpstreamEquivalentScenario = "MAX",
-    run_id: UUID | None = None,
-) -> dict[str, Any]:
-    """Atomowy ``LvDomainProjectionV1`` dla portalu stacji SN/nN.
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}")
+def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
+    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
+    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
 
-    Jeden odczyt wiąże graf ENM, kotwicę SN, nakładkę wyniku oraz SWZ z tą
-    samą rewizją i odciskiem modelu. ``run_id`` jest opcjonalny; jego brak
-    daje jawny stan wyniku ``NONE``. Wskazany przebieg musi należeć do tego
-    przypadku i być zakończony — nie ma cichego wyboru innego wyniku.
+    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
+    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
+    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
+    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
+    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
+    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
     """
     enm = _get_enm(klucz)
-    run = None
-    if run_id is not None:
-        run = _get_canonical_run(run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail=f"Nie znaleziono przebiegu {run_id}.")
-    try:
-        return build_lv_domain_projection_v1(
-            enm,
-            case_id,
-            station_ref,
-            scenario=scenario,
-            run=run,
-        )
-    except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return build_lv_domain_view(enm, station_ref)
 
 
 @router.get("/{case_id}/enm/swz")
@@ -663,15 +670,16 @@ def get_nn_circuit_sheet(
 
 
 class WytrzymaloscAparaturyRequestModel(BaseModel):
-    """Prądy punktu zwarcia z WYNIKU biegu + stacja, w której ten punkt leży."""
+    """Stacja + ZAPISANY bieg zwarciowy, z którego biorą się prądy KAŻDEGO pola.
+
+    Karta WYTRZYMALOSC-PRAD-POLA: dawniej żądanie niosło jedną liczbę ``ik_ka`` /
+    ``i_peak_ka`` / ``i_thermal_ka`` dla całej stacji, więc pole innej sekcji albo strony
+    nN dostawało cudzy prąd i cudzy czas wyłączenia. Liczby z żądania zniknęły — prąd
+    pola to wiersz biegu dla punktu zabudowy tego pola.
+    """
 
     station_ref: str
-    i_peak_ka: float | None = None
-    i_thermal_ka: float | None = None
-    #: Prąd zwarciowy początkowy [kA] — potrzebny WYŁĄCZNIE do wyznaczenia czasu
-    #: wyłączenia z charakterystyki zabezpieczenia (poz. 3). Brak ⇒ czas z nastaw
-    #: pozostaje nieustalony, zamiast być liczonym przy zgadniętym prądzie.
-    ik_ka: float | None = None
+    short_circuit_run_id: str
 
 
 @router.post("/{case_id}/enm/wytrzymalosc-aparatury")
@@ -682,22 +690,39 @@ def post_wytrzymalosc_aparatury(
 
     Aparaty biorą się z MODELU (pozycja katalogu APARAT_SN wskazana na polu),
     a zapisana konfiguracja stacji pozostaje nadrzędna tam, gdzie istnieje —
-    każdy wiersz niesie jawne ``zrodlo``. Fizyka porównania siedzi w jądrze
-    werdyktu K7-B; ten endpoint tylko zestawia źródła danych.
+    każdy wiersz niesie jawne ``zrodlo``. Prądy pola i czas wyłączenia pola liczone są
+    z wiersza zapisanego biegu zwarciowego dla punktu zabudowy TEGO pola. Fizyka
+    porównania siedzi w jądrze werdyktu K7-B; ten endpoint tylko zestawia źródła danych.
     """
+    run = _resolve_run_for_sheet(
+        case_id=case_id,
+        run_id=body.short_circuit_run_id,
+        param_name="short_circuit_run_id",
+        expected_analysis_type="short_circuit_sn",
+    )
+    if run is None:  # parametr wymagany — rozwiązanie zwraca None tylko dla pominiętego
+        raise HTTPException(status_code=422, detail="short_circuit_run_id jest wymagany.")
+    scenariusz = scenariusz_biegu_zwarciowego(run)
+    if scenariusz != "MAX":
+        # Wytrzymałość aparatu sprawdza się przy prądzie MAKSYMALNYM (c_max, IEC 60909-0);
+        # prąd scenariusza minimalnego zaniżyłby wynik i dał werdykt optymistyczny.
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Bieg {body.short_circuit_run_id} jest scenariuszem zwarciowym "
+                f"{scenariusz or 'nierozpoznanym'} — wytrzymałość aparatury ocenia się przy "
+                "prądzie zwarciowym maksymalnym (scenariusz MAX)."
+            ),
+        )
     enm = _get_enm(klucz)
     project_id = _resolve_project_id(case_id, request)
-    zapisana = _bay_device_withstand(project_id, body.station_ref, request)
-    # Czas wyłączenia z NASTAW pól (KD-6 poz. 3) — konfiguracja stacji pozostaje
-    # nadrzędna dla pól, które inżynier skonfigurował ręcznie.
-    czasy = czasy_wylaczenia_pol_stacji(enm=enm, station_ref=body.station_ref, ik_ka=body.ik_ka)
-    return zbuduj_widok_wytrzymalosci_aparatury(
+    return widok_wytrzymalosci_z_biegu(
         enm=enm,
         station_ref=body.station_ref,
-        i_peak_ka=body.i_peak_ka,
-        i_thermal_ka=body.i_thermal_ka,
-        bay_device_withstand=zapisana,
-        czasy_pol=czasy,
+        wiersze_biegu=build_short_circuit_results(run)["rows"],
+        run_id=str(run.id),
+        # Konfiguracja stacji pozostaje nadrzędna dla pól skonfigurowanych ręcznie.
+        bay_device_withstand=_bay_device_withstand(project_id, body.station_ref, request),
     )
 
 

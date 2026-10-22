@@ -106,7 +106,7 @@ import {
   plannedLabelsOutsideSheet,
 } from '../src/ui/sld/v3/canvas/labelLegibility.ts';
 import { MIN_TEXT_SCREEN_PX, screenFixedFontSize } from '../src/ui/sld/v3/core/text.ts';
-import { MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
+import { LABEL_PLAN_PRODUCTION_SCALES, MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
 import {
   SHEET_MAX_ASPECT,
   SHEET_TARGET_ASPECT,
@@ -595,7 +595,16 @@ const EXPECTED_STATION_COUNT = 53;
 // `gpz/…/transformer/001/wn_sn#tr-field-to-bus` 48 → 40 (−8; HEAD 1944). Pośredni pomiar
 // 1912 pochodził ze stanu roboczego karty sprzed przywrócenia symbolu transformatora w polu
 // TR z rekordami; stanu pośredniego nie odtworzono, więc wiążące jest porównanie z HEAD.
-const VERTICAL_LENGTH_BASELINE = { 0: 21240, 1: 44016, 2: 44016 };
+// GPZ-MODEL (2026-10-22, na bazie GEOMETRIA-STACJI i W5-C): 21240/44016/44016 →
+// 21576/44352/44352 (+336 na KAŻDYM LOD) — regeneracja fikstury, nie zmiana kodu układu.
+// Substrat ma GPZ z równoważnikiem 110 kV i transformatorem WN/SN (tryb A) zamiast fikcji
+// „równoważnik na szynach SN + TR obok"; ziarno GPZ obejmuje ładunek operacji, więc
+// identyfikatory wszystkich odcinków i stacji są nowe. DOWÓD 2×2 (sonda karty): kod karty
+// na fiksturze bazy `f7235700e` = 21240/44016/44016 (kod ±0); TREŚĆ fikstury bazy z SAMYMI
+// nowymi identyfikatorami (487 ziaren, odwzorowanie 1:1 po pozycji, 0 konfliktów) =
+// 21576/44352/44352 = fikstura nowa. Ta sama topologia, inna kolejność remisu
+// `id.localeCompare` (precedens SLD-SUBSTRAT wyżej).
+const VERTICAL_LENGTH_BASELINE = { 0: 21576, 1: 44352, 2: 44352 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -633,6 +642,14 @@ const VERTICAL_LENGTH_BASELINE = { 0: 21240, 1: 44016, 2: 44016 };
 // 22344/43752/43752 (zmierzone 20632/42040/42040 → 22344/43752/43752, +1712);
 // „footprint" L1/L2 baseline 1688 → 1680 = wartość zmierzona już na czubku przed kartą
 // (luz 8 odebrany, nie skutek regeneracji) — atrybucja przy `VERTICAL_LENGTH_BASELINE`.
+// GPZ-MODEL (2026-10-22, na bazie GEOMETRIA-STACJI): „rezerwacja-kanalu" 20920/41712/41712
+// → 21248/42048/42048, „jog-trasy" L0 80 → 88. Treść fikstury bazy z nowymi
+// identyfikatorami daje 21256/42048/42048 i jog 80 (całe +336 to kolejność remisu,
+// atrybucja przy `VERTICAL_LENGTH_BASELINE`); na L0 nowa treść przenosi 8 px między
+// przyczynami przy TEJ SAMEJ sumie: pion wejścia kabla GPZ→S01 (`snTrunk`
+// `seg/6fc55ebc…/segment`) do stacji 0 ma 16 zamiast 8 (GPZ z kolumną WN jest wyższy o 48,
+// pas trasy pod GPZ niżej o 48, wejście stacji 0 niżej o 40), a piony „rezerwacja-kanalu"
+// są łącznie o 8 krótsze.
 const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // GEOMETRIA-STACJI (2026-10-21, zmierzone): L0 footprint 80 → 32, rezerwacja-kanalu
   // 22344 → 20920, jog-trasy 120 → 80; L1/L2 footprint 1944 → 1912, rezerwacja-kanalu
@@ -644,10 +661,10 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // port wyjścia jest o 72 px wyżej, a jog do pasa magistrali o tyle dłuższy. Suma pionów
   // spada (−2000). Zero fabrykacji ma pierwszeństwo przed krótszym jogiem (rejestr
   // GEOMETRIA-STACJI-BRAK-WYPOSAZENIA).
-  0: { footprint: 32, 'rezerwacja-kanalu': 20920, 'jog-trasy': 80, 'slupek-terminalny': 208 },
+  0: { footprint: 32, 'rezerwacja-kanalu': 21248, 'jog-trasy': 88, 'slupek-terminalny': 208 },
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  1: { footprint: 1936, 'rezerwacja-kanalu': 41712, 'jog-trasy': 160, 'slupek-terminalny': 208 },
-  2: { footprint: 1936, 'rezerwacja-kanalu': 41712, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  1: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
+  2: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -2276,11 +2293,7 @@ for (const lod of LODS) {
 line('');
 line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===');
 {
-  const SKALE_PRODUKCYJNE = {
-    0: [0.51, 0.68],
-    1: [0.51, 0.69, 1.02, 1.38],
-    2: [1.02, 1.38, 2],
-  };
+  const SKALE_PRODUKCYJNE = LABEL_PLAN_PRODUCTION_SCALES;
   for (const lod of LODS) {
     const scene = buildSceneV3(enm, lod);
     const obstacles = sceneObstacleRects(scene);

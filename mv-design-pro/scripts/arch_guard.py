@@ -81,6 +81,8 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from guard_parsowanie import BladZrodla, sparsuj_plik, uruchom  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from importy_ast import (  # noqa: E402
@@ -367,10 +369,7 @@ class _Rozwiazywacz:
             if plik is None:
                 self._wiazania[modul] = None
             else:
-                try:
-                    drzewo = ast.parse(plik.read_text(encoding="utf-8"))
-                except SyntaxError:
-                    drzewo = ast.Module(body=[], type_ignores=[])
+                drzewo = sparsuj_plik(plik)
                 self._wiazania[modul] = _Wiazania(drzewo)
         return self._wiazania[modul]
 
@@ -886,9 +885,9 @@ def naruszenie_dostepu(
 
 def _scan_file(path: Path, backend_root: Path | None = None) -> tuple[str, str] | None:
     try:
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-    except SyntaxError as exc:
-        return (str(path), f"SyntaxError: {exc.msg}")
+        tree = sparsuj_plik(path)
+    except BladZrodla as blad:
+        return (str(path), str(blad))
     layer = _layer_for_path(path)
     if layer is None:
         return None
@@ -940,4 +939,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

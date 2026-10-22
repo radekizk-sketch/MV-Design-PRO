@@ -33,6 +33,7 @@ from api.canonical_run_views import (
 )
 from api.dependencies import get_uow_factory
 from api.document_store import store_generated_document_from_response
+from api.odmowa_http import OdmowaHttpError
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
 from application.nazwy_biegu import nazwa_przypadku_z_bazy
 from application.proof_engine.pakiet_biegu import (
@@ -400,9 +401,7 @@ def export_analysis_run_report_docx(
             ),
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from exc
     if zapisz_do_magazynu:
         store_generated_document_from_response(
             response,
@@ -435,9 +434,7 @@ def export_analysis_run_report_pdf(
             ),
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from exc
     if zapisz_do_magazynu:
         store_generated_document_from_response(
             response,
@@ -516,9 +513,7 @@ def export_analysis_run_proof_pdf(
     try:
         response = export_run_trace_pdf_response(run, filename_stem="uzasadnienie")
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from exc
     if zapisz_do_magazynu:
         store_generated_document_from_response(
             response,
@@ -560,11 +555,10 @@ def get_pakiet_dowodowy(
             run,
             punkt=punkt,
             nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory),
+            uow_factory=uow_factory,
         )
     except PakietBieguError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY) from exc
     return Response(
         content=content,
         media_type="application/zip",
@@ -594,7 +588,7 @@ def _odmowa_nastaw(exc: PakietNastawError) -> HTTPException:
 
 @router.get("/analysis-runs/{run_id}/pakiet-dowodowy-nastaw/dostepnosc")
 def get_pakiet_dowodowy_nastaw_dostepnosc(run_id: UUID) -> dict[str, Any]:
-    """Czy TEN przebieg (zwarcie trójfazowe c_max) może być kotwicą pakietu nastaw.
+    """Czy TEN przebieg (zwarcie trójfazowe scenariusza MAX) może być kotwicą pakietu nastaw.
 
     Zwraca listę linii/kabli z kompletem danych katalogowych (przekrój, materiał,
     prąd znamionowy) — kandydatów na chroniony odcinek — a dla każdej z nich zacisk
@@ -619,7 +613,6 @@ def get_pakiet_dowodowy_nastaw(
             "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
         ),
     ),
-    c_min: float = Query(default=1.0),
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
     k_bth: float = Query(default=1.1),
@@ -628,9 +621,10 @@ def get_pakiet_dowodowy_nastaw(
     """Pakiet dowodowy nastaw I>/I>> (ZIP: dowód, źródło LaTeX, wykaz plików, odcisk).
 
     Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
-    ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
-    zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
-    wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model
+    scenariusza MIN (c_min per węzeł z tabeli 1 IEC 60909-0) oraz wariant rozpływu na
+    migawce kotwicy (``run_id`` = zakończony bieg zwarcia trójfazowego scenariusza MAX)
+    — klient podaje wyłącznie tożsamość kotwicy i wybory inżynierskie: chroniony
+    odcinek, kolejną szynę i — gdy model
     milczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).
     """
     run = _require_canonical_run(run_id)
@@ -639,7 +633,6 @@ def get_pakiet_dowodowy_nastaw(
             run,
             line_id=linia,
             next_bus_id=nastepna_szyna,
-            c_min=c_min,
             zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
@@ -669,7 +662,6 @@ def get_nastawy(
             "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
         ),
     ),
-    c_min: float = Query(default=1.0),
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
     k_bth: float = Query(default=1.1),
@@ -680,9 +672,10 @@ def get_nastawy(
     a przycisk „Pobierz pakiet dowodowy" woła ZIP z tym samym zapytaniem.
 
     Serwer sam uruchamia w pamięci wariant zwarcia trójfazowego i dwufazowego przy
-    ``c_min`` oraz wariant rozpływu na migawce kotwicy (``run_id`` = zakończony bieg
-    zwarcia trójfazowego przy c_max) — klient podaje wyłącznie tożsamość kotwicy i
-    wybory inżynierskie: chroniony odcinek, kolejną szynę, c_min i — gdy model
+    scenariusza MIN (c_min per węzeł z tabeli 1 IEC 60909-0) oraz wariant rozpływu na
+    migawce kotwicy (``run_id`` = zakończony bieg zwarcia trójfazowego scenariusza MAX)
+    — klient podaje wyłącznie tożsamość kotwicy i wybory inżynierskie: chroniony
+    odcinek, kolejną szynę i — gdy model
     milczy — zacisk, przy którym stoi zabezpieczenie (decyzja O-51).
     """
     run = _require_canonical_run(run_id)
@@ -691,7 +684,6 @@ def get_nastawy(
             run,
             line_id=linia,
             next_bus_id=nastepna_szyna,
-            c_min=c_min,
             zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
@@ -718,7 +710,6 @@ def get_nastawy_dopasowanie(
             "zbędny, gdy model rozstrzyga; sprzeczny z modelem = 422 z kodem odmowy."
         ),
     ),
-    c_min: float = Query(default=1.0),
     delta_t_s: float = Query(default=0.3),
     k_b: float = Query(default=1.2),
     k_bth: float = Query(default=1.1),
@@ -738,7 +729,6 @@ def get_nastawy_dopasowanie(
             device_id=device_id,
             line_id=linia,
             next_bus_id=nastepna_szyna,
-            c_min=c_min,
             zacisk_zabezpieczenia=zacisk_zabezpieczenia,
             delta_t_s=delta_t_s,
             k_b=k_b,
@@ -809,7 +799,7 @@ def get_short_circuit_band(
     try:
         return canonicalize_json(build_short_circuit_band_response(run, uow_factory=uow_factory))
     except OdmowaDanychError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/phase-state")

@@ -81,7 +81,12 @@ def test_rejestr_pol_addytywnych_niesie_fazy_odbioru() -> None:
     # `None` niesie fazy odbioru (W5-D) — i od karty modeli odbiorów także blok modelu
     # dynamicznego `Load.dynamika` (to samo prawo; test odcisku bloku:
     # `tests/enm/test_hash_pola_addytywne.py::test_blok_dynamiki_odbioru_poza_odciskiem_gdy_none`).
-    assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE["loads"] == ("phases", "dynamika")
+    # + karta W5-E-TTIT: uziom instalacji odbiorczej R_A (`earth_electrode_r_ohm`) — to samo prawo.
+    assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE["loads"] == (
+        "phases",
+        "dynamika",
+        "earth_electrode_r_ohm",
+    )
 
 
 def test_odbior_bez_faz_ma_odcisk_migawki_sprzed_karty() -> None:

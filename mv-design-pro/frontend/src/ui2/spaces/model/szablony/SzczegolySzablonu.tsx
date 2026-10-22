@@ -114,6 +114,15 @@ export function SzczegolySzablonu({ szablon, onZastosuj }: SzczegolySzablonuProp
         <Opcje opcje={schema.transformer_options} />
       </section>
 
+      {/* Karta GPZ-MODEL: szablon GPZ jest zasilany równoważnikiem sieci na szynach SN —
+          to jego jedyna dana zasilania, transformatory 110/SN są poza modelem. */}
+      {schema.grid_source_options.length > 0 && (
+        <section data-testid="mvd-szczegoly-rownowaznik">
+          <h4>{SZABLONY_STRINGS.szczegolyRownowaznik}</h4>
+          <Opcje opcje={schema.grid_source_options} />
+        </section>
+      )}
+
       <section>
         <h4>{SZABLONY_STRINGS.szczegolyPolaSn}</h4>
         <ParametrInt parametr={schema.sn_bays_count} />

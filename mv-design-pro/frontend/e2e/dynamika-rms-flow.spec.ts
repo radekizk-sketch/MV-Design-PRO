@@ -149,8 +149,6 @@ async function przypadekZSiecia(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let siec: Migawka = {};
   for (const nazwa of ['Odcinek 1', 'Odcinek 2']) {
@@ -166,6 +164,8 @@ async function przypadekZSiecia(
   const odcinki = siec.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(odcinki).toHaveLength(2);
   siec = await op(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: odcinki[0],
     station_type: 'B',
@@ -183,7 +183,7 @@ async function przypadekZSiecia(
   // Układ uziemienia sieci nN — decyzja projektanta wymagana przed obliczeniami (E063).
   await op(request, caseId, 'update_element_parameters', {
     element_ref: transformatorStacji.ref_id,
-    parameters: { lv_earthing_system: 'TN-C' },
+    parameters: { lv_earthing_system: 'TN-C', lv_voltage_tolerance: 'PLUS_10' },
   });
   siec = await op(request, caseId, 'add_converter_source', {
     source_technology: 'PV',

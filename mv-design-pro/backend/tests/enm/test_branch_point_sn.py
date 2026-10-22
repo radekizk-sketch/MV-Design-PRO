@@ -51,8 +51,6 @@ def _seed_with_overhead_segment() -> tuple[dict, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     s2 = execute_domain_operation(
@@ -79,8 +77,6 @@ def _seed_with_cable_segment() -> tuple[dict, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_SN,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )["snapshot"]
     s2 = execute_domain_operation(

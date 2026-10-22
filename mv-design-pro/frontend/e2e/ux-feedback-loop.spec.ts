@@ -56,15 +56,11 @@ const MV_APPARATUS_TYPE = {
 };
 
 /**
- * Karta FAB-G: kreator GPZ wymaga jawnego transformatora 110/SN z katalogu
- * (`zrodloModel.ts`: `transformer_catalog_ref` — „Dobierz transformator
- * 110/SN z katalogu"), filtrowanego wg strony SN (`|voltage_lv_kv - sn_voltage_kv| <= 6`)
- * i strony WN (`voltage_hv_kv >= 60`) — patrz `filtrowaneTransformatory` w
- * `KreatorZrodloZasilania.tsx`. Ta sama pozycja co jedyna istniejąca fikstura
- * transformatora w repo (`ui2/kreatory/zrodlo/__tests__/KreatorZrodloZasilania.test.tsx`
- * — grep `frontend/e2e` na `transformer-types` nie znajduje ŻADNEGO innego
- * mocka; ten spec jest pierwszym e2e, który go potrzebuje) — jedna prawda
- * fikstury zamiast wymyślania nowych wartości.
+ * Katalog transformatorów 110/SN, który kreator GPZ pobiera przy montażu (ta sama
+ * pozycja co fikstura `ui2/kreatory/zrodlo/__tests__/KreatorZrodloZasilania.test.tsx`).
+ * Karta GPZ-MODEL: przy równoważniku z katalogu (Sk″ widziane z szyn SN) transformatory
+ * 110/SN nie są elementami modelu — kreator NIE wysyła wtedy żadnego klucza
+ * transformatora, a mock odtwarza odmowę backendu, gdyby wysłał.
  */
 const TRANSFORMER_TYPE = {
   id: 'TR-110-15-25',
@@ -118,7 +114,7 @@ interface MockOptions {
 
 /** Stan przechwycony przez mocka, czytany PO teście — dowód kontraktu
  *  (karta E2E-FIX): nie tylko "toast się pojawił", ale "ładunek faktycznie
- *  niósł to, czego wymaga backend (FAB-G)". */
+ *  spełniał kontrakt backendu (granica zasilania SN, karta GPZ-MODEL)". */
 interface MockState {
   lastAddGridSourcePayload: Record<string, unknown> | null;
 }
@@ -195,10 +191,8 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<MockS
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([MV_APPARATUS_TYPE]) });
       return;
     }
-    // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY — bez tej
-    // pozycji `filtrowaneTransformatory` w kreatorze zostaje pustą listą,
-    // walidacja blokuje `zapisz`, i C2/C3 nigdy nie widzą toastu/bannera
-    // (kreator w ogóle nie wysyła operacji domenowej).
+    // Katalog transformatorów 110/SN pobierany przy montażu kreatora (krok
+    // „Transformatory” przy równoważniku 110 kV).
     if (method === 'GET' && pathname === '/api/catalog/transformer-types') {
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([TRANSFORMER_TYPE]) });
       return;
@@ -241,23 +235,27 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<MockS
       if (opName === 'add_grid_source_sn') {
         state.lastAddGridSourcePayload = payload;
       }
-      // Karta FAB-G: bez `transformer_catalog_ref` backend odrzuca operację
-      // kodem `catalog.ref_required` (`enm/domain_operations.py:
-      // _resolve_gpz_wn_sn_transformer_catalog_ref`) — mock ODTWARZA to
-      // zachowanie zamiast je omijać, żeby ten test dowodził kontraktu: gdyby
-      // kreator kiedyś przestał wysyłać ten atrybut, C2/C3 zgłoszą brak
-      // toastu/bannera (błąd domenowy zamiast sukcesu), nie fałszywy zielony.
-      const transformerRef =
-        typeof payload.transformer_catalog_ref === 'string'
-          ? payload.transformer_catalog_ref.trim()
-          : '';
-      if (opName === 'add_grid_source_sn' && !transformerRef) {
+      // Karta GPZ-MODEL: przy równoważniku na szynach SN backend odmawia ładunku,
+      // który żąda transformatorów 110/SN (klucze `transformer_*` i `hv_voltage_kv`,
+      // `enm/domain_operations.py::_klucze_transformatorow_gpz`) kodem
+      // `source.transformer_requires_hv_equivalent` — mock ODTWARZA to zachowanie
+      // zamiast je omijać: gdyby kreator znów zaczął wysyłać transformatory przy
+      // równoważniku z katalogu, C2/C3 zgłoszą brak toastu/bannera, nie fałszywy zielony.
+      const rownowaznik = payload.manual_equivalent as Record<string, unknown> | undefined;
+      const strona110kV = rownowaznik?.short_circuit_input_side === 'HV_110';
+      const kluczeTransformatorow = Object.keys(payload).filter(
+        (klucz) =>
+          payload[klucz] !== undefined
+          && payload[klucz] !== null
+          && (klucz.startsWith('transformer_') || klucz === 'hv_voltage_kv'),
+      );
+      if (opName === 'add_grid_source_sn' && !strona110kV && kluczeTransformatorow.length > 0) {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
-            error: 'Transformator WN/SN GPZ wymaga pozycji katalogowej: podaj transformer_catalog_ref.',
-            error_code: 'catalog.ref_required',
+            error: 'Równoważnik sieci podany na szynach SN GPZ zawiera już impedancję transformatorów 110/SN — usuń dane transformatorów albo podaj równoważnik po stronie 110 kV.',
+            error_code: 'source.transformer_requires_hv_equivalent',
             snapshot: null,
             logical_views: {},
             readiness: { ready: false, blockers: [], warnings: [] },
@@ -381,22 +379,18 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / pomoc pola)
       .first();
     await expect(toast).toBeVisible({ timeout: 10000 });
 
-    // Karta FAB-G (dowód kontraktu, nie tylko obecności toastu): ładunek
-    // faktycznie wysłany do domain-ops niósł transformator 110/SN z katalogu
-    // + parę hv_voltage_kv/transformer_sn_mva, którą `zbudujPayloadZrodla`
-    // dokłada razem z nim (`zrodloModel.ts`).
+    // Karta GPZ-MODEL (dowód kontraktu, nie tylko obecności toastu): ładunek
+    // równoważnika z katalogu nie niesie żadnego klucza transformatora 110/SN
+    // (`zrodloModel.ts::transformatoryWModelu`).
+    const wyslany = mock.lastAddGridSourcePayload ?? {};
     expect(
-      mock.lastAddGridSourcePayload?.transformer_catalog_ref,
-      'payload GPZ musi nieść transformer_catalog_ref (FAB-G)',
-    ).toBe(TRANSFORMER_TYPE.id);
-    expect(
-      mock.lastAddGridSourcePayload?.hv_voltage_kv,
-      'payload GPZ musi nieść hv_voltage_kv (FAB-G)',
-    ).toBe(110);
-    expect(
-      mock.lastAddGridSourcePayload?.transformer_sn_mva,
-      'payload GPZ musi nieść transformer_sn_mva (FAB-G)',
-    ).toBe(TRANSFORMER_TYPE.rated_power_mva);
+      Object.keys(wyslany).filter(
+        (klucz) =>
+          wyslany[klucz] !== undefined
+          && (klucz.startsWith('transformer_') || klucz === 'hv_voltage_kv'),
+      ),
+      'payload GPZ z równoważnikiem SN nie może żądać transformatorów 110/SN',
+    ).toEqual([]);
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });

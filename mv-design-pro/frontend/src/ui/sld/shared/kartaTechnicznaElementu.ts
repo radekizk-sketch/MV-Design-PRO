@@ -33,7 +33,7 @@ import type {
   Substation,
   Transformer,
 } from '../../../types/enm';
-import type { MVApparatusCatalogType } from '../../catalog/types';
+import type { MVApparatusType } from '../../catalog/types';
 import {
   nazwaStacjiJakWDrzewie,
   publicTechnicalLabel,
@@ -52,7 +52,7 @@ import {
 import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
 import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
-import { fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
+import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
 
@@ -147,7 +147,7 @@ export interface KartaTechniczna {
 /** Pozycje katalogów potrzebne karcie (nazwa typu, zdolność wyłączalna aparatu). Brak katalogu
  *  (błąd pobrania) = puste mapy — karta pokazuje wtedy dane z modelu i „brak danych". */
 export interface KatalogiKarty {
-  readonly aparatySn: ReadonlyMap<string, MVApparatusCatalogType>;
+  readonly aparatySn: ReadonlyMap<string, MVApparatusType>;
   readonly transformatory: ReadonlyMap<string, { readonly name: string }>;
 }
 
@@ -1140,7 +1140,7 @@ function kartaZrodla(ix: IndeksModelu, g: Generator): KartaTechniczna {
         wiersze: [
           wiersz('wariant', 'Przyłączenie', g.connection_variant ? WARIANT_PRZYLACZENIA_PL[g.connection_variant] ?? null : null),
           wiersz('szyna_przylaczenia', 'Szyna falownika', opisSzyny(ix, g.bus_ref)),
-          wiersz('pole_zrodlowe', blokowy ? 'Pole źródłowe SN' : 'Pole źródłowe nN', nazwaPola(pole)),
+          wiersz('pole_zrodlowe', blokowy ? FIELD_SOURCE_LABEL_PL : 'Pole źródłowe nN', nazwaPola(pole)),
           wiersz(
             'tr_blokowy',
             'Transformator blokowy',
@@ -1193,8 +1193,6 @@ function kartaSieci(ix: IndeksModelu, s: Source): KartaTechniczna {
           wiersz('sk_min', 'Moc zwarciowa Sₖ″ min.', zapisLiczby(s.sk3_min_mva, 'MVA'), { zrodloPl: z('sk3_min_mva') }),
           wiersz('ik_min', 'Prąd zwarciowy Iₖ″ min.', zapisLiczby(s.ik3_min_ka, 'kA'), { zrodloPl: z('ik3_min_ka') }),
           wiersz('rx_min', 'Stosunek R/X (min.)', zapisLiczby(s.rx_ratio_min, ''), { zrodloPl: z('rx_ratio_min') }),
-          ...(liczba(s.c_max) !== null ? [wiersz('c_max', 'Współczynnik c maks.', zapisLiczby(s.c_max, ''))] : []),
-          ...(liczba(s.c_min) !== null ? [wiersz('c_min', 'Współczynnik c min.', zapisLiczby(s.c_min, ''))] : []),
         ],
         zrodloPl: zrodloDanychElementuPl(s, null),
       },

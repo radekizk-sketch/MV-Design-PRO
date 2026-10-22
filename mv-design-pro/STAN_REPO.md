@@ -74,7 +74,7 @@ Skrót stanu wycinków (mapa §8, korekta kolejności w `docs/plan/SYNTEZA_DOMKN
 | BESS bez stanu energii i sprawności; brak profili maszyny synchronicznej i turbiny typu 2; brak QSTS; flicker w złej warstwie; brak EN 50160 | mapa §3 dom. 5/6, synteza §2 | KATALOG-DYNAMIKI-BRAKI, W6-3…W6-8, AB-2…AB-7 |
 | Zabezpieczenia poza modelem; brak 67/67N/21/87/25/50BF/grup/TRIP; ocena na syntetycznym urządzeniu | mapa dom. 4, synteza §1 p. 20; §7 I | BIEG-ZABEZPIECZEN-Z-MODELU (w toku), W4 |
 | Aparat pola poza torem prądowym (stacja przelotowa i końcowa, wyłącznik główny nN) | §7 I | POLA-W-TORZE (w toku) |
-| Uziemienie ×6, `meta.field_specs`, TT/IT bez fizyki, rozpływ niesymetryczny bez konsumenta | mapa dom. 1/7 | W5 (W5-A, W5-D → W5-B/C/E/T) |
+| Uziemienie ×6, `meta.field_specs`, rozpływ niesymetryczny bez konsumenta (TT/IT bez fizyki — ZAMKNIĘTE kartą W5-E-TTIT 2026-10-15: pętla doziemna, werdykt wyjaśnialny, dowód, ekran nN; limit napięcia dotykowego czeka na pakiet danych właściciela P-C) | mapa dom. 1/7 | W5 (W5-A, W5-D, W5-E → W5-B/C/T) |
 | SLD: semantyka w kliencie, trzy magazyny nadpisań; elementy modelu nierysowane; fikstury bez generatora | mapa dom. 8; §7 I | SLD-SUBSTRAT (w toku), W7 |
 | Dane nieautorytatywne: sieć złota z nieistniejącymi pozycjami katalogu; gotowość DER we froncie z `?? 0`; ciche zera zasilające decyzję | §7 I | SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, CICHE-ZERO |
 | V12.6: N-1 bez rozpływu, stałe bez podstawy, kąt fazora zerowego | plan §12.2 (g), (h); §7 I | AB-H0b (prezentacja), B-01 |
@@ -199,12 +199,12 @@ indeks z plikami FROZEN — **nie commitować z niego**.
 | **MERGE READY** | PR #474 jako całość — po zielonym komplecie CI na czubku (część H) |
 | **VERIFIED, niezintegrowane** | POLE-ZAJĘTE (`c7e45c33`, gałąź `wip-integracja-p6`), DOWOD-CIEPLNY (`53397f31`, `wip-dowod-cieplny-gotowy`), ODMOWA-DANYCH-422 (`1a235fa3`, `wip-odmowa-422-gotowy`; weryfikacja wykonawcy — odbiór integratora w partii 6), POLA-W-TORZE (`71c27cbf`, `wip-pola-w-torze-gotowy`), SLD-SUBSTRAT faza 2 (`2eb83c40`, `wip-sld-substrat-gotowy`) — partia 6; AB-1b.3b (`f0cabe57`, `wip-ab-1b3b-gotowy`; przeniesiona na czubek `0f38d197` kartą AB-1b.3b-NA-CZUBKU — `50a3aa02`, `wip-ab1b3b-gotowy-czubek`; na czubek partii 6 `615f3b24` kartą AB-1b.3b-NA-PARTII-6 — gałąź `karta-ab1b3b-p6`, weryfikacja wykonawcy w `MELDUNEK_AB1B3B_P6.md`), BIEG-ZABEZPIECZEN-Z-MODELU (`1551dc49`, `wip-nastawy-gotowy`) — partia 7 |
 | **IN PROGRESS** | GRANICE-IMPORTOW + AUTOTESTY-W-DRZEWIE (commity wykonawcy `4a7329ad`, `1ca6ca08` na gałęzi programu jako `f1c27d8a`, `ce138c51`; weryfikacja integratora na połączonym drzewie w toku), SZYNY-STACJI-LUSTRO (wykonawca, drzewo `szyny-stacji`), partia 6 — pełna regresja (`odbior-p6b`), SZYBKIE-TESTY (tabela A.3) |
-| **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J) |
+| **BLOCKED (bramka właściciela)** | B-01: pozycje (a)–(m) planu §12.2 (jedna lista — O-57 pkt 6); B-02: werdykt wizualny zrzutów (część J); B-02 ekranu odpływu nN TT/IT (werdykt właściciela 0/10 z 2026-10-15, ekran przebudowany na arkusz rysunkowy z kartą obwodu, nowe zrzuty `docs/audit/visual/w5e_ttit/` czekają na ponowną ocenę) |
 | **RESEARCH ONLY** | PR #475 (laboratorium dynamiki) |
 | **NOT STARTED (karta gotowa)** | AB-1b.2 + AB-1d_min, SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, ENDPOINTY-BEZ-KONSUMENTA, KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2, O-53b (treść: `docs/plan/KARTY_OTWARTE_2026-09.md`, `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.md`) |
 | **VERIFIED, niezintegrowane (2026-10-15)** | DYNAMIKA-W-TLE (gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-dynamika-w-tle`, meldunek `MELDUNEK_DYNAMIKA_W_TLE.md`): wykonawca biegów w procesie, 202 + odpytywanie, anulowanie, postęp, kasacja Celery/Redis/MongoDB, PERF-DYN-0 (42,1 s / 40,5 s ≤ 60 s) |
 | **NOT STARTED (szkic §0 z O-57)** | KATALOG-DYNAMIKI-BRAKI, AB-1c, O-52, CICHE-ZERO (szkice na końcu `KARTY_OTWARTE_2026-09.md`) |
-| **NOT STARTED (bez karty)** | AB-H0b (lista pozycji), AB-H1 (może biec od zaraz — O-57 pkt 4), AB-6b (nowy, O-57 pkt 5), dalsza sekwencja A/B od AB-1d (plan §5); W4-1 (= BIEG-ZABEZPIECZEN-Z-MODELU, w toku) i W4-2, W5-C, W5-E, W5-T, SZABLONY-NN, W6-K, W6-8, W7–W12, CV-6 G01 |
+| **NOT STARTED (bez karty)** | AB-H0b (lista pozycji), AB-H1 (może biec od zaraz — O-57 pkt 4), AB-6b (nowy, O-57 pkt 5), dalsza sekwencja A/B od AB-1d (plan §5); W4-1 (= BIEG-ZABEZPIECZEN-Z-MODELU, w toku) i W4-2, W5-C, W5-T, SZABLONY-NN, W6-K, W6-8, W7–W12, CV-6 G01 |
 
 ### C. Rejestr niedokończonych kart
 
@@ -238,7 +238,7 @@ AB-1b.3b), `docs/plan/KARTA_W5_MODEL_FAZOWY_I_UZIEMIENIE_2026-09.md`, karty W6 (
 | AB-1c | P1 (ścieżka krytyczna A/B) | szkic §0 | AB-1b.2, AB-1d_min, KATALOG-DYNAMIKI-BRAKI (maszyna synchroniczna), DYNAMIKA-W-TLE; odpowiedź właściciela o delegację B-01 dla kasacji `frt_hvrt` | profil wzorcowy testowy do odbioru logiki (O-57 pkt 10) |
 | AB-H1 | P1 (tor równoległy) | bez karty (plan §5, §11) | AB-H0 ✓, AB-1a ✓ | nowe pakiety `solvers/harmoniczne/`, `core/stemplowanie_galezi.py`; zakaz `dynamika/**` i `v126_academic.py` |
 | W5-B | P1 (korzeń ścieżki krytycznej W5) | domknięta przez wykonawcę (gałąź `claude/mv-design-pro-twin-audit-u4lhy0-karta-w5b-typowany-bay`), odbiór integratora | W5-A ✓, W5-D ✓ | `meta.field_specs`/`nn_field_specs`/`switchgear_field_specs` → typowany `Bay` (`enm/pola.py`), migracja przy wczytaniu, strażnik wskrzeszenia w CI; meldunek `MELDUNEK_W5B.md`; werdykt B-02: zrzuty `docs/audit/visual/w5b/` |
-| W5-C ∥ W5-E → W5-T → SZABLONY-NN | P1 (program W, tor modelu ENM) | karty do napisania z `KARTA_W5_*` §1 | W5-B (odbiór) | W5-E bez solvera do OD-25; W4-2 odblokowane po odbiorze W5-B |
+| W5-C → W5-T → SZABLONY-NN (W5-E ✓) | P1 (program W, tor modelu ENM) | karty do napisania z `KARTA_W5_*` §1 | W5-B (odbiór) | W5-E WYKONANE kartą W5-E-TTIT (2026-10-15, OD-25 rozstrzygnięte decyzją O-59); limit napięcia dotykowego TT/IT czeka na pakiet danych właściciela P-C; W4-2 odblokowane po odbiorze W5-B |
 | CV-6 G01 (W8), W4-2, W6-K, W6-8, W7, W9–W12, AB-6b | wg części D | nierozpoczęte | część D | |
 
 ### D. Graf zależności i ścieżka krytyczna (plan §5 i §11 po O-57)
@@ -261,7 +261,7 @@ ANDES) → AB-2 → AB-3 → … → AB-7.
 |---|---|
 | R — rdzeń dynamiki | partia 7: AB-1b.3b → AB-1b.2 (0/A/B/C/D) → DYNAMIKA-W-TLE → AB-1b.2 (E/F/G/H) → AB-1c → AB-1d → AB-2 → AB-3 → AB-3b → AB-3c → AB-4a → W6-K → AB-4b → AB-5 → AB-5b → AB-6 → AB-6b → AB-7 |
 | H — dziedzina częstotliwości | AB-H1 (od zaraz) → AB-H2 (po AB-3: migawki punktu pracy) → AB-H3 (z AB-6) → AB-H4 (z AB-7) |
-| M — model ENM | partia 6 (POLE-ZAJĘTE, POLA-W-TORZE, SLD-SUBSTRAT faza 2, ODMOWA-DANYCH-422) → W5-B → W5-C ∥ W5-E → W5-T → SZABLONY-NN → W7 → W8 (sieć kompensowana G01) |
+| M — model ENM | partia 6 (POLE-ZAJĘTE, POLA-W-TORZE, SLD-SUBSTRAT faza 2, ODMOWA-DANYCH-422) → W5-B → W5-C → W5-T → SZABLONY-NN → W7 (W5-E ✓ 2026-10-15) → W8 (sieć kompensowana G01) |
 | Z — zabezpieczenia | W4-1 = BIEG-ZABEZPIECZEN-Z-MODELU (w toku) → W4-2 (67/67N, 21, 87T, 25, 50BF, grupy, TRIP; po W5-B) → wejście do AB-5 |
 | D — dokumenty, UX, higiena | P0: SIEC-ZLOTA-KATALOG, GOTOWOSC-DER-BACKEND, AB-H0b; P1: O-53b, CICHE-ZERO, O-52, ENDPOINTY-BEZ-KONSUMENTA (po ODMOWA-DANYCH-422); P2: KOMUNIKATY-BEZ-ID, LICZBY-PL, PL-ZNAKI-2; W10-1 → W9 → W10-2 → W11 → W12 |
 
@@ -453,7 +453,15 @@ odsyłają, nie powtarzają jej). Razem z nią jedno pytanie (O-57 pkt 7): czy d
 kasację `stability_rms` i zdjęcie jego wpisu z listy rdzeni (pozycja (i)) oraz kasację `frt_hvrt/**` w AB-1c.
 Odpowiedź: decyzja ostateczna właściciela z 2026-09-30 (delegacja, O-59); pozycja (i) wykonana w karcie
 B01-RUNDA-1 (solver `stability_rms` skasowany razem z wpisem listy); pozycja (j) — również (próg χ² WLS
-wyłącznie z `scipy.stats.chi2`, wiersz 11 części I).
+wyłącznie z `scipy.stats.chi2`, wiersz 11 części I). Pozycje (d), (k), (l) dla `v126_academic.py` i (m) dla
+`short_circuit_iec60909.py` wykonane w karcie B01-RUNDA-3 (runda tekstowa, zero zmian liczbowych): zapadka mypy
+223/34 → 203/32, odmowy wejścia rdzeni zwarć i rozpływu jako rekordy strukturalne (`network_model/odmowa_danych.py`
+`RekordOdmowy`) ze zdaniem z nazwami z modelu (`enm/zdania_odmow_rdzenia.py`), tytuły kroków śladu zwarciowego
+z nazwą gałęzi.
+Nowa pozycja do tej samej listy (karta PROT-LTI, 2026-09-30): krzywa IEC 60255 0,14/0,02 ma dwie nazwy —
+„NI” w jądrze `protection_iec60255.py` i w katalogu analitycznym (`devices_v0.json`: `IEC_NI`) oraz „SI” w modelu
+ENM (`IEC_SI`), adapterze `iec_curves.py` i froncie. Ujednolicenie wymaga wyboru nazwy
+i zgody B-01 na jądro (para „RI”/„LTI” domknięta w PROT-LTI, OD-15(e)).
 
 **Bramka B-02** (werdykt wizualny wyłącznie właściciela): zrzuty w repo `docs/audit/visual/` — `flow-ekspert/`
 (w tym 26 kadrów przegenerowanych po karcie #145 w `7d3a0a41` i `e32-dynamika-{light,dark}.png` z AB-P1),

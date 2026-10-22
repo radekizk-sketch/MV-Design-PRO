@@ -8,11 +8,18 @@
  * którego handler `update_element_parameters` NIE czyta (czyta `parameters`) — zapis był
  * pustą operacją (phantom). Tutaj wysyłamy poprawnie `parameters`. Backend pilnuje listy
  * dozwolonych kluczy dla typu elementu; parametry katalogowe zmienia się przez katalog.
+ *
+ * WARTOŚCI PROJEKTANTA APARATU SN (zasada nr 4, V12K-351): gałąź z wiązaniem APARAT_SN dostaje
+ * sekcję czterech parametrów (czas własny, I_k, t_k, I_p). Zapis to lista `overrides`
+ * (`wartosciRoboczeAparatu.ts`); bramą wartości jest walidator backendu, a obok pola stoi to, co
+ * obliczenie przyjmie bez wartości projektanta (dana karty albo propozycja rejestru backendu).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
+import { fetchMvApparatusTypes } from '../../../ui/catalog/api';
+import type { MVApparatusType } from '../../../ui/catalog/types';
 import { useGrupyPolaczen } from '../../../ui/catalog/useGrupyPolaczen';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -32,7 +39,9 @@ import {
   type WierszGotowosci,
 } from '../rama';
 import {
+  ETYKIETA_PL_TOLERANCJI_NN,
   ETYKIETA_PL_UZIEMIENIA_EKRANU,
+  TOLERANCJE_NAPIECIA_NN,
   UKLADY_SIECI_NN,
   UZIEMIENIA_EKRANU_KABLA,
 } from '../../../types/uziemienie';
@@ -44,6 +53,17 @@ import {
 } from '../../oze/ncrfg/daneModulu';
 import { SekcjaDanychModulu } from '../../oze/ncrfg/SekcjaDanychModulu';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
+import {
+  NAMESPACE_APARAT_SN,
+  PARAMETRY_APARATU_SN,
+  formularzZNadpisan,
+  jestParametremAparatuSn,
+  nadpisaniaZFormularza,
+  nadpisaniaZmienione,
+  zrodloBezProjektanta,
+  type FormularzWartosciAparatu,
+  type ParametrAparatuSn,
+} from './wartosciRoboczeAparatu';
 import { RODZAJE_STACJI, podpisRodzajuStacjiPl } from '../../../ui/shared/rodzajStacji';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 
@@ -69,8 +89,24 @@ const SLOWNIKI_STATYCZNE: Readonly<Record<string, readonly OpcjaSlownika[]>> = {
     { id: 'mv_lv', etykieta: 'Stacja SN/nN bez wskazania rodzaju' },
   ],
   lv_earthing_system: UKLADY_SIECI_NN.map((id) => ({ id, etykieta: id })),
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN transformatora albo źródła
+  // na szynie nN (`lv_voltage_tolerance`) — wiersz nN tabeli 1 IEC 60909-0 dla doboru c.
+  lv_voltage_tolerance: TOLERANCJE_NAPIECIA_NN.map((id) => ({
+    id,
+    etykieta: ETYKIETA_PL_TOLERANCJI_NN[id],
+  })),
   screen_bonding: UZIEMIENIA_EKRANU_KABLA.map((id) => ({ id, etykieta: `${id} — ${ETYKIETA_PL_UZIEMIENIA_EKRANU[id]}` })),
 };
+
+/** Klucze parametrów, dla których kontrakt ma słownik wartości (pole = lista). */
+const KLUCZE_SLOWNIKOWE: ReadonlySet<string> = new Set([
+  ...Object.keys(SLOWNIKI_STATYCZNE),
+  'vector_group',
+]);
+
+function kluczZWymogu(wymog: string): string {
+  return KLUCZE_SLOWNIKOWE.has(wymog) ? wymog : '';
+}
 
 function readString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -99,14 +135,31 @@ const KLUCZE_TEKSTOWE: ReadonlySet<string> = new Set([
   'parameter_source',
 ]);
 
-/** Konwersja tekstu na typ: dla kluczy tekstowych tekst; inaczej liczba / bool / null
- *  wykrywane automatycznie, reszta jako tekst. */
+/** Liczba z backendu z przecinkiem dziesiętnym (podpowiedź pola) — bez przeliczeń. */
+function liczbaPl(wartosc: number): string {
+  return String(wartosc).replace('.', ',');
+}
+
+/** Podpowiedź pola: co obliczenie przyjmie, gdy projektant nie poda wartości. */
+function podpowiedzAparatu(pozycja: MVApparatusType | null, parametr: ParametrAparatuSn): string {
+  const zrodlo = zrodloBezProjektanta(pozycja, parametr);
+  const jednostka = T.aparatJednostki[parametr];
+  if (zrodlo.rodzaj === 'karta') return `${T.aparatZKarty} ${liczbaPl(zrodlo.wartosc)} ${jednostka}.`;
+  if (zrodlo.rodzaj === 'propozycja') {
+    const rodzaj = T.aparatRodzajZrodla[zrodlo.rodzajZrodla] ?? zrodlo.rodzajZrodla;
+    return `${T.aparatPropozycja} ${liczbaPl(zrodlo.wartosc)} ${jednostka} (${rodzaj}).`;
+  }
+  return `${T.aparatBrak}.`;
+}
+
+/** Konwersja tekstu na typ: dla kluczy tekstowych tekst; inaczej liczba / tak-nie / brak
+ *  wartości wykrywane automatycznie, reszta jako tekst. */
 function parsujWartosc(raw: string, klucz = ''): string | number | boolean | null {
   const trimmed = raw.trim();
   if (KLUCZE_TEKSTOWE.has(klucz.trim())) return trimmed;
-  if (trimmed === 'null') return null;
-  if (trimmed === 'true') return true;
-  if (trimmed === 'false') return false;
+  if (trimmed === 'brak') return null;
+  if (trimmed === 'tak') return true;
+  if (trimmed === 'nie') return false;
   if (trimmed !== '' && !Number.isNaN(Number(trimmed))) return Number(trimmed);
   return raw;
 }
@@ -126,9 +179,27 @@ export function KreatorEdycjiParametrow() {
   const zrodloParametrow = readString(context?.parameter_source) || readString(context?.source_mode);
   const fallbackType = (readString(context?.element_type) || 'LineBranch') as ElementType;
 
+  // Gałąź aparatu pola SN (wiązanie APARAT_SN): sekcja wartości projektanta (`overrides`).
+  const galaz = useSnapshotStore(
+    (s) => s.snapshot?.branches?.find((b) => b.ref_id === elementRef) ?? null,
+  );
+  const jestAparatSn = galaz?.catalog_namespace === NAMESPACE_APARAT_SN;
+  const poleKontekstu = readString(context?.field);
+  const poleAparatuZKontekstu =
+    jestAparatSn && jestParametremAparatuSn(poleKontekstu) ? poleKontekstu : null;
+
   // Pole wskazane przez kontekst (akcja naprawcza gotowości, C-12): klucz pierwszego
   // wiersza i kursor w polu jego wartości — projektant wpisuje od razu brakującą daną.
-  const initialKey = readString(context?.field);
+  // Klucz startowy: jawne `field` kontekstu albo `required` z `payload_hint` akcji naprawczej
+  // bramki (np. transformer.lv_earthing_system_missing → `lv_earthing_system`). `required` bywa też
+  // opisem wymogu, nie kluczem parametru (`continuous_path_to_source`) — przyjmujemy go
+  // wyłącznie, gdy jest kluczem ze słownika kontraktu (jedno źródło: SLOWNIKI_STATYCZNE
+  // + `vector_group`), inaczej formularz zaczynałby się od klucza, którego backend nie zna.
+  // Parametr aparatu SN wskazany kontekstem (akcja „Zmień wartość" ekranu wytrzymałości)
+  // trafia do sekcji aparatu, nie do wiersza klucz → wartość.
+  const initialKey = poleAparatuZKontekstu
+    ? ''
+    : poleKontekstu || kluczZWymogu(readString(context?.required));
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
     { klucz: initialKey, wartosc: readString(context?.value) },
   ]);
@@ -180,8 +251,43 @@ export function KreatorEdycjiParametrow() {
   );
   const liczbaZmianNcRfg = Object.keys(zmianyNcRfg).length;
 
+  const [formularzAparatu, setFormularzAparatu] = useState<FormularzWartosciAparatu | null>(() =>
+    jestAparatSn ? formularzZNadpisan(galaz?.overrides) : null,
+  );
+  useEffect(() => {
+    if (jestAparatSn && formularzAparatu === null) {
+      setFormularzAparatu(formularzZNadpisan(galaz?.overrides));
+    }
+  }, [jestAparatSn, galaz, formularzAparatu]);
+  const [pozycjaAparatu, setPozycjaAparatu] = useState<MVApparatusType | null>(null);
+  const catalogRefAparatu = jestAparatSn ? readString(galaz?.catalog_ref) : '';
+  useEffect(() => {
+    if (!catalogRefAparatu) return undefined;
+    let aktywny = true;
+    fetchMvApparatusTypes()
+      .then((pozycje) => {
+        if (aktywny) setPozycjaAparatu(pozycje.find((p) => p.id === catalogRefAparatu) ?? null);
+      })
+      // Bez katalogu podpowiedź mówi „brak" — zapis i walidacja zostają po stronie backendu.
+      .catch(() => undefined);
+    return () => {
+      aktywny = false;
+    };
+  }, [catalogRefAparatu]);
+  const wynikAparatu = useMemo(
+    () =>
+      formularzAparatu ? nadpisaniaZFormularza(formularzAparatu, galaz?.overrides, powod) : null,
+    [formularzAparatu, galaz, powod],
+  );
+  const zmianaAparatu =
+    wynikAparatu?.rodzaj === 'lista' && nadpisaniaZmienione(wynikAparatu.nadpisania, galaz?.overrides);
+  const zmienPoleAparatu = useCallback((parametr: ParametrAparatuSn, wartosc: string) => {
+    setFormularzAparatu((p) => (p ? { ...p, [parametr]: wartosc } : p));
+  }, []);
+
+  const liczbaDoZapisu = wypelnione.length + liczbaZmianNcRfg + (zmianaAparatu ? 1 : 0);
   const brakElementu = !elementRef;
-  const kompletne = Boolean(elementRef && (wypelnione.length > 0 || liczbaZmianNcRfg > 0));
+  const kompletne = Boolean(elementRef && liczbaDoZapisu > 0);
 
   const dodajWiersz = useCallback(() => {
     setWiersze((p) => [...p, { klucz: '', wartosc: '' }]);
@@ -206,7 +312,11 @@ export function KreatorEdycjiParametrow() {
       setBladGlobalny(T.bledneDaneModulu);
       return;
     }
-    if (wypelnione.length === 0 && liczbaZmianNcRfg === 0) {
+    if (wynikAparatu?.rodzaj === 'blad') {
+      setBladGlobalny(T.bledneWartosciAparatu);
+      return;
+    }
+    if (liczbaDoZapisu === 0) {
       setBladGlobalny(T.brakParametrow);
       return;
     }
@@ -214,6 +324,7 @@ export function KreatorEdycjiParametrow() {
       acc[w.klucz.trim()] = parsujWartosc(w.wartosc, w.klucz);
       return acc;
     }, { ...zmianyNcRfg });
+    if (zmianaAparatu && wynikAparatu?.rodzaj === 'lista') parameters.overrides = wynikAparatu.nadpisania;
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };
     if (powod.trim()) payload.reason = powod.trim();
 
@@ -233,15 +344,25 @@ export function KreatorEdycjiParametrow() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaZmianNcRfg, powod, selekcjaPoOperacji, wynikDanychModulu, wypelnione, zmianyNcRfg]);
+  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaDoZapisu, powod, selekcjaPoOperacji, wynikAparatu, wynikDanychModulu, wypelnione, zmianaAparatu, zmianyNcRfg]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: nazwaElementu || 'Brak' },
     {
       etykieta: T.wierszParametry,
-      stan: wypelnione.length + liczbaZmianNcRfg > 0 ? 'kompletne' : 'brak',
-      wartosc: `${wypelnione.length + liczbaZmianNcRfg} do zapisu`,
+      stan: liczbaDoZapisu > 0 ? 'kompletne' : 'brak',
+      wartosc: `${liczbaDoZapisu} do zapisu`,
     },
+    ...(formularzAparatu
+      ? [
+          {
+            etykieta: T.wierszAparat,
+            stan: wynikAparatu?.rodzaj === 'blad' ? ('brak' as const) : ('kompletne' as const),
+            wartosc:
+              wynikAparatu?.rodzaj === 'lista' ? `${wynikAparatu.nadpisania.length} z 4` : T.aparatBladLiczby,
+          },
+        ]
+      : []),
     { etykieta: T.wierszPowod, stan: powod.trim() ? 'kompletne' : 'ostrzezenie', wartosc: powod.trim() ? 'Podane' : 'Brak' },
   ];
 
@@ -289,6 +410,31 @@ export function KreatorEdycjiParametrow() {
             onZmien={setDaneModulu}
             testid="mvd-kreator-edycja-ncrfg"
           />
+        </KreatorSekcja>
+      ) : null}
+
+      {formularzAparatu ? (
+        <KreatorSekcja tytul={T.aparatTytul} testid="mvd-kreator-edycja-aparat">
+          <KreatorInfo>{T.aparatPomoc}</KreatorInfo>
+          <KreatorSiatka kolumny={2}>
+            {PARAMETRY_APARATU_SN.map((parametr) => (
+              <PoleTekstowe
+                key={parametr}
+                etykieta={T.aparatEtykiety[parametr]}
+                wartosc={formularzAparatu[parametr]}
+                onZmiana={(v) => zmienPoleAparatu(parametr, v)}
+                placeholder={T.aparatPlaceholder}
+                pomoc={podpowiedzAparatu(pozycjaAparatu, parametr)}
+                blad={
+                  wynikAparatu?.rodzaj === 'blad' && wynikAparatu.parametr === parametr
+                    ? T.aparatBladLiczby
+                    : undefined
+                }
+                fokus={poleAparatuZKontekstu === parametr}
+                testid={`mvd-kreator-edycja-aparat-${parametr}`}
+              />
+            ))}
+          </KreatorSiatka>
         </KreatorSekcja>
       ) : null}
 

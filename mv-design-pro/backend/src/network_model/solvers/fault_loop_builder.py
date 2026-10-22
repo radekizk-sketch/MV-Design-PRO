@@ -1,44 +1,56 @@
 """
-FaultLoopInputBuilder — P0.5 step 3 scaffolding.
+Budowa wejścia pętli zwarcia nN (IEC 60364-4-41) i impedancje jej składników.
 
-Helper łączący NetworkGraph + manual overrides w FaultLoopInput gotowy do
-przekazania do compute_fault_loop().
+Moduł składa ``FaultLoopInput`` dla ``compute_fault_loop()`` z komponentów
+pętli oraz liczy impedancje składników: transformator sprowadzony do strony nN
+(``transformer_lv_impedance_ohm``), składowa zerowa transformatora, sumowanie
+odcinków trasy fazowej i powrotnej (``sum_phase_and_return_route``) i
+przeniesienie impedancji sieci zasilającej przez przekładnię
+(``refer_upstream_impedance_to_lv_ohm``). To jest fizyka impedancji, więc leży
+w warstwie solverów (PHYSICS HERE ONLY) — warstwa aplikacji dostarcza wyłącznie
+surowe dane odcinków odczytane z modelu.
 
-STATUS: SCAFFOLDING (MVP — caller dostarcza komponenty explicit;
-auto-extract z catalog deferred do P0.5b).
-
-Reference:
-- network_model/solvers/fault_loop_iec60364.py — solver
-- application/analysis_run/service.py:368-380 — stub do zastąpienia w P0.5b
-- Audyt specjalisty: step 3 z 5-step MVP plan
-
-DLACZEGO scaffolding, nie full auto-extract:
-- Pełna ekstrakcja R+X z NetworkGraph wymaga: catalog cable types lookup,
-  rozróżnienia TN-S vs TN-C-S (current data model ENM nie rozdziela jawnie),
-  oraz mapowania transformer.uk_percent → Z_TR_LV. To 4-5 OD pełnego rozwoju.
-- Ten module dostarcza minimalny scaffolding gotowy do podpięcia w
-  service.py kiedy ENM warstwa będzie ready.
+KONSUMENCI (stan zmierzony 2026-09-30; dawny nagłówek „STATUS: SCAFFOLDING
+(MVP)" i odesłanie do stubu ``analysis_run/service.py`` były nieaktualne —
+korekta OD-15(e), karta PROT-LTI):
+- ``api/fault_loop.py`` — końcówka ``/api/fault-loop/compute``,
+- ``application/analyses/fault_loop/service.py`` i ``route.py`` — pętla zwarcia
+  z realnej trasy grafu ENM,
+- ``application/analyses/nn_device_selection.py`` — dobór aparatu nN,
+- ``application/analyses/swz/service.py`` — samoczynne wyłączenie zasilania,
+- ``application/proof_engine/lv_circuit_verification_binding.py`` — dowód
+  weryfikacji obwodu nN.
 
 INVARIANTS:
-- Pure function: NetworkGraph + manual params → FaultLoopInput
-- NO physics calculations (tylko transformacje danych)
-- NO heuristics — caller dostarcza wszystkie wymagane komponenty
-- Determinizm
+- Funkcje czyste, deterministyczne (to samo wejście → ten sam wynik).
+- NO heuristics — caller dostarcza wszystkie wymagane komponenty.
 """
 
 from __future__ import annotations
 
 import math
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.core.branch import odmowa_gdy_pk_sprzeczne_z_uk
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
+from network_model.odmowa_danych import (
+    RODZAJ_ELEMENT,
+    OdmowaDanychError,
+    OdmowaWejsciaRdzenia,
+    OdwolanieElementu,
+    RekordOdmowy,
+)
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
     LoopImpedanceComponent,
     NetworkType,
     ProtectionArrangement,
 )
+
+if TYPE_CHECKING:
+    from network_model.solvers.petla_zwarcia_tt_it import DaneTtIt
 
 
 @dataclass(frozen=True)
@@ -75,6 +87,17 @@ class FaultLoopBuildRequest:
     return_label: str = "Przewód powrotny (PE/PEN)"
     transformer_label: str = "Transformator"
     upstream_label: str = "Sieć zasilająca (upstream Thevenin)"
+    # Karta W5-E-TTIT: dane pętli doziemnej TT/IT przekazywane 1:1 do `FaultLoopInput`
+    # (wołający z warstwy aplikacji buduje DTO, nie woła solvera z parametrami — guard
+    # `no_direct_fault_params_guard`).
+    dane_tt_it: DaneTtIt | None = None
+    # Klasa tolerancji napięcia sieci nN (karty WSPOLCZYNNIK-C-JEDEN-NOSNIK i
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA) — deklaracja z nośnika (`Transformer.lv_voltage_tolerance`
+    # / `Source.lv_voltage_tolerance`) przez `enm.tolerancja_nn` albo wartość robocza rejestru.
+    # Pole WYMAGANE (bez domyślnej): wołający podaje rozstrzygniętą klasę jawnie.
+    tolerancja_nn: TolerancjaNapieciaNn | None = field(kw_only=True)
+    # Klasa wyżej jest wartością roboczą — przekazywane 1:1 do `FaultLoopInput`.
+    tolerancja_nn_robocza: bool = field(default=False, kw_only=True)
 
 
 def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
@@ -128,6 +151,9 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
         upstream_impedance=upstream,
         network_type=request.network_type,
         protection_arrangement=request.protection_arrangement,
+        dane_tt_it=request.dane_tt_it,
+        tolerancja_nn=request.tolerancja_nn,
+        tolerancja_nn_robocza=request.tolerancja_nn_robocza,
     )
 
 
@@ -140,7 +166,7 @@ class TransformerLoopImpedance:
 
 
 def transformer_lv_impedance_ohm(
-    *, sn_mva: float, uk_percent: float, ulv_kv: float, pk_kw: float | None
+    *, sn_mva: float, uk_percent: float, ulv_kv: float, pk_kw: float
 ) -> TransformerLoopImpedance:
     """Impedancja transformatora sprowadzona do strony nN (G-STK-4).
 
@@ -148,21 +174,32 @@ def transformer_lv_impedance_ohm(
         Z_base = U_lv² / S_n            [Ω]  (U_lv w kV, S_n w MVA)
         z_pu = uk% / 100
         r_pu = P_k / (S_n · 1000)       (P_k w kW, S_n·1000 = S_n w kVA)
-        x_pu = sqrt(max(z_pu² − r_pu², 0))
+        x_pu = sqrt(z_pu² − r_pu²)
         R = r_pu · Z_base ; X = x_pu · Z_base
 
-    Gdy ``pk_kw`` brak/0 → przyjmujemy R=0, X=Z (transformator czysto reaktancyjny —
-    jawny, bez zgadywania stratności). Funkcja czysta (warstwa solvera, WHITE BOX).
+    Predykat sprzeczności danych z jednego źródła z gałęzią transformatora rozpływu i zwarć
+    (``network_model.core.branch.odmowa_gdy_pk_sprzeczne_z_uk``): dane sprzeczne
+    (P_k/S_n > u_k) są odmową nazwaną — dawne ciche obcięcie ``r_pu = min(r_pu, z_pu)``
+    dawało tu X = 0 przy danych, których rozpływ i zwarcia nie przyjmowały. ``pk_kw = 0``
+    daje R = 0 — ta sama konwencja co gałąź modelu (pole ENM ``pk_kw`` wymagane).
+    Funkcja czysta (warstwa solvera, WHITE BOX).
     """
     if sn_mva <= 0 or ulv_kv <= 0 or uk_percent <= 0:
         raise ValueError(
             "sn_mva, ulv_kv i uk_percent muszą być dodatnie do wyznaczenia Z transformatora."
         )
+    if pk_kw < 0:
+        raise OdmowaDanychError(
+            f"Straty obciążeniowe transformatora P_k = {pk_kw} kW są ujemne — popraw kartę "
+            "katalogową transformatora."
+        )
     z_base = (ulv_kv**2) / sn_mva
     z_pu = uk_percent / 100.0
-    r_pu = (pk_kw / (sn_mva * 1000.0)) if pk_kw and pk_kw > 0 else 0.0
-    r_pu = min(r_pu, z_pu)  # R nie może przekroczyć |Z|
-    x_pu = math.sqrt(max(z_pu**2 - r_pu**2, 0.0))
+    r_pu = pk_kw / (sn_mva * 1000.0)
+    odmowa_gdy_pk_sprzeczne_z_uk(
+        r_pu=r_pu, z_pu=z_pu, pk_kw=pk_kw, rated_power_mva=sn_mva, uk_percent=uk_percent
+    )
+    x_pu = math.sqrt(z_pu**2 - r_pu**2)
     return TransformerLoopImpedance(r_ohm=r_pu * z_base, x_ohm=x_pu * z_base)
 
 
@@ -175,6 +212,11 @@ def transformer_lv_impedance_ohm(
 # przeliczenie pu->Ω, przeliczenie przez przekladnie) — zgodnie z regula
 # solvera (PHYSICS HERE ONLY).
 # ---------------------------------------------------------------------------
+
+
+#: Kody odmów odcinka trasy pętli zwarcia (pole `kod` rekordu odmowy rdzenia).
+KOD_ODCINEK_LICZBA_TOROW = "petla_zwarcia.odcinek_liczba_torow"
+KOD_ODCINEK_IMPEDANCJA_UJEMNA = "petla_zwarcia.odcinek_impedancja_ujemna"
 
 
 @dataclass(frozen=True)
@@ -198,21 +240,31 @@ class RouteSegmentImpedance:
     n_parallel: int = 1
 
     def __post_init__(self) -> None:
+        # Partia integracji 10: odmowa strukturalna — treść bez identyfikatora i bez kluczy pól,
+        # odcinek w odwołaniu (`RODZAJ_ELEMENT`, `ref_id` gałęzi modelu); nazwę dokłada
+        # warstwa zdań (`enm/zdania_odmow_rdzenia`) na granicy wołającego.
         if self.n_parallel < 1:
-            raise OdmowaDanychError(
-                f"Odcinek '{self.branch_ref}': n_parallel musi być ≥ 1, "
-                f"otrzymano {self.n_parallel}."
+            raise self._odmowa(
+                KOD_ODCINEK_LICZBA_TOROW,
+                f"Liczba torów równoległych odcinka trasy musi wynosić co najmniej 1, "
+                f"otrzymano {self.n_parallel}.",
             )
-        for name, value in (
-            ("phase_total_r_ohm", self.phase_total_r_ohm),
-            ("phase_total_x_ohm", self.phase_total_x_ohm),
-            ("return_total_r_ohm", self.return_total_r_ohm),
-            ("return_total_x_ohm", self.return_total_x_ohm),
+        for opis, value in (
+            ("Rezystancja żyły fazowej", self.phase_total_r_ohm),
+            ("Reaktancja żyły fazowej", self.phase_total_x_ohm),
+            ("Rezystancja żyły powrotnej PE/PEN", self.return_total_r_ohm),
+            ("Reaktancja żyły powrotnej PE/PEN", self.return_total_x_ohm),
         ):
             if value < 0:
-                raise OdmowaDanychError(
-                    f"Odcinek '{self.branch_ref}': {name} musi być ≥ 0, otrzymano {value}."
+                raise self._odmowa(
+                    KOD_ODCINEK_IMPEDANCJA_UJEMNA,
+                    f"{opis} odcinka trasy nie może być ujemna, otrzymano {value} Ω.",
                 )
+
+    def _odmowa(self, kod: str, tresc: str) -> OdmowaWejsciaRdzenia:
+        return OdmowaWejsciaRdzenia(
+            [RekordOdmowy(kod, tresc, (OdwolanieElementu(RODZAJ_ELEMENT, self.branch_ref),))]
+        )
 
 
 def sum_phase_and_return_route(
@@ -262,7 +314,10 @@ def zero_sequence_transformer_loop_impedance_ohm(
     ``application/analyses/fault_loop/route.py``).
     """
     if ulv_kv <= 0 or s_base_mva <= 0:
-        raise OdmowaDanychError("ulv_kv i s_base_mva muszą być dodatnie do konwersji Z0 pu→Ω.")
+        raise OdmowaDanychError(
+            "Napięcie strony dolnej transformatora i moc bazowa muszą być dodatnie do "
+            "przeliczenia impedancji zerowej transformatora z jednostek względnych na omy."
+        )
     z_base = (ulv_kv**2) / s_base_mva
     z0_ohm = z0_pu * z_base
     return TransformerLoopImpedance(r_ohm=z0_ohm.real, x_ohm=z0_ohm.imag)
@@ -285,7 +340,10 @@ def refer_upstream_impedance_to_lv_ohm(
     własnej redukcji sieci).
     """
     if uhv_kv <= 0 or ulv_kv <= 0:
-        raise OdmowaDanychError("uhv_kv i ulv_kv muszą być dodatnie do przeliczenia przekładni.")
+        raise OdmowaDanychError(
+            "Napięcia strony górnej i dolnej transformatora muszą być dodatnie do sprowadzenia "
+            "impedancji sieci zasilającej przez przekładnię."
+        )
     ratio_squared = (ulv_kv / uhv_kv) ** 2
     z_lv = z_hv_ohm * ratio_squared
     return LoopImpedanceComponent(label=label, r_ohm=z_lv.real, x_ohm=z_lv.imag)

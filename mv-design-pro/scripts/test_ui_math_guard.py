@@ -14,8 +14,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import guard_parsowanie  # noqa: E402
 import ui_math_guard as guard  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -212,11 +215,14 @@ def test_skanuj_py_nie_wybucha_na_niedomknietym_stringu(tmp_path: Path) -> None:
     # `tokenize.generate_tokens` zglasza `tokenize.TokenError` na niedomknietym
     # literale — regresja nazwy wyjatku (`TokenizeError` nie istnieje w module
     # `tokenize`, mypy: "Module has no attribute") kiedys zamieniala ten
-    # przypadek w AttributeError zamiast pustego wyniku.
+    # przypadek w AttributeError. Kanon GUARD-BLAD-SKLADNI: plik nieparsowalny to
+    # KONTROLOWANA czerwien (`BladZrodla` z plikiem i linia), nie pusty wynik.
     plik = tmp_path / "zepsuty.py"
     plik.write_text("wartosc = 'niedomkniety string\n", encoding="utf-8")
 
-    assert guard.skanuj_py(plik) == []
+    with pytest.raises(guard_parsowanie.BladZrodla) as wyjatek:
+        guard.skanuj_py(plik)
+    assert "zepsuty.py:1:" in str(wyjatek.value)
 
 
 def test_skanuj_py_docstring_nie_maskuje_zwyklego_literalu_pod_nim(tmp_path: Path) -> None:

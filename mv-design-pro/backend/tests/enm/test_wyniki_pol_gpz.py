@@ -51,6 +51,21 @@ def siec() -> Any:
         yield b.migawka(), wynik
 
 
+@pytest.fixture(scope="module")
+def siec_110kv() -> Any:
+    """GPZ z równoważnikiem po stronie 110 kV i jednym transformatorem 110/SN w modelu
+    (karta GPZ-MODEL: przy równoważniku na szynach SN transformatorów 110/SN nie ma, więc
+    pole transformatorowe GPZ i alarm transformatora wieży mają sens tylko w tym trybie)."""
+    from api.main import app
+
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    with TestClient(app) as klient:
+        b = KlientBudowy(klient, "Pomiar pól GPZ 110 kV")
+        b.gpz_110kv(1)
+        b.odcinek_magistrali(120, "Odcinek 0")
+        yield (b.migawka(), None)
+
+
 def _gpz(migawka: dict[str, Any]) -> dict[str, Any]:
     return next(s for s in migawka["substations"] if s.get("station_type") == "gpz")
 
@@ -264,8 +279,8 @@ def test_pole_wolne_nie_psuje_kompletnosci_bilansu_odplywow(siec: Any) -> None:
 
 
 @pytest.mark.parametrize("rola", ["TR", "MEASUREMENT"])
-def test_pole_transformatorowe_i_pomiarowe(siec: Any, rola: str) -> None:
-    migawka = copy.deepcopy(siec[0])
+def test_pole_transformatorowe_i_pomiarowe(siec_110kv: Any, rola: str) -> None:
+    migawka = copy.deepcopy(siec_110kv[0])
     stacja, pole, pierwszy, zrodlo = _dane(migawka)
     szyna = _szyna_sn(migawka)
     transformator = _gpz(migawka)["transformer_refs"][0]
@@ -331,8 +346,8 @@ def test_zrodlo_bez_mocy_biernej_daje_brak_zasilania_nie_zero(siec: Any) -> None
 
 
 @pytest.mark.parametrize("przeciazony", ["odplyw", "transformator_wiezy", "brak"])
-def test_alarmy_stacji_z_przeciazen_elementow_gpz(siec: Any, przeciazony: str) -> None:
-    migawka, _ = siec
+def test_alarmy_stacji_z_przeciazen_elementow_gpz(siec_110kv: Any, przeciazony: str) -> None:
+    migawka, _ = siec_110kv
     stacja, _, pierwszy, zrodlo = _dane(migawka)
     szyna = _szyna_sn(migawka)
     transformator = _gpz(migawka)["transformer_refs"][0]

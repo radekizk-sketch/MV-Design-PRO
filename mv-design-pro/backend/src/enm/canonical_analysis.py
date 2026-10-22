@@ -28,11 +28,17 @@ from application.proof_engine.packs.phase_state_sn import (
     PhaseStateSNProofPackInput,
 )
 from application.slad_kroku import kroki_zwarcia_w_kontrakcie
+from application.solvers.short_circuit_binding import (
+    czas_tb_punktu,
+    pola_lokalne_biegu,
+    wynik_zwarcia_punktu,
+)
 from application.v126_artifacts import (
     build_v126_proof_artifact,
     build_v126_report_artifact,
     wynik_v126_dla_powierzchni,
 )
+from domain.canonical_operations import READINESS_CODES
 from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
@@ -53,6 +59,7 @@ from enm.assembler import (
     _short_circuit_requires_z0,
     _short_circuit_type_from_options,
     czestotliwosc_studium_hz,
+    impedancja_zwarcia_z_opcji,
     zbuduj_graf,
     zloz_wejscie_rozplywu,
     zloz_wejscie_rozplywu_niesymetrycznego,
@@ -60,6 +67,7 @@ from enm.assembler import (
 )
 from enm.dynamika_z_katalogu import odmow_gdy_kopia_nieaktualna
 from enm.envelope import RevisionEnvelope, zbuduj_koperte
+from enm.fix_actions import FixAction
 from enm.hash import siec_biegu_zgodna_z_modelem
 from enm.klucz_twin import czy_klucz_projektu, project_id_z_klucza
 from enm.models import EnergyNetworkModel
@@ -88,9 +96,15 @@ from enm.scenariusze import (
     referencja_koperty,
 )
 from enm.store import get_enm
-from enm.validator import ENMValidator
+from enm.tolerancja_nn import dobierz_c_wezla
+from enm.validator import ENMValidator, ValidationResult
 from enm.wartosci_niefinitowe import podmien_niefinitowe
 from enm.wyniki_pol_gpz import wiersze_wynikow_gpz
+from enm.zdania_odmow_rdzenia import (
+    nazwy_w_odmowach_modelu,
+    nazwy_w_odmowach_rdzenia,
+    sprawdz_wejscie_rozplywu,
+)
 from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_DOSTEPNOSCI_ROZPLYWU,
     KLUCZ_ROZPLYWU,
@@ -100,11 +114,14 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
 )
 from network_model.brak_zasobu import BrakZasobuError
 from network_model.catalog.odcisk import odcisk_katalogu_domyslnego
+from network_model.core.autorytet_wyniku_zwarciowego import KLUCZ_IMPEDANCJI_ZWARCIA
 from network_model.core.branch import Branch
+from network_model.core.czas_wylaczenia import KOD_CZAS_TB_WARTOSC_ROBOCZA, CzasWylaczeniaTb
 from network_model.core.graph import NetworkGraph
-from network_model.core.voltage_factor import c_for_node
+from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
+from network_model.core.voltage_factor import DoborC
 from network_model.nazwy import nazwa_nadana
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.pochodne import (
     a_na_ka,
     calka_joule_ka2s,
@@ -149,7 +166,6 @@ from network_model.solvers.power_flow_unbalanced import (
 )
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
-    ShortCircuitIEC60909Solver,
     ShortCircuitResult,
 )
 from network_model.solvers.v126_academic import V126AcademicSolver
@@ -192,6 +208,20 @@ def _compute_input_hash(
 _KAPPA_MIN = 1.02
 _KAPPA_MAX = 2.0
 OGRANICZENIE_WYNIK_NIEFIZYCZNY = "solver_result_non_physical"
+#: Karta OD-14 (partia integracji 10): zwarcie przez impedancję przejścia Z_f — wynik poza
+#: zakresem IEC 60909 (norma definiuje prąd zwarciowy dla zwarcia metalicznego).
+OGRANICZENIE_POZA_ZAKRESEM_IEC60909 = "fault_impedance_outside_iec60909"
+#: Odmowa: opcja Z_f w biegu, który nie jest zwarciowy (karta OD-14).
+KOD_IMPEDANCJA_POZA_BIEGIEM_ZWARCIOWYM = "sc.impedancja_zwarcia_poza_biegiem_zwarciowym"
+#: Bramy modelu biegu (partia integracji 10) — kody odmów JEDNEJ oceny modelu liczonego
+#: (`ocen_model_biegu`), którą czyta zarówno `create_run`, jak i kwalifikowalność scenariusza
+#: zwarciowego (`FaultScenarioService.check_scenario_eligibility`).
+KOD_MODEL_NIE_PRZESZEDL_WALIDACJI = "enm.model_nie_przeszedl_walidacji"
+KOD_MODEL_BEZ_ZDOLNOSCI_ZWARCIOWEJ = "sc.model_bez_zdolnosci_zwarciowej"
+KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ = "sc.model_bez_skladowej_zerowej"
+#: Kody walidatora ENM, które odbierają modelowi zdolność zwarcia doziemnego (brak Z0 linii
+#: i źródeł) — to samo źródło, z którego walidator wyprowadza `short_circuit_1f`.
+_KODY_BRAKU_SKLADOWEJ_ZEROWEJ = ("W001", "W002")
 #: Kody ograniczeń raportowych rozpływu (symetrycznego i niesymetrycznego).
 OGRANICZENIE_WEZLY_POZA_WYSPA = "unsolved_nodes_outside_slack_island"
 OGRANICZENIE_BRAK_ZBIEZNOSCI = "solver_non_convergence"
@@ -223,6 +253,11 @@ OPISY_OGRANICZEN_RAPORTOWYCH_PL: dict[str, str] = {
     ),
     OGRANICZENIE_BRAK_ZBIEZNOSCI: (
         "Obliczenie rozpływu nie osiągnęło zbieżności — wynik nie nadaje się do raportu."
+    ),
+    OGRANICZENIE_POZA_ZAKRESEM_IEC60909: (
+        "Zwarcie przez impedancję przejścia Z_f jest poza zakresem normy IEC 60909, która "
+        "definiuje prąd zwarciowy dla zwarcia metalicznego — wynik nie jest podstawą doboru "
+        "wytrzymałości zwarciowej ani pakietu dowodowego aparatury."
     ),
 }
 
@@ -378,12 +413,17 @@ KLUCZE_WIERSZA_ZWARCIA: tuple[str, ...] = (
 #: Klucze ``to_dict()`` dołączane WYŁĄCZNIE gdy solver je policzył (exclude-None):
 #: składowe symetryczne, ślad rozpływu Thevenina, współczynniki m/n.
 KLUCZE_WIERSZA_ZWARCIA_OPCJONALNE: frozenset[str] = frozenset(
-    {"z1_ohm", "z2_ohm", "z0_ohm", "branch_flow_trace", "m_factor", "n_factor"}
+    {
+        "z1_ohm",
+        "z2_ohm",
+        "z0_ohm",
+        "branch_flow_trace",
+        "m_factor",
+        "n_factor",
+        "i_dc_a",
+        "tb_zrodlo",
+    }
 )
-
-#: ``tb_s`` domyślne solvera (``compute_*_short_circuit(tb_s=0.1)``) — wykonawca nie
-#: podaje własnego, więc wiersz bez solvera niesie tę samą daną wejściową.
-_TB_S_DOMYSLNE = 0.1
 
 
 def _pusty_wiersz_zwarcia(
@@ -393,6 +433,7 @@ def _pusty_wiersz_zwarcia(
     c_factor: float,
     un_kv: float,
     tk_s: float,
+    tb_s: float | None,
 ) -> dict[str, Any]:
     """Wiersz zwarcia węzła bez impedancji do odniesienia BEZ wołania solvera.
 
@@ -416,7 +457,7 @@ def _pusty_wiersz_zwarcia(
             "un_v": kv_na_v(float(un_kv)),
             "zkk_ohm": {"re": math.nan, "im": math.nan},
             "tk_s": float(tk_s),
-            "tb_s": _TB_S_DOMYSLNE,
+            "tb_s": tb_s,
             "contributions": [],
             "branch_contributions": [],
             "white_box_trace": [],
@@ -893,6 +934,17 @@ def list_runs_for_project(
         return repository.list_by_project(project_id, analysis_type=analysis_type)
 
 
+#: Kody odmów nazwanych dotyczących biegu źródłowego i biegu wykonywanego (identyfikator
+#: biegu w polu `dane`, nigdy w treści — partia integracji 10).
+KOD_BIEG_NIE_ISTNIEJE = "bieg.nie_istnieje"
+KOD_BIEG_ZRODLOWY_NIEPOPRAWNY = "bieg_zrodlowy.niepoprawny_identyfikator"
+KOD_BIEG_ZRODLOWY_BRAK = "bieg_zrodlowy.nie_istnieje"
+KOD_BIEG_ZRODLOWY_RODZAJ = "bieg_zrodlowy.nie_zwarciowy"
+KOD_BIEG_ZRODLOWY_NIEZAKONCZONY = "bieg_zrodlowy.niezakonczony"
+KOD_BIEG_ZRODLOWY_RODZAJ_ZWARCIA = "bieg_zrodlowy.rodzaj_zwarcia"
+KOD_BIEG_ZRODLOWY_INNY_PROJEKT = "bieg_zrodlowy.inny_projekt"
+KOD_BIEG_ZRODLOWY_INNA_SIEC = "bieg_zrodlowy.inna_siec"
+
 #: Rodzaje zwarcia, których rozpływ (składowa zgodna, Z2 = Z1) jest prądem fazy przekaźnika
 #: nadprądowego fazowego — ocena ``protection_sn`` przyjmuje wyłącznie takie biegi źródłowe.
 RODZAJE_ZWARCIA_OCENY_NADPRADOWEJ: frozenset[str] = frozenset(
@@ -922,46 +974,209 @@ def _validate_protection_sc_reference(
             "Analiza zabezpieczeń wymaga options.sc_run_id (identyfikator "
             "zakończonego biegu zwarciowego, którego prąd Ik'' interpretuje ocena)"
         )
+    # Partia integracji 10: identyfikator biegu źródłowego w polu `dane` odmowy, nigdy
+    # w treści (projektant wybiera bieg z listy, nie zna jego identyfikatora).
+    dane_biegu = {"sc_run_ref": str(sc_run_id_raw)}
     try:
         sc_run_uuid = UUID(str(sc_run_id_raw))
     except ValueError as exc:
-        raise OdmowaDanychError(f"sc_run_id nie jest poprawnym UUID: {sc_run_id_raw!r}") from exc
+        raise OdmowaNazwana(
+            "Wskazanie biegu zwarciowego dla oceny zabezpieczeń nie jest poprawnym "
+            "identyfikatorem biegu",
+            kod=KOD_BIEG_ZRODLOWY_NIEPOPRAWNY,
+            dane=dane_biegu,
+        ) from exc
     sc_run = get_run(sc_run_uuid)
     if sc_run is None:
-        raise OdmowaDanychError(f"Bieg zwarciowy '{sc_run_id_raw}' nie istnieje")
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy nie istnieje", kod=KOD_BIEG_ZRODLOWY_BRAK, dane=dane_biegu
+        )
     if sc_run.analysis_type != "short_circuit_sn":
-        raise OdmowaDanychError(
-            f"Bieg '{sc_run_id_raw}' nie jest biegiem zwarciowym (rodzaj: {sc_run.analysis_type})"
+        raise OdmowaNazwana(
+            "Wskazany bieg nie jest biegiem zwarciowym — ocena zabezpieczeń interpretuje "
+            "wyłącznie prąd zwarcia",
+            kod=KOD_BIEG_ZRODLOWY_RODZAJ,
+            dane={**dane_biegu, "analysis_type": str(sc_run.analysis_type)},
         )
     if sc_run.status != "FINISHED":
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' nie jest zakończony (status: {sc_run.status})"
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy nie jest zakończony",
+            kod=KOD_BIEG_ZRODLOWY_NIEZAKONCZONY,
+            dane={**dane_biegu, "status": str(sc_run.status)},
         )
     rodzaj_zwarcia = (sc_run.raw_result or {}).get("short_circuit_type")
     if rodzaj_zwarcia not in RODZAJE_ZWARCIA_OCENY_NADPRADOWEJ:
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' liczy zwarcie {rodzaj_zwarcia} — ocena "
+        raise OdmowaNazwana(
+            f"Wskazany bieg zwarciowy liczy zwarcie {rodzaj_zwarcia} — ocena "
             "zabezpieczeń nadprądowych fazowych wymaga zwarcia międzyfazowego (3F albo 2F): "
             "rozpływ zwarcia doziemnego niesie rozkład składowej zgodnej, a nie prąd fazy "
-            "widziany przez przekaźnik"
+            "widziany przez przekaźnik",
+            kod=KOD_BIEG_ZRODLOWY_RODZAJ_ZWARCIA,
+            dane=dane_biegu,
         )
     if (
         project_id_koperty is not None
         and sc_run.project_id is not None
         and sc_run.project_id != project_id_koperty
     ):
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' należy do innego projektu — analiza "
-            "zabezpieczeń nie może interpretować wyniku spoza własnego projektu"
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy należy do innego projektu — analiza "
+            "zabezpieczeń nie może interpretować wyniku spoza własnego projektu",
+            kod=KOD_BIEG_ZRODLOWY_INNY_PROJEKT,
+            dane=dane_biegu,
         )
     # D-21: nastawy z BIEŻĄCEGO modelu, topologia i rozpływ z biegu źródłowego — wolno je
     # złożyć wyłącznie, gdy opisują tę samą sieć (edycja nastaw i przekładników jej nie zmienia).
     if not siec_biegu_zgodna_z_modelem(sc_run.snapshot, snapshot):
-        raise OdmowaDanychError(
-            f"Bieg zwarciowy '{sc_run_id_raw}' policzono dla innej sieci niż bieżący model — "
+        raise OdmowaNazwana(
+            "Wskazany bieg zwarciowy policzono dla innej sieci niż bieżący model — "
             "od tego biegu zmieniło się coś poza zabezpieczeniami (element, parametr albo stan "
-            "łącznika). Przelicz zwarcie na bieżącym modelu, a potem uruchom ocenę zabezpieczeń"
+            "łącznika). Przelicz zwarcie na bieżącym modelu, a potem uruchom ocenę zabezpieczeń",
+            kod=KOD_BIEG_ZRODLOWY_INNA_SIEC,
+            dane=dane_biegu,
         )
+
+
+@dataclass(frozen=True)
+class BlokadaModeluBiegu:
+    """Jedna przyczyna, dla której model liczony nie pozwala utworzyć biegu.
+
+    `komunikat` jest zdaniem dla projektanta (bez identyfikatorów), `elementy` niosą
+    identyfikatory elementów, których dotyczy (pole strukturalne, nie treść), a
+    `fix_action` — akcję naprawczą walidatora ENM, gdy ją podał.
+    """
+
+    kod: str
+    komunikat: str
+    elementy: tuple[str, ...] = ()
+    fix_action: FixAction | None = None
+
+
+@dataclass(frozen=True)
+class OcenaModeluBiegu:
+    """Model, który bieg policzy (HEAD ⊕ scenariusz), jego walidacja i bramy biegu."""
+
+    efektywna: EffectiveNetworkSnapshot
+    enm_liczony: EnergyNetworkModel
+    walidacja: ValidationResult
+    opcje: dict[str, Any]
+    blokady: tuple[BlokadaModeluBiegu, ...]
+
+    def odmowa(self) -> OdmowaNazwana:
+        """Odmowa `create_run` — pierwsza blokada; dla walidacji wszystkie zdania naraz."""
+        pierwsza = self.blokady[0]
+        if pierwsza.kod == KOD_MODEL_NIE_PRZESZEDL_WALIDACJI:
+            zdania = [b.komunikat for b in self.blokady if b.kod == pierwsza.kod]
+            elementy = tuple(
+                sorted({e for b in self.blokady if b.kod == pierwsza.kod for e in b.elementy})
+            )
+            return OdmowaNazwana(
+                "; ".join(zdania) or "Model sieci nie przeszedł walidacji",
+                kod=pierwsza.kod,
+                dane={"elementy": elementy},
+            )
+        return OdmowaNazwana(
+            pierwsza.komunikat, kod=pierwsza.kod, dane={"elementy": pierwsza.elementy}
+        )
+
+
+def ocen_model_biegu(
+    *,
+    klucz_twin: str,
+    analysis_type: str,
+    options: dict[str, Any] | None = None,
+    scenariusz: OperatingScenario | None = None,
+) -> OcenaModeluBiegu:
+    """JEDNA ocena modelu liczonego dla biegu — bramy `create_run` i kwalifikowalności.
+
+    Partia integracji 10: kwalifikowalność scenariusza zwarciowego miała WŁASNE reguły
+    (fantomowe `z0_bus_data` dla 1F i „proxy Z2" dla 2F) niezależne od bram `create_run`
+    (walidacja ENM, zdolności `short_circuit_3f`/`short_circuit_1f`), więc mówiła
+    „kwalifikuje się", gdy bieg i tak był odrzucany — albo odwrotnie. Obie ścieżki czytają
+    odtąd tę funkcję (reguła „predykaty parami": warunek wejścia i warunek biegu z jednego
+    źródła). Blokady:
+
+    - walidacja ENM ze statusem FAIL → jedna blokada na każdy problem blokujący (kod
+      wspólny, element i akcja naprawcza z walidatora); dotyczy każdego biegu poza
+      akademickimi `v126:` (wyjątek CV-4.3-A4, zachowany);
+    - bieg zwarciowy bez zdolności `short_circuit_3f` → blokada zdolności zwarciowej;
+    - zwarcie z udziałem ziemi (1F, 2F+Z) bez `short_circuit_1f` → blokada składowej zerowej
+      z elementami ostrzeżeń walidatora o braku Z0.
+    """
+    enm = get_enm(klucz_twin)
+    scenariusz_biegu = scenariusz if scenariusz is not None else SCENARIUSZ_NORMALNY
+    efektywna = apply_scenario(enm, scenariusz_biegu)
+    enm_liczony = (
+        enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
+    )
+    validator = ENMValidator()
+    walidacja = validator.validate(enm_liczony)
+    opcje = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
+    blokady: list[BlokadaModeluBiegu] = []
+    # CV-4.3-A4 (K5.2, 2026-09-06): V12.6 Academic NIE jest siecia Kirchhoffa
+    # (Source->Thevenin->rozplyw/zwarcie) — model wejsciowy solvera przyjmuje
+    # wprost `fault_level_mva` na szynie i innego rodzaju parametry akademickie
+    # bez pelnego lancucha zasilania, wiec NIGDY nie przechodzil przez
+    # `enm/assembler.py`/`ENMValidator` (jedyna bramka historyczna, zachowana w
+    # trasie: model musi miec co najmniej jedna szyne). Dolaczenie V12.6 do
+    # wspolnego rejestru biegow (R1) nie ma prawa PODNIESC wymagan modelowych
+    # analiz akademickich ponad ten historyczny stan — wyjatek jest JAWNY,
+    # nazwany, i dotyczy WYLACZNIE `analysis_type` z prefiksem "v126:".
+    if walidacja.status == "FAIL" and not analysis_type.startswith("v126:"):
+        for problem in validator.readiness(walidacja).blockers:
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_NIE_PRZESZEDL_WALIDACJI,
+                    komunikat=problem.message_pl,
+                    elementy=tuple(problem.element_refs),
+                    fix_action=problem.fix_action,
+                )
+            )
+        if not blokady:
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_NIE_PRZESZEDL_WALIDACJI,
+                    komunikat="Model sieci nie przeszedł walidacji",
+                )
+            )
+    if analysis_type == "short_circuit_sn" and not blokady:
+        dostepnosc = walidacja.analysis_available
+        if not dostepnosc.short_circuit_3f:
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_BEZ_ZDOLNOSCI_ZWARCIOWEJ,
+                    komunikat="Analiza zwarciowa nie jest dostępna dla bieżącego snapshotu ENM",
+                )
+            )
+        elif (
+            _short_circuit_type_from_options(opcje)
+            in {ShortCircuitType.SINGLE_PHASE_GROUND, ShortCircuitType.TWO_PHASE_GROUND}
+            and not dostepnosc.short_circuit_1f
+        ):
+            problemy_z0 = [
+                problem
+                for problem in walidacja.issues
+                if problem.code in _KODY_BRAKU_SKLADOWEJ_ZEROWEJ
+            ]
+            blokady.append(
+                BlokadaModeluBiegu(
+                    kod=KOD_MODEL_BEZ_SKLADOWEJ_ZEROWEJ,
+                    komunikat="Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM",
+                    elementy=tuple(
+                        sorted({e for problem in problemy_z0 for e in problem.element_refs})
+                    ),
+                    fix_action=next(
+                        (p.fix_action for p in problemy_z0 if p.fix_action is not None), None
+                    ),
+                )
+            )
+    return OcenaModeluBiegu(
+        efektywna=efektywna,
+        enm_liczony=enm_liczony,
+        walidacja=walidacja,
+        opcje=opcje,
+        blokady=tuple(blokady),
+    )
 
 
 def create_run(
@@ -989,28 +1204,15 @@ def create_run(
     projekcja na opcje biegu (`opcje_biegu_ze_scenariusza`) jest podkladem, na
     ktory jawne `options` wolajacego nakladaja sie z pierwszenstwem.
     """
-    enm = get_enm(klucz_twin)
-    scenariusz_biegu = scenariusz if scenariusz is not None else SCENARIUSZ_NORMALNY
-    efektywna = apply_scenario(enm, scenariusz_biegu)
-    enm_liczony = (
-        enm if efektywna.tozsama_z_baza else EnergyNetworkModel.model_validate(efektywna.snapshot)
+    ocena = ocen_model_biegu(
+        klucz_twin=klucz_twin, analysis_type=analysis_type, options=options, scenariusz=scenariusz
     )
-    validator = ENMValidator()
-    validation = validator.validate(enm_liczony)
-    readiness = validator.readiness(validation)
-
-    # CV-4.3-A4 (K5.2, 2026-09-06): V12.6 Academic NIE jest siecia Kirchhoffa
-    # (Source->Thevenin->rozplyw/zwarcie) — model wejsciowy solvera przyjmuje
-    # wprost `fault_level_mva` na szynie i innego rodzaju parametry akademickie
-    # bez pelnego lancucha zasilania, wiec NIGDY nie przechodzil przez
-    # `enm/assembler.py`/`ENMValidator` (jedyna bramka historyczna, zachowana w
-    # trasie: model musi miec co najmniej jedna szyne). Dolaczenie V12.6 do
-    # wspolnego rejestru biegow (R1) nie ma prawa PODNIESC wymagan modelowych
-    # analiz akademickich ponad ten historyczny stan — wyjatek jest JAWNY,
-    # nazwany, i dotyczy WYLACZNIE `analysis_type` z prefiksem "v126:".
-    if validation.status == "FAIL" and not analysis_type.startswith("v126:"):
-        messages = [issue.message_pl for issue in validation.issues if issue.severity == "BLOCKER"]
-        raise OdmowaDanychError("; ".join(messages) or "Model sieci nie przeszedł walidacji")
+    if ocena.blokady:
+        raise ocena.odmowa()
+    efektywna = ocena.efektywna
+    enm_liczony = ocena.enm_liczony
+    validation = ocena.walidacja
+    readiness = ENMValidator().readiness(validation)
 
     availability = validation.analysis_available
     if analysis_type == "PF" and not availability.load_flow:
@@ -1027,27 +1229,25 @@ def create_run(
         )
     snapshot = efektywna.snapshot
     enm_hash = efektywna.snapshot_hash
-    normalized_options = {**opcje_biegu_ze_scenariusza(scenariusz_biegu), **dict(options or {})}
+    normalized_options = ocena.opcje
     # CV-2: tozsamosc projektu w kopercie — z parametru albo z klucza twin
     # (klucz surowy w testach magazynu nie niesie projektu → None, uczciwie).
     project_id_koperty = project_id or (
         str(project_id_z_klucza(klucz_twin)) if czy_klucz_projektu(klucz_twin) else None
     )
-    if analysis_type == "short_circuit_sn":
-        fault_type = _short_circuit_type_from_options(normalized_options)
-        if not availability.short_circuit_3f:
-            raise OdmowaDanychError(
-                "Analiza zwarciowa nie jest dostępna dla bieżącego snapshotu ENM"
+    if KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA in normalized_options:
+        # Karta OD-14: Z_f jest daną WYŁĄCZNIE biegu zwarciowego — w innym biegu byłaby opcją,
+        # której nikt nie czyta (fantom). W biegu zwarciowym ta sama reguła danych co przy
+        # wykonaniu (assembler) rozstrzyga JUŻ przy tworzeniu biegu: niedopuszczalna para nie
+        # staje się biegiem, który upadnie dopiero w kolejce wykonawcy.
+        if analysis_type != "short_circuit_sn":
+            raise OdmowaNazwana(
+                "Impedancja przejścia Z_f dotyczy wyłącznie biegu zwarciowego — ten rodzaj "
+                "biegu jej nie czyta.",
+                kod=KOD_IMPEDANCJA_POZA_BIEGIEM_ZWARCIOWYM,
+                dane={"analysis_type": analysis_type},
             )
-        if (
-            fault_type
-            in {
-                ShortCircuitType.SINGLE_PHASE_GROUND,
-                ShortCircuitType.TWO_PHASE_GROUND,
-            }
-            and not availability.short_circuit_1f
-        ):
-            raise OdmowaDanychError("Zwarcie 1F/2F+Z wymaga kompletnej składowej zerowej Z0 w ENM")
+        impedancja_zwarcia_z_opcji(normalized_options)
     if analysis_type == "phase_state_sn" and not enm_liczony.buses:
         raise OdmowaDanychError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
     if analysis_type == "protection_sn":
@@ -1248,10 +1448,12 @@ def bieg_wariantu(
             # wariant wariantu (skladanie scenariuszy) nie jest modelowany
             # (koperta niesie JEDNA referencje scenariusza). Odmowa z nazwa,
             # nie koperta udajaca, ze baza byla stanem normalnym.
-            raise OdmowaDanychError(
+            raise OdmowaNazwana(
                 "Bieg bazowy wariantu został policzony na scenariuszu z nadpisaniami "
-                f"modelu ({koperta_bazy.scenario_ref}); składanie scenariuszy nie jest "
-                "modelowane — wariant buduje się na biegu stanu normalnego."
+                "modelu; składanie scenariuszy nie jest modelowane — wariant buduje się na "
+                "biegu stanu normalnego.",
+                kod="wariant.bieg_bazowy_na_scenariuszu",
+                dane={"scenario_ref": str(koperta_bazy.scenario_ref)},
             )
         scenario_ref, scenario_hash = referencja_koperty(migawka)
         envelope = zbuduj_koperte(
@@ -1362,7 +1564,9 @@ def execute_run(
     """
     run = get_run(run_id)
     if run is None:
-        raise OdmowaDanychError(f"Run {run_id} not found")
+        raise OdmowaNazwana(
+            "Bieg obliczeń nie istnieje.", kod=KOD_BIEG_NIE_ISTNIEJE, dane={"run_ref": str(run_id)}
+        )
 
     # Przejecie biegu jest ATOMOWE (warunek + zapis w jednym UPDATE). Wczesniej
     # bylo: `if run.status in {"FINISHED", "FAILED"}: return` + osobny zapis
@@ -1886,9 +2090,14 @@ def _execute_v126(run: CanonicalRun) -> None:
     # (karta W3-E), ocena niewykonana dla jakości energii (liczby tylko w sekcji
     # audytowej) i SSCI (uczciwość natychmiastowa 2026-09-23). Solver FROZEN (B-01)
     # NIETKNIĘTY — odcisk `deterministic_hash` liczony przez solver przed granicą.
+    # Odmowa strukturalna rdzenia V12.6 odwołuje się do elementów migawki ENM
+    # (`RODZAJ_ELEMENT`: transformator bez P0, przekształtnik bez pól karty Z_conv) — granica
+    # składa zdanie z nazwami elementów biegu (partia integracji 10).
+    with nazwy_w_odmowach_modelu(run.snapshot):
+        surowy = solver.run(analysis_type, model)
     result = wynik_v126_dla_powierzchni(
         analysis_type.value,
-        solver.run(analysis_type, model),
+        surowy,
         nazwy=zbuduj_indeks_nazw(run.snapshot),
     )
     run_record: dict[str, Any] = {
@@ -2015,6 +2224,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
             stopnie=o.stopnie,
             bilans_pradu=o.bilans_pradu,
             ocena=o.ocena.model_dump(mode="json"),
+            nasycenie_ct=o.nasycenie_ct,
         )
         for o in wynik.oceny
     )
@@ -2073,6 +2283,7 @@ def _execute_protection(run: CanonicalRun, uow_factory: Callable[[], Any] | None
                     "t_zadzialania_s": ocena.t_zadzialania_s,
                     "wiarygodnosc": ocena.wiarygodnosc,
                     "wiarygodnosc_powod_pl": ocena.wiarygodnosc_powod_pl,
+                    "nasycenie_ct": ocena.nasycenie_ct,
                 },
             )
         )
@@ -2139,8 +2350,11 @@ def rozszerzenia_audit2_dla_opcji(
     try:
         project_uuid = UUID(str(project_id_str))
     except ValueError as exc:
-        raise OdmowaDanychError(
-            f"`audit2_project_id` nie jest poprawnym UUID: {project_id_str!r}"
+        raise OdmowaNazwana(
+            "Projekt konfiguracji audytu stacji wskazany w opcjach biegu nie jest poprawnym "
+            "identyfikatorem projektu",
+            kod="bieg.audit2_projekt_niepoprawny",
+            dane={"audit2_project_ref": str(project_id_str)},
         ) from exc
     if uow_factory is None:
         raise ValueError(
@@ -2157,59 +2371,77 @@ def rozszerzenia_audit2_dla_opcji(
         return rozszerzenia_audit2_z_konfiguracji(cfg)
 
 
-def _c_factor_punktu(wejscie: WejscieZwarcia, node_id: str) -> float:
-    """c punktu zwarcia: OVERRIDE z opcji (płasko) albo AUTO z pasma napięcia węzła (IEC 60909 Tab. 1)."""
-    if wejscie.c_factor_override:
-        return float(wejscie.c_factor_explicit)
-    return c_for_node(wejscie.graph.nodes[node_id].voltage_level, wejscie.scenario_c)
+def _dobor_c_punktu(wejscie: WejscieZwarcia, node_id: str) -> DoborC:
+    """c punktu zwarcia i jego podstawa — JEDYNA reguła ``voltage_factor.dobierz_c``.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): tabela 1 IEC 60909-0 dla pasma napięcia
+    WŁASNEGO węzła i scenariusza biegu albo nadpisanie z uzasadnieniem. Wołana przez
+    bieg i przez wkłady na żądanie — c i ``c_zrodlo`` wiersza mają jedno źródło.
+    """
+    return dobierz_c_wezla(wejscie.graph.nodes[node_id], wejscie.scenario_c, wejscie.nadpisanie_c)
 
 
 def _wynik_solvera_punktu(
-    wejscie: WejscieZwarcia, node_id: str, *, c_factor: float, wklady: bool
-) -> ShortCircuitResult | None:
-    """Wynik FROZEN solvera dla JEDNEGO punktu zwarcia — jedyna dyspozycja rodzaju zwarcia.
+    wejscie: WejscieZwarcia,
+    node_id: str,
+    *,
+    c_factor: float,
+    wklady: bool,
+    pola_lokalne: Mapping[str, tuple[Any, ...]] | None = None,
+) -> tuple[ShortCircuitResult, CzasWylaczeniaTb] | None:
+    """Wynik FROZEN solvera i t_b JEDNEGO punktu zwarcia — jedyna droga biegu do rdzenia.
 
     Wołana przez bieg (pętla po węzłach raportowalnych) i przez wkłady na żądanie
     (PERF-SC-50, krok 3) — jedno miejsce, więc bieg i żądanie liczą z identycznego
-    wejścia (`solve_graph`, `z0_bus`, c, tk). Węzeł bez impedancji do odniesienia
-    (CV-4.3 K3b) nie przechodzi przez solver → ``None``.
+    wejścia (`solve_graph`, `z0_bus`, c, tk, t_b). Węzeł bez impedancji do odniesienia
+    (CV-4.3 K3b) nie przechodzi przez solver → ``None``. Karta TB-WARTOSC-ROBOCZA: t_b
+    punktu rozstrzyga ``short_circuit_binding.czas_tb_punktu`` (scenariusz projektanta >
+    pola lokalne > wartość robocza), dyspozycję rodzaju zwarcia ``wynik_zwarcia_punktu`` —
+    te same funkcje co pakiety dowodowe.
     """
     if node_id in wejscie.wezly_bez_odniesienia:
         return None
-    typ = wejscie.short_circuit_type
-    if typ == ShortCircuitType.THREE_PHASE:
-        return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=wejscie.solve_graph,
-            fault_node_id=node_id,
+    # Odmowa wejścia rdzenia (rekord strukturalny, decyzja O-59) ze zdaniem z nazwami z grafu.
+    with nazwy_w_odmowach_rdzenia(wejscie.solve_graph):
+        czas_tb = czas_tb_punktu(
+            wejscie,
+            node_id,
             c_factor=c_factor,
-            tk_s=wejscie.tk_s,
-            include_branch_contributions=wklady,
+            z_f_ohm=wejscie.impedancja_zwarcia,
+            pola_lokalne=pola_lokalne,
         )
-    if typ == ShortCircuitType.SINGLE_PHASE_GROUND:
-        return ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=wejscie.solve_graph,
-            fault_node_id=node_id,
+        wynik = wynik_zwarcia_punktu(
+            wejscie,
+            node_id,
             c_factor=c_factor,
-            tk_s=wejscie.tk_s,
-            z0_bus=wejscie.z0_bus,
-            include_branch_contributions=wklady,
+            czas_tb=czas_tb,
+            wklady=wklady,
+            z_f_ohm=wejscie.impedancja_zwarcia,
         )
-    if typ == ShortCircuitType.TWO_PHASE:
-        return ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-            graph=wejscie.solve_graph,
-            fault_node_id=node_id,
-            c_factor=c_factor,
-            tk_s=wejscie.tk_s,
-            include_branch_contributions=wklady,
-        )
-    return ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-        graph=wejscie.solve_graph,
-        fault_node_id=node_id,
-        c_factor=c_factor,
-        tk_s=wejscie.tk_s,
-        z0_bus=wejscie.z0_bus,
-        include_branch_contributions=wklady,
-    )
+    return wynik, czas_tb
+
+
+def _zalozenie_czasu_tb_roboczego(
+    punkty: list[dict[str, Any]], scenario_c: str
+) -> list[dict[str, Any]]:
+    """Założenie biegu ``fault.czas_tb_wartosc_robocza`` (karta TB-WARTOSC-ROBOCZA, §0.3).
+
+    Tym samym wzorcem co ``source.sk_min_missing`` (kod gotowości, treść z rejestru, bez
+    elementu — dana biegu): lista punktów zwarcia, w których t_b jest wartością roboczą
+    (propozycja 0,1 s albo czas pola z czasem własnym wyłącznika przyjętym roboczo), z t_b
+    i jego źródłem. Pusta lista, gdy t_b każdego punktu jest projektowe.
+    """
+    if not punkty:
+        return []
+    return [
+        {
+            "code": KOD_CZAS_TB_WARTOSC_ROBOCZA,
+            "element_ref": None,
+            "message_pl": READINESS_CODES[KOD_CZAS_TB_WARTOSC_ROBOCZA].message_pl,
+            "scenariusz": scenario_c,
+            "punkty": punkty,
+        }
+    ]
 
 
 #: Pola wiersza zwarcia porównywane przy wkładach na żądanie z wynikiem odtworzonym z
@@ -2238,11 +2470,15 @@ def _policz_rozplyw_punktu_na_zadanie(
     )
     if fault_node_id not in wejscie.reportable_fault_node_ids:
         return None
-    result = _wynik_solvera_punktu(
-        wejscie, fault_node_id, c_factor=_c_factor_punktu(wejscie, fault_node_id), wklady=True
+    policzony = _wynik_solvera_punktu(
+        wejscie,
+        fault_node_id,
+        c_factor=_dobor_c_punktu(wejscie, fault_node_id).wartosc,
+        wklady=True,
     )
-    if result is None:
+    if policzony is None:
         return None
+    result, _ = policzony
     odtworzony, _ = podmien_niefinitowe(result.to_dict())
     wiersz = next(
         (
@@ -2317,7 +2553,7 @@ def _execute_short_circuit(
     graph_branches = wejscie.graph_branches
     short_circuit_type = wejscie.short_circuit_type
     scenario_c = wejscie.scenario_c
-    c_factor_override = wejscie.c_factor_override
+    c_factor_override = wejscie.nadpisanie_c is not None
     tk_s = wejscie.tk_s
     temperature_correction_notes = wejscie.temperature_correction_notes
     reportable_fault_node_ids = wejscie.reportable_fault_node_ids
@@ -2329,6 +2565,10 @@ def _execute_short_circuit(
     # NIE są w ``solve_graph`` — wiersz powstaje bez solvera (jawny brak, nie szum).
     wezly_bez_odniesienia = wejscie.wezly_bez_odniesienia
     liczba_punktow = len(reportable_fault_node_ids)
+    # Karta TB-WARTOSC-ROBOCZA: pola lokalne węzłów zbudowane RAZ na bieg (``None`` = t_b ze
+    # scenariusza projektanta — pola nie są czytane); punkty z t_b roboczym → założenie biegu.
+    pola_lokalne = pola_lokalne_biegu(wejscie)
+    punkty_tb_roboczego: list[dict[str, Any]] = []
     for numer_punktu, node_id in enumerate(reportable_fault_node_ids):
         if kontekst is not None:
             # Punkt przerwania MIEDZY punktami zwarcia (karta DYNAMIKA-W-TLE): postęp w
@@ -2345,16 +2585,33 @@ def _execute_short_circuit(
                     f"{liczba_punktow} punktów zwarcia; wynik częściowy odrzucony."
                 ),
             )
-        # AUTO: c z pasma napięciowego WŁASNEGO węzła zwarcia (IEC 60909 Tab. 1);
-        # OVERRIDE: wartość jawna z options, płasko dla wszystkich węzłów.
-        c_factor = _c_factor_punktu(wejscie, node_id)
+        # Tabela 1 IEC 60909-0 dla pasma WŁASNEGO węzła zwarcia i scenariusza biegu albo
+        # nadpisanie z uzasadnieniem — podstawa idzie do wiersza jako `c_zrodlo`.
+        dobor_c = _dobor_c_punktu(wejscie, node_id)
+        c_factor = dobor_c.wartosc
         # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera (opcja addytywna —
         # nie zmienia żadnej istniejącej wielkości ani śladu White Box). PERF-SC-50:
         # liczone W BIEGU tylko w trybie `in_run`; domyślnie NA ŻĄDANIE punktu
         # (`pobierz_rozplyw_biegu` — ta sama dyspozycja `_wynik_solvera_punktu`).
-        result = _wynik_solvera_punktu(
-            wejscie, node_id, c_factor=c_factor, wklady=wejscie.wklady_w_biegu
+        policzony = _wynik_solvera_punktu(
+            wejscie,
+            node_id,
+            c_factor=c_factor,
+            wklady=wejscie.wklady_w_biegu,
+            pola_lokalne=pola_lokalne,
         )
+        result = policzony[0] if policzony is not None else None
+        if policzony is not None and policzony[1].robocza:
+            punkty_tb_roboczego.append(
+                {
+                    "fault_node_id": node_id,
+                    # Odnośnik szyny ENM — ten sam klucz co ``element_id`` wiersza wyniku
+                    # (ekran wyników łączy punkt założenia z wierszem po nim).
+                    "element_id": graph_nodes.get(node_id, {}).get("element_id"),
+                    "nazwa": nazwa_elementu(graph.nodes[node_id], "buses"),
+                    **policzony[1].to_dict(),
+                }
+            )
         payload = (
             result.to_dict()
             if result is not None
@@ -2364,6 +2621,9 @@ def _execute_short_circuit(
                 c_factor=c_factor,
                 un_kv=graph.nodes[node_id].voltage_level,
                 tk_s=tk_s,
+                # Węzeł bez odniesienia nie przechodzi przez rdzeń: t_b nie jest użyte —
+                # wiersz niesie wyłącznie t_b projektanta (dana wejściowa biegu) albo brak.
+                tb_s=wejscie.tb_projektanta_s,
             )
         )
         if result is not None and not wejscie.wklady_w_biegu:
@@ -2434,8 +2694,25 @@ def _execute_short_circuit(
                 # sam solver już raportuje wyżej w `payload` — nie duplikujemy).
                 "scenario": scenario_c,
                 "c_factor_override": c_factor_override,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: podstawa c TEGO węzła (White Box) —
+                # „IEC 60909-0 tab. 1, pasmo SN, MAX" albo „nadpisanie ręczne: <powód>".
+                "c_zrodlo": dobor_c.zrodlo,
+                # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: węzeł sieci nN liczonej z wartością
+                # roboczą tolerancji (c węzła, K_T i K_G tej sieci) — addytywnie, WYŁĄCZNIE
+                # gdy prawda (wiersz sieci zadeklarowanej bez zmian). Konsumenci werdyktów
+                # niosą stąd daną przyjętą (`dane_przyjete`, jakość ESTIMATED).
+                **(
+                    {"tolerancja_nn_robocza": True}
+                    if wejscie.graph.nodes[node_id].tolerancja_nn_robocza
+                    else {}
+                ),
             }
         )
+        if wejscie.impedancja_zwarcia is not None:
+            payload["reporting_limitations"] = [
+                *payload["reporting_limitations"],
+                OGRANICZENIE_POZA_ZAKRESEM_IEC60909,
+            ]
         if node_id in wezly_bez_odniesienia:
             payload = _oznacz_wiersz_bez_odniesienia(payload)
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
@@ -2456,6 +2733,10 @@ def _execute_short_circuit(
         if OGRANICZENIE_WYNIK_NIEFIZYCZNY in (row.get("reporting_limitations") or [])
     )
 
+    zalozenia_biegu = [
+        *wejscie.zalozenia,
+        *_zalozenie_czasu_tb_roboczego(punkty_tb_roboczego, scenario_c),
+    ]
     run.raw_result = {
         "analysis_type": _result_analysis_type_for_fault(short_circuit_type),
         "short_circuit_type": short_circuit_type.value,
@@ -2469,8 +2750,30 @@ def _execute_short_circuit(
         "z0_source": (
             "ENM_COMMITTED" if _short_circuit_requires_z0(short_circuit_type) else "NOT_APPLICABLE"
         ),
-        "reporting_limitations": ([OGRANICZENIE_WYNIK_NIEFIZYCZNY] if wiersze_niefizyczne else []),
+        "reporting_limitations": (
+            ([OGRANICZENIE_WYNIK_NIEFIZYCZNY] if wiersze_niefizyczne else [])
+            + (
+                [OGRANICZENIE_POZA_ZAKRESEM_IEC60909]
+                if wejscie.impedancja_zwarcia is not None
+                else []
+            )
+        ),
         **({"non_reportable_fault_node_ids": wiersze_niefizyczne} if wiersze_niefizyczne else {}),
+        # Karta OD-14: impedancja przejścia Z_f biegu i zakres ważności — WYŁĄCZNIE gdy bieg
+        # ją niesie (artefakt biegu metalicznego bajt w bajt jak przed kartą). Z tego klucza
+        # warstwa autorytetu odtwarza proweniencję zapisanego biegu
+        # (`application.autorytet_biegu_zwarciowego`, kod SI-117).
+        **(
+            {
+                KLUCZ_IMPEDANCJI_ZWARCIA: {
+                    "r_f_ohm": wejscie.impedancja_zwarcia.real,
+                    "x_f_ohm": wejscie.impedancja_zwarcia.imag,
+                    "poza_zakresem_iec60909": True,
+                }
+            }
+            if wejscie.impedancja_zwarcia is not None
+            else {}
+        ),
         "case_id": run.case_id,
         "enm_hash": run.snapshot_hash,
         # Karta P0.3b: metadane bindingu c/scenariusz na poziomie biegu (addytywne).
@@ -2478,6 +2781,11 @@ def _execute_short_circuit(
         # (`sc_binding_meta.py`) skasowane w karcie RESULTSET-MARTWE-MAPPERY.
         "scenario": scenario_c,
         "c_factor_override": c_factor_override,
+        **(
+            {"nadpisanie_c": wejscie.nadpisanie_c.to_dict()}
+            if wejscie.nadpisanie_c is not None
+            else {}
+        ),
         **(
             {"temperature_correction_notes": list(temperature_correction_notes)}
             if temperature_correction_notes
@@ -2491,8 +2799,9 @@ def _execute_short_circuit(
             else {}
         ),
         # CV-4.3 K7: założenia biegu nazwane kodem gotowości (scenariusz MIN bez S''_kQmin
-        # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho.
-        **({"zalozenia": list(wejscie.zalozenia)} if wejscie.zalozenia else {}),
+        # → Z_Q z danych MAX) — addytywnie, tylko gdy bieg je ma; nigdy cicho. Karta
+        # TB-WARTOSC-ROBOCZA: + `fault.czas_tb_wartosc_robocza` z listą punktów.
+        **({"zalozenia": zalozenia_biegu} if zalozenia_biegu else {}),
         # Karta S-2 AUTORYTET: znaczniki pochodzenia k_sc WSZYSTKICH źródeł
         # falownikowych czynnych w grafie TEGO biegu (`ProweniencjaWynikuZwarciowego.
         # z_grafu`, zapisane przy asemblacji wejścia — `enm/assembler.py::
@@ -2529,6 +2838,19 @@ def _execute_short_circuit(
 
 
 def _solve_power_flow_with_method(
+    pf_input: PowerFlowInput,
+    options: PowerFlowOptions,
+    run_options: dict[str, Any],
+    solver_method: str,
+) -> PowerFlowNewtonSolution:
+    # Odmowy wejścia rozpływu (rdzenie B-01, decyzja O-59): rekordy strukturalne i zdanie
+    # z nazwami z modelu — przed solverem (walidator strukturalny) i z solvera (przekładnia).
+    sprawdz_wejscie_rozplywu(pf_input)
+    with nazwy_w_odmowach_rdzenia(pf_input.typed_graph()):
+        return _solve_power_flow_by_method(pf_input, options, run_options, solver_method)
+
+
+def _solve_power_flow_by_method(
     pf_input: PowerFlowInput,
     options: PowerFlowOptions,
     run_options: dict[str, Any],
@@ -3267,6 +3589,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "ip_ka", "label_pl": "ip", "unit": "kA"},
                     {"key": "ith_ka", "label_pl": "Ith", "unit": "kA"},
                     {"key": "ib_ka", "label_pl": "Ib", "unit": "kA"},
+                    {"key": "i_dc_ka", "label_pl": "iDC(tb)", "unit": "kA"},
                     {"key": "ik_ka", "label_pl": "Ik", "unit": "kA"},
                     {"key": "sk_mva", "label_pl": "Sk''", "unit": "MVA"},
                     {"key": "rk_ohm", "label_pl": "Rk", "unit": "ohm"},
@@ -3275,8 +3598,10 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "xr_ratio", "label_pl": "X/R"},
                     {"key": "kappa", "label_pl": "kappa"},
                     {"key": "c_factor", "label_pl": "c"},
+                    {"key": "c_zrodlo", "label_pl": "Podstawa c"},
                     {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
                     {"key": "tk_s", "label_pl": "tk", "unit": "s"},
+                    {"key": "tb_s", "label_pl": "tb", "unit": "s"},
                     {"key": "i2t_ka2s", "label_pl": "I2t", "unit": "kA2s"},
                     {"key": "reporting_status", "label_pl": "Status raportowy"},
                     {"key": "proof_status", "label_pl": "Status uzasadnienia"},
@@ -3430,6 +3755,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     raw_result = run.raw_result or {}
     result_v1 = raw_result.get("result_v1", {})
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
+    graph_nodes = (raw_result.get("graph") or {}).get("nodes", {})
     branch_current_ka = raw_result.get("branch_current_ka", {})
     node_voltage_kv = raw_result.get("node_voltage_kv", {})
     galezie_modelu = galezie_modelu_biegu(run)
@@ -3483,13 +3809,20 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
         # różnica potencjałów końców z wyniku solvera. Wartość [kV] =
         # |U_from|−|U_to|; procent = (u_from−u_to)·100 [% U_n] (różnica w p.u.
         # jest już znormalizowana do napięcia znamionowego). Brak któregoś
-        # napięcia ⇒ None (uczciwy brak).
+        # napięcia ⇒ None (uczciwy brak). Karta GPZ-MODEL: końce o RÓŻNYCH
+        # napięciach znamionowych (transformator 110/15 kV) nie mają spadku w kV —
+        # różnica 110 − 15 kV to przekładnia, nie spadek; ΔU% (na bazie U_n
+        # każdego końca) zostaje.
         from_node = branch.get("from_node_id", "")
         to_node = branch.get("to_node_id", "")
         u_from_kv = node_voltage_kv.get(from_node)
         u_to_kv = node_voltage_kv.get(to_node)
+        un_from_kv = (graph_nodes.get(from_node) or {}).get("voltage_level")
+        un_to_kv = (graph_nodes.get(to_node) or {}).get("voltage_level")
         delta_u_kv = (
-            (u_from_kv - u_to_kv) if (u_from_kv is not None and u_to_kv is not None) else None
+            (u_from_kv - u_to_kv)
+            if (u_from_kv is not None and u_to_kv is not None and un_from_kv == un_to_kv)
+            else None
         )
         u_from_pu = node_u_pu.get(from_node)
         u_to_pu = node_u_pu.get(to_node)
@@ -3568,10 +3901,19 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "xr_ratio": xr,
         "kappa": item.get("kappa"),
         "c_factor": item.get("c_factor"),
+        "c_zrodlo": item.get("c_zrodlo"),
+        **({"tolerancja_nn_robocza": True} if item.get("tolerancja_nn_robocza") else {}),
         "un_kv": (v_na_kv(un_v)) if un_v is not None else None,
         "tk_s": tk_s,
         "tb_s": item.get("tb_s"),
+        # Karta TB-WARTOSC-ROBOCZA (addytywnie, exclude-None): pochodzenie t_b punktu, gdy
+        # nie pochodzi ze scenariusza projektanta (pola lokalne albo wartość robocza).
+        **({"tb_zrodlo": item["tb_zrodlo"]} if item.get("tb_zrodlo") is not None else {}),
+        # Karta SC-IB-ITH-ZRODLA: Ib = SYMETRYCZNY prąd wyłączeniowy IEC 60909-0 rozdz. 9,
+        # i_DC(t_b) — składowa nieokresowa rozdz. 10, obie przy t_b punktu (karta
+        # TB-WARTOSC-ROBOCZA); None wyłącznie dla wiersza bez solvera / zapisu sprzed kart.
         "ib_ka": _amps_to_ka(item.get("ib_a")),
+        "i_dc_ka": _amps_to_ka(item.get("i_dc_a")),
         "ik_ka": _amps_to_ka(item.get("ik_total_a")),
         "ik_thevenin_ka": _amps_to_ka(item.get("ik_thevenin_a")),
         "ik_inverters_ka": _amps_to_ka(item.get("ik_inverters_a")),
@@ -3808,6 +4150,15 @@ def build_short_circuit_rozplyw(
     raise BrakZasobuError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 
 
+def scenariusz_biegu_zwarciowego(run: CanonicalRun) -> str | None:
+    """Scenariusz zapisanego biegu zwarciowego ('MAX'/'MIN'; ``None`` = nierozpoznany).
+
+    Jedno odczytanie opcji biegu dla konsumentów spoza modułu (wytrzymałość aparatury
+    wymaga scenariusza MAX) — ta sama reguła co dobór pary MAX/MIN niżej.
+    """
+    return _scenariusz_z_opcji(run.options)
+
+
 def _scenariusz_z_opcji(options: Mapping[str, Any]) -> str | None:
     """Scenariusz biegu zwarciowego ('MAX'/'MIN') z opcji — `None` dla wartości
     nierozpoznanej (kandydat wtedy odpada z doboru pary, nie wywala wołającego)."""
@@ -3891,15 +4242,18 @@ def dobierz_pasmo_min_max_zwarcia(
     wywołania.
     """
     if run.analysis_type != "short_circuit_sn":
-        raise OdmowaDanychError(
-            f"Przebieg {run.id} nie jest obliczeniem zwarciowym "
-            f"(analysis_type={run.analysis_type!r}) — pasmo MIN/MAX zwarcia "
-            "dostępne wyłącznie dla zwarć."
+        raise OdmowaNazwana(
+            "Przebieg nie jest obliczeniem zwarciowym — pasmo MIN/MAX zwarcia dostępne "
+            "wyłącznie dla zwarć.",
+            kod=KOD_BIEG_ZRODLOWY_RODZAJ,
+            dane={"run_ref": str(run.id), "analysis_type": str(run.analysis_type)},
         )
     if run.status != "FINISHED":
-        raise OdmowaDanychError(
-            f"Przebieg {run.id} nie jest zakończony (status={run.status}) — "
-            "pasmo MIN/MAX zwarcia wymaga zakończonego obliczenia jako kotwicy."
+        raise OdmowaNazwana(
+            "Przebieg nie jest zakończony — pasmo MIN/MAX zwarcia wymaga zakończonego "
+            "obliczenia jako kotwicy.",
+            kod=KOD_BIEG_ZRODLOWY_NIEZAKONCZONY,
+            dane={"run_ref": str(run.id), "status": str(run.status)},
         )
     scenariusz_kotwicy = _scenariusz_z_opcji(run.options) or "MAX"
     typ_zwarcia = _typ_zwarcia_z_opcji(run.options)
@@ -3932,7 +4286,7 @@ def dobierz_pasmo_min_max_zwarcia(
             zrodla[scenariusz_brakujacy] = "biegu_zapisanego"
 
     if strony[scenariusz_brakujacy] is None:
-        if run.options.get("c_factor") is not None:
+        if run.options.get("nadpisanie_c") is not None:
             powod_niedostepnosci = "wspolczynnik_c_recznie_ustawiony"
         elif run.koperta is not None and run.koperta.scenario_ref is not None:
             powod_niedostepnosci = "kotwica_jest_wariantem_scenariusza"
@@ -4399,6 +4753,18 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                         "xr_ratio": item.get("xr_ratio"),
                         "tk_s": item.get("tk_s"),
                         "i2t_ka2s": item.get("i2t_ka2s"),
+                        # Karta SC-IB-ITH-ZRODLA: prąd wyłączeniowy symetryczny I_b
+                        # (IEC 60909-0 rozdz. 9), składowa nieokresowa i_DC(t_b)
+                        # (rozdz. 10) i czas t_b punktu, z którym je liczono; pochodzenie
+                        # t_b (karta TB-WARTOSC-ROBOCZA) addytywnie, exclude-None.
+                        "ib_ka": item.get("ib_ka"),
+                        "i_dc_ka": item.get("i_dc_ka"),
+                        "tb_s": item.get("tb_s"),
+                        **(
+                            {"tb_zrodlo": item["tb_zrodlo"]}
+                            if item.get("tb_zrodlo") is not None
+                            else {}
+                        ),
                     },
                     "proof_ref": item.get("proof_ref"),
                     "proof_status": item.get("proof_status"),

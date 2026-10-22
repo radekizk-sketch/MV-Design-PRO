@@ -27,6 +27,8 @@ describe('validateCatalogFirst', () => {
     ['add_nn_cable_segment' as const],
     ['add_nn_switch_device' as const],
     ['add_nn_section_coupler' as const],
+    // W5-E-TTIT: wyłącznik różnicowoprądowy — ta sama brama (catalog_ref ALBO catalog_binding).
+    ['add_nn_rcd' as const],
   ])('%s (P0.9)', (op) => {
     it('blokuje bez catalog_ref i bez catalog_binding', () => {
       expect(validateCatalogFirst(op, {})).toEqual(expect.stringContaining('katalog'));

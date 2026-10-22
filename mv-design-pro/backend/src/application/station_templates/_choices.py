@@ -63,34 +63,11 @@ TR_OPTIONS_MEDIUM_20KV = (  # 400-1250 kVA, sieć 20 kV — stacja abonencka war
     CatalogChoice("tr-sn-nn-20-04-1250kva-dyn11", "TR 1250 kVA SN/nN 20/0.4 kV", "TRAFO_SN_NN"),
 )
 
-# WN/SN transformer options (110/15 kV i 110/20 kV) — GPZ (rola A, V12T-016).
-# Referencje z `mv_transformer_catalog.py::TRANSFORMER_WN_SN_110_15/_20`
-# (PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42).
-TR_OPTIONS_WN_SN_110_15 = (
-    CatalogChoice("tr-wn-sn-110-15-10mva-yd11", "TR 110/15 kV 10 MVA Yd11", "TRAFO_SN_NN"),
-    CatalogChoice("tr-wn-sn-110-15-16mva-yd11", "TR 110/15 kV 16 MVA Yd11", "TRAFO_SN_NN"),
-    CatalogChoice(
-        "tr-wn-sn-110-15-25mva-yd11", "TR 110/15 kV 25 MVA Yd11", "TRAFO_SN_NN", default=True
-    ),
-    CatalogChoice("tr-wn-sn-110-15-40mva-yd11", "TR 110/15 kV 40 MVA Yd11", "TRAFO_SN_NN"),
-    CatalogChoice("tr-wn-sn-110-15-63mva-yd11", "TR 110/15 kV 63 MVA Yd11", "TRAFO_SN_NN"),
-)
-
-TR_OPTIONS_WN_SN_110_20 = (
-    CatalogChoice("tr-wn-sn-110-20-10mva-yd11", "TR 110/20 kV 10 MVA Yd11", "TRAFO_SN_NN"),
-    CatalogChoice(
-        "tr-wn-sn-110-20-16mva-yd11", "TR 110/20 kV 16 MVA Yd11", "TRAFO_SN_NN", default=True
-    ),
-    CatalogChoice("tr-wn-sn-110-20-25mva-yd11", "TR 110/20 kV 25 MVA Yd11", "TRAFO_SN_NN"),
-    CatalogChoice("tr-wn-sn-110-20-40mva-yd11", "TR 110/20 kV 40 MVA Yd11", "TRAFO_SN_NN"),
-    CatalogChoice("tr-wn-sn-110-20-63mva-yd11", "TR 110/20 kV 63 MVA Yd11", "TRAFO_SN_NN"),
-)
-
 # Warunki zasilania GPZ (ZRODLO_SN) — równoważnik systemowy widziany z szyny SN
 # GPZ (`mv_source_catalog.py::SOURCE_SYSTEM_TYPES`, "Warunki przyłączenia /
-# standard OSD"). Transformator(y) WN/SN materializują się OBOK (tabliczka +
-# SLD) — impedancja układu jest już ujęta w Sk3 równoważnika, więc kolejność
-# NIE dubluje reaktancji (kontrakt `add_grid_source_sn`).
+# standard OSD"). Impedancja transformatorów 110/SN jest już ujęta w Sk3
+# równoważnika, więc transformatory NIE są elementami modelu (granica zasilania SN,
+# karta GPZ-MODEL; kontrakt `add_grid_source_sn::_granica_zasilania_gpz`).
 GPZ_SOURCE_OPTIONS_15 = (
     CatalogChoice("src-gpz-15kv-200mva-rx010", "Zasilanie GPZ 15 kV Sk3 200 MVA", "ZRODLO_SN"),
     CatalogChoice(

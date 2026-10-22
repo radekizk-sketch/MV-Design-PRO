@@ -177,9 +177,9 @@ async function zapadkaKlasyB(request: APIRequestContext, caseId: string): Promis
   expect(role.length, 'stacja ma pola SN').toBeGreaterThan(0);
   expect(role, 'pola stacji NIE mogą zawierać roli TR — inaczej spec nie ćwiczy klasy B').not.toContain('TR');
 
-  // Transformator STACJI, nie GPZ: sieć ma DWA transformatory (GPZ WN/SN +
-  // stacyjny SN/nN), więc wybór idzie po `Substation.transformer_refs` tej
-  // stacji, a nie po dopasowaniu podciągu do refu.
+  // Transformator STACJI: wybór po `Substation.transformer_refs` tej stacji, a nie
+  // po dopasowaniu podciągu do refu ani po pozycji w liście — model może nieść też
+  // transformatory 110/SN GPZ (przy równoważniku po stronie 110 kV, karta GPZ-MODEL).
   const stacyjneRefy = new Set(station!.transformer_refs ?? []);
   expect(stacyjneRefy.size, 'stacja deklaruje transformator').toBeGreaterThan(0);
   const transformator = (enm.transformers ?? []).find((t) => stacyjneRefy.has(String(t.ref_id ?? '')));

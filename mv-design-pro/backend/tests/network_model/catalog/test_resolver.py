@@ -203,6 +203,9 @@ def test_line_type_not_found_raises_error(empty_catalog):
             czestotliwosc_hz=50.0,
         )
     assert exc_info.value.type_ref == "nonexistent_line"
+    # Partia integracji 10: treść po polsku, rodzaj aparatu słowem, bez identyfikatora typu.
+    assert "nonexistent_line" not in str(exc_info.value)
+    assert "Typ katalogowy linii napowietrznej " in str(exc_info.value)
     assert exc_info.value.equipment_type == "Line"
 
 
@@ -277,6 +280,9 @@ def test_cable_type_not_found_raises_error(empty_catalog):
             czestotliwosc_hz=50.0,
         )
     assert exc_info.value.type_ref == "nonexistent_cable"
+    # Partia integracji 10: treść po polsku, rodzaj aparatu słowem, bez identyfikatora typu.
+    assert "nonexistent_cable" not in str(exc_info.value)
+    assert "Typ katalogowy kabla " in str(exc_info.value)
     assert exc_info.value.equipment_type == "Cable"
 
 
@@ -351,6 +357,9 @@ def test_transformer_type_not_found_raises_error(empty_catalog):
             catalog=empty_catalog,
         )
     assert exc_info.value.type_ref == "nonexistent_trafo"
+    # Partia integracji 10: treść po polsku, rodzaj aparatu słowem, bez identyfikatora typu.
+    assert "nonexistent_trafo" not in str(exc_info.value)
+    assert "Typ katalogowy transformatora " in str(exc_info.value)
     assert exc_info.value.equipment_type == "Transformer"
 
 

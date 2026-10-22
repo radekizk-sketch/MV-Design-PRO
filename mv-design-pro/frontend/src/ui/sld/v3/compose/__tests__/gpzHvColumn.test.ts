@@ -6,8 +6,10 @@
  *      pierwszoklasowych gdy `gpz_hv_sections` puste (fixtura minimalna,
  *      wzorowana na `sldSubstrate52s`: TR 25 MVA Yd11/110/15, szyna 110 kV,
  *      źródło 250 MVA/9,62 kA).
- *   2. Brak TR WN/SN w ENM ⇒ adapter zwraca `hvSystemSource: null` (kolumna
- *      WN nierysowana po stronie compose — `hasHvContent` bez `transformers`).
+ *   2. Brak TR WN/SN w ENM (karta GPZ-MODEL: równoważnik na szynach SN) ⇒ adapter
+ *      NADAL wywodzi tabliczkę źródła systemowego (bez szyny WN: `sourceOnHvBus =
+ *      false`, `hvBusVoltageKv = null`); kolumny WN nie rysuje kompozycja
+ *      (`hasHvContent` bez `transformers`), nie brak tabliczki.
  *   3. Etykiety kompozycji (`compose/gpz.ts`) pochodzą Z DANYCH, nie z literałów.
  *   4. Wyrocznie `gpzHvColumnGaps`/`gpzDominanceGaps` (`scene/gpzCanonProbes.ts`)
  *      gryzą — pozytyw na realnej fixturze `sldSubstrate52s`, negatyw na
@@ -185,33 +187,63 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     expect(props.hvSystemSource).toMatchObject({ uSetPu: 0.95, sk3MinMva: 150, ik3MinKa: 5.8 });
   });
 
-  it('brak transformatora WN/SN (uhv_kv<=60) w ENM ⇒ hvSystemSource null (kolumna WN nierysowana)', () => {
+  // Karta GPZ-MODEL: tabliczka źródła systemowego nie zależy od transformatora WN/SN —
+  // przy równoważniku na szynach SN transformatorów 110/SN nie ma w modelu, a tabliczka
+  // jest jedynym opisem zasilania GPZ na rysunku (dawniej adapter zwracał tu `null`).
+  it('brak transformatora WN/SN (uhv_kv<=60) w ENM ⇒ hvSystemSource NADAL wywiedzione (tabliczka źródła)', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, transformers: [hvTransformer('tr-1', { uhv_kv: 15 })] },
       'gpz-1');
-    expect(props.hvSystemSource).toBeNull();
+    expect(props.hvSystemSource).toMatchObject({ sourceRef: 'src-1', sourceOnHvBus: false, voltageKv: 15 });
   });
 
   // SZYNY-STACJI-LUSTRO (commit 2): transformatory GPZ z JEDNEJ reguły „transformatory stacji” —
   // przy braku deklaracji `transformer_refs` transformator na szynie GPZ NADAL należy do GPZ
   // (backend `enm.pole_transformatorowe.transformatory_stacji`). „Brak transformatora W OGÓLE”
   // to więc brak rekordu transformatora, nie pusta deklaracja (intencja testu zachowana).
-  it('brak transformatora W OGÓLE (brak rekordu i deklaracji) ⇒ hvSystemSource null I props.transformers puste', () => {
+  it('brak transformatora W OGÓLE (brak rekordu i deklaracji) ⇒ props.transformers puste, tabliczka źródła zostaje', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] },
       'gpz-1');
-    expect(props.hvSystemSource).toBeNull();
+    expect(props.hvSystemSource?.sourceRef).toBe('src-1');
     expect(props.transformers).toEqual([]);
   });
 
-  it('brak szyny WN w Substation.bus_refs (voltage_kv>60) ⇒ hvSystemSource null', () => {
+  // Model trybu SN tak, jak wytwarza go kreator (karta GPZ-MODEL): bez transformatora
+  // 110/SN i bez szyny WN, równoważnik na szynie sekcji 1.
+  it('GPZ z równoważnikiem na szynach SN (bez TR, bez szyny WN) ⇒ tabliczka źródła bez napięcia szyny WN', () => {
+    const enm = fullFixture();
+    const props = buildCanonicalGpzProps(
+      {
+        ...enm,
+        transformers: [],
+        buses: [bus('bus-sn', 15)],
+        substations: [gpzSubstation({ bus_refs: ['bus-sn'], transformer_refs: [] })],
+      },
+      'gpz-1');
+    expect(props.transformers).toEqual([]);
+    expect(props.hvSystemSource).toEqual({
+      sourceRef: 'src-1',
+      name: 'GPZ Referencyjny 15 kV',
+      sk3Mva: 250,
+      ik3Ka: 9.62,
+      sk3MinMva: null,
+      ik3MinKa: null,
+      uSetPu: null,
+      voltageKv: 15,
+      sourceOnHvBus: false,
+      hvBusVoltageKv: null,
+    });
+  });
+
+  it('brak szyny WN w Substation.bus_refs (voltage_kv>60) ⇒ tabliczka źródła bez napięcia szyny WN', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, substations: [gpzSubstation({ bus_refs: ['bus-sn'] })] },
       'gpz-1');
-    expect(props.hvSystemSource).toBeNull();
+    expect(props.hvSystemSource).toMatchObject({ sourceRef: 'src-1', sourceOnHvBus: false, hvBusVoltageKv: null });
   });
 
   it('brak źródła na szynie GPZ (SN lub WN) ⇒ hvSystemSource null', () => {

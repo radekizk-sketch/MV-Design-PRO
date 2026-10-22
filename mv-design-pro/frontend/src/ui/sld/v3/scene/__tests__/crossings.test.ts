@@ -163,8 +163,14 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     // przez INNE złamanie arkusza — i łamał arkusz L0 golden sieci 53 stacji).
     // Niezmiennik obustronnej spójności (`junctionDotGaps` = 0, niżej) BEZ
     // zmian — każdy z 21 węzłów ma kropkę i żadna kropka nie stoi bez węzła.
+    // GPZ-MODEL (2026-10-21): 21 → 18 — REGENERACJA fikstury, nie zmiana kodu. Substrat
+    // dostaje GPZ z równoważnikiem 110 kV (tryb A); ziarno GPZ obejmuje ładunek operacji,
+    // więc identyfikatory wszystkich odcinków i stacji są nowe, a remis `id.localeCompare`
+    // pakuje pasma odgałęzień w innej kolejności (precedens SLD-SUBSTRAT). DOWÓD 2×2 (sonda
+    // karty): STARA treść fikstury z SAMYMI nowymi identyfikatorami daje 18 węzłów T, nowy
+    // kod na starej fiksturze — 21; luki kropka⇔węzeł = 0 we wszystkich czterech.
     const teeNodes = externalBranchNodes(scene.segments);
-    expect(teeNodes).toHaveLength(21);
+    expect(teeNodes).toHaveLength(18);
     // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) też są węzłami
     // z DANYCH odgałęzienia (`#lateral-…`, `points[0]` = oś toru) i dostają
     // kropkę w scenie produkcyjnej — dług W1b zamknięty.
@@ -176,8 +182,8 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     // Kropki dzielą się DOKŁADNIE na (a) węzły T tras i (b) odczepy lateralne —
     // suma pokrywa wszystkie kropki (kropka wyłącznie na realnym węźle).
     const dotsAtTee = dots.filter((s) => teeKeys.has(`${s.x + jdef.width / 2},${s.y + jdef.height / 2}`));
-    expect(dotsAtTee).toHaveLength(21);
-    expect(dots).toHaveLength(21 + lateralNodes.length);
+    expect(dotsAtTee).toHaveLength(18);
+    expect(dots).toHaveLength(18 + lateralNodes.length);
     // Obustronnie: każdy węzeł ma kropkę i żadna kropka nie wisi bez węzła.
     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
   });

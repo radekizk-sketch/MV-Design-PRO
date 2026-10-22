@@ -35,7 +35,7 @@ import {
 import { roznicaBomScena, symbolRodzajuAparatu } from '../generatorSldPola';
 import { SYMBOL_DEFS } from '../../../../ui/sld/v3/symbols/defs';
 import type { SnFieldRole, StationSnFieldTemplate } from '../stacjaModel';
-import type { MVApparatusCatalogType, TransformerType } from '../../../../ui/catalog/types';
+import type { MVApparatusType, TransformerType } from '../../../../ui/catalog/types';
 import {
   BLOK_RMU_K_K_T,
   RODZINA_SAFERING,
@@ -72,14 +72,14 @@ const ROLE: readonly SnFieldRole[] = [
 ];
 
 /** Katalog APARAT_SN w kształcie odpowiedzi backendu (jedna pozycja na rodzaj). */
-const KATALOG: readonly MVApparatusCatalogType[] = Object.keys(OCZEKIWANY_SYMBOL).map((kind) => ({
+const KATALOG: readonly MVApparatusType[] = Object.keys(OCZEKIWANY_SYMBOL).map((kind) => ({
   id: `ap-${kind}`,
   name: `Aparat ${kind}`,
   device_kind: kind,
   u_n_kv: 17.5,
   i_n_a: 630,
   breaking_capacity_ka: 25,
-})) as unknown as readonly MVApparatusCatalogType[];
+})) as unknown as readonly MVApparatusType[];
 
 /**
  * Katalog o REALNYCH nazwach pozycji (kształt odpowiedzi backendu z katalogu
@@ -87,14 +87,14 @@ const KATALOG: readonly MVApparatusCatalogType[] = Object.keys(OCZEKIWANY_SYMBOL
  * aplikacja — na krótkich atrapach każdy układ wygląda na czysty, także ten
  * sprzed karty (stała szerokość slotu 96 px).
  */
-const KATALOG_REALNY: readonly MVApparatusCatalogType[] = [
+const KATALOG_REALNY: readonly MVApparatusType[] = [
   { id: 'ap-WYLACZNIK', name: 'Wyłącznik próżniowy VD4 17,5 kV', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 25 },
   { id: 'ap-REKLOZER', name: 'ABB REC615 17,5 kV 630 A', device_kind: 'REKLOZER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 12.5 },
   { id: 'ap-ROZLACZNIK', name: 'Rozłącznik LBS 17,5 kV', device_kind: 'ROZLACZNIK', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
   { id: 'ap-ROZLACZNIK_BEZPIECZNIKOWY', name: 'Rozłącznik bezpiecznikowy ETI VV 17,5 kV', device_kind: 'ROZLACZNIK_BEZPIECZNIKOWY', u_n_kv: 17.5, i_n_a: 63 },
   { id: 'ap-ODLACZNIK', name: 'Odłącznik OJS 17,5 kV', device_kind: 'ODLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
   { id: 'ap-UZIEMNIK', name: 'Uziemnik pola OJS-U 17,5 kV', device_kind: 'UZIEMNIK', u_n_kv: 17.5, i_n_a: 630 },
-] as unknown as readonly MVApparatusCatalogType[];
+] as unknown as readonly MVApparatusType[];
 
 const TRAFO: readonly TransformerType[] = [
   {
@@ -469,9 +469,9 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
   });
 
   it('zmiana pozycji katalogowej zmienia etykietę (etykieta nie jest zaszyta)', () => {
-    const inny: MVApparatusCatalogType[] = [
+    const inny: MVApparatusType[] = [
       {
-        ...(KATALOG[0] as MVApparatusCatalogType),
+        ...(KATALOG[0] as MVApparatusType),
         name: 'Wyłącznik próżniowy VD4 12 kV',
         u_n_kv: 12,
         i_n_a: 400,
@@ -516,9 +516,9 @@ describe('SLD-GEN-POLA — etykieta pola czyta dane katalogu', () => {
 
   it('znamiona pomijają wielkość, której pozycja katalogowa nie niesie (zero domysłu)', () => {
     const bezWylaczalnego = {
-      ...(KATALOG[0] as MVApparatusCatalogType),
+      ...(KATALOG[0] as MVApparatusType),
       breaking_capacity_ka: undefined,
-    } as MVApparatusCatalogType;
+    } as MVApparatusType;
     expect(znamionaAparatu(bezWylaczalnego)).toBe('17,5 kV · 630 A');
   });
 
@@ -792,13 +792,13 @@ describe('SLD-GEN-POLA — układ: etykiety nie stykają się, rysunek nie wycho
   it('bardzo długa nazwa katalogowa POSZERZA slot zamiast wchodzić w sąsiada', () => {
     const dlugi = [
       {
-        ...(KATALOG[0] as MVApparatusCatalogType),
+        ...(KATALOG[0] as MVApparatusType),
         name: 'Rozłącznik bezpiecznikowy napowietrzny w izolacji gazowej seria specjalna',
       },
     ];
     const podglad = zbudujPodglad({
       snFields: [pole('LINIA_IN', 'ap-WYLACZNIK'), pole('LINIA_OUT', 'ap-WYLACZNIK')],
-      aparaty: dlugi as unknown as MVApparatusCatalogType[],
+      aparaty: dlugi as unknown as MVApparatusType[],
       transformatory: TRAFO,
       transformatorRef: 'tr-630',
       snVoltageKv: 15,

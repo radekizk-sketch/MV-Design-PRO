@@ -785,6 +785,11 @@ class AddGridSourceSNPayload(_FrozenBase):
     manual_equivalent: dict[str, Any] | None = None
     """Ręczna umowa równoważna dla źródła GPZ, gdy katalog nie jest używany."""
 
+    lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
+    """Tolerancja napięcia sieci nN, gdy źródło przyłączono wprost do szyny nN (wiersz nN
+    tabeli 1 IEC 60909-0) → ``Source.lv_voltage_tolerance``; szyna źródła spoza pasma nN
+    albo wartość spoza słownika to odmowa `source.invalid_lv_voltage_tolerance`."""
+
 
 class SegmentSpec(_FrozenBase):
     """Specyfikacja segmentu linii/kabla.
@@ -1042,6 +1047,11 @@ class AddTransformerSNNNPayload(_FrozenBase):
     station_ref: str | None = None
     """Opcjonalna referencja stacji, do której należy transformator."""
 
+    lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
+    """Tolerancja napięcia sieci nN zasilanej z transformatora (wiersz nN tabeli 1
+    IEC 60909-0); tylko dla strony dolnej w paśmie nN, inaczej odmowa
+    `transformer.invalid_lv_voltage_tolerance`."""
+
 
 class AssignCatalogToElementPayload(_FrozenBase):
     """Payload operacji: assign_catalog_to_element.
@@ -1207,6 +1217,11 @@ class DerBlockTransformerSpec(_FrozenBase):
     loadability_pu: float | None = None
     """Dopuszczalne obciążenie (przeciążalność) TR blokowego [pu]. Brak → domyślnie 1,0
     (konserwatywnie, PN-EN 60076-7). Konsumowane przez walidację mocy TR (D1 wymaganie 5)."""
+    lv_voltage_tolerance: Literal["PLUS_6", "PLUS_10"] | None = None
+    """Tolerancja napięcia sieci nN strony wtórnej (wiersz nN tabeli 1 IEC 60909-0:
+    PLUS_6 → c 1,05/0,95; PLUS_10 → c 1,10/0,90) → ``Transformer.lv_voltage_tolerance``.
+    Brak = brak deklaracji: zwarcia w sieci z tym TR liczą wartość roboczą rejestru z
+    założeniem biegu ``fault.c_tolerancja_nn_robocza``, nigdy cicha domyślka."""
 
 
 class DerMvFieldConfigurationSpec(_FrozenBase):
@@ -1385,6 +1400,9 @@ class AddNNLoadPayload(_FrozenBase):
     phases: PhaseSet | None = None
     """Fazy przyłączenia (W5-D, `enm/models.py::PhaseSet`); brak = trójfazowy symetryczny."""
 
+    earth_electrode_r_ohm: float | None = None
+    """Rezystancja uziomu instalacji odbiorczej R_A [Ω] (W5-E-TTIT, układy TT/IT); brak = dana nieobecna."""
+
     load_name: str | None = None
     load_label: str | None = None
 
@@ -1428,6 +1446,7 @@ DOMAIN_EVENT_TYPES: tuple[str, ...] = (
     "NN_ELEMENT_REMOVED",
     "NN_FEEDER_ELEMENT_COPIED",
     "NN_LOAD_CREATED",
+    "NN_RCD_CREATED",
     "NN_SECTION_COUPLER_CREATED",
     "NN_SOURCE_FIELD_CREATED",
     "NN_SWITCH_DEVICE_CREATED",

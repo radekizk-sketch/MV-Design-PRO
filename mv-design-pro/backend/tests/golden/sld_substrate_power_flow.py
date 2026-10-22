@@ -36,7 +36,8 @@ companion above), which left the render-based e2e assert for a de-energised
 (dimmed) station with nothing genuine to point at. ``select_ring_maintenance_scenario``
 + ``compute_substrate_power_flow_maintenance`` build a SECOND, companion-shaped
 snapshot on an ``OperatingScenario(kind=MAINTENANCE)`` — a station taken out of
-service via its incident SN branches, through ``enm.scenariusze.apply_scenario``
+service via the closed branches on its BOUNDARY (one end on the station's buses,
+``enm.tor_pola.szyny_stacji`` — the same membership the render dims by), through ``enm.scenariusze.apply_scenario``
 (the ONE snapshot-with-overrides factory; B-01 — no parallel copy path here,
 enforced by ``scripts/scenario_copy_guard.py``). Same frozen solver, same
 schema; the ``scenario`` key on the returned dict documents WHAT was taken out
@@ -55,7 +56,9 @@ import networkx as nx
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
+from enm.pola import poziom_pol
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
+from enm.tor_pola import szyny_stacji
 from network_model.core.node import NodeType
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
@@ -318,26 +321,22 @@ def _energization_graph(dumped_enm: dict[str, Any]) -> nx.MultiGraph:
     return graph
 
 
-def _station_sn_bus_ref(
-    station_bus_refs: frozenset[str], bus_voltage_kv: dict[str, float | None]
-) -> str | None:
-    """The station's SN (>=1 kV) bus ref — the node whose ring degree decides
-    whether the WHOLE station (SN feeder chain, not just its LV side) can be
-    isolated by disabling branches."""
-    for bus_ref in station_bus_refs:
-        voltage = bus_voltage_kv.get(bus_ref)
-        if voltage is not None and voltage >= 1.0:
-            return bus_ref
-    return None
-
-
-def _incident_branch_refs(graph: nx.MultiGraph, sn_bus: str) -> tuple[str, ...]:
-    """Sorted ref_ids of CLOSED branches (never transformers) touching ``sn_bus``."""
+def _boundary_branch_refs(graph: nx.MultiGraph, station_buses: frozenset[str]) -> tuple[str, ...]:
+    """Sorted ref_ids of CLOSED branches (never transformers) CROSSING the station
+    boundary — exactly one end among the station's buses (``szyny_stacji``: main
+    buses + the station's OWN SN-field terminals + both ends of its nN-field
+    apparatus). These are the feeders that bring supply INTO the station (ring /
+    lateral cables and lines landing on the field terminals, card POLA-W-TORZE);
+    taking all of them out of service takes the WHOLE station out — every bus the
+    render counts as the station's (``szynyStacji``) loses supply, not just the
+    main SN bus behind opened field breakers."""
     return tuple(
         sorted(
-            data["ref_id"]
-            for _unused_u, _unused_v, data in graph.edges(sn_bus, data=True)
-            if data["kind"] == "branch"
+            {
+                data["ref_id"]
+                for u, v, data in graph.edges(station_buses & set(graph.nodes), data=True)
+                if data["kind"] == "branch" and ((u in station_buses) != (v in station_buses))
+            }
         )
     )
 
@@ -355,12 +354,16 @@ def _sprawdz_odlaczenie_stacji(
     """Predykaty parami (KLASA NIE INSTANCJA): wybor stacji jest PROGNOZA z grafu
     galezi (`select_ring_maintenance_scenario`), a prawda o zasilaniu nalezy do
     solvera (wyspa bez zrodla -> szyna `not_solved` -> `de_energized_bus_refs`).
-    Companion konserwacyjny, w ktorym szyna SN wybranej stacji POZOSTALA zasilona,
-    nie jest „druga migawka z odlaczona stacja" — to rozjazd prognozy z solverem
-    (np. galaz rownolegla, ktorej prognoza nie policzyla, albo scenariusz
-    odlaczajacy tylko terminale pol). Taki rozjazd ma byc JAWNYM bledem generatora,
-    nie cichym companionem bez przyciemnionej stacji (sam warunek „de_energized
-    niepuste" tego nie lapie — odlaczone terminale pol tez sa niepustym zbiorem).
+    Wybor i ta weryfikacja licza szyny stacji JEDNA regula — `enm.tor_pola.szyny_stacji`,
+    ta sama, ktora render (`szynyStacji`, `overlayFromCompanion`) rozstrzyga, czy stacja
+    jest przyciemniona. Companion konserwacyjny, w ktorym KTORAKOLWIEK szyna wybranej
+    stacji (takze wlasny zacisk pola SN) POZOSTALA zasilona, nie jest „druga migawka z
+    odlaczona stacja" — to rozjazd prognozy z solverem (galaz rownolegla, ktorej prognoza
+    nie policzyla, albo scenariusz otwierajacy tylko wylaczniki pol, za ktorymi zacisk
+    pola liniowego zostaje pod napieciem od kabla). Taki rozjazd ma byc JAWNYM bledem
+    generatora, nie cichym companionem bez przyciemnionej stacji (sam warunek
+    „de_energized niepuste" tego nie lapie, ani warunek „szyna SN odlaczona": zacisk pola
+    zasilony od kabla trzyma stacje w renderze pod napieciem).
     """
     station_ref = scenario.scenario_id.removeprefix(_PREFIKS_SCENARIUSZA_KONSERWACJI)
     if station_ref == scenario.scenario_id:
@@ -368,23 +371,19 @@ def _sprawdz_odlaczenie_stacji(
             "Scenariusz konserwacji bez prefiksu "
             f"{_PREFIKS_SCENARIUSZA_KONSERWACJI!r}: {scenario.scenario_id!r}"
         )
-    dumped = enm.model_dump(mode="json")
-    station = next(
-        (s for s in dumped.get("substations", []) if s.get("ref_id") == station_ref), None
-    )
+    station = next((s for s in enm.substations if s.ref_id == station_ref), None)
     if station is None:
         raise ValueError(f"Scenariusz konserwacji wskazuje nieznana stacje {station_ref!r}")
-    bus_voltage_kv: dict[str, float | None] = {
-        bus["ref_id"]: bus.get("voltage_kv") for bus in dumped.get("buses", [])
-    }
-    sn_bus = _station_sn_bus_ref(frozenset(station.get("bus_refs", [])), bus_voltage_kv)
-    if sn_bus is None:
-        raise ValueError(f"Stacja {station_ref!r} scenariusza konserwacji nie ma szyny SN")
-    if sn_bus not in set(de_energized_bus_refs):
+    station_buses = szyny_stacji(enm, station)
+    if not station_buses:
+        raise ValueError(f"Stacja {station_ref!r} scenariusza konserwacji nie ma szyn")
+    zasilone = sorted(station_buses - set(de_energized_bus_refs))
+    if zasilone:
         raise ValueError(
-            "Scenariusz konserwacji nie odlaczyl wybranej stacji od zasilania: szyna SN "
-            f"{sn_bus!r} stacji {station_ref!r} pozostala zasilona po biegu solvera "
-            f"(odlaczonych szyn: {len(de_energized_bus_refs)}, wylaczone galezie: "
+            "Scenariusz konserwacji nie odlaczyl wybranej stacji od zasilania: szyny "
+            f"{zasilone!r} stacji {station_ref!r} (z {len(station_buses)} szyn stacji wg "
+            "szyny_stacji) pozostaly zasilone po biegu solvera (odlaczonych szyn: "
+            f"{len(de_energized_bus_refs)}, wylaczone galezie: "
             f"{list(scenario.out_of_service)!r}) — prognoza wyboru z grafu galezi "
             "rozjechala sie z prawda solvera."
         )
@@ -393,27 +392,30 @@ def _sprawdz_odlaczenie_stacji(
 def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenario:
     """Deterministically pick ONE ring station to take out of service (E2E-FIX §0.B/§0.C).
 
+    The station's buses are the ONE membership rule ``enm.tor_pola.szyny_stacji``
+    (main buses + the station's OWN SN-field terminals + both ends of its nN-field
+    apparatus) — the SAME rule the render uses to dim a station and the SAME rule
+    ``_sprawdz_odlaczenie_stacji`` verifies against the solver (predykaty parami).
+    The branches taken out of service are the station's BOUNDARY branches
+    (``_boundary_branch_refs``: closed branches with exactly one end on the
+    station's buses — the feeders landing on its field terminals, card
+    POLA-W-TORZE). Opening only the station's own field breakers is NOT a station
+    outage: the incoming-field terminal stays live from the ring cable, so the
+    render (correctly) keeps that station energised.
+
     Decision (card E2E-FIX, binding):
 
       (B, primary) The FIRST station (``ref_id`` lexical order — a content
       hash, so this is a property of the substrate's DATA, not its build
-      order) that a plain TWO-branch removal isolates ALONE: disable its two
-      incident closed branches and check that the resulting stranded set
-      (buses with no path to any source) maps to EXACTLY that one station's
-      own buses, nothing else.
+      order) whose boundary is exactly TWO branches (a ring station: IN and OUT
+      feeder) and whose removal strands EXACTLY that one station's own buses,
+      nothing else (no other station loses any bus).
 
-      (C, fallback) On this substrate NO station qualifies for (B) — every
-      station's SN bus carries one closed BREAKER branch per SN bay and
-      nothing else (card POLA-W-TORZE: the ring cables and the transformer sit
-      on the bay TERMINALS, so the bay breakers are in their current paths;
-      measured 2026-09-29: the smallest station carries 3 incident breakers —
-      IN, OUT and TR bay). Per §0.C: take the SMALLEST-degree station (ref_id
-      tie-break) and disable ALL its incident branches — i.e. open all its bay
-      breakers, which isolates exactly that station while the ring cables stay
-      energised from their feeding side. This CAN strand more than that one
-      station when it sits mid-lateral (documented, not hidden — the
-      ``scenario`` field the caller attaches to the companion, and this
-      docstring, both say so).
+      (C, fallback) No station qualifies for (B): take the SMALLEST-boundary
+      station (ref_id tie-break) and disable ALL its boundary branches. This
+      CAN strand more than that one station when it sits mid-lateral
+      (documented, not hidden — the ``scenario`` field the caller attaches to
+      the companion, and this docstring, both say so).
 
     KLASA NIE INSTANCJA: this walks the substrate's OWN graph structure (no
     hardcoded station/branch ref — a future rebuild of the fixture re-derives
@@ -421,9 +423,6 @@ def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenar
     """
     dumped = enm.model_dump(mode="json")
     graph = _energization_graph(dumped)
-    bus_voltage_kv: dict[str, float | None] = {
-        bus["ref_id"]: bus.get("voltage_kv") for bus in dumped.get("buses", [])
-    }
     source_bus_refs = {
         source["bus_ref"] for source in dumped.get("sources", []) if source.get("bus_ref")
     }
@@ -432,41 +431,37 @@ def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenar
             "Substrat bez zrodla (sources) -- scenariusz konserwacji niemozliwy do wyznaczenia."
         )
     stations = sorted(
-        (s for s in dumped.get("substations", []) if "/station" in s.get("ref_id", "")),
-        key=lambda s: str(s["ref_id"]),
+        (s for s in enm.substations if "/station" in s.ref_id),
+        key=lambda s: s.ref_id,
     )
     if not stations:
         raise ValueError(
             "Substrat bez stacji ('/station') -- scenariusz konserwacji niemozliwy do wyznaczenia."
         )
-    station_bus_refs = {s["ref_id"]: frozenset(s.get("bus_refs", [])) for s in stations}
-    bus_to_station: dict[str, str] = {
-        bus_ref: station_ref
-        for station_ref, bus_refs in station_bus_refs.items()
-        for bus_ref in bus_refs
-    }
-    station_name_by_ref = {s["ref_id"]: nazwa_elementu(s, "substations") for s in stations}
+    poziom = poziom_pol(enm)
+    station_buses = {s.ref_id: szyny_stacji(enm, s, poziom) for s in stations}
+    bus_to_stations: dict[str, set[str]] = {}
+    for station_ref, buses in station_buses.items():
+        for bus_ref in buses:
+            bus_to_stations.setdefault(bus_ref, set()).add(station_ref)
+    station_name_by_ref = {s.ref_id: nazwa_elementu(s, "substations") for s in stations}
 
-    def stranded_stations_if_removed(
-        sn_bus: str, branch_ref_ids: tuple[str, ...]
-    ) -> frozenset[str]:
-        """Station ref_ids left with NO path to any source once ``branch_ref_ids``
-        (closed branches incident to ``sn_bus``) are removed. Transformers are
-        never removed, so a station's own LV bus stays reachable through its
-        SN bus exactly when the SN bus itself does."""
+    def stranded_buses_if_removed(branch_ref_ids: tuple[str, ...]) -> frozenset[str]:
+        """Buses left with NO path to any source once ``branch_ref_ids`` are removed.
+        Transformers are never removed."""
+        removed = set(branch_ref_ids)
         probe = graph.copy()
         probe.remove_edges_from(
             [
                 (u, v, key)
-                for u, v, key, data in graph.edges(sn_bus, keys=True, data=True)
-                if data["kind"] == "branch" and data["ref_id"] in branch_ref_ids
+                for u, v, key, data in graph.edges(keys=True, data=True)
+                if data["kind"] == "branch" and data["ref_id"] in removed
             ]
         )
         stranded: set[str] = set()
         for component in nx.connected_components(probe):
-            if component & source_bus_refs:
-                continue  # reachable from at least one source -- energised
-            stranded.update(bus_to_station[b] for b in component if b in bus_to_station)
+            if not component & source_bus_refs:
+                stranded.update(component)
         return frozenset(stranded)
 
     def scenario_for(
@@ -479,41 +474,39 @@ def select_ring_maintenance_scenario(enm: EnergyNetworkModel) -> OperatingScenar
             out_of_service=branch_ref_ids,
         )
 
+    boundaries = {ref: _boundary_branch_refs(graph, buses) for ref, buses in station_buses.items()}
+
     # (B) primary: exactly-two-branch, single-station isolation.
     for station in stations:
-        station_ref = str(station["ref_id"])
-        sn_bus = _station_sn_bus_ref(station_bus_refs[station_ref], bus_voltage_kv)
-        if sn_bus is None or sn_bus not in graph:
+        boundary = boundaries[station.ref_id]
+        if len(boundary) != 2:
             continue
-        incident_branches = _incident_branch_refs(graph, sn_bus)
-        if len(incident_branches) != 2:
-            continue
-        if stranded_stations_if_removed(sn_bus, incident_branches) == frozenset({station_ref}):
-            return scenario_for(station_ref, incident_branches, reason="2 galezie pierscienia")
+        stranded = stranded_buses_if_removed(boundary)
+        touched = set().union(*(bus_to_stations.get(b, set()) for b in stranded))
+        if station_buses[station.ref_id] <= stranded and touched == {station.ref_id}:
+            return scenario_for(
+                station.ref_id, boundary, reason="2 galezie pierscienia na granicy stacji"
+            )
 
-    # (C) fallback: smallest-degree station, ref_id tie-break, ALL its branches.
+    # (C) fallback: smallest-boundary station, ref_id tie-break, ALL its boundary branches.
     smallest: tuple[str, tuple[str, ...]] | None = None
     for station in stations:
-        station_ref = str(station["ref_id"])
-        sn_bus = _station_sn_bus_ref(station_bus_refs[station_ref], bus_voltage_kv)
-        if sn_bus is None or sn_bus not in graph:
+        boundary = boundaries[station.ref_id]
+        if not boundary:
             continue
-        incident_branches = _incident_branch_refs(graph, sn_bus)
-        if not incident_branches:
-            continue
-        if smallest is None or len(incident_branches) < len(smallest[1]):
-            smallest = (station_ref, incident_branches)
+        if smallest is None or len(boundary) < len(smallest[1]):
+            smallest = (station.ref_id, boundary)
     if smallest is None:
         raise ValueError(
-            "Substrat bez stacji z galezia SN do wylaczenia -- fallback §0.C "
+            "Substrat bez stacji z galezia SN na granicy -- fallback §0.C "
             "rowniez nie wyznaczyl scenariusza konserwacji."
         )
-    station_ref, incident_branches = smallest
+    station_ref, boundary = smallest
     return scenario_for(
         station_ref,
-        incident_branches,
+        boundary,
         reason=(
-            f"wszystkie {len(incident_branches)} galezi SN -- substrat nie ma stacji "
+            f"wszystkie {len(boundary)} galezi na granicy stacji -- substrat nie ma stacji "
             "izolowalnej dwiema galeziami"
         ),
     )

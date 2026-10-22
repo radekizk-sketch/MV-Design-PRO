@@ -52,6 +52,7 @@ _OPERACJA_RODZAJ: dict[str, str] = {
     "add_nn_cable_segment": "cable",  # "Dodanie odcinka kabla nN..."
     "add_nn_switch_device": "switch",  # "Dodanie aparatu (wyłącznik/rozłącznik/bezpiecznik)..."
     "add_nn_section_coupler": "switch",  # "Dodanie nowej sekcji szyn i sprzęgła w rozdzielnicy nN"
+    "add_nn_rcd": "switch",  # "Dodanie wyłącznika różnicowoprądowego nN przed zaciskami instalacji..."
     "add_shunt_compensator_sn": "shunt_capacitor",  # "Dodanie baterii kondensatorów..."
 }
 

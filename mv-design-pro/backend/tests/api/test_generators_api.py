@@ -1591,3 +1591,62 @@ def test_blad_programu_przy_zapisie_wybucha_nie_udaje_awarii_zapisu(
 ) -> None:
     with pytest.raises(AttributeError, match="błąd programu"):
         _wolaj_koncowke(app_client, koncowka, monkeypatch, "AttributeError")
+
+
+@pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])
+def test_dobor_przekladnikow_pola_nn_na_wartosci_roboczej_tolerancji_niesie_dana_przyjeta(
+    app_client, tolerancja: str | None
+) -> None:
+    """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: Ik''/ip szyny pola wytwórcy w sieci nN liczonej
+    z wartością roboczą tolerancji (sieć bez deklaracji) stoją na danej przyjętej — odpowiedź
+    doboru przekładników niesie `dane_przyjete` (ESTIMATED) i stan `UNVALIDATED_INPUT`;
+    sieć zadeklarowana (+6 % / +10 %) — odpowiedź bez tych pól. Znacznik pochodzi z TEGO
+    SAMEGO wiersza zapisanego biegu, z którego endpoint bierze Ik'' i ip."""
+    from enm.canonical_analysis import create_run, execute_run
+    from enm.store import set_enm
+
+    from tests.enm.test_canonical_sc_c_per_pasmo import N2, _build_mv_lv_enm
+    from tests.test_execution_api import _klucz_modelu
+
+    project_id, case_id = _create_project_and_case(app_client)
+    enm = _build_mv_lv_enm("Pole wytwórcy nN", tolerancja=tolerancja)  # type: ignore[arg-type]
+    set_enm(_klucz_modelu(case_id), enm)
+    bieg = execute_run(
+        create_run(
+            case_id=case_id, klucz_twin=_klucz_modelu(case_id), analysis_type="short_circuit_sn"
+        ).id
+    )
+    assert bieg.status == "FINISHED", bieg.error_message
+    # Generator pola na szynie nN dopisany PO biegu: endpoint czyta generator z modelu,
+    # a Ik''/ip z wiersza szyny pola w zakończonym biegu (ten sam punkt zwarcia).
+    z_generatorem = type(enm).model_validate(
+        {
+            **enm.model_dump(mode="json"),
+            "generators": [
+                {
+                    "ref_id": "gen_nn",
+                    "name": "PV pole nN",
+                    "bus_ref": N2,
+                    "p_mw": 0.1,
+                    "meta": {"bay_ref": "pole_pv", "ct_catalog_ref": "ct_200_5_5p10_10va_abb"},
+                }
+            ],
+        }
+    )
+    set_enm(_klucz_modelu(case_id), z_generatorem)
+
+    odpowiedz = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/gen_nn/instrument-transformers"
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    dane = odpowiedz.json()
+    assert dane["wejscia"]["ik_ka"] is not None
+    assert dane["wejscia"]["run_ref_zwarciowy"] == str(bieg.id)
+    if tolerancja is None:
+        assert dane["status_danych"] == "UNVALIDATED_INPUT"
+        (dana,) = dane["dane_przyjete"]
+        assert dana["nazwa_pl"] == "tolerancja napięcia sieci nN (szyna pola „Szyna nN”)"
+        assert dana["jakosc"] == "ESTIMATED"
+    else:
+        assert "dane_przyjete" not in dane
+        assert "status_danych" not in dane

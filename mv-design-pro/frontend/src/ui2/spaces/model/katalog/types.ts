@@ -24,7 +24,9 @@ export type KategoriaId =
   | 'CT'
   | 'VT'
   | 'KABEL_NN'
-  | 'APARAT_NN';
+  | 'APARAT_NN'
+  // Karta W5-E-TTIT: wyłączniki różnicowoprądowe nN (GET /api/catalog/lv-rcd-types).
+  | 'APARAT_NN_RCD';
 
 /**
  * Pojedyncza pozycja katalogu w postaci znormalizowanej dla widoku.

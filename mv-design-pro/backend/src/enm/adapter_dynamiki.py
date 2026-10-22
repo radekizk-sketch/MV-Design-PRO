@@ -582,36 +582,34 @@ def punkt_pracy_z_biegu_rozplywu(
     if analysis_type != "PF":
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIE_ROZPLYW,
-            f"Bieg {run_id!r} wskazany jako punkt pracy nie jest rozpływem mocy "
-            f"(rodzaj: {analysis_type!r})",
+            "Bieg wskazany jako punkt pracy nie jest rozpływem mocy",
             elementy=(run_id,),
         )
     if status != "FINISHED":
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIE_ROZPLYW,
-            f"Bieg rozpływu {run_id!r} nie jest zakończony (status: {status!r})",
+            "Bieg rozpływu wskazany jako punkt pracy nie jest zakończony",
             elementy=(run_id,),
         )
     if snapshot_hash != oczekiwany_snapshot_hash:
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_INNA_MIGAWKA,
-            f"Bieg rozpływu {run_id!r} był liczony na innej migawce efektywnej "
-            f"({snapshot_hash!r}) niż bieg dynamiki ({oczekiwany_snapshot_hash!r}) — punkt "
-            "pracy musi pochodzić z TEJ SAMEJ sieci",
+            "Bieg rozpływu wskazany jako punkt pracy był liczony na innej migawce efektywnej "
+            "niż bieg dynamiki — punkt pracy musi pochodzić z TEJ SAMEJ sieci",
             elementy=(run_id,),
         )
     wynik = (raw_result or {}).get("result_v1")
     if not isinstance(wynik, dict):
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIEPELNY,
-            f"Bieg rozpływu {run_id!r} nie niesie wyniku rozpływu (napięć szyn i mocy "
-            "wstrzykiwanych) — nie ma punktu pracy do startu",
+            "Bieg rozpływu wskazany jako punkt pracy nie niesie wyniku rozpływu (napięć "
+            "szyn i mocy wstrzykiwanych) — nie ma punktu pracy do startu",
             elementy=(run_id,),
         )
     if not wynik.get("converged"):
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIEPELNY,
-            f"Bieg rozpływu {run_id!r} nie zbiegł — nie ma punktu pracy do startu",
+            "Bieg rozpływu wskazany jako punkt pracy nie zbiegł — nie ma punktu pracy do " "startu",
             elementy=(run_id,),
         )
     nierozwiazane = frozenset(str(pozycja) for pozycja in wynik.get("unsolved_node_ids") or ())
@@ -631,8 +629,8 @@ def punkt_pracy_z_biegu_rozplywu(
         if modul is None or kat_deg is None or moc_p is None or moc_q is None:
             raise OdmowaWejsciaDynamiki(
                 KOD_PUNKT_PRACY_NIEPELNY,
-                f"Bieg rozpływu {run_id!r} nie ma kompletu wielkości szyny {ref_id!r} "
-                "(moduł/kąt napięcia, moc wypadkowa)",
+                f"Bieg rozpływu wskazany jako punkt pracy nie ma kompletu wielkości szyny "
+                f"{ref_id!r} (moduł/kąt napięcia, moc wypadkowa)",
                 elementy=(ref_id,),
             )
         napiecia[ref_id] = cmath.rect(float(modul), math.radians(float(kat_deg)))
@@ -647,7 +645,8 @@ def punkt_pracy_z_biegu_rozplywu(
     if brakujace:
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIEPELNY,
-            f"Bieg rozpływu {run_id!r} nie obejmuje szyn migawki: {', '.join(brakujace)}",
+            "Bieg rozpływu wskazany jako punkt pracy nie obejmuje szyn migawki: "
+            f"{', '.join(brakujace)}",
             elementy=brakujace,
         )
     return PunktPracyRozplywu(
@@ -1005,7 +1004,8 @@ def _sprawdz_szyny(ref_id: str, szyny_elementu: tuple[str, ...], znane: set[str]
     if brakujace:
         raise OdmowaWejsciaDynamiki(
             KOD_ELEMENT_BEZ_SZYNY,
-            f"Element {ref_id!r} wskazuje szynę spoza modelu: {', '.join(brakujace)}",
+            f"Element {ref_id!r} wskazuje szynę spoza modelu (liczba takich wskazań: "
+            f"{len(brakujace)})",
             elementy=tuple(f"{ref_id} -> {szyna}" for szyna in brakujace),
         )
 
@@ -1418,7 +1418,7 @@ def zloz_urzadzenia(
     if poza_punktem_pracy:
         raise OdmowaWejsciaDynamiki(
             KOD_PUNKT_PRACY_NIEPELNY,
-            f"Bieg rozpływu {punkt.run_id!r} nie rozwiązał szyn, do których są "
+            "Bieg rozpływu wskazany jako punkt pracy nie rozwiązał szyn, do których są "
             "przyłączone źródła ("
             + ", ".join(f"{ref} na {szyna}" for szyna, ref in poza_punktem_pracy)
             + ") — bez napięcia i mocy szyny urządzenie nie ma stanu początkowego",

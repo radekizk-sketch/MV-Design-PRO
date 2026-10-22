@@ -156,6 +156,9 @@ def test_ext_grid_s_sc_rowne_deklarowanemu_sk() -> None:
                 model="short_circuit_power",
                 sk3_mva=10.0,
                 rx_ratio=0.2,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródło wprost na szynie nN niesie
+                # tolerancję sieci nN (+6 % — liczby testu sprzed karty bez zmian).
+                lv_voltage_tolerance="PLUS_6",
             ),
             Source(
                 ref_id="s_hv",
@@ -178,5 +181,5 @@ def test_ext_grid_s_sc_rowne_deklarowanemu_sk() -> None:
         else:
             z = complex(zrodlo.r_ohm, zrodlo.x_ohm)
             assert float(wiersz["s_sc_max_mva"]) == pytest.approx(
-                c_for_node(110.0, "MAX") * 110.0**2 / abs(z), rel=1e-12
+                c_for_node(110.0, "MAX", tolerancja_nn=None) * 110.0**2 / abs(z), rel=1e-12
             )

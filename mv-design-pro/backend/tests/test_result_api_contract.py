@@ -14,6 +14,7 @@ import json
 import numpy as np
 import pytest
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta, czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
@@ -199,6 +200,7 @@ class TestShortCircuitResultContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         for key in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS:
@@ -212,6 +214,7 @@ class TestShortCircuitResultContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         # String/enum fields
@@ -225,7 +228,6 @@ class TestShortCircuitResultContract:
             "rx_ratio",
             "kappa",
             "tk_s",
-            "tb_s",
             "ikss_a",
             "ip_a",
             "ith_a",
@@ -238,6 +240,23 @@ class TestShortCircuitResultContract:
         for field in float_fields:
             value = getattr(result, field)
             assert isinstance(value, int | float), f"{field} should be numeric"
+
+        # Karta TB-WARTOSC-ROBOCZA: t_b jest daną punktu zwarcia z pochodzeniem (nośnik
+        # obowiązkowy rdzenia). Wartość robocza: tb_s i i_DC liczbami + addytywne
+        # `tb_zrodlo` (PROPOZYCJA, ESTIMATED); t_b projektanta: te same liczby, `tb_zrodlo`
+        # None (pole pominięte w `to_dict` — wynik bit w bit jak przed kartą). I_b sieci
+        # odległej od generatora nie zależy od t_b (I_b = I_k'').
+        assert isinstance(result.tb_s, float) and isinstance(result.i_dc_a, float)
+        assert result.tb_zrodlo["pochodzenie"] == "PROPOZYCJA"
+        assert result.tb_zrodlo["jakosc"] == "ESTIMATED"
+        assert result.to_dict()["tb_zrodlo"] == result.tb_zrodlo
+        z_tb = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0, czas_tb=czas_tb_projektanta(0.1)
+        )
+        assert isinstance(z_tb.tb_s, float) and z_tb.tb_s == 0.1
+        assert isinstance(z_tb.i_dc_a, float) and z_tb.i_dc_a == result.i_dc_a
+        assert z_tb.tb_zrodlo is None and "tb_zrodlo" not in z_tb.to_dict()
+        assert z_tb.ib_a == result.ib_a == result.ikss_a
 
         # Complex field
         assert isinstance(result.zkk_ohm, complex)
@@ -257,6 +276,7 @@ class TestShortCircuitResultContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         assert isinstance(result.white_box_trace, list)
@@ -276,6 +296,7 @@ class TestShortCircuitResultContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         assert len(result.contributions) >= 1  # Minimum: THEVENIN_GRID
@@ -302,6 +323,7 @@ class TestToDictContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -318,6 +340,7 @@ class TestToDictContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -338,6 +361,7 @@ class TestToDictContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -357,6 +381,7 @@ class TestToDictContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -371,6 +396,7 @@ class TestToDictContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -389,6 +415,7 @@ class TestToDictContract:
             fault_node_id="B",
             c_factor=1.0,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -413,6 +440,7 @@ class TestSinglePhaseResultContract:
             c_factor=1.0,
             tk_s=1.0,
             z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
 
         for key in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS:
@@ -429,6 +457,7 @@ class TestSinglePhaseResultContract:
             c_factor=1.0,
             tk_s=1.0,
             z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
 
         assert len(result.white_box_trace) >= 1
@@ -449,6 +478,7 @@ class TestSinglePhaseResultContract:
             c_factor=1.0,
             tk_s=1.0,
             z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -474,6 +504,7 @@ class TestBranchContributionsContract:
             c_factor=1.0,
             tk_s=1.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         )
 
         assert result.branch_contributions is not None
@@ -494,6 +525,7 @@ class TestBranchContributionsContract:
             c_factor=1.0,
             tk_s=1.0,
             include_branch_contributions=True,
+            czas_tb=czas_tb_roboczy(),
         )
 
         d = result.to_dict()
@@ -570,7 +602,7 @@ class TestAllFaultTypesContract:
         """3F wynik spełnia kontrakt."""
         graph = build_transformer_only_graph()
         result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0
+            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0, czas_tb=czas_tb_roboczy()
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "3F"
@@ -586,7 +618,7 @@ class TestAllFaultTypesContract:
         """2F wynik spełnia kontrakt."""
         graph = build_transformer_only_graph()
         result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
-            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0
+            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0, czas_tb=czas_tb_roboczy()
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "2F"
@@ -602,7 +634,12 @@ class TestAllFaultTypesContract:
         """1F wynik spełnia kontrakt."""
         graph, z0_bus = graph_with_z0
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0, z0_bus=z0_bus
+            graph=graph,
+            fault_node_id="B",
+            c_factor=1.0,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "1F"
@@ -617,7 +654,12 @@ class TestAllFaultTypesContract:
         """2F+G wynik spełnia kontrakt."""
         graph, z0_bus = graph_with_z0
         result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-            graph=graph, fault_node_id="B", c_factor=1.0, tk_s=1.0, z0_bus=z0_bus
+            graph=graph,
+            fault_node_id="B",
+            c_factor=1.0,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "2F+G"

@@ -318,9 +318,9 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
     """Nazwa `TR1 …/… kV` z napięcia górnego typu katalogowego, nie ze stałej 110 kV."""
     from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
-    for katalog, napiecie_sn, oczekiwana in (
-        ("bench_ieee14bus_br15", 14.0, "TR1 135/14 kV"),
-        ("tr-wn-sn-110-15-25mva-yd11", 15.0, "TR1 110/15 kV"),
+    for katalog, napiecie_wn, napiecie_sn, oczekiwana in (
+        ("bench_ieee14bus_br15", 135.0, 14.0, "TR1 135/14 kV"),
+        ("tr-wn-sn-110-15-25mva-yd11", 110.0, 15.0, "TR1 110/15 kV"),
     ):
         enm = EnergyNetworkModel(
             header=ENMHeader(name="gpz", defaults=ENMDefaults(sn_nominal_kv=napiecie_sn))
@@ -330,8 +330,15 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
             "add_grid_source_sn",
             {
                 "voltage_kv": napiecie_sn,
-                "sk3_mva": 250.0,
-                "catalog_ref": "src-gpz-15kv-250mva-rx010",
+                # Karta GPZ-MODEL: transformator WN/SN jest elementem modelu wyłącznie
+                # przy równoważniku sieci po stronie WN (na jego szynie).
+                "manual_equivalent": {
+                    "short_circuit_input_side": "HV_110",
+                    "hv_voltage_kv": napiecie_wn,
+                    "sk3_hv_mva": 3000.0,
+                    "rx_ratio": 0.1,
+                },
+                "transformer_count": 1,
                 "transformer_catalog_ref": katalog,
             },
         )

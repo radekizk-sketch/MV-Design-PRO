@@ -95,8 +95,6 @@ export async function zbudujSiecEtykietyStacji(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: wiazanie('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let wynik: OdpowiedzOperacji = {};
   for (const [indeks, dlugosc] of [400, 350, 300].entries()) {
@@ -108,6 +106,8 @@ export async function zbudujSiecEtykietyStacji(
   expect(odcinki).toHaveLength(3);
   const wstaw = async (odcinek: string, nazwa: string, pola: readonly string[]): Promise<OdpowiedzOperacji> =>
     operacja(request, caseId, 'insert_station_on_segment_sn', {
+      // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+      nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
       field_apparatus_catalog_ref: FIELD_APPARATUS_ID,
       segment_id: odcinek,
       station_type: 'B',

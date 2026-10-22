@@ -9,21 +9,25 @@ jaki aparat stoi w polu, i mimo to nie dało się go sprawdzić.
 ZASADA (rozstrzygnięcie karty): znamiona wytrzymałości to DANE TABLICZKOWE —
 należą do pozycji katalogowej. Wartość, której karta katalogowa nie niesie,
 zostaje ``None`` (kod gotowości w walidacji), a nie przelicznik z prądu
-łączeniowego. Jedyne dopuszczone wyprowadzenie to ugruntowana relacja normowa
-I_dyn = 2,5 · I_th (IEC 62271-1) — ZAWSZE z jawnym pochodzeniem
-``derived_iec62271``.
+łączeniowego.
+
+KANON V12K-351 (zasada nr 4, kontrakt werdyktu §3c). Relacja normowa I_dyn = 2,5 · I_th
+(IEC 62271-1:2017 p. 5.7) NIE żyje już w pozycji katalogu (dawne pochodzenie
+``derived_iec62271`` w ``to_dict``): wartość pochodna innego pola karty jest PROPOZYCJĄ
+wartości roboczej z rejestru ``wartosci_robocze`` — intencja testów (stan wiedzy o aparacie
+rozróżnialny, derywacja nigdy nie awansuje na tabliczkę) zostaje, przepięta na rejestr.
 """
 
 from __future__ import annotations
 
 from network_model.catalog import get_default_mv_catalog
-from network_model.catalog.types import (
-    POCHODZENIE_DERYWACJA_IEC62271,
+from network_model.catalog.types import MVApparatusType
+from network_model.catalog.wartosci_robocze import (
+    PARAMETR_I_DYN,
     POCHODZENIE_PRODUCENT,
     POCHODZENIE_REFERENCYJNY,
-    WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN,
-    MVApparatusType,
-    idyn_aparatu_sn_z_ith,
+    WSPOLCZYNNIK_IP_DO_IK_50HZ,
+    rozstrzygnij_parametry_aparatu_sn,
 )
 
 # Pozycje z REALNEGO katalogu (nie fixture) — most ma działać na danych, które
@@ -49,18 +53,25 @@ def test_pozycja_producenta_niesie_prad_cieplny_z_czasem_odniesienia() -> None:
     assert pozycja.to_dict()["i_th_pochodzenie"] == POCHODZENIE_PRODUCENT
 
 
-def test_prad_dynamiczny_wyprowadzony_normowo_ma_pochodzenie_derived_iec62271() -> None:
-    """I_dyn bez wartości producenta = 2,5 · I_th, z JAWNYM pochodzeniem.
+def test_prad_dynamiczny_z_relacji_normowej_jest_propozycja_a_nie_dana_karty() -> None:
+    """I_dyn bez wartości producenta: pozycja katalogu niesie ``None``, a 2,5 · I_th jest
+    PROPOZYCJĄ rejestru z rodzajem źródła NORMA (§3c pkt 1 i 4).
 
-    Wariant derywacji jest asertowany OSOBNO od wariantu producenckiego: to dwa
+    Wariant propozycji jest asertowany OSOBNO od wariantu producenckiego: to dwa
     różne stany wiedzy o aparacie i odbiorca musi je rozróżniać.
     """
     pozycja = _pozycja(WYLACZNIK_ABB_12KV)
     zapis = pozycja.to_dict()
 
     assert pozycja.i_dyn_ka is None, "Katalog nie niesie jawnej wartości producenta"
-    assert zapis["i_dyn_ka"] == 20.0 * WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN
-    assert zapis["i_dyn_pochodzenie"] == POCHODZENIE_DERYWACJA_IEC62271
+    assert zapis["i_dyn_ka"] is None
+    assert zapis["i_dyn_pochodzenie"] is None
+    i_dyn = rozstrzygnij_parametry_aparatu_sn(pozycja)[PARAMETR_I_DYN]
+    assert i_dyn.wartosc == 20.0 * WSPOLCZYNNIK_IP_DO_IK_50HZ
+    assert i_dyn.pochodzenie == "PROPOZYCJA"
+    assert i_dyn.propozycja is not None
+    assert i_dyn.propozycja.rodzaj_zrodla == "NORMA"
+    assert i_dyn.propozycja.odniesienie == "IEC 62271-1:2017 p. 5.7"
 
 
 def test_wartosc_producenta_ma_pierwszenstwo_przed_derywacja() -> None:
@@ -106,23 +117,29 @@ def test_pozycja_generyczna_ma_pochodzenie_referencyjne_nie_producenckie() -> No
     assert pozycja.manufacturer is None
     assert pozycja.i_th_ka == 20.0
     assert pozycja.pochodzenie_i_th() == POCHODZENIE_REFERENCYJNY
-    assert pozycja.to_dict()["i_dyn_pochodzenie"] == POCHODZENIE_DERYWACJA_IEC62271
+    assert pozycja.to_dict()["i_dyn_pochodzenie"] is None
+    i_dyn = rozstrzygnij_parametry_aparatu_sn(pozycja)[PARAMETR_I_DYN]
+    assert (i_dyn.pochodzenie, i_dyn.wartosc) == ("PROPOZYCJA", 50.0)
 
 
-def test_obieg_zapis_odczyt_nie_awansuje_derywacji_na_tabliczke() -> None:
-    """to_dict → from_dict zachowuje STAN WIEDZY, nie tylko liczbę."""
+def test_obieg_zapis_odczyt_nie_awansuje_propozycji_na_tabliczke() -> None:
+    """to_dict → from_dict zachowuje STAN WIEDZY: propozycja nie wchodzi do zapisu pozycji,
+    więc po odczycie I_dyn nadal jest propozycją, nie daną karty."""
     pozycja = _pozycja(WYLACZNIK_ABB_12KV)
     odtworzona = MVApparatusType.from_dict(pozycja.to_dict())
 
     assert odtworzona.i_dyn_ka is None
-    assert odtworzona.to_dict()["i_dyn_pochodzenie"] == POCHODZENIE_DERYWACJA_IEC62271
-    assert odtworzona.to_dict()["i_dyn_ka"] == pozycja.to_dict()["i_dyn_ka"]
+    assert rozstrzygnij_parametry_aparatu_sn(odtworzona)[PARAMETR_I_DYN].pochodzenie == (
+        "PROPOZYCJA"
+    )
 
 
-def test_brak_pradu_cieplnego_daje_brak_dynamicznego() -> None:
-    assert idyn_aparatu_sn_z_ith(None) is None
-    assert idyn_aparatu_sn_z_ith(0.0) is None
-    assert idyn_aparatu_sn_z_ith(25.0) == 62.5
+def test_brak_pradu_cieplnego_daje_brak_propozycji_dynamicznego() -> None:
+    """Bez I_th z karty albo od projektanta relacja normowa nie ma z czego wyjść."""
+    i_dyn = rozstrzygnij_parametry_aparatu_sn(_pozycja(BEZPIECZNIK_ETI))[PARAMETR_I_DYN]
+    assert i_dyn.wartosc is None
+    assert i_dyn.pochodzenie is None
+    assert i_dyn.powod_braku_pl
 
 
 def test_caly_katalog_aparatow_ma_spojne_znamiona() -> None:

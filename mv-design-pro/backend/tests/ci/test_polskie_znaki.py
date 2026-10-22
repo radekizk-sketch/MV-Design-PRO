@@ -73,6 +73,9 @@ CYTATY_PRODUCENTA = ("network_model/catalog/",)
 #: `dynamika/walidacja/malosygnalowa.py` (1 -> 0), `dynamika/waznosc.py` (2 -> 0) i
 #: `dynamika/zdarzenia.py` (5 -> 0); `dynamika/urzadzenia/**` i `walidacja/rowne_pola.py`
 #: zostają (pliki kart równoległych — patrz meldunek karty modeli odbiorów).
+#: Karta B01-RUNDA-3 (2026-09-30, decyzja O-59, plan A/B §12.2 (l)): zdjęte `v126_academic.py`
+#: (6 -> 0) — rdzeń B-01, dziewięć literałów poprawionych przeglądem ręcznym (sześć ze skanu
+#: i trzy „nieskonczone/NaN", których słownik nie znał — formy dopisane do słownika).
 ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/cable_voltage_drop.py": 15,
     "network_model/solvers/der_selection_preview.py": 2,
@@ -93,7 +96,6 @@ ZAMROZONE_TRAFIENIA: dict[str, int] = {
     "network_model/solvers/equipment_checks/transformer_losses.py": 3,
     "network_model/solvers/equipment_checks/vt_burden_voltage_drop.py": 8,
     "network_model/solvers/transformer_rated_currents.py": 6,
-    "network_model/solvers/v126_academic.py": 6,
 }
 
 _IDENTYFIKATOR = re.compile(r"[A-Za-z0-9_.:/\-{}\[\]*|]*")
@@ -336,8 +338,6 @@ def test_nazwa_zrodla_gpz_jest_ziarnem_identyfikatorow():
                 "sk3_mva": 300.0,
                 "rx_ratio": 0.1,
                 "catalog_ref": "src-gpz-15kv-300mva-rx010",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert wynik.get("error") is None, wynik.get("error")

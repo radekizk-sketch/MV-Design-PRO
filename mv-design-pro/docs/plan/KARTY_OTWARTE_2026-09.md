@@ -28,8 +28,8 @@ Karty duże programu A/B mają osobne pliki: `KARTA_AB_1B2_AB_1DMIN_GFL_2026-09.
 | SC-IB-ITH-ZRODLA (B-01 (n)) | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
 | C-TOLERANCJA-NN | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
 | SC-WYROCZNIA-SN-TR-NN | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
-| WYTRZYMALOSC-PRAD-POLA | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
-| CT-JEDEN-WERDYKT | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
+| WYTRZYMALOSC-PRAD-POLA | ZGŁOSZONA JAKO WYKONANA (2026-10-21, commit lokalny wykonawcy, czeka na odbiór sesji głównej): prąd pola = wiersz 3F biegu w punkcie zabudowy pola, żądanie `{station_ref, short_circuit_run_id}`, t_k = człon nastawczy + czas własny wyłącznika pola z katalogu, brak danej = BRAK_PODSTAWY; kryterium cieplne wg IEC 60865-1 (przeliczenie √ wyłącznie w dół) | `claude/mv-design-pro-twin-audit-u4lhy0-karta-pole-ct`, baza `d8d884f35` | — |
+| CT-JEDEN-WERDYKT | ZGŁOSZONA JAKO WYKONANA (2026-10-21, ten sam commit co WYTRZYMALOSC-PRAD-POLA, czeka na odbiór): `wiarygodnosc_punktu` deleguje do jądra `ct_burden_saturation` (ALF_eff), granica ALF·I₁n usunięta | `claude/mv-design-pro-twin-audit-u4lhy0-karta-pole-ct`, baza `d8d884f35` | — |
 | KSR-SKLAD-DER | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
 | SZABLONY-BEZ-DOMYSLOW | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
 | KSR-KRYTERIA-POMIAR | NIE ROZPOCZĘTA — przegląd PR #477–#481 (2026-10-15), § „Przegląd zewnętrznych PR (2026-10-15)” | — | — |
@@ -615,7 +615,7 @@ default selection) i P-05/P-06 oraz wymóg White Box z `PROTECTION_SYSTEM_CANONI
 #### Testy jako iloczyn cech
 
 - {źródło nastaw: model z kompletem, model bez nastaw, nastawa poza zakresem, jednostka nieustalona,
-  brak przekładni CT} × {krzywa: NI, VI, EI, LI, RI, DT, IEEE MI/VI/EI} ×
+  brak przekładni CT} × {krzywa: NI (SI), VI, EI, LTI, DT, IEEE MI/VI/EI} ×
   {punkt zwarcia: w strefie, poza strefą, niejednoznaczny} × {tor: bieg `protection_sn`, koordynacja
   E-28, czas wyłączenia pola, porównanie A/B, raport}.
   - Wyrocznia: czas z rdzenia IEC 60255 dla prądu gałęzi pola i nastawy przeliczonej na stronę

@@ -35,7 +35,7 @@ from typing import Any
 #: Klucze kroków rdzenia IEC 60909, w których ``substitution`` jest kopią
 #: ``substitution_latex`` (zapis LaTeX w polu prozy).
 KLUCZE_ZWARCIA_LATEX_W_PROZIE: frozenset[str] = frozenset(
-    {"Zk", "Ikss", "kappa", "Ip", "Ib", "Ith", "Sk"}
+    {"Zk", "Ikss", "kappa", "Ip", "Ib", "iDC", "Ith", "Sk"}
 )
 
 #: Przedrostki kluczy kroków rdzenia z tą samą kopią (korekcja K_T per gałąź:

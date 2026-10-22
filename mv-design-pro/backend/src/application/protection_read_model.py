@@ -73,7 +73,7 @@ CURVE_TYPE_MAP: dict[str, tuple[str, str]] = {
     "IEC_SI": ("IEC_60255", "SI"),
     "IEC_VI": ("IEC_60255", "VI"),
     "IEC_EI": ("IEC_60255", "EI"),
-    "IEC_LI": ("IEC_60255", "LTI"),
+    "IEC_LTI": ("IEC_60255", "LTI"),
     "IEEE_MI": ("IEEE_C37_112", "MI"),
     "IEEE_VI": ("IEEE_C37_112", "VI"),
     "IEEE_EI": ("IEEE_C37_112", "EI"),
@@ -513,9 +513,9 @@ def _build_base_context(
         vt_primary_kv=_resolve_measurement_primary(vt, "VT"),
         line_rated_current_a=target.line_rated_current_a,
         breaker_rated_current_a=breaker_rated_current_a,
-        transformer_rated_power_mva=transformer.sn_mva if transformer is not None else None,
-        transformer_voltage_hv_kv=transformer.uhv_kv if transformer is not None else None,
-        transformer_voltage_lv_kv=transformer.ulv_kv if transformer is not None else None,
+        transformer_rated_power_mva=(transformer.sn_mva if transformer is not None else None),
+        transformer_voltage_hv_kv=(transformer.uhv_kv if transformer is not None else None),
+        transformer_voltage_lv_kv=(transformer.ulv_kv if transformer is not None else None),
         transformer_side=transformer_side,
         connection_rated_current_a=(
             _resolve_measurement_primary(ct, "CT")
@@ -558,9 +558,9 @@ def _build_functions(
                     "curve_type": setting.curve_type,
                     "it_curve": None,
                     "it_curve_missing_data": [
-                        "threshold_unit" if setting.threshold_unit is None else "ct_ratio"
+                        ("threshold_unit" if setting.threshold_unit is None else "ct_ratio")
                     ],
-                    "notes_pl": "Funkcja kierunkowa" if setting.is_directional else None,
+                    "notes_pl": ("Funkcja kierunkowa" if setting.is_directional else None),
                 }
             )
             continue

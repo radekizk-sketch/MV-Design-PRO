@@ -66,8 +66,6 @@ def _gpz(*, z_zaciskami: bool, sekcje: int = 2) -> dict[str, Any]:
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "catalog_ref": ZRODLO,
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
         "sections_count": sekcje,
         "line_fields_per_section": 2,
     }

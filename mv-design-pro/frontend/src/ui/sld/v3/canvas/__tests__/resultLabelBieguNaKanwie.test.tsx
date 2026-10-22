@@ -134,10 +134,12 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
     const uzytkownik = userEvent.setup();
     const container = renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
-    // 3 z 9: trzy szyny schematu SN mają etykietę, sześć punktów to szyny odpływów nN
-    // stacji (promocja pól nN do modelu) — panel NAZYWA ten powód, nie „gubi" punktów.
+    // 4 z 10: trzy szyny schematu SN i szyna WN GPZ (karta GPZ-MODEL: równoważnik 110 kV
+    // z transformatorem WN/SN, więc w modelu jest realna szyna WN, a solver liczy w niej
+    // zwarcie) mają etykietę, sześć punktów to szyny odpływów nN stacji (promocja pól nN
+    // do modelu) — panel NAZYWA ten powód, nie „gubi" punktów.
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 3 z 9 punktów wyniku',
+      'Etykiety: 4 z 10 punktów wyniku',
     );
     const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
     expect(braki).toContain('6 w rozdzielnicach nN stacji (poza schematem SN)');

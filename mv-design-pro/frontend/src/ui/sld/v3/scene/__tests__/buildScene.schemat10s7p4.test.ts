@@ -41,6 +41,7 @@ import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import type { EnergyNetworkModel as Enm } from '../../../../../types/enm';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
+import { punktyPodzialu } from '../../../../shared/stanLacznika';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -258,18 +259,28 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
     expect(nopGlyph, 'stacja NOP musi mieć glif mini-RMU na L0').toBeTruthy();
     expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
     // Na L0 osobny symbol `noPoint` STACJI NOP NIE jest rysowany (sylwetka go
-    // zastępuje). Przepisane do kanonu K2b §0.4 (intencja zachowana): punkt NO
-    // ustawiony na ŁĄCZNIKU/ODCINKU (`Corridor.no_point_ref`) jest rysowany
-    // symbolem `noPoint` na KAŻDYM poziomie, także na L0 — więc zakaz dotyczy
-    // wyłącznie symbolu, którego właścicielem jest stacja NOP.
+    // zastępuje). Przepisane do kanonu K2b §0.4 i W5-C (intencja zachowana): punkt
+    // podziału to łącznik z pozycją normalną „otwarty” (`punktyPodzialu`, jedna
+    // prawda z modelu — dawne `Corridor.no_point_ref` skasowane). Łącznik w polu
+    // stacji NOP niesie sylwetka stacji (jedna reprezentacja), każdy INNY punkt
+    // podziału (łącznik toru poza polami stacji NOP) jest rysowany symbolem
+    // `noPoint` na KAŻDYM poziomie, także na L0.
     expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === nopRef)).toBe(false);
-    const refyNopKorytarzy = (withNop.corridors ?? [])
-      .map((c) => c.no_point_ref)
-      .filter((r): r is string => typeof r === 'string' && r.length > 0);
-    for (const ref of refyNopKorytarzy) {
+    const lacznikiPolStacjiNop = new Set(
+      (withNop.bays ?? [])
+        .filter((pole) => pole.substation_ref === nopRef)
+        .flatMap((pole) => pole.equipment_refs ?? []),
+    );
+    const refyNopPozaStacja = punktyPodzialu(withNop)
+      .map((g) => g.ref_id)
+      .filter((ref) => !lacznikiPolStacjiNop.has(ref));
+    // Pomiar na sieci wzorcowej: punkt podziału substratu leży na łączniku toru poza
+    // polami stacji — bez niego pętla niżej byłaby pusta, a test bezzębny.
+    expect(refyNopPozaStacja.length, 'sieć wzorcowa niesie punkt podziału poza stacją NOP').toBeGreaterThan(0);
+    for (const ref of refyNopPozaStacja) {
       expect(
         nopScene0.symbols.some((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === ref),
-        `NOP korytarza ${ref} narysowany na L0`,
+        `punkt podziału ${ref} narysowany na L0`,
       ).toBe(true);
     }
   });

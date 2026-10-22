@@ -19,6 +19,7 @@ import { otworzZakladkeWynikow } from './nawigacjaWynikow';
 import { bramkaTresciMatematycznej } from './trescMatematyczna';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
@@ -43,7 +44,8 @@ type DomainOpResponse = {
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
   };
 };
@@ -120,8 +122,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   let op: DomainOpResponse = {};
@@ -141,6 +141,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   // Stacja z aparatem pola z katalogu APARAT_SN ORAZ z wyposażeniem pola
   // (CT + przekaźnik z NASTAWAMI) — czas wyłączenia ma się wziąć z nastaw.
   op = await domainOp(request, studyCase.id, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: APARAT_POLA_ID,
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
@@ -197,7 +199,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
       catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -248,12 +252,9 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   const widokResponse = await request.post(
     `${BACKEND_BASE}/api/cases/${studyCase.id}/enm/wytrzymalosc-aparatury`,
     {
-      data: {
-        station_ref: stationRef,
-        i_peak_ka: punkt!.ip_ka,
-        i_thermal_ka: punkt!.ith_ka,
-        ik_ka: punkt!.ikss_ka ?? null,
-      },
+      // Kontrakt karty WYTRZYMALOSC-PRAD-POLA: zapisany bieg, nie liczby stacji —
+      // prąd każdego pola backend bierze z wiersza biegu w punkcie zabudowy pola.
+      data: { station_ref: stationRef, short_circuit_run_id: run.id },
     },
   );
   expect(widokResponse.ok()).toBeTruthy();
@@ -336,6 +337,21 @@ test.describe('kd6:zrzuty', () => {
       await expect(wiersz).toBeVisible({ timeout: 30000 });
       // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
       await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
+
+      // Układ rekordów K: każda karta werdyktu ma czytelną szerokość. Karty wpięte luźno
+      // w wiersz flex kurczyły się do kilku znaków i sekcja miała ~186 000 px wysokości.
+      const karty = page
+        .getByTestId(`mvd-zwarcia-aparatura-oceny-${pierwszePole}`)
+        .locator(':scope > *');
+      // Trzy rekordy K na pole: wytrzymałość dynamiczna, cieplna i zdolność wyłączania
+      // (karta SC-IB-ITH-ZRODLA dodała trzeci — I_b ≤ I_cu dla wyłącznika SN).
+      expect(await karty.count()).toBe(3);
+      for (const karta of await karty.all()) {
+        const ramka = await karta.boundingBox();
+        expect(ramka?.width ?? 0, 'karta werdyktu nie może być ściśnięta').toBeGreaterThan(280);
+      }
+      const ramkaSekcji = await sekcja.boundingBox();
+      expect(ramkaSekcji?.height ?? 0, 'sekcja aparatury o rozsądnej wysokości').toBeLessThan(20000);
 
       await bramkaTresciMatematycznej(page);
       await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });

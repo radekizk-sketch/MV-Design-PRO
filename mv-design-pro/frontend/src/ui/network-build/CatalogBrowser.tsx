@@ -21,6 +21,7 @@ const BROWSER_NAMESPACES: readonly CatalogNamespace[] = [
   'TRAFO_SN_NN',
   'APARAT_SN',
   'APARAT_NN',
+  'APARAT_NN_RCD',
   'KABEL_NN',
   'CT',
   'VT',
@@ -33,6 +34,7 @@ const NAMESPACE_ICONS: Record<CatalogNamespace, string> = {
   TRAFO_SN_NN: 'TR',
   APARAT_SN: 'SN',
   APARAT_NN: 'nN',
+  APARAT_NN_RCD: 'RCD',
   KABEL_NN: 'nn',
   CT: 'CT',
   VT: 'VT',
@@ -80,6 +82,12 @@ const NAMESPACE_PARAM_LABELS: Partial<Record<CatalogNamespace, Record<string, st
     u_n_kv: 'Un [kV]',
     i_n_a: 'In [A]',
     breaking_capacity_ka: 'Iwyl [kA]',
+  },
+  APARAT_NN_RCD: {
+    i_delta_n_a: 'IΔn [A]',
+    rcd_type: 'Rodzaj',
+    in_a: 'In [A]',
+    t_a_s: 'ta przy IΔn [s]',
   },
   KABEL_NN: {
     u_n_kv: 'Un [kV]',

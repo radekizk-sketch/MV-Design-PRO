@@ -26,17 +26,17 @@ from network_model.catalog import (
     resolve_transformer_params,
 )
 from network_model.catalog.types import TransformerType
-from network_model.core.voltage_factor import c_for_node
+from network_model.core.voltage_factor import (
+    TolerancjaNapieciaNn,
+    c_for_node,
+)
 from network_model.ir_fields import wymagany_float
 from network_model.nazwy import jest_nazwa
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import (
-    a_na_ka,
     impedancja_z_napiecia_i_mocy_ohm,
-    kv_na_v,
     kw_na_mw,
     mikrosimens_na_simens_ybus,
-    napiecie_fazowe_v,
 )
 
 
@@ -774,6 +774,12 @@ class TransformerBranch(Branch):
     # V12K-045: canonical tap-changer state (single source of truth). None keeps
     # the legacy tap_position/tap_step_percent behaviour byte-for-byte.
     tap_changer: TapChanger | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: klasa tolerancji napięcia sieci nN po stronie dolnej
+    # ("PLUS_6"/"PLUS_10") — klasa WYSPY nN strony dolnej z `enm.tolerancja_nn` (deklaracja
+    # albo wartość robocza rejestru, karta TOLERANCJA-NN-WARTOSC-ROBOCZA). c_max strony dolnej
+    # we wzorze K_T (IEC 60909-0 eq. 12a) czyta ją przez `c_for_node`. Nie serializowane —
+    # ścieżka kanoniczna odbudowuje graf z ENM.
+    tolerancja_nn_dolna: TolerancjaNapieciaNn | None = None
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any]) -> "TransformerBranch":
@@ -882,11 +888,14 @@ class TransformerBranch(Branch):
         if self.p0_kw is not None and self.p0_kw < 0:
             return False
 
-        # Validate discriminant for reactance calculation
-        z_pu_sn = self.uk_percent / 100.0
-        r_pu_sn = kw_na_mw(self.pk_kw) / self.rated_power_mva
-        discriminant = z_pu_sn * z_pu_sn - r_pu_sn * r_pu_sn
-        if discriminant < 0:
+        # Predykat sprzecznosci P_k/u_k z jednego zrodla (ten sam co w liczeniu impedancji).
+        try:
+            reaktancja_zwarciowa_transformatora_pu(
+                rated_power_mva=self.rated_power_mva,
+                uk_percent=self.uk_percent,
+                pk_kw=self.pk_kw,
+            )
+        except OdmowaDanychError:
             return False
 
         return True
@@ -917,9 +926,11 @@ class TransformerBranch(Branch):
             Complex short-circuit impedance in per unit (Rk_pu + jXk_pu).
         """
         self._validate_short_circuit_inputs()
-        z_pu = self.uk_percent / 100.0
-        r_pu = kw_na_mw(self.pk_kw) / self.rated_power_mva
-        x_pu = math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
+        r_pu, x_pu = reaktancja_zwarciowa_transformatora_pu(
+            rated_power_mva=self.rated_power_mva,
+            uk_percent=self.uk_percent,
+            pk_kw=self.pk_kw,
+        )
         return complex(r_pu, x_pu)
 
     def get_short_circuit_resistance_pu(self) -> float:
@@ -940,9 +951,12 @@ class TransformerBranch(Branch):
             Short-circuit reactance in per unit.
         """
         self._validate_short_circuit_inputs()
-        z_pu = self.uk_percent / 100.0
-        r_pu = kw_na_mw(self.pk_kw) / self.rated_power_mva
-        return math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
+        _r_pu, x_pu = reaktancja_zwarciowa_transformatora_pu(
+            rated_power_mva=self.rated_power_mva,
+            uk_percent=self.uk_percent,
+            pk_kw=self.pk_kw,
+        )
+        return x_pu
 
     def get_short_circuit_impedance_ohm_lv(self) -> complex:
         """
@@ -957,72 +971,24 @@ class TransformerBranch(Branch):
 
     def get_voltage_factor_c_max(self) -> float:
         """
-        Get IEC 60909 maximum voltage factor c for LV side.
+        Get IEC 60909 maximum voltage factor c for LV side (K_T, eq. 12a).
 
         Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
         source of truth for c across the codebase — see
-        ``network_model.core.voltage_factor.c_for_node``).
+        ``network_model.core.voltage_factor.c_for_node``) with the declared tolerance
+        class of the nN system on the LV side (``tolerancja_nn_dolna``; karty
+        WSPOLCZYNNIK-C-JEDEN-NOSNIK i TOLERANCJA-NN-WARTOSC-ROBOCZA — the mapper always
+        resolves it for an nN LV side: declaration or working value).
 
         Returns:
             Maximum voltage factor c.
         """
         self._validate_short_circuit_inputs()
-        return c_for_node(self.voltage_lv_kv, "MAX")
-
-    def get_voltage_factor_c_min(self) -> float:
-        """
-        Get IEC 60909 minimum voltage factor c for LV side.
-
-        Delegates to the shared IEC 60909-0 Table 1 lookup (karta P0.3, one
-        source of truth for c across the codebase — see
-        ``network_model.core.voltage_factor.c_for_node``).
-
-        Returns:
-            Minimum voltage factor c.
-        """
-        self._validate_short_circuit_inputs()
-        return c_for_node(self.voltage_lv_kv, "MIN")
-
-    def get_ikss_lv_ka(self, c: float) -> float:
-        """
-        Calculate IEC 60909 initial symmetrical short-circuit current on LV side.
-
-        Args:
-            c: Voltage factor.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-
-        Raises:
-            ValueError: If c <= 0.
-            ZeroDivisionError: If short-circuit impedance is zero.
-        """
-        if c <= 0:
-            raise ValueError("c must be > 0")
-        z_th_lv = self.get_short_circuit_impedance_ohm_lv()
-        if z_th_lv == 0 or abs(z_th_lv) == 0:
-            raise ZeroDivisionError("Short-circuit impedance is zero")
-        u_th = napiecie_fazowe_v(c * kv_na_v(self.voltage_lv_kv))
-        ikss = u_th / abs(z_th_lv)
-        return a_na_ka(ikss)
-
-    def get_ikss_lv_cmax_ka(self) -> float:
-        """
-        Calculate Ik'' on LV side using maximum voltage factor c.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-        """
-        return self.get_ikss_lv_ka(self.get_voltage_factor_c_max())
-
-    def get_ikss_lv_cmin_ka(self) -> float:
-        """
-        Calculate Ik'' on LV side using minimum voltage factor c.
-
-        Returns:
-            Initial symmetrical short-circuit current in kA on LV side.
-        """
-        return self.get_ikss_lv_ka(self.get_voltage_factor_c_min())
+        return c_for_node(
+            self.voltage_lv_kv,
+            "MAX",
+            tolerancja_nn=self.tolerancja_nn_dolna,
+        )
 
     def get_relative_reactance_xt(self) -> float:
         """
@@ -1130,19 +1096,14 @@ class TransformerBranch(Branch):
             Complex per-unit impedance Z_pu = R_pu + jX_pu.
 
         Raises:
-            ValueError: If discriminant is negative (pk too large for uk).
+            OdmowaDanychError: sprzeczne dane P_k/u_k (predykat
+                ``reaktancja_zwarciowa_transformatora_pu``).
         """
-        z_pu_sn = self.uk_percent / 100.0
-        r_pu_sn = kw_na_mw(self.pk_kw) / self.rated_power_mva
-
-        discriminant = z_pu_sn * z_pu_sn - r_pu_sn * r_pu_sn
-        if discriminant < 0:
-            raise ValueError(
-                f"Invalid transformer parameters: discriminant < 0. "
-                f"pk_kw={self.pk_kw} is too large for uk_percent={self.uk_percent}"
-            )
-
-        x_pu_sn = math.sqrt(discriminant)
+        r_pu_sn, x_pu_sn = reaktancja_zwarciowa_transformatora_pu(
+            rated_power_mva=self.rated_power_mva,
+            uk_percent=self.uk_percent,
+            pk_kw=self.pk_kw,
+        )
 
         scale_factor = base_mva / self.rated_power_mva
         r_pu_base = r_pu_sn * scale_factor
@@ -1302,10 +1263,49 @@ def _parse_impedance_override(data: dict[str, Any]) -> LineImpedanceOverride | N
     return None
 
 
+def odmowa_gdy_pk_sprzeczne_z_uk(
+    *, r_pu: float, z_pu: float, pk_kw: float, rated_power_mva: float, uk_percent: float
+) -> None:
+    """JEDYNY predykat „rezystancja z P_k nie przekracza impedancji z u_k" (r_pu ≤ z_pu).
+
+    Wspólny dla wszystkich miejsc liczących impedancję zwarciową transformatora: gałąź
+    rozpływu i zwarć (``reaktancja_zwarciowa_transformatora_pu``, ``get_impedance_pu``),
+    walidacja gałęzi (``validate``) i pętla zwarcia nN (``fault_loop_builder``). Dane
+    sprzeczne (P_k/S_n > u_k) są ODMOWĄ nazwaną, nie cichym obcięciem x do zera ani r do |z|.
+    """
+    if r_pu > z_pu:
+        raise OdmowaDanychError(
+            f"Sprzeczne dane transformatora: straty obciążeniowe P_k = {pk_kw} kW przy "
+            f"S_n = {rated_power_mva} MVA dają rezystancję {r_pu:.6g} p.u. większą niż "
+            f"impedancja zwarciowa z napięcia zwarcia u_k = {uk_percent} % "
+            f"({z_pu:.6g} p.u.). Popraw P_k albo u_k w karcie katalogowej transformatora."
+        )
+
+
+def reaktancja_zwarciowa_transformatora_pu(
+    *, rated_power_mva: float, uk_percent: float, pk_kw: float
+) -> tuple[float, float]:
+    """(r_pu, x_pu) transformatora na bazie S_n: z = uk%/100, r = P_k/S_n, x = √(z² − r²).
+
+    Dane sprzeczne — odmowa z ``odmowa_gdy_pk_sprzeczne_z_uk``. ``pk_kw = 0`` daje r = 0 —
+    konwencja całego modelu (pole ENM ``pk_kw`` wymagane, zero jawnie wpisane), nie domysł.
+    """
+    z_pu = uk_percent / 100.0
+    r_pu = kw_na_mw(pk_kw) / rated_power_mva
+    odmowa_gdy_pk_sprzeczne_z_uk(
+        r_pu=r_pu,
+        z_pu=z_pu,
+        pk_kw=pk_kw,
+        rated_power_mva=rated_power_mva,
+        uk_percent=uk_percent,
+    )
+    return r_pu, math.sqrt(z_pu * z_pu - r_pu * r_pu)
+
+
 def _compute_transformer_impedance_pu(
     *, rated_power_mva: float, uk_percent: float, pk_kw: float
 ) -> complex:
-    z_pu = uk_percent / 100.0
-    r_pu = kw_na_mw(pk_kw) / rated_power_mva
-    x_pu = math.sqrt(max(z_pu * z_pu - r_pu * r_pu, 0.0))
+    r_pu, x_pu = reaktancja_zwarciowa_transformatora_pu(
+        rated_power_mva=rated_power_mva, uk_percent=uk_percent, pk_kw=pk_kw
+    )
     return complex(r_pu, x_pu)

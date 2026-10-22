@@ -13,8 +13,9 @@ import type {
   LineType,
   LoadCatalogType,
   LVApparatusType,
+  LVRcdType,
   LVCableType,
-  MVApparatusCatalogType,
+  MVApparatusType,
   PVInverterCatalogType,
   PtpireeGeneratorCertificateCatalogType,
   ProtectionDeviceType,
@@ -67,8 +68,9 @@ export type CatalogListItem =
   | CableType
   | TransformerType
   | SwitchEquipmentType
-  | MVApparatusCatalogType
+  | MVApparatusType
   | LVApparatusType
+  | LVRcdType
   | LVCableType
   | LoadCatalogType
   | CTCatalogType
@@ -242,12 +244,17 @@ export async function fetchSwitchEquipmentTypes(): Promise<SwitchEquipmentType[]
   return fetchCatalogJson<SwitchEquipmentType[]>('/api/catalog/switch-equipment-types');
 }
 
-export async function fetchMvApparatusTypes(): Promise<MVApparatusCatalogType[]> {
-  return fetchCatalogJson<MVApparatusCatalogType[]>('/api/catalog/mv-apparatus-types');
+export async function fetchMvApparatusTypes(): Promise<MVApparatusType[]> {
+  return fetchCatalogJson<MVApparatusType[]>('/api/catalog/mv-apparatus-types');
 }
 
 export async function fetchLvApparatusTypes(): Promise<LVApparatusType[]> {
   return fetchCatalogJson<LVApparatusType[]>('/api/catalog/lv-apparatus-types');
+}
+
+/** Karta W5-E-TTIT: katalog wyłączników różnicowoprądowych nN (APARAT_NN_RCD). */
+export async function fetchLvRcdTypes(): Promise<LVRcdType[]> {
+  return fetchCatalogJson<LVRcdType[]>('/api/catalog/lv-rcd-types');
 }
 
 export async function fetchLvCableTypes(): Promise<LVCableType[]> {
@@ -665,6 +672,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'LV_APPARATUS':
       types = await fetchLvApparatusTypes();
+      break;
+    case 'LV_RCD':
+      types = await fetchLvRcdTypes();
       break;
     case 'LV_CABLE':
       types = await fetchLvCableTypes();

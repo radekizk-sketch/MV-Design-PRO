@@ -77,6 +77,10 @@ const PROT_FEEDER_OPTIONS = [
 
 interface SzablonPelnyOverrides {
   id?: string;
+  /** Szablon GPZ (karta GPZ-MODEL): transformatory 110/SN poza modelem, równoważnik sieci SN. */
+  transformer_options?: StationTemplateFull['schema']['transformer_options'];
+  transformer_count?: StationTemplateFull['schema']['transformer_count'];
+  grid_source_options?: StationTemplateFull['schema']['grid_source_options'];
   name_pl?: string;
   category?: string;
   description_pl?: string;
@@ -124,8 +128,9 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
     bay_role_categories: over.bay_role_categories ?? ['IN', 'OUT', 'TR'],
     wchodzi_w_segment: over.wchodzi_w_segment ?? true,
     schema: {
-      transformer_options: TR_OPTIONS_MEDIUM,
-      transformer_count: { default: 1, min_value: 1, max_value: 2, step: 1, label_pl: 'Liczba transformatorów' },
+      transformer_options: over.transformer_options ?? TR_OPTIONS_MEDIUM,
+      transformer_count: over.transformer_count
+        ?? { default: 1, min_value: 1, max_value: 2, step: 1, label_pl: 'Liczba transformatorów' },
       sn_switchgear_manufacturers: ['ZPUE_WLOSZCZOWA', 'ELEKTROMETAL', 'ABB', 'SIEMENS', 'SCHNEIDER'],
       sn_switchgear_default: 'ZPUE_WLOSZCZOWA',
       sn_bays_count: {
@@ -154,6 +159,7 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
       vt_options: VT_OPTIONS,
       energy_meter_options: [],
       manufacturer_profile_default: 'ZPUE_WLOSZCZOWA',
+      grid_source_options: over.grid_source_options ?? [],
     },
   };
 }

@@ -66,8 +66,6 @@ def _build_trunk_with_segment() -> tuple[dict[str, Any], str, str]:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_250,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     snap = _op(

@@ -33,6 +33,7 @@ from uuid import UUID
 from api.dependencies import get_uow_factory
 from api.fault_scenarios import get_fault_scenario_service
 from api.klucz_twin_dep import klucz_twin_z_sciezki
+from api.odmowa_http import OdmowaHttpError
 from application.batch_execution_service import (
     BatchExecutionService,
     BatchNotFoundError,
@@ -244,10 +245,7 @@ def create_batch(
             detail=str(exc),
         ) from exc
     except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_400_BAD_REQUEST) from exc
 
 
 @router.post(

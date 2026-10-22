@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any
+from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from api.klucz_twin_dep import KluczTwin, przypadek_z_bazy
+from api.odmowa_http import OdmowaHttpError
 from enm.assembler import zbuduj_graf, zloz_wejscie_rozplywu, zloz_wejscie_zwarcia
 from enm.store import get_enm
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -168,7 +170,6 @@ def get_solver_input(
     audit2_payload: dict[str, Any] | None = None
     rozszerzenia_audit2: dict[str, Any] | None = None
     if project_id and station_id:
-        from uuid import UUID
 
         from solver_input.audit2_der_payload import rozszerzenia_audit2_z_konfiguracji
 
@@ -204,7 +205,7 @@ def get_solver_input(
             rozszerzenia_audit2=rozszerzenia_audit2,
         )
     except OdmowaDanychError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise OdmowaHttpError(exc, status_code=400) from exc
     # Karta OD-17a (znalezisko uboczne): do tej karty koperta wejścia solvera niosła
     # `StudyCaseConfig()` (zaślepka) zamiast konfiguracji przypadku z bazy.
     config = przypadek_z_bazy(case_id, uow_factory).config

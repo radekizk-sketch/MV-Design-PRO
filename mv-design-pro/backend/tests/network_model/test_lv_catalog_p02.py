@@ -673,6 +673,22 @@ class TestApiRoutes:
         assert len(payload) == 30
         assert any(item["id"] == "fuse_nn_gg_nh00_63a" for item in payload)
 
+    def test_lv_rcd_types_route(self, client: TestClient) -> None:
+        """Karta W5-E-TTIT: trasa katalogu RCD zwraca tę samą listę co repozytorium katalogu
+        (konsument: kreator RCD odbioru nN), z tabliczką i stanem źródła rekordu."""
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        response = client.get("/api/catalog/lv-rcd-types")
+        assert response.status_code == 200
+        payload = response.json()
+        oczekiwane = [t.to_dict() for t in get_default_mv_catalog().list_lv_rcd_types()]
+        assert payload == oczekiwane
+        assert len(payload) > 0
+        for item in payload:
+            assert item["i_delta_n_a"] > 0
+            assert item["rcd_type"]
+            assert item["verification_status"]
+
     def test_lv_cable_types_route_exposes_thermal_fields(self, client: TestClient) -> None:
         response = client.get("/api/catalog/lv-cable-types")
         assert response.status_code == 200

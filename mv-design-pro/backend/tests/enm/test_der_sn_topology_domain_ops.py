@@ -15,6 +15,7 @@ from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_sn_stacji
 from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -159,6 +160,9 @@ def _der_sn_payload(
             "rated_power_mva": 1.0,
             "primary_voltage_kv": 15.0,
             "secondary_voltage_kv": 0.4,
+            # Strona wtórna 0,4 kV to sieć nN falownika: tolerancja +6 % (wiersz nN tabeli 1
+            # IEC 60909-0) wybiera c węzłów tej sieci i c_max we wzorze K_T bloku.
+            "lv_voltage_tolerance": "PLUS_6",
             "catalog_ref": tr_bloku,
             "catalog_binding": {
                 "catalog_namespace": "TRAFO_SN_NN",
@@ -580,7 +584,7 @@ def test_short_circuit_nonzero_on_der_sn_buses() -> None:
     graph = map_enm_to_network_graph(enm)
     for node_id in sorted(graph.nodes.keys()):
         sc = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph, node_id, c_factor=1.10, tk_s=1.0, tb_s=0.1
+            graph, node_id, c_factor=1.10, tk_s=1.0, czas_tb=czas_tb_projektanta(0.1)
         )
         assert sc.ikss_a > 0, f"ikss=0 na {node_id}"
 

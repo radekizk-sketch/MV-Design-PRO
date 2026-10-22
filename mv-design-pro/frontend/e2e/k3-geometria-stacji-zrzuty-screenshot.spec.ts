@@ -94,12 +94,25 @@ const sprzegloStacji = (model: Model, st: Stacja): Galaz => {
   return wynik!;
 };
 
-async function kadrStacji(page: Page, st: Stacja): Promise<void> {
-  const sciezkaSieci = page.getByTestId('sld-v3-sciezka-0');
-  if (await sciezkaSieci.isVisible()) {
-    await sciezkaSieci.click();
-    await expect(page.getByTestId('sld-v3-sciezka-kadru')).toHaveCount(0);
+/** viewBox kanwy ustalony: dwa kolejne odczyty w odstępie 300 ms równe (kamera nie animuje). */
+async function kadrUstalony(page: Page): Promise<void> {
+  const kanwa = page.locator('svg[data-testid="sld-canvas-v3"]');
+  let poprzedni = await kanwa.getAttribute('viewBox');
+  for (let i = 0; i < 20; i += 1) {
+    await page.waitForTimeout(300);
+    const biezacy = await kanwa.getAttribute('viewBox');
+    if (biezacy === poprzedni) return;
+    poprzedni = biezacy;
   }
+}
+
+async function kadrStacji(page: Page, st: Stacja): Promise<void> {
+  // K2b (widok roboczy): po otwarciu schematu kamera stoi w widoku roboczym, nie w kadrze
+  // całej sieci, więc podpis stacji może leżeć poza ekranem. Droga użytkownika jak w specu
+  // K2: Shift+F — kadr całej sieci (bez mini-ścieżki), potem dwuklik podpisu stacji.
+  await page.keyboard.press('Shift+F');
+  await expect(page.getByTestId('sld-v3-sciezka-kadru')).toHaveCount(0);
+  await kadrUstalony(page);
   const uchwyt = page.locator(`[data-hit-role="obrys"][data-hit-owner-ref^="${st.ref_id}#name-row"]`).first();
   await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
   await uchwyt.dblclick();

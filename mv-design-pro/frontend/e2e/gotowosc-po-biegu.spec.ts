@@ -30,6 +30,7 @@ import { fileURLToPath } from 'node:url';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const KATALOG_ZRZUTOW = katalogZrzutow(path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert'));
 
@@ -46,8 +47,9 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    branches?: Array<{ ref_id: string; type?: string; name?: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
   };
 };
 
@@ -144,8 +146,6 @@ async function zbudujSiecGotowaDoObliczen(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
@@ -163,6 +163,8 @@ async function zbudujSiecGotowaDoObliczen(
   expect(segmentRefs.length).toBeGreaterThan(0);
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
@@ -188,7 +190,9 @@ async function zbudujSiecGotowaDoObliczen(
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -277,9 +281,20 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
 
   // Model PSUJE SIĘ PO biegu: łącznik normalnie otwarty odcina ciąg od źródła
   // (realna sytuacja projektowa) ⇒ serwer zgłasza blokadę gotowości.
-  await executeDomainOp(request, caseId, 'set_normal_open_point', {
-    switch_ref: segmentRefs[0],
+  // Karta W5-C: punktem normalnie otwartym jest WYŁĄCZNIE łącznik (odcinek linii nie ma
+  // pozycji normalnej) — rozłącznik sekcyjny z katalogu na pierwszym odcinku, potem
+  // przeniesienie na niego punktu podziału (dawniej spec wskazywał sam odcinek).
+  const nazwaLacznika = 'Łącznik sekcyjny NO';
+  const wstawienie = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
+    segment_id: segmentRefs[0],
+    insert_at: { mode: 'RATIO', value: 0.5 },
+    switch_type: 'ROZLACZNIK',
+    switch_name: nazwaLacznika,
+    catalog_binding: buildCatalogBinding('APARAT_SN', 'sw-ls-schneider-rm6-17kv-400a'),
   });
+  const lacznik = (wstawienie.snapshot?.branches ?? []).find((b) => b.name === nazwaLacznika)?.ref_id;
+  expect(lacznik, 'rozłącznik sekcyjny w modelu').toBeTruthy();
+  await executeDomainOp(request, caseId, 'set_normal_open_point', { switch_ref: lacznik });
   const gotowosc = await pobierzGotowosc(request, caseId);
   expect(gotowosc.ready).toBe(false);
   expect(blokadySerwera(gotowosc)).toBeGreaterThan(0);

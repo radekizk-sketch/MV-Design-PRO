@@ -32,6 +32,8 @@ class BladArkuszaModel(BaseModel):
     wiersz: int | None = None
     kolumna: str | None = None
     komunikat: str
+    #: Kod maszynowy zastrzeżenia walidatora modelu (addytywnie, partia integracji 10).
+    kod: str | None = None
 
 
 class PodsumowanieArkuszaModel(BaseModel):

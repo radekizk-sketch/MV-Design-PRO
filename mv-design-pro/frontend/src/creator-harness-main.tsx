@@ -56,6 +56,10 @@ import { KreatorPomiaru } from './ui2/kreatory/pomiar';
 import { KreatorPolaNn } from './ui2/kreatory/pole-nn';
 import { KreatorPrzypisaniaKatalogu } from './ui2/kreatory/przypisanie-katalogu';
 import { KreatorEdycjiParametrow } from './ui2/kreatory/edycja-parametrow';
+import './ui2/spaces/obliczenia/przypadki.css';
+import { KartaPrzypadku } from './ui2/spaces/obliczenia/KartaPrzypadku';
+import { PanelScenariuszy } from './ui2/spaces/obliczenia/scenariusze/PanelScenariuszy';
+import type { StudyCase } from './ui/study-cases/types';
 import {
   SekcjaArcFlash,
   SekcjaMigotania,
@@ -80,6 +84,7 @@ import werdyktProjektowyScenyUwaga from './harness-fixtures/generated/werdykt_pr
 // wyników" — policzone BACKENDEM tym samym skryptem (realne biegi PF/SC złotej sieci,
 // identyfikatory biegów stabilizowane). Migawka z nazwami sieci złotej — jedno
 // miejsce z atrapą testów jednostkowych.
+import przypadekScenaKarta from './harness-fixtures/generated/przypadek_scena_karta.json';
 import katalogAnalizV126 from './harness-fixtures/generated/katalog_analiz_v126.json';
 import gotowoscV126ScenyAkademickie from './harness-fixtures/generated/gotowosc_v126_scena_akademickie.json';
 import gotowoscV126ScenyAkademickieParametry from './harness-fixtures/generated/gotowosc_v126_scena_akademickie_parametry.json';
@@ -96,6 +101,32 @@ import zwarciaWynikiScenyZwarcia from './harness-fixtures/generated/zwarcia_wyni
 import zwarciaWkladyScenyZwarcia from './harness-fixtures/generated/zwarcia_wklady_scena_zwarcia.json';
 import zwarciaRozplywScenyZwarcia from './harness-fixtures/generated/zwarcia_rozplyw_scena_zwarcia.json';
 import zwarciaPasmoScenyZwarcia from './harness-fixtures/generated/zwarcia_pasmo_scena_zwarcia.json';
+// Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: scena „zwarcia-tolerancja-robocza" — komplet czterech
+// odpowiedzi ekranu zwarć z REALNEGO biegu na sieci złotej BEZ deklaracji tolerancji sieci nN
+// (`eksport_fixtur_harnessu.py::zwarcia_*_scena_tolerancja_robocza`): wszystkie sekcje ekranu
+// liczone na tej samej wartości roboczej (+10 %), żadna z liczbami biegu z deklaracją +6 %.
+import zwarciaWynikiScenyRoboczej from './harness-fixtures/generated/zwarcia_wyniki_scena_tolerancja_robocza.json';
+import zwarciaWkladyScenyRoboczej from './harness-fixtures/generated/zwarcia_wklady_scena_tolerancja_robocza.json';
+import zwarciaRozplywScenyRoboczej from './harness-fixtures/generated/zwarcia_rozplyw_scena_tolerancja_robocza.json';
+import zwarciaPasmoScenyRoboczej from './harness-fixtures/generated/zwarcia_pasmo_scena_tolerancja_robocza.json';
+// Model, na którym policzono bieg sceny roboczej (transformator SN/nN bez deklaracji
+// tolerancji) — zasiew mostu nazw wyników i formularza „Zmień wartość".
+import zwarciaMigawkaScenyRoboczej from './harness-fixtures/generated/zwarcia_migawka_scena_tolerancja_robocza.json';
+const SCENA_ZWARC_ROBOCZA =
+  new URLSearchParams(window.location.search).get('creator') === 'zwarcia-tolerancja-robocza';
+const ZWARCIA_SCENY = SCENA_ZWARC_ROBOCZA
+  ? {
+      wyniki: zwarciaWynikiScenyRoboczej,
+      wklady: zwarciaWkladyScenyRoboczej,
+      rozplyw: zwarciaRozplywScenyRoboczej,
+      pasmo: zwarciaPasmoScenyRoboczej,
+    }
+  : {
+      wyniki: zwarciaWynikiScenyZwarcia,
+      wklady: zwarciaWkladyScenyZwarcia,
+      rozplyw: zwarciaRozplywScenyZwarcia,
+      pasmo: zwarciaPasmoScenyZwarcia,
+    };
 // HARNESS-RESZTA (2026-09-16): scena "wyniki-stan-fazowy" (E-31) karmiona
 // WYLACZNIE wynikiem REALNEGO biegu backendu (phase_state_sn na sieci zlotej,
 // `eksport_fixtur_harnessu.py` — ta sama funkcja, ktora woła koncowka
@@ -402,6 +433,7 @@ const RUN_KONTRAKT_SCENY: Record<string, string> = {
   // kotwicy realnego backendu (`*.run_id`/`*.context.run_id`), nie ręczne id.
   'zwarcia-rozplyw': zwarciaWynikiScenyZwarcia.run_id,
   zwarcia: zwarciaWynikiScenyZwarcia.run_id,
+  'zwarcia-tolerancja-robocza': zwarciaWynikiScenyRoboczej.run_id,
   rozplyw: rozplywScenyWynik.run_id,
   walidacja: walidacjaScenyWynik.context.run_id,
   estymacja: estymacjaScenyWynik.analysis_id,
@@ -464,15 +496,8 @@ const NAZWA_STACJI_DEMO = (stacjaDemoScenyMigawka.substations as { ref_id: strin
 const ZRODLO_STACJI_DEMO = (
   stacjaDemoScenyMigawka.sources as { sk3_mva: number; rx_ratio: number }[]
 )[0];
-const TRAFO_WN_SN_STACJI_DEMO = (
-  stacjaDemoScenyMigawka.transformers as { sn_mva: number; ulv_kv: number }[]
-).find((trafo) => trafo.ulv_kv === NAPIECIE_SZYNY_SN_STACJI_DEMO)!;
 const SK3_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.sk3_mva;
 const RX_ZRODLA_STACJI_DEMO = ZRODLO_STACJI_DEMO.rx_ratio;
-const MOC_TRAFO_WN_SN_STACJI_DEMO = TRAFO_WN_SN_STACJI_DEMO.sn_mva;
-const NAPIECIE_WN_STACJI_DEMO = (
-  stacjaDemoScenyMigawka.buses as { voltage_kv: number }[]
-).reduce((maks, szyna) => Math.max(maks, szyna.voltage_kv), 0);
 
 /**
  * Moduły warsztatu wytwórców Z MODELU — odwzorowanie PRODUKCYJNE
@@ -579,6 +604,76 @@ function odpowiedzDokumentuSceny(
   });
 }
 
+
+/** Scenariusze zwarciowe sceny „panel-scenariuszy": MAX, MIN i nadpisanie c z uzasadnieniem. */
+const SCENARIUSZE_ZWARCIOWE_SCENY = (() => {
+  const baza = {
+    study_case_id: 'case-demo',
+    analysis_type: 'SHORT_CIRCUIT',
+    fault_type: 'SC_3F',
+    location: { element_ref: 'Szyna SN stacji', location_type: 'BUS', position: null },
+    fault_impedance_type: 'METALLIC',
+    fault_mode: 'METALLIC',
+    fault_impedance: null,
+    arc_params: null,
+    z0_bus_data: null,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-01T10:00:00Z',
+  };
+  const scenariusze = [
+    {
+      ...baza,
+      scenario_id: 'scen-max',
+      name: 'Zwarcie 3F — dobór aparatury',
+      config: { scenariusz: 'MAX', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-max',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-min',
+      name: 'Zwarcie 3F — czułość zabezpieczeń',
+      config: { scenariusz: 'MIN', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: true },
+      content_hash: 'h-min',
+    },
+    {
+      ...baza,
+      scenario_id: 'scen-nadpisanie',
+      name: 'Zwarcie 3F — uzgodnienie z operatorem',
+      config: {
+        scenariusz: 'MAX',
+        nadpisanie_c: { wartosc: 1.05, uzasadnienie: 'uzgodnienie z operatorem sieci' },
+        thermal_time_seconds: 1,
+        include_branch_contributions: true,
+      },
+      content_hash: 'h-nadpisanie',
+    },
+  ];
+  return { scenarios: scenariusze, count: scenariusze.length };
+})();
+
+/** Przypadek sceny „karta-przypadku" — `StudyCase.to_dict()` z fabryki domeny backendu
+ * (fixtura `przypadek_scena_karta`, `eksport_fixtur_harnessu.py`); harness dokleja tylko
+ * status wyników, jak warstwa API (`api/study_cases.py`, przypadek bez biegów → NONE). */
+const PRZYPADEK_KARTY_SCENY: StudyCase = {
+  ...(przypadekScenaKarta as Omit<
+    StudyCase,
+    | 'result_status'
+    | 'results_valid'
+    | 'result_status_reason'
+    | 'result_status_reason_pl'
+    | 'rewizja_biegu'
+    | 'rewizja_biezaca'
+    | 'zmiany_od_biegu'
+  >),
+  result_status: 'NONE',
+  results_valid: false,
+  result_status_reason: 'brak_wyniku',
+  result_status_reason_pl: 'Brak wyniku — przypadek nie był jeszcze obliczany.',
+  rewizja_biegu: null,
+  rewizja_biezaca: przypadekScenaKarta.revision,
+  zmiany_od_biegu: [],
+};
+
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
@@ -594,6 +689,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   // nie recznie wpisane liczby — parytet pilnuje tests/ci/test_fixtury_harnessu.py.
   if (creator === 'przeglad-wiarygodnosci' && url.includes('/api/catalog/przeglad-wiarygodnosci')) {
     return jsonOK(przegladWiarygodnosciKatalogu);
+  }
+
+  // Scena „panel-scenariuszy" (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): lista scenariuszy
+  // zwarciowych przypadku w kształcie 1:1 z `FaultScenarioListResponse` backendu
+  // (`config` = `ShortCircuitConfigRequest`: scenariusz MAX/MIN + opcjonalne nadpisanie c
+  // z uzasadnieniem; liczby c harness nie wymyśla — to zapis wejścia inżyniera).
+  if (
+    creator === 'panel-scenariuszy' &&
+    url.endsWith('/api/execution/study-cases/case-demo/fault-scenarios')
+  ) {
+    return jsonOK(SCENARIUSZE_ZWARCIOWE_SCENY);
   }
 
   if (creator === 'wyniki-skladowe') {
@@ -654,7 +760,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // Sekcja nastaw probuje kandydatow SC_3F DONE od NAJNOWSZEGO —
     // bieg MINIMALNY jest w zasiewie sceny celowo NOWSZY niz maksymalny, tak jak
     // w realnej sieci moga wspolistniec oba warianty; backend (nie UI) osadza
-    // c_max, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
+    // scenariusz MAX, wiec scena pokazuje dokladnie te odmowe (tresc `powod_pl` z
     // REALNEJ odpowiedzi `dostepnosc_pakietu_nastaw`) i przejscie do kolejnego
     // kandydata.
     if (url.includes(`/analysis-runs/${koordynacjaScenyZwarciaMin.run_id}/pakiet-dowodowy-nastaw/dostepnosc`)) {
@@ -832,24 +938,27 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     // liczb fizycznych. `fault_node_id` z ciala zadania POST, jak w realnym
     // kliencie (`zwarcia/api.ts::fetchWkladyZwarciowe`).
     const cialoWkladow = JSON.parse(String(init?.body ?? '{}')) as { fault_node_id?: string };
-    const wklady = (zwarciaWkladyScenyZwarcia as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
+    const wklady = (ZWARCIA_SCENY.wklady as Record<string, unknown>)[cialoWkladow.fault_node_id ?? ''];
     if (wklady) return jsonOK(wklady);
   }
   if (url.includes('/results/short-circuit/rozplyw')) {
-    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy JEDNEGO punktu — ten,
-    // ktory `EkranZwarc` wybiera domyslnie (pierwszy wiersz wynikow) — realny
-    // bieg backendu (`zwarcia_rozplyw_scena_zwarcia`), tor sieci nadrzednej
-    // (THEVENIN_GRID) ORAZ tor falownika (gen_pv) RAZEM w `branch_contributions`,
-    // jak dotychczasowa scena Z-3 — bez zadnej recznej liczby.
-    const targetId = new URL(url, location.origin).searchParams.get('target_id');
-    if (targetId === zwarciaRozplywScenyZwarcia.target_id) return jsonOK(zwarciaRozplywScenyZwarcia);
+    // HARNESS-ZWARCIA-Z-BACKENDU: rozplyw galeziowy (i slad podzialu pradu, ta sama
+    // odpowiedz) — mapa target_id -> odpowiedz REALNEGO biegu backendu dla KAZDEGO
+    // punktu sceny (`eksport_fixtur_harnessu.py::zwarcia_rozplyw_scena_zwarcia`, ta
+    // sama funkcja co koncowka `get_short_circuit_rozplyw`), jak mapa wkladow wyzej.
+    // Dawna makieta znala wylacznie punkt domyslny, wiec wybor szyny nN konczyl sie
+    // bledem pobrania. Punkt domyslny niesie tor sieci nadrzednej (THEVENIN_GRID)
+    // ORAZ tor falownika (gen_pv), jak scena Z-3 — bez zadnej recznej liczby.
+    const targetId = new URL(url, location.origin).searchParams.get('target_id') ?? '';
+    const rozplyw = (ZWARCIA_SCENY.rozplyw as Record<string, unknown>)[targetId];
+    if (rozplyw) return jsonOK(rozplyw);
   }
   if (url.includes('/results/short-circuit/pasmo')) {
     // Pasmo MIN/MAX zwarcia (karta W3-G3, aneks D7) — TEN SAM bieg kotwicy;
     // strona MIN `obliczony_na_zadanie` (bez wlasnego run_id) — realny ksztalt
     // `dobierz_pasmo_min_max_zwarcia` (`eksport_fixtur_harnessu.py::
     // zwarcia_pasmo_scena_zwarcia`).
-    return jsonOK(zwarciaPasmoScenyZwarcia);
+    return jsonOK(ZWARCIA_SCENY.pasmo);
   }
   if (url.includes('/power-flow-runs')) {
     // HARNESS-RESZTA-2: lista zakonczonych przebiegow rozplywu projektu sceny
@@ -1391,6 +1500,7 @@ const MIGAWKA_MODELU_SCENY: Readonly<Record<string, unknown>> = {
   rozplyw: sieckZlotaScenyMigawka,
   zwarcia: sieckZlotaScenyMigawka,
   'zwarcia-rozplyw': sieckZlotaScenyMigawka,
+  'zwarcia-tolerancja-robocza': zwarciaMigawkaScenyRoboczej,
   'odbior-zgodnosc': sieckZlotaScenyMigawka,
   estymacja: sieckZlotaScenyMigawka,
   'wyniki-stan-fazowy': sieckZlotaScenyMigawka,
@@ -1555,6 +1665,15 @@ if (creator === 'arcflash') {
   useResultsInspectorStore.setState({
     shortCircuitResults: zwarciaWynikiScenyZwarcia,
     selectedRunId: zwarciaWynikiScenyZwarcia.run_id,
+  } as never);
+} else if (creator === 'zwarcia-tolerancja-robocza') {
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): bieg na sieci złotej bez
+  // deklaracji tolerancji sieci nN — sekcja „Założenia" pokazuje założenie
+  // `fault.c_tolerancja_nn_robocza` ze znacznikiem „wartość robocza" i akcją „Zmień wartość",
+  // bilans punktu nN — podstawę c „(wartość robocza)". Zero ręcznie wpisanych liczb.
+  useResultsInspectorStore.setState({
+    shortCircuitResults: ZWARCIA_SCENY.wyniki,
+    selectedRunId: ZWARCIA_SCENY.wyniki.run_id,
   } as never);
 } else if (creator === 'zwarcia-rozplyw') {
   // Karta Z-3 (dowody wizualne pkt 7 karty właściciela): sekcja „Rozpływ
@@ -1784,7 +1903,7 @@ if (creator === 'arcflash') {
         started_at: '2026-07-28T07:59:00Z',
       } as unknown as ExecutionRun,
       {
-        // Bieg MINIMALNY (c_min) — bez niego czulosc jest niesprawdzalna (koordynacja
+        // Bieg MINIMALNY (scenariusz MIN) — bez niego czulosc jest niesprawdzalna (koordynacja
         // odmawia bez biegu minimalnego).
         id: koordynacjaScenyZwarciaMin.run_id,
         analysis_type: 'SC_3F',
@@ -1914,6 +2033,15 @@ if (creator === 'arcflash') {
     field: 'r_pct',
     value: '0.55',
   });
+} else if (creator === 'edycja-tolerancja-nn') {
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: formularz edycji parametrów otwarty akcją „Zmień
+  // wartość" założenia biegu `fault.c_tolerancja_nn_robocza` (ekran wyników zwarć) — ten sam
+  // kontekst co `zmianaTolerancjiNn.ts`: element zasilający, jego rodzaj i pole parametru.
+  useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
+    element_ref: 'TR-1',
+    element_type: 'TransformerBranch',
+    field: 'lv_voltage_tolerance',
+  });
 } else if (creator === 'cieplna') {
   // K3-B3: wariant NIEAKTUALNY znacznika świeżości — migawka w rew. 2, a
   // kontrakt przebiegu run-sc-7 niesie `rewizja_modelu: 1` (atrapa wyżej) →
@@ -2034,6 +2162,8 @@ function Harness() {
   else if (creator === 'rozplyw')
     node = <EkranRozplywu szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia')
+    node = <EkranZwarc szczegolyAudytowe onOtworzDowod={() => undefined} />;
+  else if (creator === 'zwarcia-tolerancja-robocza')
     node = <EkranZwarc szczegolyAudytowe onOtworzDowod={() => undefined} />;
   else if (creator === 'zwarcia-rozplyw')
     // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie
@@ -2179,6 +2309,9 @@ function Harness() {
   else if (creator === 'pole-nn') node = <KreatorPolaNn />;
   else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
   else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'edycja-tolerancja-nn') node = <KreatorEdycjiParametrow />;
+  else if (creator === 'panel-scenariuszy') node = <PanelScenariuszy />;
+  else if (creator === 'karta-przypadku') node = <KartaPrzypadku przypadek={PRZYPADEK_KARTY_SCENY} ladowanie={false} blad={null} />;
   else if (creator === 'stacja') node = <KreatorStacjiSnNn />;
   else if (creator === 'szablony')
     // Scena „szablony" (V12T-016, karta SZABLONY-ROLA-A): przeglądarka
@@ -2273,8 +2406,6 @@ async function zasiejSceneStacji(): Promise<void> {
     sk3_mva: SK3_ZRODLA_STACJI_DEMO,
     rx_ratio: RX_ZRODLA_STACJI_DEMO,
     catalog_binding: wiazanie('ZRODLO_SN', 'src-gpz-15kv-250mva-rx010'),
-    hv_voltage_kv: NAPIECIE_WN_STACJI_DEMO,
-    transformer_sn_mva: MOC_TRAFO_WN_SN_STACJI_DEMO,
   });
   if (!gpz || gpz.error) throw new Error(`add_grid_source_sn: ${gpz?.error ?? 'brak odpowiedzi'}`);
   const odcinek = await wykonaj(przypadek.id, 'continue_trunk_segment_sn', {

@@ -358,8 +358,7 @@ _ETYKIETY_POL_PL: dict[str, str] = {
     "sk3_mva": "Moc zwarciowa [MVA]",
     "ik3_ka": "Prąd zwarciowy [kA]",
     "rx_ratio": "Stosunek R/X",
-    "c_max": "Współczynnik napięciowy c max",
-    "c_min": "Współczynnik napięciowy c min",
+    "lv_voltage_tolerance": "Tolerancja napięcia sieci nN",
     "model": "Model",
     "quantity": "Liczba sztuk",
     # magistrale, ciagi linii, stacje, pola

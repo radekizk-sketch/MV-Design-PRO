@@ -149,8 +149,6 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   const trunk = await executeDomainOp(request, seed.caseId, 'continue_trunk_segment_sn', {
@@ -165,6 +163,8 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   expect(segmentRef).toBeTruthy();
 
   const stationOp = await executeDomainOp(request, seed.caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRef,

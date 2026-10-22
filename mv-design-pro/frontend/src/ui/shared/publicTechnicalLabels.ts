@@ -82,7 +82,8 @@ export function nazwaStacjiJakWDrzewie(snapshot: EnergyNetworkModel, station: Su
 }
 
 export function stationOrdinalCode(snapshot: EnergyNetworkModel, station: Substation): string {
-  return `S${String(Math.max(0, indeksStacjiTerenowej(snapshot, station)) + 1).padStart(2, '0')}`;
+  const numer = Math.max(0, indeksStacjiTerenowej(snapshot, station)) + 1;
+  return `S${String(numer).padStart(2, '0')}`;
 }
 
 export function stationPublicIdentity(

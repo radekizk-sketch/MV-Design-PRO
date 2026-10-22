@@ -16,12 +16,12 @@ export const EDYCJA_PARAMETROW_STRINGS = {
     + 'dla danego typu elementu (lista dozwolonych pól) i odrzuca niedozwolone.',
 
   parametryTytul: 'Parametry do ustawienia',
-  parametryPomoc: 'Podaj pary klucz → wartość. Wartości liczbowe, logiczne (true/false) i puste (null) '
-    + 'są wykrywane automatycznie; pozostałe traktowane jako tekst.',
+  parametryPomoc: 'Podaj pary parametr → wartość. Liczby, odpowiedzi „tak" / „nie" oraz „brak" '
+    + '(brak wartości) są rozpoznawane automatycznie; pozostałe wpisy traktowane są jako tekst.',
   klucz: 'Klucz',
   kluczPlaceholder: 'np. tap_position',
   wartosc: 'Wartość',
-  wartoscPlaceholder: 'np. 2, true, null',
+  wartoscPlaceholder: 'np. 2, tak, brak',
   wartoscZeSlownika: '— wybierz wartość ze słownika —',
   dodajWiersz: 'Dodaj parametr',
   usunWiersz: 'Usuń',
@@ -68,6 +68,39 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   daneModuluPomoc:
     'Zapisywane są wyłącznie pola zmienione względem modelu — ten sam walidator co przy '
     + 'tworzeniu źródła; brak danej pozostaje brakiem, nigdy wartością typową.',
+  // Wartości projektanta aparatu SN (zasada nr 4, V12K-351) — nośnik `overrides` gałęzi.
+  aparatTytul: 'Parametry aparatu SN nadane przez projektanta',
+  aparatPomoc:
+    'Karta katalogowa aparatu nie zawsze podaje czas własny wyłączania i znamiona wytrzymałości — '
+    + 'obliczenie przyjmuje wtedy wartość roboczą z jawnym źródłem (profil urządzenia, norma albo '
+    + 'założenie inżynierskie). Wpisz wartość z tabliczki, karty producenta albo pomiaru, aby '
+    + 'obliczenie użyło jej zamiast karty i propozycji. Puste pole: bez wartości projektanta. Wartość '
+    + 'projektanta pozostaje daną przyjętą (ocena obliczeniowa, nie potwierdzony dowód) — '
+    + 'uzasadnienie zapisz w polu „Uzasadnienie zmiany”.',
+  aparatEtykiety: {
+    break_time_s: 'Czas własny wyłączania t_b [s]',
+    i_th_ka: 'Prąd krótkotrwały wytrzymywany I_k [kA]',
+    i_th_duration_s: 'Znamionowy czas trwania zwarcia t_k [s]',
+    i_dyn_ka: 'Prąd szczytowy wytrzymywany I_p [kA]',
+  },
+  aparatJednostki: {
+    break_time_s: 's',
+    i_th_ka: 'kA',
+    i_th_duration_s: 's',
+    i_dyn_ka: 'kA',
+  },
+  aparatPlaceholder: 'puste — bez wartości projektanta',
+  aparatZKarty: 'Puste pole: dana karty katalogowej',
+  aparatPropozycja: 'Puste pole: wartość robocza dla danych karty',
+  aparatBrak: 'Puste pole: brak danej karty i brak propozycji — parametr nie dotyczy albo nie ma podstawy',
+  aparatRodzajZrodla: {
+    PROFIL_URZADZENIA: 'profil typowy urządzenia',
+    NORMA: 'norma',
+    ZALOZENIE_INZYNIERSKIE: 'założenie inżynierskie',
+  } as Readonly<Record<string, string>>,
+  aparatBladLiczby: 'Wartość musi być liczbą (separator dziesiętny: przecinek albo kropka).',
+  wierszAparat: 'Wartości projektanta aparatu',
+  bledneWartosciAparatu: 'Wartość parametru aparatu nie jest liczbą — popraw pole oznaczone niżej.',
   bledneDaneModulu:
     'Dane modułu NC RfG zawierają błędy pól — popraw je przed zapisem (pola oznaczone niżej).',
 } as const;

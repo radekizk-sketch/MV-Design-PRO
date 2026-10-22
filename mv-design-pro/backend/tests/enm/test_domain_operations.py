@@ -69,10 +69,6 @@ def _add_grid_source(enm_dict: dict) -> dict:
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary
-            # hv_voltage_kv + transformer_sn_mva (albo transformer_catalog_ref).
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
 
@@ -230,8 +226,6 @@ class TestAddGridSourceSNDuplicate:
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
                 "source_id": "gpz-a",
                 "source_name": "GPZ A 110/15 kV",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert not result1.get("error")
@@ -244,8 +238,6 @@ class TestAddGridSourceSNDuplicate:
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
                 "source_id": "gpz-b",
                 "source_name": "GPZ B 110/15 kV",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
 
@@ -272,8 +264,6 @@ class TestAddGridSourceSNDuplicate:
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
                 "source_id": "gpz-a",
                 "source_name": "GPZ A 110/15 kV",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         assert not result1.get("error")
@@ -286,8 +276,6 @@ class TestAddGridSourceSNDuplicate:
                 "catalog_ref": "src-gpz-15kv-250mva-rx010",
                 "source_id": "gpz-a",
                 "source_name": "GPZ A powtórzony",
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
 

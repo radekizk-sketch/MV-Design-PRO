@@ -55,6 +55,7 @@ export const ETYKIETY_KATEGORII: Readonly<Record<KategoriaId, string>> = {
   VT: 'Przekładniki napięciowe',
   KABEL_NN: 'Kable nN',
   APARAT_NN: 'Aparaty nN',
+  APARAT_NN_RCD: 'Wyłączniki różnicowoprądowe nN',
 };
 
 /** Etykiety PL rodzajów aparatu łączeniowego (pole `equipment_kind`). */

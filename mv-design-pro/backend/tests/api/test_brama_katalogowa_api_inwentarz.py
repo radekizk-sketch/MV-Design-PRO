@@ -76,6 +76,7 @@ REF_KABEL_DER = "cable-base-epr-al-1c-240"
 REF_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
 REF_APARAT_NN = "cb_nn_630a"
 REF_KABEL_NN = "kab_nn_4x120_al"
+REF_RCD_NN = "rcd_nn_a_40a_30ma"
 REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
 REF_PRZEKAZNIK = "REF-OC-100"
@@ -171,12 +172,6 @@ def _payload_zrodla(**nadpisania: Any) -> dict[str, Any]:
         "voltage_kv": 15.0,
         "sk3_mva": 250.0,
         "catalog_ref": REF_ZRODLO,
-        # Karta FAB-G: transformator WN/SN GPZ wymaga jawnej pary hv_voltage_kv
-        # + transformer_sn_mva (albo transformer_catalog_ref) — nadpisania
-        # (np. transformer_catalog_ref=REF_TRAFO_WN_SN w iniekcji bramy) i tak
-        # wygrywaja przez `payload.update(nadpisania)` ponizej.
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
     }
     payload.update(nadpisania)
     return payload
@@ -732,6 +727,23 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         },
         lambda p: _zepsuj_wiazanie(p),
     ),
+    # Karta W5-E-TTIT: wyłącznik różnicowoprądowy w torze instalacji odbioru nN
+    # (przestrzeń `APARAT_NN_RCD`, rekord rodziny generycznej `rcd_nn_a_40a_30ma`).
+    IniekcjaBramy(
+        "add_nn_rcd",
+        "catalog_ref",
+        lambda: {"load_ref": "load-nn-1", "catalog_ref": REF_RCD_NN},
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_rcd",
+        "catalog_binding",
+        lambda: {
+            "load_ref": "load-nn-1",
+            "catalog_binding": _wiazanie("APARAT_NN_RCD", REF_RCD_NN),
+        },
+        lambda p: _zepsuj_wiazanie(p),
+    ),
     IniekcjaBramy(
         "add_nn_section_coupler",
         "catalog_ref",
@@ -975,8 +987,6 @@ def test_produkcyjna_droga_zapisu_konczy_zle_referencje_kodem_422(
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "catalog_ref": REF_ZRODLO,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
             },
         )
         snapshot = _operacja_api(

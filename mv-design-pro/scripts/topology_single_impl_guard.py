@@ -22,6 +22,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from guard_parsowanie import sparsuj_plik, uruchom  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
@@ -102,10 +104,7 @@ def zmierz(korzen: Path = BACKEND_SRC) -> dict[str, dict[str, int]]:
         wzgledna = plik.relative_to(korzen).as_posix()
         if wzgledna == DOM or wzgledna in ALLOWLIST:
             continue
-        try:
-            tree = ast.parse(plik.read_text(encoding="utf-8"))
-        except SyntaxError:
-            continue
+        tree = sparsuj_plik(plik)
         licznik = zlicz_wzorce(tree)
         if licznik:
             pomiar[wzgledna] = licznik
@@ -164,4 +163,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

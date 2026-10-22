@@ -74,7 +74,12 @@ def _fault_node_id(enm: EnergyNetworkModel, bus_name: str) -> str:
     return next(node.id for node in graph.nodes.values() if node.name == bus_name)
 
 
-def _pack_input(enm: EnergyNetworkModel, fault_node_id: str) -> SC3FPackInput:
+def _pack_input(
+    enm: EnergyNetworkModel, fault_node_id: str, *, tb_s: float | None = 0.1
+) -> SC3FPackInput:
+    # Karta SC-IB-ITH-ZRODLA: t_b jest daną biegu (nie stałą solvera) — rozbicie maszynowe μ/q/I_b
+    # liczone przy t_b punktu; bieg bez t_b (wartość robocza) sprawdza
+    # `test_synchronous_machine_bez_tb_wartosc_robocza_...` (karta TB-WARTOSC-ROBOCZA).
     return SC3FPackInput(
         project_name="Test",
         case_name="SC3F",
@@ -82,8 +87,10 @@ def _pack_input(enm: EnergyNetworkModel, fault_node_id: str) -> SC3FPackInput:
         fault_node_id=fault_node_id,
         run_timestamp=datetime(2026, 1, 1, 0, 0, 0),
         solver_version="test",
-        c_factor=1.10,
+        scenariusz="MAX",
+        nadpisanie_c=None,
         tk_s=1.0,
+        tb_s=tb_s,
     )
 
 
@@ -117,6 +124,31 @@ def test_synchronous_machine_adds_breakdown():
         _pack_input(_enm(with_machine=False), data.fault_node_id), _ARTIFACT
     )
     assert result.proof_sc3f.summary.total_steps > base.proof_sc3f.summary.total_steps
+
+
+def test_synchronous_machine_bez_tb_wartosc_robocza_daje_ib_maszyn_i_ostrzezenie():
+    """Karta TB-WARTOSC-ROBOCZA (dawniej: bieg bez t_b = brak I_b maszyn i odmowa nazwana).
+
+    Brak t_b w scenariuszu nie blokuje obliczeń: sieć testowa nie ma pól z aparatem przy
+    szynie punktu, więc t_b punktu = wartość robocza 0,1 s (pochodzenie PROPOZYCJA).
+    Rozbicie maszynowe μ/q/I_b i I_b sieci są policzone przy tym t_b — liczby identyczne
+    z biegiem z t_b = 0,1 s podanym przez projektanta (ten sam t_b, inne pochodzenie),
+    a dowód nazywa założenie w ostrzeżeniu (tylko przy wartości roboczej).
+    """
+    enm = _enm(with_machine=True)
+    fault = _fault_node_id(enm, "Szyna OZE")
+    roboczy = SC3FProofPack.generate(_pack_input(enm, fault, tb_s=None), _ARTIFACT)
+    podany = SC3FProofPack.generate(_pack_input(enm, fault, tb_s=0.1), _ARTIFACT)
+
+    assert roboczy.has_machines is True
+    klucze_r = roboczy.proof_sc3f.summary.key_results
+    klucze_p = podany.proof_sc3f.summary.key_results
+    for klucz in ("ikss_ka", "ib_ka", "ib_machines_ka"):
+        assert klucz in klucze_r
+        assert klucze_r[klucz].value == klucze_p[klucz].value
+    assert klucze_r["ib_ka"].value < klucze_r["ikss_ka"].value
+    assert any("wartością roboczą" in w for w in roboczy.proof_sc3f.summary.warnings)
+    assert not any("wartością roboczą" in w for w in podany.proof_sc3f.summary.warnings)
 
 
 def test_sc3f_pack_is_deterministic():

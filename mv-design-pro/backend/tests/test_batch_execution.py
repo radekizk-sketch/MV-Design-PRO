@@ -7,10 +7,12 @@ Kontrakt HTTP + determinizm + iloczyn cech:
 - predykaty parami: odcisk treści scenariusza przypięty przy tworzeniu serii
   i weryfikowany przy wykonaniu (zmiana/usunięcie scenariusza po utworzeniu
   serii = uczciwa odmowa TEJ pozycji, reszta próbowana niezależnie),
-- ta sama brama uprawnień, co pojedynczy bieg (SC_2F bez Z2 → FAILED),
+- ta sama brama uprawnień, co pojedynczy bieg (SC_1F bez Z0 w modelu → FAILED; dawna
+  blokada „SC_2F bez Z2” była fantomem i zniknęła w partii integracji 10 — Z2 = Z1
+  pochodzi z modelu sieci, więc bieg 2F się liczy),
 - jedno źródło wejścia solvera (`solver_input_for_scenario`) dla ścieżki
   pojedynczego biegu i serii, z naprawą klasy: konfiguracja scenariusza
-  (`c_factor`, `thermal_time_seconds`) na WIERZCHU opcji biegu,
+  (`scenario`, `thermal_time_seconds`) na WIERZCHU opcji biegu,
 - TRWAŁOŚĆ: seria przetrwa symulowany restart procesu backendu (rejestr
   `run_batches`, R2 — nie ginie z procesem, jak dawne trzy słowniki w pamięci),
 - WYKONANIE CIĄGŁE: awaria jednej pozycji NIE zatrzymuje pozostałych (status
@@ -220,7 +222,7 @@ def _create_scenario(
     name: str = "Zwarcie testowe",
     fault_type: str = "SC_3F",
     element_ref: str = "bus-1",
-    c_factor: float = 1.1,
+    scenariusz: str = "MAX",
 ) -> dict:
     response = client.post(
         f"{BASE_URL}/study-cases/{case_id}/fault-scenarios",
@@ -233,7 +235,7 @@ def _create_scenario(
                 "position": None,
             },
             "config": {
-                "c_factor": c_factor,
+                "scenariusz": scenariusz,
                 "thermal_time_seconds": 1.0,
                 "include_branch_contributions": False,
             },
@@ -363,7 +365,7 @@ class TestCreateBatch:
             json={"scenario_ids": [s_obcy["scenario_id"]]},
         )
         assert response.status_code == 400
-        assert "nie należy do przypadku" in response.json()["detail"]
+        assert "nie należy do wskazanego przypadku" in response.json()["detail"]
 
     def test_mieszane_typy_analizy_400(self):
         case_id = _nowy_przypadek()
@@ -518,15 +520,17 @@ class TestExecuteBatch:
             assert run.options["location"]["element_ref"] == scenariusz_elementu[scenario_id]
 
     def test_brama_uprawnien_jak_pojedynczy_bieg(self):
-        """SC_2F bez danych Z2 → seria FAILED (jedyna pozycja) z polskim
-        komunikatem blokady."""
+        """SC_1F bez składowej zerowej Z0 w modelu → seria FAILED (jedyna pozycja)
+        z polskim komunikatem blokady — ta sama brama (`ocen_model_biegu`), co pojedynczy
+        bieg. Partia integracji 10 skasowała fantomową blokadę „SC_2F bez Z2" (Z2 = Z1
+        z modelu), więc nośnikiem cechy „brama blokuje” jest zwarcie doziemne bez Z0."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
-        s2f = _create_scenario(case_id, name="2F", fault_type="SC_2F")
+        s1f = _create_scenario(case_id, name="1F", fault_type="SC_1F")
 
         batch = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
-            json={"scenario_ids": [s2f["scenario_id"]]},
+            json={"scenario_ids": [s1f["scenario_id"]]},
         ).json()
         done = wykonaj_serie(client, batch["batch_id"]).json()
 
@@ -620,8 +624,8 @@ class TestExecuteBatch:
         testu, gdzie jedna pozycja się powiodła)."""
         case_id = _nowy_przypadek()
         _seed_valid_enm(case_id)
-        s1 = _create_scenario(case_id, name="A", fault_type="SC_2F", element_ref="bus-main")
-        s2 = _create_scenario(case_id, name="B", fault_type="SC_2F", element_ref="bus-1")
+        s1 = _create_scenario(case_id, name="A", fault_type="SC_1F", element_ref="bus-main")
+        s2 = _create_scenario(case_id, name="B", fault_type="SC_1F", element_ref="bus-1")
 
         batch = client.post(
             f"{BASE_URL}/study-cases/{case_id}/batches",
@@ -873,7 +877,7 @@ class TestSwiezoscPerPozycja:
 
 class TestSolverInputJednoZrodlo:
     def test_konfiguracja_scenariusza_na_wierzchu_opcji(self):
-        """Naprawa klasy: `c_factor`/`thermal_time_seconds` scenariusza muszą
+        """Naprawa klasy: przełącznik `scenario`/`thermal_time_seconds` scenariusza muszą
         trafiać na WIERZCH opcji biegu (wykonawca kanoniczny czyta z wierzchu;
         dotąd wartości zagnieżdżone pod `config` były cicho ignorowane)."""
         from application.fault_scenario_service import solver_input_for_scenario
@@ -889,12 +893,12 @@ class TestSolverInputJednoZrodlo:
             name="Pin konfiguracji",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="bus-x", location_type="BUS"),
-            config=ShortCircuitConfig(c_factor=1.05, thermal_time_seconds=0.5),
+            config=ShortCircuitConfig(scenariusz="MIN", thermal_time_seconds=0.5),
         )
         options = solver_input_for_scenario(scenario)
-        assert options["c_factor"] == 1.05
+        assert options["scenario"] == "min" and "c_factor" not in options
         assert options["thermal_time_seconds"] == 0.5
-        assert options["config"]["c_factor"] == 1.05
+        assert options["config"]["scenariusz"] == "MIN"
         assert options["fault_type"] == "SC_3F"
         assert options["location"]["element_ref"] == "bus-x"
 

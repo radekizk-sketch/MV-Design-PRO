@@ -7,8 +7,8 @@ normatywne (G-D3/G-D4). Werdykt 3-STANOWY (§0.3 karty P0.6): spełnia / nie
 spełnia / NIEROZSTRZYGALNE — trzeci stan jest OBOWIĄZKOWY dla dowolnego
 aparatu bez wystarczających danych — NIGDY „spełnia" bez dowodu liczbowego.
 
-Zakres (§0.3): wyłącznie TN (fault_loop solver nie obsługuje TT/IT — MVP
-scope, ``fault_loop_iec60364.py``). Ia liczone WYŁĄCZNIE z gwarantowanej
+Zakres (§0.3): układ TN (pętla L-PE/L-PEN); układy TT/IT ocenia ``werdykt_tt_it``
+(karta W5-E-TTIT) na kontrakcie werdyktu wyjaśnialnego. Ia liczone WYŁĄCZNIE z gwarantowanej
 górnej granicy pasma magnetycznego MCB (IEC 60898-1, G-D4) — dolna granica
 NIE jest gwarancją zadziałania.
 
@@ -37,7 +37,7 @@ uzupełnienia rejestru (mechanizm gotowy, zero fabrykacji tymczasem).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
@@ -47,6 +47,8 @@ from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
     pasmo_dla_u0,
 )
 from network_model.catalog.lv_mcb_bands_iec60898 import ia_gwarantowane_a
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.solvers.fault_loop_iec60364 import FaultLoopResult
 from network_model.solvers.protection_lv_curves import (
     FUSE_GG_BRAMKA_T_WYMAGANY_STATUS_PL,
     FUSE_GG_GATE_SOURCE_PL,
@@ -54,6 +56,7 @@ from network_model.solvers.protection_lv_curves import (
     bramka_t_wymagany_gg_a,
     compute_fuse_gg_gate,
 )
+from werdykt import DanaPrzyjeta, format_liczba
 
 # Próg prądu znamionowego obwodu odbiorczego wg §411.3.2.2 normy — karta P0.6
 # upraszcza do JEDNEGO progu 63 A (patrz docstring
@@ -64,6 +67,23 @@ from network_model.solvers.protection_lv_curves import (
 PROG_PRADU_OBWODU_ODBIORCZEGO_A = 63.0
 
 _TYPY_APARATU_DOZWOLONE = ("MCB", "WKLADKA_GG", "MCCB")
+
+
+def rodzaj_obwodu_dla_aparatu(in_a: float | None, rodzaj_jawny: str | None) -> str:
+    """Rodzaj obwodu (odbiorczy/rozdzielczy) — JEDEN predykat dla werdyktu TN i TT/IT.
+
+    Jawnie podany rodzaj wygrywa; bez niego próg ``PROG_PRADU_OBWODU_ODBIORCZEGO_A`` na prądzie
+    znamionowym aparatu (uproszczenie karty P0.6, patrz komentarz stałej); aparat bez In =
+    obwód rozdzielczy (dłuższy czas — zachowanie zastane werdyktu TN, wołający TT/IT nazywa
+    brak In w śladzie).
+    """
+    if rodzaj_jawny is not None:
+        return rodzaj_jawny
+    return (
+        "odbiorczy"
+        if (in_a is not None and in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_A)
+        else "rozdzielczy"
+    )
 
 
 class SwzStatus(StrEnum):
@@ -111,9 +131,12 @@ class SwzResult:
     rodzaj_obwodu: str
     pasmo_u0: str
     white_box_trace: tuple[dict[str, Any], ...]
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte, na których stoi Ik1_min (c pętli z
+    #: wartości roboczej tolerancji sieci nN) — addytywnie, w odpowiedzi WYŁĄCZNIE gdy są.
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        wynik: dict[str, Any] = {
             "status": self.status.value,
             "przyczyna_pl": self.przyczyna_pl,
             "ik1_min_a": self.ik1_min_a,
@@ -124,6 +147,52 @@ class SwzResult:
             "pasmo_u0": self.pasmo_u0,
             "white_box_trace": list(self.white_box_trace),
         }
+        if self.dane_przyjete:
+            wynik["status_danych"] = "UNVALIDATED_INPUT"
+            wynik["dane_przyjete"] = [d.model_dump(mode="json") for d in self.dane_przyjete]
+        return wynik
+
+
+def z_danymi_przyjetymi(wynik: SwzResult, dane: tuple[DanaPrzyjeta, ...]) -> SwzResult:
+    """Werdykt SWZ na danych przyjętych: lista danych i zdanie przyczyny je nazywa.
+
+    Status zostaje wynikiem liczb (zasada nr 4 — brak deklaracji nie blokuje oceny), ale
+    przyczyna mówi wprost, że Ik1_min stoi na wartości roboczej (brak danej ≠ spełnia).
+    """
+    if not dane:
+        return wynik
+    nazwy = "; ".join(
+        (
+            f"{d.nazwa_pl} {format_liczba(d.wartosc.wartosc)} {d.wartosc.jednostka}"
+            if d.wartosc is not None
+            else d.nazwa_pl
+        )
+        for d in dane
+    )
+    return replace(
+        wynik,
+        przyczyna_pl=(
+            f"{wynik.przyczyna_pl} Ik1_min liczony z daną przyjętą (wartość robocza): {nazwy} — "
+            "ocena na danej przyjętej, nie potwierdzony dowód zgodności."
+        ),
+        dane_przyjete=wynik.dane_przyjete + dane,
+    )
+
+
+def dane_przyjete_petli(wynik: FaultLoopResult, punkt_pl: str) -> tuple[DanaPrzyjeta, ...]:
+    """Dane przyjęte prądu pętli: c pętli z wartości roboczej tolerancji sieci nN (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA). JEDNO tłumaczenie znacznika wyniku pętli dla werdyktów
+    SWZ TN, TT/IT, doboru aparatu nN, arkusza obwodów i dowodu obwodu nN."""
+    return dane_przyjete_znacznika_petli(wynik.tolerancja_nn_robocza, punkt_pl)
+
+
+def dane_przyjete_znacznika_petli(robocza: bool, punkt_pl: str) -> tuple[DanaPrzyjeta, ...]:
+    """To samo tłumaczenie dla wyniku pętli już zserializowanego (``FaultLoopResult.to_dict``
+    niesie ``tolerancja_nn_robocza`` wyłącznie przy wartości roboczej) — arkusz obwodów nN
+    czyta pętlę doziemną TT/IT z widoku SWZ, nie z obiektu wyniku."""
+    if not robocza:
+        return ()
+    return (dana_przyjeta_tolerancji_nn(miejsce_pl=f"pętla zwarcia w punkcie „{punkt_pl}”"),)
 
 
 def ocen_swz(
@@ -132,8 +201,13 @@ def ocen_swz(
     u0_v: float,
     aparat: AparatZabezpieczajacy,
     rodzaj_obwodu: str | None = None,
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = (),
 ) -> SwzResult:
     """Werdykt 3-stanowy SWZ dla obwodu w układzie TN (IEC 60364-4-41).
+
+    ``dane_przyjete`` — dane, na których stoi ``ik1_min_a`` (``dane_przyjete_petli``, karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA): KAŻDY wynik (także nierozstrzygalny) niesie listę i zdanie
+    przyczyny (``z_danymi_przyjetymi``).
 
     Args:
         ik1_min_a: Prąd zwarcia jednofazowego minimalny (Ik1_min) w punkcie
@@ -162,14 +236,7 @@ def ocen_swz(
     trace: list[dict[str, Any]] = []
     pasmo = pasmo_dla_u0(u0_v)
 
-    if rodzaj_obwodu is None:
-        rodzaj = (
-            "odbiorczy"
-            if (aparat.in_a is not None and aparat.in_a <= PROG_PRADU_OBWODU_ODBIORCZEGO_A)
-            else "rozdzielczy"
-        )
-    else:
-        rodzaj = rodzaj_obwodu
+    rodzaj = rodzaj_obwodu_dla_aparatu(aparat.in_a, rodzaj_obwodu)
 
     wpis_czasu = TABLICA_TN_ODBIORCZE[pasmo] if rodzaj == "odbiorczy" else CZAS_TN_ROZDZIELCZY
     t_wymagany = wpis_czasu.czas_s
@@ -195,19 +262,22 @@ def ocen_swz(
                     "result": "NIEROZSTRZYGALNE",
                 }
             )
-            return SwzResult(
-                status=SwzStatus.NIEROZSTRZYGALNE,
-                przyczyna_pl=(
-                    "Wkładka topikowa gG bez prądu znamionowego In — bramki I-t (G-D2, "
-                    "IEC 60269-1) nie do wyznaczenia bez In. Werdykt SWZ NIEROZSTRZYGALNY."
+            return z_danymi_przyjetymi(
+                SwzResult(
+                    status=SwzStatus.NIEROZSTRZYGALNE,
+                    przyczyna_pl=(
+                        "Wkładka topikowa gG bez prądu znamionowego In — bramki I-t (G-D2, "
+                        "IEC 60269-1) nie do wyznaczenia bez In. Werdykt SWZ NIEROZSTRZYGALNY."
+                    ),
+                    ik1_min_a=ik1_min_a,
+                    ia_wymagane_a=None,
+                    t_wymagany_s=t_wymagany,
+                    margines=None,
+                    rodzaj_obwodu=rodzaj,
+                    pasmo_u0=pasmo,
+                    white_box_trace=tuple(trace),
                 ),
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=None,
-                t_wymagany_s=t_wymagany,
-                margines=None,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
+                dane_przyjete,
             )
 
         if aparat.in_a <= 16.0:
@@ -219,22 +289,25 @@ def ocen_swz(
                     "result": "NIEROZSTRZYGALNE",
                 }
             )
-            return SwzResult(
-                status=SwzStatus.NIEROZSTRZYGALNE,
-                przyczyna_pl=(
-                    f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
-                    "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16 A różnią się od "
-                    "In>16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
-                    "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`). "
-                    "Werdykt SWZ NIEROZSTRZYGALNY, nie fabrykacja mnożnika."
+            return z_danymi_przyjetymi(
+                SwzResult(
+                    status=SwzStatus.NIEROZSTRZYGALNE,
+                    przyczyna_pl=(
+                        f"Wkładka topikowa gG In={aparat.in_a:g} A <= 16 A — poza zweryfikowanym "
+                        "zakresem G-D2 (mnożniki bramek Inf/If dla In<=16 A różnią się od "
+                        "In>16 A wg IEC 60269-1 i nie mają w tej karcie podwójnej weryfikacji "
+                        "źródłowej — patrz `protection_lv_curves._czas_umowny_fuse_gg_s`). "
+                        "Werdykt SWZ NIEROZSTRZYGALNY, nie fabrykacja mnożnika."
+                    ),
+                    ik1_min_a=ik1_min_a,
+                    ia_wymagane_a=None,
+                    t_wymagany_s=t_wymagany,
+                    margines=None,
+                    rodzaj_obwodu=rodzaj,
+                    pasmo_u0=pasmo,
+                    white_box_trace=tuple(trace),
                 ),
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=None,
-                t_wymagany_s=t_wymagany,
-                margines=None,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
+                dane_przyjete,
             )
 
         # Karta D2 (nN, „runda 8"): bramki konwencjonalne Inf/If (G-D2,
@@ -283,16 +356,19 @@ def ocen_swz(
                 f"stopi się w krótszym t_wymagany={t_wymagany:g} s SWZ ({rodzaj}, pasmo U0 "
                 f"{pasmo}) — charakterystyka t-I gG jest monotoniczna. NIE SPEŁNIA."
             )
-            return SwzResult(
-                status=SwzStatus.NIE_SPELNIA,
-                przyczyna_pl=przyczyna,
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=bramka_konwencjonalna.inf_a,
-                t_wymagany_s=t_wymagany,
-                margines=margines,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
+            return z_danymi_przyjetymi(
+                SwzResult(
+                    status=SwzStatus.NIE_SPELNIA,
+                    przyczyna_pl=przyczyna,
+                    ik1_min_a=ik1_min_a,
+                    ia_wymagane_a=bramka_konwencjonalna.inf_a,
+                    t_wymagany_s=t_wymagany,
+                    margines=margines,
+                    rodzaj_obwodu=rodzaj,
+                    pasmo_u0=pasmo,
+                    white_box_trace=tuple(trace),
+                ),
+                dane_przyjete,
             )
 
         # §0 pkt 1b/1c karty D2: „spełnia" wymaga bramki I-t PRZY t_wymagany
@@ -333,16 +409,19 @@ def ocen_swz(
                 f"stopienie w t_wymagany={t_wymagany:g} s ({rodzaj}, pasmo U0 {pasmo}). "
                 "SPEŁNIA."
             )
-            return SwzResult(
-                status=SwzStatus.SPELNIA,
-                przyczyna_pl=przyczyna,
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=bramka_t_wym_a,
-                t_wymagany_s=t_wymagany,
-                margines=margines,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
+            return z_danymi_przyjetymi(
+                SwzResult(
+                    status=SwzStatus.SPELNIA,
+                    przyczyna_pl=przyczyna,
+                    ik1_min_a=ik1_min_a,
+                    ia_wymagane_a=bramka_t_wym_a,
+                    t_wymagany_s=t_wymagany,
+                    margines=margines,
+                    rodzaj_obwodu=rodzaj,
+                    pasmo_u0=pasmo,
+                    white_box_trace=tuple(trace),
+                ),
+                dane_przyjete,
             )
 
         if bramka_t_wym_a is None:
@@ -377,16 +456,19 @@ def ocen_swz(
                 "result": SwzStatus.NIEROZSTRZYGALNE.value,
             }
         )
-        return SwzResult(
-            status=SwzStatus.NIEROZSTRZYGALNE,
-            przyczyna_pl=przyczyna,
-            ik1_min_a=ik1_min_a,
-            ia_wymagane_a=None,
-            t_wymagany_s=t_wymagany,
-            margines=None,
-            rodzaj_obwodu=rodzaj,
-            pasmo_u0=pasmo,
-            white_box_trace=tuple(trace),
+        return z_danymi_przyjetymi(
+            SwzResult(
+                status=SwzStatus.NIEROZSTRZYGALNE,
+                przyczyna_pl=przyczyna,
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=None,
+                t_wymagany_s=t_wymagany,
+                margines=None,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
+            ),
+            dane_przyjete,
         )
 
     if aparat.typ == "MCCB":
@@ -398,19 +480,22 @@ def ocen_swz(
                     "result": "NIEROZSTRZYGALNE",
                 }
             )
-            return SwzResult(
-                status=SwzStatus.NIEROZSTRZYGALNE,
-                przyczyna_pl=(
-                    "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
-                    "zwarciowej Ii w katalogu — Ia nie do wyznaczenia bez fabrykacji danych."
+            return z_danymi_przyjetymi(
+                SwzResult(
+                    status=SwzStatus.NIEROZSTRZYGALNE,
+                    przyczyna_pl=(
+                        "Wyłącznik z wyzwalaczem elektronicznym (MCCB) bez rozwiązanej nastawy "
+                        "zwarciowej Ii w katalogu — Ia nie do wyznaczenia bez fabrykacji danych."
+                    ),
+                    ik1_min_a=ik1_min_a,
+                    ia_wymagane_a=None,
+                    t_wymagany_s=t_wymagany,
+                    margines=None,
+                    rodzaj_obwodu=rodzaj,
+                    pasmo_u0=pasmo,
+                    white_box_trace=tuple(trace),
                 ),
-                ik1_min_a=ik1_min_a,
-                ia_wymagane_a=None,
-                t_wymagany_s=t_wymagany,
-                margines=None,
-                rodzaj_obwodu=rodzaj,
-                pasmo_u0=pasmo,
-                white_box_trace=tuple(trace),
+                dane_przyjete,
             )
 
         ia = aparat.ii_a
@@ -453,16 +538,19 @@ def ocen_swz(
             )
         )
 
-        return SwzResult(
-            status=SwzStatus.SPELNIA if spelnia else SwzStatus.NIE_SPELNIA,
-            przyczyna_pl=przyczyna,
-            ik1_min_a=ik1_min_a,
-            ia_wymagane_a=ia,
-            t_wymagany_s=t_wymagany,
-            margines=margines,
-            rodzaj_obwodu=rodzaj,
-            pasmo_u0=pasmo,
-            white_box_trace=tuple(trace),
+        return z_danymi_przyjetymi(
+            SwzResult(
+                status=SwzStatus.SPELNIA if spelnia else SwzStatus.NIE_SPELNIA,
+                przyczyna_pl=przyczyna,
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=ia,
+                t_wymagany_s=t_wymagany,
+                margines=margines,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
+            ),
+            dane_przyjete,
         )
 
     if aparat.typ != "MCB":
@@ -474,20 +562,23 @@ def ocen_swz(
                 "result": "NIEROZSTRZYGALNE",
             }
         )
-        return SwzResult(
-            status=SwzStatus.NIEROZSTRZYGALNE,
-            przyczyna_pl=(
-                f"Typ aparatu '{aparat.typ}' nieobsłużony w werdykcie SWZ karty P0.6 "
-                f"(obsługiwane: {', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu Ia, "
-                "nie fabrykacja."
+        return z_danymi_przyjetymi(
+            SwzResult(
+                status=SwzStatus.NIEROZSTRZYGALNE,
+                przyczyna_pl=(
+                    f"Typ aparatu '{aparat.typ}' nieobsłużony w werdykcie SWZ karty P0.6 "
+                    f"(obsługiwane: {', '.join(_TYPY_APARATU_DOZWOLONE)}) — brak modelu Ia, "
+                    "nie fabrykacja."
+                ),
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=None,
+                t_wymagany_s=t_wymagany,
+                margines=None,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
             ),
-            ik1_min_a=ik1_min_a,
-            ia_wymagane_a=None,
-            t_wymagany_s=t_wymagany,
-            margines=None,
-            rodzaj_obwodu=rodzaj,
-            pasmo_u0=pasmo,
-            white_box_trace=tuple(trace),
+            dane_przyjete,
         )
 
     if aparat.in_a is None or aparat.klasa_mcb is None:
@@ -499,19 +590,22 @@ def ocen_swz(
                 "result": "NIEROZSTRZYGALNE",
             }
         )
-        return SwzResult(
-            status=SwzStatus.NIEROZSTRZYGALNE,
-            przyczyna_pl=(
-                "MCB bez kompletnych danych (In i/lub klasa B/C/D) — Ia nie do "
-                "wyznaczenia bez fabrykacji."
+        return z_danymi_przyjetymi(
+            SwzResult(
+                status=SwzStatus.NIEROZSTRZYGALNE,
+                przyczyna_pl=(
+                    "MCB bez kompletnych danych (In i/lub klasa B/C/D) — Ia nie do "
+                    "wyznaczenia bez fabrykacji."
+                ),
+                ik1_min_a=ik1_min_a,
+                ia_wymagane_a=None,
+                t_wymagany_s=t_wymagany,
+                margines=None,
+                rodzaj_obwodu=rodzaj,
+                pasmo_u0=pasmo,
+                white_box_trace=tuple(trace),
             ),
-            ik1_min_a=ik1_min_a,
-            ia_wymagane_a=None,
-            t_wymagany_s=t_wymagany,
-            margines=None,
-            rodzaj_obwodu=rodzaj,
-            pasmo_u0=pasmo,
-            white_box_trace=tuple(trace),
+            dane_przyjete,
         )
 
     ia = ia_gwarantowane_a(in_a=aparat.in_a, klasa=aparat.klasa_mcb)
@@ -555,14 +649,17 @@ def ocen_swz(
         )
     )
 
-    return SwzResult(
-        status=SwzStatus.SPELNIA if spelnia else SwzStatus.NIE_SPELNIA,
-        przyczyna_pl=przyczyna,
-        ik1_min_a=ik1_min_a,
-        ia_wymagane_a=ia,
-        t_wymagany_s=t_wymagany,
-        margines=margines,
-        rodzaj_obwodu=rodzaj,
-        pasmo_u0=pasmo,
-        white_box_trace=tuple(trace),
+    return z_danymi_przyjetymi(
+        SwzResult(
+            status=SwzStatus.SPELNIA if spelnia else SwzStatus.NIE_SPELNIA,
+            przyczyna_pl=przyczyna,
+            ik1_min_a=ik1_min_a,
+            ia_wymagane_a=ia,
+            t_wymagany_s=t_wymagany,
+            margines=margines,
+            rodzaj_obwodu=rodzaj,
+            pasmo_u0=pasmo,
+            white_box_trace=tuple(trace),
+        ),
+        dane_przyjete,
     )

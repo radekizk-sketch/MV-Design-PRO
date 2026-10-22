@@ -13,7 +13,47 @@
       "ith_a": 5612.848,
       "sk_mva": 260.842,
       "rtol": 0.0001,
-      "note": "Zwarcie 3F na szynie 33 kV, c=1,10 (wyrocznia RECZNA, IEC 60909-0:2016). Z_Q = c*U_nQ^2/S''_kQ (eq. 6) = 1,1*110^2/4000 = 3.327500 ohm; X_Q = Z_Q/sqrt(1+(R/X)^2), R_Q = 0,1*X_Q; przeniesione na 33 kV *(33/110)^2 = 0,09: Z_Q' = (0.029799+j0.297989) ohm. Z_T = uk*U_n^2/S_rT = 4.356000 ohm (pk = 0 -> R_T = 0), K_T = 0,95*c_max/(1+0,6*x_T) = 0.9858490566 (x_T = uk = 0,10), Z_TK = j4.294358 ohm. Z_k = Z_Q'+Z_TK = (0.029799+j4.592347) ohm, |Z_k| = 4.592444 ohm. Ikss = c*U_n/(sqrt(3)*|Z_k|) [3F] = 4563.543 A. kappa = 1,02+0,98*exp(-3*R/X) = 1.981107 (R/X = 0.0064888), Ip = kappa*sqrt(2)*Ikss = 12785.719 A, m = 0.512733 (tk = 1 s), n = 1 (zwarcie odlegle od generatora), Ith = Ikss*sqrt(m+n) = 5612.848 A, Sk = sqrt(3)*U_n*Ikss = 260.842 MVA. Poprzedni baseline A1 (Z_Q bez c, tor kanoniczny sprzed K6): 4590,638 A."
+      "note": "Zwarcie 3F na szynie 33 kV, c=1,10 (wyrocznia RECZNA, IEC 60909-0:2016). Z_Q = c*U_nQ^2/S''_kQ (eq. 6) = 1,1*110^2/4000 = 3.327500 ohm; X_Q = Z_Q/sqrt(1+(R/X)^2), R_Q = 0,1*X_Q; przeniesione na 33 kV *(33/110)^2 = 0,09: Z_Q' = (0.029799+j0.297989) ohm. Z_T = uk*U_n^2/S_rT = 4.356000 ohm (pk = 0 -> R_T = 0), K_T = 0,95*c_max/(1+0,6*x_T) = 0.9858490566 (x_T = uk = 0,10), Z_TK = j4.294358 ohm. Z_k = Z_Q'+Z_TK = (0.029799+j4.592347) ohm, |Z_k| = 4.592444 ohm. Ikss = c*U_n/(sqrt(3)*|Z_k|) [3F] = 4563.543 A. kappa = 1,02+0,98*exp(-3*R/X) = 1.981107 (R/X = 0.0064888), Ip = kappa*sqrt(2)*Ikss = 12785.719 A, m = 0.512733 (tk = 1 s), n = 1 (zwarcie odlegle od generatora), Ith = Ikss*sqrt(m+n) = 5612.848 A, Sk = sqrt(3)*U_n*Ikss = 260.842 MVA. Poprzedni baseline A1 (Z_Q bez c, tor kanoniczny sprzed K6): 4590,638 A. I_b (IEC 60909-0:2016 rozdz. 9, zwarcie odlegle od generatora, brak maszyn wirujacych): I_b = Ikss = 4563.542872 A - niezalezne od t_b, wiec wyznaczone takze w biegu bez t_b; skladowa nieokresowa i_DC wymaga t_b i w tym wierszu (bieg bez t_b) nie wystepuje.",
+      "ib_a": 4563.542872
+    },
+    {
+      "fault_node_id": "BUS-MV",
+      "sc_type": "3F",
+      "ikss_a": 4563.543,
+      "ip_a": 12785.719,
+      "ith_a": 5612.848,
+      "sk_mva": 260.842,
+      "rtol": 0.0001,
+      "note": "Zwarcie 3F na szynie 33 kV z czasem wylaczenia t_b = 0.02 s (karta SC-IB-ITH-ZRODLA, wyrocznia RECZNA). Z_k = (0.029799+j4.592347) ohm, R/X = 0.006488811627577, Ikss = 4563.542872 A (jak wiersz bez t_b). I_b symetryczny (IEC 60909-0:2016 rozdz. 9, brak maszyn) = Ikss = 4563.542872 A - t_b go nie zmienia. i_DC(t_b) = sqrt(2)*Ikss*exp(-2*pi*f*t_b*R/X) (rozdz. 10) = sqrt(2)*4563.542872*exp(-2*pi*50*0.02*0.006488811627577) = 6453.824222*exp(-0.040770406) = 6195.990888 A. Dawna formula 'asymetryczna' sqrt(1+((kappa-1)*exp(-t_b/t_a))^2)*Ikss (t_a = X/(omega*R)) dawala dla t_b = 0,1 s 5844.684014 A jako I_b - to nie jest wielkosc normy (rozdz. 9 definiuje skladowa symetryczna).",
+      "tb_s": 0.02,
+      "ib_a": 4563.542872,
+      "i_dc_a": 6195.990888
+    },
+    {
+      "fault_node_id": "BUS-MV",
+      "sc_type": "3F",
+      "ikss_a": 4563.543,
+      "ip_a": 12785.719,
+      "ith_a": 5612.848,
+      "sk_mva": 260.842,
+      "rtol": 0.0001,
+      "note": "Zwarcie 3F na szynie 33 kV z czasem wylaczenia t_b = 0.1 s (karta SC-IB-ITH-ZRODLA, wyrocznia RECZNA). Z_k = (0.029799+j4.592347) ohm, R/X = 0.006488811627577, Ikss = 4563.542872 A (jak wiersz bez t_b). I_b symetryczny (IEC 60909-0:2016 rozdz. 9, brak maszyn) = Ikss = 4563.542872 A - t_b go nie zmienia. i_DC(t_b) = sqrt(2)*Ikss*exp(-2*pi*f*t_b*R/X) (rozdz. 10) = sqrt(2)*4563.542872*exp(-2*pi*50*0.1*0.006488811627577) = 6453.824222*exp(-0.203852029) = 5263.629609 A. Dawna formula 'asymetryczna' sqrt(1+((kappa-1)*exp(-t_b/t_a))^2)*Ikss (t_a = X/(omega*R)) dawala dla t_b = 0,1 s 5844.684014 A jako I_b - to nie jest wielkosc normy (rozdz. 9 definiuje skladowa symetryczna).",
+      "tb_s": 0.1,
+      "ib_a": 4563.542872,
+      "i_dc_a": 5263.629609
+    },
+    {
+      "fault_node_id": "BUS-MV",
+      "sc_type": "3F",
+      "ikss_a": 4563.543,
+      "ip_a": 12785.719,
+      "ith_a": 5612.848,
+      "sk_mva": 260.842,
+      "rtol": 0.0001,
+      "note": "Zwarcie 3F na szynie 33 kV z czasem wylaczenia t_b = 0.25 s (karta SC-IB-ITH-ZRODLA, wyrocznia RECZNA). Z_k = (0.029799+j4.592347) ohm, R/X = 0.006488811627577, Ikss = 4563.542872 A (jak wiersz bez t_b). I_b symetryczny (IEC 60909-0:2016 rozdz. 9, brak maszyn) = Ikss = 4563.542872 A - t_b go nie zmienia. i_DC(t_b) = sqrt(2)*Ikss*exp(-2*pi*f*t_b*R/X) (rozdz. 10) = sqrt(2)*4563.542872*exp(-2*pi*50*0.25*0.006488811627577) = 6453.824222*exp(-0.509630073) = 3876.926825 A. Dawna formula 'asymetryczna' sqrt(1+((kappa-1)*exp(-t_b/t_a))^2)*Ikss (t_a = X/(omega*R)) dawala dla t_b = 0,1 s 5844.684014 A jako I_b - to nie jest wielkosc normy (rozdz. 9 definiuje skladowa symetryczna).",
+      "tb_s": 0.25,
+      "ib_a": 4563.542872,
+      "i_dc_a": 3876.926825
     },
     {
       "fault_node_id": "BUS-MV",
@@ -23,7 +63,8 @@
       "ith_a": 4860.869,
       "sk_mva": 225.895,
       "rtol": 0.0001,
-      "note": "Zwarcie 2F na szynie 33 kV, c=1,10 (wyrocznia RECZNA, IEC 60909-0:2016). Z_Q = c*U_nQ^2/S''_kQ (eq. 6) = 1,1*110^2/4000 = 3.327500 ohm; X_Q = Z_Q/sqrt(1+(R/X)^2), R_Q = 0,1*X_Q; przeniesione na 33 kV *(33/110)^2 = 0,09: Z_Q' = (0.029799+j0.297989) ohm. Z_T = uk*U_n^2/S_rT = 4.356000 ohm (pk = 0 -> R_T = 0), K_T = 0,95*c_max/(1+0,6*x_T) = 0.9858490566 (x_T = uk = 0,10), Z_TK = j4.294358 ohm. Z_k = Z_Q'+Z_TK = (0.029799+j4.592347) ohm, |Z_k| = 4.592444 ohm, Z_k(2F) = Z_1+Z_2 = 2*Z_1. Ikss = c*U_n/(sqrt(3)*|Z_k|) -> dla 2F: c*U_n/|Z_1+Z_2| = 3952.144 A. kappa = 1,02+0,98*exp(-3*R/X) = 1.981107 (R/X = 0.0064888), Ip = kappa*sqrt(2)*Ikss = 11072.757 A, m = 0.512733 (tk = 1 s), n = 1 (zwarcie odlegle od generatora), Ith = Ikss*sqrt(m+n) = 4860.869 A, Sk = sqrt(3)*U_n*Ikss = 225.895 MVA. Poprzedni baseline A1 (Z_Q bez c, tor kanoniczny sprzed K6): 3975,609 A."
+      "note": "Zwarcie 2F na szynie 33 kV, c=1,10 (wyrocznia RECZNA, IEC 60909-0:2016). Z_Q = c*U_nQ^2/S''_kQ (eq. 6) = 1,1*110^2/4000 = 3.327500 ohm; X_Q = Z_Q/sqrt(1+(R/X)^2), R_Q = 0,1*X_Q; przeniesione na 33 kV *(33/110)^2 = 0,09: Z_Q' = (0.029799+j0.297989) ohm. Z_T = uk*U_n^2/S_rT = 4.356000 ohm (pk = 0 -> R_T = 0), K_T = 0,95*c_max/(1+0,6*x_T) = 0.9858490566 (x_T = uk = 0,10), Z_TK = j4.294358 ohm. Z_k = Z_Q'+Z_TK = (0.029799+j4.592347) ohm, |Z_k| = 4.592444 ohm, Z_k(2F) = Z_1+Z_2 = 2*Z_1. Ikss = c*U_n/(sqrt(3)*|Z_k|) -> dla 2F: c*U_n/|Z_1+Z_2| = 3952.144 A. kappa = 1,02+0,98*exp(-3*R/X) = 1.981107 (R/X = 0.0064888), Ip = kappa*sqrt(2)*Ikss = 11072.757 A, m = 0.512733 (tk = 1 s), n = 1 (zwarcie odlegle od generatora), Ith = Ikss*sqrt(m+n) = 4860.869 A, Sk = sqrt(3)*U_n*Ikss = 225.895 MVA. Poprzedni baseline A1 (Z_Q bez c, tor kanoniczny sprzed K6): 3975,609 A. I_b zwarcia niesymetrycznego = Ikss (IEC 60909-0:2016 rozdz. 9) = 3952.144 A.",
+      "ib_a": 3952.144
     }
   ],
   "dynamic_samples": []

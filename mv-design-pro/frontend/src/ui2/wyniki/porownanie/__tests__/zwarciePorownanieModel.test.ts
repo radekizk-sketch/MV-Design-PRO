@@ -194,9 +194,13 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
     expect(wiersze.map((w) => String(w.punkt.wartosc))).toEqual(['A', 'M', 'Z']);
   });
 
-  it('komplet kolumn: punkt + A/B/Δ dla Ik", ip, Ith, Sk + pełny bilans ekspercki (28 kolumn)', () => {
+  it('komplet kolumn: punkt + A/B/Δ dla Ik", ip, Ith, Sk + pełny bilans ekspercki + Ib/iDC/tb (37 kolumn)', () => {
     // 1 (punkt) + 4×3 (podstawowe) + 5×3 (bilans: Rk, Xk, |Zk|, X/R, I²t — karta S-C)
-    expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH).toHaveLength(28);
+    // + 3×3 (Ib, iDC(tb), tb — karta TB-WARTOSC-ROBOCZA)
+    expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH).toHaveLength(37);
+    expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH.map((k) => k.klucz)).toEqual(
+      expect.arrayContaining(['ibA', 'ibB', 'ibD', 'idcA', 'idcB', 'idcD', 'tbA', 'tbB', 'tbD']),
+    );
     expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH[0].klucz).toBe('punkt');
     expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH.map((k) => k.klucz)).toContain('ikssD');
     expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH.map((k) => k.klucz)).toContain('skD');
@@ -206,12 +210,12 @@ describe('zwarciePorownanieModel — tabela punktów (delty Z BACKENDU)', () => 
 
   it('kolumny pełnego bilansu są WYŁĄCZNIE eksperckie; podstawowe bez flagi', () => {
     const bilansowe = KOLUMNY_PUNKTOW_ZWARCIOWYCH.filter((k) =>
-      /^(rk|xk|zk|xr|i2t)[ABD]$/.test(k.klucz),
+      /^(rk|xk|zk|xr|i2t|ib|idc|tb)[ABD]$/.test(k.klucz),
     );
-    expect(bilansowe).toHaveLength(15);
+    expect(bilansowe).toHaveLength(24);
     for (const kol of bilansowe) expect(kol.tylkoEkspercki).toBe(true);
     const podstawowe = KOLUMNY_PUNKTOW_ZWARCIOWYCH.filter(
-      (k) => !/^(rk|xk|zk|xr|i2t)[ABD]$/.test(k.klucz),
+      (k) => !/^(rk|xk|zk|xr|i2t|ib|idc|tb)[ABD]$/.test(k.klucz),
     );
     for (const kol of podstawowe) expect(kol.tylkoEkspercki).toBeUndefined();
   });
@@ -268,5 +272,71 @@ describe('zwarciePorownanieModel — pełny bilans IEC 60909 (tryb ekspercki)', 
     expect(w.xrD.wartosc).toBe(SZ.kreska);
     expect(w.i2tD.wartosc).toBe(SZ.kreska);
     expect(w.rkA.dowodRef).toBeUndefined();
+  });
+});
+
+describe('zwarciePorownanieModel — Ib, iDC(tb) i tb punktu (karta TB-WARTOSC-ROBOCZA)', () => {
+  // Iloczyn cech: {t_b strony A: wartość robocza · projektant · brak (starszy wynik)} ×
+  // {t_b strony B: te same} — dopisek „wartość robocza" WYŁĄCZNIE przy fladze backendu
+  // danej strony; delty z backendu, prezentacja nie odejmuje.
+  const WARIANTY = {
+    robocza: { tb: 0.1, robocza: true, pochodzenie: 'PROPOZYCJA' as const },
+    projektant: { tb: 0.2, robocza: false, pochodzenie: 'PROJEKTANT' as const },
+    brak: null,
+  };
+  type Wariant = keyof typeof WARIANTY;
+  const KOMBINACJE: [Wariant, Wariant][] = [];
+  for (const a of Object.keys(WARIANTY) as Wariant[]) {
+    for (const b of Object.keys(WARIANTY) as Wariant[]) KOMBINACJE.push([a, b]);
+  }
+
+  it.each(KOMBINACJE)('t_b A=%s × t_b B=%s → komórki tb z dopiskiem tylko przy wartości roboczej', (wa, wb) => {
+    const a = WARIANTY[wa];
+    const b = WARIANTY[wb];
+    const w = wierszePunktow([
+      punktPorownania({
+        target_id: 'B1',
+        ...(a ? { ib_ka_a: 5, i_dc_ka_a: 2, tb_s_a: a.tb, tb_pochodzenie_a: a.pochodzenie, tb_wartosc_robocza_a: a.robocza } : {}),
+        ...(b ? { ib_ka_b: 4.5, i_dc_ka_b: 1, tb_s_b: b.tb, tb_pochodzenie_b: b.pochodzenie, tb_wartosc_robocza_b: b.robocza } : {}),
+        ...(a && b
+          ? {
+              delta_ib_ka: -0.5,
+              delta_ib_percent: -10,
+              delta_i_dc_ka: -1,
+              delta_i_dc_percent: -50,
+              delta_tb_s: b.tb - a.tb,
+            }
+          : {}),
+      }),
+    ])[0];
+    for (const [strona, wariant, kom] of [
+      ['A', a, w.tbA],
+      ['B', b, w.tbB],
+    ] as const) {
+      if (wariant === null) {
+        expect(kom.wartosc, strona).toBe(SZ.kreska);
+      } else {
+        const liczba = wariant.tb.toFixed(3).replace('.', ',');
+        expect(kom.wartosc, strona).toBe(wariant.robocza ? `${liczba}${SZ.tbRobocza}` : liczba);
+        expect(kom.sortKey, strona).toBe(wariant.tb);
+        expect(kom.dowodRef, strona).toBe(`${strona}:B1`);
+      }
+    }
+    if (a && b) {
+      expect(w.ibD.wartosc).toBe('-0,500 (-10,0%)');
+      expect(w.idcD.wartosc).toBe('-1,000 (-50,0%)');
+      expect(w.tbD.sortKey).toBe(b.tb - a.tb);
+    } else {
+      expect(w.ibD.wartosc).toBe(SZ.kreska);
+      expect(w.idcD.wartosc).toBe(SZ.kreska);
+      expect(w.tbD.wartosc).toBe(SZ.kreska);
+    }
+  });
+
+  it('flaga robocza bez wartości t_b (niespójna odpowiedź) → kreska, bez dopisku', () => {
+    const w = wierszePunktow([
+      punktPorownania({ target_id: 'B1', tb_wartosc_robocza_a: true }),
+    ])[0];
+    expect(w.tbA.wartosc).toBe(SZ.kreska);
   });
 });

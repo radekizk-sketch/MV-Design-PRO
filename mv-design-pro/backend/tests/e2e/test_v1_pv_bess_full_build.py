@@ -35,6 +35,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_sn_stacji
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -118,8 +119,6 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert r.get("error") is None, f"KROK 1 (GPZ): {r.get('error')}"
@@ -159,6 +158,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "station_type": "B",
             "insert_at": {"value": 0.4},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-1"},
+            # Tolerancja sieci nN stacji (wiersz nN tabeli 1 IEC 60909-0).
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": ["IN", "OUT", "FEEDER"],
             "transformer": {
                 "create": True,
@@ -186,6 +187,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-2"},
+            # Tolerancja sieci nN stacji (wiersz nN tabeli 1 IEC 60909-0).
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": ["IN", "OUT", "FEEDER"],
             # Transformator 2,5 MVA: stacja #2 przyjmuje turbinę wiatrową nN
             # (najmniejsza pozycja katalogowa to 2 MW / 2,2 MVA). Wcześniej test
@@ -509,7 +512,7 @@ class TestPvBessFullBuild:
                 node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
-                tb_s=tb_s,
+                czas_tb=czas_tb_projektanta(tb_s),
             )
             assert sc.ikss_a > 0, f"ikss=0 na {node_id} (oczekiwano > 0)"
 
@@ -540,8 +543,6 @@ def test_converter_source_requires_explicit_connection_variant(technology: str) 
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert r.get("error") is None, f"GPZ: {r.get('error')}"

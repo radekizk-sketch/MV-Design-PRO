@@ -98,8 +98,6 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
             "voltage_kv": 15.0,
             "sk3_mva": 250.0,
             "catalog_ref": CATALOG_ZRODLO_250,
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     for _ in range(2):
@@ -125,6 +123,10 @@ def _siec_referencyjna(nazwa: str, *, liczba_odplywow_nn: int = 3) -> dict[str, 
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,
             "nn_block": {"outgoing_feeders_nn_count": liczba_odplywow_nn},
+            # Tolerancja sieci nN (+6 %, wiersz nN tabeli 1 IEC 60909-0) — bez niej zwarcie
+            # w sieci z wyspą nN liczy się na wartości roboczej +10 % (założenie biegu
+            # `fault.c_tolerancja_nn_robocza`); test deklaruje klasę jawnie.
+            "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
         },
     )
 

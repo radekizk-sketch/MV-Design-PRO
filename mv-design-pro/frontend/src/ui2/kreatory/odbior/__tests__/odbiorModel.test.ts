@@ -173,6 +173,25 @@ describe('odbiorModel — payload', () => {
     expect(payload).toHaveProperty('reactive_power_kvar', 25);
   });
 
+  it('uziom instalacji R_A (W5-E-TTIT): w payloadzie TYLKO gdy podany, odbiór bez R_A = payload jak dotąd', () => {
+    const bez = zbudujPayload(dane(), { feeder_ref: 'f1' });
+    expect(bez).not.toHaveProperty('earth_electrode_r_ohm');
+    const z = zbudujPayload(dane({ earth_electrode_r_ohm: 25 }), { feeder_ref: 'f1' });
+    expect(z).toHaveProperty('earth_electrode_r_ohm', 25);
+  });
+
+  it('uziom instalacji R_A: wartość niedodatnia blokuje zapis z błędem przy polu, pusta nie blokuje', () => {
+    expect(walidujFormularz(dane({ catalog_ref: 'L1', earth_electrode_r_ohm: 0 })).map((b) => b.field)).toContain(
+      'earth_electrode_r_ohm',
+    );
+    expect(walidujFormularz(dane({ catalog_ref: 'L1', earth_electrode_r_ohm: -3 })).map((b) => b.field)).toContain(
+      'earth_electrode_r_ohm',
+    );
+    expect(walidujFormularz(dane({ catalog_ref: 'L1', earth_electrode_r_ohm: null })).map((b) => b.field)).not.toContain(
+      'earth_electrode_r_ohm',
+    );
+  });
+
   it('dołącza catalog_binding gdy wybrano typ', () => {
     const payload = zbudujPayload(dane({ catalog_ref: 'L1' }), { feeder_ref: 'f1' });
     expect(payload.catalog_binding).toMatchObject({ catalog_namespace: 'OBCIAZENIE', catalog_item_id: 'L1' });

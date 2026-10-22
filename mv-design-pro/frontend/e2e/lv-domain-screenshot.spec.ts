@@ -290,6 +290,16 @@ const KADRY: readonly Kadr[] = [
     },
   },
   {
+    plik: '19_swz_tt',
+    scenariusz: '19_swz_tt',
+    opis: 'SWZ w układzie TT: panel odpływu z werdyktem wyjaśnialnym (RCD, R_A, tabela czasów, limit bez podstawy)',
+    query: 'overlay=swz&wybor=QF-01',
+    asercje: async (page) => {
+      await widoczny(page, 'lv-domain-feeder-werdykt-tt-it');
+      await widoczny(page, 'lv-domain-feeder-werdykt-tt-it-limit');
+    },
+  },
+  {
     plik: '19_mobile_overview',
     scenariusz: '15_many_feeders',
     opis: 'przegląd (poziom 0) na wąskim ekranie — wersja mobilna',

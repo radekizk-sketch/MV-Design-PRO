@@ -176,7 +176,7 @@ At EVERY layer transition, missing data → FixAction (never default/fallback):
 | `sld/core/elementRef.ts` | ElementRefV1, ElementTypeV1, buildElementRefIndex |
 | `sld/core/readinessProfile.ts` | ReadinessProfileV1, ReadinessIssueV1, groupIssuesByArea |
 | `sld/core/resultJoin.ts` | ResultJoinV1, SldOverlayTokenV1, InspectorFactV1, joinResults |
-| `sld/core/fieldDeviceContracts.ts` | FieldDeviceFixCodes (28 codes) |
+| `sld/core/topologyInputReader.ts` | TopologyFixAction (komunikaty z nazwą elementu, identyfikator w `elementRef`; `FieldDeviceFixCodes` skasowane w partii integracji 10) |
 | `sld-overlay/overlayTypes.ts` | OverlayPayloadV1 (frontend mirror) |
 
 ## Invariants (BINDING)

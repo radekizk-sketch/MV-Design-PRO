@@ -5,10 +5,11 @@ from __future__ import annotations
 import logging
 import traceback
 
+from api.odmowa_http import OdmowaHttpError, pola_odmowy
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from network_model.brak_zasobu import BrakZasobuError
-from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
+from network_model.odmowa_danych import OdmowaDanychError
 
 logger = logging.getLogger("mv_design_pro")
 
@@ -56,13 +57,35 @@ def register_exception_handlers(app: FastAPI) -> None:
             "request_id": request_id,
             "error_type": "ValueError",
         }
-        # Karty W10-2a / OD-17a: odmowa nazwana niesie kod maszynowy w POLU (nie w zdaniu)
-        # i dane strukturalne — addytywnie obok `detail`.
-        if isinstance(exc, OdmowaNazwana):
-            content["kod"] = exc.kod
-            content["dane"] = dict(exc.dane)
+        # Karty W10-2a / OD-17a, partia integracji 10: pola strukturalne odmowy (`kod`,
+        # `dane`, `rekordy`) addytywnie obok `detail` — jedna funkcja dla obu dróg odmowy.
+        content.update(pola_odmowy(exc))
         return JSONResponse(
             status_code=422,
+            content=content,
+            headers={"X-Request-Id": request_id},
+        )
+
+    # Partia integracji 10: odmowa danych ze statusem innym niż 422 (409, 404, 400, 503)
+    # albo z prefiksem zdania — to samo ciało co wyżej, status z kontraktu routera.
+    @app.exception_handler(OdmowaHttpError)
+    async def odmowa_http_handler(request: Request, exc: OdmowaHttpError) -> JSONResponse:
+        request_id = getattr(request.state, "request_id", "unknown")
+        logger.warning(
+            "OdmowaHttpError rid=%s path=%s status=%s: %s",
+            request_id,
+            request.url.path,
+            exc.status_code,
+            exc.detail,
+        )
+        content: dict[str, object] = {
+            "detail": exc.detail,
+            "request_id": request_id,
+            "error_type": "ValueError",
+        }
+        content.update(pola_odmowy(exc.odmowa))
+        return JSONResponse(
+            status_code=exc.status_code,
             content=content,
             headers={"X-Request-Id": request_id},
         )

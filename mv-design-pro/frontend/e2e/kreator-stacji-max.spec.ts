@@ -98,6 +98,7 @@ type Snapshot = {
     ref_id: string;
     // W5-A: jedyne nośniki układu sieci nN i punktu neutralnego nN.
     lv_earthing_system?: string | null;
+    lv_voltage_tolerance?: 'PLUS_6' | 'PLUS_10' | null;
     lv_neutral?: { type: string; r_ohm?: number | null; x_ohm?: number | null } | null;
     tap_changer?: {
       regulation_type?: string;
@@ -212,8 +213,6 @@ async function zbudujMagistrale(request: APIRequestContext, caseId: string): Pro
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   for (const [idx, length] of [300, 250, 200].entries()) {
     op = await executeDomainOp(request, caseId, 'continue_trunk_segment_sn', {
@@ -425,6 +424,8 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   // waliduje backend); rezystor wymaga R_N — wpisujemy, żeby zapis nie był odmową.
   await przejdzDoKroku(page, 'Uziemienie i punkt neutralny');
   await page.getByTestId('mvd-kreator-stacja-uklad-nn').selectOption('TN-S');
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (wiersz nN tabeli 1).
+  await page.getByTestId('mvd-kreator-stacja-tolerancja-nn').selectOption('PLUS_6');
   await page.getByTestId('mvd-kreator-stacja-punkt-neutralny').selectOption('resistor_grounded');
   await page.getByTestId('mvd-kreator-stacja-rezystancja-uziemienia').fill('10');
   await przejdzDoKroku(page, 'Pomiar i zabezpieczenia pól');
@@ -522,6 +523,8 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   );
   expect(transformatorStacji, 'transformator stacji w modelu').toBeTruthy();
   expect(transformatorStacji?.lv_earthing_system).toBe('TN-S');
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN na transformatorze (jedyny nośnik).
+  expect(transformatorStacji?.lv_voltage_tolerance).toBe('PLUS_6');
   // Odpowiedź `/enm` serializuje pełny kontrakt `GroundingConfig` (składowa nieużywana = null).
   expect(transformatorStacji?.lv_neutral).toMatchObject({ type: 'resistor_grounded', r_ohm: 10 });
   expect(transformatorStacji?.lv_neutral?.x_ohm ?? null).toBeNull();

@@ -27,6 +27,7 @@ WERSJA_KATALOGU = "2024.1"
 APARAT_POLA_SN = "sw-cb-abb-vd4-17kv-630a"
 KABEL_SN = "cable-tfk-yakxs-3x120"
 ZRODLO_GPZ = "src-gpz-15kv-250mva-rx010"
+TRANSFORMATOR_WN_SN = "tr-wn-sn-110-15-25mva-yd11"
 TRANSFORMATOR_630 = "tr-sn-nn-15-04-630kva-dyn11"
 LINIA_SN = "line-base-al-st-70"
 ZKSN = "ZKSN-2P-630A"
@@ -101,7 +102,10 @@ class KlientBudowy:
                 "case_id": self.case_id,
                 "target_segment_id": segment_ref,
                 "insert_at_ratio": ratio,
-                "params_override": {},
+                # Tolerancja napięcia sieci nN stacji — dana projektanta z kreatora (blok
+                # `nn_earthing`, wiersz nN tabeli 1 IEC 60909-0); bez niej zwarcie w sieci nN
+                # liczy się na wartości roboczej +10 % (założenie `fault.c_tolerancja_nn_robocza`).
+                "params_override": {"nn_earthing": {"lv_voltage_tolerance": "PLUS_6"}},
                 "catalog_profile": None,
             },
         )
@@ -122,9 +126,28 @@ class KlientBudowy:
                 "voltage_kv": 15.0,
                 "sk3_mva": 250.0,
                 "rx_ratio": 0.1,
-                "hv_voltage_kv": 110.0,
-                "transformer_sn_mva": 25.0,
                 "catalog_binding": wiazanie("ZRODLO_SN", ZRODLO_GPZ),
+            },
+        )
+
+    def gpz_110kv(self, transformer_count: int, sections_count: int = 1) -> dict[str, Any]:
+        """GPZ z równoważnikiem sieci po stronie 110 kV (Sk″ = 3000 MVA, R/X = 0,1)
+        i `transformer_count` transformatorami 110/15 kV 25 MVA na wspólnej szynie 110 kV
+        — jedyny tryb, w którym transformatory 110/SN są elementami modelu (karta
+        GPZ-MODEL)."""
+        return self.operacja(
+            "add_grid_source_sn",
+            {
+                "voltage_kv": 15.0,
+                "manual_equivalent": {
+                    "short_circuit_input_side": "HV_110",
+                    "hv_voltage_kv": 110.0,
+                    "sk3_hv_mva": 3000.0,
+                    "rx_ratio": 0.1,
+                },
+                "sections_count": sections_count,
+                "transformer_count": transformer_count,
+                "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
             },
         )
 
@@ -160,7 +183,7 @@ class KlientBudowy:
                     "sn_voltage_kv": 15.0,
                     "nn_voltage_kv": 0.4,
                 },
-                "nn_earthing": {"lv_system": "TN-C-S"},
+                "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
                 "sn_fields": [
                     {"field_role": "LINIA_IN"},
                     {"field_role": "LINIA_OUT"},

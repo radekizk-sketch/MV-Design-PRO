@@ -107,8 +107,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
   let op: DomainOpResponse = {};
   for (const [idx, length] of [400, 350, 300, 250].entries()) {
@@ -125,6 +123,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
     expect(segmentRefs.length).toBeGreaterThan(0);
     op = await domainOp(request, caseId, 'insert_station_on_segment_sn', {
+      // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+      nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
       field_apparatus_catalog_ref: FIELD_APPARATUS_ID,
       segment_id: segmentRefs[segmentRefs.length - 1],
       station_type: 'B',

@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
+import { ETYKIETA_PL_TOLERANCJI_NN } from '../../../../types/uziemienie';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -20,7 +21,10 @@ let context: Record<string, unknown> = { element_ref: 'tr-1' };
 const snapshotState = {
   error: null as string | null,
   executeDomainOperation: executeDomainOperationMock,
-  snapshot: null as { generators: Record<string, unknown>[] } | null,
+  snapshot: null as {
+    generators?: Record<string, unknown>[];
+    branches?: Record<string, unknown>[];
+  } | null,
 };
 
 vi.mock('../../../../ui/app-state', () => ({
@@ -84,14 +88,33 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
-  it('obsługuje wiele parametrów z konwersją bool/null', async () => {
+  it('„nie" daje fałsz, a angielskie true/null zostają tekstem (słownik tylko polski)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorEdycjiParametrow />);
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'in_service');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'true');
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'nie');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-dodaj'));
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-1'), 'note');
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-1'), 'null');
+    await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'update_element_parameters',
+        expect.objectContaining({ parameters: { in_service: false, note: 'null' } }),
+      );
+    });
+  });
+
+  it('obsługuje wiele parametrów z konwersją tak-nie/brak', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorEdycjiParametrow />);
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'in_service');
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), 'tak');
+    await userEvent.click(screen.getByTestId('mvd-kreator-edycja-dodaj'));
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-1'), 'note');
+    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-1'), 'brak');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
 
     await waitFor(() => {
@@ -230,5 +253,171 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
       render(<KreatorEdycjiParametrow />);
       expect(screen.queryByTestId('mvd-kreator-edycja-dane-modulu')).toBeNull();
     });
+  });
+
+  // Zasada nr 4 (V12K-351): wartości projektanta aparatu SN — nośnik `overrides` gałęzi
+  // APARAT_SN. Iloczyn cech: {wartość nowa, wartość niezmieniona, wyczyszczenie} × {kontekst
+  // z polem, bez pola} × {gałąź APARAT_SN, inna gałąź}; podpowiedź z katalogu (karta /
+  // propozycja / brak) z odpowiedzi `GET /api/catalog/mv-apparatus-types`.
+  describe('wartości projektanta aparatu SN', () => {
+    const APARAT = {
+      ref_id: 'stn/x/sn_field_breaker/000',
+      type: 'switch',
+      catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
+      catalog_namespace: 'APARAT_SN',
+      parameter_source: 'OVERRIDE',
+      overrides: [{ key: 'i_th_ka', value: 16, reason: 'tabliczka aparatu istniejącego' }],
+    };
+    const POZYCJA = {
+      id: 'sw-cb-abb-vd4-17kv-630a',
+      name: 'ABB VD4 17.5 kV 630 A',
+      device_kind: 'WYLACZNIK',
+      u_n_kv: 17.5,
+      i_n_a: 630,
+      i_th_ka: 20,
+      i_th_duration_s: 1,
+      i_dyn_ka: null,
+      break_time_s: null,
+      wartosci_robocze: [
+        {
+          parametr: 'break_time_s', nazwa_pl: 'czas własny wyłączania wyłącznika', wartosc: 0.06,
+          jednostka: 's', rodzaj_zrodla: 'PROFIL_URZADZENIA', odniesienie: 'profil', uzasadnienie_pl: 'u',
+          wplyw_pl: 'w',
+        },
+        {
+          parametr: 'i_dyn_ka', nazwa_pl: 'prąd szczytowy wytrzymywany', wartosc: 50, jednostka: 'kA',
+          rodzaj_zrodla: 'NORMA', odniesienie: 'IEC 62271-1:2017 p. 5.7', uzasadnienie_pl: 'u', wplyw_pl: 'w',
+        },
+      ],
+    };
+    const A = 'mvd-kreator-edycja-aparat';
+
+    beforeEach(() => {
+      context = { element_ref: APARAT.ref_id };
+      snapshotState.snapshot = { branches: [APARAT] };
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input: RequestInfo | URL) =>
+          String(input).includes('/api/catalog/mv-apparatus-types')
+            ? new Response(JSON.stringify([POZYCJA]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+            : new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ),
+      );
+    });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    it('sekcja wypełniona z overrides; podpowiedź mówi, co obliczenie przyjmie bez wartości projektanta', async () => {
+      render(<KreatorEdycjiParametrow />);
+      expect(screen.getByTestId(`${A}-i_th_ka`)).toHaveValue('16');
+      expect(screen.getByTestId(`${A}-break_time_s`)).toHaveValue('');
+      const sekcja = screen.getByTestId(A);
+      await waitFor(() => expect(sekcja).toHaveTextContent('wartość robocza dla danych karty 0,06 s (profil typowy urządzenia)'));
+      expect(sekcja).toHaveTextContent('dana karty katalogowej 20 kA');
+      expect(sekcja).toHaveTextContent('dana karty katalogowej 1 s');
+      expect(sekcja).toHaveTextContent('wartość robocza dla danych karty 50 kA (norma)');
+      // Bez zmiany wartości aparatu zapis jest zablokowany (nic do zapisu).
+      expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
+    });
+
+    it('nowa wartość czasu własnego → lista overrides w kolejności rejestru; niezmieniona zachowuje uzasadnienie', async () => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.type(screen.getByTestId(`${A}-break_time_s`), '0,08');
+      await userEvent.type(screen.getByTestId('mvd-kreator-edycja-powod'), 'karta producenta rev. C');
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+      const payload = executeDomainOperationMock.mock.calls[0][2] as { parameters: Record<string, unknown> };
+      expect(payload.parameters).toEqual({
+        overrides: [
+          { key: 'break_time_s', value: 0.08, reason: 'karta producenta rev. C' },
+          { key: 'i_th_ka', value: 16, reason: 'tabliczka aparatu istniejącego' },
+        ],
+      });
+    });
+
+    it('wyczyszczenie wszystkich pól → pusta lista (powrót do karty i propozycji)', async () => {
+      executeDomainOperationMock.mockResolvedValue({ error: null });
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.clear(screen.getByTestId(`${A}-i_th_ka`));
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+
+      await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+      const payload = executeDomainOperationMock.mock.calls[0][2] as { parameters: Record<string, unknown> };
+      expect(payload.parameters).toEqual({ overrides: [] });
+    });
+
+    it('tekst niebędący liczbą → błąd pola, zapis bez wywołania operacji', async () => {
+      render(<KreatorEdycjiParametrow />);
+      await userEvent.type(screen.getByTestId(`${A}-i_dyn_ka`), 'dużo');
+      expect(screen.getByTestId(A)).toHaveTextContent('Wartość musi być liczbą');
+      await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+      expect(executeDomainOperationMock).not.toHaveBeenCalled();
+    });
+
+    it('kontekst „Zmień wartość” (field = parametr aparatu) → kursor w polu aparatu, nie w wierszu klucz → wartość', async () => {
+      vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList);
+      context = { element_ref: APARAT.ref_id, element_type: 'Switch', field: 'break_time_s' };
+      render(<KreatorEdycjiParametrow />);
+      expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('');
+      await waitFor(() => expect(screen.getByTestId(`${A}-break_time_s`)).toHaveFocus());
+    });
+
+    it('gałąź bez wiązania APARAT_SN → brak sekcji (parametry aparatu nie dotyczą odcinka)', () => {
+      snapshotState.snapshot = { branches: [{ ...APARAT, catalog_namespace: 'KABEL_SN' }] };
+      render(<KreatorEdycjiParametrow />);
+      expect(screen.queryByTestId(A)).toBeNull();
+    });
+  });
+
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): brak deklaracji tolerancji
+  // sieci nN nie blokuje zwarć — bieg liczy na wartości roboczej, a akcja „Zmień wartość”
+  // założenia `fault.c_tolerancja_nn_robocza` otwiera ten formularz W POLU deklaracji.
+  // Iloczyn cech: {transformator, źródło na szynie nN} × {+6 %, +10 %}; kontekst formularza
+  // to DOKŁADNIE ten, który buduje `useZmienTolerancjeNn` (`zmianaTolerancjiNn.ts`, kontrakt
+  // przypięty w `zwarcia/__tests__/zmianaTolerancjiNn.test.tsx`), wybór wartości natywnym
+  // `selectOptions`, zapis natywnym klikiem.
+  describe.each([
+    ['transformator', 'tr-nn-1', 'TransformerBranch'],
+    ['źródło na szynie nN', 'src-nn-1', 'Source'],
+  ] as const)('tolerancja napięcia sieci nN — %s', (_, ref, typ) => {
+    it.each(['PLUS_6', 'PLUS_10'] as const)(
+      '„Zmień wartość” otwiera pole lv_voltage_tolerance; wybór %s trafia do parameters',
+      async (tolerancja) => {
+        context = { element_ref: ref, element_type: typ, field: 'lv_voltage_tolerance' };
+        executeDomainOperationMock.mockResolvedValue({ error: null, selection_hint: { element_id: ref } });
+        render(<KreatorEdycjiParametrow />);
+
+        expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('lv_voltage_tolerance');
+        const pole = screen.getByTestId('mvd-kreator-edycja-wartosc-0');
+        expect(pole.tagName).toBe('SELECT');
+        expect(screen.getByRole('option', { name: ETYKIETA_PL_TOLERANCJI_NN[tolerancja] })).toBeTruthy();
+        await userEvent.selectOptions(pole, tolerancja);
+        await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
+
+        await waitFor(() => {
+          expect(executeDomainOperationMock).toHaveBeenCalledWith('case-1', 'update_element_parameters', {
+            element_ref: ref,
+            parameters: { lv_voltage_tolerance: tolerancja },
+          });
+        });
+      },
+    );
+  });
+
+  it('`required` będący opisem wymogu (nie kluczem słownika) nie staje się kluczem parametru', () => {
+    context = { element_ref: 'tr-1', required: 'continuous_path_to_source' };
+    render(<KreatorEdycjiParametrow />);
+    expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('');
+  });
+
+  it('akcja naprawcza układu sieci nN (ten sam wzorzec) też prowadzi do pola', () => {
+    context = { element_ref: 'tr-1', required: 'lv_earthing_system' };
+    render(<KreatorEdycjiParametrow />);
+    expect(screen.getByTestId('mvd-kreator-edycja-klucz-0')).toHaveValue('lv_earthing_system');
+    expect(screen.getByTestId('mvd-kreator-edycja-wartosc-0').tagName).toBe('SELECT');
   });
 });

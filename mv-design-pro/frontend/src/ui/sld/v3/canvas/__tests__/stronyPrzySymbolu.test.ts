@@ -22,7 +22,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, sceneObstacleRects } from '../../scene/buildScene';
 
 import { rectsOverlap, type V3Rect } from '../../core/grid';
-import { LABEL_TYPOGRAPHY } from '../../core/text';
+import { LABEL_TYPOGRAPHY, measureTextWidth, shortenPreservingIdentity } from '../../core/text';
 import { resolveLabels, type SimpleAnchorPlacement, type SimpleAnchoredOwnerInput } from '../../layout/labels';
 import {
   planSceneLabels,
@@ -130,6 +130,39 @@ describe('strony zastępcze przy symbolu — pismo podłogi opisów celu', () =>
     expect(plan.drawn).toHaveLength(2);
     for (const d of plan.drawn) expect(d.fontSize * SKALA, d.label.ownerRef).toBeGreaterThanOrEqual(13 - 1e-6);
     expect(plannedLabelCollisions(plan)).toEqual([]);
+    expect(plannedLabelObstacleCollisions(plan, przeszkody)).toEqual([]);
+  });
+
+  // Scalenie z partią 12 (W2C-PLAN-ETYKIET): reguła „pełny tekst po KAŻDEJ stronie, zanim
+  // którakolwiek dostanie skrót" obowiązuje także w drugim przejściu (strony przy obrysie).
+  // Iloczyn cech: przejście {od slotu · przy obrysie} × postać {pełna · skrócona} × strona
+  // {pierwsza w kolejności · dalsza}. Tu: przy obrysie pierwsza strona zastępcza („nad")
+  // mieści wyłącznie skrót (dwa słupki po bokach), dalsza („z prawej") — pełny tekst.
+  // Plan MUSI wybrać pełny tekst z prawej, nie skrót nad symbolem („PV 500 kW" → „PV…").
+  it('drugie przejście: pełny tekst na dalszej stronie przy obrysie wygrywa ze skrótem na pierwszej', () => {
+    const [label] = resolveLabels({ simpleAnchored: [etykieta(GLIF, 'below', true)] });
+    const pismo = PODLOGA.screenPx / SKALA;
+    const pelna = measureTextWidth('PV 500 kW', pismo);
+    const skrot = shortenPreservingIdentity('PV 500 kW', pismo, pelna * 0.75);
+    expect(skrot).not.toBe('PV 500 kW');
+    const szerokoscSkrotu = measureTextWidth(skrot, pismo);
+    const srodek = GLIF.x + GLIF.width / 2;
+    const polowaPrzerwy = szerokoscSkrotu / 2 + 2;
+    expect(2 * polowaPrzerwy).toBeLessThan(pelna);
+    // Słupki nad symbolem — kończą się wyżej niż wiersz stron „z lewej/z prawej".
+    const slupek = (x: number): V3Rect => ({ x, y: GLIF.y - 200, width: 1, height: 170 });
+    const przeszkody = [
+      GLIF,
+      przewodZaSlotem(label!.rect, 'below'),
+      slupek(srodek - polowaPrzerwy - 1),
+      slupek(srodek + polowaPrzerwy),
+    ];
+    const plan = planSceneLabels([label!], przeszkody, SKALA, ARKUSZ, PODLOGA);
+    expect(plan.drawn).toHaveLength(1);
+    const d = plan.drawn[0]!;
+    expect(d.text).toBe('PV 500 kW');
+    expect(d.fontSize * SKALA).toBeGreaterThanOrEqual(13 - 1e-6);
+    expect(d.rect.x).toBeGreaterThanOrEqual(GLIF.x + GLIF.width);
     expect(plannedLabelObstacleCollisions(plan, przeszkody)).toEqual([]);
   });
 

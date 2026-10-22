@@ -136,6 +136,109 @@ class TestEW501Zrodlo:
         assert _kody(m, "E-W5-01") == []
 
 
+class TestEW501DrogaZerowaSnRownowaznikaWn:
+    """Karta GPZ-MODEL: przy równoważniku 110 kV opis „uziemiony" punktu neutralnego SN
+    wymaga drogi składowej zerowej po stronie SN w transformatorze WN/SN modelu — tej
+    samej, którą czyta solver 1F (`build_transformer_zero_seq_model`).
+
+    Iloczyn cech: {grupa TR WN/SN: Yd11 (SN trójkąt), YNd11 (SN trójkąt), Dyn11 (SN
+    gwiazda uziem.), YNyn0 (droga szeregowa), Yyn0 (gwiazda WN bez N — otwarte)} ×
+    {opis SN: uziemiony, izolowany} × {liczba TR: 1, 2 z różnymi grupami}."""
+
+    @staticmethod
+    def _tr_wn(ref: str, grupa: str, lv_neutral: GroundingConfig | None = None) -> Transformer:
+        return _tr(
+            ref_id=ref,
+            name=ref,
+            hv_bus_ref="hv",
+            lv_bus_ref="sn",
+            sn_mva=25.0,
+            uhv_kv=110.0,
+            ulv_kv=15.0,
+            uk_percent=11.0,
+            pk_kw=120.0,
+            vector_group=grupa,
+            lv_earthing_system=None,
+            lv_neutral=lv_neutral,
+        )
+
+    @staticmethod
+    def _opis(typ: str) -> GroundingConfig:
+        if typ == "resistor_grounded":
+            return GroundingConfig(type=typ, r_ohm=12.0)
+        if typ == "petersen_coil":
+            return GroundingConfig(type=typ, x_ohm=40.0)
+        return GroundingConfig(type=typ)
+
+    def _model_wn(
+        self,
+        grupy: tuple[str, ...],
+        typ: str,
+        lv_neutral: GroundingConfig | None = None,
+    ) -> EnergyNetworkModel:
+        return _model(
+            buses=_szyny(),
+            transformers=[
+                self._tr_wn(f"tr{i}", g, lv_neutral) for i, g in enumerate(grupy, start=1)
+            ],
+            sources=[
+                _zrodlo(bus_ref="hv", source_side="HV_110", neutral_grounding=self._opis(typ))
+            ],
+        )
+
+    def test_uziemiony_bez_drogi_zerowej_sn_jest_blokada(self):
+        for typ in ("resistor_grounded", "petersen_coil", "directly_grounded"):
+            for grupy in (("Yd11",), ("YNd11",), ("Yyn0",), ("Yd11", "YNd11")):
+                problemy = _kody(self._model_wn(grupy, typ), "E-W5-01")
+                assert len(problemy) == 1, (typ, grupy)
+                assert "nie daje drogi składowej zerowej po stronie SN" in problemy[0].message_pl
+                assert problemy[0].element_refs[0] == "src"
+                assert set(problemy[0].element_refs[1:]) == {
+                    f"tr{i}" for i in range(1, len(grupy) + 1)
+                }
+                assert problemy[0].fix_action is not None
+                assert problemy[0].fix_action.modal_type == "SourceModal"
+
+    def test_droga_zerowa_z_innym_uziemieniem_niz_opis_jest_blokada(self):
+        # Dyn11 bez konfiguracji punktu neutralnego: litera `n` = uziemienie bezpośrednie
+        # (Z_N = 0) — opis „rezystor 12 Ω” mówi co innego niż fizyka 1F.
+        problemy = _kody(self._model_wn(("Dyn11",), "resistor_grounded"), "E-W5-01")
+        assert len(problemy) == 1
+        assert "pracuje inaczej" in problemy[0].message_pl
+        # Ten sam typ, inna rezystancja — też sprzeczność.
+        inny_r = GroundingConfig(type="resistor_grounded", r_ohm=20.0)
+        problemy = _kody(self._model_wn(("Dyn11",), "resistor_grounded", inny_r), "E-W5-01")
+        assert len(problemy) == 1 and "R_N 20.0 Ω" in problemy[0].message_pl
+
+    def test_uziemiony_z_ta_sama_droga_zerowa_sn_jest_spojny(self):
+        rezystor = GroundingConfig(type="resistor_grounded", r_ohm=12.0)
+        przypadki = (
+            (("Dyn11",), "resistor_grounded", rezystor),
+            (("YNyn0",), "directly_grounded", None),
+            (("Dyn11",), "directly_grounded", None),
+            # Wystarczy JEDEN transformator z drogą zerową SN o tym samym uziemieniu.
+            (("Yd11", "Dyn11"), "directly_grounded", None),
+        )
+        for grupy, typ, lv in przypadki:
+            assert _kody(self._model_wn(grupy, typ, lv), "E-W5-01") == [], (grupy, typ)
+
+    def test_izolowany_przy_trojkacie_sn_jest_spojny(self):
+        for grupy in (("Yd11",), ("YNd11",), ("Yyn0",), ("Yd11", "Yd11")):
+            assert _kody(self._model_wn(grupy, "isolated"), "E-W5-01") == [], grupy
+
+    def test_izolowany_przy_uziemionej_gwiezdzie_sn_jest_blokada(self):
+        # Reguła w OBIE strony: „izolowany” przy Dyn11/YNyn0 (litera `n`, uziemienie
+        # bezpośrednie w fizyce 1F) to ta sama sprzeczność opisu z fizyką.
+        for grupy in (("Dyn11",), ("YNyn0",), ("Yd11", "Dyn11")):
+            problemy = _kody(self._model_wn(grupy, "isolated"), "E-W5-01")
+            assert len(problemy) == 1, grupy
+            assert "opisany jako izolowany" in problemy[0].message_pl
+            assert "bezpośrednio uziemiony" in problemy[0].message_pl
+
+    def test_most_do_kanonu_gotowosci(self):
+        assert "E-W5-01" in ODWZOROWANIE_WALIDATOR_NA_KANON
+
+
 class TestEW502I03Transformator:
     def test_grupa_spoza_slownika(self):
         m = _model(buses=_szyny(), transformers=[_tr(vector_group="Dyn13")])

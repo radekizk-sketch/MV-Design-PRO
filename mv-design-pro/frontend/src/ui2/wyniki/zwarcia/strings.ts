@@ -41,6 +41,7 @@ export const ZWARCIA_STRINGS = {
   bilansIp: 'Prąd udarowy ip',
   bilansIth: 'Prąd cieplny zastępczy Ith',
   bilansIb: 'Prąd wyłączeniowy symetryczny Ib',
+  bilansIdc: 'Składowa nieokresowa iDC(tb)',
   bilansIk: 'Prąd zwarciowy ustalony Ik',
   bilansSk: 'Moc zwarciowa Sk"',
   bilansI2t: 'Energia cieplna I²t',
@@ -50,21 +51,45 @@ export const ZWARCIA_STRINGS = {
   bilansXk: 'Reaktancja zastępcza Xk',
   bilansZk: 'Impedancja zastępcza (Thevenin) |Zk|',
   bilansC: 'Współczynnik napięciowy c',
+  bilansCZrodlo: 'Podstawa współczynnika c',
   bilansUn: 'Napięcie znamionowe przed zwarciem Un',
   bilansTk: 'Czas trwania zwarcia tk',
   bilansTb: 'Czas wyłączenia tb',
+  // Karta TB-WARTOSC-ROBOCZA: tb punktu będący wartością roboczą — dyskretna etykieta,
+  // źródło z backendu i akcja prowadząca do tb scenariusza zwarciowego.
+  bilansTbRobocza: 'wartość robocza',
+  bilansTbZmien: 'Zmień wartość',
 
   // Założenia (parametry przebiegu, W-602)
   zalMetoda: 'Metoda obliczeń',
   zalMetodaWartosc: 'IEC 60909',
   zalWspolczynnikC: 'Współczynnik napięciowy c',
   zalCzasCieplny: 'Czas cieplny',
+  zalCzasWylaczenia: 'Czas wyłączenia tb',
+  zalCzasWylaczeniaPunkt: 'w punkcie zwarcia',
+  zalozeniePunkty: (liczba: number) =>
+    `Dotyczy punktów zwarcia: ${liczba} (oznaczenie „wartość robocza" w bilansie punktu).`,
+  zalozenieBiegu: 'Bieg zwarciowy',
   // Karta UI2 p.7: c/czas cieplny z ZAPISANEJ konfiguracji TEGO biegu
   // (`konfiguracja_biegu` odpowiedzi), nie z aktywnego przypadku obliczeniowego.
-  zalWspolczynnikCAuto: 'dobierany automatycznie per węzeł',
-  zalWspolczynnikCAutoUwaga: 'Wartość c dobrana z pasma napięciowego każdego węzła (IEC 60909) — brak jednej wspólnej liczby dla całego biegu.',
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tryb `auto_per_wezel` albo `nadpisanie`
+  // z uzasadnieniem; podstawa c każdego węzła — w bilansie punktu (`c_zrodlo`).
+  zalWspolczynnikCAuto: (scenariusz: string | null) =>
+    scenariusz
+      ? `IEC 60909-0 tab. 1 per węzeł, scenariusz ${scenariusz}`
+      : 'IEC 60909-0 tab. 1 per węzeł',
+  zalWspolczynnikCAutoUwaga:
+    'Wartość c dobrana z tabeli 1 IEC 60909-0 dla pasma napięciowego każdego węzła (nN z zadeklarowaną tolerancją sieci, SN, WN) — podstawę c punktu pokazuje bilans IEC 60909 wybranego punktu.',
+  zalWspolczynnikCNadpisanie: (wartosc: string, uzasadnienie: string) =>
+    `${wartosc} — nadpisanie ręczne: ${uzasadnienie}`,
+  zalWspolczynnikCNadpisanieUwaga: (uzasadnienie: string) =>
+    `Nadpisanie ręczne dla wszystkich węzłów biegu — uzasadnienie: ${uzasadnienie}`,
   zalCzasCieplnyDomyslny: 'Bieg nie miał jawnie ustawionego czasu cieplnego — zastosowano wartość domyślną solvera.',
   zalKonfiguracjaBieguNiedostepna: 'Starszy zapis przebiegu sprzed uzupełnienia kontraktu — konfiguracja biegu niedostępna.',
+  // Karta OD-14: zwarcie przez impedancję przejścia Z_f zapisane na biegu.
+  zalImpedancjaPrzejscia: 'Impedancja przejścia w miejscu zwarcia Z_f',
+  zalImpedancjaPrzejsciaUwaga:
+    'Zwarcie przez impedancję przejścia — wynik poza zakresem normy IEC 60909, która definiuje prąd zwarcia metalicznego. Nie jest podstawą doboru aparatury, wytrzymałości, nastaw nadprądowych ani dowodu w punkcie przyłączenia.',
 
   // Sekcja wkładów
   wkladyTytul: 'Wkłady do zwarcia',
@@ -75,7 +100,7 @@ export const ZWARCIA_STRINGS = {
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
   walidacjaTytul: 'Walidacja metody IEC 60909',
   wkladyNiedostepneOpis:
-    'Rozbicie maszynowe wymaga migawki modelu sieci — bez niej serwer nie ma z czego go policzyć. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
+    'Rozbicie maszynowe wymaga migawki modelu sieci i parametrów biegu (scenariusz, współczynnik c, czas wyłączenia) — bez nich serwer nie ma z czego go policzyć. Rozbicie dostarcza solver zwarciowy — wartości nie są liczone w interfejsie.',
   // Stany ODCZYTU (odczyt w toku ≠ brak danych, błąd odczytu ≠ brak danych).
   wkladyWczytywanie: 'Odczyt rozbicia maszynowego dla tego punktu…',
   wkladyBlad: 'Nie udało się pobrać rozbicia maszynowego dla tego punktu.',
@@ -205,6 +230,13 @@ export const ZWARCIA_STRINGS = {
   // scenariusz po polsku; kod gotowości założenia nie jest tekstem dla projektanta.
   zalozenieEtykieta: (nazwaZrodla: string) => `Źródło ${nazwaZrodla}`,
   zalozenieUwaga: (scenariuszPL: string) => `Scenariusz ${scenariuszPL}`,
+  // Karta TOLERANCJA-NN-WARTOSC-ROBOCZA (zasada nr 4, V12K-351): założenie
+  // `fault.c_tolerancja_nn_robocza` dotyczy sieci nN (element zasilający albo jej szyna),
+  // nie źródła — etykieta nazywa tolerancję i element z modelu; treść (co przyjęto, dla
+  // jakich węzłów, dlaczego) wprost z backendu. Znacznik i akcja — dyskretnie, obok.
+  zalozenieTolerancjiNn: (nazwaElementu: string) => `Tolerancja napięcia sieci nN — ${nazwaElementu}`,
+  znacznikWartosciRoboczej: 'wartość robocza',
+  zmienWartosc: 'Zmień wartość',
 
   // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
   pokazNaSchemacie: 'Pokaż na schemacie',

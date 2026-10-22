@@ -196,3 +196,102 @@ def test_procent_roznicy_regula(a: float, b: float | None, oczekiwany: float | N
         assert wynik is None
     else:
         assert wynik == pytest.approx(oczekiwany, abs=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# Karta TB-WARTOSC-ROBOCZA: I_b, i_DC(t_b) i t_b punktu z pochodzeniem po obu stronach.
+# Iloczyn cech: pochodzenie t_b strony A × pochodzenie t_b strony B, gdzie pochodzenie ∈
+# {t_b projektanta (wiersz bez `tb_zrodlo`), pole z czasem z karty, pole z roboczym czasem
+# własnym, propozycja robocza, starszy wynik bez t_b}. Różnica I_b/i_DC między biegami bywa
+# skutkiem samej zmiany t_b — porównanie musi nieść t_b i jego pochodzenie obok delt.
+# ---------------------------------------------------------------------------
+
+_POCHODZENIA_TB: dict[str, tuple[dict, tuple[str | None, bool | None]]] = {
+    "projektant": ({"tb_s": 0.08}, ("PROJEKTANT", False)),
+    "pole_karta": (
+        {
+            "tb_s": 0.15,
+            "tb_zrodlo": {"wartosc_s": 0.15, "pochodzenie": "Z_POL", "wartosc_robocza": False},
+        },
+        ("Z_POL", False),
+    ),
+    "pole_robocze": (
+        {
+            "tb_s": 0.16,
+            "tb_zrodlo": {"wartosc_s": 0.16, "pochodzenie": "Z_POL", "wartosc_robocza": True},
+        },
+        ("Z_POL", True),
+    ),
+    "propozycja": (
+        {
+            "tb_s": 0.1,
+            "tb_zrodlo": {"wartosc_s": 0.1, "pochodzenie": "PROPOZYCJA", "wartosc_robocza": True},
+        },
+        ("PROPOZYCJA", True),
+    ),
+    "starszy_bez_tb": ({}, (None, None)),
+}
+
+
+def _wiersz_tb(wariant: str, ib: float, idc: float) -> dict:
+    dodatki, _ = _POCHODZENIA_TB[wariant]
+    wiersz = _wiersz("bus-1", 8.0, 20.0, 8.4, 200.0)
+    if wariant != "starszy_bez_tb":
+        wiersz.update({"ib_ka": ib, "i_dc_ka": idc})
+    wiersz.update(dodatki)
+    return wiersz
+
+
+@pytest.mark.parametrize("wariant_b", sorted(_POCHODZENIA_TB))
+@pytest.mark.parametrize("wariant_a", sorted(_POCHODZENIA_TB))
+def test_tb_i_wielkosci_zalezne_od_tb_iloczyn_pochodzen(wariant_a: str, wariant_b: str) -> None:
+    """RACHUNEK RĘCZNY: I_b A = 5,0 kA, B = 4,5 kA → Δ = −0,5 kA, Δ% = −10 %;
+    i_DC A = 2,0 kA, B = 1,0 kA → Δ = −1,0 kA, Δ% = −50 %."""
+    wynik = zbuduj_porownanie_zwarc(
+        run_id_a="run-a",
+        run_id_b="run-b",
+        wiersze_a=[_wiersz_tb(wariant_a, 5.0, 2.0)],
+        wiersze_b=[_wiersz_tb(wariant_b, 4.5, 1.0)],
+    )
+    punkt = wynik.punkty[0]
+    dane = punkt.to_dict()
+    oczekiwane_a = _POCHODZENIA_TB[wariant_a][1]
+    oczekiwane_b = _POCHODZENIA_TB[wariant_b][1]
+    assert (punkt.tb_pochodzenie_a, punkt.tb_wartosc_robocza_a) == oczekiwane_a
+    assert (punkt.tb_pochodzenie_b, punkt.tb_wartosc_robocza_b) == oczekiwane_b
+    tb_a = _POCHODZENIA_TB[wariant_a][0].get("tb_s")
+    tb_b = _POCHODZENIA_TB[wariant_b][0].get("tb_s")
+    assert punkt.tb_s_a == tb_a and punkt.tb_s_b == tb_b
+    obie = "starszy_bez_tb" not in (wariant_a, wariant_b)
+    if obie:
+        assert punkt.delta_tb_s == pytest.approx(tb_b - tb_a, abs=1e-12)
+        assert punkt.delta_ib_ka == pytest.approx(-0.5, abs=1e-12)
+        assert punkt.delta_ib_percent == pytest.approx(-10.0, abs=1e-12)
+        assert punkt.delta_i_dc_ka == pytest.approx(-1.0, abs=1e-12)
+        assert punkt.delta_i_dc_percent == pytest.approx(-50.0, abs=1e-12)
+    else:
+        # Starszy wynik bez t_b: brak delty i brak pól w serializacji — nigdy zero.
+        for klucz in ("delta_tb_s", "delta_ib_ka", "delta_i_dc_ka", "delta_tb_percent"):
+            assert klucz not in dane
+    for strona, (pochodzenie, robocza) in (("a", oczekiwane_a), ("b", oczekiwane_b)):
+        if pochodzenie is None:
+            assert f"tb_pochodzenie_{strona}" not in dane
+            assert f"tb_wartosc_robocza_{strona}" not in dane
+        else:
+            assert dane[f"tb_pochodzenie_{strona}"] == pochodzenie
+            # Znacznik False jest wartością (t_b nie jest roboczy), nie brakiem.
+            assert dane[f"tb_wartosc_robocza_{strona}"] is robocza
+
+
+def test_tb_punktu_obecnego_tylko_po_jednej_stronie_zachowuje_pochodzenie() -> None:
+    wynik = zbuduj_porownanie_zwarc(
+        run_id_a="run-a",
+        run_id_b="run-b",
+        wiersze_a=[_wiersz_tb("propozycja", 5.0, 2.0)],
+        wiersze_b=[],
+    )
+    punkt = wynik.punkty[0]
+    assert punkt.obecny_w == OBECNY_TYLKO_A
+    assert (punkt.tb_pochodzenie_a, punkt.tb_wartosc_robocza_a) == ("PROPOZYCJA", True)
+    assert (punkt.tb_pochodzenie_b, punkt.tb_wartosc_robocza_b) == (None, None)
+    assert punkt.ib_ka_a == 5.0 and punkt.delta_ib_ka is None

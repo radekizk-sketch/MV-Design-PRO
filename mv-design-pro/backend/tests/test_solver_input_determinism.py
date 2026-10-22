@@ -196,9 +196,9 @@ class TestSolverInputDeterminism:
 
         assert json1 != json2, "Different case_id should produce different output"
 
-    def test_version_is_1_1(self):
-        """Envelope version is locked to 1.1 (karta FAB-D2, D2 — patrz
-        test_solver_input_schema_lock.py::test_contract_version_is_1_1)."""
+    def test_version_is_2_0(self):
+        """Envelope version is locked to 2.0 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — patrz
+        test_solver_input_schema_lock.py::test_contract_version_is_2_0)."""
         graph = _make_test_network()
         catalog = _make_empty_catalog()
 
@@ -209,7 +209,7 @@ class TestSolverInputDeterminism:
             enm_revision="rev-1",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
         )
-        assert env.solver_input_version == "1.1"
+        assert env.solver_input_version == "2.0"
 
     def test_bus_order_deterministic(self):
         """Buses are sorted by ref_id regardless of insertion order."""

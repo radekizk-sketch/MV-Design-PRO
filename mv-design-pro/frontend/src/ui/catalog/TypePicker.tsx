@@ -19,6 +19,7 @@ const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   SWITCH_EQUIPMENT: 'Aparatura łączeniowa SN',
   MV_APPARATUS: 'Aparatura łączeniowa SN',
   LV_APPARATUS: 'Aparatura łączeniowa nN',
+  LV_RCD: 'Wyłączniki różnicowoprądowe nN',
   LV_CABLE: 'Kable nN',
   LOAD: 'Obciążenia',
   CT: 'Przekładniki prądowe',
@@ -48,6 +49,8 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
       return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, ${record.breaking_capacity_ka ?? '-'} kA`;
     case 'LV_APPARATUS':
       return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, ${record.breaking_capacity_ka ?? '-'} kA`;
+    case 'LV_RCD':
+      return `IΔn=${record.i_delta_n_a ?? '-'} A, typ ${record.rcd_type ?? '-'}, In=${record.in_a ?? '-'} A, ta=${record.t_a_s ?? '-'} s`;
     case 'LV_CABLE':
       return `${record.u_n_kv ?? '-'} kV, ${record.cross_section_mm2 ?? '-'} mm2, ${record.i_max_a ?? '-'} A`;
     case 'LOAD':

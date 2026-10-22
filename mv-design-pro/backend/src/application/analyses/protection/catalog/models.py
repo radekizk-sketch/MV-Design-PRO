@@ -119,7 +119,7 @@ class ProtectionRequirementV0:
 
     Karta W3-C1 (konwergencja na metodykę Hoppela): ``tms_51``/``tms_51n`` są
     OPCJONALNE — mnożnik czasowy ma sens WYŁĄCZNIE dla krzywej odwrotnoczasowej
-    (IEC_NI/VI/EI/...); dla ``curve = "DT"`` (definite time, jedyna krzywa, jaką
+    (IEC_SI/VI/EI/...); dla ``curve = "DT"`` (definite time, jedyna krzywa, jaką
     wyznacza silnik Hoppela) nastawę czasową niesie ``t_51_s`` (czas określony
     [s]), a ``tms_51`` zostaje ``None`` — DWIE różne wielkości czasowe, nie jedna
     z brakującą wartością. 51N/50N Hoppel NIE wyznacza (metoda dotyczy WYŁĄCZNIE

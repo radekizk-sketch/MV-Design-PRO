@@ -18,6 +18,7 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { czekajNaKoniecBiegu } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -50,7 +51,7 @@ type DomainOpResponse = {
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     buses?: Array<{ ref_id: string; voltage_kv: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[]; station_type?: string }>;
   };
@@ -203,8 +204,6 @@ async function zbudujSiecGotowaDoObliczen(
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
-    hv_voltage_kv: 110.0,
-    transformer_sn_mva: 25.0,
   });
 
   for (const [idx, length] of [300, 250, 200].entries()) {
@@ -227,7 +226,7 @@ async function zbudujSiecGotowaDoObliczen(
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
-    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4, nn_earthing: { lv_system: 'TN-C-S' } },
+    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4, nn_earthing: { lv_system: 'TN-C-S', lv_voltage_tolerance: 'PLUS_10' } },
     // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
     // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
     // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
@@ -251,7 +250,7 @@ async function zbudujSiecGotowaDoObliczen(
     // `enm/validator.py` — IEC 60364-4-41, ochrona przeciwporażeniowa), więc
     // pętla domykania blokerów niżej (bez obsługi kodu E063) nigdy by go nie
     // zamknęła i `readiness.ready` zostałby `false` na stałe (naprawa CI-D).
-    nn_earthing: { lv_system: 'TN-S' },
+    nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
   });
 
   // Szyny SN stacji — bus_ref rozwiązywalny na stację (resolveStationRef →
@@ -276,7 +275,9 @@ async function zbudujSiecGotowaDoObliczen(
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),

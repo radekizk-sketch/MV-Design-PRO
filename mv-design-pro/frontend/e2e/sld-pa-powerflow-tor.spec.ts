@@ -16,7 +16,8 @@
  *                    (set-equality on the render). The set of DIMMED station
  *                    blocks EQUALS the set of stations `companion.de_energized_
  *                    bus_refs` maps to (same station membership rule the render
- *                    itself uses — ALL of a station's own buses de-energised).
+ *                    itself uses — `szynyStacji`: ALL of a station's buses, incl.
+ *                    its own SN-field terminals, de-energised).
  *                    Run for BOTH cases (E2E-FIX, 2026-09-05): `normal` (SUB-52s
  *                    ring-closed the substrate's only NOP — both sets are EMPTY,
  *                    an equality, not a "≥1" floor) and `maintenance` (a second,
@@ -24,7 +25,9 @@
  *                    service — where the equality is non-trivial).
  *  N-3 DIRECTION   — the rendered direction per branch (per-segment
  *                    `data-flow-direction`, sourced `solver`) EQUALS the solver
- *                    sign(P) — including reversed OZE-backfeed branches. The single
+ *                    sign(P) composed with the drawing's proven from→to orientation
+ *                    (S9-2; no proven orientation — ring tie markers — ⇒ no
+ *                    direction, no arrow) — including reversed OZE-backfeed branches. The single
  *                    overview arrow's ACTUAL polygon geometry is also measured to
  *                    prove the drawn tip follows the solver, not the route order.
  *  N-7 DETERMINISM — same snapshot + case_ref → identical geometry hash on reload.
@@ -40,6 +43,9 @@ import { fileURLToPath } from 'node:url';
 import { adresHarnessu } from './adresHarnessu';
 
 import { katalogZrzutow } from './katalogZrzutow';
+import { szynyStacji, type ModelSzyn, type StacjaDlaSzyn } from '../src/ui/shared/szynyStacji';
+import { orientedSegmentRefs, zwrotGrotuWzdluzRysunku } from '../src/ui/sld/v3/canvas/overlay';
+import type { EnergyNetworkModel } from '../src/types/enm';
 const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = adresHarnessu('screenshot-harness.html');
 
@@ -56,12 +62,10 @@ const MAINTENANCE_COMPANION_PATH = path.resolve(
   _dirname,
   '../public/test-fixtures/sldSubstrate52s.powerflow.maintenance.json',
 );
-// The committed substrate ENM — read here ONLY for its `substations[].bus_refs`
-// (bus -> station membership), to compute the EXPECTED dimmed-station set from
-// the companion the same way the render itself does (`overlayFromCompanion`,
-// `screenshot-harness-main.tsx`: a station is dimmed iff ALL its own buses are
-// de-energized). No physics, no topology recomputation — a plain membership
-// lookup mirrored from the render's own rule.
+// The committed substrate ENM — read here ONLY for station membership of buses, to
+// compute the EXPECTED dimmed-station set from the companion with the SAME rule the
+// render uses (`overlayFromCompanion`, `screenshot-harness-main.tsx`: a station is
+// dimmed iff ALL of its buses are de-energized). No physics, no topology recomputation.
 const ENM_PATH = path.resolve(_dirname, '../public/test-fixtures/sldSubstrate52s.enm.json');
 
 interface Companion {
@@ -79,30 +83,49 @@ function loadCompanion(companionPath: string): Companion {
   return JSON.parse(fs.readFileSync(companionPath, 'utf-8')) as Companion;
 }
 
-interface EnmSubstation {
+interface EnmSubstation extends StacjaDlaSzyn {
   readonly ref_id: string;
-  readonly bus_refs: readonly string[];
 }
 
-function loadEnmSubstations(): readonly EnmSubstation[] {
-  const raw = JSON.parse(fs.readFileSync(ENM_PATH, 'utf-8')) as {
-    enm: { substations: readonly EnmSubstation[] };
-  };
-  return raw.enm.substations;
+/** Wycinek migawki czytany przez regułę szyn stacji (karta W5-B: rekordy pól `bays`,
+ *  napięcia szyn i gałęzie aparatów pól nN) — cała migawka, bez drugiego indeksu. */
+interface EnmMembership extends ModelSzyn {
+  readonly substations: readonly EnmSubstation[];
 }
 
-/** The station ref_ids the companion's `de_energized_bus_refs` de-energizes —
- *  a station counts iff ALL of its own bus_refs are in that set (mirrors
- *  `overlayFromCompanion` in `screenshot-harness-main.tsx` exactly: the render
- *  dims a station only when EVERY one of its buses lost supply, not just one). */
-function expectedDimmedStations(
-  companion: Companion,
-  substations: readonly EnmSubstation[],
-): Set<string> {
+function loadEnmMembership(): EnmMembership {
+  return (JSON.parse(fs.readFileSync(ENM_PATH, 'utf-8')) as { enm: EnmMembership }).enm;
+}
+
+/** The whole committed substrate ENM — for the product's own drawing-orientation rule
+ *  (`orientedSegmentRefs`, the S9-2 gate the render applies) and the corridor list. */
+function loadEnmFull(): EnergyNetworkModel {
+  return (JSON.parse(fs.readFileSync(ENM_PATH, 'utf-8')) as { enm: EnergyNetworkModel }).enm;
+}
+
+/** The station ref_ids the companion's `de_energized_bus_refs` de-energizes — a station
+ *  counts iff ALL of its buses are in that set.
+ *
+ *  KARTA R10-E2E-CZERWONE (przepisanie do kanonu, intencja zachowana): „buses of a
+ *  station" is the ONE membership rule `szynyStacji` (SZYNY-STACJI-LUSTRO — mirror of
+ *  backend `enm/tor_pola.py::szyny_stacji`): main buses `bus_refs` + the station's OWN
+ *  SN-field terminals + both ends of its nN-field apparatus. The render (`overlayFromCompanion`)
+ *  and the product overlay (`SupplyPathHighlighter`: „zacisk pola pod napięciem to część
+ *  stacji pod napięciem, także przy otwartym aparacie pola") both use it. This helper
+ *  used `bus_refs` alone — a SECOND membership rule that agreed with the render only
+ *  while no station had a live field terminal behind an open field breaker. The helper
+ *  now imports the render's own rule instead of re-implementing it. The backend picker
+ *  and its solver check use the SAME rule (`szyny_stacji`): the maintenance scenario
+ *  takes out of service the branches on the station's BOUNDARY (the feeders landing on
+ *  its field terminals), so EVERY bus of the target station loses supply and the
+ *  station IS dimmed (merge GPZ-MODEL: opening only the station's own field breakers
+ *  left the incoming-field terminal live from the ring cable — nothing dimmed). */
+function expectedDimmedStations(companion: Companion, enm: EnmMembership): Set<string> {
   const deEnergized = new Set(companion.de_energized_bus_refs);
   const dimmed = new Set<string>();
-  for (const station of substations) {
-    if (station.bus_refs.length > 0 && station.bus_refs.every((ref) => deEnergized.has(ref))) {
+  for (const station of enm.substations) {
+    const busRefs = [...szynyStacji(enm, station)];
+    if (busRefs.length > 0 && busRefs.every((ref) => deEnergized.has(ref))) {
       dimmed.add(station.ref_id);
     }
   }
@@ -306,7 +329,7 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
   for (const powerFlowCase of CASES) {
     test(`N-2 (${powerFlowCase.name}): rendered energized-set EQUALS the solver energized-set (set-equality on the render)`, async ({ page }) => {
       const companion = loadCompanion(powerFlowCase.companionPath);
-      const substations = loadEnmSubstations();
+      const enmMembership = loadEnmMembership();
       await gotoL0(page, powerFlowCase.queryCase);
 
       const segments = await readSegments(page);
@@ -360,7 +383,14 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
           'normal companion must have ZERO de-energized buses (SUB-52s: ring-closed NOP)',
         ).toBe(0);
       }
-      const expectedDimmed = expectedDimmedStations(companion, substations);
+      const expectedDimmed = expectedDimmedStations(companion, enmMembership);
+      // Maintenance must stay a NON-TRIVIAL equality: at least one station loses every bus.
+      if (powerFlowCase.name === 'maintenance') {
+        expect(
+          expectedDimmed.size,
+          'maintenance companion must de-energize every bus of at least one station',
+        ).toBeGreaterThan(0);
+      }
       const renderedDimmed = await readDimmedStationOwnerRefs(page);
       const missingDimmed = [...expectedDimmed].filter((ref) => !renderedDimmed.has(ref));
       const extraDimmed = [...renderedDimmed].filter((ref) => !expectedDimmed.has(ref));
@@ -383,16 +413,40 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
     expect(segments.length).toBeGreaterThan(20);
 
     // (a) Per-branch: the DOM direction (read from the render) must equal the
-    //     solver direction for EVERY drawn segment — forward AND reverse.
+    //     solver direction for EVERY drawn RUN segment — forward AND reverse.
+    //
+    //     KARTA R10-E2E-CZERWONE (przepisanie do kanonu, intencja zachowana): the
+    //     render's `data-flow-direction` is the arrow sense ALONG THE DRAWING, which
+    //     the product composes from the solver sign and the drawing's PROVEN from→to
+    //     orientation (`orientedSegmentRefs` + `zwrotGrotuWzdluzRysunku`, S9-2). A
+    //     branch whose drawing has no proven orientation — the ring tie
+    //     (`seg/…/ring_closure`), drawn ONLY as a pair of tie markers at its two ends
+    //     (`scene/elementyToru.ts`), with no run between them — carries NO direction
+    //     and NO arrow (honest „unknown"), even though the solver gives it a flow.
+    //     Before this card the harness bypassed the gate and drew an arrow along the
+    //     cross-tick of each tie marker, i.e. pointing along the TICK, not the flow.
+    const orientacja = orientedSegmentRefs(loadEnmFull());
+    const kierunekNaRysunku = (ref: string): string => {
+      const solverDir = companion.branch_flow[ref]?.direction ?? 'none';
+      const zgodna = orientacja.get(ref);
+      if ((solverDir !== 'forward' && solverDir !== 'reverse') || zgodna === undefined) return 'none';
+      return zwrotGrotuWzdluzRysunku(solverDir === 'forward', zgodna) ? 'forward' : 'reverse';
+    };
     const mismatches: string[] = [];
     let reverseSeen = 0;
     let forwardSeen = 0;
+    const bezOrientacji = new Set<string>();
     for (const seg of segments) {
       const solverDir = companion.branch_flow[seg.ref]?.direction ?? 'none';
-      // Contract: NO data-flow-direction attribute == solver zero-flow ("none").
+      const expectedDir = kierunekNaRysunku(seg.ref);
+      // Contract: NO data-flow-direction attribute == no direction on the drawing
+      // (solver zero-flow, or a drawing without proven orientation).
       const renderDir = seg.direction ?? 'none';
-      if (renderDir !== solverDir) {
-        mismatches.push(`${seg.ref}: render=${renderDir} solver=${solverDir}`);
+      if (renderDir !== expectedDir) {
+        mismatches.push(`${seg.ref}: render=${renderDir} expected=${expectedDir} solver=${solverDir}`);
+      }
+      if ((solverDir === 'forward' || solverDir === 'reverse') && !orientacja.has(seg.ref)) {
+        bezOrientacji.add(seg.ref);
       }
       if (solverDir === 'reverse') reverseSeen += 1;
       if (solverDir === 'forward') forwardSeen += 1;
@@ -401,6 +455,17 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
       mismatches.length,
       `direction mismatches render vs solver: ${mismatches.slice(0, 12).join('; ')}`,
     ).toBe(0);
+    // A drawn branch WITH solver flow may lack a proven orientation ONLY when it is a
+    // ring tie (a branch outside every corridor) — anything else is a run the render
+    // failed to orient, i.e. a real defect.
+    const wKorytarzu = new Set(
+      (loadEnmFull().corridors ?? []).flatMap((c) => c.ordered_segment_refs ?? []),
+    );
+    const bezOrientacjiWKorytarzu = [...bezOrientacji].filter((ref) => wKorytarzu.has(ref));
+    expect(
+      bezOrientacjiWKorytarzu,
+      'corridor runs with solver flow but no proven drawing orientation',
+    ).toEqual([]);
     // The tor must genuinely be bidirectional on the render: both seen.
     expect(forwardSeen, 'expected forward-flow segments drawn').toBeGreaterThan(0);
     expect(reverseSeen, 'expected reverse-flow (OZE backfeed) segments drawn').toBeGreaterThan(0);
@@ -456,38 +521,43 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
           // The REAL rendered path for this branch: its `d` endpoints, in path
           // order (fromTerminal → toTerminal). Bridge arcs re-join the run line,
           // so consecutive endpoints still trace the run direction.
-          const pathEl = document.querySelector(`path[data-owner-ref="${ownerRef}"]`);
-          const d = pathEl?.getAttribute('d') ?? '';
-          const cmdEnds: number[][] = [];
-          const re = /[MLA][^MLA]*/g;
-          let m: RegExpExecArray | null;
-          while ((m = re.exec(d)) !== null) {
-            const nums = (m[0].slice(1).trim().match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
-            if (nums.length >= 2) cmdEnds.push([nums[nums.length - 2], nums[nums.length - 1]]);
-          }
-          // Find the consecutive endpoint pair whose segment contains baseMid.
+          // A branch may be drawn by several paths (pieces of one run) — the arrow sits
+          // on ONE of them, so every path of the ref is searched for the arrow base.
+          const pathEls = document.querySelectorAll(`path[data-owner-ref="${ownerRef}"]`);
           let dot = 0;
           let matchedRun = false;
-          for (let i = 0; i + 1 < cmdEnds.length; i += 1) {
-            const [ax, ay] = cmdEnds[i];
-            const [bx, by] = cmdEnds[i + 1];
-            const minX = Math.min(ax, bx) - 1;
-            const maxX = Math.max(ax, bx) + 1;
-            const minY = Math.min(ay, by) - 1;
-            const maxY = Math.max(ay, by) + 1;
-            const distToLine =
-              Math.hypot(bx - ax, by - ay) < 1e-6
-                ? Math.hypot(baseMid[0] - ax, baseMid[1] - ay)
-                : Math.abs((bx - ax) * (ay - baseMid[1]) - (ax - baseMid[0]) * (by - ay)) /
-                  Math.hypot(bx - ax, by - ay);
-            if (
-              baseMid[0] >= minX && baseMid[0] <= maxX &&
-              baseMid[1] >= minY && baseMid[1] <= maxY &&
-              distToLine <= 1
-            ) {
-              dot = axis[0] * (bx - ax) + axis[1] * (by - ay);
-              matchedRun = true;
-              break;
+          for (const pathEl of pathEls) {
+            if (matchedRun) break;
+            const d = pathEl.getAttribute('d') ?? '';
+            const cmdEnds: number[][] = [];
+            const re = /[MLA][^MLA]*/g;
+            let m: RegExpExecArray | null;
+            while ((m = re.exec(d)) !== null) {
+              const nums = (m[0].slice(1).trim().match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number);
+              if (nums.length >= 2) cmdEnds.push([nums[nums.length - 2], nums[nums.length - 1]]);
+            }
+            // Find the consecutive endpoint pair whose segment contains baseMid.
+            for (let i = 0; i + 1 < cmdEnds.length; i += 1) {
+              const [ax, ay] = cmdEnds[i];
+              const [bx, by] = cmdEnds[i + 1];
+              const minX = Math.min(ax, bx) - 1;
+              const maxX = Math.max(ax, bx) + 1;
+              const minY = Math.min(ay, by) - 1;
+              const maxY = Math.max(ay, by) + 1;
+              const distToLine =
+                Math.hypot(bx - ax, by - ay) < 1e-6
+                  ? Math.hypot(baseMid[0] - ax, baseMid[1] - ay)
+                  : Math.abs((bx - ax) * (ay - baseMid[1]) - (ax - baseMid[0]) * (by - ay)) /
+                    Math.hypot(bx - ax, by - ay);
+              if (
+                baseMid[0] >= minX && baseMid[0] <= maxX &&
+                baseMid[1] >= minY && baseMid[1] <= maxY &&
+                distToLine <= 1
+              ) {
+                dot = axis[0] * (bx - ax) + axis[1] * (by - ay);
+                matchedRun = true;
+                break;
+              }
             }
           }
           out.push({
@@ -502,14 +572,17 @@ test.describe('sld:P-A:power-flow-tor (render-based, solver = one truth)', () =>
     expect(arrows.length, 'expected rendered flow arrows').toBeGreaterThan(0);
     const geomMismatch: string[] = [];
     for (const a of arrows) {
-      // (b1) Attribute truth: the rendered forward flag EQUALS the solver sign(P).
-      const solverDir = companion.branch_flow[a.ownerRef]?.direction;
-      if (solverDir === 'forward' || solverDir === 'reverse') {
-        expect(
-          a.forwardAttr,
-          `arrow ${a.ownerRef}: data-flow-forward must equal solver direction`,
-        ).toBe(solverDir === 'forward');
-      }
+      // (b1) Attribute truth: an arrow exists ONLY on a drawing with proven orientation,
+      //      and its forward flag EQUALS the solver sign(P) composed with that orientation.
+      const expectedDir = kierunekNaRysunku(a.ownerRef);
+      expect(
+        expectedDir,
+        `arrow ${a.ownerRef}: drawn on a branch without solver flow or proven orientation`,
+      ).not.toBe('none');
+      expect(
+        a.forwardAttr,
+        `arrow ${a.ownerRef}: data-flow-forward must equal solver direction along the drawing`,
+      ).toBe(expectedDir === 'forward');
       // (b2) Geometry truth: the drawn tip axis vs the REAL path from→to run.
       if (!a.matchedRun) {
         geomMismatch.push(`${a.ownerRef}: arrow base not found on its rendered path`);

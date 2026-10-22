@@ -2,7 +2,9 @@
  * Sekcja ZAŁOŻENIA wspólnego wzorca ekranu analizy (karta E8.1 §2). Zwijana,
  * domyślnie ROZWINIĘTA — „założenia są częścią wyniku" (W-602). W pełni sterowana
  * propsami; zero fizyki, zero wyliczeń. Każde założenie: etykieta PL + wartość +
- * jednostka (zawsze gdy dotyczy); pochodzenie/uwaga w dymku (`title`).
+ * jednostka (zawsze gdy dotyczy); pochodzenie/uwaga w dymku (`title`). Wiersz może nieść
+ * dyskretny znacznik (np. „wartość robocza”) i akcję (np. „Zmień wartość”) — obie podaje
+ * adapter ekranu z danych backendu; wzorzec ich nie wymyśla.
  */
 
 import { useState } from 'react';
@@ -59,8 +61,21 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
                   title={z.uwaga}
                   data-testid="mvd-wyn-zalozenie"
                 >
-                  <span className="mvd-wyn-zalozenie-etykieta">{z.etykieta}</span>
-                  <span className="mvd-wyn-zalozenie-wartosc mvd-num">
+                  <span className="mvd-wyn-zalozenie-etykieta">
+                    {z.etykieta}
+                    {z.znacznik && (
+                      <span className="mvd-wyn-zalozenie-znacznik" data-testid="mvd-wyn-zalozenie-znacznik">
+                        {z.znacznik}
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className={
+                      typeof z.wartosc === 'string'
+                        ? 'mvd-wyn-zalozenie-wartosc mvd-wyn-zalozenie-wartosc--tekst mvd-num'
+                        : 'mvd-wyn-zalozenie-wartosc mvd-num'
+                    }
+                  >
                     {/* Wartość liczbowa bez zmian; tekst może nieść wzory `$...$`. */}
                     {typeof z.wartosc === 'string' ? (
                       <TekstZWzorami tekst={z.wartosc} />
@@ -69,6 +84,16 @@ export function SekcjaZalozen({ zalozenia, domyslnieRozwinieta = true }: SekcjaZ
                     )}
                     {z.jednostka && <span className="mvd-wyn-unit">{z.jednostka}</span>}
                   </span>
+                  {z.akcja && (
+                    <button
+                      type="button"
+                      className="mvd-wyn-zalozenie-akcja"
+                      data-testid={z.akcja.testid}
+                      onClick={z.akcja.onWybierz}
+                    >
+                      {z.akcja.etykieta}
+                    </button>
+                  )}
                 </div>
                 ),
               )}

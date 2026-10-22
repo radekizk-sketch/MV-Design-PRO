@@ -73,8 +73,6 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -115,6 +113,11 @@ def build_gn01_sn_promieniowa() -> dict[str, Any]:
                     "sn_voltage_kv": 15.0,
                     "nn_voltage_kv": 0.4,
                 },
+                # Tolerancja sieci nN stacji (+6 %, wiersz nN tabeli 1 IEC 60909-0): wybiera c
+                # węzłów nN i c_max we wzorze K_T; bez niej bieg liczy na wartości roboczej
+                # +10 % z założeniem `fault.c_tolerancja_nn_robocza` (karta
+                # TOLERANCJA-NN-WARTOSC-ROBOCZA) — sieć wzorcowa deklaruje klasę jawnie.
+                "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
                 "sn_fields": [
                     {"field_role": "LINIA_IN"},
                     {"field_role": "LINIA_OUT"},
@@ -163,8 +166,6 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
             "sk3_mva": 200.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-200mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -203,6 +204,11 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
                     "sn_voltage_kv": 15.0,
                     "nn_voltage_kv": 0.4,
                 },
+                # Tolerancja sieci nN stacji (+6 %, wiersz nN tabeli 1 IEC 60909-0): wybiera c
+                # węzłów nN i c_max we wzorze K_T; bez niej bieg liczy na wartości roboczej
+                # +10 % z założeniem `fault.c_tolerancja_nn_robocza` (karta
+                # TOLERANCJA-NN-WARTOSC-ROBOCZA) — sieć wzorcowa deklaruje klasę jawnie.
+                "nn_earthing": {"lv_voltage_tolerance": "PLUS_6"},
                 "sn_fields": [
                     {"field_role": "LINIA_IN"},
                     {"field_role": "LINIA_OUT"},
@@ -272,8 +278,6 @@ def build_gn03_sn_pierscien() -> dict[str, Any]:
             "sk3_mva": 300.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-300mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -379,8 +383,6 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
             "sk3_mva": 250.0,
             "rx_ratio": 0.1,
             "catalog_ref": "src-gpz-15kv-250mva-rx010",
-            "hv_voltage_kv": 110.0,
-            "transformer_sn_mva": 25.0,
         },
     )
     assert result.get("error") is None, f"add_grid_source_sn failed: {result.get('error')}"
@@ -423,7 +425,7 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
             # domysłem; TN-C-S jak w `sld_substrate_52s` (typowy układ dystrybucyjny nN).
             # Bez punktu neutralnego nN (brak `neutral_point`): składowa zerowa sieci
             # referencyjnej pozostaje BEZ ZMIAN (złote hashe SC_1F/SC_2FG nietknięte).
-            "nn_earthing": {"lv_system": "TN-C-S"},
+            "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},

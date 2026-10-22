@@ -9,6 +9,8 @@ import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
 import type {
   CableType,
   LineType,
+  MVApparatusType,
+  PropozycjaWartosciRoboczej,
   SourceSystemCatalogType,
   SwitchEquipmentType,
   TransformerType,
@@ -29,6 +31,7 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'SWITCH_EQUIPMENT', label: 'Typy aparatury łączeniowej SN', icon: '⎆' },
   { id: 'MV_APPARATUS', label: 'Typy aparatury SN', icon: '◫' },
   { id: 'LV_APPARATUS', label: 'Typy aparatury nN', icon: '▥' },
+  { id: 'LV_RCD', label: 'Typy wyłączników różnicowoprądowych nN', icon: '⊜' },
   { id: 'LV_CABLE', label: 'Typy kabli nN', icon: '⟃' },
   { id: 'LOAD', label: 'Typy obciążeń', icon: '◔' },
   { id: 'CT', label: 'Typy przekładników prądowych', icon: '◎' },
@@ -225,6 +228,8 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'MV_APPARATUS':
     case 'LV_APPARATUS':
       return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik=${formatDetailValue(record.breaking_capacity_ka)} kA`;
+    case 'LV_RCD':
+      return `IΔn=${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · In=${formatDetailValue(record.in_a)} A · ta=${formatDetailValue(record.t_a_s)} s`;
     case 'LV_CABLE':
       return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
     case 'LOAD':
@@ -262,6 +267,8 @@ function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; 
     'sk3_min_mva',
     'ik3_min_ka',
     'rx_ratio_min',
+    // Propozycje wartości roboczych (V12K-351) mają własną sekcję — nie są daną karty.
+    'wartosci_robocze',
   ]);
   const presentKeys = Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== '');
   const orderedKeys = [
@@ -587,12 +594,61 @@ function TypeDetailsPanel({
         </div>
       </div>
 
+      {category === 'MV_APPARATUS' ? (
+        <WartosciRoboczePozycji propozycje={(type as MVApparatusType).wartosci_robocze ?? []} />
+      ) : null}
+
       <div className="space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
           Instancje używające tego typu
         </h3>
         <p className="text-sm text-gray-500">Instancje katalogowe nie są dostępne w tym widoku.</p>
       </div>
+    </div>
+  );
+}
+
+const RODZAJ_ZRODLA_PL: Readonly<Record<PropozycjaWartosciRoboczej['rodzaj_zrodla'], string>> = {
+  PROFIL_URZADZENIA: 'profil typowy urządzenia',
+  NORMA: 'norma',
+  ZALOZENIE_INZYNIERSKIE: 'założenie inżynierskie',
+};
+
+/**
+ * Zasada nr 4 (V12K-351): czym obliczenie uzupełni parametr, którego karta pozycji nie podaje —
+ * wartość robocza z rodzajem źródła, odniesieniem i wpływem (rejestr backendu). To NIE jest
+ * dana karty: projektant może nadać własną wartość na elemencie modelu.
+ */
+function WartosciRoboczePozycji({
+  propozycje,
+}: {
+  propozycje: readonly PropozycjaWartosciRoboczej[];
+}) {
+  return (
+    <div className="space-y-3" data-testid="type-library-wartosci-robocze">
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
+        Wartości robocze obliczeń (brak w karcie)
+      </h3>
+      {propozycje.length === 0 ? (
+        <p className="text-sm text-gray-500">
+          Karta podaje wszystkie parametry aparatu używane w ocenie — obliczenie nie przyjmuje
+          wartości roboczych.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {propozycje.map((p) => (
+            <li key={p.parametr} className="text-sm" data-testid={`type-library-wartosc-robocza-${p.parametr}`}>
+              <span className="font-medium text-gray-900">
+                {p.nazwa_pl}: {formatNumber(p.wartosc).replace('.', ',')} {p.jednostka}
+              </span>
+              <span className="ml-2 text-gray-500">({RODZAJ_ZRODLA_PL[p.rodzaj_zrodla]})</span>
+              <p className="text-xs text-gray-500">
+                {p.uzasadnienie_pl}. Źródło: {p.odniesienie}. Wpływ: {p.wplyw_pl}.
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

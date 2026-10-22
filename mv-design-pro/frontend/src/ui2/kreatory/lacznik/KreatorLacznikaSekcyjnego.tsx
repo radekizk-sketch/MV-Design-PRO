@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { fetchMvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
-import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
+import type { MVApparatusType } from '../../../ui/catalog/types';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { punktyPodzialu } from '../../../ui/shared/stanLacznika';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -87,7 +87,7 @@ export function KreatorLacznikaSekcyjnego() {
     [snapshot],
   );
 
-  const [typy, setTypy] = useState<MVApparatusCatalogType[]>([]);
+  const [typy, setTypy] = useState<MVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
   // S9-5 (klasa: bramka enable bez sygnału gotowości) — jawny znacznik
   // ładowania katalogu, niezależny od `typy.length` (katalog pusty PO

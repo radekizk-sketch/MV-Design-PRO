@@ -62,12 +62,7 @@ def _magistrala(
     (świadomie zduplikowany — konwencja tego pakietu testów: każdy plik jest
     samowystarczalny, brak wspólnego conftest dla fikstur ENM).
     """
-    if voltage_kv == 20.0:
-        source_ref = "src-gpz-20kv-250mva-rx010"
-        tr_ref = "tr-wn-sn-110-20-25mva-yd11"
-    else:
-        source_ref = "src-gpz-15kv-250mva-rx010"
-        tr_ref = "tr-wn-sn-110-15-25mva-yd11"
+    source_ref = "src-gpz-20kv-250mva-rx010" if voltage_kv == 20.0 else "src-gpz-15kv-250mva-rx010"
     enm = _wykonaj(
         _pusty_enm(voltage_kv),
         "add_grid_source_sn",
@@ -75,8 +70,6 @@ def _magistrala(
             "voltage_kv": voltage_kv,
             "catalog_ref": source_ref,
             "sections_count": 1,
-            "transformer_count": 1,
-            "transformer_catalog_ref": tr_ref,
             "line_fields_count": 1,
             "gpz_line_field_apparatus": {
                 "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
@@ -107,9 +100,9 @@ def _magistrala(
 #: zastosowanie (kompensacja/abonencka mają warianty 20 kV — muszą trafić na
 #: magistralę TEGO SAMEGO napięcia, inaczej domena słusznie odmawia).
 _ROLA_A_C_E_TEMPLATES: tuple[tuple[str, float], ...] = (
-    ("tpl_gpz_110_15_2x16mva_h5", 0.0),  # 0.0 = GPZ, brak magistrali (korzeń)
-    ("tpl_gpz_110_15_2x25mva_h5", 0.0),
-    ("tpl_gpz_110_20_2x16mva_h5", 0.0),
+    ("tpl_gpz_sn_15_2s_4p", 0.0),  # 0.0 = GPZ, brak magistrali (korzeń)
+    ("tpl_gpz_sn_15_2s_6p", 0.0),
+    ("tpl_gpz_sn_20_2s_4p", 0.0),
     ("tpl_rs_2pola_sprzeglo", 15.0),
     ("tpl_rsm_4pola_2wyjscia", 15.0),
     ("tpl_rs_6pola_wezel_petlowy", 15.0),
@@ -181,6 +174,35 @@ def test_szablon_przenosi_uklad_sieci_nn_projektanta_na_transformator(
             t.lv_earthing_system for t in model.transformers if t.ref_id in stacja.transformer_refs
         }
         assert uklady == {oczekiwany}, (tpl_id, uklady)
+
+
+@pytest.mark.parametrize(
+    "tpl_id,voltage_kv", [t for t in _ROLA_A_C_E_TEMPLATES if "pomiar" in t[0]]
+)
+def test_szablon_przenosi_tolerancje_sieci_nn_projektanta_na_transformator(
+    tpl_id: str, voltage_kv: float
+) -> None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `params_override.nn_earthing.lv_voltage_tolerance`
+    (ten sam blok kreatora stacji) trafia na `Transformer.lv_voltage_tolerance` stacji szablonu;
+    bez niego szablon niczego nie zgaduje, a wartość spoza słownika jest odmową nazwaną."""
+    for tolerancja in ("PLUS_6", "PLUS_10", None):
+        blok: dict[str, Any] = {"lv_system": "TN-C-S"}
+        if tolerancja is not None:
+            blok["lv_voltage_tolerance"] = tolerancja
+        result, klucz = _zastosuj(
+            tpl_id,
+            voltage_kv,
+            klucz_suffix=f":tolerancja-{tolerancja}",
+            params_override={"nn_earthing": blok},
+        )
+        model = get_enm(klucz)
+        stacja = next(s for s in model.substations if s.ref_id == result["station_ref"])
+        tolerancje = {
+            t.lv_voltage_tolerance
+            for t in model.transformers
+            if t.ref_id in stacja.transformer_refs
+        }
+        assert tolerancje == {tolerancja}, (tpl_id, tolerancje)
 
 
 @pytest.mark.parametrize("tpl_id,voltage_kv", _ROLA_A_C_E_TEMPLATES)
@@ -277,30 +299,32 @@ def test_stacja_bez_transformatora_nie_zostawia_wyspy_grafu_nn(tpl_id: str) -> N
     assert "E003" not in codes, f"{tpl_id}: E003 (graf niespójny) obecny mimo naprawy"
 
 
-def test_gpz_tworzy_dwie_sekcje_i_sprzeglo_uklad_h5() -> None:
-    """Karta §1 rola A: „dwa transformatory, sekcja szyn, sprzęgło" — układ H5
-    materializuje się z `add_grid_source_sn(sections_count=2)`."""
-    result, klucz = _zastosuj("tpl_gpz_110_15_2x16mva_h5", 0.0)
+def test_gpz_tworzy_dwie_sekcje_i_sprzeglo_bez_transformatorow_110_sn() -> None:
+    """Karta §1 rola A: dwie sekcje szyn SN i sprzęgło z `add_grid_source_sn(sections_count=2)`.
+
+    Karta GPZ-MODEL (granica zasilania SN): równoważnik szablonu (katalog `ZRODLO_SN`,
+    Sk widziane z szyn SN) już zawiera impedancję transformatorów 110/SN, więc szablon ich
+    NIE tworzy — granicą modelu są szyny SN, równoważnik stoi na sekcji 1, sekcja 2 jest
+    zasilana przez sprzęgło."""
+    result, klucz = _zastosuj("tpl_gpz_sn_15_2s_4p", 0.0)
     saved = get_enm(klucz)
     d = saved.model_dump(mode="json")
     substation = next(s for s in d["substations"] if s["ref_id"] == result["station_ref"])
     buses_by_ref = {b["ref_id"]: b for b in d["buses"]}
-    sn_bus_refs = [ref for ref in substation["bus_refs"] if buses_by_ref[ref]["voltage_kv"] == 15.0]
-    assert len(sn_bus_refs) == 2, (
-        f"GPZ 2-sekcyjny musi mieć 2 szyny SN 15 kV, jest {len(sn_bus_refs)} "
-        f"(bus_refs stacji zawiera też szyny 110 kV transformatorów — display-only)"
-    )
-    assert len(substation["transformer_refs"]) == 2, "Szablon 2x16 MVA musi dać 2 transformatory"
+    assert [buses_by_ref[ref]["voltage_kv"] for ref in substation["bus_refs"]] == [15.0, 15.0]
+    assert substation["transformer_refs"] == []
+    assert d["transformers"] == []
     couplers = [b for b in d["branches"] if b.get("type") == "bus_coupler"]
-    assert len(couplers) == 1, "Układ H5 wymaga dokładnie jednego sprzęgła międzysekcyjnego"
-    for tr_ref in substation["transformer_refs"]:
-        tr = next(t for t in d["transformers"] if t["ref_id"] == tr_ref)
-        assert tr["catalog_ref"] == "tr-wn-sn-110-15-16mva-yd11"
+    assert len(couplers) == 1, "Dwie sekcje wymagają dokładnie jednego sprzęgła międzysekcyjnego"
+    sekcje = substation["gpz_sections"]
+    (zrodlo,) = d["sources"]
+    assert zrodlo["bus_ref"] == sekcje[0]["bus_ref"]
+    assert [s["incoming_source_ref"] for s in sekcje] == [zrodlo["ref_id"], None]
 
 
 def test_gpz_target_segment_id_none_jest_akceptowany() -> None:
     """GPZ jest korzeniem modelu — `target_segment_id=None` NIE jest błędem."""
-    template = get_template("tpl_gpz_110_15_2x16mva_h5")
+    template = get_template("tpl_gpz_sn_15_2s_4p")
     assert template is not None
     klucz = "v12t016:gpz-none-target"
     set_enm(klucz, EnergyNetworkModel.model_validate(_pusty_enm()))
@@ -411,7 +435,7 @@ def test_kazdy_szablon_20kv_poza_gpz_odmawia_na_magistrali_15kv() -> None:
 # Iloczyn: {korzeń modelu (GPZ), wcięcie w odcinek} × {OSError, ValidationError, obcy}.
 # ---------------------------------------------------------------------------
 
-_SZABLONY_ZAPISU = (("tpl_gpz_110_15_2x16mva_h5", 0.0), ("tpl_abonencka_250kva_pomiar", 15.0))
+_SZABLONY_ZAPISU = (("tpl_gpz_sn_15_2s_4p", 0.0), ("tpl_abonencka_250kva_pomiar", 15.0))
 
 
 def _awaria_zapisu(typ: str) -> Any:

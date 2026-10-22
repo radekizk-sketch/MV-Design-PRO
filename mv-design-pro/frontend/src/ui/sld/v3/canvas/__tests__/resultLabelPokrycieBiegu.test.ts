@@ -13,7 +13,7 @@
  * /api/execution/runs/{id}/execute` → `GET .../results/v1`, w kształcie, w jakim
  * kanwa dostaje je od orkiestratora.
  *   * `s92Bieg.enm.json`         — migawka ENM (`GET /api/cases/{case}/enm`);
- *   * `s92Zwarcie.overlay.json`  — nakładka biegu zwarciowego (9 punktów);
+ *   * `s92Zwarcie.overlay.json`  — nakładka biegu zwarciowego (10 punktów);
  *   * `s92Rozplyw.overlay.json`  — nakładka biegu rozpływowego (23 punkty).
  *
  * ATRYBUCJA LICZB (karta SLD-SUBSTRAT, regeneracja z API zamiast zrzutu ręcznego):
@@ -27,6 +27,11 @@
  *     od POMIAR-ODG do odgałęzienia przez ZKSN, którego przed pierwszą stacją ciągu
  *     rysunek dziś nie kładzie — kontrakt „wyniki na kanwie" potrzebuje stacji NA
  *     rysunku (znalezisko zgłoszone w meldunku karty).
+ *   * zwarcie 9 → 10 punktów (karta GPZ-MODEL): GPZ fikstury ma równoważnik sieci
+ *     110 kV i transformator WN/SN (tryb A), więc w modelu jest realna szyna WN GPZ
+ *     (`gpz/…/hv_section/001/bus_wn`), a solver liczy zwarcie także w niej. Szyna WN
+ *     jest na rysunku (kolumna WN GPZ), więc jej punkt dostaje etykietę: schemat ma
+ *     4 punkty (3 SN + 1 WN), rozdzielnice nN — 6.
  *
  * ODBIÓR KARTY: „liczba etykiet wynikowych > 0 i RÓWNA liczbie punktów wyniku
  * z backendu". Dla biegu ZWARCIOWEGO równość jest dosłowna (3 punkty = 3
@@ -80,14 +85,15 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
 
   const punktySchematuSn = Object.keys(zwarcie.elements).filter((ref) => !nnBoard.has(ref));
 
-  it('kontrola wejścia: nakładka biegu niesie 9 punktów zwarcia, wszystkie klasy „bus" (3 schematu SN + 6 szyn odpływów nN)', () => {
-    expect(Object.keys(zwarcie.elements)).toHaveLength(9);
+  it('kontrola wejścia: nakładka biegu niesie 10 punktów zwarcia, wszystkie klasy „bus" (3 schematu SN + szyna WN GPZ + 6 szyn odpływów nN)', () => {
+    expect(Object.keys(zwarcie.elements)).toHaveLength(10);
     expect(Object.values(zwarcie.elements).every((element) => element.kind === 'bus')).toBe(true);
-    expect(punktySchematuSn).toHaveLength(3);
+    expect(punktySchematuSn).toHaveLength(4);
+    expect(punktySchematuSn.filter((ref) => ref.includes('/hv_section/'))).toHaveLength(1);
     expect(Object.keys(zwarcie.elements).filter((ref) => nnBoard.has(ref))).toHaveLength(6);
   });
 
-  it('ODBIÓR: liczba etykiet > 0 i RÓWNA liczbie punktów wyniku schematu SN (3 = 3)', () => {
+  it('ODBIÓR: liczba etykiet > 0 i RÓWNA liczbie punktów wyniku schematu (4 = 4)', () => {
     const pokryte = pokrytePunkty(entries);
     expect(pokryte.size).toBeGreaterThan(0);
     expect([...pokryte].sort()).toEqual([...punktySchematuSn].sort());
@@ -96,8 +102,8 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
   it('rachunek pokrycia: schemat SN oznakowany w całości, szyny odpływów nN nazwane, zero punktów bez elementu rysunku', () => {
     const coverage = summarizeResultPointCoverage(zwarcie, entries, hidden, nnBoard, gpzTabela);
     expect(coverage).toEqual({
-      total: 9,
-      labelled: 3,
+      total: 10,
+      labelled: 4,
       hiddenByModel: 0,
       inGpzTable: 0,
       withoutTemplate: 0,

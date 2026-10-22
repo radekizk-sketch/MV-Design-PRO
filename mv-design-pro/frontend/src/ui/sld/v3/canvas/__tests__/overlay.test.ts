@@ -626,12 +626,32 @@ describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W
     expect(orientedSegmentRefs(chainEnm).size).toBeGreaterThan(0);
   });
 
-  it('łańcuch prosty 2 kawałki: przedstawicielem zostaje JEDEN człon (F2) — nie CAŁA grupa (jedna strzałka, nie jedna na kawałek)', () => {
+  it('łańcuch prosty 2 kawałki: przedstawicielem zostaje JEDEN człon — najdłuższy narysowany — nie CAŁA grupa (jedna strzałka, nie jedna na kawałek)', () => {
+    // Reguła wyboru (`multiHopFaultFlowSegmentRefs`): najdłuższy kawałek WIDOCZNY na scenie
+    // danego LOD, remis — kolejność sceny. Dawniej test przypinał F2 na każdym LOD, czyli
+    // fakt geometrii fikstury, nie regułę: po karcie GPZ-MODEL (GPZ z równoważnikiem
+    // 110 kV, inna szerokość bloku GPZ wyrównującego magistralę) na L0 dłuższy jest
+    // „F3 (1)". Asercja liczy przedstawiciela NIEZALEŻNIE z geometrii sceny.
     for (const lod of LODS) {
-      const refs = multiHopFaultFlowSegmentRefs(buildSceneV3(chainEnm, lod), chainEnm);
+      const scena = buildSceneV3(chainEnm, lod);
+      const refs = multiHopFaultFlowSegmentRefs(scena, chainEnm);
       expect(refs.size).toBe(1);
-      expect(refs.has(F2)).toBe(true);
-      expect(refs.has(SEGMENT_L)).toBe(false);
+      const dlugosc = (ref: string): number => {
+        const odcinek = scena.segments.find((g) => g.meta?.ownerRef === ref && g.meta?.elementKind === 'segment');
+        if (!odcinek) return -1;
+        let suma = 0;
+        for (let p = 0; p + 1 < odcinek.points.length; p += 1) {
+          suma += Math.abs(odcinek.points[p + 1].x - odcinek.points[p].x) + Math.abs(odcinek.points[p + 1].y - odcinek.points[p].y);
+        }
+        return suma;
+      };
+      const kolejnosc = (ref: string): number => scena.segments.findIndex((g) => g.meta?.ownerRef === ref && g.meta?.elementKind === 'segment');
+      const [lepszy, gorszy] =
+        dlugosc(F2) > dlugosc(SEGMENT_L) || (dlugosc(F2) === dlugosc(SEGMENT_L) && kolejnosc(F2) < kolejnosc(SEGMENT_L))
+          ? [F2, SEGMENT_L]
+          : [SEGMENT_L, F2];
+      expect(refs.has(lepszy), `LOD ${lod}: przedstawiciel = najdłuższy narysowany człon`).toBe(true);
+      expect(refs.has(gorszy)).toBe(false);
     }
   });
 
@@ -713,15 +733,17 @@ describe('overlay.ts — łańcuch 4-członowy na realnej fixturze substrate (GA
   // dwa środkowe człony ('segment'/'segment') mają OBIE strony bez właściciela
   // (mufa-mufa) — prawdziwy dowód, że bramka generalizuje się poza 2 kawałki,
   // nie tylko na parę granica-mufa.
-  // Identyfikatory przepięte przy regeneracji fikstury (karta SLD-SUBSTRAT): ziarno odcinka SN
-  // obejmuje od CV-4.3 K1 (11aebfaa) typ katalogowy i nazwę odcinka — te same cztery człony
-  // (pozycje 1:1 w zrzucie ENM), nowe ziarna; topologia grupy bez zmian.
-  const GROUP = [
-    'seg/9db5ab51469071fc8ca666aab904e037/segment_R',
-    'seg/4d129884adae1cca27fdd6b2f7467827/segment',
-    'seg/b863a867ba40434595813133bdb7d411/segment',
-    'seg/0f0826bee0ffe942518a75bdbfb34900/segment_L_L',
-  ] as const;
+  // Człony grupy odczytane z fikstury PO NAZWACH odcinków (unikalnych w substracie), jak
+  // `refOdcinka` w opisie łańcucha 2-członowego wyżej. Literały identyfikatorów przepinano
+  // przy każdej regeneracji (karta SLD-SUBSTRAT: ziarno odcinka z typem i nazwą; karta
+  // GPZ-MODEL: ziarno GPZ z równoważnikiem 110 kV zmienia ziarna całego łańcucha) —
+  // topologia grupy bez zmian, więc nazwa jest trwałym adresem członu.
+  const refOdcinkaSubstratu = (nazwa: string): string => {
+    const odcinki = enm.branches.filter((b) => b.name === nazwa);
+    expect(odcinki, `odcinek „${nazwa}" jednoznaczny w substracie`).toHaveLength(1);
+    return odcinki[0].ref_id;
+  };
+  const GROUP = ['Magistrala 2 (2)', 'Magistrala 3', 'Magistrala 4', 'Magistrala 5 (1) (1)'].map(refOdcinkaSubstratu);
 
   it('kontrola wejscia: WSZYSTKIE 4 czlony grupy sa mufa-mufa (zaden nie ma OBU terminali stacyjnych), a mimo to KAZDY ma udowodniona orientacje (S9-2)', () => {
     const sldData = buildSldDataFromSnapshot(enm, enm.logical_views ?? null, null);

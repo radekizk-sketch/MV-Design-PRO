@@ -18,6 +18,7 @@ from network_model.core.uziemienie import (
     TypPunktuNeutralnego,
     UziemienieEkranuKabla,
 )
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from pydantic import BaseModel, Field, model_validator
 
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
@@ -111,12 +112,12 @@ class MeasurementRating(BaseModel):
 #: (``application/analyses/protection/ocena_nadpradowa.py``), nigdy domyślną.
 JednostkaProguPradowego = Literal["A_WTORNY", "A_PIERWOTNY"]
 
-#: Charakterystyki czasowo-prądowe nastawy. IEC 60255-151 (SI/VI/EI/LI) i czas niezależny
+#: Charakterystyki czasowo-prądowe nastawy. IEC 60255-151 (SI/VI/EI/LTI) i czas niezależny
 #: (DT) liczy rdzeń ``protection_iec60255.compute_curve_trip_time``; IEEE C37.112 (MI/VI/EI)
 #: — ``protection_iec60255.compute_ieee_c37112_generic`` ze stałymi normy
 #: (``protection.curves.ieee_curves.IEEECurveParams``).
 KrzywaNastawy = Literal[
-    "DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI", "IEEE_MI", "IEEE_VI", "IEEE_EI"
+    "DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LTI", "IEEE_MI", "IEEE_VI", "IEEE_EI"
 ]
 
 
@@ -461,6 +462,13 @@ class Transformer(ENMElement):
     # migracją). Brak = odmowa nazwana (E063 / ELIG_FLNN_MISSING_EARTHING_SYSTEM),
     # nigdy domyślka.
     lv_earthing_system: UkladSieciNn | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (C-TOLERANCJA-NN): tolerancja napięcia sieci nN
+    # zasilanej z tego transformatora wg przypisów tabeli 1 IEC 60909-0 (+6 % → c 1,05/0,95;
+    # +10 % → c 1,10/0,90). JEDYNY nośnik wiersza nN tabeli c: czyta go `enm.tolerancja_nn`
+    # (węzły nN wyspy zasilanej) i K_T tego transformatora. Brak = wartość robocza rejestru
+    # `wartosci_robocze` z założeniem biegu `fault.c_tolerancja_nn_robocza` (karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA), nigdy cicha domyślka.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
     # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
     # Agregacja: n jednostek → impedancja zastępcza Z/n (mapper skaluje Sn×n).
@@ -526,8 +534,14 @@ class Source(ENMElement):
     r0_ohm: float | None = None
     x0_ohm: float | None = None
     z0_z1_ratio: float | None = None
-    c_max: float | None = None
-    c_min: float | None = None
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN zasilanej z tego źródła
+    # wprost na szynie nN (bez transformatora w modelu) — ten sam nośnik wiersza nN tabeli 1
+    # IEC 60909-0 co `Transformer.lv_voltage_tolerance` (+6 % → c 1,05/0,95; +10 % → c
+    # 1,10/0,90), rozwiązywany per wyspa nN przez `enm.tolerancja_nn`. Czytana wyłącznie, gdy
+    # szyna źródła leży w paśmie nN; brak przy takim źródle = wartość robocza rejestru z
+    # założeniem biegu `fault.c_tolerancja_nn_robocza`, nigdy cicha domyślka. Dawne pola `c_max`/`c_min` źródła
+    # (fantom: zapisywane, nigdy nieczytane — c dobiera wyłącznie `voltage_factor`) skasowane.
+    lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -549,6 +563,12 @@ class Load(ENMElement):
     # (`enm/domain_operations_v2.py`) i `update_element_parameters` — każdy przez
     # JEDEN walidator `enm/fazy_odbioru.py::waliduj_fazy_odbioru`.
     phases: PhaseSet | None = None
+    # Karta W5-E-TTIT: rezystancja uziomu instalacji odbiorczej R_A [Ω] — dana projektowa
+    # układów TT/IT (pętla doziemna przez R_A i R_B, napięcie dotykowe R_A·I_Δn — solver
+    # `network_model/solvers/petla_zwarcia_tt_it.py`). `None` = dana nieobecna (werdykt TT/IT
+    # odmawia kodem `nn.brak_r_a`), nigdy zero. Pole addytywne: `None` poza odciskiem
+    # (`enm/hash.py`), pisarze przez JEDEN walidator `enm/uziom_instalacji.py::waliduj_r_a`.
+    earth_electrode_r_ohm: Annotated[float, Field(gt=0)] | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
     quantity: int | None = None
@@ -1869,7 +1889,12 @@ class KatalogProjektu(BaseModel):
     @model_validator(mode="after")
     def _unikalne_i_posortowane(self) -> KatalogProjektu:
         widziane: set[str] = set()
-        for rodzaj in ("line_types", "cable_types", "transformer_types", "karty_widmowe"):
+        for rodzaj in (
+            "line_types",
+            "cable_types",
+            "transformer_types",
+            "karty_widmowe",
+        ):
             rekordy = getattr(self, rodzaj)
             for rekord in rekordy:
                 if not rekord.id.strip():

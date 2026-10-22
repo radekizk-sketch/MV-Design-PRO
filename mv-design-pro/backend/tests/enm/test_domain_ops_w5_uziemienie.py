@@ -1,7 +1,8 @@
 """W5-A: operacje domenowe jednej reprezentacji uziemienia.
 
-Kreator źródła GPZ: `Source.neutral_grounding` + Z0 WYPROWADZONE (ślad White Box) albo
-odmowa nazwana; kreator stacji: `Transformer.lv_earthing_system` + `lv_neutral` z
+Kreator źródła GPZ: `Source.neutral_grounding` + Z0 wyłącznie jawne (karta GPZ-MODEL: przy
+równoważniku na szynach SN transformatora 110/SN nie ma w modelu, więc nie ma z czego
+wyprowadzać Z_T0 — punkt uziemiony bez Z0 blokuje E-W5-01) albo odmowa nazwana; kreator stacji: `Transformer.lv_earthing_system` + `lv_neutral` z
 właściwym kluczem R/X i odmową predykatu; ekran kabla we WSZYSTKICH operacjach tworzących
 kabel (magistrala, odgałęzienie, pierścień, kabel nN) + podział odcinka; rola uziemnika
 w kreatorze pola; allowlista `update_element_parameters`.
@@ -16,11 +17,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_stacji
-from network_model.pochodne import (
-    impedancja_punktu_neutralnego_ohm,
-    impedancja_rozproszenia_transformatora_ohm,
-    impedancja_zerowa_zrodla_z_uziemienia_ohm,
-)
+from enm.validator import ENMValidator
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 CATALOG_KABEL_SN = "cable-tfk-yakxs-3x120"
@@ -48,8 +45,6 @@ def _gpz(grounding: dict[str, Any] | None, **extra: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "voltage_kv": 15.0,
         "catalog_ref": CATALOG_ZRODLO_SN,
-        "hv_voltage_kv": 110.0,
-        "transformer_sn_mva": 25.0,
     }
     if grounding is not None:
         payload["grounding"] = grounding
@@ -66,38 +61,32 @@ class TestKreatorZrodla:
         meta = snap["substations"][0]["meta"]
         assert "grounding" not in meta and "zero_sequence" not in meta
 
-    def test_z0_wyprowadzone_z_z_t0_plus_3_z_n_ze_sladem_white_box(self):
-        snap = _ok(_gpz({"type": "resistor_grounded", "r_ohm": 12.0}))
+    @pytest.mark.parametrize(
+        "grounding",
+        [
+            {"type": "resistor_grounded", "r_ohm": 12.0},
+            {"type": "petersen_coil", "x_ohm": 150.0},
+            {"type": "directly_grounded"},
+        ],
+    )
+    def test_uziemiony_bez_jawnego_z0_nie_wyprowadza_i_blokuje_e_w5_01(self, grounding):
+        """Karta GPZ-MODEL: równoważnik na szynach SN — transformatorów 110/SN nie ma
+        w modelu, Z0 widziane z szyn SN jest daną równoważnika. Brak tej danej przy
+        punkcie uziemionym nie jest uzupełniany żadną liczbą (ani wyprowadzeniem z
+        transformatora spoza modelu) — walidator blokuje bieg kodem E-W5-01."""
+        snap = _ok(_gpz(grounding))
         source = snap["sources"][0]
-        tr = next(
-            t
-            for t in snap["transformers"]
-            if t["ref_id"] == snap["substations"][0]["transformer_refs"][0]
-        )
-        p = tr["materialized_params"]
-        z_t0 = impedancja_rozproszenia_transformatora_ohm(
-            float(p["uk_percent"]), float(p["pk_kw"]), float(p["rated_power_mva"]), 15.0
-        )
-        z_0 = impedancja_zerowa_zrodla_z_uziemienia_ohm(
-            z_t0, impedancja_punktu_neutralnego_ohm(12.0, None)
-        )
-        assert source["r0_ohm"] == pytest.approx(z_0.real)
-        assert source["x0_ohm"] == pytest.approx(z_0.imag)
-        assert source["r0_ohm"] >= 36.0  # 3·R_N wchodzi wprost
-        slad = source["materialized_params"]["zero_sequence_provenance"]
-        assert slad["proweniencja"] == "WYPROWADZONE"
-        assert slad["dane"]["transformer_ref"] == tr["ref_id"]
-        assert slad["dane"]["r_n_ohm"] == 12.0 and slad["dane"]["x_n_ohm"] is None
-        assert slad["wynik"] == {"r0_ohm": source["r0_ohm"], "x0_ohm": source["x0_ohm"]}
-        assert "Z_0 = Z_T0 + 3·Z_N" in slad["wzor"]
+        assert snap["transformers"] == []
+        assert source.get("r0_ohm") is None and source.get("x0_ohm") is None
+        assert source.get("z0_z1_ratio") is None
+        assert "zero_sequence_provenance" not in source["materialized_params"]
+        wynik = ENMValidator().validate(EnergyNetworkModel.model_validate(snap))
+        blokery = [i for i in wynik.issues if i.code == "E-W5-01"]
+        assert [i.element_refs for i in blokery] == [[source["ref_id"]]]
+        assert "impedancji zerowej" in blokery[0].message_pl
+        assert "110 kV" in (blokery[0].suggested_fix or "")
 
-    def test_dlawik_petersena_wchodzi_jako_3_jx_n(self):
-        snap = _ok(_gpz({"type": "petersen_coil", "x_ohm": 150.0}))
-        source = snap["sources"][0]
-        assert source["x0_ohm"] > 450.0
-        assert source["materialized_params"]["zero_sequence_provenance"]["dane"]["x_n_ohm"] == 150.0
-
-    def test_jawne_liczby_z0_wygrywaja_nad_wyprowadzeniem(self):
+    def test_jawne_liczby_z0_przechodza_walidacje(self):
         snap = _ok(
             _gpz(
                 {"type": "resistor_grounded", "r_ohm": 12.0},
@@ -108,16 +97,15 @@ class TestKreatorZrodla:
         assert source["z0_z1_ratio"] == 3.2
         assert "zero_sequence_provenance" not in source["materialized_params"]
         assert source.get("r0_ohm") is None
+        wynik = ENMValidator().validate(EnergyNetworkModel.model_validate(snap))
+        assert not [i for i in wynik.issues if i.code == "E-W5-01"]
 
-    def test_izolowany_i_bezposredni_bez_wyprowadzania_i_bez_fabrykacji(self):
+    def test_izolowany_bez_z0_i_bez_blokady(self):
         snap = _ok(_gpz({"type": "isolated"}))
         assert snap["sources"][0].get("r0_ohm") is None
         assert "zero_sequence_provenance" not in snap["sources"][0]["materialized_params"]
-        snap = _ok(_gpz({"type": "directly_grounded"}))
-        source = snap["sources"][0]
-        assert source["materialized_params"]["zero_sequence_provenance"]["dane"]["r_n_ohm"] is None
-        # Z_N = 0 → Z0 = Z_T0 (bez fabrykacji rezystora).
-        assert 0.0 <= source["r0_ohm"] < 1.0
+        wynik = ENMValidator().validate(EnergyNetworkModel.model_validate(snap))
+        assert not [i for i in wynik.issues if i.code == "E-W5-01"]
 
     @pytest.mark.parametrize(
         "grounding",
@@ -138,7 +126,9 @@ class TestKreatorZrodla:
         a = _ok(_gpz({"type": "resistor_grounded", "r_ohm": 12.0}))
         b = _ok(_gpz({"type": "resistor_grounded", "r_ohm": 12.0}))
         assert [s["ref_id"] for s in a["sources"]] == [s["ref_id"] for s in b["sources"]]
-        assert a["sources"][0]["r0_ohm"] == b["sources"][0]["r0_ohm"]
+        assert {k: v for k, v in a.items() if k != "header"} == {
+            k: v for k, v in b.items() if k != "header"
+        }
 
 
 def _gpz_z_odcinkiem(screen_bonding: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -214,6 +204,34 @@ class TestKreatorStacji:
         result = _stacja(snap, nn_earthing)
         assert result["error_code"] == kod
         assert result.get("snapshot") is None
+
+    @pytest.mark.parametrize(
+        ("tolerancja", "kod"),
+        [
+            ("PLUS_6", None),
+            ("PLUS_10", None),
+            (None, None),
+            ("PLUS_8", "station.invalid_lv_voltage_tolerance"),
+            ("+6 %", "station.invalid_lv_voltage_tolerance"),
+        ],
+    )
+    def test_tolerancja_sieci_nn_na_transformatorze_stacji(self, tolerancja, kod):
+        """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `nn_earthing.lv_voltage_tolerance` — wiersz nN
+        tabeli 1 IEC 60909-0 (+6 %: c 1,05/0,95; +10 %: c 1,10/0,90) na transformatorze
+        stacji, ten sam blok co układ sieci nN; brak = brak deklaracji (nie domyślka)."""
+        result, _ = _gpz_z_odcinkiem()
+        snap = _ok(result)
+        nn_earthing: dict[str, Any] = {"lv_system": "TN-C-S"}
+        if tolerancja is not None:
+            nn_earthing["lv_voltage_tolerance"] = tolerancja
+        result = _stacja(snap, nn_earthing)
+        if kod is not None:
+            assert result["error_code"] == kod
+            assert result.get("snapshot") is None
+            return
+        snap = _ok(result)
+        tr = next(t for t in snap["transformers"] if t["ulv_kv"] < 1.0)
+        assert tr.get("lv_voltage_tolerance") == tolerancja
 
     def test_brak_bloku_zostawia_transformator_bez_ukladu_nie_domyslke(self):
         result, _ = _gpz_z_odcinkiem()
@@ -492,42 +510,3 @@ class TestSlownikiPrzyZapisie:
         )
         kabel_po = next(b for b in po["branches"] if b["ref_id"] == kabel["ref_id"])
         assert kabel_po["screen_bonding"] == "both_ends"
-
-
-class TestWyprowadzenieZ0BezDomyslek:
-    """`_wyprowadz_z0_zrodla_z_uziemienia`: KAŻDA dana tabliczki (u_k, P_k, S_rT) jest
-    wymagana — brak którejkolwiek = brak wyprowadzenia (E-W5-01 melduje „punkt
-    uziemiony bez Z0"), nigdy ciche 0.0 (zapadka `solver_input_substitute_guard`)."""
-
-    @staticmethod
-    def _wyprowadz(tabliczka: dict[str, Any]) -> dict[str, Any]:
-        from enm.domain_operations import _wyprowadz_z0_zrodla_z_uziemienia
-
-        materialized: dict[str, Any] = {"short_circuit_input_side": "SN"}
-        _wyprowadz_z0_zrodla_z_uziemienia(
-            {"type": "resistor_grounded", "r_ohm": 12.0},
-            materialized,
-            voltage_kv=15.0,
-            transformator=("tr/test", tabliczka),
-        )
-        return materialized
-
-    def test_komplet_danych_wyprowadza_z0(self):
-        m = self._wyprowadz({"uk_percent": 11.0, "pk_kw": 120.0, "rated_power_mva": 25.0})
-        assert m["r0_ohm"] >= 36.0 and m["x0_ohm"] > 0.0
-        assert m["zero_sequence_provenance"]["dane"]["pk_kw"] == 120.0
-
-    @pytest.mark.parametrize(
-        "tabliczka",
-        [
-            {"uk_percent": 11.0, "rated_power_mva": 25.0},
-            {"uk_percent": 11.0, "pk_kw": None, "rated_power_mva": 25.0},
-            {"uk_percent": 11.0, "pk_kw": 0.0, "rated_power_mva": 25.0},
-            {"pk_kw": 120.0, "rated_power_mva": 25.0},
-            {"uk_percent": 11.0, "pk_kw": 120.0},
-        ],
-    )
-    def test_brak_danej_tabliczki_to_brak_wyprowadzenia_nie_zero(self, tabliczka):
-        m = self._wyprowadz(tabliczka)
-        assert "r0_ohm" not in m and "x0_ohm" not in m
-        assert "zero_sequence_provenance" not in m

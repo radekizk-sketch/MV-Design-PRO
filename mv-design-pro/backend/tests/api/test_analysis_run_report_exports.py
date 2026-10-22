@@ -118,7 +118,10 @@ def _build_sc_run() -> CanonicalRun:
                     "ikss_a": 4500.0,
                     "ip_a": 9200.0,
                     "ith_a": 4700.0,
-                    "ib_a": 4100.0,
+                    # Karta SC-IB-ITH-ZRODLA: zwarcie niesymetryczne — I_b = I''k (IEC 60909-0
+                    # rozdz. 9); i_DC(t_b) = 3,2 kA przy t_b = 0,1 s (pole addytywne solvera).
+                    "ib_a": 4500.0,
+                    "i_dc_a": 3200.0,
                     "ik_total_a": 4500.0,
                     "ik_thevenin_a": 4400.0,
                     "ik_inverters_a": 100.0,
@@ -259,7 +262,8 @@ def test_report_payload_short_circuit_rows_carry_full_iec60909_balance() -> None
     assert row["un_kv"] == 15.0
     assert row["tk_s"] == 1.0
     assert row["tb_s"] == 0.1
-    assert row["ib_ka"] == 4.1
+    assert row["ib_ka"] == 4.5
+    assert row["i_dc_ka"] == 3.2
     assert row["ik_ka"] == 4.5
     assert abs(row["i2t_ka2s"] - 22.09) < 1e-9
 
@@ -278,7 +282,10 @@ def test_export_run_report_docx_includes_full_iec60909_balance() -> None:
 
     document = _Document(_io.BytesIO(response.body))
     text = "\n".join(paragraph.text for paragraph in document.paragraphs)
-    assert "Ik''=4.5 kA | ip=9.2 kA | Ith=4.7 kA | Ib=4.1 kA | Ik=4.5 kA | Sk''=125 MVA" in text
+    assert (
+        "Ik''=4.5 kA | ip=9.2 kA | Ith=4.7 kA | Ib=4.5 kA | iDC(tb)=3.2 kA | Ik=4.5 kA | "
+        "Sk''=125 MVA" in text
+    )
     assert (
         "Bilans IEC 60909: Rk=0.5 Ohm | Xk=1.5 Ohm | |Zk|=1.58114 Ohm | X/R=3 | kappa=1.4" in text
     )

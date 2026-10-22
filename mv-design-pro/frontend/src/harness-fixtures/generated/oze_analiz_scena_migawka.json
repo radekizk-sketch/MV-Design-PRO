@@ -25,7 +25,7 @@
         "source_field_kind": "FEEDER"
       },
       "metadane_pochodzenia": null,
-      "name": "Pole liniowe GPZ",
+      "name": "Pole liniowe GPZ 1.1",
       "outgoing_destination_ref": null,
       "ports": [],
       "primary_devices": [],
@@ -504,27 +504,6 @@
     },
     {
       "frequency_hz": null,
-      "id": "1092ce59-dd9a-5d92-adcd-88607c3143f5",
-      "meta": {
-        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
-        "gpz_transformer_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
-        "render_on_sld": true,
-        "show_in_project_tree": false,
-        "visual_role": "GPZ_HV_BUS"
-      },
-      "name": "Szyna 110 kV TR1",
-      "nominal_limits": null,
-      "phase_system": "3ph",
-      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110",
-      "tags": [
-        "gpz_hv_bus",
-        "helper_bus"
-      ],
-      "voltage_kv": 110.0,
-      "zone": null
-    },
-    {
-      "frequency_hz": null,
       "id": "fc906447-77fb-5825-be5b-c86a2e064d20",
       "meta": {
         "render_on_sld": true,
@@ -884,7 +863,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "7abdb79cedf186b547b4505bf09972cea1a610f858aa543e9203e59c168c76cb",
+    "hash_sha256": "bb3b1bf6d0f4d732636c5f63d7bc01813fe70cf29d226a1e653ec0068283b620",
     "name": "Scena analiz OZE",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -915,6 +894,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "09afaa46-a125-5190-b1d3-263840fd4a1e",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",
@@ -960,14 +940,13 @@
   "sources": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "f3767143-9c5c-598d-9460-2cb312400f75",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -1012,8 +991,7 @@
   "substations": [
     {
       "bus_refs": [
-        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
+        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn"
       ],
       "construction_type": null,
       "designation": null,
@@ -1025,7 +1003,7 @@
           "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
           "incoming_source_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/source/main",
           "left_coupler_ref": null,
-          "line_field_name": "Pole liniowe GPZ",
+          "line_field_name": "Pole liniowe GPZ 1.1",
           "name": "Sekcja 1",
           "order": 0,
           "right_coupler_ref": null,
@@ -1034,13 +1012,11 @@
       ],
       "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
       "meta": {
-        "gpz_hv_bus_refs": [
-          "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110"
-        ],
+        "gpz_hv_bus_refs": [],
         "gpz_section_count": 1,
         "short_circuit_input_side": "SN",
         "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-        "wn_sn_transformer_count": 1
+        "wn_sn_transformer_count": 0
       },
       "name": "GPZ 110/15",
       "nn_sections": [],
@@ -1048,9 +1024,7 @@
       "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
       "station_type": "gpz",
       "tags": [],
-      "transformer_refs": [
-        "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn"
-      ]
+      "transformer_refs": []
     },
     {
       "bus_refs": [
@@ -1083,58 +1057,6 @@
   "transformers": [
     {
       "catalog_namespace": "TRAFO_SN_NN",
-      "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
-      "hv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/bus_110",
-      "hv_neutral": null,
-      "i0_percent": 0.35,
-      "id": "ea4515dd-c9ea-55f8-a92a-0b7d02da7b94",
-      "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "lv_earthing_system": null,
-      "lv_neutral": null,
-      "materialized_params": {
-        "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
-        "catalog_item_version": "legacy",
-        "i0_percent": 0.35,
-        "p0_kw": 25.0,
-        "pk_kw": 120.0,
-        "rated_power_mva": 25.0,
-        "uk_percent": 11.0,
-        "vector_group": "Yd11",
-        "voltage_hv_kv": 110.0,
-        "voltage_lv_kv": 15.0
-      },
-      "meta": {
-        "catalog_item_version": "legacy",
-        "catalog_role": "TRANSFORMATOR_WN_SN",
-        "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
-        "gpz_section_order": 0,
-        "gpz_substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
-        "visual_role": "GPZ_WN_SN_TRANSFORMER"
-      },
-      "n_parallel": null,
-      "name": "TR1 110/15 kV",
-      "overrides": [],
-      "p0_kw": 25.0,
-      "parameter_source": "CATALOG",
-      "pk_kw": 120.0,
-      "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/transformer/001/wn_sn",
-      "sn_mva": 25.0,
-      "source_mode": "KATALOG",
-      "tags": [
-        "gpz_wn_sn_transformer"
-      ],
-      "tap_changer": null,
-      "tap_max": null,
-      "tap_min": null,
-      "tap_position": null,
-      "tap_step_percent": null,
-      "uhv_kv": 110.0,
-      "uk_percent": 11.0,
-      "ulv_kv": 15.0,
-      "vector_group": "Yd11"
-    },
-    {
-      "catalog_namespace": "TRAFO_SN_NN",
       "catalog_ref": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
       "hv_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/sn_field_terminal/002",
       "hv_neutral": null,
@@ -1143,6 +1065,7 @@
       "lv_bus_ref": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
         "catalog_item_version": "legacy",
