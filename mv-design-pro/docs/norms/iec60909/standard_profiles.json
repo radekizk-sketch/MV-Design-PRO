@@ -160,6 +160,16 @@
       "url": "https://www.digsilent.de/en/faq-reader-powerfactory/why-are-the-results-of-short-citcuit-calculation-depending-on-max-voltage-tolerance.html",
       "type": "ENGINEERING_VENDOR",
       "claim": "2016 Table 1 LV voltage tolerance +/-6% and +/-10% voltage factors"
+    },
+    {
+      "url": "https://sklep.pkn.pl/pn-en-60909-0-2016-09e.html",
+      "type": "PKN_NATIONAL_STANDARDS_CATALOG",
+      "claim": "PN-EN 60909-0:2016-09 published 2016-09-07, identical adoption 2016"
+    },
+    {
+      "url": "https://webstore.iec.ch/en/publication/66482",
+      "type": "IEC_PRIMARY_REFERENCE_REPORT",
+      "claim": "TR 60909-4:2021 adapted to IEC 60909-0:2016, not 2026"
     }
   ],
   "european_adoption": {
@@ -167,11 +177,6 @@
     "publication_date": "2026-09-18",
     "source_url": "https://www.pkn.pl/o-pkn/wspolpraca-miedzynarodowa/nowe-enisoiec/normy-europejskie",
     "status": "VERIFIED_PKN_EUROPEAN_STANDARDS_LIST"
-  },
-  "polish_adoption": {
-    "designation": null,
-    "status": "NOT_VERIFIED_IN_PKN_CATALOG",
-    "warning": "EN IEC publication does not automatically establish a published PN-EN IEC designation"
   },
   "verified_core_examination": {
     "c_factor_code": "network_model/core/voltage_factor.py: band-specific ±6% LV assumed, no 10% LV selection",
@@ -181,5 +186,28 @@
     "symmetrical_breaking_current": "short_circuit_core.py: ib_a formula contains DC attenuation term; definition of Ib is symmetrical AC component",
     "branch_currents": "short_circuit_iec60909.py: branch magnitudes and direction from voltage magnitudes; KCL in complex domain not demonstrated",
     "status": "STATIC_AUDIT_NOT_NUMERICALLY_VALIDATED"
+  },
+  "polish_adoption_2016": {
+    "designation": "PN-EN 60909-0:2016-09",
+    "published": "2016-09-07",
+    "relationship": "IDT to EN 60909-0:2016 and IEC 60909-0:2016",
+    "source_url": "https://sklep.pkn.pl/pn-en-60909-0-2016-09e.html",
+    "status": "VERIFIED_PKN_CATALOG"
+  },
+  "polish_adoption_2026": {
+    "designation": null,
+    "status": "NOT_VERIFIED_IN_PKN_CATALOG",
+    "warning": "EN IEC publication does not automatically establish a published PN-EN IEC designation"
+  },
+  "reference_reports": {
+    "IEC_TR_60909_4_2021": {
+      "url": "https://webstore.iec.ch/en/publication/66482",
+      "adapted_to": "IEC_60909_0_2016",
+      "note": "Examples support numerical checks against 2016, NOT sufficient to certify IEC 2026 independently"
+    },
+    "IEC_60909_3_2009": {
+      "url": "https://webstore.iec.ch/en/publication/3890",
+      "scope": "Two separate simultaneous earth faults; earth return and sheath currents in defined networks"
+    }
   }
 }
