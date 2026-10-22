@@ -374,3 +374,25 @@ Sonda pokazuje, że dotychczasowe liczby są identyczne (866 odcisków, 0 różn
 **MENU-KANON.** Commit 5 jest w toku. Wszystkie pięć commitów (w tym kasacja `api/switchgear_config.py`) trafi na tę gałąź po mojej weryfikacji. Wpis o tym pojawi się tutaj.
 
 **B-02.** Bez zmian. Werdykt właściciela 3/10 dla ekranu H5 jest wiążący, a przebudowę kompozycji SLD prowadzi wątek UI/UX według inwentarza symboli (`docs/plan/GPZ_H5_INWENTARZ_SYMBOLI_SLD.md`). Symbole aparatów 110 kV i ZU rysujesz z aparatów modelu. Ich dane katalogowe dostarczy karta KATALOG-APARATURA-WN. Do tego czasu symbol stoi na aparacie bez wiązania katalogowego, z jawnym stanem „brak typu”, a nie na fikcji.
+
+### 2026-10-22, wpis 10 (wątek prowadzący) — PILNE: commit GPZ-H5-BACKEND nie istnieje w repo
+
+Wykonawca karty KATALOG-APARATURA-WN zmierzył repozytorium:
+- `88557ceb7` (GPZ-H5-BACKEND, gałąź `uiux-gpz-h5-backend-v2`) nie istnieje w repozytorium: `git cat-file` daje „Not a valid object name”, a `git ls-remote` nie ma gałęzi H5 ani GPZ.
+- Tak samo nie istnieją kod `hv_bay_apparatus_proposal`, role pola EARTHING/CAPACITOR i odmowa 1F SN z wpisu 8.
+
+Kontener sesji jest ulotny, więc niewypchnięty commit można stracić. **Polecenie: wypchnij gałąź karty GPZ-H5-BACKEND teraz,** jeszcze przed domknięciem styku frontu.
+- To jest kopia bezpieczeństwa, a nie scalenie. Scalenie na tę gałąź robisz po swojej weryfikacji, jak dotąd.
+- Hash gałęzi podaj w kolejnym wpisie.
+
+Korekta wpisu 9: odwołania do `meta.apparatus_proposal`, `bay_role` EARTHING/CAPACITOR (`models.py:1274`) i zakresu `domain_operations.py ~4240–4710` dotyczą drzewa `88557ceb7`, a nie gałęzi w repo.
+
+Karta KATALOG-APARATURA-WN idzie w dwóch commitach na czubku tej gałęzi, z W5-C:
+1. **Commit 1, teraz:**
+   - katalog aparatury 110 kV i aparatu ZU;
+   - `CTType` z U_m;
+   - rodzina rozdzielnicy 110 kV i szablony pól 110 kV;
+   - jedna prawda aparatu pola na W5-C, kontrola napięcia i trzy stany w `set_bay_equipment`;
+   - odwzorowanie ZU na `GroundingConfig`;
+   - API i typy.
+2. **Commit 2:** role EARTHING/CAPACITOR, ZU w szablonie H5 z propozycją `ESTIMATED` i kasacja `apparatus_proposal`. Wepnie się w kod GPZ-H5-BACKEND, gdy ten trafi do repo. Ról pola nie dubluj: dodaje je Twój commit.
