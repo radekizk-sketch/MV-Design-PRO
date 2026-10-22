@@ -56,6 +56,7 @@ import { grupujOdbioryWgPasma } from '../../../ui2/model/odbioryWgPasma';
 import { regulacjaLabel, type TrybRegulacji } from '../../../ui2/kreatory/zrodlo-oze/zrodloOzeModel';
 import { FIELD_SOURCE_LABEL_PL, fieldRoleLabelPl } from '../v2/station-rozdzielnia/contract';
 import { stanLacznikaPolaZModelu, stanLacznikaToruZModelu } from '../v2/model/stanAparatowPola';
+import { POLOZENIE_LACZNIKA_PL } from '../../shared/stanLacznika';
 import type { DaneElementuKanwy } from './daneElementuKanwy';
 
 // ---------------------------------------------------------------------------
@@ -279,11 +280,6 @@ function edycja(elementRef: string, parametr: string, wartosc: unknown): EdycjaW
   };
 }
 
-const POLOZENIE_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
-  closed: 'zamknięty',
-  open: 'otwarty',
-  unknown: 'nieustalony (model niejednoznaczny)',
-};
 
 const WYKONANIE_STACJI_PL: Readonly<Record<string, string>> = {
   wnetrzowa: 'wnętrzowa',
@@ -562,7 +558,7 @@ function stanAparatu(ix: IndeksModelu, aparat: AparatPola, bay: Bay | null): str
   const stan = bay
     ? stanLacznikaPolaZModelu(aparat.ref, bay, ix.galezie)
     : stanLacznikaToruZModelu(aparat.ref, ix.galezie);
-  return stan ? POLOZENIE_PL[stan] : null;
+  return stan ? POLOZENIE_LACZNIKA_PL[stan] : null;
 }
 
 function zabezpieczeniaPola(ix: IndeksModelu, bay: Bay, aparaty: readonly AparatPola[]): string | null {
@@ -1080,7 +1076,7 @@ function kartaOdcinka(ix: IndeksModelu, galaz: Branch): KartaTechniczna {
           wiersz('rodzaj', 'Rodzaj', RODZAJ_GALEZI_PL[galaz.type]),
           wiersz('od', 'Początek', koniec(galaz.from_bus_ref)),
           wiersz('do', 'Koniec', koniec(galaz.to_bus_ref)),
-          wiersz('stan', 'Stan (model)', galaz.status === 'open' ? 'otwarty' : galaz.status === 'closed' ? 'zamknięty' : null),
+          wiersz('stan', 'Stan (model)', galaz.status === 'open' || galaz.status === 'closed' ? POLOZENIE_LACZNIKA_PL[galaz.status] : null),
         ],
       },
       {

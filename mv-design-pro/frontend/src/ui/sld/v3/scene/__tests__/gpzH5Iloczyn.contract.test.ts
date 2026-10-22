@@ -167,7 +167,10 @@ describe('GPZ z sekcjami — iloczyn sieć × łącznik 110 kV × łącznik SN �
       // modelu. Karta GPZ-H5-SLD etap 2 (wpis 7 architekta): łącznik szyn GPZ NIE jest
       // punktem podziału — na ŻADNYM poziomie szczegółu nie dostaje znacznika `noPoint` ani
       // podpisu „NO" punktu podziału; pozycja normalna jest drugorzędna w jego własnej
-      // symbolice (dana glifu + skrót przy oznaczeniu), odstępstwo = ramka glifu.
+      // symbolice (dana glifu), odstępstwo = ramka glifu. Poprawka P0 koordynatora (werdykt
+      // właściciela „oznaczenie stanu normalnego nie może zastępować stanu rzeczywistego"):
+      // podpis niesie STAN RZECZYWISTY słownie, pozycję normalną — tylko przy odstępstwie, dwoma
+      // wierszami drugorzędnymi (dawny podpis „⟨nazwa⟩ · NO" przy zamkniętym łączniku).
       it('łączniki szyn 110 kV i SN w stanie z gałęzi; pozycja normalna w symbolice łącznika, bez znacznika NO', () => {
         for (const [ref, stan] of stany) {
           const symbole = scene.symbols.filter((s) => s.meta?.ownerRef === ref && s.symbolId !== 'noPoint');
@@ -177,8 +180,17 @@ describe('GPZ z sekcjami — iloczyn sieć × łącznik 110 kV × łącznik SN �
           expect(galaz?.normal_state, `fikstura deklaruje pozycję normalną ${ref}`).toMatch(/^(open|closed)$/);
           expect(symbole[0].pozycjaNormalna, `pozycja normalna łącznika ${ref}`).toBe(galaz?.normal_state);
           const podpis = scene.labels.find((l) => l.ownerRef === `${ref}#designation`);
-          expect(podpis?.text, `podpis łącznika ${ref}: nazwa gałęzi i skrót pozycji normalnej`).toBe(
-            `${galaz?.name} · ${galaz?.normal_state === 'open' ? 'NO' : 'NZ'}`,
+          expect(podpis?.text, `podpis łącznika ${ref}: nazwa gałęzi i stan rzeczywisty słownie`).toBe(
+            `${galaz?.name} · ${stan === 'open' ? 'otwarty' : 'zamknięty'}`,
+          );
+          const odstepstwo = scene.labels
+            .filter((l) => l.ownerRef.startsWith(`${ref}#odstepstwo-`))
+            .sort((a, b) => a.ownerRef.localeCompare(b.ownerRef))
+            .map((l) => l.text);
+          expect(odstepstwo, `wiersze odstępstwa ${ref}`).toEqual(
+            stan !== galaz?.normal_state
+              ? [galaz?.normal_state === 'open' ? 'normalnie otwarty' : 'normalnie zamknięty', '(odstępstwo)']
+              : [],
           );
         }
         for (const lod of [0, 1, 2] as const) {

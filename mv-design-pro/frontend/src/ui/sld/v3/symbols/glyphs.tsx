@@ -133,9 +133,9 @@ export interface GlyphProps {
   readonly uzwojenia?: UzwojeniaTransformatora;
   /** Karta GPZ-H5-SLD etap 2 (wymaganie 4): pozycja normalna łącznika szyn — WYŁĄCZNIE
    *  glify toru poziomego `lineSwitch`/`lineBreaker` ją czytają. Stan rzeczywisty niesie
-   *  geometria noża/korpusu (`state`); pozycja normalna jest drugorzędna (podpis „NO"/„NZ"
-   *  przy oznaczeniu, `tekstLacznikaSzyn`), a ODSTĘPSTWO stanu rzeczywistego od normalnego
-   *  glif wyróżnia geometrią: przerywaną ramką wokół aparatu (`data-odstepstwo`). */
+   *  geometria noża/korpusu (`state`) i podpis słowny; pozycja normalna jest drugorzędna
+   *  (drugi wiersz podpisu tylko przy odstępstwie, `shared/stanLacznika.tekstStanuLacznikaSzyn`),
+   *  a ODSTĘPSTWO glif wyróżnia geometrią: przerywaną ramką wokół aparatu (`data-odstepstwo`). */
   readonly pozycjaNormalna?: 'open' | 'closed';
 }
 

@@ -68,6 +68,7 @@ import {
   type StationNameBandOwnerInput,
   type StationNameBandRow,
 } from '../layout/labels';
+import { tekstStanuLacznikaSzyn } from '../../../shared/stanLacznika';
 import { stackFootprint } from './station';
 import { stanDanychPolaGpz, type PoleTabeliGpzWejscie } from './gpzAdnotacje';
 import { createUnikalnyTestId } from './unikalnyTestId';
@@ -783,10 +784,10 @@ function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, nu
  * widok" oznaczenia pól nie były skracane (pomiar przed zmianą, H5 1×3 przy 1000×700:
  * „Pole…A1", „Ł…1-2").
  */
-const POWIEKSZENIE_T3_NA_PROGU_L1 = Math.max(
-  1,
-  MIN_READABLE_LABEL_SCREEN_PX / (LABEL_TYPOGRAPHY.t3.fontSize * PROG_SKALI_L0_L1),
-);
+function powiekszenieNaProguL1(klasa: keyof typeof LABEL_TYPOGRAPHY): number {
+  return Math.max(1, MIN_READABLE_LABEL_SCREEN_PX / (LABEL_TYPOGRAPHY[klasa].fontSize * PROG_SKALI_L0_L1));
+}
+const POWIEKSZENIE_T3_NA_PROGU_L1 = powiekszenieNaProguL1('t3');
 
 /** Szerokość pionowego pasma oznaczenia pola obok osi toru: prześwit `GRID/2` od krawędzi
  *  toru i wiersz `t3` pisma powiększonego (`POWIEKSZENIE_T3_NA_PROGU_L1`). */
@@ -941,24 +942,80 @@ function symbolSprzegla(coupler: CanonicalGpzCoupler): 'lineBreaker' | 'lineSwit
 }
 
 /** Skrót pozycji normalnej łącznika szyn w podpisie (drugorzędny wobec oznaczenia). */
-export const SKROT_POZYCJI_NORMALNEJ_PL: Readonly<Record<'open' | 'closed', string>> = {
-  open: 'NO',
-  closed: 'NZ',
-};
+/**
+ * Karta GPZ-H5-SLD etap 2 (wymaganie 4, wpis 7 architekta, poprawka P0 koordynatora):
+ * podpis łącznika szyn = oznaczenie i STAN RZECZYWISTY słownie („ŁS SN 1-2 · zamknięty");
+ * pozycja normalna — drugi wiersz mniejszym pismem i tylko przy odstępstwie („normalnie
+ * otwarty — odstępstwo"). Tekst z JEDNEJ funkcji `shared/stanLacznika.tekstStanuLacznikaSzyn`.
+ * Łącznik szyn nie dostaje znacznika punktu podziału (różowe kółko „NO", skarga B-02).
+ */
+function tekstLacznikaSzyn(coupler: Pick<CanonicalGpzCoupler, 'designation' | 'closedState' | 'normalState'>) {
+  return tekstStanuLacznikaSzyn(coupler.designation, coupler.closedState, coupler.normalState ?? null);
+}
+
+/** Klasa pisma wiersza odstępstwa — mniejsza od oznaczenia (`t3`), drugorzędna. */
+const KLASA_ODSTEPSTWA_LACZNIKA = 't4' as const;
 
 /**
- * Karta GPZ-H5-SLD etap 2 (wymaganie 4, wpis 7 architekta): podpis łącznika szyn = jego
- * oznaczenie i — drugorzędnie, po kropce — pozycja normalna („NO" normalnie otwarty, „NZ"
- * normalnie zamknięty); brak deklaracji = samo oznaczenie (zero domysłu). Stan rzeczywisty
- * niesie geometria glifu, odstępstwo od pozycji normalnej — ramka glifu. Łącznik szyn nie
- * dostaje znacznika punktu podziału (różowe kółko „NO", skarga B-02).
+ * Etykiety łącznika szyn zakotwiczone przy glifie: wiersz główny i — przy odstępstwie —
+ * wiersz drugorzędny dalej od glifu (prześwit o wysokość wiersza głównego większy), po tej
+ * samej stronie (`placement`).
  */
-export function tekstLacznikaSzyn(coupler: Pick<CanonicalGpzCoupler, 'designation' | 'normalState'>): string {
-  return coupler.normalState ? `${coupler.designation} · ${SKROT_POZYCJI_NORMALNEJ_PL[coupler.normalState]}` : coupler.designation;
+function etykietyLacznikaSzyn(
+  coupler: CanonicalGpzCoupler,
+  anchor: { readonly x: number; readonly y: number },
+  placement: 'above' | 'below',
+  obrysKotwicy: V3Rect,
+): SimpleAnchoredOwnerInput[] {
+  const tekst = tekstLacznikaSzyn(coupler);
+  // Wiersze w kolejności CZYTANIA (z góry na dół): oznaczenie ze stanem rzeczywistym, potem —
+  // tylko przy odstępstwie — „normalnie ⟨pozycja⟩" i „(odstępstwo)" mniejszym pismem. Dwa
+  // krótkie wiersze zamiast jednego długiego: podpis stoi w pasie między polami dwóch
+  // sekcji, a pismo w kadrze „Dopasuj widok" jest powiększane do progu czytelności — pomiar
+  // jednego wiersza „normalnie otwarty — odstępstwo": H5 1×3 w kadrach 1400×800 i 1000×700
+  // rysował „normalni…odstępstwo"; poszerzenie pasa o pismo powiększone zmniejszało skalę
+  // dopasowania i 1×3 w 1000×700 spadał do glifu L0.
+  const wiersze: { readonly rola: string; readonly text: string; readonly labelClass: 't3' | 't4' }[] = [
+    { rola: 'designation', text: tekst.glowny, labelClass: 't3' },
+    ...(tekst.odstepstwo ?? []).map((text, i) => ({ rola: `odstepstwo-${i + 1}`, text, labelClass: KLASA_ODSTEPSTWA_LACZNIKA })),
+  ];
+  // Wysokość wiersza pismem POWIĘKSZONYM na progu rozwinięcia GPZ: plan etykiet powiększa
+  // wiersz od kotwicy w głąb, więc odstęp liczony pismem naturalnym kładł wiersz następny na
+  // powiększonym poprzednim (pomiar: plan przenosił wtedy wiersz odstępstwa nad szynę, między
+  // opisy sekcji, i skracał „normaln…otwarty").
+  const wysokosc = (w: (typeof wiersze)[number]) =>
+    Math.ceil(labelLineHeight(w.labelClass) * (w.labelClass === 't3' ? POWIEKSZENIE_T3_NA_PROGU_L1 : powiekszenieNaProguL1(w.labelClass)));
+  return wiersze.map((w, i): SimpleAnchoredOwnerInput => {
+    // Pod glifem prześwit rośnie z wierszami POPRZEDZAJĄCYMI, nad glifem — z NASTĘPUJĄCYMI
+    // (wiersz główny na górze stosu, czytany pierwszy w obu położeniach).
+    const miedzy = placement === 'below' ? wiersze.slice(0, i) : wiersze.slice(i + 1);
+    const przeswit = GRID + miedzy.reduce((suma, x) => suma + wysokosc(x), 0);
+    return {
+      ownerRef: `${coupler.couplerId}#${w.rola}`,
+      // Nazwa łącznika szyn = tożsamość GAŁĘZI łączeniowej modelu (`bus_coupler`), nie aparatu
+      // pola — rodzaj `'lacznik-toru'` (kotwica `galaz`, rozjazd uzasadniony w wyroczni
+      // `kotwicaJednoZrodlo` B).
+      ownerKind: 'lacznik-toru',
+      text: w.text,
+      labelClass: w.labelClass,
+      anchor,
+      placement,
+      ...(przeswit === GRID ? {} : { clearance: przeswit }),
+      // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
+      obrysKotwicy,
+    };
+  });
 }
 
 function szerokoscPasaSprzegla(coupler: CanonicalGpzCoupler): number {
-  return snapUp(Math.max(SYMBOL_DEFS[symbolSprzegla(coupler)].width, measureLabelWidth(tekstLacznikaSzyn(coupler), 't3')) + 2 * FIELD_GAP);
+  const tekst = tekstLacznikaSzyn(coupler);
+  return snapUp(
+    Math.max(
+      SYMBOL_DEFS[symbolSprzegla(coupler)].width,
+      measureLabelWidth(tekst.glowny, 't3'),
+      ...(tekst.odstepstwo ?? []).map((wiersz) => measureLabelWidth(wiersz, KLASA_ODSTEPSTWA_LACZNIKA)),
+    ) + 2 * FIELD_GAP,
+  );
 }
 
 /** Połowa szerokości etykiety sekcji (etykieta wyśrodkowana na lewym końcu szyny). */
@@ -2259,20 +2316,14 @@ export function composeGpz(
       points: [{ x: Math.min(gapEnd, cbX + cbDef.width), y: snBusY }, { x: gapEnd, y: snBusY }],
       meta: { parityKeys: ['gpz.coupler'], sectionId: coupler.rightSectionId },
     });
-    fieldDesignations.push({
-      ownerRef: `${coupler.couplerId}#designation`,
-      // Nazwa łącznika szyn = tożsamość GAŁĘZI łączeniowej modelu (`bus_coupler`), nie aparatu
-      // pola — rodzaj `'lacznik-toru'` (kotwica `galaz`, rozjazd uzasadniony w wyroczni
-      // `kotwicaJednoZrodlo` B). Dawne `'apparatus'` dawało niewpisany rozjazd apparatus→galaz,
-      // niewidoczny, bo żadna sieć wyroczni nie miała łącznika szyn GPZ (karta GPZ-H5-SLD).
-      ownerKind: 'lacznik-toru',
-      text: tekstLacznikaSzyn(coupler),
-      labelClass: 't3',
-      anchor: { x: midX, y: cbY + cbDef.height },
-      placement: 'below',
-      // K2b×K3: obrys symbolu — strony zastępcze planu etykiet stoją przy nim.
-      obrysKotwicy: { x: cbX, y: cbY, width: cbDef.width, height: cbDef.height },
-    });
+    fieldDesignations.push(
+      ...etykietyLacznikaSzyn(coupler, { x: midX, y: cbY + cbDef.height }, 'below', {
+        x: cbX,
+        y: cbY,
+        width: cbDef.width,
+        height: cbDef.height,
+      }),
+    );
   });
 
   // -- 5b. Punkt neutralny sieci SN (V12K-219) ------------------------------
@@ -2814,15 +2865,14 @@ export function composeGpz(
       // Oznaczenie NAD glifem: pod szyną 110 kV w pasie łącznika stoją oznaczenia pól toru
       // transformatora sekcji lewej; nad szyną pas łącznika jest wolny (opis sekcji prawej
       // zaczyna się za pasem, blok źródeł sekcji lewej kończy się przed nim).
-      fieldDesignations.push({
-        ownerRef: `${coupler.couplerId}#designation`,
-        ownerKind: 'lacznik-toru', // jw. — łącznik szyn 110 kV to gałąź `bus_coupler` modelu
-        text: tekstLacznikaSzyn(coupler),
-        labelClass: 't3',
-        anchor: { x: midX, y: cbY },
-        placement: 'above',
-        obrysKotwicy: { x: cbX, y: cbY, width: cbDef.width, height: cbDef.height },
-      });
+      fieldDesignations.push(
+        ...etykietyLacznikaSzyn(coupler, { x: midX, y: cbY }, 'above', {
+          x: cbX,
+          y: cbY,
+          width: cbDef.width,
+          height: cbDef.height,
+        }),
+      );
     });
   } else if (hasHvContent) {
     // GEOMETRIA-STACJI (§0 pkt 3): bez sekcji 110 kV w modelu — szyny WN MODELU wskazane

@@ -41,9 +41,45 @@ export function czyPunktPodzialu(galaz: Branch | null | undefined): boolean {
   return pozycjaNormalna(galaz) === 'open';
 }
 
+/**
+ * Położenie łącznika słownie — JEDNO źródło słownictwa stanu łącznika dla wszystkich
+ * miejsc, które je wypisują (podpis łącznika szyn na kanwie, inspektor aparatu, karta
+ * techniczna, widok inżynierski, przegląd łączników). Karta GPZ-H5-SLD etap 2 (poprawka
+ * koordynatora): cztery kopie tego słownika żyły osobno, a jedna z nich (widok inżynierski)
+ * wypisywała „otwarty" dla łącznika bez stanu w modelu.
+ */
+export const POLOZENIE_LACZNIKA_PL: Readonly<Record<PolozenieLacznika | 'unknown', string>> = {
+  closed: 'zamknięty',
+  open: 'otwarty',
+  unknown: 'nieustalony (model niejednoznaczny)',
+};
+/** Łącznik bez stanu w modelu — nazwane wprost, nigdy domysł „otwarty"/„zamknięty". */
+export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';
+
+function rozpoznaneStatus(status: string | null | undefined): PolozenieLacznika | 'unknown' | null {
+  const s = typeof status === 'string' ? status.toLowerCase() : null;
+  return s === 'open' || s === 'closed' || s === 'unknown' ? s : null;
+}
+
+/** Położenie otwarty/zamknięty z pola `status`; `null` = nieustalone albo brak stanu. */
+function znanePolozenie(status: string | null | undefined): PolozenieLacznika | null {
+  const s = rozpoznaneStatus(status);
+  return s === 'unknown' ? null : s;
+}
+
+/** Położenie słownie z pola `status` (także wartości wielkimi literami z przeglądów). */
+export function polozenieSlownie(status: string | null | undefined): string {
+  const s = rozpoznaneStatus(status);
+  return s === null ? BRAK_POLOZENIA_W_MODELU : POLOZENIE_LACZNIKA_PL[s];
+}
+
+function wielkaLitera(tekst: string): string {
+  return tekst.charAt(0).toUpperCase() + tekst.slice(1);
+}
+
 export const ETYKIETA_POLOZENIA_PL: Readonly<Record<PolozenieLacznika, string>> = {
-  closed: 'Zamknięty',
-  open: 'Otwarty',
+  closed: wielkaLitera(POLOZENIE_LACZNIKA_PL.closed),
+  open: wielkaLitera(POLOZENIE_LACZNIKA_PL.open),
 };
 
 /** Etykieta bieżącego położenia (pole `status` gałęzi). */
@@ -56,6 +92,35 @@ export function etykietaPozycjiNormalnej(pozycja: PolozenieLacznika | null): str
   if (pozycja === 'open') return 'Normalnie otwarty (punkt podziału)';
   if (pozycja === 'closed') return 'Normalnie zamknięty';
   return 'Niezadeklarowana';
+}
+
+/** Podpis łącznika szyn: wiersz główny i — wyłącznie przy odstępstwie — wiersz drugorzędny. */
+export interface TekstStanuLacznikaSzyn {
+  /** „⟨oznaczenie⟩ · ⟨stan rzeczywisty słownie⟩" — stan rzeczywisty zawsze w pierwszym planie. */
+  readonly glowny: string;
+  /** Wiersze drugorzędne [„normalnie ⟨pozycja⟩", „(odstępstwo)"], gdy stan rzeczywisty ≠
+   *  pozycja normalna; inaczej `null`. */
+  readonly odstepstwo: readonly [string, string] | null;
+}
+
+/**
+ * Karta GPZ-H5-SLD etap 2 (poprawka P0 wg werdyktu właściciela „oznaczenie stanu
+ * normalnego nie może zastępować stanu rzeczywistego"): podpis łącznika szyn niesie STAN
+ * RZECZYWISTY słownie; pozycja normalna pojawia się drugorzędnie i tylko przy odstępstwie.
+ * Dawny podpis „ŁS 110 kV 1-2 · NO" przy zamkniętym łączniku czytał się jak stan otwarty.
+ * Stan nieznany albo pozycja niezadeklarowana = brak wiersza odstępstwa (zero domysłu).
+ */
+export function tekstStanuLacznikaSzyn(
+  oznaczenie: string,
+  stan: string | null | undefined,
+  pozycja: PolozenieLacznika | null | undefined,
+): TekstStanuLacznikaSzyn {
+  // Jedno rozpoznanie stanu dla OBU wierszy (predykat parami z `polozenieSlownie`).
+  const s = znanePolozenie(stan);
+  const glowny = `${oznaczenie} · ${polozenieSlownie(stan)}`;
+  const odstepstwo: readonly [string, string] | null =
+    s !== null && pozycja != null && s !== pozycja ? [`normalnie ${POLOZENIE_LACZNIKA_PL[pozycja]}`, '(odstępstwo)'] : null;
+  return { glowny, odstepstwo };
 }
 
 /** Punkty normalnie otwarte modelu (po `ref_id`) — lustro `enm.topology.punkty_podzialu`. */

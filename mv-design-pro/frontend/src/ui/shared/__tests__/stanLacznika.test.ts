@@ -17,6 +17,8 @@ import {
   etykietaPolozenia,
   etykietaPozycjiNormalnej,
   kandydaciNaPunktPodzialu,
+  polozenieSlownie,
+  tekstStanuLacznikaSzyn,
   lacznikiPortowPunktu,
   lacznikTematu,
   opisLacznikowPortow,
@@ -187,4 +189,39 @@ describe('lacznikTematu — obiekt rysunku × liczba łączników pola', () => {
   it('brak migawki: powód zamiast wyjątku', () => {
     expect(lacznikTematu(null, 'sw-1').lacznik).toBeNull();
   });
+});
+
+/**
+ * Karta GPZ-H5-SLD etap 2 (poprawka P0 koordynatora): jedno słownictwo stanu łącznika
+ * i podpis łącznika szyn ze stanem rzeczywistym. Iloczyn: stan {open, closed, unknown,
+ * brak, OPEN} × pozycja normalna {open, closed, brak}. Wyrocznia dosłowna.
+ */
+describe('podpis łącznika szyn — stan rzeczywisty słownie, odstępstwo drugorzędnie', () => {
+  const STANY: readonly (string | undefined)[] = ['open', 'closed', 'unknown', undefined, 'OPEN'];
+  const SLOWNIE: Record<string, string> = {
+    open: 'otwarty',
+    closed: 'zamknięty',
+    unknown: 'nieustalony (model niejednoznaczny)',
+    brak: 'brak stanu w modelu',
+    OPEN: 'otwarty',
+  };
+  for (const stan of STANY) {
+    for (const pozycja of ['open', 'closed', null] as const) {
+      it(`stan ${stan ?? 'brak'} × pozycja normalna ${pozycja ?? 'brak'}`, () => {
+        const slowo = SLOWNIE[stan ?? 'brak'];
+        expect(polozenieSlownie(stan)).toBe(slowo);
+        const tekst = tekstStanuLacznikaSzyn('ŁS SN 1-2', stan, pozycja);
+        expect(tekst.glowny).toBe(`ŁS SN 1-2 · ${slowo}`);
+        // Odstępstwo tylko przy stanie znanym (open/closed, wielkość liter bez znaczenia) i pozycji
+        // zadeklarowanej, różnych od siebie.
+        const znany = stan?.toLowerCase() === 'open' ? 'open' : stan === 'closed' ? 'closed' : null;
+        const oczekiwane =
+          znany !== null && pozycja !== null && znany !== pozycja
+            ? [pozycja === 'open' ? 'normalnie otwarty' : 'normalnie zamknięty', '(odstępstwo)']
+            : null;
+        expect(tekst.odstepstwo).toEqual(oczekiwane);
+        expect(tekst.glowny.endsWith(' · NO') || tekst.glowny.endsWith(' · NZ')).toBe(false);
+      });
+    }
+  }
 });

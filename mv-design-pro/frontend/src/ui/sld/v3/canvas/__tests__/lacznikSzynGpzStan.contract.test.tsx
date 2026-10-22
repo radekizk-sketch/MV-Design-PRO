@@ -14,7 +14,15 @@
  *  - otwarty: w osi toru przerwa ≥ 3 px ekranu;
  *  - ramka odstępstwa wtedy i tylko wtedy, gdy stan ≠ pozycja normalna;
  *  - najmniejszy wymiar glifu ≥ `MIN_SYMBOL_SCREEN_PX`;
- *  - przy łączniku szyn ani na GPZ brak glifu punktu podziału (`noPoint`).
+ *  - przy łączniku szyn ani na GPZ brak glifu punktu podziału (`noPoint`);
+ *  - podpis (poprawka P0 koordynatora, werdykt właściciela „oznaczenie stanu normalnego nie
+ *    może zastępować stanu rzeczywistego"): wiersz główny „⟨nazwa z modelu⟩ · ⟨stan
+ *    rzeczywisty słownie⟩"; wiersze drugorzędne „normalnie ⟨pozycja⟩" i „(odstępstwo)"
+ *    wtedy i tylko wtedy, gdy stan ≠ pozycja normalna, pismem nie większym niż główny,
+ *    w kolejności czytania z góry na dół (wiersz główny pierwszy, także nad glifem); żaden napis nie kończy się
+ *    skrótem „NO"/„NZ". Pozycja normalna ma trzecią wartość: niezadeklarowana (brak
+ *    `normal_state`) — wtedy bez ramki i bez wiersza odstępstwa.
+ * Wyrocznia tekstu jest zapisana dosłownie (nie wołaniem funkcji produktu).
  */
 import { readFileSync } from 'node:fs';
 import { render } from '@testing-library/react';
@@ -32,6 +40,8 @@ const KADRY = [
 ] as const;
 type Stan = 'open' | 'closed';
 const STANY: readonly Stan[] = ['open', 'closed'];
+const POZYCJE_NORMALNE: readonly (Stan | null)[] = ['open', 'closed', null];
+const SLOWNIE: Readonly<Record<Stan, string>> = { open: 'otwarty', closed: 'zamknięty' };
 
 function wczytaj(nazwa: string): EnergyNetworkModel {
   return (JSON.parse(readFileSync(`${FX}/${nazwa}.enm.json`, 'utf8')) as { enm: EnergyNetworkModel }).enm;
@@ -41,10 +51,14 @@ function lacznikiSzyn(enm: EnergyNetworkModel): string[] {
   return enm.branches.filter((b) => b.type === 'bus_coupler').map((b) => b.ref_id).sort();
 }
 
-function zeStanem(enm: EnergyNetworkModel, stan: Stan, normalny: Stan): EnergyNetworkModel {
+function zeStanem(enm: EnergyNetworkModel, stan: Stan, normalny: Stan | null): EnergyNetworkModel {
   return {
     ...enm,
-    branches: enm.branches.map((b) => (b.type === 'bus_coupler' ? { ...b, status: stan, normal_state: normalny } : b)),
+    branches: enm.branches.map((b) => {
+      if (b.type !== 'bus_coupler') return b;
+      const { normal_state: _pominiety, ...bez } = b as typeof b & { normal_state?: unknown };
+      return normalny === null ? { ...bez, status: stan } : { ...bez, status: stan, normal_state: normalny };
+    }),
   } as EnergyNetworkModel;
 }
 
@@ -127,7 +141,7 @@ describe('łącznik szyn GPZ — stan rzeczywisty geometrią w kadrze „Dopasuj
     });
     for (const [w, h] of KADRY) {
       for (const stan of STANY) {
-        for (const normalny of STANY) {
+        for (const normalny of POZYCJE_NORMALNE) {
           it(`${siec} · ${w}×${h} · stan ${stan} · pozycja normalna ${normalny}`, () => {
             const { container } = render(<SldCanvasV3 snapshot={zeStanem(bazowa, stan, normalny)} width={w} height={h} />);
             const svg = container.querySelector('svg[viewBox]')!;
@@ -145,6 +159,7 @@ describe('łącznik szyn GPZ — stan rzeczywisty geometrią w kadrze „Dopasuj
               expect(wymiar, `glif łącznika szyn ${rodzaj}`).toBeDefined();
               expect(glif.getAttribute('data-switch-state')).toBe(stan);
               expect(glif.getAttribute('data-pozycja-normalna')).toBe(normalny);
+              const odstepstwo = normalny !== null && stan !== normalny;
               expect(Math.min(...wymiar) * k, `najmniejszy wymiar glifu ${ref} [px]`).toBeGreaterThanOrEqual(MIN_SYMBOL_SCREEN_PX);
               // Aparat odróżnialny od kreski toru: tusz glifu sięga poza oś toru o ≥ 3 px
               // ekranu (poprzeczka styku, korpus) — zamknięty nóż nie „ginie w linii".
@@ -153,9 +168,37 @@ describe('łącznik szyn GPZ — stan rzeczywisty geometrią w kadrze „Dopasuj
               if (stan === 'closed') expect(przerwaPx, `zamknięty ${ref}: ciągły tor [px]`).toBeLessThan(0.5);
               else expect(przerwaPx, `otwarty ${ref}: przerwa w osi toru [px]`).toBeGreaterThanOrEqual(3);
               const ramki = glif.querySelectorAll('[data-ramka-odstepstwa="true"]');
-              expect(ramki, `ramka odstępstwa ${ref}`).toHaveLength(stan === normalny ? 0 : 1);
-              expect(glif.getAttribute('data-odstepstwo')).toBe(String(stan !== normalny));
+              expect(ramki, `ramka odstępstwa ${ref}`).toHaveLength(odstepstwo ? 1 : 0);
+              if (normalny !== null) expect(glif.getAttribute('data-odstepstwo')).toBe(String(odstepstwo));
+
+              const nazwa = bazowa.branches.find((b) => b.ref_id === ref)!.name;
+              const podpis = (rola: string) =>
+                Array.from(container.querySelectorAll('g[data-testid^="sld-v3-label-"]')).find(
+                  (g) => g.getAttribute('data-owner-ref') === `${ref}#${rola}`,
+                );
+              const glowny = podpis('designation');
+              expect(glowny?.querySelector('text')?.textContent, `${ref}: stan rzeczywisty słownie`).toBe(`${nazwa} · ${SLOWNIE[stan]}`);
+              const wiersze = [podpis('odstepstwo-1'), podpis('odstepstwo-2')];
+              if (odstepstwo) {
+                expect(
+                  wiersze.map((g) => g?.querySelector('text')?.textContent),
+                  `${ref}: wiersze odstępstwa`,
+                ).toEqual([`normalnie ${SLOWNIE[normalny!]}`, '(odstępstwo)']);
+                const fs = (g: Element | undefined) => Number(g?.querySelector('text')?.getAttribute('font-size') ?? 0);
+                // Mniejszym pismem w skali naturalnej (klasa `t4` < `t3`); w kadrze dopasowania
+                // oba wiersze mogą być podniesione do tego samego progu czytelności.
+                for (const g of wiersze) expect(fs(g), `${ref}: wiersz odstępstwa nie większym pismem`).toBeLessThanOrEqual(fs(glowny));
+                // Kolejność czytania z góry na dół: stan rzeczywisty, „normalnie …", „(odstępstwo)"
+                // — także nad glifem (łącznik szyn 110 kV podpisany nad torem).
+                const y = (g: Element | undefined) => Number(g?.querySelector('text')?.getAttribute('y') ?? NaN);
+                expect(y(glowny), `${ref}: wiersz główny nad „normalnie …"`).toBeLessThan(y(wiersze[0]));
+                expect(y(wiersze[0]), `${ref}: „normalnie …" nad „(odstępstwo)"`).toBeLessThan(y(wiersze[1]));
+              } else {
+                expect(wiersze, `${ref}: bez wierszy odstępstwa`).toEqual([undefined, undefined]);
+              }
             }
+            const teksty = Array.from(container.querySelectorAll('g[data-testid^="sld-v3-label-"] text')).map((t) => t.textContent ?? '');
+            expect(teksty.filter((t) => / · N[OZ]$/.test(t)), 'żaden podpis nie kończy się skrótem NO/NZ').toEqual([]);
           });
         }
       }

@@ -28,6 +28,7 @@ import {
 } from '../../field/fieldLabels';
 import type { SldMenuAction } from '../../sld/v2/command/SldCommandService';
 import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
+import { BRAK_POLOZENIA_W_MODELU, POLOZENIE_LACZNIKA_PL } from '../../shared/stanLacznika';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
 import { SekcjaKartyGpz } from './SekcjaKartyGpz';
@@ -208,13 +209,6 @@ export function SekcjaWezlaSn({ wezel }: { readonly wezel: NonNullable<DaneEleme
   );
 }
 
-/** Położenie łącznika w modelu — ten sam stan, który rysuje glif kanwy. */
-export const POLOZENIE_LACZNIKA_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
-  closed: 'zamknięty',
-  open: 'otwarty',
-  unknown: 'nieustalony (model niejednoznaczny)',
-};
-export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';
 
 /**
  * Karta #135 × GPZ-PARYTET cz. 2: położenie łącznika z MODELU (ten sam rachunek co glif
