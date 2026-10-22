@@ -111,6 +111,46 @@ def polaczone(wezly: Iterable[str], krawedzie: Iterable[tuple[str, str]], a: str
     return unia.znajdz(a) == unia.znajdz(b)
 
 
+def krawedzie_kazdej_drogi(
+    wezly: Iterable[str],
+    krawedzie: Sequence[tuple[str, str, str]],
+    a: str,
+    b: str,
+) -> tuple[str, ...] | None:
+    """Etykiety krawędzi leżących na KAŻDEJ drodze ``a`` → ``b`` (mosty rozdzielające a i b).
+
+    ``krawedzie`` — trójki (etykieta, węzeł, węzeł). ``None`` = ``a`` i ``b`` nie są
+    połączone (także węzeł spoza ``wezly``); ``()`` = połączone wieloma drogami bez
+    wspólnej krawędzi (albo ``a == b``). Krawędź wspólna wszystkim drogom leży w
+    szczególności na drodze najkrótszej, więc sprawdzane są wyłącznie krawędzie tej
+    jednej drogi: każda usuwana pojedynczo, rozstrzyga ``polaczone``. Wynik w
+    kolejności drogi od ``a`` — deterministyczny (sąsiedztwo przeglądane w porządku
+    posortowanym po (etykieta, sąsiad)). Konsument: punkty podziału sieci
+    (``enm.topology.poprzednie_punkty_podzialu`` / ``punkty_podzialu_korytarza``).
+    """
+    lista_wezlow = list(wezly)
+    znane = set(lista_wezlow)
+    if a not in znane or b not in znane:
+        return None
+    sasiedztwo: dict[str, list[tuple[str, str]]] = {}
+    for etykieta, x, y in krawedzie:
+        if x in znane and y in znane:
+            sasiedztwo.setdefault(x, []).append((etykieta, y))
+            sasiedztwo.setdefault(y, []).append((etykieta, x))
+    for lista in sasiedztwo.values():
+        lista.sort()
+    drzewo = przeglad_wszerz(a, lambda w: sasiedztwo.get(w, ()))
+    droga = sciezka_do(drzewo, b)
+    if droga is None:
+        return None
+    wynik: list[str] = []
+    for _od, etykieta, _do in droga:
+        bez = [(x, y) for e, x, y in krawedzie if e != etykieta]
+        if not polaczone(lista_wezlow, bez, a, b):
+            wynik.append(etykieta)
+    return tuple(wynik)
+
+
 def ma_cykl(wezly: Iterable[str], krawedzie: Iterable[tuple[str, str]]) -> bool:
     """Czy graf ma cykl. Krawędzie równoległe (ta sama para węzłów) liczone RAZ —
     linia + łącznik między tymi samymi szynami to standardowa topologia SN, nie cykl

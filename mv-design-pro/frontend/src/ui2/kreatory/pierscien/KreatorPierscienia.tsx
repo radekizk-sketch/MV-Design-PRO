@@ -4,6 +4,11 @@
  * Dwa kroki = dwie realne operacje domenowe: connect_secondary_ring_sn (domknięcie
  * odcinkiem katalogowym) → set_normal_open_point (wskazanie łącznika NOP). Stan NOP
  * honorowany przez rozpływ mocy (otwarty łącznik → praca radialna). ZERO fizyki w UI.
+ *
+ * Karta W5-C: otwarty dla `set_normal_open_point` (karta łącznika, menu schematu, ekran
+ * punktów podziału) kreator startuje od razu na kroku NOP z łącznikiem z kontekstu
+ * (`switch_ref`). Kandydaci i dotychczasowe punkty podziału — z modelu (pozycja normalna
+ * łącznika), na żywo po każdej operacji.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -11,8 +16,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { fetchCableTypes, fetchLineTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { CableType, LineType } from '../../../ui/catalog/types';
-import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
+import { useActiveOperationForm, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
+import { kandydaciNaPunktPodzialu, punktyPodzialu } from '../../../ui/shared/stanLacznika';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import type { SwitchBranch } from '../../../types/enm';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -38,7 +45,6 @@ import {
   zbudujPayloadDomkniecie,
   zbudujPayloadNop,
   type BladPola,
-  type KandydatNop,
   type KontekstPierscienia,
   type PierscienFormData,
   type RodzajOdcinka,
@@ -46,25 +52,23 @@ import {
 import { OPCJE_UZIEMIENIA_EKRANU } from '../../../types/uziemienie';
 import { PIERSCIEN_STRINGS as T } from './strings';
 
-const KROKI: readonly KrokKreatora[] = [
+const KROKI_PIERSCIENIA: readonly KrokKreatora[] = [
   { id: 'domkniecie', tytul: T.krokDomkniecie },
   { id: 'nop', tytul: T.krokNop },
 ];
+/** Samo przeniesienie punktu podziału (`set_normal_open_point`) — jeden krok. */
+const KROKI_NOP: readonly KrokKreatora[] = [{ id: 'nop', tytul: T.krokNop }];
+
+function etykietaLacznika(lacznik: SwitchBranch): string {
+  return lacznik.name && lacznik.name !== lacznik.ref_id ? `${lacznik.name} (${lacznik.ref_id})` : lacznik.ref_id;
+}
 
 function trimmed(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
 function kontekstZOperacji(context: Record<string, unknown> | null): KontekstPierscienia {
-  if (!context) return { kandydaciNop: [] };
-  const rawNop = context.nop_candidates;
-  const kandydaci: KandydatNop[] = Array.isArray(rawNop)
-    ? (rawNop as Record<string, unknown>[]).map((c) => ({
-        id: trimmed(c.id),
-        label: trimmed(c.label) || trimmed(c.id),
-        elementType: trimmed(c.elementType) || undefined,
-      })).filter((c) => c.id)
-    : [];
+  if (!context) return {};
   const aId = trimmed(context.terminalA_id ?? context.terminal_a_id ?? context.from_bus_ref);
   const bId = trimmed(context.terminalB_id ?? context.terminal_b_id ?? context.to_bus_ref);
   return {
@@ -72,12 +76,15 @@ function kontekstZOperacji(context: Record<string, unknown> | null): KontekstPie
     terminalA_label: trimmed(context.terminalA_label) || aId || undefined,
     terminalB_id: bId || undefined,
     terminalB_label: trimmed(context.terminalB_label) || bId || undefined,
-    kandydaciNop: kandydaci,
   };
 }
 
 export function KreatorPierscienia() {
-  const context = useActiveOperationContext() as Record<string, unknown> | null;
+  const activeForm = useActiveOperationForm();
+  const context = (activeForm?.context ?? null) as Record<string, unknown> | null;
+  const tylkoNop = activeForm?.op === 'set_normal_open_point';
+  const KROKI = tylkoNop ? KROKI_NOP : KROKI_PIERSCIENIA;
+  const snapshot = useSnapshotStore((s) => s.snapshot);
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
@@ -86,10 +93,13 @@ export function KreatorPierscienia() {
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
   const hasZaciski = maZaciski(kontekst);
 
-  const [dane, setDane] = useState<PierscienFormData>(() => ({ ...DANE_DOMYSLNE }));
+  const [dane, setDane] = useState<PierscienFormData>(() => ({
+    ...DANE_DOMYSLNE,
+    nop_ref: tylkoNop ? trimmed(context?.switch_ref) || null : null,
+  }));
   const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
-  const [krok, setKrok] = useState<string>('domkniecie');
+  const [krok, setKrok] = useState<string>(tylkoNop ? 'nop' : 'domkniecie');
 
   const [kable, setKable] = useState<CableType[]>([]);
   const [linie, setLinie] = useState<LineType[]>([]);
@@ -102,6 +112,11 @@ export function KreatorPierscienia() {
   const [katalogLadowanie, setKatalogLadowanie] = useState(true);
 
   useEffect(() => {
+    // Samo przeniesienie punktu podziału nie używa katalogu odcinków — bez zbędnego pobrania.
+    if (tylkoNop) {
+      setKatalogLadowanie(false);
+      return undefined;
+    }
     let cancelled = false;
     setBladKatalogu(null);
     setKatalogLadowanie(true);
@@ -123,7 +138,7 @@ export function KreatorPierscienia() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tylkoNop]);
 
   const opcjeTypow = useMemo(() => {
     const items: (CableType | LineType)[] = dane.rodzaj === 'LINIA' ? linie : kable;
@@ -133,9 +148,20 @@ export function KreatorPierscienia() {
     }));
   }, [dane.rodzaj, kable, linie]);
 
+  // Kandydaci: łączniki z pozycją normalną, które punktem podziału jeszcze nie są (po
+  // domknięciu pierścienia lista odświeża się z migawki zwróconej przez operację).
   const opcjeNop = useMemo(
-    () => kontekst.kandydaciNop.map((c) => ({ id: c.id, etykieta: c.label })),
-    [kontekst.kandydaciNop],
+    () => kandydaciNaPunktPodzialu(snapshot).map((l) => ({ id: l.ref_id, etykieta: etykietaLacznika(l) })),
+    [snapshot],
+  );
+  // Dotychczasowe punkty podziału — kandydaci do zamknięcia (`close_ref`). Które z nich
+  // należą do pierścienia nowego punktu, rozstrzyga backend (`poprzednie_punkty_podzialu`).
+  const opcjeZamkniecia = useMemo(
+    () =>
+      punktyPodzialu(snapshot)
+        .filter((l) => l.ref_id !== dane.nop_ref)
+        .map((l) => ({ id: l.ref_id, etykieta: etykietaLacznika(l) })),
+    [dane.nop_ref, snapshot],
   );
 
   const zmien = useCallback(<K extends keyof PierscienFormData>(pole: K, wartosc: PierscienFormData[K]) => {
@@ -211,7 +237,7 @@ export function KreatorPierscienia() {
     [dane.catalog_ref, kable, linie],
   );
 
-  const wierszeGotowosci: WierszGotowosci[] = [
+  const wierszeDomkniecia: WierszGotowosci[] = [
     {
       etykieta: T.wierszZaciski,
       stan: hasZaciski ? 'kompletne' : 'brak',
@@ -223,6 +249,10 @@ export function KreatorPierscienia() {
       wartosc: dane.catalog_ref ? 'Kompletne' : 'Do konfiguracji',
     },
     { etykieta: T.wierszDlugosc, stan: dane.dlugosc_m ? 'kompletne' : 'brak', wartosc: fmtDlugosc(dane.dlugosc_m) },
+  ];
+  // Samo przeniesienie punktu podziału nie domyka pierścienia — wiersze domknięcia znikają.
+  const wierszeGotowosci: WierszGotowosci[] = [
+    ...(tylkoNop ? [] : wierszeDomkniecia),
     {
       etykieta: T.wierszNop,
       stan: dane.nop_ref ? 'kompletne' : 'ostrzezenie',
@@ -256,8 +286,8 @@ export function KreatorPierscienia() {
     <KreatorRama
       eyebrow={T.eyebrow}
       tytul={T.eyebrow}
-      cel={T.cel}
-      odznaka={T.odznaka}
+      cel={tylkoNop ? T.celNop : T.cel}
+      odznaka={tylkoNop ? T.odznakaNop : T.odznaka}
       kroki={KROKI}
       krokAktywny={krok}
       pelny
@@ -268,7 +298,7 @@ export function KreatorPierscienia() {
           ? T.katalogLadowanieStopka
           : bledy.length > 0
             ? T.walidacjaStopka
-            : !hasZaciski
+            : !hasZaciski && !tylkoNop
               ? T.brakZaciskowOpis
               : null
       }
@@ -282,7 +312,7 @@ export function KreatorPierscienia() {
       licznikKrokow={T.licznik(krokIndex + 1, KROKI.length)}
       testid="mvd-kreator-pierscien"
     >
-      {!hasZaciski ? (
+      {!hasZaciski && !tylkoNop ? (
         <KreatorSekcja tytul={T.brakZaciskowTytul} testid="mvd-kreator-pierscien-brak">
           <KreatorInfo>{T.brakZaciskowOpis}</KreatorInfo>
         </KreatorSekcja>
@@ -356,7 +386,7 @@ export function KreatorPierscienia() {
 
       {naNop ? (
         <KreatorSekcja tytul={T.nopTytul} testid="mvd-kreator-pierscien-nop">
-          <KreatorInfo>{T.pierscienDomkniety}</KreatorInfo>
+          <KreatorInfo>{tylkoNop ? T.nopPrzeniesienie : T.pierscienDomkniety}</KreatorInfo>
           <KreatorInfo>{T.nopPomoc}</KreatorInfo>
           {opcjeNop.length > 0 ? (
             <PoleWyboru
@@ -370,6 +400,16 @@ export function KreatorPierscienia() {
             <KreatorInfo>{T.nopBrakKandydatow}</KreatorInfo>
           )}
           {bladDlaPola('nop_ref') ? <p className="mvd-pole-blad">{bladDlaPola('nop_ref')}</p> : null}
+          {opcjeZamkniecia.length > 0 ? (
+            <PoleWyboru
+              etykieta={T.zamknijPoprzedni}
+              wartosc={dane.close_ref ?? ''}
+              onZmiana={(v) => zmien('close_ref', v || null)}
+              opcje={[{ id: '', etykieta: T.zamknijPoprzedniAutomatycznie }, ...opcjeZamkniecia]}
+              pomoc={T.zamknijPoprzedniPomoc}
+              testid="mvd-kreator-pierscien-close-wybor"
+            />
+          ) : null}
           <PanelTeorii
             tytul={T.teoriaTytul}
             opis={T.teoriaOpis}

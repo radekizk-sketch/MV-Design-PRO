@@ -62,8 +62,13 @@ class V2OperatingVariant(BaseModel):
 
 
 class V2SwitchingDeviceState(BaseModel):
+    """Stan łącznika w projekcji v2 (W5-C): ``state`` = bieżące położenie (``status`` —
+    model zawsze je zna, dawny literał „unknown" był nieosiągalny), ``normal_state`` =
+    pozycja normalna z projektu (``None`` = niezadeklarowana albo bezpiecznik)."""
+
     device_ref: str
-    state: Literal["closed", "open", "unknown"]
+    state: Literal["closed", "open"]
+    normal_state: Literal["closed", "open"] | None = None
     device_type: str
 
 
@@ -261,7 +266,8 @@ def _build_base_switching_snapshot(enm: EnergyNetworkModel) -> V2SwitchingStateS
         switch_states.append(
             V2SwitchingDeviceState(
                 device_ref=branch.ref_id,
-                state=branch.status if branch.status in {"closed", "open"} else "unknown",
+                state=branch.status,
+                normal_state=(branch.normal_state if isinstance(branch, SwitchBranch) else None),
                 device_type=branch.type,
             )
         )

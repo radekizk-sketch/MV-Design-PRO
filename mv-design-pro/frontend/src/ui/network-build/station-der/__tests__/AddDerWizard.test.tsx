@@ -906,6 +906,8 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
               catalog_item_version: '2024.1',
             },
           },
+          // W5-C: jeden toast sukcesu — zdanie wywołującego idzie do magazynu.
+          { komunikatSukcesuPl: expect.stringContaining('Zmieniono transformator stacji na') },
         );
       });
     } finally {

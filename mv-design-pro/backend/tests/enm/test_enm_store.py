@@ -188,15 +188,19 @@ def test_store_materializes_catalog_loads_for_legacy_station_feeders() -> None:
     assert promowany_odbior.q_mvar == pytest.approx(0.03 * math.tan(math.acos(0.92)), abs=1e-9)
 
 
-def test_store_materializes_catalog_switch_state_for_legacy_zksn() -> None:
+def test_store_materializes_catalog_for_legacy_zksn_without_fabricating_switch_state() -> None:
+    """Magazyn materializuje katalog ZKSN zapisanego jako sam punkt topologiczny, ale NIE
+    dopisuje stanu łącznika (W5-C): dawne uzupełnianie wpisywało `switch_state="closed"`
+    domyślnie — drugą kopię stanu, domysł podniesiony do danej. Stan łącznika żyje
+    wyłącznie na gałęzi łącznika (`status`/`normal_state`)."""
     saved = set_enm("case-store-zksn-migration", _legacy_zksn_without_switch_state())
 
-    assert saved.branch_points[0].switch_state == "closed"
-    assert saved.branch_points[0].runtime_inputs["switch_state"] == "closed"
+    assert "switch_state" not in type(saved.branch_points[0]).model_fields
+    assert "switch_state" not in saved.branch_points[0].runtime_inputs
     assert saved.branch_points[0].runtime_inputs["completion_source"] == (
         "branch_point_catalog_materialization"
     )
 
     reread = get_enm("case-store-zksn-migration")
-    assert reread.branch_points[0].switch_state == "closed"
+    assert reread.branch_points[0].runtime_inputs == saved.branch_points[0].runtime_inputs
     assert reread.header.revision == saved.header.revision

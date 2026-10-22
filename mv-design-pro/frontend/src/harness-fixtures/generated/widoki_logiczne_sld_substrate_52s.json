@@ -1985,7 +1985,7 @@
       "corridor_ref": "corridor/0edccd333922af2a6df8a78d78f647f6/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/a1d6eda74a1842da9db2cfa34bd8843d/branch_segment_L",
         "seg/a1d6eda74a1842da9db2cfa34bd8843d/branch_segment_R_L",
@@ -2013,7 +2013,7 @@
       "corridor_ref": "corridor/0f31d6f2f692b7feb408e9e1b54b8a47/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/ebf51b23170c9fca404f8f83900310db/branch_segment_L",
         "seg/ebf51b23170c9fca404f8f83900310db/branch_segment_R_L",
@@ -2042,7 +2042,9 @@
       "corridor_ref": "corridor/1d3fa658ecff1290ff43a14e4b1c2a4b/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [
+        "sw/56359783a874901eb6c262b420ef184a/switch"
+      ],
       "segments": [
         "seg/446a8fd90cec015f66b9f579822cb5f4/branch_segment_L",
         "seg/446a8fd90cec015f66b9f579822cb5f4/branch_segment_R_L",
@@ -2072,7 +2074,7 @@
       "corridor_ref": "corridor/220aa448d7f063d39161cd8131ac3756/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/d489b4398062689c12ebff4028163116/branch_segment_L",
         "seg/d489b4398062689c12ebff4028163116/branch_segment_R_L",
@@ -2101,7 +2103,7 @@
       "corridor_ref": "corridor/3ee8fc20244717fd66fe62821aa85450/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/4eab117c80c38d986df4457a832e6aa2/branch_segment_L",
         "seg/4eab117c80c38d986df4457a832e6aa2/branch_segment_R_L",
@@ -2130,7 +2132,7 @@
       "corridor_ref": "corridor/42944e6ed4f1f834b15b8ef03008b2ed/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/2489b84ecc6e2c022a06c64f106fc661/branch_segment_L",
         "seg/2489b84ecc6e2c022a06c64f106fc661/branch_segment_R_L",
@@ -2158,7 +2160,7 @@
       "corridor_ref": "corridor/43468cd6315bcb5fe63f6668e071957c/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/9582ed229ed99bd224e1fec9a1ebcef5/branch_segment_L",
         "seg/9582ed229ed99bd224e1fec9a1ebcef5/branch_segment_R_L",
@@ -2187,7 +2189,7 @@
       "corridor_ref": "corridor/4b85ec67aa2d13ed38c3c49aa21c2170/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/c5afa09c808c586d7e27b5c2378f562d/branch_segment_L",
         "seg/c5afa09c808c586d7e27b5c2378f562d/branch_segment_R_L",
@@ -2215,7 +2217,7 @@
       "corridor_ref": "corridor/701039a1e96c8a1f5b59e63bab8561c0/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/9da2cfc3bab550a2738d314af896254a/branch_segment_L",
         "seg/9da2cfc3bab550a2738d314af896254a/branch_segment_R_L",
@@ -2243,7 +2245,7 @@
       "corridor_ref": "corridor/7ced691989604ca122d26a672a2f6612/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/2bb7b4e8cdda2345ba29f1a69821cc33/branch_segment_L",
         "seg/2bb7b4e8cdda2345ba29f1a69821cc33/branch_segment_R_L",
@@ -2271,7 +2273,9 @@
       "corridor_ref": "corridor/e6b77e8b3b390ca24f5e88d2601b45d3/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [
+        "sw/56359783a874901eb6c262b420ef184a/switch"
+      ],
       "segments": [
         "seg/334757b723dbfd8783407030301fe895/branch_segment_L",
         "seg/334757b723dbfd8783407030301fe895/branch_segment_R_L",
@@ -2300,7 +2304,7 @@
       "corridor_ref": "corridor/fb22fd8f7d9c4e92e5f9da227df1affe/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [
         "seg/fc20dcc3ccb10df7cf8efd0229d65678/branch_segment_L",
         "seg/fc20dcc3ccb10df7cf8efd0229d65678/branch_segment_R_L",
@@ -2328,7 +2332,9 @@
       "corridor_ref": "gpz/1021aa18ea28ab398f1166359a58215a/corridor_01",
       "corridor_type": "ring",
       "embedded_objects": [],
-      "no_point_ref": "sw/56359783a874901eb6c262b420ef184a/switch",
+      "no_point_refs": [
+        "sw/56359783a874901eb6c262b420ef184a/switch"
+      ],
       "segments": [
         "seg/18ff1bb30e7629a3fa68d58761d18b7a/segment",
         "seg/9db5ab51469071fc8ca666aab904e037/segment_L",

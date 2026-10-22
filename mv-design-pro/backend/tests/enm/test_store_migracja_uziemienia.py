@@ -109,5 +109,8 @@ def test_utrata_bez_zrodla_jest_w_dzienniku_i_w_logu(caplog):
     wpis = wpis_rewizji("w5-b", enm.header.revision)
     assert wpis is not None and "UTRACONE" in wpis.opis_pl and "b_sn" in wpis.opis_pl
     assert any(
-        "migracja_uziemienia" in r.getMessage() and "b_sn" in r.getMessage() for r in caplog.records
+        # W5-C: jeden wpis logu dla WSZYSTKICH migracji zapisu zastanego (uziemienie,
+        # punkty podziału) — utrata nazwana elementem.
+        "migracja_zapisu_zastanego" in r.getMessage() and "b_sn" in r.getMessage()
+        for r in caplog.records
     )

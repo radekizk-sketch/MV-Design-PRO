@@ -271,7 +271,13 @@ def _emit_switch(eq: ET.Element, tp: ET.Element, branch: SwitchBranch) -> None:
     mrid = mrid_for(cim_class, branch.ref_id)
     sw = _obj(eq, cim_class, mrid)
     _prop(sw, "IdentifiedObject.name", branch.name)
-    _prop(sw, "Switch.normalOpen", "true" if branch.status == "open" else "false")
+    # W5-C: dwa pojęcia, dwa atrybuty. `Switch.normalOpen` [EQ] = pozycja normalna z projektu
+    # (`normal_state`) — wyłącznie zadeklarowana (bieżące położenie nie jest deklaracją
+    # punktu podziału); `Switch.open` [SSH] = bieżące położenie (`status`, czytane przez
+    # fizykę). Atrybut SSH w członie EQ — ten sam zastany wzorzec co `EnergyConsumer.p/q`.
+    if branch.normal_state is not None:
+        _prop(sw, "Switch.normalOpen", "true" if branch.normal_state == "open" else "false")
+    _prop(sw, "Switch.open", "true" if branch.status == "open" else "false")
 
     t1 = _terminal(eq, owner_ref=branch.ref_id, equipment_mrid=mrid, seq=1)
     t2 = _terminal(eq, owner_ref=branch.ref_id, equipment_mrid=mrid, seq=2)
@@ -283,7 +289,8 @@ def _emit_fuse(eq: ET.Element, tp: ET.Element, branch: FuseBranch) -> None:
     mrid = mrid_for("Fuse", branch.ref_id)
     fuse = _obj(eq, "Fuse", mrid)
     _prop(fuse, "IdentifiedObject.name", branch.name)
-    _prop(fuse, "Switch.normalOpen", "true" if branch.status == "open" else "false")
+    # W5-C: bezpiecznik nie ma pozycji normalnej w modelu — wyłącznie bieżące położenie [SSH].
+    _prop(fuse, "Switch.open", "true" if branch.status == "open" else "false")
     if branch.rated_current_a is not None:
         _prop(fuse, "Switch.ratedCurrent", fmt_float(branch.rated_current_a))
 

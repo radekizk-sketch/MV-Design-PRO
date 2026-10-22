@@ -186,7 +186,6 @@ const FIX_ACTION_CODE_TO_OPERATION: Readonly<Record<string, CanonicalOpName>> = 
   'generator.block_variant_requires_block_transformer': 'add_transformer_sn_nn',
   'protection.binding_missing': 'add_relay',
   'branch_point.catalog_ref_missing': 'assign_catalog_to_element',
-  'branch_point.switch_state_missing': 'update_element_parameters',
   'branch_point.required_port_missing': 'update_element_parameters',
   'zksn.branch_count_invalid': 'update_element_parameters',
   'branch_connection.invalid_source_port': 'start_branch_segment_sn',

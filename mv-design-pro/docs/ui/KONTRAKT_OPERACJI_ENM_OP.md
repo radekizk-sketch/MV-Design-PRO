@@ -70,7 +70,7 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
         "corridor_ref": "<id-magistrali>",
         "corridor_type": "radial | ring | mixed",
         "segments": ["<segment_ref_1>", "<segment_ref_2>"],
-        "no_point_ref": "<switch_ref | null>",
+        "no_point_refs": ["<switch_ref>"],
         "terminals": [
           {
             "element_id": "<bus_ref>",
@@ -229,21 +229,20 @@ Kazda operacja domenowa zwraca **jednolity kontrakt odpowiedzi**:
 
 ### 2.2 Dozwolone typy zdarzen domenowych
 
-```
-SEGMENT_SPLIT           CUT_NODE_CREATED        STATION_CREATED
-PORTS_CREATED           FIELDS_CREATED_SN       DEVICES_CREATED_SN
-TR_CREATED              BUS_NN_CREATED           FIELDS_CREATED_NN
-DEVICES_CREATED_NN      RECONNECTED_GRAPH        LOGICAL_VIEWS_UPDATED
-SOURCE_CREATED          BUS_CREATED              BRANCH_CREATED
-SWITCH_INSERTED         RING_CONNECTED           NOP_SET
-TRANSFORMER_CREATED     CATALOG_ASSIGNED         PARAMETERS_UPDATED
-```
+Jedynym zrodlem listy jest `DOMAIN_EVENT_TYPES` w `backend/src/enm/domain_ops_models.py`
+(W5-C, 2026-10-21): rejestr rowny DOKLADNIE typom emitowanym przez operacje, w obu
+kierunkach pilnowany skanem AST w `backend/tests/enm/test_rejestr_zdarzen_domenowych.py`.
+Dawna lista w tym miejscu (21 typow) i martwa kopia `enm/domain_event_types.py` rozjechaly sie
+z kodem — nie sa przepisywane tutaj ponownie. Typy stanu laczeniowego: `SWITCH_OPENED`,
+`SWITCH_CLOSED`, `NOP_SET`, `NOP_CLEARED`; wyposazenie pola: `BAY_EQUIPMENT_SET`.
 
 ---
 
 ## 3. Kanon nazw operacji
 
-System definiuje dokladnie **10 kanonicznych operacji domenowych**. Frontend wysyla WYLACZNIE
+Kanoniczne operacje domenowe definiuje JEDEN rejestr `backend/src/enm/rejestr_operacji.py`
+(`OPERACJE_KANONICZNE`, specyfikacje pol: `backend/src/domain/canonical_operations.py`); ponizej
+opisane sa operacje toku budowy sieci SN i operacje stanu laczeniowego. Frontend wysyla WYLACZNIE
 nazwy kanoniczne. W aktywnej powierzchni V11 nie wystepuja aliasy operacji ani
 alternatywne identyfikatory formularzy.
 
@@ -388,7 +387,8 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | `insert_at.value` | `float` | NIE | Wartosc pozycji (domyslnie `0.5`) |
 | `switch_type` | `"ROZLACZNIK" \| "WYLACZNIK"` | NIE | Typ lacznika (domyslnie `ROZLACZNIK`) |
 | `switch_name` | `string` | NIE | Nazwa lacznika |
-| `normal_state` | `"closed" \| "open"` | NIE | Stan normalny (domyslnie `closed`) |
+| `normal_state` | `"closed" \| "open"` | NIE | Pozycja normalna (W5-C): brak = lacznik zamkniety BEZ zadeklarowanej pozycji normalnej; `closed` = pozycja zamknieta; `open` = lacznik staje sie punktem normalnie otwartym ta sama regula co `set_normal_open_point` (poprzedni punkt podzialu pierscienia zamykany w tej samej operacji) |
+| `close_ref` | `string` | NIE | Przy `normal_state="open"` w topologii z kilkoma poprzednimi punktami podzialu: ktory z nich zamknac (jak w `set_normal_open_point`) |
 
 **Tworzy:**
 - Dwa wezly lacznika (`bus`)
@@ -432,19 +432,63 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 ### 3.7 `set_normal_open_point`
 
-**Cel:** Ustawienie punktu normalnie otwartego (NOP) na laczniku w pierscieniu.
-Lacznik przechodzi w stan `open`, magistrala zapisuje `no_point_ref`.
+**Cel:** Przeniesienie punktu normalnie otwartego (NOP) pierscienia na wskazany lacznik ---
+ATOMOWO (W5-C, 2026-10-21). Jedynym zrodlem punktu podzialu jest `SwitchBranch.normal_state`;
+punkty podzialu wyprowadza akcesor `enm.topology.punkty_podzialu`. Magistrala nie niesie kopii
+(`Corridor.no_point_ref` i `LineRun.nop_station_ref` skasowane; zapis zastany migruje
+`backend/src/enm/stan_normalny.py` z raportem w dzienniku zmian).
 
 **Wymagane pola payload:**
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `switch_ref` | `string` | TAK | Referencja lacznika, ktory ma byc punktem NOP |
-| `corridor_ref` | `string` | NIE | Referencja magistrali (domyslnie pierwsza magistrala w modelu) |
+| `switch_ref` | `string` | TAK | Lacznik nowego punktu podzialu (wylacznik, rozlacznik, odlacznik, sprzeglo; bezpiecznik i odcinek linii --- odmowa `nop.not_a_switch`) |
+| `close_ref` | `string` | NIE | Ktory poprzedni punkt podzialu zamknac, gdy od lacznika zalezy kilka (topologia „theta"); bez wskazania przy kilku kandydatach --- odmowa `nop.previous_ambiguous`, wskazanie spoza kandydatow --- `nop.close_ref_invalid` |
 
-**Modyfikuje:**
-- Lacznik (`branch`) --- zmienia `status` na `open`
-- Magistrale (`corridor`) --- ustawia `no_point_ref`
+**Modyfikuje (jedna migawka):**
+- Wskazany lacznik --- `normal_state="open"`, `status="open"` (zdarzenie `NOP_SET`)
+- Poprzedni punkt podzialu TEGO SAMEGO pierscienia --- `normal_state="closed"`, `status="closed"` (zdarzenie `NOP_CLEARED`)
+
+Lacznik promieniowy (bez pierscienia) staje sie punktem podzialu bez zamykania czegokolwiek.
+
+---
+
+### 3.7a `open_switch` / `close_switch`
+
+**Cel:** Zmiana BIEZACEGO polozenia lacznika w modelu bazowym (`status`, jedyny stan czytany
+przez fizyke). Pozycja normalna (`normal_state`) bez zmian --- chwilowe otwarcie nie jest
+deklaracja punktu podzialu. Dotyczy kazdego lacznika i bezpiecznika.
+
+| Pole | Typ | Wymagane | Opis |
+|------|-----|----------|------|
+| `switch_ref` | `string` | TAK | Lacznik albo bezpiecznik |
+
+Odmowy: `switch.ref_missing`, `switch.not_found`, `switch.not_a_switch`,
+`switch.state_unchanged`. Zdarzenia: `SWITCH_OPENED` / `SWITCH_CLOSED`.
+
+Stan lacznika w WARIANCIE (bez zmiany modelu bazowego) niesie scenariusz nazwany
+`OperatingScenario.switch_states` --- `GET/POST /api/scenariusze-laczeniowe/study-cases/{case_id}`,
+bieg ze scenariuszem: `POST /api/execution/study-cases/{case_id}/runs` z `scenario_id`.
+
+---
+
+### 3.7b `set_bay_equipment`
+
+**Cel:** Ustawienie wyposazenia (aparatow pierwotnych) pola SN, catalog-first. Stan danych
+kazdego aparatu wyprowadzany z `catalog_ref` (bez nowego pola): `MODEL` (pozycja katalogowa),
+`PROPOZYCJA` (wartosc robocza z szablonu --- w odpowiedzi jako `DanaPrzyjeta` z jakoscia
+`ESTIMATED`), `BRAK_DANYCH` (pole bez aparatow).
+
+| Pole | Typ | Wymagane | Opis |
+|------|-----|----------|------|
+| `bay_ref` | `string` | TAK | Pole SN (pole nN --- odmowa `bay_equipment.bay_not_mv`) |
+| `mode` | `"katalog" \| "szablon" \| "wyczysc"` | TAK | Zrodlo wyposazenia |
+| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola) |
+| `bay_template_ref` | `string` | przy `szablon` (albo z rekordu pola) | Szablon kanoniczny albo katalogowe pole rodziny tej samej funkcji pola |
+
+Odpowiedz niesie dodatkowo `wyposazenie_pola` (`stan_danych`, stan kazdego aparatu,
+`dane_przyjete`). Zdarzenie: `BAY_EQUIPMENT_SET`. Operacja nie ocenia doboru aparatu (warstwa
+analizy) i nie ustawia stanu lacznika (stan zyje na galezi).
 
 ---
 
@@ -513,6 +557,11 @@ Pozwala na zmiane dowolnych parametrow (z wyjatkiem `ref_id`, `id`, `type`).
 - Element docelowy --- ustawia podane parametry
 
 **ZABRONIONE klucze w `parameters`:** `ref_id`, `id`, `type` --- te pola sa niezmienne.
+Stan lacznika (W5-C): `status` lacznika zmieniaja wylacznie `open_switch`/`close_switch`
+(odmowa `switch.state_via_operation`), `normal_state="open"` --- wylacznie
+`set_normal_open_point`; korekta parametrow moze jedynie zadeklarowac pozycje zamknieta albo
+zdjac deklaracje (`null`); `normal_state` na elemencie bez pozycji normalnej ---
+`switch.normal_state_not_applicable`.
 
 ---
 
@@ -599,7 +648,7 @@ LogicalViews
   |     |-- corridor_ref
   |     |-- corridor_type  (radial | ring | mixed)
   |     |-- segments[]     // uporzadkowane ref_id segmentow
-  |     |-- no_point_ref   // NOP switch ref (jesli istnieje)
+  |     |-- no_point_refs  // laczniki normalnie otwarte magistrali (z `normal_state`)
   |     |-- terminals[]    // TerminalRef
   |
   |-- branches[]           // odgalezienia

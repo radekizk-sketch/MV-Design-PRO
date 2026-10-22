@@ -16903,6 +16903,48 @@
     "title": "ZapisScenariuszaDynamiki",
     "type": "object"
    },
+   "ZapisScenariuszaLaczeniowego": {
+    "description": "Scenariusz nazwany ze stanami łączników — nowy (``scenario_id`` pominięte) albo nowa\nrewizja istniejącego (``scenario_id`` podane).",
+    "properties": {
+     "name": {
+      "description": "Nazwa scenariusza",
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+     },
+     "scenario_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Identyfikator istniejącego scenariusza",
+      "title": "Scenario Id"
+     },
+     "switch_states": {
+      "additionalProperties": {
+       "enum": [
+        "closed",
+        "open"
+       ],
+       "type": "string"
+      },
+      "description": "Łącznik (ref_id) → położenie w scenariuszu",
+      "minProperties": 1,
+      "title": "Switch States",
+      "type": "object"
+     }
+    },
+    "required": [
+     "name",
+     "switch_states"
+    ],
+    "title": "ZapisScenariuszaLaczeniowego",
+    "type": "object"
+   },
    "ZgodnoscZadanie": {
     "description": "Żądanie raportu zgodności powykonawczej.",
     "properties": {
@@ -19972,7 +20014,7 @@
   },
   "/api/cases/{case_id}/enm/domain-ops": {
    "post": {
-    "description": "Kanoniczny endpoint operacji domenowych V1.\n\nWspólny kontrakt dla wszystkich operacji budowy sieci SN:\nadd_grid_source_sn, continue_trunk_segment_sn,\ninsert_station_on_segment_sn, start_branch_segment_sn,\ninsert_section_switch_sn, connect_secondary_ring_sn,\nset_normal_open_point, add_transformer_sn_nn,\nassign_catalog_to_element, update_element_parameters.\n\nOdpowiedź zawiera: snapshot, readiness, fix_actions, changes,\nselection_hint, audit_trail, domain_events.\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej ta końcówka (`async def`, pętla zdarzeń) gubiła pracę zatwierdzenia\nszablonu stacji (`def`, pula wątków Starlette) biegnącego równolegle na tym\nsamym przypadku — obie końcówki meldowały `HTTP 200`, a w modelu zostawał\ndorobek tylko jednej, przy czym druga zwracała `created_element_ids`\nwskazujące na byty, których w zapisanej migawce NIE MA.\n\n`snapshot_base_hash` nie jest tu obroną: porównuje hash z modelem odczytanym\nw tej samej funkcji (chwila ODCZYTU, nie zapisu), więc nie jest to\ncompare-and-swap, a produkcyjni wołający wysyłają pusty łańcuch.\n\nZamiana na `def` NIE jest naprawą wyścigu — przenosi go tylko z pętli zdarzeń\ndo puli wątków. Blokada jest per przypadek obliczeniowy, więc operacje na\nRÓŻNYCH przypadkach nadal biegną równolegle.",
+    "description": "Kanoniczny endpoint operacji domenowych V1.\n\nWspólny kontrakt dla wszystkich operacji budowy sieci SN:\nadd_grid_source_sn, continue_trunk_segment_sn,\ninsert_station_on_segment_sn, start_branch_segment_sn,\ninsert_section_switch_sn, connect_secondary_ring_sn,\nset_normal_open_point, open_switch, close_switch, add_transformer_sn_nn,\nassign_catalog_to_element, update_element_parameters, set_bay_equipment.\n\nOdpowiedź zawiera: snapshot, readiness, fix_actions, changes,\nselection_hint, audit_trail, domain_events.\n\nWSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY\ncykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona\ndopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.\nBez niej ta końcówka (`async def`, pętla zdarzeń) gubiła pracę zatwierdzenia\nszablonu stacji (`def`, pula wątków Starlette) biegnącego równolegle na tym\nsamym przypadku — obie końcówki meldowały `HTTP 200`, a w modelu zostawał\ndorobek tylko jednej, przy czym druga zwracała `created_element_ids`\nwskazujące na byty, których w zapisanej migawce NIE MA.\n\n`snapshot_base_hash` nie jest tu obroną: porównuje hash z modelem odczytanym\nw tej samej funkcji (chwila ODCZYTU, nie zapisu), więc nie jest to\ncompare-and-swap, a produkcyjni wołający wysyłają pusty łańcuch.\n\nZamiana na `def` NIE jest naprawą wyścigu — przenosi go tylko z pętli zdarzeń\ndo puli wątków. Blokada jest per przypadek obliczeniowy, więc operacje na\nRÓŻNYCH przypadkach nadal biegną równolegle.",
     "operationId": "domain_ops_api_cases__case_id__enm_domain_ops_post",
     "parameters": [
      {
@@ -30735,6 +30777,104 @@
     "summary": "Get Result Contract Schema",
     "tags": [
      "result-contract-v1"
+    ]
+   }
+  },
+  "/api/scenariusze-laczeniowe/study-cases/{case_id}": {
+   "get": {
+    "description": "Scenariusze nazwane projektu ze stanami łączników (kolejność magazynu).",
+    "operationId": "get_scenariusze_laczeniowe_api_scenariusze_laczeniowe_study_cases__case_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Get Scenariusze Laczeniowe Api Scenariusze Laczeniowe Study Cases  Case Id  Get",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Scenariusze Laczeniowe",
+    "tags": [
+     "scenariusze-laczeniowe"
+    ]
+   },
+   "post": {
+    "description": "Zapisz scenariusz nazwany ze stanami łączników.\n\n422 — stan wskazuje element, którego model nie ma, albo element niebędący łącznikiem;\n404 — ``scenario_id`` nieistniejące. Nowa rewizja istniejącego scenariusza zachowuje\njego pozostałe nadpisania (harmonogram dynamiki, nastawy) — zmienia nazwę i stany.",
+    "operationId": "post_scenariusz_laczeniowy_api_scenariusze_laczeniowe_study_cases__case_id__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "case_id",
+      "required": true,
+      "schema": {
+       "title": "Case Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ZapisScenariuszaLaczeniowego"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "additionalProperties": true,
+         "title": "Response Post Scenariusz Laczeniowy Api Scenariusze Laczeniowe Study Cases  Case Id  Post",
+         "type": "object"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Post Scenariusz Laczeniowy",
+    "tags": [
+     "scenariusze-laczeniowe"
     ]
    }
   },

@@ -9,7 +9,7 @@
  * polami danych technicznych i hint'em o kolejnych etapach roadmapy.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
@@ -21,6 +21,15 @@ import {
 } from '../../network-build/operationContextResolvers';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import { publicTechnicalLabel } from '../../shared/publicTechnicalLabels';
+import {
+  czyLacznikZPozycjaNormalna,
+  czyPunktPodzialu,
+  etykietaPolozenia,
+  etykietaPozycjiNormalnej,
+  opisLacznikowPortow,
+  pozycjaNormalna,
+  punktyPodzialu,
+} from '../../shared/stanLacznika';
 import type { Branch, BranchPointSN, EnergyNetworkModel } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
@@ -401,7 +410,7 @@ export function BranchPoleSurface({ surface }: SurfaceProps): JSX.Element {
           <KeyValue label="Port odgałęzienia" value={publicBranchPortLabel(branchSource?.portLabel)} />
           <KeyValue
             label="Stan łącznika"
-            value={branchPoint?.switch_state === 'open' ? 'otwarty' : 'zamknięty'}
+            value={branchPoint ? opisLacznikowPortow(snapshot, branchPoint.ref_id) : MISSING_DASH}
           />
           <KeyValue
             label="Wariant katalogowy"
@@ -475,58 +484,81 @@ export function BranchSurface({ surface }: SurfaceProps): JSX.Element {
 // E-17 — NOP (Punkt normalnie otwarty)
 // =============================================================================
 
-interface NopData {
-  designation: string;
-  apparatusRef: string;
-  isNormallyOpen: boolean;
-  switchableUnderLoad: boolean;
-  remoteControl: boolean;
-}
-
+/**
+ * W5-C: powierzchnia punktu normalnie otwartego czyta model — punkty podziału to łączniki
+ * z `normal_state === 'open'` (jedna prawda, `ui/shared/stanLacznika.ts`). Dawna wersja
+ * była formularzem bez zapisu (oznaczenie, „aparat realizujący" wpisywany ręcznie, trzy
+ * pola wyboru w stanie lokalnym) — kontrolki, których backend nie znał (zasada „zero
+ * fabrykacji"). Przeniesienie punktu podziału to operacja `set_normal_open_point`
+ * (kreator pierścienia), atomowo zamykająca poprzedni punkt tego pierścienia.
+ */
 export function NopSurface({ surface }: SurfaceProps): JSX.Element {
   const ref = surface.entityRef ?? null;
-  const [data, setData] = useState<NopData>({
-    designation: '',
-    apparatusRef: '',
-    isNormallyOpen: true,
-    switchableUnderLoad: true,
-    remoteControl: false,
-  });
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const punkty = useMemo(() => punktyPodzialu(snapshot), [snapshot]);
+  const lacznik = useMemo(() => {
+    const galaz = ref
+      ? (snapshot?.branches ?? []).find((branch) => branch.ref_id === ref || branch.id === ref) ?? null
+      : null;
+    return czyLacznikZPozycjaNormalna(galaz) ? galaz : null;
+  }, [snapshot, ref]);
+  const lacznikJestPunktem = czyPunktPodzialu(lacznik);
+
   return (
     <div data-testid="nop-surface" className="flex h-full w-full flex-col p-4">
-      <SurfaceHeader code="E-17" title="Punkt normalnie otwarty" subtitle={ref ?? 'NOP niewybrany'} />
+      <SurfaceHeader
+        code="E-17"
+        title="Punkt normalnie otwarty"
+        subtitle={lacznik ? publicTechnicalLabel(lacznik.name, 'Łącznik SN') : 'Punkty podziału sieci'}
+      />
       <div className="flex-1 space-y-3 overflow-auto p-4">
-        <Field
-          label="Oznaczenie NOP"
-          required
-          value={data.designation}
-          onChange={(v) => setData((d) => ({ ...d, designation: v }))}
-          placeholder="np. NOP-W-01"
-        />
-        <Field
-          label="Aparat realizujący NOP"
-          value={data.apparatusRef}
-          onChange={(v) => setData((d) => ({ ...d, apparatusRef: v }))}
-          placeholder="ID aparatu z modelu sieci"
-        />
-        <CheckboxField
-          label="Stan normalny: otwarty"
-          checked={data.isNormallyOpen}
-          onChange={(v) => setData((d) => ({ ...d, isNormallyOpen: v }))}
-        />
-        <CheckboxField
-          label="Możliwość przełączania pod obciążeniem"
-          checked={data.switchableUnderLoad}
-          onChange={(v) => setData((d) => ({ ...d, switchableUnderLoad: v }))}
-        />
-        <CheckboxField
-          label="Sterowanie zdalne (SCADA)"
-          checked={data.remoteControl}
-          onChange={(v) => setData((d) => ({ ...d, remoteControl: v }))}
-        />
+        {lacznik ? (
+          <div className="grid grid-cols-2 gap-3" data-testid="nop-surface-lacznik">
+            <KeyValue label="Bieżące położenie" value={etykietaPolozenia(lacznik.status)} />
+            <KeyValue
+              label="Pozycja normalna"
+              value={etykietaPozycjiNormalnej(pozycjaNormalna(lacznik))}
+            />
+          </div>
+        ) : null}
+        <div className="rounded border border-scada-border bg-scada-panel p-3" data-testid="nop-surface-lista">
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-scada-muted">
+            Punkty normalnie otwarte w modelu ({punkty.length})
+          </div>
+          {punkty.length > 0 ? (
+            <ul className="mt-2 space-y-1 text-sm text-scada-text">
+              {punkty.map((punkt) => (
+                <li key={punkt.ref_id} data-testid={`nop-surface-punkt-${punkt.ref_id}`}>
+                  {publicTechnicalLabel(punkt.name, 'Łącznik SN')} — bieżące położenie:{' '}
+                  {etykietaPolozenia(punkt.status).toLowerCase()}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-xs text-scada-muted">
+              Model nie ma zadeklarowanego punktu normalnie otwartego — sieć pracuje w układzie,
+              jaki wynika z bieżących położeń łączników.
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          data-testid="nop-surface-ustaw"
+          disabled={lacznikJestPunktem}
+          onClick={() => openOperationForm('set_normal_open_point', lacznik ? { switch_ref: lacznik.ref_id } : {})}
+          className="rounded border border-scada-border bg-scada-surface px-3 py-1.5 text-xs font-semibold text-scada-text disabled:opacity-50"
+        >
+          {lacznik
+            ? lacznikJestPunktem
+              ? 'Łącznik jest punktem normalnie otwartym'
+              : 'Ustaw ten łącznik jako punkt normalnie otwarty'
+            : 'Wskaż łącznik nowego punktu podziału'}
+        </button>
         <p className="rounded border border-scada-border bg-scada-surface p-3 text-[11px] text-scada-muted">
-          NOP modeluje rozcięcie elektryczne pierścienia SN. Operacja domenowa
-          set_normal_open_point (panel ENM) ustawia / zmienia stan łącznika.
+          Punkt normalnie otwarty to pozycja normalna łącznika z projektu. Ustawienie nowego
+          punktu otwiera wskazany łącznik i zamyka poprzedni punkt podziału tego samego
+          pierścienia jedną operacją — pierścień nie zostaje z dwoma podziałami ani bez podziału.
         </p>
       </div>
     </div>
@@ -560,51 +592,5 @@ function KeyValue({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] font-semibold uppercase tracking-widest text-scada-muted">{label}</div>
       <div className="mt-1 text-sm font-medium text-scada-text">{value}</div>
     </div>
-  );
-}
-
-interface FieldProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  required?: boolean;
-}
-
-function Field({ label, value, onChange, placeholder, required }: FieldProps) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs text-scada-muted">
-        {label}
-        {required && <span className="text-red-400"> *</span>}
-      </label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none"
-      />
-    </div>
-  );
-}
-
-interface CheckboxFieldProps {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-function CheckboxField({ label, checked, onChange }: CheckboxFieldProps) {
-  return (
-    <label className="flex items-center gap-2 text-sm text-scada-text">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 rounded border-scada-border bg-scada-surface text-scada-sn focus:ring-scada-sn"
-      />
-      {label}
-    </label>
   );
 }

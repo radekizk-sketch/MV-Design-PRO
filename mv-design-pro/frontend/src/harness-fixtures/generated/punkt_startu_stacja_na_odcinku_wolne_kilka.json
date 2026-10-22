@@ -94,7 +94,7 @@
         "corridor_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
         "corridor_type": "radial",
         "embedded_objects": [],
-        "no_point_ref": null,
+        "no_point_refs": [],
         "segments": [
           "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_L",
           "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
@@ -539,6 +539,7 @@
           "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
         },
         "name": "Wyłącznik pola SN 1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -574,6 +575,7 @@
           "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
         },
         "name": "Wyłącznik pola SN 4",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -617,6 +619,7 @@
           "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal"
         },
         "name": "Aparat Pole liniowe GPZ 2",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -652,6 +655,7 @@
           "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
         },
         "name": "Wyłącznik pola SN 3",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -854,6 +858,7 @@
           "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal"
         },
         "name": "Aparat Pole liniowe GPZ 1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -889,6 +894,7 @@
           "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
         },
         "name": "Wyłącznik pola SN 5",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -924,6 +930,7 @@
           "station_ref": "stn/298177b52cf4013c836740b86946c50f/station"
         },
         "name": "Wyłącznik pola SN 2",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -1178,7 +1185,6 @@
         "id": "cc476396-6e72-5e20-9ede-764f215ad46c",
         "meta": {},
         "name": "Magistrala 01",
-        "no_point_ref": null,
         "ordered_segment_refs": [
           "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_L",
           "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
@@ -1210,7 +1216,6 @@
         "branch_origin_station_ref": null,
         "id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
         "name": "Magistrala 01",
-        "nop_station_ref": null,
         "parent_run_ref": null,
         "run_kind": "main_trunk",
         "segments": [

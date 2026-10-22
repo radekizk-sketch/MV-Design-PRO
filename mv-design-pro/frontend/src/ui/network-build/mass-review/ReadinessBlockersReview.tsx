@@ -18,9 +18,9 @@ import {
   sanitizePublicReadinessMessage,
 } from '../../shared/publicReadinessMessage';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useNetworkBuildStore } from '../networkBuildStore';
+import { kategoriaBlokera, useNetworkBuildStore, type KategoriaBlokera } from '../networkBuildStore';
 
-type BlockerCategory = 'topologia' | 'katalogi' | 'eksploatacja' | 'analiza';
+type BlockerCategory = KategoriaBlokera;
 
 const CATEGORY_LABELS: Record<BlockerCategory, string> = {
   topologia: 'Topologia',
@@ -29,40 +29,8 @@ const CATEGORY_LABELS: Record<BlockerCategory, string> = {
   analiza: 'Analiza',
 };
 
-function categorizeBlocker(code: string): BlockerCategory {
-  const normalized = code.toLowerCase();
-  if (
-    normalized.includes('topology')
-    || normalized.includes('island')
-    || normalized.includes('disconnected')
-    || normalized.includes('voltage_mismatch')
-    || normalized.includes('grounding')
-    || normalized.includes('isolated')
-  ) {
-    return 'topologia';
-  }
-  if (
-    normalized.includes('catalog')
-    || normalized.includes('missing_type')
-    || normalized.includes('no_catalog')
-    || normalized.includes('impedance')
-    || normalized.includes('zero_seq')
-    || normalized.includes('missing_rating')
-  ) {
-    return 'katalogi';
-  }
-  if (
-    normalized.includes('switch_state')
-    || normalized.includes('nop')
-    || normalized.includes('normal_state')
-    || normalized.includes('coupler')
-    || normalized.includes('tap_position')
-    || normalized.includes('operating')
-  ) {
-    return 'eksploatacja';
-  }
-  return 'analiza';
-}
+// W5-C: kategoria z JEDNEJ reguły `kategoriaBlokera` (licznik budowy liczy tą samą).
+const categorizeBlocker = kategoriaBlokera;
 
 export function ReadinessBlockersReview() {
   const fixActions = useSnapshotStore((state) => state.fixActions);

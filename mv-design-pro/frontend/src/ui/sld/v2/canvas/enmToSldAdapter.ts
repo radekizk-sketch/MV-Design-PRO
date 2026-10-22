@@ -60,6 +60,7 @@ import {
   type StationTransformerUnit,
 } from '../../../network-build/stationTransformerSelection';
 import { powyzejPasmaNn } from '../../../../ui2/model/pasmaNapieciowe';
+import { punktyPodzialu } from '../../../shared/stanLacznika';
 
 // =============================================================================
 // Cable/line run helpers
@@ -1231,7 +1232,9 @@ function normalizeLineRunForLayout(
     starting_port_ref: lineRun.starting_port_ref ?? null,
     segments: expandedSegmentRefs.map((segment_ref, index) => ({ segment_ref, order: index + 1 })),
     stations: [...lineRun.stations],
-    nop_station_ref: lineRun.nop_station_ref ?? null,
+    // W5-C: stację punktu podziału ciągu wyprowadza `przypiszStacjePunktuPodzialu`
+    // z pozycji normalnej łączników (dawna kopia `LineRun.nop_station_ref` skasowana).
+    nop_station_ref: null,
     parent_run_ref: lineRun.parent_run_ref ?? null,
     branch_origin_station_ref: lineRun.branch_origin_station_ref ?? null,
   };
@@ -1370,7 +1373,7 @@ function buildSldLineRunsForLayout(
         starting_port_ref: null,
         segments: segmentRefs.map((segment_ref, order) => ({ segment_ref, order: order + 1 })),
         stations: stationRefs.map((substation_ref, order) => ({ substation_ref, order: order + 1 })),
-        nop_station_ref: corridor.no_point_ref ?? null,
+        nop_station_ref: null,
       }];
     });
 
@@ -1451,7 +1454,37 @@ function buildSldLineRunsForLayout(
     }
   }
 
+  przypiszStacjePunktuPodzialu(snapshot, layoutRuns);
   return layoutRuns.sort(compareLineRunsForLayout);
+}
+
+/**
+ * W5-C: stacja punktu normalnie otwartego ciągu — PIERWSZA (wg kolejności ciągu) stacja,
+ * której pole niesie łącznik z pozycją normalną `'open'` (`ui/shared/stanLacznika.ts::
+ * punktyPodzialu` — jedno źródło, pozycja normalna łącznika). Punkt podziału poza stacją
+ * (łącznik sekcyjny na trasie) nie oznacza żadnej stacji: łącznik jest rysowany jako
+ * otwarty z własnego `status`, a kopia „stacji NOP" byłaby domysłem.
+ */
+function przypiszStacjePunktuPodzialu(
+  snapshot: EnergyNetworkModel,
+  runs: SldLineRunForLayout[],
+): void {
+  const punkty = new Set(punktyPodzialu(snapshot).map((galaz) => galaz.ref_id));
+  const stacjeZPunktem = new Set<string>();
+  if (punkty.size > 0) {
+    for (const pole of snapshot.bays ?? []) {
+      if (!pole.substation_ref) continue;
+      if ((pole.equipment_refs ?? []).some((ref) => punkty.has(ref))) {
+        stacjeZPunktem.add(pole.substation_ref);
+      }
+    }
+  }
+  for (const run of runs) {
+    const stacja = [...run.stations]
+      .sort((a, b) => a.order - b.order)
+      .find((station) => stacjeZPunktem.has(station.substation_ref));
+    run.nop_station_ref = stacja?.substation_ref ?? null;
+  }
 }
 
 function buildStations(snapshot: EnergyNetworkModel): StationOnRunViewModel[] {

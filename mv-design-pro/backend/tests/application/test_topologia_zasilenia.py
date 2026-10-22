@@ -202,9 +202,13 @@ def siec(zrodla: int, struktura: str, stan_q: str) -> EnergyNetworkModel:
                 name="Magistrala pierścieniowa",
                 corridor_type="ring",
                 ordered_segment_refs=["C1", "C2", "C3"],
-                no_point_ref=NOP,
             )
         )
+        # W5-C: punkt podziału = pozycja normalna ŁĄCZNIKA (jedyne źródło, nie pole
+        # magistrali). „pierscien_bez_podzialu" = punkt zadeklarowany, ale łącznik zamknięty.
+        galezie = [
+            g.model_copy(update={"normal_state": "open"}) if g.ref_id == NOP else g for g in galezie
+        ]
     zabezpieczenia = [
         ProtectionAssignment(
             ref_id="PA_B_IN",

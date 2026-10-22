@@ -8,9 +8,9 @@ export { CatalogPicker } from './CatalogPicker';
 export { CatalogPreview } from './CatalogPreview';
 export { ExpertOverrides } from './ExpertOverrides';
 
-// Modale źródeł nN (FAZA 2/6 — UI 10/10 ABSOLUTE++)
-export { PVInverterModal } from './PVInverterModal';
-export { BESSInverterModal } from './BESSInverterModal';
+// W5-C: modale źródeł nN `PVInverterModal` / `BESSInverterModal` skasowane — zero
+// konsumentów produkcyjnych; falownik PV i magazyn BESS na nN dodaje kreator
+// `ui2/kreatory/zrodlo-oze` (operacja `add_converter_source`).
 
 export type { NodeFormData } from './NodeModal';
 export type { BranchFormData } from './BranchModal';
@@ -22,11 +22,7 @@ export type { CatalogEntry } from './CatalogPicker';
 export type { CatalogPreviewSection, CatalogPreviewParam } from './CatalogPreview';
 export type { OverrideEntry } from './ExpertOverrides';
 
-// Typy formularzy źródeł nN
-export type { PVInverterFormData } from './PVInverterModal';
-export type { BESSInverterFormData } from './BESSInverterModal';
 
-// Modale wizarda SN
-export { SectionSwitchModal } from './SectionSwitchModal';
-
-export type { SectionSwitchFormData, SwitchKind, SwitchState } from './SectionSwitchModal';
+// W5-C: `SectionSwitchModal` skasowany — zero konsumentów od V12K-053 (zastąpił go kreator
+// `ui2/kreatory/lacznik`), a jego domyślne `switch_state: 'CLOSED'` fabrykowało pozycję
+// normalną łącznika sekcyjnego (pozycja normalna niezadeklarowana = brak, nie „zamknięty").

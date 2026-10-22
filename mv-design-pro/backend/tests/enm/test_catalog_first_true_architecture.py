@@ -117,9 +117,19 @@ def test_insert_zksn_on_cable() -> None:
     assert resp.get("error") in (None, "")
     branch_points = resp["snapshot"].get("branch_points", [])
     zksn = next(bp for bp in branch_points if bp.get("branch_point_type") == "zksn")
-    assert zksn["switch_state"] == "closed"
+    # W5-C: stan łączeniowy ZKSN żyje WYŁĄCZNIE na łącznikach portów (jedna prawda),
+    # punkt rozgałęzienia nie niesie już kopii ``switch_state``.
+    assert "switch_state" not in zksn
+    lacznik_portow = [
+        b
+        for b in resp["snapshot"]["branches"]
+        if (b.get("meta") or {}).get("branch_point_ref") == zksn["ref_id"]
+        and b.get("type") in {"switch", "breaker"}
+    ]
+    assert lacznik_portow
+    assert {b["status"] for b in lacznik_portow} == {"closed"}
     blocker_codes = {b.get("code") for b in resp.get("readiness", {}).get("blockers", [])}
-    assert "branch_point.switch_state_missing" not in blocker_codes
+    assert not any("switch_state" in str(kod) for kod in blocker_codes)
 
 
 def test_reject_insert_zksn_on_overhead_line() -> None:
@@ -132,14 +142,17 @@ def test_reject_insert_zksn_on_overhead_line() -> None:
     assert resp.get("error_code") == "branch_point.invalid_parent_medium"
 
 
-def test_refresh_snapshot_completes_legacy_zksn_switch_state() -> None:
+def test_refresh_snapshot_drops_legacy_zksn_switch_state_copy() -> None:
+    """Zapis zastany z kopią ``BranchPointSN.switch_state`` (dawniej uzupełnianą domyślnie
+    jako ``closed``): odświeżenie migruje — kopia znika, położenie łączników portów
+    zostaje nietknięte, brak bloker gotowości o brakującym stanie."""
     snapshot, seg_id = _seed_with_segment("KABEL")
     legacy = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
         {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
     )["snapshot"]
-    legacy["branch_points"][0].pop("switch_state", None)
+    legacy["branch_points"][0]["switch_state"] = "closed"
 
     refreshed = execute_domain_operation(legacy, "refresh_snapshot", {})
     zksn = next(
@@ -147,8 +160,15 @@ def test_refresh_snapshot_completes_legacy_zksn_switch_state() -> None:
     )
     blocker_codes = {b.get("code") for b in refreshed.get("readiness", {}).get("blockers", [])}
 
-    assert zksn["switch_state"] == "closed"
-    assert "branch_point.switch_state_missing" not in blocker_codes
+    assert "switch_state" not in zksn
+    polozenia = {
+        b["status"]
+        for b in refreshed["snapshot"]["branches"]
+        if (b.get("meta") or {}).get("branch_point_ref") == zksn["ref_id"]
+        and b.get("type") in {"switch", "breaker"}
+    }
+    assert polozenia == {"closed"}
+    assert not any("switch_state" in str(kod) for kod in blocker_codes)
 
 
 def test_branch_from_branch_pole_branch_port() -> None:

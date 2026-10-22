@@ -124,11 +124,7 @@ IGNORE_PATTERN = re.compile(r"//\s*physics-guard-ignore")
 # `// physics-guard-ignore` jest niemożliwy w pozycji atrybutu JSX (składnia),
 # stąd allowlist po stronie guardu.
 ALLOWED_OPERATIONAL_SETPOINTS: dict[tuple[str, str], str] = {
-    ("PVInverterModal.tsx", "cos_phi"): (
-        "Nastawa trybu regulacji STALY_COS_PHI falownika (DER_PV_BESS_FW_CONFIGURATOR "
-        "§3.3 'Tryb regulacji: stały cos φ'), walidowana (0,1]; model falownika "
-        "wiązany z katalogu przez catalog_item_id."
-    ),
+    # W5-C: wpis ("PVInverterModal.tsx", "cos_phi") zdjęty razem z martwym modalem.
 }
 
 

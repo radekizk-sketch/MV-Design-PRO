@@ -7,6 +7,11 @@ export const PIERSCIEN_STRINGS = {
     + 'otwarty (NOP). Pierścień daje rezerwowanie zasilania; NOP przywraca pracę '
     + 'radialną — rozpływ mocy honoruje otwarty łącznik (brak gałęzi galwanicznej).',
   odznaka: 'Nowy pierścień SN',
+  celNop:
+    'Przenieś punkt normalnie otwarty (NOP) pierścienia na wskazany łącznik. Operacja jest '
+    + 'atomowa: wskazany łącznik staje się normalnie otwarty, a dotychczasowy punkt podziału '
+    + 'tego pierścienia — normalnie zamknięty; sieć pozostaje promieniowa.',
+  odznakaNop: 'Punkt podziału',
 
   krokDomkniecie: 'Domknięcie pierścienia',
   krokNop: 'Punkt normalnie otwarty',
@@ -37,7 +42,18 @@ export const PIERSCIEN_STRINGS = {
     'Wskaż łącznik, który w stanie normalnym pozostaje otwarty — sieć pracuje '
     + 'radialnie, a pierścień stanowi rezerwę. Rozpływ mocy honoruje ten stan.',
   nopPlaceholder: '— wybierz łącznik NOP —',
-  nopBrakKandydatow: 'Brak kandydatów NOP na domkniętym pierścieniu.',
+  nopBrakKandydatow:
+    'Brak kandydatów NOP — w modelu nie ma łącznika z pozycją normalną, który nie jest '
+    + 'jeszcze punktem podziału.',
+  nopPrzeniesienie:
+    'Wskazany łącznik stanie się punktem normalnie otwartym; dotychczasowy punkt podziału '
+    + 'tego pierścienia zostanie zamknięty w tej samej operacji.',
+  zamknijPoprzedni: 'Dotychczasowy punkt podziału do zamknięcia',
+  zamknijPoprzedniAutomatycznie: '— punkt podziału tego pierścienia (wyznaczy model) —',
+  zamknijPoprzedniPomoc:
+    'Wskaż wprost tylko wtedy, gdy łącznik jest wspólny dla kilku pierścieni — model '
+    + 'odmówi zgadywania i wymieni punkty podziału do wyboru. Łącznik promieniowy '
+    + '(bez pierścienia) staje się punktem podziału bez zamykania innego.',
 
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:

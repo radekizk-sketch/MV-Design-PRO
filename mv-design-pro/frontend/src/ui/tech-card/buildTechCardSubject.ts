@@ -30,6 +30,7 @@ import { resolveBranchPointBranchPortOccupancy } from '../network-build/operatio
 import { selectStationDistributionTransformerRefs } from '../network-build/stationTransformerSelection';
 import { stationSnBays } from '../network-build/stationSnFields';
 import { rolaKanonicznaPola } from '../shared/polaStacji';
+import { opisLacznikowPortow } from '../shared/stanLacznika';
 import type {
   BayCanonicalRole,
   BranchPointSN,
@@ -88,7 +89,7 @@ export function buildTechCardSubject(
 
   const branchPoint = findBranchPoint(snapshot, id);
   if (branchPoint) {
-    return buildBranchPointSubject(branchPoint, options);
+    return buildBranchPointSubject(snapshot, branchPoint, options);
   }
 
   const generator = findGenerator(snapshot, id);
@@ -369,6 +370,7 @@ function buildStationSubject(
 }
 
 function buildBranchPointSubject(
+  snapshot: EnergyNetworkModel,
   branchPoint: BranchPointSN,
   options: BuildTechCardOptions,
 ): TechCardSubject {
@@ -428,9 +430,10 @@ function buildBranchPointSubject(
             : 'Słup linii napowietrznej z odgałęzieniem napowietrznym',
         },
         {
+          // W5-C: stan łączników portów z ICH gałęzi (położenie + pozycja normalna).
           key: 'stan',
-          label: 'Stan łącznika',
-          value: switchStateLabel(branchPoint.switch_state),
+          label: 'Stan łączników portów',
+          value: opisLacznikowPortow(snapshot, branchPoint.ref_id),
         },
       ],
     },
@@ -639,12 +642,6 @@ function terminalLabelForSegment(snapshot: EnergyNetworkModel, busRef: string): 
   if (!bus) return 'Wolny zacisk SN';
   const fallback = `Szyna SN ${bus.voltage_kv} kV`;
   return publicTechnicalLabel(bus.name, fallback);
-}
-
-function switchStateLabel(state: string | null | undefined): string {
-  if (state === 'closed') return 'Zamknięty';
-  if (state === 'open') return 'Otwarty';
-  return 'Nieokreślony';
 }
 
 function sourceModeLabel(mode: string | null | undefined): string {

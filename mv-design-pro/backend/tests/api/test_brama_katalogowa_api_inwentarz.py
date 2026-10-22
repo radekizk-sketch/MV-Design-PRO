@@ -57,7 +57,7 @@ from api.domain_ops_policy import (
 from api.main import app
 from enm import domain_operations, domain_operations_v2
 from enm.domain_operations import execute_domain_operation
-from enm.domain_operations_v2 import V2_CATALOG_GATE_INVENTORY
+from enm.domain_operations_v2 import ALL_V2_HANDLERS, V2_CATALOG_GATE_INVENTORY
 from enm.dziennik_zmian import wyczysc_dziennik
 from enm.katalog_projektu import kontekst_katalogu
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -747,6 +747,44 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         },
         lambda p: _zepsuj_wiazanie(p),
     ),
+    # Zasilenie rozdzielnicy nN (`supply`) — ta sama para dróg co odcinek kabla nN.
+    IniekcjaBramy(
+        "add_nn_distribution_board",
+        "supply.catalog_ref",
+        lambda: {
+            "voltage_kv": 0.4,
+            "supply": {"from_bus_ref": "bus-nn-1", "length_m": 20.0, "catalog_ref": REF_KABEL_NN},
+        },
+        lambda p: _zepsuj_klucz(p, "supply", "catalog_ref"),
+    ),
+    IniekcjaBramy(
+        "add_nn_distribution_board",
+        "supply.catalog_binding",
+        lambda: {
+            "voltage_kv": 0.4,
+            "supply": {
+                "from_bus_ref": "bus-nn-1",
+                "length_m": 20.0,
+                "catalog_binding": _wiazanie("KABEL_NN", REF_KABEL_NN),
+            },
+        },
+        lambda p: _zepsuj_wiazanie(p, "supply"),
+    ),
+    # W5-C: wyposażenie pola SN — iloczyn przestrzeni (APARAT_SN, CT, VT, OGRANICZNIK_SN)
+    # pilnuje `tests/enm/test_wyposazenie_pola.py`; tu zepsuty OSTATNI aparat listy.
+    IniekcjaBramy(
+        "set_bay_equipment",
+        "devices[].catalog_ref",
+        lambda: {
+            "bay_ref": "pole-sn-1",
+            "mode": "katalog",
+            "devices": [
+                {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": REF_APARAT_SN},
+                {"kind": "VT", "placement": "OFF_PATH", "catalog_ref": REF_VT},
+            ],
+        },
+        lambda p: _zepsuj_klucz(p, "devices", 1, "catalog_ref"),
+    ),
 )
 
 PRZYPADKI = [pytest.param(i, id=f"{i.operacja}|{i.sciezka}") for i in INIEKCJE]
@@ -1050,7 +1088,7 @@ def test_zbiory_kluczy_pochodza_z_inwentarza() -> None:
 def test_skan_obu_modulow_nie_znajduje_klucza_spoza_inwentarza() -> None:
     """Skan klasy: żaden klucz katalogowy operacji domenowych nie omija inwentarza API.
 
-    Skanujemy DRZEWA SKŁADNIOWE obu modułów operacji (V1 i V2). Każdy literał
+    Skanujemy DRZEWA SKŁADNIOWE modułów operacji (V1, V2 i moduły handlerów V2). Każdy literał
     kończący się na `catalog_ref` jest kluczem payloadu albo polem zapisywanym do
     migawki; każdy literał o kształcie wiązania jest DRUGĄ drogą wskazania pozycji.
     Operacja, która zacznie czytać NOWĄ referencję, zapali ten test, zanim
@@ -1059,8 +1097,16 @@ def test_skan_obu_modulow_nie_znajduje_klucza_spoza_inwentarza() -> None:
     referencje: set[str] = set()
     wiazania: set[str] = set()
     liczba_funkcji = 0
-    for modul in (domain_operations, domain_operations_v2):
-        zrodlo = Path(inspect.getfile(modul)).read_text(encoding="utf-8")
+    # Moduły V1 i V2 oraz KAŻDY moduł, w którym zdefiniowano handler rejestru V2 (W5-C:
+    # operacje łączników, wyposażenie pola) — handler spoza dwóch plików nie może
+    # czytać referencji poza wzrokiem skanu.
+    pliki = sorted(
+        {Path(inspect.getfile(m)).as_posix() for m in (domain_operations, domain_operations_v2)}
+        | {Path(inspect.getsourcefile(h) or "").as_posix() for h in ALL_V2_HANDLERS.values()}
+    )
+    assert len(pliki) >= 4, pliki
+    for plik in pliki:
+        zrodlo = Path(plik).read_text(encoding="utf-8")
         drzewo = ast.parse(zrodlo)
         funkcje = [w for w in ast.walk(drzewo) if isinstance(w, ast.FunctionDef)]
         liczba_funkcji += len(funkcje)

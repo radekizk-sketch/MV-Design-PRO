@@ -130,7 +130,6 @@ describe('buildTechCardSubject', () => {
         BRANCH: ['bus/br/1', 'bus/br/2'], // ui-terminology-ignore
       },
       branch_occupied: { BRANCH_1: 'seg/branch1' },
-      switch_state: 'closed',
       completeness_status: 'KOMPLETNY',
       tags: [],
       meta: {},
@@ -164,7 +163,6 @@ describe('buildTechCardSubject', () => {
         MAIN_OUT: 'bus/out',
         BRANCH: ['bus/br/1'], // ui-terminology-ignore
       },
-      switch_state: 'closed',
       completeness_status: 'NIEKOMPLETNY',
     } as BranchPointSN;
     const snapshot = snapshotWith({ branch_points: [pole] });

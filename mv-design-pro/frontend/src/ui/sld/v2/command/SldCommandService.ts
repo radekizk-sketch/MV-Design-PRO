@@ -32,6 +32,44 @@ export interface SldMenuAction {
   readonly disabledReasonPl?: string;
 }
 
+/** W5-C: pozycje stanu łącznika — JEDNA lista dla menu pola i aparatu. */
+const POZYCJE_STANU_LACZNIKA: readonly SldMenuAction[] = [
+  { id: 'open-switch', labelPl: 'Otwórz łącznik', group: 'edycja' },
+  { id: 'close-switch', labelPl: 'Zamknij łącznik', group: 'edycja' },
+  { id: 'set-normal-open-point', labelPl: 'Ustaw punkt normalnie otwarty', group: 'edycja' },
+];
+
+/**
+ * W5-C: stan łącznika wskazanego przez obiekt menu (`ui/shared/stanLacznika.ts::
+ * lacznikTematu`) — ten sam resolver wybiera łącznik dla wykonawcy akcji (predykaty
+ * parami). `powodBrakuPl` = obiekt bez jednego łącznika (pozycje nieaktywne z powodem).
+ */
+export type StanLacznikaMenu =
+  | {
+      readonly status: 'open' | 'closed';
+      readonly maPozycjeNormalna: boolean;
+      readonly jestPunktemPodzialu: boolean;
+      readonly powodBrakuPl?: undefined;
+    }
+  | { readonly powodBrakuPl: string };
+
+/** Powód blokady pozycji stanu łącznika; `null` = pozycja dostępna. */
+export function powodBlokadyStanuLacznika(
+  actionId: string,
+  lacznik: StanLacznikaMenu,
+): string | null {
+  if (lacznik.powodBrakuPl !== undefined) return lacznik.powodBrakuPl;
+  if (actionId === 'open-switch' && lacznik.status === 'open') return 'Łącznik jest już otwarty.';
+  if (actionId === 'close-switch' && lacznik.status === 'closed') return 'Łącznik jest już zamknięty.';
+  if (actionId === 'set-normal-open-point') {
+    if (!lacznik.maPozycjeNormalna) {
+      return 'Bezpiecznik nie ma pozycji normalnej — punktem podziału jest wyłącznik, rozłącznik, odłącznik albo sprzęgło.';
+    }
+    if (lacznik.jestPunktemPodzialu) return 'Łącznik jest już punktem normalnie otwartym.';
+  }
+  return null;
+}
+
 export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly SldMenuAction[]>> = {
   background: [
     { id: 'insert-gpz', labelPl: 'Wstaw główny punkt zasilania', group: 'budowa' },
@@ -83,7 +121,11 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', group: 'budowa' },
     /* Phase 0B (operator-grade SLD plan v2): Append-on-Endpoint workflow */
     { id: 'append-station-on-endpoint', labelPl: 'Zakończ ciąg w stacji', group: 'budowa' },
-    { id: 'set-switch-state', labelPl: 'Zmień stan łącznika', group: 'edycja' },
+    /* W5-C: stan łącznika pola — operacje kanoniczne `open_switch`/`close_switch`
+     * i `set_normal_open_point` na JEDYNYM łączniku pola (`lacznikTematu`). Dawna
+     * pozycja „Zmień stan łącznika" otwierała kreator punktu podziału z refem POLA jako
+     * łącznikiem — backend zawsze odmawiał (martwa pozycja pod mylącą etykietą). */
+    ...POZYCJE_STANU_LACZNIKA,
     { id: 'show-measurements', labelPl: 'Pokaż pomiary pola', group: 'widok' },
     { id: 'show-results', labelPl: 'Pokaż wyniki pola', group: 'widok' },
     { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', group: 'widok' },
@@ -91,6 +133,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
   ],
   apparatus: [
     { id: 'open-bay', labelPl: 'Otwórz kartę pola', group: 'edycja' },
+    /* W5-C: aparat łącznikowy (gałąź `switch`/`breaker`/`disconnector`/`bus_coupler`/
+     * `fuse` albo aparat pola) — te same trzy operacje stanu co w menu pola. */
+    ...POZYCJE_STANU_LACZNIKA,
     { id: 'configure-equipment', labelPl: 'Skonfiguruj aparat', group: 'edycja' },
     { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
     { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
@@ -256,12 +301,19 @@ export function getMenuActions(
      *  (`maStartOperacjiCiagu`). `false` blokuje pozycję z uczciwym powodem zamiast
      *  otwierać kreator bez punktu startu; brak klucza = brak pomiaru (bez blokady). */
     readonly trunkStartAvailable?: Readonly<Partial<Record<string, boolean>>>;
+    /** W5-C: stan łącznika obiektu (pozycje otwórz/zamknij/punkt podziału);
+     *  brak klucza = brak pomiaru (bez blokady). */
+    readonly lacznik?: StanLacznikaMenu;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
   const ctx = context ?? {};
 
   return baseActions.map((a) => {
+    if (ctx.lacznik && POZYCJE_STANU_LACZNIKA.some((pozycja) => pozycja.id === a.id)) {
+      const powod = powodBlokadyStanuLacznika(a.id, ctx.lacznik);
+      return powod ? { ...a, disabled: true, disabledReasonPl: powod } : a;
+    }
     if (a.id === 'extend-trunk' && ctx.bayHasOutgoingRun === true) {
       return {
         ...a,

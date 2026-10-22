@@ -72,6 +72,26 @@ describe('snapshotStore central success toast', () => {
     expect(mockedNotify).toHaveBeenCalledWith('Dodano źródło przekształtnikowe (OZE)', 'success');
   });
 
+  // W5-C: wywołujący, który wie więcej o skutku, podaje zdanie magazynowi — toast sukcesu
+  // jest JEDEN (dawniej: centralny + lokalny). Iloczyn: {z komunikatem, bez} × {sukces, błąd}
+  // × {operacja z komunikatem, operacja cicha}.
+  it.each([
+    ['assign_catalog_to_element', 'Przypisano typ: Kabel 120', 'sukces', 'Przypisano typ: Kabel 120'],
+    ['assign_catalog_to_element', undefined, 'sukces', 'centralny'],
+    ['refresh_snapshot', 'Odświeżono', 'sukces', 'Odświeżono'],
+    ['refresh_snapshot', undefined, 'sukces', null],
+    ['delete_element', 'Usunięto pole z modelu sieci.', 'blad', null],
+  ] as const)('%s z komunikatem %s × %s → jeden toast %s', async (op, komunikat, wynik, oczekiwany) => {
+    mockedExecuteDomainOp.mockResolvedValue(wynik === 'sukces' ? successResponse() : errorResponse());
+    await useSnapshotStore
+      .getState()
+      .executeDomainOperation('case-1', op, {}, komunikat ? { komunikatSukcesuPl: komunikat } : undefined);
+    const sukcesy = mockedNotify.mock.calls.filter((c) => c[1] === 'success').map((c) => c[0]);
+    if (oczekiwany === null) expect(sukcesy).toEqual([]);
+    else if (oczekiwany === 'centralny') expect(sukcesy).toEqual([getOperationSuccessMessage(op)]);
+    else expect(sukcesy).toEqual([oczekiwany]);
+  });
+
   it('NIE emituje toast sukcesu gdy operacja zwraca error', async () => {
     mockedExecuteDomainOp.mockResolvedValue(errorResponse());
     await useSnapshotStore.getState().executeDomainOperation('case-1', 'add_sn_bay', {});
@@ -116,7 +136,8 @@ describe('operationSuccessMessages map', () => {
     // `Zapisano` dopisane w V12K-263 — jest forma DOKONANA (jak reszta listy),
     // a lista byla wyliczeniem czasownikow uzytych do tej pory, nie regula jezykowa.
     // Test zlapal moje dwa nowe komunikaty i to jest jego zamierzone dzialanie.
-    const perfectivePrefixes = /^(Dodano|Wstawiono|Przedłużono|Rozpoczęto|Zamknięto|Ustawiono|Zaktualizowano|Przypisano|Usunięto|Zmieniono|Obliczono|Zwalidowano|Utworzono|Uruchomiono|Porównano|Wyeksportowano|Powiązano|Zapisano|Podzielono|Scalono|Skopiowano)/;
+    // `Otwarto` (karta W5-C, `open_switch`) — forma dokonana jak `Zamknięto` dla `close_switch`.
+    const perfectivePrefixes = /^(Otwarto|Dodano|Wstawiono|Przedłużono|Rozpoczęto|Zamknięto|Ustawiono|Zaktualizowano|Przypisano|Usunięto|Zmieniono|Obliczono|Zwalidowano|Utworzono|Uruchomiono|Porównano|Wyeksportowano|Powiązano|Zapisano|Podzielono|Scalono|Skopiowano)/;
     for (const [op, msg] of Object.entries(OPERATION_SUCCESS_MESSAGES)) {
       expect(msg, `${op}: "${msg}"`).toMatch(perfectivePrefixes);
     }

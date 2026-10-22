@@ -190,7 +190,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       } as never,
     ];
     const lv: LogicalViewsV1 = {
-      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_ref: null, terminals: [] }],
+      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_refs: [], terminals: [] }],
       branches: [],
       secondary_connectors: [],
       terminals: [],
@@ -218,7 +218,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       } as never,
     ];
     const lv: LogicalViewsV1 = {
-      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_ref: null, terminals: [] }],
+      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_refs: [], terminals: [] }],
       branches: [],
       secondary_connectors: [],
       terminals: [],
@@ -244,7 +244,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       } as never,
     ];
     const lv: LogicalViewsV1 = {
-      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_ref: null, terminals: [] }],
+      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_refs: [], terminals: [] }],
       branches: [],
       secondary_connectors: [],
       terminals: [],
@@ -266,7 +266,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       } as never,
     ];
     const lv: LogicalViewsV1 = {
-      trunks: [{ corridor_ref: 'T1', corridor_type: 'overhead', segments: ['l1'], no_point_ref: null, terminals: [] }],
+      trunks: [{ corridor_ref: 'T1', corridor_type: 'overhead', segments: ['l1'], no_point_refs: [], terminals: [] }],
       branches: [],
       secondary_connectors: [],
       terminals: [],
@@ -1326,29 +1326,60 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     }
   });
 
-  it('nop_station_ref w line_run → stacja z isNop=true (NOP badge dla Projektanta)', () => {
-    const snap = buildEmptySnapshot();
-    snap.substations = [
-      { id: 's1', ref_id: 'ST-NOP', name: 'Stacja NOP', tags: [], meta: {}, station_type: 'sectional', bus_refs: [], transformer_refs: [] } as never,
-      { id: 's2', ref_id: 'ST-REG', name: 'Stacja regularna', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
-    ];
-    snap.line_runs = [
-      {
-        id: 'run-1', run_kind: 'main_trunk',
-        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
-        segments: [],
-        nop_station_ref: 'ST-NOP',
-        stations: [
-          { substation_ref: 'ST-NOP', order: 2 },
-          { substation_ref: 'ST-REG', order: 1 },
-        ],
-      } as never,
-    ];
-    const r = buildSldDataFromSnapshot(snap, null);
-    const nopStation = r.stations.find((s) => s.id === 'ST-NOP');
-    const regStation = r.stations.find((s) => s.id === 'ST-REG');
-    expect(nopStation?.isNop).toBe(true);
-    expect(regStation?.isNop).toBeUndefined();
+  // W5-C: stacja NOP wynika z POZYCJI NORMALNEJ łącznika pola stacji
+  // (`SwitchBranch.normal_state`), jedynego źródła punktu podziału. Iloczyn: pozycja normalna
+  // łącznika pola {open, closed, niezadeklarowana} × rodzaj aparatu {switch, fuse} × dawna
+  // kopia `line_runs[].nop_station_ref` {brak, wskazuje stację} — kopia NIE wpływa na wynik.
+  describe('stacja punktu podziału z pozycji normalnej łącznika pola', () => {
+    const przypadki: Array<[string, 'open' | 'closed' | null, 'switch' | 'fuse', boolean]> = [];
+    for (const normal of ['open', 'closed', null] as const) {
+      for (const typ of ['switch', 'fuse'] as const) {
+        for (const kopia of [false, true]) {
+          przypadki.push([`${typ} normal=${String(normal)} kopia=${kopia}`, normal, typ, kopia]);
+        }
+      }
+    }
+    it.each(przypadki)('%s', (_opis, normal, typ, kopia) => {
+      const snap = buildEmptySnapshot();
+      snap.substations = [
+        { id: 's1', ref_id: 'ST-NOP', name: 'Stacja NOP', tags: [], meta: {}, station_type: 'sectional', bus_refs: ['b-nop'], transformer_refs: [] } as never,
+        { id: 's2', ref_id: 'ST-REG', name: 'Stacja regularna', tags: [], meta: {}, station_type: 'inline', bus_refs: ['b-reg'], transformer_refs: [] } as never,
+      ];
+      snap.buses = [
+        { id: 'b-nop', ref_id: 'b-nop', name: 'Szyna NOP', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+        { id: 'b-nop-l', ref_id: 'b-nop-l', name: 'Wyjście NOP', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+        { id: 'b-reg', ref_id: 'b-reg', name: 'Szyna REG', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      ];
+      snap.branches = [
+        {
+          id: 'sw-pola', ref_id: 'sw-pola', name: 'Łącznik pola', tags: [], meta: {},
+          type: typ, from_bus_ref: 'b-nop', to_bus_ref: 'b-nop-l', status: 'closed',
+          ...(typ === 'switch' && normal !== null ? { normal_state: normal } : {}),
+        } as never,
+      ];
+      snap.bays = [
+        pole({ ref_id: 'bay-nop', bay_role: 'OUT', bus_ref: 'b-nop', substation_ref: 'ST-NOP', equipment_refs: ['sw-pola'] }),
+      ];
+      snap.line_runs = [
+        {
+          id: 'run-1', run_kind: 'main_trunk',
+          starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+          segments: [],
+          ...(kopia ? { nop_station_ref: 'ST-REG' } : {}),
+          stations: [
+            { substation_ref: 'ST-NOP', order: 2 },
+            { substation_ref: 'ST-REG', order: 1 },
+          ],
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      const nopStation = r.stations.find((s) => s.id === 'ST-NOP');
+      const regStation = r.stations.find((s) => s.id === 'ST-REG');
+      const oczekiwanyNop = typ === 'switch' && normal === 'open';
+      expect(nopStation?.isNop === true).toBe(oczekiwanyNop);
+      // Dawna kopia nigdy nie oznacza stacji (nie ma łącznika z pozycją normalną open).
+      expect(regStation?.isNop).toBeUndefined();
+    });
   });
 
   it('transformer.sn_mva → transformerRatedKva [kVA] na stacji (Projektant moc znamionowa)', () => {

@@ -631,6 +631,42 @@ def _zepsuj_liste_kart(payload: dict[str, Any]) -> None:
     payload["karty_widmowe_ref"] = [str(payload["karty_widmowe_ref"][0]) + LITEROWKA]
 
 
+def _payload_rozdzielnicy_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Rozdzielnica nN zasilana kablem nN z szyny nN stacji (`payload.supply`)."""
+    return {
+        "voltage_kv": 0.4,
+        "name": "RGnN zasilana",
+        "supply": {
+            "from_bus_ref": _szyna_nn_ref(snapshot),
+            "length_m": 20.0,
+            "catalog_ref": REF_KABEL_NN,
+        },
+    }
+
+
+def _payload_rozdzielnicy_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    payload = _payload_rozdzielnicy_nn(snapshot)
+    del payload["supply"]["catalog_ref"]
+    payload["supply"]["catalog_binding"] = {
+        "catalog_namespace": "KABEL_NN",
+        "catalog_item_id": REF_KABEL_NN,
+        "catalog_item_version": "2024.1",
+    }
+    return payload
+
+
+def _payload_wyposazenia_pola(snapshot: dict[str, Any]) -> dict[str, Any]:
+    """Wyposażenie pola SN stacji: wyłącznik (APARAT_SN) i przekładnik prądowy (CT)."""
+    return {
+        "bay_ref": _pole_sn_ref(snapshot),
+        "mode": "katalog",
+        "devices": [
+            {"kind": "CB", "placement": "MIDSTREAM", "catalog_ref": REF_APARAT_SN},
+            {"kind": "CT", "placement": "MIDSTREAM", "catalog_ref": REF_CT},
+        ],
+    }
+
+
 INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     PrzypadekIniekcji(
         "catalog_ref", "add_ct", _payload_ct, lambda p: _zepsuj_klucz(p, "catalog_ref")
@@ -800,6 +836,30 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         _payload_sprzeglo_nn_binding,
         lambda p: p["catalog_binding"].update({"catalog_item_id": REF_APARAT_NN + LITEROWKA}),
     ),
+    # Zasilenie rozdzielnicy nN — referencja czytana przez funkcję wołaną z handlera
+    # (`_add_nn_cable_segment_internal`); przed kartą W5-C brama API jej nie znała.
+    PrzypadekIniekcji(
+        "supply.catalog_ref",
+        "add_nn_distribution_board",
+        _payload_rozdzielnicy_nn,
+        lambda p: p["supply"].update({"catalog_ref": REF_KABEL_NN + LITEROWKA}),
+    ),
+    PrzypadekIniekcji(
+        "supply.catalog_binding",
+        "add_nn_distribution_board",
+        _payload_rozdzielnicy_nn_binding,
+        lambda p: p["supply"]["catalog_binding"].update(
+            {"catalog_item_id": REF_KABEL_NN + LITEROWKA}
+        ),
+    ),
+    # W5-C: wyposażenie pola SN — zepsuty DRUGI aparat listy (CT), pierwszy poprawny:
+    # brama musi przejść całą listę, nie tylko pierwszy wpis.
+    PrzypadekIniekcji(
+        "devices[].catalog_ref",
+        "set_bay_equipment",
+        _payload_wyposazenia_pola,
+        lambda p: p["devices"][1].update({"catalog_ref": REF_CT + LITEROWKA}),
+    ),
 )
 
 #: Iniekcje na modelu, w którym stoi JUŻ utworzone źródło (aktualizacja wiązań DER).
@@ -951,6 +1011,63 @@ def klient(tmp_path, monkeypatch, uow_factory) -> TestClient:
 # ---------------------------------------------------------------------------
 
 
+def _funkcje_modulow_handlerow() -> dict[str, ast.FunctionDef]:
+    """Funkcje WSZYSTKICH modułów, w których zdefiniowano handlery V2 (nazwa → węzeł).
+
+    Rejestr V2 importuje handlery z modułów obok `domain_operations_v2` (W5-C: operacje
+    łączników, wyposażenie pola) — skan ograniczony do jednego pliku tracił je w ciszy.
+    """
+    pliki = sorted({inspect.getsourcefile(h) or "" for h in ALL_V2_HANDLERS.values()})
+    assert Path(inspect.getfile(domain_operations_v2)).as_posix() in {
+        Path(p).as_posix() for p in pliki
+    }
+    funkcje: dict[str, ast.FunctionDef] = {}
+    for plik in pliki:
+        drzewo = ast.parse(Path(plik).read_text(encoding="utf-8"))
+        for wezel in ast.walk(drzewo):
+            if isinstance(wezel, ast.FunctionDef):
+                assert wezel.name not in funkcje, f"Dwie funkcje o nazwie {wezel.name}"
+                funkcje[wezel.name] = wezel
+    return funkcje
+
+
+#: Funkcje czytające referencję katalogową z MODELU (dane już zmaterializowane), nie
+#: z payloadu — domknięcie wywołań handlera do nich nie schodzi. Każda z uzasadnieniem.
+FUNKCJE_KATALOGU_MODELU: dict[str, str] = {
+    "_ta_sama_niepusta_pozycja_katalogowa": (
+        "porównanie `catalog_ref` dwóch odcinków JUŻ W MODELU (`merge_nn_segments`) — "
+        "nic nie materializuje i niczego nie czyta z payloadu"
+    ),
+}
+
+
+def _czyta_katalog(funkcja: ast.FunctionDef) -> bool:
+    for wezel in ast.walk(funkcja):
+        if isinstance(wezel, ast.Constant) and isinstance(wezel.value, str):
+            if wezel.value.endswith("catalog_ref") or "catalog_binding" in wezel.value:
+                return True
+    return False
+
+
+def _domkniecie_wywolan(nazwa: str, funkcje: dict[str, ast.FunctionDef]) -> set[str]:
+    """Handler + każda funkcja skanowanych modułów osiągalna z niego wywołaniem po nazwie."""
+    odwiedzone: set[str] = set()
+    stos = [nazwa]
+    while stos:
+        biezaca = stos.pop()
+        if biezaca in odwiedzone or biezaca in FUNKCJE_KATALOGU_MODELU:
+            continue
+        odwiedzone.add(biezaca)
+        for wezel in ast.walk(funkcje[biezaca]):
+            if (
+                isinstance(wezel, ast.Call)
+                and isinstance(wezel.func, ast.Name)
+                and wezel.func.id in funkcje
+            ):
+                stos.append(wezel.func.id)
+    return odwiedzone
+
+
 def test_kazda_pozycja_inwentarza_ma_pokrycie() -> None:
     """Asercja NA LIŚCIE: żadna pozycja inwentarza nie zostaje bez dowodu."""
     z_iniekcji = {
@@ -999,7 +1116,7 @@ def test_inwentarz_i_zbiory_kluczy_pochodza_z_jednego_zrodla() -> None:
 def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
     """Skan klasy: żadna referencja katalogowa modułu V2 nie omija inwentarza.
 
-    Skanujemy DRZEWO SKŁADNIOWE wszystkich FUNKCJI `domain_operations_v2` (sam
+    Skanujemy DRZEWO SKŁADNIOWE wszystkich FUNKCJI modułów handlerów V2 (sam
     inwentarz jest stałą modułu i do skanu nie wchodzi — inaczej test badałby
     własny zapis zamiast kodu). Każdy literał kończący się na `catalog_ref` jest
     kluczem payloadu albo polem zapisywanym do migawki — musi należeć do zbioru
@@ -1007,12 +1124,9 @@ def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
     (np. ogranicznik przepięć pola nN) zapali ten test, ZANIM referencja trafi do
     modelu bez kontroli istnienia.
     """
-    zrodlo = Path(inspect.getfile(domain_operations_v2)).read_text(encoding="utf-8")
-    drzewo = ast.parse(zrodlo)
-
     referencje: set[str] = set()
     wiazania: set[str] = set()
-    funkcje = [w for w in ast.walk(drzewo) if isinstance(w, ast.FunctionDef)]
+    funkcje = list(_funkcje_modulow_handlerow().values())
     assert len(funkcje) > 50, "Skan stracił kotwicę — moduł nie ma funkcji do przejrzenia"
     for funkcja in funkcje:
         for wezel in ast.walk(funkcja):
@@ -1050,33 +1164,26 @@ def test_operacje_v2_nie_czytaja_referencji_spoza_inwentarza() -> None:
 def test_kazdy_handler_v2_z_referencja_katalogowa_ma_werdykt() -> None:
     """Handler czytający referencję katalogową MUSI mieć wiersz w inwentarzu.
 
-    Iloczyn cech, nie przykład: skanujemy CIAŁA wszystkich handlerów V2, nie samą
-    operację z karty. Handler, który zacznie czytać katalog bez wpisu inwentarza,
-    zapali ten test — dokładnie ten mechanizm, którego zabrakło, gdy `add_ct`,
-    `add_nn_load` i aparaty pól zostały poza bramą.
+    Iloczyn cech, nie przykład: skanujemy CIAŁA wszystkich handlerów V2 RAZEM z każdą
+    funkcją, którą handler woła (domknięcie wywołań w modułach handlerów), nie samą
+    operację z karty. Handler, który zacznie czytać katalog bez wpisu inwentarza —
+    wprost albo przez funkcję pomocniczą — zapali ten test. Skan samych ciał przepuścił
+    `add_nn_distribution_board` (zasilenie `supply.catalog_ref` czytane przez
+    `_add_nn_cable_segment_internal`) i `set_bay_equipment` (karta W5-C).
     """
-    zrodlo = Path(inspect.getfile(domain_operations_v2)).read_text(encoding="utf-8")
-    drzewo = ast.parse(zrodlo)
+    funkcje = _funkcje_modulow_handlerow()
     z_inwentarza = {p.operacja for p in V2_CATALOG_GATE_INVENTORY}
 
-    nazwy_handlerow = set(ALL_V2_HANDLERS)
-    znalezione: set[str] = set()
-    czytajace_katalog: set[str] = set()
-    for wezel in ast.walk(drzewo):
-        if not isinstance(wezel, ast.FunctionDef) or wezel.name not in nazwy_handlerow:
-            continue
-        znalezione.add(wezel.name)
-        for potomek in ast.walk(wezel):
-            if not (isinstance(potomek, ast.Constant) and isinstance(potomek.value, str)):
-                continue
-            if potomek.value.endswith("catalog_ref") or "catalog_binding" in potomek.value:
-                czytajace_katalog.add(wezel.name)
-                break
-
-    assert znalezione == nazwy_handlerow, (
-        "Skan stracił kotwicę — handlery bez definicji w module: "
-        f"{sorted(nazwy_handlerow - znalezione)}"
-    )
+    nazwy_handlerow = {nazwa: handler.__name__ for nazwa, handler in ALL_V2_HANDLERS.items()}
+    bez_definicji = sorted(n for n, f in nazwy_handlerow.items() if f not in funkcje)
+    assert (
+        not bez_definicji
+    ), f"Skan stracił kotwicę — handlery bez definicji w skanowanych modułach: {bez_definicji}"
+    czytajace_katalog = {
+        operacja
+        for operacja, funkcja in nazwy_handlerow.items()
+        if any(_czyta_katalog(funkcje[f]) for f in _domkniecie_wywolan(funkcja, funkcje))
+    }
     bez_werdyktu = czytajace_katalog - z_inwentarza
     assert (
         not bez_werdyktu

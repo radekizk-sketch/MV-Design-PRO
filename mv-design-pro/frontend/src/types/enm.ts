@@ -328,6 +328,12 @@ export interface SwitchBranch extends BranchBase {
   type: 'switch' | 'breaker' | 'bus_coupler' | 'disconnector';
   r_ohm?: number | null;
   x_ohm?: number | null;
+  /**
+   * Pozycja normalna łącznika z projektu (`'open'` = punkt normalnie otwarty) — JEDYNE
+   * źródło punktów podziału sieci. `null`/brak = pozycja niezadeklarowana (nie domysł).
+   * Bieżące położenie czytane przez fizykę to `status`.
+   */
+  normal_state?: 'closed' | 'open' | null;
 }
 
 export interface FuseBranch extends BranchBase {
@@ -1551,6 +1557,10 @@ export interface BayBaseModel {
   bay_template_ref?: string | null;
   /** Rodzina rozdzielnicy producenta (Reference Engine). Optional/additive. */
   switchgear_family_ref?: string | null;
+  /** W5-C: stan danych wyposażenia z rekordu pola (`Bay.primary_devices`). */
+  equipment_data_state: StanDanychWyposazenia;
+  /** W5-C: aparaty przyjęte jako wartość robocza (jakość ESTIMATED). */
+  equipment_assumed_data: DanaPrzyjetaWyposazenia[];
 }
 
 export interface BayShortCircuitSourceContribution {
@@ -1648,7 +1658,6 @@ export interface BranchPointSN extends ENMElement {
     BRANCH: string[];
   };
   branch_occupied?: Record<string, string> | null;
-  switch_state?: 'open' | 'closed' | null;
   materialized_params?: Record<string, unknown> | null;
   completeness_status?: 'KOMPLETNY' | 'NIEKOMPLETNY' | 'BRAK_KATALOGU' | null;
   runtime_inputs?: Record<string, unknown> | null;
@@ -1662,7 +1671,6 @@ export interface Corridor extends ENMElement {
   corridor_type: 'radial' | 'ring' | 'mixed';
   ordered_segment_refs: string[];
   station_refs?: string[];
-  no_point_ref?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1761,7 +1769,6 @@ export interface LineRunV1 {
   starting_port_ref: string;
   segments: LineRunSegmentRefV1[];
   stations: LineRunStationRefV1[];
-  nop_station_ref?: string | null;
   parent_run_ref?: string | null;
   branch_origin_station_ref?: string | null;
 }
@@ -1998,7 +2005,10 @@ export interface V2OperatingVariant {
 
 export interface V2SwitchingDeviceState {
   device_ref: string;
-  state: 'closed' | 'open' | 'unknown';
+  /** Bieżące położenie (`status` gałęzi). */
+  state: 'closed' | 'open';
+  /** Pozycja normalna z projektu; `null` = niezadeklarowana albo bezpiecznik. */
+  normal_state: 'closed' | 'open' | null;
   device_type: string;
 }
 
@@ -2151,7 +2161,8 @@ export interface TrunkViewV1 {
   corridor_ref: string;
   corridor_type: string;
   segments: string[];
-  no_point_ref: string | null;
+  /** Łączniki magistrali z pozycją normalną `'open'` (akcesor backendu, posortowane). */
+  no_point_refs: string[];
   terminals: TerminalRef[];
 }
 
@@ -2309,9 +2320,30 @@ export interface DomainOpResponseV1 {
   layout: LayoutInfo;
   /** Wynik post-hooka validate_semantic (semantic_rules). Puste = brak problemów. */
   semantic_issues?: SemanticIssue[];
+  /** W5-C: wynik `set_bay_equipment` — stan danych wyposażenia i dane przyjęte. */
+  wyposazenie_pola?: WyposazeniePolaOdpowiedz;
   /** Present only on error responses. */
   error?: string;
   error_code?: string;
+}
+
+/** Stan danych wyposażenia pola SN (`enm/wyposazenie_pola.py`). */
+export type StanDanychWyposazenia = 'MODEL' | 'PROPOZYCJA' | 'BRAK_DANYCH';
+
+/** Dana przyjęta bez pełnej walidacji (kontrakt werdyktu wyjaśnialnego). */
+export interface DanaPrzyjetaWyposazenia {
+  nazwa_pl: string;
+  wartosc: unknown;
+  powod_pl: string;
+  jakosc: string;
+}
+
+/** Wynik `set_bay_equipment` (klucz `wyposazenie_pola` odpowiedzi operacji). */
+export interface WyposazeniePolaOdpowiedz {
+  bay_ref: string;
+  stan_danych: StanDanychWyposazenia;
+  aparaty: Array<{ device_ref: string; stan_danych: Exclude<StanDanychWyposazenia, 'BRAK_DANYCH'> }>;
+  dane_przyjete: DanaPrzyjetaWyposazenia[];
 }
 
 // ---------------------------------------------------------------------------

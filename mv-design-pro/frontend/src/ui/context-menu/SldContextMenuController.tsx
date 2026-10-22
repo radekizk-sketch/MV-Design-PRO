@@ -21,6 +21,7 @@ import {
   getMenuActions,
   type SldElementKindForMenu,
   type SldMenuAction,
+  type StanLacznikaMenu,
 } from '../sld/v2/command/SldCommandService';
 import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
 import { publicTechnicalLabel } from '../shared/publicTechnicalLabels';
@@ -54,6 +55,9 @@ export interface SldMenuContext {
    *  ciągu (klucz = id pozycji), z JEDNEGO rozstrzygnięcia z kontekstem operacji
    *  (`resolveTrunkStartAvailability`, `shared/sldActionExecutor.ts`). */
   readonly trunkStartAvailable?: Readonly<Partial<Record<string, boolean>>>;
+  /** W5-C: stan łącznika obiektu (`akcjeElementu.ts::stanLacznikaMenu`) — ten sam
+   *  resolver (`lacznikTematu`) wybiera łącznik dla wykonawcy akcji. */
+  readonly lacznik?: StanLacznikaMenu;
 }
 
 export interface SldContextMenuControllerProps {

@@ -85,7 +85,7 @@ class RaportMigracjiUziemienia:
             czesci.append("UTRACONE (brak nośnika): " + "; ".join(self.utracone))
         if self.usuniete_klucze_meta:
             czesci.append("usunięte klucze meta: " + "; ".join(self.usuniete_klucze_meta))
-        return "Migracja uziemienia do jednej reprezentacji (W5-A) — " + " | ".join(czesci)
+        return "Migracja uziemienia do jednej reprezentacji — " + " | ".join(czesci)
 
 
 @dataclass

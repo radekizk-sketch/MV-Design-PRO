@@ -54,6 +54,12 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   insert_section_switch_sn: KreatorLacznikaSekcyjnego,
   connect_secondary_ring_sn: KreatorPierscienia,
   set_normal_open_point: KreatorPierscienia,
+  // Otwarcie/zamknięcie łącznika nie ma parametrów poza samym łącznikiem — wykonuje je
+  // wprost karta łącznika (`SwitchCard`) i menu schematu (`sldActionExecutor`), bez okna.
+  open_switch: null,
+  close_switch: null,
+  // Wyposażenie pola edytuje formularz INLINE na karcie pola (E-11, `BayConfiguratorSurface`).
+  set_bay_equipment: null,
   przepnij_element_na_pole: KreatorPrzepieciaNaPole,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: KreatorPrzypisaniaKatalogu,

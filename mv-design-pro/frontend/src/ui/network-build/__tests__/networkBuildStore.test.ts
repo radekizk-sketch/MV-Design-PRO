@@ -18,6 +18,7 @@ import {
   selectStationSummaries,
   selectFieldStationCount,
   selectBlockersByCategory,
+  kategoriaBlokera,
   selectActiveOperationForm,
   buildPhaseLabel,
   useNetworkBuildStore,
@@ -269,13 +270,29 @@ describe('selectBlockersByCategory', () => {
     expect(result.total).toBe(0);
   });
 
+  // W5-C: jedna reguła kategorii dla licznika budowy i przeglądu zbiorczego — kody realne
+  // z rejestru gotowości (bez fikcji `switch_state_*`).
+  it.each([
+    ['ring.nop_required', 'eksploatacja'],
+    ['switch.missing_normal_state', 'eksploatacja'],
+    ['nn.source.switch_missing', 'analiza'],
+    ['nn.switch.catalog_ref_missing', 'katalogi'],
+    ['topology_island', 'topologia'],
+    ['branch_point.catalog_ref_missing', 'katalogi'],
+  ] as const)('kategoriaBlokera(%s) = %s i licznik liczy to samo', (kod, kategoria) => {
+    expect(kategoriaBlokera(kod)).toBe(kategoria);
+    expect(selectBlockersByCategory([{ code: kod }])[kategoria]).toBe(1);
+  });
+
   it('categorizes blockers correctly', () => {
     const readiness = {
       ready: false,
       blockers: [
         { code: 'topology_island', element_ref: 'e1' },
         { code: 'no_catalog_ref', element_ref: 'e2' },
-        { code: 'switch_state_invalid', element_ref: 'e3' },
+        // W5-C: realny kod pierścienia bez punktu podziału (walidator I005); dawny
+        // fikcyjny `switch_state_invalid` nie ma emitera (kopia stanu łącznika skasowana).
+        { code: 'ring.nop_required', element_ref: 'e3' },
         { code: 'unknown_issue', element_ref: 'e4' },
       ],
     } as ReadinessInfo;

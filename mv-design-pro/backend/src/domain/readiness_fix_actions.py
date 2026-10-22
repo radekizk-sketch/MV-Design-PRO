@@ -227,18 +227,6 @@ def _fix_branch_point_catalog_ref(
     )
 
 
-def _fix_branch_point_switch_state(
-    element_id: str | None,
-    _et: str | None,
-) -> FixAction:
-    return FixAction(
-        action_type="OPEN_MODAL",
-        element_ref=element_id,
-        modal_type="BranchPointSwitchStateModal",
-        payload_hint={"required": "switch_state"},
-    )
-
-
 def _fix_branch_point_port_occupied(
     element_id: str | None,
     _et: str | None,
@@ -347,7 +335,6 @@ _FIX_ACTION_MAP: dict[
     # BranchPointSN validation
     "branch_point.invalid_parent_medium": _fix_branch_point_invalid_medium,
     "branch_point.catalog_ref_missing": _fix_branch_point_catalog_ref,
-    "branch_point.switch_state_missing": _fix_branch_point_switch_state,
     "branch_point.branch_port_occupied": _fix_branch_point_port_occupied,
     "branch_point.required_port_missing": _fix_branch_point_required_port,
     "zksn.branch_count_invalid": _fix_zksn_branch_count,
@@ -427,7 +414,6 @@ KNOWN_BLOCKER_CODES: frozenset[str] = frozenset(
         # BranchPointSN (branch_pole / ZKSN)
         "branch_point.invalid_parent_medium",
         "branch_point.catalog_ref_missing",
-        "branch_point.switch_state_missing",
         "branch_point.branch_port_occupied",
         "branch_point.required_port_missing",
         "zksn.branch_count_invalid",

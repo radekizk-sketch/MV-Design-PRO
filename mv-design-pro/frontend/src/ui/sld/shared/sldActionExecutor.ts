@@ -57,6 +57,7 @@ import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistral
 import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import { polaStacji } from '../../shared/polaStacji';
+import { czyLacznikZPozycjaNormalna, lacznikTematu } from '../../shared/stanLacznika';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -207,6 +208,13 @@ export function isSldDeleteAction(actionId: string): boolean {
 
 /** `id` w postaci `${bayRef}#${apparatusKind}` (konwencja GPZ canonical
  *  overlay, `SldWorkspaceContainer.buildGpzApparatusOverlayTargets`). */
+/** W5-C: pozycje menu zmieniające stan łącznika (blokowane w trybie podglądu). */
+const POZYCJE_ZMIANY_STANU_LACZNIKA: ReadonlySet<string> = new Set([
+  'open-switch',
+  'close-switch',
+  'set-normal-open-point',
+]);
+
 export function parseGpzApparatusSelectionId(id: string): { bayRef: string; apparatusKind: string } | null {
   const marker = id.lastIndexOf('#');
   if (marker <= 0 || marker === id.length - 1) return null;
@@ -471,7 +479,9 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
   'insert-pole': 'insert_branch_pole_on_segment_sn',
   'insert-sectional': 'insert_section_switch_sn',
   'add-load': 'add_nn_load',
-  'set-switch-state': 'set_normal_open_point',
+  // W5-C: punkt normalnie otwarty na łączniku obiektu (`lacznikTematu`); otwarcie i
+  // zamknięcie łącznika to dedykowana gałąź wykonawcy (operacja bez formularza).
+  'set-normal-open-point': 'set_normal_open_point',
   // K5-A (H-4): trzy kreatory-wyspy dostają wejścia z żywego menu kanwy —
   // realne operacje domenowe (operationFormRegistry + operationContext już
   // je obsługują; brakowało WYŁĄCZNIE tych wpisów).
@@ -561,6 +571,13 @@ export function buildSldOperationContext(
   if (actionId === 'continue-trunk-from-endpoint') {
     extraContext.default_termination = 'continue';
     extraContext.default_termination_label = 'Kontynuuj ciąg główny';
+  }
+  if (actionId === 'set-normal-open-point') {
+    // W5-C: łącznik z TEGO SAMEGO resolvera, którym menu liczy dostępność pozycji
+    // (`akcjeElementu.ts::stanLacznikaMenu`) — pole wskazuje swój jedyny łącznik.
+    const { lacznik } = lacznikTematu(snapshot, elementId);
+    if (!czyLacznikZPozycjaNormalna(lacznik)) return null;
+    extraContext.switch_ref = lacznik.ref_id;
   }
   if (actionId === 'conscious-split-on-segment') {
     extraContext.split_mode = 'explicit_preview_required';
@@ -672,7 +689,7 @@ export function useSldActionExecutor(
     (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
       if (readOnly && (actionId.startsWith('delete-') || actionId.startsWith('insert-')
           || actionId.startsWith('add-') || actionId.startsWith('extend-')
-          || actionId.startsWith('start-') || actionId === 'set-switch-state'
+          || actionId.startsWith('start-') || POZYCJE_ZMIANY_STANU_LACZNIKA.has(actionId)
           || actionId === 'continue-trunk'
           || actionId === 'continue-trunk-from-endpoint')) {
         notify('Tryb podglądu schematu — przełącz na edycję, aby budować sieć.', 'warning');
@@ -691,18 +708,19 @@ export function useSldActionExecutor(
 
         const objectLabel = DELETE_ACTION_OBJECT_LABEL_PL[actionId] ?? 'element';
         const executeDelete = () => {
-          void executeDomainOperation(activeCaseId, 'delete_element', {
-            element_ref: elementId,
-            action_id: actionId,
-            source: 'sld_context_menu',
-          }).then((response: unknown) => {
+          // Jeden toast sukcesu — z magazynu, ze zdaniem nazywającym usunięty obiekt.
+          void executeDomainOperation(
+            activeCaseId,
+            'delete_element',
+            { element_ref: elementId, action_id: actionId, source: 'sld_context_menu' },
+            { komunikatSukcesuPl: `Usunięto ${objectLabel} z modelu sieci.` },
+          ).then((response: unknown) => {
             const result = response as { error?: unknown } | null;
             if (result?.error) {
               notify(`Nie usunięto elementu: ${String(result.error)}`, 'error');
               return;
             }
             selectElement(null);
-            notify(`Usunięto ${objectLabel} z modelu sieci.`, 'success');
           });
         };
         notify(`Potwierdź usunięcie: ${objectLabel}. Operacja zostanie zapisana w historii zmian.`, {
@@ -713,6 +731,33 @@ export function useSldActionExecutor(
             { label: 'Anuluj', onClick: () => undefined },
           ],
         });
+        return;
+      }
+
+      // 0a) W5-C: otwarcie/zamknięcie łącznika — operacje kanoniczne `open_switch` /
+      //     `close_switch` na łączniku obiektu (`lacznikTematu`, ten sam resolver co
+      //     dostępność pozycji w menu). Zmieniają WYŁĄCZNIE bieżące położenie; pozycja
+      //     normalna (punkt podziału) zostaje bez zmian.
+      if (actionId === 'open-switch' || actionId === 'close-switch') {
+        if (!activeCaseId) {
+          notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+          return;
+        }
+        const wynik = lacznikTematu(snapshot, elementId);
+        if (!wynik.lacznik) {
+          notify(wynik.powodPl, 'warning');
+          return;
+        }
+        const operacja = actionId === 'open-switch' ? 'open_switch' : 'close_switch';
+        // Sukces potwierdza centralny komunikat magazynu (`operationSuccessMessages`); tu
+        // wyłącznie odmowa (menu schematu nie ma własnego miejsca na błąd operacji).
+        void executeDomainOperation(activeCaseId, operacja, { switch_ref: wynik.lacznik.ref_id }).then(
+          (odpowiedz) => {
+            if (!odpowiedz || odpowiedz.error) {
+              notify(odpowiedz?.error ?? 'Nie zmieniono stanu łącznika.', 'error');
+            }
+          },
+        );
         return;
       }
 
@@ -830,6 +875,18 @@ export function useSldActionExecutor(
       if (actionId === 'show-measurements' && kind === 'bay' && elementId) {
         openInspectorPanel('field_measurements', elementId, 'BaySN');
         toastBus.publish('info', 'Otworzono pomiary pola.');
+        return;
+      }
+
+      // 4) W5-C: punkt normalnie otwarty bez łącznika z pozycją normalną — powód z
+      //    resolvera (ten sam tekst, którym menu blokuje pozycję).
+      if (actionId === 'set-normal-open-point') {
+        const wynik = lacznikTematu(snapshot, elementId);
+        notify(
+          wynik.powodPl
+            ?? 'Bezpiecznik nie ma pozycji normalnej — punktem podziału jest wyłącznik, rozłącznik, odłącznik albo sprzęgło.',
+          'warning',
+        );
         return;
       }
 

@@ -22,14 +22,16 @@ MAPPING: operation -> expected modal
   start_branch_segment_sn -> BranchModal (existing)
   insert_section_switch_sn -> NodeModal or SwitchModal
   connect_secondary_ring_sn -> RingCloseModal
-  set_normal_open_point   -> (inline action, no modal needed)
+  set_normal_open_point   -> KreatorPierscienia (ui2, tryb punktu podziału)
+  open_switch / close_switch -> (bez okna: karta łącznika i menu schematu)
+  set_bay_equipment       -> EdytorWyposazeniaPola (inline, karta pola E-11)
   przepnij_element_na_pole -> KreatorPrzepieciaNaPole (ui2, akcja naprawcza W042)
   add_transformer_sn_nn   -> TransformerStationModal (existing)
   assign_catalog_to_element -> CatalogPicker (existing)
   update_element_parameters -> PropertyGrid (existing)
   add_nn_outgoing_field   -> NodeModal or dedicated
   add_nn_load             -> LoadDERModal (existing)
-  add_converter_source    -> LoadDERModal / PVInverterModal / BESSInverterModal (existing)
+  add_converter_source    -> KreatorZrodlaOze (ui2)
   add_genset_nn           -> KreatorZrodloDyspozycyjne (ui2)
   add_ups_nn              -> KreatorZrodloDyspozycyjne (ui2)
   add_ct                  -> MeasurementModal (existing)

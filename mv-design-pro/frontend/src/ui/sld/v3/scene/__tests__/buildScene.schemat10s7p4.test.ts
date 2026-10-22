@@ -40,6 +40,7 @@ import { GRID } from '../../core/grid';
 import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
 import type { EnergyNetworkModel as Enm } from '../../../../../types/enm';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
+import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -187,11 +188,8 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy
 /** Wstrzyknięcie syntetycznego punktu NO na ciąg główny (§3: „znacznik sekcji/NOP
  *  NIGDY nie znika") — wzorzec z S3/S7-P3. */
 function withSyntheticNop(model: Enm): Enm {
-  const clone = structuredClone(model);
-  const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
-  if (!mainRun) throw new Error('fixtura bez main_trunk');
-  (mainRun as { nop_station_ref: string | null }).nop_station_ref = buildSceneV3(model, 2).meta.mainTrunkStationIds[0];
-  return clone;
+  // Karta W5-C: punkt podziału = pozycja normalna łącznika pola stacji (jedna prawda).
+  return zPunktemPodzialuWStacji(model, buildSceneV3(model, 2).meta.mainTrunkStationIds[0]);
 }
 
 describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku całości', () => {

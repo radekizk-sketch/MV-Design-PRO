@@ -4,6 +4,7 @@ from enm.models import (
     Cable,
     EnergyNetworkModel,
     ENMHeader,
+    FuseBranch,
     Generator,
     GroundingConfig,
     Source,
@@ -169,6 +170,32 @@ def test_projection_creates_base_variant_and_switching_snapshot():
     assert projection.switching_state_snapshots[0].ref_id == "switching.uklad_normalny.base"
     assert projection.switching_state_snapshots[0].switch_states[0].device_ref == "sw_1"
     assert projection.switching_state_snapshots[0].switch_states[0].state == "open"
+
+
+@pytest.mark.parametrize("normal_state", [None, "open", "closed"])
+@pytest.mark.parametrize("status", ["open", "closed"])
+def test_projection_niesie_polozenie_i_pozycje_normalna_osobno(
+    normal_state: str | None, status: str
+) -> None:
+    """W5-C: ``state`` = bieżące położenie (``status``), ``normal_state`` = pozycja normalna
+    łącznika — dwa pola, nigdy jedno wyprowadzane z drugiego; bezpiecznik bez pozycji."""
+    enm = _sample_enm()
+    galezie = [
+        (
+            g.model_copy(update={"status": status, "normal_state": normal_state})
+            if g.ref_id == "sw_1"
+            else g
+        )
+        for g in enm.branches
+    ]
+    galezie.append(
+        FuseBranch(ref_id="fuse_1", name="Bezpiecznik", from_bus_ref="bus_a", to_bus_ref="bus_b")
+    )
+    projection = project_enm_v1_to_v2(enm.model_copy(update={"branches": galezie}))
+    stany = {s.device_ref: s for s in projection.switching_state_snapshots[0].switch_states}
+    assert (stany["sw_1"].state, stany["sw_1"].normal_state) == (status, normal_state)
+    assert (stany["fuse_1"].state, stany["fuse_1"].normal_state) == ("closed", None)
+    assert stany["fuse_1"].device_type == "fuse"
 
 
 def test_projection_extracts_zero_sequence_configs():

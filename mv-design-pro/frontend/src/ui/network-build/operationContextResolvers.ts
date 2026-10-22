@@ -82,7 +82,6 @@ export interface TransformerOperationContext {
 export interface RingOperationContext {
   terminalAId: string;
   terminalBId: string;
-  nopCandidates: Array<{ id: string; label: string; elementType: string }>;
 }
 
 const FALLBACK_LABEL = '—';
@@ -494,32 +493,6 @@ function findRingPartner(
 
     return findBus(snapshot, candidate.element_id)?.voltage_kv === currentVoltage;
   }) ?? null;
-}
-
-export function resolveNopCandidates(
-  snapshot: EnergyNetworkModel | null,
-  logicalViews: LogicalViewsV1 | null = null,
-) {
-  if (!snapshot || !logicalViews) {
-    return [];
-  }
-
-  const branchByRef = new Map(snapshot.branches.map((branch) => [branch.ref_id, branch]));
-  const trunks = Array.isArray(logicalViews.trunks) ? logicalViews.trunks : [];
-  const candidateIds = Array.from(new Set(
-    trunks
-      .map((trunk) => trunk.no_point_ref)
-      .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
-  ));
-
-  return candidateIds.map((candidateId) => {
-    const branch = branchByRef.get(candidateId);
-    return {
-      id: candidateId,
-      label: branch?.name ?? candidateId,
-      elementType: 'NORMAL_OPEN_POINT',
-    };
-  });
 }
 
 export function resolveStationRefForElement(
@@ -1178,7 +1151,6 @@ export function resolveRingOperationContext(
   return {
     terminalAId: currentTerminal?.element_id ?? elementId,
     terminalBId: partner?.element_id ?? '',
-    nopCandidates: resolveNopCandidates(snapshot, logicalViews),
   };
 }
 

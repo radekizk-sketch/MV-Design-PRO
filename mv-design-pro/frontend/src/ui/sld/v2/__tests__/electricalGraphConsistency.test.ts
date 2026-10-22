@@ -329,7 +329,7 @@ describe('Electrical Graph Consistency — logical_views integration', () => {
       } as never,
     ];
     const lv: LogicalViewsV1 = {
-      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_ref: null, terminals: [] }],
+      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_refs: [], terminals: [] }],
       branches: [],
       secondary_connectors: [],
       terminals: [],
