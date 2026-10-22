@@ -229,6 +229,13 @@ def _rdzen_testowy(monkeypatch: pytest.MonkeyPatch) -> None:
         "_inverter_transfer_factors",
         staticmethod(lambda graph, fault_node_id, **_kw: {"pv": 1.0}),
     )
+    # Karta WKLAD-ZRODLA: `_build_branch_contributions` liczy też wkłady źródeł z macierzy Y
+    # sieci zwarciowej. Z-bus tego testu nie jest odwrotnością żadnej macierzy Y (kolumna S
+    # zerowa — zaprojektowana pod sondę progu wkładów gałęziowych), więc wkłady źródeł są tu
+    # wyłączone; ich iloczyn cech na prawdziwych macierzach: `test_wklad_zrodla.py`.
+    monkeypatch.setattr(
+        ShortCircuitIEC60909Solver, "_wklady_zrodel", staticmethod(lambda **_kw: ([], []))
+    )
 
 
 @pytest.mark.usefixtures("_rdzen_testowy")
@@ -245,8 +252,8 @@ def test_wartosci_graniczne_iloczyn_cech(wartosc: str, tor: str, rodzaj: ShortCi
         graf, ik_thevenin = _graf(prad_zrodla_a), 0.0  # 0.0 → tor Thevenina pusty
     zrodlo = "THEVENIN_GRID" if tor == TOR_THEVENIN else "pv"
 
-    wklady, slad, pominiete = ShortCircuitIEC60909Solver._build_branch_contributions(
-        graf, "F", rodzaj, ik_thevenin
+    wklady, slad, pominiete, _wz, _sz = ShortCircuitIEC60909Solver._build_branch_contributions(
+        graf, "F", rodzaj, ik_thevenin, ik_total_a=prad_zrodla_a
     )
 
     opublikowane = {(w.source_id, w.branch_id): w for w in wklady}
@@ -301,8 +308,12 @@ def test_zrodlo_o_wkladzie_ponizej_progu_nie_rozprowadza_pradu(tor: str) -> None
     zmiennoprzecinkowa wkładu źródła wypadła na 0 czy 1e-17)."""
     prad = math.nextafter(PROG, 0.0)
     graf = _graf(prad if tor == TOR_FALOWNIK else None)
-    wklady, slad, pominiete = ShortCircuitIEC60909Solver._build_branch_contributions(
-        graf, "F", ShortCircuitType.THREE_PHASE, prad if tor == TOR_THEVENIN else 0.0
+    wklady, slad, pominiete, _wz, _sz = ShortCircuitIEC60909Solver._build_branch_contributions(
+        graf,
+        "F",
+        ShortCircuitType.THREE_PHASE,
+        prad if tor == TOR_THEVENIN else 0.0,
+        ik_total_a=prad,
     )
     assert (wklady, slad, pominiete) == ([], [], [])
 
@@ -313,8 +324,8 @@ def test_zestawienie_i_krok_sa_deterministyczne() -> None:
 
     def odcisk() -> str:
         graf = _graf(1e-14 / SKALA)
-        wklady, slad, pominiete = ShortCircuitIEC60909Solver._build_branch_contributions(
-            graf, "F", ShortCircuitType.THREE_PHASE, 1e-14 / SKALA
+        wklady, slad, pominiete, _wz, _sz = ShortCircuitIEC60909Solver._build_branch_contributions(
+            graf, "F", ShortCircuitType.THREE_PHASE, 1e-14 / SKALA, ik_total_a=1e-14 / SKALA
         )
         tresc = {
             "pominiete": [w.to_dict() for w in pominiete],
@@ -325,8 +336,8 @@ def test_zestawienie_i_krok_sa_deterministyczne() -> None:
 
     assert odcisk() == odcisk()
     graf = _graf(1e-14 / SKALA)
-    _w, _s, pominiete = ShortCircuitIEC60909Solver._build_branch_contributions(
-        graf, "F", ShortCircuitType.THREE_PHASE, 1e-14 / SKALA
+    _w, _s, pominiete, _wz, _sz = ShortCircuitIEC60909Solver._build_branch_contributions(
+        graf, "F", ShortCircuitType.THREE_PHASE, 1e-14 / SKALA, ik_total_a=1e-14 / SKALA
     )
     assert [(w.source_id, w.branch_id) for w in pominiete] == sorted(
         (w.source_id, w.branch_id) for w in pominiete

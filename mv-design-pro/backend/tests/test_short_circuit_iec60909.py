@@ -972,6 +972,15 @@ def test_branch_contributions_option_does_not_change_existing_fields():
     # parą sprzężoną z opcją — bez opcji klucza nie ma (exclude-None).
     assert "wklady_pominiete" not in base
     with_bc.pop("wklady_pominiete", None)
+    # Karta WKLAD-ZRODLA: wkłady źródeł i ich ślad — ta sama para sprzężona z opcją (liczone
+    # z tej samej macierzy Z-bus co rozpływ Thevenina); bez opcji kluczy nie ma.
+    assert "wklady_zrodel" not in base and "wklady_zrodel_slad" not in base
+    # Graf testu nie ma zasilania systemowego, szyny sztywnej ani maszyny (macierz domyka
+    # bocznik magnesowania transformatora) — lista wkładów źródeł jest pusta, NIE nieobecna,
+    # a ślad niesie krok bilansu.
+    assert with_bc.pop("wklady_zrodel") == []
+    slad_zrodel = with_bc.pop("wklady_zrodel_slad")
+    assert [krok["key"] for krok in slad_zrodel] == ["wklady_zrodel_bilans"]
     assert with_bc == base
 
 

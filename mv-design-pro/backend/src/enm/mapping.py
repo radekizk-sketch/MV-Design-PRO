@@ -140,6 +140,16 @@ def ref_to_graph_id(ref_id: str) -> str:
 _ref_to_uuid = ref_to_graph_id
 
 
+def grid_source_graph_id(source_ref_id: str) -> str:
+    """Identyfikator zasilania systemowego (``GridShortCircuitSource``) w grafie domenowym.
+
+    JEDNA regula dla mapowania modelu na graf (``add_grid_sc_source`` nizej) i dla projekcji
+    wyniku, ktora wiaze wpis rdzenia (``source_id`` wkladu zrodla, karta WKLAD-ZRODLA)
+    z ``ref_id`` zrodla modelu ENM — bez drugiej kopii przedrostka.
+    """
+    return ref_to_graph_id(f"_zsrc_{source_ref_id}")
+
+
 def _map_tap_changer(
     tap_changer: EnmTapChanger | None, ref_to_node_id: dict[str, str]
 ) -> TapChanger | None:
@@ -1461,7 +1471,7 @@ def map_enm_to_network_graph(
 
         graph.add_grid_sc_source(
             GridShortCircuitSource(
-                id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
+                id=grid_source_graph_id(source.ref_id),
                 name=nazwa_elementu(source, "sources"),
                 node_id=bus_node_id,
                 z_ohm=z_ohm,

@@ -21,6 +21,7 @@ import type {
   ShortCircuitRow,
   TraceStep,
   WkladPominietyRozplywu,
+  WkladZrodlaRozplywu,
 } from '../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { KrokWywodu, PozycjaWalidacji, SekcjaWywodu } from '../wzorzec';
@@ -296,6 +297,14 @@ export interface RozplywOdpowiedz {
    * `null` = bieg bez wkładów gałęziowych.
    */
   readonly prog_wkladu_pominietego_a?: number | null;
+  /**
+   * Karta WKLAD-ZRODLA: wkład każdego źródła części Thevenina (zasilania systemowe, szyny
+   * sztywne, maszyny wirujące) do prądu zwarciowego punktu, posortowany po odnośniku
+   * źródła. `null`/brak = bieg bez wkładów albo zapis sprzed dodania kolumny.
+   */
+  readonly wklady_zrodel?: readonly WkladZrodlaRozplywu[] | null;
+  /** Ślad WHITE BOX wkładów źródeł: krok per źródło i jawny krok bilansu. */
+  readonly wklady_zrodel_slad?: readonly TraceStep[] | null;
 }
 
 /** Pobiera rozpływ gałęziowy JEDNEGO punktu zwarcia (ref węzła w zapytaniu). */

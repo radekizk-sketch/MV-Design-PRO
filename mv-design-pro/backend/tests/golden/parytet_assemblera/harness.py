@@ -130,8 +130,18 @@ def _bieg(
 #: bazą 135 kV — ``mv_benchmark_catalog._POZIOM_LINII_KV``), a wynik niezbieżny jest z
 #: definicji zależny od maszyny. Po naprawie bliźniaka (zbieżność w 5 iteracjach, parytet z
 #: pandapower) maska jest zbędna — klucz wraca do porównania.
+#: Karta WKLAD-ZRODLA: ślad wkładów źródeł (``wklady_zrodel_slad``) niesie liczby
+#: sformatowane w napisach (podstawienia) — ta sama klasa co ``white_box_trace``; same
+#: wkłady źródeł (``wklady_zrodel``) to wielkości kontraktu (prąd, kąt, udział) i podlegają
+#: porównaniu z tolerancją jak ``contributions``.
 KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
-    {"branch_contributions", "branch_flow_trace", "white_box_trace", "wklady_pominiete"}
+    {
+        "branch_contributions",
+        "branch_flow_trace",
+        "white_box_trace",
+        "wklady_pominiete",
+        "wklady_zrodel_slad",
+    }
 )
 #: Tolerancja porównania liczb kontraktu między maszynami (jednostki kontraktu:
 #: MW, Mvar, kV, kA, A, pu, Ω, s). ATOL = 10⁻⁶ jednostki (1 W, 1 mV, 1 mA):

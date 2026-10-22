@@ -27,17 +27,27 @@ from network_model.solvers.machine_sc_iec60909 import (
     compute_machine_contributions,
 )
 from network_model.solvers.short_circuit_contributions import (
+    KLASA_WKLADU_ZRODLA,
+    KLASA_WKLADU_ZRODLA_INNA_WYSPA,
+    KLASA_WKLADU_ZRODLA_POMINIETY,
     NAZWA_WKLADU_POMINIETEGO,
     OPIS_PROGU_WKLADU_POMIJALNEGO,
     OPIS_PROGU_WKLADU_POMIJALNEGO_LATEX,
     PROG_WKLADU_POMIJALNEGO_A,
+    PRZYCZYNA_WKLADU_INNA_WYSPA,
+    TOLERANCJA_WZGLEDNA_BILANSU,
     TOR_FALOWNIK,
     TOR_THEVENIN,
     ShortCircuitBranchContribution,
     ShortCircuitSourceContribution,
     SourceType,
     WkladPominiety,
+    WkladZrodla,
+    admitancje_zrodel_macierzy,
+    boczniki_zrodel,
     jest_wkladem_pominietym,
+    tolerancja_bilansu_a,
+    wyspy_macierzy,
     zaokraglij_cyfry_znaczace,
 )
 from network_model.solvers.short_circuit_core import (
@@ -142,6 +152,13 @@ OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     # zestawienie wkładów pominiętych na podstawie tolerancji numerycznej (|I| < 1e-6 A) —
     # obecne WYŁĄCZNIE, gdy policzono wkłady gałęziowe i choć jeden wkład został pominięty.
     "wklady_pominiete",
+    # Karta WKLAD-ZRODLA (zgoda B-01 architekta z 2026-10-22, pakiet GPZ H5 R8, addytywnie,
+    # exclude-None): wkład każdego źródła (zasilanie systemowe, szyna sztywna, maszyna
+    # wirująca) do prądu zwarciowego, I_Q,k = Y_Q,k·Z_kf·I_k'' (IEC 60909-0:2016 §4.2), i jego
+    # ślad White Box z krokiem bilansu — obecne WYŁĄCZNIE, gdy policzono wkłady gałęziowe
+    # (ta sama kolumna Z_kf macierzy Z-bus co rozpływ Thevenina).
+    "wklady_zrodel",
+    "wklady_zrodel_slad",
 ]
 
 
@@ -179,6 +196,12 @@ class ShortCircuitResult:
         wklady_pominiete: list[WkladPominiety] | None - zestawienie wkładów gałęziowych
             pominiętych na podstawie tolerancji numerycznej (|I| < 1e-6 A; addytywnie,
             exclude-None — ``None``, gdy wkładów nie liczono albo żaden nie był pominięty)
+        wklady_zrodel: list[WkladZrodla] | None - wkład każdego źródła części Thevenina
+            (zasilanie systemowe, szyna sztywna, maszyna wirująca) do prądu zwarciowego
+            (karta WKLAD-ZRODLA; addytywnie, exclude-None — ``None``, gdy wkładów
+            gałęziowych nie liczono)
+        wklady_zrodel_slad: list[dict] | None - ślad White Box wkładów źródeł: krok per
+            źródło i krok bilansu w węźle zwarcia (addytywnie, exclude-None)
         sk_mva: float - moc zwarciowa Sk'' [MVA]
         ik_thevenin_a: float - wkład sieci Thevenina [A]
         ik_inverters_a: float - wkład źródeł falownikowych [A]
@@ -256,6 +279,11 @@ class ShortCircuitResult:
     # i kąt fazora w zapisie deterministycznym. None = wkładów nie liczono albo żaden nie
     # był pominięty (payload bez klucza, bajt w bajt jak przed kartą).
     wklady_pominiete: list[WkladPominiety] | None = None
+    # Karta WKLAD-ZRODLA (zgoda B-01 architekta z 2026-10-22, addytywnie): wkład per źródło
+    # i jego ślad White Box. None = wkładów gałęziowych nie liczono (payload bez kluczy, bajt
+    # w bajt jak przed kartą).
+    wklady_zrodel: list[WkladZrodla] | None = None
+    wklady_zrodel_slad: list[dict] | None = None
 
     # -------------------------------------------------------------------------
     # Aliasy dla kompatybilności wstecznej (preferuj canonical: ikss_a, ip_a, ...)
@@ -387,6 +415,11 @@ class ShortCircuitResult:
         # Karta PROG-ZERA-WKLADOW (addytywnie, exclude-None): zestawienie wkładów pominiętych.
         if self.wklady_pominiete is not None:
             data["wklady_pominiete"] = [w.to_dict() for w in self.wklady_pominiete]
+        # Karta WKLAD-ZRODLA (addytywnie, exclude-None): wkłady źródeł i ich ślad.
+        if self.wklady_zrodel is not None:
+            data["wklady_zrodel"] = [w.to_dict() for w in self.wklady_zrodel]
+        if self.wklady_zrodel_slad is not None:
+            data["wklady_zrodel_slad"] = serialize_value(list(self.wklady_zrodel_slad))
         return data
 
 
@@ -553,6 +586,8 @@ class ShortCircuitIEC60909Solver:
         z_equiv_metaliczne: complex | None = None,
         ikss_metaliczny_a: float | None = None,
         wklady_pominiete: list[WkladPominiety] | None = None,
+        wklady_zrodel: list[WkladZrodla] | None = None,
+        wklady_zrodel_slad: list[dict] | None = None,
     ) -> ShortCircuitResult:
         ik_total = ikss_thevenin + ik_inverters
         return ShortCircuitResult(
@@ -589,6 +624,8 @@ class ShortCircuitIEC60909Solver:
             i_dc_a=i_dc_a,
             tb_zrodlo=ShortCircuitIEC60909Solver._zrodlo_tb_wiersza(czas_tb, ib_przypadek),
             wklady_pominiete=wklady_pominiete,
+            wklady_zrodel=wklady_zrodel,
+            wklady_zrodel_slad=wklady_zrodel_slad,
         )
 
     @staticmethod
@@ -1314,6 +1351,9 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         short_circuit_type: ShortCircuitType,
         tlumienie_petli: float | None = None,
+        *,
+        builder: AdmittanceMatrixBuilder | None = None,
+        z_bus: np.ndarray | None = None,
     ) -> tuple[list[ShortCircuitBranchContribution], list[WkladPominiety]]:
         """
         Wkłady falowników do prądów gałęzi (superpozycja Z-bus, moduły RMS).
@@ -1338,7 +1378,8 @@ class ShortCircuitIEC60909Solver:
 
         from network_model.solvers.short_circuit_core import build_zbus
 
-        builder, z_bus = build_zbus(graph)
+        if builder is None or z_bus is None:
+            builder, z_bus = build_zbus(graph)
         contributions: list[ShortCircuitBranchContribution] = []
         pominiete: list[WkladPominiety] = []
 
@@ -1452,6 +1493,9 @@ class ShortCircuitIEC60909Solver:
         graph: NetworkGraph,
         fault_node_id: str,
         ik_thevenin_a: float,
+        *,
+        builder: AdmittanceMatrixBuilder | None = None,
+        z_bus: np.ndarray | None = None,
     ) -> tuple[list[ShortCircuitBranchContribution], list[dict], list[WkladPominiety]]:
         """Rozpływ prądu zwarciowego źródła zastępczego (Thevenin / sieć
         nadrzędna) po gałęziach — WHITE BOX (V12K-132, pkt 7 karty właściciela).
@@ -1485,7 +1529,8 @@ class ShortCircuitIEC60909Solver:
 
         from network_model.solvers.short_circuit_core import build_zbus
 
-        builder, z_bus = build_zbus(graph)
+        if builder is None or z_bus is None:
+            builder, z_bus = build_zbus(graph)
         fault_index = builder.node_id_to_index.get(fault_node_id)
         if fault_index is None:
             return [], [], []
@@ -1642,23 +1687,43 @@ class ShortCircuitIEC60909Solver:
         fault_node_id: str,
         short_circuit_type: ShortCircuitType,
         ik_thevenin_a: float,
+        ik_total_a: float,
         tlumienie_petli: float | None = None,
-    ) -> tuple[list[ShortCircuitBranchContribution], list[dict], list[WkladPominiety]]:
+    ) -> tuple[
+        list[ShortCircuitBranchContribution],
+        list[dict],
+        list[WkladPominiety],
+        list[WkladZrodla],
+        list[dict],
+    ]:
         """Łączy wkłady gałęziowe: superpozycja falownikowa (istniejąca,
         BEZ ZMIAN) + rozpływ Thevenina (V12K-132, addytywnie). Deterministyczny
         sort ``(source_id, branch_id)`` — wpisy falownikowe zachowują swoje
         wartości bajt-w-bajt (source_id inwertera vs "THEVENIN_GRID").
 
         Wkłady pominięte obu torów (|I| < 1e-6 A, karta PROG-ZERA-WKLADOW) — ten sam sort;
-        niepuste zestawienie dokłada do śladu krok `wklady_pominiete` z bilansem per tor."""
+        niepuste zestawienie dokłada do śladu krok `wklady_pominiete` z bilansem per tor.
+
+        Karta WKLAD-ZRODLA: wkłady źródeł (`_wklady_zrodel`) z TEJ SAMEJ macierzy Z-bus co oba
+        tory rozpływu — macierz jest budowana raz, tutaj (wcześniej każdy tor odwracał Y
+        osobno; ta sama macierz wejściowa daje te same liczby, więc listy gałęziowe są bit
+        w bit takie jak przed kartą)."""
+        from network_model.solvers.short_circuit_core import build_zbus
+
+        builder, z_bus = build_zbus(graph)
         inverter, pominiete_fal = (
             ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
-                graph, fault_node_id, short_circuit_type, tlumienie_petli
+                graph,
+                fault_node_id,
+                short_circuit_type,
+                tlumienie_petli,
+                builder=builder,
+                z_bus=z_bus,
             )
         )
         thevenin, trace, pominiete_th = (
             ShortCircuitIEC60909Solver._build_branch_contributions_for_thevenin(
-                graph, fault_node_id, ik_thevenin_a
+                graph, fault_node_id, ik_thevenin_a, builder=builder, z_bus=z_bus
             )
         )
         combined = sorted(inverter + thevenin, key=lambda item: (item.source_id, item.branch_id))
@@ -1667,7 +1732,251 @@ class ShortCircuitIEC60909Solver:
         )
         if pominiete:
             trace = [*trace, ShortCircuitIEC60909Solver._krok_wkladow_pominietych(pominiete)]
-        return combined, trace, pominiete
+        wklady_zrodel, slad_zrodel = ShortCircuitIEC60909Solver._wklady_zrodel(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            short_circuit_type=short_circuit_type,
+            ik_thevenin_a=ik_thevenin_a,
+            ik_total_a=ik_total_a,
+            builder=builder,
+            z_bus=z_bus,
+        )
+        return combined, trace, pominiete, wklady_zrodel, slad_zrodel
+
+    @staticmethod
+    def _wklady_zrodel(
+        *,
+        graph: NetworkGraph,
+        fault_node_id: str,
+        short_circuit_type: ShortCircuitType,
+        ik_thevenin_a: float,
+        ik_total_a: float,
+        builder: AdmittanceMatrixBuilder,
+        z_bus: np.ndarray,
+    ) -> tuple[list[WkladZrodla], list[dict]]:
+        """Wkład każdego źródła części Thevenina do prądu zwarciowego — WHITE BOX.
+
+        Metoda zastępczego źródła napięcia (IEC 60909-0:2016 §4.2; karta WKLAD-ZRODLA, zgoda
+        B-01 architekta z 2026-10-22). Sieć jest pasywna, a jedynym źródłem jest c·U_n/√3
+        w miejscu zwarcia f; zasilania systemowe (Y_Q = 1/Z_Q), szyny sztywne i maszyny
+        wirujące (Y″ = 1/Z″) są bocznikami macierzy Y. Prąd zwarciowy I_f odpływa z węzła f,
+        więc napięcia ze zwarcia ΔV = −Z_bus[:, f]·I_f, a prąd bocznika k od źródła do sieci:
+
+            I_Q,k = Y_Q,k · Z_kf · I_k''^(Th)
+
+        (ta sama kolumna Z_kf, z której rozpływ Thevenina bierze napięcia węzłowe —
+        ``thevenin_flow_setup`` ma V = −Z_bus[:, f]; kierunek „do węzła zwarcia" jak we wkładach
+        gałęziowych). Admitancje źródeł per węzeł pochodzą z metod stemplujących budowniczego
+        (`admitancje_zrodel_macierzy`), rozbicie na źródła — `boczniki_zrodel`; macierz Y to
+        ta sama macierz sieci zwarciowej, którą odwrócono (`builder.build()` w trybie
+        domyślnym, czyli zwarciowym — tym samym co `build_zbus`; krok bilansu sprawdza
+        zgodność, bo Σ_j (Σ_i Y_ij)·Z_jf = 1 tylko dla Y = Z⁻¹). Rozkład liczy się w sieci zgodnej
+        dla każdego rodzaju zwarcia, skalowany prądem I_k''^(Th) tego rodzaju — ta sama podstawa
+        co wkłady gałęziowe; dla zwarć doziemnych (1F, 2F+Z) składowa zerowa rozpływa się
+        w sieci zerowej, której rozkładu na źródła rdzeń nie liczy (zakres w śladzie).
+
+        Klasyfikacja wpisu: źródło w innej wyspie macierzy niż węzeł zwarcia
+        (`wyspy_macierzy` — wzór niezerowych wpisów Y) ma wkład STRUKTURALNIE zerowy
+        z przyczyną; inaczej JEDEN predykat `jest_wkladem_pominietym` (|I| < 1e-6 A).
+
+        Bilans (krok śladu ``wklady_zrodel_bilans``): z Y·Z = 1 suma kolumny f iloczynu daje
+        Σ_j s_j·Z_jf = 1, gdzie s_j = Σ_i Y_ij (suma kolumnowa). s_j = admitancja źródeł węzła
+        j (stempel) + człon poprzeczny gałęzi c_j (pojemności linii, jeśli wchodzą do sieci
+        zwarciowej, i przekładnia poza-znamionowa: y·(1 − 1/a)² na gałąź). Stąd
+        Σ_k I_Q,k + Σ_j c_j·Z_jf·I_k''^(Th) = I_k''^(Th); reszta (fazorowo, z wkładami
+        pominiętymi) w `tolerancja_bilansu_a`; I_k'' = I_k''^(Th) + I_k(falowniki).
+        """
+        fault_index = builder.node_id_to_index.get(fault_node_id)
+        if fault_index is None:
+            return [], []
+        # Typy JSON-owe wpisów i śladu (rdzeń podaje prąd jako ``numpy.float64``): konwersja
+        # ``float`` jest dokładna — liczby bez zmian, ``bilans_domkniety`` to ``bool``.
+        ik_thevenin_a = float(ik_thevenin_a)
+        ik_total_a = float(ik_total_a)
+        fmt = ShortCircuitIEC60909Solver._format_float
+        fmt_c = ShortCircuitIEC60909Solver._format_complex
+        fmt_cl = ShortCircuitIEC60909Solver._format_complex_latex
+        y_bus = builder.build()
+        admitancje_zrodel = admitancje_zrodel_macierzy(builder, y_bus.shape[0])
+        wyspy = wyspy_macierzy(y_bus)
+        wyspa_zwarcia = wyspy[fault_index]
+        un_f_kv = graph.nodes[fault_node_id].voltage_level
+        tracer = WhiteBoxTracer()
+        wpisy: list[WkladZrodla] = []
+        suma_fazorowa = 0j
+        suma_modulow = 0.0
+        for bocznik in boczniki_zrodel(graph, builder, admitancje_zrodel):
+            if wyspy[bocznik.indeks] != wyspa_zwarcia:
+                wpis = WkladZrodla(
+                    rodzaj=bocznik.rodzaj,
+                    source_id=bocznik.element_id,
+                    source_name=bocznik.nazwa,
+                    node_id=bocznik.node_id,
+                    klasa=KLASA_WKLADU_ZRODLA_INNA_WYSPA,
+                    i_a=0.0,
+                    i_zaciski_a=0.0,
+                    kat_deg=None,
+                    udzial=0.0,
+                    przyczyna=PRZYCZYNA_WKLADU_INNA_WYSPA,
+                )
+                wpisy.append(wpis)
+                tracer.add(
+                    key=f"wklad_zrodla_{bocznik.element_id}",
+                    title=f"Wkład źródła {bocznik.nazwa} do prądu zwarciowego",
+                    formula_latex=r"\underline{I}_{Q,k} = 0",
+                    inputs={
+                        "source_id": bocznik.element_id,
+                        "rodzaj": bocznik.rodzaj,
+                        "node_id": bocznik.node_id,
+                        "y_pu": complex(bocznik.y_pu),
+                        "ik_thevenin_a": ik_thevenin_a,
+                    },
+                    substitution=(
+                        "Źródło w innej wyspie niż węzeł zwarcia — Z_kf = 0 z topologii, I = 0 A."
+                    ),
+                    substitution_latex=r"\underline{Z}_{kf} = 0 \Rightarrow \underline{I}_{Q,k} = 0",
+                    result={
+                        "i_a": 0.0,
+                        "i_zaciski_a": 0.0,
+                        "klasa": KLASA_WKLADU_ZRODLA_INNA_WYSPA,
+                    },
+                    notes=PRZYCZYNA_WKLADU_INNA_WYSPA,
+                )
+                continue
+            # U_n węzła źródła jest dodatnie: szynę z U_n ≤ 0 blokuje walidator ENM (E004),
+            # a gałąź do węzła z U_n = 0 nie daje się zestemplować (Z_base = 0) — przelicznik
+            # na zaciski liczony wprost, bez zastępnika dla „U_n = 0".
+            un_k_kv = graph.nodes[bocznik.node_id].voltage_level
+            z_kf = complex(z_bus[bocznik.indeks, fault_index])
+            wspolczynnik = complex(bocznik.y_pu) * z_kf
+            fazor_a = wspolczynnik * ik_thevenin_a
+            i_a = abs(wspolczynnik) * ik_thevenin_a
+            suma_fazorowa += fazor_a
+            suma_modulow += i_a
+            pominiety = jest_wkladem_pominietym(i_a)
+            kat = None if wspolczynnik == 0 else math.degrees(cmath.phase(wspolczynnik))
+            i_zaciski_a = i_a * un_f_kv / un_k_kv
+            udzial = i_a / ik_total_a if ik_total_a > 0 else 0.0
+            if pominiety:
+                wpis = WkladZrodla(
+                    rodzaj=bocznik.rodzaj,
+                    source_id=bocznik.element_id,
+                    source_name=bocznik.nazwa,
+                    node_id=bocznik.node_id,
+                    klasa=KLASA_WKLADU_ZRODLA_POMINIETY,
+                    i_a=zaokraglij_cyfry_znaczace(i_a),
+                    i_zaciski_a=zaokraglij_cyfry_znaczace(i_zaciski_a),
+                    kat_deg=None if kat is None else zaokraglij_cyfry_znaczace(kat),
+                    udzial=zaokraglij_cyfry_znaczace(udzial),
+                    przyczyna=NAZWA_WKLADU_POMINIETEGO,
+                )
+            else:
+                wpis = WkladZrodla(
+                    rodzaj=bocznik.rodzaj,
+                    source_id=bocznik.element_id,
+                    source_name=bocznik.nazwa,
+                    node_id=bocznik.node_id,
+                    klasa=KLASA_WKLADU_ZRODLA,
+                    i_a=i_a,
+                    i_zaciski_a=i_zaciski_a,
+                    kat_deg=kat,
+                    udzial=udzial,
+                    przyczyna=None,
+                )
+            wpisy.append(wpis)
+            tracer.add(
+                key=f"wklad_zrodla_{bocznik.element_id}",
+                title=f"Wkład źródła {bocznik.nazwa} do prądu zwarciowego",
+                formula_latex=(
+                    r"\underline{I}_{Q,k} = \underline{Y}_{Q,k} \cdot \underline{Z}_{kf} \cdot "
+                    r"I_k''^{(Th)}"
+                ),
+                inputs={
+                    "source_id": bocznik.element_id,
+                    "rodzaj": bocznik.rodzaj,
+                    "node_id": bocznik.node_id,
+                    "y_pu": complex(bocznik.y_pu),
+                    "z_kf_pu": z_kf,
+                    "ik_thevenin_a": ik_thevenin_a,
+                    "un_zwarcia_kv": un_f_kv,
+                    "un_zrodla_kv": un_k_kv,
+                },
+                substitution=(
+                    f"I = |({fmt_c(complex(bocznik.y_pu))}) * ({fmt_c(z_kf)})| * "
+                    f"{fmt(ik_thevenin_a)} A = {fmt(i_a)} A"
+                ),
+                substitution_latex=(
+                    f"\\left| {fmt_cl(complex(bocznik.y_pu))} \\cdot {fmt_cl(z_kf)} \\right| "
+                    f"\\cdot {fmt(ik_thevenin_a)}\\,\\mathrm{{A}} = {fmt(i_a)}\\,\\mathrm{{A}}"
+                ),
+                result={
+                    "wspolczynnik_pu": wspolczynnik,
+                    "i_a": i_a,
+                    "i_zaciski_a": i_zaciski_a,
+                    "kat_deg": kat,
+                    "klasa": wpis.klasa,
+                },
+                notes=wpis.przyczyna,
+            )
+        czlony = y_bus.sum(axis=0) - admitancje_zrodel
+        wspolczynnik_czlonow = complex(czlony @ z_bus[:, fault_index])
+        prad_czlonow = wspolczynnik_czlonow * ik_thevenin_a
+        suma_bilansu = suma_fazorowa + prad_czlonow
+        reszta_a = float(abs(suma_bilansu - ik_thevenin_a))
+        tolerancja_a = tolerancja_bilansu_a(ik_thevenin_a)
+        ik_inverters_a = ik_total_a - ik_thevenin_a
+        tracer.add(
+            key="wklady_zrodel_bilans",
+            title="Bilans wkładów źródeł w węźle zwarcia",
+            formula_latex=(
+                r"\sum_{Q} \underline{I}_{Q,k} + \underline{I}_{\text{poprz}} = "
+                r"I_k''^{(Th)}, \quad I_k'' = I_k''^{(Th)} + I_{k}^{(\text{fal})}"
+            ),
+            inputs={
+                "fault_node_id": fault_node_id,
+                "short_circuit_type": short_circuit_type.value,
+                "ik_thevenin_a": ik_thevenin_a,
+                "ik_inverters_a": ik_inverters_a,
+                "ik_total_a": ik_total_a,
+                "liczba_zrodel": len(wpisy),
+                "tolerancja_wzgledna": TOLERANCJA_WZGLEDNA_BILANSU,
+                "prog_wkladu_pominietego_a": PROG_WKLADU_POMIJALNEGO_A,
+            },
+            substitution=(
+                f"Suma fazorowa wkładów źródeł {fmt_c(suma_fazorowa)} A, prąd członów "
+                f"poprzecznych gałęzi {fmt_c(prad_czlonow)} A, razem {fmt_c(suma_bilansu)} A "
+                f"wobec I_k''(Th) = {fmt(ik_thevenin_a)} A; reszta {fmt(reszta_a)} A, "
+                f"dopuszczalna {fmt(tolerancja_a)} A."
+            ),
+            substitution_latex=(
+                f"{fmt_cl(suma_fazorowa)} + {fmt_cl(prad_czlonow)} = {fmt_cl(suma_bilansu)}"
+                f"\\,\\mathrm{{A}} \\approx {fmt(ik_thevenin_a)}\\,\\mathrm{{A}}"
+            ),
+            result={
+                "suma_fazorowa_zrodel_a": suma_fazorowa,
+                "suma_modulow_zrodel_a": suma_modulow,
+                "prad_czlonow_poprzecznych_a": prad_czlonow,
+                "suma_bilansu_a": suma_bilansu,
+                "reszta_a": reszta_a,
+                "tolerancja_a": tolerancja_a,
+                "bilans_domkniety": reszta_a <= tolerancja_a,
+            },
+            notes=(
+                "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − "
+                "I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma "
+                "kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: "
+                "przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) i admitancje "
+                "poprzeczne linii, o ile wchodzą do sieci zwarciowej; przy przekładniach "
+                "znamionowych i bez admitancji poprzecznych są zerowe. Źródło pominięte albo "
+                "dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła "
+                "przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per "
+                "źródło w liście `contributions` wyniku. Rozkład "
+                "w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, "
+                "tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa "
+                "się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+            ),
+        )
+        return wpisy, tracer.to_list()
 
     @staticmethod
     def _krok_wkladow_pominietych(pominiete: list[WkladPominiety]) -> dict[str, Any]:
@@ -1931,16 +2240,17 @@ class ShortCircuitIEC60909Solver:
             ik_total_a=ik_total,
             tlumienie_petli=tlumienie_petli,
         )
-        branch_contributions, branch_flow_trace, wklady_pominiete = (
+        branch_contributions, branch_flow_trace, wklady_pominiete, wklady_zrodel, slad_zrodel = (
             ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
                 short_circuit_type=short_circuit_type,
                 ik_thevenin_a=ikss,
+                ik_total_a=ik_total,
                 tlumienie_petli=tlumienie_petli,
             )
             if include_branch_contributions
-            else (None, None, None)
+            else (None, None, None, None, None)
         )
         return ShortCircuitIEC60909Solver._compute_fault_result(
             short_circuit_type=short_circuit_type,
@@ -1967,6 +2277,8 @@ class ShortCircuitIEC60909Solver:
             z_equiv_metaliczne=core.z_equiv_metaliczne,
             ikss_metaliczny_a=ikss_metaliczny_a,
             wklady_pominiete=wklady_pominiete or None,
+            wklady_zrodel=wklady_zrodel,
+            wklady_zrodel_slad=slad_zrodel,
         )
 
     @staticmethod
