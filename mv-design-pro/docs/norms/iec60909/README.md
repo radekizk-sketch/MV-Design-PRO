@@ -19,3 +19,9 @@ Szkic wewnętrznego dokumentu SOP z normatywnym `k_CIS=1.2`, automatycznym `C0` 
 
 ### Wdrożenie
 Zgodnie z `AGENTS.md` i `docs/v12xx/KANON_V12_XX.md` najpierw ocenić konflikty, potem implementować w istniejących modułach, a nie w nowym równoległym silniku. Wprowadzanie nowego API ShortCircuitResult bez przeglądu wersji jest zakazane.
+
+## Audyt drugiego stopnia
+
+[Raport RED TEAM II — błędy fizyki i dowodów](RED_TEAM_FIZYKA_I_ZRODLA_2026_10_22.md). Stwierdzono problemy z definicją Ib, bilansem KCL, częstotliwością, uziemieniem numerycznym i obsługą tolerancji nN. PR pozostaje dokumentacyjny i nie potwierdza zgodności z IEC 2026.
+
+PKN potwierdza PN-EN 60909-0:2016-09: https://sklep.pkn.pl/pn-en-60909-0-2016-09e.html. Wykaz PKN potwierdza EN IEC 60909-0:2026, nie stanowi potwierdzenia wydania PN-EN IEC 60909-0:2026.
