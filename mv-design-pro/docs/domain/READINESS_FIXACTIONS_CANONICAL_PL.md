@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -84,6 +84,7 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.binding_required` | CATALOGS | 1 | BLOCKER | Element techniczny wymaga wiązania z katalogiem | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.binding_version_missing` | CATALOGS | 1 | BLOCKER | Brak wersji katalogu w wiązaniu elementu obliczeniowego | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.clear_forbidden` | CATALOGS | 1 | BLOCKER | Element techniczny nie może istnieć bez przypięcia katalogowego — zamiast czyścić wiązanie wskaż pozycję zastępczą | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.duplicate_id` | CATALOGS | 1 | BLOCKER | Karta widmowa występuje w katalogu więcej niż raz — katalog nie wskazuje jednoznacznie danych; usuń powtórzoną kartę | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.element_missing` | CATALOGS | 1 | BLOCKER | Przypisanie katalogu nie wskazało elementu modelu | panel: `inspector`, tab: `katalog` |
 | `catalog.element_not_found` | CATALOGS | 1 | BLOCKER | Element wskazany do przypisania katalogu nie istnieje w modelu | panel: `inspector`, tab: `katalog` |
 | `catalog.item_id_missing` | CATALOGS | 1 | BLOCKER | Brak identyfikatora rekordu katalogu w wiązaniu elementu | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
@@ -94,6 +95,7 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.namespace_required` | CATALOGS | 1 | BLOCKER | Nie da się ustalić kategorii katalogu dla elementu — bez kategorii nie ma czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia katalogowego | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.ref_missing` | CATALOGS | 1 | BLOCKER | Element nie ma wskazanej referencji katalogowej | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.ref_required` | CATALOGS | 1 | BLOCKER | Segment lub transformator wymaga referencji katalogowej przed utworzeniem | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.type_incomplete` | CATALOGS | 1 | BLOCKER | Rekord przekształtnika w katalogu nie niesie wymaganej wielkości znamionowej (moc pozorna, moc czynna maksymalna albo pojemność energetyczna) — typu falownika nie wyprowadzono; uzupełnij rekord z karty producenta | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.unknown_namespace` | CATALOGS | 1 | BLOCKER | Nieznana kategoria katalogu — brama nie dobiera kategorii za projektanta; wskaż kategorię, która istnieje w katalogu | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `import.catalog_mapping_required` | CATALOGS | 1 | BLOCKER | Import wymaga mapowania katalogowego: elementy bez przypisanego katalogu muszą zostać zmapowane przed dalszą edycją | panel: `catalog_mapper`, modal: `IMPORT_CATALOG_MAPPING` |
 | `nn.source.catalog_missing` | CATALOGS | 1 | BLOCKER | Źródło nN nie ma przypisanego katalogu urządzenia | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
@@ -128,6 +130,10 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `vt.winding_category_missing` | CATALOGS | 3 | WARNING | Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii (pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia | panel: `katalog`, tab: `vt`, focus: `accuracy_class` |
 | `transformer.no_load_params_missing` | CATALOGS | 4 | WARNING | Brak prądu jałowego (I0) lub strat jałowych (P0) transformatora — gałąź magnesująca nie jest uwzględniona w rozpływie mocy | panel: `katalog`, tab: `transformatory`, focus: `i0_percent` |
 | `nn.voltage_missing` | STATIONS | 1 | BLOCKER | Napięcie szyny nN nie jest określone | panel: `inspector`, tab: `parametry`, focus: `voltage_nn_kv` |
+| `nn.brak_pojemnosci_doziemnej` | STATIONS | 2 | BLOCKER | Układ IT: odcinki sieci nN bez pojemności doziemnej (susceptancji zerowej na km) — prąd pierwszego zwarcia doziemnego nie jest liczony | panel: `inspector`, tab: `parametry`, focus: `b0_siemens_per_km` |
+| `nn.brak_r_a` | STATIONS | 2 | BLOCKER | Układ TT: punkt obwodu nN nie ma odbioru z rezystancją uziomu instalacji odbiorczej — pętla doziemna i napięcie dotykowe nie są liczone | panel: `inspector`, tab: `parametry`, focus: `earth_electrode_r_ohm` |
+| `nn.brak_r_b` | STATIONS | 2 | BLOCKER | Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego bezpośrednio z rezystancją uziomu stacji | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
+| `nn.brak_rcd` | STATIONS | 2 | BLOCKER | Układ TT: na trasie do punktu obwodu nN nie ma wyłącznika różnicowoprądowego z katalogu (I_Δn) — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć | panel: `inspector`, tab: `nn`, modal: `add_nn_rcd` |
 | `nn.bus_missing` | STATIONS | 2 | BLOCKER | Stacja wymaga szyny nN | panel: `inspector`, tab: `nn` |
 | `station.type_invalid` | STATIONS | 2 | BLOCKER | Nieprawidłowy typ stacji | panel: `inspector`, tab: `parametry` |
 | `station.voltage_missing` | STATIONS | 2 | BLOCKER | Stacja nie ma zdefiniowanego napięcia | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
@@ -136,7 +142,9 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `apparatus.nn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `apparatus.sn_catalog_missing` | STATIONS | 3 | BLOCKER | Aparat SN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `earthing.electrode_data_missing` | STATIONS | 3 | WARNING | Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe | panel: `inspector`, tab: `uziemienie`, focus: `earth_electrode` |
+| `fault.c_tolerancja_nn_robocza` | STATIONS | 3 | INFO | Sieć nN liczona z wartością roboczą tolerancji napięcia +10 % (współczynnik c 1,10 dla prądów maksymalnych i 0,90 dla minimalnych wg IEC 60909-0, tabela 1) — zadeklaruj tolerancję na transformatorze albo źródle zasilającym tę sieć, jeśli jest inna, i przelicz | panel: `inspector`, tab: `parametry`, focus: `lv_voltage_tolerance` |
 | `nn.main_breaker_missing` | STATIONS | 3 | BLOCKER | Szyna nN wymaga wyłącznika głównego | panel: `inspector`, tab: `nn` |
+| `nn.transformer_lv_not_nn_band` | STATIONS | 3 | INFO | Strona dolna transformatora leży poza pasmem nN — pętla zwarcia nN, SWZ i dobór aparatów nN nie dotyczą tej stacji | panel: `inspector`, tab: `parametry`, focus: `ulv_kv` |
 | `station.element_bypasses_field` | STATIONS | 3 | WARNING | Element jest przyłączony do szyny głównej stacji z pominięciem pola rozdzielnicy — aparat pola nie leży w jego torze prądowym | panel: `sld`, modal: `przepnij_element_na_pole` |
 | `station.field_role_unknown` | STATIONS | 3 | WARNING | Pole rozdzielnicy SN ma rolę spoza słownika ról pól — rodzaj stacji wyznaczono bez tego pola | panel: `inspector`, tab: `pola` |
 | `station.kind_mismatch` | STATIONS | 3 | WARNING | Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii (liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii | panel: `inspector`, modal: `update_element_parameters` |
@@ -186,6 +194,9 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `analysis.blocked_by_readiness` | ANALYSIS | 1 | BLOCKER | Analiza zablokowana przez niezaspokojone wymagania gotowości | panel: `readiness` |
 | `power_flow.unbalanced_requires_radial` | ANALYSIS | 1 | BLOCKER | Rozpływ niesymetryczny wymaga sieci promieniowej w scenariuszu — wyspa zasilona ma oczko (pierścień zamknięty albo gałęzie równoległe); otwórz punkt podziału albo łącznik | panel: `sld` |
 | `study_case.missing_base_snapshot` | ANALYSIS | 1 | BLOCKER | Przypadek obliczeniowy nie ma bazowego zrzutu stanu | panel: `case_manager` |
+| `fault.c_nadpisanie_bez_uzasadnienia` | ANALYSIS | 2 | BLOCKER | Nadpisanie współczynnika napięciowego c wymaga uzasadnienia (IEC 60909-0 dopuszcza wartość spoza tabeli 1 tylko z konkretnego powodu) | panel: `analizy`, tab: `zwarciowa` |
+| `fault.c_nadpisanie_wartosc_niepoprawna` | ANALYSIS | 2 | BLOCKER | Wartość nadpisania współczynnika napięciowego c musi być skończoną liczbą dodatnią | panel: `analizy`, tab: `zwarciowa` |
+| `fault.czas_tb_niepoprawny` | ANALYSIS | 2 | BLOCKER | Czas wyłączenia tb musi być skończoną liczbą dodatnią w sekundach | panel: `analizy`, tab: `zwarciowa` |
 | `fault.location_on_branch_requires_assembler` | ANALYSIS | 2 | BLOCKER | Zwarcie w punkcie na gałęzi wymaga rozdzielenia modelu w miejscu zwarcia (adapter obliczeniowy) — nieobsługiwane; wybierz lokalizację na węźle | panel: `analizy`, tab: `zwarciowa` |
 | `load.dynamika_missing` | ANALYSIS | 2 | BLOCKER | Brak modelu dynamicznego odbioru (napięcie przejścia do stałej impedancji, pomiar częstotliwości) — obliczenia czasowe nie mogą zbudować modelu odbioru; zwiąż odbiór z profilem z katalogu | panel: `analizy`, tab: `dynamika`, focus: `dynamic_model_ref` |
 | `load.zip_agregat_niereprezentowalny` | ANALYSIS | 2 | BLOCKER | Odbiorów ZIP tej szyny nie da się odwzorować w rozpływie dokładnie (różne charakterystyki na jednej szynie albo szyna regulacji napięcia) — rozdziel odbiory na osobne szyny albo ujednolić ich charakterystyki | panel: `inspector`, tab: `parametry` |
@@ -199,6 +210,8 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `verdict.run_missing` | ANALYSIS | 2 | WARNING | Brak zakończonego biegu wymaganego przez kryterium — uruchom obliczenia, by je ocenić | panel: `analizy` |
 | `verdict.run_stale` | ANALYSIS | 2 | WARNING | Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; uruchom obliczenia ponownie | panel: `analizy` |
 | `analysis.as_built_measurement_terminal_missing` | ANALYSIS | 3 | BLOCKER | Pomiar mocy gałęzi bez miejsca pomiaru — wskaż zacisk gałęzi (początkowy albo końcowy), na którym wykonano pomiar; gałąź z przekładnią albo susceptancją ma na obu końcach inne moce | panel: `analizy`, tab: `odbior` |
+| `fault.czas_tb_wartosc_robocza` | ANALYSIS | 3 | WARNING | Czas wyłączenia tb w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ IEC 60909-0 albo czas pola z roboczym czasem własnym wyłącznika) — prąd wyłączeniowy Ib i składowa iDC policzone na założeniu; podaj tb w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej | panel: `analizy`, tab: `zwarciowa` |
+| `swz.limit_tt_it_brak_tekstu_normy` | ANALYSIS | 3 | WARNING | Dopuszczalne napięcie dotykowe i warunki drugiego zwarcia układu TT/IT nie są w repozytorium (tekst IEC 60364-4-41 §411.5/§411.6 od właściciela) — kryterium pozostaje bez podstawy | panel: `analizy`, tab: `zwarciowa` |
 | `power_flow.unbalanced_losses_self_impedance` | ANALYSIS | 4 | WARNING | Założenie biegu: straty gałęzi liczone z impedancji własnej \|I\|²·R_s — solver BFS pomija wyraz wzajemny, więc przy Z0 ≠ Z1 straty są przybliżone (napięcia i prądy bez zmian) | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `power_flow.unbalanced_magnetising_branch_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: gałąź magnesująca transformatora (P0, i0) pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję zwarcia | panel: `inspector`, tab: `transformator` |
 | `power_flow.unbalanced_shunt_admittance_omitted` | ANALYSIS | 4 | WARNING | Założenie biegu: admitancja poprzeczna (pojemność) gałęzi pominięta — solver BFS rozpływu niesymetrycznego modeluje wyłącznie impedancję szeregową | panel: `inspector`, tab: `parametry`, focus: `b_siemens_per_km` |
@@ -210,21 +223,21 @@ Wszystkie **147** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 93 |
-| WARNING | 53 |
-| INFO | 1 |
-| **Razem** | **147** |
+| BLOCKER | 102 |
+| WARNING | 55 |
+| INFO | 3 |
+| **Razem** | **160** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
 | TOPOLOGY | 6 |
-| CATALOGS | 47 |
-| STATIONS | 17 |
+| CATALOGS | 49 |
+| STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
-| ANALYSIS | 22 |
-| **Razem** | **147** |
+| ANALYSIS | 27 |
+| **Razem** | **160** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

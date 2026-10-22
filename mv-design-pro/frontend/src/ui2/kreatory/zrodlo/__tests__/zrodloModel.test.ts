@@ -593,7 +593,9 @@ describe('walidujFormularz', () => {
 describe('zbudujZadaniePodgladu', () => {
   it('buduje żądanie podglądu dla poprawnych danych SN', () => {
     const req = zbudujZadaniePodgladu(daneKompletne({ sk3_mva: 250, rx_ratio: 0.1, thermal_time_s: 1 }));
-    expect(req).toMatchObject({ voltage_kv: 15, sk3_mva: 250, rx_ratio: 0.1, tk_s: 1, tb_s: 0.1 });
+    expect(req).toMatchObject({ voltage_kv: 15, sk3_mva: 250, rx_ratio: 0.1, tk_s: 1 });
+    // Karta SC-IB-ITH-ZRODLA: podgląd źródła nie liczy I_b — dawne `tb_s: 0.1` było polem-fantomem.
+    expect(req).not.toHaveProperty('tb_s');
   });
 
   it('zwraca null gdy brak mocy zwarciowej', () => {

@@ -1703,7 +1703,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "dfda9d18ac94a1652a594824532c03fb1fab986770ac67ffbb55ea893f87694b",
+      "hash_sha256": "8bbb9b5e7ca36f64a8a0f361555585ab7671cceab2d6986fcb298ac9e8301a0f",
       "name": "Stacja z pomiarem za ZKSN",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1758,6 +1758,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "4a06480f-e979-5eac-8212-f5c6093cf736",
         "materialized_params": null,
         "meta": {
@@ -1790,6 +1791,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "ce33f061-03f3-5752-b3c9-ccbb5453d52b",
         "materialized_params": null,
         "meta": {
@@ -1822,6 +1824,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "b95ad60e-5cf9-5208-aed4-d2548a17e46e",
         "materialized_params": null,
         "meta": {
@@ -1854,6 +1857,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "b9165f4b-a04e-567d-bf33-1d7b55d04964",
         "materialized_params": null,
         "meta": {
@@ -1985,14 +1989,13 @@
     "sources": [
       {
         "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "c_max": null,
-        "c_min": null,
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
         "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "src-gpz-15kv-250mva-rx010",
           "catalog_item_version": "2024.1",
@@ -2116,6 +2119,7 @@
         "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",
@@ -2168,6 +2172,7 @@
         "lv_bus_ref": "nn/e137f445ffd06a54d2763e5ba5a4edb4/feeder_bus",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-1000kva-dyn11",
           "catalog_item_version": "legacy",

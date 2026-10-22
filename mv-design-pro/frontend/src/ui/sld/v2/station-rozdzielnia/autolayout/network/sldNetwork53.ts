@@ -304,7 +304,7 @@ export const SLD_NETWORK_53: SldNetworkModel = {
   },
   "nop_station": "S46",
   "schema": "sld_network_model_v1",
-  "source_hash": "9c9c5b5048fc74892df80edef3bb2f3b9a514b2f1d64f1bb97f489e74541d8dd",
+  "source_hash": "c801b7413dc73c93b7cd299e5652a4060332ab7bcd4de4532db21cc7a9d6a694",
   "stations": [
     {
       "depth": 3,

@@ -1,8 +1,9 @@
 {
   "_meta": {
     "analysis_type": "short_circuit_3f",
-    "builder_snapshot_hash": "d45c0317a8593b86732cf8da4a5c4a8355e4e639fa9ce4e12404924d5f3769df",
+    "builder_snapshot_hash": "d1b93b45ec245608c74fef16cf7643c99dcb9a9225f454c6efd59a07e644161b",
     "c_factor": 1.1,
+    "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
     "note": "Realny bieg zwarciowy; Ik''/ip/Ith/Sk 1:1 z solvera. Regeneracja: scripts/generate-demo-oze-sc.py.",
     "source": "SC IEC 60909 (FROZEN solver) per szyna SN — tor kanoniczny",
     "tk_s": 1.0

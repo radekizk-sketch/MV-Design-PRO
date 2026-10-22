@@ -55,7 +55,7 @@ import {
   type StationSnFieldTemplate,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import { fieldRoleLabelPl } from '../../../ui/sld/v2/station-rozdzielnia/contract';
-import type { MVApparatusCatalogType, TransformerType } from '../../../ui/catalog/types';
+import type { MVApparatusType, TransformerType } from '../../../ui/catalog/types';
 import {
   FONT_APARATU,
   FONT_ROLI,
@@ -114,7 +114,7 @@ export type StatusKonfiguracji = 'VALID' | 'INVALID' | 'NIESPRAWDZONA' | 'SPRAWD
 export interface WejsciePodgladu {
   readonly snFields: readonly StationSnFieldTemplate[];
   /** Katalog APARAT_SN (readout backendu) — do rozwiązania `apparatus_catalog_ref`. */
-  readonly aparaty: readonly MVApparatusCatalogType[];
+  readonly aparaty: readonly MVApparatusType[];
   /** Katalog TRAFO_SN_NN — do opisu transformatora pola transformatorowego. */
   readonly transformatory: readonly TransformerType[];
   /** Wskazany typ transformatora stacji (krok „Transformator"). */
@@ -299,7 +299,7 @@ export function zawinCzesci(
 }
 
 /** Człony znamion aparatu — wyłącznie te, które pozycja katalogowa niesie. */
-export function czesciZnamionAparatu(aparat: MVApparatusCatalogType): string[] {
+export function czesciZnamionAparatu(aparat: MVApparatusType): string[] {
   const czesci: string[] = [];
   if (Number.isFinite(aparat.u_n_kv)) czesci.push(`${liczbaRysunkuPl(aparat.u_n_kv)} kV`);
   if (Number.isFinite(aparat.i_n_a)) czesci.push(`${liczbaRysunkuPl(aparat.i_n_a)} A`);
@@ -311,7 +311,7 @@ export function czesciZnamionAparatu(aparat: MVApparatusCatalogType): string[] {
 }
 
 /** Znamiona aparatu w konwencji rysunku: „17,5 kV · 630 A · 25 kA". */
-export function znamionaAparatu(aparat: MVApparatusCatalogType): string {
+export function znamionaAparatu(aparat: MVApparatusType): string {
   return czesciZnamionAparatu(aparat).join(SEPARATOR);
 }
 

@@ -66,6 +66,8 @@
     "protection",
     "pv",
     "pv_inverter",
+    "rcd",
+    "rcd_bus",
     "relay",
     "ring_closure",
     "section",

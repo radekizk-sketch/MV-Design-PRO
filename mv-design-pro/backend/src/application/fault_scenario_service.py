@@ -61,6 +61,7 @@ from domain.fault_scenario import (
     new_fault_scenario,
     validate_fault_scenario,
 )
+from enm.canonical_analysis import ocen_model_biegu
 from enm.fix_actions import FixAction
 from enm.scenariusze import (
     OperatingScenario,
@@ -121,6 +122,7 @@ _FAULT_TYPE_TO_ANALYSIS_TYPE: dict[FaultType, AnalysisType] = {
     FaultType.SC_3F: AnalysisType.SC_3F,
     FaultType.SC_2F: AnalysisType.SC_2F,
     FaultType.SC_1F: AnalysisType.SC_1F,
+    FaultType.SC_2F_G: AnalysisType.SC_2F_G,
 }
 
 #: Typy lokalizacji na gałęzi — adapter obliczeniowy nie ma dziś sposobu
@@ -151,6 +153,7 @@ FAULT_TYPE_LABELS_PL: dict[FaultType, str] = {
     FaultType.SC_3F: "3-fazowe",
     FaultType.SC_2F: "2-fazowe",
     FaultType.SC_1F: "1-fazowe",
+    FaultType.SC_2F_G: "2-fazowe z ziemią",
 }
 
 FAULT_MODE_LABELS_PL: dict[FaultMode, str] = {
@@ -196,11 +199,9 @@ class FaultScenarioService:
         name: str,
         fault_type: str,
         location: dict[str, Any],
-        config: dict[str, Any] | None = None,
+        config: dict[str, Any],
         fault_mode: str | None = None,
         fault_impedance: dict[str, Any] | None = None,
-        arc_params: dict[str, Any] | None = None,
-        z0_bus_data: dict[str, Any] | None = None,
     ) -> FaultScenario:
         """
         Create a new fault scenario with validation and content hash.
@@ -210,13 +211,13 @@ class FaultScenarioService:
                 z `study_case_id` przez wołającego (`api/klucz_twin_dep.py`).
             study_case_id: Parent study case UUID.
             name: User-facing Polish name (required).
-            fault_type: "SC_3F", "SC_2F", or "SC_1F".
+            fault_type: "SC_3F", "SC_2F", "SC_1F" or "SC_2F_G".
             location: {"element_ref": str, "location_type": ..., "position": float|None}
-            config: Optional short-circuit config overrides.
+            config: Short-circuit config — `scenariusz` (MAX/MIN) wymagany, opcjonalne
+                `nadpisanie_c` {wartosc, uzasadnienie}, `thermal_time_seconds`,
+                `breaking_time_seconds` (t_b [s], opcjonalny).
             fault_mode: "METALLIC" or "IMPEDANCE" (v2, default METALLIC).
-            fault_impedance: {"r_ohm": float, "x_ohm": float} (v2, required for IMPEDANCE).
-            arc_params: Reserved — unsupported in v2.
-            z0_bus_data: Zero-sequence impedance data (required for SC_1F).
+            fault_impedance: {"r_f_ohm": float, "x_f_ohm": float} (required for IMPEDANCE).
 
         Returns:
             Validated FaultScenario with content_hash.
@@ -227,7 +228,7 @@ class FaultScenarioService:
         """
         ft = FaultType(fault_type)
         loc = FaultLocation.from_dict(location)
-        cfg = ShortCircuitConfig.from_dict(config) if config else ShortCircuitConfig()
+        cfg = ShortCircuitConfig.from_dict(config)
         fm = FaultMode(fault_mode) if fault_mode else FaultMode.METALLIC
         fi = FaultImpedance.from_dict(fault_impedance) if fault_impedance else None
 
@@ -239,8 +240,6 @@ class FaultScenarioService:
             config=cfg,
             fault_mode=fm,
             fault_impedance=fi,
-            arc_params=arc_params,
-            z0_bus_data=z0_bus_data,
         )
 
         # Check for duplicate content_hash — scope: TEN SAM przypadek (parytet
@@ -316,8 +315,6 @@ class FaultScenarioService:
         config: dict[str, Any] | None = None,
         fault_mode: str | None = None,
         fault_impedance: dict[str, Any] | None = None,
-        arc_params: Any = None,
-        z0_bus_data: Any = None,
     ) -> FaultScenario:
         """
         Update a fault scenario using copy-on-write.
@@ -336,8 +333,6 @@ class FaultScenarioService:
             config: New config dict (optional).
             fault_mode: New fault mode (optional, v2).
             fault_impedance: New fault impedance (optional, v2).
-            arc_params: Reserved — unsupported (v2).
-            z0_bus_data: New z0_bus_data (optional).
 
         Returns:
             Updated FaultScenario with new content_hash and updated_at.
@@ -362,10 +357,6 @@ class FaultScenarioService:
             update_kwargs["fault_mode"] = FaultMode(fault_mode)
         if fault_impedance is not None:
             update_kwargs["fault_impedance"] = FaultImpedance.from_dict(fault_impedance)
-        if arc_params is not None:
-            update_kwargs["arc_params"] = arc_params
-        if z0_bus_data is not None:
-            update_kwargs["z0_bus_data"] = z0_bus_data
 
         # Set updated_at timestamp
         update_kwargs["updated_at"] = _now_utc_iso()
@@ -385,11 +376,8 @@ class FaultScenarioService:
             fault_type=updated.fault_type,
             location=updated.location,
             config=updated.config,
-            fault_impedance_type=updated.fault_impedance_type,
             fault_mode=updated.fault_mode,
             fault_impedance=updated.fault_impedance,
-            arc_params=updated.arc_params,
-            z0_bus_data=updated.z0_bus_data,
             created_at=updated.created_at,
             updated_at=updated.updated_at,
             content_hash=content_hash,
@@ -474,8 +462,10 @@ class FaultScenarioService:
 
         Rules:
         - If fault_node_ref is empty -> BLOCKER with NAVIGATE_TO_ELEMENT
-        - If SC_1F and no z0_bus_data -> BLOCKER with OPEN_MODAL "Uzupelnij Z0"
-        - If SC_2F and no z2 data -> INELIGIBLE with OPEN_MODAL "Uzupelnij Z2"
+        - Model liczony (HEAD ⊕ scenariusz) oceniony TĄ SAMĄ funkcją co tworzenie biegu
+          (`enm.canonical_analysis.ocen_model_biegu`): walidacja ENM z blokadami, zdolność
+          zwarciowa, składowa zerowa Z0 dla zwarć z udziałem ziemi -> BLOCKER z kodem odmowy
+          biegu, elementem i akcją naprawczą walidatora
         - Lokalizacja na gałęzi (BRANCH/BRANCH_POINT) -> BLOCKER (kod gotowości
           kanonu, karta C6-PERSIST — adapter obliczeniowy liczy wyłącznie węzeł)
         - All messages in Polish
@@ -511,57 +501,34 @@ class FaultScenarioService:
                 )
             )
 
-        # Rule 2: SC_1F without z0_bus_data
-        if scenario.fault_type == FaultType.SC_1F and scenario.z0_bus_data is None:
+        # Rule 2 (partia integracji 10): bramy MODELU — jedno źródło z `create_run`. Dawne
+        # reguły „SC_1F bez z0_bus_data" i „SC_2F bez Z2 (z0_bus_data jako proxy)" czytały
+        # słownik scenariusza, którego żaden bieg nie czytał (fantom): Z0 i Z2 pochodzą
+        # z modelu sieci, więc kwalifikowalność mówiła „blokada", gdy bieg by się policzył,
+        # i „kwalifikuje się", gdy `create_run` odrzucał model. Odtąd obie ścieżki czytają
+        # `ocen_model_biegu` (kody i komunikaty odmowy biegu są kodami blokad tutaj).
+        ocena = ocen_model_biegu(
+            klucz_twin=klucz,
+            analysis_type="short_circuit_sn",
+            scenariusz=self.get_scenario_ze_wpisem(klucz, scenario_id),
+        )
+        for blokada in ocena.blokady:
             blockers.append(
                 AnalysisEligibilityIssue(
-                    code="ELIG_SC1F_NO_Z0",
+                    code=blokada.kod,
                     severity=IssueSeverity.BLOCKER,
-                    message_pl="Brak danych impedancji zerowej — wymagane dla zwarcia jednofazowego",
-                    element_ref=scenario.location.element_ref,
-                    element_type=scenario.location.location_type,
-                    fix_action=FixAction(
-                        action_type="OPEN_MODAL",
-                        modal_type="Uzupełnij Z0",
-                    ),
+                    message_pl=blokada.komunikat,
+                    element_ref=blokada.elementy[0] if blokada.elementy else None,
+                    element_type=None,
+                    fix_action=blokada.fix_action,
                 )
             )
 
-        # Rule 3: SC_2F without z2 data (z0_bus_data used as proxy for z2 in v1)
-        if scenario.fault_type == FaultType.SC_2F and scenario.z0_bus_data is None:
-            blockers.append(
-                AnalysisEligibilityIssue(
-                    code="ELIG_SC2F_NO_Z2",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl="Brak danych impedancji składowej przeciwnej (Z2) — wymagane dla zwarcia dwufazowego",
-                    element_ref=scenario.location.element_ref,
-                    element_type=scenario.location.location_type,
-                    fix_action=FixAction(
-                        action_type="OPEN_MODAL",
-                        modal_type="Uzupełnij Z2",
-                    ),
-                )
-            )
-
-        # v2 Rule 4: IMPEDANCE mode — binding unsupported (PR-25)
-        if scenario.fault_mode == FaultMode.IMPEDANCE:
-            blockers.append(
-                AnalysisEligibilityIssue(
-                    code="ELIG_BINDING_UNSUPPORTED_FAULT_IMPEDANCE",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        "Tryb zwarcia przez impedancję (Zf) nie jest jeszcze obsługiwany "
-                        "przez adapter obliczeniowy — użyj trybu metalicznego"
-                    ),
-                    element_ref=scenario.location.element_ref,
-                    element_type=scenario.location.location_type,
-                    fix_action=FixAction(
-                        action_type="OPEN_MODAL",
-                        modal_type="Zmień tryb zwarcia",
-                        payload_hint={"suggested_mode": "METALLIC"},
-                    ),
-                )
-            )
+        # Tryb IMPEDANCE (karta OD-14, partia integracji 10): impedancja przejścia Z_f wchodzi
+        # do biegu (`enm.scenariusze.opcje_biegu_ze_scenariusza` → `enm/assembler.py` → rdzeń
+        # IEC 60909), więc dawna blokada „binding unsupported" jest skasowana. Reguły danych
+        # Z_f (R_f ≥ 0, X_f ≥ 0) egzekwuje domena przy budowie scenariusza — scenariusz
+        # z niedopuszczalną Z_f nie istnieje, więc kwalifikowalność nie ma czego blokować.
 
         # v2 Rule 5 (karta C6-PERSIST): lokalizacja NA GAŁĘZI (BRANCH/BRANCH_POINT)
         # — binding unsupported. JEDEN kod kanonu dla obu typów lokalizacji

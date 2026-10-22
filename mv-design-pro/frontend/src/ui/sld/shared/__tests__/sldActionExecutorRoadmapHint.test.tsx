@@ -240,6 +240,8 @@ describe('sldActionExecutor — klasa ACTION_ROADMAP_HINT_PL usunięta (Karta W2
       { actionId: 'insert-sectional', kind: 'cable_segment_sn', elementId: 'line/L-1', oczekiwanyOp: 'insert_section_switch_sn' },
       { actionId: 'insert-pole', kind: 'overhead_line_sn', elementId: 'line/L-2', oczekiwanyOp: 'insert_branch_pole_on_segment_sn' },
       { actionId: 'add-load', kind: 'station', elementId: 'stn/ST-1/station', oczekiwanyOp: 'add_nn_load' },
+      // W5-E-TTIT: wyłącznik różnicowoprądowy z menu stacji — kreator wybiera odbiór nN.
+      { actionId: 'add-rcd', kind: 'station', elementId: 'stn/ST-1/station', oczekiwanyOp: 'add_nn_rcd' },
       // continue-trunk: od karty S95-START operacja powstaje WYŁĄCZNIE z punktem
       // startu ciągu (dla KAŻDEGO rodzaju obiektu, także stacji — dawniej tu
       // przypięte „dla stacji zawsze zwraca operację" było właśnie defektem).

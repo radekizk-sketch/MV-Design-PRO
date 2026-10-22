@@ -1,11 +1,11 @@
 {
-  "analysis_id": "5fce0b7bd11b0a856d31a4b91aa3670442a98db625634d3bbae4e7034ce7c86d",
+  "analysis_id": "2898bda2fe695c7e3491ceb74cf3e5c47327f59552dfb8331e2ce74105bd5566",
   "context": {
     "project_name": "CGMES Golden Net",
     "case_name": null,
     "case_id": "case-demo",
     "run_timestamp": "2026-09-16T09:00:00+00:00",
-    "snapshot_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "snapshot_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
     "run_id": "run-sc-scena-zwarcia"
   },
   "status": "COMPUTED_RALPH_LEE",

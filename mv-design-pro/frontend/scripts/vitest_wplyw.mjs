@@ -18,7 +18,7 @@
 //
 // Użycie (z katalogu `frontend/`): node scripts/vitest_wplyw.mjs <wyjscie.json> <tryb> <plik>...
 // Ścieżki zmienionych plików: względem katalogu `frontend/` albo bezwzględne.
-// Wyjście JSON: {"pelny_bieg": "<przyczyna>"|null, "testy": {"<test bezwzgl.>": ["<zmieniony>"...]}}
+// Wyjście JSON: {"pelny_bieg": "<przyczyna>"|null, "wszystkich": N, "lista": ["<test bezwzgl.>"...], "testy": {"<test bezwzgl.>": ["<zmieniony>"...]}}
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createVitest } from 'vitest/node';
@@ -70,7 +70,18 @@ try {
   const posortowane = Object.fromEntries(Object.keys(testy).sort().map((k) => [k, testy[k]]));
   writeFileSync(
     wyjscie,
-    JSON.stringify({ pelny_bieg: pelnyBieg, wszystkich: wszystkie.length, testy: posortowane }, null, 1),
+    JSON.stringify(
+      {
+        pelny_bieg: pelnyBieg,
+        wszystkich: wszystkie.length,
+        // Komplet plików kroku (posortowany) — wzorzec, względem którego pełna bramka lokalna
+        // (`scripts/brama_pelna.py`) dowodzi, że shardy vitest dają razem DOKŁADNIE ten zbiór.
+        lista: wszystkie.map((spec) => spec[1]).sort(),
+        testy: posortowane,
+      },
+      null,
+      1,
+    ),
   );
 } finally {
   await ctx.close();

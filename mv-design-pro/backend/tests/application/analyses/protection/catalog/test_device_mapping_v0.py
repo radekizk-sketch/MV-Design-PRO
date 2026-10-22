@@ -180,7 +180,7 @@ def test_device_mapping_accepts_supported_dt_device() -> None:
 
 def test_device_mapping_rejects_device_without_dt_curve() -> None:
     """Aparat czysto odwrotnoczasowy (bez DT) jest niezgodny z wymaganiem Hoppela —
-    kanon = curve, nie zgadywanie „to chyba jest to samo co IEC_NI"."""
+    kanon = curve, nie zgadywanie „to chyba jest to samo co IEC_SI"."""
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 
     wynik = dopasuj_do_aparatu(
@@ -237,7 +237,7 @@ def test_device_not_found_is_named_not_silently_incompatible() -> None:
 
 # ---------------------------------------------------------------------------
 # Karta W3-C1 — walidator/mapper jako infrastruktura WSPÓLNA (nie tylko
-# Hoppel): iloczyn cech {DT, IEC_NI} × {aparat z zakresem DT, bez} ×
+# Hoppel): iloczyn cech {DT, IEC_SI} × {aparat z zakresem DT, bez} ×
 # {I>> wyznaczone, None}. Wymagania budowane RĘCZNIE (nie przez
 # `wymaganie_z_nastaw`) — ten test dowodzi ogólnej poprawności kontraktu
 # `ProtectionRequirementV0`/`validate_requirement`/`map_requirement_to_device`,
@@ -245,7 +245,7 @@ def test_device_not_found_is_named_not_silently_incompatible() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("curve", ["DT", "IEC_NI"])
+@pytest.mark.parametrize("curve", ["DT", "IEC_SI"])
 @pytest.mark.parametrize("t_51_s_range_declared", [True, False])
 def test_t51s_zakres_sprawdzany_tylko_gdy_krzywa_dt_i_zakres_zadeklarowany(
     curve: str, t_51_s_range_declared: bool

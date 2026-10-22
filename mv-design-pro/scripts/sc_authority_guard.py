@@ -52,6 +52,8 @@ import ast
 import sys
 from pathlib import Path
 
+from guard_parsowanie import sparsuj_plik, uruchom  # noqa: E402
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from importy_ast import ImportPonadKorzen, modul_bazowy, pakiet_pliku  # noqa: E402
@@ -106,11 +108,9 @@ MODUL_BRAMKI_AUTORYTETU = "network_model.core.autorytet_wyniku_zwarciowego"
 BRAMKA_AUTORYTETU_NAZWY: frozenset[str] = frozenset({"wymagaj_autorytetu"})
 
 
-def _wczytaj_ast(sciezka: Path) -> ast.Module | None:
-    try:
-        return ast.parse(sciezka.read_text(encoding="utf-8"), filename=str(sciezka))
-    except (SyntaxError, OSError):
-        return None
+def _wczytaj_ast(sciezka: Path) -> ast.Module:
+    """AST pliku; nieczytelny/niesparsowalny plik z zakresu to czerwień (`BladZrodla`)."""
+    return sparsuj_plik(sciezka)
 
 
 def _sciezka_kropkowana(wyrazenie: ast.expr) -> str:
@@ -191,9 +191,6 @@ def main() -> int:
             naruszenia.append(f"{wzgledna}: plik z zamkniętej listy nie istnieje")
             continue
         drzewo = _wczytaj_ast(sciezka)
-        if drzewo is None:
-            naruszenia.append(f"{wzgledna}: nie udało się sparsować AST")
-            continue
         if not _wywoluje_z_modulu(
             drzewo,
             pakiet_pliku(sciezka, BACKEND_SRC),
@@ -213,9 +210,6 @@ def main() -> int:
             naruszenia.append(f"{wzgledna}: plik z zamkniętej listy nie istnieje")
             continue
         drzewo = _wczytaj_ast(sciezka)
-        if drzewo is None:
-            naruszenia.append(f"{wzgledna}: nie udało się sparsować AST")
-            continue
         if not _wywoluje_z_modulu(
             drzewo,
             pakiet_pliku(sciezka, BACKEND_SRC),
@@ -232,8 +226,6 @@ def main() -> int:
     for sciezka in sorted(BACKEND_SRC.rglob("*.py")):
         wzgledna = sciezka.relative_to(BACKEND_SRC).as_posix()
         drzewo = _wczytaj_ast(sciezka)
-        if drzewo is None:
-            continue
         typy = _konstruowane_typy(drzewo)
         if typy and wzgledna not in KONSTRUKTORZY_WEJSCIA_ZDOLNOSCI_ZALEZNEJ:
             naruszenia.append(
@@ -258,4 +250,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

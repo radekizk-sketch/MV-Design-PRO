@@ -404,7 +404,7 @@ export const LABELS = {
     IEC_SI: 'Normalna odwrotna (SI), IEC',
     IEC_VI: 'Bardzo odwrotna (VI), IEC',
     IEC_EI: 'Ekstremalnie odwrotna (EI), IEC',
-    IEC_LI: 'Długoczasowa odwrotna (LTI), IEC',
+    IEC_LTI: 'Odwrotna długoczasowa (LTI, 120), IEC',
     IEEE_MI: 'Umiarkowanie odwrotna (MI), IEEE',
     IEEE_VI: 'Bardzo odwrotna (VI), IEEE',
     IEEE_EI: 'Ekstremalnie odwrotna (EI), IEEE',

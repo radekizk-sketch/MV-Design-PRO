@@ -16,6 +16,7 @@ from __future__ import annotations
 import math
 
 import pytest
+from enm.assembler import zloz_wejscie_zwarcia
 from enm.mapping import (
     build_zero_sequence_trace,
     build_zero_sequence_zbus,
@@ -35,6 +36,7 @@ from enm.zero_sequence_transformer import (
     ZeroSeqConnection,
     build_transformer_zero_seq_model,
 )
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 S_BASE_MVA = 100.0
@@ -257,7 +259,12 @@ class TestHandCalc1F:
         enm, graph, lv = _build_network()
         z0_bus = build_zero_sequence_zbus(enm, graph)
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph, fault_node_id=lv, c_factor=1.1, tk_s=1.0, z0_bus=z0_bus
+            graph=graph,
+            fault_node_id=lv,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
         assert result.z0_ohm == pytest.approx(_hand_zt0_ohm_lv())
 
@@ -266,7 +273,12 @@ class TestHandCalc1F:
         enm, graph, lv = _build_network()
         z0_bus = build_zero_sequence_zbus(enm, graph)
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph, fault_node_id=lv, c_factor=1.1, tk_s=1.0, z0_bus=z0_bus
+            graph=graph,
+            fault_node_id=lv,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
         z_sum = abs(result.z1_ohm + result.z2_ohm + result.z0_ohm)
         ik1_hand = math.sqrt(3.0) * 1.1 * (_ULV_KV * 1000.0) / z_sum
@@ -294,10 +306,20 @@ class TestHandCalc1F:
         z0_a = build_zero_sequence_zbus(enm_a, g_a)
         z0_b = build_zero_sequence_zbus(enm_b, g_b)
         r_a = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=g_a, fault_node_id=lv_a, c_factor=1.1, tk_s=1.0, z0_bus=z0_a
+            graph=g_a,
+            fault_node_id=lv_a,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_a,
+            czas_tb=czas_tb_roboczy(),
         )
         r_b = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=g_b, fault_node_id=lv_b, c_factor=1.1, tk_s=1.0, z0_bus=z0_b
+            graph=g_b,
+            fault_node_id=lv_b,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_b,
+            czas_tb=czas_tb_roboczy(),
         )
         assert r_b.z0_ohm == pytest.approx(r_a.z0_ohm)
 
@@ -309,10 +331,20 @@ class TestHandCalc1F:
         z0_a = build_zero_sequence_zbus(enm_a, g_a)
         z0_b = build_zero_sequence_zbus(enm_b, g_b)
         r_a = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=g_a, fault_node_id=lv_a, c_factor=1.1, tk_s=1.0, z0_bus=z0_a
+            graph=g_a,
+            fault_node_id=lv_a,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_a,
+            czas_tb=czas_tb_roboczy(),
         )
         r_b = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=g_b, fault_node_id=lv_b, c_factor=1.1, tk_s=1.0, z0_bus=z0_b
+            graph=g_b,
+            fault_node_id=lv_b,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_b,
+            czas_tb=czas_tb_roboczy(),
         )
         assert r_b.z0_ohm != pytest.approx(r_a.z0_ohm)
 
@@ -390,6 +422,29 @@ def _build_isolated_cable_network(b0_siemens_per_km: float):
     return enm, graph, b2_node, ulv_kv, r0_per_km, x0_per_km, length_km
 
 
+class TestPustaSiecZ0:
+    """Partia integracji 11: graf bez węzłów dawał surowy ``ValueError`` numpy
+    (``matrix_rank`` na tablicy 0x0) — koperta wejścia zwarcia 1F pustego przypadku kończyła
+    się 500. Iloczyn cech: {scenariusz MAX, MIN} × {macierz pusta, ślad pusty} — pusta sieć
+    to macierz 0x0, nie wyjątek i nie fabrykacja."""
+
+    @pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+    def test_pusta_siec_daje_macierz_zerowego_rozmiaru(self, scenariusz):
+        enm = EnergyNetworkModel(header=ENMHeader(name="Pusta", revision=1))
+        graph = map_enm_to_network_graph(enm)
+        z0 = build_zero_sequence_zbus(enm, graph, scenario=scenariusz)
+        assert z0.shape == (0, 0)
+        assert z0.dtype == complex
+
+    def test_pusta_siec_koperta_zwarcia_1f_bez_wyjatku(self):
+        enm = EnergyNetworkModel(header=ENMHeader(name="Pusta", revision=1))
+        for scenariusz in ("max", "min"):
+            wejscie = zloz_wejscie_zwarcia(
+                enm.model_dump(mode="json"), {"fault_type": "1F", "scenario": scenariusz}
+            )
+            assert len(wejscie.graph.nodes) == 0
+
+
 class TestLineShuntCapacitanceZ0:
     def test_isolated_network_without_b0_is_singular(self):
         """Kontrolne: bez B0 (jak przed naprawą) sieć CAŁKOWICIE izolowana ma
@@ -413,7 +468,12 @@ class TestLineShuntCapacitanceZ0:
         )
         z0_bus = build_zero_sequence_zbus(enm, graph)
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph, fault_node_id=b2, c_factor=1.1, tk_s=1.0, z0_bus=z0_bus
+            graph=graph,
+            fault_node_id=b2,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
 
         z_base_ohm = (ulv_kv**2) / S_BASE_MVA
@@ -443,7 +503,12 @@ class TestLineShuntCapacitanceZ0:
         )
         z0_with = build_zero_sequence_zbus(enm_with, graph_with)
         result_with = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-            graph=graph_with, fault_node_id=b2_with, c_factor=1.1, tk_s=1.0, z0_bus=z0_with
+            graph=graph_with,
+            fault_node_id=b2_with,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_with,
+            czas_tb=czas_tb_roboczy(),
         )
         # Referencja z Dyn11+izolowany, ale ZE ŹRÓDŁEM Z0 osiągalnym gdzie indziej
         # nie istnieje w tej sieci — więc bez B0 macierz jest osobliwa (patrz test
@@ -464,7 +529,12 @@ class TestHandCalc2FZ:
         enm, graph, lv = _build_network()
         z0_bus = build_zero_sequence_zbus(enm, graph)
         result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
-            graph=graph, fault_node_id=lv, c_factor=1.1, tk_s=1.0, z0_bus=z0_bus
+            graph=graph,
+            fault_node_id=lv,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
         z1, z2, z0 = result.z1_ohm, result.z2_ohm, result.z0_ohm
         z_k_hand = z1 + (z2 * z0) / (z2 + z0)

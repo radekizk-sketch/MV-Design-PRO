@@ -465,6 +465,65 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     definicja: 'Największy prąd zwarciowy, który aparat potrafi wyłączyć.',
     norma: 'IEC 60947-2', // źródło: IEC 60947-2 — zdolność łączeniowa zwarciowa
   },
+
+  // — Wyłączniki różnicowoprądowe nN (karta W5-E-TTIT; rekord `LVRcdType.to_dict()`) —
+  i_delta_n_a: {
+    symbol: 'IΔn',
+    etykieta: 'Prąd różnicowy znamionowy zadziałania',
+    jednostka: 'A',
+    typ: 'liczba',
+    miejscaDziesietne: 3,
+    definicja: 'Prąd różnicowy, przy którym wyłącznik różnicowoprądowy musi zadziałać; '
+      + 'w układzie TT wyznacza napięcie dotykowe R_A·IΔn.',
+    norma: 'IEC 61008-1', // źródło: IEC 61008-1 — RCCB, prąd różnicowy znamionowy
+  },
+  rcd_type: {
+    symbol: 'Typ',
+    etykieta: 'Rodzaj prądu różnicowego',
+    jednostka: '',
+    typ: 'tekst',
+    definicja: 'Kształt prądu różnicowego, na który wyłącznik reaguje: AC (sinusoidalny), '
+      + 'A (także pulsujący jednokierunkowy), F, B.',
+    norma: 'IEC 61008-1', // źródło: IEC 61008-1 kl. 4 — klasyfikacja wg zachowania przy składowej stałej
+  },
+  t_a_s: {
+    symbol: 'ta(IΔn)',
+    etykieta: 'Maksymalny czas wyłączenia przy IΔn',
+    jednostka: 's',
+    typ: 'liczba',
+    miejscaDziesietne: 2,
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym IΔn.',
+    norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
+  },
+  t_a_2idn_s: {
+    symbol: 'ta(2·IΔn)',
+    etykieta: 'Maksymalny czas wyłączenia przy 2·IΔn',
+    jednostka: 's',
+    typ: 'liczba',
+    miejscaDziesietne: 2,
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym 2·IΔn.',
+    norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
+  },
+  t_a_5idn_s: {
+    symbol: 'ta(5·IΔn)',
+    etykieta: 'Maksymalny czas wyłączenia przy 5·IΔn',
+    jednostka: 's',
+    typ: 'liczba',
+    miejscaDziesietne: 2,
+    definicja: 'Najdłuższy dopuszczalny czas wyłączenia przy prądzie różnicowym równym 5·IΔn '
+      + '(dla IΔn ≤ 0,03 A — przy 0,25 A).',
+    norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2)
+  },
+  t_nieczuly_min_s: {
+    symbol: 'tnz',
+    etykieta: 'Minimalny czas niezadziałania',
+    jednostka: 's',
+    typ: 'liczba',
+    miejscaDziesietne: 2,
+    definicja: 'Czas, przez który wyłącznik selektywny (typ S) nie może zadziałać — podstawa '
+      + 'selektywności z wyłącznikiem różnicowoprądowym ogólnym poniżej.',
+    norma: 'IEC 61008-1', // źródło: IEC 61008-1 Tabela 1 (kl. 9.9.2), typ S
+  },
 };
 
 /** Zwraca definicję parametru po kluczu pola API lub `null`, gdy pole jest niejednoznaczne. */

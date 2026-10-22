@@ -79,6 +79,8 @@ import ast
 import sys
 from pathlib import Path
 
+from guard_parsowanie import czytaj_tekst, sparsuj_tekst, uruchom  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
@@ -233,15 +235,8 @@ def main() -> int:
         rel = path.relative_to(BACKEND_SRC).as_posix()
         if rel in WYLACZONE_PLIKI:
             continue
-        try:
-            tresc = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        try:
-            drzewo = ast.parse(tresc, filename=str(path))
-        except SyntaxError as exc:
-            print(f"WARN: {path}:{exc.lineno}: nie da sie sparsowac ({exc.msg})")
-            continue
+        tresc = czytaj_tekst(path)
+        drzewo = sparsuj_tekst(tresc, str(path))
         przeskanowano += 1
         for sygnatura, linia in zbierz_naruszenia(tresc, drzewo):
             naruszenia.append(f"  {rel}:{linia}: {sygnatura}")
@@ -278,4 +273,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

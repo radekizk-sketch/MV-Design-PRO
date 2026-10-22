@@ -86,8 +86,7 @@ def test_generate_sc1_proof_odrzuca_niezgodny_typ_zwarcia():
         z2_ohm=data.z2_ohm,
         z0_ohm=data.z0_ohm,
         a_operator=data.a_operator,
-        m_factor=data.m_factor,
-        n_factor=data.n_factor,
+        tk_s=1.0,
     )
     with pytest.raises(ValueError, match="policzone dla typu"):
         ProofGenerator.generate_sc1_proof(data)

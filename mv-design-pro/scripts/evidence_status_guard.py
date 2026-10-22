@@ -44,6 +44,8 @@ import ast
 import sys
 from pathlib import Path
 
+from guard_parsowanie import czytaj_tekst, sparsuj_tekst, uruchom  # noqa: E402
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
 
@@ -193,10 +195,7 @@ class _FunctionTracker(ast.NodeVisitor):
 
 def scan_source(source: str, rel_path: str) -> tuple[list[str], set[tuple[str, str]]]:
     """Skanuj TEKST źródła (bez dysku) — rdzeń logiki, używany też przez testy."""
-    try:
-        tree = ast.parse(source, filename=rel_path)
-    except SyntaxError:
-        return [], set()
+    tree = sparsuj_tekst(source, rel_path)
     tracker = _FunctionTracker(rel_path)
     tracker.visit(tree)
     return tracker.violations, tracker.hits
@@ -204,10 +203,7 @@ def scan_source(source: str, rel_path: str) -> tuple[list[str], set[tuple[str, s
 
 def _scan_file(path: Path) -> tuple[list[str], set[tuple[str, str]]]:
     rel_path = path.relative_to(BACKEND_SRC).as_posix()
-    try:
-        source = path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        return [], set()
+    source = czytaj_tekst(path, rel_path)
     return scan_source(source, rel_path)
 
 
@@ -276,4 +272,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

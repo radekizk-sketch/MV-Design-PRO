@@ -93,7 +93,7 @@ async function createScenario(
         name,
         fault_type: 'SC_3F',
         location: { element_ref: elementRef, location_type: 'BUS', position: null },
-        config: { c_factor: 1.1, thermal_time_seconds: 1, include_branch_contributions: false },
+        config: { scenariusz: 'MAX', nadpisanie_c: null, thermal_time_seconds: 1, include_branch_contributions: false },
       },
     },
   );

@@ -91,7 +91,7 @@ def _wynik_hoppela() -> ProtectionSettingsResult:
 
 # Rodzina e2TANGO 450/600/800/1000/1200 (karta techniczna producenta, DT wśród
 # krzywych deklarowanych) — rodzina LEGACY 400/600/.../2000_V0 (NIEWERYFIKOWANY,
-# tylko IEC_NI) nie obsługuje DT: wymaganie Hoppela (curve="DT") jest z definicji
+# tylko IEC_SI) nie obsługuje DT: wymaganie Hoppela (curve="DT") jest z definicji
 # niezgodne, więc nie nadaje się do testu mapowania kluczy producenta.
 @pytest.mark.parametrize("device_id", ["EM_E2TANGO_450", "EM_E2TANGO_1000"])
 def test_vendor_mapping_for_elektrometal_dt_devices(
@@ -121,7 +121,7 @@ def test_vendor_mapping_for_elektrometal_dt_devices(
 def test_elektrometal_dt_family_rejects_legacy_iec_ni_only_device(
     jednostka_zakresu_testu: tuple[float, float]
 ) -> None:
-    """Rodzina legacy (400-2000_V0) deklaruje wyłącznie IEC_NI — wymaganie
+    """Rodzina legacy (400-2000_V0) deklaruje wyłącznie IEC_SI — wymaganie
     definite-time Hoppela jest z nią niezgodne krzywą, nie fabrykowaną zgodą."""
     wymaganie = wymaganie_z_nastaw(_wynik_hoppela())
 

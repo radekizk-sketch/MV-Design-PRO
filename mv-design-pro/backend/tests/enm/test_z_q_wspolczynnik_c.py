@@ -24,6 +24,7 @@ from enm.mapping import (
     map_enm_to_network_graph,
 )
 from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source, Transformer
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.grid_source_preview import (
     GridSourcePreviewInput,
@@ -34,6 +35,12 @@ from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Sol
 from tests.golden.parytet_assemblera.harness import _bieg
 
 PASMA = [(110.0, 4000.0, "SN/WN"), (15.0, 250.0, "SN/WN"), (0.4, 10.0, "nN")]
+
+
+def _tol(u_kv: float) -> str | None:
+    """Tolerancja sieci nN źródła wprost na szynie (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): +6 %
+    dla pasma nN (liczby testów sprzed karty bez zmian), brak dla SN/WN (nie dotyczy)."""
+    return "PLUS_6" if u_kv <= 1.0 else None
 
 
 def _enm_pcc(u_kv: float, sk_mva: float, rx: float | None = 0.1) -> EnergyNetworkModel:
@@ -48,6 +55,7 @@ def _enm_pcc(u_kv: float, sk_mva: float, rx: float | None = 0.1) -> EnergyNetwor
                 model="short_circuit_power",
                 sk3_mva=sk_mva,
                 rx_ratio=rx,
+                lv_voltage_tolerance=_tol(u_kv),
             )
         ],
     )
@@ -60,9 +68,9 @@ def _ik_deklarowane_a(u_kv: float, sk_mva: float) -> float:
 @pytest.mark.parametrize(("u_kv", "sk_mva", "pasmo"), PASMA)
 def test_z_q_rowna_sie_c_max_u2_przez_sk(u_kv: float, sk_mva: float, pasmo: str) -> None:
     enm = _enm_pcc(u_kv, sk_mva)
-    z_q = _source_positive_impedance_ohm(enm.sources[0], u_kv)
+    z_q = _source_positive_impedance_ohm(enm.sources[0], u_kv, tolerancja_nn=_tol(u_kv))
     assert z_q is not None
-    c_max = c_for_node(u_kv, "MAX")
+    c_max = c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv))
     assert abs(z_q) == pytest.approx(c_max * u_kv**2 / sk_mva, rel=1e-12)
     assert z_q.real / z_q.imag == pytest.approx(0.1, rel=1e-12)
     wpis = build_grid_source_trace(enm)[0]
@@ -80,31 +88,83 @@ def test_bieg_w_pcc_odtwarza_prad_deklarowany_osd(u_kv: float, sk_mva: float, pa
     graph = map_enm_to_network_graph(_enm_pcc(u_kv, sk_mva))
     node_id = next(iter(graph.nodes))
     solver = ShortCircuitIEC60909Solver()
-    ik_max = solver.compute_3ph_short_circuit(graph, node_id, c_for_node(u_kv, "MAX"), 1.0)
-    ik_min = solver.compute_3ph_short_circuit(graph, node_id, c_for_node(u_kv, "MIN"), 1.0)
+    ik_max = solver.compute_3ph_short_circuit(
+        graph,
+        node_id,
+        c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)),
+        1.0,
+        czas_tb=czas_tb_roboczy(),
+    )
+    ik_min = solver.compute_3ph_short_circuit(
+        graph,
+        node_id,
+        c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv)),
+        1.0,
+        czas_tb=czas_tb_roboczy(),
+    )
     deklarowane = _ik_deklarowane_a(u_kv, sk_mva)
     assert ik_max.ikss_a == pytest.approx(deklarowane, rel=1e-9)
     # MIN: Z_Q z (c_max, Sk''max) = impedancja fizyczna; c_min tylko w źródle napięciowym
     assert ik_min.ikss_a == pytest.approx(
-        deklarowane * c_for_node(u_kv, "MIN") / c_for_node(u_kv, "MAX"), rel=1e-9
+        deklarowane
+        * c_for_node(u_kv, "MIN", tolerancja_nn=_tol(u_kv))
+        / c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)),
+        rel=1e-9,
     )
 
 
 @pytest.mark.parametrize(("u_kv", "sk_mva", "pasmo"), PASMA)
 def test_podglad_frozen_i_bieg_zgadzaja_sie_w_pcc(u_kv: float, sk_mva: float, pasmo: str) -> None:
-    """Podgląd źródła (solver FROZEN, c=1 przy Z=U²/Sk) i bieg kanoniczny dają TEN SAM Ik3
-    w węźle przyłączenia — dwie ścieżki, jedna liczba (przed K6 różniły się o c)."""
+    """Podgląd źródła i bieg kanoniczny dają TEN SAM Ik3 i TĘ SAMĄ Z_Q w węźle
+    przyłączenia — dwie ścieżki, jedna liczba (przed K6 różniły się o c w Ik3; przed
+    kartą WSPOLCZYNNIK-C-JEDEN-NOSNIK podgląd liczył Z=U²/Sk z c=1, a bieg Z_Q=c·U²/Sk)."""
     podglad = compute_grid_source_preview(
         GridSourcePreviewInput(
-            voltage_kv=u_kv, short_circuit_mode="SHORT_CIRCUIT_POWER", sk3_mva=sk_mva, rx_ratio=0.1
+            voltage_kv=u_kv,
+            short_circuit_mode="SHORT_CIRCUIT_POWER",
+            scenariusz="MAX",
+            tolerancja_nn=_tol(u_kv),
+            sk3_mva=sk_mva,
+            rx_ratio=0.1,
         )
     )
     graph = map_enm_to_network_graph(_enm_pcc(u_kv, sk_mva))
     node_id = next(iter(graph.nodes))
     bieg = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(
-        graph, node_id, c_for_node(u_kv, "MAX"), 1.0
+        graph,
+        node_id,
+        c_for_node(u_kv, "MAX", tolerancja_nn=_tol(u_kv)),
+        1.0,
+        czas_tb=czas_tb_roboczy(),
     )
     assert bieg.ikss_a / 1000.0 == pytest.approx(podglad.ik3_ka, rel=1e-9)
+    z_q_biegu = impedancja_zrodla_sieciowego(
+        _enm_pcc(u_kv, sk_mva).sources[0], u_kv, tolerancja_nn=_tol(u_kv)
+    )
+    assert z_q_biegu is not None
+    assert abs(podglad.z1_ohm - z_q_biegu[0]) == pytest.approx(0.0, abs=1e-12)
+
+
+@pytest.mark.parametrize(("u_kv", "sk_mva", "pasmo"), PASMA)
+@pytest.mark.parametrize("scenariusz", ["MAX", "MIN"])
+def test_podglad_impedancji_jawnej_uzywa_c_tabeli(
+    u_kv: float, sk_mva: float, pasmo: str, scenariusz: str
+) -> None:
+    """Tryb impedancji jawnej: I″k = c·U/(√3·|Z|) z c tabeli 1 dla U_nQ i scenariusza
+    (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK — podgląd liczył dotąd c=1, zaniżając I″k o c)."""
+    z = complex(0.05 * u_kv, 0.5 * u_kv)
+    podglad = compute_grid_source_preview(
+        GridSourcePreviewInput(
+            voltage_kv=u_kv,
+            short_circuit_mode="IMPEDANCE",
+            scenariusz=scenariusz,  # type: ignore[arg-type]
+            tolerancja_nn=_tol(u_kv),
+            r_ohm=z.real,
+            x_ohm=z.imag,
+        )
+    )
+    c = c_for_node(u_kv, scenariusz, tolerancja_nn=_tol(u_kv))  # type: ignore[arg-type]
+    assert podglad.ik3_ka * 1000.0 == pytest.approx(c * u_kv * 1000.0 / (3**0.5 * abs(z)))
 
 
 def test_impedancja_jawna_bez_c_i_bez_zmian() -> None:
@@ -122,7 +182,7 @@ def test_impedancja_jawna_bez_c_i_bez_zmian() -> None:
             )
         ],
     )
-    wynik = impedancja_zrodla_sieciowego(enm.sources[0], 15.0)
+    wynik = impedancja_zrodla_sieciowego(enm.sources[0], 15.0, tolerancja_nn=None)
     assert wynik is not None
     z_q, wpis = wynik
     assert z_q == complex(0.09, 0.9)
@@ -135,7 +195,7 @@ def test_zrodlo_bez_danych_nie_ma_impedancji_ani_sladu() -> None:
         buses=[Bus(ref_id="b1", name="B1", voltage_kv=15.0)],
         sources=[Source(ref_id="s1", name="Grid", bus_ref="b1", model="short_circuit_power")],
     )
-    assert impedancja_zrodla_sieciowego(enm.sources[0], 15.0) is None
+    assert impedancja_zrodla_sieciowego(enm.sources[0], 15.0, tolerancja_nn=None) is None
     assert build_grid_source_trace(enm) == []
     assert map_enm_to_network_graph(enm).get_grid_sc_sources() == []
 
@@ -188,7 +248,9 @@ def test_szyna_za_transformatorem_niesie_z_q_z_c() -> None:
     z_q = graph.get_grid_sc_sources()[0].z_ohm
     assert abs(z_q) == pytest.approx(1.1 * 110.0**2 / 4000.0, rel=1e-12)
     mv = next(n for n in graph.nodes.values() if n.voltage_level == 33.0)
-    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(graph, mv.id, 1.1, 1.0)
+    res = ShortCircuitIEC60909Solver().compute_3ph_short_circuit(
+        graph, mv.id, 1.1, 1.0, czas_tb=czas_tb_roboczy()
+    )
     z_q_33 = z_q * (33.0 / 110.0) ** 2
     k_t = 0.95 * 1.1 / (1.0 + 0.6 * 0.10)
     z_t = complex(0.0, 0.10 * 33.0**2 / 25.0) * k_t
@@ -199,8 +261,8 @@ def test_szyna_za_transformatorem_niesie_z_q_z_c() -> None:
 def test_sekwencja_zerowa_idzie_za_z_q_z_c() -> None:
     """Z0 źródła = (Z0/Z1)·Z_Q — jedna funkcja Z_Q, więc c wchodzi też do sekwencji zerowej."""
     enm = _enm_za_transformatorem()
-    z_q = _source_positive_impedance_ohm(enm.sources[0], 110.0)
-    z0 = _source_zero_impedance_ohm(enm.sources[0], 110.0)
+    z_q = _source_positive_impedance_ohm(enm.sources[0], 110.0, tolerancja_nn=None)
+    z0 = _source_zero_impedance_ohm(enm.sources[0], 110.0, tolerancja_nn=None)
     assert z_q is not None and z0 is not None
     assert z0 == z_q * 1.5
     assert abs(z0) == pytest.approx(1.5 * 1.1 * 110.0**2 / 4000.0, rel=1e-12)

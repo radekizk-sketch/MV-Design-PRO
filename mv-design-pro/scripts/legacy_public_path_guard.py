@@ -3274,6 +3274,45 @@ def check_dynamika_w_tle_queue_resurrection() -> list[str]:
     return violations
 
 
+# --- Partia integracji 10 (2026-10-16): fasada krzywych bez konsumenta — bramka wskrzeszenia ---
+# `protection/curves/curve_calculator.py` (`CurveDefinition`, `CurvePoint`, `CurveStandard`,
+# `calculate_curve_points`, `calculate_trip_time`) nie miala ani jednego importera
+# produkcyjnego ani testowego (pomiar grepem przy kasacji); krzywe licza adaptery
+# `iec_curves`/`ieee_curves` delegujace do rdzenia IEC 60255. Druga fasada tej samej
+# powierzchni wrocilaby jako trzecia sciezka liczenia czasu zadzialania.
+PARTIA10_SKASOWANE_SCIEZKI_BACKEND: tuple[str, ...] = ("protection/curves/curve_calculator.py",)
+#: Definicje skasowanej fasady — zakazane w calym `backend/src` (nazwy bez kolizji: pomiar).
+PARTIA10_SKASOWANE_DEFINICJE_BACKEND: frozenset[str] = frozenset(
+    {"CurveDefinition", "calculate_curve_points", "CurveStandard"}
+)
+
+
+def check_partia10_kasacja_resurrection() -> list[str]:
+    """Partia integracji 10: fasada `curve_calculator.py` bez konsumenta nie wraca —
+    patrz komentarz nad `PARTIA10_SKASOWANE_SCIEZKI_BACKEND`."""
+    violations: list[str] = []
+    znak = "partia integracji 10 — fasada krzywych bez konsumenta"
+    for sciezka in PARTIA10_SKASOWANE_SCIEZKI_BACKEND:
+        if (BACKEND_SRC_DIR / sciezka).exists():
+            violations.append(
+                f"[resurrected-module] backend/src/{sciezka}: usuniete ({znak}) — nie odtwarzaj"
+            )
+    if BACKEND_SRC_DIR.exists():
+        for py_file in sorted(BACKEND_SRC_DIR.rglob("*.py")):
+            rel_path = (
+                py_file.relative_to(ROOT).as_posix()
+                if py_file.is_relative_to(ROOT)
+                else str(py_file)
+            )
+            tree = ast.parse(read_text(py_file), filename=str(py_file))
+            for nazwa, lineno in _definicje_py(tree):
+                if nazwa in PARTIA10_SKASOWANE_DEFINICJE_BACKEND:
+                    violations.append(
+                        f"[resurrected-definition] {rel_path}:{lineno}: {nazwa} ({znak})"
+                    )
+    return violations
+
+
 def main() -> int:
     violations = (
         check_legacy_public_paths()
@@ -3300,6 +3339,7 @@ def main() -> int:
         + check_ab1b3b_odbiory_resurrection()
         + check_kasacja_scl_cim_klient_resurrection()
         + check_dynamika_w_tle_queue_resurrection()
+        + check_partia10_kasacja_resurrection()
     )
     if violations:
         print("legacy-public-path-guard: FAILED")

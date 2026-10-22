@@ -955,7 +955,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "98659bf15c9d9668abd4f3dbab3e825c51b30062697750b99d487f887b33d52d",
+    "hash_sha256": "b7b5fd75d5c98f669951a0f6a7529bf8f32fe1d8fea0517dd7205cbaa8fb4724",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -986,6 +986,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "c596504c-1330-582c-bf04-ae94acf26eba",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",
@@ -1109,14 +1110,13 @@
   "sources": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "f3767143-9c5c-598d-9460-2cb312400f75",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -1238,6 +1238,7 @@
       "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1290,6 +1291,7 @@
       "lv_bus_ref": "nn/32d9d46bb2e6b3dc2dff4599f3f2cd3c/feeder_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-2000kva-dyn11",
         "catalog_item_version": "legacy",

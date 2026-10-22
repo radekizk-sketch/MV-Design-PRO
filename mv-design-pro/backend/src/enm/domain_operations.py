@@ -29,12 +29,17 @@ from network_model.catalog.audit2_catalogs import (
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.types import CatalogBinding
+from network_model.catalog.wartosci_robocze import (
+    PARAMETRY_APARATU_SN,
+    blad_wartosci_projektanta,
+)
 from network_model.core.uziemienie import (
     ETYKIETA_PL_PUNKTU_NEUTRALNEGO,
     ETYKIETA_PL_UZIEMIENIA_EKRANU,
     TYPY_PUNKTU_NEUTRALNEGO,
     UZIEMIENIA_EKRANU_KABLA,
 )
+from network_model.core.voltage_factor import TOLERANCJE_NAPIECIA_NN
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.pochodne import (
     PROWENIENCJA_WYPROWADZONE,
@@ -150,6 +155,7 @@ from .tor_pola import (
     wolne_pole_szyny,
 )
 from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .uziom_instalacji import KOD_BLEDU_R_A, waliduj_r_a
 from .validator import ENMValidator
 from .zajetosc_pol import (
     KOD_POLE_ZAJETE,
@@ -529,6 +535,10 @@ INWENTARZ_DEKLARACJI_KATALOGOWYCH: dict[str, str] = {
         "punkt rozgałęzienia: _branch_point_catalog_item (własny katalog obiektów)"
     ),
     "assign_catalog_to_element": "przypisanie pozycji do elementu: _brama_katalogowa_przypisania",
+    "update_element_parameters": (
+        "aparat SN po wyczyszczeniu wartości projektanta (powrót do karty): "
+        "_brama_katalogowa_aparatu_sn"
+    ),
 }
 
 
@@ -551,7 +561,10 @@ def _apply_catalog_metadata(
 
     if default_source_mode:
         target["source_mode"] = default_source_mode
-        target["parameter_source"] = "CATALOG"
+        # Wartości projektanta (`overrides`) należą do elementu i przeżywają (prze)przypisanie
+        # pozycji — znacznik zostaje wtedy OVERRIDE (E010), jedno źródło prawdy dla wszystkich
+        # wołających zapisywacza.
+        target["parameter_source"] = "OVERRIDE" if target.get("overrides") else "CATALOG"
 
     version = _extract_catalog_binding_version(catalog_binding)
     if version:
@@ -4415,11 +4428,28 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         "sn_voltage_kv",
         "voltage_hv_kv",
         "sk3_hv_mva",
-        "c_max",
-        "c_min",
     ):
         if materialized_params.get(key) is not None:
             source_data[key] = materialized_params[key]
+
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: źródło przyłączone WPROST do szyny nN (ekwiwalent
+    # ręczny `skip_hv_transformer` na napięciu nN — sieć nN bez transformatora w modelu) jest
+    # drugim nośnikiem tolerancji napięcia sieci nN (+6 % / +10 %, wiersz nN tabeli 1
+    # IEC 60909-0). Ten sam predykat zapisu co edycja parametrów źródła; brak = brak
+    # deklaracji (odmowa zwarcia nN z akcją naprawczą, nigdy wiersz tabeli po cichu).
+    tolerancja_zrodla = payload.get("lv_voltage_tolerance")
+    if tolerancja_zrodla is not None:
+        napiecie_szyny_zrodla = (
+            voltage_kv
+            if source_bus_ref in gpz_section_bus_refs
+            else materialized_params.get("voltage_hv_kv")
+        )
+        powod_tolerancji = _powod_odmowy_tolerancji_nn(
+            tolerancja_zrodla, napiecie_szyny_zrodla, element_pl="źródło"
+        )
+        if powod_tolerancji is not None:
+            return _error_response(powod_tolerancji, "source.invalid_lv_voltage_tolerance")
+        source_data["lv_voltage_tolerance"] = tolerancja_zrodla
 
     result = create_device(new_enm, source_data)
     if not result.success:
@@ -5198,6 +5228,39 @@ def _build_neutral_grounding(
     return config, None
 
 
+def _powod_odmowy_tolerancji_nn(
+    tolerancja: Any, napiecie_kv: Any, *, element_pl: str
+) -> str | None:
+    """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN przy ZAPISIE — jeden
+    predykat dla każdego nośnika (transformator: strona dolna, źródło: szyna przyłączenia).
+
+    Wartość spoza słownika tabeli 1 IEC 60909-0 albo deklaracja na elemencie, który nie
+    zasila sieci nN (napięcie strony/szyny spoza pasma nN — ``enm.tolerancja_nn`` takiej
+    deklaracji nie czyta), to odmowa nazwana: kontrolka, którą obliczenie zignorowałoby,
+    nie może zapisać danej. ``None`` zdejmuje deklarację. Zwraca zdanie powodu odmowy albo
+    ``None``; kod błędu podaje wołający LITERAŁEM w ``_error_response`` (kody kanału błędu
+    operacji są wyprowadzane skanem AST z wywołań ``_error_response``).
+    """
+    if tolerancja is None:
+        return None
+    if tolerancja not in TOLERANCJE_NAPIECIA_NN:
+        return (
+            f"Tolerancja napięcia sieci nN '{tolerancja}' spoza słownika tabeli 1 IEC 60909-0 "
+            "(+6 % albo +10 %)."
+        )
+    if napiecie_kv is not None and (
+        isinstance(napiecie_kv, bool)
+        or not isinstance(napiecie_kv, int | float)
+        or not w_pasmie_nn(float(napiecie_kv))
+    ):
+        return (
+            f"Tolerancję napięcia sieci nN deklaruje {element_pl} zasilający sieć nN "
+            f"({OPIS_PASMA_NN}) — napięcie {napiecie_kv!r} kV nie leży w paśmie nN, więc "
+            "deklaracja nie wybierałaby żadnego wiersza tabeli 1 IEC 60909-0."
+        )
+    return None
+
+
 def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any] | None:
     """W5-A: pola słownikowe transformatora sprawdzane PRZY ZAPISIE — ten sam predykat,
     który czyta walidator (E-W5-02 grupa połączeń IEC 60076-1, E063 układ nN, spójność
@@ -5216,6 +5279,11 @@ def _blad_slownikow_transformatora(parameters: dict[str, Any]) -> dict[str, Any]
             f"Układ sieci nN '{uklad}' spoza słownika ({', '.join(UKLADY_SIECI_NN)}).",
             "transformer.invalid_lv_earthing_system",
         )
+    powod_tolerancji = _powod_odmowy_tolerancji_nn(
+        parameters.get("lv_voltage_tolerance"), None, element_pl="transformator"
+    )
+    if powod_tolerancji is not None:
+        return _error_response(powod_tolerancji, "transformer.invalid_lv_voltage_tolerance")
     for klucz, strona in (("hv_neutral", "górnej"), ("lv_neutral", "dolnej")):
         config = parameters.get(klucz)
         if config is None:
@@ -5275,6 +5343,16 @@ def _apply_station_neutral_grounding(
                 "station.invalid_nn_earthing_system",
             )
         tr_data["lv_earthing_system"] = system
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN stacji (+6 % / +10 %,
+    # wiersz nN tabeli 1 IEC 60909-0) — ten sam blok i ten sam nośnik co układ sieci nN.
+    tolerancja = earthing.get("lv_voltage_tolerance")
+    powod_tolerancji = _powod_odmowy_tolerancji_nn(
+        tolerancja, tr_data.get("ulv_kv"), element_pl="transformator stacji"
+    )
+    if powod_tolerancji is not None:
+        return _error_response(powod_tolerancji, "station.invalid_lv_voltage_tolerance")
+    if tolerancja is not None:
+        tr_data["lv_voltage_tolerance"] = tolerancja
     return None
 
 
@@ -5477,7 +5555,7 @@ def _przypisz_aparat_pola_sprzeglu(
         if isinstance(galaz, dict) and galaz.get("ref_id") == coupler_ref:
             galaz["catalog_ref"] = catalog_ref
             galaz["catalog_namespace"] = "APARAT_SN"
-            galaz["parameter_source"] = "CATALOG"
+            galaz["parameter_source"] = "OVERRIDE" if galaz.get("overrides") else "CATALOG"
             galaz["source_mode"] = "KATALOG"
             galaz["materialized_params"] = copy.deepcopy(apparatus_params)
             galaz["tags"] = sorted({*(galaz.get("tags") or []), "station_field_device"})
@@ -9412,6 +9490,22 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         if blad_grupy is not None:
             return blad_grupy
         tr_data["vector_group"] = str(grupa_payload).strip()
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN zasilanej z tego
+    # transformatora (+6 % / +10 %, wiersz nN tabeli 1 IEC 60909-0) — ten sam słownik co
+    # `_blad_slownikow_transformatora` (aktualizacja parametrów) i ten sam warunek pasma strony
+    # dolnej co zapis stanu końcowego; brak klucza = brak deklaracji (odmowa zwarcia nN
+    # z akcją naprawczą, nigdy wiersz tabeli po cichu).
+    tolerancja_payload = payload.get("lv_voltage_tolerance")
+    if tolerancja_payload is not None:
+        blad_slownika = _blad_slownikow_transformatora({"lv_voltage_tolerance": tolerancja_payload})
+        if blad_slownika is not None:
+            return blad_slownika
+        powod_tolerancji = _powod_odmowy_tolerancji_nn(
+            tolerancja_payload, tr_data.get("ulv_kv"), element_pl="transformator"
+        )
+        if powod_tolerancji is not None:
+            return _error_response(powod_tolerancji, "transformer.invalid_lv_voltage_tolerance")
+        tr_data["lv_voltage_tolerance"] = tolerancja_payload
 
     # OLTC/DETC (V12K-048, G-TRF): materializuj kanoniczny TapChanger, gdy operator
     # zażądał regulacji. Reużycie proven helpera GPZ — każde pole mapuje na realne
@@ -9793,7 +9887,12 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         # `source_mode` z payloadu pozwalał wcześniej opisać pochodzenie inaczej,
         # niż wynika ze stanu faktycznego (kable i transformatory i tak je gubiły).
         target_element["catalog_ref"] = catalog_item_id
-        target_element["parameter_source"] = "CATALOG"
+        # Wartości projektanta (`overrides`) należą do ELEMENTU, nie do pozycji katalogu —
+        # zmiana pozycji ich nie kasuje, więc znacznik zostaje OVERRIDE (E010: niepuste
+        # nadpisania bez OVERRIDE są blokadą walidatora).
+        target_element["parameter_source"] = (
+            "OVERRIDE" if target_element.get("overrides") else "CATALOG"
+        )
         target_element["source_mode"] = "KATALOG"
         target_element["materialized_params"] = tabliczka_przypisania
         if catalog_namespace:
@@ -9972,6 +10071,46 @@ def _blad_stanu_lacznika_w_parametrach(
     return None
 
 
+def _nadpisania_aparatu_sn(
+    surowe: object,
+) -> tuple[list[dict[str, Any]], str | None]:
+    """Lista wartości projektanta aparatu SN w postaci znormalizowanej albo powód odmowy.
+
+    Wpis: ``{"key": parametr rejestru, "value": liczba, "reason": napis | None}``. Klucz
+    powtórzony jest odmową (dwie wartości jednego parametru to sprzeczność, nie wybór).
+    Kolejność wyniku — ``PARAMETRY_APARATU_SN`` (determinizm zapisu).
+    """
+    if not isinstance(surowe, list):
+        return [], (
+            f"Pole {pole('overrides', 'update_element_parameters')}: wartości projektanta "
+            "aparatu SN podaje się jako listę wpisów {key, value, reason}."
+        )
+    po_kluczu: dict[str, dict[str, Any]] = {}
+    for wpis in surowe:
+        if not isinstance(wpis, dict):
+            return [], "Wpis wartości projektanta aparatu SN musi mieć postać {key, value, reason}."
+        klucz = wpis.get("key")
+        wartosc = wpis.get("value")
+        blad = blad_wartosci_projektanta(klucz, wartosc)
+        if blad is not None:
+            return [], blad
+        if not isinstance(klucz, str) or not isinstance(wartosc, int | float):
+            raise AssertionError("brama rejestru przepuściła wpis spoza kontraktu")
+        if klucz in po_kluczu:
+            return [], (
+                f"Parametr „{klucz}” podano dwukrotnie — aparat ma jedną wartość parametru."
+            )
+        powod = wpis.get("reason")
+        if powod is not None and not isinstance(powod, str):
+            return [], f"Uzasadnienie wartości parametru „{klucz}” musi być tekstem."
+        po_kluczu[klucz] = {
+            "key": klucz,
+            "value": float(wartosc),
+            "reason": (powod.strip() or None) if isinstance(powod, str) else None,
+        }
+    return [po_kluczu[k] for k in PARAMETRY_APARATU_SN if k in po_kluczu], None
+
+
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Aktualizuj parametry elementu."""
     odmowa = _odmowa_typu_ladunku(payload, "update_element_parameters", {"parameters": "slownik"})
@@ -10102,6 +10241,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "hv_neutral",
                 "lv_neutral",
                 "lv_earthing_system",
+                "lv_voltage_tolerance",
                 "n_parallel",
                 "tap_position",
                 "tap_min",
@@ -10243,6 +10383,12 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         _, blad_faz = waliduj_fazy_odbioru(parameters["phases"])
         if blad_faz is not None:
             return _error_response(blad_faz, KOD_BLEDU_FAZ)
+    # Karta W5-E-TTIT: korekta uziomu instalacji odbiorczej przez TEN SAM walidator co
+    # kreator odbioru (`enm/uziom_instalacji.py`); `None` zdejmuje deklarację (dana nieobecna).
+    if coll == "loads" and "earth_electrode_r_ohm" in parameters:
+        _, blad_r_a = waliduj_r_a(parameters["earth_electrode_r_ohm"])
+        if blad_r_a is not None:
+            return _error_response(blad_r_a, KOD_BLEDU_R_A)
     # W5-A: pola słownikowe (grupa połączeń, układ nN, punkt neutralny, ekran kabla)
     # sprawdzane tym samym predykatem co kreatory — korekta ekspercka nie ma
     # osobnej, luźniejszej drogi zapisu.
@@ -10254,11 +10400,65 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         blad_stanu = _blad_stanu_lacznika_w_parametrach(enm, current_element, parameters)
         if blad_stanu is not None:
             return blad_stanu
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN na STANIE KOŃCOWYM nośnika —
+    # strona dolna transformatora albo szyna przyłączenia źródła sieciowego w paśmie nN.
+    if coll in ("transformers", "sources") and "lv_voltage_tolerance" in parameters:
+        if coll == "transformers":
+            napiecie_nosnika = parameters.get("ulv_kv", current_element.get("ulv_kv"))
+        else:
+            szyna_ref = parameters.get("bus_ref", current_element.get("bus_ref"))
+            napiecie_nosnika = next(
+                (
+                    bus.get("voltage_kv")
+                    for bus in enm.get("buses", [])
+                    if isinstance(bus, dict) and bus.get("ref_id") == szyna_ref
+                ),
+                None,
+            )
+        powod_tolerancji = _powod_odmowy_tolerancji_nn(
+            parameters["lv_voltage_tolerance"],
+            napiecie_nosnika,
+            element_pl="transformator" if coll == "transformers" else "źródło",
+        )
+        if powod_tolerancji is not None:
+            return _error_response(
+                powod_tolerancji,
+                (
+                    "transformer.invalid_lv_voltage_tolerance"
+                    if coll == "transformers"
+                    else "source.invalid_lv_voltage_tolerance"
+                ),
+            )
     if coll == "branches" and "screen_bonding" in parameters:
         proba = {"type": current_element.get("type")}
         blad_ekranu = _apply_screen_bonding(proba, {"screen_bonding": parameters["screen_bonding"]})
         if blad_ekranu is not None:
             return blad_ekranu
+    # Zasada nr 4 (V12K-351): wartości robocze aparatu SN nadane przez projektanta niesie
+    # `overrides` gałęzi z wiązaniem APARAT_SN — JEDEN walidator z rejestrem wartości roboczych
+    # (parametr z rejestru, liczba w zakresie), postać znormalizowana i `parameter_source`
+    # spójne z listą (E010: nadpisanie bez OVERRIDE jest blokadą walidatora).
+    if coll == "branches" and "overrides" in parameters:
+        przestrzen = parameters.get("catalog_namespace", current_element.get("catalog_namespace"))
+        if przestrzen == "APARAT_SN":
+            nadpisania, blad_nadpisan = _nadpisania_aparatu_sn(parameters["overrides"])
+            if blad_nadpisan is not None:
+                return _error_response(blad_nadpisan, "params.override_invalid")
+            katalog_aparatu = parameters.get("catalog_ref", current_element.get("catalog_ref"))
+            if nadpisania:
+                parameters = {**parameters, "overrides": nadpisania, "parameter_source": "OVERRIDE"}
+            elif isinstance(katalog_aparatu, str) and katalog_aparatu.strip():
+                # Powrót do karty po wyczyszczeniu wartości projektanta: znacznik CATALOG
+                # wolno postawić WYŁĄCZNIE na wyniku bramy katalogowej aparatu (inwentarz
+                # deklaracji) — pozycja spoza katalogu jest odmową, nie „tabliczką znikąd".
+                brama_aparatu = _brama_katalogowa_aparatu_sn(
+                    katalog_aparatu, opis_pl="Aparat łączeniowy SN"
+                )
+                if isinstance(brama_aparatu, dict):
+                    return brama_aparatu
+                parameters = {**parameters, "overrides": [], "parameter_source": "CATALOG"}
+            else:
+                parameters = {**parameters, "overrides": [], "parameter_source": None}
 
     # Decyzja O-53 (jedna tabliczka, jedna kontrola): zmiana TYPU źródła przekształtnikowego
     # przez aktualizację parametrów idzie tą samą drogą co przypisanie typu — materializacja
@@ -10266,11 +10466,20 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
     # moc transformatora), liczony na STANIE KOŃCOWYM (pozostałe parametry zapisane
     # wcześniej). Wcześniej `catalog_ref` zmieniał się bez przematerializowania tabliczki,
     # więc model deklarował typ, którego parametrów nie niósł.
+    # Ta sama klasa dla każdego elementu z obowiązkowym wiązaniem katalogowym (gałęzie,
+    # w tym aparaty SN, transformatory, punkty rozgałęzienia): zmiana `catalog_ref`
+    # aktualizacją parametrów przechodzi bramę przypisania i materializację tabliczki —
+    # inaczej element deklarowałby pozycję, której w katalogu może nie być.
     zmiana_typu_zrodla = (
-        coll == "generators"
-        and "catalog_ref" in parameters
+        "catalog_ref" in parameters
         and parameters.get("catalog_ref") != current_element.get("catalog_ref")
-        and str(current_element.get("gen_type") or "") in GEN_TYPES_PRZEKSZTALTNIKOWE
+        and (
+            coll in catalog_guard_collections
+            or (
+                coll == "generators"
+                and str(current_element.get("gen_type") or "") in GEN_TYPES_PRZEKSZTALTNIKOWE
+            )
+        )
     )
 
     new_enm = kopia_graniczna_enm(enm)
@@ -10287,7 +10496,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             {
                 "element_ref": element_ref,
                 "catalog_item_id": parameters.get("catalog_ref"),
-                "catalog_namespace": current_element.get("catalog_namespace"),
+                "catalog_namespace": parameters.get(
+                    "catalog_namespace", current_element.get("catalog_namespace")
+                ),
             },
         )
 

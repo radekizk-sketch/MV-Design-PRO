@@ -69,6 +69,8 @@ REF_CT = "ct_400_5_5p20_15va_abb"
 REF_VT = "vt_15kv_100v_3p_abb"
 REF_PRZEKAZNIK = "REF-OC-100"
 REF_ODBIOR = "load_mieszk_15kw"
+#: Wyłącznik różnicowoprądowy nN (APARAT_NN_RCD, karta W5-E-TTIT).
+REF_RCD_NN = "rcd_nn_a_40a_30ma"
 
 #: Magazyn energii nN 2 MW / 0,4 kV: katalog deklaruje 2000 kW rozładowania
 #: i 2200 kVA mocy pozornej — dokładnie ta pozycja rozjeżdżała oba tory.
@@ -561,6 +563,26 @@ def _payload_aparat_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _odbior_nn_ref(snapshot: dict[str, Any]) -> str:
+    """Pierwszy odbiór migawki — `add_nn_rcd` wstawia RCD przed jego zaciskami."""
+    return str(sorted(snapshot["loads"], key=lambda ld: ld["ref_id"])[0]["ref_id"])
+
+
+def _payload_rcd_nn(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {"load_ref": _odbior_nn_ref(snapshot), "catalog_ref": REF_RCD_NN}
+
+
+def _payload_rcd_nn_binding(snapshot: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "load_ref": _odbior_nn_ref(snapshot),
+        "catalog_binding": {
+            "catalog_namespace": "APARAT_NN_RCD",
+            "catalog_item_id": REF_RCD_NN,
+            "catalog_item_version": "2024.1",
+        },
+    }
+
+
 def _rozdzielnica_nn_ref(snapshot: dict[str, Any]) -> str:
     """Rozdzielnica nN dołożona przez prep `add_nn_distribution_board` (`_przygotowana_siec`)."""
     stacje = [s for s in snapshot["substations"] if s.get("station_type") == "rozdzielnica_nn"]
@@ -829,6 +851,19 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
         "add_nn_section_coupler",
         _payload_sprzeglo_nn,
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    # W5-E-TTIT: wyłącznik różnicowoprądowy nN — obie drogi wskazania pozycji.
+    PrzypadekIniekcji(
+        "catalog_ref",
+        "add_nn_rcd",
+        _payload_rcd_nn,
+        lambda p: _zepsuj_klucz(p, "catalog_ref"),
+    ),
+    PrzypadekIniekcji(
+        "catalog_binding",
+        "add_nn_rcd",
+        _payload_rcd_nn_binding,
+        lambda p: p["catalog_binding"].update({"catalog_item_id": REF_RCD_NN + LITEROWKA}),
     ),
     PrzypadekIniekcji(
         "catalog_binding",
@@ -1247,6 +1282,8 @@ def _przygotowana_siec(przypadek: PrzypadekIniekcji) -> dict[str, Any]:
         snapshot = _wykonaj(
             snapshot, "add_nn_distribution_board", {"voltage_kv": 0.4, "name": "RGnN testowa"}
         )
+    if przypadek.operacja == "add_nn_rcd":
+        snapshot = _wykonaj(snapshot, "add_nn_load", _payload_nn_load(snapshot))
     return snapshot
 
 
@@ -1314,6 +1351,8 @@ def test_literowka_odrzucona_w_torze_payloadu(
             "add_nn_distribution_board",
             {"voltage_kv": 0.4, "name": "RGnN testowa"},
         )
+    if przypadek.operacja == "add_nn_rcd":
+        snapshot = _operacja_api(klient, case_id, "add_nn_load", _payload_nn_load(snapshot))
     payload = przypadek.zbuduj(snapshot)
     przypadek.zepsuj(payload)
 

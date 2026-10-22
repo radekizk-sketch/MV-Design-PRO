@@ -474,6 +474,21 @@ POMIJANE_KATALOGI = {
 #: realne haki `useCanEdit`/`useIsMutationBlocked` zamiast kopii predykatu z nieistniejacym
 #: trybem `CASE_CONFIG`, `SnapshotLike` w `ui/shared/publicReadinessMessage.ts` zawezony do
 #: czytanych pol (bez rzutowan w kodzie produkcyjnym). 51 -> 0.
+#: Partia integracji 9 (2026-10-16, pomiar `zmierz_dlug()` na drzewie scalonym partii i na
+#: bazie partii `0aa21b4c7`, listy porownane linia po linii): baza 61 -> 59, roznica wylacznie
+#: ubytkowa: zeszly TS2345 w `protection-curves/__tests__/types.test.ts` (karta PROT-LTI)
+#: i TS2739 w `ui2/spaces/model/katalog/__tests__/fixtures.ts` (karta W5-E-TTIT, kategorie
+#: katalogu nN). Zero nowych bledow; jedyny blad W BRAMCE iloczynu kart (etykiety historii
+#: operacji bez `update_protection_settings` i `set_load_dynamic_binding`) naprawiony u zrodla.
+#: Scalenie galezi programu (partie 9-13) z galezia UI/UX (2026-10-22, pomiar `zmierz_dlug()`
+#: na drzewie scalonym): UI/UX 0, program 59 -> scalone 0 po naprawie u zrodla. Pierwszy pomiar
+#: po rozwiazaniu konfliktow = 4, wszystkie z iloczynu stron: TS2307 test programu
+#: `planEtykietAparatowBocznych.contract.test.ts` importowal typy pola ze skasowanego (UI/UX)
+#: `v2/renderer/MiniBlockRmuRenderer` -> `v2/model/widokPolStacji`; 2 x TS2353/TS2339 test
+#: programu `PanelScenariuszy.test.tsx` czytal `activeRunId` skasowany karta K8 -> oglądany
+#: bieg magazynu kontekstu wyniku; TS2322 literalu scenariusza w tescie iloczynu migawka x
+#: parametry wkladow (`wkladyZwarciowe.test.tsx`). 59 zastanych bledow programu zeszlo, bo
+#: galaz UI/UX zdjela je wczesniej (karty K1, K2, GPZ-PARYTET cz. 3). Zero bledow W BRAMCE.
 BUDZET_BLEDOW_POZA_BRAMKA = 0
 
 #: Jawne wyciszenia błędów typu. Zamrożone, żeby nie dało się „obniżyć progu”

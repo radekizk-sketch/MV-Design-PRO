@@ -14,6 +14,7 @@ import math
 
 import pytest
 from network_model.core.branch import BranchType, LineBranch
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.graph import NetworkGraph
 from network_model.core.machine import (
     AsynchronousMachineSource,
@@ -73,7 +74,7 @@ def _slack_line_bus() -> NetworkGraph:
 
 def _ikss(graph: NetworkGraph, bus: str = "B", c: float = 1.1) -> float:
     return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph=graph, fault_node_id=bus, c_factor=c, tk_s=1.0
+        graph=graph, fault_node_id=bus, c_factor=c, tk_s=1.0, czas_tb=czas_tb_roboczy()
     ).ikss_a
 
 
@@ -86,7 +87,6 @@ def _sync(node_id: str = "B") -> SynchronousMachineSource:
         ur_kv=15.0,
         xd_subtransient_pu=0.15,
         cos_phi_r=0.8,
-        c_max=1.1,
     )
 
 
@@ -228,15 +228,15 @@ def test_dfig_partial_identical_to_squirrel_cage():
     g1, g2 = _slack_line_bus(), _slack_line_bus()
     g1.add_asynchronous_machine_source(_async())
     g2.add_asynchronous_machine_source(_dfig())
-    c1 = compute_machine_contributions(g1, "B").contributions[0]
-    c2 = compute_machine_contributions(g2, "B").contributions[0]
+    c1 = compute_machine_contributions(g1, "B", c_factor=1.1, t_min_s=0.10).contributions[0]
+    c2 = compute_machine_contributions(g2, "B", c_factor=1.1, t_min_s=0.10).contributions[0]
     assert c2.ikss_partial_a == c1.ikss_partial_a
     assert c2.ib_a == c1.ib_a
     assert c1.machine_type == "ASYNCHRONOUS"
     assert c2.machine_type == "DFIG"
 
 
-# ── μ / q factor functions (§6.6.1, §6.6.3) ──────────────────────────────────
+# ── μ / q factor functions (IEC 60909-0:2016 rozdz. 9) ──────────────────────────────────
 def test_mu_factor_curves():
     assert mu_factor(1.5, 0.10) == 1.0  # ratio ≤ 2 ⇒ no decay
     assert mu_factor(8.0, 0.02) == pytest.approx(0.84 + 0.26 * math.exp(-0.26 * 8), rel=1e-9)
@@ -302,8 +302,8 @@ def test_module_deterministic():
     g.add_synchronous_machine_source(_sync())
     g.add_asynchronous_machine_source(_async())
     assert (
-        compute_machine_contributions(g, "B").to_dict()
-        == compute_machine_contributions(g, "B").to_dict()
+        compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10).to_dict()
+        == compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10).to_dict()
     )
 
 
@@ -374,7 +374,17 @@ _ZAPISY_SPOZA_JEZYKA_INZYNIERA = (
 
 @pytest.mark.parametrize(
     ("maszyna", "t_min_s"),
-    [("synchroniczna", 0.10), ("asynchroniczna", 0.10), ("dfig", 0.10), ("dfig", 0.25)],
+    [
+        ("synchroniczna", 0.10),
+        ("asynchroniczna", 0.10),
+        ("dfig", 0.10),
+        ("dfig", 0.25),
+        # Karta MU-INTERPOLACJA: kroki interpolacji μ i q (węzły, waga) i t_b spoza zakresu.
+        ("synchroniczna", 0.20),
+        ("asynchroniczna", 0.07),
+        ("asynchroniczna", 0.01),
+        ("dfig", 0.40),
+    ],
 )
 def test_wywod_po_polsku_ze_znakami_dla_kazdego_rodzaju_maszyny(maszyna: str, t_min_s: float):
     """Karta #145: iloczyn {maszyna synchroniczna, asynchroniczna, dwustronnie zasilana}
@@ -393,3 +403,94 @@ def test_wywod_po_polsku_ze_znakami_dla_kazdego_rodzaju_maszyny(maszyna: str, t_
         for zapis in _ZAPISY_SPOZA_JEZYKA_INZYNIERA:
             assert zapis not in tekst, (zapis, tekst)
     assert any(znak in " ".join(teksty) for znak in "ąćęłńóśźż")
+
+
+# ── Karty SC-IB-ITH-ZRODLA, TB-WARTOSC-ROBOCZA i MU-INTERPOLACJA: t_min = t_b punktu ──
+#: Krzywe μ normy w węzłach t_min (IEC 60909-0:2016 rozdz. 9) — wyrocznia testu przepisana
+#: z normy, niezależna od tablicy solvera.
+_MU_NORMY = {
+    0.02: (0.84, 0.26, 0.26),
+    0.05: (0.71, 0.51, 0.30),
+    0.10: (0.62, 0.72, 0.32),
+    0.25: (0.56, 0.94, 0.38),
+}
+
+
+def _mu_wezla(t_wezla: float, krotnosc: float) -> float:
+    a, b, w = _MU_NORMY[t_wezla]
+    return min(1.0, max(0.0, a + b * math.exp(-w * krotnosc)))
+
+
+@pytest.mark.parametrize(
+    ("t_min_s", "wezel_1", "wezel_2", "waga"),
+    [
+        (0.02, 0.02, 0.02, 0.0),
+        (0.05, 0.05, 0.05, 0.0),
+        (0.10, 0.10, 0.10, 0.0),
+        (0.25, 0.25, 0.25, 0.0),
+        # t_b z pól lokalnych (zwłoka + czas własny wyłącznika) leży zwykle między węzłami
+        # tablicy μ. Do karty MU-INTERPOLACJA rdzeń brał węzeł najbliższy (progi w połowie
+        # przedziałów: 0,16 s → krzywa 0,10 s), co dla t_b ∈ (0,175; 0,25) dawało krzywą 0,25 s,
+        # μ i I_b mniejsze niż z interpolacji — niezachowawczo dla doboru aparatury. Intencja
+        # testu bez zmian: WYBÓR KRZYWEJ DLA KAŻDEGO t_b JEST DETERMINISTYCZNY I PRZYPIĘTY;
+        # nowy kanon: interpolacja liniowa wartości krzywych sąsiednich węzłów.
+        (0.16, 0.10, 0.25, 0.4),
+        (0.36, 0.25, 0.25, 0.0),
+    ],
+)
+def test_krzywa_mu_dla_t_b_punktu(t_min_s: float, wezel_1: float, wezel_2: float, waga: float):
+    """μ z krzywych węzłów IEC 60909-0:2016 rozdz. 9 — w węźle wartość krzywej węzła bit
+    w bit, pomiędzy węzłami interpolacja liniowa; krotność ≤ 2 → μ = 1 przy każdym t_b;
+    q = 1 bez mocy na parę biegunów."""
+    oczekiwane = _mu_wezla(wezel_1, 2.5) + waga * (
+        _mu_wezla(wezel_2, 2.5) - _mu_wezla(wezel_1, 2.5)
+    )
+    if waga == 0.0:
+        assert mu_factor(2.5, t_min_s) == _mu_wezla(wezel_1, 2.5)
+    else:
+        assert mu_factor(2.5, t_min_s) == pytest.approx(oczekiwane, rel=1e-12)
+    assert mu_factor(1.5, t_min_s) == 1.0
+    assert q_factor(0.0, t_min_s) == 1.0
+
+
+@pytest.mark.parametrize("maszyna", ["synchroniczna", "asynchroniczna", "dfig"])
+def test_prady_czesciowe_nie_zaleza_od_t_b_a_ib_maleje_z_t_b(maszyna: str):
+    """Prądy częściowe i ΔU″ nie zależą od t_b; μ i i_b maszyny są liczbami przy każdym t_b
+    i maleją z dłuższym t_b (wartość robocza 0,1 s wobec t_b z pola 0,36 s)."""
+    g = _slack_line_bus()
+    if maszyna == "synchroniczna":
+        g.add_synchronous_machine_source(_sync())
+    elif maszyna == "asynchroniczna":
+        g.add_asynchronous_machine_source(_async())
+    else:
+        g.add_asynchronous_machine_source(_dfig())
+    roboczy = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    z_pola = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.36)
+    (c,) = roboczy.contributions
+    (c_pola,) = z_pola.contributions
+    assert c.ikss_partial_a == c_pola.ikss_partial_a > 0.0
+    assert c.delta_u_wzgledne == c_pola.delta_u_wzgledne > 0.0
+    assert c.mu > c_pola.mu and c.ib_a > c_pola.ib_a > 0.0
+    assert roboczy.t_min_s == 0.10 and z_pola.t_min_s == 0.36
+    assert roboczy.ib_machines_a > z_pola.ib_machines_a > 0.0
+
+
+def test_maszyna_przy_zwarciu_na_zaciskach_krotnosc_z_tego_samego_pradu():
+    """Maszyna w poziomie napięcia węzła zwarcia: prąd na zaciskach = prąd częściowy."""
+    g = _slack_line_bus()
+    g.add_synchronous_machine_source(_sync())
+    (c,) = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10).contributions
+    assert c.ikss_zaciski_a == pytest.approx(c.ikss_partial_a, rel=1e-12)
+    assert c.ratio_ik_ir == pytest.approx(c.ikss_partial_a / c.ir_a, rel=1e-12)
+
+
+def test_prad_znamionowy_niedodatni_to_odmowa_nie_krotnosc_zero():
+    """Dawne `ratio = I/I_r if I_r > 0 else 0.0` wpychało μ = 1 za niefizyczne I_r."""
+    g = _slack_line_bus()
+    g.add_asynchronous_machine_source(
+        AsynchronousMachineSource(
+            id="M", name="Silnik bledny", node_id="B", pr_mw=-2.0, ur_kv=15.0, i_lr_ratio=5.0
+        )
+    )
+    with pytest.raises(ValueError, match="Maszyna „Silnik bledny”: prąd znamionowy I_r"):
+        compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)

@@ -63,6 +63,24 @@ describe('Operation surface registry', () => {
     );
   });
 
+  it('każda operacja z formularzem ma wpis powierzchni z polską etykietą (tytuł okna nie jest identyfikatorem)', () => {
+    // Bez wpisu `buildOperationSurfaceDescriptor` brał tytuł okna z `canonicalOp`
+    // (zmierzone: pięć operacji — append_station_on_endpoint i cztery operacje nN STUDIO).
+    const brakujace = (Object.entries(OPERATION_FORM_REGISTRY) as Array<[string, unknown]>)
+      .filter(([, formularz]) => formularz !== null)
+      .map(([op]) => op)
+      .filter((op) => {
+        const wpis = getOperationSurfaceByOp(op);
+        return !wpis || wpis.labelPl === op;
+      });
+    expect(brakujace).toEqual([]);
+  });
+
+  it('add_nn_rcd: kreator wyłącznika różnicowoprądowego jest powierzchnią akcji naprawczej nn.brak_rcd', () => {
+    expect(getOperationSurfaceByOp('add_nn_rcd')?.componentName).toBe('KreatorRcdNn');
+    expect(getOperationSurfaceByOp('add_nn_rcd')?.implemented).toBe(true);
+  });
+
   it('returns undefined for unknown operation', () => {
     expect(getOperationSurfaceByOp('nonexistent_operation')).toBeUndefined();
   });

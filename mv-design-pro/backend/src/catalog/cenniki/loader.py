@@ -249,7 +249,6 @@ def _pozycja(surowa: object, indeks: int) -> PozycjaCennika:
     type_id = _napis(surowa.get("type_id"))
     if type_id is None:
         raise BladCennika(f"{gdzie}: brak identyfikatora typu katalogowego.")
-    gdzie = f"{gdzie} ({type_id})"
     capex = _cena(surowa.get("capex_pln"), gdzie)
     opex = _cena(surowa.get("opex_pln_rok"), gdzie)
     if capex is None and opex is None:

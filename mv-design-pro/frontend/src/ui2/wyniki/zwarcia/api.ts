@@ -14,6 +14,8 @@ import { useEffect, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
 import type {
+  ImpedancjaPrzejsciaBiegu,
+  KonfiguracjaBieguZwarcia,
   ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
@@ -34,6 +36,8 @@ export interface WkladZrodlaOdpowiedz {
   readonly machine_type?: string;
   readonly ir_a?: number;
   readonly ratio_ik_ir?: number;
+  // Karta TB-WARTOSC-ROBOCZA: μ, q i I_b maszyny liczone zawsze — przy t_min = t_b punktu
+  // zwarcia (scenariusz, pola lokalne albo wartość robocza — jak t_b w bilansie punktu).
   readonly mu?: number;
   readonly q?: number;
   readonly ib_a?: number;
@@ -60,15 +64,95 @@ export interface WkladyZWywodem {
   readonly walidacjaIec: readonly PozycjaWalidacji[];
 }
 
-/** Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny). */
+/**
+ * Stan ODCZYTU danych jednego punktu zwarcia (wkłady albo rozpływ gałęziowy) —
+ * wspólny dla obu dostawców per punkt. `wczytywanie` i `blad` to stany zapytania,
+ * NIE stany danych: sekcja nie wolno w nich pokazać „dane niedostępne w tym
+ * przebiegu" (KONTRAKT_WERDYKTU_WYJASNIALNEGO — odczyt w toku ≠ brak danych,
+ * błąd odczytu ≠ brak danych). `gotowe` = odczyt zakończony albo niepotrzebny
+ * (dane w polu wiersza, starszy wynik bez flagi dostępności).
+ */
+export type OdczytPunktuZwarcia = 'gotowe' | 'wczytywanie' | 'blad';
+
+/** Stan dostawcy wkładów dla punktu — rozłączne stany, jedna dana pochodna. */
+export type StanWkladowZwarciowych =
+  /**
+   * Brak punktu, migawki modelu albo parametrów biegu — nie ma czego pobrać (uczciwy brak;
+   * bieg bez zapisanego scenariusza nie ma odtwarzalnych wkładów).
+   */
+  | { readonly odczyt: 'niezlecony' }
+  | { readonly odczyt: 'wczytywanie' }
+  | { readonly odczyt: 'blad' }
+  | { readonly odczyt: 'gotowe'; readonly dane: WkladyZWywodem };
+
+/**
+ * Parametry biegu, z którymi backend liczy wkłady punktu — ZAPISANE na biegu wyświetlanym
+ * na ekranie (`konfiguracja_biegu` odpowiedzi wyników), nigdy z aktywnego przypadku.
+ *
+ * Karta WSPÓŁCZYNNIK-C (O-59): końcówka wkładów dobiera c z tabeli 1 IEC 60909-0 dla
+ * pasma węzła i scenariusza OGLĄDANEGO biegu (`scenariusz` wymagany, `nadpisanie_c`
+ * z uzasadnieniem) — żądanie bez scenariusza jest odmową 422. Karta OD-14: `impedancja`
+ * = Z_f biegu przez impedancję przejścia (brak = bieg metaliczny). Karta SC-IB-ITH-ZRODLA:
+ * `tMinS` = czas wyłączenia t_b scenariusza biegu (t_min krzywych μ, q); `null` = scenariusz
+ * bez t_b — backend rozstrzyga t_b punktu tą samą funkcją co wiersz biegu (karta
+ * TB-WARTOSC-ROBOCZA: pola lokalne, inaczej wartość robocza).
+ */
+export interface ParametryWkladowBiegu {
+  readonly scenariusz: 'MAX' | 'MIN';
+  readonly nadpisanieC: { readonly wartosc: number; readonly uzasadnienie: string } | null;
+  readonly tMinS: number | null;
+  readonly impedancja?: ImpedancjaPrzejsciaBiegu;
+}
+
+/**
+ * Parametry wkładów z konfiguracji ZAPISANEJ na biegu — sam odczyt, bez fizyki.
+ *
+ * `null` (uczciwy brak, sekcja „dane niedostępne"): bieg nie zapisał scenariusza
+ * (starszy artefakt) albo zapisał nadpisanie c bez wartości lub uzasadnienia — wtedy
+ * wkładów TEGO biegu nie da się odtworzyć, a domyślne „MAX" byłoby domysłem.
+ */
+export function parametryWkladowZKonfiguracji(
+  konfiguracja: KonfiguracjaBieguZwarcia | null | undefined,
+): ParametryWkladowBiegu | null {
+  const scenariusz = konfiguracja?.scenariusz;
+  if (!konfiguracja || (scenariusz !== 'MAX' && scenariusz !== 'MIN')) return null;
+  const c = konfiguracja.c_factor;
+  let nadpisanieC: ParametryWkladowBiegu['nadpisanieC'] = null;
+  if (c?.tryb === 'nadpisanie') {
+    if (c.wartosc === null || c.uzasadnienie === null) return null;
+    nadpisanieC = { wartosc: c.wartosc, uzasadnienie: c.uzasadnienie };
+  }
+  const tMinS = konfiguracja.breaking_time_seconds?.wartosc ?? null;
+  return konfiguracja.impedancja_przejscia
+    ? { scenariusz, nadpisanieC, tMinS, impedancja: konfiguracja.impedancja_przejscia }
+    : { scenariusz, nadpisanieC, tMinS };
+}
+
+/**
+ * Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny) z parametrami biegu.
+ *
+ * Pole `fault_impedance` występuje WYŁĄCZNIE dla biegu przez Z_f (karta OD-14) — żądanie
+ * biegu metalicznego go nie niesie.
+ */
 export async function fetchWkladyZwarciowe(
   snapshot: EnergyNetworkModel,
   faultNodeRef: string,
+  parametry: ParametryWkladowBiegu,
 ): Promise<WkladyOdpowiedz> {
+  const { impedancja } = parametry;
   const response = await fetch('/api/proof/sc3f/contributions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ snapshot, fault_node_id: faultNodeRef }),
+    body: JSON.stringify({
+      snapshot,
+      fault_node_id: faultNodeRef,
+      scenariusz: parametry.scenariusz,
+      nadpisanie_c: parametry.nadpisanieC,
+      ...(parametry.tMinS === null ? {} : { t_min_s: parametry.tMinS }),
+      ...(impedancja
+        ? { fault_impedance: { r_f_ohm: impedancja.r_f_ohm, x_f_ohm: impedancja.x_f_ohm } }
+        : {}),
+    }),
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as WkladyOdpowiedz;
@@ -91,58 +175,67 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
             stosunekIkIr: c.ratio_ik_ir ?? null,
             mu: c.mu ?? null,
             q: c.q ?? null,
-            ibKA: c.ib_a !== undefined ? c.ib_a / 1000 : null,
+            ibKA: c.ib_a === undefined ? null : c.ib_a / 1000,
             wywod: c.wywod ?? [],
           },
   }));
 }
 
 /**
- * Stan ODCZYTU danych jednego punktu zwarcia (wkłady albo rozpływ gałęziowy) —
- * wspólny dla obu dostawców per punkt. `wczytywanie` i `blad` to stany zapytania,
- * NIE stany danych: sekcja nie wolno w nich pokazać „dane niedostępne w tym
- * przebiegu" (KONTRAKT_WERDYKTU_WYJASNIALNEGO — odczyt w toku ≠ brak danych,
- * błąd odczytu ≠ brak danych). `gotowe` = odczyt zakończony albo niepotrzebny
- * (dane w polu wiersza, starszy wynik bez flagi dostępności).
+ * Hook dostawcy wkładów dla aktywnego punktu zwarcia. Pobiera na zmianę punktu
+ * albo parametrów biegu; cache per (punkt × parametry biegu) W OBRĘBIE JEDNEJ migawki
+ * modelu (zmiana migawki unieważnia cache — wkłady liczone są z bieżącej migawki, więc
+ * wpis innej migawki byłby wynikiem innej sieci; ten sam punkt dwóch biegów o innym c,
+ * t_b albo Z_f to dwa różne wyniki wkładów). Stany rozłączne (`StanWkladowZwarciowych`):
+ * `niezlecony` = brak punktu/migawki/parametrów biegu, `wczytywanie` = zapytanie w toku,
+ * `blad` = błąd pobrania (HTTP/sieć, zapamiętany per klucz — bez pętli ponowień),
+ * `gotowe` = odpowiedź (`wklady: []` = sieć bez maszyn wirujących — backend zwraca pustą
+ * listę deterministycznie). `punkt = null` wyłącza pobieranie (dostawca zewnętrzny przez
+ * props ma pierwszeństwo).
  */
-export type OdczytPunktuZwarcia = 'gotowe' | 'wczytywanie' | 'blad';
-
-/** Stan dostawcy wkładów dla punktu — rozłączne stany, jedna dana pochodna. */
-export type StanWkladowZwarciowych =
-  /** Brak punktu albo brak migawki modelu — nie ma czego pobrać (uczciwy brak). */
-  | { readonly odczyt: 'niezlecony' }
-  | { readonly odczyt: 'wczytywanie' }
-  | { readonly odczyt: 'blad' }
-  | { readonly odczyt: 'gotowe'; readonly dane: WkladyZWywodem };
-
-/**
- * Hook dostawcy wkładów dla aktywnego punktu zwarcia. Pobiera na zmianę punktu,
- * cache per punkt W OBRĘBIE JEDNEJ migawki modelu (zmiana migawki unieważnia
- * cache — wkłady liczone są z bieżącej migawki, więc wpis innej migawki byłby
- * wynikiem innej sieci). Stany rozłączne (`StanWkladowZwarciowych`):
- * `niezlecony` = brak punktu/migawki, `wczytywanie` = zapytanie w toku, `blad` =
- * błąd pobrania (HTTP/sieć), `gotowe` = odpowiedź (`wklady: []` = sieć bez maszyn
- * wirujących — backend zwraca pustą listę deterministycznie).
- * `punkt = null` wyłącza pobieranie (dostawca zewnętrzny przez props ma pierwszeństwo).
- */
-export function useWkladyZwarciowe(punkt: string | null): StanWkladowZwarciowych {
+export function useWkladyZwarciowe(
+  punkt: string | null,
+  parametry: ParametryWkladowBiegu | null,
+): StanWkladowZwarciowych {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const [cache, setCache] = useState<{
     readonly zrodlo: EnergyNetworkModel | null;
     readonly wpisy: Readonly<Record<string, WkladyZWywodem | 'blad'>>;
   }>({ zrodlo: null, wpisy: {} });
   const wpisy = cache.zrodlo === snapshot ? cache.wpisy : null;
+  // Klucz pamięci podręcznej = punkt × scenariusz × nadpisanie c × t_b × Z_f biegu.
+  const klucz = punkt === null || parametry === null ? null : kluczWkladow(punkt, parametry);
+  // Zależności efektu to WARTOŚCI parametrów, nie obiekt: każde odświeżenie wyniku biegu
+  // daje nowy obiekt konfiguracji o tych samych wartościach — zależność od obiektu
+  // anulowała pobieranie w toku i ponawiała to samo żądanie (karta OD-14).
+  const scenariusz = parametry?.scenariusz;
+  const cWartosc = parametry?.nadpisanieC?.wartosc;
+  const cUzasadnienie = parametry?.nadpisanieC?.uzasadnienie;
+  const rF = parametry?.impedancja?.r_f_ohm;
+  const xF = parametry?.impedancja?.x_f_ohm;
+  const tMinS = parametry?.tMinS ?? null;
 
   useEffect(() => {
-    if (!punkt || !snapshot) return;
-    if (wpisy && punkt in wpisy) return;
+    if (!punkt || !snapshot || klucz === null || scenariusz === undefined) return;
+    if (wpisy && klucz in wpisy) return;
     let anulowane = false;
     const zapisz = (wpis: WkladyZWywodem | 'blad') =>
       setCache((c) => ({
         zrodlo: snapshot,
-        wpisy: { ...(c.zrodlo === snapshot ? c.wpisy : {}), [punkt]: wpis },
+        wpisy: { ...(c.zrodlo === snapshot ? c.wpisy : {}), [klucz]: wpis },
       }));
-    fetchWkladyZwarciowe(snapshot, punkt)
+    const parametryZadania: ParametryWkladowBiegu = {
+      scenariusz,
+      nadpisanieC:
+        cWartosc === undefined || cUzasadnienie === undefined
+          ? null
+          : { wartosc: cWartosc, uzasadnienie: cUzasadnienie },
+      tMinS,
+      ...(rF === undefined || xF === undefined
+        ? {}
+        : { impedancja: { r_f_ohm: rF, x_f_ohm: xF, poza_zakresem_iec60909: true as const } }),
+    };
+    fetchWkladyZwarciowe(snapshot, punkt, parametryZadania)
       .then((odpowiedz) => {
         if (!anulowane)
           zapisz({
@@ -153,19 +246,34 @@ export function useWkladyZwarciowe(punkt: string | null): StanWkladowZwarciowych
           });
       })
       .catch(() => {
-        // Błąd pobrania ROZPOZNANY (stan `blad`), nie wchłonięty w „dane niedostępne".
+        // Błąd pobrania ROZPOZNANY (stan `blad`), nie wchłonięty w „dane niedostępne";
+        // zapamiętany per klucz — efekt nie ponawia żądania w pętli.
         if (!anulowane) zapisz('blad');
       });
     return () => {
       anulowane = true;
     };
-  }, [punkt, snapshot, wpisy]);
+  }, [punkt, snapshot, wpisy, klucz, scenariusz, cWartosc, cUzasadnienie, tMinS, rF, xF]);
 
-  if (!punkt || !snapshot) return { odczyt: 'niezlecony' };
-  const wpis = wpisy?.[punkt];
+  if (!punkt || !snapshot || klucz === null || scenariusz === undefined) {
+    return { odczyt: 'niezlecony' };
+  }
+  const wpis = wpisy?.[klucz];
   if (wpis === undefined) return { odczyt: 'wczytywanie' };
   if (wpis === 'blad') return { odczyt: 'blad' };
   return { odczyt: 'gotowe', dane: wpis };
+}
+
+/** Klucz wkładów punktu dla parametrów biegu (bez fizyki — sam zapis wartości). */
+export function kluczWkladow(punkt: string, parametry: ParametryWkladowBiegu): string {
+  const c = parametry.nadpisanieC
+    ? `|c:${parametry.nadpisanieC.wartosc}:${parametry.nadpisanieC.uzasadnienie}`
+    : '';
+  const zf = parametry.impedancja
+    ? `|zf:${parametry.impedancja.r_f_ohm}:${parametry.impedancja.x_f_ohm}`
+    : '';
+  const tb = parametry.tMinS === null ? '' : `|tb:${parametry.tMinS}`;
+  return `${punkt}|${parametry.scenariusz}${c}${tb}${zf}`;
 }
 
 // ---------------------------------------------------------------------------

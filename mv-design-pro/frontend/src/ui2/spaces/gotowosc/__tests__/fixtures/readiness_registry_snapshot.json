@@ -134,6 +134,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "catalog.duplicate_id",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "catalog.element_missing",
       "fix_navigation": {
         "panel": "inspector",
@@ -247,6 +256,15 @@
     {
       "area": "CATALOGS",
       "code": "catalog.ref_required",
+      "fix_navigation": {
+        "modal": "CatalogPicker",
+        "panel": "inspector",
+        "tab": "katalog"
+      }
+    },
+    {
+      "area": "CATALOGS",
+      "code": "catalog.type_incomplete",
       "fix_navigation": {
         "modal": "CatalogPicker",
         "panel": "inspector",
@@ -444,6 +462,47 @@
     },
     {
       "area": "ANALYSIS",
+      "code": "fault.c_nadpisanie_bez_uzasadnienia",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "fault.c_nadpisanie_wartosc_niepoprawna",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "fault.c_tolerancja_nn_robocza",
+      "fix_navigation": {
+        "focus": "lv_voltage_tolerance",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "fault.czas_tb_niepoprawny",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "ANALYSIS",
+      "code": "fault.czas_tb_wartosc_robocza",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
+      "area": "ANALYSIS",
       "code": "fault.location_on_branch_requires_assembler",
       "fix_navigation": {
         "panel": "analizy",
@@ -572,6 +631,42 @@
     },
     {
       "area": "STATIONS",
+      "code": "nn.brak_pojemnosci_doziemnej",
+      "fix_navigation": {
+        "focus": "b0_siemens_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_r_a",
+      "fix_navigation": {
+        "focus": "earth_electrode_r_ohm",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_r_b",
+      "fix_navigation": {
+        "focus": "lv_neutral",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.brak_rcd",
+      "fix_navigation": {
+        "modal": "add_nn_rcd",
+        "panel": "inspector",
+        "tab": "nn"
+      }
+    },
+    {
+      "area": "STATIONS",
       "code": "nn.bus_missing",
       "fix_navigation": {
         "panel": "inspector",
@@ -647,6 +742,15 @@
         "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         "panel": "inspector",
         "tab": "katalog"
+      }
+    },
+    {
+      "area": "STATIONS",
+      "code": "nn.transformer_lv_not_nn_band",
+      "fix_navigation": {
+        "focus": "ulv_kv",
+        "panel": "inspector",
+        "tab": "parametry"
       }
     },
     {
@@ -1058,6 +1162,14 @@
       }
     },
     {
+      "area": "ANALYSIS",
+      "code": "swz.limit_tt_it_brak_tekstu_normy",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "zwarciowa"
+      }
+    },
+    {
       "area": "STATIONS",
       "code": "transformer.bay_missing",
       "fix_navigation": {
@@ -1251,7 +1363,7 @@
       }
     }
   ],
-  "count": 147,
+  "count": 160,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

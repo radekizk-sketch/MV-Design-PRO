@@ -67,7 +67,7 @@ def test_polowa_pary_audit2_to_jawny_blad(options: dict[str, Any]) -> None:
 
 
 def test_zly_uuid_projektu_to_jawny_blad_a_nie_cichy_bieg_bez_korekt() -> None:
-    with pytest.raises(ValueError, match="nie jest poprawnym UUID"):
+    with pytest.raises(ValueError, match="nie jest poprawnym identyfikatorem projektu"):
         _rozszerzenia(
             {"audit2_project_id": "not-a-uuid", "audit2_station_id": "st-1"},
             _FabrykaNieDoWolania(),

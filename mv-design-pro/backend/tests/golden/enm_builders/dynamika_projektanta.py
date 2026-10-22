@@ -183,7 +183,10 @@ def build_dynamika_projektanta_enm(
     enm = _op(
         enm,
         "update_element_parameters",
-        {"element_ref": transformator, "parameters": {"lv_earthing_system": "TN-C"}},
+        {
+            "element_ref": transformator,
+            "parameters": {"lv_earthing_system": "TN-C", "lv_voltage_tolerance": "PLUS_6"},
+        },
     )
     enm = _op(
         enm,

@@ -18,6 +18,7 @@ import json
 import math
 
 import numpy as np
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.dynamika import (
     GalazDynamiki,
     HarmonogramDynamiki,
@@ -1230,7 +1231,12 @@ def g16_parytet_iec60909() -> dict[str, float]:
         )
     graf.add_grid_sc_source(GridShortCircuitSource(id="Q-SIEC", name="Q", node_id="Q", z_ohm=z_q))
     iec = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graf, WEZEL_ZWARCIA_IEC, c_factor=C_MAX_IEC, tk_s=1.0, include_branch_contributions=True
+        graf,
+        WEZEL_ZWARCIA_IEC,
+        c_factor=C_MAX_IEC,
+        tk_s=1.0,
+        include_branch_contributions=True,
+        czas_tb=czas_tb_roboczy(),
     )
 
     szyna = zbuduj_szyne_sztywna(

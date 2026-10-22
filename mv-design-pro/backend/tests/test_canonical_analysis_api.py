@@ -275,10 +275,28 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
         assert pole in wiersz, pole
         assert wiersz[pole] is not None, pole
     # K7: ślad źródeł sieciowych (Z_Q) biegu przechodzi do odpowiedzi HTTP — ekran wyników
-    # zwarć ui2 czyta go stąd; MAX nie publikuje założeń, więc klucz `zalozenia` nie istnieje.
+    # zwarć ui2 czyta go stąd; MAX nie publikuje założenia S_k,min. Karta TB-WARTOSC-ROBOCZA:
+    # bieg bez t_b w scenariuszu i bez pól z nastawami liczy na wartości roboczej t_b = 0,1 s
+    # i publikuje JEDYNE założenie `fault.czas_tb_wartosc_robocza` (bieg, bez elementu) z listą
+    # punktów — i_DC(t_b) policzone, I_b sieci odległej od generatora = I_k'' (liczba).
     assert short_circuit_payload["zrodla_sieciowe"]
     assert short_circuit_payload["zrodla_sieciowe"][0]["scenariusz"] == "MAX"
-    assert "zalozenia" not in short_circuit_payload
+    assert [z["code"] for z in short_circuit_payload["zalozenia"]] == [
+        "fault.czas_tb_wartosc_robocza"
+    ]
+    assert short_circuit_payload["zalozenia"][0]["element_ref"] is None
+    assert wiersz["tb_s"] == 0.1 and wiersz["i_dc_ka"] is not None
+    assert wiersz["tb_zrodlo"]["pochodzenie"] == "PROPOZYCJA"
+    assert wiersz["tb_zrodlo"]["jakosc"] == "ESTIMATED"
+    # Predykat parami: lista punktów założenia = wiersze, których t_b jest wartością roboczą.
+    punkty = short_circuit_payload["zalozenia"][0]["punkty"]
+    assert {p["element_id"] for p in punkty} == {
+        w["element_id"]
+        for w in short_circuit_payload["rows"]
+        if (w.get("tb_zrodlo") or {}).get("wartosc_robocza")
+    }
+    assert all(p["wartosc_s"] == 0.1 and p["zrodlo_pl"] for p in punkty)
+    assert wiersz["ib_ka"] == pytest.approx(wiersz["ikss_ka"], rel=1e-12)
     assert wiersz["zk_ohm"] == pytest.approx(
         math.hypot(wiersz["rk_ohm"], wiersz["xk_ohm"]), rel=1e-9
     )

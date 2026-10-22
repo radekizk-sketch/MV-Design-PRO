@@ -131,7 +131,9 @@ describe('naWierszeStanowZabezpieczen — komórki A/B/różnica, nullowalne pol
 
   it('zapas czułości A/B osobno, BEZ kolumny różnicy; wiarygodność obu biegów po polsku', () => {
     const [w] = naWierszeStanowZabezpieczen(
-      [wiersz({ wiarygodnosc_b: 'NIEWIARYGODNY' })],
+      // Oba stany JAWNIE: wiersz sieci złotej niesie dziś NIEUSTALONA (obwód wtórny CT
+      // niezapisany — jądro nasycenia nie ma danej), a test sprawdza mapowanie A/B osobno.
+      [wiersz({ wiarygodnosc_a: 'WIARYGODNY', wiarygodnosc_b: 'NIEWIARYGODNY' })],
       new Map(),
     );
     expect(w.marginesA.wartosc).toBe(fmtMarginesProcent(WIERSZ.margin_percent_a!));

@@ -46,7 +46,7 @@ from protection.curves.ieee_curves import (
 def test_iec_adapter_matches_norm_formula(
     curve_type: IECCurveType, a: float, b: float, tms: float, m: float
 ) -> None:
-    """t = TMS * A / (M^B - 1) — wzór IEC 60255-151:2009 Tabela 1, podstawiony
+    """t = TMS * A / (M^B - 1) — wzór IEC 60255-151:2009 (stałe: zał. A, tab. A.1), podstawiony
     wprost (nie przez wywołanie implementacji), porównany z adapterem."""
     pickup = 100.0
     i_fault = pickup * m
@@ -135,7 +135,7 @@ def test_solver_compute_curve_trip_time_also_delegates_to_generic_engine() -> No
     RÓWNIEŻ deleguje do generycznego silnika — TRZECI konsument, ta sama fizyka."""
     with patch.object(core, "compute_idmt_generic", wraps=core.compute_idmt_generic) as spy:
         core.compute_curve_trip_time(
-            curve_type=core.IEC60255CurveType.NI,
+            curve_type=core.IEC60255CurveType.STANDARD_INVERSE,
             i_fault_a=500.0,
             is_pickup_a=100.0,
             tms=1.0,
@@ -150,14 +150,14 @@ def test_solver_compute_curve_trip_time_also_delegates_to_generic_engine() -> No
 
 
 @pytest.mark.parametrize("m", [1.5, 2.0, 5.0, 20.0])
-def test_solver_and_iec_adapter_agree_on_equivalent_curve_ni_si(m: float) -> None:
-    """NI (solver) i SI (adapter) mają IDENTYCZNE stałe (0,14; 0,02) — muszą
-    dać ten sam punkt krzywej (dowód, że to JEDNA fizyka pod dwiema nazwami)."""
+def test_solver_and_iec_adapter_agree_on_standard_inverse(m: float) -> None:
+    """SI rdzenia i SI adaptera (jedna nazwa od partii integracji 9) mają IDENTYCZNE stałe
+    (0,14; 0,02) — muszą dać ten sam punkt krzywej (dowód, że to JEDNA fizyka)."""
     pickup = 100.0
     i_fault = pickup * m
 
     solver_result = core.compute_curve_trip_time(
-        curve_type=core.IEC60255CurveType.NI,
+        curve_type=core.IEC60255CurveType.STANDARD_INVERSE,
         i_fault_a=i_fault,
         is_pickup_a=pickup,
         tms=1.0,
@@ -175,3 +175,33 @@ def test_solver_and_iec_adapter_agree_on_equivalent_curve_ni_si(m: float) -> Non
     assert solver_result.calculated_time_s == pytest.approx(
         adapter_result.tripping_time_s, abs=5e-7, rel=1e-6
     )
+
+
+# =============================================================================
+# Zwłoka DT jest nastawą (partia integracji 9): adapter nie podstawia cicho 0,1 s, gdy
+# wołający jej nie podał. Iloczyn cech: {zwłoka podana, brak} × {M > 1, M ≤ 1}.
+# =============================================================================
+
+
+@pytest.mark.parametrize("m", [0.5, 3.0])
+def test_dt_bez_zwloki_to_odmowa_danych_nie_domyslne_0_1_s(m: float) -> None:
+    from network_model.odmowa_danych import OdmowaDanychError
+
+    with pytest.raises(OdmowaDanychError, match="zwłoki nastawy"):
+        calculate_iec_tripping_time(
+            fault_current_a=100.0 * m,
+            pickup_current_a=100.0,
+            curve_params=IECCurveParams.get_standard_params(IECCurveType.DEFINITE_TIME),
+        )
+
+
+@pytest.mark.parametrize(("m", "oczekiwany"), [(0.5, math.inf), (3.0, 0.37)])
+def test_dt_ze_zwloka_daje_zwloke_nastawy(m: float, oczekiwany: float) -> None:
+    wynik = calculate_iec_tripping_time(
+        fault_current_a=100.0 * m,
+        pickup_current_a=100.0,
+        curve_params=IECCurveParams.get_standard_params(IECCurveType.DEFINITE_TIME),
+        definite_time_s=0.37,
+    )
+    assert wynik.tripping_time_s == oczekiwany
+    assert wynik.base_time_s == 0.37

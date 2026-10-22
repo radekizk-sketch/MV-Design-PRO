@@ -787,7 +787,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "2f51e959606d1c360458e799d172c93bf4bf6e4df553e84bdcec1b10e4ae4dc0",
+    "hash_sha256": "d055173bfc7b919b862f10c4fdeaedf6f6fad1035ea3826ff6b97ee09d2d46db",
     "name": "Projekt demonstracyjny",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -818,6 +818,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "b18a1b1a-ae66-5fc7-964e-e31ca12c6219",
       "materialized_params": {
         "catalog_item_id": "load_uslugi_30kw",
@@ -863,14 +864,13 @@
   "sources": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "f3767143-9c5c-598d-9460-2cb312400f75",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -992,6 +992,7 @@
       "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1044,6 +1045,7 @@
       "lv_bus_ref": "nn/96503b2ec9d195fbcd6ae113fa37bb06/feeder_bus",
       "lv_earthing_system": "TN-C-S",
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
         "catalog_item_version": "legacy",

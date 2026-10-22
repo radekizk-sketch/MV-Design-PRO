@@ -42,12 +42,15 @@ from enm.models import EnergyNetworkModel
 from enm.nastawy_modulu import NastawyZabezpieczenModulu
 from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import ref_pola_wytworcy
+from enm.slownik_komunikatow import opis_elementu
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.tor_pola import szyna_glowna_stacji, szyna_raportowa, szyny_stacji
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.core.voltage_factor import TolerancjaNapieciaNn
 from network_model.nazwy import jest_nazwa, nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError, odmowa_rdzenia_b01
 from network_model.pochodne import kv_na_v, kva_na_mva, mw_na_kw, v_na_kv
@@ -97,6 +100,12 @@ class DerGeneratorCreateRequest(BaseModel):
     bus_ref: str | None = Field(default=None, min_length=1)
     blocking_transformer_ref: str | None = Field(default=None, min_length=1)
     block_transformer_catalog_ref: str | None = Field(default=None, min_length=1)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (addytywnie): tolerancja napięcia sieci nN strony
+    # wtórnej NOWEGO transformatora dedykowanego (wiersz nN tabeli 1 IEC 60909-0: PLUS_6 →
+    # c 1,05/0,95; PLUS_10 → c 1,10/0,90) → `Transformer.lv_voltage_tolerance`. Brak = brak
+    # deklaracji: zwarcia liczą sieć nN z wartością roboczą rejestru (założenie biegu
+    # `fault.c_tolerancja_nn_robocza`, karta TOLERANCJA-NN-WARTOSC-ROBOCZA), nigdy cicho.
+    block_transformer_lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
     # Karta FAB-K: punkt przyłączenia SN — szyna ISTNIEJĄCA w modelu (szyna SN stacji,
     # BranchPointSN.bus_ref, albo szyna Junction/T-node), wymagana gdy `block_transformer`
     # materializuje NOWY transformator dedykowany z `block_transformer_catalog_ref`
@@ -392,6 +401,19 @@ def _ensure_catalog_block_transformer(
             },
         )
 
+    tolerancja_nn = req.block_transformer_lv_voltage_tolerance
+    if tolerancja_nn is not None and not w_pasmie_nn(float(block_transformer.lv_kv)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "generator.invalid_lv_voltage_tolerance",
+                "message_pl": (
+                    "Tolerancję napięcia sieci nN deklaruje transformator zasilający sieć nN — "
+                    f"strona wtórna {float(block_transformer.lv_kv):g} kV nie leży w paśmie nN."
+                ),
+            },
+        )
+
     hv_bus_ref = _resolve_sn_connection_bus(enm, req, float(block_transformer.hv_kv))
 
     station_ref = str(station.get("ref_id") or station.get("id") or req.station_ref)
@@ -446,6 +468,7 @@ def _ensure_catalog_block_transformer(
                     "catalog_item_version": block_transformer.catalog_version,
                     "station_ref": station_ref,
                 },
+                **({"lv_voltage_tolerance": tolerancja_nn} if tolerancja_nn is not None else {}),
             }
         )
 
@@ -1065,7 +1088,9 @@ def get_der_instrument_transformers(
 
     napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
     prad_roboczy = _prad_roboczy_pola_a(generator, napiecie_v)
-    ik_ka, ip_ka, run_ref = _prady_zwarciowe_szyny(case_id, generator.get("bus_ref"))
+    ik_ka, ip_ka, run_ref, tolerancja_robocza = _prady_zwarciowe_szyny(
+        case_id, generator.get("bus_ref")
+    )
     prady_wejsc, napiecia_wejsc, zrodlo_wejsc = _wejscia_urzadzenia(
         _pierwsza_wartosc(zrodla, "protection_catalog_ref")
     )
@@ -1131,6 +1156,20 @@ def get_der_instrument_transformers(
         },
         "przekladnik_pradowy": _dobor_przekladnika(ct_ref, "ct", tor_pradowy),
         "przekladnik_napieciowy": _dobor_przekladnika(vt_ref, "vt", tor_napieciowy),
+        # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: Ik''/ip szyny pola w sieci nN liczonej z wartością
+        # roboczą tolerancji (znacznik wiersza biegu) — addytywnie, WYŁĄCZNIE gdy prawda.
+        **(
+            {
+                "status_danych": "UNVALIDATED_INPUT",
+                "dane_przyjete": [
+                    dana_przyjeta_tolerancji_nn(
+                        miejsce_pl=opis_elementu(dane, generator.get("bus_ref"), "szyna pola")
+                    ).model_dump(mode="json")
+                ],
+            }
+            if tolerancja_robocza
+            else {}
+        ),
     }
 
 
@@ -1180,21 +1219,29 @@ def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) ->
 
 def _prady_zwarciowe_szyny(
     case_id: str, bus_ref: Any
-) -> tuple[float | None, float | None, str | None]:
-    """Ik'' i ip dla szyny pola z OSTATNIEGO zakonczonego przebiegu zwarciowego.
+) -> tuple[float | None, float | None, str | None, bool]:
+    """Ik'', ip, przebieg i znacznik wartości roboczej tolerancji sieci nN (karta
+    TOLERANCJA-NN-WARTOSC-ROBOCZA) dla szyny pola z OSTATNIEGO zakonczonego przebiegu
+    zwarciowego — znacznik z TEGO SAMEGO wiersza co prądy.
 
-    Brak przebiegu albo brak wiersza dla tej szyny zwraca `(None, None, None)` —
+    Brak przebiegu albo brak wiersza dla tej szyny zwraca `(None, None, None, False)` —
     regula zamieni to w nazwany brak danej („uruchom analize zwarciowa"), a nie w
     zgodnosc. Zadnego sumowania wkladow: suma prądow zwarciowych nalezy do solwera.
     """
     from enm.canonical_analysis import build_short_circuit_results, list_runs_for_case
 
     if not isinstance(bus_ref, str):
-        return None, None, None
+        return None, None, None, False
+    from application.autorytet_biegu_zwarciowego import bieg_w_zakresie_iec60909
+
+    # Karta OD-14: reguły aparatury pola liczą prądem zwarcia METALICZNEGO — bieg przez
+    # impedancję przejścia Z_f (poza zakresem IEC 60909) nie jest źródłem Ik''/ip reguły.
     przebiegi = [
         run
         for run in list_runs_for_case(case_id)
-        if run.analysis_type == "short_circuit_sn" and run.status == "FINISHED"
+        if run.analysis_type == "short_circuit_sn"
+        and run.status == "FINISHED"
+        and bieg_w_zakresie_iec60909(run)
     ]
     for run in sorted(przebiegi, key=lambda r: r.created_at, reverse=True):
         # Wytwórca na zacisku pola (szyna pomocnicza bez własnego wiersza) — wiersz węzła
@@ -1204,8 +1251,13 @@ def _prady_zwarciowe_szyny(
             if wiersz.get("fault_type") not in (None, "3F", "three_phase"):
                 continue
             if szukana in (wiersz.get("target_id"), wiersz.get("element_id")):
-                return wiersz.get("ikss_ka"), wiersz.get("ip_ka"), str(run.id)
-    return None, None, None
+                return (
+                    wiersz.get("ikss_ka"),
+                    wiersz.get("ip_ka"),
+                    str(run.id),
+                    bool(wiersz.get("tolerancja_nn_robocza")),
+                )
+    return None, None, None, False
 
 
 def _wejscia_urzadzenia(

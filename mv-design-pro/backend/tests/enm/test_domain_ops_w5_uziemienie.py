@@ -215,6 +215,34 @@ class TestKreatorStacji:
         assert result["error_code"] == kod
         assert result.get("snapshot") is None
 
+    @pytest.mark.parametrize(
+        ("tolerancja", "kod"),
+        [
+            ("PLUS_6", None),
+            ("PLUS_10", None),
+            (None, None),
+            ("PLUS_8", "station.invalid_lv_voltage_tolerance"),
+            ("+6 %", "station.invalid_lv_voltage_tolerance"),
+        ],
+    )
+    def test_tolerancja_sieci_nn_na_transformatorze_stacji(self, tolerancja, kod):
+        """Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `nn_earthing.lv_voltage_tolerance` — wiersz nN
+        tabeli 1 IEC 60909-0 (+6 %: c 1,05/0,95; +10 %: c 1,10/0,90) na transformatorze
+        stacji, ten sam blok co układ sieci nN; brak = brak deklaracji (nie domyślka)."""
+        result, _ = _gpz_z_odcinkiem()
+        snap = _ok(result)
+        nn_earthing: dict[str, Any] = {"lv_system": "TN-C-S"}
+        if tolerancja is not None:
+            nn_earthing["lv_voltage_tolerance"] = tolerancja
+        result = _stacja(snap, nn_earthing)
+        if kod is not None:
+            assert result["error_code"] == kod
+            assert result.get("snapshot") is None
+            return
+        snap = _ok(result)
+        tr = next(t for t in snap["transformers"] if t["ulv_kv"] < 1.0)
+        assert tr.get("lv_voltage_tolerance") == tolerancja
+
     def test_brak_bloku_zostawia_transformator_bez_ukladu_nie_domyslke(self):
         result, _ = _gpz_z_odcinkiem()
         snap = _ok(_stacja(_ok(result), None))

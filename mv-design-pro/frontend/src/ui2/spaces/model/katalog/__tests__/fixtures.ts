@@ -142,17 +142,43 @@ export const FIXTURE_FALOWNIKI: KatalogPozycja[] = [
   },
 ];
 
+// LVRcdType.to_dict() — rekord katalogu `rcd_nn_ac_s_63a_500ma` (typ S, z czasem
+// niezadziałania) przepisany z GET /api/catalog/lv-rcd-types (bez noty weryfikacji).
+export const FIXTURE_RCD: KatalogPozycja[] = [
+  {
+    id: 'rcd_nn_ac_s_63a_500ma',
+    name: 'RCCB AC S 63 A / 500 mA',
+    in_a: 63,
+    i_delta_n_a: 0.5,
+    rcd_type: 'AC',
+    selective: true,
+    t_a_s: 0.5,
+    t_a_2idn_s: 0.2,
+    t_a_5idn_s: 0.15,
+    t_nieczuly_min_s: 0.13,
+    u_n_kv: 0.4,
+    poles: null,
+    manufacturer: null,
+    verification_status: 'REFERENCYJNY',
+    source_reference: 'IEC 61008-1 Tabela 1 (kl. 9.9.2)',
+    catalog_status: 'REFERENCYJNY_V1',
+    contract_version: '2.0',
+  },
+];
+
+// Komplet kategorii (dawniej mapa pomijała CT/VT/KABEL_NN/APARAT_NN — plik testowy jest poza
+// `tsc`, więc niepełny `Record<KategoriaId, …>` nie był wykrywany, a stub zwracał `undefined`).
 export const FIXTURES_PER_KATEGORIA: Readonly<Record<KategoriaId, KatalogPozycja[]>> = {
   LINIA: FIXTURE_LINIE,
   KABEL: FIXTURE_KABLE,
   TRANSFORMATOR: FIXTURE_TRANSFORMATORY,
   APARAT: FIXTURE_APARATY,
   FALOWNIK: FIXTURE_FALOWNIKI,
-  // Kategorie bez pozycji w fiksturze — loader zwraca uczciwie pustą listę.
   CT: [],
   VT: [],
-  APARAT_NN: [],
   KABEL_NN: [],
+  APARAT_NN: [],
+  APARAT_NN_RCD: FIXTURE_RCD,
 };
 
 /** Deterministyczny loader stub dla testów (bez sieci). */

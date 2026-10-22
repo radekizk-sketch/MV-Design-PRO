@@ -28,7 +28,10 @@ RULES: tuple[NormativeRule, ...] = (
     ),
     NormativeRule(
         rule_id="NR_P18_001",
-        title_pl="Wyłączalność (I_k'' ≤ I_cu)",
+        # Karta SC-IB-ITH-ZRODLA: kryterium zdolności wyłączania jak w dowodzie aparatury
+        # (`equipment_proof._check_icu`): SN/WN — I_b ≤ I_cu (IEC 62271-100), nN — I_k'' ≤ I_cu
+        # (IEC 60947-2, IEC 60364-4-43 p. 434.5.1).
+        title_pl="Wyłączalność (I_b ≤ I_cu w SN/WN, I_k'' ≤ I_cu w nN)",
         proof_type=ProofType.PROTECTION_OVERCURRENT,
         key="breaking_ok",
     ),

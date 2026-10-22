@@ -150,9 +150,10 @@ Dwa warunki musza zajsc RAZEM i oba sa czytane Z KODU, nie z listy w bramce:
    skanu (`power_flow_newton.py`): `gen.internal_impedance_pu or float("inf")`,
    a nastepnie `1.0 / impedancja` daje `0.0`, dla ktorego `math.isfinite` jest
    prawda — czyli liczbe udajaca pomiar, przepuszczana przez `_finite`. Bramka
-   meldowala wtedy RC=0. Ten sam wzorzec zyje w repozytorium: tabela wspolczynnika
-   mu w `machine_sc_iec60909.py` (w. 75) uzywa `float("inf")` tam, gdzie
-   `e^{-0.38 I''_k/I_r}` daje 0,0. Zawezenie kosztowalo ZERO nowych pozycji
+   meldowala wtedy RC=0. Ten sam wzorzec zyl w repozytorium: tabela wspolczynnika
+   mu w `machine_sc_iec60909.py` miala `float("inf")` jako prog ostatniej krzywej
+   (zdjete karta MU-INTERPOLACJA — tablica wezlow t_min bez nieskonczonosci,
+   interpolacja liniowa miedzy wezlami). Zawezenie kosztowalo ZERO nowych pozycji
    budzetu — zadne zywe `or float("inf")` na polu kontraktu nie istnieje.
    Pomiar tej granicy: bez warunku liczbowosci skan warstwy solverow daje 40
    trafien, z czego 26 to formy UCZCIWE albo niefizyczne (`... else None`, nazwa
@@ -260,6 +261,8 @@ import sys
 from collections import Counter
 from collections.abc import Iterator
 from pathlib import Path
+
+from guard_parsowanie import czytaj_tekst, sparsuj_plik, sparsuj_tekst, uruchom  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -530,7 +533,6 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     "infrastructure/cgmes/refmap.py",
     "infrastructure/cloud_backup.py",
     "infrastructure/persistence/repositories/document_store_repository.py",
-    "protection/curves/curve_calculator.py",
     "protection/curves/iec_curves.py",
     "protection/curves/ieee_curves.py",
     # Karta AB-H0 (2026-09-23) — pin mapy zazadal decyzji dla pieciu korzeni po
@@ -846,16 +848,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         # zamrozone jako MERYTORYCZNIE uzasadnione (nie dlug).
         "G:dictifexp:trace.total_switch_count": 1,
     },
-    # Prad znamionowy maszyny w mianowniku ilorazu I_p/I_r: przy braku danej
-    # (`ir_a <= 0`) iloraz przyjmuje 0,0 i tak wchodzi do `mu_factor`, czyli do
-    # wspolczynnika wygaszania IEC 60909 §6.6/§6.7 — a wiec ZMIENIA WYNIK, a nie
-    # tylko zabezpiecza dzielenie. DLUG NAZWANY: maszyna bez pradu znamionowego
-    # powinna zostac POMINIETA z meldunkiem braku (wzorzec
-    # `_grid_source_shunt_admittance`), a nie liczona ze wspolczynnikiem z zera.
-    # Ujawnione w rundzie 4 razem z wlasnymi deklaracjami warstwy.
-    "network_model/solvers/machine_sc_iec60909.py": {
-        "B:ifexp:m.ir_a": 2,
-    },
+    # Karta SC-IB-ITH-ZRODLA (2026-10-21): wpis `network_model/solvers/machine_sc_iec60909.py`
+    # (`B:ifexp:m.ir_a`, 2) ZNIKA. Dawne `ratio = ip / m.ir_a if m.ir_a > 0 else 0.0`
+    # wpychalo krotnosc 0 do krzywej μ (μ = 1) za niefizyczny prad znamionowy — teraz jedna
+    # funkcja `wklad_maszyny` odmawia (`ValueError` z nazwa maszyny), a krotnosc liczy sie
+    # z pradu NA ZACISKACH maszyny (ten sam poziom napiecia co I_r).
     # PUNKT STARTOWY ITERACJI, NIE WIELKOSC WEJSCIOWA — jedyny wpis budzetu
     # uzasadniony MERYTORYCZNIE, a nie nazwany dlugiem. `_build_initial_voltage`
     # podstawia 1,0 pu / 0 rad za brakujace napiecie wezla, ale jest to kanoniczny
@@ -1338,9 +1335,11 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # dedykowana karte konsolidacyjna — patrz meldunek koncowy). Nastawy
     # przekaznika (i_pickup_51/i_inst_50/tms_51 z wariantem doziemnym `_51n`/
     # `_50n`) w bibliotece katalogowej `protection/catalog/*`; wspolczynniki
-    # asymetrii `m_factor`/`n_factor` wg IEC 60909 w piatciu niezaleznych
-    # proof-packach (sc_symmetrical/sc_asymmetrical/proof_generator — TA SAMA
-    # para pol w trzech plikach, kolejny kandydat KLASA NIE INSTANCJA);
+    # asymetrii `m_factor`/`n_factor` — trzy wpisy `B:ifexp:result.m_factor/n_factor`
+    # (sc_symmetrical/sc_asymmetrical/proof_generator) ZDJETE karta SC-IB-ITH-ZRODLA
+    # (2026-10-21): domyslne (1, 0)/(0, 0) za brak m/n byly druga definicja I_th; teraz
+    # brak m/n w wyniku = `ValueError`, a I_th niesymetrycznych liczy jedno zrodlo
+    # `short_circuit_core.compute_post_fault_quantities` per rodzaj zwarcia;
     # `threshold_a` (nastawa progu prądowego zabezpieczenia) w read-modelu;
     # `i_fault_a` w porownaniu A/B ewaluacji zabezpieczen. `bramka_
     # konwencjonalna.inf_a` (SWZ/D2): dzielenie przez prad nietopliwosci
@@ -1441,16 +1440,10 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
         "B:ifexp:data.cross_section_mm2": 1,
         "B:ifexp:data.ik2_min_end_a": 1,
     },
-    "application/proof_engine/packs/sc_asymmetrical.py": {
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
-    },
-    "application/proof_engine/packs/sc_symmetrical.py": {
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
-    },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-09-30): `F:dictget:run.c_factor` (1) ZNIKA —
+    # pakiet biegu nie czyta liczby c z opcji (dawne `options.get("c_factor", 1.10)`),
+    # tylko scenariusz i nadpisanie z uzasadnieniem; c dobiera `voltage_factor.dobierz_c`.
     "application/proof_engine/pakiet_biegu.py": {
-        "F:dictget:run.c_factor": 1,
         "F:dictget:run.thermal_time_seconds": 1,
     },
     # Karta W3-C1 (2026-09-09): `dostepnosc_pakietu_nastaw` (bramka dostepnosci
@@ -1473,21 +1466,19 @@ ZASTANE_ZASTEPNIKI: dict[str, dict[str, int]] = {
     # OBU stron pary — w tym wnetrza `zbuduj_wejscie_nastaw`, ktorego ta karta
     # NIE dotyka (poza dokladce `oblicz_nastawy` na koncu pliku, patrz diff) —
     # i jest poza jej zakresem; nazwane w meldunku karty, nie ukryte.
-    "application/proof_engine/pakiet_nastaw.py": {
-        "F:dictget:run.c_factor": 1,
-    },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (2026-09-30): wpis `pakiet_nastaw.py`
+    # (`F:dictget:run.c_factor`, 1) ZNIKA — gałąź maksymalną rozstrzyga przełącznik
+    # scenariusza zapisany na wyniku (`kotwica_jest_scenariuszem_max`), nie liczba c.
     "application/proof_engine/proof_generator.py": {
         "A:or:data.sn_mva": 2,
         "B:ifexp:entry.u_secondary_kv": 1,
-        "B:ifexp:result.m_factor": 1,
-        "B:ifexp:result.n_factor": 1,
     },
     "application/proof_engine/serialization.py": {
         "F:dictget:payload.step_number": 1,
         "F:dictget:payload.total_steps": 1,
     },
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `F:dictget:kotwica.c_factor` (1) ZNIKA (jak wyżej).
     "application/protection_settings/batch_run.py": {
-        "F:dictget:kotwica.c_factor": 1,
         "F:dictget:kotwica.thermal_time_seconds": 1,
     },
     # Karta GUARD-SUB-2 (2026-09-05), forma H: `ik_max = inp.ik3_max_beginning_a`
@@ -1712,10 +1703,7 @@ def contract_fields() -> set[str]:
             rel = path.relative_to(BACKEND_SRC).as_posix()
             if rel in MODEL_ROOTS_POZA_MAPA:
                 continue
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, SyntaxError, UnicodeDecodeError):
-                continue
+            tree = sparsuj_plik(path)
             for node in ast.walk(tree):
                 if not isinstance(node, ast.ClassDef):
                     continue
@@ -1732,10 +1720,7 @@ def declares_model_fields(path: Path) -> bool:
     Obejmuje pydantic i dataclass bez rozrozniania — z punktu widzenia tej bramki
     obie sa tym samym: nosnikiem pola, ktore mozna podstawic liczba.
     """
-    try:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    except (OSError, SyntaxError, UnicodeDecodeError):
-        return False
+    tree = sparsuj_plik(path)
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
             for stmt in node.body:
@@ -1776,10 +1761,7 @@ def model_roots_read_by_scope() -> dict[str, set[str]]:
         if not root.is_dir():
             continue
         for path in sorted(root.rglob("*.py")):
-            try:
-                tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            except (OSError, SyntaxError, UnicodeDecodeError):
-                continue
+            tree = sparsuj_plik(path)
             pakiet = pakiet_pliku(path, BACKEND_SRC)
             modules: set[str] = set()
             for node in ast.walk(tree):
@@ -2000,9 +1982,9 @@ def is_not_a_number_literal(expr: ast.expr) -> bool:
 
     Bramka meldowala RC=0. Zero jako „impedancja wewnetrzna nieobecna" jest
     dokladnie ta klasa, ktora ta bramka zwalcza — liczba udajaca pomiar.
-    Ten sam wzorzec zyje w repozytorium: `machine_sc_iec60909.py` w. 75 uzywa
-    `float("inf")` w tabeli wspolczynnika mu, gdzie `e^{-0.38 I''_k/I_r}` przy
-    nieskonczonosci daje 0,0 — wartosc skonczona i uzyta dalej.
+    Ten sam wzorzec zyl w repozytorium: `machine_sc_iec60909.py` mial
+    `float("inf")` jako prog ostatniej krzywej w tabeli wspolczynnika mu (zdjete
+    karta MU-INTERPOLACJA: tablica wezlow t_min bez nieskonczonosci).
 
     Przypiete `test_solver_input_substitute_guard.py` (NaN uczciwy / inf gryzie).
 
@@ -2560,15 +2542,8 @@ def apply_ratchet(
 
 def check_file(path: Path, fields: set[str]) -> list[str]:
     """Naruszenia w jednym pliku (pusta lista = plik czysty)."""
-    try:
-        source = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return []
-    try:
-        tree = ast.parse(source, filename=str(path))
-    except SyntaxError as exc:
-        print(f"WARN: {path}:{exc.lineno}: nie da sie sparsowac ({exc.msg})")
-        return []
+    source = czytaj_tekst(path)
+    tree = sparsuj_tekst(source, str(path))
 
     rel = path.relative_to(BACKEND_SRC).as_posix()
     findings = collect_findings(tree, fields)
@@ -2676,4 +2651,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(uruchom(main))

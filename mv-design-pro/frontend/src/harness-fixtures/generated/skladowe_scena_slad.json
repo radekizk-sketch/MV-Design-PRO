@@ -1,7 +1,7 @@
 {
   "run_id": "run-sc-scena-skladowe",
-  "snapshot_id": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
-  "input_hash": "4024336d9eb7c0bc845d7318534d02b1748c75ba5ff7d02b240b5a03ce392d0b",
+  "snapshot_id": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+  "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
   "white_box_trace": [
     {
       "key": "KT[158eec95-939b-5b35-97ad-9433334b5506]",
@@ -35,7 +35,7 @@
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -89,7 +89,7 @@
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -127,17 +127,17 @@
         "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 1.2745363594e-09,
+          "re": 5.11590769747e-13,
           "im": -10162.601626
         }
       },
-      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 0.108279253306,
+          "re": 0.108279252032,
           "im": -10160.476333
         },
-        "r_ohm": 0.108279253306,
+        "r_ohm": 0.108279252032,
         "x_ohm": -10160.476333,
         "z_equiv_abs_ohm": 10160.4763336
       },
@@ -147,7 +147,7 @@
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -189,7 +189,7 @@
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -216,9 +216,9 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 0.108279253306,
+        "r_ohm": 0.108279252032,
         "x_ohm": -10160.476333,
-        "rx_ratio": -1.06569071918e-05
+        "rx_ratio": -1.06569070665e-05
       },
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
@@ -230,7 +230,7 @@
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -270,7 +270,7 @@
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -294,26 +294,75 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "kappa": 2.00003133181,
-        "tb_s": 0.1,
-        "ta_s": 0.0,
-        "exp_factor": 0.0
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81275",
       "result": {
         "ib_a": 2.81274591728
       },
-      "notes": null,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
       "step": 7,
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_main",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_main",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_main"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "ikss_a": 2.81274591728,
+        "tb_s": 0.1,
+        "rx_ratio": -1.06569070665e-05,
+        "f_hz": 50.0,
+        "wykladnik": -0.0003347966095,
+        "wspolczynnik_zaniku": 1.00033485266,
+        "tb_zrodlo": {
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        }
+      },
+      "substitution_latex": "\\sqrt{2} \\cdot 2.81275 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot -1.06569e-05}",
+      "result": {
+        "i_dc_a": 3.97915540849
+      },
+      "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "step": 8,
+      "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+      "element_id": "bus_sn_main",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -341,20 +390,20 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "m_factor": 2.00627937265,
+        "m_factor": 2.00627937257,
         "n_factor": 1.0
       },
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
-        "ith_a": 4.87691483326
+        "ith_a": 4.8769148332
       },
       "notes": null,
-      "step": 8,
+      "step": 9,
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -389,12 +438,12 @@
         "sk_mva": 0.0730772825627
       },
       "notes": null,
-      "step": 9,
+      "step": 10,
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -443,12 +492,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 10,
+      "step": 11,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -497,12 +546,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 11,
+      "step": 12,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -555,12 +604,12 @@
         "z_equiv_abs_ohm": 15.4545425296
       },
       "notes": null,
-      "step": 12,
+      "step": 13,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -597,12 +646,12 @@
         "ikss_a": 13560.9415364
       },
       "notes": null,
-      "step": 13,
+      "step": 14,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -638,12 +687,12 @@
         "kappa": 1.75018047171
       },
       "notes": null,
-      "step": 14,
+      "step": 15,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -678,12 +727,12 @@
         "ip_a": 33565.0791174
       },
       "notes": null,
-      "step": 15,
+      "step": 16,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -707,26 +756,75 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 13560.9415364,
-        "kappa": 1.75018047171,
-        "tb_s": 0.1,
-        "ta_s": 0.0324518083094,
-        "exp_factor": 0.0458907191603
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "13560.9 \\cdot \\sqrt{1 + \\left((1.75018 - 1) \\cdot 0.0458907\\right)^2}",
+      "substitution_latex": "13560.9",
       "result": {
-        "ib_a": 13568.9751782
+        "ib_a": 13560.9415364
       },
-      "notes": null,
-      "step": 16,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 17,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_hv",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_hv",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_hv"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "ikss_a": 13560.9415364,
+        "tb_s": 0.1,
+        "rx_ratio": 0.0980869488532,
+        "f_hz": 50.0,
+        "wykladnik": 3.0814923793,
+        "wspolczynnik_zaniku": 0.0458907191603,
+        "tb_zrodlo": {
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        }
+      },
+      "substitution_latex": "\\sqrt{2} \\cdot 13560.9 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.0980869}",
+      "result": {
+        "i_dc_a": 880.095306896
+      },
+      "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "step": 18,
+      "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+      "element_id": "bus_hv",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -762,12 +860,12 @@
         "ith_a": 13794.8153102
       },
       "notes": null,
-      "step": 17,
+      "step": 19,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -802,12 +900,12 @@
         "sk_mva": 2583.70637135
       },
       "notes": null,
-      "step": 18,
+      "step": 20,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -856,12 +954,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 19,
+      "step": 21,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -910,12 +1008,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 20,
+      "step": 22,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -968,12 +1066,12 @@
         "z_equiv_abs_ohm": 0.035134477759
       },
       "notes": null,
-      "step": 21,
+      "step": 23,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1010,12 +1108,12 @@
         "ikss_a": 20705.0562746
       },
       "notes": null,
-      "step": 22,
+      "step": 24,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1051,12 +1149,12 @@
         "kappa": 1.51538143243
       },
       "notes": null,
-      "step": 23,
+      "step": 25,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1091,12 +1189,12 @@
         "ip_a": 44372.4465255
       },
       "notes": null,
-      "step": 24,
+      "step": 26,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1120,26 +1218,75 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 20705.0562746,
-        "kappa": 1.51538143243,
-        "tb_s": 0.1,
-        "ta_s": 0.0139972928149,
-        "exp_factor": 0.000789399027339
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "20705.1 \\cdot \\sqrt{1 + \\left((1.51538 - 1) \\cdot 0.000789399\\right)^2}",
+      "substitution_latex": "20705.1",
       "result": {
-        "ib_a": 20705.0579881
+        "ib_a": 20705.0562746
       },
-      "notes": null,
-      "step": 25,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 27,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_nn",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_nn",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_nn"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "ikss_a": 20705.0562746,
+        "tb_s": 0.1,
+        "rx_ratio": 0.227408178419,
+        "f_hz": 50.0,
+        "wykladnik": 7.14423862689,
+        "wspolczynnik_zaniku": 0.000789399027339,
+        "tb_zrodlo": {
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        }
+      },
+      "substitution_latex": "\\sqrt{2} \\cdot 20705.1 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot 0.227408}",
+      "result": {
+        "i_dc_a": 23.114686097
+      },
+      "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "step": 28,
+      "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+      "element_id": "bus_nn",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1175,12 +1322,12 @@
         "ith_a": 20860.6541519
       },
       "notes": null,
-      "step": 26,
+      "step": 29,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1215,12 +1362,12 @@
         "sk_mva": 14.3448837765
       },
       "notes": null,
-      "step": 27,
+      "step": 30,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1269,12 +1416,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 28,
+      "step": 31,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1323,12 +1470,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 29,
+      "step": 32,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1366,27 +1513,27 @@
         "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 1.2745363594e-09,
+          "re": 5.11590769747e-13,
           "im": -10162.601626
         }
       },
-      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 0.108279253306,
+          "re": 0.108279252032,
           "im": -10160.476333
         },
-        "r_ohm": 0.108279253306,
+        "r_ohm": 0.108279252032,
         "x_ohm": -10160.476333,
         "z_equiv_abs_ohm": 10160.4763336
       },
       "notes": null,
-      "step": 30,
+      "step": 33,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1423,12 +1570,12 @@
         "ikss_a": 2.81274591728
       },
       "notes": null,
-      "step": 31,
+      "step": 34,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1455,21 +1602,21 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 0.108279253306,
+        "r_ohm": 0.108279252032,
         "x_ohm": -10160.476333,
-        "rx_ratio": -1.06569071918e-05
+        "rx_ratio": -1.06569070665e-05
       },
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
         "kappa": 2.00003133181
       },
       "notes": null,
-      "step": 32,
+      "step": 35,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1504,12 +1651,12 @@
         "ip_a": 7.95577147986
       },
       "notes": null,
-      "step": 33,
+      "step": 36,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1533,26 +1680,75 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "kappa": 2.00003133181,
-        "tb_s": 0.1,
-        "ta_s": 0.0,
-        "exp_factor": 0.0
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "2.81275 \\cdot \\sqrt{1 + \\left((2.00003 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81275",
       "result": {
         "ib_a": 2.81274591728
       },
-      "notes": null,
-      "step": 34,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 37,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_b",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_b",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_b"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "ikss_a": 2.81274591728,
+        "tb_s": 0.1,
+        "rx_ratio": -1.06569070665e-05,
+        "f_hz": 50.0,
+        "wykladnik": -0.0003347966095,
+        "wspolczynnik_zaniku": 1.00033485266,
+        "tb_zrodlo": {
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        }
+      },
+      "substitution_latex": "\\sqrt{2} \\cdot 2.81275 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot -1.06569e-05}",
+      "result": {
+        "i_dc_a": 3.97915540849
+      },
+      "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "step": 38,
+      "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+      "element_id": "bus_sn_b",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1580,20 +1776,20 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "m_factor": 2.00627937265,
+        "m_factor": 2.00627937257,
         "n_factor": 1.0
       },
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
-        "ith_a": 4.87691483326
+        "ith_a": 4.8769148332
       },
       "notes": null,
-      "step": 35,
+      "step": 39,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1628,12 +1824,12 @@
         "sk_mva": 0.0730772825627
       },
       "notes": null,
-      "step": 36,
+      "step": 40,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1682,12 +1878,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.971956 \\cdot \\left(0.0103175 + j 0.0438013\\right) = \\left(0.0100281 + j 0.0425729\\right)"
       },
       "notes": null,
-      "step": 37,
+      "step": 41,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1736,12 +1932,12 @@
         "z_tk_formula_latex": "Z_{TK} = K_T \\cdot Z_T = 0.974866 \\cdot \\left(0.0048 + j 0.119904\\right) = \\left(0.00467936 + j 0.11689\\right)"
       },
       "notes": null,
-      "step": 38,
+      "step": 42,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1779,27 +1975,27 @@
         "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 1.42600000127,
+          "re": 1.426,
           "im": -10158.881626
         }
       },
       "substitution_latex": "\\left(0.755726 + j 1.92644\\right) + \\left(0.755726 + j 1.92644\\right) + \\left(1.426 - j 10158.9\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 2.93745101745,
+          "re": 2.93745101618,
           "im": -10155.0287494
         },
-        "r_ohm": 2.93745101745,
+        "r_ohm": 2.93745101618,
         "x_ohm": -10155.0287494,
         "z_equiv_abs_ohm": 10155.0291742
       },
       "notes": null,
-      "step": 39,
+      "step": 43,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1836,12 +2032,12 @@
         "ikss_a": 2.81425467467
       },
       "notes": null,
-      "step": 40,
+      "step": 44,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1868,21 +2064,21 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 2.93745101745,
+        "r_ohm": 2.93745101618,
         "x_ohm": -10155.0287494,
-        "rx_ratio": -0.000289260728842
+        "rx_ratio": -0.000289260728717
       },
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
       "result": {
         "kappa": 2.00085079564
       },
       "notes": null,
-      "step": 41,
+      "step": 45,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1917,12 +2113,12 @@
         "ip_a": 7.96330038795
       },
       "notes": null,
-      "step": 42,
+      "step": 46,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1946,26 +2142,75 @@
     },
     {
       "key": "Ib",
-      "title": "Prąd zwarciowy do obliczeń cieplnych",
-      "formula_latex": "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1) \\cdot e^{-t_b/t_a})^2}",
+      "title": "Prąd wyłączeniowy symetryczny",
+      "formula_latex": "I_b = I_{k}''",
       "inputs": {
         "ikss_a": 2.81425467467,
-        "kappa": 2.00085079564,
-        "tb_s": 0.1,
-        "ta_s": 0.0,
-        "exp_factor": 0.0
+        "przypadek": "zwarcie_niesymetryczne"
       },
-      "substitution_latex": "2.81425 \\cdot \\sqrt{1 + \\left((2.00085 - 1) \\cdot 0\\right)^2}",
+      "substitution_latex": "2.81425",
       "result": {
         "ib_a": 2.81425467467
       },
-      "notes": null,
-      "step": 43,
+      "notes": "Zwarcie niesymetryczne: IEC 60909-0:2016, rozdz. 9 przyjmuje Ib = Ik'' (zanik strumienia maszyn nie jest uwzględniany).",
+      "step": 47,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
+      "proof_status": "complete",
+      "reporting_status": "reportable",
+      "method_basis": "IEC_60909",
+      "primary_element_ref": "bus_sn_c",
+      "primary_element_type": "BUS",
+      "related_elements": [
+        {
+          "element_ref": "bus_sn_c",
+          "role": "PRIMARY_MODEL",
+          "element_type": "BUS"
+        },
+        {
+          "element_ref": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "role": "SOLVER_TARGET",
+          "element_type": "BUS"
+        }
+      ],
+      "selection_refs": [
+        "bus_sn_c"
+      ]
+    },
+    {
+      "key": "iDC",
+      "title": "Składowa nieokresowa prądu zwarciowego w chwili t_b",
+      "formula_latex": "i_{DC} = \\sqrt{2} \\cdot I_{k}'' \\cdot e^{-2 \\pi f \\, t_b \\, R/X}",
+      "inputs": {
+        "ikss_a": 2.81425467467,
+        "tb_s": 0.1,
+        "rx_ratio": -0.000289260728717,
+        "f_hz": 50.0,
+        "wykladnik": -0.00908739380308,
+        "wspolczynnik_zaniku": 1.00912880952,
+        "tb_zrodlo": {
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        }
+      },
+      "substitution_latex": "\\sqrt{2} \\cdot 2.81425 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot -0.000289261}",
+      "result": {
+        "i_dc_a": 4.01628939943
+      },
+      "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "step": 48,
+      "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+      "element_id": "bus_sn_c",
+      "element_type": "BUS",
+      "graph_role": null,
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -1993,20 +2238,20 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.81425467467,
-        "m_factor": 2.18015435334,
+        "m_factor": 2.18015435326,
         "n_factor": 1.0
       },
       "substitution_latex": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
       "result": {
-        "ith_a": 5.01865678164
+        "ith_a": 5.01865678158
       },
       "notes": null,
-      "step": 44,
+      "step": 49,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -2041,12 +2286,12 @@
         "sk_mva": 0.0731164812294
       },
       "notes": null,
-      "step": 45,
+      "step": 50,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
       "element_type": "BUS",
       "graph_role": null,
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_status": "complete",
       "reporting_status": "reportable",
       "method_basis": "IEC_60909",
@@ -2071,10 +2316,10 @@
   ],
   "selection_index": {
     "bus_sn_main": 0,
-    "bus_hv": 9,
-    "bus_nn": 18,
-    "bus_sn_b": 27,
-    "bus_sn_c": 36
+    "bus_hv": 10,
+    "bus_nn": 20,
+    "bus_sn_b": 30,
+    "bus_sn_c": 40
   },
   "catalog_context": [
     {
@@ -2394,7 +2639,7 @@
     "case_ref": "case-demo",
     "case_kind": "ZWARCIOWY_MAKS",
     "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-    "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
     "rewizja_modelu": 1,
     "variant_ref": null,
     "run_ref": "run-sc-scena-skladowe",
@@ -2420,14 +2665,14 @@
       "project_ref": null,
       "run_ref": "run-sc-scena-skladowe",
       "analysis_type": "short_circuit_sn",
-      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
+      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
     },
     "reproducibility": {
       "case_ref": "case-demo",
       "analysis_case_ref": "case-demo",
-      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
-      "enm_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
-      "enm_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
       "enm_projection_version": "v12xx.m1.1",
       "variant_ref": null,
       "operating_variant_ref": null,
@@ -2437,19 +2682,19 @@
       "method_version": "canonical_run_v1",
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
-      "input_hash": "4024336d9eb7c0bc845d7318534d02b1748c75ba5ff7d02b240b5a03ce392d0b",
-      "result_hash": "5a7ca4166e93e459b648481c159a810f0a6e51abf63790707b20b7694f1a498b",
+      "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
+      "result_hash": "54f244ddf89a3fb6d00dbbefd7e047deac933b854c55b68e87fece3eae5784a3",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
       "proof_renderer_version": "white_box_trace_v1",
-      "catalog_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
       "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
       "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "4c4942ca0565eae3312d8ac82c4507a77562b0b8b3e1dfe70c194bdd287d3aed",
+      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

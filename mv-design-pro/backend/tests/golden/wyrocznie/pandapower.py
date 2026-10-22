@@ -56,23 +56,49 @@ from enm.models import (
     SwitchBranch,
     liczba_torow,
 )
-from network_model.core.voltage_factor import Scenario, c_for_node
+from enm.tolerancja_nn import tolerancje_wezlow_nn, wyspy_nn
+from network_model.core.voltage_factor import Scenario, TolerancjaNapieciaNn, c_for_node
 from network_model.solvers.power_flow_newton_internal import transformer_phase_shift_rad
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
-#: Tolerancja napięcia nN dla pandapower (``lv_tol_percent``): 6 % ⇒ c_max = 1,05 dla
-#: U_n ≤ 1 kV — tak samo jak ``voltage_factor.c_for_node`` (IEC 60909-0 Tab. 1).
-LV_TOL_PERCENT = 6
+#: Tolerancja sieci nN modelu → ``lv_tol_percent`` pandapower (6 % ⇒ c 1,05/0,95, 10 % ⇒
+#: c 1,10/0,90 dla U_n ≤ 1 kV — te same wiersze co ``voltage_factor.c_for_node``).
+_LV_TOL_PERCENT_Z_TOLERANCJI: dict[str, int] = {"PLUS_6": 6, "PLUS_10": 10}
+
+
+def lv_tol_percent(enm: EnergyNetworkModel) -> int | None:
+    """``lv_tol_percent`` pandapower z tolerancji sieci nN modelu (``enm.tolerancja_nn``).
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: wiersz nN tabeli 1 jest daną SIECI nN (nośnik na
+    transformatorze albo źródle zasilającym), nie stałą mostu. pandapower ma JEDEN parametr
+    na całą sieć — model z wyspą nN bez tolerancji albo z wyspami o różnych tolerancjach
+    jest poza zakresem wyroczni (``ValueError`` z nazwą). Sieć bez szyn nN: ``None``
+    (parametr nie dotyczy żadnej szyny, wywołanie zostawia go pandapower).
+    """
+    wyspy = wyspy_nn(enm)
+    if not wyspy:
+        return None
+    tolerancje = {w.tolerancja for w in wyspy}
+    if None in tolerancje:
+        raise ValueError("Most pandapower: sieć nN bez tolerancji napięcia — c nN niedobieralne")
+    if len(tolerancje) > 1:
+        raise ValueError(
+            "Most pandapower: wyspy nN o różnych tolerancjach — pandapower ma jeden "
+            "lv_tol_percent na sieć"
+        )
+    return _LV_TOL_PERCENT_Z_TOLERANCJI[str(tolerancje.pop())]
+
 
 #: Grupa połączeń podstawiana przez ``enm/mapping.py`` przy braku w modelu.
 GRUPA_DOMYSLNA = "Dyn11"
 
 #: Wersja reguł mostu (D-2): podnoszona przy KAŻDEJ zmianie odwzorowania ENM → pandapower.
 #: "1" = CV-4.3 K3b (rozpływ per wyspa, zwarcie 3F MAX); "2" = CV-4.3 K7 (ext_grid z
-#: parametrami MIN z Z_Qmin, proweniencja). Skrót SHA-256 pliku w rekordzie proweniencji
+#: parametrami MIN z Z_Qmin, proweniencja); "3" = karta WSPOLCZYNNIK-C-JEDEN-NOSNIK
+#: (``lv_tol_percent`` i c z tolerancji sieci nN modelu). Skrót SHA-256 pliku w rekordzie proweniencji
 #: identyfikuje dokładną treść mostu niezależnie od tej etykiety.
-WERSJA_MOSTU = "2"
+WERSJA_MOSTU = "3"
 
 
 def _pandapower_wersja() -> str:
@@ -99,7 +125,9 @@ def _stopnie_z_grupy(vector_group: str | None) -> float:
     return (-math.degrees(transformer_phase_shift_rad(vector_group or GRUPA_DOMYSLNA))) % 360.0
 
 
-def _parametry_ext_grid(source: Any, u_kv: float) -> dict[str, float]:
+def _parametry_ext_grid(
+    source: Any, u_kv: float, tolerancja_nn: TolerancjaNapieciaNn | None
+) -> dict[str, float]:
     """``s_sc_max_mva``/``rx_max`` z Z_Qmax i ``s_sc_min_mva``/``rx_min`` z Z_Qmin —
     oba z ``enm.mapping._source_positive_impedance_ohm`` (jedna funkcja mappera).
 
@@ -111,14 +139,16 @@ def _parametry_ext_grid(source: Any, u_kv: float) -> dict[str, float]:
     a bez danych MIN wynosi (c_min/c_max)·S''kQmax — dokładnie założenie
     ``source.sk_min_missing`` mappera (Z_Qmin = Z_Qmax), nie liczba wymyślona przez most.
     """
-    z_max = _source_positive_impedance_ohm(source, u_kv, "MAX")
-    z_min = _source_positive_impedance_ohm(source, u_kv, "MIN")
+    z_max = _source_positive_impedance_ohm(source, u_kv, "MAX", tolerancja_nn=tolerancja_nn)
+    z_min = _source_positive_impedance_ohm(source, u_kv, "MIN", tolerancja_nn=tolerancja_nn)
     if z_max is None or z_max == 0 or z_min is None or z_min == 0:
         raise ValueError(f"Źródło {source.ref_id} bez impedancji zwarciowej")
+    c_max = c_for_node(u_kv, "MAX", tolerancja_nn=tolerancja_nn)
+    c_min = c_for_node(u_kv, "MIN", tolerancja_nn=tolerancja_nn)
     return {
-        "s_sc_max_mva": c_for_node(u_kv, "MAX") * u_kv**2 / abs(z_max),
+        "s_sc_max_mva": c_max * u_kv**2 / abs(z_max),
         "rx_max": z_max.real / z_max.imag,
-        "s_sc_min_mva": c_for_node(u_kv, "MIN") * u_kv**2 / abs(z_min),
+        "s_sc_min_mva": c_min * u_kv**2 / abs(z_min),
         "rx_min": z_min.real / z_min.imag,
     }
 
@@ -135,6 +165,7 @@ def zbuduj_siec(
     ``calc_sc(case="max")`` i ``calc_sc(case="min")``.
     """
     pp = _pandapower()
+    tolerancje_nn = tolerancje_wezlow_nn(enm)
     # Karta W3-F (§0.6, 2026-09-09): częstotliwość SIECI POD TESTEM (nagłówek
     # ENM), nie literał modułu (usunięty stąd `CZESTOTLIWOSC_HZ = 50.0`) —
     # wyrocznia czyta realną częstotliwość studium, żeby sieć 60 Hz (gdyby się
@@ -216,7 +247,7 @@ def zbuduj_siec(
             vm_pu=1.0,
             va_degree=0.0,
             name=source.ref_id,
-            **_parametry_ext_grid(source, u_kv),
+            **_parametry_ext_grid(source, u_kv, tolerancje_nn.get(source.bus_ref)),
         )
 
     for load in sorted(enm.loads, key=lambda ld: ld.ref_id):
@@ -300,7 +331,8 @@ def zwarcie_3f(
     enm: EnergyNetworkModel, scenariusz: Scenario = "MAX", *, k_t_w_min: bool = False
 ) -> dict[str, float]:
     """Ik'' [A] zwarcia trójfazowego w każdej szynie — sama sieć Thevenina (bez
-    wytwórców), c wg IEC 60909-0 Tab. 1 (MAX: nN 1,05 / SN/WN 1,10; MIN: 0,95 / 1,00).
+    wytwórców), c wg IEC 60909-0 Tab. 1 (MAX: nN wg tolerancji 1,05/1,10, SN/WN 1,10; MIN:
+    nN 0,95/0,90, SN/WN 1,00) — ``lv_tol_percent`` z tolerancji sieci nN modelu.
 
     MIN (CV-4.3 K7): ``case="min"`` bierze ``s_sc_min_mva``/``rx_min`` ext_grid (z Z_Qmin
     mappera) i c_min w węźle zwarcia. Korekta temperaturowa linii toru kanonicznego nie
@@ -335,7 +367,7 @@ def zwarcie_3f(
         net,
         fault="3ph",
         case="max" if scenariusz == "MAX" else "min",
-        lv_tol_percent=LV_TOL_PERCENT,
+        **({} if (tolerancja := lv_tol_percent(enm)) is None else {"lv_tol_percent": tolerancja}),
         ip=False,
         ith=False,
     )
@@ -351,12 +383,18 @@ def proweniencja(enm: EnergyNetworkModel) -> dict[str, Any]:
     posortowane, źródła po ``ref_id``) i porównywalny bit w bit z przypiętym JSON.
     """
     napiecie = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+    tolerancje_nn = tolerancje_wezlow_nn(enm)
     zrodla: dict[str, Any] = {}
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         u_kv = napiecie[source.bus_ref]
         slady = {}
         for scenariusz in ("MAX", "MIN"):
-            wynik = impedancja_zrodla_sieciowego(source, u_kv, scenariusz)  # type: ignore[arg-type]
+            wynik = impedancja_zrodla_sieciowego(
+                source,
+                u_kv,
+                scenariusz,  # type: ignore[arg-type]
+                tolerancja_nn=tolerancje_nn.get(source.bus_ref),
+            )
             if wynik is None:
                 raise ValueError(f"Źródło {source.ref_id} bez impedancji zwarciowej")
             _z, slad = wynik
@@ -381,15 +419,15 @@ def proweniencja(enm: EnergyNetworkModel) -> dict[str, Any]:
                 "r_ohm": source.r_ohm,
                 "x_ohm": source.x_ohm,
             },
-            "c_max": c_for_node(u_kv, "MAX"),
-            "c_min": c_for_node(u_kv, "MIN"),
+            "c_max": c_for_node(u_kv, "MAX", tolerancja_nn=tolerancje_nn.get(source.bus_ref)),
+            "c_min": c_for_node(u_kv, "MIN", tolerancja_nn=tolerancje_nn.get(source.bus_ref)),
             "slad_mappera": slady,
-            "ext_grid": _parametry_ext_grid(source, u_kv),
+            "ext_grid": _parametry_ext_grid(source, u_kv, tolerancje_nn.get(source.bus_ref)),
         }
     return {
         "pandapower": _pandapower_wersja(),
         "most": {"wersja": WERSJA_MOSTU, "sha256": _skrot_mostu()},
         "enm": {"name": enm.header.name, "input_hash": compute_input_hash(enm)},
-        "lv_tol_percent": LV_TOL_PERCENT,
+        "lv_tol_percent": lv_tol_percent(enm),
         "zrodla": zrodla,
     }

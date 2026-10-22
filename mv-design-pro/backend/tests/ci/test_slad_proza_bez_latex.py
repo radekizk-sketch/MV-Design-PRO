@@ -46,6 +46,7 @@ from enm.canonical_analysis import (
 )
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.store import reset_enm_store, set_enm
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.solvers.conductor_thermal_withstand import (
     CONDUCTOR_KIND_BARE,
     CONDUCTOR_KIND_CABLE,
@@ -107,6 +108,7 @@ def _slad_solvera(typ: str) -> list[dict[str, Any]]:
         "fault_node_id": wezel,
         "c_factor": 1.1,
         "tk_s": 1.0,
+        "czas_tb": czas_tb_roboczy(),
     }
     if typ == "3F":
         wynik = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(

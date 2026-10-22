@@ -29,7 +29,7 @@ const mockDeviceTypes = [
     unverified: true,
     unverified_ranges: true,
     functions_supported: ['50', '51', '50N', '51N'],
-    curves_supported: ['IEC_NI'],
+    curves_supported: ['IEC_SI'],
   },
   {
     id: 'device-002',

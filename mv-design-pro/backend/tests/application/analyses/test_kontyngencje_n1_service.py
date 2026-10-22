@@ -882,8 +882,26 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # na łączniku (`normal_state="open"`), magistrala nie niesie kopii `no_point_ref`
     # (haszowanej dotąd wartością, teraz jak `null`), ciąg nie niesie `nop_station_ref`.
     # Położenie łącznika (`status="open"`), enumeracja, dotkliwości i ranking bez zmian.
-    "gn01_promieniowa": "1d65e0b8fe7765283f5cb7d969cc718977ad100771447dc50a824898c59dcea3",
-    "gn03_pierscien": "5ac3a5897eccd155822f81b2c292933216ab5783a48729001f11d6d0e476436f",
+    # 2026-10-16 (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK): gn01 5306b64d… → 99081f49…, gn03
+    # 2cacc16c… → e77ef288…. Pełne widoki z kodu bazy `bd3a87f4` (odtwarzają dokładnie
+    # poprzednie piny) i po karcie porównane liść po liściu: różnią się WYŁĄCZNIE
+    # `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu wejściowego: stacje
+    # sieci referencyjnych deklarują tolerancję napięcia sieci nN
+    # (`Transformer.lv_voltage_tolerance` = PLUS_6). Enumeracja kontyngencji, dotkliwości
+    # i ranking identyczne. Następnie gn01 99081f49… → 881afd52…: stacja „Stacja B1
+    # Referencyjna" deklaruje tolerancję kanałem operacji (`nn_earthing.lv_voltage_tolerance`
+    # = PLUS_6); widok z budowniczym bez tej deklaracji odtwarza 99081f49…, a porównanie
+    # liść po liściu daje WYŁĄCZNIE `context.snapshot_hash` i `input_hash`.
+    # 2026-10-22 (scalenie gałęzi programu, partie 9–13, z gałęzią UI/UX — W5-B, W5-C):
+    # gn01 → 35f9706f…, gn03 → 81a508db…. Pełne widoki z kodu obu rodziców scalenia
+    # (odtwarzają dokładnie swoje piny: UI/UX 1d65e0b8…/5ac3a589…, program 881afd52…/e77ef288…)
+    # i z drzewa scalonego porównane liść po liściu: IDENTYCZNY zbiór kluczy, względem KAŻDEGO
+    # rodzica różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash` w obu sieciach.
+    # Różnica modelu wejściowego: złożenie pól w `bays` i stanu normalnego łącznika
+    # (`normal_state`, UI/UX) z tolerancją napięcia sieci nN stacji (program). Enumeracja,
+    # dotkliwości i ranking identyczne.
+    "gn01_promieniowa": "35f9706fd12fdc0257e76783ae878b4af46ed2aec53ce813d5606dbfd82824d6",
+    "gn03_pierscien": "81a508db8ee6838c228e4071cfa093b52345a33073458007661f8e9f70757fa5",
 }
 
 

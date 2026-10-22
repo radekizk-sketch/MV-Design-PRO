@@ -170,25 +170,13 @@ def get_lom_protection(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str,
 @router.get("/api/oze-analysis/grid-strength")
 def get_grid_strength(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_grid_strength_view(run)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_grid_strength_view(run)
 
 
 @router.get("/api/oze-analysis/reactive-adequacy")
 def get_reactive_adequacy(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_reactive_adequacy_view(run)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_reactive_adequacy_view(run)
 
 
 @router.get("/api/oze-analysis/hosting-capacity")
@@ -200,19 +188,13 @@ def get_hosting_capacity(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_hosting_capacity_view(
-            run,
-            candidate_bus_refs=candidate_bus_refs,
-            step_mw=step_mw,
-            max_steps=max_steps,
-            uow_factory=uow_factory,
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_hosting_capacity_view(
+        run,
+        candidate_bus_refs=candidate_bus_refs,
+        step_mw=step_mw,
+        max_steps=max_steps,
+        uow_factory=uow_factory,
+    )
 
 
 @router.get("/api/oze-analysis/pq-area")
@@ -226,21 +208,15 @@ def get_pq_area(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_pq_area_view(
-            run,
-            bus_ref=bus_ref,
-            step_p_mw=step_p_mw,
-            step_q_mvar=step_q_mvar,
-            max_steps_p=max_steps_p,
-            max_steps_q=max_steps_q,
-            uow_factory=uow_factory,
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_pq_area_view(
+        run,
+        bus_ref=bus_ref,
+        step_p_mw=step_p_mw,
+        step_q_mvar=step_q_mvar,
+        max_steps_p=max_steps_p,
+        max_steps_q=max_steps_q,
+        uow_factory=uow_factory,
+    )
 
 
 @router.get("/api/oze-analysis/compensation-sizing")
@@ -251,18 +227,12 @@ def get_compensation_sizing(
     uwzglednij_noc: bool = Query(default=False),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_compensation_sizing_view(
-            run,
-            bus_ref=bus_ref,
-            cos_phi_min=cos_phi_min,
-            uwzglednij_noc=uwzglednij_noc,
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_compensation_sizing_view(
+        run,
+        bus_ref=bus_ref,
+        cos_phi_min=cos_phi_min,
+        uwzglednij_noc=uwzglednij_noc,
+    )
 
 
 @router.get("/api/oze-analysis/frt-trajectories")
@@ -284,13 +254,7 @@ def get_frt_trajectories(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    try:
-        return build_frt_trajectories_view(converter, profile, test_kind)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_frt_trajectories_view(converter, profile, test_kind)
 
 
 def _parse_sekwencja(raw: str) -> list[tuple[float, float]]:
@@ -336,13 +300,7 @@ def _resolve_grid_strength_row(run_id: UUID | None, bus_ref: str | None) -> dict
             detail="Kontekst siły sieci wymaga obu parametrów: run_id oraz bus_ref.",
         )
     run = _require_run(run_id)
-    try:
-        view = build_grid_strength_view(run)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    view = build_grid_strength_view(run)
     for entry in view["entries"]:
         if entry.get("bus_ref") == bus_ref:
             return entry
@@ -373,23 +331,9 @@ def get_frt_sequence(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
-    try:
-        zapady = _parse_sekwencja(sekwencja)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    zapady = _parse_sekwencja(sekwencja)
     grid_strength_row = _resolve_grid_strength_row(run_id, bus_ref)
-    try:
-        return build_frt_sekwencja_view(
-            converter, profile, zapady, grid_strength_row=grid_strength_row
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_frt_sekwencja_view(converter, profile, zapady, grid_strength_row=grid_strength_row)
 
 
 @router.get("/api/oze-analysis/pq-coverage")
@@ -584,25 +528,19 @@ def get_osd_response(
     f0_hz: float = Query(default=DEFAULT_F0_HZ),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_osd_response_view(
-            run,
-            source_ref=source_ref,
-            command=command,
-            p_limit_pct=p_limit_pct,
-            q_mvar=q_mvar,
-            cos_phi=cos_phi,
-            q_charakter=q_charakter,
-            frequency_hz=frequency_hz,
-            droop_pct=droop_pct,
-            deadband_hz=deadband_hz,
-            f0_hz=f0_hz,
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_osd_response_view(
+        run,
+        source_ref=source_ref,
+        command=command,
+        p_limit_pct=p_limit_pct,
+        q_mvar=q_mvar,
+        cos_phi=cos_phi,
+        q_charakter=q_charakter,
+        frequency_hz=frequency_hz,
+        droop_pct=droop_pct,
+        deadband_hz=deadband_hz,
+        f0_hz=f0_hz,
+    )
 
 
 class DokumentStudiumRequest(BaseModel):

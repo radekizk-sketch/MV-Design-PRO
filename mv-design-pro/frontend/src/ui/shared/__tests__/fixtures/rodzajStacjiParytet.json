@@ -2934,6 +2934,20 @@
         }
       }
     },
+    "src/harness-fixtures/generated/zwarcia_migawka_scena_tolerancja_robocza.json": {
+      "": {
+        "sub_b": {
+          "deklaracja": null,
+          "pola_liniowe": 0,
+          "pola_nierozpoznane": [],
+          "przyczyna_pl": "rozdzielnica SN nie ma pól liniowych",
+          "rodzaj": "terminal",
+          "sprzeglo": false,
+          "wyprowadzenia_polaczone": 0,
+          "zgodny_z_deklaracja": true
+        }
+      }
+    },
     "src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json": {
       "/enm": {
         "stn/03716d35bcc6963eb471e5c7666490ae/station": {

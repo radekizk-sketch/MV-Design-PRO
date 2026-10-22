@@ -16,11 +16,11 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from domain.study_case import StudyCaseConfig
+from enm.tolerancja_nn import dobierz_c_wezla
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import susceptancja_katalogowa_us_per_km
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
-from network_model.core.voltage_factor import c_for_node
 from solver_input.contracts import (
     SOLVER_INPUT_CONTRACT_VERSION,
     BranchPayload,
@@ -52,13 +52,18 @@ from solver_input.provenance import (
 
 
 def _build_bus_payloads(
-    graph: NetworkGraph, *, scenario: Literal["MAX", "MIN"] = "MAX"
+    graph: NetworkGraph, *, scenario: Literal["MAX", "MIN"] = "MAX", z_c: bool
 ) -> list[BusPayload]:
     """Build deterministically sorted bus payloads from graph nodes.
 
-    Karta P0.3: each bus carries the IEC 60909-0 Table 1 voltage factor c for
-    ITS OWN voltage band and the requested scenario (c_factor_iec60909) — one
-    shared source of truth (network_model.core.voltage_factor.c_for_node).
+    Karta P0.3: each bus of a SHORT-CIRCUIT payload carries the IEC 60909-0 Table 1
+    voltage factor c for ITS OWN voltage band, nN tolerance and the requested scenario
+    (c_factor_iec60909) — one shared source of truth
+    (network_model.core.voltage_factor.c_for_node, through enm.tolerancja_nn.dobierz_c_wezla:
+    the tolerance class of the bus's nN island — the designer's declaration or the working
+    value of the register, karta TOLERANCJA-NN-WARTOSC-ROBOCZA). Karta
+    WSPOLCZYNNIK-C-JEDEN-NOSNIK: c is a short-circuit quantity, so a load-flow payload
+    (``z_c=False``) carries ``None`` — the load flow never reads c.
     """
     payloads: list[BusPayload] = []
     for node in sorted(graph.nodes.values(), key=lambda n: n.id):
@@ -72,7 +77,7 @@ def _build_bus_payloads(
                 voltage_angle_rad=node.voltage_angle,
                 active_power_mw=node.active_power,
                 reactive_power_mvar=node.reactive_power,
-                c_factor_iec60909=c_for_node(node.voltage_level, scenario),
+                c_factor_iec60909=(dobierz_c_wezla(node, scenario).wartosc if z_c else None),
             )
         )
     return payloads
@@ -432,7 +437,7 @@ def build_solver_input(
         config: Study case calculation config (optional, defaults used if None).
         scenario: "MAX" (Ik''max, default) or "MIN" (Ik''min) — karta P0.3.
             Only affects SHORT_CIRCUIT_* payloads (per-bus c_factor_iec60909 +
-            ShortCircuitPayload.scenario/c_factor); ignored otherwise.
+            ShortCircuitPayload.scenario); ignored otherwise.
         czestotliwosc_hz: Częstotliwość studium [Hz] (karta W3-F §0.6) — wołający
             PRODUKCYJNY (`api/solver_input.py`) przekazuje JAWNIE
             `enm.header.defaults.frequency_hz`; domyślne 50,0 tutaj lustrzy
@@ -459,7 +464,12 @@ def build_solver_input(
         payload_dict = {}
     else:
         # Build common element lists
-        buses = _build_bus_payloads(graph, scenario=scenario)
+        buses = _build_bus_payloads(
+            graph,
+            scenario=scenario,
+            z_c=analysis_type
+            in (SolverAnalysisType.SHORT_CIRCUIT_3F, SolverAnalysisType.SHORT_CIRCUIT_1F),
+        )
         branches = _build_branch_payloads(graph, catalog, trace_entries, czestotliwosc_hz)
         transformers = _build_transformer_payloads(graph, catalog, trace_entries)
         inverters = _build_inverter_payloads(graph, trace_entries)
@@ -487,11 +497,10 @@ def build_solver_input(
                 transformers=transformers,
                 inverter_sources=inverters,
                 switches=switches,
-                # Karta P0.3: single study-wide fallback for callers reading
-                # `c_factor` directly (backward compatible for scenario="MAX").
-                # Per-bus, per-band c is in BusPayload.c_factor_iec60909.
-                c_factor=cfg.c_factor_max if scenario == "MAX" else cfg.c_factor_min,
-                thermal_time_seconds=cfg.thermal_time_seconds,
+                # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): payload nie niesie płaskiej
+                # liczby c ani t_k przypadku — c jest PER SZYNA (BusPayload.
+                # c_factor_iec60909, tabela 1 dla pasma i scenariusza), a nośnikiem
+                # c/t_k biegu jest scenariusz zwarciowy.
                 include_inverter_contribution=cfg.include_inverter_contribution,
                 simplified_grid_source=simplified_source,
                 scenario=scenario,

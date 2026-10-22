@@ -78,9 +78,31 @@ export function wyborPrzebieguSkladowych<T extends PrzebiegDoWyboru>(
 }
 
 // ---------------------------------------------------------------------------
-// Założenia przebiegu (część wyniku — W-602). Wartości WPROST z pierwszego
-// wiersza kanonicznego (c_factor/tk_s są stałe per przebieg — jedna konfiguracja).
+// Założenia przebiegu (część wyniku — W-602). Rodzaj zwarcia i t_k WPROST z
+// pierwszego wiersza kanonicznego (stałe per przebieg — jedna konfiguracja).
+// Współczynnik c NIE jest stały per przebieg (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
+// backend dobiera c per węzeł z tabeli 1 IEC 60909-0) — jedna liczba tylko wtedy,
+// gdy WSZYSTKIE wiersze niosą tę samą parę (c, podstawa c); inaczej odesłanie do
+// kolumn tabeli punktów.
 // ---------------------------------------------------------------------------
+
+function wierszWspolczynnikaC(rows: readonly ShortCircuitRow[]): WierszZalozenia {
+  const pary = new Set(rows.map((r) => `${r.c_factor ?? ''}|${r.c_zrodlo ?? ''}`));
+  const pierwszy = rows[0];
+  if (!pierwszy || pierwszy.c_factor == null) {
+    return { etykieta: T.zalWspolczynnikC, wartosc: T.kreska };
+  }
+  if (pary.size > 1) {
+    return { etykieta: T.zalWspolczynnikC, wartosc: T.zalWspolczynnikCPerWezel };
+  }
+  const wartosc = fmtWspolczynnik(pierwszy.c_factor);
+  const zrodlo = pierwszy.c_zrodlo?.trim() ? pierwszy.c_zrodlo : null;
+  return {
+    etykieta: T.zalWspolczynnikC,
+    // Podstawa c w treści wiersza (nie tylko w dymku) — c bez podstawy jest liczbą bez dowodu.
+    wartosc: zrodlo ? `${wartosc} (${zrodlo})` : wartosc,
+  };
+}
 
 export function naZalozeniaSkladowych(rows: readonly ShortCircuitRow[]): WierszZalozenia[] {
   const pierwszy = rows[0];
@@ -90,11 +112,7 @@ export function naZalozeniaSkladowych(rows: readonly ShortCircuitRow[]): WierszZ
       wartosc: pierwszy ? rodzajZwarciaPL(pierwszy.fault_type) : T.kreska,
     },
     { etykieta: T.zalMetoda, wartosc: T.zalMetodaWartosc },
-    {
-      etykieta: T.zalWspolczynnikC,
-      wartosc:
-        pierwszy?.c_factor != null ? fmtWspolczynnik(pierwszy.c_factor) : T.kreska,
-    },
+    wierszWspolczynnikaC(rows),
     {
       etykieta: T.zalCzasTrwania,
       wartosc: pierwszy?.tk_s != null ? fmtCzas(pierwszy.tk_s) : T.kreska,
@@ -119,6 +137,8 @@ export const KOLUMNY_SKLADOWYCH: DefinicjaKolumny[] = [
   { klucz: 'xr', etykieta: T.kolXR, mono: true },
   { klucz: 'kappa', etykieta: T.kolKappa, mono: true, tylkoEkspercki: true },
   { klucz: 'ikss', etykieta: T.kolIkss, jednostka: T.jednKA, mono: true },
+  { klucz: 'c', etykieta: T.kolC, mono: true },
+  { klucz: 'cZrodlo', etykieta: T.kolCZrodlo, wyrownanie: 'lewo', sortowalna: false },
   { klucz: 'werdykt', etykieta: T.kolWerdykt, wyrownanie: 'lewo', sortowalna: false },
 ];
 
@@ -150,6 +170,8 @@ export function naWierszeSkladowych(rows: readonly ShortCircuitRow[]): WierszTab
       xr: komorka(row.xr_ratio, fmtKappa, dowodRef),
       kappa: komorka(row.kappa, fmtKappa, dowodRef),
       ikss: komorka(row.ikss_ka, fmtKA, dowodRef),
+      c: komorka(row.c_factor, fmtWspolczynnik, dowodRef),
+      cZrodlo: { wartosc: row.c_zrodlo?.trim() ? row.c_zrodlo : T.kreska },
       werdykt: { wartosc: werdyktPL(row) },
       [KLUCZ_PUNKT]: { wartosc: row.target_id },
     };

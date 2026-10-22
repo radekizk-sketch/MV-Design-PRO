@@ -414,8 +414,12 @@ def generate_device_withstand_proof(
         details={"bay_designation": spec.bay_designation, "device_id": spec.device_id, **result},
         formulas_latex=[
             r"$$I_{\text{dyn}} \geq \kappa \sqrt{2} \cdot I_k''$$",
-            r"$$I_{\text{th eff}}(t) = I_{\text{th rated}} \cdot \sqrt{\frac{t_{\text{rated}}}{t_{\text{clearing}}}}$$",
-            r"$$I_{\text{th eff}}(t) \geq I_k''$$",
+            # IEC 60865-1: przeliczenie prądu krótkotrwałego na czas wyłączenia tylko w dół;
+            # porównanie z prądem cieplnym zastępczym I_th biegu (nie z I_k″) — dokładnie
+            # to, co liczy jądro `ocen_wytrzymalosc_aparatu`.
+            r"$$I_{\text{th eff}}(t) = I_{\text{th rated}} \cdot \sqrt{\min\left(1,\ "
+            r"\frac{t_{\text{rated}}}{t_{\text{clearing}}}\right)}$$",
+            r"$$I_{\text{th eff}}(t) \geq I_{\text{th}}$$",
         ],
         generated_at=generated_at_iso,
     )

@@ -343,7 +343,7 @@ def _stacja_pole_pomiarowe(b: KlientBudowy) -> dict[str, Any]:
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "nn_earthing": {"lv_system": "TN-C-S"},
+            "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},
@@ -462,7 +462,7 @@ def _stacja_b2(b: KlientBudowy, segment_ref: str, nazwa: str) -> dict[str, Any]:
                 "sn_voltage_kv": 15.0,
                 "nn_voltage_kv": 0.4,
             },
-            "nn_earthing": {"lv_system": "TN-C-S"},
+            "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
             "sn_fields": [
                 {"field_role": "LINIA_IN"},
                 {"field_role": "LINIA_OUT"},

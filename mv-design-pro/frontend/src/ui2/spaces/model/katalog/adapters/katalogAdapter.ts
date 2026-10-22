@@ -38,6 +38,7 @@ import {
   fetchCtTypes,
   fetchLineTypes,
   fetchLvApparatusTypes,
+  fetchLvRcdTypes,
   fetchLvCableTypes,
   fetchSwitchEquipmentTypes,
   fetchTransformerTypes,
@@ -173,6 +174,15 @@ export const KATEGORIE: readonly MetadanaKategorii[] = [
     id: 'APARAT_NN',
     poleParametrow: ['u_n_kv', 'i_n_a', 'breaking_capacity_ka'],
     pobierz: () => fetchLvApparatusTypes() as unknown as Promise<KatalogPozycja[]>,
+  },
+  //   Kategoria APARAT_NN_RCD (wyłączniki różnicowoprądowe nN, karta W5-E-TTIT):
+  //     • klient:  ui/catalog/api.ts  fetchLvRcdTypes() → GET /api/catalog/lv-rcd-types
+  //     • backend: backend/src/api/catalog.py  list_lv_rcd_types()
+  //     • typ:     ui/catalog/types.ts  interface LVRcdType
+  {
+    id: 'APARAT_NN_RCD',
+    poleParametrow: ['i_delta_n_a', 'rcd_type', 't_a_s', 't_a_2idn_s', 't_a_5idn_s', 't_nieczuly_min_s'],
+    pobierz: () => fetchLvRcdTypes() as unknown as Promise<KatalogPozycja[]>,
   },
 ];
 

@@ -292,3 +292,84 @@ describe('P0.12(d) — mutacje fixtury Stacja B, jedna na inwariant', () => {
     expect(violationCodes(enm)).toContain('MV_FIELD_ON_LV_BUS');
   });
 });
+
+/**
+ * Partia integracji 10 — treść naruszenia nazywa elementy nazwą z modelu, identyfikator
+ * zostaje w polu `elementRefs`. Iloczyn: mutacja wywołująca każdy z dziewięciu kodów
+ * inwariantu × nazwy elementów {jak w fixturze, wszystkie wyczyszczone}. Dla każdej
+ * kombinacji: kod występuje, a ŻADNA treść naruszenia nie zawiera identyfikatora żadnego
+ * elementu modelu (pełny zbiór `ref_id`, nie tylko `elementRefs` naruszenia).
+ */
+describe('treść naruszeń inwariantów — nazwy z modelu, nigdy identyfikatory', () => {
+  const przepnij = (ref: string, koniec: 'from_bus_ref' | 'to_bus_ref', szyna: string) => (m: EnergyNetworkModel) => {
+    (branchByRef(m, ref)[koniec] as unknown) = szyna;
+  };
+  const trafo = (pole: 'lv_bus_ref' | 'ulv_kv', wartosc: unknown) => (m: EnergyNetworkModel) => {
+    const t1 = (m.transformers as unknown as Record<string, unknown>[]).find((t) => t.ref_id === STACJA_B_REFS.transformerRef)!;
+    t1[pole] = wartosc;
+  };
+  const MUTACJE: ReadonlyArray<readonly [InvariantCode, (m: EnergyNetworkModel) => void]> = [
+    ['EDGE_VOLTAGE_MISMATCH', przepnij(STACJA_B_REFS.cableQf01Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['TRANSFORMER_NOT_CROSSING_DOMAIN', trafo('lv_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['BUS_VOLTAGE_INCONSISTENT', trafo('ulv_kv', 0.23)],
+    ['DEVICE_TERMINAL_UNRESOLVED', (m) => {
+      (m.branches as unknown as Record<string, unknown>[]).push({
+        id: 'galaz-osierocona', ref_id: 'galaz-osierocona', name: 'Gałąź osierocona', tags: [], meta: {}, type: 'cable',
+        from_bus_ref: STACJA_B_REFS.rgnn1BusRef, to_bus_ref: 'szyna-nieistniejaca', status: 'closed',
+        length_km: 0.01, r_ohm_per_km: 0.3, x_ohm_per_km: 0.08,
+      });
+    }],
+    ['DANGLING_ENERGIZED_TERMINAL', (m) => {
+      (m.buses as unknown as Record<string, unknown>[]).push({
+        id: 'szyna-wyspa', ref_id: 'szyna-wyspa', name: 'Szyna wyspa', tags: [], meta: {}, voltage_kv: 0.4, phase_system: '3ph',
+      });
+      (m.loads as unknown as Record<string, unknown>[]).push({
+        id: 'odbior-wyspa', ref_id: 'odbior-wyspa', name: 'Odbiór wyspa', tags: [], meta: {}, bus_ref: 'szyna-wyspa',
+        p_mw: 0.005, q_mvar: 0.001, model: 'pq',
+      });
+    }],
+    ['CROSS_VOLTAGE_CONDUCTOR', przepnij(STACJA_B_REFS.qfTr1Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['UNRESOLVED_ACTIVE_APPARATUS', (m) => {
+      const branch = branchByRef(m, STACJA_B_REFS.qf01Ref);
+      branch.catalog_ref = 'pozycja-nierozpoznana';
+      branch.catalog_namespace = null;
+      branch.materialized_params = {};
+    }],
+    ['LV_FEEDER_ON_MV_BUS', przepnij(STACJA_B_REFS.qf01Ref, 'from_bus_ref', STACJA_B_REFS.snBusRef)],
+    ['MV_FIELD_ON_LV_BUS', przepnij(STACJA_B_REFS.snFieldBreakerTrRef, 'to_bus_ref', STACJA_B_REFS.odbior1BusRef)],
+  ];
+  const KOLEKCJE = ['buses', 'branches', 'transformers', 'loads', 'generators', 'sources', 'substations', 'bays'] as const;
+
+  function wszystkieRefy(enm: EnergyNetworkModel): string[] {
+    const refy: string[] = [];
+    for (const k of KOLEKCJE) {
+      for (const e of ((enm as unknown as Record<string, unknown>)[k] as Record<string, unknown>[] | undefined) ?? []) {
+        if (typeof e.ref_id === 'string') refy.push(e.ref_id);
+      }
+    }
+    return refy;
+  }
+
+  for (const [kod, mutator] of MUTACJE) {
+    for (const nazwy of ['z_fixtury', 'wyczyszczone'] as const) {
+      it(`${kod} × nazwy ${nazwy}`, () => {
+        const enm = mutate((m) => {
+          mutator(m);
+          if (nazwy === 'wyczyszczone') {
+            for (const k of KOLEKCJE) {
+              for (const e of ((m as unknown as Record<string, unknown>)[k] as Record<string, unknown>[] | undefined) ?? []) e.name = '';
+            }
+          }
+        });
+        const wynik = validateElectricalGraph(buildTerminalGraph(enm));
+        expect(wynik.violations.map((v) => v.code)).toContain(kod);
+        const refy = wszystkieRefy(enm).concat('szyna-nieistniejaca');
+        for (const naruszenie of wynik.violations) {
+          for (const ref of refy) expect(naruszenie.messagePl, `${naruszenie.code}: ${ref}`).not.toContain(ref);
+          expect(naruszenie.elementRefs.length).toBeGreaterThan(0);
+          if (nazwy === 'wyczyszczone') expect(naruszenie.messagePl).not.toMatch(/„\s*”/);
+        }
+      });
+    }
+  }
+});

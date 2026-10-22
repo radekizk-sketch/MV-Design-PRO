@@ -37,6 +37,7 @@ import { KreatorPrzypisaniaKatalogu } from '../../ui2/kreatory/przypisanie-katal
 import { KreatorOdcinkaNn } from '../../ui2/kreatory/odcinek-nn';
 import { KreatorRozdzielnicyNn } from '../../ui2/kreatory/rozdzielnica-nn';
 import { KreatorAparatuNn } from '../../ui2/kreatory/aparat-nn';
+import { KreatorRcdNn } from '../../ui2/kreatory/rcd-nn';
 
 /**
  * Mapowanie CanonicalOpName → React component formularza.
@@ -77,6 +78,9 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   // Nastawy zabezpieczenia modelu edytuje formularz INLINE `EdytorNastawZabezpieczenia`
   // (ekran „Zabezpieczenia i automatyka" i karta elementu na schemacie) — bez okna kreatora.
   update_protection_settings: null,
+  // Sekcja „Obwód wtórny przekładnika” w edytorze nastaw (karta CT-JEDEN-WERDYKT) — bez formularza
+  // przestrzeni roboczej, jak `update_protection_settings`.
+  set_measurement_secondary_circuit: null,
   // P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN — reuse ISTNIEJĄCYCH
   // operacji domenowych (enm/domain_operations_v2.py, P0.1), brakowało wyłącznie
   // dostawcy dialogu (patrz komentarz przy CANONICAL_OPERATION_NAMES).
@@ -84,6 +88,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_nn_distribution_board: KreatorRozdzielnicyNn,
   add_nn_switch_device: KreatorAparatuNn,
   add_nn_section_coupler: KreatorRozdzielnicyNn,
+  // W5-E-TTIT: wyłącznik różnicowoprądowy w torze instalacji odbioru nN (układ TT).
+  add_nn_rcd: KreatorRcdNn,
   // Edycja warunków ułożenia istniejącego odcinka nN jest edycją INLINE w
   // tabeli ODCINKI (nN STUDIO) — bez formularza modalnego, jak `update_element_parameters`.
   set_nn_cable_laying_conditions: null,

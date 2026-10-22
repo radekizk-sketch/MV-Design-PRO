@@ -149,6 +149,22 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     false,
     'dane',
   ),
+  // W5-E-TTIT: akcja naprawcza `nn.brak_rcd` (modal `add_nn_rcd`) otwiera ten kreator —
+  // bez wpisu tutaj wykonawca akcji naprawczej meldował „brak aktywnej karty", a każde
+  // otwarcie formularza dostawało tytuł z surowego identyfikatora operacji. Pozostałe
+  // kreatory nN mają wpisy z karty C-12 na końcu rejestru (jeden wpis na operację —
+  // `modalRegistryCompleteness.test.ts`).
+  entry(
+    'add_nn_rcd',
+    'KreatorRcdNn',
+    'Dodaj wyłącznik różnicowoprądowy nN',
+    'E-19',
+    'C',
+    'manual',
+    'expand_workspace',
+    false,
+    null,
+  ),
   entry(
     'add_shunt_compensator_sn',
     'KreatorKompensatoraSn',

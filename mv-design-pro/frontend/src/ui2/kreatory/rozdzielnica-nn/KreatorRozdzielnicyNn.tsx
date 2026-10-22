@@ -70,7 +70,10 @@ export function KreatorRozdzielnicyNn() {
   const [zasilWlaczone, setZasilWlaczone] = useState(false);
   const [kableDlugoscM, setKableDlugoscM] = useState<number | null>(null);
   const [kableCatalogRef, setKableCatalogRef] = useState<string | null>(null);
+  // Pusty katalog to stan GOTOWY (bez pozycji), nie wieczne „Ładowanie katalogu…” — status
+  // pobrania jest osobnym znacznikiem, nie wnioskiem z długości listy.
   const [kable, setKable] = useState<LVCableType[]>([]);
+  const [kableZaladowane, setKableZaladowane] = useState(false);
   const [bladKabli, setBladKabli] = useState<string | null>(null);
 
   useEffect(() => {
@@ -78,7 +81,9 @@ export function KreatorRozdzielnicyNn() {
     let anulowane = false;
     fetchLvCableTypes()
       .then((dane) => {
-        if (!anulowane) setKable(Array.isArray(dane) ? dane : []);
+        if (anulowane) return;
+        setKable(Array.isArray(dane) ? dane : []);
+        setKableZaladowane(true);
       })
       .catch((e: unknown) => {
         if (!anulowane) setBladKabli(getCatalogErrorMessage(e));
@@ -92,6 +97,7 @@ export function KreatorRozdzielnicyNn() {
   const [sprzegloCatalogRef, setSprzegloCatalogRef] = useState<string | null>(null);
   const [sekcjaNazwa, setSekcjaNazwa] = useState('');
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
+  const [aparatyZaladowane, setAparatyZaladowane] = useState(false);
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
 
   useEffect(() => {
@@ -99,7 +105,9 @@ export function KreatorRozdzielnicyNn() {
     let anulowane = false;
     fetchLvApparatusTypes()
       .then((dane) => {
-        if (!anulowane) setAparaty(Array.isArray(dane) ? dane : []);
+        if (anulowane) return;
+        setAparaty(Array.isArray(dane) ? dane : []);
+        setAparatyZaladowane(true);
       })
       .catch((e: unknown) => {
         if (!anulowane) setBladAparatow(getCatalogErrorMessage(e));
@@ -249,7 +257,7 @@ export function KreatorRozdzielnicyNn() {
             wartosc={sprzegloCatalogRef}
             onZmiana={setSprzegloCatalogRef}
             opcje={aparaty.map((a) => ({ id: a.id, etykieta: `${a.name} · ${a.i_n_a} A` }))}
-            status={bladAparatow ? 'error' : aparaty.length > 0 ? 'ready' : 'loading'}
+            status={bladAparatow ? 'error' : aparatyZaladowane ? 'ready' : 'loading'}
             placeholder={T.sprzegloPlaceholder}
             komunikatBledu={bladAparatow ?? T.sprzegloBlad}
             testid="mvd-kreator-rozdzielnica-nn-sprzeglo"
@@ -303,7 +311,7 @@ export function KreatorRozdzielnicyNn() {
                   wartosc={kableCatalogRef}
                   onZmiana={setKableCatalogRef}
                   opcje={kable.map((k) => ({ id: k.id, etykieta: `${k.name} · ${k.cross_section_mm2} mm²` }))}
-                  status={bladKabli ? 'error' : kable.length > 0 ? 'ready' : 'loading'}
+                  status={bladKabli ? 'error' : kableZaladowane ? 'ready' : 'loading'}
                   placeholder={T.kabelPlaceholder}
                   komunikatBledu={bladKabli ?? T.kabelBlad}
                   testid="mvd-kreator-rozdzielnica-nn-kabel"

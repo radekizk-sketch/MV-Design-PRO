@@ -101,7 +101,10 @@ class KlientBudowy:
                 "case_id": self.case_id,
                 "target_segment_id": segment_ref,
                 "insert_at_ratio": ratio,
-                "params_override": {},
+                # Tolerancja napięcia sieci nN stacji — dana projektanta z kreatora (blok
+                # `nn_earthing`, wiersz nN tabeli 1 IEC 60909-0); bez niej zwarcie w sieci nN
+                # liczy się na wartości roboczej +10 % (założenie `fault.c_tolerancja_nn_robocza`).
+                "params_override": {"nn_earthing": {"lv_voltage_tolerance": "PLUS_6"}},
                 "catalog_profile": None,
             },
         )
@@ -160,7 +163,7 @@ class KlientBudowy:
                     "sn_voltage_kv": 15.0,
                     "nn_voltage_kv": 0.4,
                 },
-                "nn_earthing": {"lv_system": "TN-C-S"},
+                "nn_earthing": {"lv_system": "TN-C-S", "lv_voltage_tolerance": "PLUS_6"},
                 "sn_fields": [
                     {"field_role": "LINIA_IN"},
                     {"field_role": "LINIA_OUT"},

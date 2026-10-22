@@ -443,6 +443,19 @@ interface OdciskiLod {
  * niesie ref sekcji `${busRef}#sn-bus` zamiast `${stationRef}#sn-bus` (§0 pkt 1), więc
  * zmienia się tożsamość segmentów i etykiet szyn; (3) niższe stosy pól przesuwają kotwice
  * etykiet, a za nimi plan etykiet przy każdej skali gestu.
+ *
+ * AKTUALIZACJA ŚWIADOMA (partia integracji 12, 2026-10-21) — trzy odciski SCENY sieci
+ * podwojonej (L0/L1/L2); declutter i plany bez zmian, sieć referencyjna bez zmian. Przyczyna
+ * WYŁĄCZNIE w treści komunikatów niezmienników elektrycznych (`electrical/invariants.ts`,
+ * `terminalGraph.ts`, partia 10: odmowy bez identyfikatorów — nazwa elementu zamiast
+ * `ref`), które scena niesie; sieć podwojona ma naruszenia niezmienników, referencyjna nie.
+ * Sonda: oba pliki przywrócone do stanu sprzed partii 10 → 8 z 8 testów tego pliku zielone.
+ *
+ * AKTUALIZACJA ŚWIADOMA (partia integracji 12, karta W2C-PLAN-ETYKIET, 2026-10-21) — 6 odcisków
+ * PLANU etykiet (obie sieci); odciski SCENY i DECLUTTERU bez zmian. Przyczyna WYŁĄCZNIE w
+ * `canvas/labelLegibility.ts` (`najlepszeDopasowanie`): plan próbuje pełnego tekstu po każdej
+ * stronie kotwicy, zanim skróci napis — dawniej skracał po stronie zadeklarowanej („TV1” →
+ * „T…”, czytane jak transformator). Sonda: ten plik sprzed karty → 8 z 8 testów zielone.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [

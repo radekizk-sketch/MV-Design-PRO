@@ -45,32 +45,21 @@ describe('KartaPrzypadku — karta z konfiguracją', () => {
     expect(screen.getByText(T.aktywny)).toBeInTheDocument();
   });
 
-  it('sekcja „Założenia": współczynnik c z realnych wartości konfiguracji', () => {
-    render(
-      <KartaPrzypadku
-        przypadek={studyCaseFixture('K1', 'A', { config: { c_factor_max: 1.1, c_factor_min: 0.95 } })}
-        ladowanie={false}
-        blad={null}
-      />,
-    );
-    const zalozenia = screen.getByRole('region', { name: T.sekcjaZalozenia });
-    expect(within(zalozenia).getByText(T.zalozenieCMax)).toBeInTheDocument();
-    expect(within(zalozenia).getByText('1.1')).toBeInTheDocument();
-    expect(within(zalozenia).getByText('0.95')).toBeInTheDocument();
-    expect(within(zalozenia).getAllByText(T.pochodzenieKonfiguracja)).toHaveLength(2);
-  });
-
-  it('sekcja „Założenia": temperatura/stan łączeń NIE są renderowane (kontrolka bez dostawcy w StudyCaseConfig = fantom, TODO-UI2 §1 p. 10)', () => {
+  it('sekcja „Założenia": c i t_k wskazane jako parametry scenariusza zwarciowego, bez fantomowych liczb przypadku', () => {
     render(
       <KartaPrzypadku przypadek={studyCaseFixture('K1', 'A')} ladowanie={false} blad={null} />,
     );
+    const zalozenia = screen.getByRole('region', { name: T.sekcjaZalozenia });
+    expect(within(zalozenia).getByTestId('mvd-karta-zalozenie-c-nosnik')).toHaveTextContent(
+      T.zalozenieCNosnik,
+    );
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: przypadek nie niesie c ani t_k — żadnej liczby c.
+    expect(within(zalozenia).queryByText('1.1')).toBeNull();
+    expect(within(zalozenia).queryByText('0.95')).toBeNull();
+    expect(screen.queryByText('Czas cieplny [s]')).toBeNull();
+    // KARTA-UI2 §1 p. 10: temperatura/stan łączeń bez dostawcy w StudyCaseConfig = fantom.
     expect(screen.queryByTestId('mvd-karta-zalozenie-temperatura')).toBeNull();
     expect(screen.queryByTestId('mvd-karta-zalozenie-laczenia')).toBeNull();
-    const zalozenia = screen.getByRole('region', { name: T.sekcjaZalozenia });
-    expect(within(zalozenia).queryByText('Temperatura przewodów')).toBeNull();
-    expect(within(zalozenia).queryByText('Stan łączeń (konfiguracja pól)')).toBeNull();
-    // Jedyne jawne założenie, które `StudyCaseConfig` faktycznie niesie.
-    expect(within(zalozenia).getAllByText(T.zalozenieCMax).length).toBeGreaterThan(0);
   });
 
   it('renderuje sekcje konfiguracji (zwarcia, rozpływ, opcje, operator)', () => {

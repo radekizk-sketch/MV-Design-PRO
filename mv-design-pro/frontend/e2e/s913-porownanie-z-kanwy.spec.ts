@@ -31,6 +31,7 @@ import { dirname, resolve } from 'node:path';
 
 import { katalogZrzutow } from './katalogZrzutow';
 import { przelaczMotyw } from './powloka';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
  *  POPRAWKA 2026-08-08 (karta TYPY-POZA-BRAMKA): rzutowanie `as typeof readiness`
  *  celowalo w typ ZAWEZONY do `null` (zmienna byla dopiero co zainicjowana `null`),
@@ -55,7 +56,8 @@ let opCounter = 0;
 type Snapshot = {
   corridors?: Array<{ ordered_segment_refs?: string[] }>;
   branches?: Array<{ ref_id: string; type?: string }>;
-  transformers?: Array<{ ref_id: string }>;
+  transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
+  buses?: Array<{ ref_id: string; voltage_kv?: number }>;
 };
 type DomainOpResponse = { error?: string | null; snapshot?: Snapshot };
 
@@ -132,6 +134,8 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
   expect(segmentRefs.length).toBeGreaterThan(0);
 
   op = await operacja(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
@@ -154,7 +158,9 @@ async function zbudujSiec(request: APIRequestContext, caseId: string): Promise<s
       catalog_binding: katalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await operacja(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: katalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -354,10 +360,10 @@ test('S9-13: porównanie A/B osiągalne z kanwy — blokada bez drugiego biegu, 
   // KIERUNEK PARY: A = wybrane odniesienie, B = bieg pokazywany na schemacie.
   expect(nakladka.run_id_a).toBe(runA);
   expect(nakladka.run_id_b).toBe(runB);
-  expect(nakladka.report_version).toBe('1.3.0');
+  expect(nakladka.report_version).toBe('1.4.0');
   // Zmiana długości odcinka MUSI dać niezerowe różnice.
   expect(nakladka.liczba_punktow_zmienionych).toBeGreaterThan(0);
-  // Kontrakt 1.3.0: wartości B obok delt (etykieta niesie „wartość B i różnicę").
+  // Kontrakt 1.3.0 (zachowany w 1.4.0, który dokłada I_b, i_DC i t_b z pochodzeniem): wartości B obok delt (etykieta niesie „wartość B i różnicę").
   const zWartosciaB = Object.values(nakladka.elements).some((el) => 'B_IK_3F_KA' in el.metrics);
   expect(zWartosciaB).toBe(true);
 

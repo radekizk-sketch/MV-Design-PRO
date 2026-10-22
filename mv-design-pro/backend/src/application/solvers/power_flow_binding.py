@@ -37,6 +37,7 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from enm.nazwy_elementow import ELEMENT_SPOZA_MODELU, nazwy_wezlow_grafu
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.solvers.power_flow_result import (
     PowerFlowBranchResult,
@@ -106,7 +107,7 @@ def rozplyw_z_biegu(
             "Przebieg nie zawiera artefaktu wyniku rozpływu. Uruchom obliczenie ponownie."
         )
 
-    wynik = _odtworz_wynik(surowy_wynik)
+    wynik = _odtworz_wynik(surowy_wynik, nazwy_wezlow_grafu(artefakt))
     if wynik.unsolved_node_ids:
         raise BrakDanychRozplywuError(
             "Rozpływ nie objął wszystkich szyn modelu "
@@ -129,12 +130,13 @@ def rozplyw_z_biegu(
     )
 
 
-def _odtworz_wynik(surowy: dict[str, Any]) -> PowerFlowResultV1:
+def _odtworz_wynik(surowy: dict[str, Any], nazwy_szyn: dict[str, str]) -> PowerFlowResultV1:
     """Złóż ``PowerFlowResultV1`` z jego własnej serializacji (pole w pole).
 
     Odwrotność ``PowerFlowResultV1.to_dict()``. Świadomie NIE jest metodą tej
     zamrożonej klasy: kontrakt FROZEN zostaje nietknięty, a odczyt zapisu biegu
-    jest sprawą warstwy wiązania, nie warstwy wyniku.
+    jest sprawą warstwy wiązania, nie warstwy wyniku. ``nazwy_szyn`` (węzeł grafu → nazwa
+    z modelu) służą wyłącznie zdaniu odmowy — identyfikator szyny nie trafia do treści.
     """
     szyny = _lista(surowy, "bus_results")
     galezie = _lista(surowy, "branch_results")
@@ -152,7 +154,7 @@ def _odtworz_wynik(surowy: dict[str, Any]) -> PowerFlowResultV1:
         tolerance_used=_liczba(surowy, "tolerance_used"),
         base_mva=_liczba(surowy, "base_mva"),
         slack_bus_id=_tekst(surowy, "slack_bus_id"),
-        bus_results=tuple(_odtworz_szyne(pozycja) for pozycja in szyny),
+        bus_results=tuple(_odtworz_szyne(pozycja, nazwy_szyn) for pozycja in szyny),
         branch_results=tuple(_odtworz_galaz(pozycja) for pozycja in galezie),
         summary=PowerFlowSummary(
             total_losses_p_mw=_liczba(podsumowanie, "total_losses_p_mw"),
@@ -166,13 +168,14 @@ def _odtworz_wynik(surowy: dict[str, Any]) -> PowerFlowResultV1:
     )
 
 
-def _odtworz_szyne(surowa: Any) -> PowerFlowBusResult:
+def _odtworz_szyne(surowa: Any, nazwy_szyn: dict[str, str]) -> PowerFlowBusResult:
     if not isinstance(surowa, dict):
         raise BrakDanychRozplywuError("Artefakt wyniku rozpływu ma uszkodzony wiersz szyny.")
     status = surowa.get("status")
     if status != "solved":
+        nazwa = nazwy_szyn.get(str(surowa.get("bus_id")), ELEMENT_SPOZA_MODELU)
         raise BrakDanychRozplywuError(
-            f"Szyna {surowa.get('bus_id')} nie została policzona przez solver rozpływu "
+            f"Szyna wyniku ({nazwa}) nie została policzona przez solver rozpływu "
             "— jej wielkości nie są wynikiem, więc dowód nie może ich użyć."
         )
     return PowerFlowBusResult(

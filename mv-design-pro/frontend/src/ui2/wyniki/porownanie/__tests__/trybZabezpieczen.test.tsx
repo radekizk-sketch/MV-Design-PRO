@@ -12,6 +12,7 @@ import {
   getProtectionComparisonTrace,
 } from '../../../../ui/protection-comparison/api';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
+import { WIARYGODNOSC_PL } from '../../../../ui/protection-comparison/types';
 import type { StudyCaseListItem } from '../../../../ui/study-cases/types';
 import { runsFixture } from './fixtures';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
@@ -252,7 +253,12 @@ describe('TrybZabezpieczen — prezentacja wyniku (prawdziwy wynik sieci złotej
       expect(w.getByText(r.nazwa_urzadzenia_pl)).toBeInTheDocument();
       expect(w.getByText(r.nazwa_punktu_pl)).toBeInTheDocument();
       expect(w.getAllByText(fmtCzasZadzialania(r.t_trip_s_a!)).length).toBeGreaterThan(0);
-      expect(w.getAllByText('wiarygodny').length).toBe(2);
+      // Etykieta wiarygodności z TEGO wiersza wyniku (nie literał): sieć złota nie zapisuje
+      // obwodu wtórnego CT, więc jądro nasycenia daje dziś stan nieustalony w obu biegach.
+      const etykiety = [WIARYGODNOSC_PL[r.wiarygodnosc_a], WIARYGODNOSC_PL[r.wiarygodnosc_b]];
+      for (const etykieta of new Set(etykiety)) {
+        expect(w.getAllByText(etykieta).length).toBe(etykiety.filter((e) => e === etykieta).length);
+      }
       expect(wiersze[i]).not.toHaveTextContent(r.device_id_a);
     });
   });

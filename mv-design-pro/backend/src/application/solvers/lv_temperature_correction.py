@@ -142,14 +142,14 @@ def build_min_scenario_graph(graph: NetworkGraph) -> MinScenarioGraphResult:
 
     for switch in graph.switches.values():
         decorated.add_switch(switch)
-    for source in graph.inverter_sources.values():
-        decorated.add_inverter_source(source)
-    for source in graph.synchronous_machine_sources.values():
-        decorated.add_synchronous_machine_source(source)
-    for source in graph.asynchronous_machine_sources.values():
-        decorated.add_asynchronous_machine_source(source)
-    for source in graph.grid_sc_sources.values():
-        decorated.add_grid_sc_source(source)
+    for falownik in graph.inverter_sources.values():
+        decorated.add_inverter_source(falownik)
+    for maszyna in graph.synchronous_machine_sources.values():
+        decorated.add_synchronous_machine_source(maszyna)
+    for silnik in graph.asynchronous_machine_sources.values():
+        decorated.add_asynchronous_machine_source(silnik)
+    for zrodlo_sieciowe in graph.grid_sc_sources.values():
+        decorated.add_grid_sc_source(zrodlo_sieciowe)
     for station in graph.stations.values():
         decorated.add_station(station)
 

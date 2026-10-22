@@ -298,3 +298,37 @@ def test_switch_equipment_type_roundtrip_zachowuje_um_icu() -> None:
     odtworzony = SwitchEquipmentType.from_dict(typ.to_dict())
     assert odtworzony.u_m_kv == 12.0
     assert odtworzony.i_cu_ka == 20.0
+
+
+# ---------------------------------------------------------------------------
+# Karta SC-IB-ITH-ZRODLA: znacznik bezpiecznika (wielkość kryterium wyłączania I″k)
+# dla KAŻDEJ pozycji obu katalogów — bezpiecznik wtedy i tylko wtedy, gdy rodzaj FUSE (SN)
+# albo ROZLACZNIK_BEZPIECZNIKOWY (nN).
+# ---------------------------------------------------------------------------
+
+
+def test_znacznik_bezpiecznika_dla_kazdej_pozycji_sn() -> None:
+    rodzaje: set[str] = set()
+    for record in get_all_switch_equipment_types():
+        rodzaj = str(record["params"]["equipment_kind"])
+        rodzaje.add(rodzaj)
+        wynik = resolve_um_icu_from_catalog(record["id"])
+        assert wynik.found_in_catalog, record["id"]
+        assert wynik.bezpiecznik is (rodzaj == "FUSE"), record["id"]
+    assert {"FUSE", "CIRCUIT_BREAKER", "RECLOSER", "LOAD_SWITCH"} <= rodzaje
+
+
+def test_znacznik_bezpiecznika_dla_kazdej_pozycji_nn() -> None:
+    rodzaje: set[str] = set()
+    for record in get_all_lv_apparatus_types():
+        rodzaj = str(record["params"]["device_kind"])
+        rodzaje.add(rodzaj)
+        wynik = resolve_um_icu_from_catalog(record["id"])
+        assert wynik.found_in_catalog, record["id"]
+        assert wynik.bezpiecznik is (rodzaj == "ROZLACZNIK_BEZPIECZNIKOWY"), record["id"]
+    assert {"ROZLACZNIK_BEZPIECZNIKOWY", "WYLACZNIK_GLOWNY"} <= rodzaje
+
+
+def test_wpis_nieznany_nie_jest_bezpiecznikiem() -> None:
+    assert resolve_um_icu_from_catalog("nie-ma-takiej-pozycji").bezpiecznik is False
+    assert resolve_um_icu_from_catalog(None).bezpiecznik is False

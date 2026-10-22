@@ -21,7 +21,39 @@
         "q": 1.0,
         "ib_a": 453.558191949,
         "is_synchronous_machine": true,
+        "slad_mu": {
+          "wielkosc": "mu",
+          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "t_min_s": 0.1,
+          "argument": 6.68894608511,
+          "regula": "WEZEL",
+          "wezel_dolny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.704672296038,
+            "wartosc": 0.704672296038
+          },
+          "wezel_gorny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.704672296038,
+            "wartosc": 0.704672296038
+          },
+          "waga": 0.0,
+          "wynik": 0.704672296038
+        },
+        "slad_q": null,
         "p_per_pole_mw": 0.0,
+        "ikss_zaciski_a": 643.644137139,
+        "delta_u_wzgledne": 0.920497167676,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -32,12 +64,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 6.69",
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
@@ -50,7 +86,7 @@
     "ib_machines_a": 453.558191949,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "z_kk_ohm": {
         "re": 0.0541396260155,
@@ -77,6 +113,10 @@
         "latex": null
       },
       {
+        "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "latex": null
+      },
+      {
         "tekst": "— Generator synchroniczny —",
         "latex": null
       },
@@ -89,12 +129,16 @@
         "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego: I″k/Ir = 6.69",
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.705",
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
         "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+      },
+      {
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
       },
       {
         "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
@@ -120,6 +164,10 @@
           {
             "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
+          },
+          {
+            "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016"
@@ -136,12 +184,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 6.69",
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
@@ -197,7 +249,16 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "ccc9e2b53ca4ffd31bf9b3a93905514cb57aed31b1cdc94d890d47e45065badd"
+    "input_hash": "4b2f5b5655123029de573c3e1ce61bb896b70000bd2aaf2fbaa26da41739df8b",
+    "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
+    "t_min_zrodlo": {
+      "wartosc_s": 0.1,
+      "pochodzenie": "PROPOZYCJA",
+      "wartosc_robocza": true,
+      "jakosc": "ESTIMATED",
+      "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+    }
   },
   "80c21edb-e0ec-5378-acd6-e90f5ec0bc57": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -216,12 +277,44 @@
         },
         "ir_a": 96.2250448649,
         "ikss_partial_a": 81.9614750082,
-        "ratio_ik_ir": 0.851768633865,
-        "mu": 1.0,
+        "ratio_ik_ir": 6.24630331501,
+        "mu": 0.71755673939,
         "q": 1.0,
-        "ib_a": 81.9614750082,
+        "ib_a": 58.8120087625,
         "is_synchronous_machine": true,
+        "slad_mu": {
+          "wielkosc": "mu",
+          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "t_min_s": 0.1,
+          "argument": 6.24630331501,
+          "regula": "WEZEL",
+          "wezel_dolny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.71755673939,
+            "wartosc": 0.71755673939
+          },
+          "wezel_gorny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.71755673939,
+            "wartosc": 0.71755673939
+          },
+          "waga": 0.0,
+          "wynik": 0.71755673939
+        },
+        "slad_q": null,
         "p_per_pole_mw": 0.0,
+        "ikss_zaciski_a": 601.050816727,
+        "delta_u_wzgledne": 0.859583025001,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -232,25 +325,29 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 0.85",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.082}{0.096} = 0.85"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.25",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
           },
           {
-            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, § 6.6.1)",
-            "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 rozdz. 9): μ = 0.718",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.082 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.082\\;\\mathrm{kA}"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8596",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1562}{1.10} = 0.8596"
+          },
+          {
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.059 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.718 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.059\\;\\mathrm{kA}"
           }
         ]
       }
     ],
     "ikss_machines_a": 81.9614750082,
-    "ib_machines_a": 81.9614750082,
+    "ib_machines_a": 58.8120087625,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "z_kk_ohm": {
         "re": 0.497750185093,
@@ -277,6 +374,10 @@
         "latex": null
       },
       {
+        "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "latex": null
+      },
+      {
         "tekst": "— Generator synchroniczny —",
         "latex": null
       },
@@ -289,19 +390,23 @@
         "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego: I″k/Ir = 0.85",
-        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.082}{0.096} = 0.85"
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.25",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
       },
       {
-        "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, § 6.6.1)",
-        "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 rozdz. 9): μ = 0.718",
+        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
       },
       {
-        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.082 kA",
-        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.082\\;\\mathrm{kA}"
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8596",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1562}{1.10} = 0.8596"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 0,082 kA, Ib,M = 0,082 kA.",
+        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.059 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.718 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.059\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Suma wkładów maszyn: I″k,M = 0,082 kA, Ib,M = 0,059 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
@@ -320,6 +425,10 @@
           {
             "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 13,984 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
+          },
+          {
+            "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016"
@@ -336,16 +445,20 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0356}{0.0413 \\cdot 6.0699} \\cdot 525\\;\\mathrm{A} = 0.082\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 0.85",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.082}{0.096} = 0.85"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.25",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
           },
           {
-            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, § 6.6.1)",
-            "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 rozdz. 9): μ = 0.718",
+            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.082 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.082\\;\\mathrm{kA}"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.8596",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1562}{1.10} = 0.8596"
+          },
+          {
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.059 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.718 \\cdot 1.000 \\cdot 0.082\\;\\mathrm{kA} = 0.059\\;\\mathrm{kA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -354,7 +467,7 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 0,082 kA, Ib,M = 0,082 kA.",
+            "tekst": "Suma wkładów maszyn: I″k,M = 0,082 kA, Ib,M = 0,059 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
@@ -397,12 +510,21 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "515b6892dcfe1496949b5ecafdf3fabcb130f0b7a574fb24b0b9444ef6b511cb"
+    "input_hash": "6400feb9ff1819cf8a5cf2ffea3f88751fed223f66c04b61ea6b7b99d9635a2e",
+    "c_zrodlo": "IEC 60909-0 tab. 1, pasmo WN, MAX",
+    "t_min_zrodlo": {
+      "wartosc_s": 0.1,
+      "pochodzenie": "PROPOZYCJA",
+      "wartosc_robocza": true,
+      "jakosc": "ESTIMATED",
+      "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+    }
   },
   "d70aff7b-d056-5804-acce-c9bc5707612b": {
     "standard": "IEC 60909-0:2016 §6.6",
     "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
-    "c_factor": 1.1,
+    "c_factor": 1.05,
     "t_min_s": 0.1,
     "contributions": [
       {
@@ -415,13 +537,27 @@
           "im": 13.623853211
         },
         "ir_a": 96.2250448649,
-        "ikss_partial_a": 1540.74387601,
-        "ratio_ik_ir": 16.0118800482,
-        "mu": 0.624286410188,
+        "ikss_partial_a": 1470.71006347,
+        "ratio_ik_ir": 0.407575128501,
+        "mu": 1.0,
         "q": 1.0,
-        "ib_a": 961.865463376,
+        "ib_a": 1470.71006347,
         "is_synchronous_machine": true,
+        "slad_mu": {
+          "wielkosc": "mu",
+          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "t_min_s": 0.1,
+          "argument": 0.407575128501,
+          "regula": "BEZ_ZANIKU",
+          "wezel_dolny": null,
+          "wezel_gorny": null,
+          "waga": 0.0,
+          "wynik": 1.0
+        },
+        "slad_q": null,
         "p_per_pole_mw": 0.0,
+        "ikss_zaciski_a": 39.2189350258,
+        "delta_u_wzgledne": 0.0587591928376,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -429,42 +565,46 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.541\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 16.01",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.541}{0.096} = 16.01"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.624",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 16.01} = 0.624"
+            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 rozdz. 9)",
+            "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.962 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.624 \\cdot 1.000 \\cdot 1.541\\;\\mathrm{kA} = 0.962\\;\\mathrm{kA}"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0588",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0102}{1.05} = 0.0588"
+          },
+          {
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.471 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.471\\;\\mathrm{kA} = 1.471\\;\\mathrm{kA}"
           }
         ]
       }
     ],
-    "ikss_machines_a": 1540.74387601,
-    "ib_machines_a": 961.865463376,
+    "ikss_machines_a": 1470.71006347,
+    "ib_machines_a": 1470.71006347,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "z_kk_ohm": {
         "re": 0.00258532344552,
         "im": 0.0115678260099
       },
       "i_base_a": 144337.567297,
-      "ikss_total_a": 21431.6797783,
+      "ikss_total_a": 20457.5125157,
       "partial_formula": "I_partial,m = c·Z_mk/(Z_kk·Z_m) · I_base  (przy zwarciu na zaciskach → c·Un/(√3·Z″))",
       "n_synchronous": 1,
       "n_asynchronous": 0,
       "n_dfig": 0,
       "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
       "ikss_async_machines_a": 0,
-      "small_motor_limit_a": 1071.58398892,
+      "small_motor_limit_a": 1022.87562578,
       "dfig_assumption": "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
     },
     "wywod": [
@@ -473,7 +613,11 @@
         "latex": null
       },
       {
-        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 21,432 kA, c = 1,10, t_min = 0,10 s.",
+        "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 20,458 kA, c = 1,05, t_min = 0,10 s.",
+        "latex": null
+      },
+      {
+        "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
         "latex": null
       },
       {
@@ -486,27 +630,31 @@
       },
       {
         "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.541\\;\\mathrm{kA}"
+        "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego: I″k/Ir = 16.01",
-        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.541}{0.096} = 16.01"
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
+        "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.624",
-        "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 16.01} = 0.624"
+        "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 rozdz. 9)",
+        "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
       },
       {
-        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.962 kA",
-        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.624 \\cdot 1.000 \\cdot 1.541\\;\\mathrm{kA} = 0.962\\;\\mathrm{kA}"
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0588",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0102}{1.05} = 0.0588"
       },
       {
-        "tekst": "Suma wkładów maszyn: I″k,M = 1,541 kA, Ib,M = 0,962 kA.",
+        "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.471 kA",
+        "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.471\\;\\mathrm{kA} = 1.471\\;\\mathrm{kA}"
+      },
+      {
+        "tekst": "Suma wkładów maszyn: I″k,M = 1,471 kA, Ib,M = 1,471 kA.",
         "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
       },
       {
-        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,072 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,072) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+        "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,023 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,023) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+        "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.458\\;\\mathrm{kA} = 1.023\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
       }
     ],
     "wywod_sekcje": [
@@ -518,7 +666,11 @@
             "latex": null
           },
           {
-            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 21,432 kA, c = 1,10, t_min = 0,10 s.",
+            "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 20,458 kA, c = 1,05, t_min = 0,10 s.",
+            "latex": null
+          },
+          {
+            "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
             "latex": null
           }
         ],
@@ -533,19 +685,23 @@
           },
           {
             "tekst": "Prąd częściowy maszyny (superpozycja macierzy impedancji węzłowych; przy zwarciu na zaciskach równoważny c·Un/(√3·Z″))",
-            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.541\\;\\mathrm{kA}"
+            "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.05 \\cdot 0.4364}{7.4083 \\cdot 6.0699} \\cdot 144338\\;\\mathrm{A} = 1.471\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 16.01",
-            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.541}{0.096} = 16.01"
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 0.41",
+            "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.624",
-            "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 16.01} = 0.624"
+            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 rozdz. 9)",
+            "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
           },
           {
-            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.962 kA",
-            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.624 \\cdot 1.000 \\cdot 1.541\\;\\mathrm{kA} = 0.962\\;\\mathrm{kA}"
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.0588",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.0102}{1.05} = 0.0588"
+          },
+          {
+            "tekst": "Prąd wyłączeniowy symetryczny: Ib = 1.471 kA",
+            "latex": "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 1.000 \\cdot 1.000 \\cdot 1.471\\;\\mathrm{kA} = 1.471\\;\\mathrm{kA}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -554,12 +710,12 @@
         "tytul": "Suma wkładów i reguły",
         "kroki": [
           {
-            "tekst": "Suma wkładów maszyn: I″k,M = 1,541 kA, Ib,M = 0,962 kA.",
+            "tekst": "Suma wkładów maszyn: I″k,M = 1,471 kA, Ib,M = 1,471 kA.",
             "latex": "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}"
           },
           {
-            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,072 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,072) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
-            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 21.432\\;\\mathrm{kA} = 1.072\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
+            "tekst": "Reguła małych silników (p. 6.6): wymaganie suma I″k,M ≤ 0,05·I″k; wartość graniczna 0,05·I″k = 1,023 kA; wartość obliczona suma I″k,M = 0,000 kA (0,000 ≤ 1,023) — reguła spełniona (silniki pomijalne w prądzie wyłączeniowym Ib).",
+            "latex": "\\sum_m I''_{k,M} = 0.000\\;\\mathrm{kA} \\;\\le\\; 0.05 \\cdot I''_k = 0.05 \\cdot 20.458\\;\\mathrm{kA} = 1.023\\;\\mathrm{kA} \\;\\Rightarrow\\; \\text{reguła spełniona}"
           }
         ],
         "norma": "IEC 60909-0:2016 §6.6"
@@ -573,7 +729,7 @@
       },
       {
         "pozycja_pl": "Współczynnik napięciowy c",
-        "wartosc_pl": "c = 1,10 (z tego przebiegu)",
+        "wartosc_pl": "c = 1,05 (z tego przebiegu)",
         "status": "INFO"
       },
       {
@@ -588,7 +744,7 @@
       },
       {
         "pozycja_pl": "Reguła małych silników (5%)",
-        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 1,072 kA)",
+        "wartosc_pl": "spełniona — silniki pomijalne w prądzie wyłączeniowym Ib (suma I″k,M = 0,000 kA, próg = 1,023 kA)",
         "status": "PASS"
       },
       {
@@ -597,7 +753,16 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "b469ff31a3531f8b505342f6986c2c99d44ef4f3083f3d3556990b6c0d76050f"
+    "input_hash": "9df4218f7fe7981cb78d20fd762e74908c594593800c3ac088c802acdee6c33b",
+    "c_zrodlo": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
+    "t_min_zrodlo": {
+      "wartosc_s": 0.1,
+      "pochodzenie": "PROPOZYCJA",
+      "wartosc_robocza": true,
+      "jakosc": "ESTIMATED",
+      "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+    }
   },
   "d93618a6-23da-5d59-ae10-a7242961b790": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -621,7 +786,39 @@
         "q": 1.0,
         "ib_a": 453.558191949,
         "is_synchronous_machine": true,
+        "slad_mu": {
+          "wielkosc": "mu",
+          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "t_min_s": 0.1,
+          "argument": 6.68894608511,
+          "regula": "WEZEL",
+          "wezel_dolny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.704672296038,
+            "wartosc": 0.704672296038
+          },
+          "wezel_gorny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.704672296038,
+            "wartosc": 0.704672296038
+          },
+          "waga": 0.0,
+          "wynik": 0.704672296038
+        },
+        "slad_q": null,
         "p_per_pole_mw": 0.0,
+        "ikss_zaciski_a": 643.644137139,
+        "delta_u_wzgledne": 0.920497167676,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -632,12 +829,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 6.69",
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
@@ -650,7 +851,7 @@
     "ib_machines_a": 453.558191949,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "z_kk_ohm": {
         "re": 0.0541396260155,
@@ -677,6 +878,10 @@
         "latex": null
       },
       {
+        "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "latex": null
+      },
+      {
         "tekst": "— Generator synchroniczny —",
         "latex": null
       },
@@ -689,12 +894,16 @@
         "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego: I″k/Ir = 6.69",
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.705",
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
         "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+      },
+      {
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
       },
       {
         "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
@@ -720,6 +929,10 @@
           {
             "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 8,953 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
+          },
+          {
+            "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016"
@@ -736,12 +949,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.4364}{0.4729 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.644\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 6.69",
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 6.69",
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
+          },
+          {
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9205",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1672}{1.10} = 0.9205"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.454 kA",
@@ -797,7 +1014,16 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "168ac44df9be1f1e9805357b262ad9dea8a58bfbb5e68126947c9fba45de0be9"
+    "input_hash": "0b39bb9cc623830f94db1dcb239cba43c32424d9d30eeac35a41b6e063aa839b",
+    "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
+    "t_min_zrodlo": {
+      "wartosc_s": 0.1,
+      "pochodzenie": "PROPOZYCJA",
+      "wartosc_robocza": true,
+      "jakosc": "ESTIMATED",
+      "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+    }
   },
   "e22c09ea-bf55-54b7-8c57-88efc2eb8989": {
     "standard": "IEC 60909-0:2016 §6.6",
@@ -821,7 +1047,39 @@
         "q": 1.0,
         "ib_a": 481.839586107,
         "is_synchronous_machine": true,
+        "slad_mu": {
+          "wielkosc": "mu",
+          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "t_min_s": 0.1,
+          "argument": 7.24892849456,
+          "regula": "WEZEL",
+          "wezel_dolny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.690781247072,
+            "wartosc": 0.690781247072
+          },
+          "wezel_gorny": {
+            "t_min_s": 0.1,
+            "wspolczynniki": [
+              0.62,
+              0.72,
+              0.32
+            ],
+            "wartosc_surowa": 0.690781247072,
+            "wartosc": 0.690781247072
+          },
+          "waga": 0.0,
+          "wynik": 0.690781247072
+        },
+        "slad_q": null,
         "p_per_pole_mw": 0.0,
+        "ikss_zaciski_a": 697.528469612,
+        "delta_u_wzgledne": 0.997558967142,
         "wywod": [
           {
             "tekst": "Impedancja zastępcza maszyny: Z″m = 0.9537 + j13.6239 Ω",
@@ -832,12 +1090,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 7.25",
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 7.25",
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.691",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 rozdz. 9): μ = 0.691",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
+          },
+          {
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9976",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1812}{1.10} = 0.9976"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.482 kA",
@@ -850,7 +1112,7 @@
     "ib_machines_a": 481.839586107,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
       "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "z_kk_ohm": {
         "re": 0.75572550809,
@@ -877,6 +1139,10 @@
         "latex": null
       },
       {
+        "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "latex": null
+      },
+      {
         "tekst": "— Generator synchroniczny —",
         "latex": null
       },
@@ -889,12 +1155,16 @@
         "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
       },
       {
-        "tekst": "Krotność prądu znamionowego: I″k/Ir = 7.25",
+        "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 7.25",
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.691",
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 rozdz. 9): μ = 0.691",
         "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
+      },
+      {
+        "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9976",
+        "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1812}{1.10} = 0.9976"
       },
       {
         "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.482 kA",
@@ -920,6 +1190,10 @@
           {
             "tekst": "Punkt zwarcia: całkowity prąd I″k (z macierzy impedancji węzłowych) = 4,603 kA, c = 1,10, t_min = 0,10 s.",
             "latex": null
+          },
+          {
+            "tekst": "Czas t_min (= t_b punktu zwarcia): t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+            "latex": null
           }
         ],
         "norma": "IEC 60909-0:2016"
@@ -936,12 +1210,16 @@
             "latex": "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.9197}{0.9197 \\cdot 6.0699} \\cdot 3849\\;\\mathrm{A} = 0.698\\;\\mathrm{kA}"
           },
           {
-            "tekst": "Krotność prądu znamionowego: I″k/Ir = 7.25",
+            "tekst": "Krotność prądu znamionowego (prądy na zaciskach maszyny): I″k/Ir = 7.25",
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa t_min = 0.10 s, § 6.6.1): μ = 0.691",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 rozdz. 9): μ = 0.691",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
+          },
+          {
+            "tekst": "Spadek napięcia na reaktancji podprzejściowej maszyny odniesiony do napięcia źródła zastępczego: ΔU″/(c·Un/√3) = 0.9976",
+            "latex": "\\frac{\\Delta U''_m}{c\\,U_n/\\sqrt{3}} = \\frac{X''_m\\,|I''_{k,m}|}{c} = \\frac{6.0550 \\cdot 0.1812}{1.10} = 0.9976"
           },
           {
             "tekst": "Prąd wyłączeniowy symetryczny: Ib = 0.482 kA",
@@ -997,6 +1275,15 @@
         "status": "PASS"
       }
     ],
-    "input_hash": "8e0c9b6559545235c4c757bbfd967d6d5592551623f49ea7062d7d5b72c1c4f7"
+    "input_hash": "91ea689bf04ff6235bcbe8ceafa1566947219f392cb613143178c420748d7c9c",
+    "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
+    "t_min_zrodlo": {
+      "wartosc_s": 0.1,
+      "pochodzenie": "PROPOZYCJA",
+      "wartosc_robocza": true,
+      "jakosc": "ESTIMATED",
+      "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+      "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+    }
   }
 }

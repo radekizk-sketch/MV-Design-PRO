@@ -62,6 +62,17 @@ export const ODBIOR_STRINGS = {
   wierszFazy: 'Fazy przyłączenia',
   fazyNieWskazano: 'nie wskazano — trójfazowy symetryczny',
 
+  // Uziom instalacji odbiorczej (karta W5-E-TTIT) — pole `Load.earth_electrode_r_ohm`.
+  uziomTytul: 'Uziom instalacji odbiorczej (układ TT)',
+  uziomRa: 'Rezystancja uziomu instalacji R_A',
+  uziomRaPomoc:
+    'Czyta ją pętla doziemna układu TT (IEC 60364-4-41 §411.5): prąd zwarcia doziemnego płynie '
+    + 'przez uziom instalacji R_A i uziom stacji R_B, a napięcie dotykowe to R_A·I_Δn wyłącznika '
+    + 'różnicowoprądowego. Puste = analiza TT odmawia nazwanym kodem (nie podstawia wartości); '
+    + 'w układach TN pole nie jest czytane.',
+  uziomNiePodano: 'nie podano — pętla TT odmówi kodem nn.brak_r_a',
+  wierszUziom: 'Uziom instalacji R_A',
+
   // Model obciążenia (ZIP) — współczynniki czytane przez rozpływ mocy.
   zipTytul: 'Model obciążenia (ZIP)',
   zipNota: 'a + b + c = 1 osobno dla P i dla Q',

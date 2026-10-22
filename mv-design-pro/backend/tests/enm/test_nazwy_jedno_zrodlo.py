@@ -85,13 +85,6 @@ NAZWY_PROGRAMOWE = frozenset(
 #: wpis"). Wyłącznie rdzenie zamrożone B-01 (`scripts/rdzenie_b01.py`) — ich edycja wymaga
 #: decyzji właściciela; zapasy nie odpalają w torze kanonicznym (uzasadnienia przy wpisach).
 DOZWOLONE: dict[str, tuple[int, str]] = {
-    "network_model/solvers/short_circuit_iec60909.py:"
-    "ShortCircuitIEC60909Solver._append_transformer_kt_trace:or": (
-        1,
-        "Rdzeń B-01 (IEC 60909). Zapas `branch.name or branch_id` nie odpala: mapowanie "
-        "ENM → graf (`enm/mapping.py`) nadaje każdej gałęzi grafu nazwę przez "
-        "`nazwa_elementu` (nazwa z modelu albo opis rodzaju, nigdy pusta).",
-    ),
     "network_model/solvers/ncrfg_ptpiree/engine.py:NcRfgPtpireeSolver._run_module:or": (
         1,
         "Rdzeń B-01 (NC RfG/PTPiREE). Moduł DER budowany przez most modelu "
@@ -595,6 +588,37 @@ def test_miejsce_zdanie_komunikatu(przypadek: str) -> None:
         assert slownik.opis_obiektu(obiekt, "Stacja") == zdanie
         model = {"substations": [obiekt]}
         assert nazwy.nazwa_nadana_po_identyfikatorze(model, "stn-x") == oczekiwana
+
+
+@pytest.mark.parametrize("przypadek", sorted(WARTOSCI))
+@pytest.mark.parametrize(
+    "ref", ["stn-y", "", None], ids=["inny_identyfikator", "pusty", "brak_wskazania"]
+)
+@pytest.mark.parametrize("postac", ["slownik", "obiekt_modelu", "brak_migawki"])
+def test_zdanie_komunikatu_element_spoza_modelu_to_nie_element_bez_nazwy(
+    przypadek: str, ref: object, postac: str
+) -> None:
+    """Partia integracji 10 — iloczyn: nazwa elementu obecnego w migawce (każdy przypadek
+    `WARTOSCI`) × wskazanie elementu NIEOBECNEGO {inny identyfikator, pusty, brak} × postać
+    migawki {słownik, obiekt modelu, brak migawki}. Element spoza migawki to jawny brak
+    („Stacja spoza modelu"), nigdy „Stacja bez nazwy" (fałszywy stan danych) i nigdy
+    identyfikator."""
+    from types import SimpleNamespace
+
+    from enm.models import Substation
+
+    wartosc, _oczekiwana = WARTOSCI[przypadek]
+    if postac == "slownik":
+        model: object = {"substations": [_element(wartosc)]}
+    elif postac == "obiekt_modelu":
+        nazwa = wartosc if isinstance(wartosc, str) else ""
+        obiekt = Substation(ref_id="stn-x", name=nazwa, station_type="mv_lv", bus_refs=[])
+        model = SimpleNamespace(substations=[obiekt])
+    else:
+        model = None
+    zdanie = slownik.opis_elementu(model, ref, "Stacja")
+    assert zdanie == "Stacja spoza modelu"
+    assert "stn-y" not in zdanie
 
 
 @pytest.mark.parametrize("przypadek", sorted(WARTOSCI))

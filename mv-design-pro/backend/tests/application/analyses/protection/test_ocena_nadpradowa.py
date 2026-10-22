@@ -14,7 +14,8 @@ Testy są ILOCZYNEM CECH (reguła KLASA, NIE INSTANCJA):
   × strefa {jednoznaczna, pierścień zamknięty, aparat poza torem, aparat otwarty, aparat
   nieobecny} × rodzaj aparatu przekaźnika {wyłącznik, reklozer, bezpiecznik, odłącznik,
   rozłącznik},
-- wiarygodność {prąd w granicy ALF, powyżej ALF, klasa pomiarowa}.
+- wiarygodność bez obwodu wtórnego {klasa zabezpieczeniowa, pomiarowa} (pełny iloczyn cech
+  nasycenia przekładnika: ``test_nasycenie_ct_jeden_werdykt.py``).
 
 Wartości oczekiwane pochodzą z rachunku ręcznego (w komentarzu), nie z uruchomienia kodu.
 """
@@ -46,12 +47,9 @@ from application.analyses.protection.ocena_nadpradowa import (
     KOD_STREFA_NIEJEDNOZNACZNA,
     KOD_WEJSCIE_NIEZGODNE,
     KRZYWE_IEC,
-    NIEWIARYGODNY,
     POMINIETE_BEZ_FUNKCJI_NADPRADOWYCH,
     POMINIETE_WYLACZONE,
     WIARYGODNOSC_NIEUSTALONA,
-    WIARYGODNY,
-    alf_z_klasy,
     czas_stopnia,
     ocen_zabezpieczenia,
     prad_roboczy_przekaznika,
@@ -70,10 +68,13 @@ from network_model.core.graph import NetworkGraph
 from network_model.core.grid_source import GridShortCircuitSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.solvers.protection_iec60255 import IEC60255_CURVE_PARAMS, IEC60255CurveType
+from network_model.solvers.protection_iec60255 import (
+    IEC60255_CURVE_PARAMS,
+    IEC60255CurveType,
+)
 
 #: Pozycja katalogu ZABEZPIECZENIE z zakresami w ×In i podstawą (profil referencyjny D-33):
-#: I> 0,05–5 ×In, I>> 0,1–40 ×In, TMS 0,05–1,0, zwłoka 0,05–100 s, krzywe IEC_NI/IEC_VI/DT.
+#: I> 0,05–5 ×In, I>> 0,1–40 ×In, TMS 0,05–1,0, zwłoka 0,05–100 s, krzywe IEC_SI/IEC_VI/DT.
 REL_REF = "REF-OC-200"
 #: Pozycja producenta z zakresami BEZ ustalonej jednostki (brak karty producenta w repo).
 REL_BEZ_JEDNOSTKI = "EM_ETANGO_400_V0"
@@ -312,14 +313,26 @@ def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
             KOD_JEDNOSTKA_PROGU_NIEUSTALONA,
         ),
         # charakterystyka zależna bez TMS (dawniej: TMS = 0,3 z wartości domyślnej)
-        (_przypisanie(Q1, [_stopien_51(time_multiplier=None)]), None, KOD_BRAK_MNOZNIKA),
+        (
+            _przypisanie(Q1, [_stopien_51(time_multiplier=None)]),
+            None,
+            KOD_BRAK_MNOZNIKA,
+        ),
         # DT bez zwłoki (dawniej: 0 s)
         (_przypisanie(Q1, [_stopien_50(time_delay_s=None)]), None, KOD_BRAK_ZWLOKI),
         # próg poza zakresem katalogu: 0,1 A wtórne = 0,02 ×In < 0,05 ×In
-        (_przypisanie(Q1, [_stopien_51(threshold_a=0.1)]), None, KOD_PROG_POZA_ZAKRESEM),
+        (
+            _przypisanie(Q1, [_stopien_51(threshold_a=0.1)]),
+            None,
+            KOD_PROG_POZA_ZAKRESEM,
+        ),
         # TMS poza zakresem 0,05–1,0
-        (_przypisanie(Q1, [_stopien_51(time_multiplier=1.5)]), None, KOD_MNOZNIK_POZA_ZAKRESEM),
-        # charakterystyka spoza katalogu przekaźnika (REF-OC-200: IEC_NI, IEC_VI, DT)
+        (
+            _przypisanie(Q1, [_stopien_51(time_multiplier=1.5)]),
+            None,
+            KOD_MNOZNIK_POZA_ZAKRESEM,
+        ),
+        # charakterystyka spoza katalogu przekaźnika (REF-OC-200: IEC_SI, IEC_VI, DT)
         (
             _przypisanie(Q1, [_stopien_51(curve_type="IEC_EI")]),
             None,
@@ -332,11 +345,19 @@ def test_prog_pierwotny_przeliczany_na_wtorny_do_sprawdzenia_zakresu() -> None:
             KOD_JEDNOSTKA_ZAKRESU_NIEUSTALONA,
         ),
         # brak pozycji katalogu
-        (_przypisanie(Q1, [_stopien_51()], catalog_ref=None), None, KOD_BRAK_POZYCJI_KATALOGU),
+        (
+            _przypisanie(Q1, [_stopien_51()], catalog_ref=None),
+            None,
+            KOD_BRAK_POZYCJI_KATALOGU,
+        ),
         # brak przekładnika
         (_przypisanie(Q1, [_stopien_51()], ct_ref=None), None, KOD_BRAK_PRZEKLADNIKA),
         # prąd wtórny CT (2 A) spoza wejść przekaźnika (1 A, 5 A) przy zakresie w ×In
-        (_przypisanie(Q1, [_stopien_51()]), _ct("ct", wtorny=2.0), KOD_WEJSCIE_NIEZGODNE),
+        (
+            _przypisanie(Q1, [_stopien_51()]),
+            _ct("ct", wtorny=2.0),
+            KOD_WEJSCIE_NIEZGODNE,
+        ),
     ],
 )
 def test_kazdy_brak_jest_nazwany_i_blokuje_ocene(przypisanie, ct, kod) -> None:
@@ -377,12 +398,12 @@ def test_urzadzenie_wylaczone_i_bez_funkcji_nadpradowych_sa_pominiete_z_przyczyn
 # 2. Krzywe — czas z rdzenia wobec NIEZALEŻNEGO rachunku wg normy
 # ---------------------------------------------------------------------------
 
-#: IEC 60255-151:2009 tab. 1 (A, B): t = TMS·A/(M^B − 1).
+#: IEC 60255-151:2009 zał. A tab. A.1 (A, B; LTI: ABB 1MRS756887 tab. 1001): t = TMS·A/(M^B − 1).
 _IEC = {
     "IEC_SI": (0.14, 0.02),
     "IEC_VI": (13.5, 1.0),
     "IEC_EI": (80.0, 2.0),
-    "IEC_LI": (120.0, 1.0),
+    "IEC_LTI": (120.0, 1.0),
 }
 #: IEEE C37.112 (A, B, p): t = TD·(A/(M^p − 1) + B).
 _IEEE = {
@@ -402,7 +423,8 @@ def _stopien_z_krzywa(krzywa: str):
 
 
 @pytest.mark.parametrize(
-    "krzywa", ["IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI", "DT", "IEEE_MI", "IEEE_VI", "IEEE_EI"]
+    "krzywa",
+    ["IEC_SI", "IEC_VI", "IEC_EI", "IEC_LTI", "DT", "IEEE_MI", "IEEE_VI", "IEEE_EI"],
 )
 @pytest.mark.parametrize("krotnosc", [1.5, 4.0, 10.0])
 def test_czas_krzywej_zgodny_ze_wzorem_normy(krzywa: str, krotnosc: float) -> None:
@@ -452,7 +474,7 @@ def test_rachunek_reczny_si_i_ieee_vi() -> None:
 
 
 def test_odwzorowanie_krzywych_iec_idzie_po_stalych_a_nie_po_nazwie() -> None:
-    """IEC_SI → NI (0,14; 0,02), IEC_LI → „RI" rdzenia = stałe (120; 1) — po wzorze, nie nazwie."""
+    """IEC_SI → STANDARD_INVERSE (0,14; 0,02), IEC_LTI → LONG_TIME_INVERSE (120; 1) — po wzorze, nie nazwie."""
     for nazwa, stale in _IEC.items():
         assert IEC60255_CURVE_PARAMS[KRZYWE_IEC[nazwa]] == stale, nazwa
     assert KRZYWE_IEC["DT"] is IEC60255CurveType.DT
@@ -525,7 +547,8 @@ def test_przekaznik_dziala_wylacznie_przez_aparat_wylaczajacy_zwarcia(
 ) -> None:
     """Rodzaj aparatu przekaźnika × ocena. Bezpiecznik, odłącznik i rozłącznik nie przerywają
     prądu zwarciowego na rozkaz przekaźnika — przekaźnik przy nich nie ma czasu wyłączenia
-    (odmowa z nazwanym kodem), a bezpiecznik NIGDY nie dostaje czasu wzoru przekaźnikowego."""
+    (odmowa z nazwanym kodem), a bezpiecznik NIGDY nie dostaje czasu wzoru przekaźnikowego.
+    """
     wynik = _ocen(_model(_przypisanie(Q2, [_stopien_51()])), _graf(typ_q2=typ))
     if oceniany:
         assert {o.punkt_ref for o in wynik.oceny} == {B4}
@@ -546,7 +569,8 @@ def test_aparat_nieobecny_w_grafie_biegu_daje_odmowe() -> None:
 
 def test_punkt_innego_poziomu_napiecia_nazwany_i_nieoceniany() -> None:
     """Rozpływ biegu SC podaje prąd gałęzi w bazie napięcia punktu zwarcia (rdzeń B-01),
-    więc punkt nN za transformatorem nie jest oceniany przez przekaźnik SN — z powodem."""
+    więc punkt nN za transformatorem nie jest oceniany przez przekaźnik SN — z powodem.
+    """
     wiersze = [*WIERSZE, _wiersz("wezel-nn", 18000.0)]
     wynik = _ocen(_model(_przypisanie(Q2, [_stopien_51()])), _graf(wezel_nn=True), wiersze=wiersze)
     assert {o.punkt_ref for o in wynik.oceny} == {B4}
@@ -559,29 +583,23 @@ def test_punkt_innego_poziomu_napiecia_nazwany_i_nieoceniany() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_alf_z_klasy_przekladnika() -> None:
-    assert alf_z_klasy("5P20") == 20.0
-    assert alf_z_klasy("10P10") == 10.0
-    assert alf_z_klasy("5PR20") == 20.0
-    assert alf_z_klasy("0.5") is None
-    assert alf_z_klasy(None) is None
-
-
 @pytest.mark.parametrize(
     ("klasa", "oczekiwana"),
-    [("5P20", WIARYGODNY), ("5P10", NIEWIARYGODNY), ("0.5", WIARYGODNOSC_NIEUSTALONA)],
+    [("5P20", WIARYGODNOSC_NIEUSTALONA), ("0.5", WIARYGODNOSC_NIEUSTALONA)],
 )
-def test_wiarygodnosc_wg_granicy_dokladnosci_przekladnika(klasa: str, oczekiwana: str) -> None:
-    """Zwarcie w B2: 9000 A. ALF·I1n: 5P20 → 12 000 A (w granicy), 5P10 → 6000 A (nasycenie).
-    Wynik niewiarygodny nie niesie marginesu liczbowego — nigdy liczba bez podstawy."""
+def test_wiarygodnosc_bez_obwodu_wtornego_jest_nieustalona(klasa: str, oczekiwana: str) -> None:
+    """Przekładnik bez zapisanego obwodu wtórnego: jądro nasycenia nie ma podstawy (kod
+    ``ct.secondary_circuit_missing``), więc wiarygodność jest NIEUSTALONA — nigdy granica
+    ``ALF·I₁n`` bez obciążenia wtórnego (karta CT-JEDEN-WERDYKT; dawniej 5P20 → WIARYGODNY,
+    5P10 → NIEWIARYGODNY z samej klasy). Margines liczbowy zostaje (M = 9000/240 = 37,5 →
+    3650 %) — brak oceny nasycenia nie unieważnia krotności. Pełny iloczyn cech nasycenia:
+    ``test_nasycenie_ct_jeden_werdykt.py``."""
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51()]), ct=_ct("ct", klasa=klasa)))
     punkt_b2 = next(o for o in wynik.oceny if o.punkt_ref == B2)
     assert punkt_b2.wiarygodnosc == oczekiwana
-    if oczekiwana == NIEWIARYGODNY:
-        assert punkt_b2.margines_procent is None
-    else:
-        # M = 9000/240 = 37,5 → (M − 1)·100 = 3650 %
-        assert punkt_b2.margines_procent == pytest.approx(3650.0)
+    assert punkt_b2.nasycenie_ct is not None
+    assert "ct.secondary_circuit_missing" in punkt_b2.nasycenie_ct["readiness_codes"]
+    assert punkt_b2.margines_procent == pytest.approx(3650.0)
 
 
 def test_rekord_werdyktu_niesie_kryterium_wynik_limit_i_dowod() -> None:
@@ -605,7 +623,8 @@ def test_odmowa_ma_rekord_nie_ocenionej_oceny_z_brakami() -> None:
 
 def test_decyduje_najszybszy_stopien_ktory_ruszyl() -> None:
     """Zwarcie w B2: I = 9000 A. Stopień 51 SI TMS 0,2: M = 37,5 → t = 0,028/(37,5^0,02 − 1)
-    = 0,028/0,075198 = 0,3723 s; stopień 50 DT 0,3 s (M = 3,75) → decyduje 50 (0,3 s)."""
+    = 0,028/0,075198 = 0,3723 s; stopień 50 DT 0,3 s (M = 3,75) → decyduje 50 (0,3 s).
+    """
     wynik = _ocen(_model(_przypisanie(Q1, [_stopien_51(), _stopien_50()])))
     punkt_b2 = next(o for o in wynik.oceny if o.punkt_ref == B2)
     assert punkt_b2.stopien_decydujacy == "overcurrent_50"
@@ -656,7 +675,10 @@ def test_prad_nieliczbowy_daje_odmowe_punktu_a_nie_brak_zadzialania(
     wiersze = [dict(w) for w in WIERSZE]
     punkt = B4 if zrodlo == "wklad_galezi" else B2
     if zrodlo == "wklad_galezi":
-        rozplyw[B4] = [_wklad(KABEL_A, wartosc, B2, B3), _wklad(KABEL_B, 4000.0, B3B, B4)]
+        rozplyw[B4] = [
+            _wklad(KABEL_A, wartosc, B2, B3),
+            _wklad(KABEL_B, 4000.0, B3B, B4),
+        ]
     elif zrodlo == "ikss_punktu":
         wiersze = [_wiersz(B2, wartosc), _wiersz(B3, 6000.0), _wiersz(B4, 4000.0)]
     else:
@@ -689,7 +711,9 @@ def _strefa_q2():
     ],
 )
 def test_prad_roboczy_z_zacisku_galezi_albo_nazwany_brak(
-    prady: tuple[float | None, float], oczekiwany_prad: float | None, fragment_powodu: str | None
+    prady: tuple[float | None, float],
+    oczekiwany_prad: float | None,
+    fragment_powodu: str | None,
 ) -> None:
     """Prąd roboczy Q2 = prąd POCZĄTKU kabla B (zacisk ``od`` w klastrze zacisku Q2).
 
@@ -721,7 +745,10 @@ def test_prad_netto_galezi_znak_kierunku_i_tylko_wlasna_galaz() -> None:
     [
         ({"branch_id": "g1", "direction": "from_to"}, KeyError),
         ({"branch_id": "g1", "i_contrib_a": 10.0}, KeyError),
-        ({"branch_id": "g1", "i_contrib_a": 10.0, "direction": "bez_kierunku"}, AssertionError),
+        (
+            {"branch_id": "g1", "i_contrib_a": 10.0, "direction": "bez_kierunku"},
+            AssertionError,
+        ),
     ],
 )
 def test_prad_netto_galezi_wklad_bez_pradu_albo_kierunku_to_blad_kontraktu(

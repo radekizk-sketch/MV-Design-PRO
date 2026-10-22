@@ -230,8 +230,9 @@ class XlsxImportService:
         blokady = [
             BladArkusza(
                 arkusz=ARKUSZ_MODELU,
+                kod=issue.code,
                 komunikat=(
-                    f"{issue.code}: {issue.message_pl}"
+                    issue.message_pl
                     + (
                         " (elementy: "
                         + ", ".join(
@@ -366,6 +367,7 @@ def graf_z_arkusza(siec: SiecZArkusza, nazwa: str) -> GrafDoKompilacji:
                 lv_lit=t["lv_ref"],
                 catalog_ref=t["catalog_ref"],
                 name=t["name"],
+                lv_voltage_tolerance=t.get("lv_voltage_tolerance"),
             )
             for t in siec.transformatory
         ),
@@ -380,6 +382,7 @@ def graf_z_arkusza(siec: SiecZArkusza, nazwa: str) -> GrafDoKompilacji:
                 ik3_min_ka=z.get("ik3_min_ka"),
                 rx_ratio_min=z.get("rx_ratio_min"),
                 u_set_pu=z.get("u_set_pu"),
+                lv_voltage_tolerance=z.get("lv_voltage_tolerance"),
             )
             for z in siec.zrodla
         ),

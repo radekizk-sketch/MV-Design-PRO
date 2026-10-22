@@ -124,6 +124,7 @@ NAMESPACE_TO_TYPE_CLASS: dict[str, str] = {
     "KABEL_NN": "LVCableType",
     "APARAT_NN_MCB": "LVBreakerMcbType",
     "WKLADKA_NN": "LVFuseLinkType",
+    "APARAT_NN_RCD": "LVRcdType",
     "CT": "CTType",
     "VT": "VTType",
     "OBCIAZENIE": "LoadType",

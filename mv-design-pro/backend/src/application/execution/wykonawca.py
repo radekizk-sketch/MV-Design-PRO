@@ -47,7 +47,7 @@ from enm.canonical_analysis import CanonicalRun, execute_run, get_run
 from infrastructure.persistence.repositories.canonical_run_repository import (
     canonical_run_repository_scope,
 )
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class WykonawcaBiegow:
             przyjety = repository.claim_for_queue(run_id)
         run = get_run(run_id)
         if run is None:
-            raise OdmowaDanychError(f"Run {run_id} not found")
+            raise _odmowa_braku_biegu(run_id)
         if not przyjety:
             return run
         self._dodaj(
@@ -124,11 +124,9 @@ class WykonawcaBiegow:
         """
         run = get_run(run_id)
         if run is None:
-            raise OdmowaDanychError(f"Run {run_id} not found")
+            raise _odmowa_braku_biegu(run_id)
         if run.status in STANY_KONCOWE_BIEGU:
-            raise BiegNieDoAnulowaniaError(
-                f"Bieg {run_id} jest już zakończony (stan {run.status}) — nie ma czego anulować."
-            )
+            raise BiegNieDoAnulowaniaError("Bieg jest już zakończony — nie ma czego anulować.")
         if run.status in {"CREATED", "QUEUED"}:
             with canonical_run_repository_scope() as repository:
                 zdjety = repository.cancel_before_start(
@@ -144,12 +142,12 @@ class WykonawcaBiegow:
                 return run
         # RUNNING (także bieg, który wystartował między odczytem a próbą zdjęcia z kolejki).
         if run.analysis_type not in RODZAJE_Z_PUNKTAMI_PRZERWANIA:
-            raise _odmowa_bez_punktu_przerwania(run)
+            raise _odmowa_bez_punktu_przerwania()
         with self._zamek:
             zlecenie = self._zlecenia.get(_klucz_biegu(run_id))
         if zlecenie is None:
             raise BiegNieDoAnulowaniaError(
-                f"Bieg {run_id} jest wykonywany poza wykonawcą w tle (bez punktu przerwania) — "
+                "Bieg jest wykonywany poza wykonawcą w tle (bez punktu przerwania) — "
                 "można go anulować wyłącznie przed rozpoczęciem obliczeń."
             )
         zlecenie.anulowanie.set()
@@ -265,9 +263,17 @@ class WykonawcaBiegow:
         )
 
 
-def _odmowa_bez_punktu_przerwania(run: CanonicalRun) -> BiegNieDoAnulowaniaError:
+def _odmowa_braku_biegu(run_id: UUID) -> OdmowaNazwana:
+    """Bieg o identyfikatorze z adresu nie istnieje (identyfikator w `dane`, nie w treści —
+    partia integracji 10; trasa API tłumaczy tę odmowę na 404)."""
+    return OdmowaNazwana(
+        "Bieg obliczeń nie istnieje.", kod="bieg.nie_istnieje", dane={"run_ref": str(run_id)}
+    )
+
+
+def _odmowa_bez_punktu_przerwania() -> BiegNieDoAnulowaniaError:
     return BiegNieDoAnulowaniaError(
-        f"Bieg {run.id} ({run.analysis_type}) jest w toku, a jego wykonawca nie ma punktów "
+        "Bieg jest w toku, a jego wykonawca nie ma punktów "
         "przerwania między krokami obliczeń — anulować można wyłącznie bieg czekający w "
         "kolejce; bieg w toku zakończy się sam (FINISHED albo FAILED)."
     )

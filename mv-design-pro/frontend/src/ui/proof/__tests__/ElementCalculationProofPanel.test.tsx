@@ -7,6 +7,7 @@ import {
   resolveTraceStepsForElement,
 } from '../ElementCalculationProofPanel';
 import type { ExtendedTrace, ShortCircuitResults } from '../../results-inspector/types';
+import { TRACE_VALUE_LABELS } from '../../results-inspector/types';
 
 const tracePayload: ExtendedTrace = {
   run_id: 'run-1',
@@ -156,7 +157,10 @@ describe('ElementCalculationProofPanel', () => {
 
     const renderedText = document.body.textContent ?? '';
     expect(renderedText).toContain('Rodzaj zwarcia');
-    expect(renderedText).toContain('Impedancja składowej zgodnej Z₁');
+    // Karta SC-IB-ITH-ZRODLA: panel czyta JEDEN słownik etykiet śladu frontu
+    // (`TRACE_VALUE_LABELS`, results-inspector) zamiast własnej kopii — intencja testu
+    // (etykieta inżynierska zamiast klucza `z1_ohm`) bez zmian, brzmienie z jednego źródła.
+    expect(renderedText).toContain(TRACE_VALUE_LABELS.z1_ohm);
     expect(renderedText).not.toContain('fault_node_id');
     expect(renderedText).not.toContain('short_circuit_type');
     expect(renderedText).not.toContain('z1_ohm');

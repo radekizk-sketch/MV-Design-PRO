@@ -689,6 +689,11 @@ export const STACJA_STRINGS = {
   uziemienieUkladPomoc:
     'TN-C-S to typowy układ dystrybucyjny nN. IT stosuje się tam, gdzie wymagana jest ciągłość '
     + 'zasilania przy pierwszym doziemieniu (z kontrolą stanu izolacji).',
+  uziemienieTolerancja: 'Tolerancja napięcia sieci nN',
+  uziemienieTolerancjaPomoc:
+    'Wybiera wiersz nN tabeli 1 IEC 60909-0, z którego obliczenie dobiera współczynnik '
+    + 'napięciowy c węzłów nN (scenariusz MAX i MIN). +10 % to typowa sieć 230/400 V '
+    + '(IEC 60038, PN-EN 50160); +6 % — gdy operator deklaruje węższą tolerancję.',
   uziemieniePunkt: 'Punkt neutralny transformatora (nN)',
   uziemieniePunktOpcje: [
     { id: 'directly_grounded', etykieta: 'Bezpośrednio uziemiony' },
@@ -700,6 +705,12 @@ export const STACJA_STRINGS = {
     'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
     + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
   uziemienieRezystancja: 'Rezystancja uziemienia R_N [Ω]',
+  uziemienieRezystancjaUziomuStacji: 'Rezystancja uziomu stacji R_B [Ω]',
+  uziemienieRezystancjaUziomuStacjiPomoc:
+    'Uziom punktu neutralnego transformatora (uziemionego bezpośrednio). W układzie TT pętla '
+    + 'zwarcia doziemnego domyka się przez uziom stacji R_B i uziom instalacji odbiorczej R_A '
+    + '(IEC 60364-4-41 §411.5) — bez R_B analiza TT odmawia nazwanym kodem. W układach TN wartość '
+    + 'jest zapisywana w modelu, ale pętla L-PE/L-PEN jej nie czyta.',
   uziemienieReaktancja: 'Reaktancja dławika Petersena X_N [Ω]',
   uziemienieRezystancjaPlaceholder: 'np. 10',
   uziemienieRezystancjaPomoc:

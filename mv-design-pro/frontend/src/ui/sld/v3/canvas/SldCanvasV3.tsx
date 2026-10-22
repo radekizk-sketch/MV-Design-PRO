@@ -111,6 +111,7 @@ import {
   polylinePathWithBridges,
   type PowerPathCrossing,
 } from '../scene/crossings';
+import { jestZnacznikiemToru } from '../scene/znacznikiToru';
 import {
   baseSegmentStrokeColor,
   baseSymbolStrokeColor,
@@ -1016,6 +1017,9 @@ export function computeFlowOverlayPlacements(
   ];
   const placements: FlowPlacement[] = [];
   scene.segments.forEach((segment, segmentIndex) => {
+    // Grot leży na BIEGU gałęzi: znacznik na torze (znak powiązania, słupek końca,
+    // kreska ciągu dalszego) nie ma osi from→to, więc grot na nim kłamałby o kierunku.
+    if (jestZnacznikiemToru(segment)) return;
     const ownerRef = segment.meta?.ownerRef;
     const flow = ownerRef != null ? flowByOwnerRef[ownerRef] : undefined;
     if (!flow) return;
@@ -1138,6 +1142,8 @@ export function computeFaultFlowPlacements(
   if (!faultFlowByOwnerRef) return [];
   const placements: FaultFlowPlacement[] = [];
   scene.segments.forEach((segment, segmentIndex) => {
+    // Ta sama reguła co grot przepływu mocy: strzałka tylko na biegu gałęzi.
+    if (jestZnacznikiemToru(segment)) return;
     const ownerRef = segment.meta?.ownerRef;
     const entry = ownerRef != null ? faultFlowByOwnerRef[ownerRef] : undefined;
     if (!entry) return;

@@ -19,7 +19,8 @@ Reuse-mapa (dowód "zero nowej fizyki"):
   NIETKNIĘTY) → Ik'' z Z1 i współczynnika napięciowego c.
 - `network_model.core.voltage_factor.c_for_node` (JEDNO źródło tabeli c wg
   IEC 60909-0 Tab.1, już używane przez `TransformerBranch.
-  get_voltage_factor_c_max/min` i assembler zwarć `enm/assembler.py`) → c(MAX/MIN).
+  get_voltage_factor_c_max` i assembler zwarć `enm/assembler.py`) → c(MAX/MIN) z
+  tolerancją sieci nN szyny (`enm.tolerancja_nn`; karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
 - `enm.mapping.build_zero_sequence_zbus` (sieć Z0 solvera zwarciowego dla
   zwarć 1F/2F+G, NIETKNIĘTA) → Z0 na szynie HV, best-effort (patrz
   `_hv_zero_sequence_ohm`).
@@ -51,9 +52,15 @@ from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
-from network_model.core.voltage_factor import c_for_node
+from enm.tolerancja_nn import wyspy_wezlow_nn
+from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
+from network_model.core.voltage_factor import (
+    c_for_node,
+    zrodlo_c_z_tabeli,
+)
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import a_na_ka, kv_na_v, moc_zwarciowa_z_pradu_mva
+from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
     build_zbus,
@@ -163,7 +170,29 @@ def _build_upstream_equivalent_snapshot_surowy(
             "transformer_ref": trafo.ref_id,
         }
 
-    c_factor = c_for_node(trafo.uhv_kv, scenario)
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: c szyny strony górnej z tabeli 1 z klasą tolerancji
+    # sieci nN TEJ szyny (`enm.tolerancja_nn`; dla szyny SN bez znaczenia). Karta
+    # TOLERANCJA-NN-WARTOSC-ROBOCZA: klasa zawsze ustalona — deklaracja wyspy albo wartość
+    # robocza rejestru (szyna strony górnej w paśmie nN spoza wysp modelu — napięcie szyny
+    # rozbieżne z napięciem transformatora — to sieć nN bez elementu zasilającego).
+    wyspa_gornej = wyspy_wezlow_nn(enm).get(trafo.hv_bus_ref)
+    rozstrzygniecie_gornej = (
+        wyspa_gornej.rozstrzygniecie
+        if wyspa_gornej is not None
+        else (rozstrzygnij_tolerancje_nn(()) if w_pasmie_nn(trafo.uhv_kv) else None)
+    )
+    tolerancja_gornej = (
+        rozstrzygniecie_gornej.wartosc if rozstrzygniecie_gornej is not None else None
+    )
+    c_factor = c_for_node(trafo.uhv_kv, scenario, tolerancja_nn=tolerancja_gornej)
+    c_zrodlo = zrodlo_c_z_tabeli(
+        trafo.uhv_kv,
+        scenario,
+        tolerancja_nn=tolerancja_gornej,
+        tolerancja_nn_robocza=(
+            rozstrzygniecie_gornej is not None and rozstrzygniecie_gornej.robocza
+        ),
+    )
     un_hv_v = kv_na_v(trafo.uhv_kv)
     ikss_a = compute_ikss(
         un_v=un_hv_v,
@@ -225,6 +254,7 @@ def _build_upstream_equivalent_snapshot_surowy(
         "z0_missing_reason_pl": z0_missing_reason_pl,
         "rx_ratio": rx_ratio,  # werdykt: R/X
         "c_factor": c_factor,  # WHITE BOX: współczynnik c faktycznie użyty dla scenario_id
+        "c_zrodlo": c_zrodlo,  # WHITE BOX: podstawa c (tabela 1 IEC 60909-0, pasmo, scenariusz)
         "scenario_id": scenario,  # werdykt: scenarioId
         "operating_state_id": operating_state_id,  # werdykt: operatingStateId
         "calculation_run_id": calculation_run_id,  # werdykt: calculationRunId

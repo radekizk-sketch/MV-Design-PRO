@@ -16,6 +16,8 @@
  * ZERO fizyki w UI: każda liczba tej sekcji pochodzi z odpowiedzi backendu.
  */
 
+import type { CFactorBiegu } from '../../../ui/results-inspector/types';
+
 /** Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). */
 export type ZaciskZabezpieczenia = 'od' | 'do';
 
@@ -122,8 +124,15 @@ export interface WynikNastaw {
 
 export interface ProweniencjaNastaw {
   readonly kotwica_run_id: string;
-  readonly c_max: number | null;
-  readonly c_min: number;
+  /**
+   * Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: gałęzie rozstrzyga SCENARIUSZ (MAX/MIN), nie liczba c.
+   * `scenariusz_kotwicy` — scenariusz zapisany na biegu kotwicy (`null` = bieg go nie zapisał);
+   * `c_kotwicy` — tryb c kotwicy (ten sam kształt co `konfiguracja_biegu.c_factor`);
+   * `c_wariantu_min` — podstawa c wariantu minimalnego liczonego przez serwer (tekst backendu).
+   */
+  readonly scenariusz_kotwicy: 'MAX' | 'MIN' | null;
+  readonly c_kotwicy: CFactorBiegu;
+  readonly c_wariantu_min: string;
   readonly line_id: string;
   readonly next_bus_id: string;
   /** Zacisk zabezpieczenia użyty przez pakiet i jego źródło (model albo wskazanie). */
@@ -144,7 +153,6 @@ export interface OdpowiedzNastaw {
 }
 
 export interface ParametryNastaw {
-  readonly c_min: number;
   readonly delta_t_s: number;
   readonly k_b: number;
   readonly k_bth: number;
@@ -152,9 +160,10 @@ export interface ParametryNastaw {
 
 /** Wartości domyślne — te same, które przyjmuje backend, gdy parametr pominięty
  * (IRiESD ENEA Δt = 0,3 s; Hoppel k_b, k_bth). Pokazane w UI jako jawne pola,
- * nie ukryte zaszycie (§0.3.c karty). */
+ * nie ukryte zaszycie (§0.3.c karty). Współczynnika c NIE ma wśród parametrów:
+ * wariant minimalny liczy serwer w scenariuszu MIN (tabela 1 IEC 60909-0 per węzeł,
+ * karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — dawne zapytanie `c_min` backend ignorował. */
 export const PARAMETRY_NASTAW_DOMYSLNE: ParametryNastaw = {
-  c_min: 1.0,
   delta_t_s: 0.3,
   k_b: 1.2,
   k_bth: 1.1,
@@ -250,7 +259,6 @@ function parametryDoQuery(
   const query = new URLSearchParams({
     linia,
     nastepna_szyna: nastepnaSzyna,
-    c_min: String(parametry.c_min),
     delta_t_s: String(parametry.delta_t_s),
     k_b: String(parametry.k_b),
     k_bth: String(parametry.k_bth),
@@ -341,4 +349,25 @@ export function adresPakietuDowodowego(
 ): string {
   const query = parametryDoQuery(linia, nastepnaSzyna, zacisk, parametry);
   return `/api/analysis-runs/${encodeURIComponent(runId)}/pakiet-dowodowy-nastaw?${query.toString()}`;
+}
+
+/**
+ * Opis podstawy c nastaw (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — z proweniencji backendu,
+ * bez liczenia: scenariusz kotwicy, tryb c kotwicy (tabela 1 per węzeł albo nadpisanie
+ * z uzasadnieniem) i podstawa c wariantu minimalnego.
+ */
+export function opisPodstawyCNastaw(wejscie: ProweniencjaNastaw): {
+  kotwica: string;
+  wariantMin: string;
+} {
+  const scenariusz = wejscie.scenariusz_kotwicy ?? 'nie zapisano na biegu';
+  const c = wejscie.c_kotwicy;
+  const trybC =
+    c.tryb === 'nadpisanie' && c.wartosc !== null
+      ? `nadpisanie ręczne c = ${String(c.wartosc).replace('.', ',')} — ${c.uzasadnienie ?? '—'}`
+      : 'IEC 60909-0 tab. 1 per węzeł';
+  return {
+    kotwica: `scenariusz ${scenariusz}, c: ${trybC}`,
+    wariantMin: wejscie.c_wariantu_min,
+  };
 }

@@ -16,10 +16,17 @@
 
 import { useMemo, useState } from 'react';
 import { useSnapshotStore, type SnapshotOperationHistoryEntry } from '../topology/snapshotStore';
+import type { CanonicalOpName } from '../../types/domainOps';
 
 type StatusFilter = 'all' | 'success' | 'error' | 'pending';
 
-const OPERATION_LABELS_PL: Record<string, string> = {
+/**
+ * Etykieta PL KAŻDEJ operacji kanonicznej. Typ `Record<CanonicalOpName, string>` czyni
+ * pominięcie niewyrażalnym: dawniej (`Record<string, string>`) 17 operacji — m.in. cała
+ * rodzina nN STUDIO i wyłącznik różnicowoprądowy — spadało w historii na surowy
+ * identyfikator operacji zamiast polskiej etykiety.
+ */
+export const OPERATION_LABELS_PL: Readonly<Record<CanonicalOpName, string>> = {
   add_grid_source_sn: 'Dodanie GPZ',
   add_sn_bay: 'Dodanie pola SN',
   continue_trunk_segment_sn: 'Kontynuacja ciągu SN',
@@ -29,6 +36,9 @@ const OPERATION_LABELS_PL: Record<string, string> = {
   insert_zksn_on_segment_sn: 'Wstawienie ZKSN',
   insert_section_switch_sn: 'Wstawienie sprzęgła',
   set_normal_open_point: 'Ustawienie punktu rozłączenia',
+  open_switch: 'Otwarcie łącznika',
+  close_switch: 'Zamknięcie łącznika',
+  set_bay_equipment: 'Zapis wyposażenia pola SN',
   przepnij_element_na_pole: 'Przepięcie elementu na pole stacji',
   add_transformer_sn_nn: 'Dodanie transformatora',
   assign_catalog_to_element: 'Przypisanie typu katalogowego',
@@ -37,15 +47,39 @@ const OPERATION_LABELS_PL: Record<string, string> = {
   add_genset_nn: 'Dodanie agregatu',
   add_ups_nn: 'Dodanie UPS',
   add_nn_load: 'Dodanie odbioru nN',
+  append_station_on_endpoint: 'Dodanie stacji na końcu odcinka SN',
+  connect_secondary_ring_sn: 'Domknięcie pierścienia wtórnego',
+  add_nn_outgoing_field: 'Dodanie pola odpływowego nN',
+  add_shunt_compensator_sn: 'Dodanie kompensatora bocznikowego SN',
+  add_surge_arrester_sn: 'Dodanie ogranicznika przepięć SN',
+  add_nn_cable_segment: 'Dodanie odcinka kablowego nN',
+  add_nn_distribution_board: 'Dodanie rozdzielnicy nN',
+  add_nn_switch_device: 'Dodanie aparatu łączeniowego nN',
+  add_nn_section_coupler: 'Dodanie sprzęgła sekcyjnego nN',
+  set_nn_cable_laying_conditions: 'Ustawienie warunków ułożenia kabla nN',
+  add_nn_rcd: 'Dodanie wyłącznika różnicowoprądowego nN',
+  set_source_operating_mode: 'Ustawienie trybu pracy źródła',
+  set_dynamic_profile: 'Przypisanie profilu dynamicznego',
+  set_load_dynamic_binding: 'Wiązanie modelu dynamicznego odbioru',
+  set_connection_conditions: 'Zapis warunków przyłączenia OSD',
+  add_gpz_section: 'Dodanie sekcji GPZ',
+  update_gpz_section: 'Aktualizacja sekcji GPZ',
+  delete_gpz_section: 'Usunięcie sekcji GPZ',
   add_ct: 'Dodanie przekładnika CT',
   add_vt: 'Dodanie przekładnika VT',
   add_relay: 'Dodanie zabezpieczenia',
+  update_protection_settings: 'Zapis nastaw zabezpieczenia',
+  set_measurement_secondary_circuit: 'Zapis obwodu wtórnego przekładnika',
   delete_element: 'Usunięcie elementu',
   refresh_snapshot: 'Odświeżenie snapshotu',
 };
 
 function operationLabel(entry: SnapshotOperationHistoryEntry): string {
-  return entry.operationLabel ?? OPERATION_LABELS_PL[entry.operation] ?? entry.operation;
+  return (
+    entry.operationLabel
+    ?? (OPERATION_LABELS_PL as Readonly<Record<string, string>>)[entry.operation]
+    ?? entry.operation
+  );
 }
 
 function formatTimestamp(iso: string): string {

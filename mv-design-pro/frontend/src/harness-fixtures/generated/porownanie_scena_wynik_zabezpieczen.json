@@ -24,8 +24,8 @@
       "nazwa_punktu_pl": "Stacja S03",
       "krotnosc_m_a": 3.59294556565,
       "krotnosc_m_b": 3.05466243717,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
@@ -47,8 +47,8 @@
       "nazwa_punktu_pl": "Stacja S02",
       "krotnosc_m_a": 3.65323139083,
       "krotnosc_m_b": 3.1081187452,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
@@ -70,8 +70,8 @@
       "nazwa_punktu_pl": "Stacja S04",
       "krotnosc_m_a": 3.56289228239,
       "krotnosc_m_b": 3.02832925226,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
@@ -93,8 +93,8 @@
       "nazwa_punktu_pl": "Stacja S01",
       "krotnosc_m_a": 3.77388565909,
       "krotnosc_m_b": 3.21807288197,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
@@ -116,8 +116,8 @@
       "nazwa_punktu_pl": "Stacja S03",
       "krotnosc_m_a": 4.79039135608,
       "krotnosc_m_b": 4.07239298306,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
@@ -139,8 +139,8 @@
       "nazwa_punktu_pl": "Stacja S02",
       "krotnosc_m_a": 4.8707690547,
       "krotnosc_m_b": 4.14365948082,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     },
     {
       "protected_element_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
@@ -162,8 +162,8 @@
       "nazwa_punktu_pl": "Stacja S04",
       "krotnosc_m_a": 4.75032200748,
       "krotnosc_m_b": 4.03728629628,
-      "wiarygodnosc_a": "WIARYGODNY",
-      "wiarygodnosc_b": "WIARYGODNY"
+      "wiarygodnosc_a": "NIEUSTALONA",
+      "wiarygodnosc_b": "NIEUSTALONA"
     }
   ],
   "ranking": [
@@ -255,16 +255,16 @@
     "run_id": "run-zab-scena-a",
     "analysis_type": "protection_sn",
     "status": "FINISHED",
-    "snapshot_hash": "68ef15bab6442fcc5e1f95b0fe6a7da05a3f9f0ca3851a70d810a6f534c46c6b",
-    "input_hash": "08a158a041a06376ea00fadcb7a4ee775ee2e943f6121e64c511692ad390d5e3",
+    "snapshot_hash": "08efdaa418866bfd631f817a7924a27cf0cef9cacfc6183387ee9a37b6397bc6",
+    "input_hash": "892dd1892f9478b507d20a5b2591c545da8bdd3788cf254ead478fc9aa57def6",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
-      "catalog_fingerprint": "4c4942ca0565eae3312d8ac82c4507a77562b0b8b3e1dfe70c194bdd287d3aed",
+      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
       "model_revision": 2,
-      "options_hash": "08a158a041a06376ea00fadcb7a4ee775ee2e943f6121e64c511692ad390d5e3",
+      "options_hash": "892dd1892f9478b507d20a5b2591c545da8bdd3788cf254ead478fc9aa57def6",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "ea11d34ee27dd67334e4669d43d20994db5ee185fd5fbbbd1fbe00bff7f7cc73",
-      "snapshot_hash": "68ef15bab6442fcc5e1f95b0fe6a7da05a3f9f0ca3851a70d810a6f534c46c6b",
+      "semantic_fingerprint": "a14945e0ecfbce8778e190ea70add4f5ca9b49ca99b5b0e9823b838f29a26d2a",
+      "snapshot_hash": "08efdaa418866bfd631f817a7924a27cf0cef9cacfc6183387ee9a37b6397bc6",
       "wersja": 1
     }
   },
@@ -272,16 +272,16 @@
     "run_id": "run-zab-scena-b",
     "analysis_type": "protection_sn",
     "status": "FINISHED",
-    "snapshot_hash": "d707847e4be6336ab38c7460e44f7419b1812c221d07a94506325be45ec84df3",
-    "input_hash": "ffa22b24e644c38990e0a3d476a37c509f3f69c594f9d11a077340c43863dbfe",
+    "snapshot_hash": "1f2102c57dc6a592c2e881d7ca85162697a3fa91abb624f4637c274e0bc8381f",
+    "input_hash": "c85d0860a8c596228df56fe4ed20d5cca4e3ac0b06f5fa5d77b15d7c4c4bb75a",
     "finished_at": "2026-09-16T09:00:00+00:00",
     "envelope": {
-      "catalog_fingerprint": "4c4942ca0565eae3312d8ac82c4507a77562b0b8b3e1dfe70c194bdd287d3aed",
+      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
       "model_revision": 4,
-      "options_hash": "ffa22b24e644c38990e0a3d476a37c509f3f69c594f9d11a077340c43863dbfe",
+      "options_hash": "c85d0860a8c596228df56fe4ed20d5cca4e3ac0b06f5fa5d77b15d7c4c4bb75a",
       "project_id": "proj-zab",
-      "semantic_fingerprint": "35f3dc54bc0a731e078dc6029a6111692d0b2a5bfd5a4a54eb1fc246b5ea8c5d",
-      "snapshot_hash": "d707847e4be6336ab38c7460e44f7419b1812c221d07a94506325be45ec84df3",
+      "semantic_fingerprint": "f4a632ae0eda06649bb46b6fbc0ec1d6a9d5bf4e58b119ce5770213e2952bb76",
+      "snapshot_hash": "1f2102c57dc6a592c2e881d7ca85162697a3fa91abb624f4637c274e0bc8381f",
       "wersja": 1
     }
   },

@@ -15,12 +15,10 @@ POWÓD ARCHITEKTONICZNY (dlaczego istniejąca brama pakietu przebiegu nie wystar
 pakiet — a dobór nastaw metodą Hoppela z definicji potrzebuje TRZECH: zwarcia
 trójfazowego przy c_max (wytrzymałość aparatury, selektywność), zwarcia trójfazowego
 PRZY c_min (czułość I>>) i zwarcia dwufazowego przy c_min (czułość I>), oraz rozpływu
-(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN `c_factor`
-— sam kontrakt wejścia zwarciowego (`enm/canonical_analysis.py::_c_factor_punktu`,
-klucz `c_factor` w `_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA`) niesie WYŁĄCZNIE tę
-jedną wartość na bieg (klucz gałęzi min ALBO max, drugi zostaje `None`; przed
-kasacją V12K-189 — karta W3-C1, 2026-09 — tę samą konwencję dokumentował też
-skasowany `overcurrent/input_adapter.py::_build_fault_levels`).
+(prąd obciążenia maksymalnego). Jeden bieg kanoniczny niesie JEDEN scenariusz
+(MAX albo MIN — `enm/canonical_analysis.py::_dobor_c_punktu`, c per węzeł z tabeli 1
+IEC 60909-0, karta WSPOLCZYNNIK-C-JEDEN-NOSNIK), więc gałąź minimalna to osobny
+wariant scenariusza MIN (c_min per pasmo, korekta R_θ, Z_Qmin źródeł).
 
 MECHANIZM WARIANTOWANIA (CV-3-W: JEDYNA fabryka kopii migawki z nadpisaniami
 `enm.scenariusze.apply_scenario` + JEDYNA fabryka biegu wariantu w pamięci
@@ -73,6 +71,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl, stan_przebiegu_pl
+from application.autorytet_biegu_zwarciowego import blokady_zakresu_biegu
 from application.nazwy_biegu import nazwa_projektu_z_migawki
 from application.protection_settings.engine import (
     ProtectionSettingsEngine,
@@ -96,18 +95,28 @@ from enm.mapping import ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
 from enm.scenariusze import SCENARIUSZ_NORMALNY, apply_scenario
+from enm.slownik_komunikatow import opis_elementu
 from enm.tor_pola import szyna_raportowa, wezel_elektryczny
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
+from network_model.core.zdolnosci_wkladu_zwarciowego import ZdolnoscMiarodajna
 from network_model.odmowa_danych import OdmowaDanychError
+from werdykt import DanaPrzyjeta
 
 #: Rodzaje gałęzi ENM kwalifikowane jako "linia chroniona" — mają impedancję
 #: jednostkową, długość i mogą nieść dane katalogowe cieplne (F-K1). Aparat
 #: łączeniowy i transformator NIE są liniami: wzory Hoppela dotyczą przewodu.
 RODZAJE_LINII: frozenset[str] = frozenset({"line_overhead", "cable"})
 
-#: c_factor rozdzielający gałąź maksymalną (kotwica) od minimalnej. IEC 60909-0
-#: Tabela 1: dla SN c_max >= 1,0. Kotwica MUSI być gałęzią maksymalną — bieg
-#: minimalny liczymy sami jako wariant, nigdy z osobnej kotwicy.
-C_MAX_MIN_DOPUSZCZALNY = 1.0
+
+def kotwica_jest_scenariuszem_max(kotwica: CanonicalRun) -> bool:
+    """Czy bieg jest gałęzią MAKSYMALNĄ — JEDEN predykat dla dostępności i budowy.
+
+    Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): gałąź rozstrzyga PRZEŁĄCZNIK scenariusza
+    zapisany na wyniku biegu (`raw_result["scenario"]`), nie liczba c. Dawny próg
+    `c_factor >= 1,0` był na sieci SN fałszywy w obie strony: c_min SN = 1,00 (tabela 1)
+    przechodził jako „maksymalny", a brak `c_factor` w opcjach zgadywano jako 1,10.
+    """
+    return (kotwica.raw_result or {}).get("scenario") == "MAX"
 
 
 class BrakDanychNastawError(OdmowaDanychError):
@@ -156,6 +165,9 @@ class WejscieNastawZBiegow:
     zacisk_zabezpieczenia: Zacisk
     #: Skąd zacisk: z modelu (przypięcie zabezpieczenia do wyłącznika) albo ze wskazania.
     zrodlo_zacisku: ZrodloZacisku
+    #: Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: dane przyjęte prądów zwarciowych wejścia — punkt
+    #: w sieci nN liczonej z wartością roboczą tolerancji napięcia (znacznik wiersza biegu).
+    dane_przyjete: tuple[DanaPrzyjeta, ...] = ()
 
 
 def linie_kandydujace(snapshot: dict[str, Any] | None) -> list[DaneLinii]:
@@ -307,29 +319,57 @@ def _opcje_audit2_kotwicy(kotwica: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def _opcje_wariantu_zwarciowego(
-    kotwica: CanonicalRun, *, fault_type: str, c_factor: float
-) -> dict[str, Any]:
-    """Opcje wariantu zwarciowego (CV-3-W): `fault_type`/`c_factor` WŁASNE wariantu,
-    `thermal_time_seconds` i para audytu 2 przejęte z opcji kotwicy (SC nie zna
-    innej wartości; ten sam model stacji co kotwica)."""
+def _opcje_wariantu_minimalnego(kotwica: CanonicalRun, *, fault_type: str) -> dict[str, Any]:
+    """Opcje wariantu gałęzi minimalnej (CV-3-W): `fault_type` WŁASNY wariantu i
+    scenariusz MIN — c dobiera assembler per węzeł z tabeli 1 IEC 60909-0 (`voltage_factor`;
+    nN wg tolerancji sieci nN, SN/WN) razem z korektą R_θ i Z_Qmin źródeł (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK:
+    rozdział MAX/MIN po przełączniku, nie po liczbie). `thermal_time_seconds` i para
+    audytu 2 przejęte z opcji kotwicy (ten sam model stacji co kotwica). Nadpisanie c
+    kotwicy NIE przechodzi na wariant: dotyczy gałęzi maksymalnej, dla której je
+    uzasadniono."""
     return {
         "fault_type": fault_type,
-        "c_factor": c_factor,
+        "scenario": "min",
         "thermal_time_seconds": float(kotwica.options.get("thermal_time_seconds", 1.0)),
+        # Karta SC-IB-ITH-ZRODLA: t_b kotwicy (dana zabezpieczeń i aparatu pola, wspólna
+        # dla obu gałęzi) — tylko gdy kotwica go niesie; brak zostaje brakiem.
+        **(
+            {"breaking_time_seconds": kotwica.options["breaking_time_seconds"]}
+            if kotwica.options.get("breaking_time_seconds") is not None
+            else {}
+        ),
         **_opcje_audit2_kotwicy(kotwica),
     }
 
 
+def _wiersz_w_wezle(raw_result: dict[str, Any] | None, graph_node_id: str) -> dict[str, Any]:
+    """Wiersz wyniku zwarcia w podanym węźle grafu (pusty, gdy bieg go nie niesie)."""
+    for wiersz in (raw_result or {}).get("results") or []:
+        if isinstance(wiersz, dict) and wiersz.get("fault_node_id") == graph_node_id:
+            return wiersz
+    return {}
+
+
 def _prad_zwarciowy_w_wezle(raw_result: dict[str, Any] | None, graph_node_id: str) -> float | None:
     """`ikss_a` zwarcia w podanym węźle grafu — z zamrożonych wierszy biegu."""
-    for wiersz in (raw_result or {}).get("results") or []:
-        if not isinstance(wiersz, dict):
-            continue
-        if wiersz.get("fault_node_id") != graph_node_id:
-            continue
-        return _opcjonalna_liczba(wiersz.get("ikss_a"))
-    return None
+    return _opcjonalna_liczba(_wiersz_w_wezle(raw_result, graph_node_id).get("ikss_a"))
+
+
+def _dane_przyjete_punktow(
+    snapshot: dict[str, Any] | None, punkty: list[tuple[dict[str, Any] | None, str, str]]
+) -> tuple[DanaPrzyjeta, ...]:
+    """Dane przyjęte prądów wejścia nastaw: każdy szynowy punkt (raz) w sieci nN liczonej z
+    wartością roboczą tolerancji (znacznik TEGO SAMEGO wiersza, z którego czytany jest prąd —
+    `_wiersz_w_wezle`, jedno źródło). Kolejność deterministyczna: kolejność punktów wejścia."""
+    szyny: list[str] = []
+    for raw_result, graf, szyna_ref in punkty:
+        robocza = bool(_wiersz_w_wezle(raw_result, graf).get("tolerancja_nn_robocza"))
+        if robocza and szyna_ref not in szyny:
+            szyny.append(szyna_ref)
+    return tuple(
+        dana_przyjeta_tolerancji_nn(miejsce_pl=opis_elementu(snapshot, ref, "szyna"))
+        for ref in szyny
+    )
 
 
 def zbuduj_wejscie_nastaw(
@@ -337,7 +377,6 @@ def zbuduj_wejscie_nastaw(
     *,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
@@ -374,23 +413,23 @@ def zbuduj_wejscie_nastaw(
             "Bieg zbiorczy nastaw wymaga jako kotwicy przebiegu zwarcia trójfazowego; "
             f"wskazany przebieg: {rodzaj_przebiegu_pl(kotwica.analysis_type)}."
         )
+    # Karta OD-14: kotwica ze zwarcia przez impedancję przejścia Z_f zaniżyłaby I_k max
+    # gałęzi maksymalnej (selektywność) — odmowa SI-117, ten sam predykat co dostępność
+    # pakietu nastaw (`pakiet_nastaw.dostepnosc_pakietu_nastaw`).
+    for blokada in blokady_zakresu_biegu(kotwica, ZdolnoscMiarodajna.PROTECTION):
+        raise BrakDanychNastawError(blokada.komunikat_pl, kod=blokada.kod)
     kotwica_wynik = kotwica.raw_result or {}
     if kotwica_wynik.get("short_circuit_type") != "3F":
         raise BrakDanychNastawError(
             "Kotwica biegu zbiorczego nastaw musi być zwarciem TRÓJFAZOWYM (gałąź "
-            "maksymalna c_max) — otrzymano typ: "
+            "maksymalna) — otrzymano typ: "
             f"{kotwica_wynik.get('short_circuit_type')!r}."
         )
-    c_max = _opcjonalna_liczba(kotwica.options.get("c_factor", 1.10))
-    if c_max is None or c_max < C_MAX_MIN_DOPUSZCZALNY:
+    if not kotwica_jest_scenariuszem_max(kotwica):
         raise BrakDanychNastawError(
-            f"Współczynnik napięciowy kotwicy c={kotwica.options.get('c_factor')!r} "
-            f"nie jest wartością gałęzi maksymalnej (wymagane c >= {C_MAX_MIN_DOPUSZCZALNY})."
-        )
-    if not (0.0 < c_min <= c_max):
-        raise BrakDanychNastawError(
-            f"Współczynnik napięciowy gałęzi minimalnej c_min={c_min!r} musi być "
-            f"dodatni i nie większy niż c_max={c_max!r} kotwicy."
+            "Kotwica biegu zbiorczego nastaw musi być biegiem scenariusza MAKSYMALNEGO "
+            "(IEC 60909-0, tabela 1: c_max per węzeł) — wskazany bieg zapisał scenariusz "
+            f"{kotwica_wynik.get('scenario')!r}."
         )
 
     linia = next(
@@ -399,8 +438,9 @@ def zbuduj_wejscie_nastaw(
     )
     if linia is None:
         raise BrakDanychNastawError(
-            f"Element {line_id} nie jest linią ani kablem z kompletem danych "
-            "katalogowych (przekrój, materiał, prąd znamionowy) w migawce kotwicy."
+            f"{opis_elementu(kotwica.snapshot, line_id, 'Element')} nie jest linią ani kablem "
+            "z kompletem danych katalogowych (przekrój, materiał, prąd znamionowy) w migawce "
+            "kotwicy."
         )
 
     rozstrzygniecie = rozstrzygnij_zacisk(kotwica.snapshot, line_id, zacisk_zabezpieczenia)
@@ -409,11 +449,16 @@ def zbuduj_wejscie_nastaw(
 
     kandydaci = kandydaci_nastepnej_szyny(kotwica.snapshot, line_id, rozstrzygniecie.zacisk)
     if next_bus_id not in kandydaci:
-        opis_kandydatow = ", ".join(kandydaci) if kandydaci else "brak — linia bez gałęzi w dół"
+        opis_kandydatow = (
+            ", ".join(opis_elementu(kotwica.snapshot, ref, "szyna") for ref in kandydaci)
+            if kandydaci
+            else "brak — linia bez gałęzi w dół"
+        )
         raise BrakDanychNastawError(
-            f"Szyna {next_bus_id} nie jest kandydatem kolejnej strefy selektywności "
-            f"dla linii {line_id} (kandydaci: {opis_kandydatow}) — wybierz szynę z "
-            "listy kandydatów."
+            f"{opis_elementu(kotwica.snapshot, next_bus_id, 'Szyna')} nie jest kandydatem "
+            "kolejnej strefy selektywności dla "
+            f"{opis_elementu(kotwica.snapshot, line_id, 'linii')} (kandydaci: "
+            f"{opis_kandydatow}) — wybierz szynę z listy kandydatów."
         )
 
     graf_poczatku = _graf_punktu_zwarcia(kotwica.snapshot, rozstrzygniecie.szyna_zacisku_ref)
@@ -441,20 +486,20 @@ def zbuduj_wejscie_nastaw(
         kotwica,
         migawka_kotwicy,
         analysis_type="short_circuit_sn",
-        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="3F", c_factor=c_min),
+        options=_opcje_wariantu_minimalnego(kotwica, fault_type="3F"),
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_3f_cmin, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa obliczenia = odmowa z powodem
         raise BrakDanychNastawError(
-            f"Wariant zwarcia trójfazowego przy c_min={c_min} przerwany błędem "
+            "Wariant zwarcia trójfazowego scenariusza MIN przerwany błędem "
             f"solvera: {type(exc).__name__}: {exc}"
         ) from exc
     ik3_min_beginning_a = _prad_zwarciowy_w_wezle(wariant_3f_cmin.raw_result, graf_poczatku)
     ik3_min_end_a = _prad_zwarciowy_w_wezle(wariant_3f_cmin.raw_result, graf_konca)
     if ik3_min_beginning_a is None or ik3_min_end_a is None:
         raise BrakDanychNastawError(
-            f"Wariant zwarcia trójfazowego przy c_min={c_min} nie policzył prądu "
+            "Wariant zwarcia trójfazowego scenariusza MIN nie policzył prądu "
             "na początku albo końcu chronionego odcinka."
         )
 
@@ -462,19 +507,19 @@ def zbuduj_wejscie_nastaw(
         kotwica,
         migawka_kotwicy,
         analysis_type="short_circuit_sn",
-        options=_opcje_wariantu_zwarciowego(kotwica, fault_type="2F", c_factor=c_min),
+        options=_opcje_wariantu_minimalnego(kotwica, fault_type="2F"),
     )
     try:
         wykonaj_bieg_w_pamieci(wariant_2f_cmin, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # jak wyzej
         raise BrakDanychNastawError(
-            f"Wariant zwarcia dwufazowego przy c_min={c_min} przerwany błędem "
+            "Wariant zwarcia dwufazowego scenariusza MIN przerwany błędem "
             f"solvera: {type(exc).__name__}: {exc}"
         ) from exc
     ik2_min_end_a = _prad_zwarciowy_w_wezle(wariant_2f_cmin.raw_result, graf_konca)
     if ik2_min_end_a is None:
         raise BrakDanychNastawError(
-            f"Wariant zwarcia dwufazowego przy c_min={c_min} nie policzył prądu "
+            "Wariant zwarcia dwufazowego scenariusza MIN nie policzył prądu "
             "na końcu chronionego odcinka."
         )
 
@@ -495,8 +540,7 @@ def zbuduj_wejscie_nastaw(
         wykonaj_bieg_w_pamieci(wariant_pf, uow_factory=uow_factory)
     except ODMOWY_OBLICZENIA_BIEGU as exc:  # nazwana odmowa rozplywu = odmowa z powodem
         raise BrakDanychNastawError(
-            f"Wariant rozpływu mocy migawki kotwicy przerwany błędem solvera: "
-            f"{type(exc).__name__}: {exc}"
+            f"Wariant rozpływu mocy migawki kotwicy przerwany odmową solvera: {exc}"
         ) from exc
     pf_wynik = wariant_pf.raw_result or {}
     if not bool((pf_wynik.get("result_v1") or {}).get("converged", False)):
@@ -507,9 +551,9 @@ def zbuduj_wejscie_nastaw(
     i_load_max_a = _prad_w_miejscu_zabezpieczenia(wariant_pf, linia, rozstrzygniecie.zacisk)
     if i_load_max_a is None:
         raise BrakDanychNastawError(
-            f"Wariant rozpływu mocy nie policzył prądu zacisku {rozstrzygniecie.zacisk} "
-            f"gałęzi {line_id} — chroniony odcinek nie jest częścią rozwiązanej wyspy "
-            "zasilanej."
+            f"Wariant rozpływu mocy nie policzył prądu na zacisku „{rozstrzygniecie.zacisk}” "
+            f"{opis_elementu(kotwica.snapshot, line_id, 'gałęzi')} — chroniony odcinek nie "
+            "jest częścią rozwiązanej wyspy zasilanej."
         )
 
     pf_solver_version = pf_wynik.get("solver_version")
@@ -541,8 +585,21 @@ def zbuduj_wejscie_nastaw(
         spz_pause_s=spz_pause_s,
     )
 
+    dane_przyjete = _dane_przyjete_punktow(
+        kotwica.snapshot,
+        [
+            (kotwica_wynik, graf_poczatku, rozstrzygniecie.szyna_zacisku_ref),
+            (kotwica_wynik, graf_konca, rozstrzygniecie.szyna_przeciwna_ref),
+            (kotwica_wynik, graf_nastepnej, next_bus_id),
+            (wariant_3f_cmin.raw_result, graf_poczatku, rozstrzygniecie.szyna_zacisku_ref),
+            (wariant_3f_cmin.raw_result, graf_konca, rozstrzygniecie.szyna_przeciwna_ref),
+            (wariant_2f_cmin.raw_result, graf_konca, rozstrzygniecie.szyna_przeciwna_ref),
+        ],
+    )
+
     return WejscieNastawZBiegow(
         engine_input=engine_input,
+        dane_przyjete=dane_przyjete,
         # Nazwa modelu z nagłówka migawki kotwicy albo opis braku — nigdy identyfikator
         # projektu (karta #144).
         project_name=nazwa_projektu_z_migawki(kotwica.snapshot),
@@ -600,7 +657,6 @@ def oblicz_nastawy(
     *,
     line_id: str,
     next_bus_id: str,
-    c_min: float,
     zacisk_zabezpieczenia: Zacisk | None,
     delta_t_s: float = 0.3,
     k_b: float = 1.2,
@@ -618,7 +674,6 @@ def oblicz_nastawy(
         run,
         line_id=line_id,
         next_bus_id=next_bus_id,
-        c_min=c_min,
         zacisk_zabezpieczenia=zacisk_zabezpieczenia,
         delta_t_s=delta_t_s,
         k_b=k_b,

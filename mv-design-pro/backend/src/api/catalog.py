@@ -16,6 +16,7 @@ from collections.abc import Callable
 from typing import Any, Literal
 
 from api.dependencies import get_uow_factory
+from api.odmowa_http import OdmowaHttpError
 from application.analyses.protection.catalog.catalog_store import (
     list_devices as list_analytical_protection_devices,
 )
@@ -52,6 +53,7 @@ from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
 from network_model.catalog.types import normalize_ptpiree_key
+from network_model.catalog.wartosci_robocze import propozycje_aparatu_sn
 from network_model.core.uziemienie import (
     ROLE_UZIEMNIKA,
     TYPY_PUNKTU_NEUTRALNEGO,
@@ -230,8 +232,19 @@ def list_switch_equipment_types() -> list[dict[str, Any]]:
 
 @router.get("/mv-apparatus-types")
 def list_mv_apparatus_types() -> list[dict[str, Any]]:
-    """List all MV apparatus types from the canonical MV catalog."""
-    return [item.to_dict() for item in get_default_mv_catalog().list_mv_apparatus_types()]
+    """Pozycje katalogu aparatów SN + propozycje wartości roboczych dla braków karty.
+
+    ``wartosci_robocze`` (zasada nr 4, V12K-351) mówi przy pozycji, CZYM obliczenie uzupełni
+    parametr, którego karta nie podaje — z rodzajem źródła, odniesieniem i wpływem. Pozycja
+    katalogu (``to_dict``) zostaje czysta: niesie wyłącznie dane karty.
+    """
+    return [
+        {
+            **item.to_dict(),
+            "wartosci_robocze": [p.to_dict() for p in propozycje_aparatu_sn(item)],
+        }
+        for item in get_default_mv_catalog().list_mv_apparatus_types()
+    ]
 
 
 @router.get("/lv-apparatus-types")
@@ -256,6 +269,12 @@ def list_lv_breaker_mcb_types() -> list[dict[str, Any]]:
 def list_lv_fuse_link_types() -> list[dict[str, Any]]:
     """List all LV gG fuse-link (IEC 60269-1) types from the canonical catalog."""
     return [item.to_dict() for item in get_default_mv_catalog().list_lv_fuse_link_types()]
+
+
+@router.get("/lv-rcd-types")
+def list_lv_rcd_types() -> list[dict[str, Any]]:
+    """List all LV residual current device (RCCB IEC 61008-1 / RCBO IEC 61009-1) types."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_lv_rcd_types()]
 
 
 @router.get("/load-types")
@@ -905,10 +924,7 @@ def import_protection_library(
         return report
     except OdmowaDanychError as exc:
         # Conflicts or validation errors detected
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(exc),
-        ) from exc
+        raise OdmowaHttpError(exc, status_code=status.HTTP_409_CONFLICT) from exc
 
 
 # =============================================================================

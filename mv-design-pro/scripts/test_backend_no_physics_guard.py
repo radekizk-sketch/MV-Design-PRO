@@ -169,7 +169,7 @@ def test_rodzina_d_nie_liczy_przypadkowej_liczby_karty() -> None:
     [
         # Inline: wykladnik literalem != 2.0 (SI/NI, A=0.14, B=0.02).
         "x = tms * 0.14 / (m ** 0.02 - 1.0)\n",
-        # Inline: wykladnik literalem 1.0 (VI/RI) — odejmowanie 1 (int, nie float).
+        # Inline: wykladnik literalem 1.0 (VI/LTI) — odejmowanie 1 (int, nie float).
         "x = tms * 13.5 / (m ** 1.0 - 1)\n",
         # Inline: wykladnik literalem 2.0 (EI) — MIMO ze rodzina C tez rozpoznaje
         # `m**2.0`, tu jest ODEJMOWANIE w mianowniku dzielenia, nie mnozenie

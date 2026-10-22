@@ -563,6 +563,7 @@ const SCENY: Record<string, Prowadzenie> = {
     }
   },
   zwarcia: zwykla,
+  'zwarcia-tolerancja-robocza': zwykla,
   'zwarcia-rozplyw': zwykla,
   porownanie: async (page, pomiar) => {
     await page.getByTestId('mvd-por-select-a').selectOption(POROWNANIE_PF.run_a_id);
@@ -747,6 +748,14 @@ const SCENY: Record<string, Prowadzenie> = {
   'wyniki-dynamika-brak': zwykla,
   // Karta modeli odbiorów: odbiór bez modelu dynamicznego — akcja naprawcza w sekcji modeli.
   'wyniki-dynamika-odbior-brak': zwykla,
+  // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: lista scenariuszy zwarciowych (MAX/MIN, nadpisanie c
+  // z uzasadnieniem) — pokazuje wartości c i ich podstawę, więc mierzona na pierwszym planie.
+  'panel-scenariuszy': zwykla,
+  // Karta przypadku obliczeniowego: konfiguracja, status i aktualność wyników przypadku.
+  'karta-przypadku': zwykla,
+  // Formularz edycji parametrów otwarty z akcji naprawczej bramki tolerancji napięcia nN —
+  // treść bramki i pola z jednostkami trafiają do inżyniera, więc mierzona.
+  'edycja-tolerancja-nn': zwykla,
 };
 
 /**

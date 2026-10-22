@@ -6,7 +6,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 
-import { LvDomainView } from '../LvDomainView';
+import { LvDomainView, SZEROKOSC_KARTY_OBWODU_PX } from '../LvDomainView';
 import { scenariusz, type SlugScenariusza } from '../fixtures/scenariusze';
 import { CAD_U_PX, MIN_FIELD_WIDTH_PX, SLD_LABEL, TOKENY_GEOMETRII, skalaMinimalna, skalaSymboluNaEkranie } from '../visualGrammar';
 
@@ -79,14 +79,88 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     fireEvent.click(screen.getByTestId('lv-domain-node-QF-02'));
     const panel = screen.getByTestId('lv-domain-feeder-panel');
     expect(panel).toHaveAttribute('data-feeder-ref', 'QF-02');
-    expect(screen.getByTestId('lv-domain-feeder-terminals').textContent).toContain('zamknięty');
-    expect(screen.getByTestId('lv-domain-feeder-terminals').textContent).toContain('zacisk A: ENERGIZED');
+    expect(screen.getByTestId('lv-domain-feeder-lacznik').textContent).toContain('zamknięty');
+    // Stan zacisku słowem polskim (nie kodem enum), każdy zacisk nazwany — karta obwodu B-02.
+    expect(screen.getByTestId('lv-domain-feeder-terminals').textContent).toContain('zacisk A zasilony, zacisk B zasilony');
     expect(screen.getByTestId('lv-domain-feeder-transformer')).toHaveAttribute('data-transformer-ref', 'T1');
-    expect(panel.textContent).toContain('SWZ: nie spełnia');
-    expect(panel.textContent).toContain('Ia wymagane = 630 A');
+    // Tabelka SWZ (warunek · wynik · limit · ocena) z wartościami backendu, bez przeliczeń.
+    const swzTn = screen.getByTestId('lv-domain-feeder-swz-tn');
+    expect(swzTn).toHaveAttribute('data-swz-status', 'nie spełnia');
+    const wiersz = within(swzTn).getByTestId('karta-obwodu-warunek-swz.tn');
+    expect(wiersz.textContent).toContain('61 A');
+    expect(wiersz.textContent).toContain('630 A');
+    expect(wiersz.textContent).toContain('nie spełnia');
+    expect(swzTn.textContent).toContain('Tab. 41.1');
     expect(panel.textContent).toContain('Model nie przypisuje zabezpieczenia');
     fireEvent.click(within(panel).getByText('Zamknij'));
     expect(screen.queryByTestId('lv-domain-feeder-panel')).toBeNull();
+  });
+
+  it('[19] układ TT: panel odpływu z RCD pokazuje werdykt wyjaśnialny (rekord W, kryteria, limit bez podstawy), bez RCD — odmowę nazwaną kodem', () => {
+    renderuj('19_swz_tt');
+    fireEvent.click(screen.getByTestId('lv-domain-node-QF-01'));
+    const werdykt = screen.getByTestId('lv-domain-feeder-werdykt-tt-it');
+    expect(werdykt).toHaveAttribute('data-uklad', 'TT');
+    expect(werdykt).toHaveAttribute('data-status-wymagania', 'BRAK_PODSTAWY');
+    // Karta obwodu (werdykt B-02): tabelka warunków z rekordów K — wynik, limit z przypisem
+    // podstawy, ocena z etykiety backendu; jeden wiersz na kryterium.
+    const wiersze = within(werdykt).getAllByTestId(/^karta-obwodu-warunek-swz\.tt\./);
+    expect(wiersze.map((w) => w.getAttribute('data-testid'))).toEqual([
+      'karta-obwodu-warunek-swz.tt.prad_rcd',
+      'karta-obwodu-warunek-swz.tt.czas_wylaczenia',
+      'karta-obwodu-warunek-swz.tt.napiecie_dotykowe',
+    ]);
+    expect(wiersze[0].textContent).toContain('0,03 A');
+    expect(wiersze[1].textContent).toContain('s');
+    // Warunki z backendu renderowane wzorem (KaTeX), nie tekstem LaTeX.
+    expect(werdykt.querySelector('[data-testid="math-fallback"]')).toBeNull();
+    expect(screen.getByTestId('karta-obwodu-ocena-wymagania').textContent).toContain('Brak zweryfikowanej podstawy wymagania');
+    // Ocena kryterium = kanoniczna plakietka etykiety rekordu (tekst i semantyka z backendu,
+    // status maszynowy tylko w atrybucie), w wariancie zwartym arkusza — zero mapy statusu w UI.
+    for (const kryterium of ['swz.tt.prad_rcd', 'swz.tt.czas_wylaczenia', 'swz.tt.napiecie_dotykowe']) {
+      const plakietka = screen.getByTestId(`karta-obwodu-ocena-${kryterium}`);
+      expect(plakietka.className).toContain('mvd-werdykt-plakietka--zwarta');
+      expect(plakietka.getAttribute('data-semantyka')).toBeTruthy();
+      expect(plakietka.getAttribute('data-status')).toBeTruthy();
+      expect((plakietka.textContent ?? '').length).toBeGreaterThan(0);
+    }
+    // Pełny rekord dowodu dostępny, ale zwinięty (nie na pierwszym planie).
+    expect(screen.getByTestId('karta-obwodu-rekord-dowodu')).not.toHaveAttribute('open');
+    // Limit napięcia dotykowego spoza repozytorium — nazwany kod, nie liczba z pamięci.
+    expect(screen.getByTestId('lv-domain-feeder-werdykt-tt-it-limit').textContent).toContain('swz.limit_tt_it_brak_tekstu_normy');
+    // Rekord werdyktu wyjaśnialnego: kryteria składowe z podstawą (IEC 60364-4-41, Tab. 41.1).
+    expect(werdykt.textContent).toContain('IEC 60364-4-41');
+    expect(werdykt.textContent).toContain('Tab. 41.1');
+    expect(werdykt.textContent).toContain('Brak zweryfikowanej podstawy wymagania');
+    fireEvent.click(within(screen.getByTestId('lv-domain-feeder-panel')).getByText('Zamknij'));
+
+    fireEvent.click(screen.getByTestId('lv-domain-node-QF-02'));
+    const odmowa = screen.getByTestId('lv-domain-feeder-swz-odmowa');
+    expect(odmowa).toHaveAttribute('data-kod-odmowy', 'nn.brak_rcd');
+    expect(odmowa.textContent).toContain('nn.brak_rcd');
+    expect(screen.queryByTestId('lv-domain-feeder-werdykt-tt-it')).toBeNull();
+  });
+
+  it('[19] karta obwodu stoi OBOK rysunku (rysunek się zwęża, nic nie zasłania); na wąskim ekranie — nakładka', () => {
+    renderuj('19_swz_tt');
+    const szerokoscPrzed = Number(screen.getByTestId('lv-domain-scroll').style.width.replace('px', ''));
+    fireEvent.click(screen.getByTestId('lv-domain-node-QF-01'));
+    const panel = screen.getByTestId('lv-domain-feeder-panel');
+    expect(panel).toHaveAttribute('data-ulozenie', 'dok');
+    const szerokoscPo = Number(screen.getByTestId('lv-domain-scroll').style.width.replace('px', ''));
+    expect(szerokoscPrzed - szerokoscPo).toBe(SZEROKOSC_KARTY_OBWODU_PX);
+    cleanup();
+    render(<LvDomainView projection={scenariusz('19_swz_tt')} width={390} height={844} lod={2} />);
+    fireEvent.click(screen.getByTestId('lv-domain-node-QF-01'));
+    expect(screen.getByTestId('lv-domain-feeder-panel')).toHaveAttribute('data-ulozenie', 'nakladka');
+  });
+
+  it('[19] RCD na rysunku: symbol wyłącznika różnicowoprądowego (nie rozłącznika) i tabliczka IΔn z katalogu', () => {
+    renderuj('19_swz_tt');
+    const rcd = screen.getByTestId('lv-domain-node-RCD-01');
+    expect(rcd.querySelector('g[data-symbol-canon="cad.wylacznikRoznicowopradowy"]')).not.toBeNull();
+    expect(rcd.querySelector('g[data-symbol-canon="cad.rozlacznik"]')).toBeNull();
+    expect(screen.getByTestId('lv-domain-tabliczka-rcd-RCD-01').textContent).toBe('IΔn 30 mA · A · 40 A');
   });
 
   it('[12] panel odpływu DER wypisuje przekaźnik ze znakami IEC, numerami ANSI, nazwami polskimi funkcji i przekładnikiem; symbol niesie pierwszy znak IEC + licznik; panel nazywa aparat po polsku', () => {
@@ -104,8 +178,8 @@ describe('SWZ i wyniki na odpływach — wartość == wartość backendu (§18)'
     expect(symbol.querySelector('title')?.textContent).toContain('81U');
     // Aparat pola nazwany po polsku (§18): WYŁĄCZNIK, QF jako identyfikator.
     const aparat = screen.getByTestId('lv-domain-feeder-aparat');
-    expect(aparat.textContent).toContain('WYŁĄCZNIK');
-    expect(aparat.textContent).toContain('QF · stan: ZAMKNIĘTY');
+    expect(aparat.textContent).toContain('Wyłącznik');
+    expect(aparat.textContent).toContain('zamknięty');
   });
 });
 
@@ -214,5 +288,54 @@ describe('Typografia i symbole (§21/§43) — screen-stable, z sufitem w slocie
     renderuj('01_single_tr');
     expect(document.querySelectorAll('text[data-orientacja="pionowa"]')).toHaveLength(0);
     expect(screen.getByTestId('lv-domain-scroll')).toHaveAttribute('data-scroll', 'false');
+  });
+});
+
+describe('Oznaczenie aparatu na arkuszu — dwa wiersze po słowach w realnym wolnym pasie (werdykt właściciela: rysunek jak CAD, bez obciętych nazw)', () => {
+  function zNazwami(nazwy: Readonly<Record<string, string>>) {
+    const p = scenariusz('15_many_feeders');
+    return {
+      ...p,
+      graph: {
+        ...p.graph,
+        branches: p.graph.branches.map((b) => (nazwy[b.ref_id] ? { ...b, name: nazwy[b.ref_id] } : b)),
+      },
+    } as typeof p;
+  }
+  function wiersze(ref: string): string[] {
+    const el = screen.getByTestId(`lv-domain-oznaczenie-${ref}`);
+    return Array.from(el.querySelectorAll('tspan')).map((t) => t.textContent ?? '');
+  }
+
+  it('iloczyn cech: kolumna ostatnia × kolumna środkowa × nazwa krótka / dwuwyrazowa / jeden zbyt długi wyraz', () => {
+    const qf = scenariusz('15_many_feeders').graph.branches.map((b) => b.ref_id).filter((r) => /^QF-\d+$/.test(r)).sort();
+    const srodkowy = qf[1];
+    const ostatni = qf[qf.length - 1];
+    const pierwszy = qf[0];
+    render(
+      <LvDomainView
+        projection={zNazwami({
+          [pierwszy]: 'Wyłącznik główny',
+          [srodkowy]: 'Rozdzielnicoodpływonapędowy',
+          [ostatni]: 'Odpływ nN 1 gospodarstwo',
+        })}
+        width={1400}
+        height={1000}
+        lod={2}
+      />,
+    );
+    // Dwa krótkie wyrazy: pełna nazwa w najwyżej dwóch wierszach, zero wielokropka.
+    const w1 = wiersze(pierwszy);
+    expect(w1.length).toBeLessThanOrEqual(2);
+    expect(w1.join(' ')).toBe('Wyłącznik główny');
+    // Ostatnia kolumna: pas sięga rezerwy arkusza — pełna nazwa bez skrótu.
+    const wN = wiersze(ostatni);
+    expect(wN.join(' ')).toBe('Odpływ nN 1 gospodarstwo');
+    expect(wN.join(' ')).not.toContain('…');
+    // Jeden wyraz dłuższy niż pas kolumny środkowej: uczciwy skrót „…" (pełna nazwa w podpowiedzi), bez łamania wyrazu.
+    const wS = wiersze(srodkowy);
+    expect(wS).toHaveLength(1);
+    expect(wS[0].endsWith('…')).toBe(true);
+    expect('Rozdzielnicoodpływonapędowy'.startsWith(wS[0].slice(0, -1))).toBe(true);
   });
 });

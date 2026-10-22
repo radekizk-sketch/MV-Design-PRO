@@ -70,17 +70,27 @@ Skala oceny: 1 (atrapa) – 10 (industrial-grade ABB/Siemens). Akceptacja: **≥
 
 **Plan:** F1 (ring/double busbar primitives) + F2 (busbar-first placement) + F3 (visual_emphasis).
 
-### AC-04: Pola SN z vendor templates lub generic IEC 60617
+### AC-04: Pola SN — wyposażenie zgodne z modelem i technologią
 
-**Wymóg:** Pola SN MUSZĄ renderować się:
-- Z vendor templates (CANDIDATE — konkretne serie wymagają weryfikacji vendor datasheets): rodzina ABB / Siemens / ZPUE Włoszczowa / Elektrometal — konkretne nazwy serii są **REQUIRES_SOURCE**
-- LUB jako generic zgodny z IEC 60617 (compartment envelope + CB + DS + ES + CT + VT + surge arrester)
+**Wymóg nadrzędny:** symbole wynikają z `Bay.primary_devices`, portów i rzeczywistej konfiguracji rozdzielnicy. Nie istnieje obowiązek stosowania CB + DS + CT + VT w każdym polu. Dawne kryterium minimalne sprzeczne było z wyższymi kontraktami `STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md` oraz `SLD_CAD_SPEC_V3.md` §12.1–12.4.
 
-**Czego NIE wolno:** Pole bez compartment envelope, bez CT/VT, bez surge arrester (brak znaczenia elektrycznego).
+- Pole liniowe RMU: rozłącznik + uziemnik + głowica, jeśli występują w danych lub jawnej konwencji szablonu.
+- Pole wyłącznikowe: rzeczywiste wyłączniki/odłączniki/przekładniki zgodnie z `placement`; brak automatycznego dorysowania CT lub VT.
+- Pole transformatorowe: technologia bezpiecznikowa albo wyłącznikowa stosownie do wyposażenia i katalogu; transformator z właściwymi terminalami.
+- Pole pomiarowe: brak domyślnego CB tylko dlatego, że taki aparat jest w innym rodzaju pola.
+- Nazwa producenta nie upoważnia do przyjęcia zestawu aparatów bez potwierdzonej konfiguracji.
 
-**Test:** Visual snapshot „GPZ-12-bay" — manual review per pole. Acceptable: każde pole ma min. CB + DS + CT + VT.
+**Zakazy:** brakujący aparat zastąpiony fikcyjnym; uziemnik z fałszywym stanem; CT/VT w błędnym torze; kabel bez portu/głowicy; identyfikator Q1 bez wskazania konkretnego pola.
 
-**Plan:** F1 (vendor templates — **wymaga źródła**, plan w `IMPLEMENTATION_GAP_ANALYSIS § 4.1`).
+**Testy pozytywne i negatywne:**
+1. RMU-L: `LOAD_SWITCH + ES + CABLE_HEAD`; 0 dopowiedzianych `CB/CT/VT`.
+2. Pole wyłącznikowe: aparat, `device_ref`, `placement` i port w zgodzie z ENM.
+3. Pole TR: rozdzielenie pola bezpiecznikowego od wyłącznikowego; terminale TR zgodne z modelowaniem.
+4. Pole pomiarowe: 0 wyłączników wstawionych bez danych.
+5. Brak aparatu w modelu: jawny stan niekompletny lub konwencja oznaczona proweniencją, nigdy pozorna kompletność.
+6. Kliknięcie aparatu w L2 zwraca ten sam `device_ref` i `bay_ref` w modelu, kanwie oraz inspektorze.
+
+**PASS:** wszystkie aparaty mają zgodny typ, rolę i przypisanie, 0 urządzeń udających faktyczny montaż, 0 niezakotwiczonych kabli; niepełność jest jawna.
 
 ### AC-05: Symbole aparatów jednoznaczne i klikalne
 
@@ -173,12 +183,19 @@ Source of truth: `LOD_ZOOM_THRESHOLDS` w `frontend/src/ui/sld/v2/lod/LodPolicy.t
 ### AC-11: Visual regression w CI
 
 **Wymóg:**
-- 60 snapshotów (15 fixtures × 4 LOD)
-- Pixel diff threshold 0.5%
-- Update baseline tylko explicit (`npm run test:e2e:update-snapshots`)
-- Diff artifacts upload przy regresji
+- Geometria SLD v3 pinowana wyroczniami per LOD (`npm run accept:sld-v3`) — regresja geometrii = FAIL joba.
+- Rendery dowodowe (W2c: PV + BESS + TR z kolizją etykiet = FAIL; role L1 z nakładką zasilania
+  z produkcyjnego `buildEnergizationOverlay(enm)`) generowane w CI i publikowane jako artefakty
+  `sld-w2c-visual-evidence` i `sld-v3-role-evidence` (14 dni).
+- Werdykt wizualny wystawia właściciel (bramka B-02) na podstawie artefaktów; CI nie certyfikuje wyglądu.
 
-**Test:** `.github/workflows/sld-determinism.yml` job „visual-regression" PASS.
+**Test:** `.github/workflows/sld-determinism.yml` job „sld-contract-tests": kroki
+„Run SLD v3 render-odbiór acceptance (F7/F8b-2)", „Run W2c label-plan evidence", „Render operator L1 using
+production ENM energization overlay" PASS.
+
+Korekta 2026-10-21: dawne brzmienie (60 snapshotów pikselowych, job „visual-regression") wskazywało
+job, który nie istnieje — mechanizm pikselowy został usunięty 2026-07-17
+(`SLD_VISUAL_REGRESSION_CONTRACT.md`, status HISTORYCZNY).
 
 **Plan:** F5.
 

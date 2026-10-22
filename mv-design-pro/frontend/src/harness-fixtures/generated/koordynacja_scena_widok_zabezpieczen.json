@@ -7,7 +7,7 @@
       "element_id": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20.0,
+        "alf": 20,
         "braki": [],
         "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
         "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
@@ -15,6 +15,16 @@
         "gotowe": true,
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie odejścia S01",
+        "obwod_wtorny_ct": {
+          "alf": 20,
+          "dlugosc_przewodu_m": null,
+          "i2n_a": 5.0,
+          "moc_stykow_va": null,
+          "obciazenia_aparatow": [],
+          "przekroj_przewodu_mm2": null,
+          "rct_ohm": null,
+          "sn_va": 15.0
+        },
         "pozycja_katalogu": "REF-OC-200",
         "przekladnia_a": [
           600.0,
@@ -26,7 +36,7 @@
             "funkcja": "overcurrent_51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
-            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "krzywa_pl": "IEC normalnie odwrotna (SI)",
             "prog_pierwotny_a": 180.0,
             "prog_wtorny_a": 1.5,
             "slad": {
@@ -118,7 +128,7 @@
               "kod": "DT"
             },
             {
-              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
               "kod": "IEC_SI"
             },
             {
@@ -132,7 +142,7 @@
           ],
           "jednostka_zakresow_pradowych": "KROTNOSC_IN",
           "krzywe": [
-            "IEC_NI",
+            "IEC_SI",
             "IEC_VI",
             "DT"
           ],
@@ -517,7 +527,7 @@
       "element_id": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
       "element_type": "Switch",
       "nastawy": {
-        "alf": 20.0,
+        "alf": 20,
         "braki": [],
         "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
         "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
@@ -525,6 +535,16 @@
         "gotowe": true,
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
+        "obwod_wtorny_ct": {
+          "alf": 20,
+          "dlugosc_przewodu_m": null,
+          "i2n_a": 5.0,
+          "moc_stykow_va": null,
+          "obciazenia_aparatow": [],
+          "przekroj_przewodu_mm2": null,
+          "rct_ohm": null,
+          "sn_va": 15.0
+        },
         "pozycja_katalogu": "REF-OC-200",
         "przekladnia_a": [
           600.0,
@@ -536,7 +556,7 @@
             "funkcja": "overcurrent_51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
-            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "krzywa_pl": "IEC normalnie odwrotna (SI)",
             "prog_pierwotny_a": 240.0,
             "prog_wtorny_a": 2.0,
             "slad": {
@@ -628,7 +648,7 @@
               "kod": "DT"
             },
             {
-              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
               "kod": "IEC_SI"
             },
             {
@@ -642,7 +662,7 @@
           ],
           "jednostka_zakresow_pradowych": "KROTNOSC_IN",
           "krzywe": [
-            "IEC_NI",
+            "IEC_SI",
             "IEC_VI",
             "DT"
           ],
@@ -1031,7 +1051,7 @@
         "kod": "DT"
       },
       {
-        "etykieta_pl": "IEC normalnie odwrotna (NI)",
+        "etykieta_pl": "IEC normalnie odwrotna (SI)",
         "kod": "IEC_SI"
       },
       {
@@ -1043,8 +1063,8 @@
         "kod": "IEC_EI"
       },
       {
-        "etykieta_pl": "IEC długozwłoczna (LTI)",
-        "kod": "IEC_LI"
+        "etykieta_pl": "IEC odwrotna długoczasowa (LTI, 120)",
+        "kod": "IEC_LTI"
       },
       {
         "etykieta_pl": "IEEE umiarkowanie odwrotna (MI)",

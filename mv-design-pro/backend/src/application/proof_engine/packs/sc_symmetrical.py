@@ -4,7 +4,7 @@ SC Symmetrical (3F) Proof Pack — pakiet dowodowy zwarcia trójfazowego (G-SCM 
 STATUS: CANONICAL & BINDING
 Rejestr: V12K-054 (G-SCM F2). Domyka lukę: zwarcie 3-fazowe (najczęstsze) nie miało
 dotąd pakietu dowodowego, a generator ``ProofGenerator.generate_sc3f_proof`` (jedyne
-miejsce z krokami maszynowymi μ/q/i_b, IEC 60909-0:2016 §6.6) był osierocony.
+miejsce z krokami maszynowymi μ/q/i_b, IEC 60909-0:2016 rozdz. 9) był osierocony.
 
 Wszystko liczy się po stronie serwera z kanonicznego snapshotu ENM (ZERO fizyki w
 UI, WHITE BOX):
@@ -31,7 +31,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
+from application.proof_engine.proof_generator import (
+    ProofGenerator,
+    SC3FInput,
+    krok_sladu_zwarcia,
+)
 from application.proof_engine.proof_pack import (
     ProofPackBuilder,
     ProofPackContext,
@@ -40,6 +44,7 @@ from application.proof_engine.proof_pack import (
 )
 from application.proof_engine.types import ProofDocument
 from application.solvers.short_circuit_binding import zwarcie_3f_ze_snapshotu
+from network_model.core.voltage_factor import NadpisanieC, Scenario
 from network_model.pochodne import a_na_ka, v_na_kv
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 
@@ -58,8 +63,19 @@ class SC3FPackInput:
     fault_node_id: str
     run_timestamp: datetime
     solver_version: str
-    c_factor: float = 1.10
-    tk_s: float = 1.0
+    #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): nośnikiem c jest scenariusz (MAX/MIN →
+    #: tabela 1 IEC 60909-0 dla pasma węzła) albo nadpisanie z uzasadnieniem — nie liczba.
+    scenariusz: Scenario
+    nadpisanie_c: NadpisanieC | None
+    tk_s: float
+    #: Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b [s] scenariusza biegu, którego pakiet
+    #: powstaje; ``None`` = t_b punktu rozstrzyga warstwa wiązania tą samą funkcją co bieg
+    #: (pola lokalne albo wartość robocza — karta TB-WARTOSC-ROBOCZA).
+    tb_s: float | None
+    rozszerzenia_audit2: dict[str, Any] | None = None
+    #: Karta OD-14: impedancja przejścia Z_f [Ω] biegu, którego pakiet powstaje; None =
+    #: zwarcie metaliczne IEC 60909 (dowód bit w bit jak przed kartą).
+    z_f_ohm: complex | None = None
 
 
 @dataclass(frozen=True)
@@ -99,23 +115,44 @@ class SC3FProofPack:
         zwarcie = zwarcie_3f_ze_snapshotu(
             snapshot=data.snapshot,
             fault_node_id=data.fault_node_id,
-            c_factor=data.c_factor,
+            scenariusz=data.scenariusz,
+            nadpisanie_c=data.nadpisanie_c,
             tk_s=data.tk_s,
+            tb_s=data.tb_s,
+            rozszerzenia_audit2=data.rozszerzenia_audit2,
+            z_f_ohm=data.z_f_ohm,
         )
         result = zwarcie.wynik
         graph = zwarcie.graf
 
-        # Rozbicie per-maszyna (μ/q/i_b, §6.6) z tego samego grafu; t_min = czas prądu
-        # wyłączeniowego (tb_s) z wyniku solvera IEC 60909. Dołączane do dowodu
-        # tylko gdy realnie są maszyny — inaczej dowód bez sekcji maszynowej (determinizm).
-        machine_result = compute_machine_contributions(
-            graph,
-            result.fault_node_id,
-            c_factor=result.c_factor,
-            t_min_s=result.tb_s,
+        # Rozbicie per-maszyna (μ/q/i_b, rozdz. 9) z tego samego grafu i TĄ SAMĄ funkcją co rdzeń
+        # (I_b sieci = I_k'' − Σ zaników tych samych maszyn); t_min = t_b punktu z wyniku
+        # (karta TB-WARTOSC-ROBOCZA: rozstrzygnięte w warstwie wiązania, pochodzenie w
+        # `tb_zrodlo`). Dołączane tylko gdy realnie są maszyny (determinizm).
+        has_machines = bool(
+            graph.get_synchronous_machine_sources() or graph.get_asynchronous_machine_sources()
         )
-        has_machines = bool(machine_result.contributions)
+        machine_result = (
+            compute_machine_contributions(
+                graph,
+                result.fault_node_id,
+                c_factor=result.c_factor,
+                t_min_s=result.tb_s,
+                z_f_ohm=data.z_f_ohm,
+            )
+            if has_machines
+            else None
+        )
+        krok_ib = krok_sladu_zwarcia(result.white_box_trace, "Ib")
+        krok_idc = krok_sladu_zwarcia(result.white_box_trace, "iDC")
 
+        if result.m_factor is None or result.n_factor is None:
+            raise AssertionError(
+                "Wynik zwarcia nie niesie współczynników cieplnych m, n, z którymi solver "
+                "policzył I_th — dowodu prądu cieplnego zastępczego nie da się złożyć."
+            )
+        m_factor = float(result.m_factor)
+        n_factor = float(result.n_factor)
         sc3f_input = SC3FInput(
             project_name=data.project_name,
             case_name=data.case_name,
@@ -124,8 +161,13 @@ class SC3FProofPack:
             run_timestamp=data.run_timestamp,
             solver_version=data.solver_version,
             c_factor=result.c_factor,
+            c_zrodlo=zwarcie.dobor_c.zrodlo,
             u_n_kv=v_na_kv(result.un_v),
-            z_thevenin_ohm=result.zkk_ohm,
+            z_thevenin_ohm=(
+                result.zkk_metaliczne_ohm
+                if result.zkk_metaliczne_ohm is not None
+                else result.zkk_ohm
+            ),
             ikss_ka=a_na_ka(result.ikss_a),
             ip_ka=a_na_ka(result.ip_a),
             ith_ka=a_na_ka(result.ith_a),
@@ -136,16 +178,24 @@ class SC3FProofPack:
             # Audyt fizyki fala G (2026-07): m_factor/n_factor FAKTYCZNIE uzyte
             # przez solver do ith_a = ikss*sqrt(m+n) (IEC 60909-0 SS4.7/SS12) —
             # niesione z wyniku solvera, zeby wywod White Box (krok Ith,
-            # EQ_SC3F_008) podstawial LICZBY SPOJNE z wyswietlanym ith_ka.
-            # Honest fallback (1,0; 0,0) tylko dla starszych wynikow solvera
-            # sprzed delty (m_factor=None) — bez zmyslania.
-            m_factor=result.m_factor if result.m_factor is not None else 1.0,
-            n_factor=result.n_factor if result.n_factor is not None else 0.0,
-            machine_result=machine_result if has_machines else None,
-            # Karta S-C (2026-07-22): kroki I_b(t_b) i I²t w dowodzie — wartości
-            # z FROZEN wyniku solvera (ib_a/tb_s), zero fizyki w proof engine.
+            # EQ_SC3F_008) podstawial LICZBY SPOJNE z wyswietlanym ith_ka. Karta
+            # SC-IB-ITH-ZRODLA: dawny zapas (1,0; 0,0) skasowany — byl druga definicja I_th.
+            m_factor=m_factor,
+            n_factor=n_factor,
+            machine_result=machine_result,
+            # Karta SC-IB-ITH-ZRODLA: I_b (symetryczny, rozdz. 9) i i_DC(t_b) (rozdz. 10)
+            # z FROZEN wyniku solvera i jego śladu — zero fizyki w proof engine.
             ib_ka=a_na_ka(result.ib_a),
             tb_s=result.tb_s,
+            # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (None = scenariusz projektanta).
+            tb_zrodlo=result.tb_zrodlo,
+            i_dc_ka=None if result.i_dc_a is None else a_na_ka(result.i_dc_a),
+            krok_ib=krok_ib,
+            krok_idc=krok_idc,
+            # Karta OD-14: przy impedancji przejścia `zkk_ohm` wyniku to impedancja PĘTLI
+            # (Z_th + Z_f), a Thevenin sieci niesie `zkk_metaliczne_ohm` — dowód pokazuje oba.
+            z_f_ohm=result.z_f_ohm,
+            z_petli_ohm=result.zkk_ohm if result.z_f_ohm is not None else None,
         )
         proof = ProofGenerator.generate_sc3f_proof(sc3f_input, artifact_id)
         return SC3FPackResult(
@@ -176,9 +226,10 @@ class SC3FProofPack:
     def validate_completeness(cls, result: SC3FPackResult) -> list[str]:
         """Weryfikuje obecność OBOWIĄZKOWYCH wyników SC3F (§4.1 + karta S-C).
 
-        Pakiet liczy z FROZEN wyniku solvera, który zawsze niesie ib_a/tb_s —
-        pełny bilans (I_b, I²t) jest więc obowiązkowy w dowodzie pakietu.
+        Pełny bilans (I_b, i_DC, I²t) jest obowiązkowy bez wyjątków: od karty
+        TB-WARTOSC-ROBOCZA t_b każdego punktu jest rozstrzygnięte (scenariusz, pola lokalne
+        albo wartość robocza), więc I_b i i_DC są zawsze policzone.
         """
-        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "ib_ka", "i2t_ka2s"}
+        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "i2t_ka2s", "ib_ka", "i_dc_ka"}
         key_results = result.proof_sc3f.summary.key_results
         return [key for key in sorted(required_keys) if key not in key_results]

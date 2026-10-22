@@ -200,6 +200,7 @@ import type {
   PreviewSymbol,
   StationCompactGlyphSummary,
 } from '../compose/preview';
+import { jestZnacznikiemToru } from './znacznikiToru';
 import type { StationDerGlyphKind } from '../symbols/glyphs';
 
 // ---------------------------------------------------------------------------
@@ -6558,12 +6559,11 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
   // dostaje tu wyjątku — jest legalny wyłącznie przez DOTYK słupka
   // (`pointTouchesSegment` niżej); zwykły wolny koniec dalej daje lukę
   // (test negatywny w `buildScene.openTerminal.test.ts`).
-  if (seg.meta?.kind === 'openTerminal') return true;
   // S9-1: kreski znaku ciągu dalszego (złamanie arkusza) — jak słupek
   // terminalny: ich WŁASNE końce są krańcami rysowanej kreski, nie portami.
-  if (seg.meta?.kind === 'sheetContinuation') return true;
   // Znak powiązania (`scene/elementyToru.ts`) — kreska jak słupek końca.
-  if (seg.meta?.kind === 'tieMarker') return true;
+  // Wszystkie trzy: jedna lista znaczników toru (`jestZnacznikiemToru`).
+  if (jestZnacznikiemToru(seg)) return true;
   const ref = seg.meta?.ownerRef;
   return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension') || ref.endsWith('#hv-bus-source-extension'));
 }
@@ -8752,7 +8752,7 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
     // §16-v3: słupek terminalny (`kind==='openTerminal'`) to MARKER końca
     // biegu, nie trasa — nosi ownerRef biegu (sufiks `#open-terminal`) dla
     // tożsamości, ale nie podlega hierarchii grubości tras §22.4.
-    if (s.meta?.kind === 'openTerminal' || s.meta?.kind === 'sheetContinuation' || s.meta?.kind === 'tieMarker') continue;
+    if (jestZnacznikiemToru(s)) continue;
     if (owner.includes('branch_segment') && s.meta?.kind !== 'sn') {
       gaps.push(`Trasa odgałęźna z klasą inną niż sn: ownerRef=${owner} kind=${String(s.meta?.kind)}`);
     }

@@ -1320,7 +1320,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "599a11546c22021a04c18109b2652087f1e4ac0b4dc020daf704ec1f9af7fa34",
+      "hash_sha256": "53f35d84cd9605a972adf2ce645424764def5574e112d330bc50becbf09d9d6d",
       "name": "Drogi operacji budowy",
       "revision": 9,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1375,6 +1375,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "12e368df-90ea-50aa-83db-c7c8ddcb6c72",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -1420,14 +1421,13 @@
     "sources": [
       {
         "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "c_max": null,
-        "c_min": null,
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
         "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "src-gpz-15kv-250mva-rx010",
           "catalog_item_version": "2024.1",
@@ -1549,6 +1549,7 @@
         "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",
@@ -1601,6 +1602,7 @@
         "lv_bus_ref": "nn/74aeff05248e2e166d69ff670610b067/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",

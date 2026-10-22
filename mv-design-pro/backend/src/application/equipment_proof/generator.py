@@ -11,6 +11,11 @@ from application.equipment_proof.types import (
     EquipmentProofInput,
     EquipmentProofResult,
 )
+from application.equipment_proof.wielkosc_wylaczania import (
+    WIELKOSC_IB,
+    WielkoscKryteriumWylaczania,
+    wielkosc_kryterium_wylaczania,
+)
 from application.proof_engine.types import (
     EquationDefinition,
     ProofDocument,
@@ -22,7 +27,9 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
+from network_model.catalog.wartosci_robocze import dana_przyjeta_tolerancji_nn
 from network_model.pochodne import calka_joule_ka2s
+from werdykt import DanaPrzyjeta
 
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
@@ -87,14 +94,38 @@ class EquipmentProofGenerator:
             device_value=device_val,
             required_source_key="u_kv",
             device_source_key="device.u_m_kv",
-            message_pl=_compare_message("U", device_val, required_val, status),
+            message_pl=_compare_message("U_m", "kV", device_val, required_val),
         )
 
     @classmethod
     def _check_icu(
         cls, device: DeviceRating, required: dict[str, Any]
     ) -> EquipmentProofCheckResult:
-        required_val = _as_float(required.get("ikss_ka"))
+        """Zdolność wyłączania zwarć aparatu wobec prądu, który aparat MA wyłączyć.
+
+        Karta SC-IB-ITH-ZRODLA — rozstrzygnięcie normowe w JEDNYM module
+        (`application.equipment_proof.wielkosc_wylaczania`, ten sam predykat woła ocena
+        wytrzymałości aparatury pól stacji):
+
+        * wyłącznik SN/WN — IEC 62271-100 § 4.101 (I_sc: wartość skuteczna składowej
+          OKRESOWEJ w chwili rozdzielenia styków) wobec symetrycznego prądu wyłączeniowego I_b
+          wg IEC 60909-0 rozdz. 9. Składowa nieokresowa i_DC(t_b) (rozdz. 10) idzie do uwag
+          kryterium jako informacja: katalog aparatu nie niesie znamionowej składowej
+          nieokresowej ani stałej czasowej, więc porównania z nią NIE wystawiamy (brak
+          podstawy ≠ spełnia);
+        * aparat nN — IEC 60947-2 i IEC 60364-4-43 p. 434.5.1: wobec spodziewanego I_k'';
+        * bezpiecznik (IEC 60282-1 / IEC 60269-1) — przerywa przed pierwszym szczytem, jego
+          zdolność odnosi się do prądu spodziewanego: wobec I_k'' niezależnie od pasma.
+
+        Brak I_b w wielkościach biegu to brak podstawy kryterium, nigdy cicha podmiana na
+        I_k''. Karta TB-WARTOSC-ROBOCZA: I_b z udziałem maszyn wirujących policzony przy t_b
+        będącym wartością roboczą — uwaga kryterium nazywa założenie i jego źródło (wynik
+        obliczeniowy na danej przyjętej, nie potwierdzony dowód przy rzeczywistym t_b).
+        """
+        wielkosc = _wielkosc_wylaczania(device, required)
+        required_val = _as_float(required.get(wielkosc.klucz)) if wielkosc else None
+        klucz = wielkosc.klucz if wielkosc else "ib_ka"
+        notes = _uwagi_wylaczania(wielkosc, required)
         if device.i_cu_not_applicable:
             # KARTA UM-ICU-KATALOG (2a): rozlacznik/odlacznik/uziemnik nie ma
             # zdolnosci wylaczania zwarc Z DEFINICJI normy — brak i_cu_ka nie
@@ -105,23 +136,48 @@ class EquipmentProofGenerator:
                 status=STATUS_NOT_APPLICABLE,
                 required_value=required_val,
                 device_value=None,
-                required_source_key="ikss_ka",
+                required_source_key=klucz,
                 device_source_key="device.i_cu_ka",
                 message_pl=(
                     "Nie dotyczy — aparat bez zdolności wyłączania zwarć "
                     "(rozłącznik/odłącznik/uziemnik) z definicji normy."
                 ),
+                notes=notes,
             )
         device_val = device.i_cu_ka
+        if wielkosc is None:
+            return EquipmentProofCheckResult(
+                name="Icu",
+                status=STATUS_FAIL,
+                required_value=None,
+                device_value=device_val,
+                required_source_key=klucz,
+                device_source_key="device.i_cu_ka",
+                message_pl=(
+                    "Brak podstawy: bieg nie niesie napięcia znamionowego punktu zwarcia, "
+                    "więc nie wiadomo, czy aparat wyłącza prąd I_b (SN/WN, IEC 62271-100), "
+                    "czy spodziewany I″k (nN, IEC 60947-2)."
+                ),
+                notes=notes,
+            )
         if device_val is None or required_val is None:
+            brak = (
+                f"nie podano I_cu aparatu albo {wielkosc.opis_pl} wymaganego"
+                if wielkosc.klucz != "ib_ka" or required_val is not None
+                else (
+                    "wielkości biegu nie niosą prądu wyłączeniowego I_b punktu zwarcia "
+                    "(przelicz bieg zwarciowy)"
+                )
+            )
             return EquipmentProofCheckResult(
                 name="Icu",
                 status=STATUS_FAIL,
                 required_value=required_val,
                 device_value=device_val,
-                required_source_key="ikss_ka",
+                required_source_key=klucz,
                 device_source_key="device.i_cu_ka",
-                message_pl="Brak podstawy: nie podano I_cu aparatu albo I″k wymaganego.",
+                message_pl=f"Brak podstawy: {brak}.",
+                notes=notes,
             )
         status = STATUS_PASS if device_val >= required_val else STATUS_FAIL
         return EquipmentProofCheckResult(
@@ -129,9 +185,15 @@ class EquipmentProofGenerator:
             status=status,
             required_value=required_val,
             device_value=device_val,
-            required_source_key="ikss_ka",
+            required_source_key=klucz,
             device_source_key="device.i_cu_ka",
-            message_pl=_compare_message("Icu", device_val, required_val, status),
+            # Treść nazywa porównane wielkości, wartości i podstawę; status niesie pole
+            # `status` (kontrakt werdyktu wyjaśnialnego: tekst nie składa kodu werdyktu).
+            message_pl=(
+                f"I_cu aparatu {device_val:.4f} kA wobec {wielkosc.opis_pl} "
+                f"{required_val:.4f} kA (warunek I_cu ≥ wartość wymagana; {wielkosc.norma})."
+            ),
+            notes=notes,
         )
 
     @classmethod
@@ -167,7 +229,7 @@ class EquipmentProofGenerator:
             device_value=device_val,
             required_source_key=required_key,
             device_source_key="device.i_dyn_ka",
-            message_pl=_compare_message("Idyn", device_val, required_val, status),
+            message_pl=_compare_message("I_dyn", "kA", device_val, required_val),
             notes=notes,
         )
 
@@ -194,11 +256,16 @@ class EquipmentProofGenerator:
                 device_source_key="device.i_th_ka",
                 message_pl="Brak podstawy: nie podano I_th/t_th aparatu albo I_th/t_k wymaganego.",
             )
-        if device_time != required_time:
-            # Karta S-C (2026-07-22, zgoda właściciela): przy różnych czasach
-            # odniesienia porównanie energii cieplnej I²t (kryterialne, bez
+        if _porownanie_energii_i2t(device_time=device_time, required_time=required_time):
+            # Karta S-C (2026-07-22, zgoda właściciela): przy czasie zwarcia DŁUŻSZYM od
+            # czasu znamionowego porównanie energii cieplnej I²t (kryterialne, bez
             # fizyki): Ith_req²·tk ≤ Ithr²·t_thr. Wielkości z kontraktu:
             # ith_ka+tk_s z wyniku, i_th_ka+t_th_s z katalogu aparatu.
+            # Karta WYTRZYMALOSC-PRAD-POLA: przy czasie KRÓTSZYM od znamionowego
+            # równoważność I²t nie działa w górę (IEC 60865-1, wytrzymałość cieplna
+            # urządzeń elektrycznych: I_th ≤ I_thr dla T_k ≤ T_kr) — aparat próbowany
+            # prądem I_thr nie jest przez to sprawdzony prądem większym; wtedy porównanie
+            # wprost niżej.
             required_i2t = calka_joule_ka2s(required_val, required_time)
             device_i2t = calka_joule_ka2s(device_val, device_time)
             status = STATUS_PASS if device_i2t >= required_i2t else STATUS_FAIL
@@ -210,7 +277,8 @@ class EquipmentProofGenerator:
                 required_source_key="ith_ka",
                 device_source_key="device.i_th_ka",
                 message_pl=(
-                    f"Energia cieplna I²t {required_i2t:.4f} <= {device_i2t:.4f} kA²s → {status}."
+                    f"Energia cieplna I²t aparatu {device_i2t:.4f} kA²s wobec wymaganej "
+                    f"{required_i2t:.4f} kA²s (warunek I_th²·t_th ≥ I_th,wym²·t_k)."
                 ),
                 notes=(
                     f"t_th_s={device_time} s, tk_s={required_time} s",
@@ -226,7 +294,7 @@ class EquipmentProofGenerator:
             device_value=device_val,
             required_source_key="ith_ka",
             device_source_key="device.i_th_ka",
-            message_pl=_compare_message("Ith", device_val, required_val, status),
+            message_pl=_compare_message("I_th", "kA", device_val, required_val),
             notes=(f"t_th_s={device_time} s",),
         )
 
@@ -256,6 +324,7 @@ class EquipmentProofGenerator:
             checks=checks,
             key_results=key_results,
             required_fault_results=dict(proof_input.required_fault_results),
+            dane_przyjete=_dane_przyjete_wejscia(proof_input),
         )
 
     @classmethod
@@ -275,7 +344,10 @@ class EquipmentProofGenerator:
             cls._step_device_data(proof_input.device),
             cls._step_required_data(proof_input.required_fault_results),
             cls._step_check_u(checks[0]),
-            cls._step_check_icu(checks[1]),
+            cls._step_check_icu(
+                checks[1],
+                _wielkosc_wylaczania(proof_input.device, proof_input.required_fault_results),
+            ),
             cls._step_check_idyn(checks[2]),
             cls._step_check_ith(checks[3], proof_input.device, proof_input.required_fault_results),
         ]
@@ -291,7 +363,10 @@ class EquipmentProofGenerator:
             },
             unit_check_passed=True,
             total_steps=len(steps),
-            warnings=(),
+            warnings=tuple(
+                f"Wielkości wymagane liczone z daną przyjętą: {d.nazwa_pl} — {d.powod_pl}"
+                for d in result.dane_przyjete
+            ),
             overall_status=result.overall_status,
             failed_checks=result.failed_checks,
         )
@@ -352,7 +427,7 @@ class EquipmentProofGenerator:
     def _step_required_data(cls, required: dict[str, Any]) -> ProofStep:
         equation = _equation(
             "EQ_P12_002",
-            r"D_{req} = \{U_{req}, I_k'', i_p, I_{dyn}, I_{th}, t_k\}",
+            r"D_{req} = \{U_{req}, I_k'', I_b, i_p, I_{dyn}, I_{th}, t_k, t_b, i_{DC}\}",
             "Dane wymagane z P11 (key_results)",
             "PN-EN 60909",
             (
@@ -363,15 +438,21 @@ class EquipmentProofGenerator:
                 _symbol("I_{dyn}", "kA", "Prąd dynamiczny", "idyn_ka"),
                 _symbol("I_{th}", "kA", "Prąd cieplny", "ith_ka"),
                 _symbol("t_k", "s", "Czas zwarcia", "tk_s"),
+                _symbol("I_b", "kA", "Prąd wyłączeniowy symetryczny", "ib_ka"),
+                _symbol("t_b", "s", "Czas wyłączenia", "tb_s"),
+                _symbol("i_{DC}", "kA", "Składowa nieokresowa w chwili t_b", "i_dc_ka"),
             ),
         )
         input_values = (
             _value_or_missing("U_{req}", _as_float(required.get("u_kv")), "kV", "u_kv"),
             _value_or_missing("I_k''", _as_float(required.get("ikss_ka")), "kA", "ikss_ka"),
+            _value_or_missing("I_b", _as_float(required.get("ib_ka")), "kA", "ib_ka"),
             _value_or_missing("i_p", _as_float(required.get("ip_ka")), "kA", "ip_ka"),
             _value_or_missing("I_{dyn}", _as_float(required.get("idyn_ka")), "kA", "idyn_ka"),
             _value_or_missing("I_{th}", _as_float(required.get("ith_ka")), "kA", "ith_ka"),
             _value_or_missing("t_k", _as_float(required.get("tk_s")), "s", "tk_s"),
+            _value_or_missing("t_b", _as_float(required.get("tb_s")), "s", "tb_s"),
+            _value_or_missing("i_{DC}", _as_float(required.get("i_dc_ka")), "kA", "i_dc_ka"),
         )
         substitution = _substitution_from_values(input_values)
         return ProofStep(
@@ -417,22 +498,35 @@ class EquipmentProofGenerator:
         )
 
     @classmethod
-    def _step_check_icu(cls, check: EquipmentProofCheckResult) -> ProofStep:
+    def _step_check_icu(
+        cls, check: EquipmentProofCheckResult, wielkosc: WielkoscKryteriumWylaczania | None
+    ) -> ProofStep:
+        """Krok kryterium wyłączania — wzór i symbol porównywanej wielkości z TEGO SAMEGO
+        predykatu co `_check_icu` (`_wielkosc_wylaczania`: I_b dla wyłącznika SN/WN, I_k'' dla
+        nN i bezpiecznika), więc dowód mówi, CO porównano. ``None`` (bieg bez napięcia punktu)
+        → symbol I_b z brakiem wartości: kryterium bez podstawy, wymienione w treści kroku."""
+        if wielkosc is None:
+            wielkosc = WIELKOSC_IB
         equation = _equation(
             "EQ_P12_004",
-            r"I_{cu} \ge I_k''",
+            rf"I_{{cu}} \ge {wielkosc.symbol}",
             "Sprawdzenie zdolności wyłączalnej",
-            "PN-EN 60909",
+            wielkosc.norma,
             (
                 _symbol("I_{cu}", "kA", "Zdolność wyłączalna", "device.i_cu_ka"),
-                _symbol("I_k''", "kA", "Prąd zwarciowy początkowy", "ikss_ka"),
+                _symbol(wielkosc.symbol, "kA", wielkosc.opis_pl, wielkosc.klucz),
             ),
         )
         input_values = (
             _value_or_not_applicable(
                 "I_{cu}", check.device_value, "kA", "device.i_cu_ka", check.status
             ),
-            _value_or_missing("I_k''", check.required_value, "kA", "ikss_ka"),
+            _value_or_missing(
+                wielkosc.symbol,
+                _as_float(check.required_value),
+                "kA",
+                wielkosc.klucz,
+            ),
         )
         substitution = _substitution_from_values(input_values)
         return _check_step(
@@ -499,14 +593,15 @@ class EquipmentProofGenerator:
             _value_or_missing("t_k", required_time, "s", "tk_s"),
         )
 
-        # Karta S-C (2026-07-22): różne czasy odniesienia ⇒ porównanie energii
-        # I²t (Ith_req²·tk ≤ Ithr²·t_thr) z jawnym podstawieniem w wywodzie.
+        # Karta S-C (2026-07-22): czas zwarcia dłuższy od czasu odniesienia ⇒ porównanie
+        # energii I²t (Ith_req²·tk ≤ Ithr²·t_thr) z jawnym podstawieniem w wywodzie. Ten sam
+        # predykat co werdykt `_check_ith` — wywód i werdykt nie mogą się rozjechać.
         if (
             device_val is not None
             and device_time is not None
             and required_val is not None
             and required_time is not None
-            and device_time != required_time
+            and _porownanie_energii_i2t(device_time=device_time, required_time=required_time)
         ):
             equation = _equation(
                 "EQ_P12_006b",
@@ -554,6 +649,77 @@ class EquipmentProofGenerator:
         )
 
 
+def _wielkosc_wylaczania(
+    device: DeviceRating, required: dict[str, Any]
+) -> WielkoscKryteriumWylaczania | None:
+    """Wejście jedynego predykatu wyboru wielkości kryterium wyłączania dla dowodu doboru:
+    napięcie punktu zwarcia z biegu (``u_kv``) i znacznik bezpiecznika z katalogu aparatu."""
+    return wielkosc_kryterium_wylaczania(
+        _as_float(required.get("u_kv")), bezpiecznik=device.bezpiecznik
+    )
+
+
+def _uwagi_wylaczania(
+    wielkosc: WielkoscKryteriumWylaczania | None, required: dict[str, Any]
+) -> tuple[str, ...]:
+    """Uwagi kryterium wyłączania: t_b i składowa nieokresowa i_DC(t_b) z biegu (informacja)."""
+    if wielkosc is not WIELKOSC_IB:
+        return ()
+    tb_s = _as_float(required.get("tb_s"))
+    i_dc_ka = _as_float(required.get("i_dc_ka"))
+    if tb_s is None:
+        return ("Wielkości biegu nie niosą czasu wyłączenia t_b punktu zwarcia.",)
+    tb_txt = f"{tb_s:g}".replace(".", ",")
+    uwagi = [
+        (
+            f"t_b = {tb_txt} s."
+            if i_dc_ka is None
+            else (
+                f"t_b = {tb_txt} s; składowa nieokresowa i_DC(t_b) = "
+                f"{f'{i_dc_ka:.4f}'.replace('.', ',')} kA (IEC 60909-0 rozdz. 10) — "
+                "informacyjnie: katalog aparatu nie niesie znamionowej składowej nieokresowej, "
+                "porównania z nią nie wystawiono."
+            )
+        )
+    ]
+    # Karta TB-WARTOSC-ROBOCZA: pochodzenie t_b punktu (pola lokalne albo wartość robocza).
+    zrodlo = required.get("tb_zrodlo")
+    if isinstance(zrodlo, dict):
+        uwagi.append(f"Czas wyłączenia: {zrodlo.get('opis_pl')}")
+        if zrodlo.get("wartosc_robocza") and zrodlo.get("ib_z_udzialem_maszyn"):
+            uwagi.append(
+                "I_b z udziałem maszyn wirujących zależy od t_b (współczynniki μ, q — IEC "
+                "60909-0:2016 rozdz. 9), a t_b jest wartością roboczą: porównanie z I_cu jest "
+                "wynikiem obliczeniowym na danej przyjętej, nie potwierdzonym dowodem przy "
+                "rzeczywistym czasie wyłączenia."
+            )
+    return tuple(uwagi)
+
+
+def _porownanie_energii_i2t(*, device_time: float, required_time: float) -> bool:
+    """JEDYNY predykat wyboru porównania I²t dla kryterium cieplnego (werdykt i wywód).
+
+    Równoważność energii cieplnej działa tylko dla czasu zwarcia DŁUŻSZEGO od czasu
+    znamionowego aparatu (IEC 60865-1, wytrzymałość cieplna urządzeń elektrycznych:
+    I_th ≤ I_thr dla T_k ≤ T_kr, I_th ≤ I_thr·√(T_kr/T_k) dla T_k ≥ T_kr). Przy czasie
+    krótszym albo równym obowiązuje porównanie wprost I_th,req ≤ I_thr.
+    """
+    return required_time > device_time
+
+
+def _dane_przyjete_wejscia(proof_input: EquipmentProofInput) -> tuple[DanaPrzyjeta, ...]:
+    """Dana przyjęta wymaganych wielkości: punkt zabudowy w sieci nN liczonej z wartością roboczą
+    tolerancji napięcia (karta TOLERANCJA-NN-WARTOSC-ROBOCZA) — stoi w wyniku i w ostrzeżeniu
+    dowodu, bo każde z czterech sprawdzeń porównuje wielkość z tego biegu."""
+    if not proof_input.tolerancja_nn_robocza:
+        return ()
+    return (
+        dana_przyjeta_tolerancji_nn(
+            miejsce_pl=f"punkt zabudowy aparatu „{proof_input.device.name_pl}”"
+        ),
+    )
+
+
 def _as_float(value: Any) -> float | None:
     if value is None:
         return None
@@ -569,8 +735,16 @@ def _status_from_checks(checks: tuple[EquipmentProofCheckResult, ...], name: str
     return STATUS_FAIL
 
 
-def _compare_message(check_name: str, device_val: float, required_val: float, status: str) -> str:
-    return f"{check_name}: {device_val:.4f} >= {required_val:.4f} → {status}."
+def _compare_message(symbol: str, jednostka: str, device_val: float, required_val: float) -> str:
+    """Treść porównania: wielkość aparatu, wartość wymagana, jednostka i warunek.
+
+    Status kryterium niesie wyłącznie pole ``status`` wyniku sprawdzenia — tekst nie składa
+    kodu werdyktu (kontrakt werdyktu wyjaśnialnego; ta sama forma co sprawdzenie I_cu).
+    """
+    return (
+        f"{symbol} aparatu {device_val:.4f} {jednostka} wobec wartości wymaganej "
+        f"{required_val:.4f} {jednostka} (warunek {symbol} aparatu ≥ wartość wymagana)."
+    )
 
 
 def _deterministic_uuid(proof_input: EquipmentProofInput, suffix: str) -> UUID:

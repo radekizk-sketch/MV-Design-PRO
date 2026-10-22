@@ -40,7 +40,7 @@ import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicke
 import type {
   CTCatalogType,
   ConverterType,
-  MVApparatusCatalogType,
+  MVApparatusType,
   ProtectionDeviceType,
   TransformerType,
   VTCatalogType,
@@ -72,7 +72,11 @@ import {
 } from '../../../ui/network-build/networkBuildStore';
 import { scheduleNextOperationForm } from '../../../ui/network-build/trunkContinuation';
 import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { PUNKTY_NEUTRALNE_IMPEDANCYJNE } from '../../../types/uziemienie';
+import {
+  ETYKIETA_PL_TOLERANCJI_NN,
+  PUNKTY_NEUTRALNE_IMPEDANCYJNE,
+  TOLERANCJE_NAPIECIA_NN,
+} from '../../../types/uziemienie';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -159,6 +163,12 @@ import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
 import { STACJA_STRINGS as T } from './strings';
 import { NAZWA_RODZAJU_STACJI_PL } from '../../../ui/shared/rodzajStacji';
+
+/** Opcje tolerancji napięcia sieci nN — słownik przypięty do backendu (`types/uziemienie.ts`). */
+const OPCJE_TOLERANCJI_NN = TOLERANCJE_NAPIECIA_NN.map((id) => ({
+  id,
+  etykieta: ETYKIETA_PL_TOLERANCJI_NN[id],
+}));
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'szablon', tytul: T.krokSzablon },
@@ -266,7 +276,7 @@ export function KreatorStacjiSnNn() {
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
   const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
   const [bladRozdzielnicy, setBladRozdzielnicy] = useState<string | null>(null);
-  const [aparaty, setAparaty] = useState<MVApparatusCatalogType[]>([]);
+  const [aparaty, setAparaty] = useState<MVApparatusType[]>([]);
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
 
   // Tor BLOK_RMU — konfiguracje fabryczne WYBRANEJ rodziny (subzasób katalogu).
@@ -2502,6 +2512,16 @@ export function KreatorStacjiSnNn() {
             testid="mvd-kreator-stacja-uklad-nn"
           />
           <PoleWyboru
+            etykieta={T.uziemienieTolerancja}
+            wartosc={dane.tolerancja_napiecia_nn}
+            opcje={OPCJE_TOLERANCJI_NN}
+            onZmiana={(v) =>
+              zmien('tolerancja_napiecia_nn', v as StacjaFormData['tolerancja_napiecia_nn'])
+            }
+            pomoc={T.uziemienieTolerancjaPomoc}
+            testid="mvd-kreator-stacja-tolerancja-nn"
+          />
+          <PoleWyboru
             etykieta={T.uziemieniePunkt}
             wartosc={dane.neutral_point}
             opcje={T.uziemieniePunktOpcje}
@@ -2519,6 +2539,18 @@ export function KreatorStacjiSnNn() {
               wymagane
               blad={bladDlaPola('neutral_impedance_ohm')}
               testid="mvd-kreator-stacja-rezystancja-uziemienia"
+            />
+          ) : null}
+          {dane.neutral_point === 'directly_grounded' ? (
+            <PoleTekstowe
+              etykieta={T.uziemienieRezystancjaUziomuStacji}
+              wartosc={dane.neutral_impedance_ohm}
+              onZmiana={(v) => zmien('neutral_impedance_ohm', v)}
+              placeholder={T.uziemienieRezystancjaPlaceholder}
+              pomoc={T.uziemienieRezystancjaUziomuStacjiPomoc}
+              wymagane={dane.uklad_sieci_nn === 'TT'}
+              blad={bladDlaPola('neutral_impedance_ohm')}
+              testid="mvd-kreator-stacja-rezystancja-uziomu-stacji"
             />
           ) : null}
           <PanelTeorii

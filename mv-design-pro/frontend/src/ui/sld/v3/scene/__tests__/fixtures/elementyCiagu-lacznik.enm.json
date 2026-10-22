@@ -2182,7 +2182,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "093ab8704a1f4f72b18a201fbbb30e2c4b28441065b1aef8595270419ea050f0",
+      "hash_sha256": "e434db2634c4c3a9d2f715dfc0fc2c30939899119c3a3354939be510524d6c70",
       "name": "Elementy ciągu — lacznik",
       "revision": 14,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2229,6 +2229,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "8dc5692f-8d2e-5ae0-ab06-b9651fcce073",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -2272,6 +2273,7 @@
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
+        "earth_electrode_r_ohm": null,
         "id": "bf82114a-247e-594f-9f01-1eaf311f072f",
         "materialized_params": {
           "catalog_item_id": "load_uslugi_30kw",
@@ -2317,14 +2319,13 @@
     "sources": [
       {
         "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "c_max": null,
-        "c_min": null,
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
         "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "src-gpz-15kv-250mva-rx010",
           "catalog_item_version": "2024.1",
@@ -2471,6 +2472,7 @@
         "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",
@@ -2523,6 +2525,7 @@
         "lv_bus_ref": "nn/5ba84c7bbb17c3f468c62ed47862535a/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",
@@ -2568,6 +2571,7 @@
         "lv_bus_ref": "nn/1efcafeca12f431ec869adee17633f80/feeder_bus",
         "lv_earthing_system": "TN-C-S",
         "lv_neutral": null,
+        "lv_voltage_tolerance": "PLUS_6",
         "materialized_params": {
           "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
           "catalog_item_version": "legacy",

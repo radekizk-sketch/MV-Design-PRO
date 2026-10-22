@@ -55,7 +55,7 @@ from enm.canonical_analysis import (
 )
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
-from network_model.odmowa_danych import OdmowaDanychError
+from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 
 DEFAULT_STEP_MW = 0.5
 DEFAULT_MAX_STEPS = 40
@@ -350,8 +350,10 @@ def build_hosting_capacity_view(
             raise OdmowaDanychError("Lista węzłów-kandydatów jest pusta.")
         unknown = [ref for ref in candidates if ref not in bus_names]
         if unknown:
-            raise OdmowaDanychError(
-                "Wskazane węzły nie istnieją w modelu: " + ", ".join(unknown) + "."
+            raise OdmowaNazwana(
+                f"Wskazane węzły-kandydaci nie istnieją w modelu (liczba: {len(unknown)}).",
+                kod="hosting_capacity.wezly_spoza_modelu",
+                dane={"elementy_ref": tuple(unknown)},
             )
 
     # JEDNA walidacja modelu bazowego na CAŁY widok (nie na scenariusz) —

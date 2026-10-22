@@ -22,6 +22,8 @@ Kanon: hierarchia dokumentów z sekcji „Document Hierarchy" poniżej. Stan i d
 
 **WERDYKT WYJAŚNIALNY (dyrektywa właściciela 2026-09-22, zasada stała).** Werdykt typu „SPEŁNIA / NIE SPEŁNIA / PASS / FAIL / OK / ZGODNY" nie jest samodzielnym komunikatem dla użytkownika, wynikiem raportowym ani dowodem — w żadnej domenie (zgodność NC RfG, dynamika/FRT, zabezpieczenia, zwarcia, dobór aparatury, SWZ, selektywność, CCT, spadki napięć, obciążalność, bilans, harmoniczne, jakość modelu). Status maszynowy (`SPELNIA` / `NIE_SPELNIA` / `NIEJEDNOZNACZNY` / `NIE_OCENIONO` / `BRAK_PODSTAWY` / `BRAK_DOWODU` / `NIE_DOTYCZY`) służy wyłącznie agregacji, filtrom i API i ZAWSZE jest związany z wyjaśnieniem: co oceniono, względem jakiego kryterium, jaki wynik liczbowy (z jednostką), jaki limit (z podstawą i stanem źródła), jaki margines, jaka przyczyna, jaki dowód (metoda, status modelu, status danych), jaki zakres ważności. Rekord wyniku bez wyjaśnienia = błąd kontraktu; brak danych ≠ spełnia; brak symulacji ≠ spełnia; brak certyfikatu ≠ spełnia; `UNVALIDATED_MODEL` ≠ pełny dowód. Agregat nigdy nie zastępuje kryteriów składowych. Kontrakt wiążący: `mv-design-pro/docs/domain/KONTRAKT_WERDYKTU_WYJASNIALNEGO.md`.
 
+**ZASADA NR 4 — BRAK DANYCH KATALOGOWYCH NIE BLOKUJE OBLICZEŃ (dyrektywa właściciela 2026-10-21, zasada stała).** System pomaga projektować, a nie zatrzymuje pracy z powodu niekompletnego katalogu. Gdy brakuje parametru urządzenia: (1) system PROPONUJE wartość roboczą — z dobranego profilu urządzenia, z normy (z numerem i jednostką redakcyjną) albo z jawnego założenia inżynierskiego; (2) obliczenie biegnie od razu z tą wartością — brak parametru urządzenia nie jest blokerem gotowości ani statusem „brak podstawy"; (3) projektant może zmienić każdą proponowaną wartość w modelu i przeliczyć; (4) źródło i założenie są w wyjaśnieniu, komentarzu obliczeń i raporcie — dyskretnie, bez natrętnych ostrzeżeń; (5) wartość robocza NIGDY nie udaje danej producenta: jakość `ESTIMATED` (nie `DATASHEET`), wpis w `dane_przyjete`, a ocena oparta na niej ma kompletność dowodu `NIEPELNY` — wynik na założeniach jest odróżniony od potwierdzonego dowodu zgodności (kontrakt werdyktu §3). Nie dotyczy braków MODELU (topologia, brak elementu, brak zasilania) ani podstawy limitu wymagania — te pozostają jawnymi brakami.
+
 ---
 
 ## 🤖 Model i pisanie promptów
@@ -96,7 +98,7 @@ The system is architecturally aligned with **DIgSILENT PowerFactory** principles
 - **HTTP Client**: httpx
 - **Export**: reportlab (PDF), python-docx (DOCX)
 - **Testing**: pytest, pytest-asyncio, pytest-cov
-- **Linting/Formatting**: black (line-length 100), ruff (E, F, W, I, N, UP, B, C4), mypy w trybie projektu z zapadką długu (`scripts/mypy_ratchet_guard.py`; pin 221 błędów / 33 pliki zmierzony 2026-10-15 na drzewie karty W5-B, zapadka w obie strony) — `--strict` obowiązuje per pakiet na nowych pakietach (`werdykt`, `catalog.profiles.nc_rfg`, `network_model.solvers.ncrfg_ptpiree`, `application.ncrfg_compliance`, `dziedziny`): `MYPYPATH=src mypy --strict --follow-imports=silent -p <pakiet>`
+- **Linting/Formatting**: black (line-length 100), ruff (E, F, W, I, N, UP, B, C4), mypy w trybie projektu z zapadką długu (`scripts/mypy_ratchet_guard.py`; pin 167 błędów / 21 plików zmierzony 2026-10-22 na drzewie scalenia gałęzi programu (partie 9–13) z gałęzią UI/UX (W5-B), zapadka w obie strony) — `--strict` obowiązuje per pakiet na nowych pakietach (`werdykt`, `catalog.profiles.nc_rfg`, `network_model.solvers.ncrfg_ptpiree`, `application.ncrfg_compliance`, `dziedziny`): `MYPYPATH=src mypy --strict --follow-imports=silent -p <pakiet>`
 
 ### Frontend (TypeScript 5 / React 18)
 - **Build Tool**: Vite 5
@@ -664,7 +666,7 @@ python scripts/smoke_local.sh                     # Local smoke test
 - Line length: 100 characters
 - Formatter: black (`target-version = ['py311']`)
 - Linter: ruff (rules: E, F, W, I, N, UP, B, C4; ignores: E501)
-- Type hints required: mypy z wtyczką pydantic w trybie projektu (`[tool.mypy]` w `backend/pyproject.toml` NIE ma `strict = true` — dług typów 221/33 (pomiar 2026-10-15) pilnowany zapadką `mypy_ratchet_guard`; korekta 2026-09-23: dawne zdanie „mypy strict mode" było nieprawdziwe); nowe pakiety pisane pod `--strict` per pakiet
+- Type hints required: mypy z wtyczką pydantic w trybie projektu (`[tool.mypy]` w `backend/pyproject.toml` NIE ma `strict = true` — dług typów 167/21 (pomiar 2026-10-22, scalenie partii 9–13 z gałęzią UI/UX) pilnowany zapadką `mypy_ratchet_guard`; korekta 2026-09-23: dawne zdanie „mypy strict mode" było nieprawdziwe); nowe pakiety pisane pod `--strict` per pakiet
 - asyncio mode: auto (pytest-asyncio)
 - Use frozen dataclasses for immutable result types
 

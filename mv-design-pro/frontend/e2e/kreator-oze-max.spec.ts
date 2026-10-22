@@ -15,6 +15,8 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { czekajNaKoniecBiegu } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
+import type { PozycjaBom } from '../src/ui2/kreatory/zrodlo-oze/podsumowanieApi';
 
 
 /** Odczyt gotowosci inzynierskiej przypadku (`GET /api/cases/{id}/engineering-readiness`).
@@ -50,7 +52,7 @@ type DomainOpResponse = {
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     buses?: Array<{ ref_id: string; voltage_kv: number }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[]; station_type?: string }>;
     generators?: Array<{
@@ -244,7 +246,7 @@ async function zbudujSiecGotowaDoObliczen(
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
-    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4, nn_earthing: { lv_system: 'TN-C-S' } },
+    station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4, nn_earthing: { lv_system: 'TN-C-S', lv_voltage_tolerance: 'PLUS_10' } },
     // KOMPLETNOSC-POLA-TR (klasa A): stacja SN/nN Z transformatorem — pole roli
     // 'TR' dopisane, bo realna rozdzielnia realizuje odejscie do transformatora
     // polem transformatorowym. Kreator stacji tworzy je domyslnie, wiec fixture
@@ -266,7 +268,7 @@ async function zbudujSiecGotowaDoObliczen(
     // stacja z odbiorem nN bez układu sieci nN na transformatorze (`Transformer.lv_earthing_system`, W5-A) jest E063 (BLOKER,
     // `enm/validator.py` — IEC 60364-4-41), a pętla domykania blokerów niżej
     // nie zna kodu E063, więc `readiness.ready` zostałby `false` na stałe.
-    nn_earthing: { lv_system: 'TN-S' },
+    nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
   });
 
   const napiecia = new Map(
@@ -297,7 +299,9 @@ async function zbudujSiecGotowaDoObliczen(
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     });
   }
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),
@@ -548,16 +552,23 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
     'Zabezpieczenia',
   );
 
-  // Karta W10-2a (OD-16): lista materiałowa toru z REALNEGO backendu — nazwy typów z
-  // katalogu zamiast identyfikatorów i koszt z cennika wersjonowanego. Szablon cennika w
-  // repozytorium nie ma cen, więc koszt to zdanie odmowy (nigdy „0,00 PLN").
-  await expect(page.getByTestId('mvd-kreator-oze-bom-tabela')).toBeVisible({ timeout: 30000 });
-  await expect(page.getByTestId('mvd-kreator-oze-bom-tabela')).not.toContainText('tr-sn-nn-');
-  const kosztBom = page.getByTestId('mvd-kreator-oze-bom-koszt');
-  await expect(kosztBom).toHaveAttribute('data-status', 'BRAK_CENNIKA');
-  await expect(kosztBom).toContainText('Nie można wyznaczyć listy materiałowej (cennik 2026-09)');
-  await expect(kosztBom).not.toContainText('BRAK_CENNIKA');
-  await expect(kosztBom).not.toContainText('PLN');
+  // Lista materiałowa w TYM przepływie (karta R10-E2E-CZERWONE, przepisanie do kanonu).
+  // Lista materiałowa i raport zgodności opisują tor DER przyłączony po stronie SN
+  // (dedykowane pole SN, własny transformator blokowy, kabel SN — `application/analyses/
+  // der_sn_track.py::is_der_sn_generator`). Ten przepływ wiąże źródło z ISTNIEJĄCYM
+  // transformatorem stacji (krok 3 bez „Zastosuj"), więc backend odpowiada 404 na
+  // `GET /api/der-sn/{case}/bom`, a panel mówi uczciwie, czego lista dotyczy. Karta
+  // W10-2a dopisała tu asercje TABELI listy, której ten przepływ z definicji nie ma
+  // (spec był czerwony od tamtej pory); intencja W10-2a — tabela z nazwami typów
+  // z katalogu i koszt jako zdanie odmowy BRAK_CENNIKA z realnego backendu — jest
+  // sprawdzana w teście „W10-2a: lista materiałowa toru DER-SN z doboru" niżej, który
+  // materializuje tor SN natywnym „Zaproponuj dobór" → „Zastosuj".
+  const sekcjaBom = page.getByTestId('mvd-kreator-oze-bom');
+  await expect(sekcjaBom).toContainText(
+    'Lista materiałowa dotyczy toru DER przyłączonego po stronie SN.',
+  );
+  await expect(page.getByTestId('mvd-kreator-oze-bom-tabela')).toHaveCount(0);
+  await expect(page.getByTestId('mvd-kreator-oze-bom-koszt')).toHaveCount(0);
 
   // ------------------------------------------------------------------
   // Asercja PRZEZ API: wytwórca w ENM MA wiązania aparaturowe, profile,
@@ -594,4 +605,87 @@ test('K9-A: kreator OZE MAX — aparatura i zgodność w jednym przepływie, wi�
   expect(meta['u_set_pu']).toBe(1.02);
   expect(meta['q_min_mvar']).toBe(-0.05);
   expect(meta['q_max_mvar']).toBe(0.05);
+});
+
+/**
+ * W10-2a (OD-16) na torze, którego lista materiałowa dotyczy (karta R10-E2E-CZERWONE).
+ *
+ * Iloczyn cech listy materiałowej kreatora OZE: wariant przyłączenia (transformator stacji
+ * — test K9-A wyżej, tor SN z doboru — ten test) × stan sekcji listy (uczciwy brak / tabela
+ * z kosztem). Tor DER-SN materializowany NATYWNYMI klikami „Zaproponuj dobór" → „Zastosuj"
+ * w kroku „Dobór toru SN"; po zapisie panel pokazuje tabelę z nazwami typów z katalogu (nie
+ * identyfikatorami) i koszt jako zdanie odmowy BRAK_CENNIKA (szablon cennika w repozytorium
+ * nie ma cen — nigdy „0,00 PLN"). Wiersze tabeli porównywane z tą samą listą pobraną z
+ * backendu (`GET /api/der-sn/{case}/bom`) — jedna prawda, zero liczb z frontu.
+ */
+test('W10-2a: lista materiałowa toru DER-SN z doboru — nazwy typów z katalogu i koszt jako odmowa BRAK_CENNIKA', async ({ page, request }) => {
+  test.setTimeout(300000);
+
+  const { caseId } = await createCaseFromUi(page, request);
+  const { stationSnBusRefs } = await zbudujSiecGotowaDoObliczen(request, caseId);
+  await uruchomBiegPrzezApi(request, caseId, 'LOAD_FLOW');
+
+  await przeladujPowloke(page);
+  await otworzKreatorOzeZeZdolnosci(page, stationSnBusRefs[0]);
+
+  // Krok 1: wariant blokowy BEZ wiązania z transformatorem stacji — transformator blokowy
+  // przyjdzie z doboru toru SN (krok 3).
+  await page.getByTestId('mvd-kreator-oze-wariant').selectOption('block_transformer');
+  await page.getByTestId('mvd-kreator-oze-dalej').click();
+  const konwerterSelect = page.getByTestId('mvd-kreator-oze-konwerter');
+  await expect(konwerterSelect).toBeVisible({ timeout: 20000 });
+  await konwerterSelect.selectOption(CONVERTER_ID);
+
+  // Krok 3: dobór toru SN z backendu i zastosowanie propozycji (materializacja toru).
+  await page.getByTestId('mvd-kreator-oze-dalej').click();
+  await expect(page.getByTestId('mvd-kreator-oze-dobor-sekcja')).toBeVisible();
+  // Długość kabla SN od pola stacji do transformatora blokowego (pole w km; 150 m) — dana
+  // projektanta, bez niej dobór kabla nie ma wejścia (przycisk „Zaproponuj dobór" nieaktywny).
+  await page.getByTestId('mvd-kreator-oze-dobor-dlugosc').fill('0.15');
+  await page.getByTestId('mvd-kreator-oze-dobor-zaproponuj').click();
+  await expect(page.getByTestId('mvd-kreator-oze-dobor-propozycje')).toBeVisible({ timeout: 30000 });
+  const zastosuj = page.getByTestId('mvd-kreator-oze-dobor-zastosuj');
+  await expect(zastosuj).toBeEnabled();
+  await zastosuj.click();
+
+  // Kroki aparatura → zgodność → regulacja → zapis (bez auto-biegu).
+  for (const krok of [
+    'mvd-kreator-oze-aparatura',
+    'mvd-kreator-oze-zgodnosc',
+    'mvd-kreator-oze-tryb-pracy',
+    'mvd-kreator-oze-autobieg-toggle',
+  ]) {
+    await page.getByTestId('mvd-kreator-oze-dalej').click();
+    await expect(page.getByTestId(krok)).toBeVisible({ timeout: 20000 });
+  }
+  await page.getByTestId('mvd-kreator-oze-autobieg-toggle').selectOption('nie');
+  await page.getByTestId('mvd-kreator-oze-zapisz').click();
+  await expect(page.getByTestId('mvd-kreator-oze-sekwencja-zrodlo')).toHaveAttribute(
+    'data-stan',
+    'zapisane',
+    { timeout: 30000 },
+  );
+
+  // Lista materiałowa z backendu — ta sama, którą panel pokazuje.
+  const bomResponse = await request.get(`${BACKEND_BASE}/api/der-sn/${caseId}/bom`, {
+    timeout: 30000,
+  });
+  expect(bomResponse.ok(), await bomResponse.text()).toBeTruthy();
+  // Typ odpowiedzi z kontraktu klienta (jedno źródło), nie lokalna kopia pól.
+  const bom = (await bomResponse.json()) as { pozycje: readonly PozycjaBom[] };
+  const pozycjeKatalogowe = bom.pozycje.filter((p) => p.catalog_ref && p.typ_nazwa);
+  expect(pozycjeKatalogowe.length, 'tor DER-SN ma pozycje z katalogu').toBeGreaterThan(0);
+
+  const tabela = page.getByTestId('mvd-kreator-oze-bom-tabela');
+  await expect(tabela).toBeVisible({ timeout: 30000 });
+  await expect(tabela.locator('tbody tr')).toHaveCount(bom.pozycje.length);
+  for (const pozycja of pozycjeKatalogowe) {
+    await expect(tabela).toContainText(pozycja.typ_nazwa as string);
+    await expect(tabela).not.toContainText(pozycja.catalog_ref as string);
+  }
+  const kosztBom = page.getByTestId('mvd-kreator-oze-bom-koszt');
+  await expect(kosztBom).toHaveAttribute('data-status', 'BRAK_CENNIKA');
+  await expect(kosztBom).toContainText('Nie można wyznaczyć listy materiałowej (cennik 2026-09)');
+  await expect(kosztBom).not.toContainText('BRAK_CENNIKA');
+  await expect(kosztBom).not.toContainText('PLN');
 });

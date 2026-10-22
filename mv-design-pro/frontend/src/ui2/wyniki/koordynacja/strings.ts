@@ -30,22 +30,24 @@ export const KOORDYNACJA_STRINGS = {
   brakZwarciaAkcja: 'Przejdź do obliczeń',
 
   // Sekcja nastaw (karta W3-C1) — jedyna metodyka: Hoppel/IRiESD. Kotwica = ostatni
-  // zakończony bieg zwarcia trójfazowego gałęzi maksymalnej (c_max) przypadku.
+  // zakończony bieg zwarcia trójfazowego scenariusza MAX przypadku (karta
+  // WSPOLCZYNNIK-C-JEDEN-NOSNIK: gałęzie rozstrzyga scenariusz, c dobiera backend per węzeł).
   nastawyTytul: 'Nastawy nadprądowe I>/I>> (metoda Hoppela/IRiESD)',
-  nastawyOpis: 'Nastawy liczone z zakończonego zwarcia trójfazowego (gałąź maksymalna '
-    + 'c_max) tego przypadku: serwer sam dolicza wariant minimalny (c_min) i wariant '
-    + 'rozpływu na tej samej migawce. Wybierz chroniony odcinek i szynę kolejnej strefy '
-    + 'selektywności — reszta jest wynikiem silnika, nie UI.',
+  nastawyOpis: 'Nastawy liczone z zakończonego zwarcia trójfazowego (scenariusz MAX) '
+    + 'tego przypadku: serwer sam dolicza wariant minimalny (scenariusz MIN, c z tabeli 1 '
+    + 'IEC 60909-0 dla każdego węzła) i wariant rozpływu na tej samej migawce. Wybierz '
+    + 'chroniony odcinek i szynę kolejnej strefy selektywności — reszta jest wynikiem '
+    + 'silnika, nie UI.',
   nastawyLadowanie: 'Wyszukiwanie kotwicy nastaw…',
   nastawyLiczenie: 'Liczenie nastaw…',
   nastawyBlad: 'Nie udało się wczytać nastaw',
 
-  // Stan zerowy — brak kotwicy (żaden zakończony bieg 3F c_max w przypadku).
+  // Stan zerowy — brak kotwicy (żaden zakończony bieg 3F scenariusza MAX w przypadku).
   nastawyBrakKotwicyTytul: 'Brak kotwicy nastaw',
   nastawyBrakKotwicyOpis: 'Nastawy I>/I>> liczy się z zakończonego zwarcia trójfazowego '
-    + 'gałęzi maksymalnej (c_max) tego przypadku. Uruchom taki przebieg, aby dobrać '
+    + 'scenariusza MAX tego przypadku. Uruchom taki przebieg, aby dobrać '
     + 'nastawy na tle rzeczywistych prądów zwarcia.',
-  nastawyBrakKotwicyAkcja: 'Uruchom zwarcie 3F (c_max)',
+  nastawyBrakKotwicyAkcja: 'Uruchom zwarcie 3F (scenariusz MAX)',
 
   // Wybór odcinka i szyny kolejnej strefy (dostępność z backendu).
   nastawyWybierzOdcinek: 'Chroniony odcinek',
@@ -73,8 +75,9 @@ export const KOORDYNACJA_STRINGS = {
 
   // Parametry inżynierskie — jawne, z opisanym źródłem wartości domyślnej.
   nastawyParametryTytul: 'Parametry doboru',
-  nastawyParametrCMin: 'Współczynnik napięciowy gałęzi minimalnej c_min',
-  nastawyParametrCMinZrodlo: 'IEC 60909-0 Tabela 1 (domyślnie 1,0 — bieg minimalny SN)',
+  // Podstawa współczynnika c nastaw (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — z proweniencji.
+  nastawyPodstawaCKotwicy: 'Współczynnik c kotwicy',
+  nastawyPodstawaCWariantuMin: 'Współczynnik c wariantu minimalnego',
   nastawyParametrDeltaT: 'Stopień zwłoki czasowej Δt [s]',
   nastawyParametrDeltaTZrodlo: 'IRiESD ENEA (domyślnie 0,3 s)',
   nastawyParametrKb: 'Współczynnik bezpieczeństwa k_b',
@@ -131,7 +134,8 @@ export const KOORDYNACJA_STRINGS = {
   ocenaTytul: 'Ocena zabezpieczeń na biegu zwarciowym',
   ocenaOpis: 'Każde zabezpieczenie nadprądowe z modelu oceniane w punktach zwarcia swojej '
     + 'strefy: prąd przekaźnika z rozpływu zwarciowego, próg i czas z nastaw (charakterystyki '
-    + 'IEC 60255), wiarygodność względem granicy dokładności przekładnika. Nastawy edytujesz '
+    + 'IEC 60255), wiarygodność względem granicy nasycenia przekładnika (z obciążenia obwodu '
+    + 'wtórnego). Nastawy edytujesz '
     + 'na ekranie „Zabezpieczenia i automatyka".',
   ocenaWariant: 'Bieg zwarciowy',
   ocenaWariantMax: 'wariant maksymalny',

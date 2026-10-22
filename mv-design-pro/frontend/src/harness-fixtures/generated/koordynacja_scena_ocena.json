@@ -30,6 +30,24 @@
       "i_pickup_a": 2400.0,
       "krotnosc_m": 3.59294556565,
       "margin_percent": 259.29,
+      "nasycenie_ct": {
+        "alf_efektywny": null,
+        "alf_wymagany": 14.3717822626,
+        "assumptions": [],
+        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "granica_nasycenia_a": null,
+        "moc_obliczeniowa_va": null,
+        "moc_wewnetrzna_va": null,
+        "readiness_codes": [
+          "ct.secondary_circuit_missing"
+        ],
+        "status": "UNAVAILABLE",
+        "status_nasycenia": "UNAVAILABLE",
+        "status_obciazenia": "UNAVAILABLE",
+        "wariant_alf": null,
+        "white_box_trace": [],
+        "zapas_alf": null
+      },
       "nazwa_punktu_pl": "Stacja S03",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
       "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6223 A, punkt: zwarcie w punkcie Stacja S03, względnie +259,3 % wartości granicznej).",
@@ -37,7 +55,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 68ef15bab644)",
+          "odniesienie": "bieg zwarciowy 3F (migawka 08efdaa41886)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -141,7 +159,7 @@
           "zastrzezenia": [
             "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)."
+            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
           "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6223 A, punkt: zwarcie w punkcie Stacja S03, względnie +259,3 % wartości granicznej)."
         },
@@ -167,7 +185,8 @@
           "technologia": null,
           "wykluczenia": [
             "funkcje ziemnozwarciowe i kierunkowe (osobny tor)",
-            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)"
+            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)",
+            "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
           ]
         }
       },
@@ -218,8 +237,8 @@
       ],
       "t_trip_s": 0.4,
       "trip_state": "TRIPS",
-      "wiarygodnosc": "WIARYGODNY",
-      "wiarygodnosc_powod_pl": "prąd 8623,0694 A w granicy dokładności przekładnika ALF·I₁n = 12000 A"
+      "wiarygodnosc": "NIEUSTALONA",
+      "wiarygodnosc_powod_pl": "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
     },
     {
       "bilans_pradu": {
@@ -250,6 +269,24 @@
       "i_pickup_a": 2400.0,
       "krotnosc_m": 3.65323139083,
       "margin_percent": 265.32,
+      "nasycenie_ct": {
+        "alf_efektywny": null,
+        "alf_wymagany": 14.6129255633,
+        "assumptions": [],
+        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "granica_nasycenia_a": null,
+        "moc_obliczeniowa_va": null,
+        "moc_wewnetrzna_va": null,
+        "readiness_codes": [
+          "ct.secondary_circuit_missing"
+        ],
+        "status": "UNAVAILABLE",
+        "status_nasycenia": "UNAVAILABLE",
+        "status_obciazenia": "UNAVAILABLE",
+        "wariant_alf": null,
+        "white_box_trace": [],
+        "zapas_alf": null
+      },
       "nazwa_punktu_pl": "Stacja S02",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
       "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6368 A, punkt: zwarcie w punkcie Stacja S02, względnie +265,3 % wartości granicznej).",
@@ -257,7 +294,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 68ef15bab644)",
+          "odniesienie": "bieg zwarciowy 3F (migawka 08efdaa41886)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -361,7 +398,7 @@
           "zastrzezenia": [
             "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)."
+            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
           "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8768 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6368 A, punkt: zwarcie w punkcie Stacja S02, względnie +265,3 % wartości granicznej)."
         },
@@ -387,7 +424,8 @@
           "technologia": null,
           "wykluczenia": [
             "funkcje ziemnozwarciowe i kierunkowe (osobny tor)",
-            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)"
+            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)",
+            "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
           ]
         }
       },
@@ -438,8 +476,8 @@
       ],
       "t_trip_s": 0.4,
       "trip_state": "TRIPS",
-      "wiarygodnosc": "WIARYGODNY",
-      "wiarygodnosc_powod_pl": "prąd 8767,7553 A w granicy dokładności przekładnika ALF·I₁n = 12000 A"
+      "wiarygodnosc": "NIEUSTALONA",
+      "wiarygodnosc_powod_pl": "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
     },
     {
       "bilans_pradu": {
@@ -470,6 +508,24 @@
       "i_pickup_a": 2400.0,
       "krotnosc_m": 3.56289228239,
       "margin_percent": 256.29,
+      "nasycenie_ct": {
+        "alf_efektywny": null,
+        "alf_wymagany": 14.2515691295,
+        "assumptions": [],
+        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "granica_nasycenia_a": null,
+        "moc_obliczeniowa_va": null,
+        "moc_wewnetrzna_va": null,
+        "readiness_codes": [
+          "ct.secondary_circuit_missing"
+        ],
+        "status": "UNAVAILABLE",
+        "status_nasycenia": "UNAVAILABLE",
+        "status_obciazenia": "UNAVAILABLE",
+        "wariant_alf": null,
+        "white_box_trace": [],
+        "zapas_alf": null
+      },
       "nazwa_punktu_pl": "Stacja S04",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
       "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6151 A, punkt: zwarcie w punkcie Stacja S04, względnie +256,3 % wartości granicznej).",
@@ -477,7 +533,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 68ef15bab644)",
+          "odniesienie": "bieg zwarciowy 3F (migawka 08efdaa41886)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -581,7 +637,7 @@
           "zastrzezenia": [
             "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)."
+            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
           "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6151 A, punkt: zwarcie w punkcie Stacja S04, względnie +256,3 % wartości granicznej)."
         },
@@ -607,7 +663,8 @@
           "technologia": null,
           "wykluczenia": [
             "funkcje ziemnozwarciowe i kierunkowe (osobny tor)",
-            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)"
+            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)",
+            "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
           ]
         }
       },
@@ -658,8 +715,8 @@
       ],
       "t_trip_s": 0.4,
       "trip_state": "TRIPS",
-      "wiarygodnosc": "WIARYGODNY",
-      "wiarygodnosc_powod_pl": "prąd 8550,9415 A w granicy dokładności przekładnika ALF·I₁n = 12000 A"
+      "wiarygodnosc": "NIEUSTALONA",
+      "wiarygodnosc_powod_pl": "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
     },
     {
       "bilans_pradu": {
@@ -690,6 +747,24 @@
       "i_pickup_a": 2400.0,
       "krotnosc_m": 3.77388565909,
       "margin_percent": 277.39,
+      "nasycenie_ct": {
+        "alf_efektywny": null,
+        "alf_wymagany": 15.0955426364,
+        "assumptions": [],
+        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "granica_nasycenia_a": null,
+        "moc_obliczeniowa_va": null,
+        "moc_wewnetrzna_va": null,
+        "readiness_codes": [
+          "ct.secondary_circuit_missing"
+        ],
+        "status": "UNAVAILABLE",
+        "status_nasycenia": "UNAVAILABLE",
+        "status_obciazenia": "UNAVAILABLE",
+        "wariant_alf": null,
+        "white_box_trace": [],
+        "zapas_alf": null
+      },
       "nazwa_punktu_pl": "Stacja S01",
       "nazwa_urzadzenia_pl": "Zabezpieczenie pola liniowego GPZ",
       "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9057 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6657 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej).",
@@ -697,7 +772,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 68ef15bab644)",
+          "odniesienie": "bieg zwarciowy 3F (migawka 08efdaa41886)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -801,7 +876,7 @@
           "zastrzezenia": [
             "Podstawa „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 20 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)."
+            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
           "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S01 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie pola liniowego GPZ) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 9057 A wobec wymaganych ≥ 2400 A wg stopień I>> (50): próg 20 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie pola liniowego GPZ zapisane w modelu sieci projektu” (margines +6657 A, punkt: zwarcie w punkcie Stacja S01, względnie +277,4 % wartości granicznej)."
         },
@@ -827,7 +902,8 @@
           "technologia": null,
           "wykluczenia": [
             "funkcje ziemnozwarciowe i kierunkowe (osobny tor)",
-            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)"
+            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)",
+            "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
           ]
         }
       },
@@ -878,8 +954,8 @@
       ],
       "t_trip_s": 0.4,
       "trip_state": "TRIPS",
-      "wiarygodnosc": "WIARYGODNY",
-      "wiarygodnosc_powod_pl": "prąd 9057,3256 A w granicy dokładności przekładnika ALF·I₁n = 12000 A"
+      "wiarygodnosc": "NIEUSTALONA",
+      "wiarygodnosc_powod_pl": "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
     },
     {
       "bilans_pradu": {
@@ -910,6 +986,24 @@
       "i_pickup_a": 1800.0,
       "krotnosc_m": 4.79039135608,
       "margin_percent": 379.04,
+      "nasycenie_ct": {
+        "alf_efektywny": null,
+        "alf_wymagany": 14.3711740682,
+        "assumptions": [],
+        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "granica_nasycenia_a": null,
+        "moc_obliczeniowa_va": null,
+        "moc_wewnetrzna_va": null,
+        "readiness_codes": [
+          "ct.secondary_circuit_missing"
+        ],
+        "status": "UNAVAILABLE",
+        "status_nasycenia": "UNAVAILABLE",
+        "status_obciazenia": "UNAVAILABLE",
+        "wariant_alf": null,
+        "white_box_trace": [],
+        "zapas_alf": null
+      },
       "nazwa_punktu_pl": "Stacja S03",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
       "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379 % wartości granicznej).",
@@ -917,7 +1011,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 68ef15bab644)",
+          "odniesienie": "bieg zwarciowy 3F (migawka 08efdaa41886)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1021,7 +1115,7 @@
           "zastrzezenia": [
             "Podstawa „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)."
+            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
           "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S03 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8623 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6823 A, punkt: zwarcie w punkcie Stacja S03, względnie +379 % wartości granicznej)."
         },
@@ -1047,7 +1141,8 @@
           "technologia": null,
           "wykluczenia": [
             "funkcje ziemnozwarciowe i kierunkowe (osobny tor)",
-            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)"
+            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)",
+            "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
           ]
         }
       },
@@ -1098,8 +1193,8 @@
       ],
       "t_trip_s": 0.1,
       "trip_state": "TRIPS",
-      "wiarygodnosc": "WIARYGODNY",
-      "wiarygodnosc_powod_pl": "prąd 8622,7044 A w granicy dokładności przekładnika ALF·I₁n = 12000 A"
+      "wiarygodnosc": "NIEUSTALONA",
+      "wiarygodnosc_powod_pl": "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
     },
     {
       "bilans_pradu": {
@@ -1130,6 +1225,24 @@
       "i_pickup_a": 1800.0,
       "krotnosc_m": 4.8707690547,
       "margin_percent": 387.08,
+      "nasycenie_ct": {
+        "alf_efektywny": null,
+        "alf_wymagany": 14.6123071641,
+        "assumptions": [],
+        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "granica_nasycenia_a": null,
+        "moc_obliczeniowa_va": null,
+        "moc_wewnetrzna_va": null,
+        "readiness_codes": [
+          "ct.secondary_circuit_missing"
+        ],
+        "status": "UNAVAILABLE",
+        "status_nasycenia": "UNAVAILABLE",
+        "status_obciazenia": "UNAVAILABLE",
+        "wariant_alf": null,
+        "white_box_trace": [],
+        "zapas_alf": null
+      },
       "nazwa_punktu_pl": "Stacja S02",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
       "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8767 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6967 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej).",
@@ -1137,7 +1250,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 68ef15bab644)",
+          "odniesienie": "bieg zwarciowy 3F (migawka 08efdaa41886)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1241,7 +1354,7 @@
           "zastrzezenia": [
             "Podstawa „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)."
+            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
           "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S02 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8767 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6967 A, punkt: zwarcie w punkcie Stacja S02, względnie +387,1 % wartości granicznej)."
         },
@@ -1267,7 +1380,8 @@
           "technologia": null,
           "wykluczenia": [
             "funkcje ziemnozwarciowe i kierunkowe (osobny tor)",
-            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)"
+            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)",
+            "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
           ]
         }
       },
@@ -1318,8 +1432,8 @@
       ],
       "t_trip_s": 0.1,
       "trip_state": "TRIPS",
-      "wiarygodnosc": "WIARYGODNY",
-      "wiarygodnosc_powod_pl": "prąd 8767,3843 A w granicy dokładności przekładnika ALF·I₁n = 12000 A"
+      "wiarygodnosc": "NIEUSTALONA",
+      "wiarygodnosc_powod_pl": "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
     },
     {
       "bilans_pradu": {
@@ -1350,6 +1464,24 @@
       "i_pickup_a": 1800.0,
       "krotnosc_m": 4.75032200748,
       "margin_percent": 375.03,
+      "nasycenie_ct": {
+        "alf_efektywny": null,
+        "alf_wymagany": 14.2509660224,
+        "assumptions": [],
+        "formula_ref": "S2obl = S_aparatow + I2n²·Rp;  ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)",
+        "granica_nasycenia_a": null,
+        "moc_obliczeniowa_va": null,
+        "moc_wewnetrzna_va": null,
+        "readiness_codes": [
+          "ct.secondary_circuit_missing"
+        ],
+        "status": "UNAVAILABLE",
+        "status_nasycenia": "UNAVAILABLE",
+        "status_obciazenia": "UNAVAILABLE",
+        "wariant_alf": null,
+        "white_box_trace": [],
+        "zapas_alf": null
+      },
       "nazwa_punktu_pl": "Stacja S04",
       "nazwa_urzadzenia_pl": "Zabezpieczenie odejścia S01",
       "notes_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375 % wartości granicznej).",
@@ -1357,7 +1489,7 @@
         "dowod": {
           "domena_pl": null,
           "metoda": "OBLICZENIE",
-          "odniesienie": "bieg zwarciowy 3F (migawka 68ef15bab644)",
+          "odniesienie": "bieg zwarciowy 3F (migawka 08efdaa41886)",
           "poziom": "UNVALIDATED_MODEL",
           "rodzaj_twierdzenia": "STATIC_CALCULATION",
           "status_danych": {
@@ -1461,7 +1593,7 @@
           "zastrzezenia": [
             "Podstawa „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu”, wydanie model sieci biegu oceny (odcisk migawki w kopercie biegu), stopień I>> (50): próg 15 A (strona wtórna) (założenie projektowe): stan źródła „wskazane” — dokument i jednostka redakcyjna wskazane, treść dokumentu nie jest dołączona do repozytorium.",
             "Poziom dowodowy zdolności narzędzia: „model niezwalidowany” — obliczenie bez ustalonej poprawności fizycznej nie jest dowodem regulacyjnym.",
-            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)."
+            "Zakres ważności: Zadziałanie stopni nadprądowych fazowych przy prądzie początkowym zwarcia biegu IEC 60909 płynącym przez wyłącznik urządzenia — wynik nie obejmuje: funkcje ziemnozwarciowe i kierunkowe (osobny tor); czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy); nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej."
           ],
           "zdanie_pl": "Prąd widziany przez przekaźnik przy zwarciu w punkcie Stacja S04 przekracza prąd rozruchowy stopnia I>> (50) — stopień zadziała (Zabezpieczenie odejścia S01) — kryterium spełnione. Prąd pierwotny płynący przez wyłącznik urządzenia: 8551 A wobec wymaganych ≥ 1800 A wg stopień I>> (50): próg 15 A (strona wtórna) „Nastawy zabezpieczenia Zabezpieczenie odejścia S01 zapisane w modelu sieci projektu” (margines +6751 A, punkt: zwarcie w punkcie Stacja S04, względnie +375 % wartości granicznej)."
         },
@@ -1487,7 +1619,8 @@
           "technologia": null,
           "wykluczenia": [
             "funkcje ziemnozwarciowe i kierunkowe (osobny tor)",
-            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)"
+            "czas własny wyłącznika i przekaźnika (poza charakterystyką nastawy)",
+            "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
           ]
         }
       },
@@ -1538,8 +1671,8 @@
       ],
       "t_trip_s": 0.1,
       "trip_state": "TRIPS",
-      "wiarygodnosc": "WIARYGODNY",
-      "wiarygodnosc_powod_pl": "prąd 8550,5796 A w granicy dokładności przekładnika ALF·I₁n = 12000 A"
+      "wiarygodnosc": "NIEUSTALONA",
+      "wiarygodnosc_powod_pl": "nasycenia przekładnika nie sprawdzono — Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — uzupełnij, by policzyć bilans mocy wtórnej"
     }
   ],
   "nastawy": [
@@ -1552,6 +1685,16 @@
       "gotowe": true,
       "klasa_ct": "5P20",
       "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
+      "obwod_wtorny_ct": {
+        "alf": 20.0,
+        "dlugosc_przewodu_m": null,
+        "i2n_a": 5.0,
+        "moc_stykow_va": null,
+        "obciazenia_aparatow": [],
+        "przekroj_przewodu_mm2": null,
+        "rct_ohm": null,
+        "sn_va": 15.0
+      },
       "pozycja_katalogu": "REF-OC-200",
       "przekladnia_a": [
         600.0,
@@ -1563,7 +1706,7 @@
           "funkcja": "overcurrent_51",
           "jednostka_progu": "A_WTORNY",
           "krzywa": "IEC_SI",
-          "krzywa_pl": "IEC normalnie odwrotna (NI)",
+          "krzywa_pl": "IEC normalnie odwrotna (SI)",
           "prog_pierwotny_a": 240.0,
           "prog_wtorny_a": 2.0,
           "slad": {
@@ -1655,7 +1798,7 @@
             "kod": "DT"
           },
           {
-            "etykieta_pl": "IEC normalnie odwrotna (NI)",
+            "etykieta_pl": "IEC normalnie odwrotna (SI)",
             "kod": "IEC_SI"
           },
           {
@@ -1669,7 +1812,7 @@
         ],
         "jednostka_zakresow_pradowych": "KROTNOSC_IN",
         "krzywe": [
-          "IEC_NI",
+          "IEC_SI",
           "IEC_VI",
           "DT"
         ],
@@ -1715,6 +1858,16 @@
       "gotowe": true,
       "klasa_ct": "5P20",
       "nazwa_pl": "Zabezpieczenie odejścia S01",
+      "obwod_wtorny_ct": {
+        "alf": 20.0,
+        "dlugosc_przewodu_m": null,
+        "i2n_a": 5.0,
+        "moc_stykow_va": null,
+        "obciazenia_aparatow": [],
+        "przekroj_przewodu_mm2": null,
+        "rct_ohm": null,
+        "sn_va": 15.0
+      },
       "pozycja_katalogu": "REF-OC-200",
       "przekladnia_a": [
         600.0,
@@ -1726,7 +1879,7 @@
           "funkcja": "overcurrent_51",
           "jednostka_progu": "A_WTORNY",
           "krzywa": "IEC_SI",
-          "krzywa_pl": "IEC normalnie odwrotna (NI)",
+          "krzywa_pl": "IEC normalnie odwrotna (SI)",
           "prog_pierwotny_a": 180.0,
           "prog_wtorny_a": 1.5,
           "slad": {
@@ -1818,7 +1971,7 @@
             "kod": "DT"
           },
           {
-            "etykieta_pl": "IEC normalnie odwrotna (NI)",
+            "etykieta_pl": "IEC normalnie odwrotna (SI)",
             "kod": "IEC_SI"
           },
           {
@@ -1832,7 +1985,7 @@
         ],
         "jednostka_zakresow_pradowych": "KROTNOSC_IN",
         "krzywe": [
-          "IEC_NI",
+          "IEC_SI",
           "IEC_VI",
           "DT"
         ],

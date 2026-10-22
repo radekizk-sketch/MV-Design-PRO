@@ -174,7 +174,7 @@ ma dwa mechanizmy, nie deklaracje:
   kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
   testach musi byc rowny zbiorowi kodow twardych rejestru.
 
-Kody: `KAT-T-001` … `KAT-T-044` (twarde), `KAT-W-001` … `KAT-W-006`
+Kody: `KAT-T-001` … `KAT-T-047` (twarde), `KAT-W-001` … `KAT-W-006`
 (wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
 
 Karta KATALOG-TURBINY-TOR-V112: `KAT-T-042` pola toru maszyny wylacznie dla
@@ -184,6 +184,11 @@ i skonczone, `044` rodzaj maszyny zgodny z topologia przeksztaltnika (jedna mapa
 `un_kv` (wiaze sie z uzwojeniem nN transformatora blokowego); napiecie stojana
 generatora jest osobnym polem `generator_stator_voltage_kv` i nie wchodzi do
 solwerow.
+
+Karta W5-E-TTIT (scalona w partii integracji 9; numery nadane przy scaleniu, bo karta
+wziela `042`…`044` rownolegle z karta toru V112): `KAT-T-045` rodzaj pradu roznicowego RCD ze
+slownika AC / A / F / B, `046` prad znamionowy, prad roznicowy znamionowy i czas wylaczenia RCD
+dodatnie, `047` RCD selektywny (typ S) z minimalnym czasem niezadzialania.
 
 Karta AB-H0 §0.7.5: `KAT-T-009`/`014`/`015`/`016` sa PRZECELOWANE z dawnego pola
 `ConverterType.harmonic_spectrum_percent` (skasowane; 0 ze 176 pozycji nioslo widmo)
@@ -298,6 +303,7 @@ decyzje podejmuje czlowiek.
 | `lv-breaker-mcb` | 60 | 0 | 2 | 0,0 | 60 | `manufacturer`, `poles` | brak |
 | `lv-cable` | 17 | 0 | 14 | 78,6 | 17 | `ith_1s_a`, `r0_ohm_per_km`, `x0_ohm_per_km` | brak |
 | `lv-fuse-link` | 30 | 0 | 3 | 33,3 | 30 | `i2t_prearc_a2s`, `manufacturer` | brak |
+| `lv-rcd` | 56 | 0 | 5 | 48,6 | 56 | `manufacturer`, `poles` | brak |
 | `mv-apparatus` | 48 | 33 | 7 | 52,4 | 48 | `break_time_s`, `i_dyn_ka`, `making_capacity_ka` | brak |
 | `protection-curve` | 8 | 0 | 2 | 100,0 | 8 | brak | brak |
 | `protection-device` | 12 | 0 | 6 | 79,2 | 12 | brak | brak |
@@ -313,7 +319,7 @@ decyzje podejmuje czlowiek.
 | `transformer` | 263 | 1 | 5 | 80,5 | 263 | brak | brak |
 | `vt` | 13 | 0 | 7 | 90,1 | 13 | brak | brak |
 
-Rodzin objętych pomiarem: 25. Pozycji łącznie: 8041, w tym produkcyjnych: 7091. Pozycji z proweniencją strukturalną: 8041.
+Rodzin objętych pomiarem: 26. Pozycji łącznie: 8097, w tym produkcyjnych: 7091. Pozycji z proweniencją strukturalną: 8097.
 
 Rodziny bez ani jednej pozycji: `spectral-card`.
 

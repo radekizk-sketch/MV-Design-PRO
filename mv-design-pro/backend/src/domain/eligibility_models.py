@@ -41,6 +41,8 @@ class AnalysisType(StrEnum):
     SC_3F = "SC_3F"
     SC_2F = "SC_2F"
     SC_1F = "SC_1F"
+    # Partia integracji 10 (OD-14): kwalifikowalność scenariusza zwarcia dwufazowego z ziemią.
+    SC_2F_G = "SC_2F_G"
     LOAD_FLOW = "LOAD_FLOW"
     # Karta G-22: pętla zwarcia nN (IEC 60364-4-41) i werdykt SWZ per obwód
     # (application/analyses/fault_loop, application/analyses/swz — karta P0.6).

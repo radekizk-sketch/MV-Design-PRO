@@ -1233,7 +1233,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "920386673cb0dbeacb07cf72df35bbfa353a970031d02da4328d4f03245f6a7c",
+    "hash_sha256": "3990319fea253ad931bf6d034b7ce6c6ae87651461dde6290dd6b4e6e5dfdcb2",
     "name": "Sieć toku pracy dynamiki",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1276,6 +1276,7 @@
         "t_pomiaru_czestotliwosci_s": null,
         "u_min_pu": 0.7
       },
+      "earth_electrode_r_ohm": null,
       "id": "6a28385c-8574-5eb1-84e4-f77699c2cb32",
       "materialized_params": {
         "dynamic_model_ref": "load_dyn_zagregowany_sn"
@@ -1305,14 +1306,13 @@
   "sources": [
     {
       "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
       "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "2024.1",
@@ -1434,6 +1434,7 @@
       "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1486,6 +1487,7 @@
       "lv_bus_ref": "nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus",
       "lv_earthing_system": "TN-C",
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-0p8-1mva-dyn11-inverter",
         "catalog_item_version": "2024.1",

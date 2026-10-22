@@ -536,7 +536,7 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
           sn_voltage_kv: 15.0,
           nn_voltage_kv: 0.4,
           station_auxiliary: { active_power_kw: 10.0, cos_phi: 0.95 },
-          nn_earthing: { lv_system: 'TN-S' },
+          nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
         },
         sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
         transformer: {
@@ -649,7 +649,7 @@ async function zbudujSiecZeStacja(
       sn_voltage_kv: 15.0,
       nn_voltage_kv: 0.4,
       station_auxiliary: { active_power_kw: 10.0, cos_phi: 0.95 },
-      nn_earthing: { lv_system: 'TN-S' },
+      nn_earthing: { lv_system: 'TN-S', lv_voltage_tolerance: 'PLUS_10' },
     },
     sn_fields: ['IN', 'OUT', 'FEEDER', 'TR'],
     transformer: {

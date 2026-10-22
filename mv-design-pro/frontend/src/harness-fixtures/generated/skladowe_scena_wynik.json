@@ -7,23 +7,34 @@
       "target_name": "Szyna SN",
       "ikss_ka": 0.00281274591728,
       "ip_ka": 0.00795577147986,
-      "ith_ka": 0.00487691483326,
+      "ith_ka": 0.0048769148332,
       "sk_mva": 0.0730772825627,
-      "rk_ohm": 0.108279253306,
+      "rk_ohm": 0.108279252032,
       "xk_ohm": -10160.476333,
       "zk_ohm": 10160.4763336,
-      "rx_ratio": -1.06569071918e-05,
-      "xr_ratio": -93835.8551875,
+      "rx_ratio": -1.06569070665e-05,
+      "xr_ratio": -93835.8562915,
       "kappa": 2.00003133181,
       "c_factor": 1.1,
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
       "tb_s": 0.1,
+      "tb_zrodlo": {
+        "wartosc_s": 0.1,
+        "pochodzenie": "PROPOZYCJA",
+        "wartosc_robocza": true,
+        "jakosc": "ESTIMATED",
+        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+        "ib_z_udzialem_maszyn": false
+      },
       "ib_ka": 0.00281274591728,
+      "i_dc_ka": 0.00397915540849,
       "ik_ka": 0.00281274591728,
       "ik_thevenin_ka": 0.00281274591728,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842982909e-05,
+      "i2t_ka2s": 2.37842982903e-05,
       "z1_ohm": {
         "re": 0.0541396260155,
         "im": 1.06264651202
@@ -33,7 +44,7 @@
         "im": 1.06264651202
       },
       "z0_ohm": {
-        "re": 1.2745363594e-09,
+        "re": 5.11590769747e-13,
         "im": -10162.601626
       },
       "branch_contributions": null,
@@ -49,13 +60,13 @@
       "reporting_limitations_pl": [
         "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
       ],
-      "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+      "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:c2db3ba1a8ae432464d90043a238960c80d0d8f0b04e87b0f7e4aa9d5b6a4347",
+        "proof_ref": "proof:short-circuit:1a1d9a23d2e985a262489e9fd03c03b69873133effe9a2f55c2d647775ad6f35",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
@@ -67,7 +78,8 @@
           6,
           7,
           8,
-          9
+          9,
+          10
         ],
         "method_basis": "IEC_60909",
         "requires_z0": true,
@@ -97,10 +109,21 @@
       "xr_ratio": 10.195036258,
       "kappa": 1.75018047171,
       "c_factor": 1.1,
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo WN, MAX",
       "un_kv": 110.0,
       "tk_s": 1.0,
       "tb_s": 0.1,
-      "ib_ka": 13.5689751782,
+      "tb_zrodlo": {
+        "wartosc_s": 0.1,
+        "pochodzenie": "PROPOZYCJA",
+        "wartosc_robocza": true,
+        "jakosc": "ESTIMATED",
+        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+        "ib_z_udzialem_maszyn": false
+      },
+      "ib_ka": 13.5609415364,
+      "i_dc_ka": 0.880095306896,
       "ik_ka": 13.5609415364,
       "ik_thevenin_ka": 13.5609415364,
       "ik_inverters_ka": 0.0,
@@ -128,17 +151,16 @@
       "reporting_status_pl": "raportowalny",
       "proof_status_pl": "pełny",
       "reporting_limitations_pl": [],
-      "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+      "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:66cfaf2973340adf68decfcca6489cec7f9b3fa974352ed7ae90583abdff443f",
+        "proof_ref": "proof:short-circuit:4c6c5c926be3cedbde59164f5e183df4b3a3f2c30bde096f32f4a5f3f0d5ecdf",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          10,
           11,
           12,
           13,
@@ -146,7 +168,9 @@
           15,
           16,
           17,
-          18
+          18,
+          19,
+          20
         ],
         "method_basis": "IEC_60909",
         "requires_z0": true,
@@ -174,10 +198,21 @@
       "xr_ratio": 4.39737922774,
       "kappa": 1.51538143243,
       "c_factor": 1.05,
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo nN, tolerancja +6 %, MAX",
       "un_kv": 0.4,
       "tk_s": 1.0,
       "tb_s": 0.1,
-      "ib_ka": 20.7050579881,
+      "tb_zrodlo": {
+        "wartosc_s": 0.1,
+        "pochodzenie": "PROPOZYCJA",
+        "wartosc_robocza": true,
+        "jakosc": "ESTIMATED",
+        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+        "ib_z_udzialem_maszyn": false
+      },
+      "ib_ka": 20.7050562746,
+      "i_dc_ka": 0.023114686097,
       "ik_ka": 20.7050562746,
       "ik_thevenin_ka": 20.7050562746,
       "ik_inverters_ka": 0.0,
@@ -205,25 +240,26 @@
       "reporting_status_pl": "raportowalny",
       "proof_status_pl": "pełny",
       "reporting_limitations_pl": [],
-      "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+      "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:9be0de0fd2c4441b44bdc8f440671a2483c45ceb029758fe38abcc45333e589d",
+        "proof_ref": "proof:short-circuit:5f3c63fbc09a079626adc82b6fcabd21581de024db522faf13af47d93af6635c",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          19,
-          20,
           21,
           22,
           23,
           24,
           25,
           26,
-          27
+          27,
+          28,
+          29,
+          30
         ],
         "method_basis": "IEC_60909",
         "requires_z0": true,
@@ -242,23 +278,34 @@
       "target_name": "Stacja B SN",
       "ikss_ka": 0.00281274591728,
       "ip_ka": 0.00795577147986,
-      "ith_ka": 0.00487691483326,
+      "ith_ka": 0.0048769148332,
       "sk_mva": 0.0730772825627,
-      "rk_ohm": 0.108279253306,
+      "rk_ohm": 0.108279252032,
       "xk_ohm": -10160.476333,
       "zk_ohm": 10160.4763336,
-      "rx_ratio": -1.06569071918e-05,
-      "xr_ratio": -93835.8551875,
+      "rx_ratio": -1.06569070665e-05,
+      "xr_ratio": -93835.8562915,
       "kappa": 2.00003133181,
       "c_factor": 1.1,
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
       "tb_s": 0.1,
+      "tb_zrodlo": {
+        "wartosc_s": 0.1,
+        "pochodzenie": "PROPOZYCJA",
+        "wartosc_robocza": true,
+        "jakosc": "ESTIMATED",
+        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+        "ib_z_udzialem_maszyn": false
+      },
       "ib_ka": 0.00281274591728,
+      "i_dc_ka": 0.00397915540849,
       "ik_ka": 0.00281274591728,
       "ik_thevenin_ka": 0.00281274591728,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842982909e-05,
+      "i2t_ka2s": 2.37842982903e-05,
       "z1_ohm": {
         "re": 0.0541396260155,
         "im": 1.06264651202
@@ -268,7 +315,7 @@
         "im": 1.06264651202
       },
       "z0_ohm": {
-        "re": 1.2745363594e-09,
+        "re": 5.11590769747e-13,
         "im": -10162.601626
       },
       "branch_contributions": null,
@@ -284,25 +331,26 @@
       "reporting_limitations_pl": [
         "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
       ],
-      "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+      "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:67721b877c710e0a28307be6677a47cda775419a024babf757d237ce632ab039",
+        "proof_ref": "proof:short-circuit:d89d6874817e655fae79d3a9ac198482d904b369f19f0299d2de36cca0214eba",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          28,
-          29,
-          30,
           31,
           32,
           33,
           34,
           35,
-          36
+          36,
+          37,
+          38,
+          39,
+          40
         ],
         "method_basis": "IEC_60909",
         "requires_z0": true,
@@ -323,23 +371,34 @@
       "target_name": "Stacja C SN",
       "ikss_ka": 0.00281425467467,
       "ip_ka": 0.00796330038795,
-      "ith_ka": 0.00501865678164,
+      "ith_ka": 0.00501865678158,
       "sk_mva": 0.0731164812294,
-      "rk_ohm": 2.93745101745,
+      "rk_ohm": 2.93745101618,
       "xk_ohm": -10155.0287494,
       "zk_ohm": 10155.0291742,
-      "rx_ratio": -0.000289260728842,
-      "xr_ratio": -3457.08871026,
+      "rx_ratio": -0.000289260728717,
+      "xr_ratio": -3457.08871175,
       "kappa": 2.00085079564,
       "c_factor": 1.1,
+      "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
       "un_kv": 15.0,
       "tk_s": 1.0,
       "tb_s": 0.1,
+      "tb_zrodlo": {
+        "wartosc_s": 0.1,
+        "pochodzenie": "PROPOZYCJA",
+        "wartosc_robocza": true,
+        "jakosc": "ESTIMATED",
+        "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+        "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)",
+        "ib_z_udzialem_maszyn": false
+      },
       "ib_ka": 0.00281425467467,
+      "i_dc_ka": 0.00401628939943,
       "ik_ka": 0.00281425467467,
       "ik_thevenin_ka": 0.00281425467467,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.51869158919e-05,
+      "i2t_ka2s": 2.51869158913e-05,
       "z1_ohm": {
         "re": 0.75572550809,
         "im": 1.92643832363
@@ -349,7 +408,7 @@
         "im": 1.92643832363
       },
       "z0_ohm": {
-        "re": 1.42600000127,
+        "re": 1.426,
         "im": -10158.881626
       },
       "branch_contributions": null,
@@ -365,25 +424,26 @@
       "reporting_limitations_pl": [
         "Wynik obliczenia nie ma sensu fizycznego (wartość nieskończona albo współczynnik udaru κ poza zakresem normy IEC 60909) — liczby tego wyniku nie są raportowane."
       ],
-      "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+      "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
       "proof_binding": {
         "reporting_status": "reportable",
         "reporting_status_pl": "raportowalny",
         "proof_status": "complete",
         "proof_status_pl": "pelny",
-        "proof_ref": "proof:short-circuit:b96322e406a379808161dcadb3a24b9d7354621182750e151d264d9bdae96d8f",
+        "proof_ref": "proof:short-circuit:4a8a88c3c48fb785e6268dc6ff726bda46f78c682838ed0fb1688aeaacce9dfb",
         "proof_kind": "white_box_trace",
         "proof_engine_version": "white_box_trace_v1",
         "trace_step_refs": [
-          37,
-          38,
-          39,
-          40,
           41,
           42,
           43,
           44,
-          45
+          45,
+          46,
+          47,
+          48,
+          49,
+          50
         ],
         "method_basis": "IEC_60909",
         "requires_z0": true,
@@ -418,13 +478,76 @@
       "element_ref": "gen_pv",
       "message_pl": "ZAREJESTROWANE ZAŁOŻENIE: karta katalogowa przekształtnika nie niesie k_sc — przyjęto domyślkę systemową k_sc = 1,1 (nie jest to dana producenta ani wartość wymagana normą). Wynik zwarciowy jest roboczy: NIE jest miarodajny dla doboru aparatury, nastaw zabezpieczeń ani pakietu dowodowego. Wpisz k_sc z karty producenta, aby zastąpić domyślkę zmierzoną wartością.",
       "scenariusz": "MAX"
+    },
+    {
+      "code": "fault.czas_tb_wartosc_robocza",
+      "element_ref": null,
+      "message_pl": "Czas wyłączenia tb w części punktów zwarcia jest wartością roboczą (węzeł tablicy μ IEC 60909-0 albo czas pola z roboczym czasem własnym wyłącznika) — prąd wyłączeniowy Ib i składowa iDC policzone na założeniu; podaj tb w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej",
+      "scenariusz": "MAX",
+      "punkty": [
+        {
+          "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
+          "element_id": "bus_sn_main",
+          "nazwa": "Szyna SN",
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        },
+        {
+          "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
+          "element_id": "bus_hv",
+          "nazwa": "GPZ 110 kV",
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        },
+        {
+          "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
+          "element_id": "bus_nn",
+          "nazwa": "Szyna nN",
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        },
+        {
+          "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
+          "element_id": "bus_sn_b",
+          "nazwa": "Stacja B SN",
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        },
+        {
+          "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
+          "element_id": "bus_sn_c",
+          "nazwa": "Stacja C SN",
+          "wartosc_s": 0.1,
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        }
+      ]
     }
   ],
   "analysis_case_context": {
     "case_ref": "case-demo",
     "case_kind": "ZWARCIOWY_MAKS",
     "rodzaj_przypadku": "ZWARCIOWY_MAKS",
-    "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+    "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
     "rewizja_modelu": 1,
     "variant_ref": null,
     "run_ref": "run-sc-scena-skladowe",
@@ -450,14 +573,14 @@
       "project_ref": null,
       "run_ref": "run-sc-scena-skladowe",
       "analysis_type": "short_circuit_sn",
-      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0"
+      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da"
     },
     "reproducibility": {
       "case_ref": "case-demo",
       "analysis_case_ref": "case-demo",
-      "snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
-      "enm_hash": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
-      "enm_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "enm_hash": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
+      "enm_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
       "enm_projection_version": "v12xx.m1.1",
       "variant_ref": null,
       "operating_variant_ref": null,
@@ -467,19 +590,19 @@
       "method_version": "canonical_run_v1",
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
-      "input_hash": "4024336d9eb7c0bc845d7318534d02b1748c75ba5ff7d02b240b5a03ce392d0b",
-      "result_hash": "5a7ca4166e93e459b648481c159a810f0a6e51abf63790707b20b7694f1a498b",
+      "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
+      "result_hash": "54f244ddf89a3fb6d00dbbefd7e047deac933b854c55b68e87fece3eae5784a3",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
       "proof_renderer_version": "white_box_trace_v1",
-      "catalog_snapshot_ref": "005d4dd0a64a14e2460ebf233f2032581786c63152d67b6acdf965ef2e2f46e0",
+      "catalog_snapshot_ref": "f334ed95e4e1701b1eb434fd7907325c6b2b61fafd5d1ac7169f0296ddf0e8da",
       "catalog_materialization_ref": "catalog-materialization:6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
       "catalog_materialization_hash": "6a434a7745908b6ce8dc427aec7483cf22a4e6e7b87d804b539e0c94e0bd62ec",
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "4c4942ca0565eae3312d8ac82c4507a77562b0b8b3e1dfe70c194bdd287d3aed",
+      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",
@@ -493,11 +616,17 @@
   "konfiguracja_biegu": {
     "c_factor": {
       "tryb": "auto_per_wezel",
-      "wartosc": null
+      "wartosc": null,
+      "uzasadnienie": null
     },
     "thermal_time_seconds": {
       "wartosc": 1.0,
       "pochodzenie": "domyslna_assemblera"
+    },
+    "breaking_time_seconds": {
+      "wartosc": null,
+      "pochodzenie": "punkt_zwarcia",
+      "opis_pl": "Scenariusz zwarciowy nie podaje t_b — t_b każdego punktu zwarcia to najkrótszy czas wyłączenia pól z wyłącznikiem przy jego szynie (nastawy zabezpieczenia + czas własny wyłącznika), a bez nich wartość robocza 0,1 s (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s))."
     },
     "metoda": "IEC 60909",
     "scenariusz": "MAX"

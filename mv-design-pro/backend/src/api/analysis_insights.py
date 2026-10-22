@@ -49,7 +49,6 @@ from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
-from network_model.odmowa_danych import OdmowaDanychError
 
 router = APIRouter(tags=["analysis-insights"])
 
@@ -70,15 +69,9 @@ def get_sensitivity(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_wrazliwosc_view(
-            run, nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory)
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_wrazliwosc_view(
+        run, nazwa_przypadku=nazwa_przypadku_z_bazy(run.case_id, uow_factory)
+    )
 
 
 @router.get("/api/insights/analysis-coverage")
@@ -86,38 +79,20 @@ def get_analysis_coverage(
     case_id: str = Query(...),
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
-    try:
-        return build_pokrycie_view(
-            case_id, nazwa_przypadku=nazwa_przypadku_z_bazy(case_id, uow_factory)
-        )
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_pokrycie_view(
+        case_id, nazwa_przypadku=nazwa_przypadku_z_bazy(case_id, uow_factory)
+    )
 
 
 @router.get("/api/insights/network-boundary")
 def get_network_boundary(klucz: KluczTwin, case_id: str = Query(...)) -> dict[str, Any]:
-    try:
-        return build_granice_view(case_id, klucz)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_granice_view(case_id, klucz)
 
 
 @router.get("/api/insights/n-1-contingency/scope")
 def get_n_1_contingency_scope(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_kontyngencje_n1_zakres_view(run)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_kontyngencje_n1_zakres_view(run)
 
 
 @router.get("/api/insights/n-1-contingency")
@@ -127,10 +102,4 @@ def get_n_1_contingency(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
 ) -> dict[str, Any]:
     run = _require_run(run_id)
-    try:
-        return build_kontyngencje_n1_view(run, element_refs=element_refs, uow_factory=uow_factory)
-    except OdmowaDanychError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
-        ) from exc
+    return build_kontyngencje_n1_view(run, element_refs=element_refs, uow_factory=uow_factory)

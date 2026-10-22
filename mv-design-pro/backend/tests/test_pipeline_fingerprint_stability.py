@@ -22,9 +22,11 @@ import json
 from domain.study_case import StudyCaseConfig
 from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch
+from network_model.core.czas_wylaczenia import czas_tb_projektanta
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.voltage_factor import c_for_node
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
     LoopImpedanceComponent,
@@ -142,7 +144,7 @@ class TestSolverInputFingerprintStability:
         assert len(set(hashes)) == 1, f"Fingerprint drift: {hashes}"
 
     def test_sc3f_payload_fingerprint_changes_with_config(self) -> None:
-        """Zmiana StudyCaseConfig.c_factor_max → różny fingerprint."""
+        """Zmiana scenariusza MAX → MIN (c per szyna z tabeli 1) → różny fingerprint."""
         graph = _make_test_network()
         catalog = _make_test_catalog()
 
@@ -152,7 +154,8 @@ class TestSolverInputFingerprintStability:
             case_id="case-fp",
             enm_revision="rev-1",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
-            config=StudyCaseConfig(c_factor_max=1.10),
+            config=StudyCaseConfig(),
+            scenario="MAX",
         )
         env_b = build_solver_input(
             graph=graph,
@@ -160,11 +163,12 @@ class TestSolverInputFingerprintStability:
             case_id="case-fp",
             enm_revision="rev-1",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
-            config=StudyCaseConfig(c_factor_max=1.05),
+            config=StudyCaseConfig(),
+            scenario="MIN",
         )
         hash_a = _hash_canonical_json(env_a.payload)
         hash_b = _hash_canonical_json(env_b.payload)
-        assert hash_a != hash_b, "Different c_factor should produce different payload"
+        assert hash_a != hash_b, "Different scenario (per-bus c) should produce different payload"
 
     def test_simplified_sc_fingerprint_changes_with_sk(self) -> None:
         """Zmiana sc_simplified_sk_mva → różny fingerprint (P0.9 backend integration)."""
@@ -210,7 +214,7 @@ class TestSolverFingerprintStability:
                 fault_node_id="load_bus",
                 c_factor=1.0,
                 tk_s=1.0,
-                tb_s=0.1,
+                czas_tb=czas_tb_projektanta(0.1),
                 include_branch_contributions=False,
             )
             # to_dict() exists per ShortCircuitResult contract
@@ -228,6 +232,7 @@ class TestFaultLoopFingerprintStability:
 
     def test_fault_loop_result_fingerprint_stable(self) -> None:
         data = FaultLoopInput(
+            tolerancja_nn="PLUS_6",
             fault_node_id="bus_lv",
             u_nom_v=230.0,
             phase_conductor=LoopImpedanceComponent(label="Kabel L", r_ohm=0.0157, x_ohm=0.0023),
@@ -249,6 +254,7 @@ class TestFaultLoopFingerprintStability:
     def test_fault_loop_different_inputs_different_hashes(self) -> None:
         """Defensive: różne komponenty → różne hashe (sanity check)."""
         base_kwargs = {
+            "tolerancja_nn": "PLUS_6",
             "fault_node_id": "bus_lv",
             "u_nom_v": 230.0,
             "return_conductor": LoopImpedanceComponent(label="PE", r_ohm=0.01, x_ohm=0.001),
@@ -293,9 +299,13 @@ class TestE2EFingerprintStability:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
                 graph=graph,
                 fault_node_id="load_bus",
-                c_factor=config.c_factor_max,
+                c_factor=c_for_node(
+                    graph.nodes["load_bus"].voltage_level,
+                    "MAX",
+                    tolerancja_nn=graph.nodes["load_bus"].tolerancja_nn,
+                ),
                 tk_s=1.0,
-                tb_s=0.1,
+                czas_tb=czas_tb_projektanta(0.1),
                 include_branch_contributions=False,
             )
             # Step 3: hash combined (payload + result)

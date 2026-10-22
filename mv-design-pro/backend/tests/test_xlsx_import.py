@@ -719,7 +719,9 @@ class TestZapisDoModelu:
         assert podglad.poprawny is False
         [blad] = podglad.bledy
         assert blad["arkusz"] == ARKUSZ_MODELU
-        assert "B9" in blad["komunikat"]
+        # Partia integracji 10: szyna nazwana NAZWĄ z arkusza (kolumna nazwy), nie oznaczeniem
+        # wiersza; kod walidatora (gdy jest) idzie w pole `kod`, nie w treść.
+        assert "szyna „Wyspa”" in blad["komunikat"]
         wynik = serwis.importuj(dane, "Wyspa")
         test_db_session.flush()
         assert wynik.status == STATUS_ODRZUCONO
@@ -742,6 +744,40 @@ class TestZapisDoModelu:
         podglad = serwis.podglad(dane)
         assert podglad.poprawny is False
         assert podglad.bledy[0]["arkusz"] == ARKUSZ_MODELU
+        # Partia integracji 10: odcinek nazwany tą nazwą, którą dostanie w modelu (oznaczenie
+        # z arkusza), zastrzeżenie kompilatora nie niesie kodu.
+        assert "odcinek „L1”" in podglad.bledy[0]["komunikat"]
+        assert "kod" not in podglad.bledy[0]
+
+    def test_blokada_walidatora_niesie_kod_w_polu_nie_w_tresci(
+        self, serwis, monkeypatch: pytest.MonkeyPatch
+    ):
+        """Partia integracji 10: kod walidatora modelu w POLU `kod`, treść = zdanie walidatora
+        z nazwami elementów. Blokady walidatora nie da się dziś wywołać danymi arkusza —
+        kompilator grafu odrzuca je wcześniej własną odmową — więc walidator zwraca tu
+        blokadę podstawioną; reszta ścieżki (arkusz, kompilacja, nazwy) jest realna."""
+        from enm.validator import ValidationIssue, ValidationResult
+
+        def _walidacja(_self, model):
+            ref = model.buses[0].ref_id
+            return ValidationResult(
+                status="FAIL",
+                issues=[
+                    ValidationIssue(
+                        code="E099",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl="Szyna bez danych.",
+                        element_refs=[ref],
+                    )
+                ],
+            )
+
+        monkeypatch.setattr("application.xlsx_import.service.ENMValidator.validate", _walidacja)
+        podglad = serwis.podglad(arkusz_siec_sn())
+        [blad] = podglad.bledy
+        assert blad["kod"] == "E099"
+        assert blad["komunikat"].startswith("Szyna bez danych. (elementy: ")
+        assert "E099" not in blad["komunikat"]
 
     def test_import_do_bazy_z_zawartoscia_nie_rusza_wczesniejszego_projektu(
         self, serwis, test_db_session
@@ -1077,3 +1113,149 @@ def test_blad_programu_przy_otwieraniu_arkusza_wybucha(monkeypatch, typ) -> None
     monkeypatch.setattr(openpyxl, "load_workbook", _zepsuty)
     with pytest.raises(typ, match="błąd programu"):
         XlsxNetworkImporter().import_from_bytes(b"cokolwiek")
+
+
+# ---------------------------------------------------------------------------
+# Tolerancja napięcia sieci nN (karta WSPOLCZYNNIK-C-JEDEN-NOSNIK) — iloczyn cech:
+# {PLUS_6, PLUS_10, brak kolumny, wartość spoza słownika, deklaracja na trafo bez sieci nN}
+# × {typ katalogowy, pełna tabliczka}. Import jest kanałem zapisu tej samej danej co kreator
+# (`update_element_parameters` → `Transformer.lv_voltage_tolerance`).
+# ---------------------------------------------------------------------------
+
+
+def _rodzaj_trafo(rodzaj: str) -> dict[str, str | None]:
+    return {"typ_katalogowy_trafo": _typ_trafo_15_04() if rodzaj == "katalog" else None}
+
+
+class TestTolerancjaSieciNnZArkusza:
+    @pytest.mark.parametrize("rodzaj", ["tabliczka", "katalog"])
+    @pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10"])
+    def test_deklaracja_z_arkusza_jest_tolerancja_wezla_nn_bez_wartosci_roboczej(
+        self, serwis, test_db_session, tolerancja: str, rodzaj: str
+    ):
+        from enm.tolerancja_nn import wyspy_wezlow_nn, zalozenia_tolerancji_nn
+
+        wynik = serwis.importuj(
+            arkusz_siec_sn(tolerancja_nn=tolerancja, **_rodzaj_trafo(rodzaj)), "Sieć"
+        )
+        assert wynik.status == STATUS_ZAIMPORTOWANO, wynik.bledy
+        model = _model_projektu(wynik.project_id or "")
+        [trafo] = model.transformers
+        assert trafo.lv_voltage_tolerance == tolerancja
+        szyna_nn = next(b.ref_id for b in model.buses if b.name == "Stacja 1 nN")
+        wyspa = wyspy_wezlow_nn(model)[szyna_nn]
+        assert wyspa.tolerancja == tolerancja and not wyspa.robocza
+        assert zalozenia_tolerancji_nn(model, "MAX") == ()
+
+    @pytest.mark.parametrize("rodzaj", ["tabliczka", "katalog"])
+    def test_arkusz_bez_kolumny_daje_model_liczony_na_wartosci_roboczej(
+        self, serwis, test_db_session, rodzaj: str
+    ):
+        """Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: arkusz bez kolumny `tolerancja_nN` daje model
+        bez deklaracji — zwarcia sieci nN liczą się na wartości roboczej +10 %, a założenie
+        biegu wskazuje transformator z arkusza i pole deklaracji (dawniej: blokada)."""
+        from enm.tolerancja_nn import (
+            KOD_TOLERANCJA_NN_ROBOCZA,
+            wyspy_wezlow_nn,
+            zalozenia_tolerancji_nn,
+        )
+
+        wynik = serwis.importuj(arkusz_siec_sn(tolerancja_nn=None, **_rodzaj_trafo(rodzaj)), "S")
+        assert wynik.status == STATUS_ZAIMPORTOWANO, wynik.bledy
+        model = _model_projektu(wynik.project_id or "")
+        [trafo] = model.transformers
+        assert trafo.lv_voltage_tolerance is None
+        szyna_nn = next(b.ref_id for b in model.buses if b.name == "Stacja 1 nN")
+        wyspa = wyspy_wezlow_nn(model)[szyna_nn]
+        assert wyspa.tolerancja == "PLUS_10" and wyspa.robocza
+        [zalozenie] = zalozenia_tolerancji_nn(model, "MAX")
+        assert zalozenie["code"] == KOD_TOLERANCJA_NN_ROBOCZA
+        assert zalozenie["element_ref"] == trafo.ref_id
+        assert zalozenie["parametr"] == "lv_voltage_tolerance"
+
+    @pytest.mark.parametrize("rodzaj", ["tabliczka", "katalog"])
+    @pytest.mark.parametrize("wartosc", ["PLUS_8", "+6 %", "plus_6"])
+    def test_wartosc_spoza_slownika_jest_bledem_wiersza(self, wartosc: str, rodzaj: str):
+        wynik = XlsxNetworkImporter().import_from_bytes(
+            arkusz_siec_sn(tolerancja_nn=wartosc, **_rodzaj_trafo(rodzaj))
+        )
+        assert wynik.success is False
+        assert ("Trafo", 2, "tolerancja_nN") in _kolumny(wynik.bledy)
+
+    def test_deklaracja_na_transformatorze_bez_sieci_nn_jest_bledem_wiersza(self):
+        naglowek = NAGLOWEK_TRAFO_TABLICZKA + ["tolerancja_nN"]
+        wiersz = wiersz_trafo_tabliczka("T1", "B2", "B3") + ["PLUS_6"]
+        skoroszyt = zbuduj_skoroszyt(
+            [
+                (
+                    "Szyny",
+                    [NAGLOWEK_SZYN, ["B1", "GPZ", 15.0], ["B2", "S", 15.0], ["B3", "SN2", 6.0]],
+                ),
+                (
+                    "Linie",
+                    [NAGLOWEK_LINII_TABLICZKA, wiersz_linii_tabliczka("L1", "B1", "B2", 5.0)],
+                ),
+                ("Trafo", [naglowek, wiersz]),
+                ("Źródła", [NAGLOWEK_ZRODEL, ["Z1", "B1", "system", 500.0, 0.1]]),
+            ]
+        )
+        wynik = XlsxNetworkImporter().import_from_bytes(skoroszyt)
+        assert wynik.success is False
+        assert ("Trafo", 2, "tolerancja_nN") in _kolumny(wynik.bledy)
+
+    # Drugi nośnik: źródło przyłączone wprost do szyny nN (sieć nN bez transformatora w
+    # modelu) — kolumna `tolerancja_nN` arkusza "Źródła", ten sam predykat co transformator.
+    @staticmethod
+    def _arkusz_sieci_nn(tolerancja: str | None, *, napiecie_zrodla_kv: float = 0.4) -> bytes:
+        naglowek = NAGLOWEK_ZRODEL + ([] if tolerancja is None else ["tolerancja_nN"])
+        wiersz = ["Z1", "B1", "system", 10.0, 0.1] + ([] if tolerancja is None else [tolerancja])
+        return zbuduj_skoroszyt(
+            [
+                (
+                    "Szyny",
+                    [
+                        NAGLOWEK_SZYN,
+                        ["B1", "Przyłącze nN", napiecie_zrodla_kv],
+                        ["B2", "Koniec obwodu", napiecie_zrodla_kv],
+                    ],
+                ),
+                (
+                    "Linie",
+                    [
+                        NAGLOWEK_LINII_TABLICZKA,
+                        wiersz_linii_tabliczka(
+                            "L1", "B1", "B2", 0.1, TABLICZKA_KABEL_120, Un_kV=1.0
+                        ),
+                    ],
+                ),
+                ("Źródła", [naglowek, wiersz]),
+            ]
+        )
+
+    @pytest.mark.parametrize("tolerancja", ["PLUS_6", "PLUS_10", None])
+    def test_deklaracja_zrodla_na_szynie_nn_trafia_do_modelu(
+        self, serwis, test_db_session, tolerancja: str | None
+    ):
+        from enm.tolerancja_nn import wyspy_wezlow_nn
+
+        wynik = serwis.importuj(self._arkusz_sieci_nn(tolerancja), "Sieć nN")
+        assert wynik.status == STATUS_ZAIMPORTOWANO, wynik.bledy
+        model = _model_projektu(wynik.project_id or "")
+        [zrodlo] = model.sources
+        assert zrodlo.lv_voltage_tolerance == tolerancja
+        # Brak deklaracji = wartość robocza +10 % (karta TOLERANCJA-NN-WARTOSC-ROBOCZA).
+        wyspa = wyspy_wezlow_nn(model)[zrodlo.bus_ref]
+        assert wyspa.tolerancja == (tolerancja or "PLUS_10")
+        assert wyspa.robocza is (tolerancja is None)
+
+    @pytest.mark.parametrize(
+        ("tolerancja", "napiecie_kv"), [("PLUS_8", 0.4), ("+10 %", 0.4), ("PLUS_6", 15.0)]
+    )
+    def test_deklaracja_zrodla_niepoprawna_jest_bledem_wiersza(
+        self, tolerancja: str, napiecie_kv: float
+    ):
+        wynik = XlsxNetworkImporter().import_from_bytes(
+            self._arkusz_sieci_nn(tolerancja, napiecie_zrodla_kv=napiecie_kv)
+        )
+        assert wynik.success is False
+        assert ("Źródła", 2, "tolerancja_nN") in _kolumny(wynik.bledy)

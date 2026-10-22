@@ -29,6 +29,7 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import type { ProtectionSetting } from '../../../types/enm';
 import { PoleLiczbowe, PolePrzelacznikBinarny, PoleWyboru } from '../rama';
 import { NASTAWY_STRINGS as T } from './stringsNastaw';
+import { ObwodWtornyPrzekladnika } from './ObwodWtornyPrzekladnika';
 
 /** Funkcje nadprądowe edytowane tym edytorem (ocenia je jedna ścieżka backendu). */
 export const FUNKCJE_EDYTORA = ['overcurrent_51', 'overcurrent_50'] as const;
@@ -291,6 +292,10 @@ export function EdytorNastawZabezpieczenia({
           </fieldset>
         );
       })}
+
+      {nastawy.ct_ref ? (
+        <ObwodWtornyPrzekladnika ctRef={nastawy.ct_ref} testid={`${testid}-obwod`} />
+      ) : null}
 
       {nastawy.braki.length > 0 ? (
         <div className="mvd-edytor-nastaw-braki" data-testid={`${testid}-braki`} role="status">

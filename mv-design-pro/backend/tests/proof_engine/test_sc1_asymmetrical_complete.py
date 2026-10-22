@@ -49,6 +49,21 @@ U_PREFAULT_KV = C_FACTOR * U_N_KV / math.sqrt(3)  # = c·Un/√3
 
 FIXED_TIMESTAMP = datetime(2026, 2, 6, 10, 0, 0)
 SOLVER_VERSION = "1.0.0-test"
+TK_S = 1.0
+F_HZ = 50.0
+
+
+def _ith_reczny(ikss: float, kappa: float) -> float:
+    """I_th = I''k·sqrt(m + n), IEC 60909-0:2016 rozdz. 12 — rachunek RĘCZNY tego testu.
+
+    m = (e^{4·f·T_k·ln(κ−1)} − 1)/(2·f·T_k·ln(κ−1)); n = 1 (zwarcie daleko od generatora,
+    górne oszacowanie przy braku danych maszyn). Karta SC-IB-ITH-ZRODLA: dawny rachunek
+    „m = 1, n = 0 → I_th = I''k" był wejściem m/n z zewnątrz (z 1F-Z dla każdego rodzaju
+    zwarcia) — zniknął razem z wejściem; solver liczy m z κ TEGO zwarcia.
+    """
+    ln_k = math.log(kappa - 1.0)
+    m = (math.exp(4.0 * F_HZ * TK_S * ln_k) - 1.0) / (2.0 * F_HZ * TK_S * ln_k)
+    return ikss * math.sqrt(m + 1.0)
 
 
 def _make_sc1_input(fault_type: str, **kwargs) -> SC1Input:
@@ -66,10 +81,8 @@ def _make_sc1_input(fault_type: str, **kwargs) -> SC1Input:
         "z2_ohm": Z2,
         "z0_ohm": Z0,
         "a_operator": A_OPERATOR,
-        "tk_s": 1.0,
-        "m_factor": 1.0,
-        "n_factor": 0.0,
     }
+    tk_s = kwargs.pop("tk_s", TK_S)
     defaults.update(kwargs)
     if "quantities" not in defaults:
         # Wielkości fizyczne liczy solver (NOT-A-SOLVER, V12K-118) —
@@ -83,8 +96,7 @@ def _make_sc1_input(fault_type: str, **kwargs) -> SC1Input:
             z2_ohm=defaults["z2_ohm"],
             z0_ohm=defaults["z0_ohm"],
             a_operator=defaults["a_operator"],
-            m_factor=defaults["m_factor"],
-            n_factor=defaults["n_factor"],
+            tk_s=tk_s,
         )
     return SC1Input(**defaults)
 
@@ -98,14 +110,13 @@ def _make_pack_input(**kwargs) -> SCAsymmetricalPackInput:
         "solver_version": SOLVER_VERSION,
         "u_n_kv": U_N_KV,
         "c_factor": C_FACTOR,
+        "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
         "u_prefault_kv": U_PREFAULT_KV,
         "z1_ohm": Z1,
         "z2_ohm": Z2,
         "z0_ohm": Z0,
         "a_operator": A_OPERATOR,
-        "tk_s": 1.0,
-        "m_factor": 1.0,
-        "n_factor": 0.0,
+        "tk_s": TK_S,
     }
     defaults.update(kwargs)
     return SCAsymmetricalPackInput(**defaults)
@@ -134,7 +145,7 @@ class TestMathematicalCorrectness:
         rx = z_equiv.real / z_equiv.imag if z_equiv.imag != 0 else 0
         kappa = 1.02 + 0.98 * math.exp(-3 * rx)
         ip = kappa * math.sqrt(2) * ikss
-        ith = ikss  # m=1, n=0 → √(1+0) = 1
+        ith = _ith_reczny(ikss, kappa)
         return z_equiv, i1, i2, i0, ia, ib, ic, ikss, kappa, ip, ith
 
     def _manual_compute_2f(self):
@@ -152,7 +163,7 @@ class TestMathematicalCorrectness:
         rx = z_equiv.real / z_equiv.imag if z_equiv.imag != 0 else 0
         kappa = 1.02 + 0.98 * math.exp(-3 * rx)
         ip = kappa * math.sqrt(2) * ikss
-        ith = ikss
+        ith = _ith_reczny(ikss, kappa)
         return z_equiv, i1, i2, i0, ia, ib, ic, ikss, kappa, ip, ith
 
     def _manual_compute_2fz(self):
@@ -171,7 +182,7 @@ class TestMathematicalCorrectness:
         rx = z_equiv.real / z_equiv.imag if z_equiv.imag != 0 else 0
         kappa = 1.02 + 0.98 * math.exp(-3 * rx)
         ip = kappa * math.sqrt(2) * ikss
-        ith = ikss
+        ith = _ith_reczny(ikss, kappa)
         return z_equiv, i1, i2, i0, ia, ib, ic, ikss, kappa, ip, ith
 
     @pytest.mark.parametrize(
@@ -662,16 +673,21 @@ class TestEquationRegistryIntegration:
     """Weryfikacja integracji z EquationRegistry."""
 
     def test_all_sc1_equations_registered(self):
-        """All EQ_SC1_001-012 are in the registry."""
-        for i in range(1, 13):
+        """All EQ_SC1_001-016 are in the registry.
+
+        Karta OD-14 (partia integracji 10): EQ_SC1_013-016 to pętle zwarcia przez impedancję
+        przejścia Z_f (1F–Z, 2F, 2F–Z) i prądy składowe z pętli — intencja testu (każde równanie SC1 w
+        rejestrze) bez zmian, zakres rozszerzony o nowe identyfikatory.
+        """
+        for i in range(1, 17):
             eq_id = f"EQ_SC1_{i:03d}"
             eq = EquationRegistry.get_equation(eq_id)
             assert eq is not None, f"Missing equation {eq_id} in registry"
 
     def test_sc1_equations_dict_complete(self):
-        """SC1_EQUATIONS dict has 12 entries."""
+        """SC1_EQUATIONS dict has exactly EQ_SC1_001-016 (12 metallic + 4 Z_f, OD-14)."""
         equations = EquationRegistry.get_sc1_equations()
-        assert len(equations) == 12, f"Expected 12 SC1 equations, got {len(equations)}"
+        assert sorted(equations) == [f"EQ_SC1_{i:03d}" for i in range(1, 17)]
 
     def test_id_stability_passes(self):
         """validate_id_stability still passes with new equations."""

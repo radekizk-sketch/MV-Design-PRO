@@ -106,7 +106,7 @@ import {
   plannedLabelsOutsideSheet,
 } from '../src/ui/sld/v3/canvas/labelLegibility.ts';
 import { MIN_TEXT_SCREEN_PX, screenFixedFontSize } from '../src/ui/sld/v3/core/text.ts';
-import { MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
+import { LABEL_PLAN_PRODUCTION_SCALES, MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
 import {
   SHEET_MAX_ASPECT,
   SHEET_TARGET_ASPECT,
@@ -2276,11 +2276,7 @@ for (const lod of LODS) {
 line('');
 line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===');
 {
-  const SKALE_PRODUKCYJNE = {
-    0: [0.51, 0.68],
-    1: [0.51, 0.69, 1.02, 1.38],
-    2: [1.02, 1.38, 2],
-  };
+  const SKALE_PRODUKCYJNE = LABEL_PLAN_PRODUCTION_SCALES;
   for (const lod of LODS) {
     const scene = buildSceneV3(enm, lod);
     const obstacles = sceneObstacleRects(scene);

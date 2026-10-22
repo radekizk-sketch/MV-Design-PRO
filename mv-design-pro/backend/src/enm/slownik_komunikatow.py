@@ -28,12 +28,13 @@ import re
 from collections.abc import Iterable
 
 from network_model.catalog.types import etykieta_pola_katalogu_pl, nazwa_kategorii_katalogu_pl
-from network_model.nazwy import nazwa_nadana
+from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from pydantic import ValidationError
 
 from .nazwy_elementow import (
+    SPOZA_MODELU,
+    element_po_identyfikatorze,
     nazwa_nadana_elementu,
-    nazwa_nadana_po_identyfikatorze,
     nazwa_nadana_pozycji_katalogu,
 )
 
@@ -109,6 +110,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "factory_configuration_ref": "Blok fabryczny",  # stacja/strings.ts blokWybor
     "factory_unit_index": "Jednostki bloku (skład stały)",  # stacja/strings.ts blokJednostkiTytul
     "feeder_ref": "Odpływ nN",  # odbior/strings.ts wierszOdplyw
+    "load_ref": "Odbiór nN",  # rcd-nn/strings.ts odbior (karta W5-E-TTIT)
     "add_nn_cable_segment:from_bus_ref": "Szyna źródłowa",  # odcinek-nn/strings.ts szynaZrodlowa
     "add_nn_switch_device:from_bus_ref": "Szyna od",  # aparat-nn/strings.ts szynaOd
     "connect_secondary_ring_sn:from_bus_ref": "Zacisk A",  # pierscien/strings.ts zaciskA
@@ -142,6 +144,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "length_m": "Długość",  # odcinek-nn/strings.ts dlugosc
     "add_transformer_sn_nn:lv_bus_ref": "Szyna nN (dolne napięcie)",  # transformator/strings.ts lvBus
     "lv_earthing_system": "Układ sieci nN",  # stacja/strings.ts uziemienieUklad
+    "lv_voltage_tolerance": "Tolerancja napięcia sieci nN",  # tabela 1 IEC 60909-0 (+6 % / +10 %)
     "lvrt_curve_ref": "Charakterystyka LVRT (zanik napięcia)",  # zrodlo-oze/strings.ts frtLvrt
     "moc_przylaczeniowa_mw": "Moc przyłączeniowa (OSD)",  # ui2/spaces/projekt/strings.ts osdLimit
     "modul_istniejacy": "Moduł istniejący (art. 4 ust. 1 rozporządzenia 2016/631)",  # ui2/oze/ncrfg/strings.ts art4
@@ -242,6 +245,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "set_dynamic_profile:profile": "Profil dynamiczny",
     "update_element_parameters:source_mode": "Pochodzenie parametrów",
     "update_element_parameters:catalog_namespace": "Kategoria katalogu",
+    "update_element_parameters:overrides": "Wartości parametrów nadane przez projektanta",
     "add_nn_distribution_board:voltage_kv": "Napięcie znamionowe",  # rozdzielnica-nn/strings.ts napiecie
     "vt_catalog_ref": "Przekładnik napięciowy (VT)",  # zrodlo-oze/strings.ts aparaturaVt
     "wymagany_cos_phi": "Wymagany cosφ (OSD)",  # ui2/spaces/projekt/strings.ts osdCosPhi
@@ -394,6 +398,7 @@ NAZWY_KOLEKCJI_PL: dict[str, str] = {
     "sources": "źródło zasilania",
     "loads": "odbiór",
     "generators": "wytwórca",
+    "shunt_capacitors": "bateria kondensatorów",
     "substations": "stacja",
     "bays": "pole rozdzielnicy",
     "junctions": "węzeł rozgałęźny",
@@ -586,16 +591,21 @@ def lista_pl(nazwy: Iterable[str], spojnik: str = "albo") -> str:
 
 
 def _zdanie(rodzaj: str, nazwa: str | None) -> str:
-    """„Szyna „Sekcja 1”" albo „Szyna bez nazwy" — słowo rodzaju + nazwa w cudzysłowie."""
-    return f"{rodzaj} „{nazwa}”" if nazwa is not None else f"{rodzaj} bez nazwy"
+    """„Szyna „Sekcja 1”" albo „Szyna bez nazwy" — reguła z liścia `network_model.nazwy`."""
+    return opis_rodzaju_i_nazwy(rodzaj, nazwa)
 
 
 def opis_elementu(enm: object, ref: object, rodzaj: str) -> str:
     """Rodzaj elementu + jego nazwa z modelu (``enm`` — migawka albo ``EnergyNetworkModel``).
 
-    Element nieobecny w migawce albo bez nazwy opisuje słowo rodzaju — nigdy identyfikator.
+    Element bez nazwy opisuje słowo rodzaju („Szyna bez nazwy"), element nieobecny w migawce
+    — jawny brak („Szyna spoza modelu"); nigdy identyfikator. Partia integracji 10: element
+    spoza modelu nie jest „bez nazwy" — to dwa różne stany danych i dwa różne zdania.
     """
-    return _zdanie(rodzaj, nazwa_nadana_po_identyfikatorze(enm, ref))
+    element = element_po_identyfikatorze(enm, ref)
+    if element is None:
+        return f"{rodzaj} {SPOZA_MODELU}"
+    return _zdanie(rodzaj, nazwa_nadana_elementu(element))
 
 
 def opis_obiektu(element: object, rodzaj: str) -> str:

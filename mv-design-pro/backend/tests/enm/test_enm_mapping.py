@@ -20,6 +20,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from network_model.core.czas_wylaczenia import czas_tb_roboczy
 from network_model.core.node import NodeType
 
 
@@ -194,6 +195,7 @@ class TestBasicMapping:
                     uk_percent=6,
                     pk_kw=7.5,
                     vector_group="Dyn11",
+                    lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
                 ),
             ],
         )
@@ -321,6 +323,7 @@ class TestSolverRoundtrip:
                     ulv_kv=0.4,
                     uk_percent=4,
                     pk_kw=6.5,
+                    lv_voltage_tolerance="PLUS_6",  # tolerancja sieci nN (wiersz nN tabeli 1)
                 ),
             ],
         )
@@ -343,6 +346,7 @@ class TestSolverRoundtrip:
             fault_node_id=node_ids[0],
             c_factor=1.1,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
         assert result.ikss_a > 0
         assert result.ip_a > 0
@@ -395,6 +399,7 @@ class TestSolverRoundtrip:
             fault_node_id=fault_node_id,
             c_factor=1.1,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
 
         z0_bus = build_zero_sequence_zbus(enm, graph)
@@ -404,6 +409,7 @@ class TestSolverRoundtrip:
             fault_node_id=fault_node_id,
             c_factor=1.1,
             tk_s=1.0,
+            czas_tb=czas_tb_roboczy(),
         )
         assert result_3f_after.ikss_a == pytest.approx(result_3f_before.ikss_a)
         assert result_3f_after.zkk_ohm == pytest.approx(result_3f_before.zkk_ohm)
@@ -415,6 +421,7 @@ class TestSolverRoundtrip:
             c_factor=1.1,
             tk_s=1.0,
             z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
         assert result_1f.ikss_a > 0
         assert result_1f.short_circuit_type.value == "1F"
@@ -426,6 +433,7 @@ class TestSolverRoundtrip:
             c_factor=1.1,
             tk_s=1.0,
             z0_bus=z0_bus,
+            czas_tb=czas_tb_roboczy(),
         )
         assert result_2fg.ikss_a > 0
         assert result_2fg.short_circuit_type.value == "2F+G"
@@ -749,6 +757,7 @@ class TestGeneratorShortCircuitSources:
                 fault_node_id=fault_node_id,
                 c_factor=1.1,
                 tk_s=1.0,
+                czas_tb=czas_tb_roboczy(),
             )
             return result.ikss_a, result.ik_inverters_a
 

@@ -1,5 +1,6 @@
 export { WeryfikacjaAparatury } from './WeryfikacjaAparatury';
 export { useOtworzKonfiguracjeStacji } from './przejscieDoStacji';
+export { useZmienWartoscAparatu } from './zmianaWartosciAparatu';
 export {
   pobierzWytrzymaloscAparatury,
   znacznikWerdyktu,

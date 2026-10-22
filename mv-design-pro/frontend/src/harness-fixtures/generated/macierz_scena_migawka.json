@@ -1233,7 +1233,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "4f8ac49906acd478d59005fe50091916ef6f9b8904224227d11ebe6b64f33fa3",
+    "hash_sha256": "debbc9da4992709ea0994338d6e24f9e0deca4a0937687207bcf2eeb052e92a1",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 1,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -1260,14 +1260,13 @@
   "sources": [
     {
       "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001",
       "id": "f3767143-9c5c-598d-9460-2cb312400f75",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "legacy",
@@ -1364,6 +1363,7 @@
       "lv_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1416,6 +1416,7 @@
       "lv_bus_ref": "bess/5bd678b5dbce96516c72492e40298e5f/der/producer_nn_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-2000kva-dyn11",
         "catalog_item_version": "2024.1",
@@ -1466,6 +1467,7 @@
       "lv_bus_ref": "pv/a14bb0e6a533796dc251500f1b5fe5fa/der/producer_nn_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-0p8-2p5mva-dyn11-inverter",
         "catalog_item_version": "2024.1",

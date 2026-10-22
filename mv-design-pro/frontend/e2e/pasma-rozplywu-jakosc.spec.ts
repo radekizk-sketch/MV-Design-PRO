@@ -29,6 +29,7 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import { wykonajBiegDoKonca } from './biegi';
 import { otworzZakladkeWynikow } from './nawigacjaWynikow';
+import { transformatoryStacjiSnNn } from './transformatoryStacji';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -47,9 +48,9 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    buses?: Array<{ ref_id: string }>;
+    buses?: Array<{ ref_id: string; voltage_kv?: number }>;
     branches?: Array<{ ref_id: string; type?: string }>;
-    transformers?: Array<{ ref_id: string }>;
+    transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     substations?: Array<{ ref_id: string }>;
     // Karta W5-B: pola stacji to rekordy `bays`.
     bays?: Array<{
@@ -203,6 +204,8 @@ async function zbudujGotowaSiec(request: APIRequestContext, caseId: string): Pro
   expect(segmentRefs.length).toBeGreaterThan(0);
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja sieci nN (wiersz nN tabeli 1 IEC 60909-0).
+    nn_earthing: { lv_voltage_tolerance: 'PLUS_10' },
     field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
@@ -256,7 +259,9 @@ async function zbudujGotowaSiec(request: APIRequestContext, caseId: string): Pro
     cos_phi: 0.95,
   });
 
-  for (const transformer of op.snapshot?.transformers ?? []) {
+  // Pozycja TRAFO_SN_NN i dane 15/0,4 kV WYŁĄCZNIE dla transformatora stacji SN/nN — nie dla
+  // transformatora GPZ 110/15 kV (jedna reguła: `transformatoryStacji.ts`, walidator E023).
+  for (const transformer of transformatoryStacjiSnNn(op.snapshot)) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: transformer.ref_id,
       catalog_binding: buildCatalogBinding('TRAFO_SN_NN', TRAFO_ID),

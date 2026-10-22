@@ -358,6 +358,53 @@ class ENMValidator:
                     )
                 )
 
+        # E023: napięcie znamionowe strony transformatora w innym paśmie napięć niż szyna, do
+        # której ta strona jest przyłączona (partia integracji 11). Do tej pory model przyjmował
+        # np. transformator 15/0,4 kV wpięty między szyny 110 kV i 15 kV (pozycja katalogu
+        # SN/nN przypisana transformatorowi GPZ) — przekładnia, impedancja i współczynnik
+        # korekcyjny K_T (IEC 60909-0 eq. 12a, c strony dolnej) liczyły się z napięć, których
+        # sieć nie ma, a wynik wychodził bez ostrzeżenia. Porównanie PASMEM (nN/SN/WN, jedno
+        # źródło `pasma_napieciowe`), nie wartością: napięcie znamionowe uzwojenia różni się od
+        # napięcia sieci w obrębie pasma (np. 15,75 kV na szynie 15 kV, 0,42 kV na 0,4 kV).
+        napiecia_szyn = {b.ref_id: b.voltage_kv for b in enm.buses}
+        for trafo in enm.transformers:
+            for strona, napiecie_znamionowe, szyna_ref in (
+                ("górnego", trafo.uhv_kv, trafo.hv_bus_ref),
+                ("dolnego", trafo.ulv_kv, trafo.lv_bus_ref),
+            ):
+                napiecie_szyny = napiecia_szyn.get(szyna_ref)
+                if napiecie_szyny is None or napiecie_szyny <= 0 or napiecie_znamionowe <= 0:
+                    continue  # brak szyny i napięcia zerowe zgłaszają inne kontrole
+                pasmo_uzwojenia = pasmo_napieciowe(napiecie_znamionowe)
+                pasmo_szyny = pasmo_napieciowe(napiecie_szyny)
+                if pasmo_uzwojenia == pasmo_szyny:
+                    continue
+                issues.append(
+                    ValidationIssue(
+                        code="E023",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"{opis_obiektu(trafo, 'Transformator')}: napięcie znamionowe "
+                            f"strony {strona} napięcia {napiecie_znamionowe:g} kV (pasmo "
+                            f"{pasmo_uzwojenia}) nie pasuje do szyny "
+                            f"{opis_elementu(enm, szyna_ref, 'szyna')} "
+                            f"{napiecie_szyny:g} kV (pasmo {pasmo_szyny})."
+                        ),
+                        element_refs=[trafo.ref_id, szyna_ref],
+                        wizard_step_hint="K5",
+                        suggested_fix=(
+                            "Przypisz transformatorowi pozycję katalogu o napięciach "
+                            "znamionowych zgodnych z szynami, do których jest przyłączony."
+                        ),
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=trafo.ref_id,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
+
         # sources.bus_missing: Źródło bez istniejącej szyny (odbiór CV-3.3-B).
         # Jedyny emiter kanonicznego `source.connection_missing` był w skasowanym
         # torze R2 (`analysis_run/service.py`), a assembler kanoniczny

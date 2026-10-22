@@ -71,10 +71,21 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # `tests/enm/test_deklaracje_modulu.py::test_deklaracje_poza_odciskiem_gdy_none`.
     # Karta modeli odbiorów (O-56): `Load.dynamika` (kopia profilu katalogu odbiorów) — to
     # samo prawo; test odcisku: `test_blok_dynamiki_odbioru_poza_odciskiem_gdy_none` niżej.
+    # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: `Transformer.lv_voltage_tolerance` i
+    # `Source.lv_voltage_tolerance` (tolerancja sieci nN, wiersz nN tabeli 1 IEC 60909-0) —
+    # to samo prawo; test odcisku: `tests/enm/test_tolerancja_nn_iloczyn_cech.py`
+    # (odciski modelu bez deklaracji równe zmierzonym na stanie sprzed karty).
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
-        "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
-        "loads": ("phases", "dynamika"),
-        "transformers": ("lv_earthing_system",),
+        "sources": (
+            "sk3_min_mva",
+            "ik3_min_ka",
+            "rx_ratio_min",
+            "u_set_pu",
+            "neutral_grounding",
+            "lv_voltage_tolerance",
+        ),
+        "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
+        "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
         # W5-C: `SwitchBranch.normal_state` (pozycja normalna łącznika) — to samo prawo
         # (test odcisku: `tests/enm/test_stan_normalny_lacznikow.py::
         # test_pozycja_normalna_niezadeklarowana_poza_odciskiem`).

@@ -246,14 +246,33 @@ export interface MVApparatusType extends CatalogType {
   i_n_a: number;
   breaking_capacity_ka?: number;
   making_capacity_ka?: number;
-  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
+  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — WYŁĄCZNIE dane karty, z pochodzeniem;
+   *  `null` = karta danej nie podaje (wartość roboczą niesie `wartosci_robocze`). */
   i_th_ka?: number | null;
   i_th_duration_s?: number | null;
   i_th_pochodzenie?: string | null;
   i_dyn_ka?: number | null;
   i_dyn_pochodzenie?: string | null;
-  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
+  /** Czas własny aparatu [s] — dana karty producenta (IEC 62271-100); `null` = brak w karcie. */
   break_time_s?: number | null;
+  /** Propozycje wartości roboczych dla parametrów, których karta nie podaje (zasada nr 4,
+   *  V12K-351) — `GET /api/catalog/mv-apparatus-types`; rejestr backendu jest jedynym źródłem. */
+  wartosci_robocze?: readonly PropozycjaWartosciRoboczej[];
+}
+
+/** Rodzaj źródła propozycji wartości roboczej (rejestr `network_model/catalog/wartosci_robocze.py`). */
+export type RodzajZrodlaWartosciRoboczej = 'PROFIL_URZADZENIA' | 'NORMA' | 'ZALOZENIE_INZYNIERSKIE';
+
+/** Propozycja wartości roboczej: liczba, jednostka, źródło, uzasadnienie i wpływ na ocenę. */
+export interface PropozycjaWartosciRoboczej {
+  readonly parametr: string;
+  readonly nazwa_pl: string;
+  readonly wartosc: number;
+  readonly jednostka: string;
+  readonly rodzaj_zrodla: RodzajZrodlaWartosciRoboczej;
+  readonly odniesienie: string;
+  readonly uzasadnienie_pl: string;
+  readonly wplyw_pl: string;
 }
 
 /**
@@ -285,6 +304,46 @@ export interface LVApparatusType extends CatalogType {
   ii_range?: [number, number] | null;
   tr_range?: [number, number] | null;
   tsd_range?: [number, number] | null;
+}
+
+/** Rodzaj prądu różnicowego RCD — słownik `RODZAJE_PRADU_ROZNICOWEGO_RCD` backendu. */
+export type RodzajPraduRoznicowegoRcd = 'AC' | 'A' | 'F' | 'B';
+
+/**
+ * LV RCD Type (APARAT_NN_RCD) — wyłącznik różnicowoprądowy nN (RCCB IEC 61008-1 / RCBO
+ * IEC 61009-1). Lustro 1:1 `LVRcdType.to_dict()` (network_model/catalog/types.py, karta
+ * W5-E-TTIT), łącznie z metadanymi wiarygodności pozycji. Interfejs samodzielny (nie
+ * `extends CatalogType`), bo backend serwuje `manufacturer: null`, czego `CatalogType`
+ * (`manufacturer?: string`) nie wyraża.
+ */
+export interface LVRcdType {
+  id: string;
+  name: string;
+  /** Prąd znamionowy In [A]. */
+  in_a: number;
+  /** Prąd różnicowy znamionowy zadziałania I_Δn [A]. */
+  i_delta_n_a: number;
+  rcd_type: RodzajPraduRoznicowegoRcd;
+  /** `true` = typ S (selektywny, zwłoczny). */
+  selective: boolean;
+  /** Maksymalny czas wyłączenia przy I_Δn [s]. */
+  t_a_s: number;
+  /** Maksymalny czas wyłączenia przy 2·I_Δn [s]. */
+  t_a_2idn_s: number | null;
+  /** Maksymalny czas wyłączenia przy 5·I_Δn [s]. */
+  t_a_5idn_s: number | null;
+  /** Minimalny czas niezadziałania [s] (tylko typ S). */
+  t_nieczuly_min_s: number | null;
+  /** Napięcie znamionowe Un [kV]. */
+  u_n_kv: number;
+  poles: number | null;
+  manufacturer: string | null;
+  verification_status: string;
+  source_reference: string;
+  catalog_status: string;
+  contract_version: string;
+  /** Obecne wyłącznie, gdy backend niesie notę weryfikacji. */
+  verification_note?: string;
 }
 
 /**
@@ -489,22 +548,6 @@ export interface BranchPointCatalogType extends CatalogType {
   catalog_namespace?: 'mv_branch_points';
 }
 
-export interface MVApparatusCatalogType extends CatalogType {
-  device_kind: string;
-  u_n_kv: number;
-  i_n_a: number;
-  breaking_capacity_ka?: number;
-  making_capacity_ka?: number;
-  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
-  i_th_ka?: number | null;
-  i_th_duration_s?: number | null;
-  i_th_pochodzenie?: string | null;
-  i_dyn_ka?: number | null;
-  i_dyn_pochodzenie?: string | null;
-  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
-  break_time_s?: number | null;
-}
-
 /**
  * Catalog Binding — links element to catalog item with version.
  * Source: backend CatalogBinding / CatalogBindingPayload.
@@ -527,6 +570,7 @@ export type CatalogNamespace =
   | 'TRAFO_SN_NN'
   | 'APARAT_SN'
   | 'APARAT_NN'
+  | 'APARAT_NN_RCD'
   | 'KABEL_NN'
   | 'CT'
   | 'VT'
@@ -546,7 +590,7 @@ export type CatalogNamespace =
  */
 export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
-  | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS'
+  | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
   | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 

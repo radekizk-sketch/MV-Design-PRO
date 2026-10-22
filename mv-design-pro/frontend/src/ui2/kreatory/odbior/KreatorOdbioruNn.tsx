@@ -70,6 +70,12 @@ function etykietaFaz(phases: PhaseSet | null): string {
   return T.fazyOpcje.find((o) => o.id === phases)?.etykieta ?? phases;
 }
 
+/** Etykieta uziomu instalacji R_A (format PL) albo uczciwy brak z nazwanym skutkiem. */
+function etykietaUziomu(r_a: number | null): string {
+  if (r_a === null) return T.uziomNiePodano;
+  return `${r_a.toFixed(1).replace('.', ',')} Ω`;
+}
+
 const KROKI: readonly KrokKreatora[] = [
   { id: 'dane', tytul: T.krokDane },
   { id: 'zapis', tytul: T.krokZapis },
@@ -243,6 +249,8 @@ export function KreatorOdbioruNn() {
     // Brak wskazania faz NIE blokuje zapisu (odbiór trójfazowy symetryczny to
     // pełnoprawny model) — wiersz mówi wprost, jak odbiór zostanie policzony.
     { etykieta: T.wierszFazy, stan: 'kompletne', wartosc: etykietaFaz(dane.phases) },
+    // Brak R_A nie blokuje zapisu (układ TN go nie czyta) — wiersz mówi wprost, co zrobi pętla TT.
+    { etykieta: T.wierszUziom, stan: dane.earth_electrode_r_ohm !== null ? 'kompletne' : 'ostrzezenie', wartosc: etykietaUziomu(dane.earth_electrode_r_ohm) },
     { etykieta: T.wierszPrad, stan: podglad ? 'kompletne' : 'ostrzezenie', wartosc: fmtA(podglad?.rated_current_a) },
   ];
 
@@ -416,6 +424,20 @@ export function KreatorOdbioruNn() {
               testid="mvd-kreator-odbior-fazy"
             />
           </KreatorSiatka>
+          <KreatorSekcja tytul={T.uziomTytul} testid="mvd-kreator-odbior-uziom">
+            <KreatorSiatka kolumny={2}>
+              <PoleLiczbowe
+                etykieta={T.uziomRa}
+                jednostka="Ω"
+                wartosc={dane.earth_electrode_r_ohm}
+                onZmiana={(v) => zmien('earth_electrode_r_ohm', v)}
+                krok={0.1}
+                pomoc={T.uziomRaPomoc}
+                blad={bladDlaPola('earth_electrode_r_ohm')}
+                testid="mvd-kreator-odbior-uziom-ra"
+              />
+            </KreatorSiatka>
+          </KreatorSekcja>
           <KreatorSekcja tytul={T.zipTytul} nota={T.zipNota} testid="mvd-kreator-odbior-zip">
             <KreatorInfo>{T.zipPomoc}</KreatorInfo>
             <KreatorSiatka kolumny={3}>
@@ -528,6 +550,7 @@ export function KreatorOdbioruNn() {
               wartosc={czyZipDomyslny(dane.zip) ? T.zipModelStalaMoc : T.zipModelWlasny}
             />
             <RzadWartosci etykieta={T.wierszFazy} wartosc={etykietaFaz(dane.phases)} />
+            <RzadWartosci etykieta={T.wierszUziom} wartosc={etykietaUziomu(dane.earth_electrode_r_ohm)} />
             <RzadWartosci etykieta={T.podgladI} wartosc={fmtA(podglad?.rated_current_a)} />
             <RzadWartosci etykieta={T.podgladS} wartosc={fmtKva(podglad?.apparent_power_kva)} />
           </KreatorSiatka>

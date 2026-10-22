@@ -7,7 +7,7 @@
       "id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
       "name": "Zabezpieczenie odejścia S01",
       "nastawy": {
-        "alf": 20.0,
+        "alf": 20,
         "braki": [],
         "breaker_ref": "sw/3e1e898265680e8ac8b259ab59e21b41/switch",
         "ct_ref": "ct/3b9039dcb6b9c553484f6a8e7e712886/measurement",
@@ -15,6 +15,16 @@
         "gotowe": true,
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie odejścia S01",
+        "obwod_wtorny_ct": {
+          "alf": 20,
+          "dlugosc_przewodu_m": null,
+          "i2n_a": 5.0,
+          "moc_stykow_va": null,
+          "obciazenia_aparatow": [],
+          "przekroj_przewodu_mm2": null,
+          "rct_ohm": null,
+          "sn_va": 15.0
+        },
         "pozycja_katalogu": "REF-OC-200",
         "przekladnia_a": [
           600.0,
@@ -26,7 +36,7 @@
             "funkcja": "overcurrent_51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
-            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "krzywa_pl": "IEC normalnie odwrotna (SI)",
             "prog_pierwotny_a": 180.0,
             "prog_wtorny_a": 1.5,
             "slad": {
@@ -118,7 +128,7 @@
               "kod": "DT"
             },
             {
-              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
               "kod": "IEC_SI"
             },
             {
@@ -132,7 +142,7 @@
           ],
           "jednostka_zakresow_pradowych": "KROTNOSC_IN",
           "krzywe": [
-            "IEC_NI",
+            "IEC_SI",
             "IEC_VI",
             "DT"
           ],
@@ -279,7 +289,7 @@
       "id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "name": "Zabezpieczenie pola liniowego GPZ",
       "nastawy": {
-        "alf": 20.0,
+        "alf": 20,
         "braki": [],
         "breaker_ref": "sw/85e63a1b8329bf76b0e5ea7a360d025b/switch",
         "ct_ref": "ct/ef5551d5d391131fb79da7b31c1cab3b/measurement",
@@ -287,6 +297,16 @@
         "gotowe": true,
         "klasa_ct": "5P20",
         "nazwa_pl": "Zabezpieczenie pola liniowego GPZ",
+        "obwod_wtorny_ct": {
+          "alf": 20,
+          "dlugosc_przewodu_m": null,
+          "i2n_a": 5.0,
+          "moc_stykow_va": null,
+          "obciazenia_aparatow": [],
+          "przekroj_przewodu_mm2": null,
+          "rct_ohm": null,
+          "sn_va": 15.0
+        },
         "pozycja_katalogu": "REF-OC-200",
         "przekladnia_a": [
           600.0,
@@ -298,7 +318,7 @@
             "funkcja": "overcurrent_51",
             "jednostka_progu": "A_WTORNY",
             "krzywa": "IEC_SI",
-            "krzywa_pl": "IEC normalnie odwrotna (NI)",
+            "krzywa_pl": "IEC normalnie odwrotna (SI)",
             "prog_pierwotny_a": 240.0,
             "prog_wtorny_a": 2.0,
             "slad": {
@@ -390,7 +410,7 @@
               "kod": "DT"
             },
             {
-              "etykieta_pl": "IEC normalnie odwrotna (NI)",
+              "etykieta_pl": "IEC normalnie odwrotna (SI)",
               "kod": "IEC_SI"
             },
             {
@@ -404,7 +424,7 @@
           ],
           "jednostka_zakresow_pradowych": "KROTNOSC_IN",
           "krzywe": [
-            "IEC_NI",
+            "IEC_SI",
             "IEC_VI",
             "DT"
           ],
@@ -642,7 +662,7 @@
   "overload_checks": [
     {
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
-      "i_operating_a": 45.8744680039,
+      "i_operating_a": 45.8744679602,
       "i_pickup_a": 240.0,
       "margin_percent": 423.17,
       "notes_pl": "Próg 240 A (I> (51)) wobec prądu roboczego wyłącznika 45,9 A — iloraz przeciążalności 5,23; wymagany co najmniej 1,2.",
@@ -651,7 +671,7 @@
     },
     {
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
-      "i_operating_a": 34.4853586328,
+      "i_operating_a": 34.4853585893,
       "i_pickup_a": 180.0,
       "margin_percent": 421.96,
       "notes_pl": "Próg 180 A (I> (51)) wobec prądu roboczego wyłącznika 34,5 A — iloraz przeciążalności 5,22; wymagany co najmniej 1,2.",
@@ -749,7 +769,7 @@
       "curve_type": "IEC_SI",
       "device_id": "relay/2f2af04cd46a18e6958e6c7c9e60ec78/assignment",
       "device_name": "Zabezpieczenie odejścia S01",
-      "opis_pl": "I> (51): 180 A, IEC normalnie odwrotna (NI), TMS 0,1; I>> (50): 1800 A, czas niezależny (DT), zwłoka 0,1 s",
+      "opis_pl": "I> (51): 180 A, IEC normalnie odwrotna (SI), TMS 0,1; I>> (50): 1800 A, czas niezależny (DT), zwłoka 0,1 s",
       "pickup_current_a": 180.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [
@@ -1062,7 +1082,7 @@
       "curve_type": "IEC_SI",
       "device_id": "relay/169595e1280084f388a48e078e44527b/assignment",
       "device_name": "Zabezpieczenie pola liniowego GPZ",
-      "opis_pl": "I> (51): 240 A, IEC normalnie odwrotna (NI), TMS 0,3; I>> (50): 2400 A, czas niezależny (DT), zwłoka 0,4 s",
+      "opis_pl": "I> (51): 240 A, IEC normalnie odwrotna (SI), TMS 0,3; I>> (50): 2400 A, czas niezależny (DT), zwłoka 0,4 s",
       "pickup_current_a": 240.0,
       "podstawa_kod": "KRZYWA_PRZEKAZNIKOWA",
       "points": [
@@ -1448,11 +1468,11 @@
       "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie pola liniowego GPZ",
       "inputs": {
         "galaz_ref": "1efd94c0-5b0f-5933-a19f-f17949407c3d",
-        "prad_roboczy_a": 45.8744680039,
+        "prad_roboczy_a": 45.8744679602,
         "prog_pierwotny_a": 240.0
       },
       "outputs": {
-        "iloraz": 5.23166829923,
+        "iloraz": 5.23166830421,
         "wymagany_iloraz": 1.2
       },
       "step": "przeciazalnosc"
@@ -1461,11 +1481,11 @@
       "description_pl": "Przeciążalność zabezpieczenia Zabezpieczenie odejścia S01",
       "inputs": {
         "galaz_ref": "57831ff0-dba6-5715-b9db-1e0ab9f035e2",
-        "prad_roboczy_a": 34.4853586328,
+        "prad_roboczy_a": 34.4853585893,
         "prog_pierwotny_a": 180.0
       },
       "outputs": {
-        "iloraz": 5.21960643985,
+        "iloraz": 5.21960644642,
         "wymagany_iloraz": 1.2
       },
       "step": "przeciazalnosc"

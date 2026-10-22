@@ -84,14 +84,18 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
-from domain.fault_scenario import FaultScenario
+from domain.fault_scenario import FaultMode, FaultScenario
+from network_model.core.czas_wylaczenia import KLUCZ_OPCJI_CZASU_TB
+from network_model.core.impedancja_przejscia import KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA
 from network_model.odmowa_danych import OdmowaDanychError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from .dziennik_zmian import sciezka_tymczasowa
 from .hash import compute_enm_hash, hash_migawki_enm
 from .models import EnergyNetworkModel, Generator, ShuntCapacitor
+from .nazwy_elementow import nazwa_nadana_po_identyfikatorze
 from .rewizje import digest_klucza
+from .slownik_komunikatow import NAZWY_KOLEKCJI_PL, lista_pl, opis_nazwy
 from .topology import TYPY_LACZNIKOW_ENM
 
 #: Sufiks katalogu scenariuszy nazwanych projektu: `<digest>.scen/`.
@@ -128,15 +132,63 @@ class RodzajScenariusza(StrEnum):
 
 
 class ScenariuszNieprzystajeError(OdmowaDanychError):
-    """Scenariusz wskazuje element, ktorego model nie ma (albo ma w innej roli)."""
+    """Scenariusz wskazuje element, ktorego model nie ma (albo ma w innej roli).
 
-    def __init__(self, scenario_id: str, ref_id: str, powod: str) -> None:
+    Treść nazywa scenariusz i element NAZWAMI (partia integracji 10 — klasa „identyfikator
+    w treści odmowy"); identyfikatory zostają w polach `scenario_id` i `ref_id`, z których
+    interfejs wiąże nawigację. Element spoza modelu (nazwy nie ma) opisuje rola w scenariuszu.
+    """
+
+    def __init__(
+        self,
+        scenario_id: str,
+        ref_id: str,
+        powod: str,
+        *,
+        scenariusz_nazwa: str | None = None,
+        element_opis: str | None = None,
+    ) -> None:
         super().__init__(
-            f"Scenariusz {scenario_id!r} nie przystaje do modelu: element {ref_id!r} — {powod}"
+            f"{opis_nazwy(scenariusz_nazwa, 'Scenariusz')} nie przystaje do modelu: "
+            f"{element_opis or ELEMENT_WSKAZANY_W_SCENARIUSZU} — {powod}"
         )
         self.scenario_id = scenario_id
         self.ref_id = ref_id
         self.powod = powod
+
+
+#: Opis elementu, którego model nie ma (nazwy nie ma skąd wziąć) — nigdy identyfikator.
+ELEMENT_WSKAZANY_W_SCENARIUSZU = "element wskazany w scenariuszu"
+
+
+def _rodzaj_kolekcji(kolekcja: str) -> str:
+    """Kolekcja modelu → rodzaj elementu po polsku (słownik komunikatów; kolekcja spoza
+    słownika = opis ogólny, nigdy klucz kolekcji)."""
+    return NAZWY_KOLEKCJI_PL.get(kolekcja, "element innego rodzaju")
+
+
+def _lista_rodzajow(kolekcje: tuple[str, ...]) -> str:
+    return lista_pl([_rodzaj_kolekcji(k) for k in kolekcje])
+
+
+def _nieprzystaje(
+    scenariusz: OperatingScenario, snapshot: dict[str, Any], ref_id: str, powod: str
+) -> ScenariuszNieprzystajeError:
+    """JEDNA droga budowy odmowy „scenariusz nie przystaje": nazwa scenariusza i elementu
+    z migawki (element obecny) albo opis roli (element spoza modelu)."""
+    nazwa = nazwa_nadana_po_identyfikatorze(snapshot, ref_id)
+    kolekcja = _znajdz_kolekcje(snapshot, ref_id)
+    if kolekcja is not None:
+        element_opis = opis_nazwy(nazwa, _rodzaj_kolekcji(kolekcja))
+    else:
+        element_opis = ELEMENT_WSKAZANY_W_SCENARIUSZU
+    return ScenariuszNieprzystajeError(
+        scenariusz.scenario_id,
+        ref_id,
+        powod,
+        scenariusz_nazwa=scenariusz.name,
+        element_opis=element_opis,
+    )
 
 
 class ScenariuszPrzejsciowyError(ValueError):
@@ -841,8 +893,6 @@ def _tresc_zwarcia(fault_spec: FaultScenario | None) -> dict[str, Any] | None:
         "fault_impedance": (
             fault_spec.fault_impedance.to_dict() if fault_spec.fault_impedance else None
         ),
-        "arc_params": fault_spec.arc_params,
-        "z0_bus_data": fault_spec.z0_bus_data,
     }
 
 
@@ -1013,7 +1063,7 @@ def _znajdz_kolekcje(snapshot: dict[str, Any], ref_id: str) -> str | None:
 
 def _wymagaj_szyny(snapshot: dict[str, Any], scenariusz: OperatingScenario, bus_ref: str) -> None:
     if bus_ref not in _indeks_elementow(snapshot, "buses"):
-        raise ScenariuszNieprzystajeError(scenariusz.scenario_id, bus_ref, "brak takiej szyny")
+        raise _nieprzystaje(scenariusz, snapshot, bus_ref, "brak takiej szyny")
 
 
 def _generator_sondy(wstrzyk: Wstrzyk) -> dict[str, Any]:
@@ -1064,14 +1114,15 @@ def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: Operatin
         ref = dynamika.stanowisko.zrodlo_ref
         kolekcja = _znajdz_kolekcje(snapshot, ref)
         if kolekcja != "sources":
-            raise ScenariuszNieprzystajeError(
-                scenariusz.scenario_id,
+            raise _nieprzystaje(
+                scenariusz,
+                snapshot,
                 ref,
                 "stanowisko badawcze: źródło testowe zastępuje źródło sieciowe modelu, a "
                 + (
                     "takiego elementu nie ma w żadnej kolekcji"
                     if kolekcja is None
-                    else f"element należy do kolekcji '{kolekcja}'"
+                    else f"element jest rodzaju: {_rodzaj_kolekcji(kolekcja)}"
                 ),
             )
     for detektor in dynamika.detektory:
@@ -1082,42 +1133,45 @@ def _waliduj_zdarzenia_dynamiczne(snapshot: dict[str, Any], scenariusz: Operatin
             else _znajdz_kolekcje(snapshot, ref)
         )
         if kolekcja is None or kolekcja not in dozwolone:
-            raise ScenariuszNieprzystajeError(
-                scenariusz.scenario_id,
+            raise _nieprzystaje(
+                scenariusz,
+                snapshot,
                 ref,
-                f"detektor '{detektor.ident}' ({detektor.wielkosc.rodzaj}): "
+                f"detektor „{detektor.ident}”: "
                 + (
                     "brak elementu w żadnej kolekcji"
                     if kolekcja is None
-                    else f"element należy do kolekcji '{kolekcja}', a ta wielkość dotyczy "
-                    f"wyłącznie {', '.join(dozwolone)}"
+                    else f"element jest rodzaju: {_rodzaj_kolekcji(kolekcja)}, a ta wielkość "
+                    f"dotyczy wyłącznie rodzaju: {_lista_rodzajow(dozwolone)}"
                 ),
             )
     for zdarzenie in dynamika.zdarzenia_uporzadkowane:
         for atrybut, ref, dozwolone in _refy_zdarzenia(zdarzenie):
             if atrybut == "bus_ref":
                 if ref not in _indeks_elementow(snapshot, "buses"):
-                    raise ScenariuszNieprzystajeError(
-                        scenariusz.scenario_id,
+                    raise _nieprzystaje(
+                        scenariusz,
+                        snapshot,
                         ref,
-                        f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): brak takiej szyny",
+                        f"zdarzenie w chwili t = {zdarzenie.t_s} s: brak takiej " "szyny",
                     )
                 continue
             kolekcja = _znajdz_kolekcje(snapshot, ref)
             if kolekcja is None:
-                raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id,
+                raise _nieprzystaje(
+                    scenariusz,
+                    snapshot,
                     ref,
-                    f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): "
-                    "brak elementu w żadnej kolekcji",
+                    f"zdarzenie w chwili t = {zdarzenie.t_s} s: " "brak elementu w żadnej kolekcji",
                 )
             if kolekcja not in dozwolone:
-                raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id,
+                raise _nieprzystaje(
+                    scenariusz,
+                    snapshot,
                     ref,
-                    f"zdarzenie '{zdarzenie.rodzaj}' (t_s={zdarzenie.t_s}): element należy do "
-                    f"kolekcji '{kolekcja}', a ten rodzaj zdarzenia działa wyłącznie na "
-                    f"{', '.join(dozwolone)}",
+                    f"zdarzenie w chwili t = {zdarzenie.t_s} s: element jest "
+                    f"rodzaju: {_rodzaj_kolekcji(kolekcja)}, a ten rodzaj zdarzenia działa "
+                    f"wyłącznie na rodzaj: {_lista_rodzajow(dozwolone)}",
                 )
 
 
@@ -1143,8 +1197,8 @@ def apply_scenario(
     for ref_id in scenariusz.out_of_service:
         kolekcja = _znajdz_kolekcje(snapshot, ref_id)
         if kolekcja is None:
-            raise ScenariuszNieprzystajeError(
-                scenariusz.scenario_id, ref_id, "brak elementu do wyłączenia w żadnej kolekcji"
+            raise _nieprzystaje(
+                scenariusz, snapshot, ref_id, "brak elementu do wyłączenia w żadnej kolekcji"
             )
         snapshot[kolekcja] = [
             element
@@ -1177,9 +1231,7 @@ def apply_scenario(
     for ref_id, nastawa in scenariusz.setpoints.items():
         generator = generatory.get(ref_id)
         if generator is None:
-            raise ScenariuszNieprzystajeError(
-                scenariusz.scenario_id, ref_id, "brak generatora dla nastawy"
-            )
+            raise _nieprzystaje(scenariusz, snapshot, ref_id, "brak generatora dla nastawy")
         for pole in ("p_mw", "q_mvar"):
             wartosc = getattr(nastawa, pole)
             if wartosc is None:
@@ -1195,8 +1247,8 @@ def apply_scenario(
         else:
             skalowany = generatory.get(ref_id)
             if skalowany is None:
-                raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id, ref_id, "brak generatora do przeskalowania"
+                raise _nieprzystaje(
+                    scenariusz, snapshot, ref_id, "brak generatora do przeskalowania"
                 )
             cele = [skalowany]
         for generator in cele:
@@ -1212,8 +1264,11 @@ def apply_scenario(
         for wstrzyk in scenariusz.injections:
             _wymagaj_szyny(snapshot, scenariusz, wstrzyk.bus_ref)
             if wstrzyk.ref_id in generatory:
-                raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id, wstrzyk.ref_id, "generator o tym ref_id już istnieje"
+                raise _nieprzystaje(
+                    scenariusz,
+                    snapshot,
+                    wstrzyk.ref_id,
+                    "generator sondy ma identyfikator zajęty przez istniejący generator",
                 )
             lista.append(_generator_sondy(wstrzyk))
             nadpisania.append(
@@ -1233,8 +1288,11 @@ def apply_scenario(
         for sonda in scenariusz.probe_shunts:
             _wymagaj_szyny(snapshot, scenariusz, sonda.bus_ref)
             if sonda.ref_id in baterie:
-                raise ScenariuszNieprzystajeError(
-                    scenariusz.scenario_id, sonda.ref_id, "bateria o tym ref_id już istnieje"
+                raise _nieprzystaje(
+                    scenariusz,
+                    snapshot,
+                    sonda.ref_id,
+                    "bateria sondy ma identyfikator zajęty przez istniejącą baterię",
                 )
             lista.append(_bateria_sondy(sonda))
             nadpisania.append(
@@ -1288,7 +1346,9 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
     """Projekcja scenariusza (zwarciowego i dynamicznego) na opcje biegu — JEDNO zrodlo prawdy.
 
     Wykonawca kanoniczny (`enm/canonical_analysis._execute_short_circuit`) czyta
-    `fault_type`, `c_factor`, `thermal_time_seconds` i `location` Z WIERZCHU opcji;
+    `fault_type`, `scenario` (MAX/MIN), `nadpisanie_c`, `thermal_time_seconds`,
+    `breaking_time_seconds` (t_b, gdy podany) i `location`
+    Z WIERZCHU opcji;
     klucz `config` zostaje jako pochodzenie (WHITE BOX).
 
     Karta W6-3B: harmonogram dynamiczny (`ScenariuszDynamiczny`) idzie ta sama
@@ -1316,8 +1376,25 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
         "fault_type": spec.fault_type.value,
         "location": spec.location.to_dict(),
         "config": spec.config.to_dict(),
-        "c_factor": spec.config.c_factor,
+        # Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): scenariusz niesie PRZEŁĄCZNIK MAX/MIN,
+        # nie liczbę c — assembler dobiera c per węzeł z tabeli 1 IEC 60909-0
+        # (`voltage_factor.dobierz_c`). Nadpisanie wyłącznie z uzasadnieniem i tylko gdy jest.
+        "scenario": spec.config.scenariusz.lower(),
+        **(
+            {"nadpisanie_c": spec.config.nadpisanie_c.to_dict()}
+            if spec.config.nadpisanie_c is not None
+            else {}
+        ),
         "thermal_time_seconds": spec.config.thermal_time_seconds,
+        # Karta SC-IB-ITH-ZRODLA: czas wyłączenia t_b scenariusza (I_b z maszynami, i_DC).
+        # Klucz tylko przy podanym t_b: payload i `input_hash` scenariuszy bez t_b bajtowo
+        # te same; brak = t_b rozstrzygany per punkt zwarcia (karta TB-WARTOSC-ROBOCZA:
+        # pola lokalne, inaczej wartość robocza z założeniem `fault.czas_tb_wartosc_robocza`).
+        **(
+            {KLUCZ_OPCJI_CZASU_TB: spec.config.breaking_time_seconds}
+            if spec.config.breaking_time_seconds is not None
+            else {}
+        ),
         # PERF-SC-50: `include_branch_contributions` scenariusza staje się realnym
         # sterowaniem biegu (do tej karty zapisywane w `config`, nieczytane przez
         # wykonawcę — fantom). Klucz tylko przy True: payload/hash scenariuszy bez
@@ -1325,6 +1402,21 @@ def opcje_biegu_ze_scenariusza(scenariusz: OperatingScenario) -> dict[str, Any]:
         **(
             {"branch_contributions_mode": "in_run"}
             if spec.config.include_branch_contributions
+            else {}
+        ),
+        # Karta OD-14 (partia integracji 10): impedancja przejścia Z_f scenariusza w trybie
+        # IMPEDANCE staje się realnym wejściem biegu (do tej karty tryb był blokowany kodem
+        # kwalifikowalności). Klucz WYŁĄCZNIE w trybie IMPEDANCE: payload i `input_hash`
+        # scenariuszy metalicznych pozostają bajtowo te same. Tryb decyduje o kluczu (jedno
+        # źródło): tryb IMPEDANCE bez impedancji daje pusty słownik, który assembler odmawia
+        # kodem `sc.impedancja_zwarcia_nieskonczona` — nigdy cichego zwarcia metalicznego.
+        **(
+            {
+                KLUCZ_OPCJI_IMPEDANCJI_ZWARCIA: (
+                    spec.fault_impedance.to_dict() if spec.fault_impedance is not None else {}
+                )
+            }
+            if spec.fault_mode == FaultMode.IMPEDANCE
             else {}
         ),
     }

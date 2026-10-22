@@ -50,6 +50,8 @@ CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
         "add_nn_cable_segment",
         "add_nn_switch_device",
         "add_nn_section_coupler",
+        # Karta W5-E-TTIT: RCD w torze instalacji odbiorczej — pozycja katalogu APARAT_NN_RCD.
+        "add_nn_rcd",
     }
 )
 
@@ -363,6 +365,15 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         if candidate is not None:
             return candidate
 
+    if operation == "add_nn_rcd":
+        candidate = _extract_binding_from_container(
+            payload,
+            namespace="APARAT_NN_RCD",
+            ref_keys=("catalog_ref",),
+        )
+        if candidate is not None:
+            return candidate
+
     if operation in _OPERACJE_PUNKTU_POSREDNIEGO_SN:
         candidate = _extract_binding_from_container(
             payload,
@@ -659,6 +670,8 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_nn_cable_segment", "catalog_binding", "KABEL_NN", True),
     PozycjaBramyApi("add_nn_switch_device", "catalog_ref", "APARAT_NN", True),
     PozycjaBramyApi("add_nn_switch_device", "catalog_binding", "APARAT_NN", True),
+    PozycjaBramyApi("add_nn_rcd", "catalog_ref", "APARAT_NN_RCD", True),
+    PozycjaBramyApi("add_nn_rcd", "catalog_binding", "APARAT_NN_RCD", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_ref", "APARAT_NN", True),
     PozycjaBramyApi("add_nn_section_coupler", "catalog_binding", "APARAT_NN", True),
     # Zasilenie rozdzielnicy nN — LUSTRO `_add_nn_cable_segment_internal` (ta sama para

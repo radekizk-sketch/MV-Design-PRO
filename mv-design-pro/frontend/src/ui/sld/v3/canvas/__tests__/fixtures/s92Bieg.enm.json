@@ -1575,7 +1575,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "a307605d2e4618d47ae36e83fe3fecdb1faf84ae1d502039740aa14f8cad393c",
+    "hash_sha256": "4fd2a5fd917625d36189217bef480a0d08b9007253cbbd26a523355c50a2221a",
     "name": "Bieg na schemacie",
     "revision": 6,
     "updated_at": "2026-09-25T00:00:00Z"
@@ -1610,6 +1610,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "c795d3be-fc42-5ee0-8568-d872b66badaf",
       "materialized_params": null,
       "meta": {
@@ -1642,6 +1643,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "69253818-ddfb-5e0c-a0d3-b8f12055e8ee",
       "materialized_params": null,
       "meta": {
@@ -1674,6 +1676,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "09e38f78-e42f-5f50-9498-b868a8c0c937",
       "materialized_params": null,
       "meta": {
@@ -1706,6 +1709,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "3ba8de82-d6a0-5401-96bc-3fbb9b86be7b",
       "materialized_params": null,
       "meta": {
@@ -1738,6 +1742,7 @@
       "catalog_namespace": "OBCIAZENIE",
       "catalog_ref": "load_uslugi_30kw",
       "dynamika": null,
+      "earth_electrode_r_ohm": null,
       "id": "8689a2d8-e040-50ea-be12-9ba4243e7df7",
       "materialized_params": null,
       "meta": {
@@ -1772,14 +1777,13 @@
   "sources": [
     {
       "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-      "c_max": null,
-      "c_min": null,
       "catalog_namespace": "ZRODLO_SN",
       "catalog_ref": "src-gpz-15kv-250mva-rx010",
       "gpz_section_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001",
       "id": "d7eb2d11-3d18-59f7-9c8f-58e56ae8092a",
       "ik3_ka": 9.62,
       "ik3_min_ka": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "src-gpz-15kv-250mva-rx010",
         "catalog_item_version": "2024.1",
@@ -1901,6 +1905,7 @@
       "lv_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": null,
       "materialized_params": {
         "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
         "catalog_item_version": "legacy",
@@ -1953,6 +1958,7 @@
       "lv_bus_ref": "nn/eca9dac3b3adc0f84a45a71dc6e738b1/feeder_bus",
       "lv_earthing_system": null,
       "lv_neutral": null,
+      "lv_voltage_tolerance": "PLUS_6",
       "materialized_params": {
         "catalog_item_id": "tr-sn-nn-15-04-1250kva-dyn11",
         "catalog_item_version": "legacy",

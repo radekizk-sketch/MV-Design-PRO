@@ -32,7 +32,7 @@ import {
   getCatalogErrorMessage,
 } from '../catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../catalog/BayTemplatePicker';
-import type { CatalogType, MVApparatusCatalogType } from '../catalog/types';
+import type { CatalogType, MVApparatusType } from '../catalog/types';
 import { czyLacznik } from '../shared/stanLacznika';
 import {
   czyWierszKompletny,
@@ -57,7 +57,7 @@ import {
 import type { DomainOpResponseV1 } from '../../types/enm';
 
 interface PozycjeKatalogu {
-  readonly APARAT_SN: readonly MVApparatusCatalogType[];
+  readonly APARAT_SN: readonly MVApparatusType[];
   readonly CT: readonly CatalogType[];
   readonly VT: readonly CatalogType[];
   readonly OGRANICZNIK_SN: readonly CatalogType[];

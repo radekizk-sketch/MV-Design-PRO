@@ -34,7 +34,7 @@ function resolveActiveOperationFormFromSurface(
   );
 
   return {
-    op: normalized.canonicalOp as Exclude<ActiveOperationForm, null>['op'],
+    op: normalized.canonicalOp,
     context: normalized.context,
   };
 }

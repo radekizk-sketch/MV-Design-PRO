@@ -226,8 +226,11 @@ class TestSegmentDecompositionNetworkB:
 
     def test_unknown_node_raises(self) -> None:
         graph, result_v1 = _solve_network_b()
-        with pytest.raises(VoltageProfileSegmentPathError):
+        with pytest.raises(VoltageProfileSegmentPathError) as odmowa:
             VoltageProfileSegmentBuilder(graph).build_path(result_v1, "NIE_ISTNIEJE")
+        # Partia integracji 10: węzeł spoza grafu nie ma nazwy — treść opisuje rolę, nigdy
+        # identyfikator wskazany przez wołającego.
+        assert str(odmowa.value) == "Wskazany węzeł docelowy ścieżki nie istnieje w grafie sieci."
 
     def test_source_defaults_to_slack(self) -> None:
         graph, result_v1 = _solve_network_b()
@@ -309,9 +312,24 @@ class TestSegmentDecompositionSwitchOnPath:
 
     def test_unreachable_node_raises(self) -> None:
         graph, result_v1 = self._network_with_switch()
-        graph.add_node(_pq("ISOLATED", 0.4))
-        with pytest.raises(VoltageProfileSegmentPathError):
+        wyspa = _pq("ISOLATED", 0.4)
+        wyspa.name = "Szyna wyspy"
+        graph.add_node(wyspa)
+        with pytest.raises(VoltageProfileSegmentPathError) as odmowa:
             VoltageProfileSegmentBuilder(graph).build_path(result_v1, "ISOLATED")
+        # Partia integracji 10: węzeł z grafu opisany NAZWĄ (`Node.name`), nie identyfikatorem.
+        assert "Węzeł „Szyna wyspy”" in str(odmowa.value)
+        assert "ISOLATED" not in str(odmowa.value)
+
+    def test_wezel_bez_nazwy_opisany_rodzajem_nie_identyfikatorem(self) -> None:
+        graph, result_v1 = self._network_with_switch()
+        wyspa = _pq("ISOLATED", 0.4)
+        wyspa.name = ""
+        graph.add_node(wyspa)
+        with pytest.raises(VoltageProfileSegmentPathError) as odmowa:
+            VoltageProfileSegmentBuilder(graph).build_path(result_v1, "ISOLATED")
+        assert "Węzeł bez nazwy" in str(odmowa.value)
+        assert "ISOLATED" not in str(odmowa.value)
 
 
 @pytest.mark.parametrize(

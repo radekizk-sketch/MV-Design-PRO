@@ -91,7 +91,7 @@ class CzasWylaczeniaGalezi:
     prad_rozruchowy_a: float | None = None
     krzywa: str | None = None
     tms: float | None = None
-    # Stale charakterystyki (A, B) z IEC 60255-151 tab. 1 UZYTE w rachunku — bez
+    # Stale charakterystyki (A, B) z IEC 60255-151 zal. A tab. A.1 UZYTE w rachunku — bez
     # nich dowod pokazywalby nazwe krzywej zamiast podstawienia liczbowego.
     # ``None`` dla charakterystyki niezaleznej (DT nie ma tych stalych).
     stala_a: float | None = None
@@ -128,14 +128,10 @@ class CzasWylaczeniaGalezi:
 def _wezly_zrodlowe(graph: NetworkGraph) -> list[str]:
     """Wezly, w ktorych zasilanie wchodzi do sieci (posortowane — determinizm)."""
     wezly: set[str] = set()
-    for zrodlo in graph.get_grid_sc_sources():
-        wezly.add(zrodlo.node_id)
-    for zrodlo in graph.get_synchronous_machine_sources():
-        wezly.add(zrodlo.node_id)
-    for zrodlo in graph.get_asynchronous_machine_sources():
-        wezly.add(zrodlo.node_id)
-    for zrodlo in graph.get_inverter_sources():
-        wezly.add(zrodlo.node_id)
+    wezly.update(graph.wezly_zrodel_sieciowych())
+    wezly.update(maszyna.node_id for maszyna in graph.get_synchronous_machine_sources())
+    wezly.update(silnik.node_id for silnik in graph.get_asynchronous_machine_sources())
+    wezly.update(falownik.node_id for falownik in graph.get_inverter_sources())
     return sorted(wezly)
 
 
@@ -211,7 +207,8 @@ def znajdz_aparat_chroniacy(graph: NetworkGraph, branch_id: str) -> str | None:
             wynik.append((None, (sasiad, nowy_aparat)))
         return wynik
 
-    kolejnosc = przeglad_wszerz_od([(w, None) for w in start], _nastepne)
+    stany_startowe: list[Stan] = [(w, None) for w in start]
+    kolejnosc = przeglad_wszerz_od(stany_startowe, _nastepne)
     for wezel, ostatni_aparat in kolejnosc:
         if ostatni_aparat is None:
             continue

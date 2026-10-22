@@ -1159,14 +1159,13 @@
     "sources": [
       {
         "bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
-        "c_max": null,
-        "c_min": null,
         "catalog_namespace": "ZRODLO_SN",
         "catalog_ref": "src-gpz-15kv-250mva-rx010",
         "gpz_section_id": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001",
         "id": "6400461d-390d-52a1-bd5b-6526fbd78fbe",
         "ik3_ka": 9.62,
         "ik3_min_ka": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "src-gpz-15kv-250mva-rx010",
           "catalog_item_version": "legacy",
@@ -1277,6 +1276,7 @@
         "lv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",
@@ -1329,6 +1329,7 @@
         "lv_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/section/002/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
+        "lv_voltage_tolerance": null,
         "materialized_params": {
           "catalog_item_id": "tr-wn-sn-110-15-25mva-yd11",
           "catalog_item_version": "legacy",

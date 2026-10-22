@@ -80,6 +80,12 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
+    // Katalog pamięci podręcznej Vite/vitest (pre-bundling zależności, wyniki biegu). Domyślnie
+    // `node_modules/.vite`; pełna bramka lokalna (`scripts/brama_pelna.py`) uruchamia kilka
+    // procesów vitest i serwerów Vite naraz na jednym drzewie (`node_modules` bywa dowiązaniem
+    // współdzielonym między drzewami), więc każdy dostaje WŁASNY katalog przez tę zmienną —
+    // bez niej równoległe procesy zapisywałyby do tych samych plików pamięci podręcznej.
+    cacheDir: process.env.MVD_VITE_CACHE_DIR || undefined,
     plugins: [react()],
     // WEJŚCIA PRE-BUNDLINGU (E2E-FIX, 2026-09-05): Vite domyślnie skanuje pod
     // kątem zależności wyłącznie `index.html`. Pierwsze wejście na osobny punkt

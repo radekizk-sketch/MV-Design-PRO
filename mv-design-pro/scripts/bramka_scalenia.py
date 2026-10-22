@@ -467,8 +467,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Zmienione pliki względem {args.baza}: {len(zmienione)}")
 
     graf = zbuduj_graf()
-    for rel in graf.nieparsowalne:
-        print(f"UWAGA: nieparsowalny plik Pythona (bez krawędzi importu): {rel}")
+    if graf.nieparsowalne:
+        # Plik, którego nie da się sparsować, nie ma krawędzi importu — wybór testów
+        # wpływem byłby po cichu zaniżony. Czerwień zamiast ostrzeżenia.
+        for rel in graf.nieparsowalne:
+            print(f"FAIL: {rel}: nieparsowalny plik Pythona — graf importów niepełny")
+        return 1
     wybor = wybierz_testy_backendu(graf, zmienione)
     rdzen = rdzen_niezmiennikow(graf)
     wszystkich = sum(1 for rel in graf.zrodla if _czy_test(rel))
