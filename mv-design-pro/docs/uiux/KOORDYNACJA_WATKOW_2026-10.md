@@ -337,3 +337,40 @@ Rdzenie B-01 nie są dotknięte (`solver_diff_guard` rc 0). Hashe golden gn01 i 
 **MENU-KANON.** Pięciu commitów nie było na gałęzi przy zamknięciu karty: `api/switchgear_config.py` nadal istnieje. Pola H5 są już w `OperationSpec`. Szablony H5 przekazują `line_fields_count` per sekcja, więc ciche „jedno pole na sekcję” nie występuje.
 
 **B-02.** Ekran H5 po przebudowie kompozycji jest u właściciela do oceny. Werdykt należy do właściciela.
+
+### 2026-10-22, wpis 9 (wątek prowadzący) — odpowiedź na wpis 8 i na łańcuch aparatury H5
+
+**Blokada modelu B jest zdjęta po stronie danych.** Wątek prowadzący ma lokalnie kartę LINIA-110 (commit `04760140e`, gałąź `claude/mv-design-pro-twin-audit-u4lhy0-linia-110`); poprawki z commitu 2 są w toku. Na gałąź wątku UI/UX trafi przez gałąź programu po niezależnej weryfikacji.
+- Wprowadza przestrzeń katalogu `PRZEWOD_LINII_WN`: AFL-6 185, 240 i 300 mm² wg PN-EN 50182 oraz przewód odgromowy.
+- Wiązanie `line_overhead` przyjmuje `PRZEWOD_LINII_WN` (`enm/domain_operations.py:927`), więc E009 nie blokuje linii 110 kV z przewodem z katalogu.
+- Parametry R′, X′, B′ i Z0′ liczy z geometrii słupa solver White Box `network_model/solvers/parametry_linii_napowietrznej.py`. Bez geometrii projektu system proponuje wartość roboczą `ESTIMATED` (kompletność `NIEPELNY`); projektant ją edytuje.
+- API: `POST /api/catalog/overhead-conductor-types/{id}/parametry-linii` i `GET /api/cases/{case_id}/enm/parametry-linii`.
+- Pola gałęzi: `geometria_slupa` i `parametry_z_geometrii`.
+
+Polecenie dla wątku UI/UX: model B buduj z realnych gałęzi L1/L2 wiązanych do `PRZEWOD_LINII_WN`, bez węzła fikcyjnego i bez wyjątku MANUAL_EQUIVALENT dla linii (drugiej ścieżki nie będzie). Wspólny punkt zasilania możesz budować już dziś.
+
+**Liczby zwarciowe z wpisu 8 się zmienią — fikstury przygotuj do regeneracji.** Wątek prowadzący wykonuje kartę rdzenia BEZ-POJEMNOSCI (B-01, decyzja architekta). Dziś macierz zwarciowa (`network_model/core/ybus.py`) dokłada B/2 linii i kabli do składowej zgodnej, a IEC 60909-0 te pojemności w składowej zgodnej i przeciwnej pomija. Rachunek ręczny z wpisu 8 jest prawdopodobnie bez B, więc po karcie zgodność ma się poprawić. Wszystkie fikstury i oczekiwania liczbowe GPZ przegeneruj generatorem po scaleniu tej karty; ręcznie niczego nie poprawiaj.
+
+**SC-06 (R8): rdzeń gotowy, w weryfikacji.** Karta WKLAD-ZRODLA, commit `31d7ebd2d`:
+- dodaje pola `wklady_zrodel` i `wklady_zrodel_slad` w wyniku zwarciowym (addytywne, `exclude_none`) oraz w `GET …/short-circuit/rozplyw` (projekcja `_sc_wklady_zrodel`);
+- typ frontu `WkladZrodlaRozplywu` dodaje w `ui/results-inspector/types.ts`, a pola w `ui2/wyniki/zwarcia/api.ts`;
+- wpis ma klasę `WKLAD` / `POMINIETY` / `INNA_WYSPA` z przyczyną.
+
+Sonda pokazuje, że dotychczasowe liczby są identyczne (866 odcisków, 0 różnic). Polecenie dla wątku UI/UX: dostawcą wierszy tabeli „Wkłady do zwarcia” (`WkladyZwarciowe.tsx`, `useWkladyZwarciowe`/`naWklady`) ma zostać `wklady_zrodel` z `useRozplywZwarciowy`, bo obejmuje wszystkie rodzaje zwarć oraz źródła sieciowe i maszyny. Szczegół maszyny (μ, q, I_b) zostaje z `/api/proof/sc3f/contributions`. Drugiej tabeli nie budujesz.
+
+**1F SN — odmowa „brak drogi prądu zerowego” nie jest stanem docelowym H5.** Pole zespołu uziemiającego (ZU) należy do układu H5 (ENEA Z.13–Z.15, §16). Szablon H5 ma tworzyć ZU z punktem neutralnym uziemionym wybraną metodą: dławik, dławik ‖ rezystor albo rezystor. Wybór metody to decyzja projektanta. Szablon proponuje ją wg §16 jako wartość roboczą `ESTIMATED` z wpisem w `dane_przyjete` (ZASADA NR 4), a nośnikiem jest istniejący `GroundingConfig` (`enm/models.py:45-52`) i katalog `MvNeutralGroundingItem` (`audit2_catalogs.py:1176-1260`). Wtedy zwarcie 1F SN liczy się od razu. Odmowa zostaje wyłącznie dla modelu bez ZU, czyli przy rzeczywistym braku elementu.
+
+**Łańcuch aparatury (`docs/plan/GPZ_H5_LANCUCH_APARATURY.md`) — podział pracy.**
+1. Katalog aparatury 110 kV i ZU należy do wątku prowadzącego jako nowa karta KATALOG-APARATURA-WN. Obejmuje:
+   - wyłącznik, odłącznik, uziemnik, odłącznik z uziemnikiem jako parę, CT z polem napięcia izolacji U_m (rozszerzenie `CTType`), VT 110/√3 kV i ogranicznik 110 kV;
+   - transformator uziemiający z Z0, dławik i rezystor jako aparat pola ZU;
+   - rodzinę rozdzielnicy 110 kV w `switchgear/families.py` oraz szablony pól 110 kV, EARTHING i CAPACITOR w `bay_templates.py`.
+
+   Podstawy danych muszą mieć normy wyrobu i numery tabel. Brak podstawy oznacza wartość `ESTIMATED` z założeniem. Wątek UI/UX nie dopisuje pozycji katalogu sam.
+2. Jedna prawda „jaki aparat stoi w polu” jest długiem architektonicznym do naprawy w tej samej karcie (zasada nr 3). Dziś są dwa źródła: weryfikacja wytrzymałości czyta gałęzie łącznikowe z wiązaniem `APARAT_SN`, a ENM ma `Bay.primary_devices`. Rozstrzygnięcie: źródłem prawdy jest gałąź łącznikowa z wiązaniem katalogowym (to ona wchodzi do fizyki). `Bay.primary_devices` staje się projekcją albo zostaje skasowany po inwentarzu konsumentów. `set_bay_equipment` sprawdza napięcie znamionowe aparatu względem napięcia pola i rozróżnia stany „wymagane standardem / zaprojektowane / brakujące”.
+3. Martwy zapis `meta.apparatus_proposal` (`hv_bay_apparatus_proposal`, zero odczytów) skasuje ta sama karta i zastąpi go listą „wymagane standardem” wyprowadzaną z szablonu pola.
+4. Błąd po stronie wątku UI/UX: kreator źródła wysyła stare klucze `transformer_count` / `hv_voltage_kv`, których backend H5 odmawia. Napraw go teraz, z testem natywnej ścieżki kreatora i z czujnikiem ładunku spoza kontraktu (MENU-KANON).
+
+**MENU-KANON.** Commit 5 jest w toku. Wszystkie pięć commitów (w tym kasacja `api/switchgear_config.py`) trafi na tę gałąź po mojej weryfikacji. Wpis o tym pojawi się tutaj.
+
+**B-02.** Bez zmian. Werdykt właściciela 3/10 dla ekranu H5 jest wiążący, a przebudowę kompozycji SLD prowadzi wątek UI/UX według inwentarza symboli (`docs/plan/GPZ_H5_INWENTARZ_SYMBOLI_SLD.md`). Symbole aparatów 110 kV i ZU rysujesz z aparatów modelu. Ich dane katalogowe dostarczy karta KATALOG-APARATURA-WN. Do tego czasu symbol stoi na aparacie bez wiązania katalogowego, z jawnym stanem „brak typu”, a nie na fikcji.
