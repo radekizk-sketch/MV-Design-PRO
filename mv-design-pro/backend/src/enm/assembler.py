@@ -23,6 +23,7 @@ został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, cast
@@ -30,6 +31,7 @@ from uuid import NAMESPACE_DNS, uuid5
 
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
+from enm.dane_przyjete_galezi import KOD_Z0_ROBOCZE, zalozenia_z0_galezi
 from enm.load_zip_model import (
     KOD_ZIP_AGREGAT_NIEREPREZENTOWALNY,
     jest_odbiorem_zip,
@@ -40,6 +42,7 @@ from enm.mapping import (
     build_grid_source_trace,
     build_zero_sequence_zbus,
     map_enm_to_network_graph,
+    skladowe_sieci_zerowej,
 )
 from enm.models import (
     FAZY_ODBIORU_JEDNOFAZOWEGO,
@@ -56,6 +59,7 @@ from enm.nazwy_elementow import (
     nazwa_po_identyfikatorze,
     zbuduj_indeks_nazw,
 )
+from enm.parametry_linii_wn import KOD_GEOMETRIA_ROBOCZA, zalozenia_linii_wn
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
@@ -523,6 +527,9 @@ class WejscieRozplywu:
     wyspy: tuple[WyspaRozplywu, ...]
     pq_specs: tuple[PQSpec, ...]
     pv_specs: tuple[PVSpec, ...]
+    #: Założenia biegu (karta LINIA-110): linie 110 kV liczone z wartością roboczą geometrii
+    #: słupa — ten sam kształt co założenia biegu zwarciowego; pusta krotka = brak założeń.
+    zalozenia: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -587,6 +594,11 @@ class WejscieZwarcia:
     #: Z_f = R_f + jX_f [Ω] z opcji biegu (`fault_impedance` — scenariusz w trybie IMPEDANCE,
     #: `enm.scenariusze.opcje_biegu_ze_scenariusza`). ``None`` = zwarcie metaliczne IEC 60909.
     impedancja_zwarcia: complex | None = None
+    #: Karta LINIA-110 (pkt 2): numer składowej spójnej sieci zerowej każdego węzła
+    #: ``solve_graph`` (``enm.mapping.skladowe_sieci_zerowej`` — ta sama macierz Y0 co ``z0_bus``)
+    #: — wyłącznie dla zwarć doziemnych z założeniem ``branch.z0_wartosc_robocza``; ``None`` =
+    #: Z0 nie wchodzi do biegu albo żadna gałąź nie ma R′0/X′0 z wartości roboczej.
+    skladowe_zerowe: Mapping[str, int] | None = None
 
 
 def impedancja_zwarcia_z_opcji(options: dict[str, Any]) -> complex | None:
@@ -1010,6 +1022,7 @@ def zloz_wejscie_rozplywu(
         wyspy=tuple(wyspy),
         pq_specs=tuple(pq_specs),
         pv_specs=tuple(pv_specs),
+        zalozenia=zalozenia_linii_wn(EnergyNetworkModel.model_validate(snapshot), None),
     )
 
 
@@ -1188,6 +1201,14 @@ def zloz_wejscie_zwarcia(
             )
         else:
             raise OdmowaDanychError(f"Nieznany typ lokalizacji zwarcia: {location_type!r}")
+    zalozenia_z0 = (
+        zalozenia_z0_galezi(enm, scenario_c)
+        if _short_circuit_requires_z0(short_circuit_type)
+        else ()
+    )
+    skladowe_zerowe = (
+        skladowe_sieci_zerowej(enm, solve_graph, scenario=scenario_c) if zalozenia_z0 else None
+    )
     zrodla_sieciowe_trace = tuple(build_grid_source_trace(enm, scenario_c))
     # Karta S-2 AUTORYTET (dyrektywa właściciela 2026-09-16: „K_sc pozostaje
     # DEFAULT_FORBIDDEN"): ślad WHITE BOX założeń k_sc (`graph.
@@ -1219,6 +1240,11 @@ def zloz_wejscie_zwarcia(
         + k_sc_zalozenia
         # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: wyspy nN liczone z wartością roboczą tolerancji.
         + zalozenia_tolerancji_nn(enm, scenario_c)
+        # Karta LINIA-110: linie 110 kV z R′/X′/B′/Z′0 policzonymi z wartością roboczą geometrii.
+        + zalozenia_linii_wn(enm, scenario_c)
+        # Karta LINIA-110 (pkt 2): linie i kable z R′0/X′0 z założenia katalogu — wyłącznie
+        # zwarcia doziemne (Z0 nie wchodzi do 3F/2F).
+        + zalozenia_z0
     )
     # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
     # migawki dołączonej do żądania) — `network_model.core.
@@ -1246,6 +1272,7 @@ def zloz_wejscie_zwarcia(
         wklady_w_biegu=wklady_w_biegu,
         k_sc_znaczniki=k_sc_znaczniki,
         impedancja_zwarcia=impedancja_zwarcia,
+        skladowe_zerowe=skladowe_zerowe,
     )
 
 
@@ -2159,6 +2186,19 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
         zalozenia.append(_zalozenie(KOD_ZALOZENIE_GALAZ_MAGNESUJACA, magnesujaca_pominieta))
     if admitancja_pominieta:
         zalozenia.append(_zalozenie(KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA, admitancja_pominieta))
+    # Karta LINIA-110: linie 110 kV, których Z1 i Z0 policzono z wartością roboczą geometrii —
+    # ten sam zbiór (załączone) co założenia zwarć i rozpływu symetrycznego.
+    linie_robocze = [str(z["element_ref"]) for z in zalozenia_linii_wn(enm, None)]
+    if linie_robocze:
+        zalozenia.append(_zalozenie(KOD_GEOMETRIA_ROBOCZA, linie_robocze))
+    # Karta LINIA-110 (pkt 2): R′0/X′0 z założenia katalogu — wyłącznie gałęzie z realnym I0
+    # (``droga_zerowa.z_realnym_i0``: tylko ich Z0 wchodzi do równań solvera).
+    galezie_z0_robocze = [
+        str(z["element_ref"])
+        for z in zalozenia_z0_galezi(enm, None, galezie=droga_zerowa.z_realnym_i0)
+    ]
+    if galezie_z0_robocze:
+        zalozenia.append(_zalozenie(KOD_Z0_ROBOCZE, galezie_z0_robocze))
     if galezie_ze_sprzezeniem:
         zalozenia.append(
             _zalozenie(

@@ -174,7 +174,7 @@ def test_konsumenci_wiersza_biegu_jedna_wyspa(deklaracja: str, scenariusz: str) 
     assert _ik_z_biegu_zwarciowego(run, N1)[2] is False
 
     # Reguły generatorów pola: znacznik z TEGO SAMEGO wiersza co Ik''/ip.
-    ik, ip, run_id, znacznik = _prady_zwarciowe_szyny(case, N2)
+    ik, ip, run_id, znacznik, _linie = _prady_zwarciowe_szyny(case, N2)
     assert ik is not None and ip is not None and run_id == str(run.id)
     assert znacznik is robocza
     assert _prady_zwarciowe_szyny(case, N1)[3] is False

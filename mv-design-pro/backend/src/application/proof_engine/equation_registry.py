@@ -52,7 +52,7 @@ from __future__ import annotations
 from collections.abc import ValuesView
 from typing import ClassVar
 
-from application.proof_engine.registries.ls_equations import LS_EQUATIONS
+from application.proof_engine.registries.ohl_equations import OHL_EQUATIONS
 from application.proof_engine.types import EquationDefinition, SymbolDefinition
 
 # =============================================================================
@@ -3893,7 +3893,7 @@ registry.merge(LE_EQUATIONS)
 registry.merge(EARTH_EQUATIONS)
 registry.merge(QU_EQUATIONS)
 registry.merge(SC1_EQUATIONS)
-registry.merge(LS_EQUATIONS)
+registry.merge(OHL_EQUATIONS)
 registry.merge(PF_EQUATIONS)
 registry.merge(LOSS_EQUATIONS)
 registry.freeze()

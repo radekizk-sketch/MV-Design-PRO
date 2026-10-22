@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -77,6 +77,7 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `ring.endpoints_missing` | TOPOLOGY | 2 | BLOCKER | Pierścień nie ma zdefiniowanych punktów końcowych | panel: `sld` |
 | `trunk.segment_missing` | TOPOLOGY | 2 | BLOCKER | Magistrala nie ma żadnego segmentu | panel: `sld` |
 | `trunk.terminal_missing` | TOPOLOGY | 2 | BLOCKER | Magistrala nie ma terminala końcowego | panel: `sld` |
+| `line.geometria_wartosc_robocza` | TOPOLOGY | 3 | INFO | Linia 110 kV liczona z wartością roboczą geometrii słupa, przewodu odgromowego albo rezystywności gruntu — podaj geometrię słupa z projektu w parametrach linii i przelicz | panel: `inspector`, tab: `parametry`, focus: `geometria_slupa` |
 | `ring.nop_required` | TOPOLOGY | 3 | BLOCKER | Pierścień SN wymaga punktu normalnie otwartego (NOP) | panel: `sld`, modal: `set_normal_open_point` |
 | `trunk.segment_length_invalid` | TOPOLOGY | 3 | BLOCKER | Nieprawidłowa długość odcinka (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `length_m` |
 | `trunk.segment_length_missing` | TOPOLOGY | 3 | BLOCKER | Odcinek nie ma zdefiniowanej długości | panel: `inspector`, tab: `parametry`, focus: `length_m` |
@@ -113,6 +114,7 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `transformer.vector_group_invalid` | CATALOGS | 2 | BLOCKER | Grupa połączeń transformatora spoza słownika IEC 60076-1 — wybierz grupę z listy (np. Dyn11, YNd11, Yzn5) | panel: `inspector`, tab: `parametry`, focus: `vector_group` |
 | `transformer.vector_group_missing` | CATALOGS | 2 | BLOCKER | Grupa połączeń transformatora nieznana — analizy doziemne/niesymetryczne (składowa zerowa) nie mogą wyznaczyć układu bez tej danej | panel: `katalog`, tab: `transformatory`, focus: `vector_group` |
 | `vt.rated_burden_missing` | CATALOGS | 2 | WARNING | Brak mocy znamionowej uzwojenia przekładnika napięciowego w katalogu — uzupełnij pozycję katalogową | panel: `katalog`, tab: `vt`, focus: `burden_va` |
+| `branch.z0_wartosc_robocza` | CATALOGS | 3 | INFO | Składowa zerowa (R′0, X′0) odcinka z wartości roboczej katalogu — producent jej nie podaje; wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka i przelicz | panel: `inspector`, tab: `parametry`, focus: `r0_ohm_per_km` |
 | `cable.insulation_data_missing` | CATALOGS | 3 | WARNING | Brak typu izolacji lub temperatury znamionowej kabla w katalogu — bez nich nie da się ocenić starzenia izolacji | panel: `katalog`, tab: `kable`, focus: `insulation_type` |
 | `cable.operating_temperature_missing` | CATALOGS | 3 | WARNING | Brak temperatury pracy żyły — podaj ją, by ocenić względne starzenie izolacji | panel: `inspector`, tab: `parametry`, focus: `temperatura_pracy_c` |
 | `cable.screen_bonding_reference_mismatch` | CATALOGS | 3 | WARNING | Zamodelowany układ uziemienia ekranu kabla różni się od układu, dla którego katalog podaje R0/X0 — składowa zerowa z katalogu dotyczy innego układu uziemienia ekranu | panel: `inspector`, tab: `parametry`, focus: `screen_bonding` |
@@ -225,19 +227,19 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 |--------|---------------|
 | BLOCKER | 102 |
 | WARNING | 55 |
-| INFO | 3 |
-| **Razem** | **160** |
+| INFO | 5 |
+| **Razem** | **162** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
-| TOPOLOGY | 6 |
-| CATALOGS | 49 |
+| TOPOLOGY | 7 |
+| CATALOGS | 50 |
 | STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **160** |
+| **Razem** | **162** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

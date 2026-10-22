@@ -174,7 +174,7 @@ ma dwa mechanizmy, nie deklaracje:
   kodem ORAZ rekord nietypowy, lecz legalny, ktory przechodzi. Zbior kodow w
   testach musi byc rowny zbiorowi kodow twardych rejestru.
 
-Kody: `KAT-T-001` … `KAT-T-047` (twarde), `KAT-W-001` … `KAT-W-006`
+Kody: `KAT-T-001` … `KAT-T-049` (twarde), `KAT-W-001` … `KAT-W-006`
 (wiarygodnosc). Nazwe reguly wolno przeredagowac, kodu nie.
 
 Karta KATALOG-TURBINY-TOR-V112: `KAT-T-042` pola toru maszyny wylacznie dla
@@ -189,6 +189,15 @@ Karta W5-E-TTIT (scalona w partii integracji 9; numery nadane przy scaleniu, bo 
 wziela `042`…`044` rownolegle z karta toru V112): `KAT-T-045` rodzaj pradu roznicowego RCD ze
 slownika AC / A / F / B, `046` prad znamionowy, prad roznicowy znamionowy i czas wylaczenia RCD
 dodatnie, `047` RCD selektywny (typ S) z minimalnym czasem niezadzialania.
+
+Karta LINIA-110 (przestrzen `PRZEWOD_LINII_WN`, `OverheadConductorType`): `KAT-T-048`
+przeznaczenie przewodu ze slownika FAZOWY / ODGROMOWY, wymiary, rezystancja i wspolczynnik
+temperaturowy dodatnie, GMR z tablicy mniejszy od promienia; `049` budowa przewodu (rdzen +
+warstwy drutow Al) zgodna ze srednica zewnetrzna z tolerancja zaokraglen tablicy (1 %). Typ
+przewodu wiaze WYLACZNIE przewod (dane wyrobu PN-EN 50182); R', X', B' i Z'0 linii 110 kV
+materializuja sie z geometrii slupa przez solver `network_model/solvers/
+parametry_linii_napowietrznej.py` (standard ENEA Operator linii 110 kV §7.1 lit. j), a brak
+geometrii daje wartosc robocza rejestru `wartosci_robocze` (jakosc `ESTIMATED`).
 
 Karta AB-H0 §0.7.5: `KAT-T-009`/`014`/`015`/`016` sa PRZECELOWANE z dawnego pola
 `ConverterType.harmonic_spectrum_percent` (skasowane; 0 ze 176 pozycji nioslo widmo)

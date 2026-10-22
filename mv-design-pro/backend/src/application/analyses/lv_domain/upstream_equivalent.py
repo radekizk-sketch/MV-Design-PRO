@@ -49,6 +49,7 @@ from application.analyses.fault_loop.service import (
     restrict_graph_to_island_of,
 )
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
+from enm.dane_przyjete_galezi import dane_przyjete_wezla
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -208,6 +209,12 @@ def _build_upstream_equivalent_snapshot_surowy(
     rx_ratio = (r1_ohm / x1_ohm) if x1_ohm != 0 else None
 
     z0_ohm, z0_missing_reason_pl = _hv_zero_sequence_ohm(enm, hv_equiv.hv_bus_ref)
+    # Karta LINIA-110 (kontrakt werdyktu §3): Z1/Sk″ zawierają linie 110 kV z wartością roboczą
+    # geometrii z wyspy szyny, a Z0 — R′0/X′0 z wartości roboczej katalogu ze składowej sieci
+    # zerowej szyny. Te same predykaty co wiersze biegu zwarciowego (`dane_przyjete_wezla`).
+    dane_przyjete = dane_przyjete_wezla(
+        enm, trafo.hv_bus_ref, ze_skladowa_zerowa=z0_ohm is not None
+    )
 
     operating_state_id = compute_switching_snapshot_hash(enm)
     model_hash = compute_enm_hash(enm)
@@ -261,6 +268,13 @@ def _build_upstream_equivalent_snapshot_surowy(
         "model_revision": enm.header.revision,  # werdykt: modelRevision
         "model_hash": model_hash,  # werdykt: /hash
         "missing_data": [],
+        # Addytywnie, WYŁĄCZNIE przy danych przyjętych — równoważnik na danych projektu bez
+        # zmian (odcisk projekcji nN bit w bit).
+        **(
+            {"status_danych": "UNVALIDATED_INPUT", "dane_przyjete": list(dane_przyjete)}
+            if dane_przyjete
+            else {}
+        ),
         "note_pl": (
             "Równoważnik Thevenina sieci SN w punkcie HV transformatora — "
             "granica wizualna domeny nN (L2) jest granicą domeny napięciowej "

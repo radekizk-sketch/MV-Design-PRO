@@ -53,6 +53,15 @@
     },
     {
       "area": "CATALOGS",
+      "code": "branch.z0_wartosc_robocza",
+      "fix_navigation": {
+        "focus": "r0_ohm_per_km",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "branch.zero_sequence_missing",
       "fix_navigation": {
         "focus": "r0_ohm_per_km",
@@ -592,6 +601,15 @@
       "fix_navigation": {
         "panel": "inspector",
         "tab": "katalog"
+      }
+    },
+    {
+      "area": "TOPOLOGY",
+      "code": "line.geometria_wartosc_robocza",
+      "fix_navigation": {
+        "focus": "geometria_slupa",
+        "panel": "inspector",
+        "tab": "parametry"
       }
     },
     {
@@ -1363,7 +1381,7 @@
       }
     }
   ],
-  "count": 160,
+  "count": 162,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

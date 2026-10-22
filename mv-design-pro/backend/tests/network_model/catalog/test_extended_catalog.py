@@ -56,6 +56,7 @@ class TestCatalogNamespace:
             "KOMPENSATOR_SN",
             "PTPIREE_CERTYFIKAT_GENERATORA",
             "KARTA_WIDMOWA",  # karta AB-H0 §0.7 — karta widmowa urządzenia (osobny rekord)
+            "PRZEWOD_LINII_WN",  # karta LINIA-110 — przewód linii napowietrznej 110 kV
         }
         actual = {ns.value for ns in CatalogNamespace}
         assert actual == expected
@@ -251,6 +252,7 @@ class TestMaterializationContracts:
             "ZRODLO_NN_BESS",
             "ZABEZPIECZENIE",
             "NASTAWY_ZABEZPIECZEN",
+            "PRZEWOD_LINII_WN",  # karta LINIA-110 — przewód linii napowietrznej 110 kV
         }
         actual = set(MATERIALIZATION_CONTRACTS.keys())
         missing = required - actual

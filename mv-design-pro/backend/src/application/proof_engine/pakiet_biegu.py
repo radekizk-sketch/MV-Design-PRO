@@ -38,6 +38,14 @@ nie mogą się ze sobą rozjechać; rozbicie ich na osobne „rodzaje pakietu" z
 projektanta do wyboru pozornego między pozycjami wyprowadzonymi z identycznych
 danych. Do 2026-08-08 dwa z tych trzech generatorów nie miały ANI JEDNEGO
 konsumenta.
+
+PARAMETRY LINII 110 kV (karta LINIA-110). Przebieg, którego model ma linie 110 kV
+z przewodem z katalogu (R′/X′/B′/Z′0 z geometrii słupa), niesie w pakiecie — KAŻDEGO
+rodzaju — dowód parametrów każdej takiej linii (``parametry_linii__<ref>.zip``): wynik
+zwarcia czy rozpływu stoi na tych parametrach, więc ich wywód jest częścią dokumentacji
+przebiegu. Pakiet zwarcia trójfazowego staje się wtedy zbiorczy (``zwarcie_3f`` + linie);
+przebieg bez takich linii dostaje pakiet bajt w bajt taki jak dotąd. Lista linii pochodzi
+z JEDNEJ funkcji (``_linie_wn_biegu``) czytanej i przez opis zawartości, i przez budowę.
 """
 
 from __future__ import annotations
@@ -50,8 +58,17 @@ from typing import Any
 from application.analyses.power_flow_reconstruction import graf_z_biegu
 from application.analyses.voltage_profile_view import _power_flow_result_v1
 from application.nazwy_biegu import nazwa_projektu_z_migawki
-from application.proof_engine.packs.p14_power_flow import P14PowerFlowInput, P14PowerFlowProof
+from application.parametry_linii_wn import LiniaWNModelu, linie_wn_migawki
+from application.proof_engine.packs.p14_power_flow import (
+    P14PowerFlowInput,
+    P14PowerFlowProof,
+)
 from application.proof_engine.packs.p16_losses import P16LossesInput, P16LossesProof
+from application.proof_engine.packs.parametry_linii_110kv import (
+    ParametryLinii110kVProof,
+    ParametryLiniiDowodInput,
+    rozroznik_linii,
+)
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
@@ -307,7 +324,7 @@ def dostepnosc_pakietu(run: CanonicalRun) -> dict[str, Any]:
         "powod_pl": None,
         "punkty": [p.to_dict() for p in punkty],
         "punkty_etykieta_pl": _ETYKIETA_PUNKTU_PL.get(rodzaj),
-        "zawartosc_pl": _zawartosc_pl(rodzaj, punkty),
+        "zawartosc_pl": _zawartosc_pl(rodzaj, punkty, _linie_wn_biegu(run)),
     }
 
 
@@ -333,24 +350,48 @@ _ZAWARTOSC_SPADKU_PL = (
     "Dowód spadku napięcia na trasie od źródła do wskazanego odcinka — łańcuch "
     "odcinków linii/kabla i granic transformatora (spadek_napiecia.zip)"
 )
+#: Główny dowód rodzajów punktowych w pakiecie zbiorczym (gdy przebieg ma linie 110 kV).
+_ZAWARTOSC_GLOWNEGO_DOWODU_PL: dict[str, str] = {
+    RODZAJ_SC3F: "Dowód zwarcia trójfazowego w wybranym punkcie (zwarcie_3f.zip)",
+    RODZAJ_SC_NIESYMETRYCZNE: (
+        "Dowody zwarć niesymetrycznych 1F-Z, 2F i 2F-Z w wybranym punkcie (SC1FZ.zip, "
+        "SC2F.zip, SC2FZ.zip)"
+    ),
+}
 _ZAWARTOSC_BEZ_ODCINKA_PL = (
     "Bez dowodu spadku napięcia — ten przebieg nie zawiera odcinka linii ani kabla "
     "o znanej impedancji i długości."
 )
 
 
-def _zawartosc_pl(rodzaj: str, punkty: list[PunktPakietu]) -> list[str]:
+def _zawartosc_linii_pl(linia: LiniaWNModelu) -> str:
+    return (
+        f"Dowód parametrów linii 110 kV {linia.nazwa}: R′, X′, B′ i Z′0 z geometrii słupa "
+        f"({rozroznik_linii(linia.branch_ref)}.zip)"
+    )
+
+
+def _zawartosc_pl(rodzaj: str, punkty: list[PunktPakietu], linie: list[LiniaWNModelu]) -> list[str]:
     """Co PROJEKTANT znajdzie w pobranym pliku — opis prawdziwy dla TEGO biegu.
 
     Dla pakietu zbiorczego rozpływu lista zależy od danych: wiersz spadku napięcia
     pojawia się wtedy i tylko wtedy, gdy bieg ma odcinek (czyli gdy ``punkty`` są
-    niepuste — z tego samego źródła, z którego korzysta budowa).
+    niepuste — z tego samego źródła, z którego korzysta budowa). Wiersz dowodu
+    parametrów linii 110 kV — dla każdej linii z ``_linie_wn_biegu`` (to samo źródło,
+    z którego budowa składa dokumenty linii).
     """
+    dowody_linii = [_zawartosc_linii_pl(linia) for linia in linie]
     if rodzaj not in _RODZAJE_Z_ODCINKIEM:
-        return list(_ZAWARTOSC_PL)
+        if not dowody_linii:
+            return list(_ZAWARTOSC_PL)
+        return (
+            [_ZAWARTOSC_GLOWNEGO_DOWODU_PL[rodzaj]]
+            + dowody_linii
+            + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
+        )
     dowody = list(_ZAWARTOSC_ROZPLYWU_PL)
     dowody.append(_ZAWARTOSC_SPADKU_PL if punkty else _ZAWARTOSC_BEZ_ODCINKA_PL)
-    return dowody + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
+    return dowody + dowody_linii + [f"W każdym dowodzie: {pozycja}" for pozycja in _ZAWARTOSC_PL]
 
 
 def _niedostepny(run: CanonicalRun, powod_pl: str, *, rodzaj: str | None = None) -> dict[str, Any]:
@@ -544,6 +585,7 @@ def _zbuduj_rozplyw_zbiorczy(
     odcinek = _wybierz_odcinek(run, punkt)
     if odcinek is not None:
         pakiety["spadek_napiecia"] = _zbuduj_dowod_spadku(run, context, rozplyw, odcinek, naglowek)
+    pakiety.update(_dowody_linii_wn(run, context, naglowek))
     return zbuduj_zip_zbiorczy(pakiety)
 
 
@@ -683,9 +725,13 @@ def _zbuduj_sc3f(
         z_f_ohm=_z_f_ohm(run),
     )
     try:
-        return SC3FProofPack.generate_zip(pack_input, context)
+        zwarcie = SC3FProofPack.generate_zip(pack_input, context)
     except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
+    dowody_linii = _dowody_linii_wn(run, context, naglowek)
+    if not dowody_linii:
+        return zwarcie
+    return zbuduj_zip_zbiorczy({"zwarcie_3f": zwarcie, **dowody_linii})
 
 
 def _zbuduj_sc_niesymetryczne(
@@ -712,9 +758,39 @@ def _zbuduj_sc_niesymetryczne(
         )
     except OdmowaDanychError as exc:
         raise PakietBieguError(f"Nie udało się złożyć pakietu dowodowego: {exc}") from exc
-    return _spakuj_niesymetryczne(pack_input, context)
+    return _spakuj_niesymetryczne(pack_input, context, _dowody_linii_wn(run, context, naglowek))
 
 
-def _spakuj_niesymetryczne(pack_input: SCAsymmetricalPackInput, context: ProofPackContext) -> bytes:
+def _spakuj_niesymetryczne(
+    pack_input: SCAsymmetricalPackInput,
+    context: ProofPackContext,
+    dowody_linii: dict[str, bytes],
+) -> bytes:
     packs = SCAsymmetricalProofPack.generate_zip(pack_input, context)
-    return SCAsymmetricalProofPack.zbuduj_zip_zbiorczy(packs)
+    return SCAsymmetricalProofPack.zbuduj_zip_zbiorczy({**packs, **dowody_linii})
+
+
+def _linie_wn_biegu(run: CanonicalRun) -> list[LiniaWNModelu]:
+    """Linie 110 kV z geometrii w migawce przebiegu — JEDNO źródło dla opisu i budowy."""
+    return linie_wn_migawki(run.snapshot or {})
+
+
+def _dowody_linii_wn(
+    run: CanonicalRun, context: ProofPackContext, naglowek: _Naglowek
+) -> dict[str, bytes]:
+    """Dowód parametrów każdej linii 110 kV przebiegu (pusty słownik, gdy linii nie ma)."""
+    return {
+        rozroznik_linii(linia.branch_ref): ParametryLinii110kVProof.generate_zip(
+            ParametryLiniiDowodInput(
+                project_name=naglowek.projekt,
+                case_name=naglowek.przypadek,
+                run_timestamp=_znacznik_czasu(run),
+                branch_ref=linia.branch_ref,
+                nazwa_linii=linia.nazwa,
+                wynik=linia.wynik,
+                zgodny_z_modelem=linia.zgodny_z_modelem,
+            ),
+            context,
+        )
+        for linia in _linie_wn_biegu(run)
+    }

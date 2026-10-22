@@ -75,6 +75,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
     # `Source.lv_voltage_tolerance` (tolerancja sieci nN, wiersz nN tabeli 1 IEC 60909-0) —
     # to samo prawo; test odcisku: `tests/enm/test_tolerancja_nn_iloczyn_cech.py`
     # (odciski modelu bez deklaracji równe zmierzonym na stanie sprzed karty).
+    # Karta LINIA-110: `OverheadLine.geometria_slupa` i `OverheadLine.parametry_z_geometrii`
+    # (linia 110 kV z przewodem z katalogu) — to samo prawo; test odcisku:
+    # `tests/enm/test_linia_110kv_wpiecie.py::test_odcisk_modelu_bez_linii_110kv_bez_zmian`.
     assert _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE == {
         "sources": (
             "sk3_min_mva",
@@ -86,7 +89,7 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         ),
         "loads": ("phases", "dynamika", "earth_electrode_r_ohm"),
         "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
-        "branches": ("screen_bonding",),
+        "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii"),
         "generators": (
             "dynamika",
             "modele_widmowe",

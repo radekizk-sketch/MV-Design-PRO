@@ -467,6 +467,12 @@ CONTRACT_SOURCES: tuple[str, ...] = (
     # prad_znamionowy_do_a, prad_znamionowy_od_a); zadne nie jest atrybutem typu
     # wbudowanego, wiec nie kwalifikuje sie do MODEL_ROOTS_POZA_MAPA.
     "analysis/obciazenie_galezi.py",
+    # Karta LINIA-110 (2026-10-22): pasma wiarygodnosci parametrow linii 110 kV
+    # (`PasmoParametruLinii`, `OcenaParametruLinii` — dataclassy WYNIKU interpretacji)
+    # czytane przez `application/parametry_linii_wn.py` (warstwa objeta skanem). Kazde pole
+    # jest polem oceny (wartosc, granice, status, wyjasnienie), nie atrybutem typu
+    # wbudowanego — nie kwalifikuje sie do MODEL_ROOTS_POZA_MAPA. PASS niezmieniony.
+    "analysis/sanity_bounds/parametry_linii_bounds.py",
     # Karta W3-J (2026-09-16): jedno zrodlo kryteriow napieciowych — dataclass
     # WYNIKU/KONTRAKTU (`KryteriaNapieciowe`, komplet stalych normatywnych),
     # importowana bezposrednio przez `application/analyses/voltage_profile_view.py`

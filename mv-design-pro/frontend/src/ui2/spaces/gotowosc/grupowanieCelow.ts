@@ -248,6 +248,9 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'trunk.segment_length_invalid': 'wspolne',
   'ring.endpoints_missing': 'wspolne',
   'ring.nop_required': 'wspolne',
+  // Linia 110 kV liczona z wartością roboczą geometrii słupa (zasada nr 4, obszar TOPOLOGY):
+  // wymóg wspólny zwarć i rozpływu — parametry linii wchodzą do obu analiz.
+  'line.geometria_wartosc_robocza': 'wspolne',
   // CATALOGS (:554-562, :601-609, :736-793, :849-870, :872-884)
   'trunk.catalog_missing': 'wspolne',
   'transformer.catalog_missing': 'wspolne',
@@ -343,6 +346,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'source.u_set_pu_out_of_range': 'zwarcia',
   // CATALOGS (wspolne)
   'branch.zero_sequence_missing': 'wspolne',
+  // R′0/X′0 z wartości roboczej katalogu: zwarcia doziemne i rozpływ niesymetryczny.
+  'branch.z0_wartosc_robocza': 'wspolne',
   'cable.insulation_data_missing': 'wspolne',
   'cable.operating_temperature_missing': 'wspolne',
   'cable.screen_bonding_reference_mismatch': 'wspolne',

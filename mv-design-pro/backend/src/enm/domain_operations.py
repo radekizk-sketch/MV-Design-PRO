@@ -79,9 +79,24 @@ from .migrations.nn_field_specs_promocja import (
     META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA,
     ROLA_POLA_ZRODLA_NA_RODZAJ_GENERATORA,
 )
-from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
+from .models import (
+    GEN_TYPES_PRZEKSZTALTNIKOWE,
+    UKLADY_SIECI_NN,
+    EnergyNetworkModel,
+    GeometriaSlupaLinii,
+)
 from .nazwy_elementow import ODCINEK_BEZ_NAZWY, nazwa_pola_ze_specyfikacji
 from .odmowy_pakietow_danych import odmowa_braku_certyfikatu
+from .parametry_linii_wn import (
+    KOD_GEOMETRIA_BEZ_PRZEWODU_WN,
+    KOD_GEOMETRIA_NIEPOPRAWNA,
+    KOD_PARAMETRY_Z_GEOMETRII,
+    POLA_Z_GEOMETRII,
+    BladParametrowLiniiWN,
+    linia_z_geometrii,
+    tabliczka_przewodu_linii_wn,
+    zastosuj_parametry_z_geometrii,
+)
 from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
@@ -908,7 +923,8 @@ def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
 #: aparaty pól po przypisaniu katalogów gałęziom.
 _NAMESPACE_DOZWOLONE_DLA_GALEZI: dict[str, frozenset[str]] = {
     "cable": frozenset({"KABEL_SN", "KABEL_NN"}),
-    "line_overhead": frozenset({"LINIA_SN"}),
+    # Karta LINIA-110: przewód linii 110 kV (dane wyrobu) — parametry linii z geometrii.
+    "line_overhead": frozenset({"LINIA_SN", "PRZEWOD_LINII_WN"}),
     "breaker": frozenset({"APARAT_SN", "APARAT_NN"}),
     "switch": frozenset({"APARAT_SN", "APARAT_NN"}),
     "bus_coupler": frozenset({"APARAT_SN", "APARAT_NN"}),
@@ -3072,6 +3088,15 @@ def _apply_materialized_branch_fields(
         if isinstance(value, str) and value.strip():
             target[key] = value.strip().upper()
 
+    # Karta LINIA-110: tabliczka przewodu linii 110 kV nie niesie impedancji linii — R′, X′,
+    # B′ i Z′0 liczy solver z geometrii słupa (dana projektu albo wartość robocza rejestru).
+    # KAŻDA ścieżka materializacji gałęzi przechodzi tędy, więc przewód 110 kV nie trafi do
+    # gałęzi bez przeliczenia; tabliczka innej kategorii zdejmuje nieaktualną proweniencję.
+    if tabliczka_przewodu_linii_wn(materialized_params):
+        zastosuj_parametry_z_geometrii(target, katalog_biezacy(), czestotliwosc_hz)
+    else:
+        target.pop("parametry_z_geometrii", None)
+
 
 #: Metadane odcinka opisujące jego wyprowadzenie z pola rozdzielnicy (`continue_trunk_segment_sn`).
 _KLUCZE_POCHODZENIA_Z_POLA: tuple[str, ...] = (
@@ -3123,6 +3148,10 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         "n_parallel",
         # W5-A: układ uziemienia ekranu — obie połówki to ten sam kabel.
         "screen_bonding",
+        # Karta LINIA-110: obie połówki linii 110 kV wiszą na tych samych słupach — ta sama
+        # geometria i te same parametry jednostkowe z geometrii (z ich proweniencją).
+        "geometria_slupa",
+        "parametry_z_geometrii",
     ):
         if source.get(key) is not None:
             target[key] = copy.deepcopy(source[key])
@@ -10293,6 +10322,8 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "rating",
                 "insulation",
                 "screen_bonding",
+                # Karta LINIA-110: geometria słupa linii (dana projektu).
+                "geometria_slupa",
                 "catalog_ref",
                 "parameter_source",
                 "overrides",
@@ -10499,6 +10530,45 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                     else "source.invalid_lv_voltage_tolerance"
                 ),
             )
+    # Karta LINIA-110: geometria słupa — kształt sprawdza model (`GeometriaSlupaLinii`), a
+    # R′/X′/B′/Z′0 linii z przewodem 110 kV wynikają z geometrii: ręczna zmiana tych pól na
+    # takiej linii jest odmową (drogą danych zmierzonych albo OSD jest `EKSPERCKI_RECZNY`).
+    if coll == "branches" and "geometria_slupa" in parameters:
+        if current_element.get("type") != "line_overhead":
+            return _error_response(
+                "Geometrię słupa ma wyłącznie linia napowietrzna.",
+                KOD_GEOMETRIA_BEZ_PRZEWODU_WN,
+            )
+        if parameters["geometria_slupa"] is not None:
+            try:
+                geometria = GeometriaSlupaLinii.model_validate(parameters["geometria_slupa"])
+            except ValidationError:
+                return _error_response(
+                    "Geometria słupa ma niepoprawny kształt — położenia przewodów podaje się "
+                    "jako pary (x, y) w metrach, a liczbę przewodów w wiązce jako liczbę "
+                    "całkowitą.",
+                    KOD_GEOMETRIA_NIEPOPRAWNA,
+                )
+            parameters = {
+                **parameters,
+                "geometria_slupa": geometria.model_dump(mode="json"),
+            }
+    if coll == "branches" and linia_z_geometrii(current_element):
+        zmienione_z_geometrii = sorted(
+            klucz
+            for klucz in POLA_Z_GEOMETRII
+            if klucz in parameters and parameters[klucz] != current_element.get(klucz)
+        )
+        if zmienione_z_geometrii and parameters.get("source_mode") not in (
+            "EKSPERCKI_RECZNY",
+            "MIGRACJA",
+        ):
+            return _error_response(
+                f"{opis_nazwy(current_element.get('name'), 'Linia')}: rezystancja, reaktancja "
+                "i susceptancja tej linii wynikają z geometrii słupa i przewodu z katalogu — "
+                "zmień geometrię słupa albo przejdź na parametry wprowadzone ręcznie.",
+                KOD_PARAMETRY_Z_GEOMETRII,
+            )
     if coll == "branches" and "screen_bonding" in parameters:
         proba = {"type": current_element.get("type")}
         blad_ekranu = _apply_screen_bonding(proba, {"screen_bonding": parameters["screen_bonding"]})
@@ -10559,6 +10629,17 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         new_enm[coll][idx][key] = value
     if model_wyprowadzony is not None:
         new_enm[coll][idx]["model"] = model_wyprowadzony
+    # Karta LINIA-110: linia z przewodem 110 kV przelicza R′/X′/B′/Z′0 z geometrii na STANIE
+    # KOŃCOWYM (zmiana geometrii, rezystywności albo przewodu odgromowego); linia, która
+    # przestała nią być (ścieżka ręczna), traci nieaktualną proweniencję.
+    if coll == "branches" and not zmiana_typu_zrodla:
+        element_koncowy = new_enm[coll][idx]
+        if linia_z_geometrii(element_koncowy):
+            zastosuj_parametry_z_geometrii(
+                element_koncowy, katalog_biezacy(), czestotliwosc_studium_hz(enm)
+            )
+        else:
+            element_koncowy.pop("parametry_z_geometrii", None)
 
     if zmiana_typu_zrodla:
         return assign_catalog_to_element(
@@ -12233,6 +12314,10 @@ def execute_domain_operation(
         return _error_response(
             str(blad), "katalog_projektu.invalid", kod_reguly_katalogu=blad.kod_reguly
         )
+    except BladParametrowLiniiWN as blad:
+        # Karta LINIA-110: odmowa danych linii 110 kV (geometria sprzeczna, nieznany przewód
+        # odgromowy) z KAŻDEJ ścieżki materializacji gałęzi — jedna droga odpowiedzi.
+        return _error_response(str(blad), blad.kod)
     except NiezgodnoscKonfiguracjiError as blad:
         # Niezgodność katalogowa pola to BŁĄD DZIEDZINY, nie awaria operacji:
         # projektant wskazał wyrób, którego producent nie robi (np. pole GPZ na

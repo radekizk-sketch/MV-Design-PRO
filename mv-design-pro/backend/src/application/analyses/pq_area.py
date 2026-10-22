@@ -70,6 +70,7 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -398,6 +399,7 @@ def build_pq_area_view(
     return {
         "analysis": "pq_area",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "bus_ref": bus_ref,
             "step_p_mw": step_p_mw,

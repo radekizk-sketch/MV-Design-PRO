@@ -824,6 +824,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -1237,6 +1243,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -1315,6 +1327,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -1744,6 +1762,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -1822,6 +1846,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -2178,6 +2208,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -2256,6 +2292,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -2362,6 +2404,12 @@
      "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
      "trade_name": "YAKXS 3x120/16",
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje składowej zerowej tej pozycji",
+      "return_conductor_ith_1s_a": "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału (IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej żyły powrotnej",
+      "return_conductor_r_ohm_per_km_20c": "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; przekrój znamionowy, nie zmierzony",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 0.3,
      "x_ohm_per_km": 0.1
     },
@@ -2744,6 +2792,7 @@
     "endpoint_a_port": null,
     "endpoint_b_port": null,
     "from_bus_ref": "bus/a05e4a087b12f3a628c842a89bd91cd1/downstream",
+    "geometria_slupa": null,
     "id": "41f595d7-7054-516e-909c-bf725edaffba",
     "ith_1s_a": null,
     "jth_1s_a_per_mm2": 88.0,
@@ -2766,6 +2815,10 @@
      "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
      "trade_name": null,
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 1.071,
      "x_ohm_per_km": 0.357
     },
@@ -2776,6 +2829,7 @@
     "operating_temperature_c": 70.0,
     "overrides": [],
     "parameter_source": "CATALOG",
+    "parametry_z_geometrii": null,
     "r0_ohm_per_km": 1.23,
     "r_ohm_per_km": 0.41,
     "rating": {
@@ -2804,6 +2858,7 @@
     "endpoint_a_port": null,
     "endpoint_b_port": null,
     "from_bus_ref": "bp/830947bd1a7a197126dce059a393aad4/bus",
+    "geometria_slupa": null,
     "id": "d8df5502-2652-5e5b-b6bf-5ad761f10726",
     "ith_1s_a": null,
     "jth_1s_a_per_mm2": 88.0,
@@ -2826,6 +2881,10 @@
      "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
      "trade_name": null,
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 1.071,
      "x_ohm_per_km": 0.357
     },
@@ -2836,6 +2895,7 @@
     "operating_temperature_c": 70.0,
     "overrides": [],
     "parameter_source": "CATALOG",
+    "parametry_z_geometrii": null,
     "r0_ohm_per_km": 1.23,
     "r_ohm_per_km": 0.41,
     "rating": {
@@ -2892,6 +2952,7 @@
     "endpoint_a_port": null,
     "endpoint_b_port": null,
     "from_bus_ref": "bp/830947bd1a7a197126dce059a393aad4/branch_bus_1",
+    "geometria_slupa": null,
     "id": "bc8dc469-7b51-5ca6-b3f8-8f66426fd42b",
     "ith_1s_a": null,
     "jth_1s_a_per_mm2": 88.0,
@@ -2914,6 +2975,10 @@
      "thermal_source_reference": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
      "trade_name": null,
      "voltage_rating_kv": 20.0,
+     "wartosci_robocze": {
+      "r0_ohm_per_km": "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)",
+      "x0_ohm_per_km": "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+     },
      "x0_ohm_per_km": 1.071,
      "x_ohm_per_km": 0.357
     },
@@ -2924,6 +2989,7 @@
     "operating_temperature_c": 70.0,
     "overrides": [],
     "parameter_source": "CATALOG",
+    "parametry_z_geometrii": null,
     "r0_ohm_per_km": 1.23,
     "r_ohm_per_km": 0.41,
     "rating": {
@@ -4433,7 +4499,7 @@
    },
    "description": null,
    "enm_version": "1.0",
-   "hash_sha256": "ee56b176f3e834caca89e87e483a1c337bfd5a25d6eb4d0621c08b3ec768cb4d",
+   "hash_sha256": "84ce15ad5fbde58c52023ef56a0b8ac50b4631f5f87e606c3bc1a76a61f63f3c",
    "name": "Sieć pokazowa — pomiar w odgałęzieniu",
    "revision": 16,
    "updated_at": "2026-08-06T00:00:00Z"

@@ -60,6 +60,13 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         "stała 0,95 wzoru K_T (IEC 60909-0 eq. 12a), wyjątek warstwy 1",
     ),
     ("analysis/boundary/identifier.py", "confidence=0.95,"): (1, "pewność identyfikacji"),
+    (
+        "analysis/sanity_bounds/parametry_linii_bounds.py",
+        'PasmoParametruLinii("b0_do_b1", "Stosunek B′0/B′1", "—", 0.35, 0.90),',
+    ): (
+        1,
+        "górna granica pasma wiarygodności stosunku B′0/B′1 linii napowietrznej, nie c",
+    ),
     ("analysis/energy_validation/builder.py", "if cos_phi >= 0.9:"): (
         1,
         "próg cos φ bilansu mocy biernej",

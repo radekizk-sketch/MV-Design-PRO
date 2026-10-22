@@ -19,6 +19,9 @@ Moduł to DANE, nie fizyka: jedyna relacja liczbowa to relacja normowa I_p = 2,5
 zwarcia. Nie importuje warstw wyższych (model sieci, analizy, werdykt).
 
 RODZINY:
+  * linia napowietrzna 110 kV (karta LINIA-110) — geometria słupa, położenie i typ przewodu
+    odgromowego, rezystywność gruntu; propozycje są założeniami inżynierskimi z odniesieniem do
+    standardu ENEA Operator linii 110 kV, a dane projektu mają pierwszeństwo;
   * aparat SN (``APARAT_SN``) — pierwsza rodzina mechanizmu;
   * sieć nN — tolerancja napięcia (``lv_voltage_tolerance``, karta TOLERANCJA-NN-WARTOSC-ROBOCZA):
     wiersz nN tabeli 1 IEC 60909-0 (+6 % → c 1,05/0,95; +10 % → c 1,10/0,90). Brak deklaracji
@@ -800,5 +803,456 @@ def dana_przyjeta_tolerancji_nn(
         nazwa_pl=f"tolerancja napięcia sieci nN ({miejsce_pl})",
         wartosc=Wielkosc(wartosc=_PROCENT_TOLERANCJI_NN[rozstrzygniecie.wartosc], jednostka="%"),
         powod_pl=rozstrzygniecie.opis_zrodla_pl(),
+        jakosc=FieldQuality.ESTIMATED,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: linia napowietrzna 110 kV — geometria słupa, przewód odgromowy, grunt (karta LINIA-110)
+# ---------------------------------------------------------------------------
+#
+# Standard ENEA Operator linii 110 kV (06.2026) każe wyznaczać R, X, B linii obliczeniowo dla
+# projektu (§7.1 lit. j), ale nie podaje wymiarów słupów (§4.3: słupy wg albumów i katalogów).
+# Geometria jest DANĄ PROJEKTU (``OverheadLine.geometria_slupa``); gdy jej brak, obliczenie
+# biegnie z wartością roboczą tego rejestru (zasada nr 4) — każda składowa osobno, z jawnym
+# źródłem i wpływem. Wartość projektanta (geometria z projektu słupa, rezystywność z badań
+# gruntu) jest daną projektu, nie daną przyjętą — wartością roboczą jest WYŁĄCZNIE propozycja.
+
+#: Klucze składowych danych linii 110 kV (kolejność stała — determinizm odpowiedzi).
+PARAMETR_LINII_FAZY = "fazy"
+PARAMETR_LINII_ODGROMOWE = "odgromowe"
+PARAMETR_LINII_PRZEWOD_ODGROMOWY = "przewod_odgromowy_ref"
+PARAMETR_LINII_REZYSTYWNOSC = "rezystywnosc_gruntu_ohm_m"
+PARAMETRY_LINII_WN: tuple[str, ...] = (
+    PARAMETR_LINII_FAZY,
+    PARAMETR_LINII_ODGROMOWE,
+    PARAMETR_LINII_PRZEWOD_ODGROMOWY,
+    PARAMETR_LINII_REZYSTYWNOSC,
+)
+
+PochodzenieDanejLinii = Literal["PROJEKT", "PROPOZYCJA"]
+
+#: Położenia przewodów fazowych typowego słupa jednotorowego 110 kV z układem w trójkąt [m]:
+#: (x od osi słupa, ŚREDNIA wysokość w przęśle = wysokość zawieszenia − 2/3 zwisu).
+FAZY_SLUPA_TYPOWEGO_M: tuple[tuple[float, float], ...] = (
+    (-3.5, 15.0),
+    (3.5, 15.0),
+    (-3.0, 19.0),
+)
+#: Przewód odgromowy typowego słupa: w osi, 4 m nad najwyższą fazą [m].
+ODGROMOWE_SLUPA_TYPOWEGO_M: tuple[tuple[float, float], ...] = ((0.0, 23.0),)
+#: Wyniesienie przewodu odgromowego nad najwyższą fazę geometrii projektu, gdy projekt podaje
+#: fazy, a nie podaje przewodu odgromowego [m] — ta sama relacja co w słupie typowym.
+WYNIESIENIE_ODGROMOWEGO_M = 4.0
+#: Rezystywność gruntu — wartość robocza [Ω·m].
+REZYSTYWNOSC_GRUNTU_ROBOCZA_OHM_M = 100.0
+#: Typ przewodu odgromowego proponowany zamiast OPGW (katalog PRZEWOD_LINII_WN).
+PRZEWOD_ODGROMOWY_ROBOCZY_REF = "przewod-wn-97-al1-56-st1a"
+
+_ODNIESIENIE_SLUPA = (
+    "standard ENEA Operator linii 110 kV (06.2026) §4.3 nie podaje wymiarów słupów (słupy wg "
+    "albumów) — przyjęto słup jednotorowy z układem przewodów w trójkąt: fazy (−3,5 m; 15 m), "
+    "(+3,5 m; 15 m), (−3,0 m; 19 m) średniej wysokości w przęśle"
+)
+_ODNIESIENIE_ODGROMOWEGO_POLOZENIA = (
+    "standard ENEA Operator linii 110 kV §4.2 wymaga przewodu odgromowego; położenie przyjęto "
+    "w osi słupa, 4 m nad najwyższą fazą"
+)
+_ODNIESIENIE_ODGROMOWEGO_TYPU = (
+    "standard ENEA Operator linii 110 kV §4.2 wymaga przewodu OPGW 48J, ale nie podaje jego "
+    "rezystancji ani budowy — przyjęto przewód stalowo-aluminiowy 97-AL1/56-ST1A (PN-EN 50182) "
+    "jako zastępnik"
+)
+_ODNIESIENIE_REZYSTYWNOSCI = (
+    "wartość typowa gruntu średnio wilgotnego stosowana w obliczeniach Carsona "
+    "(W. H. Kersting, „Distribution System Modeling and Analysis”, rozdz. 4: ρ = 100 Ω·m)"
+)
+
+
+@dataclass(frozen=True)
+class PropozycjaDanejLinii:
+    """Propozycja wartości roboczej składowej danych linii 110 kV."""
+
+    parametr: str
+    nazwa_pl: str
+    rodzaj_zrodla: RodzajZrodla
+    odniesienie: str
+    uzasadnienie_pl: str
+    wplyw_pl: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "parametr": self.parametr,
+            "nazwa_pl": self.nazwa_pl,
+            "rodzaj_zrodla": self.rodzaj_zrodla,
+            "odniesienie": self.odniesienie,
+            "uzasadnienie_pl": self.uzasadnienie_pl,
+            "wplyw_pl": self.wplyw_pl,
+        }
+
+
+_PROPOZYCJA_FAZ = PropozycjaDanejLinii(
+    parametr=PARAMETR_LINII_FAZY,
+    nazwa_pl="położenie przewodów fazowych na słupie",
+    rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+    odniesienie=_ODNIESIENIE_SLUPA,
+    uzasadnienie_pl=(
+        "Projekt nie podaje geometrii słupa — przyjęto słup typowy, żeby obliczenie R′, X′, B′ "
+        "i Z′0 linii biegło od razu"
+    ),
+    wplyw_pl=(
+        "reaktancja i susceptancja zależą od logarytmu odległości faz: przy 50 Hz zmiana "
+        "średniej odległości faz o +25 % / −25 % zmienia X′1 o ok. +0,014 / −0,018 Ω/km "
+        "(ωμ0/(2π)·ln 1,25 i ·ln 0,75), a impedancja zerowa zależy także od wysokości "
+        "zawieszenia"
+    ),
+)
+_PROPOZYCJA_ODGROMOWE = PropozycjaDanejLinii(
+    parametr=PARAMETR_LINII_ODGROMOWE,
+    nazwa_pl="położenie przewodu odgromowego",
+    rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+    odniesienie=_ODNIESIENIE_ODGROMOWEGO_POLOZENIA,
+    uzasadnienie_pl=(
+        "Projekt nie podaje położenia przewodu odgromowego, a standard ENEA go wymaga — przyjęto "
+        "jeden przewód w osi słupa, 4 m nad najwyższą fazą"
+    ),
+    wplyw_pl=(
+        "przewód odgromowy uziemiony na każdym słupie obniża impedancję składowej zerowej; "
+        "jego położenie zmienia Z′0, nie zmienia Z′1"
+    ),
+)
+_PROPOZYCJA_PRZEWODU_ODGROMOWEGO = PropozycjaDanejLinii(
+    parametr=PARAMETR_LINII_PRZEWOD_ODGROMOWY,
+    nazwa_pl="typ przewodu odgromowego",
+    rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+    odniesienie=_ODNIESIENIE_ODGROMOWEGO_TYPU,
+    uzasadnienie_pl=(
+        "Brak danych elektrycznych OPGW w standardzie i w projekcie — przyjęto przewód "
+        "stalowo-aluminiowy o zbliżonej roli"
+    ),
+    wplyw_pl=(
+        "rezystancja i GMR przewodu odgromowego wpływają wyłącznie na impedancję składowej "
+        "zerowej; dane OPGW z karty producenta zastąpią założenie"
+    ),
+)
+_PROPOZYCJA_REZYSTYWNOSCI = PropozycjaDanejLinii(
+    parametr=PARAMETR_LINII_REZYSTYWNOSC,
+    nazwa_pl="rezystywność gruntu",
+    rodzaj_zrodla="ZALOZENIE_INZYNIERSKIE",
+    odniesienie=_ODNIESIENIE_REZYSTYWNOSCI,
+    uzasadnienie_pl="Projekt nie podaje rezystywności gruntu wzdłuż trasy linii",
+    wplyw_pl=(
+        "rezystywność wpływa wyłącznie na impedancję składowej zerowej: przy 50 Hz X′0 linii "
+        "bez przewodu odgromowego rośnie o ok. 0,22 Ω/km na dekadę rezystywności "
+        "(3·ωμ0/(4π)·ln 10, pierwszy wyraz szeregu Carsona); przewód odgromowy tę zależność "
+        "osłabia"
+    ),
+)
+
+#: Propozycje rodziny linii 110 kV — jedno źródło (determinizm brzmienia).
+PROPOZYCJE_LINII_WN: Mapping[str, PropozycjaDanejLinii] = {
+    PARAMETR_LINII_FAZY: _PROPOZYCJA_FAZ,
+    PARAMETR_LINII_ODGROMOWE: _PROPOZYCJA_ODGROMOWE,
+    PARAMETR_LINII_PRZEWOD_ODGROMOWY: _PROPOZYCJA_PRZEWODU_ODGROMOWEGO,
+    PARAMETR_LINII_REZYSTYWNOSC: _PROPOZYCJA_REZYSTYWNOSCI,
+}
+
+
+@dataclass(frozen=True)
+class GeometriaProjektuLinii:
+    """Dane geometrii linii podane w projekcie (``None`` = składowa niepodana).
+
+    ``odgromowe == ()`` to JAWNA deklaracja projektu „linia bez przewodu odgromowego”
+    (np. istniejąca linia bez odgromu) — nie brak danej.
+    """
+
+    fazy: tuple[tuple[float, float], ...] | None = None
+    liczba_w_wiazce: int = 1
+    odstep_wiazki_m: float | None = None
+    odgromowe: tuple[tuple[float, float], ...] | None = None
+    przewod_odgromowy_ref: str | None = None
+    rezystywnosc_gruntu_ohm_m: float | None = None
+
+
+@dataclass(frozen=True)
+class DanaLiniiRozstrzygnieta:
+    """Składowa danych linii po rozstrzygnięciu: wartość + pochodzenie (+ propozycja)."""
+
+    parametr: str
+    wartosc: Any
+    pochodzenie: PochodzenieDanejLinii
+
+    @property
+    def robocza(self) -> bool:
+        return self.pochodzenie == "PROPOZYCJA"
+
+    @property
+    def propozycja(self) -> PropozycjaDanejLinii:
+        return PROPOZYCJE_LINII_WN[self.parametr]
+
+    def opis_zrodla_pl(self) -> str:
+        p = self.propozycja
+        if not self.robocza:
+            return f"{p.nazwa_pl}: dana projektu"
+        return (
+            f"wartość robocza ({_RODZAJ_ZRODLA_PL[p.rodzaj_zrodla]}): {p.odniesienie}. "
+            f"{p.uzasadnienie_pl}. Wpływ: {p.wplyw_pl}."
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        wartosc = self.wartosc
+        if isinstance(wartosc, tuple):
+            wartosc = [list(p) for p in wartosc]
+        return {
+            "parametr": self.parametr,
+            "nazwa_pl": self.propozycja.nazwa_pl,
+            "wartosc": wartosc,
+            "pochodzenie": self.pochodzenie,
+            "wartosc_robocza": self.robocza,
+            "propozycja": self.propozycja.to_dict() if self.robocza else None,
+            "opis_zrodla_pl": self.opis_zrodla_pl(),
+        }
+
+
+@dataclass(frozen=True)
+class DaneLiniiRozstrzygniete:
+    """Komplet danych linii 110 kV po rozstrzygnięciu pierwszeństwa (projekt > propozycja)."""
+
+    fazy: DanaLiniiRozstrzygnieta
+    liczba_w_wiazce: int
+    odstep_wiazki_m: float | None
+    odgromowe: DanaLiniiRozstrzygnieta
+    przewod_odgromowy_ref: DanaLiniiRozstrzygnieta | None
+    rezystywnosc_gruntu: DanaLiniiRozstrzygnieta
+
+    @property
+    def skladowe(self) -> tuple[DanaLiniiRozstrzygnieta, ...]:
+        """Składowe w kolejności ``PARAMETRY_LINII_WN`` (bez typu odgromowego linii bez odgromu)."""
+        wynik = [self.fazy, self.odgromowe]
+        if self.przewod_odgromowy_ref is not None:
+            wynik.append(self.przewod_odgromowy_ref)
+        wynik.append(self.rezystywnosc_gruntu)
+        return tuple(wynik)
+
+    @property
+    def robocze(self) -> tuple[DanaLiniiRozstrzygnieta, ...]:
+        return tuple(s for s in self.skladowe if s.robocza)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "liczba_w_wiazce": self.liczba_w_wiazce,
+            "odstep_wiazki_m": self.odstep_wiazki_m,
+            "skladowe": [s.to_dict() for s in self.skladowe],
+        }
+
+
+def rozstrzygnij_dane_linii_wn(
+    projekt: GeometriaProjektuLinii,
+) -> DaneLiniiRozstrzygniete:
+    """Dane linii 110 kV — JEDNO miejsce pierwszeństwa: dana projektu > wartość robocza.
+
+    Przewód odgromowy, gdy projekt podaje fazy, a nie podaje odgromu, leży w osi średniej faz
+    projektu, ``WYNIESIENIE_ODGROMOWEGO_M`` nad najwyższą fazą (ta sama relacja co w słupie
+    typowym). Typ przewodu odgromowego jest składową tylko dla linii z przewodem odgromowym.
+    """
+    if projekt.fazy is not None:
+        fazy = DanaLiniiRozstrzygnieta(PARAMETR_LINII_FAZY, tuple(projekt.fazy), "PROJEKT")
+        wiazka, odstep = projekt.liczba_w_wiazce, projekt.odstep_wiazki_m
+    else:
+        fazy = DanaLiniiRozstrzygnieta(PARAMETR_LINII_FAZY, FAZY_SLUPA_TYPOWEGO_M, "PROPOZYCJA")
+        # Słup typowy niesie jeden przewód w fazie (standard ENEA §4.1: AFL-6 240 mm²).
+        wiazka, odstep = 1, None
+    if projekt.odgromowe is not None:
+        odgromowe = DanaLiniiRozstrzygnieta(
+            PARAMETR_LINII_ODGROMOWE, tuple(projekt.odgromowe), "PROJEKT"
+        )
+    elif projekt.fazy is None:
+        odgromowe = DanaLiniiRozstrzygnieta(
+            PARAMETR_LINII_ODGROMOWE, ODGROMOWE_SLUPA_TYPOWEGO_M, "PROPOZYCJA"
+        )
+    else:
+        xs = [p[0] for p in projekt.fazy]
+        ys = [p[1] for p in projekt.fazy]
+        polozenie = (sum(xs) / len(xs), max(ys) + WYNIESIENIE_ODGROMOWEGO_M)
+        odgromowe = DanaLiniiRozstrzygnieta(PARAMETR_LINII_ODGROMOWE, (polozenie,), "PROPOZYCJA")
+    przewod_odgromowy: DanaLiniiRozstrzygnieta | None = None
+    if odgromowe.wartosc:
+        przewod_odgromowy = (
+            DanaLiniiRozstrzygnieta(
+                PARAMETR_LINII_PRZEWOD_ODGROMOWY,
+                projekt.przewod_odgromowy_ref,
+                "PROJEKT",
+            )
+            if projekt.przewod_odgromowy_ref
+            else DanaLiniiRozstrzygnieta(
+                PARAMETR_LINII_PRZEWOD_ODGROMOWY,
+                PRZEWOD_ODGROMOWY_ROBOCZY_REF,
+                "PROPOZYCJA",
+            )
+        )
+    rezystywnosc = (
+        DanaLiniiRozstrzygnieta(
+            PARAMETR_LINII_REZYSTYWNOSC,
+            float(projekt.rezystywnosc_gruntu_ohm_m),
+            "PROJEKT",
+        )
+        if projekt.rezystywnosc_gruntu_ohm_m is not None
+        else DanaLiniiRozstrzygnieta(
+            PARAMETR_LINII_REZYSTYWNOSC, REZYSTYWNOSC_GRUNTU_ROBOCZA_OHM_M, "PROPOZYCJA"
+        )
+    )
+    return DaneLiniiRozstrzygniete(
+        fazy=fazy,
+        liczba_w_wiazce=wiazka,
+        odstep_wiazki_m=odstep,
+        odgromowe=odgromowe,
+        przewod_odgromowy_ref=przewod_odgromowy,
+        rezystywnosc_gruntu=rezystywnosc,
+    )
+
+
+def _opis_polozen_pl(polozenia: Sequence[Sequence[float]]) -> str:
+    return ", ".join(f"({liczba_pl(x)} m; {liczba_pl(y)} m)" for x, y in polozenia)
+
+
+def dane_przyjete_linii_wn(
+    dane: DaneLiniiRozstrzygniete, *, miejsce_pl: str
+) -> tuple[DanaPrzyjeta, ...]:
+    """Wartości robocze danych linii jako dane przyjęte werdyktu (``ESTIMATED``, §3c pkt 4).
+
+    JEDNO tłumaczenie dla obliczenia parametrów linii, założeń biegu i dowodu: każda składowa
+    z pochodzeniem ``PROPOZYCJA`` daje jedną daną przyjętą (kolejność ``PARAMETRY_LINII_WN``);
+    dane projektu nie są danymi przyjętymi.
+    """
+    wynik: list[DanaPrzyjeta] = []
+    for skladowa in dane.robocze:
+        wartosc: Wielkosc | None = None
+        opis = skladowa.opis_zrodla_pl()
+        if skladowa.parametr == PARAMETR_LINII_REZYSTYWNOSC:
+            wartosc = Wielkosc(wartosc=float(skladowa.wartosc), jednostka="Ω·m")
+        elif skladowa.parametr in (PARAMETR_LINII_FAZY, PARAMETR_LINII_ODGROMOWE):
+            opis = f"{opis} Położenia (x; y): {_opis_polozen_pl(skladowa.wartosc)}."
+        else:
+            opis = f"{opis} Typ katalogowy: {skladowa.wartosc}."
+        wynik.append(
+            DanaPrzyjeta(
+                nazwa_pl=f"{skladowa.propozycja.nazwa_pl} ({miejsce_pl})",
+                wartosc=wartosc,
+                powod_pl=opis,
+                jakosc=FieldQuality.ESTIMATED,
+            )
+        )
+    return tuple(wynik)
+
+
+# ---------------------------------------------------------------------------
+# Rodzina: pola katalogu linii i kabli SN wyprowadzone bez danych producenta
+# ---------------------------------------------------------------------------
+#
+# Żadna pozycja katalogu linii napowietrznych i kabli SN nie ma składowej zerowej z karty
+# producenta (pomiar 2026-10-22: 25 linii i 62 kable z R′0/X′0 wyprowadzonym, 0 z karty).
+# Wyprowadzenie (``mv_cable_line_catalog._with_zero_sequence_parameters`` i
+# ``_with_cable_return_conductor``) jest ZAŁOŻENIEM INŻYNIERSKIM — nie danej producenta i nie
+# normy — więc pozycja niesie mapę ``wartosci_robocze`` (pole → założenie), materializacja
+# przenosi ją do gałęzi, a każdy wynik, do którego wchodzi taka wartość, ma daną przyjętą
+# ``ESTIMATED`` (kompletność dowodu ``NIEPELNY``, kontrakt werdyktu §3). Projektant zmienia
+# wartość w parametrach odcinka (R′0, X′0) — wartość projektanta różna od katalogowej nie jest
+# daną przyjętą.
+
+#: Klucz pozycji katalogu i ``materialized_params`` gałęzi: pole → założenie wyprowadzenia.
+KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU = "wartosci_robocze"
+
+ZALOZENIE_R0_TRZY_R1 = (
+    "R′0 = 3·R′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
+    "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_X0_TRZY_X1 = (
+    "X′0 = 3·X′1 — założenie inżynierskie katalogu (stosunek typowy; producent nie podaje "
+    "składowej zerowej tej pozycji, żadna norma nie podaje tego stosunku)"
+)
+ZALOZENIE_R0_ZYLA_POWROTNA = (
+    "R′0 = R′1 + R′ żyły powrotnej — założenie inżynierskie katalogu: prąd składowej zerowej "
+    "wraca wyłącznie żyłą powrotną (ekranem), bez udziału ziemi; producent nie podaje "
+    "składowej zerowej tej pozycji"
+)
+ZALOZENIE_R_ZYLY_POWROTNEJ = (
+    "R′ żyły powrotnej = ρ20/S z przekroju odczytanego z oznaczenia kabla (ρ20 miedzi wg "
+    "IEC 60028, aluminium wg IEC 60889) — producent nie podaje rezystancji żyły powrotnej; "
+    "przekrój znamionowy, nie zmierzony"
+)
+ZALOZENIE_ITH_ZYLY_POWROTNEJ = (
+    "Ith(1 s) żyły powrotnej = jth·S z gęstością prądu żyły fazowej tego materiału "
+    "(IEC 60949, para temperatur 90 → 250 °C) — producent nie podaje wytrzymałości cieplnej "
+    "żyły powrotnej"
+)
+
+#: Pola składowej zerowej gałęzi objęte daną przyjętą (kolejność stała — determinizm).
+POLA_SKLADOWEJ_ZEROWEJ: tuple[tuple[str, str], ...] = (
+    ("r0_ohm_per_km", "R′0"),
+    ("x0_ohm_per_km", "X′0"),
+)
+
+
+def wartosc_projektanta(wartosc: Any, tabliczkowa: Any) -> bool:
+    """Pole elementu niesie wartość PROJEKTANTA: tabliczka zna to pole, a element ma INNĄ wartość.
+
+    JEDEN predykat dla dwóch stron tej samej granicy (reguła KLASA, predykaty parami):
+    uzupełnienie katalogu (``enm.catalog_completion``) NIE nadpisuje wartości projektanta,
+    a dana przyjęta z wartości roboczej katalogu (``pola_z0_robocze``) NIE powstaje dla pola,
+    które projektant zmienił. Wartość projektanta równa tabliczkowej jest nieodróżnialna od
+    tabliczkowej — zostaje wartością katalogu (z jej założeniem).
+    """
+    if wartosc is None or tabliczkowa is None:
+        return False
+    if isinstance(wartosc, bool) or isinstance(tabliczkowa, bool):
+        return bool(wartosc) != bool(tabliczkowa)
+    if isinstance(wartosc, int | float) and isinstance(tabliczkowa, int | float):
+        return float(wartosc) != float(tabliczkowa)
+    if isinstance(wartosc, str) and isinstance(tabliczkowa, str):
+        return wartosc.strip().upper() != tabliczkowa.strip().upper()
+    return bool(wartosc != tabliczkowa)
+
+
+def pola_z0_robocze(
+    materialized_params: Mapping[str, Any] | None, wartosci_galezi: Mapping[str, Any]
+) -> tuple[tuple[str, str, str, float], ...]:
+    """Pola składowej zerowej gałęzi, które NADAL są wartością roboczą katalogu.
+
+    JEDEN predykat dla założeń biegu i dla danych przyjętych: pole jest robocze, gdy pozycja
+    katalogu oznaczyła je w ``wartosci_robocze`` ORAZ wartość gałęzi nie jest wartością
+    projektanta (``wartosc_projektanta`` — ten sam predykat, którym uzupełnienie katalogu
+    oszczędza wartość projektanta). Zwraca krotki (pole, etykieta, założenie,
+    wartość) w kolejności ``POLA_SKLADOWEJ_ZEROWEJ``.
+    """
+    params = materialized_params or {}
+    robocze = params.get(KLUCZ_WARTOSCI_ROBOCZYCH_KATALOGU)
+    if not isinstance(robocze, Mapping):
+        return ()
+    wynik: list[tuple[str, str, str, float]] = []
+    for pole_z0, etykieta in POLA_SKLADOWEJ_ZEROWEJ:
+        zalozenie = robocze.get(pole_z0)
+        katalogowa = params.get(pole_z0)
+        wartosc = wartosci_galezi.get(pole_z0)
+        if (
+            isinstance(zalozenie, str)
+            and isinstance(katalogowa, int | float)
+            and isinstance(wartosc, int | float)
+            and not wartosc_projektanta(wartosc, katalogowa)
+        ):
+            wynik.append((pole_z0, etykieta, zalozenie, float(wartosc)))
+    return tuple(wynik)
+
+
+def dana_przyjeta_z0(
+    *, etykieta: str, zalozenie: str, wartosc: float, miejsce_pl: str
+) -> DanaPrzyjeta:
+    """Wartość robocza składowej zerowej z katalogu jako dana przyjęta werdyktu (§3c pkt 4)."""
+    return DanaPrzyjeta(
+        nazwa_pl=f"{etykieta} z katalogu ({miejsce_pl})",
+        wartosc=Wielkosc(wartosc=wartosc, jednostka="Ω/km"),
+        powod_pl=(
+            f"{zalozenie}. Zmień wartość: {etykieta} w parametrach odcinka (dane producenta "
+            "albo pomiar)."
+        ),
         jakosc=FieldQuality.ESTIMATED,
     )

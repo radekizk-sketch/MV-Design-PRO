@@ -280,7 +280,8 @@ def test_no_any_in_domain_types():
     # We allow justified Any usages at serialization boundaries
     # (canonicalize, stable_sort_key, to_dict/from_dict, protection interop)
     # but flag excessive use beyond the baseline
-    max_allowed = 30
+    # Pomiar 2026-10-22 (karta LINIA-110): 29 — zapadka tylko w dół.
+    max_allowed = 29
     if len(violations) > max_allowed:
         violation_text = "\n".join(violations[:20])
         pytest.fail(

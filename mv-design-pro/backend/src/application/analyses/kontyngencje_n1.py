@@ -160,6 +160,7 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.mapping import map_enm_to_network_graph, ref_to_graph_id
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu, nazwa_po_identyfikatorze
@@ -906,6 +907,7 @@ def build_kontyngencje_n1_view(
     return {
         "analysis": "kontyngencje_n1",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "element_refs": refs,
             "kryteria": kryteria,

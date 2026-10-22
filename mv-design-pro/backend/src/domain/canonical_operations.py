@@ -2025,6 +2025,24 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
     ),
+    # Karta LINIA-110 (rozstrzygnięcie architekta, pkt 2; zasada nr 4): R′0/X′0 linii
+    # i kabli SN z katalogu są wyprowadzone bez danej producenta (R′0 = 3·R′1, X′0 = 3·X′1,
+    # R′0 = R′1 + R′ żyły powrotnej) — pozycja niesie mapę `wartosci_robocze`, bieg zwarcia
+    # doziemnego i rozpływu niesymetrycznego niesie założenie tego kodu
+    # (`enm.dane_przyjete_galezi.zalozenia_z0_galezi`), a werdykty — daną przyjętą ESTIMATED.
+    # Brak danej producenta NIE blokuje obliczeń.
+    "branch.z0_wartosc_robocza": ReadinessCodeSpec(
+        code="branch.z0_wartosc_robocza",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Składowa zerowa (R′0, X′0) odcinka z wartości roboczej katalogu — producent jej "
+            "nie podaje; wpisz wartość z karty producenta albo z pomiaru w parametrach odcinka "
+            "i przelicz"
+        ),
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "r0_ohm_per_km"},
+    ),
     # Lokalizacja zwarcia scenariusza NA GAŁĘZI (BRANCH/BRANCH_POINT) — adapter
     # obliczeniowy dziś liczy zwarcie WYŁĄCZNIE dla POJEDYNCZEGO węzła grafu; punkt
     # pośredni na gałęzi wymagałby rozdzielenia jej na dwie impedancje w miejscu
@@ -2088,6 +2106,28 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "inna, i przelicz"
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
+    ),
+    # Karta LINIA-110 (zasada nr 4): linia 110 kV z przewodem z katalogu PRZEWOD_LINII_WN ma
+    # R′, X′, B′ i Z′0 policzone z geometrii słupa; składowe niepodane w projekcie (położenie
+    # faz, przewód odgromowy, rezystywność gruntu) biorą wartość roboczą rejestru
+    # `network_model.catalog.wartosci_robocze` (jakość ESTIMATED, kompletność NIEPELNY). Brak
+    # geometrii NIE blokuje obliczeń — bieg niesie założenie tego kodu
+    # (`enm.parametry_linii_wn.zalozenia_linii_wn`) z linią i drogą zmiany wartości.
+    "line.geometria_wartosc_robocza": ReadinessCodeSpec(
+        code="line.geometria_wartosc_robocza",
+        area=ReadinessArea.TOPOLOGY,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Linia 110 kV liczona z wartością roboczą geometrii słupa, przewodu odgromowego albo "
+            "rezystywności gruntu — podaj geometrię słupa z projektu w parametrach linii i "
+            "przelicz"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "geometria_slupa",
+        },
     ),
     # Karta TB-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4, V12K-351): czas wyłączenia t_b = t_min
     # (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) rozstrzyga się PER

@@ -53,6 +53,7 @@ from enm.canonical_analysis import (
     bieg_wariantu,
     wykonaj_bieg_w_pamieci,
 )
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from enm.models import EnergyNetworkModel
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, Wstrzyk, apply_scenario
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
@@ -369,6 +370,7 @@ def build_hosting_capacity_view(
     return {
         "analysis": "hosting_capacity",
         "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
+        **pola_danych_przyjetych_biegu(run.raw_result),
         "parameters": {
             "step_mw": step_mw,
             "max_steps": max_steps,

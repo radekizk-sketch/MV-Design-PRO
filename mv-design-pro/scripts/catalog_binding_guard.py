@@ -118,6 +118,7 @@ def extract_dataclass_fields(text: str, class_name: str) -> set[str]:
 NAMESPACE_TO_TYPE_CLASS: dict[str, str] = {
     "KABEL_SN": "CableType",
     "LINIA_SN": "LineType",
+    "PRZEWOD_LINII_WN": "OverheadConductorType",
     "TRAFO_SN_NN": "TransformerType",
     "APARAT_SN": "MVApparatusType",
     "APARAT_NN": "LVApparatusType",

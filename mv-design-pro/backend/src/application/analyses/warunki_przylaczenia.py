@@ -50,6 +50,7 @@ from typing import Any
 
 from application.analyses.opis_przebiegu import rodzaj_przebiegu_pl
 from enm.canonical_analysis import CanonicalRun
+from enm.dane_przyjete_galezi import pola_danych_przyjetych_biegu
 from network_model.odmowa_danych import OdmowaDanychError
 from werdykt import format_liczba
 
@@ -365,4 +366,7 @@ def build_warunki_przylaczenia_view(run: CanonicalRun) -> dict[str, Any]:
         "case_id": run.case_id,
         "analysis_type": run.analysis_type,
         "ocena": ocena.to_dict(),
+        # Karta LINIA-110: wielkości rozpływu w punkcie przyłączenia stoją na impedancji linii
+        # 110 kV z wartością roboczą geometrii — dane przyjęte widoku (addytywnie, gdy są).
+        **pola_danych_przyjetych_biegu(run.raw_result),
     }

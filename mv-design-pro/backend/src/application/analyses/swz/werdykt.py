@@ -37,10 +37,12 @@ uzupełnienia rejestru (mechanizm gotowy, zero fabrykacji tymczasem).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from typing import Any
 
+from enm.dane_przyjete_galezi import dane_przyjete_z_zapisu
 from network_model.catalog.lv_disconnection_times_iec60364_4_41 import (
     CZAS_TN_ROZDZIELCZY,
     TABLICA_TN_ODBIORCZE,
@@ -183,16 +185,25 @@ def dane_przyjete_petli(wynik: FaultLoopResult, punkt_pl: str) -> tuple[DanaPrzy
     """Dane przyjęte prądu pętli: c pętli z wartości roboczej tolerancji sieci nN (karta
     TOLERANCJA-NN-WARTOSC-ROBOCZA). JEDNO tłumaczenie znacznika wyniku pętli dla werdyktów
     SWZ TN, TT/IT, doboru aparatu nN, arkusza obwodów i dowodu obwodu nN."""
-    return dane_przyjete_znacznika_petli(wynik.tolerancja_nn_robocza, punkt_pl)
+    return dane_przyjete_znacznika_petli(
+        wynik.tolerancja_nn_robocza, punkt_pl, wynik.dane_przyjete_linii_wn
+    )
 
 
-def dane_przyjete_znacznika_petli(robocza: bool, punkt_pl: str) -> tuple[DanaPrzyjeta, ...]:
+def dane_przyjete_znacznika_petli(
+    robocza: bool, punkt_pl: str, dane_linii_wn: Iterable[Any] = ()
+) -> tuple[DanaPrzyjeta, ...]:
     """To samo tłumaczenie dla wyniku pętli już zserializowanego (``FaultLoopResult.to_dict``
-    niesie ``tolerancja_nn_robocza`` wyłącznie przy wartości roboczej) — arkusz obwodów nN
-    czyta pętlę doziemną TT/IT z widoku SWZ, nie z obiektu wyniku."""
-    if not robocza:
-        return ()
-    return (dana_przyjeta_tolerancji_nn(miejsce_pl=f"pętla zwarcia w punkcie „{punkt_pl}”"),)
+    niesie ``tolerancja_nn_robocza`` wyłącznie przy wartości roboczej, a
+    ``dane_przyjete_linii_wn`` wyłącznie przy liniach 110 kV z wartością roboczą geometrii
+    w wyspie zasilającej — karta LINIA-110) — arkusz obwodów nN czyta pętlę doziemną TT/IT
+    z widoku SWZ, nie z obiektu wyniku."""
+    tolerancja = (
+        (dana_przyjeta_tolerancji_nn(miejsce_pl=f"pętla zwarcia w punkcie „{punkt_pl}”"),)
+        if robocza
+        else ()
+    )
+    return tolerancja + dane_przyjete_z_zapisu(dane_linii_wn)
 
 
 def ocen_swz(

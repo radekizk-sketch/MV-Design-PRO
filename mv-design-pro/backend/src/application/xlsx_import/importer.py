@@ -7,7 +7,13 @@ Format arkusza (uzgodniony z operatorami sieci):
                                  + DOKŁADNIE JEDNA droga do typu przewodu (W1):
                                  (a) typ_katalogowy — identyfikator typu z katalogu
                                      statycznego; wartości podane obok (R_ohm_km, X_ohm_km,
-                                     I_dop_A, Un_kV) muszą się z nim zgadzać (jedna prawda),
+                                     I_dop_A, Un_kV) muszą się z nim zgadzać (jedna prawda);
+                                     typ z katalogu przewodów linii 110 kV
+                                     (`PRZEWOD_LINII_WN`, karta LINIA-110) wiąże przewód
+                                     fazowy: R′, X′, B′ i Z′0 liczy solver z geometrii słupa
+                                     (wartość robocza do czasu podania geometrii projektu),
+                                     więc kolumn R_ohm_km/X_ohm_km/B_uS_km/C_nF_km nie wolno
+                                     podać obok niego,
                                  (b) pełna tabliczka przewodu: rodzaj (LINIA|KABEL), R_ohm_km,
                                      X_ohm_km, Un_kV, I_dop_A oraz dla LINIA: B_uS_km
                                      [T_max_C, przekroj_mm2 mogą być puste — dana nieznana
@@ -80,6 +86,7 @@ from enm.katalog_projektu import STATUS_KATALOGU_PROJEKTU, STATUS_WERYFIKACJI_AR
 from enm.zrodlo_zwarcie import PASMO_U_SET_PU, u_set_pu_w_pasmie
 from network_model.catalog.governance import Poziom, wymagalnosc_katalogu
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
+from network_model.catalog.types import CatalogNamespace, OverheadConductorType
 from network_model.core.voltage_factor import TOLERANCJE_NAPIECIA_NN
 from network_model.pochodne import km_na_m
 from network_model.pochodne.pasma_napieciowe import w_pasmie_nn
@@ -960,6 +967,87 @@ class XlsxNetworkImporter:
     def _rowne(a: float, b: float) -> bool:
         return abs(float(a) - float(b)) <= 1e-6 * max(1.0, abs(float(b)))
 
+    #: Kolumny tabliczki, których NIE wolno podać obok przewodu linii 110 kV: R′, X′ i B′ linii
+    #: wynikają z geometrii słupa (solver ``parametry_linii_napowietrznej``), nie z wiersza.
+    _KOLUMNY_Z_GEOMETRII_WN: tuple[str, ...] = ("R_ohm_km", "X_ohm_km", "B_uS_km", "C_nF_km")
+    #: Kolumny krzyżowe przewodu 110 kV (dane wyrobu z tablicy normy) — jedna prawda.
+    _POLA_KRZYZOWE_PRZEWODU_WN: tuple[tuple[str, str], ...] = (
+        ("I_dop_A", "rated_current_a"),
+        ("Un_kV", "voltage_rating_kv"),
+        ("T_max_C", "max_temperature_c"),
+        ("przekroj_mm2", "cross_section_mm2"),
+    )
+
+    def _waliduj_przewod_wn(
+        self, linia: dict[str, Any], typ_katalogowy: str, przewod: OverheadConductorType
+    ) -> list[BladArkusza]:
+        """Odcinek z przewodem z katalogu linii 110 kV (karta LINIA-110).
+
+        Przewód wiąże dane WYROBU, a parametry jednostkowe linii liczy solver z geometrii
+        słupa — wartość R/X/B/C w wierszu byłaby drugą prawdą obok geometrii (błąd wiersza,
+        nie ciche pominięcie). Przewód odgromowy nie jest przewodem fazowym odcinka.
+        """
+        bledy: list[BladArkusza] = []
+        wiersz = linia["_wiersz"]
+        rodzaj = self._rodzaj_linii(linia)
+        if rodzaj is not None and rodzaj != "LINIA":
+            bledy.append(
+                BladArkusza(
+                    arkusz=ARKUSZ_LINIE,
+                    wiersz=wiersz,
+                    kolumna="rodzaj",
+                    komunikat=(
+                        f"Arkusz podaje rodzaj {rodzaj}, a typ katalogowy '{typ_katalogowy}' "
+                        "to przewód linii napowietrznej 110 kV (LINIA)"
+                    ),
+                )
+            )
+        if przewod.przeznaczenie != "FAZOWY":
+            bledy.append(
+                BladArkusza(
+                    arkusz=ARKUSZ_LINIE,
+                    wiersz=wiersz,
+                    kolumna="typ_katalogowy",
+                    komunikat=(
+                        f"Typ '{typ_katalogowy}' to przewód odgromowy — odcinek wiąże przewód "
+                        "fazowy; przewód odgromowy podaje się w geometrii słupa linii"
+                    ),
+                )
+            )
+        for kolumna in self._KOLUMNY_Z_GEOMETRII_WN:
+            if linia.get(kolumna) is not None:
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=wiersz,
+                        kolumna=kolumna,
+                        komunikat=(
+                            f"Typ katalogowy '{typ_katalogowy}' to przewód linii 110 kV — "
+                            "rezystancję, reaktancję i susceptancję linii liczy system z "
+                            "geometrii słupa; usuń wartość z arkusza (jedna prawda)"
+                        ),
+                    )
+                )
+        for kolumna, pole in self._POLA_KRZYZOWE_PRZEWODU_WN:
+            wartosc = linia.get(kolumna)
+            z_katalogu = getattr(przewod, pole)
+            if wartosc is None or z_katalogu is None:
+                continue
+            if not self._rowne(wartosc, z_katalogu):
+                bledy.append(
+                    BladArkusza(
+                        arkusz=ARKUSZ_LINIE,
+                        wiersz=wiersz,
+                        kolumna=kolumna,
+                        komunikat=(
+                            f"Arkusz podaje {wartosc:g}, a typ katalogowy "
+                            f"'{typ_katalogowy}' ma {float(z_katalogu):g} — jedna prawda: "
+                            "usuń wartość z arkusza albo wskaż inny typ"
+                        ),
+                    )
+                )
+        return bledy
+
     def _waliduj_typy(
         self, linie: list[dict[str, Any]], trafo: list[dict[str, Any]]
     ) -> list[BladArkusza]:
@@ -1007,6 +1095,10 @@ class XlsxNetworkImporter:
                 )
                 continue
             if typ_katalogowy:
+                przewod_wn = katalog.overhead_conductor_types.get(typ_katalogowy)
+                if przewod_wn is not None:
+                    bledy.extend(self._waliduj_przewod_wn(linia, typ_katalogowy, przewod_wn))
+                    continue
                 w_liniach = typ_katalogowy in katalog.line_types
                 w_kablach = typ_katalogowy in katalog.cable_types
                 if not (w_liniach or w_kablach):
@@ -1242,9 +1334,14 @@ class XlsxNetworkImporter:
         galezie: list[dict[str, Any]] = []
         for linia in linie:
             typ_katalogowy = linia.get("typ_katalogowy") or None
+            # Karta LINIA-110: przewód z katalogu linii 110 kV wiąże się w swojej kategorii
+            # katalogu (operacja budowy odcinka dostaje ją w `catalog_binding`).
+            kategoria: str | None = None
             if typ_katalogowy:
                 rodzaj = "KABEL" if typ_katalogowy in katalog.cable_types else "LINIA"
                 catalog_ref = typ_katalogowy
+                if typ_katalogowy in katalog.overhead_conductor_types:
+                    kategoria = CatalogNamespace.PRZEWOD_LINII_WN.value
             else:
                 rodzaj = self._rodzaj_linii(linia) or "LINIA"
                 nazwa_typu = self._nazwa_typu_projektu(linia)
@@ -1273,6 +1370,7 @@ class XlsxNetworkImporter:
                     "dlugosc_m": km_na_m(float(linia["długość_km"])),
                     "catalog_ref": catalog_ref,
                     "rodzaj": rodzaj,
+                    **({"catalog_namespace": kategoria} if kategoria is not None else {}),
                     "wiersz": linia["_wiersz"],
                 }
             )
