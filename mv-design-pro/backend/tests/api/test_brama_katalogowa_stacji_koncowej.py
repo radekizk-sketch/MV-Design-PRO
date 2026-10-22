@@ -198,6 +198,9 @@ def test_zly_ref_bez_tabliczki_tez_odrzucony_zamiast_blokady_o_braku_uk(
     )
 
 
+# Tabliczka transformatora w ładunku CELOWO spoza kontraktu operacji (fizyka z katalogu) —
+# czujnik ładunku zapisuje wpis, nie zamienia go w błąd.
+@pytest.mark.ladunek_spoza_kontraktu
 def test_poprawny_ref_przechodzi_i_daje_fizyke_z_katalogu(klient: TestClient) -> None:
     """Kontrola: dobry ref → 200, materializacja obecna, uk% z katalogu (nie z payloadu)."""
     case_id = _nowy_przypadek(klient)

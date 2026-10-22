@@ -5,7 +5,7 @@
 | Pole | Wartość |
 |---|---|
 | Status | **BINDING** — widok rejestru operacji (nie osobne źródło prawdy) |
-| Wersja | 2.0.0 |
+| Wersja | 2.1.0 |
 | Data | 2026-10-22 |
 | Źródło prawdy | `backend/src/domain/canonical_operations.py` (`CANONICAL_OPERATIONS`, `REQUIRED_FIELD_ALIASES`) |
 | Handlery | `backend/src/enm/domain_operations.py::_HANDLERS`, `backend/src/enm/domain_operations_v2.py::ALL_V2_HANDLERS` |
@@ -37,9 +37,16 @@
 ## 1. Źródło prawdy i pilnowanie spójności
 
 Pola ładunku każdej operacji (`required_fields`, `optional_fields`, klucze zastępcze) są
-RÓWNE zbiorowi kluczy najwyższego poziomu ładunku, które czyta handler — przypina to test
-`backend/tests/ci/test_spec_operacji_rowna_odczytom_handlera.py` (analiza AST handlerów
-`enm/**`, przechodnio przez funkcje pomocnicze, z iniekcją pola fantomowego). Zbiór operacji
+RÓWNE zbiorowi kluczy najwyższego poziomu ładunku, które czyta handler, a kształty obiektów
+zagnieżdżonych (`KSZTALTY_ZAGNIEZDZONE`, sekcja 4) — kluczom tych obiektów czytanym przez
+handler; przypina to test `backend/tests/ci/test_spec_operacji_rowna_odczytom_handlera.py`
+(analiza AST handlerów `enm/**`, przechodnio przez funkcje pomocnicze, z iniekcją pola
+fantomowego). Klucz spoza kontraktu na dowolnym poziomie dyspozytor melduje w dzienniku
+serwera, a testy backendu (`backend/tests/conftest.py`) i frontendu (`src/test/setup.ts`)
+oraz skan seedów, narzędzi i speców e2e
+(`backend/tests/ci/test_ladunki_nadawcow_frontendu.py`) traktują go jako błąd. Skutki
+operacji w ciągach liniowych (`CIAGI_LINIOWE`, sekcja 4) przypina
+`backend/tests/ci/test_ciagi_liniowe_operacji.py`. Zbiór operacji
 rejestru jest równy zbiorowi handlerów w obu kierunkach (`scripts/canonical_ops_guard.py`).
 Operacja z oknem, ze ścieżką menu albo świadomie bez okna — klasyfikacja w
 `scripts/dialog_completeness_guard.py` (każda operacja rejestru).
@@ -195,6 +202,117 @@ Rejestr liczy **50** operacji. Pole w nawiasie „albo” to klucz zastępczy (`
 | `set_nn_cable_laying_conditions` | Zapis warunków ułożenia odcinka kabla nN (meta, bez fizyki) | `segment_ref`, `cable_laying_conditions` | — | nie | `enm/domain_operations_v2.py::set_nn_cable_laying_conditions` |
 | `split_nn_segment` | Rozcięcie odcinka kabla nN na dwa z nową szyną pośrednią | `segment_ref`, `split_at_m` | — | tak | `enm/domain_operations_v2.py::split_nn_segment` |
 <!-- GENEROWANE:rejestr-operacji:KONIEC -->
+
+### Obiekty zagnieżdżone ładunku
+
+<!-- GENEROWANE:ksztalty-ladunku:POCZATEK -->
+Obiekty zagnieżdżone ładunku mają kształt w **30** operacjach (`KSZTALTY_ZAGNIEZDZONE`). Kształt obowiązuje obiekt pod kluczem i KAŻDY element listy obiektów pod tym kluczem; klucz spoza kształtu melduje dyspozytor (`klucze_spoza_kontraktu`, ścieżka `station.x`, `sn_fields[0].x`), a test go odrzuca. Obiekt bez wiersza (np. `manual_params`) czyta handler kluczami wyliczanymi w biegu — lista z przyczyną: `backend/tests/ci/test_spec_operacji_rowna_odczytom_handlera.py`.
+
+| Operacja | Obiekt | Klucze |
+|---|---|---|
+| `add_converter_source` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_converter_source` | `der_topology` | `block_transformer`, `connection_level`, `connection_method`, `has_block_transformer`, `has_manufacturer_lv_switchgear`, `inverter_output_voltage_kv`, `lv_switchgear_variant`, `mv_bus_ref`, `mv_field_configuration`, `simultaneity_factor` |
+| `add_converter_source` | `der_topology.block_transformer` | `catalog_binding`, `catalog_ref`, `loadability_pu`, `primary_voltage_kv`, `rated_power_mva`, `secondary_voltage_kv`, `uk_percent`, `vector_group` |
+| `add_converter_source` | `der_topology.mv_field_configuration` | `apparatus_catalog_binding`, `bay_template_ref`, `cable_catalog_binding`, `cable_catalog_ref`, `cable_head`, `cable_laying_conditions`, `cable_length_km`, `cable_screen_bonding`, `ct`, `earthing_switch`, `field_name`, `protection_relay`, `surge_arrester`, `switching_device`, `vt` |
+| `add_converter_source` | `der_topology.mv_field_configuration.apparatus_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_converter_source` | `der_topology.mv_field_configuration.cable_laying_conditions` | `f_grunt`, `f_grupa`, `f_wiazka`, `opis_pl`, `set_name` |
+| `add_converter_source` | `source_field` | `catalog_binding`, `field_name`, `source_field_kind`, `switching_device` |
+| `add_converter_source` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_ct` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_generator_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_generator_sn` | `manual_params` | `q_max_mvar`, `q_min_mvar`, `rated_kv`, `rated_mva` |
+| `add_genset_nn` | `genset_spec` | `fuel_type`, `operation_mode`, `power_factor`, `rated_power_kw`, `rated_voltage_kv`, `source_name` |
+| `add_genset_nn` | `source_field` | `catalog_binding`, `field_name`, `source_field_kind`, `switching_device` |
+| `add_genset_nn` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_grid_source_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_grid_source_sn` | `gpz_line_field_apparatus` | `apparatus_kind`, `catalog_binding`, `catalog_item_id`, `catalog_ref` |
+| `add_grid_source_sn` | `gpz_line_field_apparatus.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_grid_source_sn` | `grounding` | `r_ohm`, `type`, `x_ohm` |
+| `add_grid_source_sn` | `manual_equivalent` | `hv_voltage_kv`, `ik3_ka`, `ik3_min_ka`, `r0_ohm`, `r_ohm`, `rx_ratio`, `rx_ratio_min`, `short_circuit_input_side`, `short_circuit_mode`, `sk3_hv_mva`, `sk3_min_mva`, `sk3_mva`, `skip_hv_transformer`, `sn_voltage_kv`, `u_set_pu`, `voltage_hv_kv`, `x0_ohm`, `x_ohm`, `z0_z1_ratio` |
+| `add_grid_source_sn` | `transformer_catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_grid_source_sn` | `zero_sequence` | `enabled`, `r0_ohm`, `x0_ohm`, `z0_z1_ratio` |
+| `add_load_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_cable_segment` | `cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
+| `add_nn_cable_segment` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_distribution_board` | `supply` | `cable_laying_conditions`, `catalog_binding`, `catalog_ref`, `from_bus_ref`, `from_ref`, `length_m`, `n_parallel`, `name`, `ref_id`, `screen_bonding`, `to_bus_name` |
+| `add_nn_distribution_board` | `supply.cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
+| `add_nn_distribution_board` | `supply.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_load` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_outgoing_field` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_section_coupler` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_nn_switch_device` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_relay` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_relay` | `protection` | `catalog_item_id`, `catalog_item_version`, `catalog_ref` |
+| `add_shunt_compensator_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_sn_bay` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_surge_arrester_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_transformer_sn_nn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_ups_nn` | `source_field` | `catalog_binding`, `field_name`, `source_field_kind`, `switching_device` |
+| `add_ups_nn` | `source_field.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `add_ups_nn` | `ups_spec` | `backup_time_min`, `battery_type`, `operation_mode`, `rated_power_kw`, `source_name` |
+| `add_vt` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `append_station_on_endpoint` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
+| `append_station_on_endpoint` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
+| `append_station_on_endpoint` | `nn_earthing` | `lv_system`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `append_station_on_endpoint` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `catalog_bindings`, `equipment`, `equipment_refs`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
+| `append_station_on_endpoint` | `station` | `construction_type`, `designation`, `name`, `nn_earthing`, `nn_voltage_kv`, `station_auxiliary`, `station_type`, `switchgear` |
+| `append_station_on_endpoint` | `station.nn_earthing` | `lv_system`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `append_station_on_endpoint` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
+| `append_station_on_endpoint` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
+| `append_station_on_endpoint` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
+| `append_station_on_endpoint` | `transformer` | `catalog_binding`, `catalog_ref`, `create`, `n_parallel`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv` |
+| `append_station_on_endpoint` | `transformer.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `assign_catalog_to_element` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `connect_secondary_ring_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `connect_secondary_ring_sn` | `segment` | `catalog_binding`, `catalog_ref`, `dlugosc_m`, `rodzaj`, `screen_bonding` |
+| `connect_secondary_ring_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `continue_trunk_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `continue_trunk_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `catalog_ref`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |
+| `continue_trunk_segment_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `continue_trunk_segment_sn` | `segment.zero_sequence` | `b0_siemens_per_km`, `r0_ohm_per_km`, `x0_ohm_per_km` |
+| `insert_branch_pole_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_branch_pole_on_segment_sn` | `insert_at` | `mode`, `value` |
+| `insert_section_switch_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_section_switch_sn` | `insert_at` | `mode`, `value` |
+| `insert_station_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_station_on_segment_sn` | `insert_at` | `mode`, `value` |
+| `insert_station_on_segment_sn` | `nn_block` | `cos_phi`, `loadability_pu`, `nn_configuration`, `outgoing_feeders_nn`, `outgoing_feeders_nn_count`, `simultaneity_factor`, `source_converter_catalog_ref`, `source_converter_kind`, `source_converter_name`, `source_protection` |
+| `insert_station_on_segment_sn` | `nn_block.source_protection` | `analysis_scope`, `breaker_role`, `device_catalog_ref`, `device_label`, `protected_object` |
+| `insert_station_on_segment_sn` | `nn_earthing` | `lv_system`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `insert_station_on_segment_sn` | `sn_fields` | `apparatus_catalog_ref`, `bay_kind`, `bay_template_ref`, `equipment`, `factory_configuration_ref`, `factory_unit_index`, `field_role`, `funkcja_pomiaru`, `manufacturer_ref`, `protection_ref`, `rodzaj_pomiaru`, `source_refs`, `source_status`, `switchgear_family_ref` |
+| `insert_station_on_segment_sn` | `station` | `construction_type`, `designation`, `name`, `name_pl`, `nn_earthing`, `nn_voltage_kv`, `sn_voltage_kv`, `station_auxiliary`, `station_name`, `station_type`, `switchgear` |
+| `insert_station_on_segment_sn` | `station.nn_earthing` | `lv_system`, `neutral_point`, `{side}_neutral_point`, `{side}_r_ohm`, `{side}_x_ohm` |
+| `insert_station_on_segment_sn` | `station.station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
+| `insert_station_on_segment_sn` | `station.switchgear` | `manufacturer_ref`, `switchgear_family_ref` |
+| `insert_station_on_segment_sn` | `station_auxiliary` | `active_power_kw`, `cos_phi`, `name`, `reactive_power_kvar` |
+| `insert_station_on_segment_sn` | `transformer` | `catalog_binding`, `create`, `n_parallel`, `transformer_catalog_ref`, `transformer_control_mode`, `transformer_controlled_bus_ref`, `transformer_deadband_kv`, `transformer_delay_seconds`, `transformer_ldc_enabled`, `transformer_ldc_r_ohm`, `transformer_ldc_x_ohm`, `transformer_regulated_winding`, `transformer_regulation_type`, `transformer_tap_changer_catalog_ref`, `transformer_tap_current_position`, `transformer_tap_max_position`, `transformer_tap_min_position`, `transformer_tap_neutral_position`, `transformer_tap_step_percent`, `transformer_voltage_setpoint_kv` |
+| `insert_station_on_segment_sn` | `transformer.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_zksn_on_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `insert_zksn_on_segment_sn` | `insert_at` | `mode`, `value` |
+| `set_bay_equipment` | `devices` | `catalog_ref`, `designation`, `earthing_role`, `kind`, `linked_ref`, `placement` |
+| `set_nn_cable_laying_conditions` | `cable_laying_conditions` | `ambient_temperature_c`, `circuit_count`, `environment`, `insulation`, `soil_thermal_resistivity_km_w` |
+| `start_branch_segment_sn` | `catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `start_branch_segment_sn` | `segment` | `b0_siemens_per_km`, `bus_name`, `catalog_binding`, `catalog_ref`, `dlugosc_m`, `name`, `r0_ohm_per_km`, `rodzaj`, `screen_bonding`, `x0_ohm_per_km`, `zero_sequence` |
+| `start_branch_segment_sn` | `segment.catalog_binding` | `catalog_item_id`, `catalog_item_version`, `catalog_namespace`, `catalog_ref`, `materialize`, `snapshot_mapping_version` |
+| `start_branch_segment_sn` | `segment.zero_sequence` | `b0_siemens_per_km`, `r0_ohm_per_km`, `x0_ohm_per_km` |
+<!-- GENEROWANE:ksztalty-ladunku:KONIEC -->
+
+### Ciągi liniowe (`line_runs`)
+
+<!-- GENEROWANE:ciagi-liniowe:POCZATEK -->
+Ciąg liniowy (`line_runs`, `enm/models.py::LineRun`) to magistrala albo odgałęzienie jako uporządkowana lista odcinków kabla/linii (`segments`: `segment_ref`, `order`) z początkiem w polu (`starting_bay_ref`, `starting_port_ref`); id ciągu = `ref_id` magistrali (`corridors`), `run_kind` ∈ `main_trunk`, `branch`, `ring`, `loop`, odgałęzienie wskazuje ciąg macierzysty (`parent_run_ref`). Każdy odcinek ciągu istnieje w `branches`, każda stacja listy `stations` — w `substations`. Operacje nie prowadzą listy `stations`: stacje ciągu wyprowadza się z końcówek odcinków (SLD `inferStationRefsForSegments`); lista z zapisu zastanego traci stację usuniętą. Ciągi zmienia **8** operacji (`CIAGI_LINIOWE`, zbiór równy operacjom, których handler zapisuje ciągi — `backend/tests/ci/test_ciagi_liniowe_operacji.py`); pozostałe operacje ciągów nie zmieniają.
+
+| Operacja | Klucz ciągu | Skutek w `line_runs` |
+|---|---|---|
+| `add_grid_source_sn` | — | Zakłada ciąg magistrali GPZ (`run_kind` `main_trunk`, id = id magistrali, bez odcinków) z początkiem w pierwszym polu liniowym GPZ i jego zacisku. |
+| `continue_trunk_segment_sn` | `trunk_id` | Dopisuje utworzony odcinek na koniec ciągu `trunk_id` (brak albo nieznana magistrala → pierwsza magistrala modelu); ciąg zakładany, gdy magistrala go nie ma (początek: `field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu i numer `order`. |
+| `delete_element` | — | Usuwa z `segments` i `stations` każdego ciągu odcinki i stacje usunięte wprost albo kaskadą (numeracja `order` od nowa) — para do czyszczenia magistral; ciąg bez odcinków zostaje razem z magistralą. |
+| `insert_branch_pole_on_segment_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Wstawienie na końcu odcinka nie dzieli go. |
+| `insert_section_switch_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Łącznik nie jest odcinkiem ciągu (magistrala wymienia go między połówkami). |
+| `insert_station_on_segment_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Stacja nie jest odcinkiem ciągu. |
+| `insert_zksn_on_segment_sn` | — | Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali i ciągu). Wstawienie na końcu odcinka nie dzieli go. |
+| `start_branch_segment_sn` | — | Zakłada ciąg odgałęzienia (`run_kind` `branch`) z utworzonym odcinkiem; początek i `branch_origin_station_ref` = element początku (`from_ref`), `parent_run_ref` = ciąg odcinków punktu rozgałęzienia (początek `bp/…`). |
+<!-- GENEROWANE:ciagi-liniowe:KONIEC -->
 
 ---
 
@@ -559,8 +677,7 @@ Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 1; zdarzenia:
       "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
       "station": {
         "station_type": "A",
-        "station_name": "Stacja S02",
-        "sn_voltage_kv": 15.0,
+        "name": "Stacja S02",
         "nn_voltage_kv": 0.4
       },
       "nn_earthing": {
@@ -575,7 +692,7 @@ Odpowiedź: HTTP 200; elementy utworzone 6, zmienione 0, usunięte 1; zdarzenia:
 }
 ```
 
-Odpowiedź: HTTP 200; elementy utworzone 9, zmienione 0, usunięte 0; zdarzenia: `BUS_NN_CREATED`, `FIELDS_CREATED_SN` ×2, `STATION_APPENDED_ON_ENDPOINT`, `STATION_CREATED`, `TR_CREATED`; zaznaczenie: `sub/9a3869f6462cb53ca2c4fb2f531b9a25/substation`.
+Odpowiedź: HTTP 200; elementy utworzone 9, zmienione 0, usunięte 0; zdarzenia: `BUS_NN_CREATED`, `FIELDS_CREATED_SN` ×2, `STATION_APPENDED_ON_ENDPOINT`, `STATION_CREATED`, `TR_CREATED`; zaznaczenie: `sub/1d6531a012a82f5d88559301220959e1/substation`.
 
 #### 12. `connect_secondary_ring_sn` — zamknięcie pierścienia od szyny GPZ do końca magistrali
 
@@ -1726,3 +1843,4 @@ Rejestr `DOMAIN_EVENT_TYPES` liczy **65** typów:
 |---|---|---|
 | 1.0.0 | 2026-02-17 | Dokument pisany ręcznie (nazwy, przykłady, schematy, zdarzenia). |
 | 2.0.0 | 2026-10-22 | Dokument przepisany jako widok rejestru (karta MENU-KANON, V12K-351): wersja 1.0.0 opisywała część operacji (niektóre dwukrotnie), wymieniała operacje skasowane i fikcyjne, miała przykłady z polami, których żaden handler nie czyta, odsyłała do nieistniejącego modułu Pydantic i opisywała fikcyjny enum zdarzeń. Bloki generowane z kodu, przykłady wykonywane przez API, test spójności z iniekcjami. |
+| 2.1.0 | 2026-10-22 | Kształty obiektów zagnieżdżonych ładunku i skutki operacji w ciągach liniowych (`line_runs`) jako bloki generowane; przykład stacji końcowej bez kluczy spoza kontraktu (`station.station_name` — nazwa, której operacja nie czyta). |

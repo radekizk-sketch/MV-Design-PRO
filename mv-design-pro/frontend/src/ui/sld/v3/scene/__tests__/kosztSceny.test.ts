@@ -432,11 +432,30 @@ interface OdciskiLod {
  * z polem modelu, `compose/gpz.ts` `stanAparatuPolaGpz`, przypięte w
  * `buildScene.gpzPoleTr.test.ts`). Zmienia to scenę L1/L2 obu sieci; L0, declutter i 21
  * planów na sieć identyczne z bazą `2df442be0`.
+ *
+ * AKTUALIZACJA ŚWIADOMA (MENU-KANON commit 5, 2026-10-22) — przeliczone odciski; z 54 wpisów
+ * tablicy 38 zmienionych, 16 bez zmian (L0: declutter i 7 z 7 planów w obu sieciach). Pomiar
+ * (archiwa `git archive` przebiegane zrzutem pełnych scen L0/L1/L2 obu sieci w trybie budżetów):
+ * ostatni zielony punkt `f6eb035ad^`, PIERWSZY czerwony `f6eb035ad` (UIUX-K2b „kadr wyłącznie
+ * celu…"; czerwień przeniesiona scaleniem `650565274` bez przeliczenia, bo test biegnie wyłącznie
+ * w kroku budżetów). Dwa wkłady, zmierzone porównaniem pełnych scen:
+ *  · K2b (`buildScene.ts`, kod SLD): 8 odcinków napowietrznych sieci referencyjnej dostaje
+ *    w `meta` `lineType: 'overhead'` (współrzędne bez zmian; na L1/L2 11 odcinków razem
+ *    z odgałęzieniami „#tee"), a łącznik sekcyjny NO poza stacją („Łącznik sekcyjny NO
+ *    (rezerwa)") jest rysowany symbolem `noPoint` na L0/L1/L2 z etykietą „NO" na L1/L2
+ *    (przypięte w `nopINapowietrzne.k2b.test.ts`); w sieci podwojonej po dwie kopie. Zmienia
+ *    scenę L0/L1/L2 i declutter L1/L2.
+ *  · Ta karta (DANE, kod SLD nietknięty): ciągi liniowe fikstury odwołują się do połówek
+ *    podzielonych odcinków zamiast do skasowanego odcinka (spójność `line_runs` po podziale
+ *    odcinka). Sieć referencyjna — sceny bajtowo identyczne z bazą `650565274`; sieć podwojona —
+ *    wyłącznie `meta`: kopia ciągu z odwołaniem wiszącym dawała naruszenie grafu
+ *    `DEVICE_TERMINAL_UNRESOLVED` i notatkę STOP, teraz `electricalGraphStatus` `SLD_VALID`
+ *    i jedna notatka (łamanie arkusza). Geometria, etykiety, declutter i plany bez zmian.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '6bc7816abaa048bb06db7ac4df52298f',
+      scena: '503be15a771aa5a9b896ba5628d38054',
       declutter: '45eb7087a1a66c74a143d69e6afa29ad',
       plany: [
         '3af677ee930b28ebb4f1b3441d612c35',
@@ -449,35 +468,35 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '13091b02a1f84b278546759a7720243b',
-      declutter: 'c9a7135ba0d48e6a78a26a831bd54c80',
+      scena: 'ab00c785630261503a3dc7f40b227e76',
+      declutter: '51d274a5a0c9af0cfa3d9d80f323d1cc',
       plany: [
-        'ed1ae6a3118eaf6cebc3d97c73bc88b4',
-        '235513d5f84161c8c26c43296155bd9d',
-        '8b3218247f0a350bced70495d1fb4c77',
-        '06dbfe32e34a1c06397d85650a11c50b',
-        '79f34292cac0f7517bbf1cf0d6ddaacf',
-        '0ba310bc81350f73e402b6301f08e2fd',
-        '0ba310bc81350f73e402b6301f08e2fd',
+        '61282931898846df8ca2e4dadb025cf8',
+        '5aba452fac804711675f4086641b3ac6',
+        'c8a41b69bf431fc9b3b2ba34239942ac',
+        '2ec8063573c07bf59a388b55c1acec8f',
+        '8b1ee440207d2e649630a801174a0a8c',
+        '865b620398934a30edfe9d7b1fa6edf4',
+        '865b620398934a30edfe9d7b1fa6edf4',
       ],
     },
     {
-      scena: '3adc0a3e129354a2bab540fbc4adcefb',
-      declutter: '3e180052897beb543554edc861ce7eba',
+      scena: '6094e3f170eeb8493048f84ebe04b730',
+      declutter: '9dcd651451f33ac8a1591c62b6c81fd8',
       plany: [
-        '14d7a96ae5e4a2fc8647f7dd3652e2a3',
-        '3b0fadefebf325cc6e9773afcfc5a119',
-        '82953fb58977d6ae083585a6177f84c0',
-        '3544ae7a2b36207bf14985f32df00504',
-        'f175fab01dc8ec8c531dc4a057466687',
-        'b1df23d3f64591182545ba9060c4949b',
-        'b1df23d3f64591182545ba9060c4949b',
+        'dcd61a63a07c93490ed8a8a737b079e3',
+        'c9d6d86befa76c29c2a30d9deacf27dd',
+        'a98bae2c95b3c771995addf8a58b1805',
+        'a04fe956c152a21a67d7ce3863a310d9',
+        '5079880e7b055d805acd1cd5fb45d44b',
+        'c9ba4bced0a66d258703e9fafb0defe8',
+        'c9ba4bced0a66d258703e9fafb0defe8',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '355380cd3205b317fad6952c443230c2',
+      scena: '074c26979c24ec7cfa682eadd50e9b3a',
       declutter: 'c47bbb130e277715e4a94f07de40aaad',
       plany: [
         'e3e95fec3e3fe43ece05565ebec462c7',
@@ -490,29 +509,29 @@ const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly Odc
       ],
     },
     {
-      scena: '679bf718aa9dc4cacb18480578de3242',
-      declutter: 'd1ffeff23c545b1900a5e9a6a120869c',
+      scena: '01c8ac9dc2618d47918407c2103b9f8c',
+      declutter: '4bde60580f7ab07fefa3556db4074830',
       plany: [
-        'b92247a7c92026438284e70a02fcb15d',
-        '712da706ddc69018f6eead902200cd82',
-        'a0414d9b61da608f4de000ca20597062',
-        '1e00e76736218f9037237f8e1c3f66dc',
-        '0b2881816f4de86db0527f0621a7f4b2',
-        '78a817f7ea72ad4901ba25a70f7b53dd',
-        '78a817f7ea72ad4901ba25a70f7b53dd',
+        '9e607a96aeba930edd747e931feb7669',
+        'fc91c1dfe48d04fb2ee8ed89ecfe05ce',
+        '8ea56cb95e6448fc7a776ca13bef4d43',
+        '8e529e68c9ea1bcd4a089a0158d09063',
+        'e54c6a66008c8779a7eefc7bf4a138ba',
+        'c152e9570e7ae88ea75ef3438fad593e',
+        'c152e9570e7ae88ea75ef3438fad593e',
       ],
     },
     {
-      scena: 'd401b19f2f8c3e48d3e45da97e80daa2',
-      declutter: 'ba1409d29aaf5158465886e366fcf824',
+      scena: 'd8ff588295e16e3afff862321437a124',
+      declutter: 'dc85137efb0a8335e0b1bc3b761e554a',
       plany: [
-        '1cec4b684db262c00133928f68b85261',
-        'ef45e907ea8776933b84d7ec02cb1a21',
-        '3d0abffa08309dc0444f29412bb037cb',
-        '3f6e4c31593e263f91994d087cb7dfc8',
-        'd10724cb5e4fc7f7ca5e074ebfbc068d',
-        '600376e70433d5c2ef91aab004124926',
-        '600376e70433d5c2ef91aab004124926',
+        '5160ecba257151b22a80e0405653147c',
+        '3f58e3209f9ec41ea43e4dc3744513fd',
+        '8faca25920c6c0d9d0a4c206ef864104',
+        '78e5d999421b4b8ff9df2a47e0ae8557',
+        'e96b67e2ae1a89d96223557a356fbaed',
+        'c5dcc51311c340cdab2571516aeaf292',
+        'c5dcc51311c340cdab2571516aeaf292',
       ],
     },
   ],

@@ -25,13 +25,10 @@ export const EDYCJA_PARAMETROW_STRINGS = {
   wartoscZeSlownika: '— wybierz wartość ze słownika —',
   dodajWiersz: 'Dodaj parametr',
   usunWiersz: 'Usuń',
-  powod: 'Uzasadnienie zmiany (opcjonalnie)',
-  powodPlaceholder: 'np. korekta wg pomiaru terenowego',
 
   kontrolaTytul: 'Kontrola edycji',
   wierszElement: 'Element',
   wierszParametry: 'Parametry',
-  wierszPowod: 'Uzasadnienie',
 
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:

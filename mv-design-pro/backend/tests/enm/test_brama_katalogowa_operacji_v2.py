@@ -407,7 +407,6 @@ def _payload_konwerter_der_sn(snapshot: dict[str, Any]) -> dict[str, Any]:
                     "materialize": True,
                 },
             },
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": _szyna_sn_ref(snapshot),
             "mv_field_configuration": {
                 "switching_device": "CB",

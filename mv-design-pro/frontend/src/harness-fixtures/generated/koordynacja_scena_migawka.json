@@ -2798,7 +2798,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "68ef15bab6442fcc5e1f95b0fe6a7da05a3f9f0ca3851a70d810a6f534c46c6b",
+    "hash_sha256": "44a0fbcfdae65339b15bcbcf93429c9ae42ffd8210232abc6e9d16cd02211781",
     "name": "Magistrala SN z zabezpieczeniami nadprądowymi",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -2815,7 +2815,31 @@
       "segments": [
         {
           "order": 1,
-          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment"
+          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_SL"
+        },
+        {
+          "order": 2,
+          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_L_SR"
+        },
+        {
+          "order": 3,
+          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_SL"
+        },
+        {
+          "order": 4,
+          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_L_SR"
+        },
+        {
+          "order": 5,
+          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_L"
+        },
+        {
+          "order": 6,
+          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_R_L"
+        },
+        {
+          "order": 7,
+          "segment_ref": "seg/9704d44d1ae3394b377910d77a80b97c/segment_R_R_R_R"
         }
       ],
       "starting_bay_ref": "gpz/5124d8b30e8b81a51280d601e490d2a9/bay/001/001",
@@ -2838,7 +2862,7 @@
         "load_kind": "SKUPIONY"
       },
       "model": "pq",
-      "name": "Odbiór",
+      "name": "Odbiór stacji",
       "overrides": [],
       "p_mw": 0.25,
       "parameter_source": "OVERRIDE",
@@ -2863,7 +2887,7 @@
         "load_kind": "SKUPIONY"
       },
       "model": "pq",
-      "name": "Odbiór",
+      "name": "Odbiór stacji",
       "overrides": [],
       "p_mw": 0.25,
       "parameter_source": "OVERRIDE",
@@ -2888,7 +2912,7 @@
         "load_kind": "SKUPIONY"
       },
       "model": "pq",
-      "name": "Odbiór",
+      "name": "Odbiór stacji",
       "overrides": [],
       "p_mw": 0.25,
       "parameter_source": "OVERRIDE",
@@ -2913,7 +2937,7 @@
         "load_kind": "SKUPIONY"
       },
       "model": "pq",
-      "name": "Odbiór",
+      "name": "Odbiór stacji",
       "overrides": [],
       "p_mw": 0.25,
       "parameter_source": "OVERRIDE",

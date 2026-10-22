@@ -144,9 +144,6 @@ def _blok_stacji() -> dict[str, Any]:
             "source_converter_kind": "PV",
             # Tabliczka w payloadzie CELOWO sprzeczna z katalogiem (0,5 MW / 0,55 MVA):
             # po naprawie wygrywa katalog, payload nie może wstrzyknąć mocy do rozpływu.
-            "source_converter_un_kv": 0.4,
-            "source_converter_sn_mva": 9.9,
-            "source_converter_pmax_mw": 9.9,
             "outgoing_feeders_nn_count": 1,
             "source_protection": {
                 "device_catalog_ref": REF_ZABEZPIECZENIE_ZRODLA,

@@ -298,8 +298,8 @@ dokladnie jeden GPZ).
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `trunk_id` | `string` | TAK* | Identyfikator magistrali (* auto-detekcja pierwszej magistrali, jesli pominiety) |
-| `from_terminal_id` | `string` | TAK* | Identyfikator terminala, od ktorego kontynuowac (* auto-detekcja konca magistrali) |
+| `trunk_id` | `string` | NIE | Identyfikator magistrali = id ciagu liniowego `line_runs` (brak albo nieznana magistrala --- pierwsza magistrala modelu); odcinek dopisany na koniec ciagu (`ENM_OP_CONTRACTS_CANONICAL_FULL.md` §4, „Ciagi liniowe”) |
+| `from_terminal_id` | `string` | NIE | Identyfikator terminala, od ktorego kontynuowac (brak --- koniec magistrali) |
 | `segment.rodzaj` | `"KABEL" \| "LINIA_NAPOWIETRZNA"` | TAK | Rodzaj segmentu |
 | `segment.dlugosc_m` | `float` | TAK | Dlugosc segmentu [m] --- MUSI byc jawna, > 0 |
 | `segment.catalog_ref` | `string` | NIE | Referencja katalogowa segmentu |
@@ -335,7 +335,6 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 | `sn_fields` | `list[SNFieldSpec]` | TAK | Lista pol SN rozdzielnicy (role: `LINIA_IN`, `LINIA_OUT`, `LINIA_ODG`, `TRANSFORMATOROWE`, `SPRZEGLO`) |
 | `transformer.create` | `bool` | NIE | Flaga utworzenia transformatora (domyslnie `true`) |
 | `transformer.transformer_catalog_ref` | `string` | NIE | Referencja katalogowa transformatora |
-| `nn_block.create_nn_bus` | `bool` | NIE | Flaga utworzenia szyny nN (domyslnie `true`) |
 | `nn_block.outgoing_feeders_nn_count` | `int` | NIE | Liczba odplywow nN (domyslnie 1) |
 | `nn_block.outgoing_feeders_nn` | `list` | NIE | Specyfikacje poszczegolnych odplywow nN |
 

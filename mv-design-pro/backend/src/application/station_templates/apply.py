@@ -331,7 +331,9 @@ def _zastosuj_szablon_pod_blokada(
 
     nn_voltage_kv = transformer_voltages_kv(transformer_ref)[1] or 0.4
     station_spec: dict[str, Any] = {
-        "name_pl": template.name_pl,
+        # `station.name` — klucz czytany przez OBIE drogi zabudowy (wcięcie w odcinek
+        # i koniec ciągu); dawny `name_pl` czytało tylko wcięcie, na końcu ciągu przepadał.
+        "name": template.name_pl,
         # BEZ `sn_voltage_kv` jawnego (KLASA NIE INSTANCJA, V12T-016): sztywne
         # `15` przesłaniało topologiczne dziedziczenie napięcia z segmentu
         # (`insert_station_on_segment_sn`: „Napięcia — topologiczne
@@ -1266,7 +1268,6 @@ def _topologia_toru_der_sn(tor: TorJednostkiDerSn, sn_bus_ref: str) -> dict[str,
             "catalog_ref": tor.transformator_ref,
             "catalog_binding": _catalog_binding("TRAFO_SN_NN", tor.transformator_ref),
         },
-        "has_dedicated_mv_field": True,
         "mv_bus_ref": sn_bus_ref,
         "mv_field_configuration": {
             "switching_device": tor.lacznik_pola,

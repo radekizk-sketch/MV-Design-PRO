@@ -34,8 +34,12 @@ from typing import Any
 import pytest
 from domain.canonical_operations import (
     CANONICAL_OPERATIONS,
+    CIAGI_LINIOWE,
+    KSZTALTY_ZAGNIEZDZONE,
     REQUIRED_FIELD_ALIASES,
+    KsztaltObiektu,
     OperationSpec,
+    klucze_spoza_kontraktu,
     validate_operation_payload,
 )
 
@@ -82,10 +86,28 @@ def _pola(op: str, spec: OperationSpec, aliasy: dict[str, dict[str, tuple[str, .
     return set(spec.required_fields) | set(spec.optional_fields) | zastepcze
 
 
+def _klucze_ksztaltu(ksztalt: KsztaltObiektu) -> set[str]:
+    wynik = set(ksztalt.pola)
+    for podrzedny in ksztalt.zagniezdzone.values():
+        wynik |= _klucze_ksztaltu(podrzedny)
+    return wynik
+
+
 def _wszystkie_pola(rejestr: dict[str, OperationSpec]) -> set[str]:
-    return {
-        pole for op, spec in rejestr.items() for pole in _pola(op, spec, REQUIRED_FIELD_ALIASES)
-    }
+    """Pola rejestru, klucze obiektów zagnieżdżonych (``KSZTALTY_ZAGNIEZDZONE``) i pola ciągu
+    liniowego (``LineRun``) opisane w dokumencie — nazwy o kształcie operacji, które nią nie są."""
+    from enm.models import LineRun
+
+    return (
+        {pole for op, spec in rejestr.items() for pole in _pola(op, spec, REQUIRED_FIELD_ALIASES)}
+        | {
+            k
+            for ksztalty in KSZTALTY_ZAGNIEZDZONE.values()
+            for x in ksztalty.values()
+            for k in _klucze_ksztaltu(x)
+        }
+        | set(LineRun.model_fields)
+    )
 
 
 def nazwy_spoza_rejestru(
@@ -102,8 +124,23 @@ def nazwy_spoza_rejestru(
     )
 
 
+def _sciezka_poza_ksztaltem(op: str, sciezka: str) -> bool:
+    """``a.b.c`` z kluczem obiektu ``a`` o kształcie (``KSZTALTY_ZAGNIEZDZONE``), którego
+    kolejny poziom nie zna klucza. Obiekt bez kształtu (klucze wyliczane w biegu) — bez oceny."""
+    czesci = [c.split("[")[0] for c in sciezka.split(".")]
+    ksztalt = KSZTALTY_ZAGNIEZDZONE.get(op, {}).get(czesci[0])
+    for klucz in czesci[1:]:
+        if ksztalt is None:
+            return False
+        if klucz not in ksztalt.pola:
+            return True
+        ksztalt = ksztalt.zagniezdzone.get(klucz)
+    return False
+
+
 def pola_tabel_spoza_rejestru(tekst: str, rejestr: dict[str, OperationSpec]) -> list[str]:
-    """Wiersze tabel pól pod nagłówkiem operacji, których pole nie jest polem tej operacji."""
+    """Wiersze tabel pól pod nagłówkiem operacji, których pole nie jest polem tej operacji —
+    na KAŻDYM poziomie ścieżki ``a.b`` (kształty obiektów zagnieżdżonych)."""
     wynik: list[str] = []
     operacje: list[str] = []
     for numer, linia in enumerate(tekst.splitlines(), start=1):
@@ -113,20 +150,25 @@ def pola_tabel_spoza_rejestru(tekst: str, rejestr: dict[str, OperationSpec]) -> 
         dopasowanie = _WIERSZ_POLA.match(linia)
         if not operacje or not dopasowanie:
             continue
-        pole = dopasowanie.group(1).split(".")[0].split("[")[0]
+        sciezka = dopasowanie.group(1)
+        pole = sciezka.split(".")[0].split("[")[0]
         for op in operacje:
             if pole not in _pola(op, rejestr[op], REQUIRED_FIELD_ALIASES):
                 wynik.append(f"{numer}:{op}:{pole}")
+            elif _sciezka_poza_ksztaltem(op, sciezka):
+                wynik.append(f"{numer}:{op}:{sciezka}")
     return wynik
 
 
 def pola_ladunku_spoza_rejestru(wyniki: list[WynikKroku]) -> list[str]:
+    """Klucze przykładu spoza kontraktu operacji — KAŻDY poziom (``station.x``,
+    ``sn_fields[0].x``), tym samym czujnikiem co dyspozytor. Dawniej sprawdzany był wyłącznie
+    poziom najwyższy, a przykład stacji końcowej niósł ``station.station_name`` — nazwę, której
+    ``append_station_on_endpoint`` nie czyta (stacja dostawała nazwę domyślną)."""
     return [
         f"{w.krok.etykieta}:{pole}"
         for w in wyniki
-        for pole in sorted(w.ladunek)
-        if pole
-        not in _pola(w.krok.operacja, CANONICAL_OPERATIONS[w.krok.operacja], REQUIRED_FIELD_ALIASES)
+        for pole in klucze_spoza_kontraktu(w.krok.operacja, w.ladunek)
     ]
 
 
@@ -273,6 +315,17 @@ def test_iniekcja_pole_fantomowe_w_ladunku_wykryte(wyniki) -> None:
     assert pola_ladunku_spoza_rejestru([zatruty]) == [f"{pierwszy.krok.etykieta}:trunk_ref"]
 
 
+def test_iniekcja_pole_fantomowe_zagniezdzone_w_ladunku_wykryte(wyniki) -> None:
+    stacja = next(w for w in wyniki if w.krok.operacja == "append_station_on_endpoint")
+    zatruty = replace(
+        stacja,
+        ladunek={**stacja.ladunek, "station": {**stacja.ladunek["station"], "station_name": "X"}},
+    )
+    assert pola_ladunku_spoza_rejestru([zatruty]) == [
+        f"{stacja.krok.etykieta}:station.station_name"
+    ]
+
+
 def test_iniekcja_odmowa_deklarowana_a_sukces_wykryta(wyniki) -> None:
     sukces = next(w for w in wyniki if w.krok.odmowa is None)
     zatruty = replace(sukces, krok=replace(sukces.krok, odmowa="tor.element_not_bypassing_field"))
@@ -313,3 +366,53 @@ def test_iniekcja_operacja_usunieta_wraca_do_rejestru_wykryta() -> None:
 def test_iniekcja_operacja_bez_przykladu_wykryta() -> None:
     bez_przykladu: tuple[Krok, ...] = tuple(k for k in KROKI if k.operacja != "refresh_snapshot")
     assert {k.operacja for k in bez_przykladu} != set(CANONICAL_OPERATIONS)
+
+
+# -- ciągi liniowe w łańcuchu przykładów -----------------------------------------------------
+
+
+def zmiany_ciagow_poza_kontraktem(wyniki: list[WynikKroku]) -> list[str]:
+    """Kroki, po których ciągi liniowe się zmieniły, a operacja nie jest w ``CIAGI_LINIOWE``,
+    oraz kroki zostawiające w ciągu odwołanie do odcinka albo stacji, których nie ma."""
+    bledy: list[str] = []
+    poprzednie: list[Any] | None = None
+    for w in wyniki:
+        migawka = w.odpowiedz.get("snapshot")
+        if migawka is None:
+            continue
+        ciagi = migawka.get("line_runs", [])
+        if poprzednie is not None and ciagi != poprzednie and w.krok.operacja not in CIAGI_LINIOWE:
+            bledy.append(f"{w.krok.etykieta}: zmiana ciągów poza kontraktem")
+        poprzednie = ciagi
+        galezie = {g["ref_id"] for g in migawka.get("branches", [])}
+        stacje = {s["ref_id"] for s in migawka.get("substations", [])}
+        for ciag in ciagi:
+            bledy += [
+                f"{w.krok.etykieta}: {ciag['id']} -> {x['segment_ref']}"
+                for x in ciag.get("segments", [])
+                if x["segment_ref"] not in galezie
+            ]
+            bledy += [
+                f"{w.krok.etykieta}: {ciag['id']} -> {x['substation_ref']}"
+                for x in ciag.get("stations", [])
+                if x["substation_ref"] not in stacje
+            ]
+    return bledy
+
+
+def test_ciagi_liniowe_lancucha_zgodne_z_kontraktem(wyniki) -> None:
+    assert zmiany_ciagow_poza_kontraktem(wyniki) == []
+    zmieniajace = {w.krok.operacja for w in wyniki if w.krok.operacja in CIAGI_LINIOWE}
+    # Łańcuch ćwiczy każdą operację kontraktu ciągów poza usunięciem odcinka (usuwa baterię).
+    assert zmieniajace == set(CIAGI_LINIOWE)
+
+
+def test_iniekcja_ciag_z_odcinkiem_skasowanym_wykryta(wyniki) -> None:
+    ostatni = next(w for w in reversed(wyniki) if w.odpowiedz.get("snapshot"))
+    migawka = {**ostatni.odpowiedz["snapshot"]}
+    migawka["line_runs"] = [
+        {**c, "segments": [*c["segments"], {"segment_ref": "seg/skasowany", "order": 99}]}
+        for c in migawka["line_runs"]
+    ]
+    zatruty = replace(ostatni, odpowiedz={**ostatni.odpowiedz, "snapshot": migawka})
+    assert any("seg/skasowany" in b for b in zmiany_ciagow_poza_kontraktem([zatruty]))

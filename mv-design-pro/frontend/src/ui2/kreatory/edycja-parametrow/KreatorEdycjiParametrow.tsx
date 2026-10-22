@@ -2,7 +2,9 @@
  * Kreator „Edycja parametrów elementu" (update_element_parameters) — ui2, kreatory/rama.
  *
  * Ekspercki override pól elementu. Zapis = operacja domenowa `update_element_parameters`,
- * której kontrakt to `element_ref` + `parameters` (mapa) + opcjonalny `reason`.
+ * której kontrakt to `element_ref` + `parameters` (mapa). Dawne pole „Uzasadnienie zmiany"
+ * wysyłało `reason`, którego operacja nie czyta i żaden ekran nie pokazuje — kontrolka-widmo
+ * usunięta (kontrakt kluczy: `harness-fixtures/generated/kontrakt_ladunkow_operacji.json`).
  *
  * Naprawa długu (Zero-Debt §1): stary formularz w trybie prostym wysyłał klucz `updates`,
  * którego handler `update_element_parameters` NIE czyta (czyta `parameters`) — zapis był
@@ -107,7 +109,6 @@ export function KreatorEdycjiParametrow() {
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
     { klucz: initialKey, wartosc: readString(context?.value) },
   ]);
-  const [powod, setPowod] = useState('');
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   // Brak słownika z backendu = pole tekstowe (backend i tak waliduje E-W5-02).
   const grupySlownik = useGrupyPolaczen();
@@ -190,7 +191,6 @@ export function KreatorEdycjiParametrow() {
       return acc;
     }, { ...zmianyNcRfg });
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };
-    if (powod.trim()) payload.reason = powod.trim();
 
     setBladGlobalny(null);
     try {
@@ -208,7 +208,7 @@ export function KreatorEdycjiParametrow() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaZmianNcRfg, powod, selekcjaPoOperacji, wynikDanychModulu, wypelnione, zmianyNcRfg]);
+  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaZmianNcRfg, selekcjaPoOperacji, wynikDanychModulu, wypelnione, zmianyNcRfg]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: nazwaElementu || 'Brak' },
@@ -217,7 +217,6 @@ export function KreatorEdycjiParametrow() {
       stan: wypelnione.length + liczbaZmianNcRfg > 0 ? 'kompletne' : 'brak',
       wartosc: `${wypelnione.length + liczbaZmianNcRfg} do zapisu`,
     },
-    { etykieta: T.wierszPowod, stan: powod.trim() ? 'kompletne' : 'ostrzezenie', wartosc: powod.trim() ? 'Podane' : 'Brak' },
   ];
 
   const aside = (
@@ -317,14 +316,6 @@ export function KreatorEdycjiParametrow() {
         >
           {T.dodajWiersz}
         </button>
-
-        <PoleTekstowe
-          etykieta={T.powod}
-          wartosc={powod}
-          onZmiana={setPowod}
-          placeholder={T.powodPlaceholder}
-          testid="mvd-kreator-edycja-powod"
-        />
 
         <PanelTeorii
           tytul={T.teoriaTytul}

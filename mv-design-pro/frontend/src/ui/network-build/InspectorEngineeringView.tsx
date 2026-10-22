@@ -2803,7 +2803,6 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       void executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
         element_ref: elementId,
         catalog_binding: buildCatalogBinding(selectedSegmentCatalogNamespace, typeId),
-        source_mode: 'KATALOG',
       }).finally(() => {
         setSegmentCatalogPickerOpen(false);
       });

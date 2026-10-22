@@ -584,8 +584,9 @@ export function brakImpedancjiUziemienia(data: GridSourceFormData): boolean {
 }
 
 function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown> {
+  // Napięcie SN zastępnika: `sn_voltage_kv` (jedyny klucz napięcia SN czytany w
+  // `manual_equivalent`; dawne `voltage_kv` w tym obiekcie było kopią bez czytelnika).
   const common = {
-    voltage_kv: data.sn_voltage_kv,
     sn_voltage_kv: data.sn_voltage_kv,
     hv_voltage_kv: data.hv_voltage_kv,
     short_circuit_input_side: data.short_circuit_input_side,
@@ -646,11 +647,10 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
     // Rodzina rozdzielnicy producenta (Reference Engine) — spływa do SLD + oceny zgodności.
     switchgear_family_ref: data.switchgear_family_ref ?? undefined,
     manufacturer_ref: data.manufacturer_ref ?? undefined,
-    // Transformator 110/SN z katalogu (op czyta transformer_catalog_ref + parametry).
+    // Transformator 110/SN z katalogu: operacja czyta `transformer_catalog_ref` i moc
+    // `transformer_sn_mva`; uk% i grupę połączeń bierze z pozycji katalogu (nie z ładunku).
     transformer_catalog_ref: data.transformer_catalog_ref ?? undefined,
     transformer_sn_mva: data.transformer_catalog_ref ? data.transformer_sn_mva ?? undefined : undefined,
-    transformer_uk_percent: data.transformer_catalog_ref ? data.transformer_uk_percent ?? undefined : undefined,
-    transformer_vector_group: data.transformer_catalog_ref ? data.transformer_vector_group ?? undefined : undefined,
   };
 
   // Regulacja zaczepów (OLTC/DETC) → klucze transformer_* czytane przez

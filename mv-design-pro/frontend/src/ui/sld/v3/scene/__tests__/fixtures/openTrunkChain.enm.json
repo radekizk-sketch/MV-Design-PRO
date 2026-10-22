@@ -886,7 +886,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "93379a4eec3d2f3c775d92cf5b346ac6e8751f6474e6f338d373763f0c9811b1",
+      "hash_sha256": "6ab2c1f4a60a4db11c767985680dfd41750159fe7b2a07eb8a3604a2ac638f18",
       "name": "Łańcuch odcinków magistrali",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -907,7 +907,11 @@
           },
           {
             "order": 2,
-            "segment_ref": "seg/3e264ee1ad7c85754128a38a0d496efc/segment"
+            "segment_ref": "seg/3e264ee1ad7c85754128a38a0d496efc/segment_L"
+          },
+          {
+            "order": 3,
+            "segment_ref": "seg/3e264ee1ad7c85754128a38a0d496efc/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",

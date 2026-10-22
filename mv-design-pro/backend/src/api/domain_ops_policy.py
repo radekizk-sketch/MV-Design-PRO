@@ -108,10 +108,14 @@ def _extract_binding_from_container(
 def _segment_namespace(segment: Any) -> str | None:
     if not isinstance(segment, dict):
         return None
-    segment_kind = segment.get("rodzaj") or segment.get("segment_kind") or segment.get("type")
-    if segment_kind in {"KABEL", "KABEL_SN", "cable"}:
+    # Rodzaj odcinka czytany TYM SAMYM kluczem i słownikiem co handler (``segment.rodzaj``:
+    # ``KABEL`` / ``LINIA_NAPOWIETRZNA``) — dawne zamienniki bramy (``segment_kind``,
+    # ``type``, ``KABEL_SN``, ``cable``…) handler pomijał, więc brama wybierała przestrzeń
+    # katalogu z klucza, którego operacja nie czyta.
+    segment_kind = segment.get("rodzaj", "KABEL")  # domyślny rodzaj handlera
+    if segment_kind == "KABEL":
         return "KABEL_SN"
-    if segment_kind in {"LINIA_NAPOWIETRZNA", "LINIA_SN", "line_overhead"}:
+    if segment_kind == "LINIA_NAPOWIETRZNA":
         return "LINIA_SN"
     return None
 

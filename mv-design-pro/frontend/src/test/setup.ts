@@ -16,3 +16,9 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   }
   (globalThis as { ResizeObserver: unknown }).ResizeObserver = ResizeObserverMock;
 }
+
+// Czujnik ładunku operacji domenowych: każda makieta `vi.fn`/`vi.spyOn` wywołana jak
+// wysyłka operacji (`zakres, operacja, ładunek`) jest sprawdzana kontraktem kluczy po teście.
+import { zainstalujCzujnikLadunkow } from './czujnikLadunkow';
+
+zainstalujCzujnikLadunkow();

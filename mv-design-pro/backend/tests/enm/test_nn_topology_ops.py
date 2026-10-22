@@ -917,6 +917,9 @@ def test_set_nn_cable_laying_conditions_odrzuca_nieznana_kombinacje() -> None:
     assert wynik["error_code"] == "nn.cable_laying_conditions_invalid"
 
 
+# Ładunek CELOWO w dawnej składni SN (klucze spoza kontraktu kabla nN) — test przypina
+# odmowę; czujnik ładunku zapisuje wpis, nie zamienia go w błąd.
+@pytest.mark.ladunek_spoza_kontraktu
 def test_set_nn_cable_laying_conditions_odrzuca_stara_skladnie_sn() -> None:
     """Nazwany zestaw SN (`wlasne`) nie jest juz rozpoznawany dla kabla nN — payload
     SN-owy trafia w gałąź string/nieznana-nazwa, nie w obiekt opisu tablicowego."""

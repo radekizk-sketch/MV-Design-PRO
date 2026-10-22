@@ -479,7 +479,6 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
     void executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
       element_ref: segmentRef,
       catalog_binding: buildCatalogBinding(selectedCatalogNamespace, catalogItemId),
-      source_mode: 'KATALOG',
     });
   };
   const openEndpointOperation = (operation: 'insert_station_on_segment_sn' | 'insert_zksn_on_segment_sn' | 'insert_branch_pole_on_segment_sn') => {

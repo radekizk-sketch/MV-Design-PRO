@@ -842,7 +842,7 @@ export function useSldActionExecutor(
             void executeDomainOperation(
               activeCaseId,
               'delete_element',
-              { element_ref: elementId, action_id: actionId, source: 'sld_context_menu' },
+              { element_ref: elementId },
               { komunikatSukcesuPl: `Usunięto ${objectLabel} z modelu sieci.` },
             ).then((response: unknown) => {
               const result = response as { error?: unknown } | null;

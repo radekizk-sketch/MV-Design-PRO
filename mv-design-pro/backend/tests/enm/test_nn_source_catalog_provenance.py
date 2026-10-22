@@ -94,7 +94,7 @@ def test_missing_catalog_binding_fails_for_canonical_converter_source(technology
 @pytest.mark.parametrize(
     ("technology", "binding"),
     [
-        ("PV", {"item_id": ""}),
+        ("PV", {"catalog_item_id": ""}),
         ("BESS", "invalid"),
     ],
 )

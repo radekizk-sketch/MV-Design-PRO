@@ -257,8 +257,25 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
     );
     expect(nopGlyph, 'stacja NOP musi mieć glif mini-RMU na L0').toBeTruthy();
     expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
-    // Na L0 osobny symbol `noPoint` NIE jest rysowany (sylwetka go zastępuje).
-    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+    // Na L0 osobny symbol `noPoint` łącznika pola TEJ stacji NIE jest rysowany (sylwetka go
+    // zastępuje). Zawężone do łącznika otwartego przez `zPunktemPodzialuWStacji` (Zero-Debt
+    // pkt 2, intencja bez zmian): od UIUX-K2b (`f6eb035ad`) łącznik sekcyjny NO POZA stacją
+    // („Łącznik sekcyjny NO (rezerwa)" tej fikstury) ma własny `noPoint` także na L0
+    // (`nopINapowietrzne.k2b.test.ts`) — dawna asercja „zero `noPoint` na L0" zabraniała tego.
+    const otwartyWStacji = withNop.branches.find(
+      (galaz, i) => galaz.normal_state === 'open' && bigEnm.branches[i]?.normal_state !== 'open',
+    )?.ref_id;
+    expect(otwartyWStacji, 'pomocnik musi otworzyć łącznik pola stacji').toBeTruthy();
+    expect(
+      nopScene0.symbols.some(
+        (s) => s.symbolId === 'noPoint' && (s.meta?.ownerRef ?? '').startsWith(otwartyWStacji ?? '\u0000'),
+      ),
+    ).toBe(false);
+    // Sylwetka stacji i `noPoint` łącznika poza stacją współistnieją na L0 (iloczyn: NOP w stacji
+    // × NOP na linii).
+    expect(nopScene0.symbols.filter((s) => s.symbolId === 'noPoint').map((s) => s.meta?.ownerRef)).toEqual([
+      'sw/56359783a874901eb6c262b420ef184a/switch',
+    ]);
   });
 
   it('L1/L2: punkt NO = symbol noPoint + etykieta „NO" na osi szyny; kotwica identyczna L1↔L2 (GS-1)', () => {

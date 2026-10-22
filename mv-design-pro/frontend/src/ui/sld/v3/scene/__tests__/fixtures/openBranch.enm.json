@@ -944,7 +944,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "87562cdb59612facd831f286e233d5a22088040c84be9d89ab03c90d9ad353af",
+      "hash_sha256": "ccf51de2c2788a9f6981d9a793ed36d4af344f889edcde19cd1071b455ab107e",
       "name": "Odgałęzienie z pola GPZ",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -961,7 +961,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/674eefb86b0e943a5253a794bf2c58b0/segment"
+            "segment_ref": "seg/674eefb86b0e943a5253a794bf2c58b0/segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/674eefb86b0e943a5253a794bf2c58b0/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",

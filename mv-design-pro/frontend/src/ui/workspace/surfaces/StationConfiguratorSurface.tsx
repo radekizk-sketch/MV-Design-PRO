@@ -1016,7 +1016,6 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         const response = await executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
           element_ref: transformerId,
           catalog_binding: buildCatalogBinding('TRAFO_SN_NN', selectedType.id),
-          source_mode: 'KATALOG',
         });
         if (response?.error) {
           notify(response.error, 'error');

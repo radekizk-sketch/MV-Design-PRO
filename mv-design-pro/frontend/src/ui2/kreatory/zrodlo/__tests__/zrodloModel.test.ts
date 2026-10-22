@@ -6,6 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 
+import { kluczeSpozaKontraktu } from '../../../../test/kontraktLadunkuOperacji';
+
 import {
   DANE_DOMYSLNE,
   scalDanePoczatkowe,
@@ -133,7 +135,7 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.transformer_vector_group).toBeUndefined();
   });
 
-  it('wybrany transformator 110/SN z katalogu trafia do payloadu (Sn/uk/grupa)', () => {
+  it('wybrany transformator 110/SN z katalogu trafia do payloadu (ref + Sn; uk/grupa z katalogu)', () => {
     const payload = zbudujPayloadZrodla(daneKompletne({
       transformer_catalog_ref: 'TR-110-15-25',
       transformer_sn_mva: 25,
@@ -142,8 +144,11 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     }));
     expect(payload.transformer_catalog_ref).toBe('TR-110-15-25');
     expect(payload.transformer_sn_mva).toBe(25);
-    expect(payload.transformer_uk_percent).toBe(12.5);
-    expect(payload.transformer_vector_group).toBe('YNd11');
+    // uk% i grupę połączeń operacja bierze z pozycji katalogu — w ładunku byłyby widmem
+    // (pokazywane w kreatorze tylko do odczytu).
+    expect(payload).not.toHaveProperty('transformer_uk_percent');
+    expect(payload).not.toHaveProperty('transformer_vector_group');
+    expect(kluczeSpozaKontraktu('add_grid_source_sn', payload)).toEqual([]);
   });
 
   it('bez regulacji payload nie niesie kluczy OLTC (kompat./determinizm)', () => {

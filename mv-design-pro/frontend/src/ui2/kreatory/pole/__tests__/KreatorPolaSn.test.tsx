@@ -447,7 +447,7 @@ describe('KreatorPolaSn — kontrola katalogowa przed zapisem', () => {
     await waitFor(() => expect(kontrola).toHaveAttribute('data-stan', stan));
     expect(kontrola.textContent).toMatch(tekst);
     // Próba TEJ SAMEJ operacji co zapis, z flagą dry_run — nie osobna operacja.
-    const [url, init] = fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as unknown as [string, RequestInit];
     expect(url).toBe('/api/cases/case-1/enm/domain-ops');
     const cialo = JSON.parse(String(init.body)) as { operation: { name: string; payload: Record<string, unknown> } };
     expect(cialo.operation.name).toBe('add_sn_bay');

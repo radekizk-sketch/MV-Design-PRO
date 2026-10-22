@@ -2558,7 +2558,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "2b69408cf191ea9c87fd74fb9ff346a9adcaf59a0fda692217bbde6efd0d32b9",
+      "hash_sha256": "794d778b13ddb0ce72607d0bb0e49c86fa24ec769553208ad11bb2d5a03b8e9a",
       "name": "Sieć Mala — po",
       "revision": 12,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2575,18 +2575,30 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/86fd4508311b9b05aac837221e4e8a87/segment"
+            "segment_ref": "seg/86fd4508311b9b05aac837221e4e8a87/segment_L"
           },
           {
             "order": 2,
-            "segment_ref": "seg/36a62804c7ee9683773a1cc081919c8e/segment"
+            "segment_ref": "seg/86fd4508311b9b05aac837221e4e8a87/segment_R"
           },
           {
             "order": 3,
-            "segment_ref": "seg/43e85dd12292403b92b5b8ab85079029/segment"
+            "segment_ref": "seg/36a62804c7ee9683773a1cc081919c8e/segment_L"
           },
           {
             "order": 4,
+            "segment_ref": "seg/36a62804c7ee9683773a1cc081919c8e/segment_R_L"
+          },
+          {
+            "order": 5,
+            "segment_ref": "seg/36a62804c7ee9683773a1cc081919c8e/segment_R_R"
+          },
+          {
+            "order": 6,
+            "segment_ref": "seg/43e85dd12292403b92b5b8ab85079029/segment"
+          },
+          {
+            "order": 7,
             "segment_ref": "seg/9bbda49afbfd76e28cd28edda7025d93/segment"
           }
         ],

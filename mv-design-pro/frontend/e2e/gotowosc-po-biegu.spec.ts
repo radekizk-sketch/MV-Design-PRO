@@ -39,11 +39,13 @@ const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
+const LACZNIK_SEKCYJNY_ID = 'sw-ls-schneider-rm6-17kv-400a';
 let opCounter = 0;
 let entityCounter = 0;
 
 type DomainOpResponse = {
   error?: string | null;
+  selection_hint?: { element_id?: string | null } | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string; type?: string }>;
@@ -86,6 +88,29 @@ async function executeDomainOp(
   const body = (await response.json()) as DomainOpResponse;
   expect(body.error ?? null).toBeNull();
   return body;
+}
+
+/**
+ * Łącznik sekcyjny (zamknięty) w połowie odcinka — punkt normalnie otwarty jest pozycją
+ * normalną ŁĄCZNIKA (`set_normal_open_point.switch_ref`, karta W5-C); odcinek kabla nie ma
+ * pozycji normalnej (`nop.not_a_switch`). Zwraca ref łącznika.
+ */
+async function wstawLacznikSekcyjny(
+  request: APIRequestContext,
+  caseId: string,
+  segmentRef: string,
+): Promise<string> {
+  const op = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
+    segment_id: segmentRef,
+    insert_at: { mode: 'RATIO', value: 0.5 },
+    switch_type: 'ROZLACZNIK',
+    normal_state: 'closed',
+    switch_name: 'Łącznik sekcyjny odcinka 1',
+    catalog_binding: buildCatalogBinding('APARAT_SN', LACZNIK_SEKCYJNY_ID),
+  });
+  const ref = op.selection_hint?.element_id;
+  expect(ref, 'łącznik sekcyjny wstawiony').toBeTruthy();
+  return ref!;
 }
 
 async function pobierzGotowosc(
@@ -134,11 +159,12 @@ async function createProjectAndCase(
   return { projectId: project.id, caseId: studyCase.id };
 }
 
-/** Buduje przez API sieć gotową do obliczeń (wzorzec deep-link-wyniki). */
+/** Buduje przez API sieć gotową do obliczeń (wzorzec deep-link-wyniki); zwraca ref
+ *  zamkniętego łącznika sekcyjnego pierwszego odcinka. */
 async function zbudujSiecGotowaDoObliczen(
   request: APIRequestContext,
   caseId: string,
-): Promise<string[]> {
+): Promise<string> {
   let op = await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -238,7 +264,12 @@ async function zbudujSiecGotowaDoObliczen(
   }
   expect(readiness?.ready).toBe(true);
 
-  return segmentRefs;
+  // Łącznik sekcyjny na pierwszym odcinku (zamknięty — sieć dalej gotowa); po biegu
+  // test ustawia na nim punkt normalnie otwarty. Wstawiony PO domknięciu katalogów:
+  // dzieli odcinek, więc refy z wcześniejszej migawki przestałyby istnieć.
+  const lacznik = await wstawLacznikSekcyjny(request, caseId, segmentRefs[0]!);
+  expect((await pobierzGotowosc(request, caseId)).ready).toBe(true);
+  return lacznik;
 }
 
 /** Bieg SC_3F przez API execution — zwraca id przebiegu DONE. */
@@ -272,13 +303,13 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
   test.setTimeout(300000);
 
   const { caseId } = await createProjectAndCase(request);
-  const segmentRefs = await zbudujSiecGotowaDoObliczen(request, caseId);
+  const lacznik = await zbudujSiecGotowaDoObliczen(request, caseId);
   const runId = await uruchomBiegScPrzezApi(request, caseId);
 
   // Model PSUJE SIĘ PO biegu: łącznik normalnie otwarty odcina ciąg od źródła
   // (realna sytuacja projektowa) ⇒ serwer zgłasza blokadę gotowości.
   await executeDomainOp(request, caseId, 'set_normal_open_point', {
-    switch_ref: segmentRefs[0],
+    switch_ref: lacznik,
   });
   const gotowosc = await pobierzGotowosc(request, caseId);
   expect(gotowosc.ready).toBe(false);

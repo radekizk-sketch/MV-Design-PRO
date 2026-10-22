@@ -289,7 +289,7 @@ def _payloady(technologia_klucz: str) -> dict[str, tuple[str, dict[str, Any]]]:
             "set_nn_cable_laying_conditions",
             {
                 "segment_ref": "c1",
-                "cable_laying_conditions": {"set_name": "warunki_katalogowe"},
+                "cable_laying_conditions": {"environment": "grunt", "insulation": "XLPE"},
             },
         ),
     }

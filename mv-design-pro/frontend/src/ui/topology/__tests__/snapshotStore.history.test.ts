@@ -87,7 +87,8 @@ describe('snapshotStore operationHistory', () => {
     await useSnapshotStore.getState().executeDomainOperation(
       'case-1',
       'add_grid_source_sn',
-      { bus_ref: 'bus-1' },
+      // Ładunek w kontrakcie operacji; element historii pochodzi z odpowiedzi (selection_hint).
+      { source_name: 'GPZ', voltage_kv: 15 },
     );
 
     const history = useSnapshotStore.getState().operationHistory;

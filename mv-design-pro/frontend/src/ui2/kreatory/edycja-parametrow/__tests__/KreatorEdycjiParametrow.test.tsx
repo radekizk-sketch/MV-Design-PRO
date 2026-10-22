@@ -69,14 +69,13 @@ describe('KreatorEdycjiParametrow — realna ścieżka', () => {
 
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-klucz-0'), 'tap_position');
     await userEvent.type(screen.getByTestId('mvd-kreator-edycja-wartosc-0'), '2');
-    await userEvent.type(screen.getByTestId('mvd-kreator-edycja-powod'), 'korekta terenowa');
     await userEvent.click(screen.getByTestId('mvd-kreator-edycja-zapisz'));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
         'case-1',
         'update_element_parameters',
-        { element_ref: 'tr-1', parameters: { tap_position: 2 }, reason: 'korekta terenowa' },
+        { element_ref: 'tr-1', parameters: { tap_position: 2 } },
       );
     });
     const payload = executeDomainOperationMock.mock.calls[0][2] as Record<string, unknown>;

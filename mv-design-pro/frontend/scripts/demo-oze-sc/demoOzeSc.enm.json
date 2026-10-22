@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "builder_snapshot_hash": "d45c0317a8593b86732cf8da4a5c4a8355e4e639fa9ce4e12404924d5f3769df",
+    "builder_snapshot_hash": "e9623ecaed425b4712364ee4c76d69e6550e5579aef98591d6f8eb1ecdb1bb8e",
     "config_count": 12,
     "der_count": 15,
     "der_types": [
@@ -14535,7 +14535,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "d45c0317a8593b86732cf8da4a5c4a8355e4e639fa9ce4e12404924d5f3769df",
+      "hash_sha256": "e9623ecaed425b4712364ee4c76d69e6550e5579aef98591d6f8eb1ecdb1bb8e",
       "name": "Sieć demonstracyjna OZE + zwarcia",
       "revision": 0,
       "updated_at": "2026-07-24T00:00:00Z"
@@ -14556,50 +14556,98 @@
           },
           {
             "order": 2,
-            "segment_ref": "seg/ecf50c9e4cee78e5883ce893bc7deee4/segment"
+            "segment_ref": "seg/ecf50c9e4cee78e5883ce893bc7deee4/segment_L_L"
           },
           {
             "order": 3,
-            "segment_ref": "seg/f025378cca5d761fb5f645c11867d19e/segment"
+            "segment_ref": "seg/ecf50c9e4cee78e5883ce893bc7deee4/segment_L_R"
           },
           {
             "order": 4,
-            "segment_ref": "seg/1475463a1f08993c03a677d86a5242a0/segment"
+            "segment_ref": "seg/ecf50c9e4cee78e5883ce893bc7deee4/segment_R"
           },
           {
             "order": 5,
-            "segment_ref": "seg/4db118e85a4844362c8fff4a2af58959/segment"
+            "segment_ref": "seg/f025378cca5d761fb5f645c11867d19e/segment"
           },
           {
             "order": 6,
-            "segment_ref": "seg/18537a3eeff0d140327416eafb8f5347/segment"
+            "segment_ref": "seg/1475463a1f08993c03a677d86a5242a0/segment_L"
           },
           {
             "order": 7,
-            "segment_ref": "seg/4b840060f470b53f561276fba411f946/segment"
+            "segment_ref": "seg/1475463a1f08993c03a677d86a5242a0/segment_R_L_L"
           },
           {
             "order": 8,
-            "segment_ref": "seg/299a3c1ce9b203af4ab05cec53f01c42/segment"
+            "segment_ref": "seg/1475463a1f08993c03a677d86a5242a0/segment_R_L_R"
           },
           {
             "order": 9,
-            "segment_ref": "seg/49e7ef63fcd045406e8d8d685ede3c64/segment"
+            "segment_ref": "seg/1475463a1f08993c03a677d86a5242a0/segment_R_R"
           },
           {
             "order": 10,
-            "segment_ref": "seg/cdf4860dda31373d79c4e357415dbcec/segment"
+            "segment_ref": "seg/4db118e85a4844362c8fff4a2af58959/segment"
           },
           {
             "order": 11,
-            "segment_ref": "seg/710f1b83cd004b73ebbbdd5177e8ffc5/segment"
+            "segment_ref": "seg/18537a3eeff0d140327416eafb8f5347/segment_L"
           },
           {
             "order": 12,
-            "segment_ref": "seg/898eaba182b35c596adfcf8e4fe6a975/segment"
+            "segment_ref": "seg/18537a3eeff0d140327416eafb8f5347/segment_R"
           },
           {
             "order": 13,
+            "segment_ref": "seg/4b840060f470b53f561276fba411f946/segment"
+          },
+          {
+            "order": 14,
+            "segment_ref": "seg/299a3c1ce9b203af4ab05cec53f01c42/segment_L_L"
+          },
+          {
+            "order": 15,
+            "segment_ref": "seg/299a3c1ce9b203af4ab05cec53f01c42/segment_L_R"
+          },
+          {
+            "order": 16,
+            "segment_ref": "seg/299a3c1ce9b203af4ab05cec53f01c42/segment_R"
+          },
+          {
+            "order": 17,
+            "segment_ref": "seg/49e7ef63fcd045406e8d8d685ede3c64/segment"
+          },
+          {
+            "order": 18,
+            "segment_ref": "seg/cdf4860dda31373d79c4e357415dbcec/segment"
+          },
+          {
+            "order": 19,
+            "segment_ref": "seg/710f1b83cd004b73ebbbdd5177e8ffc5/segment_L"
+          },
+          {
+            "order": 20,
+            "segment_ref": "seg/710f1b83cd004b73ebbbdd5177e8ffc5/segment_R_L_L_L"
+          },
+          {
+            "order": 21,
+            "segment_ref": "seg/710f1b83cd004b73ebbbdd5177e8ffc5/segment_R_L_L_R"
+          },
+          {
+            "order": 22,
+            "segment_ref": "seg/710f1b83cd004b73ebbbdd5177e8ffc5/segment_R_L_R"
+          },
+          {
+            "order": 23,
+            "segment_ref": "seg/710f1b83cd004b73ebbbdd5177e8ffc5/segment_R_R"
+          },
+          {
+            "order": 24,
+            "segment_ref": "seg/898eaba182b35c596adfcf8e4fe6a975/segment"
+          },
+          {
+            "order": 25,
             "segment_ref": "seg/bf1e05a69c0f5fa7f59e1c4ecbdece2e/segment"
           }
         ],

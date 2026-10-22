@@ -172,6 +172,13 @@ from diagnostics.engine import DiagnosticEngine  # noqa: E402
 from diagnostics.preflight import (  # noqa: E402
     build_preflight_from_diagnostic_report,
 )
+from domain.canonical_operations import (  # noqa: E402
+    CANONICAL_OPERATIONS,
+    KSZTALTY_ZAGNIEZDZONE,
+    KsztaltObiektu,
+    klucze_kontraktu,
+    klucze_spoza_kontraktu,
+)
 from domain.result_builder_v1 import METRYKI_ELEMENTOW_WYNIKU  # noqa: E402
 from domain.study_case import StudyCase  # noqa: E402
 from enm.canonical_analysis import (  # noqa: E402
@@ -397,7 +404,6 @@ def _dodaj_modul_oze_sn(
                     "TRANSFORMATOR_SN_NN", modul["transformator_blokowy"]
                 ),
             },
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": szyna_sn,
             "mv_field_configuration": {
                 "switching_device": "CB",
@@ -3823,7 +3829,6 @@ def _enm_sceny_akademickiej() -> EnergyNetworkModel:
                         "TRAFO_SN_NN", _TRANSFORMATOR_BLOKOWY_SCENY_V126
                     ),
                 },
-                "has_dedicated_mv_field": True,
                 "mv_bus_ref": "bus_sn_b",
                 "mv_field_configuration": {
                     "switching_device": "CB",
@@ -4784,6 +4789,90 @@ def _fabryka_widokow_fikstury(nazwa: str) -> Any:
     return lambda: _widoki_logiczne_fikstury_frontu(nazwa)
 
 
+def _ksztalt_json(pola: frozenset[str], zagniezdzone: Any) -> dict[str, Any]:
+    return {
+        "pola": sorted(pola),
+        "zagniezdzone": {
+            klucz: _ksztalt_json(pod.pola, pod.zagniezdzone)
+            for klucz, pod in sorted(zagniezdzone.items())
+        },
+    }
+
+
+def _klucz_z_kontraktu(pola: frozenset[str]) -> str:
+    """Klucz należący do pól — pierwszy jawny, a w braku jawnych pierwszy z rodziny ``{x}``."""
+    jawne = sorted(p for p in pola if "{" not in p)
+    if jawne:
+        return jawne[0]
+    wzor = sorted(pola)[0]
+    return wzor.replace(wzor[wzor.index("{") : wzor.index("}") + 1], "mv")
+
+
+def _sciezki_ksztaltu(
+    ksztalt: KsztaltObiektu, sciezka: tuple[str, ...]
+) -> Iterator[tuple[tuple[str, ...], KsztaltObiektu]]:
+    yield sciezka, ksztalt
+    for klucz, pod in sorted(ksztalt.zagniezdzone.items()):
+        yield from _sciezki_ksztaltu(pod, (*sciezka, klucz))
+
+
+def _ladunek_ze_sciezka(sciezka: tuple[str, ...], liscie: dict[str, Any], lista: bool) -> Any:
+    """Ładunek, w którym obiekt pod ``sciezka`` ma klucze ``liscie``; ``lista`` — ostatni
+    poziom jako lista dwóch obiektów (obcy klucz tylko w drugim)."""
+    wartosc: Any = [{}, liscie] if lista else liscie
+    for klucz in reversed(sciezka):
+        wartosc = {klucz: wartosc}
+    return wartosc
+
+
+def kontrakt_ladunkow_operacji() -> dict[str, Any]:
+    """Kontrakt kluczy ładunku operacji domenowych dla nadawców frontendu.
+
+    Jedno źródło prawdy: ``klucze_kontraktu`` i ``KSZTALTY_ZAGNIEZDZONE``
+    (``domain/canonical_operations.py``) — te same, którymi czujnik dyspozytora odróżnia
+    klucz czytany od przepadającego. Kreatory frontendu sprawdzają nim swoje ładunki
+    (``src/test/kontraktLadunkuOperacji.ts``). ``wektory`` to przypadki z wynikiem
+    policzonym przez ``klucze_spoza_kontraktu`` — predykat TS i predykat backendu są
+    przypięte parami (ten sam ładunek → ta sama lista kluczy obcych): poziom {0, 1, 2, 3}
+    × {klucz w kontrakcie, obcy} × {obiekt, element listy} oraz napis w miejscu obiektu."""
+    operacje = {
+        nazwa: _ksztalt_json(klucze_kontraktu(nazwa), KSZTALTY_ZAGNIEZDZONE.get(nazwa, {}))
+        for nazwa in sorted(CANONICAL_OPERATIONS)
+    }
+    przypadki: list[tuple[str, dict[str, Any]]] = []
+    for nazwa in sorted(CANONICAL_OPERATIONS):
+        pola = klucze_kontraktu(nazwa)
+        if pola:
+            przypadki.append((nazwa, {_klucz_z_kontraktu(pola): 1}))
+        przypadki.append((nazwa, {"klucz_obcy": 1}))
+        for klucz, ksztalt in sorted(KSZTALTY_ZAGNIEZDZONE.get(nazwa, {}).items()):
+            przypadki.append((nazwa, {klucz: "napis_w_miejscu_obiektu"}))
+            for sciezka, pod in _sciezki_ksztaltu(ksztalt, (klucz,)):
+                przypadki.append(
+                    (nazwa, _ladunek_ze_sciezka(sciezka, {_klucz_z_kontraktu(pod.pola): 1}, False))
+                )
+                for lista in (False, True):
+                    przypadki.append(
+                        (nazwa, _ladunek_ze_sciezka(sciezka, {"klucz_obcy": 1}, lista))
+                    )
+                # Rodzina kluczy ``prefiks_{x}_sufiks``: wypełniony wzorzec należy do pól,
+                # wzorzec z PUSTYM ``{x}`` — nie (``.+`` wymaga co najmniej znaku).
+                for wzor in sorted(p for p in pod.pola if "{" in p):
+                    miejsce = wzor[wzor.index("{") : wzor.index("}") + 1]
+                    for wypelnienie in ("mv", ""):
+                        klucz_rodziny = wzor.replace(miejsce, wypelnienie)
+                        przypadki.append(
+                            (nazwa, _ladunek_ze_sciezka(sciezka, {klucz_rodziny: 1}, False))
+                        )
+    return {
+        "operacje": operacje,
+        "wektory": [
+            {"operacja": nazwa, "ladunek": ladunek, "obce": klucze_spoza_kontraktu(nazwa, ladunek)}
+            for nazwa, ladunek in przypadki
+        ],
+    }
+
+
 FIXTURY_PUNKTU_STARTU: dict[str, Any] = {
     **{
         f"punkt_startu_{rodzaj}_{stan}": _fabryka_sceny_punktu_startu(rodzaj, stan)
@@ -4830,6 +4919,7 @@ FIXTURY: dict[str, Any] = {
     "identyfikatory_grafu": identyfikatory_grafu,
     "katalogi_odniesien_v126": katalogi_odniesien_v126,
     "segmenty_referencji_modelu": segmenty_referencji_modelu,
+    "kontrakt_ladunkow_operacji": kontrakt_ladunkow_operacji,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,

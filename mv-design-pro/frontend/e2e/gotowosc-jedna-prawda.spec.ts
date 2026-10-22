@@ -32,11 +32,13 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
+const LACZNIK_SEKCYJNY_ID = 'sw-ls-schneider-rm6-17kv-400a';
 let opCounter = 0;
 let entityCounter = 0;
 
 type DomainOpResponse = {
   error?: string | null;
+  selection_hint?: { element_id?: string | null } | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
     branches?: Array<{ ref_id: string }>;
@@ -89,6 +91,29 @@ async function executeDomainOp(
   const body = (await response.json()) as DomainOpResponse;
   expect(body.error ?? null).toBeNull();
   return body;
+}
+
+/**
+ * Łącznik sekcyjny (zamknięty) w połowie odcinka — punkt normalnie otwarty jest pozycją
+ * normalną ŁĄCZNIKA (`set_normal_open_point.switch_ref`, karta W5-C); odcinek kabla nie ma
+ * pozycji normalnej (`nop.not_a_switch`). Zwraca ref łącznika.
+ */
+async function wstawLacznikSekcyjny(
+  request: APIRequestContext,
+  caseId: string,
+  segmentRef: string,
+): Promise<string> {
+  const op = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
+    segment_id: segmentRef,
+    insert_at: { mode: 'RATIO', value: 0.5 },
+    switch_type: 'ROZLACZNIK',
+    normal_state: 'closed',
+    switch_name: 'Łącznik sekcyjny odcinka 1',
+    catalog_binding: buildCatalogBinding('APARAT_SN', LACZNIK_SEKCYJNY_ID),
+  });
+  const ref = op.selection_hint?.element_id;
+  expect(ref, 'łącznik sekcyjny wstawiony').toBeTruthy();
+  return ref!;
 }
 
 async function pobierzGotowosc(
@@ -258,11 +283,13 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   const segmenty = op?.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(segmenty.length).toBeGreaterThan(1);
 
+  const lacznik = await wstawLacznikSekcyjny(request, seed.caseId, segmenty[0]!);
+
   // --- BLOKADA GOTOWOŚCI: łącznik normalnie otwarty odcina ciąg od źródła ---
-  // (realna sytuacja projektowa: NOP na pierwszym odcinku ⇒ wyspa bez zasilania,
-  // walidator zwraca blokadę E003 wskazującą SZYNY — czyli węzły drzewa.)
+  // (realna sytuacja projektowa: NOP na łączniku pierwszego odcinka ⇒ wyspa bez
+  // zasilania, walidator zwraca blokadę E003 wskazującą SZYNY — czyli węzły drzewa.)
   await executeDomainOp(request, seed.caseId, 'set_normal_open_point', {
-    switch_ref: segmenty[0],
+    switch_ref: lacznik,
   });
 
   // ŹRÓDŁO 1 (serwer): blokada istnieje i wskazuje szyny obecne w drzewie.
@@ -309,10 +336,7 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   );
 
   // --- NAPRAWA blokady: zamkniecie lacznika przywraca zasilanie ciagu -------
-  await executeDomainOp(request, seed.caseId, 'update_element_parameters', {
-    element_ref: segmenty[0],
-    parameters: { status: 'closed' },
-  });
+  await executeDomainOp(request, seed.caseId, 'close_switch', { switch_ref: lacznik });
 
   const gotowoscPo = await pobierzGotowosc(request, seed.caseId);
   expect(blokadySerwera(gotowoscPo)).toBe(0);

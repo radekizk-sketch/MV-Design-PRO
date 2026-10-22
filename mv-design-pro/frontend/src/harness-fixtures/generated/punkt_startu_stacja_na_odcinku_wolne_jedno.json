@@ -1325,10 +1325,14 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/a2ce629b15ab45b245bc6c723e6e7042/segment"
+            "segment_ref": "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_L"
           },
           {
             "order": 2,
+            "segment_ref": "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
+          },
+          {
+            "order": 3,
             "segment_ref": "seg/bd3f27fdf5ba068251883aac77eaa6c0/segment"
           }
         ],

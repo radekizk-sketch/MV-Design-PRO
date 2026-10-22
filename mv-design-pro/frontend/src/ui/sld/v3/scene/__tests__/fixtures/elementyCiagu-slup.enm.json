@@ -4256,7 +4256,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "88913899b6b71ebf06846f7f46411876e6f44fe33aada588905b48ea879787a0",
+      "hash_sha256": "836f54f49d8ca6ad54f51034be990375aa9aee92610d8b87416b5eeddb406cc9",
       "name": "Elementy ciągu — slup",
       "revision": 23,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -4281,26 +4281,34 @@
           },
           {
             "order": 3,
-            "segment_ref": "seg/e584c00c109354119ca46e2f9e8a6ca2/segment"
+            "segment_ref": "seg/e584c00c109354119ca46e2f9e8a6ca2/segment_L"
           },
           {
             "order": 4,
-            "segment_ref": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_L_branch_pole"
+            "segment_ref": "seg/e584c00c109354119ca46e2f9e8a6ca2/segment_R"
           },
           {
             "order": 5,
-            "segment_ref": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_R_branch_pole"
+            "segment_ref": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_L_branch_pole"
           },
           {
             "order": 6,
-            "segment_ref": "seg/cc38149498c267ebef0dd68d0c770271/segment"
+            "segment_ref": "seg/0c0660d8b3d1adade718c1b5a9a8b2c4/segment_R_branch_pole"
           },
           {
             "order": 7,
-            "segment_ref": "seg/56308bdf19b2851578b9439b1ef591bc/segment_L_branch_pole"
+            "segment_ref": "seg/cc38149498c267ebef0dd68d0c770271/segment_L"
           },
           {
             "order": 8,
+            "segment_ref": "seg/cc38149498c267ebef0dd68d0c770271/segment_R"
+          },
+          {
+            "order": 9,
+            "segment_ref": "seg/56308bdf19b2851578b9439b1ef591bc/segment_L_branch_pole"
+          },
+          {
+            "order": 10,
             "segment_ref": "seg/56308bdf19b2851578b9439b1ef591bc/segment_R_branch_pole"
           }
         ],
@@ -4317,7 +4325,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/d1be490760e793d146d7501c4718af7e/branch_segment"
+            "segment_ref": "seg/d1be490760e793d146d7501c4718af7e/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/d1be490760e793d146d7501c4718af7e/branch_segment_R"
           }
         ],
         "starting_bay_ref": "bp/0727ae9043987fc654b1b72b70869306/branch_pole",
@@ -4333,7 +4345,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment"
+            "segment_ref": "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/63b2fac0113c73d57bdb8781f1125704/branch_segment_R"
           }
         ],
         "starting_bay_ref": "bp/d4b4ae7871bd138cd3772036ecc5eb3e/branch_pole",
@@ -4349,7 +4365,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/40937873034683b7a05c480c83b430fe/branch_segment"
+            "segment_ref": "seg/40937873034683b7a05c480c83b430fe/branch_segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/40937873034683b7a05c480c83b430fe/branch_segment_R"
           }
         ],
         "starting_bay_ref": "bp/a48a94cd5aad8165f085ec3ae430351d/branch_pole",

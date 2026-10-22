@@ -746,7 +746,6 @@ export async function assignTypeToBranch(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: branchId,
     catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-    source_mode: 'KATALOG',
   });
 }
 
@@ -758,7 +757,6 @@ export async function assignTypeToTransformer(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: transformerId,
     catalog_binding: buildCatalogBinding('TRAFO_SN_NN', typeId),
-    source_mode: 'KATALOG',
   });
 }
 
@@ -771,7 +769,6 @@ export async function assignEquipmentTypeToSwitch(
   await executeDomainOp(projectId, 'assign_catalog_to_element', {
     element_ref: switchId,
     catalog_binding: buildCatalogBinding(catalogNamespace, typeId),
-    source_mode: 'KATALOG',
   });
 }
 

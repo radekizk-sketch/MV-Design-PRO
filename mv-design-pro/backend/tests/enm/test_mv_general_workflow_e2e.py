@@ -968,9 +968,6 @@ class TestE2E5ReceivingStationsAndOzeBess:
                     "source_converter_catalog_ref": CATALOG_FALOWNIK_PV_NN,
                     "source_converter_name": "Falownik PV katalogowy",
                     "source_converter_kind": "PV",
-                    "source_converter_un_kv": 0.4,
-                    "source_converter_sn_mva": 1.0,
-                    "source_converter_pmax_mw": 1.0,
                     "outgoing_feeders_nn_count": 1,
                     "outgoing_feeders_nn": [
                         {"feeder_role": "ODPLYW_NN", "catalog_bindings": None},

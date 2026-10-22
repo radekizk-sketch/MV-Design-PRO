@@ -190,7 +190,6 @@ def _der_sn_payload(
             "lv_switchgear_variant": lv_switchgear_variant,
             "has_block_transformer": has_block_transformer,
             "block_transformer": block_transformer,
-            "has_dedicated_mv_field": True,
             "mv_bus_ref": mv_bus_ref,
             "mv_field_configuration": {
                 "switching_device": "CB",

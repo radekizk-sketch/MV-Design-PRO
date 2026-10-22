@@ -1221,7 +1221,11 @@
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/a2ce629b15ab45b245bc6c723e6e7042/segment"
+            "segment_ref": "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_L"
+          },
+          {
+            "order": 2,
+            "segment_ref": "seg/a2ce629b15ab45b245bc6c723e6e7042/segment_R"
           }
         ],
         "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",

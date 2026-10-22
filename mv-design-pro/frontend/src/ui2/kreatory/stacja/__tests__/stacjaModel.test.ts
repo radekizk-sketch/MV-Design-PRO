@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { at } from '../../../../test/arrayAt';
+import { kluczeSpozaKontraktu } from '../../../../test/kontraktLadunkuOperacji';
 
 import type { CompleteMvBayTemplateSummary } from '../../../../ui/catalog/BayTemplatePicker';
 import type { ConverterType, TransformerType } from '../../../../ui/catalog/types';
@@ -347,11 +348,11 @@ describe('stacjaModel — payload', () => {
       rozdzielnica('branch'),
     );
     expect(payload).toMatchObject({
-      name: 'ST-3',
       station_type: 'branch',
       endpoint_bus_ref: 'bus-end',
       run_ref: 'run-1',
-      station: expect.objectContaining({ nn_voltage_kv: 0.4, station_role: 'STACJA_SN_NN' }),
+      // Nazwa w `station.name` — jedynym kluczu nazwy czytanym przez koniec ciągu.
+      station: expect.objectContaining({ nn_voltage_kv: 0.4, name: 'ST-3' }),
       transformer: expect.objectContaining({
         create: true,
         transformer_catalog_ref: 'trafo-630-15-04',
@@ -369,6 +370,9 @@ describe('stacjaModel — payload', () => {
     // przez operację CZYTANE, więc opisywały sterowanie, którego nie było (phantom).
     // Obecność pola transformatorowego rozstrzyga wyłącznie lista `sn_fields`.
     expect(payload).not.toHaveProperty('options');
+    // Koniec ciągu bierze napięcie SN z szyny końca — klucz nie jest daną tej operacji.
+    expect(payload.station as Record<string, unknown>).not.toHaveProperty('sn_voltage_kv');
+    expect(kluczeSpozaKontraktu('append_station_on_endpoint', payload)).toEqual([]);
   });
 
   it('wariant podział → insert z segment_id/insert_at RATIO', () => {
@@ -383,7 +387,8 @@ describe('stacjaModel — payload', () => {
     });
     expect(payload).not.toHaveProperty('endpoint_bus_ref');
     // nazwa domyślna z kontekstu, gdy pole puste
-    expect(payload).toHaveProperty('name', 'Stacja ST-3');
+    expect((payload.station as Record<string, unknown>).name).toBe('Stacja ST-3');
+    expect(kluczeSpozaKontraktu('insert_station_on_segment_sn', payload)).toEqual([]);
   });
 
   it('napięcie SN w payloadzie pochodzi z kontekstu (szyny), nie z UI', () => {
@@ -599,10 +604,10 @@ describe('stacjaModel — blok nN / PV', () => {
       nn_configuration: 'PV_INVERTER',
       source_converter_catalog_ref: 'pv-800-069',
       source_converter_kind: 'PV',
-      source_converter_un_kv: 0.69,
-      source_converter_sn_mva: 0.9,
-      source_converter_pmax_mw: 0.8,
     });
+    // Un/Sn/Pmax falownika operacja bierze z katalogu (`source_converter_catalog_ref`).
+    expect(nnBlock).not.toHaveProperty('source_converter_un_kv');
+    expect(kluczeSpozaKontraktu('insert_station_on_segment_sn', payload)).toEqual([]);
     expect(nnBlock.source_protection).toBeTruthy();
     // Napięcie nN stacji z falownika, nie z pola odbioru.
     expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
@@ -695,9 +700,6 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
       nn_configuration: 'BESS_INVERTER',
       source_converter_catalog_ref: 'bess-069',
       source_converter_kind: 'BESS',
-      source_converter_un_kv: 0.69,
-      source_converter_sn_mva: 0.8,
-      source_converter_pmax_mw: 0.7,
     });
     // Legacy: intencja zabezpieczenia tylko dla PV → BESS bez source_protection.
     expect(nnBlock).not.toHaveProperty('source_protection');
@@ -728,7 +730,6 @@ describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
       nn_configuration: 'FW_INVERTER',
       source_converter_catalog_ref: 'wind-04',
       source_converter_kind: 'WIND',
-      source_converter_un_kv: 0.4,
     });
     const feeders = nnBlock.outgoing_feeders_nn as Array<{
       feeder_role: string;
@@ -995,5 +996,69 @@ describe('B-2 — zaczepy transformatora w payloadzie operacji stacyjnej', () =>
     // następnej" ani listy kroków do wykonania po zapisie.
     expect(Object.keys(payload)).not.toContain('operations');
     expect((payload.transformer as Record<string, unknown>).transformer_tap_current_position).toBe(1);
+  });
+});
+
+describe('stacjaModel — ładunek w kontrakcie operacji (iloczyn cech)', () => {
+  // Klucz, którego operacja nie czyta, przepada bez śladu (tak ginęła nazwa stacji
+  // dokładanej na końcu ciągu). Iloczyn: umiejscowienie {koniec ciągu, wcięcie} ×
+  // konfiguracja nN {odbiorcza, PV, BESS, FW, własna} × nazwa {wpisana, z kontekstu} ×
+  // napięcie SN szyny {znane, nieznane} × bloki opcjonalne {brak, komplet: transformatory
+  // równoległe, regulacja, uziemienie, potrzeby własne, oznaczenie, wykonanie}.
+  const PV = () => konwerterZKatalogu('pv-800-069', falowniki);
+  const ZRODLA = {
+    LOAD_NN: () => null,
+    PV_INVERTER: PV,
+    BESS_INVERTER: () => konwerterZKatalogu('bess-069', falownikiZrodla(falowniki, 'BESS_INVERTER')),
+    FW_INVERTER: () => konwerterZKatalogu('wind-04', falownikiZrodla(falowniki, 'FW_INVERTER')),
+    CUSTOM_NN: () => null,
+  } as const;
+  const BLOKI_KOMPLET: Partial<StacjaFormData> = {
+    transformer_units: 2,
+    transformer_regulation_type: 'DETC',
+    transformer_regulated_winding: 'HV',
+    transformer_tap_neutral_position: 0,
+    transformer_tap_current_position: -1,
+    transformer_tap_min_position: -2,
+    transformer_tap_max_position: 2,
+    transformer_tap_step_percent: 2.5,
+    uklad_sieci_nn: 'IT',
+    neutral_point: 'isolated',
+    station_auxiliary_kw: '5',
+    station_auxiliary_cosphi: '0,9',
+    designation: 'S-12',
+    construction_type: 'kontenerowa',
+  };
+  const przypadki = (['ENDPOINT_APPEND', 'SPLIT'] as const).flatMap((tryb) =>
+    (Object.keys(ZRODLA) as Array<keyof typeof ZRODLA>).flatMap((konfiguracja) =>
+      ['ST-9', ''].flatMap((nazwa) =>
+        [15, 0].flatMap((sn) => [false, true].map((komplet) => ({ tryb, konfiguracja, nazwa, sn, komplet }))),
+      ),
+    ),
+  );
+
+  it('iloczyn obejmuje 80 przypadków', () => {
+    expect(przypadki).toHaveLength(2 * 5 * 2 * 2 * 2);
+  });
+
+  it.each(przypadki)('$tryb × $konfiguracja × nazwa „$nazwa" × SN $sn kV × komplet $komplet', (p) => {
+    const konwerter = ZRODLA[p.konfiguracja]();
+    const kontekstStacji = kontekst({ tryb: p.tryb, endpointBusRef: 'bus-end', runRef: 'run-1', snVoltageKv: p.sn });
+    const payload = zbudujPayload(
+      dane({
+        nn_configuration: p.konfiguracja,
+        station_name: p.nazwa,
+        ...(konwerter ? { source_converter_ref: konwerter.id, catalog_ref: 'trafo-1000-15-069' } : {}),
+        ...(p.konfiguracja === 'CUSTOM_NN' ? { nn_voltage_kv: 0.69 } : {}),
+        ...(p.komplet ? BLOKI_KOMPLET : {}),
+      }),
+      kontekstStacji,
+      rozdzielnica('branch'),
+      konwerter,
+    );
+    // Nazwa operacji z TEJ SAMEJ funkcji, którą kreator wybiera operację do wysłania.
+    expect(kluczeSpozaKontraktu(nazwaOperacji(kontekstStacji), payload)).toEqual([]);
+    // Nazwa — wpisana albo z kontekstu — dociera tym samym kluczem do obu operacji.
+    expect((payload.station as Record<string, unknown>).name).toBe(p.nazwa || 'Stacja ST-3');
   });
 });

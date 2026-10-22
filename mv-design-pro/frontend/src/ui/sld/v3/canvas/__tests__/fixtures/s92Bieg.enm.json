@@ -1575,7 +1575,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "a307605d2e4618d47ae36e83fe3fecdb1faf84ae1d502039740aa14f8cad393c",
+    "hash_sha256": "7e8a7751baa5edd8b108e07a5430b29a9446b3c32f6df7d8c6f6c583fcad035b",
     "name": "Bieg na schemacie",
     "revision": 6,
     "updated_at": "2026-09-25T00:00:00Z"
@@ -1596,7 +1596,11 @@
         },
         {
           "order": 2,
-          "segment_ref": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment"
+          "segment_ref": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_L"
+        },
+        {
+          "order": 3,
+          "segment_ref": "seg/3cbe5bbbede700ad26175fad0e1613d1/segment_R"
         }
       ],
       "starting_bay_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",

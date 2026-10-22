@@ -168,7 +168,7 @@ async function buildGpzTrunk(caseId, projectId, gpzKey, gpzName, designation, ca
         bus_ref: snBus.ref_id,
         bay_role: 'LINE_OUT',
         catalog_ref: 'sw-ls-abb-nal-12kv-630a',
-        designation_q: designation,
+        field_name: designation,
       },
     },
   });
@@ -427,7 +427,7 @@ async function main() {
             catalog_item_version: '2024.1',
             materialize: true,
           },
-          name_pl: `Słup ZKSN odgałęźny ${i + 1}`,
+          name: `Słup ZKSN odgałęźny ${i + 1}`,
           branch_ports_count: 1,
         },
       },

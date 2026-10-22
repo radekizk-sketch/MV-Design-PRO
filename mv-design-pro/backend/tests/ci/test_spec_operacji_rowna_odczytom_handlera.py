@@ -19,16 +19,21 @@ przypisać do konkretnych kluczy, jest błędem testu, nie cichym pominięciem.
 from __future__ import annotations
 
 import textwrap
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from domain.canonical_operations import (
+    _WIAZANIE_KATALOGOWE,
     CANONICAL_OPERATIONS,
+    KSZTALTY_ZAGNIEZDZONE,
     REQUIRED_FIELD_ALIASES,
+    KsztaltObiektu,
     OperationSpec,
 )
+from network_model.catalog.types import CatalogBinding
 
-from tests.ci.odczyty_ladunku_handlerow import AnalizaEnm, handlery, odczyty_operacji
+from tests.ci.odczyty_ladunku_handlerow import AnalizaEnm, Odczyty, handlery, odczyty_operacji
 
 _ENM = Path(__file__).resolve().parents[2] / "src" / "enm"
 
@@ -77,6 +82,111 @@ def rozbieznosci(
     return wynik
 
 
+#: Obiekty zagnieżdżone, których odczytów analiza nie domyka — NIE mają kształtu w
+#: ``KSZTALTY_ZAGNIEZDZONE`` (czujnik ładunku ich nie sprawdza). Lista przypięta w obie
+#: strony: obiekt domknięty na tej liście albo nowy obiekt niedomknięty spoza niej czerwieni
+#: test. Przyczyny merytoryczne — każdy z tych obiektów ma WŁASNĄ kontrolę kluczy albo
+#: kształt wyznacza dana, nie kod.
+OBIEKTY_BEZ_KSZTALTU: dict[str, str] = {
+    # `rozbieznosci_tabliczki` porównuje zadeklarowane dane tabliczki z KLUCZAMI POZYCJI
+    # KATALOGU (iteracja po kluczach pozycji) — zbiór kluczy wyznacza pozycja katalogu.
+    "add_converter_source.materialized_params": "klucze wyznacza pozycja katalogu",
+    # Parametry elementu: handler sam odmawia kluczy spoza listy parametrów kolekcji
+    # (`KOLEKCJE_Z_LISTA_PARAMETROW`) albo spoza pól kontraktu elementu
+    # (`KOLEKCJE_Z_KONTRAKTEM_POL`, `params.key_not_allowed`).
+    "update_element_parameters.parameters": "handler odmawia kluczy spoza listy",
+    # Sekcja GPZ: handler odmawia kluczy spoza listy (`gpz_section.update.disallowed_keys`).
+    "update_gpz_section.updates": "handler odmawia kluczy spoza listy",
+}
+
+
+def _obiekt(odczyty: Odczyty) -> bool:
+    """Wartość czytana jak słownik (napis z ``"." in ref`` nie jest obiektem)."""
+    return odczyty.slownikowy and bool(odczyty.klucze)
+
+
+def _wiazanie(klucz: str) -> bool:
+    return klucz.endswith("catalog_binding")
+
+
+def rozbieznosci_ksztaltow(
+    ksztalty: dict[str, dict[str, KsztaltObiektu]],
+    odczyty: dict[str, Odczyty],
+    bez_ksztaltu: dict[str, str],
+    wiazanie: KsztaltObiektu = _WIAZANIE_KATALOGOWE,
+) -> dict[str, list[str]]:
+    """ścieżka → rozbieżności kształtu zadeklarowanego i odczytów handlera (pusty = zgodność)."""
+    wynik: dict[str, list[str]] = {}
+    otwarte: set[str] = set()
+    odczyty_wiazan: set[str] = set()
+
+    def porownaj(sciezka: str, zadeklarowane: Mapping[str, KsztaltObiektu], od: Odczyty) -> None:
+        widziane: set[str] = set()
+        for klucz in sorted(od.zagniezdzone):
+            pod = od.zagniezdzone[klucz]
+            if not _obiekt(pod):
+                continue
+            s = f"{sciezka}.{klucz}"
+            widziane.add(klucz)
+            ksztalt = zadeklarowane.get(klucz)
+            if _wiazanie(klucz):
+                odczyty_wiazan.update(pod.klucze)
+                if ksztalt is not wiazanie:
+                    wynik.setdefault(s, []).append("wiązanie bez kształtu wiązania katalogowego")
+                elif pod.klucze - wiazanie.pola:
+                    wynik.setdefault(s, []).append(
+                        f"czytane spoza wiązania: {sorted(pod.klucze - wiazanie.pola)}"
+                    )
+                continue
+            if pod.dynamiczne:
+                otwarte.add(s)
+                if ksztalt is not None:
+                    wynik.setdefault(s, []).append(
+                        "kształt obiektu, którego odczytów analiza nie domyka"
+                    )
+                continue
+            if ksztalt is None:
+                wynik.setdefault(s, []).append(f"obiekt bez kształtu: {sorted(pod.klucze)}")
+                continue
+            if ksztalt.pola - pod.klucze:
+                wynik.setdefault(s, []).append(
+                    f"kształt nieczytany: {sorted(ksztalt.pola - pod.klucze)}"
+                )
+            if pod.klucze - ksztalt.pola:
+                wynik.setdefault(s, []).append(
+                    f"czytane bez kształtu: {sorted(pod.klucze - ksztalt.pola)}"
+                )
+            porownaj(s, ksztalt.zagniezdzone, pod)
+        for klucz in sorted(set(zadeklarowane) - widziane):
+            wynik.setdefault(f"{sciezka}.{klucz}", []).append(
+                "kształt obiektu, którego handler nie czyta"
+            )
+
+    for op in sorted(set(odczyty) | set(ksztalty)):
+        porownaj(op, ksztalty.get(op, {}), odczyty.get(op, Odczyty()))
+    for s in sorted(otwarte ^ set(bez_ksztaltu)):
+        wynik.setdefault(s, []).append(
+            "obiekt niedomknięty spoza listy OBIEKTY_BEZ_KSZTALTU"
+            if s in otwarte
+            else "wpis OBIEKTY_BEZ_KSZTALTU dla obiektu domkniętego albo nieistniejącego"
+        )
+    pola_wiazania = set(CatalogBinding("", "", "").to_dict()) | odczyty_wiazan
+    if wiazanie.pola != pola_wiazania:
+        wynik["wiazanie_katalogowe"] = [
+            f"kształt {sorted(wiazanie.pola)} != CatalogBinding ∪ odczyty {sorted(pola_wiazania)}"
+        ]
+    return wynik
+
+
+@pytest.fixture(scope="module")
+def odczyty_pelne() -> dict[str, Odczyty]:
+    analiza = AnalizaEnm(_ENM)
+    return {
+        op: odczyty_operacji(analiza, plik, funkcja)
+        for op, (plik, funkcja) in handlery(analiza).items()
+    }
+
+
 @pytest.fixture(scope="module")
 def odczyty_handlerow() -> tuple[dict[str, set[str]], dict[str, set[str]]]:
     analiza = AnalizaEnm(_ENM)
@@ -103,6 +213,85 @@ def test_specyfikacja_kazdej_operacji_rowna_odczytom_handlera(odczyty_handlerow)
     klucze, _ = odczyty_handlerow
     assert set(klucze) == set(CANONICAL_OPERATIONS)
     assert rozbieznosci(CANONICAL_OPERATIONS, REQUIRED_FIELD_ALIASES, klucze) == {}
+
+
+def test_ksztalty_zagniezdzone_rowne_odczytom_handlera(odczyty_pelne) -> None:
+    assert rozbieznosci_ksztaltow(KSZTALTY_ZAGNIEZDZONE, odczyty_pelne, OBIEKTY_BEZ_KSZTALTU) == {}
+
+
+def _z_polami(ksztalt: KsztaltObiektu, pola: set[str]) -> KsztaltObiektu:
+    return KsztaltObiektu(pola=frozenset(pola), zagniezdzone=ksztalt.zagniezdzone)
+
+
+def test_iniekcja_ksztalt_poziomu_1_z_polem_fantomowym_wykryta(odczyty_pelne) -> None:
+    segment = KSZTALTY_ZAGNIEZDZONE["continue_trunk_segment_sn"]["segment"]
+    zatrute = {
+        **KSZTALTY_ZAGNIEZDZONE,
+        "continue_trunk_segment_sn": {
+            **KSZTALTY_ZAGNIEZDZONE["continue_trunk_segment_sn"],
+            "segment": _z_polami(segment, set(segment.pola) | {"segment_kind"}),
+        },
+    }
+    assert rozbieznosci_ksztaltow(zatrute, odczyty_pelne, OBIEKTY_BEZ_KSZTALTU) == {
+        "continue_trunk_segment_sn.segment": ["kształt nieczytany: ['segment_kind']"]
+    }
+
+
+def test_iniekcja_ksztalt_poziomu_2_bez_pola_czytanego_wykryta(odczyty_pelne) -> None:
+    stacja = KSZTALTY_ZAGNIEZDZONE["insert_station_on_segment_sn"]["station"]
+    rozdzielnica = stacja.zagniezdzone["switchgear"]
+    zatrute = {
+        **KSZTALTY_ZAGNIEZDZONE,
+        "insert_station_on_segment_sn": {
+            **KSZTALTY_ZAGNIEZDZONE["insert_station_on_segment_sn"],
+            "station": KsztaltObiektu(
+                pola=stacja.pola,
+                zagniezdzone={
+                    **stacja.zagniezdzone,
+                    "switchgear": _z_polami(
+                        rozdzielnica, set(rozdzielnica.pola) - {"manufacturer_ref"}
+                    ),
+                },
+            ),
+        },
+    }
+    assert rozbieznosci_ksztaltow(zatrute, odczyty_pelne, OBIEKTY_BEZ_KSZTALTU) == {
+        "insert_station_on_segment_sn.station.switchgear": [
+            "czytane bez kształtu: ['manufacturer_ref']"
+        ]
+    }
+
+
+def test_iniekcja_obiekt_czytany_bez_ksztaltu_i_lista_niedomknietych_wykryte(
+    odczyty_pelne,
+) -> None:
+    bez_segmentu = {
+        **KSZTALTY_ZAGNIEZDZONE,
+        "connect_secondary_ring_sn": {
+            k: v
+            for k, v in KSZTALTY_ZAGNIEZDZONE["connect_secondary_ring_sn"].items()
+            if k != "segment"
+        },
+    }
+    wynik = rozbieznosci_ksztaltow(bez_segmentu, odczyty_pelne, OBIEKTY_BEZ_KSZTALTU)
+    assert list(wynik) == ["connect_secondary_ring_sn.segment"]
+    assert wynik["connect_secondary_ring_sn.segment"][0].startswith("obiekt bez kształtu")
+    lista = {**OBIEKTY_BEZ_KSZTALTU, "add_relay.protection": "fikcja"}
+    assert rozbieznosci_ksztaltow(KSZTALTY_ZAGNIEZDZONE, odczyty_pelne, lista) == {
+        "add_relay.protection": [
+            "wpis OBIEKTY_BEZ_KSZTALTU dla obiektu domkniętego albo nieistniejącego"
+        ]
+    }
+
+
+def test_iniekcja_wiazanie_z_kluczem_spoza_catalog_binding_wykryte(odczyty_pelne) -> None:
+    zatrute = KsztaltObiektu(pola=_WIAZANIE_KATALOGOWE.pola | {"item_id"})
+    wynik = rozbieznosci_ksztaltow(
+        KSZTALTY_ZAGNIEZDZONE, odczyty_pelne, OBIEKTY_BEZ_KSZTALTU, wiazanie=zatrute
+    )
+    # Każde wiązanie ma teraz kształt inny niż zadeklarowany wspólny, a kształt wspólny
+    # ma klucz, którego nie czyta ani brama, ani handler.
+    assert "wiazanie_katalogowe" in wynik
 
 
 def test_klucz_bramy_api_zmienia_werdykt_bramy() -> None:

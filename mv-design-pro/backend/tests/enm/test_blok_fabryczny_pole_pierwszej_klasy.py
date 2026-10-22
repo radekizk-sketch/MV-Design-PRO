@@ -160,11 +160,7 @@ def _payload_stacji(sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
         "sn_fields": sn_fields,
         "field_apparatus_catalog_ref": CATALOG_APARAT_SN,
         "transformer": {"create": True, "transformer_catalog_ref": CATALOG_TRAFO},
-        "nn_block": {
-            "create_nn_bus": True,
-            "main_breaker_nn": True,
-            "outgoing_feeders_nn_count": 1,
-        },
+        "nn_block": {"outgoing_feeders_nn_count": 1},
     }
 
 
@@ -389,6 +385,9 @@ def test_blok_spoza_katalogu_konczy_sie_twardym_bledem(operacja: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+# Ładunek CELOWO niesie usuniętą metadaną `sn_fields[].catalog_bindings` — test
+# pilnuje, że żaden handler jej nie czyta; czujnik ładunku melduje to zgodnie z prawdą.
+@pytest.mark.ladunek_spoza_kontraktu
 def test_zadna_operacja_nie_czyta_bloku_z_metadanej_wiazan() -> None:
     """Wybór bloku podany DAWNĄ drogą nie działa — nie ma warstwy zgodności.
 

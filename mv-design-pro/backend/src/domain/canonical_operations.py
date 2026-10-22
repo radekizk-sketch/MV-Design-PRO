@@ -14,8 +14,9 @@ REGULA: Ten modul jest JEDYNYM ZRODLEM PRAWDY dla:
 from __future__ import annotations
 
 import enum
-from collections.abc import Sequence
-from dataclasses import dataclass
+import re
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import Any
 
 # ============================================================
@@ -992,6 +993,738 @@ REQUIRED_FIELD_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
     "set_der_catalog_bindings": {"generator_ref": ("source_ref",)},
     "set_measurement_secondary_circuit": {"measurement_ref": ("ref_id",)},
     "set_source_operating_mode": {"source_ref": ("element_ref",)},
+}
+
+
+@dataclass(frozen=True)
+class KsztaltObiektu:
+    """Kształt obiektu zagnieżdżonego ładunku — słownika albo KAŻDEGO elementu listy słowników.
+
+    ``pola``: klucze czytane przez handler (i bramę katalogową API dla wiązań);
+    ``zagniezdzone``: kształty obiektów pod kluczami tego obiektu (poziom niżej).
+    Nazwa z ``{…}`` (np. ``{side}_r_ohm``) to rodzina kluczy.
+    """
+
+    pola: frozenset[str]
+    zagniezdzone: Mapping[str, KsztaltObiektu] = field(default_factory=dict)
+
+
+#: Wiązanie katalogowe — JEDEN kształt w każdej operacji: pola ``CatalogBinding``
+#: (``network_model/catalog/types.py``), które czyta brama katalogowa API
+#: (``CatalogBinding.from_dict``, ``validate_catalog_binding``), oraz ``catalog_ref`` —
+#: identyfikator pozycji czytany z wiązania przez handlery i bramę (``_ref_z_wiazania``).
+#: Test ``tests/ci/test_spec_operacji_rowna_odczytom_handlera.py`` przypina: odczyty
+#: wiązań w handlerach ⊆ ten kształt, a kształt = pola ``CatalogBinding`` ∪ odczyty.
+_WIAZANIE_KATALOGOWE = KsztaltObiektu(
+    pola=frozenset(
+        {
+            "catalog_item_id",
+            "catalog_item_version",
+            "catalog_namespace",
+            "catalog_ref",
+            "materialize",
+            "snapshot_mapping_version",
+        }
+    )
+)
+
+#: Kształty obiektów zagnieżdżonych ładunku operacji (poziom 1 i głębiej) — JEDNA prawda
+#: z handlerem jak pola najwyższego poziomu: kształt każdego obiektu = klucze czytane przez
+#: handler (analiza AST ``tests/ci/odczyty_ladunku_handlerow.py``, przechodnio przez
+#: funkcje ``enm/**``, pętle po listach obiektów i kopie ``{**x, k: v}``), przypięte testem
+#: ``test_spec_operacji_rowna_odczytom_handlera.py``. Obiekt, którego odczytów analiza nie
+#: domyka (handler odczytuje klucze wyliczane w biegu), NIE ma tu kształtu — test wylicza
+#: takie obiekty z przyczyną. Czujnik ``klucze_spoza_kontraktu`` sprawdza każdy poziom.
+KSZTALTY_ZAGNIEZDZONE: dict[str, dict[str, KsztaltObiektu]] = {
+    "add_converter_source": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "der_topology": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "block_transformer",
+                    "connection_level",
+                    "connection_method",
+                    "has_block_transformer",
+                    "has_manufacturer_lv_switchgear",
+                    "inverter_output_voltage_kv",
+                    "lv_switchgear_variant",
+                    "mv_bus_ref",
+                    "mv_field_configuration",
+                    "simultaneity_factor",
+                }
+            ),
+            zagniezdzone={
+                "block_transformer": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "catalog_binding",
+                            "catalog_ref",
+                            "loadability_pu",
+                            "primary_voltage_kv",
+                            "rated_power_mva",
+                            "secondary_voltage_kv",
+                            "uk_percent",
+                            "vector_group",
+                        }
+                    ),
+                ),
+                "mv_field_configuration": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "apparatus_catalog_binding",
+                            "bay_template_ref",
+                            "cable_catalog_binding",
+                            "cable_catalog_ref",
+                            "cable_head",
+                            "cable_laying_conditions",
+                            "cable_length_km",
+                            "cable_screen_bonding",
+                            "ct",
+                            "earthing_switch",
+                            "field_name",
+                            "protection_relay",
+                            "surge_arrester",
+                            "switching_device",
+                            "vt",
+                        }
+                    ),
+                    zagniezdzone={
+                        "apparatus_catalog_binding": _WIAZANIE_KATALOGOWE,
+                        "cable_laying_conditions": KsztaltObiektu(
+                            pola=frozenset(
+                                {"f_grunt", "f_grupa", "f_wiazka", "opis_pl", "set_name"}
+                            ),
+                        ),
+                    },
+                ),
+            },
+        ),
+        "source_field": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "add_ct": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_generator_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "manual_params": KsztaltObiektu(
+            pola=frozenset({"q_max_mvar", "q_min_mvar", "rated_kv", "rated_mva"}),
+        ),
+    },
+    "add_genset_nn": {
+        "genset_spec": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "fuel_type",
+                    "operation_mode",
+                    "power_factor",
+                    "rated_power_kw",
+                    "rated_voltage_kv",
+                    "source_name",
+                }
+            ),
+        ),
+        "source_field": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "add_grid_source_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "gpz_line_field_apparatus": KsztaltObiektu(
+            pola=frozenset({"apparatus_kind", "catalog_binding", "catalog_item_id", "catalog_ref"}),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+        "grounding": KsztaltObiektu(
+            pola=frozenset({"r_ohm", "type", "x_ohm"}),
+        ),
+        "manual_equivalent": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "hv_voltage_kv",
+                    "ik3_ka",
+                    "ik3_min_ka",
+                    "r0_ohm",
+                    "r_ohm",
+                    "rx_ratio",
+                    "rx_ratio_min",
+                    "short_circuit_input_side",
+                    "short_circuit_mode",
+                    "sk3_hv_mva",
+                    "sk3_min_mva",
+                    "sk3_mva",
+                    "skip_hv_transformer",
+                    "sn_voltage_kv",
+                    "u_set_pu",
+                    "voltage_hv_kv",
+                    "x0_ohm",
+                    "x_ohm",
+                    "z0_z1_ratio",
+                }
+            ),
+        ),
+        "transformer_catalog_binding": _WIAZANIE_KATALOGOWE,
+        "zero_sequence": KsztaltObiektu(
+            pola=frozenset({"enabled", "r0_ohm", "x0_ohm", "z0_z1_ratio"}),
+        ),
+    },
+    "add_load_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_cable_segment": {
+        "cable_laying_conditions": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "ambient_temperature_c",
+                    "circuit_count",
+                    "environment",
+                    "insulation",
+                    "soil_thermal_resistivity_km_w",
+                }
+            ),
+        ),
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_distribution_board": {
+        "supply": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "cable_laying_conditions",
+                    "catalog_binding",
+                    "catalog_ref",
+                    "from_bus_ref",
+                    "from_ref",
+                    "length_m",
+                    "n_parallel",
+                    "name",
+                    "ref_id",
+                    "screen_bonding",
+                    "to_bus_name",
+                }
+            ),
+            zagniezdzone={
+                "cable_laying_conditions": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "ambient_temperature_c",
+                            "circuit_count",
+                            "environment",
+                            "insulation",
+                            "soil_thermal_resistivity_km_w",
+                        }
+                    ),
+                ),
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "add_nn_load": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_outgoing_field": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_section_coupler": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_nn_switch_device": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_relay": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "protection": KsztaltObiektu(
+            pola=frozenset({"catalog_item_id", "catalog_item_version", "catalog_ref"}),
+        ),
+    },
+    "add_shunt_compensator_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_sn_bay": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_surge_arrester_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_transformer_sn_nn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "add_ups_nn": {
+        "source_field": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "field_name", "source_field_kind", "switching_device"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+        "ups_spec": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "backup_time_min",
+                    "battery_type",
+                    "operation_mode",
+                    "rated_power_kw",
+                    "source_name",
+                }
+            ),
+        ),
+    },
+    "add_vt": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "append_station_on_endpoint": {
+        "nn_block": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "cos_phi",
+                    "loadability_pu",
+                    "nn_configuration",
+                    "outgoing_feeders_nn",
+                    "outgoing_feeders_nn_count",
+                    "simultaneity_factor",
+                    "source_converter_catalog_ref",
+                    "source_converter_kind",
+                    "source_converter_name",
+                    "source_protection",
+                }
+            ),
+            zagniezdzone={
+                "source_protection": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "analysis_scope",
+                            "breaker_role",
+                            "device_catalog_ref",
+                            "device_label",
+                            "protected_object",
+                        }
+                    ),
+                ),
+            },
+        ),
+        "nn_earthing": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "lv_system",
+                    "neutral_point",
+                    "{side}_neutral_point",
+                    "{side}_r_ohm",
+                    "{side}_x_ohm",
+                }
+            ),
+        ),
+        "sn_fields": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "apparatus_catalog_ref",
+                    "bay_kind",
+                    "bay_template_ref",
+                    "catalog_bindings",
+                    "equipment",
+                    "equipment_refs",
+                    "factory_configuration_ref",
+                    "factory_unit_index",
+                    "field_role",
+                    "funkcja_pomiaru",
+                    "manufacturer_ref",
+                    "protection_ref",
+                    "rodzaj_pomiaru",
+                    "source_refs",
+                    "source_status",
+                    "switchgear_family_ref",
+                }
+            ),
+        ),
+        "station": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "construction_type",
+                    "designation",
+                    "name",
+                    "nn_earthing",
+                    "nn_voltage_kv",
+                    "station_auxiliary",
+                    "station_type",
+                    "switchgear",
+                }
+            ),
+            zagniezdzone={
+                "nn_earthing": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "lv_system",
+                            "neutral_point",
+                            "{side}_neutral_point",
+                            "{side}_r_ohm",
+                            "{side}_x_ohm",
+                        }
+                    ),
+                ),
+                "station_auxiliary": KsztaltObiektu(
+                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+                ),
+                "switchgear": KsztaltObiektu(
+                    pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
+                ),
+            },
+        ),
+        "station_auxiliary": KsztaltObiektu(
+            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+        ),
+        "transformer": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "catalog_binding",
+                    "catalog_ref",
+                    "create",
+                    "n_parallel",
+                    "transformer_catalog_ref",
+                    "transformer_control_mode",
+                    "transformer_controlled_bus_ref",
+                    "transformer_deadband_kv",
+                    "transformer_delay_seconds",
+                    "transformer_ldc_enabled",
+                    "transformer_ldc_r_ohm",
+                    "transformer_ldc_x_ohm",
+                    "transformer_regulated_winding",
+                    "transformer_regulation_type",
+                    "transformer_tap_changer_catalog_ref",
+                    "transformer_tap_current_position",
+                    "transformer_tap_max_position",
+                    "transformer_tap_min_position",
+                    "transformer_tap_neutral_position",
+                    "transformer_tap_step_percent",
+                    "transformer_voltage_setpoint_kv",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "assign_catalog_to_element": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+    },
+    "connect_secondary_ring_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "segment": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_binding", "catalog_ref", "dlugosc_m", "rodzaj", "screen_bonding"}
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "continue_trunk_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "segment": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "b0_siemens_per_km",
+                    "bus_name",
+                    "catalog_binding",
+                    "catalog_ref",
+                    "dlugosc_m",
+                    "name",
+                    "r0_ohm_per_km",
+                    "rodzaj",
+                    "screen_bonding",
+                    "x0_ohm_per_km",
+                    "zero_sequence",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+                "zero_sequence": KsztaltObiektu(
+                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
+                ),
+            },
+        ),
+    },
+    "insert_branch_pole_on_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+    },
+    "insert_section_switch_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+    },
+    "insert_station_on_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+        "nn_block": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "cos_phi",
+                    "loadability_pu",
+                    "nn_configuration",
+                    "outgoing_feeders_nn",
+                    "outgoing_feeders_nn_count",
+                    "simultaneity_factor",
+                    "source_converter_catalog_ref",
+                    "source_converter_kind",
+                    "source_converter_name",
+                    "source_protection",
+                }
+            ),
+            zagniezdzone={
+                "source_protection": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "analysis_scope",
+                            "breaker_role",
+                            "device_catalog_ref",
+                            "device_label",
+                            "protected_object",
+                        }
+                    ),
+                ),
+            },
+        ),
+        "nn_earthing": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "lv_system",
+                    "neutral_point",
+                    "{side}_neutral_point",
+                    "{side}_r_ohm",
+                    "{side}_x_ohm",
+                }
+            ),
+        ),
+        "sn_fields": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "apparatus_catalog_ref",
+                    "bay_kind",
+                    "bay_template_ref",
+                    "equipment",
+                    "factory_configuration_ref",
+                    "factory_unit_index",
+                    "field_role",
+                    "funkcja_pomiaru",
+                    "manufacturer_ref",
+                    "protection_ref",
+                    "rodzaj_pomiaru",
+                    "source_refs",
+                    "source_status",
+                    "switchgear_family_ref",
+                }
+            ),
+        ),
+        "station": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "construction_type",
+                    "designation",
+                    "name",
+                    "name_pl",
+                    "nn_earthing",
+                    "nn_voltage_kv",
+                    "sn_voltage_kv",
+                    "station_auxiliary",
+                    "station_name",
+                    "station_type",
+                    "switchgear",
+                }
+            ),
+            zagniezdzone={
+                "nn_earthing": KsztaltObiektu(
+                    pola=frozenset(
+                        {
+                            "lv_system",
+                            "neutral_point",
+                            "{side}_neutral_point",
+                            "{side}_r_ohm",
+                            "{side}_x_ohm",
+                        }
+                    ),
+                ),
+                "station_auxiliary": KsztaltObiektu(
+                    pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+                ),
+                "switchgear": KsztaltObiektu(
+                    pola=frozenset({"manufacturer_ref", "switchgear_family_ref"}),
+                ),
+            },
+        ),
+        "station_auxiliary": KsztaltObiektu(
+            pola=frozenset({"active_power_kw", "cos_phi", "name", "reactive_power_kvar"}),
+        ),
+        "transformer": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "catalog_binding",
+                    "create",
+                    "n_parallel",
+                    "transformer_catalog_ref",
+                    "transformer_control_mode",
+                    "transformer_controlled_bus_ref",
+                    "transformer_deadband_kv",
+                    "transformer_delay_seconds",
+                    "transformer_ldc_enabled",
+                    "transformer_ldc_r_ohm",
+                    "transformer_ldc_x_ohm",
+                    "transformer_regulated_winding",
+                    "transformer_regulation_type",
+                    "transformer_tap_changer_catalog_ref",
+                    "transformer_tap_current_position",
+                    "transformer_tap_max_position",
+                    "transformer_tap_min_position",
+                    "transformer_tap_neutral_position",
+                    "transformer_tap_step_percent",
+                    "transformer_voltage_setpoint_kv",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+            },
+        ),
+    },
+    "insert_zksn_on_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "insert_at": KsztaltObiektu(
+            pola=frozenset({"mode", "value"}),
+        ),
+    },
+    "set_bay_equipment": {
+        "devices": KsztaltObiektu(
+            pola=frozenset(
+                {"catalog_ref", "designation", "earthing_role", "kind", "linked_ref", "placement"}
+            ),
+        ),
+    },
+    "set_nn_cable_laying_conditions": {
+        "cable_laying_conditions": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "ambient_temperature_c",
+                    "circuit_count",
+                    "environment",
+                    "insulation",
+                    "soil_thermal_resistivity_km_w",
+                }
+            ),
+        ),
+    },
+    "start_branch_segment_sn": {
+        "catalog_binding": _WIAZANIE_KATALOGOWE,
+        "segment": KsztaltObiektu(
+            pola=frozenset(
+                {
+                    "b0_siemens_per_km",
+                    "bus_name",
+                    "catalog_binding",
+                    "catalog_ref",
+                    "dlugosc_m",
+                    "name",
+                    "r0_ohm_per_km",
+                    "rodzaj",
+                    "screen_bonding",
+                    "x0_ohm_per_km",
+                    "zero_sequence",
+                }
+            ),
+            zagniezdzone={
+                "catalog_binding": _WIAZANIE_KATALOGOWE,
+                "zero_sequence": KsztaltObiektu(
+                    pola=frozenset({"b0_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km"}),
+                ),
+            },
+        ),
+    },
+}
+
+
+@dataclass(frozen=True)
+class SkutekCiagu:
+    """Skutek operacji w ciągach liniowych migawki (``line_runs``, ``enm/models.py::LineRun``).
+
+    ``klucz_ladunku``: klucz ładunku wskazujący ciąg (id ciągu = ``ref_id`` magistrali
+    ``corridors``) albo ``None``, gdy operacja wyznacza ciąg sama.
+    """
+
+    klucz_ladunku: str | None
+    opis_pl: str
+
+
+_PODZIAL_ODCINKA_W_CIAGU = (
+    "Dzielony odcinek (`segment_id`) zastąpiony w ciągu dwiema połówkami w tym samym miejscu, "
+    "numeracja `order` od nowa (`_podziel_odcinek_w_widokach` — ta sama reguła dla magistrali "
+    "i ciągu)."
+)
+
+#: Operacje ZMIENIAJĄCE ciągi liniowe ``line_runs`` — JEDNA prawda z handlerami: zbiór
+#: operacji, których handler (przechodnio przez funkcje ``enm/**``) dociera do funkcji
+#: zapisujących ciągi, jest RÓWNY kluczom tego słownika (analiza AST, test
+#: ``tests/ci/test_ciagi_liniowe_operacji.py``), a w łańcuchu przykładów dokumentu kontraktu
+#: każda operacja, po której ciągi się zmieniły, jest tu wymieniona.
+#: Ciąg liniowy to magistrala albo odgałęzienie jako uporządkowana lista odcinków kabla/linii
+#: (``segments``) i stacji (``stations``) z początkiem w polu (``starting_bay_ref``,
+#: ``starting_port_ref``); id ciągu = ``ref_id`` magistrali. Odcinki ciągu istnieją w
+#: ``branches``, stacje — w ``substations`` (``tests/enm/test_ciagi_liniowe_spojne.py``).
+#: Operacje NIE prowadzą listy ``stations`` ciągu: stacje ciągu (przelotowe i końcowa)
+#: wyprowadza się z końcówek jego odcinków (SLD ``inferStationRefsForSegments``) — jedna prawda;
+#: lista z zapisu zastanego traci stację usuniętą (``delete_element``).
+CIAGI_LINIOWE: dict[str, SkutekCiagu] = {
+    "add_grid_source_sn": SkutekCiagu(
+        None,
+        "Zakłada ciąg magistrali GPZ (`run_kind` `main_trunk`, id = id magistrali, bez odcinków) "
+        "z początkiem w pierwszym polu liniowym GPZ i jego zacisku.",
+    ),
+    "continue_trunk_segment_sn": SkutekCiagu(
+        "trunk_id",
+        "Dopisuje utworzony odcinek na koniec ciągu `trunk_id` (brak albo nieznana magistrala → "
+        "pierwsza magistrala modelu); ciąg zakładany, gdy magistrala go nie ma (początek: "
+        "`field_ref`, `from_terminal_id`). Odcinek bez nazwy w ładunku dostaje nazwę ciągu "
+        "i numer `order`.",
+    ),
+    "start_branch_segment_sn": SkutekCiagu(
+        None,
+        "Zakłada ciąg odgałęzienia (`run_kind` `branch`) z utworzonym odcinkiem; początek "
+        "i `branch_origin_station_ref` = element początku (`from_ref`), `parent_run_ref` = ciąg "
+        "odcinków punktu rozgałęzienia (początek `bp/…`).",
+    ),
+    "insert_station_on_segment_sn": SkutekCiagu(
+        None,
+        _PODZIAL_ODCINKA_W_CIAGU + " Stacja nie jest odcinkiem ciągu.",
+    ),
+    "insert_section_switch_sn": SkutekCiagu(
+        None,
+        _PODZIAL_ODCINKA_W_CIAGU
+        + " Łącznik nie jest odcinkiem ciągu (magistrala wymienia go między połówkami).",
+    ),
+    "insert_zksn_on_segment_sn": SkutekCiagu(
+        None, _PODZIAL_ODCINKA_W_CIAGU + " Wstawienie na końcu odcinka nie dzieli go."
+    ),
+    "insert_branch_pole_on_segment_sn": SkutekCiagu(
+        None, _PODZIAL_ODCINKA_W_CIAGU + " Wstawienie na końcu odcinka nie dzieli go."
+    ),
+    "delete_element": SkutekCiagu(
+        None,
+        "Usuwa z `segments` i `stations` każdego ciągu odcinki i stacje usunięte wprost albo "
+        "kaskadą (numeracja `order` od nowa) — para do czyszczenia magistral; ciąg bez odcinków "
+        "zostaje razem z magistralą.",
+    ),
 }
 
 
@@ -3013,15 +3746,58 @@ def klucze_kontraktu(op_name: str) -> frozenset[str]:
     return frozenset(spec.required_fields) | frozenset(spec.optional_fields) | zastepcze
 
 
+def _w_kontrakcie(klucz: str, pola: frozenset[str]) -> bool:
+    """Klucz należy do pól — wprost albo do rodziny ``prefiks_{x}_sufiks``."""
+    if klucz in pola:
+        return True
+    for wzor in pola:
+        if "{" not in wzor:
+            continue
+        czesci = re.split(r"(\{[^}]*\})", wzor)
+        wyrazenie = "".join(".+" if c.startswith("{") else re.escape(c) for c in czesci)
+        if re.fullmatch(wyrazenie, klucz):
+            return True
+    return False
+
+
+def _obce_w_obiekcie(
+    obiekt: object, ksztalt: KsztaltObiektu, sciezka: str, wynik: list[str]
+) -> None:
+    elementy: list[tuple[str, object]]
+    if isinstance(obiekt, dict):
+        elementy = [(sciezka, obiekt)]
+    elif isinstance(obiekt, list):
+        elementy = [(f"{sciezka}[{i}]", e) for i, e in enumerate(obiekt)]
+    else:
+        return  # napis/liczba w miejscu obiektu rozstrzyga handler (odmowa typu)
+    for prefiks, element in elementy:
+        if not isinstance(element, dict):
+            continue
+        for klucz, wartosc in element.items():
+            if not _w_kontrakcie(klucz, ksztalt.pola):
+                wynik.append(f"{prefiks}.{klucz}")
+            elif klucz in ksztalt.zagniezdzone:
+                _obce_w_obiekcie(wartosc, ksztalt.zagniezdzone[klucz], f"{prefiks}.{klucz}", wynik)
+
+
 def klucze_spoza_kontraktu(op_name: str, payload: dict[str, Any]) -> list[str]:
     """Klucze ładunku spoza kontraktu operacji — wysłane, a nieczytane przez nikogo.
 
     Specyfikacja pól jest RÓWNA kluczom czytanym przez handler (i bramę API —
     ``tests/ci/test_spec_operacji_rowna_odczytom_handlera.py``), więc klucz spoza niej
     przepada bez śladu: tak liczba pól liniowych GPZ wysłana pod nazwą innego poziomu
-    dawała po cichu jedno pole zamiast wielu.
+    dawała po cichu jedno pole zamiast wielu. Obiekty zagnieżdżone (``segment``,
+    ``station.switchgear``, elementy ``sn_fields``…) sprawdzane są kształtem
+    ``KSZTALTY_ZAGNIEZDZONE`` — ścieżka klucza obcego: ``segment.catalog_binding.x``,
+    ``sn_fields[1].x``.
     """
-    return sorted(set(payload) - klucze_kontraktu(op_name))
+    nazwa = resolve_operation_name(op_name)
+    pola = klucze_kontraktu(nazwa)
+    wynik = [k for k in payload if not _w_kontrakcie(k, pola)]
+    for klucz, ksztalt in KSZTALTY_ZAGNIEZDZONE.get(nazwa, {}).items():
+        if klucz in payload:
+            _obce_w_obiekcie(payload[klucz], ksztalt, klucz, wynik)
+    return sorted(wynik)
 
 
 def validate_operation_payload(op_name: str, payload: dict[str, Any]) -> list[str]:

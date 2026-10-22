@@ -771,7 +771,6 @@ export function zbudujDerTopology(data: DerSnFormData, mvBusRef: string): DerTop
         'TRAFO_SN_NN',
       ),
     },
-    has_dedicated_mv_field: true,
     mv_field_configuration: {
       switching_device: data.mv_switching_device,
       ct: data.mv_ct,

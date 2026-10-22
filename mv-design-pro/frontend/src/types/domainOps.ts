@@ -247,53 +247,6 @@ export interface CatalogBindingPayload {
   snapshot_mapping_version?: string;
 }
 
-// --- SN Field ---
-export type SNFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO';
-
-export interface SNFieldSpec {
-  field_role: SNFieldRole;
-  catalog_bindings: CatalogBindings | null;
-}
-
-export interface CatalogBindings {
-  line_catalog_ref: string | null;
-  switch_catalog_ref: string | null;
-  ct_catalog_ref: string | null;
-  vt_catalog_ref: string | null;
-}
-
-// --- Transformer ---
-export interface TransformerSpec {
-  create: true;
-  catalog_binding?: CatalogBindingPayload | null;
-  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
-  transformer_catalog_ref?: string | null;
-  model_type: 'DWU_UZWOJENIOWY';
-  tap_changer_present: boolean;
-}
-
-// --- NN Block ---
-export type NNFeederRole =
-  | 'ODPLYW_NN'
-  | 'ODPLYW_REZERWOWY'
-  | 'ZRODLO_NN_PV'
-  | 'ZRODLO_NN_BESS'
-  | 'ZRODLO_NN_FW'
-  | 'ZRODLO_NN_AGREGAT'
-  | 'ZRODLO_NN_UPS';
-
-export interface NNFeederSpec {
-  feeder_role: NNFeederRole;
-  catalog_bindings: CatalogBindings | null;
-}
-
-export interface NNBlockSpec {
-  create_nn_bus: true;
-  main_breaker_nn: true;
-  outgoing_feeders_nn_count: number;
-  outgoing_feeders_nn: NNFeederSpec[];
-}
-
 // =============================================================================
 // P0.9 (nN STUDIO): odcinek/rozdzielnica/aparat/sekcja nN — lustro
 // enm/domain_operations_v2.py (add_nn_cable_segment, add_nn_distribution_board,
@@ -497,7 +450,6 @@ export interface DerTopologyPayload {
   lv_switchgear_variant: LvSwitchgearVariant;
   has_block_transformer: boolean;
   block_transformer: DerBlockTransformerSpec | null;
-  has_dedicated_mv_field: boolean;
   mv_field_configuration: DerMvFieldConfigurationSpec | null;
   mv_bus_ref: string | null;
   // D1 wymaganie 9: jawny „sposób przyłączenia" (ADDYTYWNY — brak → dotychczasowe zachowanie).

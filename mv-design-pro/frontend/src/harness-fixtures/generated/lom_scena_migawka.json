@@ -955,7 +955,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "98659bf15c9d9668abd4f3dbab3e825c51b30062697750b99d487f887b33d52d",
+    "hash_sha256": "46507535b50a058e3a7e403ca0a865077648c06700d6bee997fa304017f94bec",
     "name": "Pole wytwórcy — scena LoM",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -972,7 +972,11 @@
       "segments": [
         {
           "order": 1,
-          "segment_ref": "seg/5a810eceaf6c7d13cff44e2be46f4ea8/segment"
+          "segment_ref": "seg/5a810eceaf6c7d13cff44e2be46f4ea8/segment_L"
+        },
+        {
+          "order": 2,
+          "segment_ref": "seg/5a810eceaf6c7d13cff44e2be46f4ea8/segment_R"
         }
       ],
       "starting_bay_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/bay/001/001",

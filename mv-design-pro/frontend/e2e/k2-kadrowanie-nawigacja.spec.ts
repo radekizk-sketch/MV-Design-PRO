@@ -234,11 +234,26 @@ for (const motyw of [
     });
     const napowietrzna = (enm.branches ?? []).find((b) => b.name === 'Linia napowietrzna 1');
     expect(napowietrzna?.type, 'odcinek napowietrzny w modelu').toBe('line_overhead');
-    enm = await operacja(request, seed.caseId, 'set_normal_open_point', { segment_ref: napowietrzna!.ref_id });
+    // Punkt normalnie otwarty to pozycja normalna ŁĄCZNIKA (`set_normal_open_point.switch_ref`,
+    // karta W5-C); odcinek linii nie ma pozycji normalnej (`nop.not_a_switch`), a dawna kopia
+    // `Corridor.no_point_ref` jest skasowana. Łącznik sekcyjny w połowie odcinka napowietrznego
+    // dzieli go na dwie połowy (`…_SL`/`…_SR` — prefiks refu odcinka zostaje).
+    enm = await operacja(request, seed.caseId, 'insert_section_switch_sn', {
+      segment_id: napowietrzna!.ref_id,
+      insert_at: { mode: 'RATIO', value: 0.5 },
+      switch_type: 'ROZLACZNIK',
+      normal_state: 'closed',
+      switch_name: 'Łącznik linii napowietrznej 1',
+      catalog_binding: { catalog_namespace: 'APARAT_SN', catalog_item_id: 'sw-ls-schneider-rm6-17kv-400a', catalog_item_version: '2024.1' },
+    });
+    const lacznikNop = (enm.branches ?? []).find((b) => b.name === 'Łącznik linii napowietrznej 1');
+    expect(lacznikNop?.type, 'łącznik sekcyjny na odcinku napowietrznym').toBe('switch');
+    enm = await operacja(request, seed.caseId, 'set_normal_open_point', { switch_ref: lacznikNop!.ref_id });
     expect(
-      (enm as { corridors?: Array<{ no_point_ref?: string | null }> }).corridors?.some((c) => c.no_point_ref === napowietrzna!.ref_id),
-      'NOP zapisany w korytarzu',
-    ).toBe(true);
+      ((enm.branches ?? []) as Array<{ ref_id: string; normal_state?: string | null }>).find((b) => b.ref_id === lacznikNop!.ref_id)
+        ?.normal_state,
+      'NOP zapisany jako pozycja normalna łącznika',
+    ).toBe('open');
     await otworzAplikacje(page, seed);
     await page.setViewportSize({ width: SZEROKOSC, height: WYSOKOSC });
     await ustawMotyw(page, motyw.theme);
@@ -441,7 +456,7 @@ for (const motyw of [
     await expect(page.getByTestId('sld-v3-tryb-widoku')).toHaveAttribute('data-tryb', 'roboczy');
     await expect(page.locator('[data-testid="sld-sheet-border"]')).toHaveCount(0);
     await expect(page.locator('[data-testid="sld-sheet-zone-markers"]')).toHaveCount(0);
-    const nop = page.locator(`[data-testid="sld-v3-symbols"] [data-testid="sld-v3-nop-${napowietrzna!.ref_id}"]`);
+    const nop = page.locator(`[data-testid="sld-v3-symbols"] [data-testid="sld-v3-nop-${lacznikNop!.ref_id}"]`);
     await expect(nop, 'symbol punktu normalnie otwartego').toHaveCount(1);
     await expect(nop).toBeVisible();
     const wzoryKreski = await page.evaluate((ref) => {

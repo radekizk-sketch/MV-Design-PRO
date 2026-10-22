@@ -83,7 +83,7 @@ function ustawModel(): void {
   });
 }
 
-function stubFetch(projekcja: Response | null): ReturnType<typeof vi.fn> {
+function stubFetch(projekcja: Response | null) {
   const mock = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/lv-domain/') && projekcja) return projekcja.clone();

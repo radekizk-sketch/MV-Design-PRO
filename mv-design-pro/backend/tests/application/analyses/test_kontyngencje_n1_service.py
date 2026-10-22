@@ -882,8 +882,15 @@ ODCISKI_WIDOKU_PRZED_OPTYMALIZACJA = {
     # na łączniku (`normal_state="open"`), magistrala nie niesie kopii `no_point_ref`
     # (haszowanej dotąd wartością, teraz jak `null`), ciąg nie niesie `nop_station_ref`.
     # Położenie łącznika (`status="open"`), enumeracja, dotkliwości i ranking bez zmian.
-    "gn01_promieniowa": "1d65e0b8fe7765283f5cb7d969cc718977ad100771447dc50a824898c59dcea3",
-    "gn03_pierscien": "5ac3a5897eccd155822f81b2c292933216ab5783a48729001f11d6d0e476436f",
+    # 2026-10-22 (karta MENU-KANON, commit 5 — ciągi liniowe spójne z odcinkami): gn01
+    # 1d65e0b8… → d9cbc723…, gn03 5ac3a589… → a9d5cf5d…. Pełne widoki z kodu HEAD
+    # `ca1c32017` (odtwarzają dokładnie poprzednie piny) i po karcie porównane liść po liściu:
+    # różnią się WYŁĄCZNIE `context.snapshot_hash` i `input_hash`. Jedyna różnica modelu
+    # wejściowego: `line_runs[0].segments` — odcinek podzielony wstawieniem stacji jest w ciągu
+    # zastąpiony połówkami `…_L`/`…_R` z przenumerowanym `order` (dotąd ciąg wskazywał
+    # usunięty odcinek). Enumeracja, dotkliwości, odbiory bez zasilania i ranking identyczne.
+    "gn01_promieniowa": "d9cbc7230d16f3153e0bec65a30746f05490d18fe77d5f19d01e26f592c943c6",
+    "gn03_pierscien": "a9d5cf5d2a998e1b0c860650e1b363d7ea62da5fad99cad368e9c646d91410dc",
 }
 
 

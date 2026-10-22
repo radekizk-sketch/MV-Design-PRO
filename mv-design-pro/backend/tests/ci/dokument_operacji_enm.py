@@ -13,6 +13,8 @@ JEDNA PRAWDA: dokument jest WIDOKIEM rejestru. Bloki między znacznikami
 
 * ``rejestr-operacji`` — tabela każdej operacji ``CANONICAL_OPERATIONS`` (pola wymagane z
   kluczami zastępczymi, opcjonalne, handler), pogrupowana kategoriami rejestru;
+* ``ksztalty-ladunku`` — klucze obiektów zagnieżdżonych ładunku (``KSZTALTY_ZAGNIEZDZONE``);
+* ``ciagi-liniowe`` — skutki operacji w ciągach liniowych ``line_runs`` (``CIAGI_LINIOWE``);
 * ``operacje-usuniete`` — operacje skasowane albo fikcyjne z powodem (żadna nie wraca do
   rejestru niezauważona);
 * ``przyklady-operacji`` — łańcuch WYKONANY przez produkcyjną końcówkę
@@ -41,7 +43,10 @@ from typing import Any
 
 from domain.canonical_operations import (
     CANONICAL_OPERATIONS,
+    CIAGI_LINIOWE,
+    KSZTALTY_ZAGNIEZDZONE,
     REQUIRED_FIELD_ALIASES,
+    KsztaltObiektu,
     OperationCategory,
     OperationSpec,
 )
@@ -201,6 +206,58 @@ def render_rejestru(lokalizacje: dict[str, str]) -> str:
             )
         linie.append("")
     return "\n".join(linie).rstrip("\n")
+
+
+def _wiersze_ksztaltu(op: str, sciezka: str, ksztalt: KsztaltObiektu) -> list[str]:
+    linie = [f"| `{op}` | `{sciezka}` | {_kod(sorted(ksztalt.pola))} |"]
+    for klucz in sorted(ksztalt.zagniezdzone):
+        linie += _wiersze_ksztaltu(op, f"{sciezka}.{klucz}", ksztalt.zagniezdzone[klucz])
+    return linie
+
+
+def render_ksztaltow() -> str:
+    """Klucze obiektów zagnieżdżonych ładunku (``KSZTALTY_ZAGNIEZDZONE``) per operacja."""
+    linie = [
+        f"Obiekty zagnieżdżone ładunku mają kształt w **{len(KSZTALTY_ZAGNIEZDZONE)}** "
+        "operacjach (`KSZTALTY_ZAGNIEZDZONE`). Kształt obowiązuje obiekt pod kluczem i KAŻDY "
+        "element listy obiektów pod tym kluczem; klucz spoza kształtu melduje dyspozytor "
+        "(`klucze_spoza_kontraktu`, ścieżka `station.x`, `sn_fields[0].x`), a test go odrzuca. "
+        "Obiekt bez wiersza (np. `manual_params`) czyta handler kluczami wyliczanymi w biegu — "
+        "lista z przyczyną: `backend/tests/ci/test_spec_operacji_rowna_odczytom_handlera.py`.",
+        "",
+        "| Operacja | Obiekt | Klucze |",
+        "|---|---|---|",
+    ]
+    for op in sorted(KSZTALTY_ZAGNIEZDZONE):
+        for klucz in sorted(KSZTALTY_ZAGNIEZDZONE[op]):
+            linie += _wiersze_ksztaltu(op, klucz, KSZTALTY_ZAGNIEZDZONE[op][klucz])
+    return "\n".join(linie)
+
+
+def render_ciagow() -> str:
+    """Skutki operacji w ciągach liniowych ``line_runs`` (``CIAGI_LINIOWE``)."""
+    linie = [
+        "Ciąg liniowy (`line_runs`, `enm/models.py::LineRun`) to magistrala albo odgałęzienie "
+        "jako uporządkowana lista odcinków kabla/linii (`segments`: `segment_ref`, `order`) "
+        "z początkiem w polu (`starting_bay_ref`, `starting_port_ref`); id ciągu = `ref_id` "
+        "magistrali (`corridors`), `run_kind` ∈ `main_trunk`, `branch`, `ring`, `loop`, "
+        "odgałęzienie wskazuje ciąg macierzysty (`parent_run_ref`). Każdy odcinek ciągu istnieje "
+        "w `branches`, każda stacja listy `stations` — w `substations`. Operacje nie prowadzą "
+        "listy `stations`: stacje ciągu wyprowadza się z końcówek odcinków (SLD "
+        "`inferStationRefsForSegments`); lista z zapisu zastanego traci stację usuniętą. "
+        f"Ciągi zmienia **{len(CIAGI_LINIOWE)}** operacji (`CIAGI_LINIOWE`, zbiór równy "
+        "operacjom, których handler zapisuje ciągi — "
+        "`backend/tests/ci/test_ciagi_liniowe_operacji.py`); pozostałe operacje ciągów nie "
+        "zmieniają.",
+        "",
+        "| Operacja | Klucz ciągu | Skutek w `line_runs` |",
+        "|---|---|---|",
+    ]
+    for op in sorted(CIAGI_LINIOWE):
+        skutek = CIAGI_LINIOWE[op]
+        klucz = f"`{skutek.klucz_ladunku}`" if skutek.klucz_ladunku else "—"
+        linie.append(f"| `{op}` | {klucz} | {skutek.opis_pl} |")
+    return "\n".join(linie)
 
 
 def render_usunietych() -> str:
@@ -485,8 +542,7 @@ KROKI: tuple[Krok, ...] = (
             "field_apparatus_catalog_ref": APARAT_SN,
             "station": {
                 "station_type": "A",
-                "station_name": "Stacja S02",
-                "sn_voltage_kv": 15.0,
+                "name": "Stacja S02",
                 "nn_voltage_kv": 0.4,
             },
             "nn_earthing": {"lv_system": "TN-C-S"},
@@ -1077,6 +1133,8 @@ def bloki(wyniki: list[WynikKroku] | None = None) -> dict[str, str]:
     """Treść każdego bloku generowanego (bez znaczników)."""
     return {
         "rejestr-operacji": render_rejestru(lokalizacje_handlerow()),
+        "ksztalty-ladunku": render_ksztaltow(),
+        "ciagi-liniowe": render_ciagow(),
         "operacje-usuniete": render_usunietych(),
         "przyklady-operacji": render_przykladow(
             wyniki if wyniki is not None else wykonaj_lancuch()

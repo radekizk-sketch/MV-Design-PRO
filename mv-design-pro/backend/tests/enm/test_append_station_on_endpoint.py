@@ -588,7 +588,12 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
 
 
 def test_endpoint_append_updates_existing_line_run_with_station() -> None:
-    """Stacja dodana z UI staje się węzłem ciągu SN w line_runs."""
+    """Stacja dodana na końcu ciągu staje się jego węzłem: ostatni odcinek ciągu kończy się na
+    szynie albo zacisku pola stacji, z których SLD wyprowadza stacje ciągu
+    (`inferStationRefsForSegments`). Intencja dawnej asercji (stacja w `line_runs[].stations`)
+    przeszła na tę jedną prawdę: operacja nie zapisuje listy stacji ciągu — przy jawnym
+    `run_ref` lista była częściowa (bez stacji przelotowych), a SLD przy niepustej liście nie
+    wyprowadza stacji (`tests/enm/test_ciagi_liniowe_spojne.py`)."""
     snap, endpoint = _build_gpz_with_endpoint()
     run_ref = snap["corridors"][-1]["ref_id"]
 
@@ -609,8 +614,15 @@ def test_endpoint_append_updates_existing_line_run_with_station() -> None:
     new_snap = response["snapshot"]
     sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja W Ciągu")
     line_run = next(run for run in new_snap["line_runs"] if run["id"] == run_ref)
-    assert line_run["segments"]
-    assert any(item["substation_ref"] == sub["ref_id"] for item in line_run["stations"])
+    assert line_run["stations"] == []
+    ostatni_ref = line_run["segments"][-1]["segment_ref"]
+    ostatni = next(b for b in new_snap["branches"] if b["ref_id"] == ostatni_ref)
+    szyny_stacji = set(sub["bus_refs"]) | {
+        b.get("terminal_bus_ref")
+        for b in new_snap["bays"]
+        if b.get("substation_ref") == sub["ref_id"]
+    }
+    assert ostatni["to_bus_ref"] in szyny_stacji
 
 
 # ---------------------------------------------------------------------------
@@ -746,9 +758,6 @@ def _pv_nn_block() -> dict[str, Any]:
         "source_converter_catalog_ref": CATALOG_FALOWNIK_PV_NN,
         "source_converter_name": "Falownik PV katalogowy",
         "source_converter_kind": "PV",
-        "source_converter_un_kv": 0.4,
-        "source_converter_sn_mva": 1.0,
-        "source_converter_pmax_mw": 1.0,
         "outgoing_feeders_nn_count": 2,
         "outgoing_feeders_nn": [
             {"feeder_role": "ODPLYW_NN", "catalog_bindings": None},

@@ -233,7 +233,9 @@ describe('Pozycje schematu nN (kabel, aparat, zacisk, odbiór) — realny cel ka
     expect(executeDomainOperation).toHaveBeenCalledWith(
       'case-1',
       'delete_element',
-      expect.objectContaining({ element_ref: ref, action_id: actionId }),
+      // Ładunek = kontrakt `delete_element` (`element_ref`); identyfikator akcji menu nie jest
+      // daną operacji (handler go nie czyta).
+      { element_ref: ref },
       expect.anything(),
     );
   });

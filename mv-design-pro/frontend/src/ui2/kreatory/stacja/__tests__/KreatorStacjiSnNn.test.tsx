@@ -847,8 +847,6 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
           nn_block: expect.objectContaining({
             nn_configuration: 'PV_INVERTER',
             source_converter_catalog_ref: 'pv-800-069',
-            source_converter_un_kv: 0.69,
-            source_converter_sn_mva: 0.9,
           }),
         }),
       );
@@ -896,7 +894,6 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
             nn_configuration: 'BESS_INVERTER',
             source_converter_catalog_ref: 'bess-069',
             source_converter_kind: 'BESS',
-            source_converter_un_kv: 0.69,
           }),
         }),
       );
@@ -1736,7 +1733,10 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     // nazewnictwem tej samej prawdy i żadna operacja stacyjna jej nie czytała).
     for (const pole of pola) {
       expect(pole.factory_configuration_ref).toBe('ZPUE_TPM_AIR__LLT');
-      expect(pole.catalog_bindings).not.toHaveProperty('factory_configuration');
+      // Wcięcie w odcinek nie przenosi `catalog_bindings` wpisu pola (jedno miejsce
+      // zapisu: koniec ciągu) — kreator ich tu nie wysyła, więc dawnej metadanej bloku
+      // nie ma tym bardziej.
+      expect(pole).not.toHaveProperty('catalog_bindings');
     }
     // Numer jednostki ODRÓŻNIA pola bloku: blok LLT ma DWIE jednostki „L",
     // więc bez numeru nie wiadomo, które pole bloku powstaje.
@@ -1816,7 +1816,7 @@ describe('KreatorStacjiSnNn — tory konfiguracji rozdzielnicy (S3)', () => {
     for (const pole of pola) {
       expect(pole).not.toHaveProperty('factory_configuration_ref');
       expect(pole).not.toHaveProperty('factory_unit_index');
-      expect(pole.catalog_bindings).not.toHaveProperty('factory_configuration');
+      expect(pole).not.toHaveProperty('catalog_bindings');
     }
   });
 

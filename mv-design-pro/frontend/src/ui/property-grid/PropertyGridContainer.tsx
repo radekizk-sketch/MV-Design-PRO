@@ -136,7 +136,7 @@ export function PropertyGridContainer({
         const response = await executeDomainOperation(
           activeCaseId,
           'assign_catalog_to_element',
-          { element_ref: elementId, catalog_item_id: typeId, source: 'property_grid' },
+          { element_ref: elementId, catalog_item_id: typeId },
           { komunikatSukcesuPl: `Przypisano typ: ${typeName}` },
         );
 

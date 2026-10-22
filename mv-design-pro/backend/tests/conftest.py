@@ -282,6 +282,20 @@ class _ZapisyKluczySpozaKontraktu(logging.Handler):
             self.zapisy.append(record.getMessage())
 
 
+#: Czujnik przypięty do dziennika dyspozytora na CAŁĄ sesję (nie na czas jednej funkcji
+#: testowej): operację wykonaną w fiksturze modułu albo sesji — przed fiksturą funkcji —
+#: dawny czujnik przepuszczał bez śladu (przykład stacji końcowej łańcucha dokumentu
+#: kontraktu niósł ``station.station_name``, którego handler nie czyta).
+_ZAPISY_KLUCZY_SPOZA_KONTRAKTU = _ZapisyKluczySpozaKontraktu()
+logging.getLogger("enm.domain_operations").addHandler(_ZAPISY_KLUCZY_SPOZA_KONTRAKTU)
+
+
+def _zabierz_zapisy_kluczy_spoza_kontraktu() -> list[str]:
+    zapisy = list(_ZAPISY_KLUCZY_SPOZA_KONTRAKTU.zapisy)
+    _ZAPISY_KLUCZY_SPOZA_KONTRAKTU.zapisy.clear()
+    return zapisy
+
+
 @pytest.fixture(autouse=True)
 def _ladunek_operacji_w_kontrakcie(request):
     """Klucz ładunku operacji domenowej spoza jej kontraktu = błąd testu.
@@ -291,21 +305,28 @@ def _ladunek_operacji_w_kontrakcie(request):
     Kompilator grafu sieci i szablon GPZ wysyłały liczbę pól liniowych pod nazwą poziomu
     sekcji (``line_fields_count``) zamiast ``line_fields_per_section``, więc GPZ dostawał
     po cichu jedno pole; sonda wszystkich nadawców w testach znalazła 15 par
-    (operacja, klucz) wysyłanych, a nieczytanych. Dyspozytor melduje taki klucz w
-    dzienniku serwera (``execute_domain_operation``); ta fikstura zamienia wpis w błąd
-    testu, więc KAŻDY nadawca ćwiczony testami — kod produktu, budowniczowie sieci
-    referencyjnych, testy — wysyła wyłącznie klucze kontraktu. Test, który celowo
-    wysyła klucz spoza kontraktu, nosi znacznik ``ladunek_spoza_kontraktu``.
+    (operacja, klucz) wysyłanych, a nieczytanych. Dyspozytor melduje taki klucz (na KAŻDYM
+    poziomie ładunku — ``station.x``, ``sn_fields[0].x``) w dzienniku serwera
+    (``execute_domain_operation``); ta fikstura zamienia wpis w błąd testu, więc KAŻDY
+    nadawca ćwiczony testami — kod produktu, budowniczowie sieci referencyjnych, testy —
+    wysyła wyłącznie klucze kontraktu. Wpis z fikstury modułu albo sesji (wykonanej przed tą
+    fiksturą) obciąża pierwszy test, który jej używa. Test, który celowo wysyła klucz spoza
+    kontraktu, nosi znacznik ``ladunek_spoza_kontraktu``. Wartość fikstury: bieżąca lista
+    wpisów (testy samego czujnika).
     """
-    zapisy = _ZapisyKluczySpozaKontraktu()
-    dziennik = logging.getLogger("enm.domain_operations")
-    dziennik.addHandler(zapisy)
-    try:
-        yield zapisy.zapisy
-    finally:
-        dziennik.removeHandler(zapisy)
-    if zapisy.zapisy and request.node.get_closest_marker("ladunek_spoza_kontraktu") is None:
-        pytest.fail("\n".join(zapisy.zapisy), pytrace=False)
+    yield _ZAPISY_KLUCZY_SPOZA_KONTRAKTU.zapisy
+    zapisy = _zabierz_zapisy_kluczy_spoza_kontraktu()
+    if zapisy and request.node.get_closest_marker("ladunek_spoza_kontraktu") is None:
+        pytest.fail("\n".join(zapisy), pytrace=False)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _ladunek_operacji_w_kontrakcie_koniec_sesji():
+    """Wpis z rozbiórki fikstury modułu albo sesji (po ostatnim teście) — błąd sesji."""
+    yield
+    zapisy = _zabierz_zapisy_kluczy_spoza_kontraktu()
+    if zapisy:
+        pytest.fail("\n".join(zapisy), pytrace=False)
 
 
 # ---------------------------------------------------------------------------

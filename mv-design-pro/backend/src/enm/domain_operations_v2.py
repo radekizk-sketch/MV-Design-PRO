@@ -320,7 +320,6 @@ def _catalog_binding_from_payload(
         item_id = (
             normalized.get("catalog_item_id")
             or normalized.get("catalog_ref")
-            or normalized.get("item_id")
             or payload.get("catalog_item_id")
             or payload.get("catalog_ref")
         )
@@ -352,7 +351,7 @@ def _catalog_binding_from_payload(
 def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
     if not isinstance(binding, dict):
         return None
-    for key in ("catalog_item_id", "catalog_ref", "id"):
+    for key in ("catalog_item_id", "catalog_ref"):
         value = binding.get(key)
         if isinstance(value, str) and value.strip():
             return value.strip()
@@ -1685,7 +1684,7 @@ def _resolve_catalog_ref(
     if not isinstance(binding, dict):
         return None, "catalog.binding_invalid"
 
-    item_id = binding.get("catalog_item_id") or binding.get("item_id")
+    item_id = binding.get("catalog_item_id")
     if not isinstance(item_id, str) or not item_id.strip():
         return None, "catalog.binding_invalid"
 

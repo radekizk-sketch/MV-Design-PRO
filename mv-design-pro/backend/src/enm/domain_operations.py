@@ -502,32 +502,26 @@ def wspolczynnik_podzialu(
 
 
 def _extract_catalog_binding_item_id(catalog_binding: object) -> str | None:
-    """Odczytaj kanoniczne catalog_item_id z compat fallback do item_id."""
+    """Odczytaj kanoniczne ``catalog_item_id`` wiązania (``CatalogBinding``).
+
+    Dawny zamiennik ``item_id`` skasowany: brama katalogowa API czyta wiązanie
+    ``CatalogBinding.from_dict`` (bez zamienników), więc wiązanie z samym ``item_id``
+    handler przyjmował, a brama odrzucała — dwa predykaty jednej danej."""
     if not isinstance(catalog_binding, dict):
         return None
-
-    for key in ("catalog_item_id", "item_id"):
-        binding_item = catalog_binding.get(key)
-        if isinstance(binding_item, str):
-            normalized = binding_item.strip()
-            if normalized:
-                return normalized
-
+    binding_item = catalog_binding.get("catalog_item_id")
+    if isinstance(binding_item, str) and binding_item.strip():
+        return binding_item.strip()
     return None
 
 
 def _extract_catalog_binding_namespace(catalog_binding: object) -> str | None:
-    """Odczytaj namespace z kanonicznego payloadu lub legacy fallback."""
+    """Odczytaj ``catalog_namespace`` wiązania (zamiennik ``namespace`` skasowany — jw.)."""
     if not isinstance(catalog_binding, dict):
         return None
-
-    for key in ("catalog_namespace", "namespace"):
-        binding_namespace = catalog_binding.get(key)
-        if isinstance(binding_namespace, str):
-            normalized = binding_namespace.strip()
-            if normalized:
-                return normalized
-
+    binding_namespace = catalog_binding.get("catalog_namespace")
+    if isinstance(binding_namespace, str) and binding_namespace.strip():
+        return binding_namespace.strip()
     return None
 
 
@@ -1638,29 +1632,6 @@ def _find_corridor_by_ref(enm: dict[str, Any], corridor_ref: str | None) -> dict
     return None
 
 
-def _find_corridor_ref_by_terminal(enm: dict[str, Any], terminal_bus_ref: str | None) -> str | None:
-    if not isinstance(terminal_bus_ref, str) or not terminal_bus_ref.strip():
-        return None
-    branch_by_ref = {
-        branch.get("ref_id"): branch
-        for branch in enm.get("branches", [])
-        if isinstance(branch, dict) and isinstance(branch.get("ref_id"), str)
-    }
-    for corridor in enm.get("corridors", []):
-        if not isinstance(corridor, dict):
-            continue
-        segment_refs = [
-            ref for ref in corridor.get("ordered_segment_refs", []) if isinstance(ref, str)
-        ]
-        if not segment_refs:
-            continue
-        last_branch = branch_by_ref.get(segment_refs[-1])
-        if isinstance(last_branch, dict) and last_branch.get("to_bus_ref") == terminal_bus_ref:
-            ref_id = corridor.get("ref_id")
-            return ref_id if isinstance(ref_id, str) else None
-    return None
-
-
 def _first_gpz_line_field_for_run(enm: dict[str, Any]) -> tuple[str | None, str | None]:
     candidates: list[dict[str, Any]] = []
     for substation in enm.get("substations", []):
@@ -1738,15 +1709,57 @@ def _append_line_run_segment(line_run: dict[str, Any] | None, segment_ref: str |
     segments.append({"segment_ref": segment_ref, "order": len(segments) + 1})
 
 
-def _append_line_run_station(line_run: dict[str, Any] | None, substation_ref: str | None) -> None:
-    if not isinstance(line_run, dict) or not isinstance(substation_ref, str) or not substation_ref:
-        return
-    stations = line_run.setdefault("stations", [])
-    if any(
-        isinstance(item, dict) and item.get("substation_ref") == substation_ref for item in stations
-    ):
-        return
-    stations.append({"substation_ref": substation_ref, "order": len(stations) + 1})
+def _podziel_odcinek_w_widokach(
+    enm: dict[str, Any],
+    segment_ref: str,
+    *,
+    odcinki_magistrali: list[str],
+    odcinki_ciagu: list[str],
+) -> None:
+    """Odcinek SN podzielony operacją wstawienia — JEDNA reguła dla magistrali i ciągów.
+
+    Magistrala (``corridors``) zawierająca odcinek dostaje w jego miejscu
+    ``odcinki_magistrali``, a każdy ciąg liniowy (``line_runs``) — ``odcinki_ciagu``
+    (wyłącznie odcinki kabla/linii, ``LineRunSegmentRef``) z numeracją ``order`` od nowa.
+    Dawniej ciągi aktualizował tylko podział punktem rozgałęzienia (ZKSN, słup); stacja
+    przelotowa i łącznik sekcyjny zostawiały w ciągu odwołanie do skasowanego odcinka.
+    """
+    for magistrala in enm.get("corridors", []):
+        kolejnosc = magistrala.get("ordered_segment_refs") or []
+        if segment_ref in kolejnosc:
+            idx = kolejnosc.index(segment_ref)
+            magistrala["ordered_segment_refs"] = (
+                kolejnosc[:idx] + list(odcinki_magistrali) + kolejnosc[idx + 1 :]
+            )
+            break
+    for ciag in enm.get("line_runs", []):
+        wpisy = ciag.get("segments") or []
+        if not any(isinstance(w, dict) and w.get("segment_ref") == segment_ref for w in wpisy):
+            continue
+        refy: list[str] = []
+        for wpis in wpisy:
+            if not isinstance(wpis, dict):
+                continue
+            if wpis.get("segment_ref") == segment_ref:
+                refy.extend(odcinki_ciagu)
+            else:
+                refy.append(str(wpis.get("segment_ref")))
+        ciag["segments"] = [{"segment_ref": ref, "order": i} for i, ref in enumerate(refy, 1)]
+
+
+def _usun_z_ciagow(enm: dict[str, Any], *, odcinki: set[str], stacje: set[str]) -> None:
+    """Usunięty odcinek albo stacja znika z ciągów liniowych (numeracja ``order`` od nowa) —
+    parą do czyszczenia ``ordered_segment_refs`` magistral w ``delete_element``."""
+    for ciag in enm.get("line_runs", []):
+        for klucz, ref_klucz, usuniete in (
+            ("segments", "segment_ref", odcinki),
+            ("stations", "substation_ref", stacje),
+        ):
+            wpisy = ciag.get(klucz) or []
+            if not any(isinstance(w, dict) and w.get(ref_klucz) in usuniete for w in wpisy):
+                continue
+            zostaja = [w for w in wpisy if isinstance(w, dict) and w.get(ref_klucz) not in usuniete]
+            ciag[klucz] = [{**w, "order": i} for i, w in enumerate(zostaja, 1)]
 
 
 def _is_mv_route_segment(branch: dict[str, Any] | None) -> bool:
@@ -6132,6 +6145,25 @@ _NN_SOURCE_KIND_MAP: dict[str, tuple[str, str, str, str]] = {
 }
 
 
+def _zamiar_ochrony_zrodla_nn(source_protection: object) -> dict[str, Any] | None:
+    """Zamiar ochrony źródła nN (``nn_block.source_protection``) zapisywany w modelu.
+
+    Do modelu trafiają WYŁĄCZNIE pola kontraktu — dawny zapis całego słownika ładunku
+    przenosił do ``meta`` dowolny klucz nadawcy (dane spoza kontraktu w modelu), a jedyny
+    klucz czytany tylko przez ekran (``breaker_role`` — rola wyłącznika w inspektorze)
+    nie był częścią kontraktu operacji.
+    """
+    if not isinstance(source_protection, dict):
+        return None
+    return {
+        "breaker_role": source_protection.get("breaker_role"),
+        "device_catalog_ref": source_protection.get("device_catalog_ref"),
+        "device_label": source_protection.get("device_label"),
+        "protected_object": source_protection.get("protected_object"),
+        "analysis_scope": source_protection.get("analysis_scope"),
+    }
+
+
 def _materialize_nn_source(
     *,
     new_enm: dict[str, Any],
@@ -6166,6 +6198,7 @@ def _materialize_nn_source(
     source_converter_ref = nn_block.get("source_converter_catalog_ref")
     source_converter_kind = str(nn_block.get("source_converter_kind") or "")
     source_protection = nn_block.get("source_protection")
+    zamiar_ochrony = _zamiar_ochrony_zrodla_nn(source_protection)
     source_spec = _NN_SOURCE_KIND_MAP.get(nn_configuration)
     if not (source_spec and source_converter_ref):
         return None
@@ -6248,7 +6281,7 @@ def _materialize_nn_source(
     materialized_source_params = {
         **tabliczka,
         "station_transformer_ref": station_transformer_ref,
-        "protection_intent": source_protection if isinstance(source_protection, dict) else None,
+        "protection_intent": zamiar_ochrony,
     }
 
     # PARYTET KONTROLI DOBORU z torem atomowym (`add_converter_source`): ta sama
@@ -6347,9 +6380,7 @@ def _materialize_nn_source(
                 "station_ref": station_id,
                 "connection_point_ref": nn_bus_id,
                 "station_transformer_ref": station_transformer_ref,
-                "protection_intent": (
-                    source_protection if isinstance(source_protection, dict) else None
-                ),
+                "protection_intent": zamiar_ochrony,
                 "render_as_station_internal_source": True,
                 KLUCZ_META_KONTROLI_MOCY: zapis_kontroli_mocy,
                 **({"field_ref": pole_zrodla} if pole_zrodla else {}),
@@ -6369,9 +6400,7 @@ def _materialize_nn_source(
                     "generator_ref": generator_ref,
                     "converter_name": nn_block.get("source_converter_name"),
                     "converter_kind": source_converter_kind or _technology,
-                    "protection_intent": (
-                        source_protection if isinstance(source_protection, dict) else None
-                    ),
+                    "protection_intent": zamiar_ochrony,
                 }
             )
             break
@@ -7747,16 +7776,13 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         {"event_seq": ev_seq, "event_type": "DEVICES_CREATED_NN", "element_id": nn_bus_id}
     )
 
-    # --- Krok 4: Aktualizacja magistrali ---
-    corridor = _find_corridor_for_segment(enm, segment_id)
-    if corridor:
-        for c in new_enm.get("corridors", []):
-            if c.get("ref_id") == corridor.get("ref_id"):
-                segments = c.get("ordered_segment_refs", [])
-                if segment_id in segments:
-                    idx = segments.index(segment_id)
-                    segments[idx : idx + 1] = [seg_left_id, seg_right_id]
-                break
+    # --- Krok 4: Aktualizacja magistrali i ciągu liniowego ---
+    _podziel_odcinek_w_widokach(
+        new_enm,
+        segment_id,
+        odcinki_magistrali=[seg_left_id, seg_right_id],
+        odcinki_ciagu=[seg_left_id, seg_right_id],
+    )
 
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "RECONNECTED_GRAPH", "element_id": stn_id})
@@ -8322,33 +8348,12 @@ def _insert_branch_point_on_segment_sn(
             created.append(rekord_pola["ref_id"])
 
     if endpoint_mode is None:
-        for c in new_enm.get("corridors", []):
-            refs = c.get("ordered_segment_refs", [])
-            if segment_id in refs:
-                idx = refs.index(segment_id)
-                c["ordered_segment_refs"] = (
-                    refs[:idx] + [seg_left_id, seg_right_id] + refs[idx + 1 :]
-                )
-                break
-
-        for run in new_enm.get("line_runs", []):
-            run_segments = run.get("segments") or []
-            if not any(item.get("segment_ref") == segment_id for item in run_segments):
-                continue
-            next_order = 1
-            updated_segments: list[dict[str, Any]] = []
-            for item in run_segments:
-                if item.get("segment_ref") == segment_id:
-                    updated_segments.append({"segment_ref": seg_left_id, "order": next_order})
-                    next_order += 1
-                    updated_segments.append({"segment_ref": seg_right_id, "order": next_order})
-                    next_order += 1
-                    continue
-                updated = dict(item)
-                updated["order"] = next_order
-                updated_segments.append(updated)
-                next_order += 1
-            run["segments"] = updated_segments
+        _podziel_odcinek_w_widokach(
+            new_enm,
+            segment_id,
+            odcinki_magistrali=[seg_left_id, seg_right_id],
+            odcinki_ciagu=[seg_left_id, seg_right_id],
+        )
 
     return _response(
         new_enm,
@@ -8919,16 +8924,14 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     new_enm = result.enm
     created.append(seg_right_id)
 
-    # Update corridor
-    corridor = _find_corridor_for_segment(enm, segment_id)
-    if corridor:
-        for c in new_enm.get("corridors", []):
-            if c.get("ref_id") == corridor.get("ref_id"):
-                segments = c.get("ordered_segment_refs", [])
-                if segment_id in segments:
-                    idx_seg = segments.index(segment_id)
-                    segments[idx_seg : idx_seg + 1] = [seg_left_id, switch_ref, seg_right_id]
-                break
+    # Magistrala wymienia łącznik między połówkami; ciąg liniowy — wyłącznie odcinki
+    # kabla/linii (`LineRunSegmentRef`).
+    _podziel_odcinek_w_widokach(
+        new_enm,
+        segment_id,
+        odcinki_magistrali=[seg_left_id, switch_ref, seg_right_id],
+        odcinki_ciagu=[seg_left_id, seg_right_id],
+    )
 
     if normal_state != "open":
         return _response(
@@ -10626,7 +10629,7 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         ref for ref in deleted_set if ref in {t.get("ref_id") for t in enm.get("transformers", [])}
     }
 
-    # Corridor cleanup for removed branches.
+    # Magistrale i ciągi liniowe tracą usunięte odcinki (stacje — niżej, po kaskadzie stacji).
     if deleted_branch_refs:
         for corridor in new_enm.get("corridors", []):
             ordered = corridor.get("ordered_segment_refs")
@@ -10747,6 +10750,14 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         ):
             usun_pole(new_enm, str(rekord["ref_id"]))
             deleted_set.add(str(rekord["ref_id"]))
+
+    # Ciągi liniowe — para do magistral wyżej: odcinek i stacja usunięte (wprost albo
+    # kaskadą) nie zostają w `line_runs` jako odwołanie do elementu, którego nie ma.
+    _usun_z_ciagow(
+        new_enm,
+        odcinki=deleted_set & {str(b.get("ref_id")) for b in enm.get("branches", [])},
+        stacje=deleted_set & {str(s.get("ref_id")) for s in enm.get("substations", [])},
+    )
 
     # Decyzja O-53: usunięcie transformatora albo aparatu łączeniowego między sekcjami nN
     # zmniejsza moc transformacji zasilającą źródła — ta sama kontrola co zmiana mocy
@@ -11537,14 +11548,23 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     # dla całej operacji. Dawniej samo wiązanie (bez `transformer_catalog_ref`) było po cichu
     # ignorowane i stacja powstawała bez transformatora (zmierzone speciem kadrów karty
     # POLA-W-TORZE), choć wcięcie stacji w odcinek to wiązanie przyjmuje.
+    # `transformer.create` — TA SAMA flaga co przy wcięciu stacji w odcinek
+    # (`insert_station_on_segment_sn`, domyślnie prawda): `create: false` oznacza stację bez
+    # transformatora także wtedy, gdy ładunek niesie pozycję katalogu. Dawniej koniec ciągu
+    # flagi nie czytał — kreator i szablony wysyłają jeden ładunek obu drogom, więc
+    # `create: false` przepadał po cichu i stacja dostawała transformator.
     powiazanie_transformatora = transformer_payload.get("catalog_binding")
     transformer_catalog_ref = (
-        transformer_payload.get("transformer_catalog_ref")
-        or transformer_payload.get("catalog_ref")
-        or (
-            _extract_catalog_binding_item_id(powiazanie_transformatora)
-            if isinstance(powiazanie_transformatora, dict)
-            else None
+        None
+        if transformer_payload.get("create", True) is False
+        else (
+            transformer_payload.get("transformer_catalog_ref")
+            or transformer_payload.get("catalog_ref")
+            or (
+                _extract_catalog_binding_item_id(powiazanie_transformatora)
+                if isinstance(powiazanie_transformatora, dict)
+                else None
+            )
         )
     )
     if transformer_catalog_ref and ref_pola_tr is None:
@@ -12020,25 +12040,13 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             meta["show_in_project_tree"] = True
             break
 
-    # Step 6: update LineRun/corridor jeśli wskazany albo możliwy do wyznaczenia
-    effective_run_ref = run_ref or _find_corridor_ref_by_terminal(new_enm, endpoint_bus_ref)
-    if effective_run_ref:
-        for corridor in new_enm.get("corridors", []):
-            if corridor.get("ref_id") == effective_run_ref:
-                stations = corridor.setdefault("station_refs", [])
-                if substation_ref not in stations:
-                    stations.append(substation_ref)
-                ev_seq += 1
-                events.append(
-                    {
-                        "event_seq": ev_seq,
-                        "event_type": "LOGICAL_VIEWS_UPDATED",
-                        "element_id": effective_run_ref,
-                    }
-                )
-                break
-        line_run = _ensure_line_run_for_corridor(new_enm, effective_run_ref)
-        _append_line_run_station(line_run, substation_ref)
+    # Ciąg liniowy: stacja NIE jest dopisywana do `line_runs[].stations`. Stacje ciągu
+    # wyprowadza się z końcówek jego odcinków (SLD `inferStationRefsForSegments`) — JEDNA prawda
+    # dla stacji przelotowych i końcowych. Dawny zapis listy dawał stan częściowy: stacja końcowa
+    # dopisana (wyłącznie przy jawnym `run_ref` — wyznaczenie ciągu z końca magistrali w modelu
+    # po operacji nie trafiało, bo odcinek jest już przepięty na zacisk pola), stacje przelotowe
+    # nie, a SLD przy niepustej liście nie wyprowadza stacji i pomijał przelotowe. Dawny zapis
+    # `corridor.station_refs` był polem spoza modelu `Corridor`, gubionym przy walidacji.
 
     # B-2: zaczepy transformatora w TEJ SAMEJ migawce co stacja — PARYTET z
     # `insert_station_on_segment_sn`. Krok stoi TUTAJ, a nie zaraz po utworzeniu
