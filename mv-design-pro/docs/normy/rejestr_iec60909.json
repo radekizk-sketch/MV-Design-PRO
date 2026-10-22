@@ -1,0 +1,496 @@
+{
+  "schema_version": "1.0.0",
+  "description_pl": "Nieoperacyjny rejestr źródeł i punktów normowych. Nie uruchamia obliczeń i nie poświadcza zgodności.",
+  "produced_on": "2026-10-22",
+  "profiles": [
+    {
+      "id": "IEC_60909_0_2016",
+      "edition": "2.0",
+      "publication_date": "2016-01-28",
+      "withdrawal_date": "2026-07-23",
+      "current_repository_execution": "EXISTING_UNVERSIONED",
+      "ui_selector_implemented": false,
+      "normative_verification": "PARTIAL",
+      "enabled_for_new_runs_via_selector": false
+    },
+    {
+      "id": "IEC_60909_0_2026",
+      "edition": "3.0",
+      "publication_date": "2026-07-23",
+      "withdrawal_date": null,
+      "current_repository_execution": "NOT_IMPLEMENTED",
+      "ui_selector_implemented": false,
+      "normative_verification": "FULL_TEXT_REQUIRED",
+      "enabled_for_new_runs_via_selector": false
+    }
+  ],
+  "sources": [
+    {
+      "id": "iec-official-2026",
+      "type": "publisher_metadata",
+      "url": "https://webstore.iec.ch/en/publication/68454",
+      "supports": [
+        "edition",
+        "publication_date",
+        "scope"
+      ]
+    },
+    {
+      "id": "iec-official-2016",
+      "type": "publisher_metadata",
+      "url": "https://webstore.iec.ch/en/publication/24100",
+      "supports": [
+        "edition",
+        "withdrawal_date"
+      ]
+    },
+    {
+      "id": "iec-2026-preview",
+      "type": "third_party_publisher_preview",
+      "url": "https://standards.iteh.ai/catalog/standards/iec/111c61a1-d4a4-4eb4-9655-ba4785738720/iec-60909-0-2026",
+      "supports": [
+        "toc",
+        "foreword_changes",
+        "scope_exclusion"
+      ]
+    },
+    {
+      "id": "iec-2016-preview",
+      "type": "third_party_preview",
+      "url": "https://previewnorm.com/iec/IEC%2060909-0-2016%20PDF.pdf",
+      "supports": [
+        "5.2(f)"
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "METHOD_EQUIVALENT_VOLTAGE",
+      "edition": "IEC_60909_0_2026",
+      "clause": "5.2.2",
+      "description_pl": "Zastępcze źródło napięciowe",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "METHOD_CURRENT_SOURCES",
+      "edition": "IEC_60909_0_2026",
+      "clause": "5.2.3",
+      "description_pl": "Instalacje modelowane jako źródła prądowe",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "CALCULATION_ASSUMPTIONS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "5.2.4",
+      "description_pl": "Założenia obliczeń",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SYMMETRICAL_COMPONENTS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "5.2.5",
+      "description_pl": "Składowe symetryczne",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "LINE_CABLE_MODEL",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.2",
+      "description_pl": "Linie i kable",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "TRANSFORMER_2W",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.3.1",
+      "description_pl": "Transformatory dwuuzwojeniowe",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "TRANSFORMER_3W",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.3.2",
+      "description_pl": "Transformatory trzyuzwojeniowe",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "TRANSFORMER_KT",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.3.3",
+      "description_pl": "Współczynniki korekcyjne transformatorów",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "REACTORS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.4",
+      "description_pl": "Dławiki",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "CAPACITORS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.5",
+      "description_pl": "Kondensatory",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "GRID_FEEDER",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.7",
+      "description_pl": "Źródło sieciowe",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SYNCHRONOUS_MACHINES",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.8",
+      "description_pl": "Maszyny synchroniczne",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "ASYNCHRONOUS_MACHINES",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.9",
+      "description_pl": "Maszyny asynchroniczne",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "CONVERTER_CONTRIBUTIONS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.10",
+      "description_pl": "Przekształtniki energoelektroniczne",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "POWER_STATION_UNITS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.11",
+      "description_pl": "Zespoły wytwórcze",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "POWER_PLANTS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.12",
+      "description_pl": "Elektrownie",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "CONVERTER_FED_MOTORS",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.13",
+      "description_pl": "Silniki zasilane z przekształtników",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "FACTS_HVDC",
+      "edition": "IEC_60909_0_2026",
+      "clause": "6.14",
+      "description_pl": "FACTS i HVDC",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SHORT_CIRCUIT_MAX",
+      "edition": "IEC_60909_0_2026",
+      "clause": "7.1.2",
+      "description_pl": "Maksimum",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SHORT_CIRCUIT_MIN",
+      "edition": "IEC_60909_0_2026",
+      "clause": "7.1.3",
+      "description_pl": "Minimum",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SHORT_CIRCUIT_3F",
+      "edition": "IEC_60909_0_2026",
+      "clause": "7.2",
+      "description_pl": "Zwarcie trójfazowe",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SHORT_CIRCUIT_2F",
+      "edition": "IEC_60909_0_2026",
+      "clause": "7.3",
+      "description_pl": "Zwarcie dwufazowe",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SHORT_CIRCUIT_2F_Z",
+      "edition": "IEC_60909_0_2026",
+      "clause": "7.4",
+      "description_pl": "Zwarcie dwufazowe z ziemią",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "SHORT_CIRCUIT_1F_Z",
+      "edition": "IEC_60909_0_2026",
+      "clause": "7.5",
+      "description_pl": "Zwarcie jednofazowe doziemne",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "PEAK_CURRENT",
+      "edition": "IEC_60909_0_2026",
+      "clause": "8",
+      "description_pl": "Prąd udarowy",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "BREAKING_CURRENT",
+      "edition": "IEC_60909_0_2026",
+      "clause": "9",
+      "description_pl": "Prąd wyłączeniowy",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "DC_COMPONENT",
+      "edition": "IEC_60909_0_2026",
+      "clause": "10",
+      "description_pl": "Składowa nieokresowa",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "STEADY_STATE_CURRENT",
+      "edition": "IEC_60909_0_2026",
+      "clause": "11",
+      "description_pl": "Prąd ustalony",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "TRANSFORMER_HV_OPEN_PHASE",
+      "edition": "IEC_60909_0_2026",
+      "clause": "12",
+      "description_pl": "Przypadek przewodu przerwanego po stronie wyższej",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "MOTOR_TERMINAL_SC",
+      "edition": "IEC_60909_0_2026",
+      "clause": "13",
+      "description_pl": "Zwarcie na zaciskach silników",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "THERMAL_EQUIVALENT",
+      "edition": "IEC_60909_0_2026",
+      "clause": "14",
+      "description_pl": "Prąd cieplny równoważny i całka Joule'a",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "REQUIRES_LICENSED_FULL_TEXT",
+      "required_evidence": []
+    },
+    {
+      "rule_id": "EARTHING_SCOPE",
+      "edition": "IEC_60909_0_2026",
+      "clause": "1",
+      "description_pl": "Doziemienie pojedyncze w sieci z punktem neutralnym izolowanym lub rezonansowo uziemionym pozostaje poza zakresem tej normy",
+      "clause_title_verified": true,
+      "numeric_rule_verified": false,
+      "implementation_verified": false,
+      "source_id": "iec-2026-preview",
+      "review_status": "SCOPE_ONLY_VERIFIED",
+      "required_evidence": [
+        "oryginał sekcji 1 i test odmowy"
+      ]
+    },
+    {
+      "rule_id": "ZERO_SEQUENCE_LINE_CAPACITANCE",
+      "edition": "IEC_60909_0_2016",
+      "clause": "5.2(f)",
+      "description_pl": "W sieci składowej zerowej pojemność linii ma znaczenie w sieci o niskiej impedancji uziemienia przy współczynniku zwarcia doziemnego >1,4, przy zachowaniu pozostałych warunków klauzuli",
+      "clause_title_verified": true,
+      "numeric_rule_verified": true,
+      "implementation_verified": false,
+      "source_id": "iec-2016-preview",
+      "review_status": "PARTIALLY_CONFIRMED_FROM_PREVIEW",
+      "required_evidence": [
+        "autoryzowana klauzula",
+        "testy progu i uziemienia"
+      ]
+    }
+  ],
+  "acceptance_test_ids": [
+    "NORM-SC-T01",
+    "NORM-SC-T02",
+    "NORM-SC-T03",
+    "NORM-SC-T04",
+    "NORM-SC-T05",
+    "NORM-SC-T06",
+    "NORM-SC-T07",
+    "NORM-SC-T08",
+    "NORM-SC-T09",
+    "NORM-SC-T10",
+    "NORM-SC-T11",
+    "NORM-SC-T12",
+    "NORM-SC-T13",
+    "NORM-SC-T14",
+    "NORM-SC-T15",
+    "NORM-SC-T16",
+    "NORM-SC-T17",
+    "NORM-SC-T18",
+    "NORM-SC-T19",
+    "NORM-SC-T20"
+  ],
+  "blocking_conditions": [
+    "niezweryfikowana treść 5.2.4 wydania 2026",
+    "brak wyroczni i podpisanego audytu modeli 2026",
+    "brak implementacji selektora E2E"
+  ]
+}
