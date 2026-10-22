@@ -83,7 +83,6 @@ export interface CableRun {
   readonly startingPortId: string;
   readonly segments: readonly RunSegment[];
   readonly stations: readonly StationOnRun[];
-  readonly nopStationId: string | null;
   readonly parentRunId: string | null;
   readonly branchOriginStationId: string | null;
 }
@@ -167,7 +166,6 @@ export interface EnmInputForHierarchy {
     starting_port_ref: string;
     segments: readonly { segment_ref: string; order: number }[];
     stations: readonly { substation_ref: string; order: number }[];
-    nop_station_ref?: string | null;
     parent_run_ref?: string | null;
     branch_origin_station_ref?: string | null;
   }>;
@@ -327,7 +325,6 @@ export function buildHierarchy(enm: EnmInputForHierarchy): Hierarchy {
       startingPortId: lr.starting_port_ref,
       segments: [], // wypełniana z OverheadLine/Cable z lr.segments[].segment_ref
       stations,
-      nopStationId: lr.nop_station_ref ?? null,
       parentRunId: lr.parent_run_ref ?? null,
       branchOriginStationId: lr.branch_origin_station_ref ?? null,
     });

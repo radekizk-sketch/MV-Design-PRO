@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from hashlib import sha256
-from typing import Any, Literal
+from typing import Any
 
 from enm.katalog_projektu import katalog_dla_modelu
 from enm.models import (
@@ -38,24 +38,19 @@ DEFAULT_LOAD_CATALOG_REF = "load_uslugi_30kw"
 #: parytet modułu z katalogiem, nie odwrotnie.
 DEFAULT_LOAD_KW = 30.0
 DEFAULT_LOAD_COS_PHI = 0.92
-DEFAULT_ZKSN_SWITCH_STATE: Literal["open", "closed"] = "closed"
 CATALOG_VERSION_DEFAULT = "2026.01"
 
 
 def complete_catalog_defaults(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
     """Domknij katalogowe migracje wymagane przy granicy ENM."""
     completed, loads_changed = complete_station_loads_from_nn_feeders(enm)
-    completed, branch_points_changed = complete_zksn_switch_states(completed)
     completed, branch_point_materialization_changed = complete_branch_point_catalog_materialization(
         completed
     )
     completed, branch_materialization_changed = complete_branch_catalog_materialization(completed)
     return (
         completed,
-        loads_changed
-        or branch_points_changed
-        or branch_point_materialization_changed
-        or branch_materialization_changed,
+        loads_changed or branch_point_materialization_changed or branch_materialization_changed,
     )
 
 
@@ -245,8 +240,6 @@ def complete_branch_point_catalog_materialization(
         branch_point.catalog_namespace = branch_point.catalog_namespace or "mv_branch_points"
         branch_point.source_mode = branch_point.source_mode or "KATALOG"
         branch_point.completeness_status = "KOMPLETNY"
-        if branch_point.switch_state is None:
-            branch_point.switch_state = DEFAULT_ZKSN_SWITCH_STATE
         runtime_inputs = (
             branch_point.runtime_inputs if isinstance(branch_point.runtime_inputs, dict) else {}
         )
@@ -596,40 +589,6 @@ def complete_station_loads_from_nn_feeders(
 
     completed = enm.model_copy(deep=True)
     completed.loads = [*completed.loads, *additions]
-    return completed, True
-
-
-def complete_zksn_switch_states(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
-    """Uzupełnij domyślny stan normalny ZKSN dla starszych snapshotów.
-
-    ZKSN pokazywany w UI jest kompletnym rozwiązaniem katalogowym. Starsze
-    snapshoty mogły przechowywać wariant katalogowy bez stanu normalnego
-    łącznika; na granicy ENM deterministycznie materializujemy stan zamknięty.
-    """
-    missing = [
-        bp
-        for bp in enm.branch_points
-        if bp.branch_point_type == "zksn" and bp.catalog_ref and bp.switch_state is None
-    ]
-    if not missing:
-        return enm, False
-
-    completed = enm.model_copy(deep=True)
-    for branch_point in completed.branch_points:
-        if (
-            branch_point.branch_point_type == "zksn"
-            and branch_point.catalog_ref
-            and branch_point.switch_state is None
-        ):
-            branch_point.switch_state = DEFAULT_ZKSN_SWITCH_STATE
-            runtime_inputs = (
-                branch_point.runtime_inputs if isinstance(branch_point.runtime_inputs, dict) else {}
-            )
-            branch_point.runtime_inputs = {
-                **runtime_inputs,
-                "switch_state": DEFAULT_ZKSN_SWITCH_STATE,
-                "completion_source": "branch_point_catalog_migration",
-            }
     return completed, True
 
 

@@ -1210,6 +1210,12 @@
           "bus_ref": "S/sn",
           "ref_id": "Q/pole-obcej",
           "substation_ref": "Q/brak"
+        },
+        {
+          "bay_role": "OUT",
+          "bus_ref": "G/nn",
+          "ref_id": "G/gpz/pole",
+          "substation_ref": "G/gpz"
         }
       ],
       "branch_points": [
@@ -1236,6 +1242,10 @@
         {
           "ref_id": "P/szyna",
           "voltage_kv": 15.0
+        },
+        {
+          "ref_id": "G/nn",
+          "voltage_kv": 0.4
         }
       ],
       "substations": [
@@ -1251,11 +1261,19 @@
           "bus_refs": [],
           "ref_id": "S/pusta",
           "station_type": "mv_lv"
+        },
+        {
+          "bus_refs": [
+            "G/nn"
+          ],
+          "ref_id": "G/gpz",
+          "station_type": "gpz"
         }
       ]
     },
     "pola": {
       "czy_pole_nn": {
+        "G/gpz/pole": false,
         "P/zksn/pole/BRANCH_1": false,
         "P/zksn/pole/BRANCH_2": false,
         "P/zksn/pole/MAIN_IN": false,
@@ -1318,6 +1336,7 @@
         "S/sn/tr/zacisk": false
       },
       "stacja_pola": {
+        "G/gpz/pole": "G/gpz",
         "P/zksn/pole/BRANCH_1": null,
         "P/zksn/pole/BRANCH_2": null,
         "P/zksn/pole/MAIN_IN": null,
@@ -1380,6 +1399,12 @@
         "S/sn/tr/zacisk": "S/stacja"
       },
       "stacje": {
+        "G/gpz": {
+          "nn": [],
+          "sn": [
+            "G/gpz/pole"
+          ]
+        },
         "S/pusta": {
           "nn": [],
           "sn": []
@@ -1447,6 +1472,9 @@
         }
       },
       "wg_szyny": {
+        "G/nn": [
+          "G/gpz/pole"
+        ],
         "S/bez-napiecia": [
           "S/sn/bez-napiecia"
         ],
@@ -1520,6 +1548,7 @@
       }
     },
     "punkty_przylaczenia_rekordow_pol": {
+      "G/gpz/pole": "G/nn",
       "P/zksn/pole/BRANCH_1": "P/zacisk-odg-1",
       "P/zksn/pole/BRANCH_2": "P/szyna",
       "P/zksn/pole/MAIN_IN": "P/szyna",
@@ -1582,6 +1611,9 @@
       "S/sn/tr/zacisk": "S/sn/tr/zacisk/zacisk"
     },
     "szyny": {
+      "G/gpz": [
+        "G/nn"
+      ],
       "S/pusta": [],
       "S/stacja": [
         "S/nn",
@@ -1599,6 +1631,9 @@
       ]
     },
     "szyny_glowne": {
+      "G/gpz": {
+        "G/nn": "G/nn"
+      },
       "S/pusta": {},
       "S/stacja": {
         "S/nn": "S/nn",
@@ -1616,10 +1651,12 @@
       }
     },
     "transformatory": {
+      "G/gpz": [],
       "S/pusta": [],
       "S/stacja": []
     },
     "zaciski_pol": {
+      "G/gpz/pole": null,
       "S/nn/in/bez": null,
       "S/nn/in/rowny": "S/nn",
       "S/nn/in/zacisk": "S/nn/in/zacisk/zacisk",

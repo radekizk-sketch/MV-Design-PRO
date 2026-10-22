@@ -82,7 +82,7 @@ function buildResponse(): DomainOpResponseV1 {
           corridor_ref: 'corridor-1',
           corridor_type: 'radial',
           segments: ['segment-1', 'segment-2'],
-          no_point_ref: null,
+          no_point_refs: [],
           terminals: [],
         },
       ],

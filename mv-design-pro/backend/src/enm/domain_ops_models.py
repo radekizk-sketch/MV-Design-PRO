@@ -955,8 +955,10 @@ class InsertSectionSwitchSNPayload(_FrozenBase):
     switch_name: str | None = None
     """Opcjonalna nazwa łącznika."""
 
-    normal_state: Literal["closed", "open"] = "closed"
-    """Stan normalny łącznika."""
+    normal_state: Literal["closed", "open"] | None = None
+    """Pozycja normalna łącznika (W5-C): ``"open"`` = punkt normalnie otwarty, ``"closed"`` =
+    normalnie zamknięty; ``None`` = niezadeklarowana — łącznik powstaje zamknięty, bez pozycji
+    normalnej (bez domysłu). Zadeklarowana pozycja ustawia też bieżące położenie (``status``)."""
 
 
 class ConnectSecondaryRingSNPayload(_FrozenBase):
@@ -994,14 +996,17 @@ class PrzepnijElementNaPolePayload(_FrozenBase):
 class SetNormalOpenPointPayload(_FrozenBase):
     """Payload operacji: set_normal_open_point.
 
-    Ustawia punkt normalnie otwarty (NOP) na łączniku w pierścieniu.
+    Przenosi punkt normalnie otwarty (NOP) pierścienia na wskazany łącznik — atomowo
+    (``enm/operacje_lacznikow.py``): wskazany łącznik normalnie otwarty, poprzedni punkt
+    podziału tego samego pierścienia normalnie zamknięty.
     """
 
     switch_ref: str
     """Referencja łącznika, który ma być punktem NOP."""
 
-    corridor_ref: str | None = None
-    """Opcjonalna referencja magistrali (korytarza)."""
+    close_ref: str | None = None
+    """Który z poprzednich punktów podziału zamknąć, gdy wskazany łącznik jest wspólny dla
+    kilku (topologia „theta"); przy jednym kandydacie opcjonalny."""
 
 
 class AddTransformerSNNNPayload(_FrozenBase):
@@ -1384,51 +1389,81 @@ class AddNNLoadPayload(_FrozenBase):
     load_label: str | None = None
 
 
-DOMAIN_EVENT_TYPES: list[str] = [
-    "SEGMENT_SPLIT",
-    "CUT_NODE_CREATED",
-    "STATION_CREATED",
-    "PORTS_CREATED",
-    "FIELDS_CREATED_SN",
-    "DEVICES_CREATED_SN",
-    "TR_CREATED",
-    "BUS_NN_CREATED",
-    "FIELDS_CREATED_NN",
-    "DEVICES_CREATED_NN",
-    "RECONNECTED_GRAPH",
-    "LOGICAL_VIEWS_UPDATED",
-    "SOURCE_CREATED",
-    "BUS_CREATED",
-    "BRANCH_CREATED",
-    "SWITCH_INSERTED",
-    "RING_CONNECTED",
-    "NOP_SET",
-    "TRANSFORMER_CREATED",
-    "CATALOG_ASSIGNED",
-    "PARAMETERS_UPDATED",
-    "NN_SOURCE_FIELD_CREATED",
-    "PV_INVERTER_CREATED",
+DOMAIN_EVENT_TYPES: tuple[str, ...] = (
+    "AUX_LOAD_CREATED",
+    "BAY_EQUIPMENT_SET",
     "BESS_INVERTER_CREATED",
-    "FW_INVERTER_CREATED",
-    "GENSET_CREATED",
-    "UPS_CREATED",
-    "NN_LOAD_CREATED",
-    "NN_SOURCE_CATALOG_ASSIGNED",
-    # V2 — Ochrona
+    "BESS_SOURCE_CREATED",
+    "BRANCH_CREATED",
+    "BRANCH_POINT_CREATED",
+    "BUS_CREATED",
+    "BUS_NN_CREATED",
+    "CATALOG_ASSIGNED",
+    "CATALOG_CLEARED",
     "CT_CREATED",
+    "CUT_NODE_CREATED",
+    "DEVICES_CREATED_NN",
+    "DEVICES_CREATED_SN",
+    "ELEMENT_DELETED",
+    "ELEMENT_REATTACHED_TO_FIELD",
+    "FIELDS_CREATED_NN",
+    "FIELDS_CREATED_SN",
+    "FIELD_DEVICE_CREATED_SN",
+    "FIELD_DEVICE_UPDATED_SN",
+    "FIELD_TERMINAL_CREATED_SN",
+    "FIELD_UPDATED_SN",
+    "FW_INVERTER_CREATED",
+    "FW_SOURCE_CREATED",
+    "GENERATOR_SN_CREATED",
+    "GENSET_CREATED",
+    "GPZ_LINE_FIELD_CREATED_SN",
+    "GPZ_SECTION_ADDED",
+    "GPZ_SECTION_DELETED",
+    "GPZ_SECTION_UPDATED",
+    "LOAD_SN_CREATED",
+    "LOGICAL_VIEWS_UPDATED",
+    "MEASUREMENT_SECONDARY_CIRCUIT_SET",
+    "NN_CABLE_LAYING_CONDITIONS_SET",
+    "NN_CABLE_SEGMENT_CREATED",
+    "NN_ELEMENT_REMOVED",
+    "NN_FEEDER_ELEMENT_COPIED",
+    "NN_LOAD_CREATED",
+    "NN_SECTION_COUPLER_CREATED",
+    "NN_SOURCE_FIELD_CREATED",
+    "NN_SWITCH_DEVICE_CREATED",
+    "NOP_CLEARED",
+    "NOP_SET",
+    "PARAMETERS_UPDATED",
+    "PORTS_CREATED",
+    "PROTECTION_CREATED",
+    "PROTECTION_SETTINGS_UPDATED",
+    "PV_INVERTER_CREATED",
+    "RECONNECTED_GRAPH",
+    "RING_CONNECTED",
+    "SEGMENTS_MERGED",
+    "SEGMENT_SPLIT",
+    "SHUNT_COMPENSATOR_CREATED",
+    "SOURCE_CREATED",
+    "STATION_APPENDED_ON_ENDPOINT",
+    "STATION_CREATED",
+    "SUBSTATION_CREATED",
+    "SURGE_ARRESTER_CREATED",
+    "SWITCH_CLOSED",
+    "SWITCH_INSERTED",
+    "SWITCH_OPENED",
+    "TAP_CHANGER_SET",
+    "TRANSFORMER_CREATED",
+    "TR_CREATED",
+    "UPS_CREATED",
     "VT_CREATED",
-    "RELAY_CREATED",
-    "RELAY_SETTINGS_UPDATED",
-    "TCC_CURVE_COMPUTED",
-    "SELECTIVITY_VALIDATED",
-    # V2 — Study Case
-    "STUDY_CASE_CREATED",
-    "CASE_STATE_UPDATED",
-    "ANALYSIS_RUN_STARTED",
-    "ANALYSIS_RUN_COMPLETED",
-    "RESULTS_MAPPED",
-]
-"""Lista dozwolonych typów zdarzeń domenowych."""
+)
+"""Rejestr typów zdarzeń domenowych — DOKŁADNIE typy emitowane przez operacje (W5-C).
+
+Dawna lista (i jej martwa kopia ``enm/domain_event_types.py`` bez konsumenta) rozjechała
+się z kodem: 33 emitowane typy nie były w rejestrze, 13 wpisów (studium, przebiegi, przekaźniki)
+nie było nigdy emitowanych. Test ``tests/enm/test_rejestr_zdarzen_domenowych.py`` pilnuje obu
+kierunków: każdy literał ``"event_type"`` w ``src/enm`` jest w rejestrze i każdy wpis rejestru
+występuje w kodzie operacji."""
 
 
 # ===========================================================================
@@ -1476,8 +1511,10 @@ class TrunkViewV1(_FrozenBase):
     segments: list[str]
     """Uporządkowana lista identyfikatorów segmentów magistrali."""
 
-    no_point_ref: str | None = None
-    """Identyfikator punktu normalnie otwartego (NOP), jeśli istnieje."""
+    no_point_refs: list[str] = []
+    """Punkty normalnie otwarte magistrali (W5-C): łączniki z ``normal_state="open"`` leżące
+    na magistrali albo na pętli zawierającej jej odcinek — wyprowadzone akcesorem
+    ``enm.topology.punkty_podzialu_korytarza`` (jedno źródło, posortowane po ``ref_id``)."""
 
     terminals: list[TerminalRef] = []
     """Terminale magistrali (punkty końcowe dostępne do rozbudowy)."""

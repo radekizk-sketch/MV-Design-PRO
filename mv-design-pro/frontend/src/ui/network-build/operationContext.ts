@@ -1,11 +1,11 @@
 import type { ElementType } from '../types';
 import type { EnergyNetworkModel, LogicalViewsV1 } from '../../types/enm';
 import type { NetworkBuildOperationName } from './networkBuildStore';
+import { czyLacznikZPozycjaNormalna } from '../shared/stanLacznika';
 import {
   resolveBranchStartOperationContext,
   resolveContinueTrunkOperationContext,
   resolveElementNetworkContext,
-  resolveNopCandidates,
   resolveRingOperationContext,
   resolveTransformerOperationContext,
 } from './operationContextResolvers';
@@ -113,12 +113,17 @@ export function buildOperationContext({
       context.terminalB_id = ringContext.terminalBId;
       context.terminal_b_id = ringContext.terminalBId;
       context.terminalB_label = ringContext.terminalBId || 'Wybierz drugi terminal';
-      context.nop_candidates = ringContext.nopCandidates;
       break;
     }
     case 'set_normal_open_point':
-      context.switch_ref = elementId;
-      context.nop_candidates = resolveNopCandidates(snapshot, logicalViews);
+      // W5-C: łącznik nowego punktu podziału — wskazany element, gdy jest łącznikiem z
+      // pozycją normalną; kandydatów kreator czyta z BIEŻĄCEJ migawki
+      // (`kandydaciNaPunktPodzialu`), nie z listy zamrożonej przy otwarciu formularza.
+      context.switch_ref = czyLacznikZPozycjaNormalna(
+        snapshot?.branches?.find((branch) => branch.ref_id === elementId) ?? null,
+      )
+        ? elementId
+        : null;
       break;
     case 'add_sn_bay':
       context.bus_ref = elementType === 'Bus' ? elementId : context.bus_ref ?? null;

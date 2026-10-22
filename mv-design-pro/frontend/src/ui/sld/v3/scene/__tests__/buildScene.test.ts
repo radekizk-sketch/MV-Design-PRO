@@ -74,6 +74,7 @@ import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { GRID, type V3Rect } from '../../core/grid';
 import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
+import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -585,22 +586,17 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
   const scene2 = buildSceneV3(enm, 2);
 
   /**
-   * SCHEMAT-10 S3 (V12K-135, D7): fixtura `sldSubstrate52s` ma WSZYSTKIE
-   * `line_runs[].nop_station_ref` na `null` (i `corridors[].no_point_ref` na
-   * ref łącznika, nie ref stacji — GAP osobny, patrz raport karty S3) — na
-   * fixturze bazowej `props.isNop` NIGDY nie jest `true`, więc testy NOP na
-   * `enm` surowym są puste (pętla po zerowym zbiorze). Ten helper zwraca
-   * GŁĘBOKI KLON fixtury z jednym polem nadpisanym: `nop_station_ref` ciągu
-   * głównego = REALNY ref pierwszej stacji ciągu głównego — dowód na
-   * FAKTYCZNIE wyrenderowanym markerze, nie na pustym zbiorze.
+   * SCHEMAT-10 S3 (V12K-135, D7): fixtura `sldSubstrate52s` nie niesie punktu normalnie
+   * otwartego — na fixturze bazowej `props.isNop` NIGDY nie jest `true`, więc testy NOP na
+   * `enm` surowym są puste (pętla po zerowym zbiorze). Ten helper zwraca GŁĘBOKI KLON
+   * fixtury z punktem podziału w pierwszej stacji ciągu głównego — ustawionym TAK, jak
+   * robi to model (karta W5-C): pozycja normalna łącznika pola stacji `normal_state='open'`
+   * (dawna kopia `LineRun.nop_station_ref` skasowana) — dowód na FAKTYCZNIE wyrenderowanym
+   * markerze, nie na pustym zbiorze.
    */
   function enmWithSyntheticNop(): { readonly enm: EnergyNetworkModel; readonly targetStationRef: string } {
     const targetStationRef = scene2.meta.mainTrunkStationIds[0];
-    const clone = structuredClone(enm);
-    const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
-    if (!mainRun) throw new Error('fixtura bez ciągu main_trunk w line_runs — helper NOP wymaga go do testu');
-    (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
-    return { enm: clone, targetStationRef };
+    return { enm: zPunktemPodzialuWStacji(enm, targetStationRef), targetStationRef };
   }
 
   it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, lvPortal→lvPortal, reszta→apparatus', () => {

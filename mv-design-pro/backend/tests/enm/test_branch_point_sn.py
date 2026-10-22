@@ -123,14 +123,15 @@ class TestBranchPointSNModel:
             bus_ref="bus-bp-002",
             catalog_ref="ZKSN-2P-630A",
             source_mode="KATALOG",
-            switch_state="closed",
             ports=BranchPointSNPorts(
                 MAIN_IN="bus-C", MAIN_OUT="bus-D", BRANCH=["bus-br-1", "bus-br-2"]
             ),
             completeness_status="KOMPLETNY",
         )
         assert bp.branch_point_type == "zksn"
-        assert bp.switch_state == "closed"
+        # W5-C: stan łączników odgałęzienia żyje na gałęziach łączników portów
+        # (`status`/`normal_state`), nie w drugiej kopii na punkcie rozgałęzienia.
+        assert "switch_state" not in BranchPointSN.model_fields
         assert len(bp.ports.BRANCH) == 2
 
     def test_no_catalog_ref_gives_brak_katalogu(self) -> None:
@@ -175,7 +176,6 @@ class TestBranchPointSNModel:
             catalog_namespace="mv_branch_points",
             catalog_version="1.0",
             source_mode="KATALOG",
-            switch_state="open",
             ports=BranchPointSNPorts(
                 MAIN_IN="bus-rt-in", MAIN_OUT="bus-rt-out", BRANCH=["bus-rt-br"]
             ),
@@ -303,7 +303,8 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert len(enm.branch_points) == 1
         bp = enm.branch_points[0]
         assert bp.branch_point_type == "zksn"
-        assert bp.switch_state == "closed"
+        porty = [g for g in enm.branches if (g.meta or {}).get("branch_point_ref") == bp.ref_id]
+        assert porty and {(g.status, g.normal_state) for g in porty} == {("closed", "closed")}
         assert bp.completeness_status == "KOMPLETNY"
         assert bp.ports is not None
         assert len(bp.ports.BRANCH) == 2
@@ -450,7 +451,6 @@ class TestDomainOperationsBranchPointSchemaValid:
                         MAIN_OUT="bus-out",
                         BRANCH=["bus-branch-1", "bus-branch-2"],
                     ),
-                    switch_state="closed",
                     materialized_params=None,
                     completeness_status="KOMPLETNY",
                 )
@@ -674,7 +674,6 @@ class TestBranchPointFixActions:
         [
             "branch_point.invalid_parent_medium",
             "branch_point.catalog_ref_missing",
-            "branch_point.switch_state_missing",
             "branch_point.branch_port_occupied",
             "branch_point.required_port_missing",
             "zksn.branch_count_invalid",
@@ -696,16 +695,17 @@ class TestBranchPointFixActions:
         assert fa.action_type == "SELECT_CATALOG"
         assert fa.modal_type == "BranchPointCatalogPicker"
 
-    def test_branch_point_switch_state_fix_opens_modal(self) -> None:
-        fa = resolve_fix_action("branch_point.switch_state_missing", element_id="zksn-001")
-        assert fa is not None
-        assert fa.action_type == "OPEN_MODAL"
+    def test_kod_stanu_lacznika_punktu_rozgalezienia_skasowany(self) -> None:
+        """W5-C: `branch_point.switch_state_missing` nie istnieje — blokada nigdy się nie
+        zapalała (uzupełnianie wpisywało „closed" domyślnie), a stan łączników portów
+        jest stanem ich gałęzi, nie daną punktu rozgałęzienia."""
+        assert resolve_fix_action("branch_point.switch_state_missing", element_id="z") is None
+        assert "branch_point.switch_state_missing" not in KNOWN_BLOCKER_CODES
 
     def test_all_branch_point_blocker_codes_in_known_set(self) -> None:
         branch_codes = {
             "branch_point.invalid_parent_medium",
             "branch_point.catalog_ref_missing",
-            "branch_point.switch_state_missing",
             "branch_point.branch_port_occupied",
             "branch_point.required_port_missing",
             "zksn.branch_count_invalid",

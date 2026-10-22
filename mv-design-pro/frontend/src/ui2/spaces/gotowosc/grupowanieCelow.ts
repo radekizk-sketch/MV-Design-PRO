@@ -62,7 +62,8 @@
  *   `sources.no_short_circuit_params` (enm/validator.py:287)      -> zwarcia
  *   `pv_bess.transformer_required`   (enm/domain_operations.py:1228,1239) -> rozplyw
  *   `branch_point.invalid_parent_medium/required_port_missing/
- *    catalog_ref_missing/switch_state_missing`, `zksn.branch_count_invalid`
+ *    catalog_ref_missing`, `zksn.branch_count_invalid` (`switch_state_missing` skasowany w
+ *    karcie W5-C — stan łączników portów żyje na ich gałęziach)
  *                                    (enm/domain_operations.py:1249-1345)  -> wspolne
  *   `switch.catalog_ref_missing`     (enm/domain_operations.py:1346-1377) -> wspolne
  *   `protection.binding_missing`     (domain/station_field_validation.py:203) -> zabezpieczenia
@@ -428,7 +429,6 @@ const KOD_DOMENOWY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'branch_point.invalid_parent_medium': 'wspolne',
   'branch_point.required_port_missing': 'wspolne',
   'branch_point.catalog_ref_missing': 'wspolne',
-  'branch_point.switch_state_missing': 'wspolne',
   'zksn.branch_count_invalid': 'wspolne',
   'switch.catalog_ref_missing': 'wspolne',
   // `catalog.ref_missing` przeniesiony do KOD_Z_REJESTRU_DO_CELU (karta W4) —

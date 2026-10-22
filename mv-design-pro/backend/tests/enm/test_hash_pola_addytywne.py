@@ -75,7 +75,10 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
         "sources": ("sk3_min_mva", "ik3_min_ka", "rx_ratio_min", "u_set_pu", "neutral_grounding"),
         "loads": ("phases", "dynamika"),
         "transformers": ("lv_earthing_system",),
-        "branches": ("screen_bonding",),
+        # W5-C: `SwitchBranch.normal_state` (pozycja normalna łącznika) — to samo prawo
+        # (test odcisku: `tests/enm/test_stan_normalny_lacznikow.py::
+        # test_pozycja_normalna_niezadeklarowana_poza_odciskiem`).
+        "branches": ("screen_bonding", "normal_state"),
         # Karta W5-B: pola typowane rekordu pola rozdzielnicy (test odcisku:
         # `tests/enm/test_hash_w5b_bays.py`).
         "bays": (

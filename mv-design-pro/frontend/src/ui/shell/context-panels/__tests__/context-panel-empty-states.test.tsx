@@ -521,8 +521,10 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
           ready: false,
           blockers: [
             {
-              code: 'branch_point.switch_state_missing',
-              message_pl: "ZKSN 'bp/abc123/zksn' nie ma stanu łącznika (switch_state).",
+              // Karta W5-C: kod `branch_point.switch_state_missing` skasowany — realny
+              // komunikat bramy gotowości punktu rozgałęzienia z surową referencją.
+              code: 'branch_point.catalog_ref_missing',
+              message_pl: "Obiekt 'bp/abc123/zksn' wymaga wariantu katalogowego.",
               element_ref: 'bp/abc123/zksn',
               severity: 'BLOCKER',
             },
@@ -534,9 +536,8 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
 
     render(<SchematContextPanel />);
 
-    expect(screen.getByText('ZKSN wymaga wskazania stanu normalnego łącznika.')).toBeInTheDocument();
+    expect(screen.getByText(/wymaga wariantu katalogowego/)).toBeInTheDocument();
     expect(screen.queryByText(/bp\//)).not.toBeInTheDocument();
-    expect(screen.queryByText(/switch_state/)).not.toBeInTheDocument();
   });
 
   it('panel Wyniki i analizy prowadzi do Studiów obliczeniowych, gdy nie ma wyników', () => {

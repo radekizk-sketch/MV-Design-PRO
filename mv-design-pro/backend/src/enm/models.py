@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, model_validator
 from .deklaracje_modulu import DataUmowy, DeklaracjeModulu, ModulIstniejacy
 from .dynamika_modele import ModelDynamicznyOdbioru, ParametryDynamiczne
 from .nastawy_modulu import NastawyZabezpieczenModulu
+from .stan_normalny import migruj_punkty_podzialu_slownika
 from .uziemienie import migruj_uziemienie_slownika
 
 # ---------------------------------------------------------------------------
@@ -370,11 +371,23 @@ class Cable(BranchBase):
 
 
 class SwitchBranch(BranchBase):
-    """Wyłącznik, rozłącznik, sprzęgło, sekcjoner."""
+    """Wyłącznik, rozłącznik, sprzęgło, sekcjoner.
+
+    W5-C (jedna prawda stanu łączeniowego): ``status`` (pole bazowe) jest JEDYNYM
+    stanem czytanym przez fizykę — bieżące położenie łącznika w modelu bazowym.
+    ``normal_state`` to POZYCJA NORMALNA z projektu (punkt normalnie otwarty =
+    ``"open"``); ``None`` = niezadeklarowana, nie domysł. Punkty podziału sieci
+    wyprowadza akcesor ``enm.topology.punkty_podzialu`` wyłącznie z tego pola —
+    dawna kopia ``Corridor.no_point_ref`` jest skasowana (migracja
+    ``enm/stan_normalny.py``). Stan łącznika w scenariuszu ruchowym nadpisuje
+    ``status`` w migawce efektywnej (``OperatingScenario.switch_states``), model
+    bazowy zostaje bez zmian.
+    """
 
     type: Literal["switch", "breaker", "bus_coupler", "disconnector"]
     r_ohm: float | None = None
     x_ohm: float | None = None
+    normal_state: Literal["closed", "open"] | None = None
 
 
 class FuseBranch(BranchBase):
@@ -1069,7 +1082,6 @@ class LineRun(BaseModel):
     starting_port_ref: str  # konkretny port pola wyjściowego
     segments: list[LineRunSegmentRef] = []
     stations: list[LineRunStationRef] = []
-    nop_station_ref: str | None = None  # stacja z punktem normalnie otwartym (dla pierścieni)
     parent_run_ref: str | None = None  # dla odgałęzień: ref do ciągu macierzystego
     branch_origin_station_ref: str | None = None  # punkt startu odgałęzienia
 
@@ -1656,6 +1668,14 @@ class BayBaseModel(BaseModel):
     # (exclude_none). Nie wypełniać na istniejących fixture'ach.
     bay_template_ref: str | None = None
     switchgear_family_ref: str | None = None
+    # W5-C: stan danych wyposażenia pola — z REKORDU `Bay.primary_devices` (nie z aparatów
+    # wyprowadzonych z gałęzi pola, którymi odczyt uzupełnia rysunek pola bez rekordu):
+    # MODEL (każdy aparat z pozycją katalogową), PROPOZYCJA (wartość robocza — z szablonu
+    # albo rodzaj bez katalogu SN), BRAK_DANYCH (rekord bez aparatów). Reguła jedna:
+    # `enm.wyposazenie_pola.stan_danych_wyposazenia`; dane przyjęte (jakość ESTIMATED) —
+    # `dane_przyjete_wyposazenia`.
+    equipment_data_state: Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"] = "BRAK_DANYCH"
+    equipment_assumed_data: list[dict[str, Any]] = []
 
 
 class BayShortCircuitSourceContribution(BaseModel):
@@ -1761,7 +1781,9 @@ class Corridor(ENMElement):
 
     corridor_type: Literal["radial", "ring", "mixed"]
     ordered_segment_refs: list[str]
-    no_point_ref: str | None = None
+    # W5-C: punkt normalnie otwarty NIE jest polem magistrali — wyprowadza go akcesor
+    # `enm.topology.punkty_podzialu_korytarza` z `SwitchBranch.normal_state` (jedno
+    # źródło). Dawne `no_point_ref` migruje `enm/stan_normalny.py`.
 
 
 # ---------------------------------------------------------------------------
@@ -1805,7 +1827,8 @@ class BranchPointSN(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] = "KATALOG"
     ports: BranchPointSNPorts | None = None
     branch_occupied: dict[str, str] = {}
-    switch_state: Literal["open", "closed"] | None = None
+    # W5-C: dawne `switch_state` (kopia stanu łączników portów) skasowane — stan żyje na
+    # gałęziach łączników portów (`status`/`normal_state`); migracja `enm/stan_normalny.py`.
     materialized_params: dict | None = None
     completeness_status: Literal["KOMPLETNY", "NIEKOMPLETNY", "BRAK_KATALOGU"] | None = None
     runtime_inputs: dict | None = None
@@ -1865,6 +1888,26 @@ class KatalogProjektu(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def migruj_zapis_zastany_slownika(data: dict[str, Any]) -> dict[str, Any]:
+    """JEDYNA lista migracji zastanego zapisu migawki ENM (słownik → słownik).
+
+    Woła ją walidator ``before`` modelu (każda droga przez ``EnergyNetworkModel``) ORAZ
+    wejście operacji domenowych (``enm.domain_operations.execute_domain_operation``), które
+    pracują na słowniku i oddają go w odpowiedzi — bez tego migawka odpowiedzi niosłaby
+    skasowane klucze, choć walidacja tej samej migawki je zdejmuje. Jedno źródło listy
+    migracji dla obu dróg (predykat parami). Bez kluczy zastanych zwraca TEN SAM obiekt.
+
+    * W5-A: jedna reprezentacja uziemienia (``enm/uziemienie.py``);
+    * W5-C: punkt podziału z dawnej kopii ``Corridor.no_point_ref`` (i martwej
+      ``LineRun.nop_station_ref``, kopii ``BranchPointSN.switch_state``) →
+      ``SwitchBranch.normal_state`` (``enm/stan_normalny.py``).
+
+    Utraty nazywają raporty modułów migracji; wpis do dziennika robi magazyn.
+    """
+    data = migruj_uziemienie_slownika(data, uklady_nn=UKLADY_SIECI_NN)[0]
+    return migruj_punkty_podzialu_slownika(data)[0]
+
+
 class EnergyNetworkModel(BaseModel):
     header: ENMHeader
     buses: list[Bus] = []
@@ -1891,8 +1934,10 @@ class EnergyNetworkModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _migracja_uziemienia_przy_wczytaniu(cls, data: Any) -> Any:
-        """W5-A: jedna reprezentacja uziemienia — migracja ZASTANEGO zapisu.
+    def _migracje_zapisu_zastanego_przy_wczytaniu(cls, data: Any) -> Any:
+        """Migracje ZASTANEGO zapisu (W5-A uziemienie, W5-C punkty podziału).
+
+        W5-A: jedna reprezentacja uziemienia.
 
         `Bus.grounding` → `Source.neutral_grounding`, `substation.meta
         ["nn_earthing_system"]` → `Transformer.lv_earthing_system`, klucze
@@ -1903,7 +1948,7 @@ class EnergyNetworkModel(BaseModel):
         do dziennika robi magazyn (`enm/store.py`).
         """
         if isinstance(data, dict):
-            return migruj_uziemienie_slownika(data, uklady_nn=UKLADY_SIECI_NN)[0]
+            return migruj_zapis_zastany_slownika(data)
         return data
 
 

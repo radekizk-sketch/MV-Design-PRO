@@ -1290,8 +1290,8 @@ def domain_ops(case_id: str, klucz: KluczTwin, req: DomainOpEnvelopeModel) -> di
     add_grid_source_sn, continue_trunk_segment_sn,
     insert_station_on_segment_sn, start_branch_segment_sn,
     insert_section_switch_sn, connect_secondary_ring_sn,
-    set_normal_open_point, add_transformer_sn_nn,
-    assign_catalog_to_element, update_element_parameters.
+    set_normal_open_point, open_switch, close_switch, add_transformer_sn_nn,
+    assign_catalog_to_element, update_element_parameters, set_bay_equipment.
 
     Odpowiedź zawiera: snapshot, readiness, fix_actions, changes,
     selection_hint, audit_trail, domain_events.

@@ -9,7 +9,9 @@
  * a ten moduł jest jedynym miejscem frontu, które zna jego reguły:
  *  - właściciel pola: `substation_ref` (pole stacji SN/nN) ALBO `branch_point_ref` (pole ZKSN);
  *  - poziom pola (SN/nN) z napięcia szyny `bus_ref` (`czyPoleNn`, pasmo z
- *    `ui2/model/pasmaNapieciowe.ts` — ta sama granica co backend, nie nowa liczba);
+ *    `ui2/model/pasmaNapieciowe.ts` — ta sama granica co backend, nie nowa liczba); pole
+ *    stacji GPZ nigdy nie jest polem nN (wyjątek backendu `czy_pole_nn`, brakujący w lustrze
+ *    do karty W5-C — przypięty polem GPZ na szynie nN w modelu iloczynu parytetu);
  *  - zacisk pola: WYŁĄCZNIE `terminal_bus_ref` (`zaciskPola`); punkt przyłączenia: zacisk,
  *    a bez zacisku szyna pola (`punktPrzylaczeniaPola`);
  *  - pola wg szyny w kolejności wyboru pola startu ciągu: OUT < FEEDER < IN < pozostałe, w
@@ -40,7 +42,7 @@ export interface RekordPola {
 export interface ModelPol<B extends RekordPola = Bay> {
   readonly bays?: readonly B[] | null;
   readonly buses?: readonly { readonly ref_id: string; readonly voltage_kv?: number | null }[] | null;
-  readonly substations?: readonly { readonly ref_id: string }[] | null;
+  readonly substations?: readonly { readonly ref_id: string; readonly station_type?: string | null }[] | null;
 }
 
 /** Kolejność ról przy grupowaniu pól po szynie — lustro `_RANGA_ROLI_NA_SZYNIE` backendu. */
@@ -148,16 +150,37 @@ export function napieciaSzyn(model: Pick<ModelPol<RekordPola>, 'buses'> | null |
   return wynik;
 }
 
+const INDEKSY_GPZ = new WeakMap<object, { dlugosc: number; zbior: ReadonlySet<string> }>();
+
+/** Identyfikatory stacji typu GPZ (`station_type === 'gpz'`) — lustro `enm.pola.stacje_gpz`. */
+export function stacjeGpz(model: Pick<ModelPol<RekordPola>, 'substations'> | null | undefined): ReadonlySet<string> {
+  const stacje = model?.substations;
+  if (!Array.isArray(stacje)) return new Set();
+  const zapisany = INDEKSY_GPZ.get(stacje);
+  if (zapisany && zapisany.dlugosc === stacje.length) return zapisany.zbior;
+  const zbior = new Set<string>();
+  for (const stacja of stacje) {
+    const ref = napis(stacja?.ref_id);
+    if (ref && stacja.station_type === 'gpz') zbior.add(ref);
+  }
+  INDEKSY_GPZ.set(stacje, { dlugosc: stacje.length, zbior });
+  return zbior;
+}
+
 /**
  * Czy pole leży na szynie nN — JEDYNY predykat poziomu pola we froncie (lustro
- * `enm.pola.czy_pole_nn`). Rozstrzyga pasmo napięcia szyny `bus_ref` (`wPasmieNn`:
- * 0 < Uₙ ≤ 1 kV); szyna nieznana albo bez napięcia = NIE nN.
+ * `enm.pola.czy_pole_nn`). Pole stacji GPZ NIGDY nie jest polem nN (GPZ to punkt zasilania
+ * sieci — jego pola są polami magistrali niezależnie od pasma ekwiwalentu). Poza tym
+ * rozstrzyga pasmo napięcia szyny `bus_ref` (`wPasmieNn`: 0 < Uₙ ≤ 1 kV); szyna nieznana
+ * albo bez napięcia = NIE nN.
  */
 export function czyPoleNn(
-  model: Pick<ModelPol<RekordPola>, 'buses'> | null | undefined,
-  rekord: Pick<Bay, 'bus_ref'>,
+  model: Pick<ModelPol<RekordPola>, 'buses' | 'substations'> | null | undefined,
+  rekord: Pick<Bay, 'bus_ref'> & { readonly substation_ref?: string | null },
   napiecia: ReadonlyMap<string, number | null> = napieciaSzyn(model),
 ): boolean {
+  const wlasciciel = napis(rekord.substation_ref);
+  if (wlasciciel && stacjeGpz(model).has(wlasciciel)) return false;
   const szyna = napis(rekord.bus_ref);
   if (!szyna) return false;
   return wPasmieNn(napiecia.get(szyna));

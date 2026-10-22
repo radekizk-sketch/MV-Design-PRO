@@ -272,6 +272,8 @@ MODULY_KOMUNIKATOW: tuple[ZakresModulu, ...] = (
     ZakresModulu("enm/fazy_odbioru.py"),
     ZakresModulu("enm/zrodlo_zwarcie.py"),
     ZakresModulu("enm/grupa_polaczen.py"),
+    ZakresModulu("enm/operacje_lacznikow.py"),
+    ZakresModulu("enm/wyposazenie_pola.py"),
     ZakresModulu(
         "enm/uziemienie.py",
         powod=(

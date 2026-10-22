@@ -66,6 +66,11 @@ import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
 import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
+import {
+  etykietaPozycjiNormalnej,
+  opisLacznikowPortow,
+  pozycjaNormalna,
+} from '../../ui/shared/stanLacznika';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -234,6 +239,8 @@ function wlasciwosciKabla(el: Cable): WierszWlasciwosci[] {
 function wlasciwosciLacznika(el: SwitchBranch): WierszWlasciwosci[] {
   return [
     ...wlasciwosciGaleziWspolne(el),
+    // W5-C: pozycja normalna z projektu obok bieżącego położenia („Stan") — dwa pojęcia.
+    wr('Pozycja normalna', etykietaPozycjiNormalnej(pozycjaNormalna(el))),
     ...bezNulli([
       w('Rezystancja', el.r_ohm ?? null, 'Ω'),
       w('Reaktancja', el.x_ohm ?? null, 'Ω'),
@@ -390,14 +397,18 @@ const ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA: Readonly<Record<string, string>> = {
   zksn: 'ZKSN',
 };
 
-function wlasciwosciPunktuRozgalezienia(el: BranchPointSN): WierszWlasciwosci[] {
+function wlasciwosciPunktuRozgalezienia(
+  el: BranchPointSN,
+  model: EnergyNetworkModel,
+): WierszWlasciwosci[] {
   return bezNulli([
     wr(
       'Rodzaj punktu',
       ETYKIETA_TYPU_PUNKTU_ROZGALEZIENIA[el.branch_point_type] ?? el.branch_point_type,
     ),
     wr('Szyna', el.bus_ref),
-    w('Stan łącznika', el.switch_state ? (ETYKIETA_STANU_LACZNIKA[el.switch_state] ?? el.switch_state) : null),
+    // W5-C: stan łączników portów z ICH gałęzi — nigdy z kopii przy punkcie.
+    wr('Stan łączników portów', opisLacznikowPortow(model, el.ref_id)),
     w('Kompletność katalogowa', el.completeness_status ?? null),
   ]);
 }
@@ -525,7 +536,7 @@ function wlasciwosciKatalogoweWgTypu(
     case 'wezel':
       return wlasciwosciWezla(element as unknown as Junction);
     case 'punkt_rozgalezienia':
-      return wlasciwosciPunktuRozgalezienia(element as unknown as BranchPointSN);
+      return wlasciwosciPunktuRozgalezienia(element as unknown as BranchPointSN, model);
     case 'magistrala':
       return wlasciwosciMagistrali(element as unknown as Corridor);
     case 'pomiar':

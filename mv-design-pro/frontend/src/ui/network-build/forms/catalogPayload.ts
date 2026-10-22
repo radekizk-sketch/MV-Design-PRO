@@ -97,10 +97,20 @@ export function normalizeSegmentNamespace(
   return normalizeSegmentKind(kind) === 'LINIA_NAPOWIETRZNA' ? 'LINIA_SN' : 'KABEL_SN';
 }
 
-export function normalizeSwitchState(value: unknown): 'open' | 'closed' {
+/**
+ * Pozycja normalna łącznika z kontekstu formularza → słownik operacji (`'open'`/`'closed'`).
+ * Karta W5-C: brak albo wartość spoza słownika = `null` (NIEZADEKLAROWANA — ładunek pomija
+ * pole). Dawny normalizator zwracał „zamknięty" dla wszystkiego poza „otwarty", więc każdy
+ * nowy łącznik portu i łącznik sekcyjny dostawał deklarację pozycji, której projektant nie
+ * podał (backend: `_pozycja_normalna_portu`, `insert_section_switch_sn`).
+ */
+export function normalizeSwitchState(value: unknown): 'open' | 'closed' | null {
   if (value === 'OPEN' || value === 'open' || value === 'OTWARTY') {
     return 'open';
   }
-  return 'closed';
+  if (value === 'CLOSED' || value === 'closed' || value === 'ZAMKNIETY' || value === 'ZAMKNIĘTY') {
+    return 'closed';
+  }
+  return null;
 }
 

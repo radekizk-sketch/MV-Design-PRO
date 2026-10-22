@@ -294,7 +294,7 @@ describe('EkranObszaruPQ — zapis ograniczeń Q generatora (K5-B / H-3 pkt 3)',
           // Scalenie: granice P z modelu NIE giną przy zapisie pasma Q.
           limits: { p_min_mw: 0.0, p_max_mw: 2.0, q_min_mvar: -1.5, q_max_mvar: 1.5 },
         },
-      }),
+      }, { komunikatSukcesuPl: OBSZAR_STRINGS.limityZapisano }),
     );
     expect(screen.queryByTestId('mvd-obszar-limity-blad')).not.toBeInTheDocument();
     useAppStateStore.setState({ activeCaseId: null } as never);

@@ -420,7 +420,8 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             if key in data:
                 branch_data[key] = data[key]
     elif branch_type in ("switch", "breaker", "bus_coupler", "disconnector"):
-        for key in ("r_ohm", "x_ohm"):
+        # W5-C: pozycja normalna łącznika (`SwitchBranch.normal_state`) — dana projektowa.
+        for key in ("r_ohm", "x_ohm", "normal_state"):
             if key in data:
                 branch_data[key] = data[key]
     elif branch_type == "fuse":

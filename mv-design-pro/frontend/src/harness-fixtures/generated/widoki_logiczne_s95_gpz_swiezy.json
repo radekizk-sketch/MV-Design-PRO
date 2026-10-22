@@ -28,7 +28,7 @@
       "corridor_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/corridor_01",
       "corridor_type": "radial",
       "embedded_objects": [],
-      "no_point_ref": null,
+      "no_point_refs": [],
       "segments": [],
       "terminals": [
         {

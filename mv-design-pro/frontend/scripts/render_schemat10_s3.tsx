@@ -6,11 +6,11 @@
  * debug świadomie zostaje „mono base", patrz `theme/colorTokens.ts`) na
  * L0/L1/L2 do SVG. Rasteryzacja do PNG: `rasterize.mjs`.
  *
- * Fixtura bazowa nie niesie żadnego NOP (`line_runs[].nop_station_ref`
- * zawsze `null` — patrz `buildScene.test.ts` `enmWithSyntheticNop`, GAP
- * udokumentowany w raporcie karty S3) — ten skrypt syntetyzuje JEDEN NOP
- * (pierwsza stacja ciągu głównego) identycznie jak testy, żeby dowód
- * wizualny faktycznie pokazywał znacznik NOP, nie pusty zbiór.
+ * Fixtura bazowa nie niesie żadnego punktu normalnie otwartego — ten skrypt
+ * syntetyzuje JEDEN (łącznik pola pierwszej stacji ciągu głównego dostaje pozycję
+ * normalną `'open'`, karta W5-C: punkt podziału = `SwitchBranch.normal_state`)
+ * identycznie jak testy (`src/test/punktPodzialu.ts`), żeby dowód wizualny
+ * faktycznie pokazywał znacznik NOP, nie pusty zbiór.
  *
  * Uruchomienie (cwd: mv-design-pro/frontend):
  *   CANON_OUT=<dir> npx vite-node scripts/render_schemat10_s3.tsx
@@ -22,6 +22,7 @@ import { dirname, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { EnergyNetworkModel } from '../src/types/enm';
+import { zPunktemPodzialuWStacji } from '../src/test/punktPodzialu';
 import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod } from '../src/ui/sld/v3/scene/buildScene';
 import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
@@ -37,10 +38,7 @@ const baseEnm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm
 // `buildScene.test.ts` `enmWithSyntheticNop`/`sldCanvasV3.test.tsx`.
 const baseline = buildSceneV3(baseEnm, 2);
 const targetStationRef = baseline.meta.mainTrunkStationIds[0];
-const enm = structuredClone(baseEnm);
-const mainRun = enm.line_runs?.find((r) => r.run_kind === 'main_trunk');
-if (!mainRun) throw new Error('fixtura bez ciągu main_trunk w line_runs — dowód S3 wymaga go do NOP');
-(mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
+const enm = zPunktemPodzialuWStacji(baseEnm, targetStationRef);
 
 const OUT = process.env.CANON_OUT ?? '/tmp/canon';
 mkdirSync(OUT, { recursive: true });

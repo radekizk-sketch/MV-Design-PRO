@@ -182,6 +182,7 @@ import {
 import { isSourceOperationalState, type DerConnectionSide, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
 import { junctionDotGaps, interiorCrossings } from './crossings';
 import { NAZWA_RODZAJU_STACJI_PL, rodzajStacji } from '../../../shared/rodzajStacji';
+import { punktyPodzialu } from '../../../shared/stanLacznika';
 import { elementyToru } from './elementyToru';
 import {
   bayHasProtectionAnnotation,
@@ -5131,8 +5132,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   });
 
   // -- 6z. K2b §0.4 — PUNKT NORMALNIE OTWARTY NA KAŻDYM POZIOMIE SZCZEGÓŁU. --
-  // Źródło prawdy: `Corridor.no_point_ref` (operacja `set_normal_open_point`
-  // wpisuje tam ref ŁĄCZNIKA albo ODCINKA). Dotąd scena porównywała ten ref
+  // Źródło prawdy: pozycja normalna łącznika (operacja `set_normal_open_point`). Dotąd scena porównywała ten ref
   // wyłącznie z refem STACJI (`isNop` adaptera), więc punkt ustawiony operacją
   // domenową nie był rysowany na żadnym poziomie. Teraz:
   //  (1) NOP na odcinku toru (ref gałęzi rysowanej odcinkiem) — symbol `noPoint`
@@ -5143,21 +5143,30 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   //  (3) łącznik niewidoczny na tym poziomie (L0 — stacja zwinięta) — symbol
   //      `noPoint` przy prawym górnym narożniku bloku stacji, która go zawiera
   //      (przynależność z rekordu stacji `bus_refs`, bez przeszukiwania grafu).
-  // Każdy przypadek dostaje na L1/L2 podpis „NO" (t3). NOP-stacja (ref stacji) zostaje
-  // przy dotychczasowej reprezentacji (symbol L1/L2, znacznik glifu L0).
-  const refyNop = [
-    ...new Set(
-      (snapshot.corridors ?? [])
-        .map((c) => c.no_point_ref)
-        .filter((r): r is string => typeof r === 'string' && r.length > 0),
-    ),
-  ].sort();
+  // Każdy przypadek dostaje na L1/L2 podpis „NO" (t3). Łącznik w polu stacji, którą
+  // adapter oznaczył znacznikiem NO (`isNop`), zostaje przy reprezentacji stacji
+  // (symbol L1/L2, znacznik glifu L0) — bez drugiego symbolu z tej sekcji.
+  // Po operacjach łączników punkt podziału to wyłącznie łącznik z pozycją normalną
+  // „otwarty” (`SwitchBranch.normal_state`) — jedna prawda z `punktyPodzialu`
+  // (lustro `enm.topology.punkty_podzialu`); dawne `Corridor.no_point_ref` skasowane.
+  const refyNop = punktyPodzialu(snapshot).map((g) => g.ref_id);
   if (refyNop.length > 0) {
     const stacjaSzynyNop = new Map<string, string>();
     for (const st of snapshot.substations ?? []) for (const bus of st.bus_refs ?? []) stacjaSzynyNop.set(bus, st.ref_id);
     const galezNop = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
+    // Jeden punkt podziału = jedna reprezentacja. Adapter wyprowadza z TEGO SAMEGO
+    // łącznika znacznik NO stacji (`isNop`, GS-1: glif L0, symbol + „NO" L1/L2), gdy
+    // łącznik siedzi w polu stacji ciągu. Wtedy symbol łącznika z tej sekcji byłby
+    // drugą reprezentacją tego samego punktu (pomiar: dwa symbole i dwa „NO" na L1/L2).
+    const stacjeZnacznikaNop = new Set(sldData.stations.filter((s) => s.isNop).map((s) => s.id));
+    const stacjaLacznikaPola = new Map<string, string>();
+    for (const pole of snapshot.bays ?? []) {
+      if (!pole.substation_ref) continue;
+      for (const ref of pole.equipment_refs ?? []) stacjaLacznikaPola.set(ref, pole.substation_ref);
+    }
     for (const nopRef of refyNop) {
-      if (stationById.has(nopRef)) continue;
+      const stacjaPola = stacjaLacznikaPola.get(nopRef);
+      if (stacjaPola !== undefined && stacjeZnacznikaNop.has(stacjaPola)) continue;
       let kotwica: { readonly x: number; readonly y: number } | null = null;
       // Podpis „NO" pod symbolem; przy łączniku narysowanym (2) NAD symbolem —
       // pod łącznikiem toru stoi jego nazwa (`elementyToru.ts`, L2), a podpis pod
@@ -5203,7 +5212,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
       if (!kotwica) {
         stopNotes.push(
-          `Punkt normalnie otwarty „${nopRef}" (Corridor.no_point_ref) nie wskazuje ani odcinka, ani łącznika, ani stacji narysowanej na tym poziomie szczegółu — symbol NO pominięty.`,
+          `Punkt normalnie otwarty „${nopRef}" (łącznik z pozycją normalną „otwarty”) nie wskazuje ani odcinka, ani łącznika, ani stacji narysowanej na tym poziomie szczegółu — symbol NO pominięty.`,
         );
         continue;
       }

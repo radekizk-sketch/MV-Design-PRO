@@ -90,11 +90,13 @@ describe('SldCanvasV3Workspace — F11.4-B: wykonawca akcji domenowych (ARCH-3)'
     confirmAction.onClick();
 
     await vi.waitFor(() => {
-      expect(executeDomainOperation).toHaveBeenCalledWith('case-v3-del-1', 'delete_element', {
-        element_ref: stationId,
-        action_id: 'delete-station',
-        source: 'sld_context_menu',
-      });
+      expect(executeDomainOperation).toHaveBeenCalledWith(
+        'case-v3-del-1',
+        'delete_element',
+        { element_ref: stationId, action_id: 'delete-station', source: 'sld_context_menu' },
+        // W5-C: jeden toast sukcesu — zdanie o usuniętym obiekcie idzie do magazynu.
+        { komunikatSukcesuPl: 'Usunięto stację SN/nN z modelu sieci.' },
+      );
     });
 
     // Menu zamyka się po wywołaniu akcji (patrz `handleContextMenuAction`).

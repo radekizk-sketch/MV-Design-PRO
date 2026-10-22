@@ -109,6 +109,7 @@
         "terminal_bus_ref": "sn/8c5a6651972e3f18997e489f4a2dfd4d/source_field_terminal"
       },
       "name": "Aparat pola źródłowego SN Pole PV SN",
+      "normal_state": null,
       "overrides": [],
       "parameter_source": null,
       "r_ohm": 0.0,
@@ -192,7 +193,6 @@
       "id": "48e7285a-4c31-5b01-9d87-dd323c2a08f9",
       "meta": {},
       "name": "Magistrala 01",
-      "no_point_ref": null,
       "ordered_segment_refs": [],
       "ref_id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/corridor_01",
       "tags": []
@@ -322,7 +322,6 @@
       "branch_origin_station_ref": null,
       "id": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/corridor_01",
       "name": "Magistrala 01",
-      "nop_station_ref": null,
       "parent_run_ref": null,
       "run_kind": "main_trunk",
       "segments": [],

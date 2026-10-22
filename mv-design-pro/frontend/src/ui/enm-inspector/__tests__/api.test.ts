@@ -45,6 +45,7 @@ const V2_PROJECTION_RESPONSE: EnergyNetworkModelV2Projection = {
         {
           device_ref: 'sw-1',
           state: 'closed',
+          normal_state: null,
           device_type: 'breaker',
         },
       ],

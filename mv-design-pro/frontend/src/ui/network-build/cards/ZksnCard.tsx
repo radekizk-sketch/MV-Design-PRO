@@ -7,7 +7,7 @@
  * Wyświetla:
  * A. Identyfikację i rolę w sieci
  * B. Topologię: MAIN_IN / MAIN_OUT / BRANCH_1..N + stan zajętości portów
- * C. Stan łącznika (switch_state)
+ * C. Stan łączników portów (z gałęzi łączników — W5-C, jedna prawda stanu)
  * D. Parametry katalogowe
  * E. Gotowość i status kompletności
  * F. Dostępne akcje inżynierskie (Dodaj odgałęzienie z każdego wolnego portu)
@@ -20,6 +20,7 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import { notify } from '../../notifications/store';
 import {
   resolveBranchPointBranchPortId,
   resolveBranchPointBranchPortOccupancy,
@@ -29,21 +30,11 @@ import {
   isRawTechnicalIdentifier,
   publicTechnicalLabel,
 } from '../../shared/publicTechnicalLabels';
+import { lacznikiPortowPunktu, opisStanuLacznika } from '../../shared/stanLacznika';
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function switchStateLabel(state: string | null | undefined): string {
-  switch (state) {
-    case 'closed':
-      return 'Zamknięty';
-    case 'open':
-      return 'Otwarty';
-    default:
-      return 'Nieokreślony';
-  }
-}
 
 function sourceModeLabel(mode: string | null | undefined): string {
   switch (mode) {
@@ -101,6 +92,12 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     [snapshot, elementId],
   );
 
+  // W5-C: łączniki portów punktu — stan czytany z ICH gałęzi (położenie + pozycja normalna).
+  const lacznikiPortow = useMemo(
+    () => (branchPoint ? lacznikiPortowPunktu(snapshot, branchPoint.ref_id) : []),
+    [branchPoint, snapshot],
+  );
+
   const statusDot = useMemo(
     () => completenessStatus(branchPoint?.completeness_status),
     [branchPoint],
@@ -129,6 +126,16 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
         ? 'Zajęty (przyłączone odgałęzienie SN)'
         : 'Wolny — gotowy do wyprowadzenia odgałęzienia',
     }));
+
+    // W5-C: stan łącznika portu czytany z JEGO gałęzi (położenie + pozycja normalna);
+    // punkt bez łączników portów mówi to wprost, bez domyślnego „zamknięty".
+    const portSwitchFields = lacznikiPortow.length > 0
+      ? lacznikiPortow.map((lacznik) => ({
+          key: `switch_${lacznik.ref_id}`,
+          label: `Stan łącznika — ${lacznik.name}`,
+          value: opisStanuLacznika(lacznik),
+        }))
+      : [{ key: 'switch_none', label: 'Stan łącznika', value: 'Brak łączników portów w modelu' }];
 
     const publicName = publicTechnicalLabel(branchPoint.name, 'ZKSN');
     const parentSegmentLabel = isRawTechnicalIdentifier(branchPoint.parent_segment_id)
@@ -160,11 +167,7 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
             value: branchPoint.ports?.MAIN_OUT ? 'Podłączone' : '—',
           },
           ...portFields,
-          {
-            key: 'switch_state',
-            label: 'Stan łącznika',
-            value: switchStateLabel(branchPoint.switch_state),
-          },
+          ...portSwitchFields,
         ],
       },
       {
@@ -191,7 +194,7 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     ];
 
     return result;
-  }, [branchPoint, branchPorts]);
+  }, [branchPoint, branchPorts, lacznikiPortow]);
 
   const handleAddBranchFromPort = useCallback(
     (portId: string) => {
@@ -211,13 +214,24 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     });
   }, [activeCaseId, branchPoint, executeDomainOperation]);
 
-  const handleSetSwitchState = useCallback(() => {
-    if (!activeCaseId || !branchPoint) return;
-    openOperationForm('update_element_parameters', {
-      element_ref: branchPoint.ref_id,
-      element_type: 'branch_point',
-    });
-  }, [activeCaseId, branchPoint, openOperationForm]);
+  // W5-C: dawna akcja „Ustaw stan łącznika" otwierała edycję parametrów PUNKTU (bez pola
+  // stanu — fantom). Stan żyje na gałęzi łącznika portu; zmienia go `open_switch` /
+  // `close_switch` na tej gałęzi (sukces: centralny komunikat magazynu, odmowa: tu).
+  // `lacznikiPortow` — wyżej, obok punktu.
+  const handleToggleSwitch = useCallback(
+    (switchRef: string, operacja: 'open_switch' | 'close_switch') => {
+      if (!activeCaseId) {
+        notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+        return;
+      }
+      void executeDomainOperation(activeCaseId, operacja, { switch_ref: switchRef }).then((odpowiedz) => {
+        if (!odpowiedz || odpowiedz.error) {
+          notify(odpowiedz?.error ?? useSnapshotStore.getState().error ?? 'Nie zmieniono stanu łącznika.', 'error');
+        }
+      });
+    },
+    [activeCaseId, executeDomainOperation],
+  );
 
   const handleEditZksn = useCallback(() => {
     if (!branchPoint) return;
@@ -250,11 +264,14 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
       });
     });
 
-    acts.push({
-      id: 'set_switch_state',
-      label: 'Ustaw stan łącznika',
-      variant: 'secondary',
-      onClick: handleSetSwitchState,
+    lacznikiPortow.forEach((lacznik) => {
+      const operacja = lacznik.status === 'closed' ? 'open_switch' : 'close_switch';
+      acts.push({
+        id: `switch_${lacznik.ref_id}`,
+        label: `${operacja === 'open_switch' ? 'Otwórz' : 'Zamknij'} łącznik ${lacznik.name}`,
+        variant: 'secondary',
+        onClick: () => handleToggleSwitch(lacznik.ref_id, operacja),
+      });
     });
 
     acts.push({
@@ -265,7 +282,7 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     });
 
     return acts;
-  }, [branchPoint, branchPorts, handleAddBranchFromPort, handleAssignCatalog, handleEditZksn, handleSetSwitchState]);
+  }, [branchPoint, branchPorts, handleAddBranchFromPort, handleAssignCatalog, handleEditZksn, handleToggleSwitch, lacznikiPortow]);
 
   if (!branchPoint) {
     return (

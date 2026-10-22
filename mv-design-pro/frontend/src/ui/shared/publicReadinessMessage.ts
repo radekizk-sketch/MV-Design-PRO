@@ -114,14 +114,6 @@ export function sanitizePublicReadinessMessage(
       /Brak\s+szyn\s+\(węzłów\)\s+w\s+modelu\s+sieci\.?/gi,
       'Wybierz wariant rozdzielni SN i sekcji szyn z katalogu GPZ.',
     )
-    .replace(
-      /ZKSN\s+['"]?bp\/[^\s'"]+['"]?\s+nie\s+ma\s+stanu\s+łącznika\s+\(switch_state\)\.?/gi,
-      'ZKSN wymaga wskazania stanu normalnego łącznika.',
-    )
-    .replace(
-      /słup\s+rozgałęźny(?:\s+SN)?\s+['"]?bp\/[^\s'"]+['"]?\s+nie\s+ma\s+stanu\s+łącznika\s+\(switch_state\)\.?/gi,
-      'Słup rozgałęźny SN wymaga wskazania stanu normalnego łącznika.',
-    )
     .replace(/\bOdcinek\s+\/segment\b/gi, 'odcinek SN')
     .replace(/\bodcinek\s+SN\s+SN\b/gi, 'odcinek SN')
     .replace(/Gałąź\s+['"]([^'"]+)['"]/gi, (_match, ref: string) => publicElementLabelFromRef(snapshot, ref))
@@ -129,7 +121,6 @@ export function sanitizePublicReadinessMessage(
     .replace(/Obiekt\s+['"]([^'"]+)['"]/gi, (_match, ref: string) => publicElementLabelFromRef(snapshot, ref))
     .replace(QUOTED_INTERNAL_REF_PATTERN, (_match, ref: string) => publicElementLabelFromRef(snapshot, ref))
     .replace(INTERNAL_REF_PATTERN, (ref: string) => publicElementLabelFromRef(snapshot, ref))
-    .replace(/\bswitch_state\b/gi, 'stan normalny łącznika')
     .replace(/\s+/g, ' ')
     .trim();
 }

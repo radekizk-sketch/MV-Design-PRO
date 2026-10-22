@@ -1852,7 +1852,15 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # przebiegu `_Element`, `_Kontekst`) oraz `enm/topology.py::KrawedzTopologii.szyna_a/szyna_b`,
     # `PodzialKrawedzi.w_ruchu`. To kontrakt odczytu topologii, nie dane wejsciowe solvera.
     # PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4216." in wyjscie, wyjscie
+    # Karta W5-C (jedna prawda stanu laczeniowego + wyposazenie pola): 4216 -> 4218 — POMIAR
+    # `contract_fields()` na drzewie karty i na drzewie bazowym (`d98bdad3e`, `git archive`),
+    # roznica zbiorow +4, −2. Doszly: `close_ref` (`SetNormalOpenPointPayload` — jawne
+    # rozstrzygniecie, ktory punkt podzialu zamknac), `no_point_refs` (`TrunkViewV1` — widok magistrali,
+    # punkty podzialu wyprowadzone z `normal_state`), `equipment_data_state` i
+    # `equipment_assumed_data` (`BayBaseModel` — stan danych wyposazenia pola). Odpadly kopie
+    # punktu podzialu `Corridor.no_point_ref` i `LineRun.nop_station_ref` (jedynym zrodlem jest
+    # `SwitchBranch.normal_state`). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4218." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2091,7 +2099,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # — stan zasilenia i tor z topologii laczeniowej). POMIAR guardem na drzewie karty.
         # Karta GPZ-PARYTET (2026-10-21): 573 -> 574 (+1 `enm/wyniki_pol_gpz.py` — wiersze
         # wynikow pol i bilansu stacji GPZ). POMIAR guardem na drzewie karty cz. 2.
-        "Przeskanowano 574 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta W5-C (2026-10-21): 574 -> 577 — POMIAR guardem na drzewie karty i na bazie
+        # `d98bdad3e` (`git archive`): +3 `enm/{operacje_lacznikow,stan_normalny,
+        # wyposazenie_pola}.py`, −1 `enm/domain_event_types.py` (martwy, zero importow),
+        # +1 `api/scenariusze_laczeniowe.py`.
+        "Przeskanowano 577 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2314,7 +2326,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie W5-B z partia integracji 8 (2026-10-16): enm 62 + 3 = 65. POMIAR guardem.
         # Karta GPZ-PARYTET (2026-10-21): 65 -> 66 (+1 `enm/wyniki_pol_gpz.py`); dlug/wykluczenia
         # BEZ ZMIANY. POMIAR guardem na drzewie karty cz. 2.
-        "  enm: pliki_skanowane=66, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta W5-C (2026-10-21): 66 -> 68 (+3 `enm/{operacje_lacznikow,stan_normalny,
+        # wyposazenie_pola}.py`, −1 `enm/domain_event_types.py`); dlug/wykluczenia BEZ ZMIANY.
+        # POMIAR guardem na drzewie karty i na bazie `d98bdad3e`.
+        "  enm: pliki_skanowane=68, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2409,7 +2424,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `application/topologia_zasilenia.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         "  application: pliki_skanowane=252, dlug=30 plikow/suma 90, "
         "wykluczenia=4 plikow/suma 10",
-        "  api: pliki_skanowane=63, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
+        # Karta W5-C (2026-10-21): api 63 -> 64 (+1 `api/scenariusze_laczeniowe.py` — stany
+        # lacznikow scenariusza ruchowego); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  api: pliki_skanowane=64, dlug=1 plikow/suma 2, wykluczenia=5 plikow/suma 13",
         # Scalenie W5-B z integracja PR477-481 (2026-10-16): application 248, dlug 30/90; api
         # dlug 1/2 — POMIAR guardem na drzewie scalonym, identyczny z drzewem integracji
         # (rodzic 2; przypiete tam 247 / 29/89 / api 2/3 bylo nieaktualne wobec rejestru

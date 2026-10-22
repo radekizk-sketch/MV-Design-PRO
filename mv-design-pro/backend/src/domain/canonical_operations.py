@@ -117,7 +117,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Wstawienie łącznika sekcyjnego na segmencie SN",
         target_layer="Domain / NetworkModel",
         required_fields=("segment_id", "switch_type"),
-        optional_fields=("insert_at", "normal_state", "catalog_binding"),
+        optional_fields=("insert_at", "normal_state", "close_ref", "catalog_binding"),
     ),
     "connect_secondary_ring_sn": OperationSpec(
         canonical_name="connect_secondary_ring_sn",
@@ -139,13 +139,47 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=("field_ref",),
         creates_elements=False,
     ),
+    # W5-C: jedna prawda stanu łączeniowego (`enm/operacje_lacznikow.py`). Pola specyfikacji
+    # = pola ładunku handlera (dawny wpis `nop_element_id`/`ring_id`/`normal_state` nie
+    # odpowiadał żadnemu polu, które handler czytał).
     "set_normal_open_point": OperationSpec(
         canonical_name="set_normal_open_point",
         category=OperationCategory.SN_NETWORK,
-        description_pl="Ustawienie punktu normalnie otwartego (NOP)",
+        description_pl=(
+            "Przeniesienie punktu normalnie otwartego (NOP) na wskazany łącznik — poprzedni "
+            "punkt podziału tego samego pierścienia zostaje zamknięty"
+        ),
         target_layer="Domain / NetworkModel",
-        required_fields=("nop_element_id",),
-        optional_fields=("ring_id", "normal_state"),
+        required_fields=("switch_ref",),
+        optional_fields=("close_ref",),
+        creates_elements=False,
+    ),
+    "open_switch": OperationSpec(
+        canonical_name="open_switch",
+        category=OperationCategory.SN_NETWORK,
+        description_pl="Otwarcie łącznika w modelu bazowym (pozycja normalna bez zmian)",
+        target_layer="Domain / NetworkModel",
+        required_fields=("switch_ref",),
+        creates_elements=False,
+    ),
+    "close_switch": OperationSpec(
+        canonical_name="close_switch",
+        category=OperationCategory.SN_NETWORK,
+        description_pl="Zamknięcie łącznika w modelu bazowym (pozycja normalna bez zmian)",
+        target_layer="Domain / NetworkModel",
+        required_fields=("switch_ref",),
+        creates_elements=False,
+    ),
+    "set_bay_equipment": OperationSpec(
+        canonical_name="set_bay_equipment",
+        category=OperationCategory.SN_NETWORK,
+        description_pl=(
+            "Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu "
+            "pola albo usunięcie wyposażenia"
+        ),
+        target_layer="Domain / NetworkModel",
+        required_fields=("bay_ref", "mode"),
+        optional_fields=("devices", "bay_template_ref"),
         creates_elements=False,
     ),
     "add_sn_bay": OperationSpec(

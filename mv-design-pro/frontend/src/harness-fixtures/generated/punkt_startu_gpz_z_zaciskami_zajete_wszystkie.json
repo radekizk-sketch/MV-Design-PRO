@@ -69,7 +69,7 @@
         "corridor_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/corridor_01",
         "corridor_type": "radial",
         "embedded_objects": [],
-        "no_point_ref": null,
+        "no_point_refs": [],
         "segments": [
           "seg/e9d27f75aef63828e64331e6ee8d433d/segment",
           "seg/f67cf495ae0286be24648dbf0d6d3b6c/segment",
@@ -352,6 +352,7 @@
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/001/terminal"
         },
         "name": "Aparat Pole liniowe GPZ 1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -557,6 +558,7 @@
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/001/terminal"
         },
         "name": "Aparat Pole liniowe GPZ 1",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -578,6 +580,7 @@
         "materialized_params": null,
         "meta": {},
         "name": "Sprzęgło sekcji GPZ 1-2",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": null,
         "r_ohm": null,
@@ -781,6 +784,7 @@
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/001/002/terminal"
         },
         "name": "Aparat Pole liniowe GPZ 2",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -824,6 +828,7 @@
           "terminal_bus_ref": "gpz/1aa346af2c964aa1c99b85b875500bb4/bay/002/002/terminal"
         },
         "name": "Aparat Pole liniowe GPZ 2",
+        "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
@@ -1089,7 +1094,6 @@
         "id": "c12e9b37-3f12-57c2-bafa-fa8a8d1a3146",
         "meta": {},
         "name": "Magistrala 01",
-        "no_point_ref": null,
         "ordered_segment_refs": [
           "seg/e9d27f75aef63828e64331e6ee8d433d/segment",
           "seg/f67cf495ae0286be24648dbf0d6d3b6c/segment",
@@ -1123,7 +1127,6 @@
         "branch_origin_station_ref": null,
         "id": "gpz/1aa346af2c964aa1c99b85b875500bb4/corridor_01",
         "name": "Magistrala 01",
-        "nop_station_ref": null,
         "parent_run_ref": null,
         "run_kind": "main_trunk",
         "segments": [

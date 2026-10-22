@@ -132,6 +132,29 @@ def _resource(elem: ET.Element, local_name: str) -> str | None:
     return None
 
 
+def _stan_lacznika_cgmes(
+    elem: ET.Element,
+) -> tuple[Literal["closed", "open"] | None, Literal["closed", "open"]]:
+    """W5-C: (pozycja normalna, bieżące położenie) łącznika CGMES.
+
+    ``Switch.normalOpen`` [EQ] → ``normal_state`` (brak atrybutu = pozycja niezadeklarowana);
+    ``Switch.open`` [SSH] → ``status``. Plik bez ``Switch.open`` (wyłącznie profil EQ) niesie
+    jedynie pozycję normalną — model sieci startuje w układzie normalnym, więc bieżące
+    położenie = pozycja normalna (a bez obu atrybutów: zamknięty, jak CGMES domyślnie)."""
+
+    def _logiczna(nazwa: str) -> bool | None:
+        tekst = _text(elem, nazwa)
+        return None if tekst is None else tekst.lower() == "true"
+
+    normalnie_otwarty = _logiczna("Switch.normalOpen")
+    otwarty = _logiczna("Switch.open")
+    normal_state: Literal["closed", "open"] | None = (
+        None if normalnie_otwarty is None else ("open" if normalnie_otwarty else "closed")
+    )
+    biezacy = otwarty if otwarty is not None else bool(normalnie_otwarty)
+    return normal_state, "open" if biezacy else "closed"
+
+
 def _float(value: str | None) -> float | None:
     if value is None:
         return None
@@ -325,7 +348,7 @@ def import_from_eq_tp(
             a, b = endpoint_bus_refs(mrid)
             if a is None or b is None:
                 continue
-            normal_open = (_text(sw, "Switch.normalOpen") or "false").lower() == "true"
+            normal_state, status = _stan_lacznika_cgmes(sw)
             branches.append(
                 SwitchBranch(
                     ref_id=ref,
@@ -333,7 +356,8 @@ def import_from_eq_tp(
                     from_bus_ref=a,
                     to_bus_ref=b,
                     type=enm_type,
-                    status="open" if normal_open else "closed",
+                    status=status,
+                    normal_state=normal_state,
                 )
             )
 
@@ -347,14 +371,14 @@ def import_from_eq_tp(
         a, b = endpoint_bus_refs(mrid)
         if a is None or b is None:
             continue
-        normal_open = (_text(fuse, "Switch.normalOpen") or "false").lower() == "true"
+        _, status_bezpiecznika = _stan_lacznika_cgmes(fuse)
         branches.append(
             FuseBranch(
                 ref_id=ref,
                 name=name,
                 from_bus_ref=a,
                 to_bus_ref=b,
-                status="open" if normal_open else "closed",
+                status=status_bezpiecznika,
                 rated_current_a=_float(_text(fuse, "Switch.ratedCurrent")),
             )
         )

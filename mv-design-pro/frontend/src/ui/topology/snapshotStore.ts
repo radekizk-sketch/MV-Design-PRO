@@ -42,6 +42,16 @@ import { getOperationSuccessMessage } from './operationSuccessMessages';
 // State
 // ---------------------------------------------------------------------------
 
+/**
+ * Opcje wywołania operacji domenowej. `komunikatSukcesuPl` zastępuje komunikat centralny
+ * (`operationSuccessMessages`) zdaniem, które wie więcej o skutku (np. nazwa przypisanego
+ * typu). Toast sukcesu jest JEDEN i pochodzi wyłącznie z magazynu — wywołujący nie
+ * zgłaszają sukcesu sami (dawniej: dwa toasty po każdej takiej akcji).
+ */
+export interface OpcjeOperacjiDomenowej {
+  readonly komunikatSukcesuPl?: string;
+}
+
 export interface SnapshotState {
   /** Case currently owning the in-memory ENM snapshot. */
   caseId: string | null;
@@ -94,6 +104,7 @@ export interface SnapshotState {
     caseId: string,
     opName: string,
     payload: Record<string, unknown>,
+    opcje?: OpcjeOperacjiDomenowej,
   ) => Promise<DomainOpResponseV1 | null>;
   /** Refresh snapshot from backend without mutation (calls refresh_snapshot op). */
   refreshFromBackend: (caseId: string) => Promise<DomainOpResponseV1 | null>;
@@ -399,7 +410,8 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   executeDomainOperation: async (
     caseId: string,
     opName: string,
-      payload: Record<string, unknown>,
+    payload: Record<string, unknown>,
+    opcje?: OpcjeOperacjiDomenowej,
   ) => {
     set({ caseId, loading: true, error: null, errorCode: null });
     try {
@@ -446,7 +458,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       // Centralny toast sukcesu — jeden punkt dla WSZYSTKICH operacji domenowych
       // (kryt. #2: każda akcja ma feedback sukcesu). Operacje ciche (refresh/undo)
       // pomijane przez getOperationSuccessMessage.
-      const successMessage = getOperationSuccessMessage(opName);
+      const successMessage = opcje?.komunikatSukcesuPl ?? getOperationSuccessMessage(opName);
       if (successMessage) {
         notify(successMessage, 'success');
       }

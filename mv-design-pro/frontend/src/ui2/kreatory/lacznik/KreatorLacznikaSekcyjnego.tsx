@@ -12,6 +12,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { fetchMvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
+import { punktyPodzialu } from '../../../ui/shared/stanLacznika';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   KreatorGotowosc,
@@ -32,6 +33,7 @@ import {
 } from '../rama';
 import {
   DANE_DOMYSLNE,
+  etykietaPozycji,
   fmtPct01,
   maOdcinek,
   walidujFormularz,
@@ -66,6 +68,7 @@ export function KreatorLacznikaSekcyjnego() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
@@ -76,6 +79,13 @@ export function KreatorLacznikaSekcyjnego() {
   const [bledy, setBledy] = useState<BladPola[]>([]);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('aparat');
+
+  // Dotychczasowe punkty podziału — kandydaci `close_ref`, gdy nowy łącznik ma być otwarty.
+  // Które z nich należą do pierścienia nowego łącznika, rozstrzyga backend.
+  const opcjeZamkniecia = useMemo(
+    () => punktyPodzialu(snapshot).map((l) => ({ id: l.ref_id, etykieta: l.name || l.ref_id })),
+    [snapshot],
+  );
 
   const [typy, setTypy] = useState<MVApparatusCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -165,7 +175,7 @@ export function KreatorLacznikaSekcyjnego() {
     {
       etykieta: T.wierszStan,
       stan: dane.normal_state === 'open' ? 'ostrzezenie' : 'kompletne',
-      wartosc: dane.normal_state === 'open' ? 'Otwarty (NOP)' : 'Zamknięty',
+      wartosc: etykietaPozycji(dane.normal_state),
     },
     { etykieta: T.wierszPolozenie, stan: 'kompletne', wartosc: fmtPct01(dane.polozenie) },
   ];
@@ -270,8 +280,18 @@ export function KreatorLacznikaSekcyjnego() {
               wartosc={dane.normal_state}
               onZmiana={(v) => zmien('normal_state', v as NormalState)}
               opcje={T.stanOpcje}
+              pomoc={T.stanPomoc}
               testid="mvd-kreator-lacznik-stan"
             />
+            {dane.normal_state === 'open' && opcjeZamkniecia.length > 0 ? (
+              <PoleWyboru
+                etykieta={T.zamknijPoprzedni}
+                wartosc={dane.close_ref ?? ''}
+                onZmiana={(v) => zmien('close_ref', v || null)}
+                opcje={[{ id: '', etykieta: T.zamknijPoprzedniAutomatycznie }, ...opcjeZamkniecia]}
+                testid="mvd-kreator-lacznik-close-wybor"
+              />
+            ) : null}
             <PoleLiczbowe
               etykieta={T.polozenie}
               wartosc={dane.polozenie}
@@ -306,7 +326,7 @@ export function KreatorLacznikaSekcyjnego() {
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
           <KreatorSiatka kolumny={2}>
             <RzadWartosci etykieta={T.wierszOdcinek} wartosc={kontekst.segment_label || '—'} />
-            <RzadWartosci etykieta={T.wierszStan} wartosc={dane.normal_state === 'open' ? 'Otwarty (NOP)' : 'Zamknięty'} />
+            <RzadWartosci etykieta={T.wierszStan} wartosc={etykietaPozycji(dane.normal_state)} />
             <RzadWartosci etykieta={T.wierszPolozenie} wartosc={fmtPct01(dane.polozenie)} />
             <RzadWartosci etykieta={T.rodzaj} wartosc={dane.switch_type} />
           </KreatorSiatka>

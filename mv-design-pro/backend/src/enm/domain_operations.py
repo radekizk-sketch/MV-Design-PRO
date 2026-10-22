@@ -75,7 +75,12 @@ from .migrations.promocja_aparatow_nn import (
     META_KLUCZ_NN_PROMOCJA_ODMOWA_WIAZANIA,
     ROLA_POLA_ZRODLA_NA_RODZAJ_GENERATORA,
 )
-from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, UKLADY_SIECI_NN, EnergyNetworkModel
+from .models import (
+    GEN_TYPES_PRZEKSZTALTNIKOWE,
+    UKLADY_SIECI_NN,
+    EnergyNetworkModel,
+    migruj_zapis_zastany_slownika,
+)
 from .nazwy_elementow import ODCINEK_BEZ_NAZWY
 from .odmowy_pakietow_danych import odmowa_braku_certyfikatu
 from .pola import (
@@ -121,7 +126,8 @@ from .slownik_komunikatow import (
     opis_pozycji_katalogu,
     pole,
 )
-from .topology import TYPY_LACZNIKOW_ENM
+from .stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
+from .topology import TYPY_LACZNIKOW_ENM, punkty_podzialu_korytarza
 from .topology_ops import (
     create_branch,
     create_device,
@@ -179,7 +185,6 @@ CANONICAL_OPS_V1 = frozenset(
         "connect_secondary_ring_sn",
         # POLA-W-TORZE: akcja naprawcza W042 — element z szyny głównej stacji na zacisk pola.
         "przepnij_element_na_pole",
-        "set_normal_open_point",
         "add_transformer_sn_nn",
         "assign_catalog_to_element",
         "update_element_parameters",
@@ -231,11 +236,19 @@ def _branch_point_public_label(branch_point: dict[str, Any]) -> str:
     )
 
 
-def _normalize_branch_point_switch_state(value: Any) -> str:
-    normalized = str(value or "").strip().lower()
-    if normalized in {"open", "otwarty", "normalnie_otwarty"}:
-        return "open"
-    return "closed"
+def _pozycja_normalna_portu(value: Any) -> tuple[str | None, bool]:
+    """W5-C: pozycja normalna łączników portów odgałęźnych z ładunku ``switch_state``.
+
+    Zwraca (pozycja, poprawna). Jawne ``"open"``/``"closed"`` → ta pozycja (i to samo
+    bieżące położenie łącznika); brak → ``None`` (łącznik zamknięty, pozycja normalna
+    niezadeklarowana). Dawny normalizator zamieniał KAŻDĄ inną wartość (także brak) na
+    „zamknięty" i zapisywał ją w drugiej kopii stanu (`BranchPointSN.switch_state`).
+    """
+    if value is None:
+        return None, True
+    if value in ("open", "closed"):
+        return str(value), True
+    return None, False
 
 
 def _branch_point_catalog_item(catalog_ref: str | None) -> dict[str, Any] | None:
@@ -421,31 +434,6 @@ def _remove_unreferenced_helper_topology_buses(enm: dict[str, Any]) -> dict[str,
         if not (isinstance(bus, dict) and bus.get("ref_id") in orphan_refs)
     ]
     return cleaned
-
-
-def _complete_catalog_branch_point_defaults(enm: dict[str, Any]) -> dict[str, Any]:
-    """Uzupełnij katalogowe domyślne stany łączników dla starszych snapshotów."""
-    source_branch_points = enm.get("branch_points")
-    if not isinstance(source_branch_points, list):
-        return _remove_unreferenced_helper_topology_buses(enm)
-
-    completed = enm
-    changed = False
-    for idx, bp in enumerate(source_branch_points):
-        if not isinstance(bp, dict):
-            continue
-        if bp.get("branch_point_type") not in {"zksn", "branch_pole"}:
-            continue
-        if not bp.get("catalog_ref") or bp.get("switch_state"):
-            continue
-        if not changed:
-            completed = kopia_graniczna_enm(enm)
-            changed = True
-        completed_branch_points = completed.get("branch_points", [])
-        completed_bp = completed_branch_points[idx]
-        completed_bp["switch_state"] = "closed"
-
-    return _remove_unreferenced_helper_topology_buses(completed)
 
 
 def _quantize_ratio(value: float, quantum: float = 1e-6) -> float:
@@ -1653,7 +1641,6 @@ def _ensure_line_run_for_corridor(
         "starting_port_ref": start_port,
         "segments": [],
         "stations": [],
-        "nop_station_ref": corridor.get("no_point_ref"),
         "parent_run_ref": corridor.get("parent_run_ref"),
         "branch_origin_station_ref": corridor.get("branch_origin_station_ref"),
     }
@@ -2174,16 +2161,6 @@ def _build_readiness(
                 }
             )
 
-        if bp_type == "zksn" and not bp.get("switch_state"):
-            blockers.append(
-                {
-                    "code": "branch_point.switch_state_missing",
-                    "message_pl": "ZKSN wymaga wskazania stanu normalnego łącznika.",
-                    "element_ref": bp_ref,
-                    "severity": "BLOKUJACE",
-                }
-            )
-
     # Domain-level check: switches/breakers without catalog_ref
     #
     # WYJATEK (naprawa regresji #472, karta CI-D): galaz nN z automigracji
@@ -2370,7 +2347,9 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
                 "corridor_ref": c.get("ref_id"),
                 "corridor_type": c.get("corridor_type", "radial"),
                 "segments": segments,
-                "no_point_ref": c.get("no_point_ref"),
+                # W5-C: punkty podziału magistrali wyprowadzane z `SwitchBranch.normal_state`
+                # (jedno źródło) — dawna kopia `Corridor.no_point_ref` jest skasowana.
+                "no_point_refs": list(punkty_podzialu_korytarza(enm, segments)),
                 "terminals": terminals,
                 "embedded_objects": sorted(embedded_objects, key=lambda x: x.get("object_id", "")),
             }
@@ -3414,7 +3393,7 @@ def _response(
     JEDNO miejsce dla całej klasy operacji zmieniających tabliczkę, liczbę jednostek albo
     typ wytwórcy, zamiast listy operacji, z której nowa operacja by wypadła.
     """
-    enm = _complete_catalog_branch_point_defaults(enm)
+    enm = _remove_unreferenced_helper_topology_buses(enm)
     enm = synchronizuj_dynamike_z_wiazan(enm)
     # KONTRAKT WYNIKU OPERACJI (karta #151): migawka, którą operacja chce oddać, musi być
     # zgodna z kontraktem ENM — to JEDYNY punkt, przez który przechodzi każdy sukces
@@ -4728,7 +4707,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "name": "Magistrala 01",
             "corridor_type": "radial",
             "ordered_segment_refs": [],
-            "no_point_ref": None,
             "tags": [],
             "meta": {},
         }
@@ -7984,7 +7962,13 @@ def _insert_branch_point_on_segment_sn(
         branch_ports_count=branch_ports_count,
     )
 
-    switch_state = _normalize_branch_point_switch_state(payload.get("switch_state"))
+    pozycja_normalna, pozycja_poprawna = _pozycja_normalna_portu(payload.get("switch_state"))
+    if not pozycja_poprawna:
+        return _error_response(
+            f"Pole {pole('switch_state')} przyjmuje wyłącznie pozycję "
+            "otwartą albo zamkniętą łączników portów odgałęźnych.",
+            "branch_point.switch_state_invalid",
+        )
     insert_at = payload.get("insert_at", {"mode": "RATIO", "value": 0.5})
     length_km = float(segment.get("length_km", 0.0))
     ratio = float(insert_at.get("value", 0.5))
@@ -8139,7 +8123,6 @@ def _insert_branch_point_on_segment_sn(
         branch_port_bus_refs.append(port_bus)
 
         connector_ref = _make_id("bp", seed, f"branch_connector_{idx + 1}")
-        connector_status = "open" if switch_state == "open" else "closed"
         connector_res = create_branch(
             new_enm,
             {
@@ -8148,7 +8131,11 @@ def _insert_branch_point_on_segment_sn(
                 "type": "switch",
                 "from_bus_ref": bp_bus_ref,
                 "to_bus_ref": port_bus,
-                "status": connector_status,
+                # W5-C: jedyny zapis stanu łącznika portu — bieżące położenie i pozycja
+                # normalna na gałęzi łącznika (dawna kopia `BranchPointSN.switch_state`
+                # skasowana).
+                "status": pozycja_normalna or "closed",
+                "normal_state": pozycja_normalna,
                 "r_ohm": 0.0,
                 "x_ohm": 0.0,
                 "tags": ["branch_point_internal_connector"],
@@ -8190,7 +8177,6 @@ def _insert_branch_point_on_segment_sn(
                 "BRANCH": branch_port_bus_refs,
             },
             "branch_occupied": {},
-            "switch_state": switch_state,
             "materialized_params": materialized_params,
             "completeness_status": completeness,
             "runtime_inputs": {
@@ -8198,7 +8184,6 @@ def _insert_branch_point_on_segment_sn(
                 "name": payload.get("name"),
                 "branch_ports_count": branch_ports_count,
                 "insert_at": insert_at,
-                "switch_state": switch_state,
                 "source_segment_id": segment_id,
                 "main_segment_refs": main_segment_refs,
                 "source_run_ref": source_run_ref,
@@ -8615,7 +8600,20 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     segment_id = payload.get("segment_id")
     insert_at = payload.get("insert_at", {"mode": "RATIO", "value": 0.5})
     switch_type = payload.get("switch_type", "ROZLACZNIK")
-    normal_state = payload.get("normal_state", "closed")
+    # W5-C: pozycja normalna łącznika sekcyjnego — wyłącznie jawna. „closed" ustawia
+    # `normal_state` i `status`; brak = łącznik zamknięty bez pozycji normalnej (dawny
+    # domyślny „closed" deklarował pozycję, której projektant nie podał). „open" = łącznik
+    # staje się punktem podziału JEDYNĄ regułą punktu podziału (`set_normal_open_point` na
+    # migawce po wstawieniu): poprzedni punkt podziału tego samego pierścienia zostaje
+    # zamknięty w tej samej operacji, niejednoznaczność rozstrzyga `close_ref` — inaczej
+    # wstawienie dawało pierścień z dwoma punktami podziału (wyspa między nimi).
+    normal_state = payload.get("normal_state")
+    if normal_state is not None and normal_state not in ("closed", "open"):
+        return _error_response(
+            f"Pole {pole('normal_state', 'insert_section_switch_sn')} przyjmuje wyłącznie "
+            "pozycję otwartą albo zamkniętą.",
+            "switch.normal_state_invalid",
+        )
 
     if not segment_id:
         return _error_response(
@@ -8747,22 +8745,9 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     new_enm = result.enm
     created.append(seg_left_id)
 
-    # Switch branch
+    # Łącznik leży między dwoma węzłami pomocniczymi (dawne pierwsze wywołanie
+    # `create_branch` z tym samym węzłem po obu stronach było martwe — wynik nadpisywano).
     sw_type = "breaker" if switch_type == "WYLACZNIK" else "switch"
-    result = create_branch(
-        new_enm,
-        {
-            "ref_id": switch_ref,
-            "name": nazwa_nadana(payload.get("switch_name")) or "Łącznik sekcyjny",
-            "type": sw_type,
-            "from_bus_ref": switch_bus_ref,
-            "to_bus_ref": switch_bus_ref,
-            "status": normal_state,
-        },
-    )
-    # Note: switch connecting same bus is a conceptual model
-    # Actually switch connects between two adjacent nodes
-    # Let's create another bus
     switch_bus2_ref = f"bus/{seed}/switch_node_2"
     result = create_node(
         new_enm,
@@ -8781,14 +8766,14 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     new_enm = result.enm
     created.append(switch_bus2_ref)
 
-    # Redo: switch between two buses
     switch_data: dict[str, Any] = {
         "ref_id": switch_ref,
         "name": nazwa_nadana(payload.get("switch_name")) or "Łącznik sekcyjny",
         "type": sw_type,
         "from_bus_ref": switch_bus_ref,
         "to_bus_ref": switch_bus2_ref,
-        "status": normal_state,
+        "status": "closed" if normal_state == "open" else (normal_state or "closed"),
+        "normal_state": None if normal_state == "open" else normal_state,
         "catalog_ref": switch_catalog_ref,
         # Pozycja przeszła bramę katalogową powyżej — dopiero teraz wolno
         # zapisać tabliczkę i zadeklarować pochodzenie katalogowe.
@@ -8831,14 +8816,39 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
                     segments[idx_seg : idx_seg + 1] = [seg_left_id, switch_ref, seg_right_id]
                 break
 
-    return _response(
-        new_enm,
-        created=created,
-        deleted=deleted,
-        selection_id=switch_ref,
-        selection_type="switch",
-        events=events,
-    )
+    if normal_state != "open":
+        return _response(
+            new_enm,
+            created=created,
+            deleted=deleted,
+            selection_id=switch_ref,
+            selection_type="switch",
+            events=events,
+        )
+    # Import w funkcji: `operacje_lacznikow` importuje ten moduł (`_response`).
+    from .operacje_lacznikow import set_normal_open_point
+
+    ladunek_punktu: dict[str, Any] = {"switch_ref": switch_ref}
+    if payload.get("close_ref") is not None:
+        ladunek_punktu["close_ref"] = payload["close_ref"]
+    punkt = set_normal_open_point(new_enm, ladunek_punktu)
+    if punkt.get("error"):
+        return punkt  # odmowa reguły punktu podziału — model wejściowy bez zmian
+    punkt["changes"] = {
+        "created_element_ids": created,
+        "updated_element_ids": [
+            ref for ref in punkt["changes"]["updated_element_ids"] if ref != switch_ref
+        ],
+        "deleted_element_ids": deleted,
+    }
+    punkt["domain_events"] = [
+        *events,
+        *(
+            {**zdarzenie, "event_seq": len(events) + numer}
+            for numer, zdarzenie in enumerate(punkt["domain_events"], start=1)
+        ),
+    ]
+    return punkt
 
 
 # ---------------------------------------------------------------------------
@@ -9112,60 +9122,8 @@ def przepnij_element_na_pole(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
 
 # ---------------------------------------------------------------------------
-# 7. set_normal_open_point
+# 7. set_normal_open_point — przeniesione do `enm/operacje_lacznikow.py` (W5-C)
 # ---------------------------------------------------------------------------
-
-
-def set_normal_open_point(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Ustaw punkt normalnie otwarty (NOP)."""
-    switch_ref = payload.get("switch_ref") or payload.get("segment_ref")
-    corridor_ref = payload.get("corridor_ref")
-
-    if not switch_ref:
-        return _error_response(
-            f"Uzupełnij pole {pole('switch_ref', 'set_normal_open_point')} — wskaż łącznik, "
-            "który ma być punktem normalnie otwartym.",
-            "nop.switch_missing",
-        )
-
-    new_enm = kopia_graniczna_enm(enm)
-    updated = []
-    events = []
-    ev_seq = 0
-
-    # Find and open switch
-    found = False
-    for b in new_enm.get("branches", []):
-        if b.get("ref_id") == switch_ref:
-            b["status"] = "open"
-            found = True
-            updated.append(switch_ref)
-            break
-
-    if not found:
-        return _error_response(
-            "Wskazany łącznik nie istnieje w modelu sieci.", "nop.switch_not_found"
-        )
-
-    # Update corridor NOP
-    if corridor_ref:
-        for c in new_enm.get("corridors", []):
-            if c.get("ref_id") == corridor_ref:
-                c["no_point_ref"] = switch_ref
-                updated.append(corridor_ref)
-                break
-    else:
-        for c in new_enm.get("corridors", []):
-            c["no_point_ref"] = switch_ref
-            updated.append(c.get("ref_id", ""))
-            break
-
-    ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "NOP_SET", "element_id": switch_ref})
-
-    return _response(
-        new_enm, updated=updated, selection_id=switch_ref, selection_type="switch", events=events
-    )
 
 
 #: Pola WYMAGANE tabliczki transformatora (`enm.models.Transformer`: `sn_mva`,
@@ -9969,6 +9927,51 @@ def _zmien_parametry_pola(
     )
 
 
+def _blad_stanu_lacznika_w_parametrach(
+    enm: dict[str, Any], galaz: dict[str, Any], parameters: dict[str, Any]
+) -> dict[str, Any] | None:
+    """W5-C: stan łącznika ma JEDNĄ drogę zapisu — operacje kanoniczne.
+
+    Bieżące położenie łącznika (``status``) zmieniają wyłącznie ``open_switch`` /
+    ``close_switch``, punkt normalnie otwarty — wyłącznie ``set_normal_open_point`` (atomowo
+    z zamknięciem poprzedniego punktu podziału pierścienia). Korekta parametrów może jedynie
+    zadeklarować pozycję normalną „zamkniętą" albo zdjąć deklarację (``None``). ``normal_state``
+    istnieje tylko na łącznikach z pozycją normalną; ``status`` odcinka linii/kabla (gałąź
+    wyłączona z ruchu) zostaje zwykłym parametrem.
+    """
+    typ = galaz.get("type")
+    ref = str(galaz.get("ref_id") or "")
+    if "status" in parameters and typ in TYPY_LACZNIKOW_ENM:
+        return _error_response(
+            f"Stanu {opis_elementu(enm, ref, 'łącznika')} nie zmienia się korektą parametrów — "
+            "użyj operacji otwarcia albo zamknięcia łącznika.",
+            "switch.state_via_operation",
+        )
+    if "normal_state" not in parameters:
+        return None
+    if typ not in TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM:
+        return _error_response(
+            f"{opis_elementu(enm, ref, 'Element')} nie ma pozycji normalnej — mają ją wyłącznie "
+            "wyłączniki, rozłączniki, odłączniki i sprzęgła.",
+            "switch.normal_state_not_applicable",
+        )
+    wartosc = parameters["normal_state"]
+    if wartosc == "open":
+        return _error_response(
+            f"Punktu normalnie otwartego nie ustawia się korektą parametrów — użyj operacji "
+            f"ustawienia punktu podziału na {opis_elementu(enm, ref, 'łączniku')}, która "
+            "zamyka poprzedni punkt podziału pierścienia.",
+            "switch.state_via_operation",
+        )
+    if wartosc not in (None, "closed"):
+        return _error_response(
+            f"Pole {pole('normal_state', 'update_element_parameters')} przyjmuje wyłącznie "
+            "pozycję zamkniętą albo brak deklaracji.",
+            "switch.normal_state_invalid",
+        )
+    return None
+
+
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Aktualizuj parametry elementu."""
     odmowa = _odmowa_typu_ladunku(payload, "update_element_parameters", {"parameters": "slownik"})
@@ -10075,6 +10078,9 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "rating",
                 "insulation",
                 "screen_bonding",
+                # W5-C: pozycja normalna łącznika — kontrola wartości niżej (wyłącznie
+                # „zamknięta" albo zdjęcie deklaracji; punkt podziału = `set_normal_open_point`).
+                "normal_state",
                 "catalog_ref",
                 "parameter_source",
                 "overrides",
@@ -10118,7 +10124,6 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             },
             "branch_points": {
                 "name",
-                "switch_state",
                 "catalog_ref",
                 "catalog_namespace",
                 "catalog_version",
@@ -10245,6 +10250,10 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
         blad_slownika = _blad_slownikow_transformatora(parameters)
         if blad_slownika is not None:
             return blad_slownika
+    if coll == "branches":
+        blad_stanu = _blad_stanu_lacznika_w_parametrach(enm, current_element, parameters)
+        if blad_stanu is not None:
+            return blad_stanu
     if coll == "branches" and "screen_bonding" in parameters:
         proba = {"type": current_element.get("type")}
         blad_ekranu = _apply_screen_bonding(proba, {"screen_bonding": parameters["screen_bonding"]})
@@ -10434,9 +10443,6 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 corridor["ordered_segment_refs"] = [
                     seg for seg in ordered if seg not in deleted_branch_refs
                 ]
-            no_point_ref = corridor.get("no_point_ref")
-            if isinstance(no_point_ref, str) and no_point_ref in deleted_branch_refs:
-                corridor["no_point_ref"] = None
 
     # Pola, którym zniknęła szyna, aparat albo transformator: pole na skasowanej szynie znika
     # razem z nią, aparat/transformator skasowany wypada z `equipment_refs`, skasowany zacisk
@@ -11911,7 +11917,6 @@ _HANDLERS: dict[str, Any] = {
     "insert_section_switch_sn": insert_section_switch_sn,
     "connect_secondary_ring_sn": connect_secondary_ring_sn,
     "przepnij_element_na_pole": przepnij_element_na_pole,
-    "set_normal_open_point": set_normal_open_point,
     "add_transformer_sn_nn": add_transformer_sn_nn,
     "assign_catalog_to_element": assign_catalog_to_element,
     "update_element_parameters": update_element_parameters,
@@ -11953,6 +11958,10 @@ def execute_domain_operation(
             "Nieznana operacja — system nie obsługuje żądanej zmiany modelu sieci.",
             "dispatcher.unknown_operation",
         )
+
+    # Migracje zastanego zapisu (W5-A, W5-C) — TA SAMA lista co walidator modelu
+    # (`migruj_zapis_zastany_slownika`): handler i odpowiedź nie widzą kluczy skasowanych.
+    enm_dict = migruj_zapis_zastany_slownika(enm_dict)
 
     try:
         # W1: katalog operacji = statyczny + pozycje projektu z TEGO modelu (jeden

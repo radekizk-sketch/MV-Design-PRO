@@ -1,21 +1,27 @@
 /**
  * Model kreatora „Łącznik sekcyjny SN" (V12K-053, G-SEK).
  *
- * Wstawia łącznik na odcinku SN (dzieli odcinek na dwie sekcje). Stan normalny
- * (zamknięty/otwarty) steruje sekcjonowaniem i punktem normalnie otwartym (NOP) —
- * rozpływ mocy honoruje go realnie (otwarty łącznik = brak gałęzi, praca radialna).
+ * Wstawia łącznik na odcinku SN (dzieli odcinek na dwie sekcje). Pozycja normalna
+ * (zamknięta/otwarta/niezadeklarowana) steruje sekcjonowaniem i punktem normalnie otwartym
+ * (NOP) — rozpływ mocy honoruje go realnie (otwarty łącznik = brak gałęzi, praca radialna).
+ * Karta W5-C: „otwarta" = nowy punkt podziału JEDYNĄ regułą punktu podziału (backend
+ * zamyka poprzedni punkt tego pierścienia w tej samej operacji; przy kilku — `close_ref`);
+ * niezadeklarowana (domyślnie) = łącznik zamknięty bez deklaracji pozycji normalnej.
  * Katalog-first (APARAT_SN). Zapis = operacja domenowa `insert_section_switch_sn`.
  */
 
 import { normalizeCatalogBinding, normalizeSwitchState } from '../../../ui/network-build/forms/catalogPayload';
 
 export type SwitchType = 'ROZLACZNIK' | 'WYLACZNIK' | 'ODLACZNIK';
-export type NormalState = 'closed' | 'open';
+/** Pozycja normalna; `''` = niezadeklarowana (ładunek pomija `normal_state`). */
+export type NormalState = 'closed' | 'open' | '';
 
 export interface LacznikFormData {
   catalog_ref: string | null;
   switch_type: SwitchType;
   normal_state: NormalState;
+  /** Dotychczasowy punkt podziału do zamknięcia, gdy nowy łącznik jest otwarty (`close_ref`). */
+  close_ref: string | null;
   /** Położenie na odcinku 0..1 (RATIO). */
   polozenie: number;
   nazwa: string;
@@ -29,7 +35,8 @@ export interface BladPola {
 export const DANE_DOMYSLNE: LacznikFormData = {
   catalog_ref: null,
   switch_type: 'ROZLACZNIK',
-  normal_state: 'closed',
+  normal_state: '',
+  close_ref: null,
   polozenie: 0.5,
   nazwa: '',
 };
@@ -58,17 +65,27 @@ export function zbudujPayload(
   data: LacznikFormData,
   kontekst: KontekstLacznika,
 ): Record<string, unknown> {
+  const pozycjaNormalna = normalizeSwitchState(data.normal_state);
+  const closeRef = pozycjaNormalna === 'open' ? data.close_ref?.trim() : undefined;
   return {
     segment_id: kontekst.segment_id?.trim(),
     insert_at: { mode: 'RATIO', value: data.polozenie },
     switch_type: data.switch_type,
-    normal_state: normalizeSwitchState(data.normal_state),
+    ...(pozycjaNormalna ? { normal_state: pozycjaNormalna } : {}),
+    ...(closeRef ? { close_ref: closeRef } : {}),
     catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'APARAT_SN'),
     // Kontrakt operacji `insert_section_switch_sn`: nazwa łącznika to `switch_name` (backend
     // `enm/domain_operations.py`). Dawny klucz `name` backend pomijał — wpisana nazwa znikała
     // i łącznik dostawał nazwę domyślną (kontrolka-fantom).
     ...(data.nazwa.trim() ? { switch_name: data.nazwa.trim() } : {}),
   };
+}
+
+/** Etykieta pozycji normalnej w podsumowaniu kreatora. */
+export function etykietaPozycji(stan: NormalState): string {
+  if (stan === 'open') return 'Otwarty (NOP)';
+  if (stan === 'closed') return 'Zamknięty';
+  return 'Niezadeklarowana (zamknięty)';
 }
 
 export function fmtPct01(v: number): string {

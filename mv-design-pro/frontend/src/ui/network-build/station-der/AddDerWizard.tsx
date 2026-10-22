@@ -1171,19 +1171,24 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
     setIsUpdatingTransformer(true);
     try {
-      const response = await executeDomainOperation(effectiveCaseId, 'assign_catalog_to_element', {
-        element_ref: primaryStationTransformer.ref,
-        catalog_binding: {
-          catalog_namespace: 'TRAFO_SN_NN',
-          catalog_item_id: selectedUpgrade.id,
-          catalog_item_version: '2024.1',
+      // Jeden toast sukcesu — z magazynu, ze zdaniem nazywającym nowy wariant.
+      const response = await executeDomainOperation(
+        effectiveCaseId,
+        'assign_catalog_to_element',
+        {
+          element_ref: primaryStationTransformer.ref,
+          catalog_binding: {
+            catalog_namespace: 'TRAFO_SN_NN',
+            catalog_item_id: selectedUpgrade.id,
+            catalog_item_version: '2024.1',
+          },
         },
-      });
+        { komunikatSukcesuPl: `Zmieniono transformator stacji na ${selectedUpgrade.label_pl}.` },
+      );
       if (response?.error) {
         notify(response.error, 'error');
         return;
       }
-      notify(`Zmieniono transformator stacji na ${selectedUpgrade.label_pl}.`, 'success');
     } catch (error) {
       notify(
         error instanceof Error

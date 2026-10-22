@@ -45,6 +45,7 @@ import { GRID } from '../../core/grid';
 import type { StationMeasureInput } from '../../layout/measure';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
 import { zRekordamiAparatowPol } from './fixtures/rekordyAparatowPola';
+import { zPunktemPodzialuWStacji } from '../../../../../test/punktPodzialu';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -119,15 +120,10 @@ function withLongPolishName(model: EnergyNetworkModel, targetRef: string): Energ
   } as EnergyNetworkModel;
 }
 
-/** Wstrzyknięcie syntetycznego punktu NO na ciąg główny (wzorzec
- *  `enmWithSyntheticNop` z S3 — fixtura bazowa ma `nop_station_ref=null`). */
+/** Wstrzyknięcie punktu NO w pierwszej stacji ciągu głównego (wzorzec `enmWithSyntheticNop`
+ *  z S3; karta W5-C: pozycja normalna łącznika pola, nie kopia `LineRun.nop_station_ref`). */
 function withSyntheticNop(model: EnergyNetworkModel): EnergyNetworkModel {
-  const clone = structuredClone(model);
-  const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
-  if (!mainRun) throw new Error('fixtura bez main_trunk — nie da się wstrzyknąć NO');
-  const targetStationRef = buildSceneV3(model, 2).meta.mainTrunkStationIds[0];
-  (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
-  return clone;
+  return zPunktemPodzialuWStacji(model, buildSceneV3(model, 2).meta.mainTrunkStationIds[0]);
 }
 
 function stationHash(stationId: string): string {
