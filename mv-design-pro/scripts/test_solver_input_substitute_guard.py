@@ -1901,7 +1901,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zbiorow +2 (`wklady_pominiete` — addytywne pole wyniku SC z zestawieniem wkladow
     # pominietych na podstawie tolerancji numerycznej, `wklady_pominiete_json` — kolumna
     # artefaktu rozplywu), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4286." in wyjscie, wyjscie
+    # Karta PODSTAWA-Q (2026-10-22): 4286 -> 4287 — POMIAR `contract_fields()` na bazie karty
+    # `f121c5e79` (`git archive`: 4286, pin zgodny) i na drzewie karty (4287). Roznica zbiorow
+    # +1 (`skrot_pl` — krotka postac podstawy reguly krzywej zaniku μ/q w
+    # `PodstawaRegulyKrzywej`, tekst do dowodu SC3F i rejestru rownan; pozostale pola rekordu
+    # — `rodzaj_zrodla`, `norma`, `opis_pl` — juz byly w zbiorze), -0. PASS niezmieniony
+    # (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4287." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.

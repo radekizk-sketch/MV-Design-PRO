@@ -54,6 +54,12 @@ from typing import ClassVar
 
 from application.proof_engine.registries.ls_equations import LS_EQUATIONS
 from application.proof_engine.types import EquationDefinition, SymbolDefinition
+from network_model.solvers.machine_sc_iec60909 import (
+    NORMA_KRZYWYCH_ZANIKU,
+    REGULA_INTERPOLACJA,
+    UWAGA_WYDANIA_NORMY_KRZYWYCH,
+    podstawa_reguly,
+)
 
 # =============================================================================
 # SC3F IEC 60909 — Kanoniczne równania (BINDING)
@@ -426,15 +432,20 @@ EQ_SC3F_008a = EquationDefinition(
 )
 
 # --- Maszyny wirujące: prąd wyłączeniowy z zanikiem (IEC 60909-0:2016 rozdz. 9) ----
-# Karta MU-INTERPOLACJA: krzywe μ i q normy są podane w węzłach t_min = 0,02 / 0,05 / 0,10 /
-# ≥ 0,25 s; dla t_min pomiędzy węzłami norma dopuszcza interpolację liniową między krzywymi
+# Karta MU-INTERPOLACJA: krzywe μ (pkt 9.1.1, wzór (67), rys. 13) i q (pkt 9.1.2, wzór (69),
+# rys. 14) są podane w węzłach t_min = 0,02 / 0,05 / 0,10 / ≥ 0,25 s. Karta PODSTAWA-Q:
+# podstawa interpolacji pomiędzy węzłami NIE jest wspólna — dla μ pkt 9.1.1 dopuszcza ją wprost
 # („For other values of minimum time delay, linear interpolation between curves is
-# acceptable."). Liczy jedna funkcja solvera (`machine_sc_iec60909.slad_mu` / `slad_q`),
-# dowód czyta jej ślad.
+# acceptable."), pkt 9.1.2 dla q tego zezwolenia nie powtarza (interpretacja inżynierska).
+# Odwołania i podstawy czytane z jedynej tablicy solvera (`PODSTAWY_REGUL_KRZYWYCH`); liczy
+# jedna funkcja solvera (`machine_sc_iec60909.slad_mu` / `slad_q`), dowód czyta jej ślad.
 EQ_SC3F_011 = EquationDefinition(
     equation_id="EQ_SC3F_011",
     name_pl="Współczynnik zanikania μ (składowa AC) maszyny",
-    standard_ref="IEC 60909-0:2016 rozdz. 9 (krzywe μ w węzłach t_min, interpolacja liniowa)",
+    standard_ref=(
+        f"{NORMA_KRZYWYCH_ZANIKU['mu']} (krzywe μ w węzłach t_min; między węzłami "
+        f"{podstawa_reguly('mu', REGULA_INTERPOLACJA).skrot_pl})"
+    ),
     latex=(
         r"\mu_i = a_i + b_i \cdot e^{-c_i \cdot I_k''/I_r},\quad "
         r"\mu = \mu_1 + \frac{t_{min} - t_1}{t_2 - t_1}\left(\mu_2 - \mu_1\right)"
@@ -472,14 +483,19 @@ EQ_SC3F_011 = EquationDefinition(
     notes="μ = 1 dla I_k''/I_r ≤ 2 (z dala od generatora). Krzywe normy w węzłach t_min "
     "0.02 / 0.05 / 0.10 / ≥0.25 s (μ_i = a_i + b_i·e^(−c_i·I_k''/I_r), przycięte do [0; 1]); "
     "t_min w węźle → krzywa węzła, t_min pomiędzy węzłami t_1 < t_min < t_2 → interpolacja "
-    "liniowa wartości krzywych obu węzłów, t_min < 0.02 s → krzywa 0.02 s, t_min > 0.25 s → "
-    "krzywa 0.25 s. AUDIT: c NIE występuje.",
+    "liniowa wartości krzywych obu węzłów ("
+    + podstawa_reguly("mu", REGULA_INTERPOLACJA).opis_pl
+    + "), t_min < 0.02 s → krzywa 0.02 s (interpretacja inżynierska), t_min > 0.25 s → "
+    "krzywa 0.25 s. Wydanie: " + UWAGA_WYDANIA_NORMY_KRZYWYCH + ". AUDIT: c NIE występuje.",
 )
 
 EQ_SC3F_012 = EquationDefinition(
     equation_id="EQ_SC3F_012",
     name_pl="Współczynnik zanikania q maszyny asynchronicznej",
-    standard_ref="IEC 60909-0:2016 rozdz. 9 (krzywe q w węzłach t_min, interpolacja liniowa)",
+    standard_ref=(
+        f"{NORMA_KRZYWYCH_ZANIKU['q']} (krzywe q w węzłach t_min; między węzłami "
+        f"{podstawa_reguly('q', REGULA_INTERPOLACJA).skrot_pl})"
+    ),
     latex=(
         r"q_i = a_i + b_i \cdot \ln(m),\quad "
         r"q = q_1 + \frac{t_{min} - t_1}{t_2 - t_1}\left(q_2 - q_1\right)"
@@ -505,9 +521,12 @@ EQ_SC3F_012 = EquationDefinition(
         ),
     ),
     unit_derivation="— (bezwymiarowy)",
-    notes="q ∈ [0; 1]; krzywe normy w węzłach t_min z tą samą regułą węzeł / interpolacja "
-    "liniowa / zakres co μ. Dla maszyn synchronicznych q = 1 (brak dodatkowego zaniku). "
-    "AUDIT: c NIE występuje.",
+    notes="q ∈ [0; 1]; krzywe normy w węzłach t_min, ten sam algorytm węzeł / interpolacja "
+    "liniowa / zakres co μ, ale inna podstawa interpolacji: "
+    + podstawa_reguly("q", REGULA_INTERPOLACJA).opis_pl
+    + ". Dla maszyn synchronicznych q = 1 (brak dodatkowego zaniku). Wydanie: "
+    + UWAGA_WYDANIA_NORMY_KRZYWYCH
+    + ". AUDIT: c NIE występuje.",
 )
 
 EQ_SC3F_013 = EquationDefinition(

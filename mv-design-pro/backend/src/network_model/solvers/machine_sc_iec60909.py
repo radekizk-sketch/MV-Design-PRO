@@ -8,8 +8,10 @@ yields the correct initial symmetrical current I″k, peak ip, and thermal ith f
 network containing machines. What the frozen core does NOT do — and what this module
 adds — is the PER-MACHINE breakdown and the symmetrical BREAKING current i_b, which
 requires the machine-specific decay factors μ and, for asynchronous motors, q
-(IEC 60909-0:2016 rozdz. 9: krzywe węzłów t_min z interpolacją liniową pomiędzy węzłami,
-`slad_mu` / `slad_q`). It also applies the small-motor omission rule.
+(IEC 60909-0:2016 pkt 9.1.1 wzór (67) rys. 13 oraz pkt 9.1.2 wzór (69) rys. 14: krzywe węzłów
+t_min, między węzłami interpolacja liniowa po t_min — dla μ dopuszczona jawnie przez pkt 9.1.1,
+dla q interpretacja inżynierska, `podstawa_reguly`; `slad_mu` / `slad_q`). It also applies the
+small-motor omission rule.
 
 WHITE BOX: every partial current is derived from the Z-bus by superposition —
     I_partial,m = c · Z_mk / (Z_kk · Z_m)   (referred to the fault-bus current base)
@@ -25,6 +27,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Final, Literal
 
 from network_model.core.graph import NetworkGraph
 from network_model.core.impedancja_przejscia import (
@@ -50,27 +53,35 @@ from network_model.solvers.short_circuit_core import (
 _SQRT3 = math.sqrt(3.0)
 
 
-# ── Krzywe zaniku μ i q (IEC 60909-0:2016 rozdz. 9) ─────────────────────────────────────────
+# ── Krzywe zaniku μ i q (IEC 60909-0:2016 pkt 9.1.1 i 9.1.2) ────────────────────────────────
 #
-# Norma podaje krzywe μ (zanik składowej okresowej maszyny synchronicznej i asynchronicznej)
-# oraz q (dodatkowy zanik maszyny asynchronicznej) dla czterech wartości minimalnego czasu
-# zwłoki t_min: 0,02 / 0,05 / 0,10 / ≥ 0,25 s, i dla wartości pośrednich dopuszcza
-# interpolację liniową między krzywymi. Brzmienie normy przy krzywych μ (IEC 60909-0:2001
-# pkt 4.5.2.1, przeniesione do IEC 60909-0:2016 rozdz. 9 bez zmiany treści):
+# Norma podaje krzywe μ (zanik składowej okresowej maszyny synchronicznej i asynchronicznej;
+# pkt 9.1.1, wzór (67), rysunek 13) oraz q (dodatkowy zanik maszyny asynchronicznej; pkt 9.1.2,
+# wzór (69), rysunek 14) dla czterech wartości minimalnego czasu zwłoki t_min: 0,02 / 0,05 /
+# 0,10 / ≥ 0,25 s. Podstawa reguły pomiędzy węzłami NIE jest wspólna dla μ i q:
 #
-#     „The factor μ may also be obtained from Figure 16. For other values of minimum time
-#     delay, linear interpolation between curves is acceptable."
+#   μ — pkt 9.1.1 dopuszcza interpolację wprost: „For other values of minimum time delay, linear
+#       interpolation between curves is acceptable." (podstawa normowa, jawna);
+#   q — pkt 9.1.2 tego zezwolenia nie powtarza. Interpolacja liniowa po t_min między krzywymi
+#       sąsiednich węzłów rysunku 14 jest metodą numeryczną spójną z ich parametryzacją
+#       (te same węzły t_min, q ≤ 1), ale jest INTERPRETACJĄ INŻYNIERSKĄ, nie zapisem normy.
 #
-# Krzywe q mają w normie tę samą parametryzację węzłami t_min (rysunek krzywych q), więc
-# reguła węzeł / interpolacja / zakres jest wspólna dla μ i q (rozstrzygnięcie architekta,
-# karta MU-INTERPOLACJA §0 pkt 1). Interpoluje się WARTOŚCI krzywych obu sąsiednich węzłów
-# (już przyciętych do [0; 1], tak jak krzywe na rysunkach normy), nie współczynniki a, b, c:
+# Algorytm jest jeden dla obu wielkości (reguła węzeł / interpolacja / zakres, liczby bez zmian
+# od karty MU-INTERPOLACJA); podstawę każdej pary (wielkość, reguła) podaje JEDNA tablica
+# `PODSTAWY_REGUL_KRZYWYCH` — czyta ją ślad, wywód, dowód SC3F i rejestr równań. Interpoluje się
+# po t_min, nigdy po krotności prądu ani po mocy silnika; interpoluje się WARTOŚCI krzywych obu
+# sąsiednich węzłów (już przyciętych do [0; 1], tak jak krzywe na rysunkach normy), nie
+# współczynniki a, b, c:
 #
 #     X(t_min) = X(t₁) + (t_min − t₁)/(t₂ − t₁) · (X(t₂) − X(t₁)),   t₁ < t_min < t₂.
 #
-# Poza zakresem węzłów: t_min ≤ 0,02 s → krzywa 0,02 s; t_min ≥ 0,25 s → krzywa 0,25 s
-# (norma: „t_min ≥ 0,25 s"). W węźle wynik jest wartością krzywej węzła bez żadnej arytmetyki
-# interpolacji — bit w bit jak dawny wybór krzywej.
+# Poza zakresem węzłów: t_min ≥ 0,25 s → krzywa 0,25 s (norma: „t_min ≥ 0,25 s");
+# t_min < 0,02 s → krzywa 0,02 s (norma krzywych poniżej 0,02 s nie podaje — interpretacja
+# inżynierska). W węźle wynik jest wartością krzywej węzła bez żadnej arytmetyki interpolacji.
+#
+# Wydanie: brzmienie pkt 9.1.1 i 9.1.2 zweryfikowane przez właściciela w wydaniu 2016
+# (s. 53–55); `UWAGA_WYDANIA_NORMY_KRZYWYCH` i rejestr dostaw danych właściciela
+# (`docs/plan/DANE_WLASCICIELA_O59_2026-09.md`, pakiet P-N).
 
 #: Węzły krzywej μ = a + b·e^(−c·I″k/I_r): (t_min [s], (a, b, c)) — JEDYNA tablica krzywych μ
 #: w programie (solver liczy, dowód SC3F czyta ślad `SladKrzywejZaniku`).
@@ -102,8 +113,129 @@ REGULA_PONIZEJ_ZAKRESU = "PONIZEJ_ZAKRESU"
 #: t_min > 0,25 s — krzywa węzła 0,25 s (norma: „t_min ≥ 0,25 s").
 REGULA_POWYZEJ_ZAKRESU = "POWYZEJ_ZAKRESU"
 
-#: Odwołanie normowe kroków μ i q (ślad, wywód, dowód — jeden napis).
-NORMA_KRZYWYCH_ZANIKU = "IEC 60909-0:2016 rozdz. 9"
+#: Odwołanie normowe krzywych per wielkość (ślad, wywód, dowód SC3F, rejestr równań).
+NORMA_KRZYWYCH_ZANIKU: dict[str, str] = {
+    "mu": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
+    "q": "IEC 60909-0:2016 pkt 9.1.2, wzór (69), rys. 14",
+}
+
+#: Stan wydania normy krzywych — zapis źródła (rejestr: `DANE_WLASCICIELA_O59_2026-09.md` P-N).
+UWAGA_WYDANIA_NORMY_KRZYWYCH = (
+    "IEC 60909-0:2026 (wyd. 3.0) zastępuje 2016; brzmienie pkt 9.1.1/9.1.2 wyd. 2026 "
+    "niezweryfikowane"
+)
+
+#: Podstawa reguły (pole śladu `podstawa_reguly`) — słownik rodzajów źródła kontraktu werdyktu
+#: (§3c: `NORMA` / `ZALOZENIE_INZYNIERSKIE`): zapis normy albo jawne założenie inżynierskie.
+PODSTAWA_NORMA: Final = "NORMA"
+PODSTAWA_ZALOZENIE_INZYNIERSKIE: Final = "ZALOZENIE_INZYNIERSKIE"
+RodzajPodstawyKrzywej = Literal["NORMA", "ZALOZENIE_INZYNIERSKIE"]
+
+#: Cytat zezwolenia na interpolację krzywych μ (IEC 60909-0:2016 pkt 9.1.1, s. 53–55).
+CYTAT_INTERPOLACJI_MU = (
+    "For other values of minimum time delay, linear interpolation between curves is acceptable."
+)
+
+
+@dataclass(frozen=True)
+class PodstawaRegulyKrzywej:
+    """Podstawa jednej pary (wielkość, reguła) — JEDNO źródło tekstu podstawy.
+
+    ``rodzaj_zrodla`` — ``PODSTAWA_NORMA`` albo ``PODSTAWA_ZALOZENIE_INZYNIERSKIE`` (nazwa pola
+    jak w ``catalog.wartosci_robocze``: rodzaj źródła wartości, nie werdykt); ``norma`` —
+    punkt, wzór i rysunek wielkości; ``opis_pl`` — zdanie podstawy (ślad, wywód); ``skrot_pl`` —
+    ta sama podstawa krótko, bez znaków specjalnych LaTeX-a (dowód SC3F w ``\\text{}``,
+    rejestr równań).
+    """
+
+    rodzaj_zrodla: RodzajPodstawyKrzywej
+    norma: str
+    opis_pl: str
+    skrot_pl: str
+
+
+def _podstawy_regul() -> dict[tuple[str, str], PodstawaRegulyKrzywej]:
+    mu, q = NORMA_KRZYWYCH_ZANIKU["mu"], NORMA_KRZYWYCH_ZANIKU["q"]
+    ponizej = (
+        "interpretacja inżynierska: norma nie podaje krzywych dla t_min < 0,02 s, przyjęto "
+        "krzywą t_min = 0,02 s"
+    )
+    return {
+        ("mu", REGULA_WEZEL): PodstawaRegulyKrzywej(
+            PODSTAWA_NORMA,
+            mu,
+            f"wartość krzywej węzła t_min ({mu})",
+            "krzywa normy, IEC 60909-0:2016 pkt 9.1.1",
+        ),
+        ("mu", REGULA_POWYZEJ_ZAKRESU): PodstawaRegulyKrzywej(
+            PODSTAWA_NORMA,
+            mu,
+            f"krzywa normy dla t_min ≥ 0,25 s ({mu})",
+            "krzywa normy dla czasu zwłoki od 0,25 s, IEC 60909-0:2016 pkt 9.1.1",
+        ),
+        ("mu", REGULA_PONIZEJ_ZAKRESU): PodstawaRegulyKrzywej(
+            PODSTAWA_ZALOZENIE_INZYNIERSKIE,
+            mu,
+            f"{ponizej} ({mu})",
+            "interpretacja inżynierska: poniżej 0,02 s krzywa 0,02 s, IEC 60909-0:2016 pkt 9.1.1",
+        ),
+        ("mu", REGULA_INTERPOLACJA): PodstawaRegulyKrzywej(
+            PODSTAWA_NORMA,
+            mu,
+            "interpolacja liniowa między krzywymi μ dopuszczona jawnie przez IEC 60909-0:2016 "
+            f"pkt 9.1.1: „{CYTAT_INTERPOLACJI_MU}”",
+            "interpolacja liniowa między krzywymi dopuszczona przez IEC 60909-0:2016 pkt 9.1.1",
+        ),
+        ("mu", REGULA_BEZ_ZANIKU): PodstawaRegulyKrzywej(
+            PODSTAWA_NORMA,
+            mu,
+            f"μ = 1 przy każdym t_min dla I″k/I_r ≤ 2, zwarcie odległe od generatora ({mu})",
+            "zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1",
+        ),
+        ("q", REGULA_WEZEL): PodstawaRegulyKrzywej(
+            PODSTAWA_NORMA,
+            q,
+            f"wartość krzywej węzła t_min ({q})",
+            "krzywa normy, IEC 60909-0:2016 pkt 9.1.2",
+        ),
+        ("q", REGULA_POWYZEJ_ZAKRESU): PodstawaRegulyKrzywej(
+            PODSTAWA_NORMA,
+            q,
+            f"krzywa normy dla t_min ≥ 0,25 s ({q})",
+            "krzywa normy dla czasu zwłoki od 0,25 s, IEC 60909-0:2016 pkt 9.1.2",
+        ),
+        ("q", REGULA_PONIZEJ_ZAKRESU): PodstawaRegulyKrzywej(
+            PODSTAWA_ZALOZENIE_INZYNIERSKIE,
+            q,
+            f"{ponizej} ({q})",
+            "interpretacja inżynierska: poniżej 0,02 s krzywa 0,02 s, IEC 60909-0:2016 pkt 9.1.2",
+        ),
+        ("q", REGULA_INTERPOLACJA): PodstawaRegulyKrzywej(
+            PODSTAWA_ZALOZENIE_INZYNIERSKIE,
+            q,
+            "interpretacja inżynierska: IEC 60909-0:2016 pkt 9.1.2 nie przewiduje interpolacji "
+            "między krzywymi q; przyjęto interpolację liniową po t_min między krzywymi "
+            f"sąsiednich węzłów, spójną z krzywymi {q} (q ≤ 1)",
+            "interpolacja liniowa po czasie zwłoki: interpretacja inżynierska, IEC 60909-0:2016 "
+            "pkt 9.1.2 jej nie przewiduje",
+        ),
+        ("q", REGULA_BEZ_ZANIKU): PodstawaRegulyKrzywej(
+            PODSTAWA_ZALOZENIE_INZYNIERSKIE,
+            q,
+            f"interpretacja inżynierska: wzór (69) nie jest określony dla m ≤ 0 (ln m) — "
+            f"przyjęto q = 1, brak dodatkowego zaniku, zachowawczo dla I_b ({q})",
+            "interpretacja inżynierska: m niedodatnie, q = 1, IEC 60909-0:2016 pkt 9.1.2",
+        ),
+    }
+
+
+#: JEDNA tablica podstaw: (wielkość, reguła) → podstawa. Każda reguła × każda wielkość.
+PODSTAWY_REGUL_KRZYWYCH: dict[tuple[str, str], PodstawaRegulyKrzywej] = _podstawy_regul()
+
+
+def podstawa_reguly(wielkosc: str, regula: str) -> PodstawaRegulyKrzywej:
+    """Podstawa pary (wielkość, reguła) z jedynej tablicy `PODSTAWY_REGUL_KRZYWYCH`."""
+    return PODSTAWY_REGUL_KRZYWYCH[(wielkosc, regula)]
 
 
 @dataclass(frozen=True)
@@ -137,6 +269,10 @@ class SladKrzywejZaniku:
     ``regula`` — jedna z ``REGULA_*``. Dla reguł węzłowych (``WEZEL``, ``PONIZEJ_ZAKRESU``,
     ``POWYZEJ_ZAKRESU``) oba węzły są tym samym węzłem, a ``waga`` = 0; dla ``INTERPOLACJA``
     ``waga`` = (t_min − t₁)/(t₂ − t₁) ∈ (0; 1); dla ``BEZ_ZANIKU`` węzłów brak (``None``).
+
+    ``podstawa`` (karta PODSTAWA-Q) — WYPROWADZONA z pary (``wielkosc``, ``regula``) przez
+    `podstawa_reguly`, nie przechowywana osobno: status podstawy nie może rozjechać się z regułą,
+    która dała liczbę (predykaty parami).
     """
 
     wielkosc: str
@@ -148,13 +284,22 @@ class SladKrzywejZaniku:
     waga: float
     wynik: float
 
+    @property
+    def podstawa(self) -> PodstawaRegulyKrzywej:
+        return podstawa_reguly(self.wielkosc, self.regula)
+
     def to_dict(self) -> dict:
+        podstawa = self.podstawa
         return {
             "wielkosc": self.wielkosc,
-            "norma": NORMA_KRZYWYCH_ZANIKU,
+            "norma": podstawa.norma,
             "t_min_s": float(self.t_min_s),
             "argument": float(self.argument),
             "regula": self.regula,
+            # Karta PODSTAWA-Q (addytywnie): status i zdanie podstawy reguły — `NORMA` albo
+            # `ZALOZENIE_INZYNIERSKIE` (interpolacja q, krzywa 0,02 s poniżej zakresu, q przy m ≤ 0).
+            "podstawa_reguly": podstawa.rodzaj_zrodla,
+            "podstawa_reguly_pl": podstawa.opis_pl,
             "wezel_dolny": None if self.wezel_dolny is None else self.wezel_dolny.to_dict(),
             "wezel_gorny": None if self.wezel_gorny is None else self.wezel_gorny.to_dict(),
             "waga": float(self.waga),
@@ -186,7 +331,7 @@ def _slad_krzywej(
         # TB-WARTOSC-ROBOCZA); niefizyczna liczba tutaj to błąd wołającego, nie krzywa.
         raise ValueError(
             f"Minimalny czas zwłoki t_min = {t_min_s!r} s nie jest dodatnią liczbą skończoną — "
-            f"krzywej {wielkosc} ({NORMA_KRZYWYCH_ZANIKU}) nie da się wyznaczyć."
+            f"krzywej {wielkosc} ({NORMA_KRZYWYCH_ZANIKU[wielkosc]}) nie da się wyznaczyć."
         )
 
     def wezel(indeks: int) -> WezelKrzywejZaniku:
@@ -238,13 +383,13 @@ def _slad_krzywej(
 
 
 def slad_mu(ratio_ik_ir: float, t_min_s: float) -> SladKrzywejZaniku:
-    """Współczynnik zaniku μ składowej okresowej maszyny (IEC 60909-0:2016 rozdz. 9) ze śladem.
+    """Współczynnik zaniku μ składowej okresowej maszyny (IEC 60909-0:2016 pkt 9.1.1) ze śladem.
 
     ``ratio_ik_ir`` = I″k,m / I_r,m (oba prądy na zaciskach maszyny). μ = 1 dla krotności ≤ 2
     przy każdym t_min (zwarcie odległe od generatora). W przeciwnym razie μ z krzywych
     μ = a + b·e^(−c·I″k/I_r) węzłów t_min = 0,02 / 0,05 / 0,10 / ≥ 0,25 s; dla t_min pomiędzy
-    węzłami — interpolacja liniowa wartości krzywych obu sąsiednich węzłów (norma: „For other
-    values of minimum time delay, linear interpolation between curves is acceptable.").
+    węzłami — interpolacja liniowa wartości krzywych obu sąsiednich węzłów, dopuszczona jawnie
+    przez pkt 9.1.1 (`CYTAT_INTERPOLACJI_MU`).
 
     ``t_min_s`` — t_b punktu zwarcia z pochodzeniem rozstrzygniętym poza rdzeniem (karta
     TB-WARTOSC-ROBOCZA: scenariusz projektanta, najkrótszy czas wyłączenia pól lokalnych albo
@@ -271,9 +416,12 @@ def slad_mu(ratio_ik_ir: float, t_min_s: float) -> SladKrzywejZaniku:
 
 
 def slad_q(p_per_pole_mw: float, t_min_s: float) -> SladKrzywejZaniku:
-    """Dodatkowy współczynnik zaniku q maszyny asynchronicznej (IEC 60909-0:2016 rozdz. 9)
-    ze śladem. m = moc czynna na parę biegunów [MW]; krzywe q = a + b·ln m węzłów t_min,
-    ta sama reguła węzeł / interpolacja / zakres co μ; q ∈ [0; 1]. m ≤ 0 → q = 1.
+    """Dodatkowy współczynnik zaniku q maszyny asynchronicznej (IEC 60909-0:2016 pkt 9.1.2,
+    wzór (69), rys. 14) ze śladem. m = moc czynna na parę biegunów [MW]; krzywe q = a + b·ln m
+    węzłów t_min; q ∈ [0; 1]. Algorytm węzeł / interpolacja / zakres ten sam co dla μ, ale
+    podstawa interpolacji jest inna: pkt 9.1.2 nie przewiduje interpolacji między krzywymi q,
+    więc wynik pomiędzy węzłami stoi na interpretacji inżynierskiej (`podstawa_reguly`).
+    m ≤ 0 → q = 1 (wzór (69) nie jest tam określony — także interpretacja inżynierska).
     """
     if p_per_pole_mw <= 0.0:
         return SladKrzywejZaniku(
@@ -296,12 +444,12 @@ def slad_q(p_per_pole_mw: float, t_min_s: float) -> SladKrzywejZaniku:
 
 
 def mu_factor(ratio_ik_ir: float, t_min_s: float) -> float:
-    """μ (IEC 60909-0:2016 rozdz. 9) — wartość ze śladu `slad_mu`."""
+    """μ (IEC 60909-0:2016 pkt 9.1.1) — wartość ze śladu `slad_mu`."""
     return slad_mu(ratio_ik_ir, t_min_s).wynik
 
 
 def q_factor(p_per_pole_mw: float, t_min_s: float) -> float:
-    """q (IEC 60909-0:2016 rozdz. 9) — wartość ze śladu `slad_q`."""
+    """q (IEC 60909-0:2016 pkt 9.1.2) — wartość ze śladu `slad_q`."""
     return slad_q(p_per_pole_mw, t_min_s).wynik
 
 
@@ -335,6 +483,8 @@ def kroki_krzywej_zaniku(slad: SladKrzywejZaniku) -> tuple[dict, ...]:
 
     Węzeł: jeden krok (krzywa węzła z podstawieniem). Interpolacja: krzywa węzła dolnego,
     krzywa węzła górnego i krok interpolacji z wagą. ``BEZ_ZANIKU``: jeden krok bez krzywej.
+    Odwołanie normy i podstawa reguły pochodzą wyłącznie z `slad.podstawa` (jedna tablica):
+    interpolacja μ cytuje zezwolenie pkt 9.1.1, interpolacja q mówi „interpretacja inżynierska".
     """
     nazwa = (
         "Współczynnik zaniku μ"
@@ -343,20 +493,21 @@ def kroki_krzywej_zaniku(slad: SladKrzywejZaniku) -> tuple[dict, ...]:
     )
     symbol = r"\mu" if slad.wielkosc == "mu" else "q"
     znak = "μ" if slad.wielkosc == "mu" else "q"
+    podstawa = slad.podstawa
     if slad.regula == REGULA_BEZ_ZANIKU:
         if slad.wielkosc == "mu":
             return (
                 {
                     "tekst": (
                         "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 "
-                        f"(zwarcie odległe od generatora, {NORMA_KRZYWYCH_ZANIKU})"
+                        f"(zwarcie odległe od generatora, {podstawa.norma})"
                     ),
                     "latex": r"\mu = 1{,}0 \quad (I''_k/I_r \le 2)",
                 },
             )
         return (
             {
-                "tekst": f"Brak mocy na parę biegunów → q = 1 ({NORMA_KRZYWYCH_ZANIKU})",
+                "tekst": f"Brak mocy na parę biegunów → q = 1 ({podstawa.opis_pl})",
                 "latex": r"q = 1{,}0",
             },
         )
@@ -380,12 +531,12 @@ def kroki_krzywej_zaniku(slad: SladKrzywejZaniku) -> tuple[dict, ...]:
                 f"{_t_pl(dolny.t_min_s)} s"
             ),
         }[slad.regula]
+        # Podstawa węzła normy = sam wzór i rysunek wielkości; poniżej zakresu — jawne założenie
+        # (zdanie podstawy niesie też odwołanie normy).
+        zrodlo = podstawa.norma if podstawa.rodzaj_zrodla == PODSTAWA_NORMA else podstawa.opis_pl
         return (
             {
-                "tekst": (
-                    f"{nazwa} ({zakres}, {argument}, {NORMA_KRZYWYCH_ZANIKU}): "
-                    f"{znak} = {slad.wynik:.3f}"
-                ),
+                "tekst": f"{nazwa} ({zakres}, {argument}, {zrodlo}): {znak} = {slad.wynik:.3f}",
                 "latex": _wzor_wezla_latex(slad, dolny, symbol),
             },
         )
@@ -395,14 +546,14 @@ def kroki_krzywej_zaniku(slad: SladKrzywejZaniku) -> tuple[dict, ...]:
     return (
         {
             "tekst": (
-                f"{nazwa} — krzywa normy węzła t_min = {t_1} s ({argument}): "
+                f"{nazwa} — krzywa normy węzła t_min = {t_1} s ({argument}, {podstawa.norma}): "
                 f"{znak}({t_1} s) = {dolny.wartosc:.3f}"
             ),
             "latex": _wzor_wezla_latex(slad, dolny, rf"{symbol}_{{{indeks_1}}}"),
         },
         {
             "tekst": (
-                f"{nazwa} — krzywa normy węzła t_min = {t_2} s ({argument}): "
+                f"{nazwa} — krzywa normy węzła t_min = {t_2} s ({argument}, {podstawa.norma}): "
                 f"{znak}({t_2} s) = {gorny.wartosc:.3f}"
             ),
             "latex": _wzor_wezla_latex(slad, gorny, rf"{symbol}_{{{indeks_2}}}"),
@@ -410,8 +561,7 @@ def kroki_krzywej_zaniku(slad: SladKrzywejZaniku) -> tuple[dict, ...]:
         {
             "tekst": (
                 f"{nazwa}: t_min = {_t_pl(slad.t_min_s)} s leży między krzywymi normy "
-                f"{t_1} s i {t_2} s — interpolacja liniowa wartości krzywych dopuszczona "
-                f"przez {NORMA_KRZYWYCH_ZANIKU}; waga = {slad.waga:.4f}, "
+                f"{t_1} s i {t_2} s — {podstawa.opis_pl}; waga = {slad.waga:.4f}, "
                 f"{znak} = {slad.wynik:.3f}"
             ),
             "latex": (
@@ -450,7 +600,7 @@ class MachinePartialContribution:
     # liczy krzywych drugi raz. `slad_q` = None dla maszyny synchronicznej (q = 1 bez krzywej).
     slad_mu: SladKrzywejZaniku
     slad_q: SladKrzywejZaniku | None
-    p_per_pole_mw: float = 0.0  # moc czynna na parę biegunów m (krzywa q, rozdz. 9; 0 dla sync)
+    p_per_pole_mw: float = 0.0  # moc czynna na parę biegunów m (krzywa q, pkt 9.1.2; 0 dla sync)
     # Karta SC-IB-ITH-ZRODLA: prąd początkowy maszyny NA JEJ ZACISKACH [A] (w poziomie napięcia
     # maszyny — podstawa krotności I″k/I_r krzywej μ; `ikss_partial_a` jest odniesiony do miejsca
     # zwarcia) oraz ΔU″/(c·U_n/√3) — spadek na reaktancji podprzejściowej maszyny odniesiony
@@ -487,7 +637,8 @@ class MachinePartialContribution:
 
 @dataclass(frozen=True)
 class MachineShortCircuitResult:
-    """Per-machine SC breakdown + decayed breaking current (μ, q: IEC 60909-0:2016 rozdz. 9)."""
+    """Per-machine SC breakdown + decayed breaking current (μ, q: IEC 60909-0:2016 pkt 9.1.1,
+    9.1.2)."""
 
     fault_node_id: str
     c_factor: float
@@ -757,7 +908,7 @@ def compute_machine_contributions(
         """Wkład jednej maszyny: prąd częściowy, krotność na zaciskach, μ, q, i_b, ΔU″.
 
         ``p_per_pole_mw`` — moc czynna na parę biegunów m (krzywa q, IEC 60909-0:2016
-        rozdz. 9); maszyna synchroniczna nie ma krzywej q (q = 1) i wołający podaje 0.
+        pkt 9.1.2); maszyna synchroniczna nie ma krzywej q (q = 1) i wołający podaje 0.
         """
         ip_a, i_zaciski_a, delta_u_wzgledne, detale = partial_a(m.node_id, m.z_internal_ohm)
         ir_a = float(m.ir_a)
@@ -767,7 +918,7 @@ def compute_machine_contributions(
             # w zapadce `solver_input_substitute_guard`, zdjęty kartą SC-IB-ITH-ZRODLA.
             raise ValueError(
                 f"{opis_rodzaju_i_nazwy('Maszyna', m.name)}: prąd znamionowy I_r = {ir_a!r} A nie jest "
-                "dodatni — krotności I″k/I_r krzywej μ (IEC 60909-0:2016 rozdz. 9) nie da się "
+                f"dodatni — krotności I″k/I_r krzywej μ ({NORMA_KRZYWYCH_ZANIKU['mu']}) nie da się "
                 "wyznaczyć; popraw moc i napięcie znamionowe maszyny."
             )
         ratio = i_zaciski_a / ir_a
@@ -828,7 +979,10 @@ def compute_machine_contributions(
     motors_negligible = bool(async_partial <= 0.05 * ikss_total_a) if ikss_total_a > 0 else True
 
     white_box = {
-        "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
+        "model": (
+            "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, "
+            "q — pkt 9.1.2)"
+        ),
         "fault_node_id": fault_node_id,
         "z_kk_ohm": {
             "re": (z_kk * builder.get_zbase_ohm(fault_node_id)).real,

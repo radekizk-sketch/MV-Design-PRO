@@ -23,10 +23,12 @@
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
-          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
           "argument": 6.68894608511,
           "regula": "WEZEL",
+          "podstawa_reguly": "NORMA",
+          "podstawa_reguly_pl": "wartość krzywej węzła t_min (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
           "wezel_dolny": {
             "t_min_s": 0.1,
             "wspolczynniki": [
@@ -68,7 +70,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
           },
           {
@@ -86,7 +88,7 @@
     "ib_machines_a": 453.558191949,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "z_kk_ohm": {
         "re": 0.0541396260155,
@@ -133,7 +135,7 @@
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
         "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
       },
       {
@@ -188,7 +190,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
           },
           {
@@ -284,10 +286,12 @@
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
-          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
           "argument": 6.24630331501,
           "regula": "WEZEL",
+          "podstawa_reguly": "NORMA",
+          "podstawa_reguly_pl": "wartość krzywej węzła t_min (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
           "wezel_dolny": {
             "t_min_s": 0.1,
             "wspolczynniki": [
@@ -329,7 +333,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 rozdz. 9): μ = 0.718",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
           },
           {
@@ -347,7 +351,7 @@
     "ib_machines_a": 58.8120087625,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "z_kk_ohm": {
         "re": 0.497750185093,
@@ -394,7 +398,7 @@
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 rozdz. 9): μ = 0.718",
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
         "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
       },
       {
@@ -449,7 +453,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.601}{0.096} = 6.25"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 rozdz. 9): μ = 0.718",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.718",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.25} = 0.718"
           },
           {
@@ -545,10 +549,12 @@
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
-          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
           "argument": 0.407575128501,
           "regula": "BEZ_ZANIKU",
+          "podstawa_reguly": "NORMA",
+          "podstawa_reguly_pl": "μ = 1 przy każdym t_min dla I″k/I_r ≤ 2, zwarcie odległe od generatora (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
           "wezel_dolny": null,
           "wezel_gorny": null,
           "waga": 0.0,
@@ -572,7 +578,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
           },
           {
-            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 rozdz. 9)",
+            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
             "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
           },
           {
@@ -590,7 +596,7 @@
     "ib_machines_a": 1470.71006347,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "z_kk_ohm": {
         "re": 0.00258532344552,
@@ -637,7 +643,7 @@
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
       },
       {
-        "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 rozdz. 9)",
+        "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
         "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
       },
       {
@@ -692,7 +698,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.039}{0.096} = 0.41"
           },
           {
-            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 rozdz. 9)",
+            "tekst": "Współczynnik zaniku: I″k/Ir ≤ 2 → μ = 1 (zwarcie odległe od generatora, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
             "latex": "\\mu = 1{,}0 \\quad (I''_k/I_r \\le 2)"
           },
           {
@@ -788,10 +794,12 @@
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
-          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
           "argument": 6.68894608511,
           "regula": "WEZEL",
+          "podstawa_reguly": "NORMA",
+          "podstawa_reguly_pl": "wartość krzywej węzła t_min (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
           "wezel_dolny": {
             "t_min_s": 0.1,
             "wspolczynniki": [
@@ -833,7 +841,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
           },
           {
@@ -851,7 +859,7 @@
     "ib_machines_a": 453.558191949,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "z_kk_ohm": {
         "re": 0.0541396260155,
@@ -898,7 +906,7 @@
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
         "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
       },
       {
@@ -953,7 +961,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.644}{0.096} = 6.69"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 rozdz. 9): μ = 0.705",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 6.69, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.705",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 6.69} = 0.705"
           },
           {
@@ -1049,10 +1057,12 @@
         "is_synchronous_machine": true,
         "slad_mu": {
           "wielkosc": "mu",
-          "norma": "IEC 60909-0:2016 rozdz. 9",
+          "norma": "IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13",
           "t_min_s": 0.1,
           "argument": 7.24892849456,
           "regula": "WEZEL",
+          "podstawa_reguly": "NORMA",
+          "podstawa_reguly_pl": "wartość krzywej węzła t_min (IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13)",
           "wezel_dolny": {
             "t_min_s": 0.1,
             "wspolczynniki": [
@@ -1094,7 +1104,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 rozdz. 9): μ = 0.691",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.691",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
           },
           {
@@ -1112,7 +1122,7 @@
     "ib_machines_a": 481.839586107,
     "motors_negligible": true,
     "white_box": {
-      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ, q — rozdz. 9)",
+      "model": "IEC 60909-0:2016 §6.6 — prądy częściowe maszyn + zanik (μ — pkt 9.1.1, q — pkt 9.1.2)",
       "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "z_kk_ohm": {
         "re": 0.75572550809,
@@ -1159,7 +1169,7 @@
         "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
       },
       {
-        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 rozdz. 9): μ = 0.691",
+        "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.691",
         "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
       },
       {
@@ -1214,7 +1224,7 @@
             "latex": "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{0.698}{0.096} = 7.25"
           },
           {
-            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 rozdz. 9): μ = 0.691",
+            "tekst": "Współczynnik zaniku μ (krzywa normy t_min = 0,10 s, I″k/Ir = 7.25, IEC 60909-0:2016 pkt 9.1.1, wzór (67), rys. 13): μ = 0.691",
             "latex": "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 7.25} = 0.691"
           },
           {

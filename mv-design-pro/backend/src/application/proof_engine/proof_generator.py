@@ -1996,17 +1996,19 @@ class ProofGenerator:
         """Podstawienie kroku μ albo q z śladu `SladKrzywejZaniku` (karta MU-INTERPOLACJA).
 
         Dowód NIE liczy krzywych: węzły, ich wartości, waga interpolacji i wynik pochodzą
-        z jednej funkcji solvera (`machine_sc_iec60909.slad_mu` / `slad_q`).
+        z jednej funkcji solvera (`machine_sc_iec60909.slad_mu` / `slad_q`). Podstawa reguły
+        (karta PODSTAWA-Q) też: `slad.podstawa.skrot_pl` z jedynej tablicy solvera — interpolacja
+        μ z zezwoleniem pkt 9.1.1, interpolacja q jako interpretacja inżynierska.
         """
         symbol = "\\mu" if slad.wielkosc == "mu" else "q"
         dolny, gorny = slad.wezel_dolny, slad.wezel_gorny
+        podstawa = f"\\text{{{slad.podstawa.skrot_pl}}}"
         if slad.regula == REGULA_BEZ_ZANIKU or dolny is None or gorny is None:
             if slad.wielkosc == "mu":
                 return (
-                    f"\\mu = 1 \\quad (I_k''/I_r = {slad.argument:.3f} \\leq 2,\\ "
-                    f"\\text{{z dala od generatora}})"
+                    f"\\mu = 1 \\quad (I_k''/I_r = {slad.argument:.3f} \\leq 2,\\ " f"{podstawa})"
                 )
-            return "q = 1 \\quad (m \\leq 0)"
+            return f"q = 1 \\quad (m \\leq 0,\\ {podstawa})"
         if slad.regula != REGULA_INTERPOLACJA:
             podstawienie = cls._podstawienie_wezla_krzywej(slad, dolny, symbol)
             if slad.regula == REGULA_PONIZEJ_ZAKRESU:
@@ -2021,7 +2023,7 @@ class ProofGenerator:
                     f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}}:\\ \\text{{krzywa }}"
                     f"{dolny.t_min_s:.2f}\\,\\mathrm{{s}})"
                 )
-            return podstawienie
+            return f"{podstawienie} \\quad ({podstawa})"
         s_1 = f"{symbol}_{{{dolny.t_min_s:.2f}}}"
         s_2 = f"{symbol}_{{{gorny.t_min_s:.2f}}}"
         return (
@@ -2031,7 +2033,7 @@ class ProofGenerator:
             f"{{{gorny.t_min_s:.2f} - {dolny.t_min_s:.2f}}} \\left({s_2} - {s_1}\\right)"
             f" = {dolny.wartosc:.4f} + {slad.waga:.4f} \\cdot "
             f"({gorny.wartosc:.4f} - {dolny.wartosc:.4f}) = {slad.wynik:.4f}"
-            f" \\quad (\\text{{interpolacja liniowa między krzywymi normy}})"
+            f" \\quad ({podstawa})"
         )
 
     @classmethod
@@ -2040,7 +2042,7 @@ class ProofGenerator:
         step_number: int,
         machine: MachinePartialContribution,
     ) -> ProofStep:
-        """Krok maszynowy: współczynnik zanikania μ (IEC 60909-0:2016 rozdz. 9) ze śladu."""
+        """Krok maszynowy: współczynnik zanikania μ (IEC 60909-0:2016 pkt 9.1.1) ze śladu."""
         mu = machine.mu
         equation = EQ_SC3F_011
         slad = machine.slad_mu
@@ -2079,7 +2081,8 @@ class ProofGenerator:
         slad: SladKrzywejZaniku,
     ) -> ProofStep:
         """Krok maszynowy: dodatkowy współczynnik zanikania q maszyny asynchronicznej
-        (IEC 60909-0:2016 rozdz. 9) ze śladu."""
+        (IEC 60909-0:2016 pkt 9.1.2) ze śladu; interpolacja pomiędzy węzłami t_min jest
+        interpretacją inżynierską (pkt 9.1.2 jej nie przewiduje) — mówi to podstawienie."""
         q = machine.q
         equation = EQ_SC3F_012
         return ProofStep(
