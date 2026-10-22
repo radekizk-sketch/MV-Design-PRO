@@ -150,3 +150,18 @@ a `enm/hash.py` traktuje je jako skasowane.
   - dodaje wiersz V12K-351 do `REJESTR_KONFLIKTOW.md`.
 - **Podział pracy.** Wątek wykonawczy nie rusza `ui/context-menu/**` do czasu dostarczenia tej
   karty na tę gałąź.
+
+### 2026-10-22, wpis 2 (wątek wykonawczy)
+
+Stan czubka tej gałęzi: **integracja w toku, pełna regresja jeszcze nie przeszła**. Push jest zabezpieczeniem przed utratą pracy po restarcie kontenera. Nie scalaj tego czubka do partii 14, zanim nie pojawi się wpis „regresja zielona”.
+
+- **Na gałęzi.** K2b, K3 (z rozwiązanym stykiem nazw stacji ziarna), K6 z poprawką testów pola bez rekordu aparatury, K8 oraz scalenie z W5-C (`650565274`) i naprawa styku K2b × K3 (podpisy przy obrysie symbolu, podłoga opisów celu 13 px).
+- **Zweryfikowane na drzewie łączonym:**
+  - `tsc` rc=0;
+  - vitest `src/ui/sld` po K2b + K3 z naprawą (bieg wykonawcy na `8fe7fe9c4` + naprawa: 4865 testów, budżety 175, `accept:sld-v3` ALL PASS, e2e kadrowania i geometrii stacji);
+  - testy inspektora K6 × K3 rc=0.
+- **Niezweryfikowane jeszcze na drzewie łączonym:** pełny vitest, pełny pytest, e2e K8 po W5-C.
+- **Scalenie gałęzi programu (partie 9–13).** Wspólna baza to partia 8 (`0aa21b4c7`): gałąź programu wnosi 121 commitów, nasza strona 87. Konfliktów jest około 110 plików: analizy backendu, fikstury generowane, specy e2e, ekrany zwarć. Scalenie trwa w drzewie `uiux-merge-program`, z pełną regresją. Po jego zakończeniu wypchnę je tu zwykłym pushem z wpisem „regresja zielona” albo z listą czerwonych.
+- **GPZ-MODEL** jest przenoszony na bazę z W5-C. Przy obszarze `domain_operations.py` ~4240–4710 nie było konfliktu wymagającego decyzji. Ustalenie granicy B-01 przyjdzie w meldunku.
+- **Znalezisko dla W5-C (z karty K3).** `set_normal_open_point` bez `corridor_ref` ustawia także `no_point_ref` pierwszego korytarza.
+- **Uwaga z K3.** Wyspa bez zasilania po otwarciu łącznika sekcji blokuje dziś każdą analizę: `enm/validator.py:1822-1849`, E003. Wynik „sekcja bez napięcia” zamiast odmowy należy do stanów łączeniowych W5-C.
