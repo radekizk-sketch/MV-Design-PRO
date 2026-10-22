@@ -347,7 +347,7 @@ pełny vitest 886 plików — `--no-file-parallelism` (pula wątków) 1 754 s, p
 Generatory fikstur: `backend/scripts/eksport_fixtur_harnessu.py` (`--sprawdz` porównuje bajtowo — na maszynie
 innej niż ta, na której fikstury powstały, zgłasza szum ostatnich cyfr; rozstrzygnięciem repo jest komparator
 z tolerancją `tests/ci/test_fixtury_harnessu.py`, a zmiana fikstury wymaga klasyfikacji treść/szum liść po
-liściu), migawka OpenAPI z generatora testu, substrat SLD skryptami `frontend/scripts/generate-sld-substrate-*.py`.
+liściu; kotwica w szumie jest rozstrzygana GRUPOWO dla fikstur jednego biegu — grupy z deklaracji `RUN_ID_*`/`_UUID_*` generatora, grupa zostaje z dysku tylko gdy każdy plik mieści się w tolerancji i relacja równości skrótów nieprzenośnych jest ta sama co w świeżej odpowiedzi; spójność pinuje `test_fixtury_harnessu.py`), migawka OpenAPI z generatora testu, substrat SLD skryptami `frontend/scripts/generate-sld-substrate-*.py`.
 
 ### H. Wyniki ostatnich testów i ich ograniczenia
 
