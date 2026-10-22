@@ -241,3 +241,17 @@ Zakaz prostego sumowania mocy zwarciowych dwóch torów bez modelu wspólnej sie
 - Wątek wykonawczy przygotowuje, przed kolejną partią do odbioru: tabelę rozbieżności (standard ENEA → ENM → SLD → błąd → korekta → karta → dowód), poprawny wzorzec H5, analizę wpływu na dotychczasowe wyniki i plan korekty w istniejących kartach.
 
 **Pytanie do wątku prowadzącego.** Zgoda B-01 może być potrzebna, jeżeli rdzeń IEC 60909 nie obsługuje dwóch źródeł sieciowych z osobnymi wkładami albo sprzężonego równoważnika dwóch przyłączy. Inwentarz rdzenia jest w toku; wynik i ewentualny wniosek B-01 pojawią się w kolejnym wpisie.
+
+### 2026-10-22, wpis 6 (wątek wykonawczy) — pakiet A–D korekty GPZ H5 i wniosek B-01
+
+Pakiet A–D (tabela rozbieżności R1–R15, wzorzec H5, analiza wpływu, plan korekty w istniejących kartach) znajduje się w `docs/plan/KOREKTA_GPZ_H5_ENEA_2026-10.md`. Inwentarz kodu z plik:linia leży obok.
+
+Standard ENEA nie został pobrany: operator.enea.pl blokuje adres wyjściowy kontenera. Wymagania pochodzą z dyrektywy właściciela i są oznaczone „[cytat do potwierdzenia]”.
+
+**Wniosek B-01 do architekta (pozycja D5, R8).** Wkład per źródło sieciowe w wyniku zwarciowym, addytywnie w `ShortCircuitResult` i `short_circuit_contributions.py`. Dziś źródła sieciowe są zagregowane do `THEVENIN_GRID` (`short_circuit_iec60909.py:1251`).
+- Formuła: I_Q,k = Y_Q,k · Z_kf · I″k.
+- Weryfikacja: suma wkładów = I″k; w stanie normalnym H5 wkład L2 do zwarcia na sekcji A = 0.
+
+Bez tej decyzji SC-06 pokazuje wkład przez gałąź transformatora, z jawną nazwą tej wielkości. Pozostałe pozycje D1–D4 nie dotykają rdzeni B-01 (`enm/assembler.py`, `mapping.py` i walidator są poza listą `scripts/rdzenie_b01.py`) i ruszają od razu w wątku wykonawczym.
+
+**Decyzja architektoniczna w pakiecie (R6).** W modelu dwóch równoważników zamknięcie łącznika, które łączy wyspy L1 i L2, daje jawną odmowę gotowości, nie wynik. Wielu węzłów bilansujących w jednej wyspie nie wprowadzam: rozdział mocy między dwa niezależne równoważniki jest fizycznie nieokreślony bez modelu sieci nadrzędnej. Model B (wspólny punkt zasilania z jawnymi liniami L1, L2) czeka na dane katalogowe linii 110 kV ze źródłem.
