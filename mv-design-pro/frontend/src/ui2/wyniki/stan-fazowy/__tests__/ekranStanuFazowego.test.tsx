@@ -23,6 +23,13 @@ import type {
   WynikiRozplywuNiesymetrycznego,
   WynikiStanuFazowego,
 } from '../api';
+import {
+  STAN_WYBORU_PUSTY,
+  aktywnyBiegRodziny,
+  poWyborze,
+  rodzinaAnalizy,
+  useKontekstWynikuStore,
+} from '../../kontekst/kontekstWyniku';
 import { EkranStanuFazowego } from '../EkranStanuFazowego';
 import {
   naPodsumowanieNiesymetrii,
@@ -30,7 +37,6 @@ import {
   naWierszeGaleziNiesymetrycznych,
   naWierszeSzynNiesymetrycznych,
   RODZAJE_PRZEBIEGOW_FAZOWYCH,
-  wybierzPrzebiegFazowy,
   zrodloPrzebiegu,
 } from '../stanFazowyModel';
 import { STAN_FAZOWY_STRINGS as T } from '../strings';
@@ -270,6 +276,7 @@ function ustawKompletnyKontekst() {
 beforeEach(() => {
   useAppStateStore.getState().reset();
   useExecutionRunsStore.getState().reset();
+  useKontekstWynikuStore.setState({ ...STAN_WYBORU_PUSTY, wyniki: {} });
   useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
   useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
 });
@@ -635,7 +642,9 @@ describe('EkranStanuFazowego — drugie źródło: rozpływ niesymetryczny (W5-D
 
   it('aktywny przebieg stanu fazowego wygrywa z nowszym rozpływem niesymetrycznym (wybór jawny operatora)', async () => {
     ustawKontekstRn();
-    useAppStateStore.getState().setActiveRun('run-ps-1');
+    // Karta K8: jawny wybór biegu rodziny „Stan fazowy" (pasek stanu, panel, ekran) —
+    // magazyn kontekstu wyniku; bez wyboru wygrywa najnowszy bieg rodziny (rozpływ niesym.).
+    useKontekstWynikuStore.getState().wybierzBieg('run-ps-1', 'pasek');
     mockFetchStanuFazowego({ run_id: 'run-ps-1', rows: [wierszFixture()] });
     render(<EkranStanuFazowego />);
     const blok = await screen.findByTestId('mvd-fazowy-stan-fazowy');
@@ -657,15 +666,7 @@ describe('EkranStanuFazowego — drugie źródło: rozpływ niesymetryczny (W5-D
 });
 
 describe('stanFazowyModel — czyste projekcje kontraktu', () => {
-  it('wybierzPrzebiegFazowy preferuje aktywny zakończony stan fazowy, inaczej najnowszy', () => {
-    const starszy = przebieg({ ...RUN_PS, id: 'run-ps-0', finished_at: '2026-07-19T11:00:00Z' });
-    expect(wybierzPrzebiegFazowy([RUN_LF], null)).toBeNull();
-    expect(wybierzPrzebiegFazowy([starszy, RUN_PS], null)?.id).toBe('run-ps-1');
-    expect(wybierzPrzebiegFazowy([starszy, RUN_PS], 'run-ps-0')?.id).toBe('run-ps-0');
-    expect(wybierzPrzebiegFazowy([starszy, RUN_PS], 'run-lf-1')?.id).toBe('run-ps-1');
-  });
-
-  it('W5-D: oba rodzaje przebiegów fazowych są źródłem; najnowszy z OBU wygrywa bez aktywnego', () => {
+  it('W5-D: oba rodzaje przebiegów fazowych są JEDNĄ rodziną magazynu kontekstu (najnowszy z OBU wygrywa bez wyboru)', () => {
     expect(RODZAJE_PRZEBIEGOW_FAZOWYCH).toEqual({
       stan_fazowy: 'PHASE_STATE_SN',
       rozplyw_niesymetryczny: 'PF_UNBALANCED',
@@ -673,11 +674,18 @@ describe('stanFazowyModel — czyste projekcje kontraktu', () => {
     expect(zrodloPrzebiegu(RUN_PS)).toBe('stan_fazowy');
     expect(zrodloPrzebiegu(RUN_RN)).toBe('rozplyw_niesymetryczny');
     expect(zrodloPrzebiegu(RUN_LF)).toBeNull();
-    expect(wybierzPrzebiegFazowy([RUN_PS, RUN_RN, RUN_LF], null)?.id).toBe('run-rn-1');
-    expect(wybierzPrzebiegFazowy([RUN_PS, RUN_RN, RUN_LF], 'run-ps-1')?.id).toBe('run-ps-1');
-    expect(wybierzPrzebiegFazowy([RUN_RN], null)?.id).toBe('run-rn-1');
+    // Słownik rodzajów ekranu i rodzina magazynu to ten sam zbiór (predykaty parami).
+    for (const rodzaj of Object.values(RODZAJE_PRZEBIEGOW_FAZOWYCH)) {
+      expect(rodzinaAnalizy(rodzaj)).toBe('fazowy');
+    }
+    expect(rodzinaAnalizy('LOAD_FLOW')).not.toBe('fazowy');
+    const stan = STAN_WYBORU_PUSTY;
+    expect(aktywnyBiegRodziny([RUN_PS, RUN_RN, RUN_LF], stan, 'fazowy')?.id).toBe('run-rn-1');
+    const wybrany = poWyborze(stan, [RUN_PS, RUN_RN, RUN_LF], 'run-ps-1', 'ekran');
+    expect(aktywnyBiegRodziny([RUN_PS, RUN_RN, RUN_LF], wybrany, 'fazowy')?.id).toBe('run-ps-1');
+    expect(aktywnyBiegRodziny([RUN_RN], stan, 'fazowy')?.id).toBe('run-rn-1');
     const niezakonczony = przebieg({ ...RUN_RN, id: 'run-rn-2', status: 'FAILED' });
-    expect(wybierzPrzebiegFazowy([niezakonczony], null)).toBeNull();
+    expect(aktywnyBiegRodziny([niezakonczony], stan, 'fazowy')).toBeNull();
   });
 
   it('projekcje rozpływu niesymetrycznego: kreska za brak, nigdy zgadywanie', () => {

@@ -2808,7 +2808,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles, effectiveLod],
   );
   // R2 (wym. 8): status ważności wyników KONSUMOWANY z nakładki (workspace
-  // przewierca ISTNIEJĄCY `activeCaseResultStatus` — zero równoległego trackera).
+  // liczy go predykatem świeżości biegu nakładki, karta K8 — zero równoległego trackera).
   // Nieaktualne ⇒ etykiety wyszarzone + baner „⚠ wyniki nieaktualne" (nie znikają).
   const resultsStale = resultLabelsVisible && overlay?.resultsStale === true;
   // R2 (wym. 14): rozwinięty agregat (klik) — stan LOKALNY renderu; scena nietknięta.
@@ -2834,6 +2834,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     if (p.analysisTypeLabel) parts.push(`Moduł: ${p.analysisTypeLabel}`);
     if (p.runId) parts.push(`Przebieg: ${p.runId}`);
     if (p.completedAtLabel) parts.push(`Czas ukończenia: ${p.completedAtLabel}`);
+    if (p.swiezoscLabel) parts.push(`Świeżość: ${p.swiezoscLabel}`);
     return parts.length > 0 ? parts.join(' · ') : undefined;
   }, [effectiveOverlay?.provenance]);
   // KD-11: PLAN ETYKIET dla bieżącej skali — jedna prawda o tym, co się rysuje
@@ -3746,6 +3747,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               data-analysis-type-label={prov.analysisTypeLabel}
               data-run-id={prov.runId}
               data-completed-at={prov.completedAtLabel}
+              data-rodzina={prov.rodzina}
+              data-swiezosc={prov.swiezosc}
             >
               <rect
                 x={badgeX}

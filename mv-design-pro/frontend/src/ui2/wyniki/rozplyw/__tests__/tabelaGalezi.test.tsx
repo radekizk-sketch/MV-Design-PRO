@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 
 // R3-A: klient walidacji energetycznej mockowany na granicy modułu (reuse
@@ -15,6 +15,9 @@ import { fetchWalidacjaEnergetyczna } from '../../jakosc/api';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { identyfikatorGrafu } from '../../../../ui/topology/identyfikatorGrafu';
+import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
   branchResultFixture,
   powerFlowResultFixture,
@@ -295,5 +298,37 @@ describe('TabelaGalezi — typElementuWiersza: klik NATYWNY na wierszu (karta TO
     fireEvent.click(screen.getByText('L-1'));
 
     expect(useSelectionStore.getState().selectedElement).toBeNull();
+  });
+});
+
+describe('TabelaGalezi — wiersz rozpływu z identyfikatorem GRAFU zaznacza element po ref modelu (karta K8)', () => {
+  // Realny kształt wyniku rozpływu: `branch_id` = `uuid5(NAMESPACE_DNS, ref_id)` (graf
+  // obliczeniowy), a schemat, nakładka i panel dolny znają element po `ref_id`.
+  const REF = 'seg/372f90192b1b61aa04e5347876a377f3/segment';
+  const UUID = identyfikatorGrafu(REF);
+
+  beforeEach(() => {
+    useSnapshotStore.setState({
+      snapshot: { branches: [{ ref_id: REF, id: 'galaz-1', name: 'Odcinek 1' }] } as unknown as EnergyNetworkModel,
+    } as never);
+    ustawWynik({ branch_results: [branchResultFixture({ branch_id: UUID })] });
+    mockedWalidacja.mockResolvedValue(
+      walidacjaResponseFixture([walidacjaItemFixture({ target_id: UUID, target_name: 'Odcinek 1' })]),
+    );
+  });
+
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null } as never);
+  });
+
+  it('klik natywny wiersza: zaznaczenie i wskazanie schematu niosą ref modelu, nie UUID grafu', async () => {
+    render(<TabelaGalezi {...props({ onWybierzWiersz: vi.fn() })} />);
+    await screen.findByText('92,0');
+
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+
+    const stan = useSelectionStore.getState();
+    expect(stan.selectedElement).toMatchObject({ id: REF, type: 'LineBranch', name: 'Odcinek 1' });
+    expect(stan.sldWskazanie?.ref).toBe(REF);
   });
 });

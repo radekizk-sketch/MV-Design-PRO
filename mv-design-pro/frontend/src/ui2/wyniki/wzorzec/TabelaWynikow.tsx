@@ -24,6 +24,9 @@
 import { useMemo, useRef, useEffect, useState, type KeyboardEvent } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useGlobalSelectionSync } from '../../../ui/selection';
+import { canonicalizeSelectedElement } from '../../../ui/shared/selectionResolution';
+import { refModeluElementu, useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { usePokazBiegEkranuNaSchemacie } from '../kontekst/kontekstWyniku';
 import type {
   DefinicjaKolumny,
   StanSortowania,
@@ -159,6 +162,9 @@ export function TabelaWynikow({
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
   const { selectFromResults } = useGlobalSelectionSync();
+  const snapshot = useSnapshotStore((stan) => stan.snapshot);
+  // Karta K8: wiersz ekranu pełnego niesie bieg ekranu — schemat przełącza się na niego.
+  const pokazBiegEkranu = usePokazBiegEkranuNaSchemacie();
   // D-2 (deep-link SLD → preselekcja wiersza): mapa klucz wiersza → węzeł DOM,
   // do przewinięcia widoku na wybrany wiersz. Ref (nie state) — nie wywołuje
   // dodatkowych renderów, wyłącznie odczyt w efekcie poniżej.
@@ -279,7 +285,20 @@ export function TabelaWynikow({
         // tylko tam, gdzie ta kolumna już jest czytelną nazwą — p. `wzorzecModel.ts`).
         const nazwa =
           nazwaElementuWiersza?.(rowKey) ?? (idKom ? String(idKom.wartosc) : rowKey);
-        selectFromResults(elementId, typ, nazwa);
+        // Karta K8 (predykaty parami): wiersz zaznacza element WYŁĄCZNIE wtedy, gdy
+        // przyjmie go ta sama kanonikalizacja, którą synchronizacja adresu odrzuca
+        // selekcję (`useUrlSelectionSync`). Wiersz szyny pomocniczej (zacisk końcowy
+        // odcinka — nienarysowany na schemacie) dotąd zaznaczał element, przełączał
+        // kontekst biegu i chwilę później tracił zaznaczenie bez słowa.
+        const cel = canonicalizeSelectedElement(snapshot, {
+          id: refModeluElementu(snapshot, elementId) ?? elementId,
+          type: typ,
+          name: nazwa,
+        });
+        if (cel) {
+          pokazBiegEkranu();
+          selectFromResults(elementId, typ, nazwa);
+        }
       }
     };
     return (

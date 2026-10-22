@@ -1,8 +1,8 @@
 /**
  * UI-02b JEDEN-INSPEKTOR — stan sekcji „z kanwy" prawego inspektora dla bieżącej selekcji.
  *
- * Wszystko liczone z bieżących magazynów (migawka modelu, nakładka wyników, status wyników
- * przypadku) i z kontekstu kliknięcia kanwy — nic nie jest kopiowane w chwili kliku, więc
+ * Wszystko liczone z bieżących magazynów (migawka modelu, wynik biegu OGLĄDANEGO z magazynu
+ * kontekstu wyniku — karta K8 — i jego świeżość z jednego predykatu) i z kontekstu kliknięcia kanwy — nic nie jest kopiowane w chwili kliku, więc
  * nowy wynik obliczeń albo zmiana modelu odświeża inspektor bez ponownego kliknięcia.
  */
 import { useCallback, useMemo } from 'react';
@@ -10,8 +10,11 @@ import { useCallback, useMemo } from 'react';
 import { useAppStateStore } from '../../app-state';
 import { useSelectionStore } from '../../selection/store';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useRawResultOverlayStore } from '../../sld-overlay/rawResultOverlayStore';
-import type { ResultStatus } from '../../types';
+import {
+  useNakladkaBieguOgladanego,
+  useSwiezoscBiegu,
+  type StanSwiezosciBiegu,
+} from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { buildSldDataFromSnapshot } from '../../sld/v2/canvas/enmToSldAdapter';
@@ -44,13 +47,19 @@ import {
 } from '../../sld/shared/kartaTechnicznaElementu';
 import { useKatalogiKarty } from './katalogiKarty';
 
+/** Bieg, z którego pochodzi sekcja „Wyniki" (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
+interface ZrodloWynikowElementu {
+  readonly runId: string | null;
+  readonly swiezosc: StanSwiezosciBiegu | null;
+}
+
 /** Stan sekcji „Wyniki": brak / nieaktualne / wartość — bez wartości zastępczych. */
 export type StanWynikowElementu =
-  | { readonly stan: 'brak'; readonly powodPl: string }
-  | {
+  | ({ readonly stan: 'brak'; readonly powodPl: string } & ZrodloWynikowElementu)
+  | ({
       readonly stan: 'wartosc' | 'nieaktualne';
       readonly metryki: NonNullable<DaneElementuKanwy['liveMetrics']>;
-    };
+    } & ZrodloWynikowElementu);
 
 export const POWOD_BRAK_PRZEBIEGU_PL =
   'Brak wyników obliczeń aktywnego przypadku. Uruchom obliczenia, aby zobaczyć wielkości elementu.';
@@ -58,17 +67,20 @@ export const POWOD_BRAK_WIELKOSCI_PL =
   'Wynik aktywnego przebiegu nie zawiera wielkości dla tego elementu.';
 
 /**
- * Stan wyników elementu. Nieaktualność z TEGO SAMEGO statusu przypadku, którym kanwa
- * bramkuje etykiety wyników (`activeCaseResultStatus === 'OUTDATED'` przy obecnym wyniku).
+ * Stan wyników elementu z biegu OGLĄDANEGO. Nieaktualność z TEGO SAMEGO predykatu
+ * świeżości biegu, którym kanwa bramkuje etykiety wyników (karta K8,
+ * `kontekstWyniku.swiezoscBiegu`).
  */
 export function stanWynikowElementu(
   maWynikPrzebiegu: boolean,
-  status: ResultStatus,
+  swiezosc: StanSwiezosciBiegu | null,
   metryki: DaneElementuKanwy['liveMetrics'],
+  runId: string | null = null,
 ): StanWynikowElementu {
-  if (!maWynikPrzebiegu) return { stan: 'brak', powodPl: POWOD_BRAK_PRZEBIEGU_PL };
-  if (!metryki || metryki.length === 0) return { stan: 'brak', powodPl: POWOD_BRAK_WIELKOSCI_PL };
-  return { stan: status === 'OUTDATED' ? 'nieaktualne' : 'wartosc', metryki };
+  const zrodlo = { runId: maWynikPrzebiegu ? runId : null, swiezosc: maWynikPrzebiegu ? swiezosc : null };
+  if (!maWynikPrzebiegu) return { stan: 'brak', powodPl: POWOD_BRAK_PRZEBIEGU_PL, ...zrodlo };
+  if (!metryki || metryki.length === 0) return { stan: 'brak', powodPl: POWOD_BRAK_WIELKOSCI_PL, ...zrodlo };
+  return { stan: swiezosc === 'nieaktualny' ? 'nieaktualne' : 'wartosc', metryki, ...zrodlo };
 }
 
 /**
@@ -132,7 +144,11 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
   const szkic = useKontekstElementuKanwy((state) => state.szkicDer);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
-  const payload = useRawResultOverlayStore((state) => state.payload);
+  // Karta K8: wynik z magazynu kontekstu wyniku (bieg oglądany) — ta sama pamięć
+  // `results/v1`, która karmi nakładkę schematu i panel dolny.
+  const nakladka = useNakladkaBieguOgladanego();
+  const payload = nakladka.payload;
+  const swiezoscBiegu = useSwiezoscBiegu(nakladka.bieg);
   const status = useAppStateStore((state) => state.activeCaseResultStatus);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
@@ -245,8 +261,9 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     // pod refem modelu tematu — ta sama funkcja odczytu nakładki.
     wyniki: stanWynikowElementu(
       payload != null,
-      status,
+      swiezoscBiegu?.stan ?? null,
       dane?.liveMetrics ?? (temat ? buildLiveMetrics(payload, null, temat.modelRef) : undefined),
+      nakladka.runId,
     ),
     szkicDer,
     daneSzkicuDer,

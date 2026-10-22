@@ -17,11 +17,11 @@
  *   w warstwie etykiet, dopóki trwa. Dzięki temu wyjście z trybu różnic
  *   przywraca poprzedni widok wyników bez ponownego pobierania.
  *
- * ŚWIEŻOŚĆ: nakładka NIE trzyma własnego znacznika aktualności. Kanwa czyta
- * status wyników przypadku (`activeCaseResultStatus`) — ten sam, którym
- * bramkuje wyniki pojedynczego przebiegu — więc edycja modelu unieważnia
- * różnice DOKŁADNIE tak samo jak każdy inny wynik. Równoległy tracker byłby
- * drugim źródłem prawdy o tym samym fakcie.
+ * ŚWIEŻOŚĆ: nakładka NIE trzyma własnego znacznika aktualności. Kanwa liczy ją
+ * JEDNYM predykatem świeżości biegu (karta K8, `ui2/wyniki/kontekst/kontekstWyniku
+ * .swiezoscBiegu`) dla OBU biegów pary — tym samym, którym bramkuje wynik
+ * pojedynczego przebiegu — więc edycja modelu unieważnia różnice DOKŁADNIE tak
+ * samo jak każdy inny wynik. Równoległy tracker byłby drugim źródłem prawdy.
  */
 
 import { create } from 'zustand';

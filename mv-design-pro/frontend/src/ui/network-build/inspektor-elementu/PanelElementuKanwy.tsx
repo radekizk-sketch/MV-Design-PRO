@@ -125,7 +125,7 @@ export function PasekDzialanElementu({
 
 export function SekcjaWynikowElementu({ wyniki }: { readonly wyniki: StanWynikowElementu }): JSX.Element {
   return (
-    <section data-testid="inspektor-wyniki" data-stan={wyniki.stan} aria-label="Wyniki elementu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
+    <section data-testid="inspektor-wyniki" data-stan={wyniki.stan} data-run-id={wyniki.runId ?? undefined} data-swiezosc={wyniki.swiezosc ?? undefined} aria-label="Wyniki elementu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
       <div className="flex items-center justify-between gap-2">
         <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Wyniki</h4>
         {wyniki.stan === 'nieaktualne' && (

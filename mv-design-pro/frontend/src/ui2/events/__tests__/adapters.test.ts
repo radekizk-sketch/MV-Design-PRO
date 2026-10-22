@@ -264,7 +264,7 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
 
   it('runStatus -> DONE dla znanego przebiegu -> dokladnie jedno zdarzenie wyniki-gotowe (runId, przypadekId z rekordu przebiegu)', () => {
     const runDobiegu = przebieg({ id: 'run-9', study_case_id: 'case-77', status: 'RUNNING' });
-    useExecutionRunsStore.setState({ runs: [runDobiegu], activeRunId: 'run-9', runStatus: 'RUNNING' });
+    useExecutionRunsStore.setState({ runs: [runDobiegu], sledzonyRunId: 'run-9', runStatus: 'RUNNING' });
 
     const wynikiGotowe = zbierzZdarzenia('wyniki-gotowe');
     try {
@@ -282,11 +282,11 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
 
   it('brak emisji bez zmiany — runStatus DONE ustawiony ponownie na ta sama wartosc', () => {
     const runDobiegu = przebieg({ id: 'run-1', study_case_id: 'case-1', status: 'DONE' });
-    useExecutionRunsStore.setState({ runs: [runDobiegu], activeRunId: 'run-1', runStatus: 'DONE' });
+    useExecutionRunsStore.setState({ runs: [runDobiegu], sledzonyRunId: 'run-1', runStatus: 'DONE' });
 
     const wynikiGotowe = zbierzZdarzenia('wyniki-gotowe');
     try {
-      useExecutionRunsStore.setState({ runs: [runDobiegu], activeRunId: 'run-1', runStatus: 'DONE' });
+      useExecutionRunsStore.setState({ runs: [runDobiegu], sledzonyRunId: 'run-1', runStatus: 'DONE' });
       expect(wynikiGotowe.odebrane).toEqual([]);
     } finally {
       wynikiGotowe.odsubskrybuj();
@@ -308,7 +308,7 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
     // `createAndExecuteRun` ustawia DONE ZANIM przeladuje liste przebiegow —
     // dla pierwszego biegu `runs` jest jeszcze puste. Warunkiem emisji jest STAN
     // („DONE, znany, nieogloszony"), nie przejscie statusu.
-    useExecutionRunsStore.setState({ runs: [], activeRunId: 'run-nowy', runStatus: 'RUNNING' });
+    useExecutionRunsStore.setState({ runs: [], sledzonyRunId: 'run-nowy', runStatus: 'RUNNING' });
     const wynikiGotowe = zbierzZdarzenia('wyniki-gotowe');
     try {
       useExecutionRunsStore.setState({ runStatus: 'DONE' });
@@ -334,7 +334,7 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
     const loadActiveCase = vi.fn(async () => {});
     useStudyCasesStore.setState({ projectId: 'projekt-1', loadActiveCase } as never);
     const runDobiegu = przebieg({ id: 'run-r2', study_case_id: 'case-r2', status: 'RUNNING' });
-    useExecutionRunsStore.setState({ runs: [runDobiegu], activeRunId: 'run-r2', runStatus: 'RUNNING' });
+    useExecutionRunsStore.setState({ runs: [runDobiegu], sledzonyRunId: 'run-r2', runStatus: 'RUNNING' });
 
     useExecutionRunsStore.setState({ runs: [{ ...runDobiegu, status: 'DONE' }], runStatus: 'DONE' });
 
@@ -369,7 +369,7 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
     useStudyCasesStore.setState({ projectId: null, loadActiveCase } as never);
     useAppStateStore.setState({ activeProjectId: null } as never);
     const runDobiegu = przebieg({ id: 'run-r2b', study_case_id: 'case-r2b', status: 'RUNNING' });
-    useExecutionRunsStore.setState({ runs: [runDobiegu], activeRunId: 'run-r2b', runStatus: 'RUNNING' });
+    useExecutionRunsStore.setState({ runs: [runDobiegu], sledzonyRunId: 'run-r2b', runStatus: 'RUNNING' });
 
     useExecutionRunsStore.setState({ runs: [{ ...runDobiegu, status: 'DONE' }], runStatus: 'DONE' });
 
@@ -377,7 +377,7 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
   });
 
   it('runStatus DONE bez odpowiadajacego rekordu w runs -> brak emisji (brak zgadywania przypadekId)', () => {
-    useExecutionRunsStore.setState({ runs: [], activeRunId: 'run-nieznany', runStatus: 'RUNNING' });
+    useExecutionRunsStore.setState({ runs: [], sledzonyRunId: 'run-nieznany', runStatus: 'RUNNING' });
     const wynikiGotowe = zbierzZdarzenia('wyniki-gotowe');
     try {
       useExecutionRunsStore.setState({ runStatus: 'DONE' });

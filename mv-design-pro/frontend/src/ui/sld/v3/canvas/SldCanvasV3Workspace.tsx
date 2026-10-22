@@ -240,6 +240,13 @@ import {
   type StanPorownaniaZKanwy,
 } from './porownanieZKanwy';
 import { useExecutionRunsStore } from '../../../study-cases/runStore';
+import { useStudyCasesStore } from '../../../study-cases/store';
+import {
+  ETYKIETA_SWIEZOSCI,
+  rodzinaAnalizy,
+  swiezoscBiegu,
+  type SwiezoscBiegu,
+} from '../../../../ui2/wyniki/kontekst/kontekstWyniku';
 import { ANALYSIS_TYPE_LABELS } from '../../../study-cases/types';
 import { navigateToCaseConfig } from '../../../navigation/routes';
 // Akcja „Otwórz ekran porównań" stanu zablokowanego — TA SAMA para wywołań,
@@ -1365,20 +1372,40 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // kanał `faultFlow` niesie `fault_element_ref` — kanwa dotąd czytała z niego
   // wyłącznie `flows` (strzałki), ref punktu zwarcia był ignorowany.
   const faultPointMarkerRef = faultFlowInput?.fault_element_ref;
-  // R2 (§wym.8): status NIEAKTUALNOŚCI wyników KONSUMOWANY z ISTNIEJĄCEGO
-  // `activeCaseResultStatus` (ten sam status, którego używa hook świeżości
-  // `ui2/freshness/useSwiezoscWynikow`; Case Immutability Rule — zmiana modelu
-  // ustawia status OUTDATED). ZAKAZ równoległego trackera zmian modelu w warstwie
-  // SLD — czytamy gotowy status. Flaga aktywna WYŁĄCZNIE gdy overlay niesie
-  // wynik (payload) I status to OUTDATED — stary wynik nie może udawać aktualnego.
+  // R2 (§wym.8): status NIEAKTUALNOŚCI wyników. ZAKAZ równoległego trackera zmian
+  // modelu w warstwie SLD — czytamy rewizję bieżącą i rewizję biegu z istniejących
+  // store'ów. Flaga aktywna WYŁĄCZNIE gdy overlay niesie wynik (payload) I bieg jest
+  // nieaktualny — stary wynik nie może udawać aktualnego.
   // Liczona PRZED warstwą etykiet, bo bramkuje tryb porównawczy (wym. 10).
   // NAKŁADKA RÓŻNIC podlega TEJ SAMEJ regule świeżości co wynik pojedynczego
   // przebiegu: różnica policzona na modelu sprzed edycji jest tak samo
   // nieaktualna jak wielkości, z których powstała. Jeden status, jedno źródło
   // prawdy — bez równoległego trackera dla różnic.
+  // Karta K8 (§0 pkt 3): świeżość liczona JEDNYM predykatem dla BIEGU nakładki
+  // (`kontekstWyniku.swiezoscBiegu`), nie statusem przypadku — oglądany bieg nie musi
+  // być ostatnim biegiem przypadku (bieg A po zmianie modelu jest nieaktualny, choć
+  // przypadek po biegu C jest aktualny). Różnice A/B: nieaktualna, gdy którykolwiek
+  // z dwóch biegów jest nieaktualny.
+  const runsRejestru = useExecutionRunsStore((state) => state.runs);
+  const rewizjaModelu = useSnapshotStore((state) => state.rewizjaBiezacegoModelu);
+  const werdyktPrzypadku = useStudyCasesStore((state) => state.activeCase);
+  const swiezoscNakladki = useMemo<SwiezoscBiegu | null>(() => {
+    const swiezoscRunu = (runId: string): SwiezoscBiegu | null => {
+      const run = runsRejestru.find((r) => r.id === runId);
+      return run ? swiezoscBiegu(run, rewizjaModelu, werdyktPrzypadku) : null;
+    };
+    if (nakladkaRoznic) {
+      const a = swiezoscRunu(nakladkaRoznic.run_id_a);
+      const b = swiezoscRunu(nakladkaRoznic.run_id_b);
+      if (a?.stan === 'nieaktualny') return a;
+      if (b?.stan === 'nieaktualny') return b;
+      return a?.stan === 'aktualny' && b?.stan === 'aktualny' ? a : (a ?? b);
+    }
+    return rawOverlayPayload ? swiezoscRunu(rawOverlayPayload.run_id) : null;
+  }, [nakladkaRoznic, rawOverlayPayload, rewizjaModelu, runsRejestru, werdyktPrzypadku]);
   const resultsStale =
     (rawOverlayPayload != null || roznicePayload != null)
-    && activeCaseResultStatus === 'OUTDATED';
+    && swiezoscNakladki?.stan === 'nieaktualny';
   // R4 (wym. 10/15): TRYB PORÓWNAWCZY — stan LOKALNY renderu (domyślnie „off",
   // zgodność z akceptacją R2: sonda metryk przy domyślnych ustawieniach).
   const [comparisonMode, setComparisonMode] = useState<'off' | ResultLabelComparisonMode>('off');
@@ -1482,25 +1509,41 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // (nie ze słownika typów analiz), bo „DELTA_SC" nie jest rodzajem analizy,
   // tylko postacią jej wyniku. Czasu ukończenia nie deklarujemy: różnica nie ma
   // jednego biegu, a doklejenie czasu jednego z nich byłoby fabrykacją.
-  const provenance = useMemo(
-    () =>
-      nakladkaRoznic
-        ? {
-            analysisTypeLabel: 'Różnice A/B (zwarcia)',
-            runId: `${nakladkaRoznic.run_id_a} → ${nakladkaRoznic.run_id_b}`,
-            completedAtLabel: undefined,
-          }
-        : rawOverlayPayload
-          ? {
-              analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
-              runId: rawOverlayPayload.run_id,
-              completedAtLabel: rawOverlayPayload.run_finished_at
-                ? formatDateTime(rawOverlayPayload.run_finished_at)
-                : undefined,
-            }
-          : undefined,
-    [nakladkaRoznic, rawOverlayPayload],
-  );
+  // Karta K8: pochodzenie niesie też RODZINĘ i ŚWIEŻOŚĆ biegu (atrybuty DOM
+  // `data-rodzina`/`data-swiezosc` + człon „Świeżość: …" tabliczki) — ten sam
+  // predykat co pasek stanu, panel dolny i ekrany pełne.
+  const provenance = useMemo(() => {
+    const swiezosc = swiezoscNakladki
+      ? {
+          swiezosc: swiezoscNakladki.stan,
+          swiezoscLabel:
+            swiezoscNakladki.stan === 'nieaktualny' && swiezoscNakladki.przyczyna === 'model-zmieniony'
+              ? `${ETYKIETA_SWIEZOSCI.nieaktualny} (rew. ${swiezoscNakladki.rewizjaBiegu}, model rew. ${swiezoscNakladki.rewizjaModelu})`
+              : swiezoscNakladki.rewizjaBiegu != null
+                ? `${ETYKIETA_SWIEZOSCI[swiezoscNakladki.stan]} (rew. ${swiezoscNakladki.rewizjaBiegu})`
+                : ETYKIETA_SWIEZOSCI[swiezoscNakladki.stan],
+        }
+      : {};
+    if (nakladkaRoznic) {
+      return {
+        analysisTypeLabel: 'Różnice A/B (zwarcia)',
+        runId: `${nakladkaRoznic.run_id_a} → ${nakladkaRoznic.run_id_b}`,
+        completedAtLabel: undefined,
+        rodzina: 'zwarcie',
+        ...swiezosc,
+      };
+    }
+    if (!rawOverlayPayload) return undefined;
+    return {
+      analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
+      runId: rawOverlayPayload.run_id,
+      completedAtLabel: rawOverlayPayload.run_finished_at
+        ? formatDateTime(rawOverlayPayload.run_finished_at)
+        : undefined,
+      rodzina: rodzinaAnalizy(rawOverlayPayload.analysis_type) ?? undefined,
+      ...swiezosc,
+    };
+  }, [nakladkaRoznic, rawOverlayPayload, swiezoscNakladki]);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   // GPZ-PARYTET (§0 pkt 5): wyniki pól i bilansu GPZ — odczyt wierszy backendu.
   const gpzWyniki = useMemo(() => buildGpzWynikiOverlay(rawOverlayPayload), [rawOverlayPayload]);
@@ -1539,7 +1582,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // Świeżość: TEN SAM predykat `resultsStale`, którym kanwa bramkuje wynik
   // pojedynczego przebiegu i tryb porównawczy (jedno źródło rewizji S9-11).
   // -------------------------------------------------------------------------
-  const runsAktywnegoPrzypadku = useExecutionRunsStore((state) => state.runs);
+  const runsAktywnegoPrzypadku = runsRejestru;
   const wczytajRoznice = useSldDeltaOverlayStore((state) => state.wczytajRoznice);
   const nakladkaWTrakcie = useSldDeltaOverlayStore((state) => state.wTrakcie);
   const bladNakladki = useSldDeltaOverlayStore((state) => state.blad);

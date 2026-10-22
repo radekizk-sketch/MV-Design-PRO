@@ -23,8 +23,11 @@
  *   `readinessLiveStore.lastRevision` usunięty — nikt go nie zasilał),
  * - „Wersja modelu" → `snapshot.header.hash_sha256` (R4: dawne źródło
  *   `appState.enmHashChain` nie miało żywego settera),
- * - „Przebieg: …" → etykieta ostatniego zakończonego przebiegu podana przez
- *   powłokę z rejestru przebiegów (R3).
+ * - biegi wyników na pasku stanu → magazyn kontekstu wyniku
+ *   (`ui2/wyniki/kontekst`, karta K8): AKTYWNY bieg KAŻDEJ rodziny analizy, ten sam,
+ *   który pokazują schemat, panel dolny, inspektor, „Dowody" i ekrany pełne. Dawna
+ *   etykieta „ostatni zakończony przebieg" (R3) była czwartym, niezależnym źródłem
+ *   „który bieg" i została skasowana (wada Z-14).
  */
 
 import {
@@ -34,10 +37,9 @@ import {
 } from '../../ui/app-state';
 import { useStudyCasesStore } from '../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
-import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../ui/study-cases/types';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { calculationScopeDisplayName } from '../../ui/shell/publicNames';
-import { etykietaAnalizy, etykietaStatusu, formatCzas } from '../spaces/obliczenia/przebiegi/strings';
+import { etykietaAnalizy, etykietaStatusu } from '../spaces/obliczenia/przebiegi/strings';
 import { znacznikSwiezosci, type ZnacznikSwiezosci } from './znacznikSwiezosci';
 import type { StanBiegu } from './StatusBar';
 
@@ -59,7 +61,6 @@ export interface ShellCaseInfo {
 export interface ShellStatusInfo {
   backend: BackendStatus;
   modelRevision: number | null;
-  lastRunLabel: string | null;
   /** Odcisk SHA-256 migawki modelu — „Wersja modelu" w pasku stanu (R4). */
   wersjaModelu: string | null;
 }
@@ -106,42 +107,9 @@ export function useStanBiegu(): StanBiegu {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Etykieta ostatniego przebiegu (K6 / H-6 R3) — rejestr przebiegów, nie override
-// ---------------------------------------------------------------------------
-
 /**
- * Ostatni ZAKOŃCZONY przebieg z rejestru (`useExecutionRunsStore.runs`).
- * Porządek deterministyczny: najpóźniejszy znacznik zakończenia (fallback:
- * rozpoczęcia), remis rozstrzyga identyfikator — ten sam zestaw przebiegów
- * zawsze daje tę samą etykietę (Determinism Rule).
- */
-export function ostatniZakonczonyPrzebieg(runs: ExecutionRun[]): ExecutionRun | null {
-  const zakonczone = runs.filter((run) => run.status === 'DONE');
-  if (zakonczone.length === 0) return null;
-  return zakonczone.reduce((najlepszy, kandydat) => {
-    const a = kandydat.finished_at ?? kandydat.started_at ?? '';
-    const b = najlepszy.finished_at ?? najlepszy.started_at ?? '';
-    if (a !== b) return a > b ? kandydat : najlepszy;
-    return kandydat.id > najlepszy.id ? kandydat : najlepszy;
-  });
-}
-
-/** Etykieta paska stanu: „{analiza PL} · {czas}" albo `null` (brak przebiegu). */
-export function etykietaPrzebiegu(run: ExecutionRun | null): string | null {
-  if (!run) return null;
-  return `${ANALYSIS_TYPE_LABELS[run.analysis_type]} · ${formatCzas(run.finished_at ?? run.started_at)}`;
-}
-
-/** Hook powłoki: etykieta ostatniego zakończonego przebiegu (read-only). */
-export function useEtykietaOstatniegoPrzebiegu(): string | null {
-  const runs = useExecutionRunsStore((state) => state.runs);
-  return etykietaPrzebiegu(ostatniZakonczonyPrzebieg(runs));
-}
-
-/**
- * Read-only informacje paska stanu. `backend`, `modelRevision` i `lastRunLabel`
- * podaje powłoka (AppRoot — rewizja migawki i rejestr przebiegów); „Wersja
+ * Read-only informacje paska stanu. `backend` i `modelRevision` podaje powłoka
+ * (AppRoot — rewizja migawki); „Wersja
  * modelu" pochodzi wprost z odcisku migawki (R4), z możliwością nadpisania
  * w scenach testowych/harnessie.
  */
@@ -151,7 +119,6 @@ export function useShellStatusInfo(override?: Partial<ShellStatusInfo>): ShellSt
   return {
     backend: override?.backend ?? 'connected',
     modelRevision: override?.modelRevision ?? null,
-    lastRunLabel: override?.lastRunLabel ?? null,
     wersjaModelu: override?.wersjaModelu ?? hashMigawki,
   };
 }

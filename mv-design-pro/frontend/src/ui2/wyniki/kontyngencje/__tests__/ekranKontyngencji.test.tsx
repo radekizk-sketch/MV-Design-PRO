@@ -22,10 +22,10 @@ import userEvent from '@testing-library/user-event';
 import { EkranKontyngencji } from '../EkranKontyngencji';
 import { KONTYNGENCJE_STRINGS as T } from '../strings';
 import { MACIERZ, MACIERZ_Z_NARUSZENIEM_BAZOWYM, ZAKRES } from './fixtures';
-import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 function przebieg(
   id: string,
@@ -73,8 +73,8 @@ async function zakresGotowy() {
 }
 
 beforeEach(() => {
-  useAppStateStore.setState({ activeRunId: null });
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  wyczyscKontekstWyniku();
+  useExecutionRunsStore.setState({ runs: []});
   useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
 });
 
@@ -87,7 +87,7 @@ describe('EkranKontyngencji — stan zerowy', () => {
   it('bez przebiegu rozpływu: uczciwy stan zerowy z akcją, bez wołania końcówek', () => {
     const spy = vi.fn();
     vi.stubGlobal('fetch', spy);
-    useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')], activeRunId: null });
+    useExecutionRunsStore.setState({ runs: [przebieg('sc-1', 'SC_3F')]});
 
     render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
@@ -104,7 +104,7 @@ describe('EkranKontyngencji — stan zerowy', () => {
         Promise.resolve({ ok: false, status: 422, statusText: 'Unprocessable' } as Response),
       ),
     );
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
 
     render(<EkranKontyngencji szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);
 
@@ -116,7 +116,7 @@ describe('EkranKontyngencji — stan zerowy', () => {
 
 describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
   beforeEach(() => {
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
   });
 
   it('zapowiedź podaje koszt biegu pełnego LICZBAMI z backendu', async () => {
@@ -248,7 +248,7 @@ describe('EkranKontyngencji — zakres i koszt przed biegiem', () => {
 
 describe('EkranKontyngencji — odczyt macierzy', () => {
   beforeEach(() => {
-    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')]});
   });
 
   async function policz(macierz: unknown = MACIERZ, tryb = false) {

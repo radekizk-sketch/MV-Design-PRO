@@ -40,6 +40,7 @@ import { emituj } from '../events';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { usePodsumowanieGotowosci } from '../spaces/gotowosc/adapters/gotowoscAdapter';
 import { usePrzyczynaBlokadyObliczen } from '../spaces/obliczenia/uruchomObliczenie';
+import { useKontekstyRodzin } from '../wyniki/kontekst';
 
 /**
  * Kontrakt zdarzeń powłoki (deklaracja wymagana kartą §9). Emisja przez
@@ -71,8 +72,6 @@ export interface AppShellProps {
   loading?: boolean;
   /** Status połączenia z serwerem (`useBackendHealth` w `AppRoot.tsx`). */
   backendStatus?: BackendStatus;
-  /** Etykieta ostatniego zakończonego przebiegu (K6/H-6 R3 — z rejestru przebiegów). */
-  lastRunLabel?: string | null;
   /** Odcisk SHA-256 migawki modelu — nadpisanie dla scen testowych (K6/H-6 R4). */
   wersjaModelu?: string | null;
   /** Rewizja modelu (nadpisuje wartość z gotowości, gdy podana). */
@@ -109,7 +108,6 @@ export function AppShell({
   renderSearchDialog,
   loading = false,
   backendStatus = 'connected',
-  lastRunLabel = null,
   wersjaModelu,
   modelRevision,
   onReconnect,
@@ -154,12 +152,15 @@ export function AppShell({
   const caseInfo = useShellCaseInfo();
   const gotowosc = usePodsumowanieGotowosci();
   const bieg = useStanBiegu();
+  // Karta K8: pasek stanu pokazuje AKTYWNY bieg każdej rodziny analizy z magazynu
+  // kontekstu wyniku (nie „ostatni zakończony").
+  const kontekstyRodzin = useKontekstyRodzin();
+  const rodzinyWynikow = useMemo(() => kontekstyRodzin.map((k) => k.rodzina), [kontekstyRodzin]);
   const blokadaObliczen = usePrzyczynaBlokadyObliczen();
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const liczniki = useMemo(() => policzLicznikiModelu(snapshot), [snapshot]);
   const statusInfo = useShellStatusInfo({
     backend: backendStatus,
-    lastRunLabel,
     wersjaModelu,
     modelRevision,
   });
@@ -369,6 +370,7 @@ export function AppShell({
         gotowosc={gotowosc}
         projektOtwarty={caseInfo.projectPresent}
         bieg={bieg}
+        rodzinyWynikow={rodzinyWynikow}
         onReconnect={onReconnect}
         onOpenBottomPanel={(tab) => openBottomPanel(tab)}
         onOtworzGotowosc={() => selectSpace('gotowosc')}

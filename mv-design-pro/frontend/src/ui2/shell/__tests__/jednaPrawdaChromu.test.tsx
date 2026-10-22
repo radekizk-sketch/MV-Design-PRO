@@ -11,7 +11,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-import { etykietaPrzebiegu, ostatniZakonczonyPrzebieg, useShellStatusInfo } from '../shellStatus';
+import { useShellStatusInfo } from '../shellStatus';
+import { STAN_WYBORU_PUSTY, etykietaBiegu, kontekstyRodzin } from '../../wyniki/kontekst/kontekstWyniku';
 import { SHELL_STRINGS, readinessLabel } from '../strings';
 import {
   podsumujGotowosc,
@@ -155,40 +156,47 @@ describe('useShellStatusInfo — wersja modelu i rewizja (R4 + R5)', () => {
   });
 });
 
-describe('etykieta ostatniego przebiegu (R3)', () => {
-  it('brak zakończonych przebiegów → brak etykiety', () => {
-    expect(ostatniZakonczonyPrzebieg([])).toBeNull();
-    expect(ostatniZakonczonyPrzebieg([runFixture({ status: 'RUNNING' })])).toBeNull();
-    expect(etykietaPrzebiegu(null)).toBeNull();
+describe('etykieta biegu na pasku stanu (R3 → karta K8: aktywny bieg RODZINY, nie „ostatni zakończony")', () => {
+  // Karta K8: pasek stanu pokazuje aktywny bieg każdej rodziny z magazynu kontekstu
+  // wyniku (`kontekstyRodzin`); bez wyboru — najnowszy zakończony bieg rodziny. Intencja
+  // R3 zostaje: polska etykieta rodzaju i czasu, determinizm przy remisie znaczników.
+  it('brak zakończonych przebiegów → brak wpisów rodzin (bieg w toku nie jest wynikiem)', () => {
+    expect(kontekstyRodzin([], STAN_WYBORU_PUSTY, null, null)).toEqual([]);
+    expect(kontekstyRodzin([runFixture({ status: 'RUNNING' })], STAN_WYBORU_PUSTY, null, null)).toEqual([]);
   });
 
-  it('wybiera najpóźniej zakończony przebieg (deterministycznie)', () => {
-    const wybrany = ostatniZakonczonyPrzebieg([
-      runFixture({ id: 'run-a', finished_at: '2026-07-30T10:00:00Z' }),
-      runFixture({ id: 'run-b', finished_at: '2026-07-30T12:30:00Z', analysis_type: 'LOAD_FLOW' }),
-      runFixture({ id: 'run-c', status: 'FAILED', finished_at: '2026-07-30T23:00:00Z' }),
-    ]);
-    expect(wybrany?.id).toBe('run-b');
-    expect(etykietaPrzebiegu(wybrany)).toBe('Rozpływ mocy · 2026-07-30 12:30');
+  it('bez wyboru: najpóźniej zakończony bieg rodziny (nieudany pomijany), etykieta po polsku', () => {
+    const wpisy = kontekstyRodzin(
+      [
+        runFixture({ id: 'run-a', finished_at: '2026-07-30T10:00:00Z', analysis_type: 'LOAD_FLOW' }),
+        runFixture({ id: 'run-b', finished_at: '2026-07-30T12:30:00Z', analysis_type: 'LOAD_FLOW' }),
+        runFixture({ id: 'run-c', status: 'FAILED', finished_at: '2026-07-30T23:00:00Z', analysis_type: 'LOAD_FLOW' }),
+      ],
+      STAN_WYBORU_PUSTY,
+      null,
+      null,
+    );
+    expect(wpisy.map((w) => [w.rodzina, w.bieg.id])).toEqual([['rozplyw', 'run-b']]);
+    expect(etykietaBiegu(wpisy[0].bieg)).toBe('Rozpływ mocy · 2026-07-30 12:30');
   });
 
   it('bieg oceny zabezpieczeń (PROTECTION z listingu biegów przypadku) ma polską nazwę, nie „undefined"', () => {
     // Karta BIEG-ZABEZPIECZEN-Z-MODELU: ekran koordynacji tworzy bieg `protection_sn`, który
     // listing biegów przypadku zwraca jako `PROTECTION` — pasek stanu pokazywał „Przebieg:
     // undefined · …" (zmierzone na żywym e2e).
-    const etykieta = etykietaPrzebiegu(
+    const etykieta = etykietaBiegu(
       runFixture({ analysis_type: 'PROTECTION', finished_at: '2026-07-30T12:30:00Z' }),
     );
     expect(etykieta).toBe('Ocena zabezpieczeń nadprądowych · 2026-07-30 12:30');
     expect(etykieta).not.toContain('undefined');
   });
 
-  it('remis znaczników rozstrzyga identyfikator (ta sama lista → ta sama etykieta)', () => {
+  it('remis znaczników rozstrzyga identyfikator (ta sama lista → ten sam bieg, w obu kolejnościach)', () => {
     const lista = [
       runFixture({ id: 'run-a', finished_at: '2026-07-30T10:00:00Z' }),
       runFixture({ id: 'run-z', finished_at: '2026-07-30T10:00:00Z' }),
     ];
-    expect(ostatniZakonczonyPrzebieg(lista)?.id).toBe('run-z');
-    expect(ostatniZakonczonyPrzebieg([...lista].reverse())?.id).toBe('run-z');
+    expect(kontekstyRodzin(lista, STAN_WYBORU_PUSTY, null, null)[0].bieg.id).toBe('run-z');
+    expect(kontekstyRodzin([...lista].reverse(), STAN_WYBORU_PUSTY, null, null)[0].bieg.id).toBe('run-z');
   });
 });

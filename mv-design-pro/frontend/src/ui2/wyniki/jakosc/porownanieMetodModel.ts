@@ -5,7 +5,7 @@
  *
  * ŹRÓDŁA DANYCH — realne kontrakty read-only (mapowanie plik:linia):
  * - Lista przebiegów przypadku: `ExecutionRun[]` (`ui/study-cases/types.ts`) —
- *   ten sam rejestr, którego używa `jakoscModel.ts::przebiegRozplywu`.
+ *   ten sam rejestr, z którego magazyn kontekstu wyniku wybiera aktywny bieg (karta K8).
  * - Metoda solvera per bieg: `PowerFlowTrace.solver_method`
  *   (`ui/power-flow-results/types.ts:202`, backend `enm/canonical_analysis.py:2583`)
  *   — TYLKO na śladzie, NIE na `PowerFlowResultV1` (kontrakt wyniku nie niesie
@@ -33,6 +33,7 @@ import { METODY_SOLVERA_PL } from '../zbieznosc';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 import { fmtData, fmtKat, fmtNapiecie } from '../porownanie';
 import { JAKOSC_STRINGS as T, fmtDeltaKat, fmtDeltaNapiecie } from './strings';
+import { biegiRodziny } from '../kontekst/kontekstWyniku';
 
 /** Bieg rozpływu ZIDENTYFIKOWANY po metodzie (ślad przeczytany, metoda znana). */
 export interface WynikBieguMetody {
@@ -44,14 +45,14 @@ export interface WynikBieguMetody {
  * Kandydaci na bieg NR/FD: zakończone przebiegi rozpływu (LOAD_FLOW/DONE) tego
  * przypadku, od NAJNOWSZEGO — wołający (komponent) pobiera ślad kolejnych
  * kandydatów, aż znajdzie najnowszy bieg każdej metody (przerywa wcześniej,
- * gdy oba już znalezione). Kolejność = ta sama konwencja co
- * `jakoscModel.ts::wybierzPrzebieg` (`runs` jest chronologicznie rosnący —
- * najnowszy jest OSTATNI).
+ * gdy oba już znalezione). Kolejność = JEDNA reguła porządku biegów aplikacji
+ * (karta K8, `kontekstWyniku.uporzadkujBiegi`: znacznik czasu malejąco, remis — id),
+ * a nie kolejność źródłowa listy, której rejestr nie gwarantuje.
  */
 export function kandydaciRozplywuOdNajnowszego(
   runs: readonly ExecutionRun[],
 ): readonly ExecutionRun[] {
-  return runs.filter((r) => r.analysis_type === 'LOAD_FLOW' && r.status === 'DONE').slice().reverse();
+  return biegiRodziny(runs, 'rozplyw');
 }
 
 const etykietaMetody = (token: string | undefined): string =>

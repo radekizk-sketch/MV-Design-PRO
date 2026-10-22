@@ -60,6 +60,8 @@ vi.mock('../../../shell/useHydratacjaPowloki', () => ({
 import { OBSZARY, ZAKLADKI } from '../obszary';
 import { WYNIKI_WARSZTAT_STRINGS as T } from '../strings';
 import { przebiegFixture, snapshotFixture } from './fixtures';
+import { runIdOgladanyTeraz, useKontekstWynikuStore } from '../../../wyniki/kontekst/kontekstWyniku';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 beforeEach(() => {
   usePowerFlowResultsStore.getState().reset();
@@ -75,11 +77,11 @@ beforeEach(() => {
   });
   useExecutionRunsStore.setState({
     runs: [],
-    activeRunId: null,
     activeStudyCaseId: null,
     isLoadingRuns: false,
   });
-  useAppStateStore.setState({ activeRunId: null, activeProjectId: null, activeCaseId: null });
+  useAppStateStore.setState({ activeProjectId: null, activeCaseId: null });
+  wyczyscKontekstWyniku();
   vi.mocked(hydratujPowloke).mockClear();
   useSnapshotStore.getState().reset();
   useStationDerStore.getState().reset();
@@ -227,7 +229,6 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
   it('deep-link „kompensacja" z elementem (R2-B): zakładka otwarta, węzeł pre-selekcjonowany, OBA pola wyczyszczone', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-lf-1' })],
-      activeRunId: 'run-lf-1',
     });
     useSnapshotStore.setState({ snapshot: snapshotFixture() });
     useShellStore.setState({ wynikiTab: 'kompensacja', wynikiTabElement: 'bus-a' });
@@ -242,7 +243,6 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
   it('deep-link z elementem do INNEJ zakładki nie przecieka do okna kompensacji', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-lf-1' })],
-      activeRunId: 'run-lf-1',
     });
     useSnapshotStore.setState({ snapshot: snapshotFixture() });
     useShellStore.setState({ wynikiTab: 'studium', wynikiTabElement: 'bus-a' });
@@ -351,7 +351,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
 
   it('aktywny zakończony rozpływ: startuje na zakładce „Rozpływ mocy" w obszarze rozpływu', () => {
     useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });
-    useAppStateStore.setState({ activeRunId: 'run-lf-1' });
+    ustawBiegOgladany('run-lf-1');
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-rozplyw-szyny')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-wyniki-obszar-rozplyw')).toHaveAttribute('aria-selected', 'true');
@@ -362,7 +362,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    ustawBiegOgladany('run-sc-1');
     useResultsInspectorStore.setState({
       selectedRunId: 'run-sc-1',
       shortCircuitResults: wynikZwarciowyFixture(),
@@ -380,7 +380,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
       useExecutionRunsStore.setState({
         runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
       });
-      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+      ustawBiegOgladany('run-sc-9');
     });
     expect(screen.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByTestId('mvd-wyniki-obszar-zwarcia')).toHaveAttribute('aria-selected', 'true');
@@ -390,7 +390,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
     render(<WynikiWarsztat {...props()} />);
     act(() => {
       useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-9' })] });
-      useAppStateStore.setState({ activeRunId: 'run-lf-9' });
+      ustawBiegOgladany('run-lf-9');
     });
     expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveAttribute('aria-selected', 'true');
   });
@@ -402,7 +402,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
       useExecutionRunsStore.setState({
         runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
       });
-      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+      ustawBiegOgladany('run-sc-9');
     });
     expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveAttribute('aria-selected', 'true');
     // Pakiet dowodowy czyta przebieg asynchronicznie — domykamy mikrotaski w act.
@@ -417,7 +417,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
       useExecutionRunsStore.setState({
         runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
       });
-      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+      ustawBiegOgladany('run-sc-9');
     });
     expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
   });
@@ -524,7 +524,7 @@ describe('WynikiWarsztat — obszary i zakładki (B-02)', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
     });
-    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    ustawBiegOgladany('run-sc-1');
     useResultsInspectorStore.setState({
       selectedRunId: 'run-sc-1',
       shortCircuitResults: wynikZwarciowyFixture(),
@@ -653,7 +653,7 @@ describe('WynikiWarsztat — brama trybu dla analiz specjalistycznych (V126-JEZY
 describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (R3-C, B-02)', () => {
   it('deep-link „dowod" z kontekstem: zakładka otwarta, ślad WSKAZANEGO przebiegu, OBA pola wyczyszczone', async () => {
     useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });
-    useAppStateStore.setState({ activeRunId: 'run-lf-1' });
+    ustawBiegOgladany('run-lf-1');
     useShellStore.setState({ wynikiTab: 'dowod', wynikiTabElement: 'run-porownany' });
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-zakladka-dowod').getAttribute('aria-selected')).toBe('true');
@@ -664,20 +664,33 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
     expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 
-  it('ręczne wejście na „Dowód obliczeń" po deep-linku wraca do aktywnego przebiegu (izolacja)', async () => {
-    useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });
-    useAppStateStore.setState({ activeRunId: 'run-lf-1' });
+  // Karta K8 (kanon zmieniony): deep-link „Dowód obliczeń" z KONKRETNYM przebiegiem
+  // (kolumna porównania) jest JAWNYM wyborem biegu w kontekście wyniku (źródło
+  // „dowody"). Dawna „izolacja" (powrót do innego biegu po przełączeniu zakładek) była
+  // cichym przełączeniem kontekstu — zakazana: wybór trwa, aż użytkownik wybierze inny.
+  it('deep-link „Dowód obliczeń" wybiera bieg w kontekście wyniku; przełączenie zakładek go nie cofa', async () => {
+    useExecutionRunsStore.setState({
+      runs: [
+        przebiegFixture({ id: 'run-lf-1' }),
+        przebiegFixture({ id: 'run-porownany', finished_at: '2026-07-15T08:00:00Z' }),
+      ],
+    });
+    ustawBiegOgladany('run-lf-1');
     useShellStore.setState({ wynikiTab: 'dowod', wynikiTabElement: 'run-porownany' });
     render(<WynikiWarsztat {...props()} />);
     const selectRun = useResultsInspectorStore.getState().selectRun;
     await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-porownany'));
+    expect(useKontekstWynikuStore.getState().wybrane).toEqual({ rozplyw: 'run-porownany' });
+    expect(useKontekstWynikuStore.getState().zrodla).toEqual({ rozplyw: 'dowody' });
     otworzZakladke('rozplyw');
     otworzZakladke('dowod');
-    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-lf-1'));
+    expect(runIdOgladanyTeraz()).toBe('run-porownany');
+    expect(selectRun).not.toHaveBeenCalledWith('run-lf-1');
   });
 
   it('pełny łańcuch realną ścieżką: 2×klik w komórkę A porównania zwarć → dowód przebiegu A', async () => {
-    useAppStateStore.setState({ activeRunId: null, activeProjectId: 'proj-1' });
+    useAppStateStore.setState({ activeProjectId: 'proj-1' });
+    wyczyscKontekstWyniku();
     useExecutionRunsStore.setState({
       runs: [
         przebiegFixture({ id: 'sc-run-a', analysis_type: 'SC_3F' }),
@@ -729,8 +742,9 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
   // werdyktu na sieci złotej (fixtura sceny „ocena").
   it('ocena techniczna → „Dowód obliczeń" otwiera wywód biegu wskazanego przez pozycję oceny', async () => {
     const fixtura = ocenaFixture as unknown as OdpowiedzOceny;
-    useAppStateStore.setState({ activeCaseId: fixtura.case_id, activeProjectId: 'proj-1', activeRunId: 'run-lf-1' });
-    useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })], activeRunId: 'run-lf-1' });
+    useAppStateStore.setState({ activeCaseId: fixtura.case_id, activeProjectId: 'proj-1' });
+    ustawBiegOgladany('run-lf-1');
+    useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })]});
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string | URL | Request) => {
@@ -806,7 +820,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   const przebiegRozplywu = () => przebiegFixture({ id: 'run-lf-1' });
 
   it('zimny start: przebieg + zakres, rejestr cudzego zakresu → stan przejściowy bez nawigacji; synchronizacja otwiera OD RAZU obszar rozpływu', () => {
-    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    ustawBiegOgladany('run-lf-1');
     useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: false });
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-warsztat')).toBeInTheDocument();
@@ -826,7 +841,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   });
 
   it('rejestr aktywnego zakresu W TRAKCIE wczytywania → stan przejściowy; koniec wczytywania → nawigacja', () => {
-    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    ustawBiegOgladany('run-lf-1');
     useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: 'case-1', isLoadingRuns: true });
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-rejestr-wczytywanie')).toBeInTheDocument();
@@ -837,7 +853,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   });
 
   it('rejestr zsynchronizowany, lecz bez aktywnego przebiegu w nim (stary identyfikator) → rodzaj USTALONY jako brak: nawigacja na ocenie', () => {
-    useAppStateStore.setState({ activeRunId: 'run-z-innego-zakresu', activeCaseId: 'case-1' });
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    ustawBiegOgladany('run-z-innego-zakresu');
     useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: 'case-1', isLoadingRuns: false });
     render(<WynikiWarsztat {...props()} />);
     expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
@@ -845,7 +862,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   });
 
   it('bez zakresu obliczeń rejestr nie jest oczekiwany → nawigacja od razu (ocena), mimo aktywnego przebiegu', () => {
-    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: null });
+    useAppStateStore.setState({ activeCaseId: null });
+    ustawBiegOgladany('run-lf-1');
     useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: false });
     render(<WynikiWarsztat {...props()} />);
     expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
@@ -853,7 +871,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   });
 
   it('bez aktywnego przebiegu stan przejściowy nie występuje, choć rejestr jest niezsynchronizowany', () => {
-    useAppStateStore.setState({ activeRunId: null, activeCaseId: 'case-1' });
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    wyczyscKontekstWyniku();
     useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: true });
     render(<WynikiWarsztat {...props()} />);
     expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
@@ -861,7 +880,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   });
 
   it('ręczny wybór zakładki: nowy aktywny przebieg + przeładowanie rejestru NIE zasłania wyboru użytkownika stanem przejściowym', () => {
-    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    ustawBiegOgladany('run-lf-1');
     useExecutionRunsStore.setState({
       runs: [przebiegRozplywu()],
       activeStudyCaseId: 'case-1',
@@ -872,7 +892,7 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
     otworzZakladke('porownanie');
     expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
     act(() => {
-      useAppStateStore.setState({ activeRunId: 'run-sc-2' });
+      ustawBiegOgladany('run-sc-2');
       useExecutionRunsStore.setState({ isLoadingRuns: true });
     });
     expect(screen.queryByTestId('mvd-wyniki-rejestr-wczytywanie')).not.toBeInTheDocument();
@@ -887,7 +907,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   });
 
   it('bez wyboru ręcznego: nowy aktywny przebieg + przeładowanie rejestru → stan przejściowy, potem zakładka rodzaju nowego przebiegu', () => {
-    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    ustawBiegOgladany('run-lf-1');
     useExecutionRunsStore.setState({
       runs: [przebiegRozplywu()],
       activeStudyCaseId: 'case-1',
@@ -896,7 +917,7 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('mvd-wyniki-obszar-rozplyw')).toHaveAttribute('aria-selected', 'true');
     act(() => {
-      useAppStateStore.setState({ activeRunId: 'run-sc-2' });
+      ustawBiegOgladany('run-sc-2');
       useExecutionRunsStore.setState({ isLoadingRuns: true });
     });
     expect(screen.getByTestId('mvd-wyniki-rejestr-wczytywanie')).toBeInTheDocument();
@@ -910,7 +931,8 @@ describe('WynikiWarsztat — start nieustalony do synchronizacji rejestru przebi
   });
 
   it('przycisk „Wczytaj ponownie" stanu przejściowego wymusza hydratację K2 (wyjście ze stanu po nieudanej hydratacji)', () => {
-    useAppStateStore.setState({ activeRunId: 'run-lf-1', activeCaseId: 'case-1' });
+    useAppStateStore.setState({ activeCaseId: 'case-1' });
+    ustawBiegOgladany('run-lf-1');
     useExecutionRunsStore.setState({ runs: [], activeStudyCaseId: null, isLoadingRuns: false });
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Wczytaj ponownie' }));

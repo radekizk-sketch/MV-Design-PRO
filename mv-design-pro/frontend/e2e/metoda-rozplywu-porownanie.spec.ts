@@ -236,7 +236,6 @@ async function seedActiveCaseAndOpen(
           activeCaseResultStatus: 'FRESH',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'LOAD_FLOW',
           caseManagerOpen: false,
           issuePanelOpen: false,

@@ -73,7 +73,6 @@ beforeEach(() => {
   ustawBackend();
   useExecutionRunsStore.setState({
     activeStudyCaseId: 'K1',
-    activeRunId: null,
     runStatus: null,
     runs: [bieg('run-1')],
     isLoadingRuns: false,

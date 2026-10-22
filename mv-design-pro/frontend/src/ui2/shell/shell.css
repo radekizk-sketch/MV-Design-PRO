@@ -626,6 +626,10 @@
   padding: 4px 6px;
   border-bottom: 1px solid var(--mvd-line);
 }
+/* Karta K8: wiersz biegu oglądanego (ten sam bieg co schemat i zakładka „Wyniki"). */
+.mvd-dolny-dowod-ogladany {
+  box-shadow: inset 3px 0 0 var(--mvd-accent);
+}
 .mvd-dolny-dowod-glowa {
   display: flex;
   align-items: baseline;

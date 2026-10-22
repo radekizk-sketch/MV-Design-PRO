@@ -40,7 +40,7 @@ function przebiegRozplywuFixture(): ExecutionRun {
 }
 
 function ustawPrzebieg() {
-  useExecutionRunsStore.setState({ runs: [przebiegRozplywuFixture()], activeRunId: 'run-lf-1' });
+  useExecutionRunsStore.setState({ runs: [przebiegRozplywuFixture()]});
 }
 
 /** Wypełnia pierwszy wiersz edytora pomiarem |V| na węźle BUS-2 (ścieżka natywna). */
@@ -51,7 +51,7 @@ function wpiszPomiarV() {
 }
 
 beforeEach(() => {
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  useExecutionRunsStore.setState({ runs: []});
   wym.mockResolvedValue(wymaganiaFixture());
 });
 afterEach(() => {

@@ -96,7 +96,6 @@ function atrapaNcRfg(url: string): Response {
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-    activeRunId: 'lf-run',
   });
   useSnapshotStore.setState({ snapshot: snapshotFixture() });
 }

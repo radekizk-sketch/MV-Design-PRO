@@ -359,6 +359,28 @@ class TestListRunsEndpoint:
         assert run["created_at"]
         assert run["snapshot_hash"]
 
+    def test_list_runs_carries_result_context_key(self, client, registered_case):
+        """Karta K8 KONTEKST-WYNIKU: rekord biegu niesie komplet klucza kontekstu wyniku
+        UI — projekt, scenariusz biegu (stan normalny = `None`, nie zmyślony
+        identyfikator), status wyniku i odcisk wejścia. Te same wartości w odpowiedzi
+        utworzenia, odczytu i listy (jedno źródło: `to_execution_dict`)."""
+        created = client.post(
+            f"/api/execution/study-cases/{registered_case}/runs",
+            json={"analysis_type": "LOAD_FLOW", "solver_input": {"v": 3}},
+        )
+        assert created.status_code == 201, created.text
+        body = created.json()
+        assert body["scenario_ref"] is None
+        assert body["result_status"] == "VALID"
+        assert body["solver_input_hash"]
+        projekt = client.get(f"/api/study-cases/{registered_case}").json()["project_id"]
+        assert body["project_id"] == str(projekt)
+
+        pojedynczy = client.get(f"/api/execution/runs/{body['id']}").json()
+        [z_listy] = client.get(f"/api/execution/study-cases/{registered_case}/runs").json()["runs"]
+        for pole in ("project_id", "scenario_ref", "result_status", "solver_input_hash"):
+            assert pojedynczy[pole] == body[pole] == z_listy[pole], pole
+
 
 class TestExecuteRunEndpoint:
     def test_execute_run_success(self, client, registered_case):

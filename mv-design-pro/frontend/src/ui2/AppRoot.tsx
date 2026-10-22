@@ -23,7 +23,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
-import { useEtykietaOstatniegoPrzebiegu } from './shell/shellStatus';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
 import { pokazElementNaSchemacie, zaznaczElementModelu } from './shell/zaznaczElementModelu';
@@ -72,6 +71,7 @@ import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
 import { SeriePanel } from './spaces/obliczenia/serie';
 import { PanelDiagnozy } from './spaces/obliczenia/diagnoza';
 import { WynikiWarsztat } from './spaces/wyniki';
+import { useKontekstWynikuStore } from './wyniki/kontekst';
 import { MostDokumentacji } from './spaces/dokumentacja';
 import { LegacySurface } from './legacy/LegacySurface';
 import { LegacyWarsztat, useWidokKanwySchematu } from './legacy/LegacyWarsztat';
@@ -178,9 +178,6 @@ export function AppRoot() {
   const obiekt = useObiektInspektora(zaznaczonyId);
   const { status: backendStatus, reconnect } = useBackendHealth();
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
-  // K6 / H-6 R3: etykieta paska stanu z REJESTRU przebiegów (ostatni DONE) —
-  // dotąd pole nie miało dostawcy i zawsze pokazywało „—".
-  const etykietaPrzebiegu = useEtykietaOstatniegoPrzebiegu();
 
   // K2 (defekt H-0): hydratacja stanu zależnego z serwera po zimnym starcie
   // (zakresy obliczeń, rejestr przebiegów, migawka przy reconnect) — bez tego
@@ -313,17 +310,20 @@ export function AppRoot() {
   // przejść „następnego kroku" (np. Schemat → Gotowość) i dla akcji naprawczej
   // gotowości (C-12). `przejdzDoPrzestrzeni` = setActiveSpace + most.
   const wybierzPrzestrzen = przejdzDoPrzestrzeni;
-  // Lądowisko K3 dla biegu: aktywacja przebiegu + jawne przejście do „Wyników".
-  // JEDNA funkcja dla obu paneli historii (przebiegi i serie) — parytet mostu.
+  // Lądowisko K3 dla biegu: bieg staje się kontekstem wyniku (karta K8 — magazyn
+  // kontekstu, ten sam dla schematu, panelu, paska i ekranów) + jawne przejście do
+  // „Wyników". JEDNA funkcja dla obu paneli historii (przebiegi i serie).
   const pokazWynikiBiegu = (runId: string) => {
-    useAppStateStore.getState().setActiveRun(runId);
+    useKontekstWynikuStore.getState().wybierzBieg(runId, 'przebiegi');
     wybierzPrzestrzen('wyniki');
   };
-  // Zakładka „Dowody" panelu dolnego (karta UI-02): dowód obliczeń WSKAZANEGO biegu —
-  // deep-link R3-C (`setWynikiTab('dowod', runId)`, konsument `WynikiWarsztat`)
-  // i jawne przejście do przestrzeni „Wyniki" (żądanie konsumuje się po montażu).
+  // Zakładka „Dowody" panelu dolnego (karta UI-02): dowód obliczeń WSKAZANEGO biegu.
+  // Karta K8: otwarcie dowodu biegu czyni go kontekstem wyniku (schemat, pasek, panel
+  // i okno dowodu pokazują wtedy ten sam bieg — dowód nigdy nie dotyczy innego biegu
+  // niż oglądany wynik), potem zakładka „Dowód obliczeń" przestrzeni „Wyniki".
   const otworzDowodBiegu = (runId: string) => {
-    useShellStore.getState().setWynikiTab('dowod', runId);
+    useKontekstWynikuStore.getState().wybierzBieg(runId, 'dowody');
+    useShellStore.getState().setWynikiTab('dowod');
     wybierzPrzestrzen('wyniki');
   };
   // C-12 (decyzja K-12, opcja A): akcja naprawcza gotowości jest WYKONAWCĄ — jedna
@@ -390,7 +390,6 @@ export function AppRoot() {
       backendStatus={backendStatus}
       onReconnect={reconnect}
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
-      lastRunLabel={etykietaPrzebiegu}
       onOpenProject={otworzPulpitProjektow}
       onOpenProjectMetadata={activeProjectId ? () => setMetadaneOtwarte(true) : undefined}
       przelacznikPodgladu={widokKanwy ? <PrzelacznikPodgladu /> : undefined}

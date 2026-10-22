@@ -98,6 +98,7 @@ import {
 } from './inspektor-elementu/PanelElementuKanwy';
 import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
 import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
+import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 
 // =============================================================================
 // Types
@@ -2528,7 +2529,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const activeMode = useAppStateStore((s) => s.activeMode);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const {
     itemsByBayId,
     itemsByBayRef,
@@ -2890,7 +2891,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       {stanPanelu && <PanelElementuKanwy stan={stanPanelu} dzialaniaPoza />}
 
       <ElementCalculationProofPanel
-        runId={activeRunId ?? null}
+        runId={runIdOgladany ?? null}
         selectedElement={selectedElement}
         candidateRefs={calculationProofRefs}
       />

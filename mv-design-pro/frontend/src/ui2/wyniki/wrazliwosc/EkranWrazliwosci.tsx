@@ -17,10 +17,8 @@
  * przebiegu byłoby fałszywym dowodem — wzorzec jakości, zero fabrykacji).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './wrazliwosc.css';
-import { useAppStateStore } from '../../../ui/app-state';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSwiezoscNaglowka } from '../../freshness';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
@@ -34,9 +32,9 @@ import {
   naWierszeOgolne,
   naZalozeniaLf,
   naZalozeniaOgolne,
-  przebiegRozplywu,
 } from './model';
 import { WRAZLIWOSC_STRINGS as T } from './strings';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 // ---------------------------------------------------------------------------
 // Stan zasobu (brak przebiegu / ładowanie / błąd / gotowe)
@@ -88,9 +86,8 @@ export interface EkranWrazliwosciProps {
 const BEZ_DOWODU = () => {};
 
 export function EkranWrazliwosci({ szczegolyAudytowe }: EkranWrazliwosciProps) {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: bieg z magazynu kontekstu wyniku (aktywny bieg rodziny) — jedna prawda wyboru.
+  const przebieg = useAktywnyBieg('rozplyw');
   const runId = przebieg?.id ?? null;
   // V12K-264/265: znacznik świeżości nagłówka z JEDNEJ derywacji (K3).
   const swiezosc = useSwiezoscNaglowka(runId);

@@ -1,39 +1,15 @@
 /*
  * Model okna „Wniosek OSD" (karta W-707 / E13; kontrakt V2 — karta AB-1a Pakiet D2 §5).
- * Czyste funkcje warstwy prezentacji: wybór zakończonych przebiegów (rozpływ/zwarcie)
- * z rejestru biegów, uczciwa bramka kompletności formularza (powód blokady PL) oraz budowa
- * żądania `ZadanieWniosku` (`WniosekOsdRequest`) z danych okna. Zgodność NC RfG wyprowadza
+ * Czyste funkcje warstwy prezentacji: uczciwa bramka kompletności formularza (powód
+ * blokady PL) oraz budowa
+ * żądania `ZadanieWniosku` (`WniosekOsdRequest`) z danych okna. Listy biegów i wybór
+ * biegu rozpływu/zwarcia — magazyn kontekstu wyniku (`biegiRodziny`, karta K8). Zgodność NC RfG wyprowadza
  * serwer z ZATWIERDZONEGO modelu przypadku (`case_id` w zapytaniu) — żądanie nie niesie
  * biegu ani modułów. Zero fizyki, zero mutacji, zero wołań API stąd.
  */
 
-import type { ExecutionRun } from '../../../ui/study-cases/types';
-import { jestPrzebiegiemZwarciowym } from '../../wyniki/jakosc';
 import type { ZadanieWniosku } from '../ncrfg/typy';
 import { WNIOSEK_STRINGS } from './strings';
-
-/** Zakończone przebiegi rozpływu mocy (LOAD_FLOW/DONE) — kolejność źródłowa. */
-export function przebiegiRozplywu(runs: readonly ExecutionRun[]): ExecutionRun[] {
-  return runs.filter((r) => r.analysis_type === 'LOAD_FLOW' && r.status === 'DONE');
-}
-
-/** Zakończone przebiegi zwarciowe (rodzaj SC_, status DONE) — kolejność źródłowa. */
-export function przebiegiZwarciowe(runs: readonly ExecutionRun[]): ExecutionRun[] {
-  return runs.filter((r) => jestPrzebiegiemZwarciowym(r.analysis_type) && r.status === 'DONE');
-}
-
-/**
- * Domyślny wybór przebiegu: preferuje aktywny (gdy jest na liście), inaczej
- * OSTATNI z listy kandydatów. `null`, gdy brak kandydatów.
- */
-export function domyslnyPrzebieg(
-  kandydaci: readonly ExecutionRun[],
-  activeRunId: string | null,
-): string | null {
-  if (kandydaci.length === 0) return null;
-  const aktywny = kandydaci.find((r) => r.id === activeRunId);
-  return (aktywny ?? kandydaci[kandydaci.length - 1]).id;
-}
 
 /** Stan formularza wniosku decydujący o dostępności generacji. */
 export interface WejscieWniosku {

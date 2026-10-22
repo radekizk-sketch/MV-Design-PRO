@@ -9,7 +9,6 @@
  * modułów — prefiks zapobiega kolizji nazw (TS2308).
  */
 
-import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { ElementType } from '../../../ui/types';
 import type {
   DefinicjaKolumny,
@@ -55,38 +54,6 @@ import {
 /** Czy rodzaj analizy to przebieg zwarciowy (SC_*). */
 export function jestPrzebiegiemZwarciowym(analysisType: string): boolean {
   return analysisType.startsWith('SC_');
-}
-
-/**
- * Wybiera przebieg danego rodzaju: preferuje aktywny (gdy pasuje i zakończony),
- * inaczej OSTATNI zakończony (DONE) danego rodzaju. Deterministyczne dla danego
- * wejścia (kolejność źródłowa listy `runs`).
- */
-function wybierzPrzebieg(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-  pasuje: (analysisType: string) => boolean,
-): ExecutionRun | null {
-  const kandydaci = runs.filter((r) => pasuje(r.analysis_type) && r.status === 'DONE');
-  if (kandydaci.length === 0) return null;
-  const aktywny = kandydaci.find((r) => r.id === activeRunId);
-  return aktywny ?? kandydaci[kandydaci.length - 1];
-}
-
-/** Ostatni/aktywny zakończony przebieg zwarciowy (SC_* + DONE) — sekcja wiarygodności. */
-export function przebiegZwarciowy(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-): ExecutionRun | null {
-  return wybierzPrzebieg(runs, activeRunId, jestPrzebiegiemZwarciowym);
-}
-
-/** Ostatni/aktywny zakończony przebieg rozpływu (LOAD_FLOW/DONE) — sekcja walidacji. */
-export function przebiegRozplywu(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-): ExecutionRun | null {
-  return wybierzPrzebieg(runs, activeRunId, (t) => t === 'LOAD_FLOW');
 }
 
 // ---------------------------------------------------------------------------

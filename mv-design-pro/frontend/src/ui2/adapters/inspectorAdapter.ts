@@ -50,7 +50,6 @@ import type {
   SwitchBranch,
   Transformer,
 } from '../../types/enm';
-import { useAppStateStore } from '../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../ui/results-inspector/store';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
@@ -66,6 +65,7 @@ import { przejdzDoPrzestrzeni } from '../shell/przejsciaPrzestrzeni';
 import { useSwiezoscNaglowka } from '../freshness/useSwiezoscNaglowka';
 import { useShellStore } from '../shell/useShellStore';
 import { podpisRodzajuStacjiPl, rodzajStacji } from '../../ui/shared/rodzajStacji';
+import { runIdOgladanyTeraz, useRunIdOgladany } from '../wyniki/kontekst/kontekstWyniku';
 
 /** Kolekcje modelu przeszukiwane przez adapter + polskie etykiety typów. */
 const KOLEKCJE: ReadonlyArray<{
@@ -662,9 +662,9 @@ export function useObiektInspektora(id: string | null): ObiektInspektora | null 
   const wynikRozplywu = usePowerFlowResultsStore((s) => s.results);
   const wynikZwarciowy = useResultsInspectorStore((s) => s.shortCircuitResults);
   // Świeżość dowodu = TA SAMA prawda co nagłówki ekranów wyników (jedno źródło,
-  // karta V12K-264): rewizja modelu, przy której policzono AKTYWNY przebieg.
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const { rewizjaDanych } = useSwiezoscNaglowka(activeRunId);
+  // karta V12K-264): rewizja modelu, przy której policzono bieg oglądany (karta K8).
+  const runIdOgladany = useRunIdOgladany();
+  const { rewizjaDanych } = useSwiezoscNaglowka(runIdOgladany);
   return useMemo(() => {
     const obiekt = mapowanieObiektuInspektora(snapshot, id);
     if (!obiekt || !id) return obiekt;
@@ -711,11 +711,11 @@ export function useRewizjaModelu(): number {
  * (3) `przejdzDoPrzestrzeni('wyniki')` — most tras E1.7c (jak `AppRoot.pokazWynikiBiegu`).
  * Element inspektora nie niesie własnego `run_id` (kontrakt `PozycjaDowodu` ma
  * wyłącznie `ref`/`etykieta`/`rewizja` — `ui2/inspector/inspectorModel.ts`),
- * więc kontekst biegu jest AKTYWNYM przebiegiem powłoki — ten sam wybór co
- * przy braku wskazania w warsztacie wyników (bez zgadywania cudzego przebiegu).
+ * więc kontekst biegu jest biegiem OGLĄDANYM z magazynu kontekstu wyniku (karta K8) —
+ * ten sam bieg, który pokazują schemat, panel dolny i pasek stanu.
  */
 export function otworzDowodInspektora(ref: string): void {
-  const runId = useAppStateStore.getState().activeRunId;
+  const runId = runIdOgladanyTeraz();
   emituj({ typ: 'selekcja', obiektId: ref, zrodlo: 'inspektor' });
   useShellStore.getState().setWynikiTab('dowod', runId);
   przejdzDoPrzestrzeni('wyniki');

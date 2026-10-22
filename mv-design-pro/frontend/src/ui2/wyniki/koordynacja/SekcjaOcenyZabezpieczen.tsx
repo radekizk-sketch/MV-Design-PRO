@@ -7,8 +7,11 @@
  *  - wskazuje bieg zwarciowy (najnowszy 3F/2F wariantu maksymalnego albo minimalnego — ten sam
  *    wybór co koordynacja, `useBiegiKoordynacji`),
  *  - uruchamia bieg oceny (POST utworzenie + wykonanie) i pokazuje jego wynik,
- *  - po wejściu na ekran wczytuje ostatni zakończony bieg oceny projektu (wynik nie znika po
- *    nawigacji) ze statusem świeżości — zmiana nastaw w modelu czyni wynik nieaktualnym,
+ *  - pokazuje AKTYWNY bieg rodziny „Zabezpieczenia" z magazynu kontekstu wyniku (karta K8:
+ *    ten sam bieg co pasek stanu, panel dolny i „Dowody"; dawniej „ostatni bieg projektu",
+ *    także z innego przypadku) ze świeżością z jednego predykatu (`swiezoscBiegu`) i werdyktem
+ *    serwera jako daną wejściową — zmiana nastaw w modelu czyni wynik nieaktualnym; nowy bieg
+ *    oceny staje się aktywnym biegiem rodziny,
  *  - pokazuje oceny z rekordem werdyktu wyjaśnialnego, odmowy z akcją naprawczą (droga do
  *    edycji w modelu, E-27) i pominięte z przyczyną.
  * ZERO fizyki w UI — wszystkie liczby z backendu.
@@ -17,9 +20,15 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
-import { fetchProtectionRuns } from '../../../ui/protection-comparison/api';
 import { WIARYGODNOSC_PL } from '../../../ui/protection-comparison/types';
 import { useBiegiKoordynacji } from '../../../ui/protection-coordination/biegiKoordynacji';
+import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import {
+  useAktywnyBieg,
+  useSwiezoscBiegu,
+  useWybierzBieg,
+  zdanieSwiezosci,
+} from '../kontekst/kontekstWyniku';
 import { EtykietaWerdyktu } from '../wzorzec/KartaWerdyktu';
 import {
   pobierzWynikOcenyZabezpieczen,
@@ -62,16 +71,26 @@ export function SekcjaOcenyZabezpieczen({
   const [stan, setStan] = useState<Stan>('wczytywanie');
   const [blad, setBlad] = useState<string | null>(null);
 
-  // Ostatni zakończony bieg oceny projektu — wynik przeżywa nawigację.
+  const aktywny = useAktywnyBieg('zabezpieczenia');
+  const aktywnyRunId = aktywny?.id ?? null;
+  const swiezosc = useSwiezoscBiegu(aktywny);
+  const wybierzBieg = useWybierzBieg();
+
+  // Aktywny bieg rodziny „Zabezpieczenia" (magazyn kontekstu wyniku) — wynik przeżywa
+  // nawigację, a wybór biegu w pasku stanu albo panelu dolnym zmienia go tutaj.
   useEffect(() => {
     let anulowano = false;
+    if (!aktywnyRunId) {
+      setWynik(null);
+      setStan('bezczynny');
+      return undefined;
+    }
     setStan('wczytywanie');
-    fetchProtectionRuns(projectId)
-      .then(async (lista) => {
-        const ostatni = lista[0];
-        const odczyt = ostatni ? await pobierzWynikOcenyZabezpieczen(ostatni.id) : null;
+    pobierzWynikOcenyZabezpieczen(aktywnyRunId)
+      .then((odczyt) => {
         if (anulowano) return;
         setWynik(odczyt);
+        setBlad(null);
         setStan('bezczynny');
       })
       .catch((err: unknown) => {
@@ -82,7 +101,7 @@ export function SekcjaOcenyZabezpieczen({
     return () => {
       anulowano = true;
     };
-  }, [projectId]);
+  }, [aktywnyRunId]);
 
   // Wariant bez biegu przełącza się na dostępny (wybór widoczny w polu wyboru).
   useEffect(() => {
@@ -99,18 +118,26 @@ export function SekcjaOcenyZabezpieczen({
     setBlad(null);
     try {
       const runId = await uruchomOceneZabezpieczen(projectId, caseId, scRunId);
-      setWynik(await pobierzWynikOcenyZabezpieczen(runId));
+      // Nowy bieg oceny staje się aktywnym biegiem rodziny: rejestr biegów przypadku
+      // dostaje go z serwera, wybór idzie przez magazyn kontekstu (efekt wyżej wczyta wynik).
+      await useExecutionRunsStore.getState().loadRuns(caseId);
+      wybierzBieg(runId, 'bieg');
       setStan('bezczynny');
     } catch (err) {
       setBlad(err instanceof Error ? err.message : String(err));
       setStan('blad');
     }
-  }, [caseId, projectId, scRunId]);
+  }, [caseId, projectId, scRunId, wybierzBieg]);
 
   const doEdycji = () => openRouteSurface('E-27');
 
   return (
-    <section className="mvd-koordynacja-ocena" data-testid="mvd-ocena-zabezpieczen">
+    <section
+      className="mvd-koordynacja-ocena"
+      data-testid="mvd-ocena-zabezpieczen"
+      data-run-id={aktywnyRunId ?? ''}
+      data-swiezosc={swiezosc?.stan ?? ''}
+    >
       <h3>{T.ocenaTytul}</h3>
       <p className="mvd-koordynacja-ocena-opis">{T.ocenaOpis}</p>
 
@@ -153,9 +180,12 @@ export function SekcjaOcenyZabezpieczen({
 
       {wynik ? (
         <div data-testid="mvd-ocena-zabezpieczen-wynik">
-          {wynik.result_status === 'OUTDATED' ? (
+          {wynik.result_status === 'OUTDATED' || swiezosc?.stan === 'nieaktualny' ? (
             <p className="mvd-koordynacja-ocena-uwaga" data-testid="mvd-ocena-zabezpieczen-nieaktualny">
-              <strong>{T.ocenaNieaktualna}:</strong> {wynik.result_status_reason_pl}
+              <strong>{T.ocenaNieaktualna}:</strong>{' '}
+              {wynik.result_status === 'OUTDATED'
+                ? wynik.result_status_reason_pl
+                : zdanieSwiezosci(swiezosc!)}
             </p>
           ) : null}
           <p data-testid="mvd-ocena-zabezpieczen-podsumowanie">

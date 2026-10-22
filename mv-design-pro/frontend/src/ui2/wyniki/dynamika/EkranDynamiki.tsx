@@ -33,8 +33,9 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { PanelCoSieZmienilo, useSwiezoscNaglowka, type SwiezoscNaglowka } from '../../freshness';
-import { FreshnessBadge } from '../../inspector';
+import { FreshnessBadge, czyNieaktualne } from '../../inspector';
 import { useShellStore } from '../../shell/useShellStore';
+import { biegiRodziny, useAktywnyRunId, useWybierzBieg } from '../kontekst/kontekstWyniku';
 import { useUruchomObliczenie } from '../../spaces/obliczenia/uruchomObliczenie';
 import { InformacjeAudytowe } from '../wzorzec/InformacjeAudytowe';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
@@ -120,7 +121,6 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
   const [bieg, setBieg] = useState<ExecutionRun | null>(null);
   const [bladBiegu, setBladBiegu] = useState<string | null>(null);
   const [anulowanieZlecone, setAnulowanieZlecone] = useState(false);
-  const [wybranyBiegId, setWybranyBiegId] = useState<string | null>(null);
   const [wynik, setWynik] = useState<Wczytanie<WynikDynamiki> | null>(null);
 
   // Opis kontraktu scenariusza — niezależny od przypadku.
@@ -182,15 +182,12 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
     if (pfRunId && !biegiRozplywu.some((b) => b.run_id === pfRunId)) setPfRunId('');
   }, [biegiRozplywu, pfRunId]);
 
-  // Wynik: bieg wybrany na ekranie; bez wyboru — ostatni zakończony bieg dynamiki przypadku.
-  const biegiDynamiki = useMemo(
-    () =>
-      biegiPrzypadku
-        .filter((r) => r.analysis_type === 'DYNAMIKA_RMS' && r.status === 'DONE')
-        .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? '')),
-    [biegiPrzypadku],
-  );
-  const pokazywanyBiegId = wybranyBiegId ?? biegiDynamiki[0]?.id ?? null;
+  // Wynik: AKTYWNY bieg rodziny „Dynamika" z magazynu kontekstu wyniku (karta K8) — ten
+  // sam bieg co pasek stanu, pas kontekstu ekranu i „Dowody"; bez wyboru — najnowszy
+  // zakończony bieg dynamiki przypadku, w jednym porządku biegów (`uporzadkujBiegi`).
+  const biegiDynamiki = useMemo(() => biegiRodziny(biegiPrzypadku, 'dynamika'), [biegiPrzypadku]);
+  const pokazywanyBiegId = useAktywnyRunId('dynamika');
+  const wybierzBieg = useWybierzBieg();
   useEffect(() => {
     if (!pokazywanyBiegId) {
       setWynik(null);
@@ -331,7 +328,7 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
       );
       await useExecutionRunsStore.getState().loadRuns(caseId);
       if (koniec.status === 'DONE') {
-        setWybranyBiegId(koniec.id);
+        wybierzBieg(koniec.id, 'bieg');
       } else if (koniec.status === 'FAILED') {
         setBladBiegu(koniec.error_message ?? T.stanBiegu.FAILED);
       }
@@ -341,7 +338,7 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
     } finally {
       setAnulowanieZlecone(false);
     }
-  }, [caseId, nastawy, opis, pfRunId, scenariuszId]);
+  }, [caseId, nastawy, opis, pfRunId, scenariuszId, wybierzBieg]);
 
   const anulujBieg = useCallback(async () => {
     if (!bieg) return;
@@ -583,7 +580,9 @@ export function EkranDynamiki({ szczegolyAudytowe = false, wskazanyElement = nul
             <select
               data-testid="mvd-dynamika-wybor-biegu"
               value={pokazywanyBiegId ?? ''}
-              onChange={(e) => setWybranyBiegId(e.target.value || null)}
+              onChange={(e) => {
+                if (e.target.value) wybierzBieg(e.target.value, 'ekran');
+              }}
             >
               {biegiDynamiki.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -647,7 +646,7 @@ function Wynik({
           <FreshnessBadge rewizjaDanej={rewizjaDanych} rewizjaModelu={rewizjaModelu} />
         </div>
       )}
-      {maSwiezosc && caseId !== undefined && rewizjaDanych < rewizjaModelu && (
+      {maSwiezosc && caseId !== undefined && czyNieaktualne(rewizjaDanych, rewizjaModelu) && (
         <PanelCoSieZmienilo caseId={caseId} rewizjaDanych={rewizjaDanych} onPokazElement={onPokazNaSchemacie} />
       )}
       <section className="mvd-dynamika-sekcja" data-testid="mvd-dynamika-oceny">

@@ -71,7 +71,6 @@ function buildAppState(projectId: string, caseId: string) {
       // Świeżo założony przypadek nie ma jeszcze przebiegu/snapshotu —
       // `null` jest uczciwym stanem (dawne fixture id 'test-run-001' /
       // 'test-snapshot-001' też nie wskazywały na nic realnego).
-      activeRunId: null,
       activeSnapshotId: null,
       caseManagerOpen: false,
       issuePanelOpen: false,

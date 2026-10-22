@@ -24,6 +24,7 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec';
+import { useBiegOgladany } from '../../wyniki/kontekst/kontekstWyniku';
 import { MapaProcesu } from '../../proces';
 import { useDokumentyMagazynu, type RekordDokumentu } from './api';
 import {
@@ -31,7 +32,6 @@ import {
   dokumentDostepny,
   formatujDate,
   formatujRozmiar,
-  ostatniZakonczonyPrzebieg,
   rekordyDlaKarty,
   zawartoscZPrzebiegow,
   type CelDokumentu,
@@ -223,11 +223,13 @@ export function HubDokumentacji({ onOtworzOkno }: HubDokumentacjiProps = {}) {
   const magazyn = useDokumentyMagazynu(activeProjectId);
 
   const maProjekt = Boolean(activeProjectName);
-  const ostatni = ostatniZakonczonyPrzebieg(przebiegi);
+  // Karta K8: status pokazuje bieg OGLĄDANY (magazyn kontekstu wyniku) — ten, z którego
+  // generator raportu i „Dowody" złożą dokument; bez wyboru — najnowszy zakończony.
+  const ogladany = useBiegOgladany();
   const zawartosc = zawartoscZPrzebiegow(przebiegi);
 
-  const rodzajOstatniego = ostatni
-    ? ANALYSIS_TYPE_LABELS[ostatni.analysis_type as keyof typeof ANALYSIS_TYPE_LABELS] ?? ostatni.analysis_type
+  const rodzajOgladanego = ogladany
+    ? ANALYSIS_TYPE_LABELS[ogladany.analysis_type as keyof typeof ANALYSIS_TYPE_LABELS] ?? ogladany.analysis_type
     : null;
   const wersjaUkladu = snapshot ? `rew. ${snapshot.header.revision} · ${snapshot.header.hash_sha256.slice(0, 8)}` : null;
 
@@ -264,13 +266,13 @@ export function HubDokumentacji({ onOtworzOkno }: HubDokumentacjiProps = {}) {
       {/* Q1: czy obliczenia zakończyły się poprawnie? */}
       <section className="mvd-dok-status" aria-label={T.statusEyebrow} data-testid="mvd-dok-status">
         <span className="mvd-dok-lbl">{T.statusEyebrow}</span>
-        {ostatni ? (
-          <div className="mvd-dok-status-ok" data-testid="mvd-dok-status-ok">
+        {ogladany ? (
+          <div className="mvd-dok-status-ok" data-testid="mvd-dok-status-ok" data-run-id={ogladany.id}>
             <span className="mvd-dok-status-kropka" aria-hidden="true" />
             <span className="mvd-dok-status-txt">
               <b>{T.statusZakonczone}</b>
               <span className="mvd-dok-status-meta mvd-num">
-                {rodzajOstatniego} · {dataPrzebiegu(ostatni.finished_at ?? ostatni.started_at)}
+                {rodzajOgladanego} · {dataPrzebiegu(ogladany.finished_at ?? ogladany.started_at)}
                 {wersjaUkladu ? ` · ${T.statusUklad} ${wersjaUkladu}` : ''}
               </span>
             </span>

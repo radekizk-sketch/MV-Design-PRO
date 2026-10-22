@@ -160,7 +160,6 @@ async function otworzAplikacje(page: Page, kontekst: Kontekst, hash: string): Pr
           activeCaseResultStatus: 'FRESH',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: dane.runId,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,

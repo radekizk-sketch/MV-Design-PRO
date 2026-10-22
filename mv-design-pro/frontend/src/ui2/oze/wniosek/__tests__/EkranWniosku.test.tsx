@@ -80,7 +80,7 @@ function zasiejSzyny(): void {
 function zasiej(ders: readonly StationDerConnection[], runs: ExecutionRun[], caseId: string | null = 'case-demo'): void {
   zasiejSzyny();
   useStationDerStore.setState({ ders: Object.fromEntries(ders.map((d) => [d.id, d])) });
-  useExecutionRunsStore.setState({ runs, activeRunId: null });
+  useExecutionRunsStore.setState({ runs});
   useAppStateStore.setState({
     activeProjectName: 'Przyłączenie farmy PV 8 MW',
     activeCaseName: 'Stan normalny',
@@ -112,7 +112,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   klikPobrania?.mockRestore();
   useStationDerStore.setState({ ders: {} });
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  useExecutionRunsStore.setState({ runs: []});
   useSnapshotStore.setState({ snapshot: null } as never);
   useNcRfgStore.getState().reset();
 });

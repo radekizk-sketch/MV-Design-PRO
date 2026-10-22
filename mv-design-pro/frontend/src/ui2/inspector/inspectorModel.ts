@@ -10,6 +10,8 @@
  * techniczne pojawiają się WYŁĄCZNIE w sekcji „Szczegóły techniczne" (tryb Ekspercki).
  */
 
+import { swiezoscBiegu } from '../wyniki/kontekst/swiezoscBiegu';
+
 
 /** Stała identyfikacja zakładek inspektora (kolejność zamrożona). */
 export type ZakladkaInspektora = 'wlasciwosci' | 'wyniki' | 'dowod' | 'powiazania';
@@ -122,7 +124,13 @@ export interface InspectorPanelProps {
   szczegolyAudytowe: boolean;
 }
 
-/** Dana pochodna jest nieaktualna, gdy jej rewizja jest starsza niż rewizja modelu. */
+/**
+ * Dana pochodna jest nieaktualna, gdy jej rewizja RÓŻNI SIĘ od rewizji modelu — to
+ * jest JEDEN predykat świeżości aplikacji (`swiezoscBiegu`, karta K8 §0 pkt 3):
+ * znacznik inspektora, nagłówki ekranów i pasek stanu nie mogą rozstrzygać inaczej.
+ * Dawne „starsza niż" (`<`) uznawało za aktualny wynik z rewizji NOWSZEJ niż model
+ * (np. po cofnięciu zmiany), choć pasek stanu pokazywał go jako nieaktualny.
+ */
 export function czyNieaktualne(rewizjaDanej: number, rewizjaModelu: number): boolean {
-  return rewizjaDanej < rewizjaModelu;
+  return swiezoscBiegu({ model_revision: rewizjaDanej }, rewizjaModelu, null).stan === 'nieaktualny';
 }

@@ -21,7 +21,6 @@ export {
 // PR-14: Execution Runs Store
 export {
   useExecutionRunsStore,
-  useActiveRunId,
   useRunStatus,
   useRuns,
   useIsRunInProgress,
@@ -52,7 +51,6 @@ export { CreateCaseDialog } from './CreateCaseDialog';
 // PR-14: Execution Components
 export { RunButton } from './RunButton';
 export { RunHistoryPanel } from './RunHistoryPanel';
-export { StudyCaseEditor } from './StudyCaseEditor';
 
 // Phase 1 Etap 9 helpers
 export {

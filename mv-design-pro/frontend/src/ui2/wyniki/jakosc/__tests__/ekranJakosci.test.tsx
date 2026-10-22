@@ -89,7 +89,6 @@ describe('EkranJakosci — kompozycja sekcji', () => {
     mockedPasma.mockResolvedValue(PASMA_ROZPLYWU_FIXTURE);
     useExecutionRunsStore.setState({
       runs: [przebiegTestowy('sc-1', 'SC_3F'), przebiegTestowy('pf-1', 'LOAD_FLOW')],
-      activeRunId: null,
     });
     render(<EkranJakosci {...props()} />);
     await waitFor(() => {
@@ -114,7 +113,6 @@ describe('EkranJakosci — kompozycja sekcji', () => {
     mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
     useExecutionRunsStore.setState({
       runs: [przebiegTestowy('pf-1', 'LOAD_FLOW')],
-      activeRunId: null,
     });
     render(<EkranJakosci {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());

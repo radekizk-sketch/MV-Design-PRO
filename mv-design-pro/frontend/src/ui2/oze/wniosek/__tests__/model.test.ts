@@ -1,41 +1,30 @@
 /**
- * Model okna „Wniosek OSD" na kontrakcie V2 (karta AB-1a Pakiet D2 §5): filtry rejestru
- * przebiegów, bramka kompletności (przypadek → operator → rozpływ → zwarcie → węzeł →
+ * Model okna „Wniosek OSD" na kontrakcie V2 (karta AB-1a Pakiet D2 §5): listy biegów
+ * (magazyn kontekstu wyniku), bramka kompletności (przypadek → operator → rozpływ → zwarcie → węzeł →
  * projekt) i ciało `WniosekOsdRequest` (bez biegu zgodności w ciele — zgodność z modelu przypadku).
  */
 
 import { describe, expect, it } from 'vitest';
 
-import {
-  domyslnyPrzebieg,
-  powodBlokadyWniosku,
-  przebiegiRozplywu,
-  przebiegiZwarciowe,
-  zbudujZadanieWniosku,
-} from '../model';
+import { biegiRodziny } from '../../../wyniki/kontekst/kontekstWyniku';
+import { powodBlokadyWniosku, zbudujZadanieWniosku } from '../model';
 import { WNIOSEK_STRINGS, fmtLiczbaWniosku, fmtZJednostkaWniosku, nazwaPlikuWniosku } from '../strings';
 import { przebiegFixture, przebiegiMagazynu } from './fixtures';
 
-describe('filtry przebiegów', () => {
+describe('listy biegów okna (magazyn kontekstu wyniku — `biegiRodziny`, karta K8)', () => {
   const runs = [
     przebiegFixture('pf-1', 'LOAD_FLOW'),
     przebiegFixture('pf-2', 'LOAD_FLOW', 'RUNNING'),
     przebiegFixture('sc-1', 'SC_3F'),
     przebiegFixture('sc-2', 'SC_1F', 'FAILED'),
   ];
-  it('przebiegiRozplywu: LOAD_FLOW/DONE; przebiegiZwarciowe: SC_*/DONE', () => {
-    expect(przebiegiRozplywu(runs).map((r) => r.id)).toEqual(['pf-1']);
-    expect(przebiegiZwarciowe(runs).map((r) => r.id)).toEqual(['sc-1']);
+  it('rozpływ: LOAD_FLOW/DONE; zwarcie: SC_*/DONE (bieg w toku i nieudany poza listą)', () => {
+    expect(biegiRodziny(runs, 'rozplyw').map((r) => r.id)).toEqual(['pf-1']);
+    expect(biegiRodziny(runs, 'zwarcie').map((r) => r.id)).toEqual(['sc-1']);
   });
   it('rejestr sceny (to_execution_dict backendu) daje dokładnie jeden rozpływ i jedno zwarcie', () => {
-    expect(przebiegiRozplywu(przebiegiMagazynu())).toHaveLength(1);
-    expect(przebiegiZwarciowe(przebiegiMagazynu())).toHaveLength(1);
-  });
-  it('domyslnyPrzebieg: aktywny › ostatni; pusta lista → null', () => {
-    const kandydaci = [przebiegFixture('a', 'LOAD_FLOW'), przebiegFixture('b', 'LOAD_FLOW')];
-    expect(domyslnyPrzebieg(kandydaci, 'a')).toBe('a');
-    expect(domyslnyPrzebieg(kandydaci, 'x')).toBe('b');
-    expect(domyslnyPrzebieg([], 'a')).toBeNull();
+    expect(biegiRodziny(przebiegiMagazynu(), 'rozplyw')).toHaveLength(1);
+    expect(biegiRodziny(przebiegiMagazynu(), 'zwarcie')).toHaveLength(1);
   });
 });
 

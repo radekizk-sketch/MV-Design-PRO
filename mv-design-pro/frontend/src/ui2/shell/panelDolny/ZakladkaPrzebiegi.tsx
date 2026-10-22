@@ -2,31 +2,21 @@
  * Zakładka „Przebiegi" panelu dolnego — rejestr przebiegów z backendu
  * (`useExecutionRunsStore.runs`, hydratowany przez `useHydratacjaPowloki` z
  * `GET /api/execution/study-cases/{id}/runs`). Kolejność deterministyczna:
- * najnowszy znacznik czasu na górze, remis rozstrzyga identyfikator.
+ * najnowszy znacznik czasu na górze, remis rozstrzyga identyfikator (JEDNA reguła
+ * `kontekstWyniku.uporzadkujBiegi` — ta sama co panel „Wyniki", „Dowody" i pasek stanu).
  * Zakończony bieg prowadzi do swoich wyników (lądowisko K3).
  */
 
 import { useMemo } from 'react';
 
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import type { ExecutionRun } from '../../../ui/study-cases/types';
+import { uporzadkujBiegi } from '../../wyniki/kontekst/kontekstWyniku';
 import {
   etykietaAnalizy,
   etykietaStatusu,
   formatCzas,
 } from '../../spaces/obliczenia/przebiegi/strings';
 import type { KontekstPaneluDolnego } from './rejestrZakladek';
-
-function znacznik(run: ExecutionRun): string {
-  return run.finished_at ?? run.started_at ?? run.created_at ?? '';
-}
-
-export function uporzadkujPrzebiegi(runs: readonly ExecutionRun[]): ExecutionRun[] {
-  return [...runs].sort((a, b) => {
-    const roznica = znacznik(b).localeCompare(znacznik(a));
-    return roznica !== 0 ? roznica : b.id.localeCompare(a.id);
-  });
-}
 
 /** Licznik zakładki: liczba przebiegów aktywnego zakresu. */
 export function LicznikPrzebiegow() {
@@ -41,7 +31,7 @@ export function LicznikPrzebiegow() {
 
 export function ZakladkaPrzebiegi({ onPokazWynikiBiegu }: KontekstPaneluDolnego) {
   const runs = useExecutionRunsStore((s) => s.runs);
-  const uporzadkowane = useMemo(() => uporzadkujPrzebiegi(runs), [runs]);
+  const uporzadkowane = useMemo(() => uporzadkujBiegi(runs), [runs]);
 
   if (uporzadkowane.length === 0) {
     return (

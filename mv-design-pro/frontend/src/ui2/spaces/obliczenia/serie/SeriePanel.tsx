@@ -3,7 +3,8 @@
  * Powierzchnia serii/wsadu przebiegów: uruchomienie wielu scenariuszy
  * zwarciowych jako jednej serii + lista wykonanych serii ze statusami
  * i wejściem w wyniki pojedynczego przebiegu przez istniejące lądowisko K3
- * (callback `onPokazWyniki(runId)` — ta sama para `setActiveRun` + przejście
+ * (callback `onPokazWyniki(runId)` — ta sama para `wybierzBieg` magazynu kontekstu
+ * wyniku (karta K8) + przejście
  * do przestrzeni „Wyniki", którą wykonuje integrator dla `PrzebiegiPanel`).
  *
  * DEKLARACJA POWIĄZAŃ (SPEC_POWIAZANIA_WARSTW §5):

@@ -46,10 +46,7 @@ import type { BrakiWniosku, WidokWniosku, ZadanieWniosku } from '../ncrfg/typy';
 import { WyborOperatora } from '../ncrfg/WyborOperatora';
 import { useNcRfgStore } from '../ncRfgStore';
 import {
-  domyslnyPrzebieg,
   powodBlokadyWniosku,
-  przebiegiRozplywu,
-  przebiegiZwarciowe,
   zbudujZadanieWniosku,
 } from './model';
 import {
@@ -60,6 +57,7 @@ import {
 } from './strings';
 
 import './wniosek.css';
+import { biegiRodziny, useAktywnyRunId, useWybierzBieg } from '../../wyniki/kontekst/kontekstWyniku';
 
 /** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
 function zapiszBlob(blob: Blob, nazwa: string): void {
@@ -80,9 +78,13 @@ export interface EkranWnioskuProps {
 
 export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Element {
   const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const rozplywy = useMemo(() => przebiegiRozplywu(runs), [runs]);
-  const zwarcia = useMemo(() => przebiegiZwarciowe(runs), [runs]);
+  // Karta K8: przebiegi rozpływu i zwarcia wniosku to AKTYWNE biegi tych rodzin z magazynu
+  // kontekstu wyniku — wybór w formularzu zmienia bieg rodziny w całej aplikacji.
+  const rozplywy = useMemo(() => biegiRodziny(runs, 'rozplyw'), [runs]);
+  const zwarcia = useMemo(() => biegiRodziny(runs, 'zwarcie'), [runs]);
+  const pfRunId = useAktywnyRunId('rozplyw');
+  const scRunId = useAktywnyRunId('zwarcie');
+  const wybierzBieg = useWybierzBieg();
 
   // Operator (profil wymagań NC RfG) — z modelu albo jawny wybór (wspólny store z macierzą).
   const ders = useStationDerStore((state) => selectAllDers(state));
@@ -104,8 +106,6 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
   // dobór co kompensacja mocy biernej) — projektant nie wpisuje referencji.
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeSzyn = useMemo(() => selectBusOptions(snapshot), [snapshot]);
-  const [pfRunId, setPfRunId] = useState<string | null>(null);
-  const [scRunId, setScRunId] = useState<string | null>(null);
   const [busRef, setBusRef] = useState('');
   const [nazwaProjektu, setNazwaProjektu] = useState(() => nazwaProjektuBazowa ?? '');
   const [nazwaPrzypadku, setNazwaPrzypadku] = useState(() => nazwaPrzypadkuBazowa ?? '');
@@ -121,22 +121,6 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
   useEffect(() => {
     void zaladujKatalog();
   }, [zaladujKatalog]);
-
-  // Domyślny wybór przebiegów (preferuje aktywny, inaczej ostatni z listy).
-  useEffect(() => {
-    setPfRunId((biezacy) =>
-      biezacy && rozplywy.some((r) => r.id === biezacy)
-        ? biezacy
-        : domyslnyPrzebieg(rozplywy, activeRunId),
-    );
-  }, [rozplywy, activeRunId]);
-  useEffect(() => {
-    setScRunId((biezacy) =>
-      biezacy && zwarcia.some((r) => r.id === biezacy)
-        ? biezacy
-        : domyslnyPrzebieg(zwarcia, activeRunId),
-    );
-  }, [zwarcia, activeRunId]);
 
   const powodBlokady = powodBlokadyWniosku({
     caseId: aktywnyPrzypadek,
@@ -225,7 +209,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
               <select
                 value={pfRunId ?? ''}
                 onChange={(e) => {
-                  setPfRunId(e.target.value || null);
+                  if (e.target.value) wybierzBieg(e.target.value, 'ekran');
                   unewaznij();
                 }}
                 disabled={rozplywy.length === 0}
@@ -247,7 +231,7 @@ export function EkranWniosku({ szczegolyAudytowe }: EkranWnioskuProps): JSX.Elem
               <select
                 value={scRunId ?? ''}
                 onChange={(e) => {
-                  setScRunId(e.target.value || null);
+                  if (e.target.value) wybierzBieg(e.target.value, 'ekran');
                   unewaznij();
                 }}
                 disabled={zwarcia.length === 0}

@@ -156,7 +156,6 @@ async function createCaseFromUi(
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,

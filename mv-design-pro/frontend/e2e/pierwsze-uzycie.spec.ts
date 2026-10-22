@@ -162,7 +162,6 @@ test('model z GPZ: Schemat → pozycja „Gotowość" paska stanu → klik → G
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,

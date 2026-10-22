@@ -223,7 +223,6 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -332,7 +331,7 @@ test.describe('Pasmo MIN/MAX zwarcia — karta W3-G3', () => {
 
     // Kotwica MAX przez REALNY klik „Oblicz" (ten sam tor co pierwszy test —
     // populuje `useResultsInspectorStore` przez most S9-2, którego samo
-    // seedowanie `activeRunId` w localStorage NIE wyzwala).
+    // samo wskazanie biegu w kontekście wyniku NIE wyzwala).
     await kliknijOblicz(page);
 
     // DRUGI, NIEZALEŻNY bieg (scenariusz MIN) tego samego przypadku — wprost

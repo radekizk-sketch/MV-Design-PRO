@@ -6,7 +6,11 @@
  * rewizja modelu (→ zakładka „Dziennik operacji") · GOTOWOŚĆ — jedyne miejsce
  * gotowości w chromie, prowadzi do przestrzeni „Gotowość" · przebieg: trwający
  * bieg z rodzajem analizy i stanem (§9: stan obliczeń widoczny globalnie) albo
- * ostatni zakończony (→ zakładka „Przebiegi") · wersja modelu — skrócony odcisk
+ * wejście do rejestru przebiegów (→ zakładka „Przebiegi") · AKTYWNE BIEGI RODZIN
+ * analiz (karta K8: „Rozpływ: … rew. 12 aktualny · Zwarcia: 3F … rew. 11
+ * nieaktualny") z wyborem biegu — ten sam magazyn kontekstu wyniku co schemat, panel
+ * dolny, inspektor, „Dowody" i ekrany pełne; dawne „ostatni zakończony przebieg" było
+ * niezależnym czwartym źródłem i zostało skasowane · wersja modelu — skrócony odcisk
  * SHA-256 migawki (K6/H-6 R4).
  */
 
@@ -15,6 +19,7 @@ import { shortFingerprint } from './shellStatus';
 import type { BottomPanelTab } from './useShellStore';
 import { SHELL_STRINGS, modelRevisionLabel, readinessLabel, runInProgressLabel, runLabel } from './strings';
 import type { PodsumowanieGotowosci } from '../spaces/gotowosc/adapters/gotowoscAdapter';
+import { WyborBieguRodziny, type RodzinaAnalizy } from '../wyniki/kontekst';
 
 export interface StanBiegu {
   trwa: boolean;
@@ -30,6 +35,8 @@ interface StatusBarProps {
   /** Projekt otwarty — bez projektu gotowość nie istnieje (kreska braku danej). */
   projektOtwarty: boolean;
   bieg: StanBiegu;
+  /** Rodziny analiz z zakończonym biegiem (kolejność stała) — wybór biegu każdej z nich. */
+  rodzinyWynikow?: readonly RodzinaAnalizy[];
   onReconnect?: () => void;
   onOpenBottomPanel?: (tab: BottomPanelTab) => void;
   onOtworzGotowosc?: () => void;
@@ -60,6 +67,7 @@ export function StatusBar({
   gotowosc,
   projektOtwarty,
   bieg,
+  rodzinyWynikow = [],
   onReconnect,
   onOpenBottomPanel,
   onOtworzGotowosc,
@@ -121,9 +129,18 @@ export function StatusBar({
             {runInProgressLabel(bieg.analiza, bieg.stan)}
           </>
         ) : (
-          runLabel(status.lastRunLabel)
+          runLabel(rodzinyWynikow.length > 0)
         )}
       </button>
+
+      {rodzinyWynikow.map((rodzina) => (
+        <WyborBieguRodziny
+          key={rodzina}
+          rodzina={rodzina}
+          zrodlo="pasek"
+          testid={`mvd-status-rodzina-${rodzina}`}
+        />
+      ))}
 
       <span className="mvd-grow" />
 

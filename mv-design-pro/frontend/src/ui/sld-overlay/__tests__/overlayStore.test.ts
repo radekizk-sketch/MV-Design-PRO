@@ -36,7 +36,7 @@ beforeEach(() => {
 describe('overlayStore — initial state', () => {
   it('starts with no active run + no overlay', () => {
     const state = useOverlayStore.getState();
-    expect(state.activeRunId).toBeNull();
+    expect(state.zaladowanyRunId).toBeNull();
     expect(state.overlay).toBeNull();
     expect(state.visibleOverlays).toEqual([]);
   });
@@ -47,11 +47,11 @@ describe('overlayStore — initial state', () => {
 });
 
 describe('overlayStore — loadOverlay', () => {
-  it('sets activeRunId + overlay + enables', () => {
+  it('sets zaladowanyRunId + overlay + enables', () => {
     const payload = makePayload('run_1');
     useOverlayStore.getState().loadOverlay(payload);
     const state = useOverlayStore.getState();
-    expect(state.activeRunId).toBe('run_1');
+    expect(state.zaladowanyRunId).toBe('run_1');
     expect(state.overlay).toEqual(payload);
     expect(state.enabled).toBe(true);
   });
@@ -62,7 +62,7 @@ describe('overlayStore — loadOverlay', () => {
     useOverlayStore.getState().loadOverlay(p1);
     useOverlayStore.getState().loadOverlay(p2);
     const state = useOverlayStore.getState();
-    expect(state.activeRunId).toBe('run_2');
+    expect(state.zaladowanyRunId).toBe('run_2');
     expect(state.overlay).toEqual(p2);
   });
 
@@ -75,11 +75,11 @@ describe('overlayStore — loadOverlay', () => {
 });
 
 describe('overlayStore — clearOverlay', () => {
-  it('resets activeRunId + overlay to null', () => {
+  it('resets zaladowanyRunId + overlay to null', () => {
     useOverlayStore.getState().loadOverlay(makePayload('run_x'));
     useOverlayStore.getState().clearOverlay();
     const state = useOverlayStore.getState();
-    expect(state.activeRunId).toBeNull();
+    expect(state.zaladowanyRunId).toBeNull();
     expect(state.overlay).toBeNull();
   });
 
@@ -248,7 +248,7 @@ describe('overlayStore — faultFlow (karta S-B, kanał kierunku rozpływu zwarc
     useOverlayStore.getState().loadOverlay(makePayload('run_sc_1'));
     useOverlayStore.getState().loadFaultFlow(makeFaultFlow('run_sc_1'));
     const state = useOverlayStore.getState();
-    expect(state.activeRunId).toBe('run_sc_1');
+    expect(state.zaladowanyRunId).toBe('run_sc_1');
     expect(state.faultFlow?.run_id).toBe('run_sc_1');
   });
 

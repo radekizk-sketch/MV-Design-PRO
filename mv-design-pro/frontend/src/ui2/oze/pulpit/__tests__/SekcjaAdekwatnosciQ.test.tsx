@@ -48,7 +48,6 @@ describe('SekcjaAdekwatnosciQ — wynik z rozpływu (kryterium 3)', () => {
   beforeEach(() => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-      activeRunId: 'lf-run',
     });
   });
 
@@ -110,7 +109,6 @@ describe('SekcjaAdekwatnosciQ — wyróżnienie moduł→węzeł (P47b)', () => 
   beforeEach(() => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-      activeRunId: 'lf-run',
     });
   });
 

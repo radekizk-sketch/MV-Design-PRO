@@ -108,9 +108,13 @@ export function modelRevisionLabel(revision: number | null): string {
   return `Model: rew. ${revision == null ? SHELL_STRINGS.emptyValue : revision}`;
 }
 
-/** „Przebieg: {czas}". */
-export function runLabel(when: string | null): string {
-  return `Przebieg: ${when == null ? SHELL_STRINGS.emptyValue : when}`;
+/**
+ * Wejście do rejestru przebiegów na pasku stanu: „Przebiegi" albo „Przebieg: —" (brak
+ * zakończonego biegu). Który bieg każdej rodziny jest aktywny, mówią obok kontrolki
+ * kontekstu wyniku (karta K8), nie ta etykieta.
+ */
+export function runLabel(saZakonczone: boolean): string {
+  return saZakonczone ? 'Przebiegi' : `Przebieg: ${SHELL_STRINGS.emptyValue}`;
 }
 
 /** „Obliczanie: {analiza} · {stan}" — trwający bieg (§9: stan obliczeń widoczny globalnie). */

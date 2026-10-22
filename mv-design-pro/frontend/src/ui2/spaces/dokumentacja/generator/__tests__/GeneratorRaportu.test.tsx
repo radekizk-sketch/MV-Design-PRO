@@ -11,7 +11,6 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useAppStateStore } from '../../../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../../shell/useShellStore';
 import { GeneratorRaportu } from '../GeneratorRaportu';
@@ -20,6 +19,7 @@ import {
   etykietaPrzebiegu,
   przebiegiDoRaportu,
 } from '../model';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../../test/kontekstBiegu';
 
 type Run = ReturnType<typeof useExecutionRunsStore.getState>['runs'][number];
 
@@ -75,7 +75,7 @@ function przechwycFetch(niedostepne: Record<string, string> = {}): string[] {
 
 describe('GeneratorRaportu — okno składania raportu (ui2)', () => {
   beforeEach(() => {
-    useAppStateStore.setState({ activeRunId: null });
+    wyczyscKontekstWyniku();
     useExecutionRunsStore.setState({ runs: [] });
     useShellStore.setState({ activeSpace: 'dokumentacja' });
     // jsdom nie ma createObjectURL — pobranie pliku jest efektem ubocznym klienta.
@@ -172,7 +172,7 @@ describe('GeneratorRaportu — okno składania raportu (ui2)', () => {
   it('WYBÓR PRZEBIEGU: eksport idzie do wskazanego biegu, nie do aktywnego', async () => {
     const user = userEvent.setup();
     const urls = przechwycFetch();
-    useAppStateStore.setState({ activeRunId: 'run-nowszy' });
+    ustawBiegOgladany('run-nowszy');
     useExecutionRunsStore.setState({
       runs: [
         przebieg('run-nowszy', 'SC_3F', '2026-07-30T12:00:00Z'),
@@ -268,7 +268,7 @@ describe('GeneratorRaportu — brama dokumentacji wykonawczej', () => {
   }
 
   beforeEach(() => {
-    useAppStateStore.setState({ activeRunId: null });
+    wyczyscKontekstWyniku();
     useExecutionRunsStore.setState({ runs: [] });
     useShellStore.setState({ activeSpace: 'dokumentacja' });
     Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });
@@ -358,7 +358,7 @@ describe('GeneratorRaportu — brama dokumentacji wykonawczej', () => {
  */
 describe('GeneratorRaportu — brama eksportu wywodu', () => {
   beforeEach(() => {
-    useAppStateStore.setState({ activeRunId: null });
+    wyczyscKontekstWyniku();
     useExecutionRunsStore.setState({ runs: [] });
     useShellStore.setState({ activeSpace: 'dokumentacja' });
     Object.defineProperty(window.URL, 'createObjectURL', { value: () => 'blob:x', writable: true });

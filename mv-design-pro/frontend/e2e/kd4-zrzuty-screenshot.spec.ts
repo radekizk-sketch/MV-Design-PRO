@@ -245,7 +245,6 @@ async function otworz(page: Page, scena: Scena, motyw: string, hash: string): Pr
             activeCaseResultStatus: 'FRESH',
             activeSnapshotId: null,
             activeMode: 'MODEL_EDIT',
-            activeRunId: dane.runId,
             activeAnalysisType: 'SHORT_CIRCUIT',
             caseManagerOpen: false,
             issuePanelOpen: false,

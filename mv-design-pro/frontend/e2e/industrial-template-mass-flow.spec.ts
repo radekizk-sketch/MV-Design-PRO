@@ -217,7 +217,6 @@ async function openCaseInUi(
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           issuePanelOpen: false,
         },

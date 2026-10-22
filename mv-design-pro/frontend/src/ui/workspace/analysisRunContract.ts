@@ -518,7 +518,7 @@ function ensureAnalysisRunContract(runId: string): Promise<AnalysisRunContract> 
 
 export function resolveSurfaceRunId(
   surface: WorkspaceSurfaceDescriptor,
-  activeRunId: string | null,
+  runIdOgladany: string | null,
 ): string | null {
   const payloadRunId = normalizeString(surface.routeState.payload?.runId);
 
@@ -531,10 +531,10 @@ export function resolveSurfaceRunId(
     return normalizeString(surface.routeState.runRef)
       ?? payloadRunId
       ?? normalizeString(surface.subjectRef)
-      ?? activeRunId;
+      ?? runIdOgladany;
   }
 
-  return normalizeString(activeRunId);
+  return normalizeString(runIdOgladany);
 }
 
 export function useAnalysisRunContract(runId: string | null): AnalysisRunContractState {

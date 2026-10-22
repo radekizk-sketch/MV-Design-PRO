@@ -17,20 +17,18 @@ import {
   naWierszeWiarygodnosci,
   naZalozeniaWalidacji,
   naZalozeniaWiarygodnosci,
-  przebiegRozplywu,
-  przebiegZwarciowy,
   rodzajPrzekroczeniaWalidacji,
   typElementuWalidacji,
 } from '../jakoscModel';
 import type { WynikArcFlash } from '../api';
 import { OPIS_PASMA_NN, OPIS_PASMA_SN } from '../../../model/pasmaNapieciowe';
-import { MIGOTANIE_FIXTURE, WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
+import { MIGOTANIE_FIXTURE, WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE } from './fixtures';
 
 /** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
 const NAZWA = (ref: string, nazwaZWyniku?: string | null): string =>
   nazwaZWyniku ?? `nazwa ${ref}`;
 
-describe('wybór przebiegu z rejestru', () => {
+describe('rozpoznanie rodzaju przebiegu (wybór biegu — magazyn kontekstu wyniku, karta K8)', () => {
   it('rozpoznaje wszystkie rodzaje zwarcia jako SC', () => {
     for (const t of ['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G']) {
       expect(jestPrzebiegiemZwarciowym(t)).toBe(true);
@@ -38,34 +36,6 @@ describe('wybór przebiegu z rejestru', () => {
     expect(jestPrzebiegiemZwarciowym('LOAD_FLOW')).toBe(false);
   });
 
-  it('przebiegZwarciowy: ostatni zakończony SC gdy brak dopasowania aktywnego', () => {
-    const runs = [
-      przebiegTestowy('sc-1', 'SC_3F'),
-      przebiegTestowy('pf-1', 'LOAD_FLOW'),
-      przebiegTestowy('sc-2', 'SC_1F'),
-    ];
-    expect(przebiegZwarciowy(runs, null)?.id).toBe('sc-2');
-  });
-
-  it('przebiegZwarciowy: preferuje aktywny przebieg gdy pasuje i DONE', () => {
-    const runs = [przebiegTestowy('sc-1', 'SC_3F'), przebiegTestowy('sc-2', 'SC_1F')];
-    expect(przebiegZwarciowy(runs, 'sc-1')?.id).toBe('sc-1');
-  });
-
-  it('przebiegZwarciowy: pomija przebiegi niezakończone', () => {
-    const runs = [przebiegTestowy('sc-1', 'SC_3F', 'RUNNING')];
-    expect(przebiegZwarciowy(runs, 'sc-1')).toBeNull();
-  });
-
-  it('przebiegRozplywu: wybiera LOAD_FLOW/DONE, ignoruje SC', () => {
-    const runs = [przebiegTestowy('sc-1', 'SC_3F'), przebiegTestowy('pf-1', 'LOAD_FLOW')];
-    expect(przebiegRozplywu(runs, null)?.id).toBe('pf-1');
-  });
-
-  it('brak dopasowania → null', () => {
-    expect(przebiegRozplywu([przebiegTestowy('sc-1', 'SC_3F')], null)).toBeNull();
-    expect(przebiegZwarciowy([], null)).toBeNull();
-  });
 });
 
 describe('adapter wiarygodności', () => {

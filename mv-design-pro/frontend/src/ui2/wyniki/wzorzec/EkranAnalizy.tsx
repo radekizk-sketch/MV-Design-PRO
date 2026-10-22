@@ -14,7 +14,7 @@
 
 import './wzorzec.css';
 import '../../inspector/inspector.css';
-import { FreshnessBadge } from '../../inspector';
+import { FreshnessBadge, czyNieaktualne } from '../../inspector';
 import { PanelCoSieZmienilo } from '../../freshness';
 import { InformacjeAudytowe } from './InformacjeAudytowe';
 import { SekcjaZalozen } from './SekcjaZalozen';
@@ -51,7 +51,7 @@ export function EkranAnalizy({
   // wyniku byłby szumem, a bez `caseId` nie ma czego pytać — i to jest brak danej,
   // nie powód do zgadywania.
   const pokazPrzyczyny =
-    maSwiezosc && caseId !== undefined && rewizjaDanych! < rewizjaModelu!;
+    maSwiezosc && caseId !== undefined && czyNieaktualne(rewizjaDanych!, rewizjaModelu!);
 
   return (
     <div className="mvd-wyn" data-testid="mvd-wyn-ekran">

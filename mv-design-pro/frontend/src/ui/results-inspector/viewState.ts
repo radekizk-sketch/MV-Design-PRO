@@ -11,9 +11,9 @@ export function encodeResultsSnapshotMode(mode: ResultsSnapshotMode): string {
 
 export function resolveResultsRunId(
   routeRunId: string | null | undefined,
-  activeRunId: string | null | undefined,
+  runIdOgladany: string | null | undefined,
 ): string | null {
-  return routeRunId ?? activeRunId ?? null;
+  return routeRunId ?? runIdOgladany ?? null;
 }
 
 export function resolveResultsSnapshotMode(

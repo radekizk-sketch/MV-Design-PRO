@@ -17,7 +17,6 @@
  * prefiks zapobiega kolizji nazw (TS2308).
  */
 
-import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type {
   DefinicjaKolumny,
   NazwaObiektu,
@@ -45,21 +44,6 @@ import {
 // ---------------------------------------------------------------------------
 // Wybór przebiegu z rejestru — przebieg rozpływu (LOAD_FLOW/DONE)
 // ---------------------------------------------------------------------------
-
-/**
- * Ostatni/aktywny zakończony przebieg rozpływu (LOAD_FLOW/DONE) — źródło Y-bus.
- * Preferuje aktywny (gdy pasuje i zakończony), inaczej OSTATNI zakończony.
- * Deterministyczne dla danego wejścia (kolejność źródłowa listy `runs`).
- */
-export function przebiegRozplywuEstymacji(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-): ExecutionRun | null {
-  const kandydaci = runs.filter((r) => r.analysis_type === 'LOAD_FLOW' && r.status === 'DONE');
-  if (kandydaci.length === 0) return null;
-  const aktywny = kandydaci.find((r) => r.id === activeRunId);
-  return aktywny ?? kandydaci[kandydaci.length - 1];
-}
 
 // ---------------------------------------------------------------------------
 // Stan edytora pomiarów (prezentacja) — wartości surowe z przecinkiem PL

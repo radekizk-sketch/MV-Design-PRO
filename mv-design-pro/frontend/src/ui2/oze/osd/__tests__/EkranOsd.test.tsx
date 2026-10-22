@@ -28,7 +28,6 @@ vi.mock('../../api', () => ({
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-    activeRunId: 'lf-run',
   });
   useSnapshotStore.setState({ snapshot: snapshotFixture() });
 }
@@ -56,7 +55,6 @@ describe('EkranOsd — stany wejściowe (kryterium 1)', () => {
   it('z przebiegiem ale bez źródeł w modelu pokazuje uczciwy stan „brak źródeł"', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-      activeRunId: 'lf-run',
     });
     useSnapshotStore.setState({ snapshot: snapshotBezZrodelFixture() });
     render(<EkranOsd szczegolyAudytowe={false} onOtworzDowod={vi.fn()} />);

@@ -53,6 +53,7 @@ import { EkranDynamiki } from '../../ui2/wyniki/dynamika';
 import { EkranStanuFazowego } from '../../ui2/wyniki/stan-fazowy';
 import { EkranZbieznosci } from '../../ui2/wyniki/zbieznosc';
 import { useShellStore } from '../../ui2/shell/useShellStore';
+import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
 import {
   exportReport,
   exportProofPack,
@@ -224,8 +225,8 @@ function AnalysisContractPanel({
   showSummary = true,
   showTraceSummary = true,
 }: AnalysisContractPanelProps) {
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
-  const runId = resolveSurfaceRunId(surface, activeRunId);
+  const runIdOgladany = useRunIdOgladany();
+  const runId = resolveSurfaceRunId(surface, runIdOgladany);
   const { data, isLoading, error } = useAnalysisRunContract(runId);
 
   const context = data?.analysisCaseContext ?? null;
@@ -900,7 +901,7 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const activeSnapshotId = useAppStateStore((state) => state.activeSnapshotId);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
@@ -909,7 +910,7 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
     { label: 'Projekt', value: displayProjectLabel(activeProjectName) },
     { label: 'Wariant', value: displayScopeLabel(activeCaseName, activeCaseId) },
     { label: 'Wersja układu', value: activeSnapshotId ? 'Aktualna wersja układu' : 'Nie wybrano wersji układu' },
-    { label: 'Obliczenie', value: resolveRunLabel(activeRunId, executionRuns) },
+    { label: 'Obliczenie', value: resolveRunLabel(runIdOgladany, executionRuns) },
     { label: 'Obiekt', value: resolveSurfaceObjectLabel(surface, snapshot, selectedElement) },
     { label: 'Zakładka', value: displayAnalysisTabLabel(surface.tabId) },
   ];
@@ -935,7 +936,7 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
 function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const setWynikiTab = useShellStore((state) => state.setWynikiTab);
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
   // Karta AB-1a Pakiet D2 §7: zakładka „ncrfg-tests" renderuje JEDYNY ekran zdolności —
@@ -950,21 +951,19 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     setActiveSpace('wyniki');
   };
   const executionRuns = useExecutionRunsStore((state) => state.runs);
-  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
   const openChildSurface = useChildSurfaceLauncher(surface);
   const activeAnalysisTab = surface.tabId ?? ANALYSIS_ROUTE_DEFAULT_TAB;
-  const effectiveRunId = activeRunId ?? executionActiveRunId;
-  const serverAnalysisRows = useServerAnalysisRows(effectiveRunId);
+  const serverAnalysisRows = useServerAnalysisRows(runIdOgladany);
   const analysisRows = useMemo(
     () =>
       serverAnalysisRows.status === 'loading'
       || serverAnalysisRows.status === 'error'
       || serverAnalysisRows.rows.length > 0
         ? serverAnalysisRows.rows
-        : buildAnalysisTableRows(snapshot, Boolean(effectiveRunId)),
-    [effectiveRunId, serverAnalysisRows.rows, serverAnalysisRows.status, snapshot],
+        : buildAnalysisTableRows(snapshot, Boolean(runIdOgladany)),
+    [runIdOgladany, serverAnalysisRows.rows, serverAnalysisRows.status, snapshot],
   );
   const analysisTableTitle =
     serverAnalysisRows.status === 'loading'
@@ -1071,7 +1070,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           />
           <SurfaceActionButton
             label="Raporty OSD i audytowe"
-            onClick={() => navigateToReport({ caseId: activeCaseId, runId: effectiveRunId })}
+            onClick={() => navigateToReport({ caseId: activeCaseId, runId: runIdOgladany })}
           />
         </div>
       </SectionCard>
@@ -1086,12 +1085,12 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         ) : activeAnalysisTab === 'trace' ? (
           <div className="space-y-4">
             <ElementCalculationProofPanel
-              runId={effectiveRunId}
+              runId={runIdOgladany}
               selectedElement={selectedElement}
               candidateRefs={proofCandidateRefs}
               className="rounded-lg border border-slate-200 bg-white p-4"
             />
-            <ProofLatexPanel runId={effectiveRunId} />
+            <ProofLatexPanel runId={runIdOgladany} />
           </div>
         ) : (
           <AnalysisDataTable
@@ -1115,11 +1114,10 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
-  const appActiveRunId = useAppStateStore((state) => state.activeRunId);
-  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
+  // Karta K8: bieg oglądany z magazynu kontekstu wyniku — jedyne źródło wyboru biegu.
+  const runIdOgladany = useRunIdOgladany();
   const executionRuns = useExecutionRunsStore((state) => state.runs);
-  const activeRunId = appActiveRunId ?? executionActiveRunId;
-  const runContract = useAnalysisRunContract(activeRunId).data;
+  const runContract = useAnalysisRunContract(runIdOgladany).data;
   const patchSurfaceSession = useNetworkBuildStore((state) => state.patchSurfaceSession);
   const session = useNetworkBuildStore((state) => state.surfaceSessions[surface.surfaceId] ?? null);
   const openChildSurface = useChildSurfaceLauncher(surface);
@@ -1195,7 +1193,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunFailed = runContract?.status === 'FAILED'
     || runContract?.analysisCaseContext?.completeness === 'failed';
   const reportStatus: 'gotowy' | 'czesciowy' | 'zablokowany' = (() => {
-    if (!activeRunId) return 'zablokowany';
+    if (!runIdOgladany) return 'zablokowany';
     if (activeRunFailed) return 'czesciowy';
     if (derAxesAggregate.anyBlocked) return 'zablokowany';
     if (!readiness?.ready) return 'czesciowy';
@@ -1238,11 +1236,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     .map((branch) => branch.ref_id || branch.id)
     .filter((ref): ref is string => Boolean(ref));
   const readinessBlockers = readiness?.blockers ?? [];
-  const hasCompletedRun = Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status));
+  const hasCompletedRun = Boolean(runIdOgladany && isCompletedAnalysisRunStatus(runContract?.status));
   // Karta UI-02 PANEL-DOLNY: o eksporcie wywodu (i etapie „Uzasadnienie”) rozstrzyga brama
   // serwera liczona funkcją eksportu (`…/export/proof/dostepnosc`), nie `trace_summary`
   // (inna funkcja backendu — dla rozpływu czyta inny ślad niż eksport).
-  const eksportLatex = formatWStanie(useDostepnoscEksportuWywodu(activeRunId), 'latex');
+  const eksportLatex = formatWStanie(useDostepnoscEksportuWywodu(runIdOgladany), 'latex');
   const hasSolverTrace = eksportLatex.dostepny;
   const openProofSurface = () =>
     openChildSurface('E-36', {
@@ -1350,8 +1348,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       id: 'calculations',
       stage: 'calculations',
       label: 'Etap 7 Obliczenia',
-      status: hasCompletedRun ? 'gotowe' : activeRunId ? 'czesciowy' : 'wynik_zablokowany',
-      dataSummary: resolveRunLabel(activeRunId, executionRuns),
+      status: hasCompletedRun ? 'gotowe' : runIdOgladany ? 'czesciowy' : 'wynik_zablokowany',
+      dataSummary: resolveRunLabel(runIdOgladany, executionRuns),
       missingFields: hasCompletedRun ? [] : ['zakończone obliczenie', 'wyniki per węzeł i odcinek'],
       sourceRef: 'run / resultset',
       fixAction: { label: 'Otwórz wyniki', onClick: openAnalysisSurface },
@@ -1397,7 +1395,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       fixAction: {
         label: reportStatus === 'gotowy' ? 'Sprawdź raport' : 'Przejdź do konfiguracji',
         onClick: reportStatus === 'gotowy'
-          ? () => navigateToReport({ caseId: activeCaseId, runId: activeRunId })
+          ? () => navigateToReport({ caseId: activeCaseId, runId: runIdOgladany })
           : openConfigurationOverview,
       },
     },
@@ -1436,7 +1434,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     {
       chapterId: 'calculations',
       titlePl: '4. Wyniki obliczeń',
-      status: hasCompletedRun ? 'gotowe' : activeRunId ? 'czesciowy' : 'wynik_zablokowany',
+      status: hasCompletedRun ? 'gotowe' : runIdOgladany ? 'czesciowy' : 'wynik_zablokowany',
       objectCount: hasCompletedRun ? snapshotCounts.buses + snapshotCounts.branches : 0,
       sourceKind: 'resultset / run',
       missingCount: hasCompletedRun ? 0 : 1,
@@ -1476,11 +1474,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     {
       chapterId: 'export',
       titlePl: '8. Eksport PDF/DOCX/JSON/LaTeX',
-      status: activeRunId ? 'do_sprawdzenia' : 'wynik_zablokowany',
-      objectCount: activeRunId ? 4 : 0,
+      status: runIdOgladany ? 'do_sprawdzenia' : 'wynik_zablokowany',
+      objectCount: runIdOgladany ? 4 : 0,
       sourceKind: 'report export API',
-      missingCount: activeRunId ? 0 : 1,
-      exportIncluded: Boolean(activeRunId),
+      missingCount: runIdOgladany ? 0 : 1,
+      exportIncluded: Boolean(runIdOgladany),
       fixAction: { label: 'Zapisz konfigurację', onClick: saveDraft },
     },
   ];
@@ -1594,13 +1592,13 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Eksport
               </div>
-              <ExportButton format="PDF" enabled={Boolean(activeRunId)} runId={activeRunId} kind="report" />
-              <ExportButton format="DOCX" enabled={Boolean(activeRunId)} runId={activeRunId} kind="report" />
-              <ExportButton format="JSON" enabled={Boolean(activeRunId)} runId={activeRunId} kind="report" />
+              <ExportButton format="PDF" enabled={Boolean(runIdOgladany)} runId={runIdOgladany} kind="report" />
+              <ExportButton format="DOCX" enabled={Boolean(runIdOgladany)} runId={runIdOgladany} kind="report" />
+              <ExportButton format="JSON" enabled={Boolean(runIdOgladany)} runId={runIdOgladany} kind="report" />
               <ExportButton
                 format="LaTeX"
-                enabled={Boolean(activeRunId && eksportLatex.dostepny)}
-                runId={activeRunId}
+                enabled={Boolean(runIdOgladany && eksportLatex.dostepny)}
+                runId={runIdOgladany}
                 kind="proof"
                 disabledReason={eksportLatex.powod_pl ?? undefined}
               />
@@ -2353,7 +2351,7 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
 }
 
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const projectId = useAppStateStore((state) => state.activeProjectId);
@@ -2398,7 +2396,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           <strong>Wzór → Dane → Podstawienie → Wynik → Sprawdzenie jednostek</strong>.
         </p>
         <div className="mt-3 grid grid-cols-1 gap-2 text-xs md:grid-cols-2 xl:grid-cols-3">
-          <KeyValue label="Aktywne obliczenie" value={resolveRunLabel(activeRunId, executionRuns)} />
+          <KeyValue label="Aktywne obliczenie" value={resolveRunLabel(runIdOgladany, executionRuns)} />
           <KeyValue label="Zakres" value={resolveSurfaceObjectLabel(surface, snapshot, selectedElement)} />
           <KeyValue label="Format eksportu" value="JSON · LaTeX · PDF · DOCX" />
           <KeyValue label="Stacje w zakresie" value={String(stationCount)} />
@@ -2414,12 +2412,12 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         </div>
       </SectionCard>
       <ElementCalculationProofPanel
-        runId={activeRunId}
+        runId={runIdOgladany}
         selectedElement={selectedElement}
         candidateRefs={proofCandidateRefs}
         className="rounded-lg border border-slate-200 bg-white p-4"
       />
-      <ProofLatexPanel runId={activeRunId} />
+      <ProofLatexPanel runId={runIdOgladany} />
       {allDers.length > 0 && (
         <SectionCard
           title="Kontekst uzasadnienia — DER"
@@ -3009,15 +3007,14 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
 
 export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) {
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
-  const appActiveRunId = useAppStateStore((state) => state.activeRunId);
-  const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
+  // Karta K8: bieg oglądany z magazynu kontekstu wyniku — jedyne źródło wyboru biegu.
+  const contextualRunId = useRunIdOgladany();
   const selectedElement = useSelectionStore((state) => state.selectedElement);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const contextualProofRefs = useMemo(
     () => buildWorkspaceProofCandidateRefs(selectedElement, snapshot),
     [selectedElement, snapshot],
   );
-  const contextualRunId = appActiveRunId ?? executionActiveRunId;
 
   if (!activeSurface) {
     return null;

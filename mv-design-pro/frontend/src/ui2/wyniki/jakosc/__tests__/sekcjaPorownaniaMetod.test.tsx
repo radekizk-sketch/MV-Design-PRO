@@ -144,7 +144,6 @@ beforeEach(() => {
   useSnapshotStore.setState({ readiness: { ready: true, blockers: [], warnings: [] } } as never);
   useExecutionRunsStore.setState({
     runs: [],
-    activeRunId: null,
     runStatus: null,
     createAndExecuteRun,
   } as never);

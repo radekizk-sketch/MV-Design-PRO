@@ -20,6 +20,13 @@ export const SKLADOWE_STRINGS = {
     + 'zobaczyć impedancje składowych i kontekst sieci zerowej.',
   zeroAkcja: 'Przejdź do obliczeń',
 
+  // Aktywny bieg zwarcia jest symetryczny (3F) — jawne przełączenie kontekstu (karta K8).
+  symetrycznyTytul: 'Aktywny przebieg zwarciowy jest trójfazowy (symetryczny)',
+  symetrycznyOpis: 'Składowe symetryczne i sieć zerowa dotyczą zwarć niesymetrycznych. Na schemacie, '
+    + 'w panelu dolnym i na pasku stanu jest przebieg zwarcia trójfazowego. Pokaż najnowszy przebieg '
+    + 'zwarcia niesymetrycznego — zmieni się on także na schemacie i w panelu dolnym.',
+  symetrycznyAkcja: 'Pokaż przebieg zwarcia niesymetrycznego',
+
   // Stany dostawcy danych.
   ladowanieTytul: 'Ładowanie wyniku zwarciowego',
   ladowanieOpis: 'Widok pobiera wiersze kanoniczne, ślad obliczeń i wersję układu przebiegu.',

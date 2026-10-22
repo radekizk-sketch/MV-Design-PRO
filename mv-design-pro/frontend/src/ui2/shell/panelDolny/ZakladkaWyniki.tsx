@@ -2,26 +2,33 @@
  * Zakładka „Wyniki" panelu dolnego (karta UI-02 PANEL-DOLNY; kontrakt UI-02 §2 i UI-17:
  * wynik w kontekście elementu, tabela wszystkich elementów — bez opuszczania schematu).
  *
- * Tabela wszystkich elementów zakończonego biegu aktywnego zakresu (domyślnie
- * najnowszego; wybór biegu, gdy jest ich kilka). Wiersze i kolumny buduje czysta
+ * Tabela wszystkich elementów biegu OGLĄDANEGO (karta K8: magazyn kontekstu wyniku —
+ * ten sam bieg co schemat, pasek stanu, inspektor i „Dowody"; wybór biegu tutaj
+ * zmienia go wszędzie). Wiersze i kolumny buduje czysta
  * projekcja `tabelaWynikowPanelu.ts` z wyniku `results/v1` wskazanego biegu, tabelę
  * renderuje wspólny wzorzec `TabelaWynikow` (sortowanie, wybór wiersza) — bez trzeciej
  * tabeli. Pojedynczy klik wiersza zaznacza element TĄ SAMĄ ścieżką co „Problemy"
  * (`onWybierzElement` → `zaznaczElementModelu`: schemat + inspektor); wiersz
  * zaznaczonego elementu jest wyróżniony (jedno zaznaczenie z `useSelectionStore`).
  *
- * Świeżość: bieg niesie rewizję modelu, na której go policzono (`model_revision`);
- * rozjazd z bieżącą rewizją (`rewizjaBiezacegoModelu`) = baner „nieaktualne" z opisem
- * `opisSwiezosci` i przygaszona tabela. Rewizja nieznana = jawny komunikat, nie
- * werdykt „aktualne".
+ * Świeżość: JEDEN predykat `kontekstWyniku.swiezoscBiegu` (rewizja biegu ≠ rewizja
+ * bieżąca ⇒ nieaktualny; werdykt serwera przypadku jest daną wejściową) = baner
+ * „nieaktualne" i przygaszona tabela. Rewizja nieznana = jawny komunikat, nie
+ * werdykt „aktualne". Zaznaczenie elementu na schemacie podświetla i PRZEWIJA do
+ * widoku jego wiersz (wspólny wzorzec `TabelaWynikow`).
  */
 import { useMemo, useState } from 'react';
 
 import { useSelectionStore } from '../../../ui/selection/store';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import type { ExecutionRun } from '../../../ui/study-cases/types';
-import { opisSwiezosci, type OpisSwiezosci } from '../../freshness';
-import { etykietaAnalizy, formatCzas } from '../../spaces/obliczenia/przebiegi/strings';
+import {
+  ETYKIETA_RODZINY,
+  etykietaBiegu,
+  rodzinaAnalizy,
+  useKontekstWynikuStore,
+  useSwiezoscBiegu,
+  zdanieSwiezosci,
+} from '../../wyniki/kontekst/kontekstWyniku';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
 import '../../wyniki/wzorzec/wzorzec.css';
 import { useShellStore } from '../useShellStore';
@@ -31,21 +38,7 @@ import {
   filtrujWiersze,
   zbudujTabeleWynikow,
 } from './tabelaWynikowPanelu';
-import { useBiegWynikowPanelu, useWynikiPaneluStore } from './wynikiPanelu';
-
-/** Świeżość wyniku JEDNEGO biegu względem bieżącej rewizji modelu; `null` = nie do oceny. */
-export function swiezoscBiegu(run: ExecutionRun, rewizjaModelu: number | null): OpisSwiezosci | null {
-  const rewizjaDanej = run.model_revision;
-  if (typeof rewizjaDanej !== 'number' || typeof rewizjaModelu !== 'number') return null;
-  if (rewizjaDanej === rewizjaModelu) {
-    return { stan: 'aktualne', rewizjaDanej, rewizjaModelu };
-  }
-  return { stan: 'nieaktualne', rewizjaDanej, rewizjaModelu, przyczyna: 'model-zmieniony' };
-}
-
-export function etykietaBiegu(run: ExecutionRun): string {
-  return `${etykietaAnalizy(run.analysis_type)} · ${formatCzas(run.finished_at ?? run.started_at)}`;
-}
+import { useBiegWynikowPanelu } from './wynikiPanelu';
 
 /** Licznik zakładki: liczba elementów wyniku pokazywanego biegu (gdy wynik jest wczytany). */
 export function LicznikWynikow() {
@@ -60,10 +53,10 @@ export function LicznikWynikow() {
 
 export function ZakladkaWyniki({ onWybierzElement }: KontekstPaneluDolnego) {
   const { biegi, bieg, stan } = useBiegWynikowPanelu();
-  const wybierzBieg = useWynikiPaneluStore((s) => s.wybierzBieg);
-  const ponow = useWynikiPaneluStore((s) => s.ponow);
+  const wybierzBieg = useKontekstWynikuStore((s) => s.wybierzBieg);
+  const ponow = useKontekstWynikuStore((s) => s.ponowWynik);
   const snapshot = useSnapshotStore((s) => s.snapshot);
-  const rewizjaModelu = useSnapshotStore((s) => s.rewizjaBiezacegoModelu);
+  const swiezosc = useSwiezoscBiegu(bieg);
   const szczegolyAudytowe = useShellStore((s) => s.szczegolyAudytowe);
   const zaznaczony = useSelectionStore((s) => s.selectedElement?.id ?? null);
   const [rodzaj, setRodzaj] = useState<string | null>(null);
@@ -88,17 +81,23 @@ export function ZakladkaWyniki({ onWybierzElement }: KontekstPaneluDolnego) {
     );
   }
 
-  const swiezosc = swiezoscBiegu(bieg, rewizjaModelu);
-  const nieaktualne = swiezosc?.stan === 'nieaktualne';
+  const nieaktualne = swiezosc?.stan === 'nieaktualny';
+  const rodzina = rodzinaAnalizy(bieg.analysis_type);
 
   return (
-    <div className="mvd-dolny-wyniki" data-testid="mvd-wyniki">
+    <div
+      className="mvd-dolny-wyniki"
+      data-testid="mvd-wyniki"
+      data-run-id={bieg.id}
+      data-rodzina={rodzina ?? undefined}
+      data-swiezosc={swiezosc?.stan}
+    >
       <div className="mvd-dolny-narzedzia">
         <label className="mvd-dolny-pole">
-          <span>Przebieg</span>
+          <span>{rodzina ? `Przebieg (${ETYKIETA_RODZINY[rodzina]} na schemacie)` : 'Przebieg'}</span>
           <select
             value={bieg.id}
-            onChange={(e) => wybierzBieg(e.target.value)}
+            onChange={(e) => wybierzBieg(e.target.value, 'panel')}
             disabled={biegi.length < 2}
             data-testid="mvd-wyniki-bieg"
           >
@@ -143,14 +142,14 @@ export function ZakladkaWyniki({ onWybierzElement }: KontekstPaneluDolnego) {
         )}
       </div>
 
-      {swiezosc === null && (
+      {swiezosc?.stan === 'nieznany' && (
         <p className="mvd-dolny-stan" data-testid="mvd-wyniki-swiezosc-nieznana">
-          Świeżości wyniku nie da się ocenić — przebieg nie niesie rewizji modelu albo bieżąca rewizja nie jest znana.
+          {zdanieSwiezosci(swiezosc)}
         </p>
       )}
-      {nieaktualne && (
+      {swiezosc && nieaktualne && (
         <p className="mvd-dolny-baner" role="status" data-testid="mvd-wyniki-nieaktualne">
-          {`Wynik nieaktualny względem modelu: ${opisSwiezosci(swiezosc)}. Przelicz, aby zobaczyć stan bieżącego modelu.`}
+          {`Wynik nieaktualny względem modelu: ${zdanieSwiezosci(swiezosc)} Przelicz, aby zobaczyć stan bieżącego modelu.`}
         </p>
       )}
 

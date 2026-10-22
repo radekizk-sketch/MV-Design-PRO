@@ -25,6 +25,7 @@
 import type { AggregatedReadinessAxis } from './readiness';
 import type { DerReadinessMatrix } from './types';
 import type { ExecutionRun } from '../../study-cases/types';
+import { uporzadkujBiegi } from '../../../ui2/wyniki/kontekst/rodzinyBiegow';
 
 /**
  * Po co dana analiza jest wymagana — tekst OPISOWY, nie reguła doboru.
@@ -138,11 +139,9 @@ export function zlozMacierzAnaliz(
     })();
 
     // Najnowszy zakonczony przebieg (ostatnie liczenie + jego id — podstawa
-    // dzialania `otworz_wynik`), posortowany deterministycznie po finished_at.
-    const posortowane = [...zakonczone].sort((a, b) =>
-      String(a.finished_at).localeCompare(String(b.finished_at)),
-    );
-    const najnowszy = posortowane.length > 0 ? posortowane[posortowane.length - 1] : null;
+    // dzialania `otworz_wynik`) w JEDNYM porzadku biegow aplikacji (karta K8,
+    // `uporzadkujBiegi`: znacznik czasu malejaco, remis — identyfikator).
+    const najnowszy = uporzadkujBiegi(zakonczone)[0] ?? null;
     const ostatnieLiczenie = najnowszy?.finished_at ?? null;
     const ostatniPrzebiegId = najnowszy?.id ?? null;
 

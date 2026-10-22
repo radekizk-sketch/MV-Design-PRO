@@ -18,9 +18,8 @@
  * pseudo-pomiarów. Bez przebiegu rozpływu → uczciwa instrukcja (bez API).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import './estymacja.css';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import {
   akcjaNaprawcza,
   EkranAnalizy,
@@ -49,7 +48,6 @@ import {
   naWierszePomiarow,
   naWierszeWezlow,
   naZalozeniaEstymacji,
-  przebiegRozplywuEstymacji,
   typPomiaruPL,
   wymagaWezlaJ,
   zbudujZadanie,
@@ -66,6 +64,7 @@ import {
 } from './strings';
 import { PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 // ---------------------------------------------------------------------------
 // Elementy wspólne (chip, tag, panel stanu)
@@ -655,15 +654,9 @@ export interface EkranEstymacjiProps {
 }
 
 export function EkranEstymacji({ szczegolyAudytowe, onOtworzDowod }: EkranEstymacjiProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  // Wybór przebiegu rozpływu (źródło Y-bus) — wspólny helper `model.ts`, nie
-  // duplikat inline (Zero-Debt §5: inline dryfujący od helpera byłby niewidoczny
-  // dla testu helpera).
-  const przebieg = useMemo(
-    () => przebiegRozplywuEstymacji(runs, activeRunId),
-    [runs, activeRunId],
-  );
+  // Karta K8: bieg z magazynu kontekstu wyniku (aktywny bieg rodziny) — jedna prawda wyboru.
+  // Przebieg rozpływu jest źródłem Y-bus estymacji.
+  const przebieg = useAktywnyBieg('rozplyw');
   const runId = przebieg?.id ?? null;
   // K6 / H-5: estymacja stanu potrzebuje Y-bus z przebiegu rozpływu —
   // stan zerowy uruchamia brakujący przebieg zamiast prowadzić w zaułek.

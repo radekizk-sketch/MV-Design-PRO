@@ -13,13 +13,11 @@ import {
   mapujWierszWezla,
   naWierszeWezlow,
   naZalozeniaEstymacji,
-  przebiegRozplywuEstymacji,
   wymagaWezlaJ,
   zbudujZadanie,
   type WierszEdytora,
 } from '../model';
 import { TYPY_POMIAROW, widokEstymacjiFixture } from './fixtures';
-import type { ExecutionRun } from '../../../../ui/study-cases/types';
 
 const RUN = 'run-lf-1';
 
@@ -167,33 +165,5 @@ describe('adaptery wyniku — wartości wyłącznie z backendu', () => {
     const zal = naZalozeniaEstymacji(dane, NAZWA);
     const slack = zal.find((z) => z.wartosc === 'nazwa BUS-1');
     expect(slack).toBeDefined();
-  });
-});
-
-describe('przebiegRozplywuEstymacji — dobór przebiegu', () => {
-  function run(nadpisz: Partial<ExecutionRun>): ExecutionRun {
-    return {
-      id: 'r1',
-      study_case_id: 'c1',
-      analysis_type: 'LOAD_FLOW',
-      solver_input_hash: 'h',
-      status: 'DONE',
-      started_at: null,
-      finished_at: null,
-      error_message: null,
-      ...nadpisz,
-    };
-  }
-
-  it('brak zakończonego rozpływu → null', () => {
-    expect(przebiegRozplywuEstymacji([run({ status: 'RUNNING' })], null)).toBeNull();
-    expect(przebiegRozplywuEstymacji([run({ analysis_type: 'SC_3F' })], null)).toBeNull();
-  });
-
-  it('preferuje aktywny zakończony rozpływ', () => {
-    const a = run({ id: 'a' });
-    const b = run({ id: 'b' });
-    expect(przebiegRozplywuEstymacji([a, b], 'b')?.id).toBe('b');
-    expect(przebiegRozplywuEstymacji([a, b], null)?.id).toBe('b');
   });
 });

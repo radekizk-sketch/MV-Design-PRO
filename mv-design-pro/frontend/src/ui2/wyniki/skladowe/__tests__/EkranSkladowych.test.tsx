@@ -15,6 +15,7 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import { WZORZEC_STRINGS } from '../../wzorzec';
+import { STAN_WYBORU_PUSTY, useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
 import { EkranSkladowych } from '../EkranSkladowych';
 import { SKLADOWE_STRINGS as T } from '../strings';
 
@@ -138,6 +139,7 @@ function mockFetchSkladowych() {
 beforeEach(() => {
   useAppStateStore.getState().reset();
   useExecutionRunsStore.getState().reset();
+  useKontekstWynikuStore.setState({ ...STAN_WYBORU_PUSTY, wyniki: {} });
   useNetworkBuildStore.getState().reset();
   useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
 });
@@ -167,12 +169,34 @@ describe('EkranSkladowych — kontrakt ekranu prowadzącego (FLOW §0.3)', () =>
     await user.click(screen.getByTestId('mvd-skladowe-zero-akcja'));
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
   });
+
+  it('aktywny bieg zwarcia 3F przy istniejącym 1F: ekran NIE podmienia biegu po cichu — mówi to i przełącza kontekst klikiem', async () => {
+    // Karta K8: przebieg ekranu = aktywny bieg rodziny „zwarcie" (tu najnowszy, 3F).
+    // Dawniej ekran wybierał po cichu najnowszy bieg niesymetryczny, więc schemat i pasek
+    // stanu pokazywały 3F, a tabela — 1F. Teraz różnica jest nazwana, a przełączenie jawne.
+    const user = userEvent.setup();
+    mockFetchSkladowych();
+    useExecutionRunsStore.setState({ runs: [RUN_1F, RUN_3F] });
+    render(<EkranSkladowych />);
+
+    expect(screen.getByTestId('mvd-skladowe-symetryczny')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-skladowe-tabela')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('mvd-skladowe-symetryczny-akcja'));
+    const stan = useKontekstWynikuStore.getState();
+    expect(stan.wybrane.zwarcie).toBe('run-1f');
+    expect(stan.zrodla.zwarcie).toBe('ekran');
+    expect(stan.ogladana).toBe('zwarcie');
+    expect(await screen.findByTestId('mvd-skladowe-tabela')).toBeInTheDocument();
+  });
 });
 
 describe('EkranSkladowych — dane przebiegu 1F (fetch 1:1 z endpointami)', () => {
   beforeEach(() => {
     mockFetchSkladowych();
     useExecutionRunsStore.setState({ runs: [RUN_1F, RUN_3F] });
+    // Bieg 1F jest aktywnym biegiem rodziny „zwarcie" (wybór z dowolnego miejsca — K8).
+    useKontekstWynikuStore.getState().wybierzBieg('run-1f', 'ekran');
   });
 
   it('tabela punktów: bilans Zk i werdykt raportowalności z wierszy kanonicznych', async () => {
@@ -330,6 +354,7 @@ describe('EkranSkladowych — wskazanie elementu (F-K4, znalezisko Z4)', () => {
   beforeEach(() => {
     mockFetchSkladowych();
     useExecutionRunsStore.setState({ runs: [RUN_1F, RUN_3F] });
+    useKontekstWynikuStore.getState().wybierzBieg('run-1f', 'ekran');
     useSelectionStore.setState({ selectedElement: null, sldWskazanie: null } as never);
   });
 

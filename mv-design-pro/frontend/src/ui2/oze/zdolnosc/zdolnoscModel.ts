@@ -6,31 +6,11 @@
  * wołań API stąd. Słownik PL rodzajów kontroli reużyty z okna „Jakość wyników".
  */
 
-import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { nazwaObiektuZMigawki } from '../../wyniki/wzorzec/useNazwaObiektu';
 import { rodzajKontroliPL } from '../../wyniki/jakosc/strings';
 import type { RodzajKontroli } from '../../wyniki/jakosc/api';
 import type { KryteriumWiazaceZdolnosci, ScenariuszZdolnosci, WezelZdolnosci } from '../api';
 import { ZDOLNOSC_STRINGS, fmtWartosc } from './strings';
-
-// ---------------------------------------------------------------------------
-// Wybór przebiegu z rejestru (useExecutionRunsStore) — aktywny/ostatni LOAD_FLOW/DONE
-// ---------------------------------------------------------------------------
-
-/**
- * Identyfikator przebiegu rozpływu: preferuje aktywny (gdy LOAD_FLOW i zakończony),
- * inaczej OSTATNI zakończony rozpływ (kolejność źródłowa listy). Deterministyczny
- * dla danego wejścia. Wzorzec `ui2/wyniki/jakosc` (LOAD_FLOW/DONE).
- */
-export function wybierzPrzebiegRozplywu(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-): string | null {
-  const zakonczone = runs.filter((r) => r.status === 'DONE' && r.analysis_type === 'LOAD_FLOW');
-  if (zakonczone.length === 0) return null;
-  const aktywny = zakonczone.find((r) => r.id === activeRunId);
-  return (aktywny ?? zakonczone[zakonczone.length - 1]).id;
-}
 
 // ---------------------------------------------------------------------------
 // Etykieta węzła — nazwa na pierwszym planie (identyfikator tylko ekspercko)

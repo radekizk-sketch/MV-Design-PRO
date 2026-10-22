@@ -71,7 +71,8 @@ describe('S9-11 — tor wykonania przebiegu nie nawiguje (W-3/W-4)', () => {
     expect(wywolania).toEqual([]);
   });
 
-  it('kontrola dodatnia: bieg wiąże świeży przebieg z powłoką (setActiveRun) — jawny klik otwiera JEGO wyniki', () => {
-    expect(ZRODLO).toMatch(/setActiveRun\s*\(\s*run\.id\s*\)/);
+  // Karta K8: wiązanie przechodzi przez jedyny magazyn kontekstu wyniku (źródło „bieg").
+  it('kontrola dodatnia: bieg wiąże świeży przebieg z kontekstem wyniku (wybierzBieg) — jawny klik otwiera JEGO wyniki', () => {
+    expect(ZRODLO).toMatch(/wybierzBieg\s*\(\s*run\.id\s*,\s*'bieg'\s*\)/);
   });
 });

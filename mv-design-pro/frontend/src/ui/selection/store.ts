@@ -19,6 +19,28 @@ import type {
   ResultStatus,
   SelectedElement,
 } from '../types';
+import { refModeluElementu, useSnapshotStore } from '../topology/snapshotStore';
+
+/**
+ * Karta K8 (synchronizacja wynik ↔ schemat): zaznaczenie i wskazanie elementu
+ * niosą ZAWSZE `ref_id` modelu — tak zaznacza schemat, tak nazywa elementy nakładka
+ * wyników i panel dolny. Wyniki rozpływu i zwarć niosą identyfikator grafu
+ * obliczeniowego (`uuid5` z `ref_id`) albo `id` elementu migawki; bez tej normalizacji
+ * klik wiersza ekranu pełnego zaznaczał element, którego nie zna żadna inna
+ * powierzchnia (schemat nie kadrował, inspektor i panel dolny milczały). Jedno
+ * miejsce dla WSZYSTKICH piszących do magazynu zaznaczenia. Identyfikator nieznany
+ * migawce (albo brak migawki) zostaje bez zmian — uczciwy brak, bez zgadywania.
+ */
+function naRefModelu(identyfikator: string): string {
+  return refModeluElementu(useSnapshotStore.getState().snapshot, identyfikator) ?? identyfikator;
+}
+
+function elementNaRefModelu(element: SelectedElement): SelectedElement {
+  const ref = naRefModelu(element.id);
+  if (ref === element.id) return element;
+  // Nazwa zapasowa równa identyfikatorowi wyniku idzie za identyfikatorem.
+  return { ...element, id: ref, name: element.name === element.id ? ref : element.name };
+}
 
 /**
  * K2 (UI-04, rozstrzygnięcie §0.5): tryb wskazania elementu na schemacie.
@@ -86,16 +108,19 @@ export const useSelectionStore = create<SelectionState>()(
       sldWskazanieSeq: 0,
       sldWskazanieObsluzone: 0,
 
-      selectElement: (element) =>
-        set((state) => ({
-          selectedElements: element ? [element] : [],
-          selectedElement: element ?? null,
-          propertyGridOpen: element !== null || state.propertyGridOpen,
-        })),
+      selectElement: (wskazany) =>
+        set((state) => {
+          const element = wskazany ? elementNaRefModelu(wskazany) : null;
+          return {
+            selectedElements: element ? [element] : [],
+            selectedElement: element ?? null,
+            propertyGridOpen: element !== null || state.propertyGridOpen,
+          };
+        }),
 
       selectElements: (elements) =>
         set((state) => {
-          const sorted = [...elements].sort((a, b) => a.id.localeCompare(b.id));
+          const sorted = elements.map(elementNaRefModelu).sort((a, b) => a.id.localeCompare(b.id));
           return {
             selectedElements: sorted,
             selectedElement: sorted[0] ?? null,
@@ -104,8 +129,9 @@ export const useSelectionStore = create<SelectionState>()(
         }),
 
       // Iteracja 12: toggle (Ctrl+click) — dodaj/usuń element z multi-selection.
-      toggleElement: (element) =>
+      toggleElement: (wskazany) =>
         set((state) => {
+          const element = elementNaRefModelu(wskazany);
           const exists = state.selectedElements.some((e) => e.id === element.id);
           const next = exists
             ? state.selectedElements.filter((e) => e.id !== element.id)
@@ -118,8 +144,9 @@ export const useSelectionStore = create<SelectionState>()(
         }),
 
       // Iteracja 12: extend (Shift+click) — dodaje element do selekcji bez usuwania.
-      extendSelection: (element) =>
+      extendSelection: (wskazany) =>
         set((state) => {
+          const element = elementNaRefModelu(wskazany);
           if (state.selectedElements.some((e) => e.id === element.id)) {
             return state;
           }
@@ -134,8 +161,9 @@ export const useSelectionStore = create<SelectionState>()(
         }),
 
       // Iteracja 12: usuwa konkretny element z multi-selection.
-      removeFromSelection: (elementId) =>
+      removeFromSelection: (identyfikator) =>
         set((state) => {
+          const elementId = naRefModelu(identyfikator);
           const next = state.selectedElements.filter((e) => e.id !== elementId);
           return {
             selectedElements: next,
@@ -189,7 +217,10 @@ export const useSelectionStore = create<SelectionState>()(
         set((state) => {
           if (!elementId) return { sldWskazanie: null };
           const seq = state.sldWskazanieSeq + 1;
-          return { sldWskazanie: { ref: elementId, seq, tryb }, sldWskazanieSeq: seq };
+          return {
+            sldWskazanie: { ref: naRefModelu(elementId), seq, tryb },
+            sldWskazanieSeq: seq,
+          };
         }),
 
       potwierdzWskazanieSld: (seq) =>

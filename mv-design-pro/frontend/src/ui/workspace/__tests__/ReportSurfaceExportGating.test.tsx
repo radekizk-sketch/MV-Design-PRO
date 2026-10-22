@@ -7,6 +7,7 @@ import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
 import { REPORT_SURFACE_SCREEN_CODE, type WorkspaceSurfaceDescriptor } from '../types';
+import { ustawBiegOgladany } from '../../../test/kontekstBiegu';
 
 const REPORT_SURFACE: WorkspaceSurfaceDescriptor = {
   surfaceId: 'report-diagnostic-test',
@@ -87,7 +88,7 @@ describe('ReportSurface - eksport diagnostyczny', () => {
       analysis_case_context: { completeness: 'failed' },
       summary_json: { row_count: 0 },
     }, POWOD_BEZ_SLADU);
-    useAppStateStore.getState().setActiveRun('run-failed');
+    ustawBiegOgladany('run-failed');
     useSnapshotStore.setState({
       readiness: { ready: true, blockers: [], warnings: [] },
     });
@@ -128,7 +129,7 @@ describe('ReportSurface - eksport diagnostyczny', () => {
       analysis_case_context: { completeness: 'complete' },
       summary_json: { row_count: 3 },
     }, POWOD_BEZ_SLADU);
-    useAppStateStore.getState().setActiveRun('run-pf');
+    ustawBiegOgladany('run-pf');
     useSnapshotStore.setState({ readiness: { ready: true, blockers: [], warnings: [] } });
     useNetworkBuildStore.setState({
       activeSurface: { ...REPORT_SURFACE, subjectRef: 'run-pf', routeState: { payload: { runId: 'run-pf' } } as never },
@@ -160,7 +161,7 @@ describe('ReportSurface - eksport diagnostyczny', () => {
       analysis_case_context: { completeness: 'complete' },
       summary_json: { row_count: 3 },
     });
-    useAppStateStore.getState().setActiveRun('run-finished');
+    ustawBiegOgladany('run-finished');
     useSnapshotStore.setState({
       readiness: { ready: true, blockers: [], warnings: [] },
     });

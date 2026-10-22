@@ -53,7 +53,7 @@ function przebiegRozplywuFixture(): ExecutionRun {
 }
 
 function ustawPrzebieg() {
-  useExecutionRunsStore.setState({ runs: [przebiegRozplywuFixture()], activeRunId: 'run-lf-1' });
+  useExecutionRunsStore.setState({ runs: [przebiegRozplywuFixture()]});
 }
 
 /** Wypełnia pierwszy wiersz edytora i tolerancję napięcia (pomiar U). */
@@ -85,7 +85,7 @@ function zasiejModel(): void {
 }
 
 beforeEach(() => {
-  useExecutionRunsStore.setState({ runs: [], activeRunId: null });
+  useExecutionRunsStore.setState({ runs: []});
   pobierzZaciski.mockResolvedValue(ZACISKI_BIEGU);
   zasiejModel();
 });

@@ -19,7 +19,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './jakosc.css';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import {
   EkranAnalizy,
@@ -89,8 +88,6 @@ import {
   naZalozeniaWarunkow,
   naZalozeniaWiarygodnosci,
   typElementuWalidacji,
-  przebiegRozplywu,
-  przebiegZwarciowy,
 } from './jakoscModel';
 import {
   JAKOSC_STRINGS,
@@ -110,6 +107,7 @@ import {
   statusWalidacjiPL,
   type IstotnoscStatusu,
 } from './strings';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 // ---------------------------------------------------------------------------
 // Zasób jakości — stan pobierania (brak przebiegu / ładowanie / błąd / gotowe)
@@ -1601,11 +1599,9 @@ function DowodCieplnyGalezi({
 }
 
 export function EkranJakosci({ szczegolyAudytowe, onOtworzDowod, onEksport }: EkranJakosciProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-
-  const przebiegSC = useMemo(() => przebiegZwarciowy(runs, activeRunId), [runs, activeRunId]);
-  const przebiegPF = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: bieg z magazynu kontekstu wyniku (aktywny bieg rodziny) — jedna prawda wyboru.
+  const przebiegSC = useAktywnyBieg('zwarcie');
+  const przebiegPF = useAktywnyBieg('rozplyw');
 
   // Stabilny callback eksportu (uniknięcie zbędnych re-renderów sekcji).
   const eksport = useCallback(() => onEksport?.(), [onEksport]);

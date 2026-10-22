@@ -18,8 +18,5 @@ export {
   statusScenariuszaPL,
   wartoscKryterium,
 } from './zdolnoscModel';
-// Uwaga: `wybierzPrzebiegRozplywu` NIE jest re-eksportowane przez barrel OZE —
-// nazwa koliduje z eksportem `pulpit` (TS2308 przy `export *`). Selektor jest
-// dostępny bezpośrednio z `./zdolnoscModel` (używany przez ekran i testy).
 export type { SlupekZdolnosci } from './zdolnoscModel';
 export { ZDOLNOSC_STRINGS } from './strings';

@@ -23,6 +23,7 @@ import {
   type EntityTypeCode,
   type WorkspaceSurfaceCode,
 } from '../../workspace/types';
+import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 
 type RowState = 'ok' | 'warn' | 'danger' | 'group';
 
@@ -114,7 +115,7 @@ function slugForTestId(value: string): string {
 export function SchematContextPanel() {
   const setActiveWorkMode = useAppStateStore((s) => s.setActiveWorkMode);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const selectElement = useSelectionStore((s) => s.selectElement);
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
@@ -348,10 +349,10 @@ export function SchematContextPanel() {
     // #analysis niesie kontekst (przypadek/przebieg), a most obszarów ustawia
     // panel kontekstu — jedno źródło prawdy zamiast osobnego `setActiveArea`.
     przejdzDoPrzestrzeni('wyniki');
-    navigateToAnalysis({ caseId: activeCaseId, runId: activeRunId });
+    navigateToAnalysis({ caseId: activeCaseId, runId: runIdOgladany });
     openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
       entityType: 'analysis_run',
-      entityRef: activeRunId ?? null,
+      entityRef: runIdOgladany ?? null,
       subjectKind: 'analysis_case',
       subjectRef: activeCaseId ?? null,
       tabId: 'results',

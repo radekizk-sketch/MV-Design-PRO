@@ -11,7 +11,7 @@
  *
  * KONTRAKT S9-11: bieg NIE nawiguje WCALE. Projektant zostaje tam, gdzie jest;
  * gotowość wyniku sygnalizuje komunikat, a świeży przebieg jest ZWIĄZANY z
- * powłoką (`setActiveRun`), więc jawny klik w „Wyniki i dowody" otwiera JEGO
+ * kontekstem wyniku (`wybierzBieg(run.id, 'bieg')`, karta K8), więc jawny klik w „Wyniki i dowody" otwiera JEGO
  * wyniki (deep-link K3 przez `mostTrasyPrzestrzeni` dokleja `?run=`).
  *
  * ILOCZYN CECH (reguła KLASA, NIE INSTANCJA §2) — nie sam przykład z karty:
@@ -35,6 +35,8 @@ import { useNotificationStore } from '../../../../ui/notifications/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
+import { runIdOgladanyTeraz } from '../../../wyniki/kontekst/kontekstWyniku';
 
 const CASE_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
 const RUN_ID = '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d';
@@ -66,7 +68,7 @@ function torBiegu(opcje: { wTrakcieBiegu?: () => void; run?: ExecutionRun } = {}
   });
   useExecutionRunsStore.setState({
     runs: [],
-    activeRunId: null,
+    sledzonyRunId: null,
     runStatus: null,
     createAndExecuteRun,
     pollRunStatus: vi.fn(async () => opcje.run ?? runFixture()),
@@ -91,8 +93,8 @@ beforeEach(() => {
   useAppStateStore.setState({
     activeProjectId: 'projekt-1',
     activeCaseId: CASE_ID,
-    activeRunId: null,
   } as never);
+  wyczyscKontekstWyniku();
   useSnapshotStore.setState({ readiness: { ready: true, blockers: [], warnings: [] } } as never);
   useShellStore.setState({ activeSpace: 'obliczenia' });
   vi.stubGlobal(
@@ -131,7 +133,7 @@ describe('W-4 — bieg bez ruchu projektanta zostawia go TAM, GDZIE BYŁ', () =>
     expect(useShellStore.getState().activeSpace).toBe('obliczenia');
     expect(trasa()).toBe('#case-config');
     // Kontrola dodatnia: świeży przebieg jest aktywny — jawny klik otworzy JEGO wyniki.
-    expect(useAppStateStore.getState().activeRunId).toBe(RUN_ID);
+    expect(runIdOgladanyTeraz()).toBe(RUN_ID);
   });
 
   it('start z „Wyników": ponowny bieg nie zmienia trasy ani parametru ?run= bez klika', async () => {
@@ -145,7 +147,7 @@ describe('W-4 — bieg bez ruchu projektanta zostawia go TAM, GDZIE BYŁ', () =>
     // Trasa należy do użytkownika: bieg jej nie przepisuje (parametr zostaje).
     expect(window.location.hash).toBe('#analysis?run=stary');
     // Świeży przebieg jest aktywny w powłoce — ekran wyników czyta go ze store'u.
-    expect(useAppStateStore.getState().activeRunId).toBe(RUN_ID);
+    expect(runIdOgladanyTeraz()).toBe(RUN_ID);
   });
 
   it('bieg NIEUDANY też nie nawiguje i nie obiecuje wyników', async () => {

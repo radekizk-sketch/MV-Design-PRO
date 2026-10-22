@@ -24,7 +24,6 @@ import type {
   DerKindUnified,
   StationDerConnection,
 } from '../../../ui/network-build/station-der';
-import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { RekordKonwertera, WidokAdekwatnosciQ, WidokSilySieci } from '../api';
 import { ocenaWymaganModulu, wynikModulu, type OpisModuluModelu } from '../macierz';
 import type {
@@ -227,30 +226,6 @@ export function dopasujMagazyn(
 }
 
 /**
- * Wskazanie przebiegu zwarciowego dla siły sieci (SCR/WSCR): aktywny przebieg,
- * jeśli jest zakończonym zwarciem (`SC_*`/`DONE`), w przeciwnym razie ostatni
- * zakończony przebieg zwarciowy z listy. Brak → `null` (bez automatyzmu).
- */
-export function wybierzPrzebiegZwarciowy(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-): string | null {
-  return wybierzPrzebieg(runs, activeRunId, (r) => r.analysis_type.startsWith('SC_'));
-}
-
-/**
- * Wskazanie przebiegu rozpływu mocy dla adekwatności Q: aktywny przebieg, jeśli
- * jest zakończonym rozpływem (`LOAD_FLOW`/`DONE`), w przeciwnym razie ostatni
- * zakończony rozpływ z listy. Brak → `null`.
- */
-export function wybierzPrzebiegRozplywu(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-): string | null {
-  return wybierzPrzebieg(runs, activeRunId, (r) => r.analysis_type === 'LOAD_FLOW');
-}
-
-/**
  * Węzeł przyłączenia modułu w widoku siły sieci (P47b). Skanuje wiersze węzłów
  * i zwraca `bus_ref` wiersza, którego lista modułów (`modules[]`, dodana w §2.1)
  * zawiera moduł o referencji `derRef`. Brak dopasowania → `null` (uczciwie —
@@ -272,16 +247,4 @@ export function busRefModuluSily(widok: WidokSilySieci, derRef: string): string 
 export function busRefModuluQ(widok: WidokAdekwatnosciQ, derRef: string): string | null {
   const zrodlo = widok.sources.find((s) => s.ref === derRef);
   return zrodlo ? zrodlo.bus_ref : null;
-}
-
-function wybierzPrzebieg(
-  runs: readonly ExecutionRun[],
-  activeRunId: string | null,
-  pasuje: (run: ExecutionRun) => boolean,
-): string | null {
-  const zakonczone = runs.filter((r) => r.status === 'DONE' && pasuje(r));
-  if (zakonczone.length === 0) return null;
-  const aktywny = zakonczone.find((r) => r.id === activeRunId);
-  if (aktywny) return aktywny.id;
-  return zakonczone[zakonczone.length - 1].id;
 }

@@ -51,26 +51,6 @@ export function zrodloPrzebiegu(przebieg: ExecutionRun): ZrodloStanuFazowego | n
   return null;
 }
 
-/**
- * Przebieg fazowy do prezentacji: aktywny przebieg, jeżeli jest zakończonym
- * stanem fazowym SN albo rozpływem niesymetrycznym; inaczej najnowszy
- * zakończony z obu rodzajów (deterministycznie).
- */
-export function wybierzPrzebiegFazowy(
-  przebiegi: readonly ExecutionRun[],
-  activeRunId: string | null,
-): ExecutionRun | null {
-  const zakonczone = przebiegi.filter((r) => r.status === 'DONE' && zrodloPrzebiegu(r) !== null);
-  if (zakonczone.length === 0) return null;
-  const aktywny = activeRunId ? zakonczone.find((r) => r.id === activeRunId) : undefined;
-  if (aktywny) return aktywny;
-  return [...zakonczone].sort((a, b) =>
-    String(b.finished_at ?? b.started_at ?? '').localeCompare(
-      String(a.finished_at ?? a.started_at ?? ''),
-    ),
-  )[0];
-}
-
 // ---------------------------------------------------------------------------
 // Założenia / kontekst wyniku
 // ---------------------------------------------------------------------------

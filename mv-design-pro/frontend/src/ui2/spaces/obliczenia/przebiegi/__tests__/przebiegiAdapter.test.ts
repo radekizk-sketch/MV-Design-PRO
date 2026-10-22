@@ -26,7 +26,6 @@ beforeEach(() => {
   vi.mocked(api.listRuns).mockResolvedValue({ runs: [], count: 0 });
   useExecutionRunsStore.setState({
     activeStudyCaseId: null,
-    activeRunId: null,
     runStatus: null,
     runs: [],
     isLoadingRuns: false,

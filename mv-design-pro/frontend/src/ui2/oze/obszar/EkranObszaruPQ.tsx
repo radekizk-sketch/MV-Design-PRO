@@ -20,7 +20,6 @@ import './obszar.css';
 import type { GenLimits } from '../../../types/enm';
 import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
   InformacjeAudytowe,
@@ -38,7 +37,6 @@ import {
   type WidokObszaruPQ,
   type ZapytanieObszaruPQ,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import { WykresObszaruChart } from './WykresObszaruChart';
 import {
   kolumnyTabeliObszaru,
@@ -49,6 +47,7 @@ import {
 import { OBSZAR_STRINGS, fmtMWObszar, fmtMvarObszar } from './strings';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_STEP_P_MW = 0.5;
 const DOMYSLNY_STEP_Q_MVAR = 0.25;
@@ -388,9 +387,8 @@ export interface EkranObszaruPQProps {
 }
 
 export function EkranObszaruPQ({ szczegolyAudytowe, onOtworzDowod }: EkranObszaruPQProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);

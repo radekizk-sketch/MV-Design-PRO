@@ -54,6 +54,7 @@ import { MoContextPanel } from '../MoContextPanel';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../selection';
 import { useAppStateStore } from '../../../app-state/store';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 describe('context-panel-empty-states - stany puste z przyczyną i akcją', () => {
   it('panel Układy PV/BESS/FW pokazuje przyczynę oraz akcję techniczną', () => {
@@ -547,7 +548,7 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
   it('panel Wyniki i analizy nie pokazuje technicznego identyfikatora obliczenia', () => {
     const runId = 'fae30fb3-88ff-4c94-981e-c6122bcd54bb';
     act(() => {
-      useAppStateStore.getState().setActiveRun(runId);
+      ustawBiegOgladany(runId);
       useAppStateStore.getState().setActiveCaseResultStatus('FRESH');
     });
 
@@ -557,7 +558,7 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
     expect(container.textContent ?? '').not.toContain(runId);
 
     act(() => {
-      useAppStateStore.getState().setActiveRun(null);
+      wyczyscKontekstWyniku();
       useAppStateStore.getState().setActiveCaseResultStatus('NONE');
     });
   });

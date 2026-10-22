@@ -20,7 +20,6 @@ import './osd.css';
 import type { SourceOperatingMode } from '../../../types/domainOps';
 import { useAppStateStore } from '../../../ui/app-state';
 import { notify } from '../../../ui/notifications/store';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   InformacjeAudytowe,
@@ -37,7 +36,6 @@ import {
   type WidokOdpowiedziOsd,
   type ZapytanieOdpowiedziOsd,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import {
   kartyPorownaniaOsd,
   kolumnyTabeliOsd,
@@ -50,6 +48,7 @@ import {
 import { OSD_STRINGS, etykietaPoleceniaOsd } from './strings';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_LIMIT_P_PCT = 60;
 const DOMYSLNA_Q_MVAR = 0;
@@ -335,9 +334,8 @@ export interface EkranOsdProps {
 }
 
 export function EkranOsd({ szczegolyAudytowe, onOtworzDowod }: EkranOsdProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const zrodla = useMemo<OpcjaZrodlaOsd[]>(() => opcjeZrodel(snapshot), [snapshot]);

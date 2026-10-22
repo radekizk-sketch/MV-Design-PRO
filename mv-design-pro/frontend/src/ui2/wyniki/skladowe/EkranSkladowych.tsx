@@ -24,7 +24,6 @@ import './skladowe.css';
 // nie renderuje ramy `EkranAnalizy`, która normalnie wnosi ten arkusz.
 import '../wzorzec/wzorzec.css';
 
-import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { MathBlock } from '../../../ui/proof/MathRenderer';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
@@ -42,10 +41,11 @@ import {
   uziemieniaSieci,
   uziemieniePunktu,
   werdyktPL,
-  wybierzPrzebiegNiesymetryczny,
+  wyborPrzebieguSkladowych,
   type Zespolona,
 } from './model';
 import { SKLADOWE_STRINGS as T } from './strings';
+import { biegiRodziny, useAktywnyBieg, useWybierzBieg } from '../kontekst/kontekstWyniku';
 
 function Stan({
   tytul,
@@ -99,13 +99,15 @@ export function EkranSkladowych() {
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  // Karta K8: aktywny bieg rodziny „zwarcie" z magazynu kontekstu wyniku.
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-
-  const przebieg = useMemo(
-    () => wybierzPrzebiegNiesymetryczny(przebiegi, activeRunId),
-    [przebiegi, activeRunId],
+  const aktywnyZwarcia = useAktywnyBieg('zwarcie');
+  const wybierzBieg = useWybierzBieg();
+  const wybor = useMemo(
+    () => wyborPrzebieguSkladowych(aktywnyZwarcia, biegiRodziny(przebiegi, 'zwarcie')),
+    [aktywnyZwarcia, przebiegi],
   );
+  const przebieg = wybor.rodzaj === 'aktywny' ? wybor.przebieg : null;
   const dane = useDaneSkladowych(przebieg?.id ?? null);
   const rows = dane?.wynik?.rows ?? [];
 
@@ -139,7 +141,16 @@ export function EkranSkladowych() {
         <p className="mvd-skladowe-cel">{T.cel}</p>
       </header>
 
-      {!przebieg ? (
+      {wybor.rodzaj === 'aktywnySymetryczny' ? (
+        <Stan
+          tytul={T.symetrycznyTytul}
+          opis={T.symetrycznyOpis}
+          akcja={T.symetrycznyAkcja}
+          onAkcja={() => wybierzBieg(wybor.kandydat.id, 'ekran')}
+          tone="idle"
+          testid="mvd-skladowe-symetryczny"
+        />
+      ) : !przebieg ? (
         <Stan
           tytul={T.zeroTytul}
           opis={T.zeroOpis}

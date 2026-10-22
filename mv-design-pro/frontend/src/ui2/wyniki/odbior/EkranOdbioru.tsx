@@ -16,10 +16,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './odbior.css';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { EkranAnalizy, InformacjeAudytowe, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
-import { przebiegRozplywu } from '../jakosc';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchZaciskiGalezi,
@@ -56,6 +54,7 @@ import {
 } from './strings';
 import { PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 const WIELKOSCI: readonly WielkoscPomiaru[] = ['U', 'P', 'Q'];
 
@@ -640,9 +639,8 @@ export interface EkranOdbioruProps {
 }
 
 export function EkranOdbioru({ szczegolyAudytowe, onOtworzDowod }: EkranOdbioruProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: bieg z magazynu kontekstu wyniku (aktywny bieg rodziny) — jedna prawda wyboru.
+  const przebieg = useAktywnyBieg('rozplyw');
   // K6 / H-5: zgodność powykonawcza porównuje pomiary z wynikiem rozpływu —
   // stan zerowy uruchamia brakujący przebieg zamiast tylko o nim informować.
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');

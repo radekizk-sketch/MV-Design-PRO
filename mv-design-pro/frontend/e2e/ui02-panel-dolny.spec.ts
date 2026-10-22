@@ -142,7 +142,6 @@ async function otworzAplikacje(page: Page, seed: Seed): Promise<void> {
           activeCaseResultStatus: 'NONE',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: null,
           activeAnalysisType: 'SHORT_CIRCUIT',
           caseManagerOpen: false,
           issuePanelOpen: false,
@@ -389,7 +388,10 @@ test('UI-02 — panel dolny: stan przed biegiem, wyniki → zaznaczenie z zachow
   await otworzPanelDolny(page);
   await page.getByTestId('mvd-bottom-tab-wyniki').click();
   await expect(page.getByTestId('mvd-wyniki-nieaktualne')).toBeVisible({ timeout: 30000 });
-  await expect(page.getByTestId('mvd-wyniki-nieaktualne')).toContainText('nieaktualne');
+  // Karta K8: baner mówi jednym zdaniem predykatu świeżości (rewizja biegu ≠ rewizja modelu).
+  await expect(page.getByTestId('mvd-wyniki-nieaktualne')).toContainText(
+    /Wynik nieaktualny względem modelu: Policzony na rewizji modelu \d+, model jest na rewizji \d+\./,
+  );
   await expect(page.getByTestId('mvd-wyniki-tabela')).toHaveAttribute('data-nieaktualne', 'true');
   await zrzut(page, 'wyniki-nieaktualne');
 });

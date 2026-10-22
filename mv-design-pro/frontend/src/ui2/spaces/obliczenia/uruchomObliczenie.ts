@@ -20,8 +20,8 @@
  *
  * S9-11 (W-4, naprawa u źródła; zaostrzenie S9-3/W-3): bieg NIE nawiguje WCALE.
  * Projektant zostaje tam, gdzie jest — na schemacie nakładka wynikowa odświeża
- * się sama (most refów S9-2: `setActiveRun` → orkiestrator pobiera
- * `results/v1`), a komunikat końcowy mówi, gdzie wynik czeka. Wejście na wyniki
+ * się sama (karta K8: zakończony bieg staje się aktywnym biegiem swojej rodziny
+ * w magazynie kontekstu wyniku → orkiestrator pobiera `results/v1`), a komunikat końcowy mówi, gdzie wynik czeka. Wejście na wyniki
  * pozostaje OSIĄGALNE wyłącznie jawnym klikiem (nawigacja przestrzeni, pas
  * „następny krok", deep-linki K3 `#analysis?run=…`). Poprzedni kompromis S9-3
  * („skok tylko z niezmienionego miejsca pracy") nadal wyrywał projektanta ze
@@ -38,6 +38,7 @@ import { useCallback, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import { useKontekstWynikuStore } from '../../wyniki/kontekst/kontekstWyniku';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionAnalysisType, ExecutionRun } from '../../../ui/study-cases/types';
 import { czyStanKoncowyBiegu } from '../../../ui/study-cases/types';
@@ -230,7 +231,6 @@ export async function uruchomObliczenie(
       useExecutionRunsStore.getState().pollRunStatus,
     );
     const runHealth = await fetchAnalysisRunHealth(run.id);
-    useAppStateStore.getState().setActiveRun(run.id);
 
     if (isFailedAnalysisRun(run, runHealth)) {
       useAppStateStore.getState().setActiveCaseResultStatus('NONE');
@@ -247,6 +247,10 @@ export async function uruchomObliczenie(
     }
 
     useAppStateStore.getState().setActiveCaseResultStatus('FRESH');
+    // Karta K8: bieg z wynikiem staje się AKTYWNYM biegiem swojej rodziny i rodzina
+    // staje się oglądaną — schemat, panel dolny, pasek stanu i ekrany pokazują go
+    // jednocześnie (jedna akcja magazynu kontekstu wyniku, zero drugiej kopii).
+    useKontekstWynikuStore.getState().wybierzBieg(run.id, 'bieg');
     try {
       const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
       if (response.ok) {
@@ -259,7 +263,7 @@ export async function uruchomObliczenie(
       // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
     }
     // S9-11 / W-4: bieg zostawia projektanta TAM, GDZIE JEST — zero nawigacji.
-    // `setActiveRun` wyżej już związał świeży przebieg z powłoką: nakładka na
+    // `wybierzBieg` wyżej już związał świeży przebieg z powłoką: nakładka na
     // schemacie odświeża się sama (S9-2), a jawny klik w „Wyniki i dowody"
     // otwiera wyniki tego biegu (`mostTrasyPrzestrzeni` dokleja `?run=`).
     notify(KOMUNIKAT_BIEG_WYNIKI_CZEKAJA, 'success');

@@ -38,7 +38,6 @@ import type {
   PowerFlowResultV1,
   PowerFlowTrace,
 } from '../../../ui/power-flow-results/types';
-import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { WierszZalozenia } from '../wzorzec';
 import { fmtLiczba, fmtTolerancja, ZBIEZNOSC_STRINGS as T } from './strings';
 import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
@@ -46,27 +45,6 @@ import { etykietaZeSlownika } from '../wzorzec/slownikWyliczen';
 // ---------------------------------------------------------------------------
 // Wybór przebiegu rozpływu (rejestr przebiegów — `ui/study-cases/types.ts:234-243`)
 // ---------------------------------------------------------------------------
-
-/**
- * Przebieg rozpływu do diagnostyki: aktywny przebieg, jeżeli jest zakończonym
- * rozpływem; inaczej najnowszy zakończony rozpływ (deterministycznie po dacie).
- */
-export function wybierzPrzebiegRozplywu(
-  przebiegi: readonly ExecutionRun[],
-  activeRunId: string | null,
-): ExecutionRun | null {
-  const zakonczone = przebiegi.filter(
-    (r) => r.status === 'DONE' && r.analysis_type === 'LOAD_FLOW',
-  );
-  if (zakonczone.length === 0) return null;
-  const aktywny = activeRunId ? zakonczone.find((r) => r.id === activeRunId) : undefined;
-  if (aktywny) return aktywny;
-  return [...zakonczone].sort((a, b) =>
-    String(b.finished_at ?? b.started_at ?? '').localeCompare(
-      String(a.finished_at ?? a.started_at ?? ''),
-    ),
-  )[0];
-}
 
 // ---------------------------------------------------------------------------
 // Założenia przebiegu (WHITE BOX — „założenia są częścią wyniku", W-602)

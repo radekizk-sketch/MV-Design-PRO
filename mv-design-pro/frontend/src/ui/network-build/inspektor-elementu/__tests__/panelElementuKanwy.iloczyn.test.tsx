@@ -39,6 +39,9 @@ import { SldCanvasV3Workspace } from '../../../sld/v3/canvas/SldCanvasV3Workspac
 import { useKontekstElementuKanwy } from '../../../sld/shared/kontekstElementuKanwy';
 import { InspektorKanwyTestowy } from './inspektorKanwyTestowy';
 import { POWOD_BRAK_PRZEBIEGU_PL } from '../stanPaneluElementu';
+import { useExecutionRunsStore } from '../../../study-cases/runStore';
+import { REWIZJA_BIEGU, biegRejestru, wyczyscRejestrBiegow } from '../../../../test/biegNieaktualny';
+import { wyczyscKontekstWyniku, zasiejWynikWczytany } from '../../../../test/kontekstBiegu';
 
 const here = dirname(fileURLToPath(import.meta.url));
 function wczytaj(...czesci: string[]): EnergyNetworkModel {
@@ -84,12 +87,40 @@ function nakladkaDlaModelu(enm: EnergyNetworkModel): RawOverlayPayload {
 
 type StanWynikow = 'brak' | 'nieaktualne' | 'wartosc';
 
+/**
+ * Wyniki realną ścieżką karty K8: bieg w rejestrze biegów przypadku (bieg oglądany =
+ * najnowszy zakończony), jego `results/v1` wczytany do magazynu kontekstu wyniku, a
+ * świeżość z JEDNEGO predykatu (`swiezoscBiegu`: rewizja biegu ≠ rewizja modelu ⇒
+ * nieaktualny). Nakładka kanwy (`rawResultOverlayStore`) dostaje ten sam payload — w
+ * aplikacji pisze ją orkiestrator z tej samej pamięci.
+ */
 function ustawWyniki(enm: EnergyNetworkModel, stan: StanWynikow): void {
   act(() => {
-    useRawResultOverlayStore.getState().setPayload(stan === 'brak' ? null : nakladkaDlaModelu(enm));
+    // Status wyników PRZYPADKU (serwer) zostaje źródłem dostępności akcji „Pokaż wyniki"
+    // (`kontekstDostepnosciAkcji`) — to werdykt przypadku, nie wybór biegu.
     useAppStateStore.setState({
       activeCaseResultStatus: stan === 'brak' ? 'NONE' : stan === 'nieaktualne' ? 'OUTDATED' : 'FRESH',
     });
+    if (stan === 'brak') {
+      wyczyscRejestrBiegow();
+      wyczyscKontekstWyniku();
+      useRawResultOverlayStore.getState().setPayload(null);
+      return;
+    }
+    const payload = nakladkaDlaModelu(enm);
+    useExecutionRunsStore.setState({ runs: [biegRejestru(payload.run_id, 'LOAD_FLOW')] });
+    useSnapshotStore.setState({
+      rewizjaBiezacegoModelu: stan === 'nieaktualne' ? REWIZJA_BIEGU + 1 : REWIZJA_BIEGU,
+    });
+    zasiejWynikWczytany({
+      runId: payload.run_id,
+      analysisType: payload.analysis_type,
+      elementy: payload.elements,
+      qualityStatus: null,
+      proofStatus: null,
+      runFinishedAt: null,
+    });
+    useRawResultOverlayStore.getState().setPayload(payload);
   });
 }
 
@@ -194,6 +225,8 @@ beforeEach(() => {
   useSelectionStore.getState().clearSelection();
   useRawResultOverlayStore.getState().clear();
   useAppStateStore.setState({ activeCaseId: 'case-iloczyn', activeCaseResultStatus: 'NONE' });
+  wyczyscRejestrBiegow();
+  wyczyscKontekstWyniku();
   useNetworkBuildStore.setState({ openRouteSurface: otworzPowierzchnie });
   otworzPowierzchnie.mockClear();
   act(() => useShellStore.getState().setActiveSpace('model'));

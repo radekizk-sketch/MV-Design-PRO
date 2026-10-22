@@ -19,7 +19,7 @@ import {
   uziemieniaSieci,
   uziemieniePunktu,
   werdyktPL,
-  wybierzPrzebiegNiesymetryczny,
+  wyborPrzebieguSkladowych,
 } from '../model';
 
 const WIERSZ: ShortCircuitRow = {
@@ -107,26 +107,34 @@ const SNAPSHOT = {
   ],
 } as unknown as EnergyNetworkModel;
 
-describe('wybierzPrzebiegNiesymetryczny — wybór przebiegu 1F/2F/2F+Z', () => {
-  const przebiegi = [
-    { id: 'r3f', analysis_type: 'SC_3F', status: 'DONE', finished_at: '2026-07-20T10:00:00Z' },
-    { id: 'r1f', analysis_type: 'SC_1F', status: 'DONE', finished_at: '2026-07-19T10:00:00Z' },
-    { id: 'r2fg', analysis_type: 'SC_2F_G', status: 'DONE', finished_at: '2026-07-21T10:00:00Z' },
-    { id: 'rlf', analysis_type: 'LOAD_FLOW', status: 'DONE', finished_at: '2026-07-22T10:00:00Z' },
-    { id: 'r2f-run', analysis_type: 'SC_2F', status: 'RUNNING', finished_at: null },
-  ];
+describe('wyborPrzebieguSkladowych — aktywny bieg zwarcia × rodzaj × kandydat (karta K8)', () => {
+  // Biegi rodziny „zwarcie" od najnowszego (tak podaje je magazyn: `biegiRodziny`).
+  const r2fg = { id: 'r2fg', analysis_type: 'SC_2F_G' };
+  const r3f = { id: 'r3f', analysis_type: 'SC_3F' };
+  const r1f = { id: 'r1f', analysis_type: 'SC_1F' };
+  const r2f = { id: 'r2f', analysis_type: 'SC_2F' };
+  const biegi = [r2fg, r3f, r1f, r2f];
 
-  it('preferuje aktywny przebieg, gdy jest zakończonym zwarciem niesymetrycznym', () => {
-    expect(wybierzPrzebiegNiesymetryczny(przebiegi, 'r1f')?.id).toBe('r1f');
+  for (const aktywny of [r1f, r2f, r2fg]) {
+    it(`aktywny ${aktywny.analysis_type} (niesymetryczny) jest przebiegiem ekranu — bez cichej podmiany`, () => {
+      expect(wyborPrzebieguSkladowych(aktywny, biegi)).toEqual({ rodzaj: 'aktywny', przebieg: aktywny });
+    });
+  }
+
+  it('aktywny 3F: ekran NIE podmienia biegu — zwraca najnowszego kandydata do jawnego przełączenia', () => {
+    expect(wyborPrzebieguSkladowych(r3f, biegi)).toEqual({
+      rodzaj: 'aktywnySymetryczny',
+      aktywny: r3f,
+      kandydat: r2fg,
+    });
   });
 
-  it('aktywny 3F nie spełnia — wybiera najnowszy zakończony niesymetryczny', () => {
-    expect(wybierzPrzebiegNiesymetryczny(przebiegi, 'r3f')?.id).toBe('r2fg');
+  it('aktywny 3F bez żadnego biegu niesymetrycznego → brak (stan zerowy)', () => {
+    expect(wyborPrzebieguSkladowych(r3f, [r3f])).toEqual({ rodzaj: 'brak' });
   });
 
-  it('przebieg w toku i rozpływ nie liczą się; brak niesymetrycznych → null', () => {
-    const tylkoSym = przebiegi.filter((r) => r.id === 'r3f' || r.id === 'rlf' || r.id === 'r2f-run');
-    expect(wybierzPrzebiegNiesymetryczny(tylkoSym, null)).toBeNull();
+  it('brak aktywnego biegu zwarcia → brak', () => {
+    expect(wyborPrzebieguSkladowych(null, [])).toEqual({ rodzaj: 'brak' });
   });
 });
 

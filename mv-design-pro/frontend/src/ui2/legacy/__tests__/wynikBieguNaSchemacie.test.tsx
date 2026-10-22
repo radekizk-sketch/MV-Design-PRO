@@ -24,6 +24,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useLegacyOrchestrator } from '../useLegacyOrchestrator';
+import { wyczyscKontekstWyniku } from '../../../test/kontekstBiegu';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { SpaceNav } from '../../shell/SpaceNav';
 import { useShellStore } from '../../shell/useShellStore';
@@ -106,6 +107,9 @@ beforeEach(() => {
   useRawResultOverlayStore.getState().clear();
   useOverlayStore.getState().clearOverlay();
   useAppStateStore.getState().reset();
+  // Karta K8: magazyn kontekstu wyniku trzyma wybór biegu i pamięć wyników per bieg —
+  // izolacja testów tego samego `RUN_ID` wymaga czystego kontekstu.
+  wyczyscKontekstWyniku();
   useShellStore.setState({ activeSpace: 'wyniki' });
   useSnapshotStore.setState({ snapshot: enm });
   // Stan PO BIEGU: projektant jest na wynikach wskazanego przebiegu.

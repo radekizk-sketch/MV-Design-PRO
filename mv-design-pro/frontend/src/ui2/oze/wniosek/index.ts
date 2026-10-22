@@ -8,9 +8,6 @@
 export { EkranWniosku } from './EkranWniosku';
 export type { EkranWnioskuProps } from './EkranWniosku';
 export {
-  przebiegiRozplywu,
-  przebiegiZwarciowe,
-  domyslnyPrzebieg,
   powodBlokadyWniosku,
   zbudujZadanieWniosku,
 } from './model';

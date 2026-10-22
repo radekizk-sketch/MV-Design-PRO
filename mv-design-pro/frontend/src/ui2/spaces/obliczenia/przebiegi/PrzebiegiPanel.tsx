@@ -17,7 +17,8 @@
  *     status świeżości WYNIKÓW niesie przestrzeń „Wyniki", nie historia
  *     przebiegów).
  *   Emituje: nic bezpośrednio — akcja „Pokaż wyniki" przez prop
- *     `onPokazWyniki(runId)` (integrator woła `setActiveRun` + zmianę
+ *     `onPokazWyniki(runId)` (integrator woła `wybierzBieg` magazynu kontekstu
+ *     wyniku, karta K8, + zmianę
  *     przestrzeni, jak most `MostHistoriiPrzebiegow` przed wygaszeniem).
  *   Rewizja: rekord przebiegu niesie rewizję modelu z chwili liczenia
  *     (`ExecutionRun.model_revision`, koperta CV-2 — KARTA-UI2 §1 p. 10) —

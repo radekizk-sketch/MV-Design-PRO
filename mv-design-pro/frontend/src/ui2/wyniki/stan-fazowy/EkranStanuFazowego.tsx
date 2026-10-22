@@ -32,7 +32,6 @@ import { useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { akcjaNaprawcza, SekcjaZalozen, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
 import {
@@ -51,10 +50,10 @@ import {
   naZalozeniaRozplywuNiesymetrycznego,
   naZalozeniaStanuFazowego,
   naZdarzeniaObwodu,
-  wybierzPrzebiegFazowy,
   zrodloPrzebiegu,
 } from './stanFazowyModel';
 import { STAN_FAZOWY_STRINGS as T } from './strings';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 function StanZerowy({
   tytul,
@@ -89,13 +88,12 @@ function StanZerowy({
 
 export function EkranStanuFazowego() {
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const przebiegi = useExecutionRunsStore((s) => s.runs);
+  // Karta K8: aktywny bieg rodziny „fazowy" z magazynu kontekstu wyniku.
+  const przebieg = useAktywnyBieg('fazowy');
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
 
-  const przebieg = wybierzPrzebiegFazowy(przebiegi, activeRunId);
   const zrodlo = przebieg ? zrodloPrzebiegu(przebieg) : null;
 
   const [wyniki, setWyniki] = useState<WynikiStanuFazowego | null>(null);

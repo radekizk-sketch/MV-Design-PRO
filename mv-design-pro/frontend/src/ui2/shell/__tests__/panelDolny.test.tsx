@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PanelDolny } from '../panelDolny/PanelDolny';
 import { ZAKLADKI_PANELU_DOLNEGO } from '../panelDolny/rejestrZakladek';
-import { uporzadkujPrzebiegi } from '../panelDolny/ZakladkaPrzebiegi';
+import { uporzadkujBiegi } from '../../wyniki/kontekst/kontekstWyniku';
 import { AppShell } from '../AppShell';
 import { BOTTOM_DEFAULT, BOTTOM_MAX, BOTTOM_MIN, useShellStore } from '../useShellStore';
 import { SHELL_STRINGS } from '../strings';
@@ -259,8 +259,8 @@ describe('Zakładka Przebiegi — stan × akcja', () => {
       run('c', 'DONE', '2026-10-02T10:00:00Z'),
       run('b', 'DONE', '2026-10-02T10:00:00Z'),
     ];
-    expect(uporzadkujPrzebiegi(runs).map((r) => r.id)).toEqual(['c', 'b', 'a']);
-    expect(uporzadkujPrzebiegi([...runs].reverse()).map((r) => r.id)).toEqual(['c', 'b', 'a']);
+    expect(uporzadkujBiegi(runs).map((r) => r.id)).toEqual(['c', 'b', 'a']);
+    expect(uporzadkujBiegi([...runs].reverse()).map((r) => r.id)).toEqual(['c', 'b', 'a']);
   });
 
   it('DONE prowadzi do wyników; FAILED i RUNNING są statyczne', async () => {

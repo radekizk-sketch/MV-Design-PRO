@@ -29,7 +29,6 @@ import {
   naWierszeWysp,
   naWierszZaczepowModelu,
   naZalozeniaZbieznosci,
-  wybierzPrzebiegRozplywu,
 } from '../zbieznoscModel';
 
 /** Most nazw w testach (karta #145): nazwa z wyniku, a bez niej — prefiks nad referencją. */
@@ -502,15 +501,6 @@ describe('EkranZbieznosci — rozpływ liczony per wyspa (CV-4.3 K3b)', () => {
 });
 
 describe('zbieznoscModel — czyste projekcje kontraktów', () => {
-  it('wybierzPrzebiegRozplywu preferuje aktywny zakończony rozpływ, inaczej najnowszy', () => {
-    const starszy: ExecutionRun = { ...RUN_LF, id: 'run-lf-0', finished_at: '2026-07-19T10:00:00Z' };
-    expect(wybierzPrzebiegRozplywu([RUN_SC], null)).toBeNull();
-    expect(wybierzPrzebiegRozplywu([starszy, RUN_LF], null)?.id).toBe('run-lf-1');
-    expect(wybierzPrzebiegRozplywu([starszy, RUN_LF], 'run-lf-0')?.id).toBe('run-lf-0');
-    // Aktywny przebieg innego rodzaju nie przechwytuje wyboru.
-    expect(wybierzPrzebiegRozplywu([starszy, RUN_LF], 'run-sc-1')?.id).toBe('run-lf-1');
-  });
-
   it('naWierszeOltcPrzebiegu: uczciwa kreska, gdy final_positions nie niesie regulatora', () => {
     const slad = sladFixture();
     const oltc = {

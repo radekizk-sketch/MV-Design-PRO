@@ -300,6 +300,15 @@ export interface ExecutionRun {
   snapshot_hash?: string | null;
   /** Postęp biegu w toku (karta DYNAMIKA-W-TLE); `null`/brak = nie mierzony. */
   postep?: PostepBiegu | null;
+  /**
+   * Karta K8 KONTEKST-WYNIKU — pola klucza kontekstu wyniku (addytywne, z rekordu biegu
+   * `to_execution_dict`): projekt biegu, scenariusz roboczy (`null` = stan normalny
+   * modelu) i status wyniku biegu z serwera (`VALID`, …). Brak pola = serwer go nie
+   * podał (dana nieznana, nie wartość domyślna).
+   */
+  project_id?: string | null;
+  scenario_ref?: { scenario_id: string; revision: number } | null;
+  result_status?: string | null;
 }
 
 /**

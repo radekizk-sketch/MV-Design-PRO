@@ -70,9 +70,22 @@ class RunResponse(BaseModel):
     model_revision: int | None = None
     created_at: str | None = None
     snapshot_hash: str | None = None
+    # Karta K8 KONTEKST-WYNIKU: projekt biegu, scenariusz roboczy biegu (koperta CV-3.1;
+    # `None` = stan normalny modelu) i status wyniku biegu — pola addytywne klucza
+    # kontekstu wyniku w UI, wprost z `to_execution_dict`.
+    project_id: str | None = None
+    scenario_ref: ScenarioRefResponse | None = None
+    result_status: str | None = None
     # Karta DYNAMIKA-W-TLE: postęp biegu w toku (pomiar wykonawcy w tle; `None` — bieg
     # nie jest liczony w tym procesie albo jego wykonawca nie mierzy postępu).
     postep: PostepResponse | None = None
+
+
+class ScenarioRefResponse(BaseModel):
+    """Scenariusz roboczy, na którym policzono bieg: identyfikator i jego rewizja."""
+
+    scenario_id: str
+    revision: int
 
 
 class PostepResponse(BaseModel):

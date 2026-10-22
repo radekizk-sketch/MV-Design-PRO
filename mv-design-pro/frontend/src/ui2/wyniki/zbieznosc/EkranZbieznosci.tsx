@@ -26,7 +26,6 @@ import { useEffect, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { FreshnessBadge } from '../../inspector';
@@ -45,9 +44,9 @@ import {
   naWierszeOltcPrzebiegu,
   naWierszeZaczepowModelu,
   naZalozeniaZbieznosci,
-  wybierzPrzebiegRozplywu,
 } from './zbieznoscModel';
 import { ZBIEZNOSC_STRINGS as T } from './strings';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 function StanZerowy({
   tytul,
@@ -82,8 +81,6 @@ function StanZerowy({
 
 export function EkranZbieznosci() {
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const przebiegi = useExecutionRunsStore((s) => s.runs);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
@@ -97,7 +94,8 @@ export function EkranZbieznosci() {
 
   const [sladRozwiniety, setSladRozwiniety] = useState(false);
 
-  const przebieg = wybierzPrzebiegRozplywu(przebiegi, activeRunId);
+  // Karta K8: aktywny bieg rodziny „rozpływ" z magazynu kontekstu wyniku.
+  const przebieg = useAktywnyBieg('rozplyw');
 
   // Populacja store'u — te same akcje co useWpiecieWynikow (idempotentnie),
   // plus ślad solvera (zbieżność iteracji + pętla OLTC).

@@ -8,7 +8,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
-import { useAppStateStore } from '../../../ui/app-state';
+import { wyczyscRejestrBiegow } from '../../../test/biegNieaktualny';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../test/kontekstBiegu';
 import { FIELD_ROLE_LABEL_PL } from '../../../ui/sld/v2/station-rozdzielnia/contract';
 import { subskrybuj } from '../../events';
 import { InspectorPanel, INSPECTOR_STRINGS, type ObiektInspektora } from '../../inspector';
@@ -362,7 +363,8 @@ describe('inspectorAdapter — mapowanie właściwości katalogowych (iloczyn ce
 describe('otworzDowodInspektora — nawigacja „Otwórz dowód" (TODO-UI2 §0.3)', () => {
   beforeEach(() => {
     useShellStore.setState({ wynikiTab: null, wynikiTabElement: null, activeSpace: 'schemat' });
-    useAppStateStore.setState({ activeRunId: null });
+    wyczyscRejestrBiegow();
+    wyczyscKontekstWyniku();
   });
 
   it('emituje zdarzenie selekcji z ref elementu i zrodlo="inspektor"', () => {
@@ -374,7 +376,7 @@ describe('otworzDowodInspektora — nawigacja „Otwórz dowód" (TODO-UI2 §0.3
   });
 
   it('ustawia deep-link zakładki „Dowód" z aktywnym runId, gdy jest ustawiony', () => {
-    useAppStateStore.setState({ activeRunId: 'run-123' });
+    ustawBiegOgladany('run-123', { dolozDoRejestru: 'SC_3F' });
     otworzDowodInspektora('bus-7');
     expect(useShellStore.getState().wynikiTab).toBe('dowod');
     expect(useShellStore.getState().wynikiTabElement).toBe('run-123');
@@ -421,7 +423,9 @@ describe('InspectorPanel + otworzDowodInspektora — wpięcie realne (test natyw
 
   beforeEach(() => {
     useShellStore.setState({ wynikiTab: null, wynikiTabElement: null, activeSpace: 'schemat' });
-    useAppStateStore.setState({ activeRunId: 'run-e2e-42' });
+    wyczyscRejestrBiegow();
+    wyczyscKontekstWyniku();
+    ustawBiegOgladany('run-e2e-42', { dolozDoRejestru: 'SC_3F' });
   });
 
   it('klik zakładki „Dowód" → klik „Pokaż dowód" → realna nawigacja (deep-link + przestrzeń + selekcja)', () => {
@@ -522,7 +526,8 @@ describe('useObiektInspektora — wyniki i dowody z aktywnego przebiegu (V12T-01
     useSnapshotStore.setState({ snapshot: modelZElementami() } as never);
     usePowerFlowResultsStore.setState({ results: null } as never);
     useResultsInspectorStore.setState({ shortCircuitResults: null } as never);
-    useAppStateStore.setState({ activeRunId: null });
+    wyczyscRejestrBiegow();
+    wyczyscKontekstWyniku();
   });
 
   it('bez wyniku biegu: brak wierszy wyniku i brak pozycji dowodu (uczciwy stan pusty)', () => {

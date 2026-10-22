@@ -30,10 +30,11 @@
  *    uzywane jako globalny kontekst aktywnego przypadku w powloce.
  *
  * 2. frontend/src/ui/study-cases/runStore.ts — useExecutionRunsStore
- *    .{activeRunId, runStatus, runs} -> 'wyniki-gotowe', gdy `runStatus`
+ *    .{sledzonyRunId, runStatus, runs} -> 'wyniki-gotowe', gdy `runStatus`
  *    przechodzi w 'DONE'. `przypadekId` pobierany jest z pola `study_case_id`
  *    REKORDU PRZEBIEGU (ExecutionRun.study_case_id) odnalezionego w `runs` po
- *    `activeRunId` — to jedyne pole autorytatywnie wiazace przebieg z jego
+ *    `sledzonyRunId` (bieg zlecony, ktorego stan opisuje `runStatus`) — to jedyne
+ *    pole autorytatywnie wiazace przebieg z jego
  *    przypadkiem (nie z transientnym `activeStudyCaseId`, ktory jest jedynie
  *    zakresem widoku historii i teoretycznie moze byc niezsynchronizowany).
  *    Jesli rekord przebiegu nie zostanie odnaleziony w `runs` — zdarzenie NIE
@@ -127,15 +128,15 @@ function startRunStoreAdapter(): () => void {
 
   try {
     return useExecutionRunsStore.subscribe((stan) => {
-      if (stan.runStatus !== 'DONE' || !stan.activeRunId) {
+      if (stan.runStatus !== 'DONE' || !stan.sledzonyRunId) {
         // Wyjscie ze stanu DONE (nowy bieg, reset) zwalnia blokade deduplikacji.
         ostatniOgloszonyRunId = null;
         return;
       }
-      if (stan.activeRunId === ostatniOgloszonyRunId) {
+      if (stan.sledzonyRunId === ostatniOgloszonyRunId) {
         return;
       }
-      const przebieg = stan.runs.find((run) => run.id === stan.activeRunId);
+      const przebieg = stan.runs.find((run) => run.id === stan.sledzonyRunId);
       if (!przebieg) {
         // Rekord jeszcze nie doladowany — ogloszenie nastapi przy kolejnej
         // zmianie store'u (np. po `loadRuns`), bez zgadywania `przypadekId`.

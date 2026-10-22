@@ -163,7 +163,6 @@ async function ustawKontekst(
           activeCaseResultStatus: 'FRESH',
           activeSnapshotId: null,
           activeMode: 'MODEL_EDIT',
-          activeRunId: dane.runId,
           activeAnalysisType: 'LOAD_FLOW',
           caseManagerOpen: false,
           issuePanelOpen: false,

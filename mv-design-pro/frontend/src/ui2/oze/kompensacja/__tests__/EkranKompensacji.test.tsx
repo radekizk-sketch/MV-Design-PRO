@@ -33,7 +33,6 @@ vi.mock('../../api', () => ({
 function ustawGotowyRozplyw() {
   useExecutionRunsStore.setState({
     runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
-    activeRunId: 'lf-run',
   });
   useSnapshotStore.setState({ snapshot: snapshotFixture() });
 }

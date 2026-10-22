@@ -8,11 +8,10 @@
 
 import { useState } from 'react';
 
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
 import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { SladAnalizy } from './SladAnalizy';
-import { busRefModuluQ, wybierzPrzebiegRozplywu } from './pulpitModel';
+import { busRefModuluQ } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
   BRAKI_DANYCH_Q,
@@ -22,6 +21,7 @@ import {
   PULPIT_STRINGS,
   WERDYKTY_ADEKWATNOSCI_Q,
 } from './strings';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 export interface SekcjaAdekwatnosciQProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
@@ -110,9 +110,8 @@ export function SekcjaAdekwatnosciQ({
   szczegolyAudytowe,
   wyroznionyModul = null,
 }: SekcjaAdekwatnosciQProps): JSX.Element {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = wybierzPrzebiegRozplywu(runs, activeRunId);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
   const stan = useAnaliza(runId, pobierzAdekwatnoscQ);
   const nazwaObiektu = useNazwaObiektu();
 

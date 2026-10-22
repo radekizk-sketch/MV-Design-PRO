@@ -15,7 +15,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import './zdolnosc.css';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import {
   pobierzZdolnoscPrzylaczeniowa,
@@ -34,11 +33,11 @@ import {
   slupkiZdolnosci,
   statusScenariuszaPL,
   wartoscKryterium,
-  wybierzPrzebiegRozplywu,
 } from './zdolnoscModel';
 import { ZDOLNOSC_STRINGS, fmtMW } from './strings';
 import { InformacjeAudytowe, PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -242,9 +241,8 @@ export interface EkranZdolnosciProps {
 
 export function EkranZdolnosci({ szczegolyAudytowe }: EkranZdolnosciProps) {
 
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);

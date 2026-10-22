@@ -244,17 +244,6 @@ export function maZakonczonyPrzebieg(przebiegi: readonly PrzebiegLekki[]): boole
   return przebiegi.some((r) => r.status === STATUS_ZAKONCZONY);
 }
 
-/** Ostatni zakończony przebieg (pasek statusu). */
-export function ostatniZakonczonyPrzebieg<T extends PrzebiegLekki>(
-  przebiegi: readonly T[],
-): T | null {
-  const zakonczone = przebiegi.filter((r) => r.status === STATUS_ZAKONCZONY);
-  if (zakonczone.length === 0) return null;
-  return [...zakonczone].sort((a, b) =>
-    String(b.finished_at ?? b.started_at ?? '').localeCompare(String(a.finished_at ?? a.started_at ?? '')),
-  )[0];
-}
-
 /** Czy warunek dokumentu jest spełniony (ok = można wytworzyć). */
 export function dokumentDostepny(
   wymaga: WymogDokumentu,

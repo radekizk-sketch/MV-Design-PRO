@@ -65,6 +65,7 @@ import { BAY_ROLE_TO_PORT_KIND, type PortKind } from '../../sld/v2/core/ports';
 import { canonicalFieldRole } from '../../sld/v2/station-rozdzielnia/contract';
 import { powyzejPasmaNn } from '../../../ui2/model/pasmaNapieciowe';
 import { maStartOperacjiCiagu } from '../../../ui2/kreatory/magistrala/magistralaModel';
+import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -632,7 +633,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const projectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const runIdOgladany = useRunIdOgladany();
   const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
   // Karta FAB-J: snapshot audytu 2 dla inferencji transformatora dedykowanego
   // (`inferBlockTransformerCatalogRef`) — bez niego wytwórcy legacy bez
@@ -1002,10 +1003,10 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const handleOpenCalculations = useCallback(() => {
     navigateToAnalysis({
       caseId: activeCaseId,
-      runId: activeRunId,
+      runId: runIdOgladany,
       selectionId: stationRef,
     });
-  }, [activeCaseId, activeRunId, stationRef]);
+  }, [activeCaseId, runIdOgladany, stationRef]);
 
   const requestDetach = useCallback(
     (derId: string) => {

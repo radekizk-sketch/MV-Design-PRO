@@ -1,7 +1,7 @@
 /**
  * Bieg w tle przez prawdziwy moduł api (karta DYNAMIKA-W-TLE, scalenie partii 8).
  *
- * Store edytora przypadku (`createAndExecuteRun`, wołany z StudyCaseEditor) idzie przez
+ * Store edytora przypadku (`createAndExecuteRun`, wołany z `uruchomObliczenie`) idzie przez
  * PRAWDZIWE `api.ts`; atrapą jest wyłącznie `fetch` w kształcie backendu: POST execute
  * zwraca 202 ze stanem QUEUED, a stan końcowy przychodzi dopiero z GET /runs/{id}.
  * Iloczyn cech: stan końcowy {DONE, FAILED, CANCELLED} × liczba odczytów w toku {0, 2}.

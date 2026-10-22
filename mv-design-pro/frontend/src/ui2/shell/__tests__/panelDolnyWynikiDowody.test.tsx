@@ -20,9 +20,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PanelDolny } from '../panelDolny/PanelDolny';
+import { StatusBar } from '../StatusBar';
 import { ZAKLADKI_PANELU_DOLNEGO } from '../panelDolny/rejestrZakladek';
-import { useWynikiPaneluStore } from '../panelDolny/wynikiPanelu';
-import { swiezoscBiegu } from '../panelDolny/ZakladkaWyniki';
+import {
+  STAN_WYBORU_PUSTY,
+  swiezoscBiegu,
+  useKontekstWynikuStore,
+} from '../../wyniki/kontekst/kontekstWyniku';
 import { BOTTOM_DEFAULT, useShellStore } from '../useShellStore';
 import { zaznaczElementModelu } from '../zaznaczElementModelu';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -179,7 +183,7 @@ beforeEach(() => {
   useSnapshotStore.setState(initialSnapshot, true);
   useExecutionRunsStore.setState(initialRuns, true);
   useSelectionStore.setState(initialSelection, true);
-  useWynikiPaneluStore.setState({ wybranyRunId: null, wyniki: {} });
+  useKontekstWynikuStore.setState({ ...STAN_WYBORU_PUSTY, wyniki: {} });
   useShellStore.setState({ szczegolyAudytowe: false });
   useSnapshotStore.setState({ snapshot: SNAPSHOT, rewizjaBiezacegoModelu: 3 });
   // jsdom nie ma URL.createObjectURL — pobranie pliku zapisuje go przez kotwicę.
@@ -253,7 +257,9 @@ describe('Zakładka Wyniki — stan komórki × świeżość', () => {
         expect(tabela).toHaveAttribute('data-nieaktualne', 'false');
       }
       if (oczekiwana === 'nieaktualne') {
-        expect(screen.getByTestId('mvd-wyniki-nieaktualne')).toHaveTextContent('nieaktualne (rew. 3 → 5)');
+        expect(screen.getByTestId('mvd-wyniki-nieaktualne')).toHaveTextContent(
+          'Policzony na rewizji modelu 3, model jest na rewizji 5.',
+        );
         expect(tabela).toHaveAttribute('data-nieaktualne', 'true');
         expect(tabela).toHaveClass('mvd-dolny-przygaszone');
       }
@@ -267,10 +273,15 @@ describe('Zakładka Wyniki — stan komórki × świeżość', () => {
 
   it('świeżość biegu: para rewizji z biegu i modelu, brak którejkolwiek = nie do oceny', () => {
     const bieg = run('r', 'SC_3F', '2026-10-02T10:00:00Z', 4);
-    expect(swiezoscBiegu(bieg, 4)?.stan).toBe('aktualne');
-    expect(swiezoscBiegu(bieg, 6)).toEqual({ stan: 'nieaktualne', rewizjaDanej: 4, rewizjaModelu: 6, przyczyna: 'model-zmieniony' });
-    expect(swiezoscBiegu(bieg, null)).toBeNull();
-    expect(swiezoscBiegu(run('r', 'SC_3F', '2026-10-02T10:00:00Z', null), 4)).toBeNull();
+    expect(swiezoscBiegu(bieg, 4, null).stan).toBe('aktualny');
+    expect(swiezoscBiegu(bieg, 6, null)).toMatchObject({
+      stan: 'nieaktualny',
+      rewizjaBiegu: 4,
+      rewizjaModelu: 6,
+      przyczyna: 'model-zmieniony',
+    });
+    expect(swiezoscBiegu(bieg, null, null).stan).toBe('nieznany');
+    expect(swiezoscBiegu(run('r', 'SC_3F', '2026-10-02T10:00:00Z', null), 4, null).stan).toBe('nieznany');
   });
 });
 
@@ -366,6 +377,11 @@ describe('Zakładka Wyniki — wybór biegu, błąd odczytu, kod bez etykiety', 
     expect(screen.getByTestId('mvd-wyn-th-m:IK_3F_A')).toHaveTextContent('Prąd zwarciowy początkowy');
     await user.selectOptions(screen.getByTestId('mvd-wyniki-bieg'), 'r-lf');
     await waitFor(() => expect(nazwyWierszy()).toEqual(['Kabel K1', 'Szyna GPZ', 'Szyna rezerwowa']));
+    // Karta K8: wybór w panelu jest wyborem w JEDYNYM magazynie kontekstu wyniku
+    // (źródło „panel") — nie lokalną kopią panelu.
+    expect(useKontekstWynikuStore.getState().wybrane).toEqual({ rozplyw: 'r-lf' });
+    expect(useKontekstWynikuStore.getState().zrodla).toEqual({ rozplyw: 'panel' });
+    expect(screen.getByTestId('mvd-wyniki')).toHaveAttribute('data-run-id', 'r-lf');
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual([
       '/api/execution/runs/r-sc/results/v1',
       '/api/execution/runs/r-lf/results/v1',
@@ -522,5 +538,95 @@ describe('Zakładka Dowody — pakiet × eksport × rodzaj biegu', () => {
     useExecutionRunsStore.setState({ runs: [run('r-sc', 'SC_3F', '2026-10-03T10:00:00Z')] });
     renderPanel('dowody', { onOtworzDowodBiegu: undefined });
     expect(screen.getByTestId('mvd-dowod-otworz-r-sc')).toBeDisabled();
+  });
+});
+
+/*
+ * Karta K8 KONTEKST-WYNIKU: pasek stanu i panel dolny czytają i zapisują TEN SAM bieg.
+ * ILOCZYN CECH: źródło wyboru {pole biegu na pasku, przycisk rodziny na pasku, pole biegu
+ * w panelu} × świeżość {aktualny (rew. biegu = rew. modelu), nieaktualny (rew. starsza)}
+ * × rodzina {rozpływ, zwarcia}. Klik i wybór natywne (userEvent), zaślepiona tylko sieć.
+ * Iniekcje: pasek liczący „ostatni zakończony" zamiast biegu z magazynu i panel
+ * trzymający lokalny wybór — oba czerwienią ten test.
+ */
+describe('Pasek stanu × panel dolny — jeden kontekst wyniku', () => {
+  const A = run('r-lf-a', 'LOAD_FLOW', '2026-10-02T10:00:00Z', 3);
+  const B = run('r-sc-b', 'SC_3F', '2026-10-02T10:30:00Z', 3);
+  const C = run('r-lf-c', 'LOAD_FLOW', '2026-10-02T11:00:00Z', 4);
+
+  function renderPowierzchnie() {
+    render(
+      <>
+        <StatusBar
+          status={{ backend: 'connected', modelRevision: 4, wersjaModelu: null }}
+          gotowosc={{ ready: true, ustalona: true, blokady: 0, ostrzezenia: 0 } as never}
+          projektOtwarty
+          bieg={{ trwa: false, analiza: null, stan: null }}
+          rodzinyWynikow={['rozplyw', 'zwarcie']}
+        />
+        <PanelDolny
+          zakladki={ZAKLADKI_PANELU_DOLNEGO}
+          aktywna="wyniki"
+          wysokosc={BOTTOM_DEFAULT}
+          onWybierzZakladke={vi.fn()}
+          onZmienWysokosc={vi.fn()}
+          onZamknij={vi.fn()}
+          onWybierzElement={vi.fn()}
+          onOtworzDowodBiegu={vi.fn()}
+        />
+      </>,
+    );
+  }
+
+  function oczekuj(rodzina: 'rozplyw' | 'zwarcie', runId: string, swiezosc: string, ogladana: boolean) {
+    const pasek = screen.getByTestId(`mvd-status-rodzina-${rodzina}`);
+    expect(pasek).toHaveAttribute('data-run-id', runId);
+    expect(pasek).toHaveAttribute('data-swiezosc', swiezosc);
+    expect(pasek).toHaveAttribute('data-ogladana', ogladana ? 'true' : 'false');
+    if (ogladana) {
+      const panel = screen.getByTestId('mvd-wyniki');
+      expect(panel).toHaveAttribute('data-run-id', runId);
+      expect(panel).toHaveAttribute('data-swiezosc', swiezosc);
+    }
+  }
+
+  beforeEach(() => {
+    stubSiec({
+      '/api/execution/runs/r-lf-a/results/v1': ok({ ...WYNIK_ROZPLYWU, run_id: 'r-lf-a' }),
+      '/api/execution/runs/r-lf-c/results/v1': ok({ ...WYNIK_ROZPLYWU, run_id: 'r-lf-c' }),
+      '/api/execution/runs/r-sc-b/results/v1': ok({ ...WYNIK_ZWARC, run_id: 'r-sc-b' }),
+    });
+    useSnapshotStore.setState({ rewizjaBiezacegoModelu: 4 });
+    useExecutionRunsStore.setState({ runs: [A, B, C] });
+  });
+
+  it('bez wyboru: rodzina najnowszego biegu oglądana, każda rodzina ze swoim najnowszym biegiem', async () => {
+    renderPowierzchnie();
+    await screen.findByTestId('mvd-wyniki-tabela');
+    oczekuj('rozplyw', 'r-lf-c', 'aktualny', true);
+    oczekuj('zwarcie', 'r-sc-b', 'nieaktualny', false);
+  });
+
+  it('wybór starszego biegu na pasku → panel pokazuje go jako nieaktualny; panel → pasek', async () => {
+    const user = userEvent.setup();
+    renderPowierzchnie();
+    await screen.findByTestId('mvd-wyniki-tabela');
+
+    await user.selectOptions(screen.getByTestId('mvd-status-rodzina-rozplyw-bieg'), 'r-lf-a');
+    await waitFor(() => oczekuj('rozplyw', 'r-lf-a', 'nieaktualny', true));
+    expect(screen.getByTestId('mvd-wyniki-nieaktualne')).toBeInTheDocument();
+    expect(useKontekstWynikuStore.getState().zrodla).toEqual({ rozplyw: 'pasek' });
+
+    // Przycisk rodziny na pasku: zwarcia oglądane, wybór rozpływu zostaje (per rodzina).
+    await user.click(screen.getByTestId('mvd-status-rodzina-zwarcie-pokaz'));
+    await waitFor(() => oczekuj('zwarcie', 'r-sc-b', 'nieaktualny', true));
+    oczekuj('rozplyw', 'r-lf-a', 'nieaktualny', false);
+
+    // Pole biegu w panelu: bieg C (aktualny) — pasek przełącza oglądaną rodzinę i bieg.
+    await user.selectOptions(screen.getByTestId('mvd-wyniki-bieg'), 'r-lf-c');
+    await waitFor(() => oczekuj('rozplyw', 'r-lf-c', 'aktualny', true));
+    oczekuj('zwarcie', 'r-sc-b', 'nieaktualny', false);
+    expect(screen.queryByTestId('mvd-wyniki-nieaktualne')).not.toBeInTheDocument();
+    expect(useKontekstWynikuStore.getState().zrodla).toEqual({ rozplyw: 'panel', zwarcie: 'pasek' });
   });
 });

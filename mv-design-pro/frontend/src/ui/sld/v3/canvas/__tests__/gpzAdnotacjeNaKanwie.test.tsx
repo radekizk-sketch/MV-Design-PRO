@@ -31,6 +31,7 @@ import { useThemeModeStore, type ThemeMode } from '../../../../../ui2/theme/them
 import { sldPaletteForTheme } from '../../theme/palette';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { KRYCIE_TLA_POLA_GPZ } from '../GpzAdnotacjeWarstwa';
+import { wyczyscRejestrBiegow, zasiejBiegiNieaktualne } from '../../../../../test/biegNieaktualny';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const readFixture = <T,>(name: string): T =>
@@ -54,6 +55,7 @@ beforeEach(() => {
   if (typeof URL.createObjectURL !== 'function') URL.createObjectURL = () => 'blob:shim';
   if (typeof URL.revokeObjectURL !== 'function') URL.revokeObjectURL = () => {};
   useSnapshotStore.getState().reset();
+  wyczyscRejestrBiegow();
   useSelectionStore.getState().clearSelection();
   useRawResultOverlayStore.getState().clear();
   useOverlayStore.getState().clearOverlay();
@@ -161,7 +163,8 @@ describe('GPZ-PARYTET — adnotacje bloku GPZ na kanwie (ścieżka natywna)', ()
 
   it('ROZPŁYW NIEAKTUALNY (OUTDATED): wartości zostają, ale belka i tytuł niosą „wynik nieaktualny", kolor wyniku nieaktualnego', () => {
     useRawResultOverlayStore.getState().setPayload(rozplyw);
-    useAppStateStore.setState({ activeCaseResultStatus: 'OUTDATED' });
+    // Karta K8: model zmieniony po biegu — rewizja biegu ≠ rewizja modelu (jeden predykat).
+    zasiejBiegiNieaktualne([{ id: rozplyw.run_id, analysisType: 'LOAD_FLOW' }]);
     const container = renderKanwe(2);
     powiekszDoCzytelnosci(container);
     expect(container.querySelector('[data-testid="sld-v3-gpz-adnotacje"]')!.getAttribute('data-gpz-wynik')).toBe('nieaktualny');

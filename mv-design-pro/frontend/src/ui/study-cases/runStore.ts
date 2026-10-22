@@ -10,7 +10,11 @@
  * INVARIANTS:
  * - Run is created in PENDING, queued (QUEUED), RUNNING, then DONE, FAILED or CANCELLED
  * - ResultSet available ONLY for DONE runs
- * - activeRunId tracks the most recent run for UI display
+ * - sledzonyRunId: bieg ZLECONY z tego magazynu, którego cykl życia opisuje
+ *   `runStatus` (zdarzenie „wyniki-gotowe" magistrali). To NIE jest kontekst wyniku:
+ *   który bieg pokazują schemat, panel, pasek i ekrany, mówi wyłącznie magazyn
+ *   kontekstu wyniku (`ui2/wyniki/kontekst`, karta K8) — dawne `activeRunId` tego
+ *   magazynu było drugą kopią „wybranego biegu" i zostało skasowane.
  * - runResultsCache stores fetched result sets to avoid re-fetching
  */
 
@@ -31,8 +35,8 @@ interface ExecutionRunsState {
   // Active study case context
   activeStudyCaseId: string | null;
 
-  // Active run (most recent for display)
-  activeRunId: string | null;
+  /** Bieg zlecony w tym magazynie, którego stan śledzi `runStatus` (nie kontekst wyniku). */
+  sledzonyRunId: string | null;
 
   // Current run status
   runStatus: RunStatus | null;
@@ -65,14 +69,13 @@ interface ExecutionRunsState {
   loadRuns: (caseId: string) => Promise<void>;
   loadRunResults: (runId: string) => Promise<ExecutionResultSet>;
   pollRunStatus: (runId: string) => Promise<ExecutionRun>;
-  setActiveRun: (runId: string | null) => void;
   clearRunError: () => void;
   reset: () => void;
 }
 
 const initialState = {
   activeStudyCaseId: null,
-  activeRunId: null,
+  sledzonyRunId: null,
   runStatus: null,
   runs: [],
   runResultsCache: {},
@@ -96,7 +99,7 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
   setActiveStudyCaseId: (caseId) => {
     set({
       activeStudyCaseId: caseId,
-      activeRunId: null,
+      sledzonyRunId: null,
       runStatus: null,
       runs: [],
     });
@@ -127,7 +130,7 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
       // Step 1: Create run
       const run = await api.createRun(caseId, request);
       set({
-        activeRunId: run.id,
+        sledzonyRunId: run.id,
         runStatus: run.status as RunStatus,
         isCreatingRun: false,
       });
@@ -231,21 +234,6 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
   },
 
   /**
-   * Set active run for display.
-   */
-  setActiveRun: (runId) => {
-    set({ activeRunId: runId });
-    if (runId) {
-      const run = get().runs.find((r) => r.id === runId);
-      if (run) {
-        set({ runStatus: run.status as RunStatus });
-      }
-    } else {
-      set({ runStatus: null });
-    }
-  },
-
-  /**
    * Clear run error.
    */
   clearRunError: () => {
@@ -263,13 +251,6 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
 // =============================================================================
 // Derived Hooks
 // =============================================================================
-
-/**
- * Hook: Get active run ID.
- */
-export function useActiveRunId(): string | null {
-  return useExecutionRunsStore((state) => state.activeRunId);
-}
 
 /**
  * Hook: Get current run status.

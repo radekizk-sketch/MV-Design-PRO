@@ -40,7 +40,6 @@ describe('SekcjaSilySieci — wynik z przebiegu SC (kryterium 2)', () => {
   beforeEach(() => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'sc-run', analysis_type: 'SC_3F', status: 'DONE' })],
-      activeRunId: 'sc-run',
     });
   });
 
@@ -88,7 +87,6 @@ describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
   beforeEach(() => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'sc-run', analysis_type: 'SC_3F', status: 'DONE' })],
-      activeRunId: 'sc-run',
     });
   });
 

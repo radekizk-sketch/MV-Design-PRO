@@ -25,8 +25,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './kontyngencje.css';
-import { useAppStateStore } from '../../../ui/app-state';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSwiezoscNaglowka } from '../../freshness';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
@@ -45,7 +43,6 @@ import {
   KOLUMNY_RANKINGU,
   naWierszeRankingu,
   naZalozeniaMacierzy,
-  przebiegRozplywu,
   refyDoBiegu,
   typElementuKontyngencji,
 } from './model';
@@ -58,6 +55,7 @@ import {
   fmtLicznik,
   nazwaElementu,
 } from './strings';
+import { useAktywnyBieg } from '../kontekst/kontekstWyniku';
 
 type TrybZakresu = 'pelny' | 'wybrane';
 
@@ -344,9 +342,8 @@ export interface EkranKontyngencjiProps {
 }
 
 export function EkranKontyngencji({ szczegolyAudytowe, onOtworzDowod }: EkranKontyngencjiProps) {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: bieg z magazynu kontekstu wyniku (aktywny bieg rodziny) — jedna prawda wyboru.
+  const przebieg = useAktywnyBieg('rozplyw');
   const runId = przebieg?.id ?? null;
   const swiezosc = useSwiezoscNaglowka(runId);
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');

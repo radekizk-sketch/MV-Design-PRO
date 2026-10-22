@@ -187,7 +187,7 @@ function Probe() {
   const gotowosc = usePodsumowanieGotowosci();
   return (
     <StatusBar
-      status={{ backend: 'connected', modelRevision: null, lastRunLabel: null, wersjaModelu: null }}
+      status={{ backend: 'connected', modelRevision: null, wersjaModelu: null }}
       gotowosc={gotowosc}
       projektOtwarty
       bieg={{ trwa: false, analiza: null, stan: null }}

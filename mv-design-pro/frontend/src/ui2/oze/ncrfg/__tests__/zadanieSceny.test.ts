@@ -22,12 +22,8 @@ import { deryZModelu } from '../../../../ui/network-build/station-der';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { zbudujModuly, zbudujWejscieModulu, zbudujZadanieCertyfikatu } from '../../macierz/macierzModel';
-import {
-  domyslnyPrzebieg,
-  przebiegiRozplywu,
-  przebiegiZwarciowe,
-  zbudujZadanieWniosku,
-} from '../../wniosek/model';
+import { zbudujZadanieWniosku } from '../../wniosek/model';
+import { STAN_WYBORU_PUSTY, aktywnyBiegRodziny } from '../../../wyniki/kontekst/kontekstWyniku';
 import { operatorZModelu } from '../operator';
 import type { WejsciaPrzypadkuNcRfg } from '../typy';
 
@@ -72,8 +68,10 @@ describe('fixtury scen D2 opisują dokładnie żądania ekranu', () => {
 
   it('wniosek sceny wniosek: przebiegi domyślne z rejestru + węzeł + operator z modelu = ciało fixtury', () => {
     const runs = wniosekPrzebiegi as unknown as ExecutionRun[];
-    const pfRunId = domyslnyPrzebieg(przebiegiRozplywu(runs), null);
-    const scRunId = domyslnyPrzebieg(przebiegiZwarciowe(runs), null);
+    // Ekran wniosku bierze AKTYWNE biegi rodzin „rozpływ" i „zwarcie" z magazynu kontekstu
+    // wyniku (karta K8); scena bez wyboru — najnowsze zakończone biegi rodzin.
+    const pfRunId = aktywnyBiegRodziny(runs, STAN_WYBORU_PUSTY, 'rozplyw')?.id ?? null;
+    const scRunId = aktywnyBiegRodziny(runs, STAN_WYBORU_PUSTY, 'zwarcie')?.id ?? null;
     expect(pfRunId).not.toBeNull();
     expect(scRunId).not.toBeNull();
     expect(

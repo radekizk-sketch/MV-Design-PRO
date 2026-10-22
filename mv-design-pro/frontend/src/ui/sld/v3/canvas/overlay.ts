@@ -248,11 +248,11 @@ export interface SldV3Overlay {
   readonly resultLabelsByOwnerRef?: Readonly<Record<string, import('./resultLabels').ResultLabelEntry>>;
   /**
    * R2 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.8): flaga NIEAKTUALNOŚCI wyników
-   * względem modelu (Case Immutability Rule — zmiana modelu unieważnia wynik
-   * przypadku). KONSUMOWANA z ISTNIEJĄCEGO statusu ważności (`SldCanvasV3
-   * Workspace` przewierca `useAppStateStore.activeCaseResultStatus === 'OUTDATED'`
-   * — ten sam status, którego używa hook świeżości `ui2/freshness/useSwiezosc
-   * Wynikow`; ZAKAZ równoległego trackera zmian modelu w warstwie SLD). `true`
+   * względem modelu (Case Immutability Rule — zmiana modelu unieważnia wynik).
+   * Karta K8: `SldCanvasV3Workspace` liczy ją JEDNYM predykatem świeżości BIEGU
+   * nakładki (`ui2/wyniki/kontekst/kontekstWyniku.swiezoscBiegu`: rewizja biegu ≠
+   * rewizja bieżąca ⇒ nieaktualny; werdykt serwera przypadku jest daną wejściową)
+   * — nie statusem przypadku, bo oglądany bieg nie musi być ostatnim. `true`
    * ⇒ kanwa wyszarza etykiety wyników i pokazuje baner „⚠ wyniki nieaktualne"
    * (etykiety NIE znikają — inżynier ma widzieć, że wartości są stare). Brak/
    * `false` ⇒ prezentacja normalna. Zero fizyki, zero zgadywania — sam sygnał.
@@ -291,6 +291,12 @@ export interface SldV3Overlay {
      *  MUSZĄ nieść timestamp. Brak/`undefined` ⇒ badge NIE renderuje wiersza
      *  czasu (uczciwy brak, zero fabrykacji czasu we froncie). */
     readonly completedAtLabel?: string;
+    /** Karta K8: rodzina analizy biegu (`kontekstWyniku.RodzinaAnalizy`) — atrybut DOM. */
+    readonly rodzina?: string;
+    /** Karta K8: świeżość biegu z JEDNEGO predykatu (`kontekstWyniku.swiezoscBiegu`). */
+    readonly swiezosc?: 'aktualny' | 'nieaktualny' | 'nieznany';
+    /** Zdanie świeżości po polsku („nieaktualny — rew. 11, model rew. 12"). */
+    readonly swiezoscLabel?: string;
   };
 }
 

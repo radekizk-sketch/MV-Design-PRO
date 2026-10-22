@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { TabelaSzyn } from '../TabelaSzyn';
 import { ROZPLYW_STRINGS } from '../strings';
@@ -6,7 +6,12 @@ import { WZORZEC_STRINGS } from '../../wzorzec';
 import { INSPECTOR_STRINGS, znacznikNieaktualne } from '../../../inspector';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
-import { powerFlowResultFixture, runHeaderFixture } from './fixtures';
+import { busResultFixture, powerFlowResultFixture, runHeaderFixture } from './fixtures';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { identyfikatorGrafu } from '../../../../ui/topology/identyfikatorGrafu';
+import type { EnergyNetworkModel } from '../../../../types/enm';
+import { KontekstBieguEkranu, useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
+import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 
 // Karta TODO-UI2 p.9: znacznik świeżości nagłówka (`useSwiezoscNaglowka`, V12K-264)
 // czyta `analysisCaseContext.rewizjaModelu` z kontraktu przebiegu — mockowany tu
@@ -158,5 +163,67 @@ describe('TabelaSzyn — znacznik świeżości nagłówka (karta TODO-UI2 p.9, V
 
     expect(screen.queryByText(INSPECTOR_STRINGS.aktualne)).not.toBeInTheDocument();
     expect(screen.queryByText(/nieaktualne/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('TabelaSzyn — klik wiersza: rodzaj szyny × identyfikator wyniku (karta K8)', () => {
+  // Realny kształt: `bus_id` wyniku rozpływu = identyfikator GRAFU (`uuid5` z `ref_id`).
+  // Szyna robocza zaznacza się po ref modelu i przełącza kontekst biegu na bieg ekranu;
+  // szyna pomocnicza (zacisk końcowy odcinka, nienarysowana na schemacie) nie zaznacza
+  // NICZEGO — ta sama kanonikalizacja odrzuca ją w synchronizacji adresu, więc dotąd
+  // zaznaczenie i przełączenie kontekstu znikały chwilę po kliknięciu bez słowa.
+  const REF_ROBOCZEJ = 'stn/0123456789abcdef0123456789abcdef/sn_bus';
+  const REF_POMOCNICZEJ = 'bus/49bd3dfe4de4d3070a856cd6d7669007/downstream';
+  const PRZYPADKI: ReadonlyArray<readonly [string, string, string, boolean]> = [
+    ['szyna robocza, identyfikator grafu', identyfikatorGrafu(REF_ROBOCZEJ), 'Szyna SN stacji 1', true],
+    ['szyna robocza, ref modelu', REF_ROBOCZEJ, 'Szyna SN stacji 1', true],
+    ['szyna pomocnicza, identyfikator grafu', identyfikatorGrafu(REF_POMOCNICZEJ), 'Zacisk końcowy Odcinek 2', false],
+    ['szyna pomocnicza, ref modelu', REF_POMOCNICZEJ, 'Zacisk końcowy Odcinek 2', false],
+  ];
+
+  beforeEach(() => {
+    useSnapshotStore.setState({
+      snapshot: {
+        buses: [
+          { ref_id: REF_ROBOCZEJ, id: 'szyna-1', name: 'Szyna SN stacji 1', voltage_kv: 15 },
+          { ref_id: REF_POMOCNICZEJ, id: 'szyna-2', name: 'Zacisk końcowy Odcinek 2', voltage_kv: 15 },
+        ],
+      } as unknown as EnergyNetworkModel,
+    } as never);
+    useSelectionStore.setState({ selectedElement: null, selectedElements: [], sldWskazanie: null } as never);
+    wyczyscKontekstWyniku();
+  });
+
+  afterEach(() => {
+    useSnapshotStore.setState({ snapshot: null } as never);
+    wyczyscKontekstWyniku();
+  });
+
+  it.each(PRZYPADKI)('%s', (_opis, busId, nazwa, zaznacza) => {
+    usePowerFlowResultsStore.setState({
+      results: powerFlowResultFixture({ bus_results: [busResultFixture({ bus_id: busId })] }),
+      runHeader: runHeaderFixture(),
+    });
+    render(
+      <KontekstBieguEkranu.Provider value="bieg-ekranu">
+        <TabelaSzyn {...props({ onWybierzWiersz: vi.fn() })} />
+      </KontekstBieguEkranu.Provider>,
+    );
+
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[0]);
+
+    const stan = useSelectionStore.getState();
+    const kontekst = useKontekstWynikuStore.getState();
+    if (zaznacza) {
+      expect(stan.selectedElement).toMatchObject({ id: REF_ROBOCZEJ, type: 'Bus', name: nazwa });
+      expect(stan.sldWskazanie?.ref).toBe(REF_ROBOCZEJ);
+      // Bieg ekranu nieznany jeszcze rejestrowi → wybór oczekujący, źródło „ekran".
+      expect(kontekst.oczekujacy).toEqual({ runId: 'bieg-ekranu', zrodlo: 'ekran' });
+    } else {
+      expect(stan.selectedElement).toBeNull();
+      expect(stan.sldWskazanie).toBeNull();
+      expect(kontekst.oczekujacy).toBeNull();
+      expect(kontekst.wybrane).toEqual({});
+    }
   });
 });

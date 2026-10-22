@@ -135,7 +135,6 @@ async function otworzAplikacje(page: Page, request: APIRequestContext, tryb: str
             activeCaseResultStatus: 'NONE',
             activeSnapshotId: null,
             activeMode: 'MODEL_EDIT',
-            activeRunId: null,
             activeAnalysisType: 'SHORT_CIRCUIT',
             caseManagerOpen: false,
             issuePanelOpen: false,

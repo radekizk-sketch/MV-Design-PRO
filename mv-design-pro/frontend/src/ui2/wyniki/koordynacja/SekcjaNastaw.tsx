@@ -42,6 +42,7 @@ import {
   type ParametryNastaw,
   type ZaciskZabezpieczenia,
 } from './nastawyApi';
+import { biegiRodziny } from '../kontekst/kontekstWyniku';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
 type FazaKotwicy = 'szukanie' | 'brak' | 'gotowa' | 'blad';
@@ -50,15 +51,11 @@ type FazaDopasowania = 'idle' | 'liczenie' | 'gotowe' | 'blad';
 
 /** Kandydaci na kotwicę: zwarcia trójfazowe ZAKOŃCZONE, najnowsze najpierw —
  * ten sam kontrakt runStore, którego `EkranKoordynacji` używa do stanu zerowego
- * (`maZakonczonyPrzebieg`); TU dodatkowo sortujemy, bo próbujemy kandydatów po
+ * (`maZakonczonyPrzebieg`), w JEDNYM porządku biegów aplikacji (`biegiRodziny`,
+ * karta K8: znacznik czasu malejąco, remis — identyfikator). Próbujemy kandydatów po
  * kolei (backend jest jedynym sędzią „czy to c_max", patrz nagłówek modułu). */
 function kandydaciKotwicy(runs: readonly ExecutionRun[]): readonly ExecutionRun[] {
-  return runs
-    .filter((r) => r.analysis_type === 'SC_3F' && r.status === 'DONE')
-    .slice()
-    .sort((a, b) =>
-      String(b.finished_at ?? '').localeCompare(String(a.finished_at ?? '')),
-    );
+  return biegiRodziny(runs, 'zwarcie').filter((r) => r.analysis_type === 'SC_3F');
 }
 
 function WierszWarunku({

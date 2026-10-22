@@ -14,7 +14,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './studium.css';
 import { useAppStateStore } from '../../../ui/app-state';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import { InformacjeAudytowe, TabelaWynikow } from '../../wyniki/wzorzec';
 import {
@@ -30,7 +29,6 @@ import {
   type WidokDokumentuStudium,
   type ZadanieDokumentuStudium,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
 import { pobierzKatalogNcRfg } from '../ncrfg/api';
 import { useKlasyfikacjeModulow, type ZapytanieKlasyfikacji } from '../ncrfg/klasyfikacja';
@@ -76,6 +74,7 @@ interface BrakiDokumentu {
 }
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 /** Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza). */
 interface ParametryZakonczonegoBiegu {
@@ -321,9 +320,8 @@ export interface KreatorStudiumProps {
 
 export function KreatorStudium({ szczegolyAudytowe, onOtworzDowod }: KreatorStudiumProps) {
 
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);

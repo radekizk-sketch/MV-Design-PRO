@@ -12,6 +12,10 @@
  *  - eksport wywodu PDF / LaTeX / JSON → brama `…/export/proof/dostepnosc`
  *    (każdy format z osobną przyczyną braku; liczona tą samą funkcją co eksport).
  * Polecenie niedostępne jest nieaktywne, a jego przyczyna stoi w wierszu.
+ *
+ * Karta K8: wiersz biegu OGLĄDANEGO (magazyn kontekstu wyniku — ten sam bieg co schemat,
+ * panel „Wyniki", pasek stanu i inspektor) jest oznaczony „Oglądany", a każdy wiersz
+ * niesie świeżość biegu z jednego predykatu (`data-swiezosc`) i jego `data-run-id`.
  */
 import { useEffect, useState } from 'react';
 
@@ -32,6 +36,12 @@ import {
   zapiszPakiet,
   type DostepnoscPakietu,
 } from '../../wyniki/dowod/pakietApi';
+import {
+  ETYKIETA_SWIEZOSCI,
+  useBiegOgladany,
+  useSwiezoscBiegu,
+  zdanieSwiezosci,
+} from '../../wyniki/kontekst/kontekstWyniku';
 import type { KontekstPaneluDolnego } from './rejestrZakladek';
 import { useBiegiZakonczone } from './wynikiPanelu';
 
@@ -89,11 +99,14 @@ export function LicznikDowodow() {
 
 function WierszDowodu({
   run,
+  ogladany,
   onOtworzDowodBiegu,
 }: {
   run: ExecutionRun;
+  ogladany: boolean;
   onOtworzDowodBiegu?: (runId: string) => void;
 }) {
+  const swiezosc = useSwiezoscBiegu(run);
   const pakiet = usePakietBiegu(run.id);
   const eksport = useDostepnoscEksportuWywodu(run.id);
   const [polecenie, setPolecenie] = useState<StanPolecenia>({ rodzaj: 'bezczynny' });
@@ -145,10 +158,34 @@ function WierszDowodu({
           : `Pakiet dowodowy niedostępny: ${pakiet.dane.powod_pl ?? 'serwer nie podał powodu.'}`;
 
   return (
-    <li className="mvd-dolny-dowod" data-testid={`mvd-dowod-${run.id}`}>
+    <li
+      className={ogladany ? 'mvd-dolny-dowod mvd-dolny-dowod-ogladany' : 'mvd-dolny-dowod'}
+      data-testid={`mvd-dowod-${run.id}`}
+      data-run-id={run.id}
+      data-ogladany={ogladany ? 'true' : 'false'}
+      data-swiezosc={swiezosc?.stan}
+    >
       <div className="mvd-dolny-dowod-glowa">
         <span className="mvd-dolny-opis">{etykietaAnalizy(run.analysis_type)}</span>
         <span className="mvd-num mvd-dolny-czas">{formatCzas(run.finished_at ?? run.started_at)}</span>
+        {ogladany && (
+          <span
+            className="mvd-tag"
+            title="Ten przebieg jest na schemacie, w zakładce „Wyniki” i na pasku stanu."
+            data-testid={`mvd-dowod-ogladany-${run.id}`}
+          >
+            Oglądany
+          </span>
+        )}
+        {swiezosc && (
+          <span
+            className={swiezosc.stan === 'nieaktualny' ? 'mvd-tag mvd-tag-warn' : 'mvd-tag'}
+            title={zdanieSwiezosci(swiezosc)}
+            data-testid={`mvd-dowod-swiezosc-${run.id}`}
+          >
+            {ETYKIETA_SWIEZOSCI[swiezosc.stan]}
+          </span>
+        )}
         <span className="mvd-grow" />
         <button
           type="button"
@@ -216,6 +253,7 @@ function WierszDowodu({
 
 export function ZakladkaDowody({ onOtworzDowodBiegu }: KontekstPaneluDolnego) {
   const biegi = useBiegiZakonczone();
+  const ogladany = useBiegOgladany();
   if (biegi.length === 0) {
     return (
       <p className="mvd-dolny-stan" data-testid="mvd-dowody-brak">
@@ -224,9 +262,14 @@ export function ZakladkaDowody({ onOtworzDowodBiegu }: KontekstPaneluDolnego) {
     );
   }
   return (
-    <ul className="mvd-dolny-lista" data-testid="mvd-dowody">
+    <ul className="mvd-dolny-lista" data-testid="mvd-dowody" data-run-id={ogladany?.id}>
       {biegi.map((run) => (
-        <WierszDowodu key={run.id} run={run} onOtworzDowodBiegu={onOtworzDowodBiegu} />
+        <WierszDowodu
+          key={run.id}
+          run={run}
+          ogladany={run.id === ogladany?.id}
+          onOtworzDowodBiegu={onOtworzDowodBiegu}
+        />
       ))}
     </ul>
   );

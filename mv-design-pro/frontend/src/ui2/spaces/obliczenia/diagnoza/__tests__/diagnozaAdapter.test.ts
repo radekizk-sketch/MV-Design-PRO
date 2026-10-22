@@ -90,7 +90,6 @@ beforeEach(() => {
   ustawOdpowiedziPoprawne();
   useExecutionRunsStore.setState({
     activeStudyCaseId: 'K1',
-    activeRunId: null,
     runStatus: null,
     runs: [
       { id: 'run-nowy', study_case_id: 'K1', analysis_type: 'LOAD_FLOW', solver_input_hash: 'h1', status: 'DONE', started_at: null, finished_at: null, error_message: null },

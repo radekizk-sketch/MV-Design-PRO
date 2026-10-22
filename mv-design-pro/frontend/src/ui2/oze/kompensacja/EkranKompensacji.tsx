@@ -27,7 +27,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './kompensacja.css';
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
@@ -40,7 +39,6 @@ import {
   type WidokDoboruKompensacji,
   type ZapytanieDoboruKompensacji,
 } from '../api';
-import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import {
   kolumnyTabeliKompensacji,
   krokiSladuKompensacji,
@@ -49,6 +47,7 @@ import {
 import { KOMPENSACJA_STRINGS as T, fmtCosfiKomp, fmtKvKomp, fmtMvarKomp } from './strings';
 import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 const DOMYSLNY_COSFI_MIN = 0.95;
 
@@ -348,9 +347,8 @@ export function EkranKompensacji({
   onPreselekcjaSkonsumowana,
   onOtworzDowod,
 }: EkranKompensacjiProps) {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('rozplyw');
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const opcjeWezlow = useMemo(() => selectBusOptions(snapshot), [snapshot]);

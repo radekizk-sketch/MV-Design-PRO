@@ -14,13 +14,13 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useAppStateStore } from '../../../../ui/app-state';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useSelectionStore } from '../../../../ui/selection';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExtendedTrace } from '../../../../ui/results-inspector/types';
 import { DowodPrzebiegu } from '../DowodPrzebiegu';
 import { przebiegFixture } from './fixtures';
+import { ustawBiegOgladany } from '../../../../test/kontekstBiegu';
 
 const RUN_ID = 'run-sc-1';
 
@@ -67,8 +67,8 @@ function zamontujSlad(): void {
 }
 
 beforeEach(() => {
-  useAppStateStore.setState({ activeRunId: RUN_ID });
-  useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: RUN_ID })], activeRunId: RUN_ID });
+  ustawBiegOgladany(RUN_ID);
+  useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: RUN_ID })]});
   useSelectionStore.setState({ selectedElement: null });
   zamontujSlad();
 });

@@ -8,11 +8,10 @@
 
 import { useState } from 'react';
 
-import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzSileSieci, type WpisSilyWezla } from '../api';
 import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { SladAnalizy } from './SladAnalizy';
-import { busRefModuluSily, wybierzPrzebiegZwarciowy } from './pulpitModel';
+import { busRefModuluSily } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
 import {
   BRAKI_DANYCH_SILY,
@@ -22,6 +21,7 @@ import {
   klasaWerdyktuSily,
   PULPIT_STRINGS,
 } from './strings';
+import { useAktywnyRunId } from '../../wyniki/kontekst/kontekstWyniku';
 
 export interface SekcjaSilySieciProps {
   /** Tryb ekspercki odsłania identyfikatory katalogowe/śladu. */
@@ -100,9 +100,8 @@ export function SekcjaSilySieci({
   szczegolyAudytowe,
   wyroznionyModul = null,
 }: SekcjaSilySieciProps): JSX.Element {
-  const runs = useExecutionRunsStore((s) => s.runs);
-  const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const runId = wybierzPrzebiegZwarciowy(runs, activeRunId);
+  // Karta K8: aktywny bieg rodziny z magazynu kontekstu wyniku (jedna prawda wyboru).
+  const runId = useAktywnyRunId('zwarcie');
   const stan = useAnaliza(runId, pobierzSileSieci);
   const [wscrSlad, setWscrSlad] = useState(false);
 

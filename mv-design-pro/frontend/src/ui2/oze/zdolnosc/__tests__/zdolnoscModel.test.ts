@@ -16,41 +16,9 @@ import {
   slupkiZdolnosci,
   statusScenariuszaPL,
   wartoscKryterium,
-  wybierzPrzebiegRozplywu,
 } from '../zdolnoscModel';
 import { fmtMW } from '../strings';
-import { przebiegFixture, widokZdolnosciFixture } from './fixtures';
-
-describe('wybierzPrzebiegRozplywu — dobór przebiegu (LOAD_FLOW/DONE)', () => {
-  it('bez zakończonego rozpływu zwraca null', () => {
-    const runs = [przebiegFixture({ id: 'sc', analysis_type: 'SC_3F', status: 'DONE' })];
-    expect(wybierzPrzebiegRozplywu(runs, null)).toBeNull();
-  });
-
-  it('preferuje aktywny przebieg, gdy jest zakończonym rozpływem', () => {
-    const runs = [
-      przebiegFixture({ id: 'lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE' }),
-      przebiegFixture({ id: 'lf-2', analysis_type: 'LOAD_FLOW', status: 'DONE' }),
-    ];
-    expect(wybierzPrzebiegRozplywu(runs, 'lf-1')).toBe('lf-1');
-  });
-
-  it('bez pasującego aktywnego wybiera ostatni zakończony rozpływ', () => {
-    const runs = [
-      przebiegFixture({ id: 'lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE' }),
-      przebiegFixture({ id: 'lf-2', analysis_type: 'LOAD_FLOW', status: 'DONE' }),
-    ];
-    expect(wybierzPrzebiegRozplywu(runs, 'sc-x')).toBe('lf-2');
-  });
-
-  it('ignoruje przebiegi niezakończone i innego rodzaju', () => {
-    const runs = [
-      przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'RUNNING' }),
-      przebiegFixture({ id: 'sc-run', analysis_type: 'SC_3F', status: 'DONE' }),
-    ];
-    expect(wybierzPrzebiegRozplywu(runs, null)).toBeNull();
-  });
-});
+import { widokZdolnosciFixture } from './fixtures';
 
 describe('etykietaWezla — nazwa na pierwszym planie', () => {
   const [a, b] = widokZdolnosciFixture().nodes;

@@ -17,7 +17,7 @@
 import { useMemo, useState } from 'react';
 
 import './generator.css';
-import { useAppStateStore } from '../../../../ui/app-state';
+import { useRunIdOgladany, useWybierzBieg } from '../../../wyniki/kontekst/kontekstWyniku';
 import {
   exportProofPack,
   exportReport,
@@ -69,12 +69,14 @@ const FORMATY_DOWODU: ReadonlyArray<{ format: ProofExportFormat; etykieta: strin
 
 export function GeneratorRaportu() {
   const przebiegi = useExecutionRunsStore((s) => s.runs);
-  const aktywnyRunId = useAppStateStore((s) => s.activeRunId);
+  // Karta K8: bieg raportu = bieg oglądany z magazynu kontekstu wyniku; wybór tutaj
+  // zmienia kontekst wszędzie (schemat, panel dolny, „Dowody", pasek stanu).
+  const runIdOgladany = useRunIdOgladany();
+  const wybierzBieg = useWybierzBieg();
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
 
   const dostepne = useMemo(() => przebiegiDoRaportu(przebiegi), [przebiegi]);
-  const [wybranyRun, setWybranyRun] = useState<string | null>(null);
-  const runId = wybranyRun ?? domyslnyPrzebieg(dostepne, aktywnyRunId);
+  const runId = domyslnyPrzebieg(dostepne, runIdOgladany);
 
   const [profil, setProfil] = useState<ProfilRaportu>(DOMYSLNY_PROFIL);
   const [poziom, setPoziom] = useState<PoziomSzczegolowosci>(DOMYSLNY_POZIOM);
@@ -156,7 +158,7 @@ export function GeneratorRaportu() {
             data-testid="mvd-generator-przebieg"
             value={runId}
             onChange={(e) => {
-              setWybranyRun(e.target.value);
+              wybierzBieg(e.target.value, 'ekran');
               setTabela('');
               setStan({ rodzaj: 'bezczynny' });
             }}

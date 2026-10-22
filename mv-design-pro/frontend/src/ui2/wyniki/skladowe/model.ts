@@ -47,37 +47,34 @@ import { SKLADOWE_STRINGS as T, uziemieniePL } from './strings';
 /** Typy przebiegów zwarć NIESYMETRYCZNYCH (kontrakt ExecutionAnalysisType). */
 export const TYPY_NIESYMETRYCZNE = new Set<string>(['SC_1F', 'SC_2F', 'SC_2F_G']);
 
-const STATUS_ZAKONCZONY = 'DONE';
-
 export interface PrzebiegDoWyboru {
   readonly id: string;
   readonly analysis_type: string;
-  readonly status: string;
-  readonly finished_at?: string | null;
-  readonly started_at?: string | null;
 }
 
 /**
- * Wybiera przebieg do interpretacji składowych: aktywny przebieg, jeśli jest
- * zakończonym zwarciem niesymetrycznym; inaczej najnowszy zakończony przebieg
- * niesymetryczny (sort deterministyczny po finished_at/started_at malejąco);
- * brak → null (uczciwy stan zerowy ekranu).
+ * Przebieg ekranu składowych (karta K8): AKTYWNY bieg rodziny „zwarcie" z magazynu
+ * kontekstu wyniku — ten sam, który jest na schemacie, pasku stanu i w panelu dolnym.
+ * Składowe interpretują wyłącznie zwarcie niesymetryczne, więc gdy aktywny bieg zwarcia
+ * jest symetryczny (3F), ekran NIE wybiera po cichu innego biegu: zwraca kandydata
+ * (najnowszy zakończony bieg niesymetryczny — `biegiZwarcia` są od najnowszego) do
+ * JAWNEGO przełączenia kontekstu. Brak biegu niesymetrycznego → `brak` (stan zerowy).
  */
-export function wybierzPrzebiegNiesymetryczny<T extends PrzebiegDoWyboru>(
-  przebiegi: readonly T[],
-  activeRunId: string | null,
-): T | null {
-  const niesymetryczne = przebiegi.filter(
-    (r) => r.status === STATUS_ZAKONCZONY && TYPY_NIESYMETRYCZNE.has(r.analysis_type),
-  );
-  if (niesymetryczne.length === 0) return null;
-  const aktywny = activeRunId ? niesymetryczne.find((r) => r.id === activeRunId) : undefined;
-  if (aktywny) return aktywny;
-  return [...niesymetryczne].sort((a, b) =>
-    String(b.finished_at ?? b.started_at ?? '').localeCompare(
-      String(a.finished_at ?? a.started_at ?? ''),
-    ),
-  )[0];
+export type WyborPrzebieguSkladowych<T extends PrzebiegDoWyboru> =
+  | { readonly rodzaj: 'aktywny'; readonly przebieg: T }
+  | { readonly rodzaj: 'aktywnySymetryczny'; readonly aktywny: T; readonly kandydat: T }
+  | { readonly rodzaj: 'brak' };
+
+export function wyborPrzebieguSkladowych<T extends PrzebiegDoWyboru>(
+  aktywnyZwarcia: T | null,
+  biegiZwarcia: readonly T[],
+): WyborPrzebieguSkladowych<T> {
+  if (aktywnyZwarcia && TYPY_NIESYMETRYCZNE.has(aktywnyZwarcia.analysis_type)) {
+    return { rodzaj: 'aktywny', przebieg: aktywnyZwarcia };
+  }
+  const kandydat = biegiZwarcia.find((r) => TYPY_NIESYMETRYCZNE.has(r.analysis_type));
+  if (aktywnyZwarcia && kandydat) return { rodzaj: 'aktywnySymetryczny', aktywny: aktywnyZwarcia, kandydat };
+  return { rodzaj: 'brak' };
 }
 
 // ---------------------------------------------------------------------------

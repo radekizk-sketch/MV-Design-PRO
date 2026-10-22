@@ -13223,6 +13223,38 @@
        }
       ]
      },
+     "project_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Project Id"
+     },
+     "result_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Result Status"
+     },
+     "scenario_ref": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ScenarioRefResponse"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
      "snapshot_hash": {
       "anyOf": [
        {
@@ -13660,6 +13692,25 @@
      "content_hash"
     ],
     "title": "ScenarioEligibilityResponse",
+    "type": "object"
+   },
+   "ScenarioRefResponse": {
+    "description": "Scenariusz roboczy, na którym policzono bieg: identyfikator i jego rewizja.",
+    "properties": {
+     "revision": {
+      "title": "Revision",
+      "type": "integer"
+     },
+     "scenario_id": {
+      "title": "Scenario Id",
+      "type": "string"
+     }
+    },
+    "required": [
+     "scenario_id",
+     "revision"
+    ],
+    "title": "ScenarioRefResponse",
     "type": "object"
    },
    "SectionDiffResponse": {

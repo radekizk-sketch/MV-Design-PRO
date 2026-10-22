@@ -6,10 +6,11 @@
  * Ładowanie LENIWE: dopiero przy otwarciu zakładki; działa dla każdego rodzaju
  * przebiegu (ślad rozszerzony jest per analysis-run). Zero fizyki, read-only.
  *
- * R3-C: opcjonalny `wskazanyRunId` wybiera KONKRETNY przebieg (deep-link
- * z kontekstem `setWynikiTab('dowod', runId)` — np. kolumna A/B porównania);
- * brak wskazania = aktywny przebieg (zachowanie 1:1). Ślad wskazanego przebiegu
- * jest realnie pobieralny po run_id (`GET /analysis-runs/{id}/results/trace`,
+ * Karta K8: przebieg wywodu to bieg OGLĄDANY z magazynu kontekstu wyniku — ten sam,
+ * który jest na schemacie, w panelu dolnym i na pasku stanu. Wskazanie konkretnego
+ * przebiegu (deep-link `setWynikiTab('dowod', runId)` — np. kolumna A/B porównania,
+ * „Otwórz dowód" w panelu dolnym) jest WYBOREM biegu w magazynie, nie lokalną kopią.
+ * Ślad przebiegu jest pobieralny po run_id (`GET /analysis-runs/{id}/results/trace`,
  * `ui/results-inspector/api.ts:115`). Przebieg spoza rejestru aktywnego
  * przypadku dostaje uczciwą etykietę ogólną (zero zgadywania nazwy analizy).
  *
@@ -24,21 +25,16 @@ import { useEffect, useMemo } from 'react';
 
 import { PakietDowodowy, PrzegladDowodu, ZrodloLatex } from '../../wyniki/dowod';
 import { useAkcjaUruchomObliczenie } from '../../wyniki/wzorzec';
-import { useAppStateStore } from '../../../ui/app-state';
 import { resolveTraceStepsForElement } from '../../../ui/proof/ElementCalculationProofPanel';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import { useSelectionStore } from '../../../ui/selection';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
+import { useRunIdOgladany } from '../../wyniki/kontekst/kontekstWyniku';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 
 export interface DowodPrzebieguProps {
   szczegolyAudytowe: boolean;
-  /**
-   * Konkretny przebieg do wywodu (R3-C — dowód kolumny A/B porównania).
-   * `null`/pominięty = aktywny przebieg (dotychczasowe zachowanie 1:1).
-   */
-  wskazanyRunId?: string | null;
   /**
    * Element wskazany przez użytkownika (L-11): ref z 2× klika na wartości
    * z dowodem. `null` = bierzemy bieżącą selekcję (schemat/drzewo), a gdy i jej
@@ -49,18 +45,14 @@ export interface DowodPrzebieguProps {
 
 export function DowodPrzebiegu({
   szczegolyAudytowe,
-  wskazanyRunId = null,
   wskazanyElementRef = null,
 }: DowodPrzebieguProps) {
-  const activeRunId = useAppStateStore((s) => s.activeRunId);
+  const runId = useRunIdOgladany();
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const selectedRunId = useResultsInspectorStore((s) => s.selectedRunId);
   const slad = useResultsInspectorStore((s) => s.extendedTrace);
   const ladowanie = useResultsInspectorStore((s) => s.isLoadingTrace || s.isLoadingIndex);
   const selekcja = useSelectionStore((s) => s.selectedElement);
-
-  // Przebieg wywodu: wskazany (deep-link R3-C) przed aktywnym.
-  const runId = wskazanyRunId ?? activeRunId;
 
   // Leniwe ładowanie śladu przy otwarciu zakładki (idempotentnie).
   useEffect(() => {
@@ -105,7 +97,7 @@ export function DowodPrzebiegu({
   }, [wskazanyElementRef, selekcja, selectedRunId, runId, slad]);
 
   return (
-    <>
+    <div data-testid="mvd-dowod-przebiegu" data-run-id={runId ?? undefined} style={{ display: 'contents' }}>
       <PrzegladDowodu
         analizaPL={analizaPL}
         kroki={kroki}
@@ -123,6 +115,6 @@ export function DowodPrzebiegu({
           niezależnie od tego, czy ślad ma kroki: bieg bez śladu może mieć pakiet,
           a bieg ze śladem może pakietu nie mieć (wtedy sekcja poda powód). */}
       <PakietDowodowy runId={runId} akcjaBrak={akcjaPusty} />
-    </>
+    </div>
   );
 }

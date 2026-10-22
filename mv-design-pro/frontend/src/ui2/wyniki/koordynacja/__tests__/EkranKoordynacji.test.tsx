@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { useAppStateStore } from '../../../../ui/app-state';
@@ -22,6 +22,8 @@ import type { WynikOcenyZabezpieczen } from '../ocenaZabezpieczenApi';
 import wynikKoordynacjiSceny from '../../../../harness-fixtures/generated/koordynacja_scena_wynik.json';
 import wynikOcenySceny from '../../../../harness-fixtures/generated/koordynacja_scena_ocena.json';
 import { EkranKoordynacji } from '../EkranKoordynacji';
+import { useKontekstWynikuStore } from '../../kontekst/kontekstWyniku';
+import { wyczyscKontekstWyniku } from '../../../../test/kontekstBiegu';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
 
 const DONE_SC_RUN = {
@@ -89,6 +91,7 @@ function ustawKompletnyKontekst() {
 beforeEach(() => {
   useAppStateStore.getState().reset();
   useExecutionRunsStore.getState().reset();
+  wyczyscKontekstWyniku();
   useShellStore.setState({ activeSpace: 'wyniki' });
   // Tło bez biegów: ekrany wołają listę biegów oceny i dostępność nastaw.
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => odpowiedzTla(String(input))));
@@ -237,20 +240,49 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
 // ---------------------------------------------------------------------------
 
 describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
-  function kontekstOceny(): void {
+  /**
+   * Bieg oceny w rejestrze biegów przypadku: kanoniczny bieg `protection_sn` ma w
+   * `GET /api/execution/study-cases/{id}/runs` rodzaj `PROTECTION` i TEN SAM identyfikator
+   * co `/api/protection-runs/{id}` (`canonical_analysis._execution_analysis_type`).
+   * Karta K8: sekcja oceny czyta bieg z kontekstu wyniku (rodzina „zabezpieczenia"),
+   * nie z „najnowszego biegu oceny projektu".
+   */
+  function biegOceny(id: string, finishedAt: string, status = 'DONE') {
+    return {
+      id,
+      study_case_id: 'case-1',
+      analysis_type: 'PROTECTION',
+      status,
+      started_at: finishedAt,
+      finished_at: finishedAt,
+    } as never;
+  }
+
+  function kontekstOceny(biegiOceny: unknown[] = []): void {
     ustawKompletnyKontekst();
-    useExecutionRunsStore.setState({ runs: [DONE_SC_RUN, DONE_SC_RUN_MIN] });
+    useExecutionRunsStore.setState({ runs: [DONE_SC_RUN, DONE_SC_RUN_MIN, ...biegiOceny] as never });
   }
 
   function mockOceny(opcje: {
-    lista?: { id: string; status: string; created_at: string }[];
     wynik?: unknown;
     statusWykonania?: string;
   }) {
+    // Rejestr biegów przypadku po stronie serwera: utworzenie oceny dokłada jej bieg.
+    const rejestr: unknown[] = [...useExecutionRunsStore.getState().runs];
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === '/api/projects/project-1/protection-runs' && init?.method === 'POST') {
+        rejestr.push(
+          biegOceny('ocena-1', '2026-07-18T11:00:00Z', opcje.statusWykonania === 'FAILED' ? 'FAILED' : 'DONE'),
+        );
         return { ok: true, status: 201, json: async () => ({ id: 'ocena-1', status: 'CREATED' }) } as Response;
+      }
+      if (url === '/api/execution/study-cases/case-1/runs') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ runs: rejestr, count: rejestr.length }),
+        } as Response;
       }
       // Kształt backendu po karcie DYNAMIKA-W-TLE: `execute` = 202 i QUEUED (bieg w tle),
       // stan końcowy z `GET /api/protection-runs/{id}`. Atrapa oddająca FINISHED wprost
@@ -275,9 +307,6 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
       }
       if (url.startsWith('/api/protection-runs/') && url.endsWith('/results')) {
         return { ok: true, status: 200, json: async () => opcje.wynik ?? WYNIK_OCENY } as Response;
-      }
-      if (url === '/api/projects/project-1/protection-runs') {
-        return { ok: true, status: 200, json: async () => ({ runs: opcje.lista ?? [] }) } as Response;
       }
       if (url.endsWith('/results/short-circuit')) {
         const max = url.includes('run-sc-1');
@@ -329,6 +358,36 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
       expect(wiersz).not.toHaveTextContent(o.device_id);
     }
     expect(screen.queryByTestId('mvd-ocena-zabezpieczen-nieaktualny')).not.toBeInTheDocument();
+    // Świeży bieg oceny jest wybrany w kontekście wyniku (źródło „bieg") — ten sam
+    // identyfikator wystawia sekcja, pasek stanu i panel dolny.
+    expect(screen.getByTestId('mvd-ocena-zabezpieczen')).toHaveAttribute('data-run-id', 'ocena-1');
+    expect(useKontekstWynikuStore.getState().wybrane.zabezpieczenia).toBe('ocena-1');
+  });
+
+  // Karta K8: wybór biegu oceny pochodzi z kontekstu wyniku. Iloczyn: {bez wyboru →
+  // najnowszy zakończony bieg rodziny, jawny wybór starszego (pasek stanu) → ten bieg}.
+  it('bieg oceny z kontekstu wyniku: bez wyboru najnowszy, jawny wybór starszego wczytuje starszy', async () => {
+    kontekstOceny([
+      biegOceny('ocena-stara', '2026-07-18T10:30:00Z'),
+      biegOceny('ocena-nowa', '2026-07-18T10:45:00Z'),
+    ]);
+    const fetchMock = mockOceny({});
+    const { unmount } = render(<EkranKoordynacji />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-ocena-zabezpieczen')).toHaveAttribute('data-run-id', 'ocena-nowa'),
+    );
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/protection-runs/ocena-nowa/results')).toBe(true),
+    );
+    unmount();
+    act(() => useKontekstWynikuStore.getState().wybierzBieg('ocena-stara', 'pasek'));
+    render(<EkranKoordynacji />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-ocena-zabezpieczen')).toHaveAttribute('data-run-id', 'ocena-stara'),
+    );
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/protection-runs/ocena-stara/results')).toBe(true),
+    );
   });
 
   it('wariant minimalny wskazany w polu wyboru trafia do żądania', async () => {
@@ -365,11 +424,10 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
 
   it('istniejący bieg oceny wczytany po wejściu; nieaktualny — baner z przyczyną; odmowa prowadzi do edycji w modelu', async () => {
     const user = userEvent.setup();
-    kontekstOceny();
+    kontekstOceny([biegOceny('ocena-stara', '2026-09-01T10:00:00Z')]);
     const openRouteSurface = vi.fn();
     useNetworkBuildStore.setState({ openRouteSurface } as never);
     mockOceny({
-      lista: [{ id: 'ocena-stara', status: 'FINISHED', created_at: '2026-09-01T10:00:00Z' }],
       wynik: {
         ...WYNIK_OCENY,
         result_status: 'OUTDATED',

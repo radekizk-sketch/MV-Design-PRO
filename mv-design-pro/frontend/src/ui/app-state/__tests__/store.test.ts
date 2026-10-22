@@ -17,6 +17,8 @@ import { useAppStateStore } from '../store';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { makeCalculationReadySnapshot } from '../../../test/enmCalculationSnapshot';
+import { ustawBiegOgladany, wyczyscKontekstWyniku } from '../../../test/kontekstBiegu';
+import { runIdOgladanyTeraz, useKontekstWynikuStore } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
 
 describe('useAppStateStore', () => {
   beforeEach(() => {
@@ -24,6 +26,7 @@ describe('useAppStateStore', () => {
     useAppStateStore.getState().reset();
     useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
+    wyczyscKontekstWyniku();
   });
 
   // ===========================================================================
@@ -48,8 +51,11 @@ describe('useAppStateStore', () => {
       expect(useAppStateStore.getState().activeCaseResultStatus).toBe('NONE');
     });
 
-    it('should start with no active run', () => {
-      expect(useAppStateStore.getState().activeRunId).toBeNull();
+    // Karta K8: „który bieg" nie jest polem tego magazynu — jedynym źródłem jest
+    // magazyn kontekstu wyniku (`ui2/wyniki/kontekst`).
+    it('should not keep a run selection of its own (kontekst wyniku is the only source)', () => {
+      expect('activeRunId' in useAppStateStore.getState()).toBe(false);
+      expect('setActiveRun' in useAppStateStore.getState()).toBe(false);
     });
 
     it('should start with no active snapshot', () => {
@@ -84,6 +90,9 @@ describe('useAppStateStore', () => {
       useAppStateStore.getState().setActiveSnapshot('snap-1');
       useAppStateStore.getState().setActiveAnalysisType('SHORT_CIRCUIT');
       useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
+      // Wybór biegu z adresu, którego rejestr jeszcze nie zna (oczekujący).
+      ustawBiegOgladany('run-z-adresu');
+      expect(runIdOgladanyTeraz()).toBe('run-z-adresu');
 
       // Change project
       useAppStateStore.getState().setActiveProject('proj-2', 'Project 2');
@@ -95,7 +104,7 @@ describe('useAppStateStore', () => {
       expect(state.activeCaseKind).toBeNull();
       expect(state.activeCaseResultStatus).toBe('NONE');
       expect(state.activeSnapshotId).toBeNull();
-      expect(state.activeRunId).toBeNull();
+      expect(runIdOgladanyTeraz()).toBeNull();
       expect(state.activeAnalysisType).toBeNull();
       expect(useSnapshotStore.getState().snapshot).toBeNull();
     });
@@ -134,15 +143,28 @@ describe('useAppStateStore', () => {
     });
 
     it('should clear run and snapshot when case changes', () => {
-      useAppStateStore.getState().setActiveRun('run-1');
+      useAppStateStore.getState().setActiveCase('case-1', 'SC-001', 'ShortCircuitCase');
+      ustawBiegOgladany('run-1', { dolozDoRejestru: 'SC_3F' });
       useAppStateStore.getState().setActiveSnapshot('snap-1');
-      useExecutionRunsStore.setState({ activeRunId: 'run-1' });
+      expect(runIdOgladanyTeraz()).toBe('run-1');
 
       useAppStateStore.getState().setActiveCase('case-2', 'PF-001', 'PowerFlowCase');
 
-      expect(useAppStateStore.getState().activeRunId).toBeNull();
       expect(useAppStateStore.getState().activeSnapshotId).toBeNull();
-      expect(useExecutionRunsStore.getState().activeRunId).toBeNull();
+      // Wybór biegu należy do przypadku: zmiana przypadku czyści kontekst wyniku
+      // (wybór jawny i oczekujący z adresu).
+      expect(runIdOgladanyTeraz()).toBe('run-1'); // rejestr wciąż zna bieg → domyślny najnowszy
+      const kontekst = useKontekstWynikuStore.getState();
+      expect(kontekst.wybrane).toEqual({});
+      expect(kontekst.oczekujacy).toBeNull();
+      expect(kontekst.ogladana).toBeNull();
+    });
+
+    it('should keep the result context when the same case is re-set', () => {
+      useAppStateStore.getState().setActiveCase('case-1', 'SC-001', 'ShortCircuitCase');
+      ustawBiegOgladany('run-1', { dolozDoRejestru: 'SC_3F' });
+      useAppStateStore.getState().setActiveCase('case-1', 'SC-001 (nowa nazwa)', 'ShortCircuitCase');
+      expect(useKontekstWynikuStore.getState().wybrane).toEqual({ zwarcie: 'run-1' });
     });
 
     it('should use defaults for optional params', () => {
@@ -193,21 +215,16 @@ describe('useAppStateStore', () => {
       expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
     });
 
-    it('should clear activeRunId when exiting RESULT_VIEW', () => {
+    // Karta K8 (kanon zmieniony): wyjście z RESULT_VIEW NIE gasi oglądanego biegu —
+    // dawne gaszenie przy każdym wejściu na schemat rozjeżdżało nakładkę schematu
+    // i ekran wyników. Intencja zachowana: tryb nie jest źródłem wyboru biegu.
+    it('should keep the viewed run across mode changes (both directions)', () => {
+      ustawBiegOgladany('run-1', { dolozDoRejestru: 'LOAD_FLOW' });
       useAppStateStore.getState().setActiveMode('RESULT_VIEW');
-      useAppStateStore.getState().setActiveRun('run-1');
-      expect(useAppStateStore.getState().activeRunId).toBe('run-1');
-
-      // Exit RESULT_VIEW
+      expect(runIdOgladanyTeraz()).toBe('run-1');
       useAppStateStore.getState().setActiveMode('MODEL_EDIT');
-      expect(useAppStateStore.getState().activeRunId).toBeNull();
-    });
-
-    it('should NOT clear activeRunId when staying in RESULT_VIEW', () => {
-      useAppStateStore.getState().setActiveRun('run-1');
-      useAppStateStore.getState().setActiveMode('RESULT_VIEW');
-      // Run is preserved when entering RESULT_VIEW (cleared only when exiting)
-      expect(useAppStateStore.getState().activeRunId).toBe('run-1');
+      expect(runIdOgladanyTeraz()).toBe('run-1');
+      expect(useKontekstWynikuStore.getState().wybrane).toEqual({ rozplyw: 'run-1' });
     });
 
     it('should support writable and read-only shell states', () => {
@@ -401,7 +418,6 @@ describe('useAppStateStore', () => {
       useAppStateStore.getState().setActiveProject('proj-1', 'Project 1');
       useAppStateStore.getState().setActiveCase('case-1', 'Case 1', 'ShortCircuitCase', 'FRESH');
       useAppStateStore.getState().setActiveMode('RESULT_VIEW');
-      useAppStateStore.getState().setActiveRun('run-1');
       useAppStateStore.getState().setActiveSnapshot('snap-1');
       useAppStateStore.getState().setActiveAnalysisType('SHORT_CIRCUIT');
       useAppStateStore.getState().toggleIssuePanel(true);
@@ -418,7 +434,6 @@ describe('useAppStateStore', () => {
       expect(state.activeCaseResultStatus).toBe('NONE');
       expect(state.activeSnapshotId).toBeNull();
       expect(state.activeMode).toBe('MODEL_EDIT');
-      expect(state.activeRunId).toBeNull();
       expect(state.activeAnalysisType).toBeNull();
       expect(state.issuePanelOpen).toBe(false);
     });

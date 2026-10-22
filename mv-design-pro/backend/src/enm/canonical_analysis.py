@@ -650,6 +650,20 @@ class CanonicalRun:
             "model_revision": koperta.model_revision if koperta is not None else None,
             "created_at": self.created_at.isoformat(),
             "snapshot_hash": self.snapshot_hash,
+            # Karta K8 KONTEKST-WYNIKU: klucz kontekstu wyniku w UI = {projekt, przypadek,
+            # bieg, rodzaj, rewizja modelu biegu, wariant/scenariusz biegu, odcisk wejścia,
+            # status jakości}. Pola addytywne, wprost z rekordu biegu i jego koperty (kolumny
+            # lekkie — lista biegów nie dociąga artefaktu wyniku, K14): projekt biegu,
+            # scenariusz roboczy, na którym go policzono (`None` = stan normalny modelu),
+            # i status wyniku biegu (`VALID`, … — ta sama dana, z której brama jakości
+            # `analysis_case_context._infer_quality_gate` wyprowadza G3/G4).
+            "project_id": self.project_id,
+            "scenario_ref": (
+                {"scenario_id": koperta.scenario_ref[0], "revision": koperta.scenario_ref[1]}
+                if koperta is not None and koperta.scenario_ref is not None
+                else None
+            ),
+            "result_status": self.result_status,
         }
 
 

@@ -6,7 +6,7 @@
  * - SYSTEM_SPEC.md: Overlay = pure projection of ResultSet
  *
  * STATE:
- * - activeRunId: Currently loaded run (null = no overlay)
+ * - zaladowanyRunId: Currently loaded run (null = no overlay)
  * - overlay: Full OverlayPayloadV1 from backend
  * - enabled: Toggle for overlay visibility
  *
@@ -52,7 +52,7 @@ export const ALL_OVERLAY_KINDS: readonly OverlayKind[] = Object.freeze([
  */
 interface OverlayStoreState {
   /** Currently active run ID (null = no overlay loaded) */
-  activeRunId: string | null;
+  zaladowanyRunId: string | null;
 
   /** Full overlay payload from backend (null = not loaded) */
   overlay: OverlayPayloadV1 | null;
@@ -114,7 +114,7 @@ interface OverlayStoreState {
  * Initial state values.
  */
 const initialState = {
-  activeRunId: null as string | null,
+  zaladowanyRunId: null as string | null,
   overlay: null as OverlayPayloadV1 | null,
   enabled: true,
   visibleOverlays: [] as ReadonlyArray<OverlayKind>,
@@ -143,7 +143,7 @@ export const useOverlayStore = create<OverlayStoreState>((set) => ({
 
   loadOverlay: (payload) => {
     set({
-      activeRunId: payload.run_id,
+      zaladowanyRunId: payload.run_id,
       overlay: payload,
       enabled: true,
       // Invariant „loading new overlay replaces ALL previous state":

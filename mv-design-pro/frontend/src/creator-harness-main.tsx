@@ -1418,7 +1418,7 @@ if (creator === 'arcflash') {
     id: arcflashScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [run], activeRunId: arcflashScenyWynik.context.run_id,
+    runs: [run],
   } as never);
 } else if (creator === 'dokumentacja') {
   // Hub „Dokumentacja" (F-E8.1): pełny kontekst toru pracy — projekt, wariant,
@@ -1440,7 +1440,7 @@ if (creator === 'arcflash') {
   } as never);
   const run = przebiegPfScenyZlotej as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [run], activeRunId: przebiegPfScenyZlotej.id,
+    runs: [run],
   } as never);
 } else if (creator === 'diagnoza') {
   // Diagnoza przebiegu (D7): najbardziej informacyjny stan do oceny wizualnej —
@@ -1474,7 +1474,6 @@ if (creator === 'arcflash') {
   const biegDiagnozy = diagnozaScenyBieg as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
     runs: [biegDiagnozy],
-    activeRunId: diagnozaScenyBieg.id,
     activeStudyCaseId: diagnozaScenyBieg.study_case_id,
   } as never);
 } else if (creator === 'pulpit') {
@@ -1530,7 +1529,7 @@ if (creator === 'arcflash') {
     started_at: '2026-07-22T08:00:00Z', finished_at: '2026-07-22T08:00:04Z',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runKomp], activeRunId: kompensacjaScenyWynik.context.run_id,
+    runs: [runKomp],
   } as never);
   // HARNESS-RESZTA-2: migawka sieci zlotej — TEJ SAMEJ, na ktorej policzono
   // wynik doboru kompensacji; nazwy i napiecia szyn z modelu, nie z listy
@@ -1578,7 +1577,7 @@ if (creator === 'arcflash') {
     id: silaSieciScenyWynik.context.run_id, analysis_type: 'SC_3F', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runSc], activeRunId: silaSieciScenyWynik.context.run_id,
+    runs: [runSc],
   } as never);
 } else if (creator === 'odbior-zgodnosc') {
   // Runda dowodowa V-B: „Zgodnosc powykonawcza" — wymaga zakonczonego
@@ -1588,7 +1587,7 @@ if (creator === 'arcflash') {
     id: odbiorZgodnoscScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runOdbioru], activeRunId: odbiorZgodnoscScenyWynik.analysis_id,
+    runs: [runOdbioru],
   } as never);
 } else if (creator === 'estymacja') {
   // Runda dowodowa V-B: „Estymacja stanu (WLS)" — wymaga zakonczonego
@@ -1598,7 +1597,7 @@ if (creator === 'arcflash') {
     id: estymacjaScenyWynik.analysis_id, analysis_type: 'LOAD_FLOW', status: 'DONE',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({
-    runs: [runEstymacji], activeRunId: estymacjaScenyWynik.analysis_id,
+    runs: [runEstymacji],
   } as never);
 } else if (creator === 'akademickie') {
   // B-02 / W3-E: migawka z NAZWAMI obiektów sieci złotej (te same referencje, które
@@ -1710,7 +1709,6 @@ if (creator === 'arcflash') {
     // co macierz + biegi PF i SC tego modelu z rejestru (UUID z fixtury przebiegów).
     useExecutionRunsStore.setState({
       runs: wniosekScenyMacierzPrzebiegi as unknown as ExecutionRun[],
-      activeRunId: null,
     } as never);
   }
 } else if (creator === 'certyfikat' || creator === 'wniosek') {
@@ -1726,7 +1724,6 @@ if (creator === 'arcflash') {
   if (creator === 'wniosek') {
     useExecutionRunsStore.setState({
       runs: wniosekScenyMagazynPrzebiegi as unknown as ExecutionRun[],
-      activeRunId: null,
     } as never);
   }
 } else if (creator === 'oltc') {
