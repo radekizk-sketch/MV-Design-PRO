@@ -39,7 +39,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string }>;
+    branches?: Array<{ ref_id: string; type?: string; name?: string }>;
   };
 };
 
@@ -89,6 +89,26 @@ async function executeDomainOp(
   const body = (await response.json()) as DomainOpResponse;
   expect(body.error ?? null).toBeNull();
   return body;
+}
+
+/** Rozłącznik sekcyjny z katalogu na odcinku + punkt normalnie otwarty na nim (W5-C). */
+async function wstawLacznikNormalnieOtwarty(
+  request: APIRequestContext,
+  caseId: string,
+  segmentRef: string,
+): Promise<string> {
+  const nazwa = 'Łącznik sekcyjny NO';
+  const op = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
+    segment_id: segmentRef,
+    insert_at: { mode: 'RATIO', value: 0.5 },
+    switch_type: 'ROZLACZNIK',
+    switch_name: nazwa,
+    catalog_binding: buildCatalogBinding('APARAT_SN', 'sw-ls-schneider-rm6-17kv-400a'),
+  });
+  const lacznik = (op.snapshot?.branches ?? []).find((b) => b.name === nazwa)?.ref_id;
+  expect(lacznik, 'rozłącznik sekcyjny w modelu').toBeTruthy();
+  await executeDomainOp(request, caseId, 'set_normal_open_point', { switch_ref: lacznik });
+  return lacznik!;
 }
 
 async function pobierzGotowosc(
@@ -258,9 +278,10 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   // --- BLOKADA GOTOWOŚCI: łącznik normalnie otwarty odcina ciąg od źródła ---
   // (realna sytuacja projektowa: NOP na pierwszym odcinku ⇒ wyspa bez zasilania,
   // walidator zwraca blokadę E003 wskazującą SZYNY — czyli węzły drzewa.)
-  await executeDomainOp(request, seed.caseId, 'set_normal_open_point', {
-    switch_ref: segmenty[0],
-  });
+  // Karta W5-C: punktem normalnie otwartym jest WYŁĄCZNIE łącznik (odcinek linii nie ma
+  // pozycji normalnej) — projektant wstawia rozłącznik sekcyjny z katalogu na pierwszym
+  // odcinku i przenosi na niego punkt podziału (dawniej spec wskazywał sam odcinek).
+  const lacznik = await wstawLacznikNormalnieOtwarty(request, seed.caseId, segmenty[0]);
 
   // ŹRÓDŁO 1 (serwer): blokada istnieje i wskazuje szyny obecne w drzewie.
   const gotowoscPrzed = await pobierzGotowosc(request, seed.caseId);
@@ -306,10 +327,7 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   );
 
   // --- NAPRAWA blokady: zamkniecie lacznika przywraca zasilanie ciagu -------
-  await executeDomainOp(request, seed.caseId, 'update_element_parameters', {
-    element_ref: segmenty[0],
-    parameters: { status: 'closed' },
-  });
+  await executeDomainOp(request, seed.caseId, 'close_switch', { switch_ref: lacznik });
 
   const gotowoscPo = await pobierzGotowosc(request, seed.caseId);
   expect(blokadySerwera(gotowoscPo)).toBe(0);

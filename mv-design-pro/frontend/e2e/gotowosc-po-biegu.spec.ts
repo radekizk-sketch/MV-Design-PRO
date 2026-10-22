@@ -47,7 +47,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string; type?: string }>;
+    branches?: Array<{ ref_id: string; type?: string; name?: string }>;
     transformers?: Array<{ ref_id: string; lv_bus_ref?: string }>;
     buses?: Array<{ ref_id: string; voltage_kv?: number }>;
   };
@@ -281,9 +281,20 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
 
   // Model PSUJE SIĘ PO biegu: łącznik normalnie otwarty odcina ciąg od źródła
   // (realna sytuacja projektowa) ⇒ serwer zgłasza blokadę gotowości.
-  await executeDomainOp(request, caseId, 'set_normal_open_point', {
-    switch_ref: segmentRefs[0],
+  // Karta W5-C: punktem normalnie otwartym jest WYŁĄCZNIE łącznik (odcinek linii nie ma
+  // pozycji normalnej) — rozłącznik sekcyjny z katalogu na pierwszym odcinku, potem
+  // przeniesienie na niego punktu podziału (dawniej spec wskazywał sam odcinek).
+  const nazwaLacznika = 'Łącznik sekcyjny NO';
+  const wstawienie = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
+    segment_id: segmentRefs[0],
+    insert_at: { mode: 'RATIO', value: 0.5 },
+    switch_type: 'ROZLACZNIK',
+    switch_name: nazwaLacznika,
+    catalog_binding: buildCatalogBinding('APARAT_SN', 'sw-ls-schneider-rm6-17kv-400a'),
   });
+  const lacznik = (wstawienie.snapshot?.branches ?? []).find((b) => b.name === nazwaLacznika)?.ref_id;
+  expect(lacznik, 'rozłącznik sekcyjny w modelu').toBeTruthy();
+  await executeDomainOp(request, caseId, 'set_normal_open_point', { switch_ref: lacznik });
   const gotowosc = await pobierzGotowosc(request, caseId);
   expect(gotowosc.ready).toBe(false);
   expect(blokadySerwera(gotowosc)).toBeGreaterThan(0);

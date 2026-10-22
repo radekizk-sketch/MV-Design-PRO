@@ -496,15 +496,20 @@ test('BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik w torze → przekładnik → przek
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
 
-  // (1) Wyłącznik w torze odcinka — karta odcinka w inspektorze → „Wstaw łącznik sekcyjny" →
-  // kreator z katalogu.
+  // (1) Wyłącznik w torze odcinka — inspektor odcinka → „Wstaw łącznik sekcyjny" → kreator
+  // z katalogu. UI-02b/K6: działanie występuje w inspektorze RAZ — w pasku działań z rejestru
+  // menu kanwy (`inspektor-akcja-<id>`, karta techniczna nie dubluje pozycji paska), a pasek
+  // stoi na końcu inspektora zwinięty; użytkownik rozwija go jednym klikiem.
   const drzewo = page.getByTestId('project-tree');
   await expect(drzewo).toBeVisible({ timeout: 20000 });
   await page.getByTestId('project-tree-search-input').fill('Odcinek 1');
   await drzewo.getByText('Odcinek 1', { exact: true }).first().click();
   const inspektor = page.getByTestId('inspector-engineering');
   await expect(inspektor).toContainText('Odcinek 1');
-  await inspektor.getByRole('button', { name: 'Wstaw łącznik sekcyjny' }).click();
+  await inspektor.getByTestId('inspektor-dzialania-rozwin').click();
+  const wstawLacznik = inspektor.getByTestId('inspektor-akcja-insert-sectional');
+  await expect(wstawLacznik).toHaveText('Wstaw łącznik sekcyjny');
+  await wstawLacznik.click();
   await expect(page.getByTestId('mvd-kreator-lacznik')).toBeVisible();
   await page.getByTestId('mvd-kreator-lacznik-katalog').selectOption(KATALOG_WYLACZNIKA);
   await page.getByTestId('mvd-kreator-lacznik-rodzaj').selectOption('WYLACZNIK');
