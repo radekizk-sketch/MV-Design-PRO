@@ -132,6 +132,29 @@ ZNANE_PANELE = frozenset(
 )
 
 
+def _z_tego_drzewa(modul: ModuleType | None) -> ModuleType | None:
+    """Moduł rejestru tylko wtedy, gdy pochodzi z pliku TEGO drzewa (`REGISTRY_FILE`).
+
+    Wspólne środowisko wirtualne kilku drzew roboczych niesie wpis `.pth` na `backend/src`
+    jednego z nich; pakiet `domain` zaimportowany stamtąd to rejestr INNEGO drzewa
+    (pomiar przy scaleniu partii 9–13: 147 kodów z głównego checkoutu zamiast 160 z drzewa).
+    """
+    if modul is None:
+        return None
+    plik = getattr(modul, "__file__", None)
+    if plik is None or Path(plik).resolve() != REGISTRY_FILE.resolve():
+        return None
+    return modul
+
+
+def _pakiet_domain_z_tego_drzewa() -> bool:
+    """Czy `import domain` trafi w `backend/src/domain` TEGO drzewa (bez wykonania pakietu)."""
+    spec = importlib.util.find_spec("domain")
+    if spec is None or spec.origin is None:
+        return False
+    return Path(spec.origin).resolve().parent == REGISTRY_FILE.resolve().parent
+
+
 def modul_rejestru() -> ModuleType:
     """Modul rejestru bez wykonywania `__init__` pakietu `domain`.
 
@@ -144,22 +167,30 @@ def modul_rejestru() -> ModuleType:
     # Kolejnosc: pakiet (pytest pod poetry), potem WLASNY wpis z poprzedniego
     # ladowania plikowego — bez niego kazde wywolanie tworzyloby NOWY modul
     # z NOWYMI klasami enum i `isinstance` mowilby falszywe "nie".
-    juz = sys.modules.get("domain.canonical_operations") or sys.modules.get("_rejestr_kanoniczny")
+    juz = _z_tego_drzewa(sys.modules.get("domain.canonical_operations")) or sys.modules.get(
+        "_rejestr_kanoniczny"
+    )
     if juz is not None:
         return juz
-    try:
-        import domain.canonical_operations as pakietowy  # noqa: PLC0415
-
-        return pakietowy
-    except ModuleNotFoundError:
-        spec = importlib.util.spec_from_file_location("_rejestr_kanoniczny", REGISTRY_FILE)
-        assert spec and spec.loader
-        m = importlib.util.module_from_spec(spec)
-        # Rejestracja PRZED exec: mechanika dataclasses szuka modulu klasy w
-        # sys.modules przy przetwarzaniu adnotacji (KW_ONLY) i bez wpisu pada.
-        sys.modules[spec.name] = m
-        spec.loader.exec_module(m)
-        return m
+    if _pakiet_domain_z_tego_drzewa():
+        # Goły `python3` w CI bez zależności backendu: pakiet jest na ścieżce, ale
+        # `domain/__init__.py` ciągnie pydantic — wtedy ładowanie z pliku niżej.
+        try:
+            import domain.canonical_operations as pakietowy  # noqa: PLC0415
+        except ModuleNotFoundError:
+            pakietowy = None
+        # Pakiet tego drzewa, ale podmoduł mógł już wisieć w `sys.modules` z innego drzewa.
+        z_drzewa = _z_tego_drzewa(pakietowy)
+        if z_drzewa is not None:
+            return z_drzewa
+    spec = importlib.util.spec_from_file_location("_rejestr_kanoniczny", REGISTRY_FILE)
+    assert spec and spec.loader
+    m = importlib.util.module_from_spec(spec)
+    # Rejestracja PRZED exec: mechanika dataclasses szuka modulu klasy w
+    # sys.modules przy przetwarzaniu adnotacji (KW_ONLY) i bez wpisu pada.
+    sys.modules[spec.name] = m
+    spec.loader.exec_module(m)
+    return m
 
 
 def duplikaty_kluczy_zrodla(zrodlo: str, nazwa_slownika: str = "READINESS_CODES") -> list[str]:
