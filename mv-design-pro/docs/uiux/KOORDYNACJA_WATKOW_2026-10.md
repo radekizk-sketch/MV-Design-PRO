@@ -255,3 +255,59 @@ Standard ENEA nie został pobrany: operator.enea.pl blokuje adres wyjściowy kon
 Bez tej decyzji SC-06 pokazuje wkład przez gałąź transformatora, z jawną nazwą tej wielkości. Pozostałe pozycje D1–D4 nie dotykają rdzeni B-01 (`enm/assembler.py`, `mapping.py` i walidator są poza listą `scripts/rdzenie_b01.py`) i ruszają od razu w wątku wykonawczym.
 
 **Decyzja architektoniczna w pakiecie (R6).** W modelu dwóch równoważników zamknięcie łącznika, które łączy wyspy L1 i L2, daje jawną odmowę gotowości, nie wynik. Wielu węzłów bilansujących w jednej wyspie nie wprowadzam: rozdział mocy między dwa niezależne równoważniki jest fizycznie nieokreślony bez modelu sieci nadrzędnej. Model B (wspólny punkt zasilania z jawnymi liniami L1, L2) czeka na dane katalogowe linii 110 kV ze źródłem.
+
+### 2026-10-22, wpis 7 (wątek prowadzący) — rozstrzygnięcia architekta do pakietu GPZ H5 (wpisy 5–6)
+
+Podstawa: pakiet `docs/plan/KOREKTA_GPZ_H5_ENEA_2026-10.md` na `a849605da` oraz niezależny odczyt oryginału ENEA Operator, Zeszyt 1, wersja 02.2023-2 (pobrany i odczytany w sesji prowadzącej). Wątek prowadzący potwierdza odczyt wątku wykonawczego:
+- §11.1 (s. I 18/76) ustala układ H5: rozdzielnia jednosystemowa, dwusekcyjna, pięciopolowa (dwa pola liniowe, dwa transformatorowe i pole łącznika szyn) oraz zakaz stacji z jedną linią zasilającą 110 kV.
+- §26.8.4 nie ustala stanu normalnego łącznika szyn 110 kV, bo podziały planowe wyznacza ODM/KDM. Ten stan jest więc jawnym wejściem projektu.
+- §26.10.5 zna rezerwę ukrytą (łącznik SN otwarty) i rezerwę jawną. Żadna z nich nie jest domyślna.
+
+Pakiet A–D jest PRZYJĘTY jako plan wykonawczy karty GPZ-MODEL, z poniższymi rozstrzygnięciami. Są one wiążące.
+
+**1. Kolizja z kanonem punktu podziału W5-C (znalezisko wątku prowadzącego, niewymienione w pakiecie).**
+- Dziś `enm/topology.py::punkty_podzialu` i `ui/shared/stanLacznika.ts::czyPunktPodzialu` uznają za punkt podziału sieci KAŻDY łącznik z `normal_state == "open"`, także `bus_coupler` (`enm/stan_normalny.py:50`).
+- W H5 oba łączniki szyn mogą być normalnie otwarte, więc stałyby się „punktami podziału”. Skutki: znacznik NO w ramce GPZ na SLD, walidator I005, tor zasilania i widoki korytarzy traktowałyby je jak punkt magistrali.
+- Korekta należy do pozycji R5 i jest jej warunkiem: punkt podziału = łącznik normalnie otwarty Z ROLĄ „punkt podziału sieci”. Rolę wyprowadza JEDNA funkcja (backend i lustro TS).
+  - Łącznik, którego oba końce są szynami tej samej stacji, to łącznik szyn. Poziom (110 kV albo SN) wynika z napięcia szyn.
+  - Każdy inny łącznik z pozycją normalną to punkt podziału.
+- `punkty_podzialu`, `punkty_podzialu_korytarza`, `czyPunktPodzialu`, `kandydaciNaPunktPodzialu`, `przypiszStacjePunktuPodzialu` (adapter SLD) i sekcja 6z `buildScene.ts` czytają tę funkcję.
+- Test parami: {łącznik szyn 110 kV, łącznik szyn SN, łącznik magistrali} × {open, closed} × {backend, TS}. Iniekcja: `bus_coupler` z powrotem w zbiorze punktów podziału.
+
+**2. R8 — wkład per źródło sieciowe: zgoda B-01 architekta.**
+- Zakres: addytywne pole wyniku zwarciowego (`ShortCircuitResult`, `short_circuit_contributions.py`). Formuła I_Q,k = Y_Q,k · Z_kf · I″k (metoda zastępczego źródła napięcia, IEC 60909-0:2016 §4.2).
+- Warunki:
+  - żadna istniejąca liczba wyniku się nie zmienia (sonda bit w bit na korpusie golden);
+  - wkład pomijalny przez JEDEN predykat progu `jest_wkladem_pominietym` (próg zera B-01 z 2026-10-21, bez drugiego progu);
+  - bilans: suma wkładów źródeł sieciowych, maszyn i ewentualnych wkładów pominiętych = I″k z tolerancją z kontraktu bilansu;
+  - w stanie normalnym H5 wkład L2 do zwarcia na sekcji A wynosi strukturalnie 0 (inna wyspa), nie szum;
+  - dokładna lista zmienionych hashy golden z przyczyną.
+- Wykonawcą jest wątek prowadzący, jako karta rdzenia na gałęzi programu. Trafi tu przez scalenie partii.
+- Wątek wykonawczy NIE buduje zastępczej wielkości „wkład przez gałąź transformatora” dla SC-06. Wiersz SC-06 czeka na scalenie tej karty, a prezentację wpina dopiero na polu z backendu.
+
+**3. R6 — model A: odmowa przy połączeniu dwóch niezależnych równoważników jest PRZYJĘTA.** Wymóg właściciela zabrania sumowania mocy zwarciowych bez modelu wspólnej sieci nadrzędnej. Dwa węzły bilansujące w jednej wyspie dają fizycznie nieokreślony rozdział mocy. Odmowa nazywa przyczynę i akcję: „zbuduj wariant ze wspólnym punktem zasilania (model B)”.
+
+**4. Model B nie czeka na dane — rozstrzygnięcie reguły 10 (katalog) wobec standardu linii 110 kV.**
+- Standard ENEA linii 110 kV przesądza przewód (AFL-6 240 mm²) i każe wyznaczyć R, X, B obliczeniowo dla geometrii projektu. To jest zgodne z regułą 10 w tej postaci:
+  - typ katalogowy wiąże PRZEWÓD (dane przewodu z normy wyrobu, z podstawą);
+  - parametry jednostkowe linii (R′, X′, B′ oraz składowe zerowe z wpływem ziemi) liczy jawny solver parametrów linii z geometrii słupa. Solver jest White Box, w `network_model/solvers/`, bo to fizyka;
+  - geometria słupa jest daną projektu. Gdy jej brak, system proponuje wartość roboczą z typowego słupa standardu ENEA albo z normy, z jakością `ESTIMATED`, wpisem w `dane_przyjete` i kompletnością dowodu `NIEPELNY` (ZASADA NR 4);
+  - wartości zmierzone albo podane przez OSD wchodzą istniejącą ścieżką ręczną z zapisanym pochodzeniem. Drugiej ścieżki się nie tworzy.
+- Wykonawca: solver parametrów linii i katalog przewodów 110 kV buduje wątek prowadzący jako kartę na gałęzi programu. Wątek wykonawczy buduje w GPZ-MODEL topologię modelu B: wspólny punkt zasilania jako realna szyna stacji zasilającej z danymi OSD oraz linie L1 i L2 jako realne gałęzie. Nie ma węzła fikcyjnego.
+- Do scalenia solvera SC-04 i SC-05b w modelu A dają odmowę z przyczyną (pkt 3). To nie jest odroczenie modelu B, tylko kolejność zależności.
+
+**5. R7 — sekcja bez źródła jako stan „bez napięcia” w wyniku.**
+- Pozycja należy do wątku wykonawczego (walidator, gotowość, przygotowanie wejścia solvera).
+- Jeśli okaże się, że rdzeń zwarć albo rozpływu wymaga zmiany, żeby pominąć wyspę bez źródła (macierz osobliwa), wykonawca zatrzymuje się na tej granicy i składa pakiet B-01, jak przy R8.
+- Wyspy nie wolno usuwać po cichu: wynik ją wymienia jako „bez napięcia”, z przyczyną.
+
+**6. Stany normalne łączników H5.** Zgodnie z odczytem stan ŁS-110 jest jawnym wejściem projektu (wartość przypadku odbiorczego: otwarty), a stan ŁS-SN wynika z wybranego sposobu rezerwowania (§26.10.5). W operacji tworzenia GPZ oba są polami wejścia z podpowiedzią i podstawą, a nie stałą szablonu.
+
+**7. Kolejność scalania w gorących plikach.**
+- Karta MENU-KANON (V12K-351) ma na swojej gałęzi pięć commitów. Kasują one m.in. `switchgear_config` i operacje-duble. Dopasowują też specyfikacje 28 operacji do odczytów handlerów i naprawiają nadawców `line_fields_count` → `line_fields_per_section` w `enm/kompilator_grafu.py` i `application/station_templates/apply.py`. Bez tej naprawy GPZ z szablonu dostawał po cichu jedno pole liniowe na sekcję.
+- Karta dodaje w testach czujnik, który zamienia klucz ładunku spoza kontraktu operacji w błąd testu.
+- Wątek prowadzący wypycha te commity na tę gałąź po swojej weryfikacji. Wątek wykonawczy scala je PRZED zmianami D1 w `station_templates/**` i `domain_operations.py`. Nowe pola wejścia GPZ H5 dopisuje do `OperationSpec`, bo inaczej czujnik czerwienieje.
+
+**8. Dowód odbiorowy (pkt D7) bez zmian.**
+- Werdykt wizualny należy do właściciela (B-02).
+- Liczby 23,469 / 16,781 / 9,047 kA zostają wyłącznie jako test układu rozbudowanego, nie jako dowód H5.
