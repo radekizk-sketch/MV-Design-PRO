@@ -890,7 +890,7 @@ export function zbudujWyposazeniePolaDoPayloadu(
  *
  * BLOK FABRYCZNY RMU jedzie POLAMI PIERWSZEJ KLASY payloadu
  * (`factory_configuration_ref` + `factory_unit_index`) — dokładnie tymi samymi
- * nazwami, których używa kontrakt operacji `add_sn_bay_from_catalog`. Dawna
+ * nazwami, których używa operacja `add_sn_bay` (pole z katalogu rozdzielnic). Dawna
  * droga (metadana `catalog_bindings.factory_configuration`) została usunięta:
  * była drugim nazewnictwem tej samej prawdy, którego żadna operacja stacyjna
  * nie czytała, więc rodzina blokowa kończyła zapis twardym błędem katalogowym.

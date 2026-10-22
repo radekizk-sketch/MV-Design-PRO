@@ -502,7 +502,7 @@ function MeasurementPackagePanel({
             bay: row.bayDesignation,
             ratio: `${row.ratioPrimary} / ${row.ratioSecondary} A`,
             classPl: row.accuracyClassPl,
-            extra: row.burdenVa != null ? `${row.burdenVa} VA` : 'dobór z katalogu',
+            extra: row.burdenVa != null ? `${row.burdenVa} VA` : 'moc znamionowa nieustalona w modelu',
           }))}
           emptyText="Dobierz przekładniki CT z pakietu pola SN albo z katalogu pomiarowego."
         />

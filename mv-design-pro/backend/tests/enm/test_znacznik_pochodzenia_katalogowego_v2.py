@@ -439,7 +439,8 @@ ZNACZNIKI: tuple[ZnacznikPochodzenia, ...] = (
     ZnacznikPochodzenia(
         "add_sn_bay",
         "add_sn_bay",
-        ("add_sn_bay",),
+        # Pisarz pola SN obu planów operacji `add_sn_bay` (deklaracja i katalog).
+        ("_zapisz_pole_sn",),
         _payload_sn_bay_obca,
         _znaczniki_aparatu_pola_sn,
         {"element": "APARAT_SN", "meta.catalog_binding": "APARAT_SN"},

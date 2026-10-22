@@ -22,7 +22,13 @@ export type SldElementKindForMenu =
   | 'der_pv'
   | 'der_bess'
   | 'der_fw'
-  | 'der';
+  | 'der'
+  // Schemat nN stacji (portal domeny nN, `sld/v3/lv-domain`): obiekty rysunku nN
+  // zakotwiczone w modelu (`lv-domain/lvMenuSubject.ts`).
+  | 'nn_cable'
+  | 'nn_apparatus'
+  | 'nn_terminal'
+  | 'nn_load';
 
 /**
  * Kanon menu kontekstowego SLD (`docs/v12xx/SLD_CAD_ENGINE_V12.md` § „Kanoniczne menu
@@ -154,6 +160,10 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
      * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
     { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', section: 'Dodaj' },
+    /* Odbiór i generator synchroniczny przyłączone WPROST do szyny sekcji —
+     * realne operacje `add_load_sn` i `add_generator_sn` (bus_ref = kliknięta szyna). */
+    { id: 'add-load-sn', labelPl: 'Dodaj odbiór SN', section: 'Dodaj' },
+    { id: 'add-sync-generator', labelPl: 'Dodaj generator synchroniczny', section: 'Dodaj' },
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', section: 'Analizuj' },
   ],
   bay: [
@@ -301,6 +311,30 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
    * podtypu) — poprawna degradacja dla źródła nierozpoznanego.
    */
   der: [...POZYCJE_ZRODLA_EDYCJA, ...POZYCJE_ZRODLA_OCENA, ...POZYCJE_ZRODLA_WYNIKI],
+  /*
+   * Schemat nN stacji (portal domeny nN). Każda pozycja ma realną operację domenową:
+   *  - `set-nn-laying` — kreator „Warunki ułożenia kabla nN" (`set_nn_cable_laying_conditions`);
+   *  - `split-nn-segment` — kreator „Podział odcinka kabla nN" (`split_nn_segment`);
+   *  - `merge-nn-segments` — scalenie DWÓCH odcinków przy zacisku (`merge_nn_segments`,
+   *    ładunek z migawki: `lv-domain/operacjeNn.ts`, bez okna — operacja nie ma parametrów);
+   *  - `copy-nn-feeder` — kopia odpływu od aparatu (`copy_nn_feeder`, bez okna);
+   *  - `delete-nn-*` — `delete_element` z potwierdzeniem (kaskada gałęzi dołączonych do
+   *    usuwanego zacisku i sprzątanie list szyn/sekcji stacji robi backend).
+   */
+  nn_cable: [
+    { id: 'set-nn-laying', labelPl: 'Edytuj warunki ułożenia kabla', section: 'Edytuj' },
+    { id: 'split-nn-segment', labelPl: 'Podziel odcinek kabla nN', section: 'Operacje' },
+    { id: 'delete-nn-cable', labelPl: 'Usuń odcinek kabla nN', section: 'Usuń' },
+  ],
+  nn_apparatus: [
+    { id: 'copy-nn-feeder', labelPl: 'Kopiuj odpływ', section: 'Operacje' },
+    { id: 'delete-nn-apparatus', labelPl: 'Usuń aparat nN', section: 'Usuń' },
+  ],
+  nn_terminal: [
+    { id: 'merge-nn-segments', labelPl: 'Scal odcinki kabla przy zacisku', section: 'Operacje' },
+    { id: 'delete-nn-terminal', labelPl: 'Usuń zacisk nN', section: 'Usuń' },
+  ],
+  nn_load: [{ id: 'delete-nn-load', labelPl: 'Usuń odbiór nN', section: 'Usuń' }],
 };
 
 /** S9-10: powód blokady „Rozpocznij odgałęzienie" — jeden tekst dla menu kanwy,
@@ -356,12 +390,20 @@ export function getMenuActions(
     /** W5-C: stan łącznika obiektu (pozycje otwórz/zamknij/punkt podziału);
      *  brak klucza = brak pomiaru (bez blokady). */
     readonly lacznik?: StanLacznikaMenu;
+    /** Operacje bez okna na schemacie nN (scal / kopiuj odpływ): powód blokady pozycji
+     *  z TEJ SAMEJ funkcji, która buduje ładunek operacji (`lv-domain/operacjeNn.ts`);
+     *  `null` = pozycja dostępna, brak klucza = brak pomiaru (bez blokady). */
+    readonly powodyBlokadyNn?: Readonly<Partial<Record<string, string | null>>>;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
   const ctx = context ?? {};
 
   return baseActions.map((a) => {
+    const powodNn = ctx.powodyBlokadyNn?.[a.id];
+    if (typeof powodNn === 'string') {
+      return { ...a, disabled: true, disabledReasonPl: powodNn };
+    }
     if (ctx.lacznik && POZYCJE_STANU_LACZNIKA.some((pozycja) => pozycja.id === a.id)) {
       const powod = powodBlokadyStanuLacznika(a.id, ctx.lacznik);
       return powod ? { ...a, disabled: true, disabledReasonPl: powod } : a;

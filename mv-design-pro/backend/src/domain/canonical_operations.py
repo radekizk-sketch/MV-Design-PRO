@@ -57,7 +57,7 @@ class OperationSpec:
 # Full registry of ALL canonical operations (count enforced by
 # scripts/canonical_ops_guard.py: registry <-> handler dicts, both directions)
 CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
-    # --- SN Network (7 operations) ---
+    # --- SN Network (12 operations) ---
     "add_grid_source_sn": OperationSpec(
         canonical_name="add_grid_source_sn",
         category=OperationCategory.SN_NETWORK,
@@ -185,7 +185,11 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
     "add_sn_bay": OperationSpec(
         canonical_name="add_sn_bay",
         category=OperationCategory.SN_NETWORK,
-        description_pl="Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego",
+        description_pl=(
+            "Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego — także z katalogu "
+            "rozdzielnic (kompletne pole rodziny modułowej albo jednostka bloku fabrycznego "
+            "RMU) z trybem próby (werdykt konfiguracji bez zapisu)"
+        ),
         target_layer="Domain / NetworkModel",
         required_fields=("bus_ref",),
         optional_fields=(
@@ -196,31 +200,16 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "gpz_section_id",
             "catalog_binding",
             "earthing_role",
-        ),
-    ),
-    "add_sn_bay_from_catalog": OperationSpec(
-        canonical_name="add_sn_bay_from_catalog",
-        category=OperationCategory.SN_NETWORK,
-        description_pl=(
-            "Dodanie pola SN z katalogu rozdzielnic: kompletne pole rodziny "
-            "modułowej albo jednostka bloku fabrycznego RMU"
-        ),
-        target_layer="Domain / NetworkModel",
-        required_fields=("bus_ref",),
-        optional_fields=(
-            "station_ref",
+            "bay_template_ref",
             "complete_bay_template_ref",
             "factory_configuration_ref",
             "factory_unit_index",
             "switchgear_family_ref",
-            "field_name",
-            "gpz_section_id",
-            "catalog_binding",
             "protection_ref",
-            "earthing_role",
+            "dry_run",
         ),
     ),
-    # --- Station & nN (6 operations) ---
+    # --- Station & nN (5 operations) ---
     "add_transformer_sn_nn": OperationSpec(
         canonical_name="add_transformer_sn_nn",
         category=OperationCategory.STATION_NN,
@@ -272,7 +261,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("element_ref", "parameters"),
         creates_elements=False,
     ),
-    # --- OZE nN (5 operations) ---
+    # --- OZE nN (7 operations) ---
     "add_converter_source": OperationSpec(
         canonical_name="add_converter_source",
         category=OperationCategory.OZE_NN,
@@ -314,14 +303,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Ustawienie trybu pracy źródła nN",
         target_layer="Domain / NetworkModel",
         required_fields=("source_ref", "operating_mode"),
-        creates_elements=False,
-    ),
-    "set_dynamic_profile": OperationSpec(
-        canonical_name="set_dynamic_profile",
-        category=OperationCategory.OZE_NN,
-        description_pl="Przypisanie profilu dynamicznego do źródła",
-        target_layer="Domain / NetworkModel",
-        required_fields=("source_ref", "profile"),
         creates_elements=False,
     ),
     # V12K-238: wiązania wytwórcy wybierane PO jego utworzeniu (konfigurator DER).
@@ -446,7 +427,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("protection_ref", "settings"),
         creates_elements=False,
     ),
-    # --- Universal (4 operations) ---
+    # --- Universal (13 operations) ---
     "delete_element": OperationSpec(
         canonical_name="delete_element",
         category=OperationCategory.UNIVERSAL,
@@ -454,22 +435,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         target_layer="Domain / NetworkModel",
         required_fields=("element_ref",),
         optional_fields=("cascade",),
-        creates_elements=False,
-    ),
-    "rename_element": OperationSpec(
-        canonical_name="rename_element",
-        category=OperationCategory.UNIVERSAL,
-        description_pl="Zmiana nazwy elementu",
-        target_layer="Domain / NetworkModel",
-        required_fields=("element_ref", "new_name"),
-        creates_elements=False,
-    ),
-    "set_label": OperationSpec(
-        canonical_name="set_label",
-        category=OperationCategory.UNIVERSAL,
-        description_pl="Ustawienie etykiety pola rozdzielnicy (krótka nazwa odpływu) na schemacie SLD",
-        target_layer="Application / SLD",
-        required_fields=("element_ref", "label"),
         creates_elements=False,
     ),
     "set_connection_conditions": OperationSpec(
@@ -645,7 +610,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         mutates_model=False,
         creates_elements=False,
     ),
-    # --- nN Network (9 operations, karta P0.1, C §4.1) ---
+    # --- nN Network (8 operations, karta P0.1, C §4.1) ---
     "add_nn_cable_segment": OperationSpec(
         canonical_name="add_nn_cable_segment",
         category=OperationCategory.NN_NETWORK,
@@ -715,15 +680,6 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         description_pl="Zapis warunków ułożenia odcinka kabla nN (meta, bez fizyki)",
         target_layer="Domain / NetworkModel",
         required_fields=("segment_ref", "cable_laying_conditions"),
-        optional_fields=(),
-        creates_elements=False,
-    ),
-    "remove_nn_element": OperationSpec(
-        canonical_name="remove_nn_element",
-        category=OperationCategory.NN_NETWORK,
-        description_pl="Usunięcie elementu nN (kabel/aparat/szyna-liść/odbiór) z walidacją spójności",
-        target_layer="Domain / NetworkModel",
-        required_fields=("element_ref",),
         optional_fields=(),
         creates_elements=False,
     ),

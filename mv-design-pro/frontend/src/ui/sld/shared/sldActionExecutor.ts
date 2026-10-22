@@ -59,6 +59,7 @@ import { poleLinioweWolne } from '../../network-build/zajetoscPol';
 import { stacjaSzyn } from '../../shared/szynyStacji';
 import { polaStacji } from '../../shared/polaStacji';
 import { czyLacznikZPozycjaNormalna, lacznikTematu } from '../../shared/stanLacznika';
+import type { OperacjaNn } from '../v3/lv-domain/operacjeNn';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -221,6 +222,11 @@ export const DELETE_ACTION_OBJECT_LABEL_PL: Readonly<Record<string, string>> = {
   'delete-pv': 'źródło PV',
   'delete-bess': 'magazyn BESS',
   'delete-fw': 'farmę wiatrową',
+  // Schemat nN stacji (portal domeny nN): ta sama operacja `delete_element`.
+  'delete-nn-cable': 'odcinek kabla nN',
+  'delete-nn-apparatus': 'aparat nN',
+  'delete-nn-terminal': 'zacisk nN wraz z dochodzącymi do niego gałęziami',
+  'delete-nn-load': 'odbiór nN',
 };
 
 export function isSldDeleteAction(actionId: string): boolean {
@@ -307,6 +313,14 @@ export function elementTypeForSldKind(kind: SldElementKindForMenu): ElementType 
     // w `SldContextMenuController` i `elementTypeForKind('der')` kanwy v3.
     case 'der':
       return 'Generator';
+    case 'nn_cable':
+      return 'SegmentNN';
+    case 'nn_apparatus':
+      return 'Switch';
+    case 'nn_terminal':
+      return 'BusNN';
+    case 'nn_load':
+      return 'LoadNN';
     case 'background':
     default:
       return null;
@@ -342,8 +356,16 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
     // K5-A (H-4): komunikaty nowych wejść menu kanwy.
     case 'add_shunt_compensator_sn':
       return 'Otwieram formularz baterii kondensatorów SN.';
+    case 'add_load_sn':
+      return 'Otwieram formularz odbioru SN.';
+    case 'add_generator_sn':
+      return 'Otwieram formularz generatora synchronicznego SN.';
     case 'add_surge_arrester_sn':
       return 'Otwieram formularz ogranicznika przepięć SN.';
+    case 'set_nn_cable_laying_conditions':
+      return 'Otwieram formularz warunków ułożenia kabla nN.';
+    case 'split_nn_segment':
+      return 'Otwieram formularz podziału odcinka kabla nN.';
     case 'add_genset_nn':
       return 'Otwieram formularz agregatu prądotwórczego nN.';
     case 'add_ups_nn':
@@ -487,6 +509,17 @@ export function resolveBranchStartAvailability(
     .fromRef.trim().length > 0;
 }
 
+/**
+ * Akcje sekcji, których operacja przyjmuje KANONICZNY Bus ref (`bus_ref`) — szyna sekcji
+ * na scenie v3 jest kompozytem `${stationRef}#sn-bus` (patrz niżej).
+ */
+const AKCJE_SEKCJI_NA_SZYNIE_KANONICZNEJ: ReadonlySet<string> = new Set([
+  'add-compensator',
+  'add-arrester',
+  'add-load-sn',
+  'add-sync-generator',
+]);
+
 /** Akcje menu kanwy i paska działań inspektora → operacja domenowa formularza. */
 const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> = {
   'add-bay': 'add_sn_bay',
@@ -508,6 +541,8 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
   // realne operacje domenowe (operationFormRegistry + operationContext już
   // je obsługują; brakowało WYŁĄCZNIE tych wpisów).
   'add-compensator': 'add_shunt_compensator_sn',
+  'add-load-sn': 'add_load_sn',
+  'add-sync-generator': 'add_generator_sn',
   'add-arrester': 'add_surge_arrester_sn',
   'add-genset': 'add_genset_nn',
   'add-ups': 'add_ups_nn',
@@ -515,6 +550,9 @@ const opByAction: Readonly<Partial<Record<string, NetworkBuildOperationName>>> =
   // elementu" (`ui2/kreatory/edycja-parametrow`), operacja `update_element_parameters`
   // szuka elementu po `element_ref` we wszystkich kolekcjach modelu (`generators[]`).
   'edit-source-module': 'update_element_parameters',
+  // Schemat nN stacji: edycja istniejącego odcinka kabla nN (kontekst `segment_ref`).
+  'set-nn-laying': 'set_nn_cable_laying_conditions',
+  'split-nn-segment': 'split_nn_segment',
 };
 
 /**
@@ -574,7 +612,7 @@ export function buildSldOperationContext(
   // K5-A: szyna SN stacji na scenie v3 to kompozyt `${stationRef}#sn-bus` —
   // rozwiązujemy kanoniczny Bus ref realnym FK `substation.bus_refs`
   // (szyna GPZ niesie kanoniczny ref już z `meta.busRef` w Workspace).
-  if (kind === 'section' && (actionId === 'add-compensator' || actionId === 'add-arrester')) {
+  if (kind === 'section' && AKCJE_SEKCJI_NA_SZYNIE_KANONICZNEJ.has(actionId)) {
     operationElementId = resolveCanonicalSectionBusRef(operationElementId, snapshot);
   }
 
@@ -701,7 +739,8 @@ export type WykonawcaAkcjiMenu =
   | 'nawigacja'
   | 'operacja'
   | 'kreator-zrodla-stacji'
-  | 'pomiary-pola';
+  | 'pomiary-pola'
+  | 'operacja-nn';
 
 export function wykonawcaAkcjiMenu(
   actionId: string,
@@ -717,6 +756,7 @@ export function wykonawcaAkcjiMenu(
   if (opByAction[actionId] !== undefined && elementTypeForSldKind(kind) !== null) return 'operacja';
   if (actionId === 'add-source' && kind === 'station') return 'kreator-zrodla-stacji';
   if (actionId === 'show-measurements' && kind === 'bay') return 'pomiary-pola';
+  if (actionId === 'merge-nn-segments' || actionId === 'copy-nn-feeder') return 'operacja-nn';
   return null;
 }
 
@@ -737,6 +777,10 @@ export function czyAkcjaZmieniaModel(actionId: string, kind: SldElementKindForMe
   return pozycja !== undefined && SEKCJE_ZMIENIAJACE_MODEL.has(pozycja.section);
 }
 
+/** Operacja bezpośrednia nN wywołana bez ładunku z portalu nN (spoza schematu nN). */
+export const POWOD_BRAKU_SCHEMATU_NN_PL =
+  'Tę operację wykonuje się z menu schematu nN stacji — otwórz schemat nN i wskaż obiekt.';
+
 const KOMUNIKAT_BRAKU_KONTEKSTU_PL = (actionId: string): string =>
   `Akcja "${actionId}" wymaga kompletnego kontekstu obiektu albo danych katalogowych. Otwórz kartę techniczną zaznaczonego elementu i uzupełnij wskazane pola.`;
 
@@ -755,7 +799,12 @@ const KOMUNIKAT_BRAKU_KONTEKSTU_PL = (actionId: string): string =>
  */
 export function useSldActionExecutor(
   { readOnly }: { readonly readOnly: boolean },
-): (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => void {
+): (
+  actionId: string,
+  kind: SldElementKindForMenu,
+  elementId: string | null,
+  operacjaNn?: OperacjaNn,
+) => void {
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
@@ -770,7 +819,7 @@ export function useSldActionExecutor(
   const setActiveSpace = useShellStore((state) => state.setActiveSpace);
 
   return useCallback(
-    (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
+    (actionId: string, kind: SldElementKindForMenu, elementId: string | null, operacjaNn?: OperacjaNn) => {
       if (readOnly && czyAkcjaZmieniaModel(actionId, kind)) {
         notify('Tryb podglądu schematu — przełącz na edycję, aby budować sieć.', 'warning');
         return;
@@ -988,6 +1037,31 @@ export function useSldActionExecutor(
           }
           openInspectorPanel('field_measurements', elementId, 'BaySN');
           toastBus.publish('info', 'Otworzono pomiary pola.');
+          return;
+        }
+
+        // Schemat nN: scalenie odcinków przy zacisku i kopia odpływu — operacje bez
+        // parametrów poza wskazanym obiektem, więc bez okna. Ładunek przynosi portal nN,
+        // wyliczony TĄ SAMĄ funkcją i na TYM SAMYM grafie projekcji, z których menu
+        // wyliczyło blokadę pozycji (`lv-domain/operacjeNn.ts`); wykonawca nie odtwarza
+        // topologii nN z modelu ENM. Bez ładunku (wywołanie spoza schematu nN) — odmowa.
+        case 'operacja-nn': {
+          if (!activeCaseId) {
+            notify('Nie wybrano aktywnego zakresu obliczeń. Wybierz zakres przed zmianą modelu.', 'warning');
+            return;
+          }
+          const operacja: OperacjaNn = operacjaNn ?? { ok: false, powodPl: POWOD_BRAKU_SCHEMATU_NN_PL };
+          if (!operacja.ok) {
+            notify(operacja.powodPl, 'warning');
+            return;
+          }
+          void executeDomainOperation(activeCaseId, operacja.op, operacja.payload, {
+            komunikatSukcesuPl: operacja.komunikatSukcesuPl,
+          }).then((odpowiedz) => {
+            if (!odpowiedz || odpowiedz.error) {
+              notify(odpowiedz?.error ?? useSnapshotStore.getState().error ?? 'Operacja nie została wykonana.', 'error');
+            }
+          });
           return;
         }
 

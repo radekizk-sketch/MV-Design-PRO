@@ -42,8 +42,6 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   delete_gpz_section: 'Usunięto sekcję GPZ',
   // Bays / transformers / fields
   add_sn_bay: 'Dodano pole SN',
-  add_sn_bay_from_catalog: 'Dodano pole SN z katalogu rozdzielnicy',
-  edit_bay: 'Zaktualizowano pole SN',
   add_transformer_sn_nn: 'Dodano transformator SN/nN',
   add_nn_outgoing_field: 'Dodano pole nN',
   add_nn_load: 'Dodano obciążenie nN',
@@ -53,7 +51,6 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   add_nn_section_coupler: 'Dodano sprzęgło sekcyjne nN',
   split_nn_segment: 'Podzielono odcinek nN',
   merge_nn_segments: 'Scalono odcinki nN',
-  remove_nn_element: 'Usunięto element nN',
   copy_nn_feeder: 'Skopiowano odpływ nN',
   set_nn_cable_laying_conditions: 'Ustawiono warunki ułożenia kabla nN',
   // Catalog / parameters
@@ -64,7 +61,6 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   add_genset_nn: 'Dodano zespół prądotwórczy nN',
   add_ups_nn: 'Dodano zasilacz UPS nN',
   set_source_operating_mode: 'Ustawiono tryb pracy źródła',
-  set_dynamic_profile: 'Przypisano profil dynamiczny',
   // Protection
   add_ct: 'Dodano przekładnik prądowy (CT)',
   add_vt: 'Dodano przekładnik napięciowy (VT)',
@@ -74,8 +70,6 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   update_protection_settings: 'Zapisano nastawy zabezpieczenia',
   // Editing
   delete_element: 'Usunięto element',
-  rename_element: 'Zmieniono nazwę elementu',
-  set_label: 'Ustawiono etykietę',
   // V12K-263: dwie operacje kanoniczne kończyły się BEZ własnego potwierdzenia.
   // Fallback („Operacja zakończona powodzeniem") nie mówił, CO się zmieniło, więc
   // projektant nie miał sygnału, że zapisały się akurat warunki przyłączenia albo
@@ -84,17 +78,6 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   set_der_catalog_bindings: 'Zapisano wiązania katalogowe wytwórcy',
   set_load_dynamic_binding: 'Zapisano wiązanie modelu dynamicznego odbioru',
   dodaj_karte_widmowa_projektu: 'Dodano kartę widmową do katalogu projektu',
-  // DER variants (nN bus/feeder/source-field)
-  bus_nn_add_converter_source_pv: 'Dodano PV na szynie nN',
-  bus_nn_add_converter_source_bess: 'Dodano magazyn BESS na szynie nN',
-  bus_nn_add_converter_source_fw: 'Dodano farmę wiatrową na szynie nN',
-  feeder_nn_add_converter_source_pv: 'Dodano PV na polu nN',
-  feeder_nn_add_converter_source_bess: 'Dodano magazyn BESS na polu nN',
-  feeder_nn_add_converter_source_fw: 'Dodano farmę wiatrową na polu nN',
-  source_field_nn_add_converter_source_pv: 'Dodano PV w polu źródłowym nN',
-  source_field_nn_add_converter_source_bess: 'Dodano magazyn BESS w polu źródłowym nN',
-  source_field_nn_add_converter_source_bess_energy: 'Dodano magazyn BESS (energetyczny) nN',
-  source_field_nn_add_converter_source_fw: 'Dodano farmę wiatrową w polu źródłowym nN',
 };
 
 /**

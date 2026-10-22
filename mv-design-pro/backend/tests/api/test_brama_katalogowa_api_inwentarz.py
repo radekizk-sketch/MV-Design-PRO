@@ -516,8 +516,10 @@ INIEKCJE: tuple[IniekcjaBramy, ...] = (
         lambda: {"bus_ref": "bus-1", "catalog_binding": _wiazanie("APARAT_SN", REF_APARAT_SN)},
         lambda p: _zepsuj_wiazanie(p),
     ),
+    # Ta sama pozycja bramy na planie pola z KATALOGU rozdzielnic (wybór katalogowy
+    # przełącza operację na plan katalogowy — brama musi trzymać obie drogi).
     IniekcjaBramy(
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         "catalog_binding",
         lambda: {
             "bus_ref": "bus-1",

@@ -23407,6 +23407,33 @@
     ]
    }
   },
+  "/api/catalog/synchronous-generator-types": {
+   "get": {
+    "description": "List synchronous generator types (GENERATOR_SN) — catalog of `add_generator_sn`.",
+    "operationId": "list_synchronous_generator_types_api_catalog_synchronous_generator_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Synchronous Generator Types Api Catalog Synchronous Generator Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Synchronous Generator Types",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/transformer-types": {
    "get": {
     "description": "List all transformer types from the canonical MV catalog.",

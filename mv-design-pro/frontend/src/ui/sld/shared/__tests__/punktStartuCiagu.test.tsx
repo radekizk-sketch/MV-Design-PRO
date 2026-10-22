@@ -289,7 +289,8 @@ describe('S95-START — jedno rozstrzygnięcie punktu startu ciągu (iloczyn rod
       ]),
     );
     // Inwentarz rodzajów: ZK SN i słup rozgałęźny NIE mają pozycji kontynuacji ciągu
-    // (ciąg z nich prowadzi karta obiektu z jawnym zaciskiem MAIN_OUT), DER i tło też.
+    // (ciąg z nich prowadzi karta obiektu z jawnym zaciskiem MAIN_OUT), DER i tło też;
+    // obiekty schematu nN (kabel, aparat, zacisk, odbiór nN) nie kontynuują ciągu SN.
     expect(kontynuacje).toEqual({
       background: [],
       gpz: ['continue-trunk'],
@@ -305,6 +306,10 @@ describe('S95-START — jedno rozstrzygnięcie punktu startu ciągu (iloczyn rod
       der_bess: [],
       der_fw: [],
       der: [],
+      nn_cable: [],
+      nn_apparatus: [],
+      nn_terminal: [],
+      nn_load: [],
     });
     expect(resolveTrunkStartAvailability(BAZA.snapshot, BAZA.logical_views, 'zksn', 'zk/test')).toEqual({});
   });

@@ -55,6 +55,7 @@ from network_model.catalog.switchgear import (
     NiezgodnoscKonfiguracjiError,
     family_supports_bay_template,
     family_supports_factory_configuration,
+    family_supports_voltage,
     get_factory_configuration,
     list_switchgear_solution_templates_for_manufacturer,
     wymagaj_rodziny_oferowanej,
@@ -599,6 +600,33 @@ def _konfiguracja_bloku(configuration_ref: str) -> FactoryConfiguration:
         ) from exc
 
 
+def brama_napieciowa_wyboru(payload: dict[str, Any], napiecie_szyny_kv: float | None) -> None:
+    """Brama napięciowa WYBORU KATALOGOWEGO pola — każda droga budowy pola.
+
+    Rodzina rozdzielnicy wskazana przez katalogowe pole albo blok RMU musi
+    obsługiwać napięcie szyny, na której pole powstaje (predykat
+    `family_validation.czy_rodzina_obsluguje_napiecie`, PN-EN 62271-1). Do tej
+    pory egzekwował to wyłącznie plan pola katalogowego (dawna osobna operacja);
+    drogi stacyjne (wcięcie stacji, stacja na końcu ciągu, pola sekcji GPZ, pole
+    źródłowe DER-SN, zapis `add_sn_bay`) przyjmowały pole rodziny 24 kV na
+    szynie 30 kV bez słowa. Wybór spoza katalogu (szablon kanoniczny, brak
+    szablonu) nie ma rodziny — brama go nie dotyczy.
+
+    Brak napięcia szyny przy wyborze katalogowym to odmowa nazwana, nie zgoda:
+    bez napięcia nie ma czym potwierdzić, że rodzina pasuje do sieci.
+    """
+    if not czy_wybor_katalogowy(payload):
+        return
+    plan = rozwiaz_plan_pola(payload, field_ref=None)
+    if napiecie_szyny_kv is None or not napiecie_szyny_kv > 0:
+        raise NiezgodnoscKonfiguracjiError(
+            f"Brak napięcia szyny, na której ma powstać pole rodziny "
+            f"{nazwa_rodziny_pl(plan.switchgear_family_ref)} — bez napięcia nie da się "
+            "potwierdzić, że rodzina pasuje do sieci."
+        )
+    family_supports_voltage(plan.switchgear_family_ref, float(napiecie_szyny_kv))
+
+
 def rozwiaz_aparaty_pola(
     payload: dict[str, Any],
     *,
@@ -649,8 +677,8 @@ def aparaty_pola_z_referencji(
 
     RODZINA BLOKOWA (BLOK_RMU) KOŃCZY SIĘ TWARDYM BŁĘDEM. Rozstrzyga o tym
     `rozwiaz_plan_pola` na `tor_konfiguracji` rodziny — DOKŁADNIE tym samym
-    predykatem, którym kanał blokowy (`add_sn_bay_from_catalog` z
-    `factory_configuration_ref`) pole PRZYJMUJE. Jedno źródło prawdy dla obu
+    predykatem, którym kanał blokowy (`add_sn_bay` z `factory_configuration_ref`)
+    pole PRZYJMUJE. Jedno źródło prawdy dla obu
     kierunków: rodzina, której nie da się złożyć z pojedynczych celek, nie
     zostanie przyjęta tutaj ani odrzucona tam wskutek drugiego, niezależnego
     warunku.

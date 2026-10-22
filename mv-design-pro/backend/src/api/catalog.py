@@ -288,6 +288,12 @@ def list_shunt_capacitor_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_shunt_capacitor_types()]
 
 
+@router.get("/synchronous-generator-types")
+def list_synchronous_generator_types() -> list[dict[str, Any]]:
+    """List synchronous generator types (GENERATOR_SN) — catalog of `add_generator_sn`."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_synchronous_generator_types()]
+
+
 @router.get("/pv-inverter-types")
 def list_pv_inverter_types() -> list[dict[str, Any]]:
     """List all PV inverter types from the canonical MV catalog."""

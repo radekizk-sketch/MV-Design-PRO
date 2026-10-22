@@ -57,6 +57,9 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_ups_nn',
   'add_shunt_compensator_sn',
   'add_surge_arrester_sn',
+  // Odbiór i generator synchroniczny wprost na szynie SN — menu sekcji na schemacie.
+  'add_load_sn',
+  'add_generator_sn',
   'add_nn_load',
   // P0.9 (nN STUDIO, karta F §3): odcinek/rozdzielnica/aparat/sekcja nN — operacje
   // ISTNIEJĄ w backendzie od P0.1 (enm/domain_operations_v2.py), brak wpisu tutaj
@@ -66,13 +69,18 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_nn_switch_device',
   'add_nn_section_coupler',
   'set_nn_cable_laying_conditions',
-  // K5-B (H-3): nastawy trybu pracy źródła i profil dynamiczny — obie operacje
-  // ISTNIEJĄ w backendzie (V2_CANONICAL_OPS, enm/domain_operations_v2.py);
-  // brak wpisu tutaj czynił je niewywoływalnymi z UI (assertCanonicalOpName).
+  // Menu kontekstowe schematu nN stacji (odcinek kablowy, aparat odpływowy, zacisk).
+  'split_nn_segment',
+  'merge_nn_segments',
+  'copy_nn_feeder',
+  // K5-B (H-3): nastawy trybu pracy źródła — operacja ISTNIEJE w backendzie
+  // (V2_CANONICAL_OPS, enm/domain_operations_v2.py); brak wpisu tutaj czynił ją
+  // niewywoływalną z UI (assertCanonicalOpName).
   'set_source_operating_mode',
-  'set_dynamic_profile',
   'add_ct',
   'add_vt',
+  // Obwód wtórny przekładnika (obciążenie, przewody, klasa) — edytor na karcie pola E-11.
+  'set_measurement_secondary_circuit',
   'add_relay',
   // Karta BIEG-ZABEZPIECZEN-Z-MODELU (D-21): pisarz nastaw zabezpieczenia w modelu.
   'update_protection_settings',
@@ -81,6 +89,12 @@ export const CANONICAL_OPERATION_NAMES = [
   // Karta modeli odbiorów: wiązanie odbioru z profilem modelu dynamicznego (ekran dynamiki,
   // akcja naprawcza `load.dynamika_missing`) — operacja w V2_CANONICAL_OPS backendu.
   'set_load_dynamic_binding',
+  // Karta widmowa z pliku do katalogu projektu — panel „Karty widmowe" przestrzeni Model.
+  'dodaj_karte_widmowa_projektu',
+  // Wiązania katalogowe wytwórcy; klucz `karty_widmowe_ref` (przypisanie kart widmowych do
+  // generatora) idzie przez domain-ops z panelu „Karty widmowe" — końcówka wiązań wytwórcy
+  // (`/generators/{ref}/bindings`) tego klucza nie niesie.
+  'set_der_catalog_bindings',
   // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
   'add_gpz_section',
   'update_gpz_section',
@@ -341,7 +355,15 @@ export interface NNCableLayingConditionsDescription {
   soil_thermal_resistivity_km_w?: number | null;
 }
 
-export type NNCableLayingConditionsPayload = NNCableLayingConditionsDescription | 'warunki katalogowe';
+/**
+ * Opis warunków ułożenia albo jawny powrót do warunków katalogowych. Nazwa zestawu MUSI być
+ * identyczna z backendem (`cable_ampacity_derating.NAZWA_WARUNKI_KATALOGOWE`) — dawna wartość
+ * z odstępem była odrzucana przez parser jako „nieznany zestaw".
+ */
+export const WARUNKI_KATALOGOWE_NN = 'warunki_katalogowe' as const;
+export type NNCableLayingConditionsPayload =
+  | NNCableLayingConditionsDescription
+  | typeof WARUNKI_KATALOGOWE_NN;
 
 export interface AddNNCableSegmentPayload {
   from_bus_ref?: string | null;
@@ -390,6 +412,24 @@ export interface AddNNSectionCouplerPayload {
 export interface SetNNCableLayingConditionsPayload {
   segment_ref: string;
   cable_laying_conditions: NNCableLayingConditionsPayload;
+}
+
+/** Podział odcinka kabla nN nową szyną pośrednią w odległości `split_at_m` od początku. */
+export interface SplitNNSegmentPayload {
+  segment_ref: string;
+  split_at_m: number;
+}
+
+/** Scalenie dwóch odcinków kabla nN tego samego typu przez wspólną szynę pośrednią. */
+export interface MergeNNSegmentsPayload {
+  segment_a_ref: string;
+  segment_b_ref: string;
+}
+
+/** Kopia poddrzewa odpływu nN od aparatu odpływowego w dół. */
+export interface CopyNNFeederPayload {
+  feeder_apparatus_ref: string;
+  name?: string;
 }
 
 // --- SourceNN Types (FAZA 5: model danych źródeł nN) ---
@@ -672,6 +712,8 @@ export interface AddSnBayPayload {
   switchgear_family_ref?: string | null;
   bay_template_ref?: string | null;
   manufacturer_ref?: string | null;
+  /** Tryb próby (wyłącznie dla wyboru katalogowego pola): werdykt konfiguracji bez zapisu. */
+  dry_run?: boolean;
 }
 
 export interface ContinueTrunkSegmentSNPayload {
@@ -744,10 +786,9 @@ export interface DeleteGpzSectionPayload {
 }
 
 // =============================================================================
-// K5-B (H-3): tryb pracy źródła + profil dynamiczny (lustrzane odbicie
-// backendu: enm/domain_operations_v2.py `set_source_operating_mode` /
-// `set_dynamic_profile` — payload czytany kluczami `source_ref`/`mode` oraz
-// `element_ref`/`profile`).
+// K5-B (H-3): tryb pracy źródła (lustrzane odbicie backendu:
+// enm/domain_operations_v2.py `set_source_operating_mode` — payload czytany
+// kluczami `source_ref`/`mode`).
 // =============================================================================
 
 /** Słownik trybów pracy źródła — 1:1 z `BaySourceEndpoint.operating_mode`
@@ -763,17 +804,5 @@ export type SourceOperatingMode =
 export interface SetSourceOperatingModePayload {
   source_ref: string;
   mode: SourceOperatingMode;
-}
-
-/** Interpolacja profilu — backend domyślnie 'HOLD' (`set_dynamic_profile`). */
-export interface DynamicProfileSpec {
-  time_unit?: string;
-  points: ReadonlyArray<readonly [number, number]>;
-  interpolation?: string;
-}
-
-export interface SetDynamicProfilePayload {
-  element_ref: string;
-  profile: DynamicProfileSpec;
 }
 

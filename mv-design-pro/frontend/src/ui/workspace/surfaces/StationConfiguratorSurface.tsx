@@ -41,6 +41,7 @@ import type { AddDerKindRequest } from '../../network-build/station-configurator
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useDzialaniaPaskaNadOknem } from '../../network-build/inspektor-elementu/panelNadOknem';
 import { stationSnBays } from '../../network-build/stationSnFields';
+import { przekladnikiStacji } from '../../network-build/station-configurator/przekladnikiStacji';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
 import { navigateToAnalysis } from '../../navigation/routes';
@@ -771,6 +772,20 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     () => deriveStationBayRows(snapshot, station),
     [snapshot, station],
   );
+  // Przekładniki CT/VT pól tej stacji wprost z modelu (karty „Przekładniki CT/VT”).
+  const stationMeasurements = useMemo(
+    () =>
+      przekladnikiStacji(
+        snapshot?.measurements ?? [],
+        station
+          ? stationSnBays(snapshot, station).map((bay, index) => ({
+              ref: bay.ref_id,
+              oznaczenie: bayDesignation(bay, index),
+            }))
+          : [],
+      ),
+    [snapshot, station],
+  );
   const stationTransformers = useMemo(
     () => deriveStationTransformerRows(snapshot, station),
     [snapshot, station],
@@ -1190,6 +1205,11 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           });
         },
       },
+      measurements: {
+        ...base.measurements,
+        cts: stationMeasurements.cts,
+        vts: stationMeasurements.vts,
+      },
       derSources: {
         stationId: stationRef ?? 'unselected',
         stationLabel: stationName,
@@ -1206,6 +1226,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   }, [
     rodzajKonfiguratora,
     stationBays,
+    stationMeasurements,
     stationTransformerCatalogOptions,
     stationLvVoltages,
     stationName,

@@ -58,6 +58,8 @@ export interface SldMenuContext {
   /** W5-C: stan łącznika obiektu (`akcjeElementu.ts::stanLacznikaMenu`) — ten sam
    *  resolver (`lacznikTematu`) wybiera łącznik dla wykonawcy akcji. */
   readonly lacznik?: StanLacznikaMenu;
+  /** Schemat nN: powody blokady pozycji wykonywanych wprost (`lv-domain/operacjeNn.ts`). */
+  readonly powodyBlokadyNn?: Readonly<Partial<Record<string, string | null>>>;
 }
 
 export interface SldContextMenuControllerProps {
@@ -91,6 +93,10 @@ const KIND_HEADER_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   // Karta SLD-P (GAP P-1): nagłówek generyczny — kanwa v3 nie rozróżnia
   // podtypu DER (patrz SldCommandService.ts `SLD_MENU_REGISTRY.der`).
   der: 'Źródło OZE / generator',
+  nn_cable: 'Odcinek kabla nN',
+  nn_apparatus: 'Aparat nN',
+  nn_terminal: 'Zacisk nN',
+  nn_load: 'Odbiór nN',
 };
 
 function toContextMenuActions(

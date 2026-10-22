@@ -1,7 +1,7 @@
 /**
  * Kreator „Odcinek nN" (add_nn_cable_segment) — ui2, framework kreatory/rama.
  *
- * Wyprowadza kabel nN z zaznaczonej szyny (kontekst: drzewo nN STUDIO albo
+ * Wyprowadza kabel nN z zaznaczonej szyny (kontekst: drzewo topologii albo
  * schemat) do NOWEJ szyny odbiorczej — backend tworzy szynę końcową sam
  * (`to_bus_ref` pominięty), zgodnie z zakresem pól planu F §3 (picker
  * KABEL_NN + długość + ułożenie + n_parallel; wskazanie ISTNIEJĄCEJ szyny
@@ -37,10 +37,7 @@ import { resolveBusNnRef } from '../../../ui/network-build/forms/enmResolvers';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { useActiveOperationForm, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import type {
-  AddNNCableSegmentPayload,
-  NNCableLayingConditionsDescription,
-} from '../../../types/domainOps';
+import type { AddNNCableSegmentPayload } from '../../../types/domainOps';
 import {
   KreatorGotowosc,
   KreatorInfo,
@@ -49,10 +46,8 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
-  PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
-  PolePrzelacznik,
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
@@ -60,8 +55,7 @@ import {
   type WierszGotowosci,
 } from '../rama';
 import { ODCINEK_NN_STRINGS as T } from './strings';
-
-type TrybUlozenia = 'katalogowe' | 'wlasne';
+import { SekcjaUlozeniaKablaNn, useUlozenieKablaNn } from './ulozenieKablaNn';
 
 interface Zbudowany {
   nazwa: string;
@@ -115,12 +109,7 @@ export function KreatorOdcinkaNn() {
   const [dlugoscM, setDlugoscM] = useState<number | null>(null);
   const [nParallel, setNParallel] = useState<number | null>(1);
   const [screenBonding, setScreenBonding] = useState<UziemienieEkranuKabla | ''>('');
-  const [trybUlozenia, setTrybUlozenia] = useState<TrybUlozenia>('katalogowe');
-  const [srodowisko, setSrodowisko] = useState<'powietrze' | 'grunt'>('powietrze');
-  const [izolacja, setIzolacja] = useState<'PVC' | 'XLPE'>('PVC');
-  const [temperaturaC, setTemperaturaC] = useState<number | null>(25);
-  const [liczbaObwodow, setLiczbaObwodow] = useState<number | null>(1);
-  const [rezystywnoscGruntu, setRezystywnoscGruntu] = useState<number | null>(null);
+  const ulozenie = useUlozenieKablaNn();
   const [ibPodgladu, setIbPodgladu] = useState<number | null>(null);
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [zbudowane, setZbudowane] = useState<Zbudowany[]>([]);
@@ -164,16 +153,7 @@ export function KreatorOdcinkaNn() {
     };
   }, [wybranyKabel, ibPodgladu, dlugoscM, fromBus]);
 
-  const layingConditions: NNCableLayingConditionsDescription | null =
-    trybUlozenia === 'wlasne' && temperaturaC !== null && liczbaObwodow !== null
-      ? {
-          environment: srodowisko,
-          insulation: izolacja,
-          ambient_temperature_c: temperaturaC,
-          circuit_count: liczbaObwodow,
-          ...(srodowisko === 'grunt' ? { soil_thermal_resistivity_km_w: rezystywnoscGruntu ?? undefined } : {}),
-        }
-      : null;
+  const layingConditions = ulozenie.opis;
 
   const kompletne = Boolean(fromBusRef && catalogRef && dlugoscM && dlugoscM > 0);
   const brakStartu = !fromBusRef;
@@ -390,75 +370,7 @@ export function KreatorOdcinkaNn() {
         />
       </KreatorSekcja>
 
-      <KreatorSekcja tytul={T.sekcjaUlozenieTytul} testid="mvd-kreator-odcinek-nn-ulozenie">
-        <KreatorInfo>{T.ulozeniePomoc}</KreatorInfo>
-        <PolePrzelacznik
-          opcje={[
-            { id: 'katalogowe', etykieta: T.ulozenieKatalogowe },
-            { id: 'wlasne', etykieta: T.ulozenieWlasne },
-          ]}
-          wartosc={trybUlozenia}
-          onZmiana={(v) => setTrybUlozenia(v as TrybUlozenia)}
-          testid="mvd-kreator-odcinek-nn-tryb-ulozenia"
-        />
-        {trybUlozenia === 'wlasne' ? (
-          <KreatorSiatka kolumny={2}>
-            <PoleWyboru
-              etykieta={T.srodowisko}
-              wartosc={srodowisko}
-              onZmiana={(v) => setSrodowisko(v as 'powietrze' | 'grunt')}
-              opcje={[
-                { id: 'powietrze', etykieta: T.srodowiskoPowietrze },
-                { id: 'grunt', etykieta: T.srodowiskoGrunt },
-              ]}
-              testid="mvd-kreator-odcinek-nn-srodowisko"
-            />
-            <PoleWyboru
-              etykieta={T.izolacja}
-              wartosc={izolacja}
-              onZmiana={(v) => setIzolacja(v as 'PVC' | 'XLPE')}
-              opcje={[
-                { id: 'PVC', etykieta: 'PVC' },
-                { id: 'XLPE', etykieta: 'XLPE' },
-              ]}
-              testid="mvd-kreator-odcinek-nn-izolacja"
-            />
-            <PoleLiczbowe
-              etykieta={T.temperatura}
-              jednostka="°C"
-              wartosc={temperaturaC}
-              onZmiana={setTemperaturaC}
-              testid="mvd-kreator-odcinek-nn-temperatura"
-            />
-            <PoleLiczbowe
-              etykieta={T.liczbaObwodow}
-              wartosc={liczbaObwodow}
-              onZmiana={setLiczbaObwodow}
-              min={1}
-              krok={1}
-              testid="mvd-kreator-odcinek-nn-liczba-obwodow"
-            />
-            {srodowisko === 'grunt' ? (
-              <PoleLiczbowe
-                etykieta={T.rezystywnoscGruntu}
-                jednostka="K·m/W"
-                wartosc={rezystywnoscGruntu}
-                onZmiana={setRezystywnoscGruntu}
-                wymagane
-                testid="mvd-kreator-odcinek-nn-rezystywnosc"
-              />
-            ) : null}
-          </KreatorSiatka>
-        ) : null}
-        <KreatorInfo>{T.izPrimaBrak}</KreatorInfo>
-        <PanelTeorii
-          tytul={T.teoriaTytul}
-          opis={T.teoriaOpis}
-          wymog={T.teoriaWymog}
-          podstawa={T.teoriaPodstawa}
-          testid="mvd-kreator-odcinek-nn-teoria"
-        />
-      </KreatorSekcja>
+      <SekcjaUlozeniaKablaNn ulozenie={ulozenie} testid="mvd-kreator-odcinek-nn" />
 
       {/* Otwiera kreator „Aparat nN" z nowej szyny po zapisie — łańcuchowanie kroku, bez fabrykacji. */}
       {zbudowane.length > 0 ? (

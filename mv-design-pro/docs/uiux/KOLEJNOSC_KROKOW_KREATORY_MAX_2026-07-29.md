@@ -21,7 +21,7 @@ decyzje: karta K9 nadzorcy). Pliki bazowe:
   (kroki dziś: rodzaj → transformator → rozdzielnica → nn → uziemienie → zapis)
 - Operacje: `backend/src/enm/domain_operations_v2.py`
   (`set_der_catalog_bindings` z `DER_BINDING_KEYS` + `DER_PROFILE_KEYS`,
-  `set_source_operating_mode`, `set_dynamic_profile`, `update_element_parameters`)
+  `set_source_operating_mode`, `set_dynamic_profile`, `update_element_parameters`) [korekta 2026-10-22, karta MENU-KANON, V12K-351: `set_dynamic_profile`, `rename_element`, `set_label`, `remove_nn_element`, `add_sn_bay_from_catalog` skasowane jako duble — nazwa/etykieta przez `update_element_parameters`, usuwanie przez `delete_element`, profil dynamiki przez `set_der_catalog_bindings`, `dry_run` pola w `add_sn_bay`]
 - Szablony stacji: `backend/src/application/station_templates/schema.py`
   (TemplateSchema; biblioteki: prosument_pv, farmy_pv, bess, hybrydowe)
 - Podglądy: `backend/src/api/grid_source_preview.py`

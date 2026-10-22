@@ -3022,6 +3022,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               width={lvDomainPortalWidth}
               height={lvDomainPortalHeight}
               onClose={closeLvDomainPortal}
+              readOnly={props.readOnly ?? false}
             />
           </div>
         </div>

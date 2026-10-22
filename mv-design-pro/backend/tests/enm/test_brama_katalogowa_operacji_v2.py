@@ -703,9 +703,10 @@ INIEKCJE: tuple[PrzypadekIniekcji, ...] = (
     PrzypadekIniekcji(
         "catalog_binding", "add_sn_bay", _payload_sn_bay, lambda p: _zepsuj_klucz(p, "catalog_ref")
     ),
+    # Plan pola z katalogu rozdzielnic tej samej operacji (wybór katalogowy w payloadzie).
     PrzypadekIniekcji(
         "catalog_binding",
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         _payload_sn_bay_z_katalogu,
         lambda p: _zepsuj_klucz(p, "catalog_ref"),
     ),

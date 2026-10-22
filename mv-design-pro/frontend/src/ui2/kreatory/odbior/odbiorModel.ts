@@ -223,16 +223,38 @@ export interface KontekstOdbioru {
   feeder_ref?: string;
   bus_nn_ref?: string;
   feeder_name?: string;
+  /** Szyna SN odbioru `add_load_sn` (menu szyny na schemacie). */
+  bus_ref?: string;
+  bus_name?: string;
   bus_voltage_kv?: number;
 }
 
-export function maOdplyw(kontekst: KontekstOdbioru): boolean {
-  return Boolean(kontekst.feeder_ref?.trim());
+/** Czy kontekst wskazuje miejsce przyłączenia odbioru danego poziomu. */
+export function maMiejscePrzylaczenia(
+  kontekst: KontekstOdbioru,
+  poziom: PoziomOdbioru = 'nn',
+): boolean {
+  return poziom === 'sn' ? Boolean(kontekst.bus_ref?.trim()) : Boolean(kontekst.feeder_ref?.trim());
 }
+
+/**
+ * Poziom odbioru — ta sama formatka dla dwóch operacji domenowych o wspólnej semantyce
+ * P/Q/cosφ/ZIP/faz (`enm.domain_operations_v2.add_load_sn` reużywa derywacji
+ * `add_nn_load`): `nn` = odbiór na odpływie nN (`add_nn_load`, kontekst `feeder_ref`),
+ * `sn` = odbiór wprost na szynie SN (`add_load_sn`, kontekst `bus_ref`).
+ */
+export type PoziomOdbioru = 'nn' | 'sn';
+
+/** Operacja domenowa zapisu odbioru danego poziomu — jedno źródło dla kreatora i testów. */
+export const OPERACJA_ODBIORU: Readonly<Record<PoziomOdbioru, 'add_nn_load' | 'add_load_sn'>> = {
+  nn: 'add_nn_load',
+  sn: 'add_load_sn',
+};
 
 export function zbudujPayload(
   data: OdbiorFormData,
   kontekst: KontekstOdbioru,
+  poziom: PoziomOdbioru = 'nn',
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     active_power_kw: data.active_power_kw,
@@ -252,13 +274,19 @@ export function zbudujPayload(
     // migawce (`source_mode: 'EKSPERCKI_RECZNY'`), i którym `add_grid_source_sn`
     // już rozpoznaje ręczny ekwiwalent. Bez tego pola brama API (bez jawnej
     // deklaracji, katalog-first domyślne) odrzuca żądanie kodem 422.
-    ...(data.manual_mode ? { source_mode: 'EKSPERCKI_RECZNY' } : {}),
+    // Odbiór SN (`add_load_sn`) ma katalog OPCJONALNY i rozstrzyga pochodzenie wyłącznie
+    // z obecności pozycji katalogu — deklaracji trybu nie czyta, więc jej nie wysyłamy.
+    ...(data.manual_mode && poziom === 'nn' ? { source_mode: 'EKSPERCKI_RECZNY' } : {}),
     // Model ZIP jedzie w payloadzie TYLKO gdy różni się od stałej mocy. Odbiór
     // stałomocowy wysyła dokładnie ten payload co przed powstaniem sekcji, więc
     // istniejąca ścieżka pozostaje nietknięta (a operacja i tak przyjmuje oba
     // warianty jako równoważne).
     ...(czyZipDomyslny(data.zip) ? {} : { ...data.zip }),
   };
+  if (poziom === 'sn') {
+    if (kontekst.bus_ref?.trim()) payload.bus_ref = kontekst.bus_ref.trim();
+    return payload;
+  }
   if (kontekst.feeder_ref?.trim()) payload.feeder_ref = kontekst.feeder_ref.trim();
   if (kontekst.bus_nn_ref?.trim()) payload.bus_nn_ref = kontekst.bus_nn_ref.trim();
   return payload;

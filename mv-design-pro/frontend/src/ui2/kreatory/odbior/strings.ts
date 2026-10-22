@@ -159,3 +159,30 @@ export const ODBIOR_STRINGS = {
   wykresQ: 'Q (bierna)',
   wykresS: 'S (pozorna)',
 } as const;
+
+/**
+ * Teksty kreatora „Dodaj odbiór SN" — TA SAMA formatka co odbiór nN (operacja
+ * `add_load_sn` reużywa semantyki P/Q/cosφ/ZIP/faz `add_nn_load`); różni się miejsce
+ * przyłączenia (szyna SN wskazana na schemacie, nie odpływ nN) i opis.
+ */
+export const ODBIOR_SN_STRINGS = {
+  ...ODBIOR_STRINGS,
+  eyebrow: 'MODEL SIECI · ODBIÓR SN',
+  cel:
+    'Dodaj odbiór przyłączony wprost do szyny SN (np. odbiorca zasilany z rozdzielni SN bez '
+    + 'własnej stacji SN/nN w modelu). Podajesz moc czynną i cosφ; moc bierną Q operacja '
+    + 'wyprowadza z cosφ, prąd liczy backend. Typ odbioru dobierasz z katalogu albo w trybie ręcznym.',
+  odznaka: 'Nowy odbiór SN',
+  trybRecznyInfo:
+    'Tryb ekspercki: dane odbioru wprowadzasz ręcznie, bez pozycji katalogowej. '
+    + 'Odbiór bez pozycji katalogu migawka modelu znakuje jako pochodzenia „EKSPERCKI_RECZNY".',
+  nazwaPlaceholder: 'np. Odbiorca SN — zakład produkcyjny',
+  wierszOdplyw: 'Szyna SN',
+  brakOdplywuTytul: 'Brak szyny SN',
+  brakOdplywuOpis:
+    'Wskaż na schemacie szynę SN (menu kontekstowe szyny → „Dodaj odbiór SN"), '
+    + 'do której chcesz przyłączyć odbiór.',
+  zapisz: 'Zapisz odbiór SN',
+  katalogLadowanieStopka: 'Ładowanie katalogu typów odbiorów — zapis będzie dostępny po wczytaniu.',
+  teoriaTytul: 'Teoria: odbiór SN — moc, współczynnik mocy i model obciążenia',
+};

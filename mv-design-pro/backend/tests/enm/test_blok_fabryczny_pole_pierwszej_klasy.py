@@ -7,14 +7,14 @@ nazewnictwami tej samej prawdy:
   wpisu pola — operacja wcięcia w odcinek gubiła ją bez śladu, operacja końca
   ciągu przepisywała ją do `field_spec` jako martwy słownik, którego NIKT nie
   czytał;
-* operacja `add_sn_bay_from_catalog` miała `factory_configuration_ref` +
+* operacja katalogowa pola (dziś plan katalogowy `add_sn_bay`) miała `factory_configuration_ref` +
   `factory_unit_index` jako pola pierwszej klasy payloadu, ale wyniku swojego
   rozstrzygnięcia NIE ZAPISYWAŁA — blok widać było wyłącznie w podglądzie trybu
   próby, czyli w odpowiedzi, która niczego nie utrwala.
 
 Skutek zmierzony przed naprawą: zapis stacji z rodziny o torze BLOK_RMU kończył
 się twardym błędem `sn.pole_katalogowe_niezgodne` z komunikatem „uzyj operacji
-add_sn_bay_from_catalog z factory_configuration_ref i factory_unit_index" —
+<operacja katalogowa pola> z factory_configuration_ref i factory_unit_index" —
 operacji, której kreator nie woła, przy nazwie pola, której nie wysyłał. Tor
 BLOK_RMU kreatora stacji nie miał drogi zapisu.
 
@@ -214,7 +214,7 @@ def _uruchom(operacja: str, sn_fields: list[dict[str, Any]]) -> dict[str, Any]:
                 "catalog_namespace": "APARAT_SN",
                 "catalog_item_id": CATALOG_APARAT_SN,
             }
-            odpowiedz = execute_domain_operation(snapshot, "add_sn_bay_from_catalog", payload)
+            odpowiedz = execute_domain_operation(snapshot, "add_sn_bay", payload)
             if odpowiedz.get("error"):
                 return odpowiedz
             snapshot = odpowiedz["snapshot"]

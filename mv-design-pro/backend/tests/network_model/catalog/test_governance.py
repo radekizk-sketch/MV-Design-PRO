@@ -171,7 +171,8 @@ def test_wymagalnosc_katalogu_generator_inny(gen_type: str | None) -> None:
     """Generator inny niż przekształtnikowy (w tym `"synchronous"`, DFIG/SCIG
     wirujące i `gen_type=None`) — tworzenie WCIĄŻ BLOCKER (zmierzone:
     `add_generator_sn` i `add_converter_source` nie mają wyjątku dla ŻADNEGO
-    gen_type), ale walidacja/import NIE (brak kodu E0xx/W0xx, brak
+    gen_type; tryb ręczny tabliczki `add_generator_sn` to wewnętrzna logika operacji,
+    jak wyjątek `add_nn_load`), ale walidacja/import NIE (brak kodu E0xx/W0xx, brak
     sprawdzenia w ZIP/CGMES/XLSX dla generatorów innych niż przekształtnikowe)."""
     wynik = wymagalnosc_katalogu("generator", gen_type=gen_type)
     assert wynik == WymagalnoscKatalogu(Poziom.BLOCKER, Poziom.NIE, Poziom.NIE, None)
@@ -180,8 +181,9 @@ def test_wymagalnosc_katalogu_generator_inny(gen_type: str | None) -> None:
 def test_wymagalnosc_katalogu_generator_tworzenie_zawsze_blocker() -> None:
     """Oś `tworzenie` dla `rodzaj="generator"` jest BLOCKER dla KAŻDEGO
     zmierzonego gen_type — żaden tor tworzenia generatora (`add_generator_sn`,
-    `add_converter_source`) nie ma wyjątku (K1.2: „element fizyczny, bez
-    wyjątku dla generatorów")."""
+    `add_converter_source`) nie zdejmuje wymogu bramy dla elementu bez danych (tryb
+    ręczny tabliczki generatora synchronicznego jest wewnętrzną logiką operacji —
+    ZASADA NR 4, jak `add_nn_load`)."""
     wszystkie = _GEN_TYPES_PRZEKSZTALTNIKOWE_SC + _GEN_TYPES_NIE_ZWARCIOWO_PRZEKSZTALTNIKOWE
     for gen_type in wszystkie:
         assert wymagalnosc_katalogu("generator", gen_type=gen_type).tworzenie is Poziom.BLOCKER

@@ -11,6 +11,7 @@ vi.mock('../../notifications/store', () => ({
 import { executeDomainOp } from '../domainApi';
 import { notify } from '../../notifications/store';
 import { useSnapshotStore } from '../snapshotStore';
+import { isCanonicalOpName } from '../../../types/domainOps';
 import {
   OPERATION_SUCCESS_MESSAGES,
   SILENT_OPERATIONS,
@@ -124,6 +125,13 @@ describe('operationSuccessMessages map', () => {
     ]) {
       expect(OPERATION_SUCCESS_MESSAGES[op]).toBeTruthy();
     }
+  });
+
+  it('każdy klucz mapy to nazwa operacji kanonicznej — bez martwych wpisów', () => {
+    // Komunikat pod nazwą, której żadne wywołanie nie wysyła (dawne `edit_bay`, warianty
+    // `bus_nn_add_converter_source_*`), to fałszywa deklaracja pokrycia.
+    const martwe = Object.keys(OPERATION_SUCCESS_MESSAGES).filter((op) => !isCanonicalOpName(op));
+    expect(martwe).toEqual([]);
   });
 
   it('operacje ciche zwracają null', () => {

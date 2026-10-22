@@ -18,7 +18,9 @@ import { KreatorOdgalezienia } from '../../ui2/kreatory/odgalezienie';
 import { KreatorOgranicznikaSn } from '../../ui2/kreatory/ogranicznik';
 import { KreatorLacznikaSekcyjnego } from '../../ui2/kreatory/lacznik';
 import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
-import { KreatorOdbioruNn } from '../../ui2/kreatory/odbior';
+import { KreatorOdbioruNn, KreatorOdbioruSn } from '../../ui2/kreatory/odbior';
+import { KreatorGeneratoraSn } from '../../ui2/kreatory/generator-sn';
+import { KreatorPodzialuOdcinkaNn, KreatorWarunkowUlozeniaNn } from '../../ui2/kreatory/odcinek-nn-edycja';
 import { KreatorPierscienia } from '../../ui2/kreatory/pierscien';
 import { KreatorPolaSn } from '../../ui2/kreatory/pole';
 import { KreatorSlupaOdgaleznego } from '../../ui2/kreatory/slup-odgalezny';
@@ -71,6 +73,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_shunt_compensator_sn: KreatorKompensatoraSn,
   add_surge_arrester_sn: KreatorOgranicznikaSn,
   add_nn_load: KreatorOdbioruNn,
+  add_load_sn: KreatorOdbioruSn,
+  add_generator_sn: KreatorGeneratoraSn,
   add_ct: KreatorPomiaru,
   add_vt: KreatorPomiaru,
   add_relay: KreatorPrzekaznika,
@@ -84,9 +88,19 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_nn_distribution_board: KreatorRozdzielnicyNn,
   add_nn_switch_device: KreatorAparatuNn,
   add_nn_section_coupler: KreatorRozdzielnicyNn,
-  // Edycja warunków ułożenia istniejącego odcinka nN jest edycją INLINE w
-  // tabeli ODCINKI (nN STUDIO) — bez formularza modalnego, jak `update_element_parameters`.
-  set_nn_cable_laying_conditions: null,
+  // Edycja istniejącego odcinka kabla nN — menu kontekstowe kabla na schemacie nN.
+  set_nn_cable_laying_conditions: KreatorWarunkowUlozeniaNn,
+  split_nn_segment: KreatorPodzialuOdcinkaNn,
+  // Scalenie dwóch odcinków przy zacisku i kopia odpływu nie mają parametrów poza wskazanym
+  // elementem — wykonuje je wprost menu kontekstowe schematu nN (`sldActionExecutor`).
+  merge_nn_segments: null,
+  copy_nn_feeder: null,
+  // Obwód wtórny przekładnika CT/VT pola edytuje formularz INLINE na karcie pola (E-11,
+  // `ui/field/EdytorObwoduWtornegoPola.tsx` w `BayConfiguratorSurface`).
+  set_measurement_secondary_circuit: null,
+  // Karta widmowa projektu: wczytanie pliku karty w zakładce „Karty widmowe" przestrzeni
+  // Model (`ui2/spaces/model/karty-widmowe/PanelKartWidmowych.tsx`) — bez okna kreatora.
+  dodaj_karte_widmowa_projektu: null,
   // Operacje bez formularza modalnego (delete, refresh, GPZ sections CRUD oraz warunki
   // przyłączenia OSD — te mają formularz inline w kaflu pulpitu projektu, nie w oknie
   // kreatora: `ui2/spaces/projekt/KafelPrzylaczenia.tsx`).
@@ -97,14 +111,16 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   update_gpz_section: null,
   delete_gpz_section: null,
   // K5-B: nastawy trybu pracy źródła zapisuje formularz inline w oknie
-  // „Odpowiedź na polecenia OSD" (ui2/oze/osd), profil dynamiczny nie ma
-  // jeszcze formularza — typy istnieją dla wywołań programowych.
+  // „Odpowiedź na polecenia OSD" (ui2/oze/osd).
   set_source_operating_mode: null,
-  set_dynamic_profile: null,
   // Karta modeli odbiorów: wiązanie modelu dynamicznego odbioru z profilem katalogu jest
   // akcją naprawczą INLINE w sekcji modeli ekranu dynamiki (`ui2/wyniki/dynamika/
   // SekcjaModeliZrodel.tsx`, kod gotowości `load.dynamika_missing`) — bez okna kreatora.
   set_load_dynamic_binding: null,
+  // Wiązania katalogowe wytwórcy: edytor wiązań konfiguratora źródła (`ui/network-build/
+  // station-der/DerWiazaniaEditor.tsx`), profil dynamiki (`ui2/wyniki/dynamika`) i karty
+  // widmowe (`ui2/spaces/model/karty-widmowe/PanelKartWidmowych.tsx`) — kontrolki inline.
+  set_der_catalog_bindings: null,
 };
 
 /**

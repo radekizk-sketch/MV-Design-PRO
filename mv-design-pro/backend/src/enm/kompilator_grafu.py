@@ -51,6 +51,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_stacji
 from network_model.core.topologia import przeglad_wszerz_od
+from network_model.nazwy import nazwa_nadana
 from network_model.odmowa_danych import OdmowaDanychError
 
 
@@ -849,7 +850,16 @@ def _pola_liniowe_gpz_szyny(enm: dict[str, Any], bus_ref: str) -> list[dict[str,
 
 
 def _przemianuj(enm: dict[str, Any], element_ref: str, new_name: str) -> dict[str, Any]:
-    return wykonaj(enm, "rename_element", {"element_ref": element_ref, "new_name": new_name})
+    """Nazwa elementu z grafu — ta sama operacja, którą projektant zmienia nazwę w kreatorze
+    „Edycja parametrów elementu" (`update_element_parameters`, parametr `name`)."""
+    nazwa = nazwa_nadana(new_name)
+    if nazwa is None:
+        raise BenchmarkBuildError(f"Brak nazwy elementu {element_ref} w grafie wejściowym.")
+    return wykonaj(
+        enm,
+        "update_element_parameters",
+        {"element_ref": element_ref, "parameters": {"name": nazwa}},
+    )
 
 
 def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
@@ -1005,8 +1015,8 @@ def kompiluj_graf(graf: GrafDoKompilacji) -> WynikKompilacji:
             ref_trafo = enm["transformers"][-1]["ref_id"]
             wynik.transformer_map[edge_id] = ref_trafo
             # Szyna po drugiej stronie transformatora i sam transformator dostają nazwy
-            # z grafu (operacja tworzy je bez nazwy; `rename_element` to ta sama droga,
-            # którą nazwę zmienia projektant w kreatorze).
+            # z grafu (operacja tworzy je bez nazwy; `update_element_parameters` z parametrem
+            # `name` to ta sama droga, którą nazwę zmienia projektant w kreatorze).
             enm = _przemianuj(enm, ref_nowej, szyny[lit_nowej].name)
             if trafo.name is not None:
                 enm = _przemianuj(enm, ref_trafo, trafo.name)

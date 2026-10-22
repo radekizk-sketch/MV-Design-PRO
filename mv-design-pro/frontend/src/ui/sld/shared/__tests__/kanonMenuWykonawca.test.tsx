@@ -25,22 +25,26 @@ import {
   SLD_MENU_REGISTRY,
   type SldElementKindForMenu,
 } from '../../v2/command/SldCommandService';
-import { czyAkcjaZmieniaModel, useSldActionExecutor } from '../sldActionExecutor';
+import { czyAkcjaZmieniaModel, POWOD_BRAKU_SCHEMATU_NN_PL, useSldActionExecutor } from '../sldActionExecutor';
+import { operacjaBezposredniaNn, type GrafMenuNn, type OperacjaNn } from '../../v3/lv-domain/operacjeNn';
 
 function Harness({
   actionId,
   kind,
   elementId,
   readOnly = false,
+  operacjaNn,
 }: {
   actionId: string;
   kind: SldElementKindForMenu;
   elementId: string | null;
   readOnly?: boolean;
+  /** Ładunek operacji bezpośredniej nN — tak, jak przynosi go portal schematu nN. */
+  operacjaNn?: OperacjaNn;
 }) {
   const handleAction = useSldActionExecutor({ readOnly });
   return (
-    <button type="button" onClick={() => handleAction(actionId, kind, elementId)}>
+    <button type="button" onClick={() => handleAction(actionId, kind, elementId, operacjaNn)}>
       wykonaj akcję
     </button>
   );
@@ -131,6 +135,108 @@ describe('Pozycje źródła OZE', () => {
       expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
     },
   );
+});
+
+describe('Pozycje schematu nN (kabel, aparat, zacisk, odbiór) — realny cel każdej pozycji', () => {
+  const MIGAWKA_NN = {
+    buses: [
+      { ref_id: 'bus/a', name: 'Szyna A' },
+      { ref_id: 'bus/t', name: 'Zacisk T' },
+      { ref_id: 'bus/b', name: 'Szyna B' },
+    ],
+    branches: [
+      { ref_id: 'cab/2', name: 'Kabel 2', type: 'cable', from_bus_ref: 'bus/t', to_bus_ref: 'bus/b' },
+      { ref_id: 'cab/1', name: 'Kabel 1', type: 'cable', from_bus_ref: 'bus/a', to_bus_ref: 'bus/t' },
+      { ref_id: 'fu/1', name: 'Bezpiecznik 1', type: 'fuse', from_bus_ref: 'bus/a', to_bus_ref: 'bus/b' },
+      { ref_id: 'cp/1', name: 'Sprzęgło', type: 'bus_coupler', from_bus_ref: 'bus/a', to_bus_ref: 'bus/b' },
+    ],
+    loads: [{ ref_id: 'load/1', name: 'Odbiór 1', bus_ref: 'bus/b' }],
+  };
+  // Graf projekcji nN — jedyne źródło ładunku operacji bezpośrednich (portal liczy go
+  // `operacjaBezposredniaNn` i podaje wykonawcy; wykonawca nie odtwarza topologii z ENM).
+  const GRAF_NN = { ...MIGAWKA_NN, devices: [{ ref_id: 'fu/1', device_role: 'feeder' }] } as unknown as GrafMenuNn;
+
+  it.each([
+    ['set-nn-laying', 'set_nn_cable_laying_conditions'],
+    ['split-nn-segment', 'split_nn_segment'],
+  ] as const)('nn_cable → %s otwiera formularz %s z refem odcinka', async (actionId, op) => {
+    const openOperationForm = vi.fn();
+    useNetworkBuildStore.setState({ openOperationForm } as never);
+    render(<Harness actionId={actionId} kind="nn_cable" elementId="cab/1" />);
+    await kliknij();
+    expect(openOperationForm).toHaveBeenCalledTimes(1);
+    expect(openOperationForm).toHaveBeenCalledWith(op, expect.objectContaining({ segment_ref: 'cab/1' }));
+  });
+
+  it.each([
+    ['nn_terminal', 'merge-nn-segments', 'bus/t', 'merge_nn_segments', { segment_a_ref: 'cab/1', segment_b_ref: 'cab/2' }],
+    ['nn_apparatus', 'copy-nn-feeder', 'fu/1', 'copy_nn_feeder', { feeder_apparatus_ref: 'fu/1' }],
+  ] as const)('%s → %s wykonuje %s wprost z ładunkiem z grafu projekcji nN', async (kind, actionId, ref, op, payload) => {
+    const executeDomainOperation = vi.fn().mockResolvedValue({ snapshot: {} });
+    useSnapshotStore.setState({ executeDomainOperation, snapshot: null } as never);
+    useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+    render(
+      <Harness actionId={actionId} kind={kind} elementId={ref} operacjaNn={operacjaBezposredniaNn(actionId, ref, GRAF_NN)} />,
+    );
+    await kliknij();
+    expect(executeDomainOperation).toHaveBeenCalledTimes(1);
+    expect(executeDomainOperation).toHaveBeenCalledWith('case-1', op, payload, expect.objectContaining({ komunikatSukcesuPl: expect.any(String) }));
+  });
+
+  it.each([
+    ['nn_terminal', 'merge-nn-segments', 'bus/a'],
+    ['nn_apparatus', 'copy-nn-feeder', 'cp/1'],
+  ] as const)('%s → %s bez spełnionego warunku: komunikat powodu, ZERO operacji', async (kind, actionId, ref) => {
+    const executeDomainOperation = vi.fn();
+    useSnapshotStore.setState({ executeDomainOperation, snapshot: MIGAWKA_NN } as never);
+    useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+    const operacja = operacjaBezposredniaNn(actionId, ref, GRAF_NN);
+    render(<Harness actionId={actionId} kind={kind} elementId={ref} operacjaNn={operacja} />);
+    await kliknij();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
+    const komunikaty = useNotificationStore.getState().notifications;
+    expect(komunikaty.map((wpis) => wpis.type)).toContain('warning');
+    expect(operacja.ok).toBe(false);
+    expect(komunikaty.map((wpis) => wpis.message)).toContain(operacja.ok ? '' : operacja.powodPl);
+  });
+
+  it.each([
+    ['nn_terminal', 'merge-nn-segments', 'bus/t'],
+    ['nn_apparatus', 'copy-nn-feeder', 'fu/1'],
+  ] as const)('%s → %s bez ładunku z portalu nN (migawka ENM obecna): odmowa, ZERO operacji', async (kind, actionId, ref) => {
+    const executeDomainOperation = vi.fn();
+    useSnapshotStore.setState({ executeDomainOperation, snapshot: MIGAWKA_NN } as never);
+    useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+    render(<Harness actionId={actionId} kind={kind} elementId={ref} />);
+    await kliknij();
+    expect(executeDomainOperation).not.toHaveBeenCalled();
+    const komunikaty = useNotificationStore.getState().notifications.map((wpis) => wpis.message);
+    expect(komunikaty).toContain(POWOD_BRAKU_SCHEMATU_NN_PL);
+  });
+
+  it.each([
+    ['nn_cable', 'delete-nn-cable', 'cab/1', 'odcinek kabla nN'],
+    ['nn_apparatus', 'delete-nn-apparatus', 'fu/1', 'aparat nN'],
+    ['nn_terminal', 'delete-nn-terminal', 'bus/t', 'zacisk nN'],
+    ['nn_load', 'delete-nn-load', 'load/1', 'odbiór nN'],
+  ] as const)('%s → %s: potwierdzenie i delete_element z refem obiektu', async (kind, actionId, ref, etykieta) => {
+    const executeDomainOperation = vi.fn().mockResolvedValue({ snapshot: {} });
+    useSnapshotStore.setState({ executeDomainOperation, snapshot: MIGAWKA_NN } as never);
+    useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+    render(<Harness actionId={actionId} kind={kind} elementId={ref} />);
+    await kliknij();
+    const potwierdzenie = useNotificationStore
+      .getState()
+      .notifications.find((wpis) => wpis.message.startsWith('Potwierdź usunięcie'));
+    expect(potwierdzenie?.message).toContain(etykieta);
+    potwierdzenie?.actions?.find((a) => a.label === 'Usuń')?.onClick();
+    expect(executeDomainOperation).toHaveBeenCalledWith(
+      'case-1',
+      'delete_element',
+      expect.objectContaining({ element_ref: ref, action_id: actionId }),
+      expect.anything(),
+    );
+  });
 });
 
 const WSZYSTKIE_POZYCJE = (Object.entries(SLD_MENU_REGISTRY) as Array<

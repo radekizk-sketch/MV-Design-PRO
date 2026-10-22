@@ -71,7 +71,7 @@ def _zasiej(client, case_id: str, enm: EnergyNetworkModel) -> None:
     set_enm(_klucz(client, case_id), enm)
 
 
-def _seed_enm(client, case_id: str) -> None:
+def _seed_enm(client, case_id: str, station_ref: str = "stn") -> None:
     enm = EnergyNetworkModel(
         header=ENMHeader(name="t5b-api", defaults=ENMDefaults(sn_nominal_kv=15.0)),
         buses=[
@@ -97,7 +97,7 @@ def _seed_enm(client, case_id: str) -> None:
         ],
         substations=[
             Substation(
-                ref_id="stn",
+                ref_id=station_ref,
                 name="Stacja",
                 station_type="mv_lv",
                 bus_refs=["nn"],
@@ -106,6 +106,43 @@ def _seed_enm(client, case_id: str) -> None:
         ],
     )
     _zasiej(client, case_id, enm)
+
+
+# Ref stacji budowanej operacjami ma ukośniki (`stn/<ziarno>/station`). Klient koduje ref
+# (`encodeURIComponent` → %2F), a serwer dekoduje ścieżkę PRZED dopasowaniem trasy — bez
+# konwertera `:path` każda z trzech końcówek dawała 404 na każdej realnej stacji (wykryte
+# biegiem e2e `menu-schematu-nn.spec.ts`). ILOCZYN CECH: końcówka {widok, ekwiwalent SN,
+# projekcja} × zapis refu {ukośniki, %2F} × ref {z ukośnikami, bez}.
+_REF_Z_UKOSNIKAMI = "stn/0a1b2c/station"
+_SUFIKSY = {"widok": "", "ekwiwalent": "/upstream-equivalent", "projekcja": "/projection/v1"}
+
+
+@pytest.mark.parametrize("koncowka", sorted(_SUFIKSY))
+@pytest.mark.parametrize("zapis", ["ukosniki", "zakodowany"])
+@pytest.mark.parametrize("station_ref", [_REF_Z_UKOSNIKAMI, "stn"])
+def test_ref_stacji_z_ukosnikami_trafia_we_wlasciwa_koncowke(
+    app_client, koncowka: str, zapis: str, station_ref: str
+) -> None:
+    from urllib.parse import quote
+
+    case_id = _nowy_przypadek(app_client)
+    _seed_enm(app_client, case_id, station_ref=station_ref)
+    ref = quote(station_ref, safe="") if zapis == "zakodowany" else station_ref
+    resp = app_client.get(f"/api/cases/{case_id}/enm/lv-domain/{ref}{_SUFIKSY[koncowka]}")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    if koncowka == "projekcja":
+        assert body["contract"] == "LvDomainProjectionV1"
+        assert body["station_ref"] == station_ref
+        assert body["graph"]["station_ref"] == station_ref
+        assert body["status"] == "OK"
+    elif koncowka == "ekwiwalent":
+        assert body["station_ref"] == station_ref
+        assert "contract" not in body or body["contract"] != "LvDomainProjectionV1"
+    else:
+        assert body["station_ref"] == station_ref
+        assert body["status"] == "OK"
+        assert {b["ref_id"] for b in body["buses"]} == {"nn"}
 
 
 class TestLvDomainViewEndpoint:

@@ -212,6 +212,17 @@ export interface LVCableType extends CatalogType {
  * Load Type (OBCIAZENIE).
  * Source: backend LoadType dataclass.
  */
+/**
+ * Generator synchroniczny SN (przestrzeń `GENERATOR_SN`) — tabliczka znamionowa maszyny
+ * dołączonej wprost do szyny. Mirror `SynchronousGeneratorType.to_dict` (backend).
+ */
+export interface SynchronousGeneratorCatalogType extends CatalogType {
+  rated_mva: number;
+  rated_kv: number;
+  q_min_mvar: number;
+  q_max_mvar: number;
+}
+
 export interface LoadCatalogType extends CatalogType {
   model: string;
   p_kw: number;

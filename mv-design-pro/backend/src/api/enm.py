@@ -444,23 +444,7 @@ def get_fault_loop_feeders(case_id: str, klucz: KluczTwin, station_ref: str) -> 
     return build_feeder_fault_loop_view(enm, station_ref)
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}")
-def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
-    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
-    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
-
-    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
-    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
-    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
-    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
-    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
-    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
-    """
-    enm = _get_enm(klucz)
-    return build_lv_domain_view(enm, station_ref)
-
-
-@router.get("/{case_id}/enm/lv-domain/{station_ref}/upstream-equivalent")
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}/upstream-equivalent")
 def get_lv_domain_upstream_equivalent(
     case_id: str,
     klucz: KluczTwin,
@@ -493,7 +477,9 @@ def get_lv_domain_upstream_equivalent(
     )
 
 
-@router.get("/{case_id}/enm/lv-domain/{station_ref}/projection/v1")
+# `:path` — ref stacji z ukośnikami (`stn/<ziarno>/station`); bez konwertera klient kodujący
+# ukośnik jako %2F dostawał 404 (serwer dekoduje ścieżkę przed dopasowaniem trasy).
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}/projection/v1")
 def get_lv_domain_projection_v1(
     case_id: str,
     klucz: KluczTwin,
@@ -524,6 +510,25 @@ def get_lv_domain_projection_v1(
         )
     except (LvDomainProjectionRunMismatch, LvDomainProjectionRunUnavailable) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+# Kolejność rejestracji jest częścią kontraktu: `{station_ref:path}` dopasowuje także ukośniki
+# (ref stacji z operacji ma postać `stn/<ziarno>/station`), więc trasa ogólna stoi PO trasach
+# z sufiksem — inaczej połknęłaby `/upstream-equivalent` i `/projection/v1`.
+@router.get("/{case_id}/enm/lv-domain/{station_ref:path}")
+def get_lv_domain_view(case_id: str, klucz: KluczTwin, station_ref: str) -> dict[str, Any]:
+    """Graf domeny nN stacji — spójna składowa 0,4 kV wyprowadzona Z GRAFU
+    (karta T5b, docs/nn/KONCEPCJA_LOD_NN_2026-08.md §0 rozstrzygnięcie 2).
+
+    Granica domeny = GRANICA NAPIĘCIOWA I PROJEKCJI (werdykt): transformator
+    jest jedyną legalną granicą 15 kV/0,4 kV; przejście do INNEJ stacji z
+    WŁASNYM transformatorem zatrzymuje spacer i wraca jako `boundary_links`
+    (ref stacji docelowej), NIE wciąga jej elementów. Podrozdzielnice bez
+    własnego transformatora (rozdzielnica_nn) są WCHŁONIĘTE — to ta sama
+    domena elektryczna. Read-only; zero fizyki (topologia, nie solver).
+    """
+    enm = _get_enm(klucz)
+    return build_lv_domain_view(enm, station_ref)
 
 
 @router.get("/{case_id}/enm/swz")

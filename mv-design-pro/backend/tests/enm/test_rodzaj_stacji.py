@@ -432,7 +432,7 @@ def test_pole_potrzeb_wlasnych_z_katalogu_nie_zmienia_rodzaju() -> None:
     assert przed.rodzaj == "inline"
     po = op(
         stan,
-        "add_sn_bay_from_catalog",
+        "add_sn_bay",
         {
             "station_ref": stacja["ref_id"],
             "bus_ref": stacja["bus_refs"][0],

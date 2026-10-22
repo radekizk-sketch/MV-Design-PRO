@@ -92,15 +92,22 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     Literal["A_WTORNY", "A_PIERWOTNY"] | None` (strona przekładnika, po której podano próg
     prądowy nastawy — PZ-09) z lustrem `'A_WTORNY' | 'A_PIERWOTNY' | null` w `types/enm.ts`;
     rozszerzenie `curve_type` o IEEE MI/VI/EI to ten sam wpis (zbiór wartości w parytecie) —
-    licznik 121 -> 122."""
+    licznik 121 -> 122.
+
+    Karta W5-C (jedna prawda stanu łączeniowego, 4b97b9eb5) dodaje DWA pola Literal z lustrem
+    w `types/enm.ts` — `SwitchBranch.normal_state: Literal["closed", "open"] | None` (pozycja
+    normalna łącznika) i `BayBaseModel.equipment_data_state: Literal["MODEL", "PROPOZYCJA",
+    "BRAK_DANYCH"]` (stan danych wyposażenia pola) — i kasuje jedno: `BranchPointSN.switch_state`
+    (kopia stanu łączników portów). Bilans +2 −1: licznik 122 -> 123 (pomiar guardem z wypisem
+    pól liczonych na drzewie karty MENU-KANON, 2026-10-22; W5-C nie podniosła pinu)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 122, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 122 — "
+    assert int(dopasowanie.group(1)) == 123, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 123 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

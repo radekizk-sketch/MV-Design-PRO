@@ -125,7 +125,16 @@ def test_catalog_optional_language_is_absent_in_active_modals() -> None:
         / "magistrala"
         / "KreatorMagistralaSn.tsx",
         REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "magistrala" / "strings.ts",
-        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "SectionSwitchModal.tsx",
+        # Łącznik sekcyjny SN: kanoniczny kreator ui2 (SectionSwitchModal skasowany w W5-C
+        # jako martwy moduł bez konsumenta; `insert_section_switch_sn` → KreatorLacznikaSekcyjnego).
+        REPO_ROOT
+        / "frontend"
+        / "src"
+        / "ui2"
+        / "kreatory"
+        / "lacznik"
+        / "KreatorLacznikaSekcyjnego.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "lacznik" / "strings.ts",
         # Pierścień SN: kanoniczny kreator ui2 (retirowany RingCloseModal/ConnectRingForm, G-RING).
         REPO_ROOT
         / "frontend"

@@ -395,7 +395,7 @@ class SNFieldSpec(_FrozenBase):
 
     NIE JEST kanałem wyboru bloku fabrycznego RMU: blok ma własne pola
     pierwszej klasy (`factory_configuration_ref` + `factory_unit_index`)
-    o nazwach WSPÓLNYCH z operacją `add_sn_bay_from_catalog`. Metadana
+    o nazwach WSPÓLNYCH z planem pola katalogowego operacji `add_sn_bay`. Metadana
     `catalog_bindings.factory_configuration`, którą kreator stacji wysyłał
     zamiast nich, została usunięta — była drugim nazewnictwem tej samej prawdy,
     którego żadna operacja stacyjna nie czytała."""
@@ -451,7 +451,7 @@ class SNFieldSpec(_FrozenBase):
     factory_configuration_ref: str | None = None
     """Blok fabryczny rodziny RMU (`FactoryConfiguration.configuration_ref`),
     z którego pochodzi to pole — TA SAMA nazwa pola, co w kontrakcie operacji
-    `add_sn_bay_from_catalog`. Pole rodziny o torze BLOK_RMU nie jest luźną
+    `add_sn_bay` (pole z katalogu rozdzielnic). Pole rodziny o torze BLOK_RMU nie jest luźną
     szafą: bez wskazania bloku operacja stacyjna odrzuca je twardym błędem
     katalogowym, bo pojedyncza celka nie opisuje tego wyrobu."""
 
@@ -1134,21 +1134,10 @@ class AddSnBayPayload(_FrozenBase):
     protection_ref: str | None = None
     """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
 
-
-class AddSnBayFromCatalogPayload(_FrozenBase):
-    """Payload: add_sn_bay_from_catalog — pole stacji z KATALOGU rozdzielnic.
-
-    Kanon: `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md` §2–§5, etap S5.
-    Rola pola, funkcja, rodzina, producent i całe wyposażenie pochodzą
-    z katalogu — payload wskazuje WYBÓR, a nie parametry.
-    """
-
-    bus_ref: str
-    """Referencja szyny SN, do której przypinane jest pole."""
-
-    station_ref: str | None = None
-    """Opcjonalna referencja stacji/GPZ/ZKSN zawierającej szynę."""
-
+    # Pole z KATALOGU rozdzielnic (kanon `docs/domain/KONFIGURATOR_ROZDZIELNIC_SN_RMU.md`
+    # §2–§5, etap S5): wskazanie katalogowego pola albo jednostki bloku RMU przełącza
+    # operację na plan katalogowy — rola pola, funkcja, rodzina, producent i wyposażenie
+    # pochodzą wtedy z katalogu (`enm.pole_katalogowe.czy_wybor_katalogowy`).
     complete_bay_template_ref: str | None = None
     """Katalogowe pole rodziny MODUŁOWEJ (`CompleteMvBayTemplate.template_ref`).
     Wyklucza się z `factory_configuration_ref`."""
@@ -1160,25 +1149,9 @@ class AddSnBayFromCatalogPayload(_FrozenBase):
     """Numer jednostki bloku (1-based). Numer, a nie litera: blok powtarza
     litery jednostek (LLT ma dwie jednostki „L")."""
 
-    switchgear_family_ref: str | None = None
-    """Rodzina rozdzielnicy — gdy podana, MUSI zgadzać się z rodziną wybranego
-    pola/bloku (rozjazd = twardy błąd, nie ciche nadpisanie)."""
-
-    field_name: str | None = None
-    """Opcjonalna nazwa pola."""
-
-    gpz_section_id: str | None = None
-    """Sekcja GPZ, jeśli pole dotyczy konkretnej sekcji."""
-
-    catalog_binding: dict[str, Any] | None = None
-    """Kanoniczne powiązanie katalogowe aparatu głównego pola (APARAT_SN)."""
-
-    protection_ref: str | None = None
-    """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
-
     dry_run: bool = False
-    """Tryb próby: pełna walidacja i podgląd BOM bez mutacji modelu.
-    Źródło werdyktu VALID/INVALID dla konfiguratora pól SN."""
+    """Tryb próby (wyłącznie dla wyboru katalogowego): pełna walidacja i podgląd BOM bez
+    mutacji modelu — werdykt VALID/INVALID kreatora pola SN przed zapisem."""
 
 
 class ConverterSourceFieldPayload(_FrozenBase):
@@ -1425,7 +1398,6 @@ DOMAIN_EVENT_TYPES: tuple[str, ...] = (
     "MEASUREMENT_SECONDARY_CIRCUIT_SET",
     "NN_CABLE_LAYING_CONDITIONS_SET",
     "NN_CABLE_SEGMENT_CREATED",
-    "NN_ELEMENT_REMOVED",
     "NN_FEEDER_ELEMENT_COPIED",
     "NN_LOAD_CREATED",
     "NN_SECTION_COUPLER_CREATED",

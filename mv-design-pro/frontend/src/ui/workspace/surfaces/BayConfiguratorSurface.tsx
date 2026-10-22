@@ -12,6 +12,8 @@
  * jedyny dostawca operacji `set_bay_equipment` (katalog / szablon pola / usunięcie), ze
  * stanem danych i danymi przyjętymi z modelu odczytu pola. Pole nN ma własne operacje
  * rozdzielnicy nN — edytora SN dla niego nie ma (backend odmówiłby `bay_equipment.bay_not_mv`).
+ * Obwody wtórne przekładników pola (CT/VT z `bay_ref` pola) poprawia `EdytorObwoduWtornegoPola`
+ * — jedyny dostawca operacji `set_measurement_secondary_circuit`.
  *
  * Korekta 2026-10-15: dawna powierzchnia renderowała pusty szkielet ośmiu zakładek z tekstem
  * zastępczym i oceniała pole regułami frontu na kontekście DOPISANYM w przeglądarce (rola
@@ -21,6 +23,7 @@
 import { useMemo } from 'react';
 
 import { BayWindowSchematic } from '../../field/BayWindowSchematic';
+import { EdytorObwoduWtornegoPola } from '../../field/EdytorObwoduWtornegoPola';
 import { EdytorWyposazeniaPola } from '../../field/EdytorWyposazeniaPola';
 import { useFieldReadModel } from '../../field/useFieldReadModel';
 import { useKatalogPola } from '../../field/useKatalogPola';
@@ -127,6 +130,15 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
                 snapshot={snapshot}
                 stanDanych={item?.canonical_model.base_model.equipment_data_state ?? null}
                 danePrzyjete={item?.canonical_model.base_model.equipment_assumed_data ?? []}
+                activeCaseId={activeCaseId}
+                executeDomainOperation={executeDomainOperation}
+                bladStore={() => useSnapshotStore.getState().error}
+              />
+            ) : null}
+            {bayInModel ? (
+              <EdytorObwoduWtornegoPola
+                bayRef={bayInModel.ref_id}
+                snapshot={snapshot}
                 activeCaseId={activeCaseId}
                 executeDomainOperation={executeDomainOperation}
                 bladStore={() => useSnapshotStore.getState().error}

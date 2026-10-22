@@ -16,9 +16,10 @@ import json
 import logging
 import math
 import re
+from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, get_args
 
 from domain.readiness_bridge import opis_kanoniczny
 from enm.assembler import czestotliwosc_studium_hz
@@ -104,6 +105,7 @@ from .pole_katalogowe import (
     KOD_BLEDU_POLA_KATALOGOWEGO,
     NiezgodnoscKonfiguracjiError,
     aparaty_pola_z_referencji,
+    brama_napieciowa_wyboru,
     rozwiaz_aparaty_pola,
 )
 from .rodzaj_stacji import TYPY_STACJI_SN_NN
@@ -913,21 +915,25 @@ def _resolve_catalog_ref(catalog_ref: object, catalog_binding: object) -> str | 
 # ---------------------------------------------------------------------------
 
 
+#: Kolekcje, w których `_find_element` szuka elementu (kolejność = kolejność wyszukiwania).
+KOLEKCJE_WYSZUKIWANIA_ELEMENTU: tuple[str, ...] = (
+    "buses",
+    "branches",
+    "transformers",
+    "sources",
+    "loads",
+    "generators",
+    "substations",
+    "bays",
+    "junctions",
+    "corridors",
+    "branch_points",
+)
+
+
 def _find_element(enm: dict[str, Any], ref_id: str) -> tuple[str, int] | None:
     """Znajdź element po ref_id, zwróć (kolekcja, indeks)."""
-    for key in (
-        "buses",
-        "branches",
-        "transformers",
-        "sources",
-        "loads",
-        "generators",
-        "substations",
-        "bays",
-        "junctions",
-        "corridors",
-        "branch_points",
-    ):
+    for key in KOLEKCJE_WYSZUKIWANIA_ELEMENTU:
         for i, elem in enumerate(enm.get(key, [])):
             if elem.get("ref_id") == ref_id:
                 return (key, i)
@@ -971,7 +977,7 @@ def _error_legacy_field_write_disabled(
 #: jako pole pierwszej klasy — dwa nazewnictwa jednej prawdy, przez co żadna
 #: operacja stacyjna bloku NIE CZYTAŁA (wcięcie gubiło go bez śladu, koniec
 #: ciągu zapisywał jako martwą metadaną) i rodzina blokowa kończyła się twardym
-#: błędem „uzyj add_sn_bay_from_catalog" bez drogi wyjścia z kreatora.
+#: błędem katalogowym bez drogi wyjścia z kreatora.
 POLE_BLOKU_FABRYCZNEGO = "factory_configuration_ref"
 
 #: Nazwa pola payloadu z NUMEREM JEDNOSTKI bloku (1-based). Numer, a nie litera:
@@ -1113,6 +1119,7 @@ def _aparaty_i_konfiguracja_pola(
     bay_template_ref: str | None,
     switchgear_family_ref: str | None,
     wybor_bloku: dict[str, Any] | None,
+    napiecie_szyny_kv: float | None,
     primary_devices: list[dict[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], str | None]:
     """Aparaty PIERWOTNE i identyfikator KONFIGURACJI pola z wyboru katalogowego — wejście
@@ -1133,7 +1140,17 @@ def _aparaty_i_konfiguracja_pola(
     Konfiguracja (W1c, RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
     wyprowadzony z referencji szablonu kanonicznego — render nie zgaduje wyposażenia z typu
     pola, tożsamość konfiguracji jest DANĄ; brak szablonu = brak identyfikatora.
+
+    Brama napięciowa (`pole_katalogowe.brama_napieciowa_wyboru`): wybór katalogowy pola
+    przechodzi ją na KAŻDEJ drodze budowy pola — `napiecie_szyny_kv` jest argumentem
+    obowiązkowym, więc nowa droga nie może jej pominąć przez przeoczenie.
     """
+    wybor: dict[str, Any] = dict(wybor_bloku or {})
+    if bay_template_ref:
+        wybor["bay_template_ref"] = bay_template_ref
+    if switchgear_family_ref:
+        wybor["switchgear_family_ref"] = switchgear_family_ref
+    brama_napieciowa_wyboru(wybor, napiecie_szyny_kv)
     if primary_devices:
         aparaty = [copy.deepcopy(d) for d in primary_devices]
     elif bay_template_ref or wybor_bloku:
@@ -4640,6 +4657,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 bay_template_ref=bay_template_ref,
                 switchgear_family_ref=gpz_switchgear_family_ref,
                 wybor_bloku=None,
+                napiecie_szyny_kv=float(voltage_kv),
             )
             pola_gpz.append(
                 dodaj_pole(
@@ -7194,6 +7212,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 bay_template_ref=field_bay_template_ref,
                 switchgear_family_ref=field_family_ref,
                 wybor_bloku=field_wybor_bloku,
+                napiecie_szyny_kv=float(sn_voltage_kv),
             )
             dodaj_pole(
                 new_enm,
@@ -7305,6 +7324,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             bay_template_ref=field_bay_template_ref,
             switchgear_family_ref=field_family_ref,
             wybor_bloku=field_wybor_bloku,
+            napiecie_szyny_kv=float(sn_voltage_kv),
         )
         dodaj_pole(
             new_enm,
@@ -9972,8 +9992,43 @@ def _blad_stanu_lacznika_w_parametrach(
     return None
 
 
+#: Kolekcje z jawną listą dopuszczonych parametrów `update_element_parameters`.
+KOLEKCJE_Z_LISTA_PARAMETROW: frozenset[str] = frozenset(
+    {"branches", "transformers", "branch_points", "generators", "substations"}
+)
+
+#: Kolekcje bez listy dopuszczonych parametrów — zapis wolno dopuścić WYŁĄCZNIE dla pól
+#: kontraktu elementu (`enm/models.py`). Parametr spoza kontraktu walidacja modelu zgubiłaby
+#: po cichu (pydantic odrzuca nieznane klucze), więc operacja meldowałaby sukces bez skutku —
+#: ta sama klasa co dawna etykieta `set_label` na elemencie bez etykiety.
+KOLEKCJE_Z_KONTRAKTEM_POL: tuple[str, ...] = (
+    "buses",
+    "sources",
+    "loads",
+    "junctions",
+    "corridors",
+)
+
+
+def _pola_kontraktu_kolekcji(coll: str) -> frozenset[str]:
+    """Nazwy (i aliasy) pól kontraktu elementu kolekcji `coll` modelu ENM."""
+    adnotacja = EnergyNetworkModel.model_fields[coll].annotation
+    (klasa,) = get_args(adnotacja)
+    nazwy: set[str] = set()
+    for nazwa, definicja in klasa.model_fields.items():
+        nazwy.add(nazwa)
+        if definicja.alias:
+            nazwy.add(definicja.alias)
+    return frozenset(nazwy)
+
+
 def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Aktualizuj parametry elementu."""
+    """Aktualizuj parametry elementu.
+
+    Jedyna droga zmiany nazwy elementu (parametr `name`) i etykiety pola rozdzielnicy
+    (`feeder_short_name`, pisarz pola `_zmien_parametry_pola`). Parametr, którego kontrakt
+    elementu nie zna, jest nazwaną odmową `params.key_not_allowed` — nigdy cichym sukcesem.
+    """
     odmowa = _odmowa_typu_ladunku(payload, "update_element_parameters", {"parameters": "slownik"})
     if odmowa is not None:
         return odmowa
@@ -10062,7 +10117,24 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                         "catalog.ref_required",
                     )
 
-    if coll in {"branches", "transformers", "branch_points", "generators", "substations"}:
+    if coll in KOLEKCJE_Z_KONTRAKTEM_POL:
+        pola_kontraktu = _pola_kontraktu_kolekcji(coll)
+        spoza_kontraktu = sorted(
+            key
+            for key in parameters
+            if key not in {"ref_id", "id", "type"} and key not in pola_kontraktu
+        )
+        if spoza_kontraktu:
+            niedozwolone = lista_pl((f"„{klucz}”" for klucz in spoza_kontraktu), "i")
+            return _error_response(
+                f"Pole {pole('parameters', 'update_element_parameters')}: parametrów "
+                f"{niedozwolone} nie ma w elemencie rodzaju "
+                f"{NAZWY_KOLEKCJI_PL.get(coll, 'element modelu')} — model sieci nie przechowuje "
+                "takiej danej, więc zapis nie miałby skutku.",
+                "params.key_not_allowed",
+            )
+
+    if coll in KOLEKCJE_Z_LISTA_PARAMETROW:
         immutable_keys = {"ref_id", "id", "type"}
         allowlist_by_collection = {
             "branches": {
@@ -10487,6 +10559,31 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
                 if sub.get("ref_id") not in substations_to_delete
             ]
             deleted_set.update(substations_to_delete)
+
+    # Szyna skasowana (wprost albo kaskadą) znika też z rekordów stacji, które ją wymieniają:
+    # lista szyn stacji (`bus_refs`) i sekcje rozdzielnic nN/GPZ wskazujące szynę
+    # (`nn_sections`, `gpz_sections`, `gpz_hv_sections`). Dawniej zostawały odwołania do
+    # szyny, której nie ma (sekcja nN „na" usuniętym zacisku).
+    if deleted_bus_refs:
+        for sub in new_enm.get("substations", []):
+            bus_refs_stacji = sub.get("bus_refs")
+            if isinstance(bus_refs_stacji, list) and any(
+                ref in deleted_bus_refs for ref in bus_refs_stacji
+            ):
+                sub["bus_refs"] = [ref for ref in bus_refs_stacji if ref not in deleted_bus_refs]
+            for klucz_sekcji in ("nn_sections", "gpz_sections", "gpz_hv_sections"):
+                sekcje = sub.get(klucz_sekcji)
+                if isinstance(sekcje, list) and any(
+                    isinstance(sekcja, dict) and sekcja.get("bus_ref") in deleted_bus_refs
+                    for sekcja in sekcje
+                ):
+                    sub[klucz_sekcji] = [
+                        sekcja
+                        for sekcja in sekcje
+                        if not (
+                            isinstance(sekcja, dict) and sekcja.get("bus_ref") in deleted_bus_refs
+                        )
+                    ]
 
     if deleted_branch_refs or deleted_bus_refs:
         branch_points_to_delete: set[str] = set()
@@ -11236,6 +11333,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             bay_template_ref=field_bay_template_ref,
             switchgear_family_ref=field_family_ref,
             wybor_bloku=field_wybor_bloku,
+            napiecie_szyny_kv=float(sn_voltage_kv),
         )
         pola_konca.append(
             zbuduj_pole(
@@ -11929,6 +12027,45 @@ _HANDLERS: dict[str, Any] = {
 }
 
 
+#: Odmowa operacji, której wynik miałby dwa elementy o tym samym identyfikatorze.
+KOD_ZDUBLOWANEGO_IDENTYFIKATORA = "model.ref_duplicate"
+
+
+def _identyfikatory_modelu(enm: dict[str, Any]) -> Counter[str]:
+    """Krotność każdego `ref_id` we WSZYSTKICH kolekcjach modelu (listach rekordów)."""
+    licznik: Counter[str] = Counter()
+    for kolekcja in enm.values():
+        if not isinstance(kolekcja, list):
+            continue
+        for rekord in kolekcja:
+            if isinstance(rekord, dict) and isinstance(rekord.get("ref_id"), str):
+                licznik[rekord["ref_id"]] += 1
+    return licznik
+
+
+def _nowe_zdublowane_identyfikatory(przed: dict[str, Any], po: Any) -> list[str]:
+    """Identyfikatory, których krotność w modelu PO operacji przekracza 1 i wzrosła.
+
+    Identyfikator elementu jest kluczem każdej referencji modelu (pola, szyny, wiązania
+    katalogowe, zaznaczenie, usuwanie) — dwa rekordy o tym samym `ref_id` to model, w którym
+    `delete_element` usuwa oba, a referencja wskazuje „któryś". Identyfikatory operacji są
+    deterministyczne (ziarno z ładunku), więc POWTÓRZENIE tej samej operacji na tym samym
+    modelu wytwarzało cicho duplikat (pomiar: dwa razy `add_load_sn` z tym samym P na tej
+    samej szynie). Bramka dyspozytora jest siatką bezpieczeństwa KLASY: operacje, dla których
+    powtórzenie jest normalną pracą projektanta, nadają kolejny wolny identyfikator
+    (`domain_operations_v2._wolne_ziarno`); każda inna kolizja to odmowa, nie cichy
+    duplikat. Duplikat ZASTANY (sprzed operacji) nie blokuje pracy — bramka porównuje krotności.
+    """
+    if not isinstance(po, dict):
+        return []
+    przed_licznik = _identyfikatory_modelu(przed)
+    return sorted(
+        ref
+        for ref, ile in _identyfikatory_modelu(po).items()
+        if ile > 1 and ile > przed_licznik.get(ref, 0)
+    )
+
+
 def execute_domain_operation(
     enm_dict: dict[str, Any],
     op_name: str,
@@ -11993,6 +12130,15 @@ def execute_domain_operation(
     # SemanticIssuesBanner. Wyjątek walidatora jest błędem programu i wybucha (karta
     # #151) — dawne ciche `semantic_issues = []` meldowało „brak naruszeń semantyki".
     if isinstance(result, dict) and not result.get("error"):
+        zdublowane = _nowe_zdublowane_identyfikatory(enm_dict, result.get("snapshot"))
+        if zdublowane:
+            return _error_response(
+                "Operacja utworzyłaby element nierozróżnialny od "
+                f"{lista_pl((opis_elementu(enm_dict, ref, 'elementu') for ref in zdublowane), 'i')} "
+                "(ten sam identyfikator w modelu) — model nie został zmieniony. Zmień nazwę albo "
+                "parametry nowego elementu.",
+                KOD_ZDUBLOWANEGO_IDENTYFIKATORA,
+            )
         from network_model.validation import validate_semantic_as_dicts
 
         result["semantic_issues"] = validate_semantic_as_dicts(enm_dict)

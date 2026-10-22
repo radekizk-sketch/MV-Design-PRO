@@ -890,7 +890,7 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
   /**
    * BLOK FABRYCZNY — pola pierwszej klasy payloadu, nie metadana wiązań.
    * Nazwy kluczy są TE SAME, których używa kontrakt operacji
-   * `add_sn_bay_from_catalog` i które czytają obie operacje stacyjne; dawna
+   * `add_sn_bay` (pole z katalogu rozdzielnic) i które czytają obie operacje stacyjne; dawna
    * droga (`catalog_bindings.factory_configuration`) została usunięta na amen.
    */
   it('wpis z bloku daje POLA PIERWSZEJ KLASY, a wiązania nie niosą już bloku', () => {

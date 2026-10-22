@@ -61,7 +61,7 @@
 | 16 | `add_genset_nn`                   | Dodanie zespolu pradotwórczego (agregat) na szynie nN          | Domain / NetworkModel     |
 | 17 | `add_ups_nn`                      | Dodanie zasilacza UPS na szynie nN                             | Domain / NetworkModel     |
 | 18 | `set_source_operating_mode`       | Ustawienie trybu pracy zrodla (generacja/kompensacja/isl.)     | Domain / NetworkModel     |
-| 19 | `set_dynamic_profile`             | Przypisanie profilu dynamicznego do zrodla (krzywa P(t), Q(t)) | Domain / NetworkModel     |
+| — | `set_dynamic_profile`             | USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351): dubel wiazania profilu dynamicznego — jedyna droga to `set_der_catalog_bindings` (ekran dynamiki) | — |
 
 ### 1.4 Operacje Zabezpieczen (Protection)
 
@@ -91,12 +91,14 @@ inna warstwa: `api/study_cases.py`, `domain/study_case.py` (C1).
 
 ### 1.6 Operacje Uniwersalne
 
+Usuniecie elementu (takze nN: kabel, aparat, zacisk, odbior) to wylacznie `delete_element` — dawna `remove_nn_element` USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351) jako dubel. Operacje bez okna i ich sciezki uzytkownika klasyfikuje `scripts/dialog_completeness_guard.py` (KAZDA operacja `CANONICAL_OPERATIONS`).
+
 | Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
 |----|------------------------------------|-----------------------------------------------------------------|---------------------------|
 | 36 | `assign_catalog_to_element`       | Przypisanie typu katalogowego do elementu sieci                | Domain / Catalog          |
 | 37 | `update_element_parameters`       | Aktualizacja parametrow elementu sieci                         | Domain / NetworkModel     |
-| 38 | `rename_element`                  | Zmiana nazwy elementu sieci                                    | Domain / NetworkModel     |
-| 39 | `set_label`                       | Ustawienie etykiety wyswietlanej na schemacie SLD              | Application / SLD         |
+| — | `rename_element`                  | USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351): dubel `update_element_parameters` (pole `name`) | — |
+| — | `set_label`                       | USUNIETA (karta MENU-KANON, 2026-10-22, V12K-351): dubel `update_element_parameters` (pole `label`) | — |
 
 ---
 
@@ -664,7 +666,6 @@ wyzej — zastepuje nastawy przypisania). Regula zapisu: `enm/nastawy_zabezpiecz
 | `add_genset_nn`             | `nn_bus_id`, `genset_name`, `rated_power_kva`, `voltage_kv`, `xd_percent` | AddGensetNNPayload          |
 | `add_ups_nn`                | `nn_bus_id`, `ups_name`, `rated_power_kva`, `battery_time_min`, `in_rated_a` | AddUPSNNPayload            |
 | `set_source_operating_mode` | `source_id`, `operating_mode`, `power_setpoint_kw`             | SetSourceOperatingModePayload         |
-| `set_dynamic_profile`       | `source_id`, `profile_name`, `time_series`                     | SetDynamicProfilePayload              |
 | `add_ct`                    | `field_ref` albo `breaker_ref` (wylacznik liniowy poza polem), `catalog_ref`, `ratio_primary_a`, `ratio_secondary_a`, `accuracy_class` | `enm/domain_operations_v2.py::add_ct` |
 | `add_vt`                    | `field_id`, `vt_name`, `ratio_primary_kv`, `ratio_secondary_v`, `accuracy_class` | AddVTPayload              |
 | `set_measurement_secondary_circuit` (karta W3-B, 2026-09) | `measurement_ref`, `obwod_wtorny` (`dlugosc_przewodu_m?`, `przekroj_przewodu_mm2?`, `obciazenia_aparatow?`, `moc_stykow_va?`), `vt_uzwojenie?` (WYLACZNIE gdy measurement jest VT) | `enm/models.py::ObwodWtorny` (patrz `Measurement.obwod_wtorny`) — realne pola operacji, nie schemat aspiracyjny jak sasiednie wiersze `add_ct`/`add_vt` powyzej (`field_id` -> realnie `field_ref`, patrz kod) |
@@ -676,8 +677,6 @@ wyzej — zastepuje nastawy przypisania). Regula zapisu: `enm/nastawy_zabezpiecz
 | `run_time_series_power_flow`| `case_id`, `profile_id`, `time_steps`, `solver_method`         | RunTimeSeriesPowerFlowPayload         |
 | `compare_study_cases`       | `case_a_id`, `case_b_id`                                       | CompareStudyCasesPayload              |
 | `update_element_parameters` | `element_id`, `parameters`                                     | UpdateElementParametersPayload        |
-| `rename_element`            | `element_id`, `new_name`                                       | RenameElementPayload                  |
-| `set_label`                 | `element_id`, `label_text`, `label_position`                   | SetLabelPayload                       |
 
 ---
 
@@ -761,15 +760,12 @@ class DomainEvent(str, Enum):
 | `add_genset_nn`                   | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
 | `add_ups_nn`                      | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
 | `set_source_operating_mode`       | `CASE_STATE_UPDATED`                                                       |
-| `set_dynamic_profile`             | `CASE_STATE_UPDATED`                                                       |
 | `add_ct`                          | `CT_CREATED`                                                               |
 | `add_vt`                          | `VT_CREATED`                                                               |
 | `add_relay`                       | `RELAY_CREATED`                                                            |
 | `update_protection_settings`      | `RELAY_SETTINGS_UPDATED`                                                   |
 | `assign_catalog_to_element`       | `DEVICES_CREATED_SN` lub `DEVICES_CREATED_NN` (zaleznie od warstwy)        |
 | `update_element_parameters`       | `CASE_STATE_UPDATED`                                                       |
-| `rename_element`                  | `LOGICAL_VIEWS_UPDATED`                                                    |
-| `set_label`                       | `VIEW_GEOMETRY_UPDATED`                                                    |
 
 ### 5.3 Zdarzenia wyzwalajace automatyczne akcje
 

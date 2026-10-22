@@ -8,7 +8,8 @@ import {
   FAZY_PRZYLACZENIA,
   fmtA,
   fmtKw,
-  maOdplyw,
+  maMiejscePrzylaczenia,
+  OPERACJA_ODBIORU,
   POLA_ZIP,
   prefillZKatalogu,
   sumaUdzialowZip,
@@ -108,10 +109,30 @@ describe('odbiorModel — model obciążenia (ZIP)', () => {
   });
 });
 
-describe('odbiorModel — odpływ', () => {
-  it('wykrywa obecność odpływu', () => {
-    expect(maOdplyw({})).toBe(false);
-    expect(maOdplyw({ feeder_ref: 'f1' })).toBe(true);
+describe('odbiorModel — miejsce przyłączenia (iloczyn: poziom × kontekst)', () => {
+  it('odbiór nN wymaga odpływu, odbiór SN — szyny', () => {
+    expect(maMiejscePrzylaczenia({})).toBe(false);
+    expect(maMiejscePrzylaczenia({ feeder_ref: 'f1' })).toBe(true);
+    expect(maMiejscePrzylaczenia({ bus_ref: 'b1' })).toBe(false);
+    expect(maMiejscePrzylaczenia({ bus_ref: 'b1' }, 'sn')).toBe(true);
+    expect(maMiejscePrzylaczenia({ feeder_ref: 'f1' }, 'sn')).toBe(false);
+  });
+
+  it('payload SN niesie szynę, a nie odpływ, i nie deklaruje trybu (add_load_sn go nie czyta)', () => {
+    const kontekst = { bus_ref: ' b-sn ', feeder_ref: 'f1', bus_nn_ref: 'nn1' };
+    const reczny = zbudujPayload(dane({ manual_mode: true }), kontekst, 'sn');
+    expect(reczny.bus_ref).toBe('b-sn');
+    expect(reczny).not.toHaveProperty('feeder_ref');
+    expect(reczny).not.toHaveProperty('bus_nn_ref');
+    expect(reczny).not.toHaveProperty('source_mode');
+    const nn = zbudujPayload(dane({ manual_mode: true }), kontekst, 'nn');
+    expect(nn.feeder_ref).toBe('f1');
+    expect(nn).not.toHaveProperty('bus_ref');
+    expect(nn.source_mode).toBe('EKSPERCKI_RECZNY');
+  });
+
+  it('operacja zapisu wynika z poziomu', () => {
+    expect(OPERACJA_ODBIORU).toEqual({ nn: 'add_nn_load', sn: 'add_load_sn' });
   });
 });
 

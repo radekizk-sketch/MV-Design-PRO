@@ -222,7 +222,11 @@ DLUG JAWNY (przypiety testami, nie odlozony w ciszy):
 
 ## 10. STAN PO S5 (2026-08-14, karta S5-ENM-POLA — odbior niezalezny)
 
-ZROBIONE. Operacja `add_sn_bay_from_catalog` (`enm/domain_operations_v2.py`,
+> Korekta 2026-10-22 (karta MENU-KANON, V12K-351): `add_sn_bay_from_catalog` skasowana jako dubel —
+> `add_sn_bay` delegowala do tego samego ciala; jej jedyna unikalna cecha (`dry_run`, werdykt podgladu
+> pola) przeszla do `add_sn_bay` (kreator pola `KreatorPolaSn`). Ponizsze opisy dotycza dzis `add_sn_bay`.
+
+ZROBIONE. Operacja `add_sn_bay_from_catalog` (od 2026-10-22: `add_sn_bay`) (`enm/domain_operations_v2.py`,
 resolver `enm/pole_katalogowe.py`): materializacja pola stacji z katalogu —
 tor MODULARNY przez `complete_bay_template_ref`, tor BLOK_RMU przez
 `factory_configuration_ref` + `factory_unit_index` (numer 1-based, nie litera —

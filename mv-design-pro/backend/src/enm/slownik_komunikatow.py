@@ -239,7 +239,6 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_load_sn:active_power_kw": "Moc czynna P",
     "add_load_sn:p_mw": "Moc czynna P",
     "add_generator_sn:p_mw": "Moc czynna P",
-    "set_dynamic_profile:profile": "Profil dynamiczny",
     "update_element_parameters:source_mode": "Pochodzenie parametrów",
     "update_element_parameters:catalog_namespace": "Kategoria katalogu",
     "add_nn_distribution_board:voltage_kv": "Napięcie znamionowe",  # rozdzielnica-nn/strings.ts napiecie
