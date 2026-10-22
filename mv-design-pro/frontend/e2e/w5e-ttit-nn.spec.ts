@@ -185,7 +185,7 @@ async function otworzSchemat(page: Page, seed: Awaited<ReturnType<typeof zbudujS
       state: {
         activeProjectId: s.projectId, activeProjectName: s.projectName, activeCaseId: s.caseId, activeCaseName: s.caseName,
         activeCaseKind: 'ShortCircuitCase', activeCaseResultStatus: 'NONE', activeSnapshotId: null, activeMode: 'MODEL_EDIT',
-        activeRunId: null, activeAnalysisType: 'SHORT_CIRCUIT', caseManagerOpen: false, issuePanelOpen: false,
+        activeAnalysisType: 'SHORT_CIRCUIT', caseManagerOpen: false, issuePanelOpen: false,
       },
       version: 1,
     }));
