@@ -25,6 +25,11 @@ DELETE_ACTION_OBJECT_LABEL_PL in sldActionExecutor.ts. A roadmap toast was
 never real coverage (the model/screen the user asked for never opens); this
 guard now requires a REAL provider for every registry action, not just the
 'budowa' group the old hint_only check singled out below.
+
+V12K-351 (2026-10-22): the menu entries carry a canon section (Otwórz … Usuń)
+instead of a group; the former 'budowa' group is the sections 'Dodaj' and
+'Operacje'. The dead legacy registry ui/context-menu/contextMenuRegistry.ts was
+deleted; SLD_MENU_REGISTRY is the only menu registry.
 """
 from __future__ import annotations
 
@@ -62,36 +67,50 @@ def require_tokens(path: Path, tokens: list[str]) -> list[str]:
     return [token for token in tokens if token not in content]
 
 
-def extract_sld_registry_ids() -> set[str]:
+def _sld_menu_entries() -> list[tuple[str, str]]:
+    """All (id, section) menu entries declared in SldCommandService.ts.
+
+    V12K-351: the registry is composed of the per-kind arrays of
+    ``export const SLD_MENU_REGISTRY`` AND of the shared helper lists
+    (``POZYCJE_*``) spread into them, so slicing the text from the first mention
+    of the registry name (a doc comment can mention it first) loses entries — the
+    guard measured 3 ids instead of 53 after the canon rework. Every menu entry is
+    an object literal carrying both ``id`` and the required ``section`` field
+    (``SldMenuAction``), so the whole module is parsed for exactly that shape.
+    """
     content = read(SLD_V2_DIR / "command" / "SldCommandService.ts")
-    registry_start = content.find("SLD_MENU_REGISTRY")
-    registry_end = content.find("};", registry_start)
-    if registry_start < 0 or registry_end < 0:
+    if "export const SLD_MENU_REGISTRY" not in content:
         raise RuntimeError("SLD_MENU_REGISTRY not found")
-    registry = content[registry_start:registry_end]
-    return set(re.findall(r"""\bid:\s*['"]([a-z][a-z0-9_-]+)['"]""", registry))
+    pattern = re.compile(
+        r"""\{\s*id:\s*['"]([a-z][a-z0-9_-]+)['"][^{}]*?section:\s*['"]([^'"]+)['"]""",
+        re.DOTALL,
+    )
+    entries = pattern.findall(content)
+    if not entries:
+        raise RuntimeError("SLD_MENU_REGISTRY has no entries with a section")
+    return entries
+
+
+def extract_sld_registry_ids() -> set[str]:
+    return {action_id for action_id, _section in _sld_menu_entries()}
 
 
 def extract_sld_build_action_ids() -> set[str]:
-    """Action ids declared with group: 'budowa' (network-building operations).
+    """Action ids in the model-changing build sections 'Dodaj' and 'Operacje'.
 
     Karta S9-5: a build action promises a change of the network model. Its only
     honest providers are a canonical domain operation (opByAction) or a real
     screen that performs the change (ACTION_TO_SCREEN / dedicated branch). A
     roadmap toast is NOT a provider - the click leaves the model untouched,
     which is exactly the dead position the SLD audit measured (P-7 / B-4).
+    V12K-351: the former group 'budowa' became the canon sections 'Dodaj' and
+    'Operacje' (the same split the executor uses to block preview mode).
     """
-    content = read(SLD_V2_DIR / "command" / "SldCommandService.ts")
-    registry_start = content.find("SLD_MENU_REGISTRY")
-    registry_end = content.find("};", registry_start)
-    if registry_start < 0 or registry_end < 0:
-        raise RuntimeError("SLD_MENU_REGISTRY not found")
-    registry = content[registry_start:registry_end]
-    pattern = re.compile(
-        r"""\{\s*id:\s*['"]([a-z][a-z0-9_-]+)['"][^}]*?group:\s*['"]budowa['"]""",
-        re.DOTALL,
-    )
-    return set(pattern.findall(registry))
+    return {
+        action_id
+        for action_id, section in _sld_menu_entries()
+        if section in ("Dodaj", "Operacje")
+    }
 
 
 def extract_dedicated_branch_ids(content: str) -> set[str]:
@@ -120,15 +139,24 @@ def check_sld_menu_path() -> list[str]:
         ],
     )
     if missing:
-        errors.append(f"SldContextMenuController missing token(s): {', '.join(missing)}")
+        errors.append(
+            f"SldContextMenuController missing token(s): {', '.join(missing)}"
+        )
 
     # F12-A (ARCH-3, spec SLD_CAD_SPEC_V3 par. 10.1): wykonawca akcji i jego
     # tabele routingu (ACTION_TO_SCREEN / opByAction / ROADMAP / DELETE-labels)
     # zyja we WSPOLDZIELONYM ui/sld/shared/sldActionExecutor.ts (jedna prawda).
-    executor_content = read(FRONTEND_SRC / "ui" / "sld" / "shared" / "sldActionExecutor.ts")
+    executor_content = read(
+        FRONTEND_SRC / "ui" / "sld" / "shared" / "sldActionExecutor.ts"
+    )
     for token in [
         "buildSldOperationContext",
         "ACTION_TO_SCREEN",
+        # V12K-351: jeden klasyfikator wykonawcy pozycji menu (testowany na
+        # kazdej pozycji rejestru) i blokada podgladu z sekcji pozycji.
+        "export function wykonawcaAkcjiMenu",
+        "switch (wykonawcaAkcjiMenu(",
+        "czyAkcjaZmieniaModel(actionId, kind)",
         "openOperationForm",
         "openRouteSurface",
     ]:
@@ -150,7 +178,9 @@ def check_sld_menu_path() -> list[str]:
 
     op_ids = extract_string_set(executor_content, "const opByAction")
     screen_ids = extract_string_set(executor_content, "const ACTION_TO_SCREEN")
-    delete_ids = extract_string_set(executor_content, "const DELETE_ACTION_OBJECT_LABEL_PL")
+    delete_ids = extract_string_set(
+        executor_content, "const DELETE_ACTION_OBJECT_LABEL_PL"
+    )
     # Dedykowane galezie wykonawcy poza tabelami routingu (np. 'add-source',
     # 'show-ncrfg', 'show-results', 'insert-gpz') — czytane Z KODU wykonawcy,
     # nie z recznej listy w guardzie (karta S9-5).
@@ -181,12 +211,15 @@ def check_sld_menu_path() -> list[str]:
     if hint_only:
         errors.append(
             "SLD_MENU_REGISTRY build action(s) without a real provider "
-            "(no domain operation, no screen, no dedicated branch): " + ", ".join(hint_only[:60])
+            "(no domain operation, no screen, no dedicated branch): "
+            + ", ".join(hint_only[:60])
         )
 
     print(f"  SLD registry action ids: {len(registry_ids)}")
     print(f"  SLD route-covered ids: {len(covered & registry_ids)}")
-    print(f"  SLD build action ids: {len(build_ids)} (all with a real provider: {not hint_only})")
+    print(
+        f"  SLD build action ids: {len(build_ids)} (all with a real provider: {not hint_only})"
+    )
     return errors
 
 
@@ -220,7 +253,9 @@ def check_modal_registry() -> list[str]:
     # magistrali i operacje łączników, PV/BESS — kreator `zrodlo-oze` (ui2, dostawca
     # w `nn_source_menu_guard.py`). Próg zmierzony do nowej liczby (9 → 6).
     if len(ids) < 6:
-        return [f"Modal registry has only {len(ids)} entries/components; expected at least 6"]
+        return [
+            f"Modal registry has only {len(ids)} entries/components; expected at least 6"
+        ]
     return []
 
 

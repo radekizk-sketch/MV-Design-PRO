@@ -20,7 +20,7 @@ import {
   controlModeLabel,
   interlockBlockedLabel,
 } from '../../field/fieldLabels';
-import type { SldMenuAction } from '../../sld/v2/command/SldCommandService';
+import { SEKCJE_MENU_SLD, type SldMenuAction } from '../../sld/v2/command/SldCommandService';
 import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import type { StanPaneluElementu, StanWynikowElementu } from './stanPaneluElementu';
@@ -54,15 +54,6 @@ export function etykietaElementuKanwy(dane: DaneElementuKanwy): string {
   return dane.kind ? NAZWA_RODZAJU[dane.kind] : 'Element schematu';
 }
 
-const NAZWA_GRUPY: Readonly<Record<NonNullable<SldMenuAction['group']>, string>> = {
-  budowa: 'Budowa',
-  edycja: 'Edycja',
-  widok: 'Widok',
-  usun: 'Usuwanie',
-};
-
-const KOLEJNOSC_GRUP: readonly NonNullable<SldMenuAction['group']>[] = ['budowa', 'edycja', 'widok', 'usun'];
-
 export function PasekDzialanElementu({
   akcje,
   onAkcja,
@@ -71,15 +62,17 @@ export function PasekDzialanElementu({
   readonly onAkcja: (actionId: string) => void;
 }): JSX.Element | null {
   if (akcje.length === 0) return null;
-  const grupy = KOLEJNOSC_GRUP
-    .map((grupa) => ({ grupa, pozycje: akcje.filter((akcja) => (akcja.group ?? 'edycja') === grupa) }))
+  // V12K-351: ten sam kanon sekcji co menu kontekstowe kanwy (`SEKCJE_MENU_SLD`) —
+  // pasek działań i menu pokazują te same pozycje w tych samych sekcjach i kolejności.
+  const grupy = SEKCJE_MENU_SLD
+    .map((grupa) => ({ grupa, pozycje: akcje.filter((akcja) => akcja.section === grupa) }))
     .filter((wpis) => wpis.pozycje.length > 0);
   return (
     <section data-testid="inspektor-dzialania" aria-label="Działania elementu" className="flex flex-col gap-2 border-b px-4 py-3" style={STYL_SEKCJI}>
       <h4 className="font-semibold" style={{ fontSize: 'var(--mvd-font-size-data)' }}>Działania</h4>
       {grupy.map(({ grupa, pozycje }) => (
-        <div key={grupa} role="group" aria-label={NAZWA_GRUPY[grupa]} data-testid={`inspektor-dzialania-${grupa}`} className="flex flex-col gap-1">
-          <span style={{ color: 'var(--mvd-muted)' }}>{NAZWA_GRUPY[grupa]}</span>
+        <div key={grupa} role="group" aria-label={grupa} data-testid={`inspektor-dzialania-${grupa}`} className="flex flex-col gap-1">
+          <span style={{ color: 'var(--mvd-muted)' }}>{grupa}</span>
           <div className="flex flex-wrap gap-1.5">
             {pozycje.map((akcja) => {
               const niedostepna = Boolean(akcja.disabled);
@@ -99,7 +92,7 @@ export function PasekDzialanElementu({
                   aria-describedby={niedostepna ? `inspektor-akcja-${akcja.id}-przyczyna` : undefined}
                   title={przyczyna ?? akcja.labelPl}
                   onClick={niedostepna ? undefined : () => onAkcja(akcja.id)}
-                  style={grupa === 'usun' && !niedostepna ? { color: 'var(--mvd-err)' } : undefined}
+                  style={grupa === 'Usuń' && !niedostepna ? { color: 'var(--mvd-err)' } : undefined}
                 >
                   {akcja.labelPl}
                   {przyczyna && (

@@ -191,7 +191,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
             entityRef: elementId,
             entityType: 'segment',
             subjectKind: 'helper_context',
-            payload: { defaultCard: 'trasa' },
+            payload: { defaultCard: 'route' },
           }),
       };
     }

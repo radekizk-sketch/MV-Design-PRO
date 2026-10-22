@@ -2,8 +2,9 @@
  * SldContextMenuController — most między SLD_MENU_REGISTRY (`SldCommandService`)
  * a komponentem `<ContextMenu>` w UI/context-menu.
  *
- * Etap 1 dostarcza klikalne menu kontekstowe dla wszystkich 10 typów obiektów SLD
- * (background/gpz/section/bay/cable_segment_sn/overhead_line_sn/station/der_pv/der_bess/der_fw).
+ * Dostarcza klikalne menu kontekstowe dla każdego rodzaju obiektu SLD
+ * (`SldElementKindForMenu`). Pozycje idą w kolejności rejestru, z nagłówkiem
+ * sekcji kanonu (`SEKCJE_MENU_SLD`, V12K-351) przy każdej zmianie sekcji.
  *
  * Container (SldWorkspaceContainer) podaje:
  *   - aktywne żądanie menu (request)
@@ -17,13 +18,12 @@
 import { useCallback } from 'react';
 
 import {
-  SLD_MENU_REGISTRY,
   getMenuActions,
   type SldElementKindForMenu,
   type SldMenuAction,
   type StanLacznikaMenu,
 } from '../sld/v2/command/SldCommandService';
-import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
+import type { ContextMenuAction, OperatingMode } from '../types';
 import { publicTechnicalLabel } from '../shared/publicTechnicalLabels';
 import { ContextMenu } from './ContextMenu';
 
@@ -93,33 +93,6 @@ const KIND_HEADER_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   der: 'Źródło OZE / generator',
 };
 
-/** Mapowanie SldElementKindForMenu → ElementType (używane wyłącznie do nagłówka fallback). */
-const KIND_TO_ELEMENT_TYPE: Readonly<Record<SldElementKindForMenu, ElementType>> = {
-  background: 'Bus',
-  gpz: 'Source',
-  section: 'Bus',
-  bay: 'BaySN',
-  apparatus: 'Switch',
-  cable_segment_sn: 'LineBranch',
-  overhead_line_sn: 'LineBranch',
-  station: 'Station',
-  zksn: 'ZKSN',
-  branch_pole: 'BranchPole',
-  der_pv: 'PVInverter',
-  der_bess: 'BESSInverter',
-  der_fw: 'Generator',
-  // Karta SLD-P (GAP P-1): TA SAMA wartość co `elementTypeForKind('der')` w
-  // `SldCanvasV3Workspace.tsx` (jedna prawda mapowania kind→ElementType).
-  der: 'Generator',
-};
-
-const SECTION_LABEL_PL: Readonly<Record<NonNullable<SldMenuAction['group']>, string>> = {
-  budowa: 'Budowa',
-  edycja: 'Edycja',
-  widok: 'Widok',
-  usun: 'Usuń',
-};
-
 function toContextMenuActions(
   source: readonly SldMenuAction[],
   bind: (action: SldMenuAction) => () => void,
@@ -128,9 +101,8 @@ function toContextMenuActions(
     id: action.id,
     actionKey: action.id,
     label: action.labelPl,
-    section: action.group ? SECTION_LABEL_PL[action.group] : undefined,
+    section: action.section,
     enabled: !action.disabled,
-    visible: true,
     blockedReason: action.disabledReasonPl,
     handler: bind(action),
     testId: `sld-menu-${action.id}`,
@@ -159,15 +131,12 @@ export function SldContextMenuController(
     handleActionClick,
   );
 
+  // `getMenuActions` mapuje pozycje `SLD_MENU_REGISTRY` 1:1 — pusta lista to rodzaj
+  // obiektu bez menu, więc menu się nie otwiera (zamiast pustej ramki).
   if (actions.length === 0) {
-    // Bezpiecznik — registry zawsze ma min. 3 akcje per kind, ale zachowujemy spójność.
-    const defaultActions = SLD_MENU_REGISTRY[request.kind] ?? [];
-    if (defaultActions.length === 0) {
-      return null;
-    }
+    return null;
   }
 
-  const elementType = KIND_TO_ELEMENT_TYPE[request.kind];
   const publicElementName = elementName
     ? publicTechnicalLabel(elementName, KIND_HEADER_PL[request.kind])
     : null;
@@ -180,8 +149,6 @@ export function SldContextMenuController(
       isOpen={true}
       x={request.clientX}
       y={request.clientY}
-      elementType={elementType}
-      elementName={publicElementName ?? KIND_HEADER_PL[request.kind]}
       headerText={headerText}
       mode={mode}
       actions={actions}

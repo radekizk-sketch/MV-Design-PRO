@@ -15,8 +15,9 @@ import {
 describe('technical-icons - rejestr ikon technicznych', () => {
   it('każdy obszar, ekran, obiekt i typ analityczny ma ikonę w rejestrze', () => {
     // D1: rejestr obszarow `ui/navigation/areaRegistry` skasowany (druga
-    // nawigacja bez konsumentow). Ikony `ikona-obszar-*` ZOSTAJA — czyta je
-    // `ui/context-menu/contextMenuRegistry`. Petla po CALYM rejestrze ikon jest
+    // nawigacja bez konsumentow). V12K-351: martwy rejestr menu
+    // `ui/context-menu/contextMenuRegistry`, ktory jako jedyny wskazywal ikony
+    // `ikona-obszar-*`, skasowany; zywe menu SLD nie rysuje ikon. Petla po CALYM rejestrze ikon jest
     // nadzbiorem dawnej petli po dziewieciu obszarach: kazdy zarejestrowany
     // klucz musi mieć rysunek.
     for (const icon of Object.keys(technicalIconRegistry)) {

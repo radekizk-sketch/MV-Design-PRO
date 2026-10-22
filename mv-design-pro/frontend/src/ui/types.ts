@@ -209,33 +209,18 @@ export interface PropertyGridDraft {
 }
 
 /**
- * Context menu action definition.
+ * Pozycja menu kontekstowego schematu (V12K-351: wyłącznie pola, które wypełnia
+ * jedyny producent — `SldContextMenuController` z rejestru `SLD_MENU_REGISTRY`).
  */
 export interface ContextMenuAction {
   id: string;
-  actionKey?: string;
+  actionKey: string;
   label: string;
-  section?: string;
-  icon?: string;
+  section: string;
   enabled: boolean;
-  visible: boolean;
   blockedReason?: string;
-  separator?: boolean;
-  submenu?: ContextMenuAction[];
-  handler?: () => void;
-  initialFormData?: Record<string, unknown>;
-  testId?: string;
-}
-
-/**
- * Context menu configuration for an element.
- */
-export interface ContextMenuConfig {
-  elementId: string;
-  elementType: ElementType;
-  elementName: string;
-  mode: OperatingMode;
-  actions: ContextMenuAction[];
+  handler: () => void;
+  testId: string;
 }
 
 // ============================================================================

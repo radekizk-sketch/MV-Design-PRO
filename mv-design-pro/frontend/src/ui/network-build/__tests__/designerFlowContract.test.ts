@@ -13,7 +13,8 @@
  *   8. Dodaj źródło PV/BESS/FW         (station → add-source)
  *
  * istnieje w `SLD_MENU_REGISTRY` w poprawnym typie elementu, ma polską etykietę
- * w sekcji `budowa` lub `edycja`, i nie jest pomyłkowo umieszczona w innym typie.
+ * w sekcji kanonu „Dodaj" albo „Operacje" (V12K-351: sekcje `SEKCJE_MENU_SLD`; dawna grupa
+ * `budowa`), i nie jest pomyłkowo umieszczona w innym typie.
  *
  * Jeżeli ten test padnie:
  *  - albo refaktor przeniósł akcję bez aktualizacji rejestru,
@@ -35,7 +36,7 @@ interface FlowStepContract {
   readonly description: string;
   readonly elementKind: SldElementKindForMenu;
   readonly actionId: string;
-  readonly expectedGroup: SldMenuAction['group'];
+  readonly expectedSection: SldMenuAction['section'];
   readonly labelMatcher: RegExp;
 }
 
@@ -45,7 +46,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Pusta kanwa: wstaw GPZ jako pierwszy element',
     elementKind: 'background',
     actionId: 'insert-gpz',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /wstaw .*(gpz|główny punkt zasilani)/i,
   },
   {
@@ -53,7 +54,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'GPZ: dodaj sekcję rozdzielni SN',
     elementKind: 'gpz',
     actionId: 'add-section',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /dodaj sekcję rozdzielni/i,
   },
   {
@@ -61,7 +62,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Sekcja: dodaj pole SN',
     elementKind: 'section',
     actionId: 'add-bay',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /dodaj pole sn/i,
   },
   {
@@ -69,7 +70,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Pole SN: rozpocznij odgałęzienie (wyprowadź ciąg)',
     elementKind: 'bay',
     actionId: 'start-branch',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /rozpocznij odgałęzienie/i,
   },
   {
@@ -77,7 +78,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Pole SN: zakończ ciąg w stacji (append-on-endpoint)',
     elementKind: 'bay',
     actionId: 'append-station-on-endpoint',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /zakończ ciąg w stacji/i,
   },
   {
@@ -85,7 +86,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Aparat (głowica kablowa): wyprowadź ciąg główny',
     elementKind: 'apparatus',
     actionId: 'extend-trunk',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /wyprowadź ciąg główny/i,
   },
   {
@@ -93,7 +94,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Odcinek kabla SN: zakończ stacją SN/nN',
     elementKind: 'cable_segment_sn',
     actionId: 'insert-station',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /zakończ odcinek stacją/i,
   },
   {
@@ -101,7 +102,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Odcinek kabla SN: zakończ w ZK SN',
     elementKind: 'cable_segment_sn',
     actionId: 'insert-zksn',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /zakończ odcinek w zk/i,
   },
   {
@@ -109,7 +110,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Odcinek kabla SN: kontynuuj ciąg główny',
     elementKind: 'cable_segment_sn',
     actionId: 'continue-trunk-from-endpoint',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /kontynuuj ciąg główny/i,
   },
   {
@@ -117,7 +118,9 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Odcinek kabla SN: podziel odcinek (świadomy split z preview)',
     elementKind: 'cable_segment_sn',
     actionId: 'conscious-split-on-segment',
-    expectedGroup: 'budowa',
+    // V12K-351: podział istniejącego odcinka to operacja topologiczna (sekcja „Operacje"),
+    // nie dodanie nowego obiektu.
+    expectedSection: 'Operacje',
     labelMatcher: /podziel odcinek/i,
   },
   {
@@ -125,7 +128,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Odcinek napowietrzny: zakończ stacją',
     elementKind: 'overhead_line_sn',
     actionId: 'insert-station',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /zakończ odcinek stacją/i,
   },
   {
@@ -133,7 +136,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Stacja: kontynuuj ciąg główny dalej',
     elementKind: 'station',
     actionId: 'continue-trunk',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /kontynuuj ciąg główny/i,
   },
   {
@@ -141,7 +144,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Stacja: rozpocznij odgałęzienie',
     elementKind: 'station',
     actionId: 'start-branch',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /rozpocznij odgałęzienie/i,
   },
   {
@@ -149,7 +152,7 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
     description: 'Stacja: dodaj źródło (PV/BESS/FW)',
     elementKind: 'station',
     actionId: 'add-source',
-    expectedGroup: 'budowa',
+    expectedSection: 'Dodaj',
     labelMatcher: /dodaj źródło/i,
   },
 ];
@@ -157,15 +160,15 @@ const DESIGNER_FLOW: readonly FlowStepContract[] = [
 describe('Designer flow contract — kanon naturalnego flow projektanta SN', () => {
   it.each(DESIGNER_FLOW)(
     'Krok $step: $description',
-    ({ elementKind, actionId, expectedGroup, labelMatcher }) => {
+    ({ elementKind, actionId, expectedSection, labelMatcher }) => {
       const menuActions = SLD_MENU_REGISTRY[elementKind];
       const action = menuActions.find((a) => a.id === actionId);
 
       expect(action, `Akcja "${actionId}" musi istnieć w menu typu "${elementKind}"`).toBeDefined();
       if (!action) return;
 
-      expect(action.group, `Akcja "${actionId}" musi być w grupie "${expectedGroup}"`).toBe(
-        expectedGroup,
+      expect(action.section, `Akcja "${actionId}" musi być w sekcji "${expectedSection}"`).toBe(
+        expectedSection,
       );
       expect(
         action.labelPl,
@@ -211,24 +214,24 @@ describe('Designer flow contract — kanon naturalnego flow projektanta SN', () 
     }
   });
 
-  it('Każda akcja typu "usun" jest oznaczona grupą "usun"', () => {
+  it('Każda akcja typu "delete-" jest w sekcji "Usuń"', () => {
     for (const [kind, actions] of Object.entries(SLD_MENU_REGISTRY)) {
       for (const action of actions) {
         if (action.id.startsWith('delete-')) {
           expect(
-            action.group,
-            `Akcja delete "${action.id}" w "${kind}" musi mieć grupę "usun"`,
-          ).toBe('usun');
+            action.section,
+            `Akcja delete "${action.id}" w "${kind}" musi być w sekcji "Usuń"`,
+          ).toBe('Usuń');
         }
       }
     }
   });
 
-  it('Każda akcja w grupie "budowa" jest dostępna w jasno zdefiniowanym kontekście', () => {
+  it('Każda akcja w sekcji "Dodaj" jest dostępna w jasno zdefiniowanym kontekście', () => {
     // Wszystkie akcje budowy są publiczne (visible w widoku edycji) — bez "show-".
     for (const actions of Object.values(SLD_MENU_REGISTRY)) {
       for (const action of actions) {
-        if (action.group === 'budowa') {
+        if (action.section === 'Dodaj') {
           expect(action.id.startsWith('show-'), `Akcja budowy "${action.id}" nie może być view-only`)
             .toBe(false);
         }

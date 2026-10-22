@@ -36,7 +36,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # ---------------------------------------------------------------------------
 
 SLD_COMMAND_SERVICE_PATH = (
-    REPO_ROOT / "frontend" / "src" / "ui" / "sld" / "v2" / "command" / "SldCommandService.ts"
+    REPO_ROOT
+    / "frontend"
+    / "src"
+    / "ui"
+    / "sld"
+    / "v2"
+    / "command"
+    / "SldCommandService.ts"
 )
 SLD_ACTION_EXECUTOR_PATH = (
     REPO_ROOT / "frontend" / "src" / "ui" / "sld" / "shared" / "sldActionExecutor.ts"
@@ -123,11 +130,21 @@ class Violation(NamedTuple):
 
 
 def extract_registry_block(content: str) -> str | None:
-    """Zwraca tekst literalu SLD_MENU_REGISTRY (do domykajacego `};`)."""
-    start = content.find("SLD_MENU_REGISTRY")
-    if start < 0:
+    """Zwraca tekst pozycji menu: listy pomocnicze `POZYCJE_*` + literal SLD_MENU_REGISTRY.
+
+    V12K-351: rejestr sklada sie z tablic per rodzaj ORAZ wspolnych list `POZYCJE_*`
+    rozwijanych w nie (`...POZYCJE_ZRODLA_WYNIKI`), a nazwa rejestru pada wczesniej
+    w komentarzu dokumentacyjnym — kotwica na pierwszym wystapieniu nazwy gubila
+    kategorie `station`. Blok zaczyna sie od pierwszej deklaracji listy pozycji
+    i konczy na domykajacym `};` rejestru, wiec kontrola etykiet obejmuje wszystkie
+    pozycje.
+    """
+    registry_start = content.find("export const SLD_MENU_REGISTRY")
+    if registry_start < 0:
         return None
-    end = content.find("};", start)
+    helper_start = content.find("const POZYCJE_")
+    start = helper_start if 0 <= helper_start < registry_start else registry_start
+    end = content.find("};", registry_start)
     if end < 0:
         return None
     return content[start:end]
@@ -150,7 +167,9 @@ def check_station_menu_entries(registry: str) -> list[Violation]:
                 message="Nie znaleziono kategorii `station` w SLD_MENU_REGISTRY",
             )
         ]
-    station_ids = set(re.findall(r"""\bid:\s*['"]([a-z][a-z0-9_-]+)['"]""", station_block))
+    station_ids = set(
+        re.findall(r"""\bid:\s*['"]([a-z][a-z0-9_-]+)['"]""", station_block)
+    )
     for action_id in REQUIRED_STATION_ACTION_IDS:
         if action_id not in station_ids:
             violations.append(
@@ -219,7 +238,9 @@ def check_required_modals() -> list[Violation]:
     violations = []
     for zdolnosc, sciezki in DOSTAWCY_ZRODEL_NN:
         zywe = [
-            p for p in (REPO_ROOT / s for s in sciezki) if p.exists() and p.stat().st_size >= 100
+            p
+            for p in (REPO_ROOT / s for s in sciezki)
+            if p.exists() and p.stat().st_size >= 100
         ]
         if not zywe:
             violations.append(

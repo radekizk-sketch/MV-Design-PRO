@@ -625,6 +625,14 @@ Akcje: wyprowadź odcinek kablowy, wyprowadź odcinek napowietrzny, edytuj zabez
 3. Każda akcja ma mieć `label`, `section`, `icon`, `enabledReason`, `blockedReason` i `handler`.
 4. Dodać testy menu dla pola SN i źródła.
 
+Stan (V12K-351, 2026-10-22): kanon menu obowiązuje na żywym rejestrze `SLD_MENU_REGISTRY`
+(`frontend/src/ui/sld/v2/command/SldCommandService.ts`); osobny `contextMenuRegistry.ts` był martwy
+(tylko konsumenci testowi) i został skasowany. Każda pozycja ma `labelPl`, wymagane `section`,
+`disabledReasonPl` (powód blokady) i wykonawcę w `sldActionExecutor.ts`. Żywe menu nie rysuje ikon
+(pola `icon` brak) — ikony w menu to decyzja wizualna (B-02), nie pozycja funkcjonalna. Zakres per
+obiekt i pozycje pominięte z regułą phantom: `docs/v12xx/SLD_CAD_ENGINE_V12.md` „Kanoniczne menu
+kontekstowe”.
+
 ### 16.7 Raporty i uzasadnienia
 
 1. Nazwy raportów muszą być formalne: raport rozpływu, raport zwarciowy, raport zgodności, raport audytowy.

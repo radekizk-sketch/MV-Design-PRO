@@ -157,6 +157,32 @@ describe('Etap 4 — surface\'y sieci terenowej', () => {
     expect(screen.getAllByText(/AFL-6 50 mm²/).length).toBeGreaterThan(0);
   });
 
+  // V12K-351: pozycje menu odcinka obiecują KONKRETNĄ kartę (deep-link `payload.defaultCard`,
+  // `ACTION_DEFAULT_CARD` wykonawcy, pasek inspektora „Otwórz konfigurację odcinka (trasa)").
+  // Dotąd konfigurator ignorował payload i zawsze otwierał „Identyfikację".
+  it.each([
+    ['catalog', 'segment-content-catalog'],
+    ['route', 'segment-content-route'],
+    ['rating', 'segment-content-rating'],
+  ] as const)('SnSegmentSurface otwiera kartę z deep-linku defaultCard=%s', (karta, testId) => {
+    render(
+      <SnSegmentSurface
+        surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: karta } } }}
+      />,
+    );
+    expect(screen.getByTestId(testId)).toBeInTheDocument();
+    expect(screen.getByTestId(`segment-tab-${karta}`)).toHaveAttribute('data-active', 'true');
+  });
+
+  it('SnSegmentSurface: klucz karty spoza listy otwiera kartę domyślną „Identyfikacja"', () => {
+    render(
+      <SnSegmentSurface
+        surface={{ ...minimalSurface, routeState: { route: 'unknown', payload: { defaultCard: 'trasa' } } }}
+      />,
+    );
+    expect(screen.getByTestId('segment-tab-identification')).toHaveAttribute('data-active', 'true');
+  });
+
   it('SnSegmentSurface otwiera zakończenie stacją tylko dla wolnego zacisku końcowego', () => {
     useSnapshotStore.getState().setSnapshot({ snapshot: buildSnapshot(false) } as never);
 
