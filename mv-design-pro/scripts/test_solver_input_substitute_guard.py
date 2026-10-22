@@ -1901,7 +1901,25 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # zbiorow +2 (`wklady_pominiete` — addytywne pole wyniku SC z zestawieniem wkladow
     # pominietych na podstawie tolerancji numerycznej, `wklady_pominiete_json` — kolumna
     # artefaktu rozplywu), -0. PASS niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4286." in wyjscie, wyjscie
+    # Karta LINIA-110 (2026-10-22): 4286 -> 4339 — POMIAR `contract_fields()` na bazie karty
+    # `f121c5e79` (`git archive`: 4286, pin zgodny) i na drzewie karty (4339). Roznica zbiorow
+    # +53, -0: katalog przewodow linii 110 kV (`overhead_conductor_types`, `przeznaczenie`,
+    # `srednica_mm`, `r20_dc_ohm_per_km`, `alfa_1_per_k`, `gmr_mm`, `warstwy_al`,
+    # `srednica_drutu_al_mm`, `srednica_drutu_st_mm`, `srednica_rdzenia_mm`,
+    # `liczba_drutow_st`, `przekroj_stali_mm2`, `masa_kg_per_km`, `wytrzymalosc_kn`), geometria
+    # slupa w modelu (`geometria_slupa`, `fazy`, `odgromowe`, `x_m`, `y_m`, `liczba_w_wiazce`,
+    # `odstep_wiazki_m`, `przewod_odgromowy_ref`, `rezystywnosc_gruntu_ohm_m`), proweniencja
+    # i wynik solvera parametrow linii (`parametry_z_geometrii`, `r1_ohm_per_km`,
+    # `x1_ohm_per_km`, `b1_s_per_km`, `b0_s_per_km`, `r1_temperatura_ohm_per_km`,
+    # `r0_bez_odgromowych_ohm_per_km`, `x0_bez_odgromowych_ohm_per_km`,
+    # `x1_kontrolne_ohm_per_km`, `gmd_m`, `gmr_fazy_m`, `gmr_przewodu_m`,
+    # `promien_zastepczy_fazy_m`, `glebokosc_wnikania_m`, `liczba_odgromowych`,
+    # `temperatura_przewodu_c`, `wersja_metody`, `podstawienie_latex`, `wynik_latex`,
+    # `przewod_fazowy`, `przewod_odgromowy`, `geometria`, `rezystywnosc_gruntu`, `tabliczka`,
+    # `wartosci_robocze`, `nazwa_linii`, `zgodny_z_modelem`) oraz pasma wiarygodnosci
+    # (`ocena_wiarygodnosci`, `w_pasmie`, `wyjasnienie_pl`). PASS niezmieniony (zero
+    # podstawien).
+    assert "Pol kontraktow wejsciowych: 4339." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2147,7 +2165,14 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 13 (2026-10-21): 577 bazy + `core/czas_wylaczenia.py` +
         # `catalog/wartosci_robocze.py` + 1 plik application wniesiony partia 12 bez przypiecia
         # = 580. POMIAR guardem na drzewie scalenia.
-        "Przeskanowano 580 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta LINIA-110 (2026-10-22): 580 -> 585 (+2 network_model:
+        # `solvers/parametry_linii_napowietrznej.py`, `catalog/hv_overhead_conductor_catalog.py`;
+        # +1 enm: `enm/parametry_linii_wn.py`; +2 application netto: `parametry_linii_wn.py`,
+        # `proof_engine/packs/parametry_linii_110kv.py`, `proof_engine/registries/
+        # ohl_equations.py` dodane, `proof_engine/registries/ls_equations.py` skasowany);
+        # dlug i wykluczenia BEZ ZMIAN. POMIAR guardem na bazie `f121c5e79` (`git archive`:
+        # 580, pin zgodny) i na drzewie karty (585).
+        "Przeskanowano 585 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2332,7 +2357,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
-        "  network_model: pliki_skanowane=186, dlug=10 plikow/suma 67, "
+        # Karta LINIA-110: 186 -> 188 (+2, patrz pin plikow wyzej). POMIAR.
+        "  network_model: pliki_skanowane=188, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
@@ -2393,7 +2419,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia integracji 9 (+ B01-RUNDA-3): enm 63 + 1 = 64. POMIAR guardem na drzewie partii.
         # Partia integracji 11 (+ WSPOLCZYNNIK-C-JEDEN-NOSNIK): enm 64 + 1 (`enm/tolerancja_nn.py`)
         # = 65; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie partii.
-        "  enm: pliki_skanowane=65, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta LINIA-110: enm 65 -> 66 (+1 `enm/parametry_linii_wn.py`). POMIAR.
+        "  enm: pliki_skanowane=66, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).
@@ -2495,7 +2522,8 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # domyslne m/n w trzech plikach dowodu zwarciowego); api: pomiar bazy karty
         # `4ccfa9320` = 64 pliki (pin 63 byl czerwony na bazie), karta pliku nie dodaje.
         # Scalenie partii 13: application 253 -> 254 (plik partii 12 bez przypiecia). POMIAR.
-        "  application: pliki_skanowane=254, dlug=27 plikow/suma 81, "
+        # Karta LINIA-110: application 254 -> 256 (+3 dodane, -1 skasowany). POMIAR.
+        "  application: pliki_skanowane=256, dlug=27 plikow/suma 81, "
         "wykluczenia=4 plikow/suma 10",
         # Karta WARTOSC-ROBOCZA-1 (2026-10-21): api 63 -> 64 (+1 zastany na bazie `6c83bce89`:
         # `api/odmowa_http.py` partii 10 bez przypiecia); dlug i wykluczenia BEZ ZMIAN. POMIAR.

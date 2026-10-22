@@ -121,6 +121,9 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
   'ring.endpoints_missing': formularz('connect_secondary_ring_sn'),
   'ring.nop_required': formularz('set_normal_open_point'),
   'branch.zero_sequence_missing': EDYCJA,
+  // Linia 110 kV z wartością roboczą geometrii słupa: formularz parametrów linii (sekcja linii
+  // 110 kV — przewód z katalogu i geometria słupa), kursor w pierwszym polu geometrii.
+  'line.geometria_wartosc_robocza': EDYCJA,
   // --- Stacje i pola --------------------------------------------------------------
   'station.type_invalid': EDYCJA,
   // W043: deklaracja rodzaju wobec topologii — edycja deklaracji z podpowiedzią ładunku

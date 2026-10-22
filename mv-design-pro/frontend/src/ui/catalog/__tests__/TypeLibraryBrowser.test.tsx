@@ -10,6 +10,7 @@ vi.mock('../api');
 
 const TAB_LABELS = [
   'Typy linii napowietrznych',
+  'Typy przewodów linii 110 kV',
   'Typy kabli SN',
   'Typy zasilania systemowego SN',
   'Typy transformatorów SN/nN',
@@ -58,6 +59,37 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       voltage_rating_kv: 15,
       conductor_material: 'ACSR',
       cross_section_mm2: 120,
+    },
+  ],
+  HV_OVERHEAD_CONDUCTOR: [
+    {
+      id: 'przewod-wn-243-al1-39-st1a',
+      name: 'AFL-6 240 mm² (243-AL1/39-ST1A)',
+      oznaczenie: '243-AL1/39-ST1A',
+      przeznaczenie: 'FAZOWY',
+      conductor_material: 'AL/ST',
+      cross_section_mm2: 243,
+      przekroj_stali_mm2: 39.5,
+      srednica_mm: 21.8,
+      warstwy_al: [6, 12, 18],
+      liczba_drutow_al: 26,
+      liczba_drutow_st: 7,
+      srednica_drutu_al_mm: 3.45,
+      srednica_drutu_st_mm: 2.68,
+      srednica_rdzenia_mm: 8.04,
+      r20_dc_ohm_per_km: 0.1188,
+      alfa_1_per_k: 0.00403,
+      gmr_mm: null,
+      masa_kg_per_km: 987,
+      wytrzymalosc_kn: 86.7,
+      voltage_rating_kv: 110,
+      max_temperature_c: 80,
+      rated_current_a: 645,
+      jth_1s_a_per_mm2: 91,
+      short_circuit_temperature_c: 200,
+      thermal_source_reference: 'PN-EN 50182',
+      standard: 'PN-EN 50182',
+      source_reference: 'PN-EN 50182:2002, tablica F.17',
     },
   ],
   CABLE: [
@@ -354,7 +386,7 @@ describe('TypeLibraryBrowser', () => {
     });
 
     expect(screen.getByText('Biblioteka typów')).toBeInTheDocument();
-    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('Typy'))).toHaveLength(17);
+    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('Typy'))).toHaveLength(18);
     for (const label of TAB_LABELS) {
       expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument();
     }
@@ -370,6 +402,21 @@ describe('TypeLibraryBrowser', () => {
     expect(await screen.findByText('ACSR 240')).toBeInTheDocument();
     expect(screen.getAllByText('ABC Cables')).toHaveLength(2);
     expect(screen.getByRole('cell', { name: /R=0\.12 Ohm\/km .* In=645 A/ })).toBeInTheDocument();
+  });
+
+  it('zakładka przewodów linii 110 kV pobiera kategorię HV_OVERHEAD_CONDUCTOR i streszcza dane wyrobu (bez impedancji linii)', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /Typy przewodów linii 110 kV/i }));
+
+    await waitFor(() => {
+      expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('HV_OVERHEAD_CONDUCTOR');
+    });
+    expect(await screen.findByText('AFL-6 240 mm² (243-AL1/39-ST1A)')).toBeInTheDocument();
+    expect(
+      screen.getByRole('cell', { name: /243-AL1\/39-ST1A · przewód fazowy · R20=.* Ohm\/km · d=.* mm/ }),
+    ).toBeInTheDocument();
   });
 
   it('zakładka wyłączników różnicowoprądowych nN pobiera kategorię LV_RCD i streszcza I_Δn, typ, In, t_a', async () => {

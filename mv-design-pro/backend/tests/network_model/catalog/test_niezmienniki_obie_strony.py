@@ -46,6 +46,7 @@ from network_model.catalog.types import (
     ConverterType,
     LVFuseLinkType,
     LVRcdType,
+    OverheadConductorType,
     _normalize_catalog_status,
     _normalize_verification_status,
     _validate_float_range,
@@ -511,7 +512,45 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5),
         lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5, t_nieczuly_min_s=0.13),
     ),
+    # Karta LINIA-110: GMR równy promieniowi przewodu jest fizycznie niemożliwy (indukcyjność
+    # wewnętrzna ≤ 0); GMR tuż poniżej promienia — nietypowy, lecz legalny.
+    "KAT-T-048": (
+        lambda: _przewod_wn(gmr_mm=10.9),
+        lambda: _przewod_wn(gmr_mm=10.8),
+    ),
+    # Budowa 2 % niezgodna ze średnicą tablicy — odmowa; 0,9 % (zaokrąglenia tablicy) — legalna.
+    "KAT-T-049": (
+        lambda: _przewod_wn(srednica_mm=21.8 * 1.02),
+        lambda: _przewod_wn(srednica_mm=21.8 * 1.009),
+    ),
 }
+
+
+def _przewod_wn(**zmiany: Any) -> OverheadConductorType:
+    """Przewód linii 110 kV z danymi TESTOWYMI (budowa 26 drutów Al na rdzeniu 8,04 mm)."""
+    pola: dict[str, Any] = {
+        "id": "przewod_test",
+        "name": "Przewód testowy",
+        "oznaczenie": "243-AL1/39-ST1A",
+        "przeznaczenie": "FAZOWY",
+        "conductor_material": "AL_ST",
+        "cross_section_mm2": 243.1,
+        "przekroj_stali_mm2": 39.5,
+        "srednica_mm": 21.8,
+        "warstwy_al": (10, 16),
+        "liczba_drutow_st": 7,
+        "srednica_drutu_al_mm": 3.45,
+        "srednica_drutu_st_mm": 2.68,
+        "srednica_rdzenia_mm": 8.04,
+        "r20_dc_ohm_per_km": 0.1188,
+        "alfa_1_per_k": 0.004,
+        "masa_kg_per_km": 980.1,
+        "wytrzymalosc_kn": 85.12,
+        "voltage_rating_kv": 110.0,
+        "max_temperature_c": 80.0,
+    }
+    pola.update(zmiany)
+    return OverheadConductorType(**pola)
 
 
 def _rcd(**zmiany: Any) -> LVRcdType:

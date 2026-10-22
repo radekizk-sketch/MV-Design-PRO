@@ -378,6 +378,10 @@ PRZESTRZENIE_BEZ_SEKCJI: Mapping[str, str] = MappingProxyType(
         "KARTA_WIDMOWA": (
             "rekord danych sekcji harmonic/supraharmonic typu przekształtnika, nie urządzenie"
         ),
+        "PRZEWOD_LINII_WN": (
+            "przewód linii 110 kV — dane wyrobu wejściowe obliczenia; model obwodu linii "
+            "(R′, X′, B′, Z′0) powstaje z geometrii słupa projektu, nie z typu przewodu"
+        ),
     }
 )
 

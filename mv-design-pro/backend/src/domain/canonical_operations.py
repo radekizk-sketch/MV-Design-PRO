@@ -2089,6 +2089,28 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         ),
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "lv_voltage_tolerance"},
     ),
+    # Karta LINIA-110 (zasada nr 4): linia 110 kV z przewodem z katalogu PRZEWOD_LINII_WN ma
+    # R′, X′, B′ i Z′0 policzone z geometrii słupa; składowe niepodane w projekcie (położenie
+    # faz, przewód odgromowy, rezystywność gruntu) biorą wartość roboczą rejestru
+    # `network_model.catalog.wartosci_robocze` (jakość ESTIMATED, kompletność NIEPELNY). Brak
+    # geometrii NIE blokuje obliczeń — bieg niesie założenie tego kodu
+    # (`enm.parametry_linii_wn.zalozenia_linii_wn`) z linią i drogą zmiany wartości.
+    "line.geometria_wartosc_robocza": ReadinessCodeSpec(
+        code="line.geometria_wartosc_robocza",
+        area=ReadinessArea.TOPOLOGY,
+        priority=3,
+        level=ReadinessLevel.INFO,
+        message_pl=(
+            "Linia 110 kV liczona z wartością roboczą geometrii słupa, przewodu odgromowego albo "
+            "rezystywności gruntu — podaj geometrię słupa z projektu w parametrach linii i "
+            "przelicz"
+        ),
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "geometria_slupa",
+        },
+    ),
     # Karta TB-WARTOSC-ROBOCZA (B-01 (n), zasada nr 4, V12K-351): czas wyłączenia t_b = t_min
     # (najkrótszy czas zadziałania zabezpieczenia + czas własny wyłącznika) rozstrzyga się PER
     # PUNKT ZWARCIA: scenariusz projektanta > najkrótszy czas wyłączenia pól lokalnych >

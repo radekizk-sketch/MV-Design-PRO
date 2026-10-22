@@ -86,7 +86,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # + karta WSPOLCZYNNIK-C-JEDEN-NOSNIK: tolerancja napięcia sieci nN (wiersz nN tabeli 1
     # IEC 60909-0) — podana zmienia c węzłów nN i K_T, więc zmienia odcisk.
     "transformers": ("lv_earthing_system", "lv_voltage_tolerance"),
-    "branches": ("screen_bonding",),
+    # + karta LINIA-110: geometria słupa linii 110 kV i proweniencja parametrów z geometrii
+    # (`None` = linia bez obliczenia z geometrii — każda linia SN sprzed karty).
+    "branches": ("screen_bonding", "geometria_slupa", "parametry_z_geometrii"),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
     # dla przyszlego solvera W6-2 (jeszcze nie istnieje) — nie jest trescia modelu

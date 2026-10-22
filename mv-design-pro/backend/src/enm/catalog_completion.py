@@ -5,7 +5,19 @@ from hashlib import sha256
 from typing import Any
 
 from enm.katalog_projektu import katalog_dla_modelu
-from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLine
+from enm.models import (
+    BranchRating,
+    Cable,
+    EnergyNetworkModel,
+    Load,
+    OverheadLine,
+    ParametryLiniiZGeometrii,
+)
+from enm.parametry_linii_wn import (
+    POLA_Z_GEOMETRII,
+    tabliczka_przewodu_linii_wn,
+    zastosuj_parametry_z_geometrii,
+)
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, LoadType
@@ -317,7 +329,9 @@ def _odcinki_do_materializacji(enm: EnergyNetworkModel, catalog: CatalogReposito
             "catalog_item_version": binding.catalog_item_version,
             "catalog_namespace": namespace,
         }
-        if not _branch_has_materialized_values(branch, materialized):
+        if not _branch_has_materialized_values(
+            branch, materialized, enm.header.defaults.frequency_hz
+        ):
             return True
     return False
 
@@ -377,7 +391,7 @@ def complete_branch_catalog_materialization(
             "catalog_item_version": binding.catalog_item_version,
             "catalog_namespace": namespace,
         }
-        if _branch_has_materialized_values(branch, materialized):
+        if _branch_has_materialized_values(branch, materialized, enm.header.defaults.frequency_hz):
             continue
 
         branch.materialized_params = materialized
@@ -386,6 +400,8 @@ def complete_branch_catalog_materialization(
         branch.parameter_source = "OVERRIDE" if branch.overrides else "CATALOG"
         branch.source_mode = "KATALOG"
         _apply_materialized_branch_values(branch, materialized, enm.header.defaults.frequency_hz)
+        if isinstance(branch, OverheadLine) and tabliczka_przewodu_linii_wn(materialized):
+            _zastosuj_geometrie_linii_wn(branch, catalog, enm.header.defaults.frequency_hz)
         changed = True
 
     return (completed, True) if changed else (enm, False)
@@ -404,11 +420,56 @@ def _catalog_version(branch: Cable | OverheadLine) -> str:
     return CATALOG_VERSION_DEFAULT
 
 
+def _zastosuj_geometrie_linii_wn(
+    branch: OverheadLine, catalog: CatalogRepository, czestotliwosc_hz: float
+) -> None:
+    """Karta LINIA-110: R′/X′/B′/Z′0 linii z przewodem 110 kV — ten sam wpis co operacje
+    domenowe (``enm.parametry_linii_wn.zastosuj_parametry_z_geometrii``), nie drugi wzór.
+    """
+    dane = branch.model_dump(mode="json")
+    zastosuj_parametry_z_geometrii(dane, catalog, czestotliwosc_hz)
+    for klucz in POLA_Z_GEOMETRII:
+        setattr(branch, klucz, float(dane[klucz]))
+    branch.parametry_z_geometrii = ParametryLiniiZGeometrii.model_validate(
+        dane["parametry_z_geometrii"]
+    )
+
+
+def _parametry_zalezne_od_czestotliwosci_aktualne(
+    branch: Cable | OverheadLine,
+    existing: dict[str, Any],
+    materialized: dict[str, Any],
+    czestotliwosc_hz: float,
+) -> bool:
+    """Czy wielkości gałęzi zależne od częstotliwości studium policzono dla BIEŻĄCEJ częstotliwości.
+
+    Klasa „parametr gałęzi liczony przy materializacji z częstotliwości studium": susceptancja
+    kabla z pojemności (B = 2πfC, proweniencja ``materialized_params.frequency_hz``) i komplet
+    R′/X′/B′/Z′0 linii 110 kV z geometrii (proweniencja ``parametry_z_geometrii``). Zmiana
+    częstotliwości w nagłówku modelu (kreator, krok K1) po materializacji unieważnia je — to
+    ten sam predykat decyduje o wejściu i o zmianie w ``complete_branch_catalog_materialization``.
+    Kabel bez zapisanej częstotliwości (migawka sprzed karty W3-F) nie ma proweniencji, z którą
+    można porównać — zostaje bez zmian.
+    """
+    if isinstance(branch, OverheadLine) and tabliczka_przewodu_linii_wn(materialized):
+        proweniencja = branch.parametry_z_geometrii
+        return proweniencja is not None and proweniencja.czestotliwosc_hz == czestotliwosc_hz
+    if materialized.get("b_us_per_km") is None and materialized.get("c_nf_per_km") is not None:
+        zapisana = existing.get("frequency_hz")
+        return zapisana is None or float(zapisana) == czestotliwosc_hz
+    return True
+
+
 def _branch_has_materialized_values(
     branch: Cable | OverheadLine,
     materialized: dict[str, Any],
+    czestotliwosc_hz: float,
 ) -> bool:
     existing = branch.materialized_params if isinstance(branch.materialized_params, dict) else {}
+    if not _parametry_zalezne_od_czestotliwosci_aktualne(
+        branch, existing, materialized, czestotliwosc_hz
+    ):
+        return False
     critical_keys = (
         "r_ohm_per_km",
         "x_ohm_per_km",

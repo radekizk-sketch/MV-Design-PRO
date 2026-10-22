@@ -119,6 +119,8 @@ RODZINY_MIERNIKA: dict[str, str] = {
     # supraharmonic typu przekształtnika (katalog statyczny: wyłącznie z wyciągiem
     # dokumentu producenta).
     "spectral-card": "karty_widmowe",
+    # Karta LINIA-110: przewody linii napowietrznych 110 kV (dane wyrobu PN-EN 50182).
+    "overhead-conductor": "overhead_conductor_types",
 }
 
 #: Rodziny, które w żywym katalogu legalnie NIE MAJĄ pozycji — z powodem (pomiar, nie

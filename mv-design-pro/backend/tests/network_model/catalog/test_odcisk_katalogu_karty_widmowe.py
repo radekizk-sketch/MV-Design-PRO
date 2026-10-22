@@ -79,6 +79,11 @@ ODCISK_SPRZED_KARTY = "1a8bcd4ba4a73c5dfb14a1f0315f82492a820cbb785226991432f8636
 #: `ODCISK_SPRZED_KARTY` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
 #: poniżej (przeliczona na drzewie partii 9, po katalogu z proweniencją i torze V112).
 ODCISK_PO_W5E_TTIT = "e83ee88bce1a45b0ef7e57931612c100764968c4fcd42281b133215fc3b1c062"
+#: Karta LINIA-110 (2026-10-22): nowa przestrzeń `overhead_conductor_types` (4 przewody linii
+#: 110 kV z tablicy PN-EN 50182). Dowód: zrzut BEZ tej przestrzeni daje DOKŁADNIE
+#: `ODCISK_PO_W5E_TTIT` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
+#: poniżej.
+ODCISK_PO_LINIA_110 = "4f66d5626e211540eb1f1afe34d6da1d90ec50800758e208893e7383f51e9f44"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -116,9 +121,17 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_W5E_TTIT
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_LINIA_110
+    bez_przewodow_wn = {
+        przestrzen: postac
+        for przestrzen, postac in zrzut.items()
+        if przestrzen != "overhead_conductor_types"
+    }
+    assert _odcisk_zrzutu(bez_przewodow_wn) == ODCISK_PO_W5E_TTIT
     bez_rcd = {
-        przestrzen: postac for przestrzen, postac in zrzut.items() if przestrzen != "lv_rcd_types"
+        przestrzen: postac
+        for przestrzen, postac in bez_przewodow_wn.items()
+        if przestrzen != "lv_rcd_types"
     }
     assert _odcisk_zrzutu(bez_rcd) == ODCISK_SPRZED_KARTY
 

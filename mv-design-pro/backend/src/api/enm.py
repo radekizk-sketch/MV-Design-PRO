@@ -66,6 +66,7 @@ from application.cgmes.kompletnosc import ModelNiekompletnyDlaCgmesError
 from application.cgmes.service import export_cgmes
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
+from application.parametry_linii_wn import parametry_linii_modelu
 from application.protection_read_model import build_protection_read_model
 from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
@@ -358,6 +359,16 @@ def get_enm_protection_view(case_id: str, klucz: KluczTwin) -> dict[str, Any]:
     """Return read-only protection view derived directly from ENM."""
     enm = _get_enm(klucz)
     return build_protection_read_model(case_id, enm)
+
+
+@router.get("/{case_id}/enm/parametry-linii")
+def get_overhead_line_parameters(case_id: str, klucz: KluczTwin, branch_ref: str) -> dict[str, Any]:
+    """Ślad parametrów linii 110 kV modelu (karta LINIA-110): przewód z katalogu + geometria.
+
+    Read-only; fizykę liczy solver ``parametry_linii_napowietrznej``. ``zgodny_z_modelem``
+    porównuje odcisk wejścia ze zapisaną proweniencją linii.
+    """
+    return parametry_linii_modelu(_get_enm(klucz), branch_ref)
 
 
 @router.get("/{case_id}/enm/field-view")

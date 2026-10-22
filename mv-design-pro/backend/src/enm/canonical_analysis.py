@@ -3149,6 +3149,9 @@ def _execute_power_flow(
         # bez zagladania w iteracje. Addytywnie (dict), lista z solvera w
         # porzadku wykrycia (deterministyczna — iteracje sa deterministyczne).
         "pv_to_pq_switches": solution.pv_to_pq_switches,
+        # Karta LINIA-110 (zasada nr 4): założenia biegu — linie 110 kV liczone z wartością
+        # roboczą geometrii słupa. Addytywnie, WYŁĄCZNIE gdy bieg je ma (bit w bit bez nich).
+        **({"zalozenia": list(wejscie.zalozenia)} if wejscie.zalozenia else {}),
         # CV-4.3 K3b: kilka wysp zasilonych = wynik zbiorczy per wyspa (addytywnie,
         # WYŁĄCZNIE gdy wysp jest więcej niż jedna — sieci jednoźródłowe bit w bit).
         **({"wyspy": opis_wysp(rozwiazania)} if len(rozwiazania) > 1 else {}),
@@ -4951,6 +4954,8 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "oltc_annual_profile",
             "oltc_optimization",
             "audit2_applied",
+            # Karta LINIA-110: założenia biegu (linie 110 kV z wartością roboczą geometrii).
+            "zalozenia",
         ):
             if raw_result.get(oltc_key) is not None:
                 global_results[oltc_key] = raw_result[oltc_key]

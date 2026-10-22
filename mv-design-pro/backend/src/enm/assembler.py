@@ -56,6 +56,11 @@ from enm.nazwy_elementow import (
     nazwa_po_identyfikatorze,
     zbuduj_indeks_nazw,
 )
+from enm.parametry_linii_wn import (
+    KOD_GEOMETRIA_ROBOCZA,
+    linie_z_wartoscia_robocza,
+    zalozenia_linii_wn,
+)
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
@@ -523,6 +528,9 @@ class WejscieRozplywu:
     wyspy: tuple[WyspaRozplywu, ...]
     pq_specs: tuple[PQSpec, ...]
     pv_specs: tuple[PVSpec, ...]
+    #: Założenia biegu (karta LINIA-110): linie 110 kV liczone z wartością roboczą geometrii
+    #: słupa — ten sam kształt co założenia biegu zwarciowego; pusta krotka = brak założeń.
+    zalozenia: tuple[dict[str, Any], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1010,6 +1018,7 @@ def zloz_wejscie_rozplywu(
         wyspy=tuple(wyspy),
         pq_specs=tuple(pq_specs),
         pv_specs=tuple(pv_specs),
+        zalozenia=zalozenia_linii_wn(EnergyNetworkModel.model_validate(snapshot), None),
     )
 
 
@@ -1219,6 +1228,8 @@ def zloz_wejscie_zwarcia(
         + k_sc_zalozenia
         # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: wyspy nN liczone z wartością roboczą tolerancji.
         + zalozenia_tolerancji_nn(enm, scenario_c)
+        # Karta LINIA-110: linie 110 kV z R′/X′/B′/Z′0 policzonymi z wartością roboczą geometrii.
+        + zalozenia_linii_wn(enm, scenario_c)
     )
     # Proweniencja k_sc WYPROWADZONA z grafu obliczeniowego TEGO biegu (nie z
     # migawki dołączonej do żądania) — `network_model.core.
@@ -2159,6 +2170,10 @@ def zloz_wejscie_rozplywu_niesymetrycznego(
         zalozenia.append(_zalozenie(KOD_ZALOZENIE_GALAZ_MAGNESUJACA, magnesujaca_pominieta))
     if admitancja_pominieta:
         zalozenia.append(_zalozenie(KOD_ZALOZENIE_ADMITANCJA_POPRZECZNA, admitancja_pominieta))
+    # Karta LINIA-110: linie 110 kV, których Z1 i Z0 policzono z wartością roboczą geometrii.
+    linie_robocze = [linia.ref_id for linia in linie_z_wartoscia_robocza(enm)]
+    if linie_robocze:
+        zalozenia.append(_zalozenie(KOD_GEOMETRIA_ROBOCZA, linie_robocze))
     if galezie_ze_sprzezeniem:
         zalozenia.append(
             _zalozenie(

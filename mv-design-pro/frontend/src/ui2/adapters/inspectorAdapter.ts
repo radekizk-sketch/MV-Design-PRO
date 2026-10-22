@@ -196,6 +196,42 @@ function wlasciwosciGaleziWspolne(el: { from_bus_ref: string; to_bus_ref: string
   ]);
 }
 
+/** Susceptancja jednostkowa w µS/km (zmiana jednostki wartości z modelu, bez obliczeń). */
+function mikrosimensy(wartosc: number | null | undefined): number | null {
+  return typeof wartosc === 'number' && Number.isFinite(wartosc) ? wartosc * 1e6 : null;
+}
+
+/** Składowe danych linii 110 kV (klucze rejestru wartości roboczych backendu) — nazwy PL. */
+const SKLADOWE_DANYCH_LINII_PL: Readonly<Record<string, string>> = {
+  fazy: 'położenie przewodów fazowych',
+  odgromowe: 'położenie przewodu odgromowego',
+  przewod_odgromowy_ref: 'typ przewodu odgromowego',
+  rezystywnosc_gruntu_ohm_m: 'rezystywność gruntu',
+};
+
+/**
+ * Linia 110 kV z przewodem z katalogu: pochodzenie R′/X′/B′/Z′0 (z geometrii słupa), kompletność
+ * dowodu i składowe przyjęte jako wartości robocze — zasada nr 4: wynik na założeniach jest
+ * w inspektorze odróżniony od wyniku z danych projektu.
+ */
+function wlasciwosciParametrowZGeometrii(el: OverheadLine): (WierszWlasciwosci | null)[] {
+  const p = el.parametry_z_geometrii;
+  if (!p) return [];
+  const robocze = (p.wartosci_robocze ?? []).map((k) => SKLADOWE_DANYCH_LINII_PL[k] ?? k);
+  return [
+    wr('Parametry linii', `z geometrii słupa i przewodu z katalogu (${p.metoda} ${p.wersja_metody})`),
+    wr(
+      'Kompletność dowodu parametrów',
+      p.kompletnosc_dowodu === 'PELNY'
+        ? 'pełna — dane projektu i katalogu'
+        : `niepełna — wartości robocze (ESTIMATED): ${robocze.join(', ')}`,
+    ),
+    wr(`Rezystancja R1 w temperaturze ${p.temperatura_przewodu_c} °C`, p.r1_temperatura_ohm_per_km, 'Ω/km'),
+    wr('Średnia geometryczna odległość faz (GMD)', p.gmd_m, 'm'),
+    w('Rezystywność gruntu (projekt)', el.geometria_slupa?.rezystywnosc_gruntu_ohm_m ?? null, 'Ω·m'),
+  ];
+}
+
 function wlasciwosciLiniiNapowietrznej(el: OverheadLine): WierszWlasciwosci[] {
   return [
     ...wlasciwosciGaleziWspolne(el),
@@ -203,11 +239,14 @@ function wlasciwosciLiniiNapowietrznej(el: OverheadLine): WierszWlasciwosci[] {
       wr('Długość', el.length_km, 'km'),
       wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
       wr('Reaktancja X1', el.x_ohm_per_km, 'Ω/km'),
+      w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
       w('Rezystancja R0', el.r0_ohm_per_km ?? null, 'Ω/km'),
       w('Reaktancja X0', el.x0_ohm_per_km ?? null, 'Ω/km'),
+      w('Susceptancja B0', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
       w('Materiał przewodu', el.conductor_material ?? null),
       w('Przekrój', el.cross_section_mm2 ?? null, 'mm²'),
       w('Prąd cieplny 1s (Ith)', el.ith_1s_a ?? null, 'A'),
+      ...wlasciwosciParametrowZGeometrii(el),
     ]),
   ];
 }
@@ -219,8 +258,10 @@ function wlasciwosciKabla(el: Cable): WierszWlasciwosci[] {
       wr('Długość', el.length_km, 'km'),
       wr('Rezystancja R1', el.r_ohm_per_km, 'Ω/km'),
       wr('Reaktancja X1', el.x_ohm_per_km, 'Ω/km'),
+      w('Susceptancja B1', mikrosimensy(el.b_siemens_per_km), 'µS/km'),
       w('Rezystancja R0', el.r0_ohm_per_km ?? null, 'Ω/km'),
       w('Reaktancja X0', el.x0_ohm_per_km ?? null, 'Ω/km'),
+      w('Susceptancja B0', mikrosimensy(el.b0_siemens_per_km), 'µS/km'),
       w('Materiał przewodu', el.conductor_material ?? null),
       w('Przekrój', el.cross_section_mm2 ?? null, 'mm²'),
       w('Izolacja', el.insulation ?? null),

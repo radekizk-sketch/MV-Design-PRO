@@ -595,6 +595,15 @@
       }
     },
     {
+      "area": "TOPOLOGY",
+      "code": "line.geometria_wartosc_robocza",
+      "fix_navigation": {
+        "focus": "geometria_slupa",
+        "panel": "inspector",
+        "tab": "parametry"
+      }
+    },
+    {
       "area": "CATALOGS",
       "code": "load.catalog_missing",
       "fix_navigation": {
@@ -1363,7 +1372,7 @@
       }
     }
   ],
-  "count": 160,
+  "count": 161,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",

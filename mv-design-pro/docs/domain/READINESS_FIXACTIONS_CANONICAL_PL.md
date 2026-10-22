@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **161** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -77,6 +77,7 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `ring.endpoints_missing` | TOPOLOGY | 2 | BLOCKER | Pierścień nie ma zdefiniowanych punktów końcowych | panel: `sld` |
 | `trunk.segment_missing` | TOPOLOGY | 2 | BLOCKER | Magistrala nie ma żadnego segmentu | panel: `sld` |
 | `trunk.terminal_missing` | TOPOLOGY | 2 | BLOCKER | Magistrala nie ma terminala końcowego | panel: `sld` |
+| `line.geometria_wartosc_robocza` | TOPOLOGY | 3 | INFO | Linia 110 kV liczona z wartością roboczą geometrii słupa, przewodu odgromowego albo rezystywności gruntu — podaj geometrię słupa z projektu w parametrach linii i przelicz | panel: `inspector`, tab: `parametry`, focus: `geometria_slupa` |
 | `ring.nop_required` | TOPOLOGY | 3 | BLOCKER | Pierścień SN wymaga punktu normalnie otwartego (NOP) | panel: `sld`, modal: `set_normal_open_point` |
 | `trunk.segment_length_invalid` | TOPOLOGY | 3 | BLOCKER | Nieprawidłowa długość odcinka (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `length_m` |
 | `trunk.segment_length_missing` | TOPOLOGY | 3 | BLOCKER | Odcinek nie ma zdefiniowanej długości | panel: `inspector`, tab: `parametry`, focus: `length_m` |
@@ -225,19 +226,19 @@ Wszystkie **160** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 |--------|---------------|
 | BLOCKER | 102 |
 | WARNING | 55 |
-| INFO | 3 |
-| **Razem** | **160** |
+| INFO | 4 |
+| **Razem** | **161** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 16 |
-| TOPOLOGY | 6 |
+| TOPOLOGY | 7 |
 | CATALOGS | 49 |
 | STATIONS | 23 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **160** |
+| **Razem** | **161** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

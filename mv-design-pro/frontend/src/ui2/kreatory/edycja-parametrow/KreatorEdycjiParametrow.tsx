@@ -13,13 +13,21 @@
  * sekcję czterech parametrów (czas własny, I_k, t_k, I_p). Zapis to lista `overrides`
  * (`wartosciRoboczeAparatu.ts`); bramą wartości jest walidator backendu, a obok pola stoi to, co
  * obliczenie przyjmie bez wartości projektanta (dana karty albo propozycja rejestru backendu).
+ *
+ * LINIA NAPOWIETRZNA 110 kV: linia z wiązaniem PRZEWOD_LINII_WN (albo na szynie o napięciu
+ * przewodu z katalogu) dostaje sekcję przewodu fazowego i geometrii słupa (`SekcjaLiniiWn`).
+ * Zapis: `geometria_slupa` w tej samej operacji `update_element_parameters` co pozostałe pola,
+ * a zmiana przewodu — następnie `assign_catalog_to_element` (backend przelicza R′, X′, B′, Z′0
+ * linii z geometrii przy każdej z tych operacji; kolejność daje jedno przeliczenie na danych
+ * końcowych przy zmianie obu).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchMvApparatusTypes } from '../../../ui/catalog/api';
-import type { MVApparatusType } from '../../../ui/catalog/types';
+import { fetchKatalogPrzewodowLiniiWn, fetchMvApparatusTypes } from '../../../ui/catalog/api';
+import { buildCatalogBinding } from '../../../ui/catalog/catalogBinding';
+import type { KatalogPrzewodowLiniiWn, MVApparatusType } from '../../../ui/catalog/types';
 import { useGrupyPolaczen } from '../../../ui/catalog/useGrupyPolaczen';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -64,6 +72,18 @@ import {
   type FormularzWartosciAparatu,
   type ParametrAparatuSn,
 } from './wartosciRoboczeAparatu';
+import {
+  NAMESPACE_PRZEWOD_LINII_WN,
+  formularzZLinii,
+  geometriaZFormularza,
+  geometriaZmieniona,
+  jestLiniaNapowietrzna,
+  liniaWnWgKatalogu,
+  podzialPrzewodow,
+  przewodZmieniony,
+  type FormularzLiniiWn,
+} from './geometriaLiniiWn';
+import { SekcjaLiniiWn } from './SekcjaLiniiWn';
 import { RODZAJE_STACJI, podpisRodzajuStacjiPl } from '../../../ui/shared/rodzajStacji';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 
@@ -172,7 +192,11 @@ export function KreatorEdycjiParametrow() {
   // + `vector_group`), inaczej formularz zaczynałby się od klucza, którego backend nie zna.
   // Parametr aparatu SN wskazany kontekstem (akcja „Zmień wartość" ekranu wytrzymałości)
   // trafia do sekcji aparatu, nie do wiersza klucz → wartość.
-  const initialKey = poleAparatuZKontekstu
+  // Geometria słupa linii (akcja naprawcza `line.geometria_wartosc_robocza`) trafia do sekcji
+  // linii 110 kV — to struktura, nie wartość wiersza klucz → wartość.
+  const poleGeometriiZKontekstu =
+    jestLiniaNapowietrzna(galaz) && poleKontekstu === 'geometria_slupa';
+  const initialKey = poleAparatuZKontekstu || poleGeometriiZKontekstu
     ? ''
     : poleKontekstu || kluczZWymogu(readString(context?.required));
   const [wiersze, setWiersze] = useState<WierszParametru[]>(() => [
@@ -260,7 +284,52 @@ export function KreatorEdycjiParametrow() {
     setFormularzAparatu((p) => (p ? { ...p, [parametr]: wartosc } : p));
   }, []);
 
-  const liczbaDoZapisu = wypelnione.length + liczbaZmianNcRfg + (zmianaAparatu ? 1 : 0);
+  // Linia napowietrzna 110 kV: katalog przewodów (z propozycjami wartości roboczych) pobierany
+  // dla każdej linii napowietrznej — o pokazaniu sekcji rozstrzyga wiązanie albo napięcie
+  // szyny równe napięciu przewodu z katalogu (dana katalogu, nie próg w UI).
+  const jestLiniaNapowietrznaGalaz = jestLiniaNapowietrzna(galaz);
+  const [katalogLiniiWn, setKatalogLiniiWn] = useState<KatalogPrzewodowLiniiWn | null>(null);
+  useEffect(() => {
+    if (!jestLiniaNapowietrznaGalaz) return undefined;
+    let aktywny = true;
+    fetchKatalogPrzewodowLiniiWn()
+      .then((katalog) => {
+        if (aktywny) setKatalogLiniiWn(katalog);
+      })
+      // Bez katalogu sekcja się nie pojawia — zapis pozostałych pól działa bez zmian.
+      .catch(() => undefined);
+    return () => {
+      aktywny = false;
+    };
+  }, [jestLiniaNapowietrznaGalaz]);
+  const napiecieSzynyKv = useSnapshotStore((s) => {
+    const ref = galaz && 'from_bus_ref' in galaz ? galaz.from_bus_ref : null;
+    return s.snapshot?.buses?.find((b) => b.ref_id === ref)?.voltage_kv ?? null;
+  });
+  const czestotliwoscHz = useSnapshotStore((s) => s.snapshot?.header?.defaults?.frequency_hz ?? null);
+  const przewodyLiniiWn = useMemo(
+    () => podzialPrzewodow(katalogLiniiWn?.przewody ?? []),
+    [katalogLiniiWn],
+  );
+  const jestLiniaWn =
+    katalogLiniiWn !== null && liniaWnWgKatalogu(galaz, napiecieSzynyKv, przewodyLiniiWn.fazowe);
+  const [formularzLinii, setFormularzLinii] = useState<FormularzLiniiWn | null>(null);
+  useEffect(() => {
+    if (jestLiniaWn && formularzLinii === null) setFormularzLinii(formularzZLinii(galaz));
+  }, [jestLiniaWn, galaz, formularzLinii]);
+  const wynikGeometrii = useMemo(
+    () => (formularzLinii ? geometriaZFormularza(formularzLinii) : null),
+    [formularzLinii],
+  );
+  const zmianaGeometrii = formularzLinii !== null && geometriaZmieniona(formularzLinii, galaz);
+  const zmianaPrzewodu = formularzLinii !== null && przewodZmieniony(formularzLinii, galaz);
+
+  const liczbaDoZapisu =
+    wypelnione.length
+    + liczbaZmianNcRfg
+    + (zmianaAparatu ? 1 : 0)
+    + (zmianaGeometrii ? 1 : 0)
+    + (zmianaPrzewodu ? 1 : 0);
   const brakElementu = !elementRef;
   const kompletne = Boolean(elementRef && liczbaDoZapisu > 0);
 
@@ -291,6 +360,10 @@ export function KreatorEdycjiParametrow() {
       setBladGlobalny(T.bledneWartosciAparatu);
       return;
     }
+    if (wynikGeometrii?.rodzaj === 'blad') {
+      setBladGlobalny(T.bledneDaneLiniiWn);
+      return;
+    }
     if (liczbaDoZapisu === 0) {
       setBladGlobalny(T.brakParametrow);
       return;
@@ -300,18 +373,43 @@ export function KreatorEdycjiParametrow() {
       return acc;
     }, { ...zmianyNcRfg });
     if (zmianaAparatu && wynikAparatu?.rodzaj === 'lista') parameters.overrides = wynikAparatu.nadpisania;
+    if (zmianaGeometrii && wynikGeometrii?.rodzaj === 'geometria') {
+      parameters.geometria_slupa = wynikGeometrii.geometria;
+    }
     const payload: Record<string, unknown> = { element_ref: elementRef, parameters };
     if (powod.trim()) payload.reason = powod.trim();
 
     setBladGlobalny(null);
     try {
-      const response = await executeDomainOperation(activeCaseId, 'update_element_parameters', payload);
-      if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.bladDodania);
-        return;
+      let response: Awaited<ReturnType<typeof executeDomainOperation>> = null;
+      if (Object.keys(parameters).length > 0) {
+        response = await executeDomainOperation(activeCaseId, 'update_element_parameters', payload);
+        if (!response) {
+          setBladGlobalny(useSnapshotStore.getState().error ?? T.bladDodania);
+          return;
+        }
+        if (response.error) {
+          setBladGlobalny(response.error);
+          return;
+        }
       }
-      if (response.error) {
-        setBladGlobalny(response.error);
+      if (zmianaPrzewodu && formularzLinii) {
+        response = await executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
+          element_ref: elementRef,
+          catalog_binding: buildCatalogBinding(NAMESPACE_PRZEWOD_LINII_WN, formularzLinii.przewodId),
+          source_mode: 'KATALOG',
+        });
+        if (!response) {
+          setBladGlobalny(useSnapshotStore.getState().error ?? T.bladDodania);
+          return;
+        }
+        if (response.error) {
+          setBladGlobalny(response.error);
+          return;
+        }
+      }
+      if (!response) {
+        setBladGlobalny(T.brakParametrow);
         return;
       }
       closeForm();
@@ -319,7 +417,7 @@ export function KreatorEdycjiParametrow() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.bladDodania);
     }
-  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, liczbaDoZapisu, powod, selekcjaPoOperacji, wynikAparatu, wynikDanychModulu, wypelnione, zmianaAparatu, zmianyNcRfg]);
+  }, [activeCaseId, closeForm, elementRef, executeDomainOperation, fallbackType, formularzLinii, liczbaDoZapisu, powod, selekcjaPoOperacji, wynikAparatu, wynikDanychModulu, wynikGeometrii, wypelnione, zmianaAparatu, zmianaGeometrii, zmianaPrzewodu, zmianyNcRfg]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     { etykieta: T.wierszElement, stan: elementRef ? 'kompletne' : 'brak', wartosc: nazwaElementu || 'Brak' },
@@ -335,6 +433,20 @@ export function KreatorEdycjiParametrow() {
             stan: wynikAparatu?.rodzaj === 'blad' ? ('brak' as const) : ('kompletne' as const),
             wartosc:
               wynikAparatu?.rodzaj === 'lista' ? `${wynikAparatu.nadpisania.length} z 4` : T.aparatBladLiczby,
+          },
+        ]
+      : []),
+    ...(formularzLinii
+      ? [
+          {
+            etykieta: T.wierszLiniaWn,
+            stan: wynikGeometrii?.rodzaj === 'blad' ? ('brak' as const) : ('kompletne' as const),
+            wartosc:
+              wynikGeometrii?.rodzaj === 'blad'
+                ? T.bledneDaneLiniiWn
+                : zmianaGeometrii || zmianaPrzewodu
+                  ? T.liniaWnDoZapisu
+                  : T.liniaWnBezZmian,
           },
         ]
       : []),
@@ -411,6 +523,19 @@ export function KreatorEdycjiParametrow() {
             ))}
           </KreatorSiatka>
         </KreatorSekcja>
+      ) : null}
+
+      {formularzLinii && katalogLiniiWn && czestotliwoscHz !== null ? (
+        <SekcjaLiniiWn
+          formularz={formularzLinii}
+          onZmien={setFormularzLinii}
+          przewodyFazowe={przewodyLiniiWn.fazowe}
+          przewodyOdgromowe={przewodyLiniiWn.odgromowe}
+          propozycje={katalogLiniiWn.wartosci_robocze}
+          bladPola={wynikGeometrii?.rodzaj === 'blad' ? wynikGeometrii.pole : null}
+          czestotliwoscHz={czestotliwoscHz}
+          fokusGeometrii={poleGeometriiZKontekstu}
+        />
       ) : null}
 
       <KreatorSekcja tytul={T.parametryTytul} testid="mvd-kreator-edycja-parametry">
