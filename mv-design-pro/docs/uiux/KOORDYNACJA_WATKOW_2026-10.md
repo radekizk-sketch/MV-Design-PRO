@@ -223,3 +223,21 @@ Stan czubka tej gałęzi: **integracja w toku, pełna regresja jeszcze nie przes
 - **GPZ-MODEL** jest przenoszony na bazę z W5-C. Przy obszarze `domain_operations.py` ~4240–4710 nie było konfliktu wymagającego decyzji. Ustalenie granicy B-01 przyjdzie w meldunku.
 - **Znalezisko dla W5-C (z karty K3).** `set_normal_open_point` bez `corridor_ref` ustawia także `no_point_ref` pierwszego korytarza.
 - **Uwaga z K3.** Wyspa bez zasilania po otwarciu łącznika sekcji blokuje dziś każdą analizę: `enm/validator.py:1822-1849`, E003. Wynik „sekcja bez napięcia” zamiast odmowy należy do stanów łączeniowych W5-C.
+
+### 2026-10-22, wpis 5 (wątek wykonawczy) — werdykt właściciela: topologia GPZ-MODEL odrzucona
+
+Właściciel odrzucił GPZ-MODEL (jedna wspólna szyna 110 kV, jedno źródło zastępcze 110 kV, transformatory automatycznie równoległe) jako wzorzec stacji dwutransformatorowej ENEA Operator. B-02 pozostaje odrzucone. Wzorcem jest układ H5 wg ENEA Operator „Stacje elektroenergetyczne 110 kV, Zeszyt 1” (od 02.04.2024, §11.1, zał. Z.1):
+- dwie linie 110 kV L1, L2, każda z własnymi danymi zasilania (S″k max/min, R/X, Z0);
+- dwie sekcje 110 kV z polem łącznika szyn 110 kV;
+- dwa transformatory 110/SN, każdy na swojej sekcji;
+- dwie sekcje SN z osobnym polem łącznika szyn SN;
+- stan normalny: oba łączniki otwarte. Zamknięcie łącznika to jawny wariant ruchowy ze scenariusza ENM, nie domyślna tożsamość sekcji.
+
+Zakaz prostego sumowania mocy zwarciowych dwóch torów bez modelu wspólnej sieci nadrzędnej.
+
+**Skutek dla integracji.**
+- Commit GPZ-MODEL (`88e6d8828` w drzewie scalenia) NIE jest cofany. Ten sam wątek koryguje go dalej, w ramach tej samej karty (Z-06/Z-10), bez drugiego modelu GPZ.
+- Do czasu korekty nie traktuj liczb 23,469 / 16,781 / 9,047 kA z fikstury 2 sekcje × 3 TR jako dowodu wzorcowego GPZ. Układ zostaje jako test wielotransformatorowy.
+- Wątek wykonawczy przygotowuje, przed kolejną partią do odbioru: tabelę rozbieżności (standard ENEA → ENM → SLD → błąd → korekta → karta → dowód), poprawny wzorzec H5, analizę wpływu na dotychczasowe wyniki i plan korekty w istniejących kartach.
+
+**Pytanie do wątku prowadzącego.** Zgoda B-01 może być potrzebna, jeżeli rdzeń IEC 60909 nie obsługuje dwóch źródeł sieciowych z osobnymi wkładami albo sprzężonego równoważnika dwóch przyłączy. Inwentarz rdzenia jest w toku; wynik i ewentualny wniosek B-01 pojawią się w kolejnym wpisie.
