@@ -604,7 +604,20 @@ const EXPECTED_STATION_COUNT = 53;
 // nowymi identyfikatorami (487 ziaren, odwzorowanie 1:1 po pozycji, 0 konfliktów) =
 // 21576/44352/44352 = fikstura nowa. Ta sama topologia, inna kolejność remisu
 // `id.localeCompare` (precedens SLD-SUBSTRAT wyżej).
-const VERTICAL_LENGTH_BASELINE = { 0: 21576, 1: 44352, 2: 44352 };
+// GPZ-H5-SLD etap 2 (2026-10-22): L0 21576 → 21912 (+336), L1/L2 bez zmian. Zmierzone
+// sondą pionów liść po liściu względem drzewa bazy karty (d82493842): CAŁY przyrost to
+// przęsło GPZ→S01 na L0 — `seg/6fc55ebc…/segment` 88 → 280 („jog-trasy") i
+// `…/segment_L` 96 → 240 („rezerwacja-kanalu"). Przyczyna: (1) tabela pól, bilans i alarmy
+// wyszły z ramy GPZ do inspektora (wymaganie 1), więc treść GPZ i port pola magistrali
+// podniosły się o 200 (544 → 344); (2) oznaczenie pola jest pełnym, obróconym pasmem przy
+// torze pola (wymaganie 5 — zero skrótów), a pole bez rekordów aparatów ma stos 32 px, więc
+// pasmo (192 px) sięga poniżej portu i rama strefy GPZ (bbox z pasmami, wspólna dla
+// wszystkich LOD — KD-5) kończy się na 560 zamiast 592. Na L0 korytarz (304) leży NAD
+// portem, więc trasa idzie objazdem pod ramą strefy (recenzja NO-GO 2026-07-17 pkt 1,
+// `belowY` = dół ramy + 3×GRID): zejście 344 → 584 zamiast 544 → 616. Na L1/L2 korytarz
+// leży pod portem i trasa jest prosta — suma bez zmian. Pełne oznaczenie pola ma
+// pierwszeństwo przed krótszym zejściem L0 (precedens GEOMETRIA-STACJI „jog-trasy").
+const VERTICAL_LENGTH_BASELINE = { 0: 21912, 1: 44352, 2: 44352 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -661,7 +674,10 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // port wyjścia jest o 72 px wyżej, a jog do pasa magistrali o tyle dłuższy. Suma pionów
   // spada (−2000). Zero fabrykacji ma pierwszeństwo przed krótszym jogiem (rejestr
   // GEOMETRIA-STACJI-BRAK-WYPOSAZENIA).
-  0: { footprint: 32, 'rezerwacja-kanalu': 21248, 'jog-trasy': 88, 'slupek-terminalny': 208 },
+  // GPZ-H5-SLD etap 2 (2026-10-22): L0 „rezerwacja-kanalu" 21248 → 21392 (+144,
+  // `…/segment_L` 96 → 240) i „jog-trasy" 88 → 280 (+192, `…/segment` 88 → 280) — objazd
+  // przęsła GPZ→S01 pod ramą strefy GPZ (atrybucja przy `VERTICAL_LENGTH_BASELINE`).
+  0: { footprint: 32, 'rezerwacja-kanalu': 21392, 'jog-trasy': 280, 'slupek-terminalny': 208 },
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
   1: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },
   2: { footprint: 1936, 'rezerwacja-kanalu': 42048, 'jog-trasy': 160, 'slupek-terminalny': 208 },

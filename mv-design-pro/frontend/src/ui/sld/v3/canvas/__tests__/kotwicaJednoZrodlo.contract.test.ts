@@ -461,11 +461,21 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
           const obiekty = areas.filter((a) => a.ownerRef !== undefined && baza(a.ownerRef) === ref);
           const podpis = obiekty.filter((a) => a.klasa === 'etykieta');
           const symbol = obiekty.filter((a) => a.testId.includes('gpz-canonical-load-'));
-          expect(podpis.length, `${nazwa} LOD ${lod} ${ref}: podpis`).toBe(1);
+          // Karta GPZ-H5-SLD etap 2 (wymaganie 5, „oznaczenie > dane"): odbiór ma JEDNĄ nazwę
+          // (`#load-label`, tożsamość) i co najwyżej jeden wiersz danych P · Q
+          // (`#load-data`, `odbior-dane`) — oba należą do odbioru i deklarują tę samą kategorię.
+          const nazwy = podpis.filter((a) => (a.ownerRef ?? '').endsWith('#load-label'));
+          const dane = podpis.filter((a) => (a.ownerRef ?? '').endsWith('#load-data'));
+          expect(nazwy.length, `${nazwa} LOD ${lod} ${ref}: podpis`).toBe(1);
+          expect(dane.length, `${nazwa} LOD ${lod} ${ref}: dane`).toBeLessThanOrEqual(1);
+          expect(nazwy.length + dane.length, `${nazwa} LOD ${lod} ${ref}: tylko nazwa i dane`).toBe(podpis.length);
           expect(symbol.length, `${nazwa} LOD ${lod} ${ref}: symbol`).toBe(1);
           // Podpis deklaruje kategorię symbolu (`LABEL_OWNER_ELEMENT_KIND.odbior`).
-          expect(podpis[0].elementKind).toBe(symbol[0].elementKind);
-          expect(podpis[0].elementKind).toBe(LABEL_OWNER_ELEMENT_KIND.odbior);
+          for (const p of podpis) {
+            expect(p.elementKind).toBe(symbol[0].elementKind);
+            expect(p.elementKind).toBe(LABEL_OWNER_ELEMENT_KIND.odbior);
+          }
+          expect(LABEL_OWNER_ELEMENT_KIND['odbior-dane']).toBe(LABEL_OWNER_ELEMENT_KIND.odbior);
           // JEDNO orzeczenie o obiekcie: podpis, symbol i zejście odbioru rozstrzygają się
           // tak samo — i nigdy na kontener (GPZ z „Usuń stację"), klasa defektu A.
           const orzeczenia = new Set(

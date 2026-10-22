@@ -156,6 +156,35 @@ describe('iniekcje: wyrocznia kompletności gryzie', () => {
     expect(raport.niewyjasnione.map((p) => p.ref)).toContain(ref);
   });
 
+  // Karta GPZ-H5-SLD etap 2: łącznik szyn GPZ (oba końce na szynach GPZ) jest wnętrzem
+  // bloku WYŁĄCZNIE, gdy GPZ jest zwinięty do symbolu zbiorczego. Iloczyn: sieć {H5 2×2,
+  // H5 1×3} × LOD {0, 1, 2} × prymityw {łącznika, symbolu zbiorczego GPZ} usunięty.
+  for (const siec of ['gpzH5_2x2', 'gpzH5_1x3'] as const) {
+    const enm = wczytaj(resolve(FRONTEND, `src/ui/sld/v3/scene/__tests__/fixtures/${siec}.enm.json`))!;
+    const lacznikiSzyn = (enm.branches ?? []).filter((g) => g.type === 'bus_coupler').map((g) => g.ref_id);
+    const gpzRef = (enm.substations ?? []).find((st) => (st.gpz_sections ?? []).length > 0)!.ref_id;
+    for (const lod of LODY) {
+      it(`${siec} @ L${lod}: łącznik szyn bez prymitywu ⇒ ${lod === 0 ? 'wnętrze zwiniętego GPZ' : 'niewyjaśniony'}`, () => {
+        expect(lacznikiSzyn.length).toBeGreaterThan(0);
+        let scena = buildSceneV3(enm, lod);
+        for (const ref of lacznikiSzyn) {
+          // Łącznik szyn ma też własne odcinki toru (dojścia do szyn sekcji) — usunięte razem.
+          scena = bezPrymitywu(scena, ref);
+          scena = { ...scena, segments: scena.segments.filter((sg) => !(sg.meta?.ownerRef ?? '').startsWith(ref)) };
+        }
+        const raport = kompletnoscRysunku(scena, enm);
+        const kategorie = raport.pozycje.filter((p) => lacznikiSzyn.includes(p.ref)).map((p) => p.kategoria);
+        expect(kategorie).toEqual(lacznikiSzyn.map(() => (lod === 0 ? 'blok-stacji' : 'niewyjasniony')));
+      });
+    }
+    it(`${siec} @ L0: bez symbolu zbiorczego GPZ łącznik szyn nie jest „wnętrzem bloku"`, () => {
+      const scena = buildSceneV3(enm, 0);
+      const bezBloku: SceneV3 = { ...scena, symbols: scena.symbols.filter((sym) => sym.meta?.ownerRef !== gpzRef) };
+      const raport = kompletnoscRysunku(bezBloku, enm);
+      for (const ref of lacznikiSzyn) expect(raport.niewyjasnione.map((p) => p.ref)).toContain(ref);
+    });
+  }
+
   it('ZKSN za GPZ bez symbolu ⇒ niewyjaśniony (a jego wnętrze przestaje być „wnętrzem narysowanego punktu")', () => {
     const enm = macierz('zksn');
     const ref = elementW(enm, 'zksn', 'za GPZ');

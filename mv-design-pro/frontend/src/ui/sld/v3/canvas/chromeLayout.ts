@@ -349,12 +349,24 @@ export interface UkladPochodzenia {
  * ukrytych opisów, gdy jest widoczny). Pusta lista wierszy ⇒ `null` (nic do pokazania).
  * Tabliczka wypchnięta ponad górną krawędź widoku zostaje przy `y = 0` (ten sam
  * kompromis co wskaźnik: napis poza kadrem nie informuje o niczym).
+ *
+ * Karta GPZ-H5-SLD etap 2 (wymaganie 6): `tresc` — prostokąty RYSUNKU na ekranie (glify,
+ * etykiety, przewody, liczby wyników). Pomiar przed regułą: H5 1×3 w kadrze 1000×700
+ * — płyta w lewym-dolnym rogu przykrywała oznaczenia „Pole liniowe A1/A2". Kolejność
+ * slotów (deterministyczna, pierwszy wolny wygrywa): (1) róg lewy-dolny, (2) róg
+ * prawy-dolny — oba z ustępowaniem samemu aparatowi arkusza; (3) lewa, (4) prawa
+ * krawędź z ustępowaniem także rysunkowi (płyta wspina się ponad najwyższą kolidującą
+ * przeszkodę, nie wyżej niż `gora` — pas doków u góry). Żaden slot wolny ⇒ slot (1)
+ * (rysunek gęstszy niż widok — stan jawny, test kontraktowy go nie dopuszcza w kadrach
+ * odbiorczych).
  */
 export function ukladPochodzeniaWyniku(
   viewport: { readonly width: number; readonly height: number },
   wiersze: readonly WierszPochodzenia[],
   przeszkody: readonly ScreenRect[],
   metrics: ChromeTextMetrics,
+  tresc: readonly ScreenRect[] = [],
+  gora = 0,
 ): UkladPochodzenia | null {
   if (wiersze.length === 0) return null;
   const szerTekstu = Math.max(...wiersze.map((w) => metrics.measure(w.tekst, POCHODZENIE_FONT_PX)));
@@ -364,13 +376,28 @@ export function ukladPochodzeniaWyniku(
   const dolBazowy =
     viewport.height - HIDDEN_LABELS_HINT_BOTTOM_PX - HIDDEN_LABELS_HINT_FONT_PX + (HIDDEN_LABELS_HINT_FONT_PX + 6) +
     HIDDEN_LABELS_HINT_PLATE_PADDING_Y_PX;
-  let plyta: ScreenRect = { x: POCHODZENIE_LEFT_PX, y: dolBazowy - height, width, height };
-  for (let krok = 0; krok < 8; krok++) {
-    const kolidujace = przeszkody.filter((p) => zachodza(plyta, p));
-    if (kolidujace.length === 0) break;
-    const najwyzszy = Math.min(...kolidujace.map((p) => p.y));
-    plyta = { ...plyta, y: najwyzszy - CHROME_ROW_GAP_PX - height };
-  }
+  const wspinaj = (x: number, ustepuj: readonly ScreenRect[], krokow: number): ScreenRect => {
+    let p: ScreenRect = { x, y: dolBazowy - height, width, height };
+    for (let krok = 0; krok < krokow; krok++) {
+      const kolidujace = ustepuj.filter((r) => zachodza(p, r));
+      if (kolidujace.length === 0) break;
+      const najwyzszy = Math.min(...kolidujace.map((r) => r.y));
+      p = { ...p, y: najwyzszy - CHROME_ROW_GAP_PX - height };
+    }
+    return p;
+  };
+  const wolna = (p: ScreenRect): boolean =>
+    p.y >= gora && !przeszkody.some((r) => zachodza(p, r)) && !tresc.some((r) => zachodza(p, r));
+  const lewaX = POCHODZENIE_LEFT_PX;
+  const prawaX = Math.max(lewaX, viewport.width - POCHODZENIE_LEFT_PX - width);
+  const wszystkie = [...przeszkody, ...tresc];
+  const kandydaci: readonly ScreenRect[] = [
+    wspinaj(lewaX, przeszkody, 8),
+    wspinaj(prawaX, przeszkody, 8),
+    wspinaj(lewaX, wszystkie, 64),
+    wspinaj(prawaX, wszystkie, 64),
+  ];
+  let plyta = kandydaci.find(wolna) ?? kandydaci[0];
   if (plyta.y < 0) plyta = { ...plyta, y: 0 };
   return {
     plyta,

@@ -69,6 +69,7 @@ import {
   POCHODZENIE_FONT_PX,
   sheetCaptionScreenRects,
   ukladPochodzeniaWyniku,
+  type ScreenRect,
   type WierszPochodzenia,
 } from './chromeLayout';
 import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
@@ -125,7 +126,6 @@ import {
 // KD-8 poz. 1: kanwa NIE zna już jednej palety — czyta paletę MOTYWU przez
 // kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
 import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
-import { GpzAdnotacjeWarstwa } from './GpzAdnotacjeWarstwa';
 import { useThemeModeStore, type ThemeMode } from '../../../../ui2/theme/themeMode';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
@@ -2978,6 +2978,36 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
     return wiersze;
   }, [banerNieaktualnosci, prowenancja, wierszeCaseLine, resultProvenanceParts]);
+  // Wymaganie 6 (karta GPZ-H5-SLD etap 2): tabliczka ustępuje też RYSUNKOWI — glifom,
+  // narysowanym etykietom (prostokąt tuszu planu), przewodom i liczbom wyników — rzut
+  // świat → ekran tą samą kamerą, którą rysuje kanwa (scena w `translate(FRAME_MARGIN)`).
+  const trescEkranu = useMemo((): readonly ScreenRect[] => {
+    if (wierszePochodzenia.length === 0) return [];
+    const { scale, translateX, translateY } = camera.transform;
+    const naEkran = (x: number, y: number, w: number, h: number): ScreenRect => ({
+      x: (x + FRAME_MARGIN) * scale + translateX,
+      y: (y + FRAME_MARGIN) * scale + translateY,
+      width: w * scale,
+      height: h * scale,
+    });
+    const rects: ScreenRect[] = [];
+    for (const s of scene.symbols) {
+      const def = SYMBOL_DEFS[s.symbolId];
+      rects.push(naEkran(s.x, s.y, def.width, def.height));
+    }
+    for (const seg of scene.segments) {
+      for (let i = 1; i < seg.points.length; i++) {
+        const a = seg.points[i - 1];
+        const b = seg.points[i];
+        rects.push(naEkran(Math.min(a.x, b.x) - 1, Math.min(a.y, b.y) - 1, Math.abs(a.x - b.x) + 2, Math.abs(a.y - b.y) + 2));
+      }
+    }
+    for (const p of labelPlan.drawn) rects.push(naEkran(p.rect.x, p.rect.y, p.rect.width, p.rect.height));
+    for (const r of [...resultLabelLayout.placements, ...resultLabelLayout.aggregates]) {
+      rects.push(naEkran(r.x, r.y, r.width, r.height));
+    }
+    return rects.filter((r) => r.x < width && r.y < height && r.x + r.width > 0 && r.y + r.height > 0);
+  }, [wierszePochodzenia.length, camera.transform, scene, labelPlan, resultLabelLayout, width, height]);
   const ukladPochodzenia = useMemo(
     () =>
       ukladPochodzeniaWyniku(
@@ -2985,8 +3015,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         wierszePochodzenia,
         pokazKomunikat ? [...sheetCaptions, hiddenLabelsHintPlateRect(hintScreenRect)] : sheetCaptions,
         { measure: measureTextWidth },
+        trescEkranu,
+        effectiveSafeInsets.top,
       ),
-    [width, height, wierszePochodzenia, pokazKomunikat, sheetCaptions, hintScreenRect],
+    [width, height, wierszePochodzenia, pokazKomunikat, sheetCaptions, hintScreenRect, trescEkranu, effectiveSafeInsets.top],
   );
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
@@ -3529,22 +3561,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             strokeDasharray="12 6"
             opacity={pozaKadrem(scene.meta.gpzId) ? 0.7 * KURTYNA_KADRU_OPACITY : 0.7}
           />
-        )}
-        {/* GPZ-PARYTET: tła pól wg roli, bilans/alarmy nagłówka i tabela „Pola GPZ"
-         *  (geometria ze sceny, wartości z wyniku backendu) — pod warstwą detalu. */}
-        {scene.meta.gpzAdnotacje && scene.meta.gpzId && (
-          <g
-            data-kadr={pozaKadrem(scene.meta.gpzId) ? 'poza' : undefined}
-            opacity={pozaKadrem(scene.meta.gpzId) ? KURTYNA_KADRU_OPACITY : undefined}
-          >
-            <GpzAdnotacjeWarstwa
-              adnotacje={scene.meta.gpzAdnotacje}
-              gpzRef={scene.meta.gpzId}
-              wyniki={overlay?.gpzWyniki ?? null}
-              nieaktualny={overlay?.gpzWyniki?.nieaktualny ?? overlay?.resultsStale === true}
-              skala={camera.transform.scale}
-            />
-          </g>
         )}
         {/* Karta S8 (P2, płynność przejść LOD): WARSTWA DETALU (segmenty/
          * symbole/etykiety — treść zależna od LOD) owinięta w jedną grupę z

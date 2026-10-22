@@ -230,7 +230,10 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
       // identycznie dla dwudziestu stacji. Intencja asercji bez zmian: każdy
       // skrót MUSI być jawnie oznaczony, żeby nie udawał kompletnej danej.
       expect(p.text.includes('…'), `${p.label.ownerRef} skrócone bez wielokropka`).toBe(true);
-      expect(measureTextWidth(p.text, p.fontSize)).toBeLessThanOrEqual(p.rect.width);
+      // Rozciągłość WZDŁUŻ tekstu: dla napisu obróconego (pasmo oznaczenia pola GPZ, karta
+      // GPZ-H5-SLD etap 2) tekst biegnie wzdłuż wysokości prostokąta, nie szerokości.
+      const wzdluzTekstu = p.label.rotated === true ? p.rect.height : p.rect.width;
+      expect(measureTextWidth(p.text, p.fontSize), `${p.label.ownerRef}`).toBeLessThanOrEqual(wzdluzTekstu);
     }
   });
 });

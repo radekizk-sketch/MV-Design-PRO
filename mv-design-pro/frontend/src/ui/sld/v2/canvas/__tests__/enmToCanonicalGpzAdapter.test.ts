@@ -697,7 +697,16 @@ describe('buildCanonicalGpzProps — sprzęgła', () => {
     expect(props.couplers[0].leftSectionId).toBe('s1');
     expect(props.couplers[0].rightSectionId).toBe('s2');
     expect(props.couplers[0].bayRef).toBe('cpl-9');
-    expect(props.couplers[0].designation).toBe('Pole sprzęgła S1–S2');
+    // Karta GPZ-H5-SLD etap 2 (wymaganie 5): rysowany element to gałąź łącznika, więc jej
+    // nazwa ma pierwszeństwo; nazwa pola COUPLER oznacza łącznik tylko, gdy gałąź jest bez
+    // nazwy (intencja dawnej asercji: pole „dokłada oznaczenie" — zachowana w drugim
+    // przypadku poniżej).
+    expect(props.couplers[0].designation).toBe('Sprzęgło q-cpl');
+    const bezNazwyGalezi: EnmFragment = {
+      ...enm,
+      branches: [{ ...(sprzeglo('q-cpl', 'bus-15b', 'bus-15a') as object), name: '' } as never],
+    };
+    expect(buildCanonicalGpzProps(bezNazwyGalezi, 'g').couplers[0].designation).toBe('Pole sprzęgła S1–S2');
   });
 
   it('gałąź bus_coupler BEZ pola COUPLER → sprzęgło z nazwą gałęzi (pole nie warunkuje istnienia)', () => {

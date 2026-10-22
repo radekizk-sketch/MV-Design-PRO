@@ -177,6 +177,11 @@ export interface CanonicalGpzCoupler {
   readonly rodzaj?: 'wylacznik' | 'lacznik';
   /** Pole sprzęgła wskazujące gałąź (`null`/brak = brak rekordu pola). */
   readonly bayRef?: string | null;
+  /** Karta GPZ-H5-SLD etap 2 (wymaganie 4): pozycja normalna łącznika szyn
+   *  (`Branch.normal_state` przez `shared/stanLacznika.pozycjaNormalna`); `null`/brak =
+   *  niezadeklarowana. Rysowana drugorzędnie w symbolice łącznika, nie znacznikiem
+   *  punktu podziału (łącznik szyn nie jest punktem podziału — wpis 7 architekta). */
+  readonly normalState?: 'open' | 'closed' | null;
 }
 
 export interface CanonicalGpzTransformer {

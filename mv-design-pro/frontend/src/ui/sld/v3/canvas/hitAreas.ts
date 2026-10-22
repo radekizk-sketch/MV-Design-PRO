@@ -312,6 +312,8 @@ export const LABEL_OWNER_ELEMENT_KIND = {
   'branch-point': 'branchPoint',
   protection: 'protectionAnnotation',
   odbior: 'apparatus',
+  // Dane odbioru (P · Q) — ten sam ref `Load.ref_id` i ta sama kategoria co nazwa i symbol.
+  'odbior-dane': 'apparatus',
 } satisfies Record<OwnerKind, PreviewElementKind>;
 
 // ---------------------------------------------------------------------------

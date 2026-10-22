@@ -279,9 +279,20 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   //    identyczne, etykiet 27 → 28: podpis kabla „GPZ ↔ S01 · YAKXS 3×120/16 · Un=20 kV ·
   //    l = 40 m" (x 296, y 424), dotąd stawiany na etykiecie GPZ i zdejmowany declutterem
   //    (najniższy priorytet `segment-span`), jest teraz narysowany. L1 bez zmian.
+  // AKTUALIZACJA ŚWIADOMA (GPZ-H5-SLD etap 2, 2026-10-22): bilans, alarmy i tabela „Pola
+  // GPZ" przechodzą z rysunku do karty GPZ inspektora (wymaganie 1 — odwrotność kroku
+  // GPZ-PARYTET wyżej), a oznaczenie pola GPZ stoi w pionowym pasmie po lewej stronie toru.
+  // DOWÓD (sonda: symbole rodzaj + ownerRef + x + y, odcinki punkty, etykiety tekst + rect;
+  // kod bazy d82493842 vs kod karty, ta sama fikstura, L1 i L2): te same elementy w tej samej
+  // kolejności; rama GPZ niższa o 200 (belka bez wierszy bilansu, bez tabeli), więc CAŁY świat
+  // poza GPZ przesunięty o jednakowy wektor (−48, −200) — rysunek stacji z polem TR
+  // (pola, TR, portal nN, podpisy, „koniec otwarty") względnie bez zmian; w GPZ szyna SN
+  // 56…224 → 56…160 (szerokość z pól, nie z tabeli), tor pola 001 x 80 → 112 (pasmo
+  // oznaczenia po lewej, `compose/gpz.ts`), „Pole liniowe GPZ 1.1" obrócone (rect 112×15 →
+  // 15×112); kabel GPZ → S01 zaczyna się w nowym torze pola, jego podpis 296,424 → 288,224.
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '8f135f305dd1d8a38421e664f4c320c8',
-    2: '6de64cfc159da38853215a96aaf0f5d0',
+    1: '136d4392335cd520eac1ece62b58bdb7',
+    2: 'fa0243497876d9afdd0e84f284b00fe8',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

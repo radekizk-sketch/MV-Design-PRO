@@ -634,6 +634,7 @@ function buildCouplers(
       closedState: sprzeglo.state,
       rodzaj: sprzeglo.rodzaj,
       bayRef: sprzeglo.bayRef,
+      normalState: sprzeglo.normalState,
     }];
   });
 }

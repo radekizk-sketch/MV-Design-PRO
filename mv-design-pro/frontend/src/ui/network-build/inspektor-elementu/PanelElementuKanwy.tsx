@@ -6,6 +6,8 @@
  *  - nagłówek: rodzaj i nazwa obiektu (stacja — rodzaj z topologii, ta sama reguła co drzewo
  *    projektu), stacja › pole, identyfikator globalny aparatu;
  *  - formularz nowego układu PV/BESS/FW po upuszczeniu z palety (`FormularzSzkicuDer`);
+ *  - kartę GPZ (dla GPZ rysowanego na schemacie: bilans, przeciążenia, tabela pól z rolą,
+ *    automatyką i P/Q/I/U — `SekcjaKartyGpz`; schemat niesie oznaczenia i stan aparatów);
  *  - kartę techniczną obiektu (`KartaTechnicznaElementu`): identyfikacja, rozdzielnica z tabelą
  *    pól, transformator z danymi tabliczki i źródłem danej, strona nN, przyłączenia…;
  *  - węzeł SN (ZK SN, słup rozgałęźny) i stan aparatu z rekordu źródła runtime modelu;
@@ -28,6 +30,7 @@ import type { SldMenuAction } from '../../sld/v2/command/SldCommandService';
 import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
+import { SekcjaKartyGpz } from './SekcjaKartyGpz';
 import type { StanPaneluElementu, StanWynikowElementu } from './stanPaneluElementu';
 
 const STYL_SEKCJI = {
@@ -346,6 +349,7 @@ export function PanelElementuKanwy({
         </div>
       )}
       {szkicDer && daneSzkicuDer && <FormularzSzkicuDer dane={daneSzkicuDer} derKind={szkicDer.derKind} />}
+      {stan.kartaGpz && <SekcjaKartyGpz karta={stan.kartaGpz} />}
       {karta && <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} />}
       {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
       {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}

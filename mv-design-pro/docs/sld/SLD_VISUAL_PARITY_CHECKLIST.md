@@ -24,8 +24,8 @@
 | GPZ-03A | Header nie pokazuje statusu `TRANSMISJA NIEZNANA`; brak danych transmisji jest stanem cichym | brak `gpz.header.transmission` przy `unknown` | testowane |
 | GPZ-04 | Header pokazuje nazwę GPZ | `gpz.header.name` | testowane strukturalnie |
 | GPZ-05 | Header obsługuje adres/radio | `gpz.header.address` | testowane strukturalnie |
-| GPZ-06 | Header obsługuje bilans P/Q | `gpz.header.balance` | testowane strukturalnie |
-| GPZ-07 | Header obsługuje alarmy | `gpz.header.alarms` | testowane strukturalnie |
+| GPZ-06 | Bilans P/Q GPZ (zasilanie, odpływy) — od karty GPZ-H5-SLD etap 2 w karcie GPZ inspektora (`SekcjaKartyGpz.tsx`), nie na schemacie | `gpz.header.balance` | testowane strukturalnie (`kartaGpz.iloczyn.test.tsx`) |
+| GPZ-07 | Alarmy (przeciążenia) GPZ — w karcie GPZ inspektora, nie na schemacie | `gpz.header.alarms` | testowane strukturalnie (`kartaGpz.iloczyn.test.tsx`) |
 | GPZ-08 | Header obsługuje sterowanie i kasowanie sygnalizacji | `gpz.header.control`, `gpz.header.reset_signals` | testowane strukturalnie |
 | GPZ-09 | Strona 110 kV ma własny obszar i szynę | `gpz.hv`, `gpz.bus.hv` | testowane strukturalnie |
 | GPZ-10 | Brak danych 110 kV jest jawny | `gpz.hv.missing` | do testu brakowego |
@@ -42,8 +42,8 @@
 | GPZ-21 | Uziemnik jest boczny, nie w osi toru | `gpz.apparatus.es.side` | testowane strukturalnie, pixel pending |
 | GPZ-22 | Głowica kablowa jest oddzielna od uziemnika | `gpz.apparatus.cable_head` | testowane strukturalnie, pixel pending |
 | GPZ-23 | Sprzęgło sekcyjne jest osobnym elementem | `gpz.coupler` | testowane strukturalnie |
-| GPZ-24 | Badge statusów pola są dostępne do kontroli | `gpz.status_flags` | testowane strukturalnie |
-| GPZ-25 | Pomiary pola są osobną warstwą | `gpz.measurements` | testowane strukturalnie |
+| GPZ-24 | Plakietki automatyki pola — w tabeli pól karty GPZ inspektora | `gpz.status_flags` | testowane strukturalnie (`kartaGpz.iloczyn.test.tsx`) |
+| GPZ-25 | Wielkości pola P/Q/I/U z wyniku — w tabeli pól karty GPZ inspektora (osobna warstwa od rysunku) | `gpz.measurements` | testowane strukturalnie (`kartaGpz.iloczyn.test.tsx`) |
 
 ## Stacja SN/nN jako mini-RMU
 

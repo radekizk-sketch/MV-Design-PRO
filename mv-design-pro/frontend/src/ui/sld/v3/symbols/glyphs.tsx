@@ -131,6 +131,12 @@ export interface GlyphProps {
    *  tego symbolu (glif bez oznaczenia, jak przed kartą); `stan: 'brak'` /
    *  `'nierozpoznane'` = jawny znak „?" w obu okręgach uzwojeń. */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** Karta GPZ-H5-SLD etap 2 (wymaganie 4): pozycja normalna łącznika szyn — WYŁĄCZNIE
+   *  glify toru poziomego `lineSwitch`/`lineBreaker` ją czytają. Stan rzeczywisty niesie
+   *  geometria noża/korpusu (`state`); pozycja normalna jest drugorzędna (podpis „NO"/„NZ"
+   *  przy oznaczeniu, `tekstLacznikaSzyn`), a ODSTĘPSTWO stanu rzeczywistego od normalnego
+   *  glif wyróżnia geometrią: przerywaną ramką wokół aparatu (`data-odstepstwo`). */
+  readonly pozycjaNormalna?: 'open' | 'closed';
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -561,32 +567,72 @@ export function NoPointGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/**
+ * Karta GPZ-H5-SLD etap 2 (wymaganie 4): ramka ODSTĘPSTWA stanu rzeczywistego od pozycji
+ * normalnej łącznika — geometria (przerywany prostokąt wokół aparatu), nie kolor; ten sam
+ * tusz co glif. Rysowana wyłącznie, gdy oba fakty są znane i różne (stan nieznany albo
+ * pozycja niezadeklarowana = brak ramki, zero domysłu). Atrybuty `data-pozycja-normalna`
+ * i `data-odstepstwo` niosą oba fakty dla testów i dostępności.
+ */
+function odstepstwoOdNormalnego(props: GlyphProps): boolean {
+  const state = props.state;
+  return props.pozycjaNormalna != null && (state === 'open' || state === 'closed') && state !== props.pozycjaNormalna;
+}
+
+function atrybutyPozycjiNormalnej(props: GlyphProps) {
+  return props.pozycjaNormalna == null
+    ? {}
+    : ({ 'data-pozycja-normalna': props.pozycjaNormalna, 'data-odstepstwo': String(odstepstwoOdNormalnego(props)) } as const);
+}
+
+function RamkaOdstepstwa({ props, width, height }: { readonly props: GlyphProps; readonly width: number; readonly height: number }): JSX.Element | null {
+  if (!odstepstwoOdNormalnego(props)) return null;
+  return (
+    <rect
+      data-ramka-odstepstwa="true"
+      x={-3} y={-3} width={width + 6} height={height + 6}
+      fill="none" stroke={stroke(props)} strokeWidth={grubosc(props, 0.9)} strokeDasharray="2.5 1.5"
+    />
+  );
+}
+
 /** Karta SLD-SUBSTRAT (kontynuacja): łącznik na torze POZIOMYM — geometria
  *  `DisconnectorGlyph` obrócona o 90° (nóż w osi toru = zamknięty, odchylony =
- *  otwarty, przerywany = stan nieznany; poprzeczka styku stałego). */
+ *  otwarty, przerywany = stan nieznany; poprzeczka styku stałego).
+ *  Karta GPZ-H5-SLD etap 2 (P0 „zamknięty nóż ginie w linii"): zamknięty nóż w osi toru
+ *  był nieodróżnialny od kreski toru — glif dostał punkt obrotu (kropka) i wyższą
+ *  poprzeczkę styku, a nóż otwarty odchyla się o ~45° z wyraźną przerwą przed stykiem.
+ *  Stan rzeczywisty czyta się z geometrii: zamknięty = ciągły tor przez glif, otwarty =
+ *  przerwa w osi toru między punktem obrotu a stykiem. */
 export function LineSwitchGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'unknown';
-  const bladeEnd = state === 'open' ? { x: 18, y: 1 } : { x: 22, y: 8 };
+  const bladeEnd = state === 'open' ? { x: 18, y: 0 } : { x: 22, y: 8 };
   return (
-    <g {...glyphGroupProps('lineSwitch', props)}>
+    <g {...glyphGroupProps('lineSwitch', props)} {...atrybutyPozycjiNormalnej(props)}>
       <line x1={0} y1={8} x2={10} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <circle data-punkt-obrotu="true" cx={10} cy={8} r={1.8} fill={stroke(props)} />
       <line
+        data-noz="true"
         x1={10} y1={8} x2={bladeEnd.x} y2={bladeEnd.y}
         stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)}
         strokeDasharray={state === 'unknown' ? '3 2' : undefined}
       />
-      <line x1={22} y1={4} x2={22} y2={12} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <line x1={22} y1={3} x2={22} y2={13} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={22} y1={8} x2={32} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <RamkaOdstepstwa props={props} width={32} height={16} />
     </g>
   );
 }
 
 /** Karta SLD-SUBSTRAT (kontynuacja): wyłącznik na torze POZIOMYM — korpus
- *  `BreakerGlyph` (wypełniony = zamknięty, pusty = otwarty) z wyprowadzeniami W/E. */
+ *  `BreakerGlyph` (wypełniony = zamknięty, pusty = otwarty) z wyprowadzeniami W/E.
+ *  Karta GPZ-H5-SLD etap 2: stan rzeczywisty geometrią — zamknięty = tor przechodzi przez
+ *  korpus (kreska osi na wypełnieniu), otwarty = pusty korpus, w osi toru przerwa od
+ *  wyprowadzenia do wyprowadzenia (bez kreski osi). */
 export function LineBreakerGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'unknown';
   return (
-    <g {...glyphGroupProps('lineBreaker', props)}>
+    <g {...glyphGroupProps('lineBreaker', props)} {...atrybutyPozycjiNormalnej(props)}>
       <rect
         x={2} y={2} width={12} height={12}
         fill={state === 'closed' ? stroke(props) : 'none'}
@@ -596,6 +642,7 @@ export function LineBreakerGlyph(props: GlyphProps): JSX.Element {
       />
       <line x1={0} y1={8} x2={2} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
       <line x1={14} y1={8} x2={16} y2={8} stroke={stroke(props)} strokeWidth={grubosc(props, V3_STROKE_APPARATUS)} />
+      <RamkaOdstepstwa props={props} width={16} height={16} />
     </g>
   );
 }

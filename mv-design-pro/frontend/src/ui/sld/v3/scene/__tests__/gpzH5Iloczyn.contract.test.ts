@@ -48,10 +48,12 @@ function lacznikiSekcji(enm: EnergyNetworkModel, pole: 'gpz_hv_sections' | 'gpz_
   return [...refy].sort();
 }
 
-function zeStanami(enm: EnergyNetworkModel, stany: ReadonlyMap<string, Stan>): EnergyNetworkModel {
+function zeStanami(enm: EnergyNetworkModel, stany: ReadonlyMap<string, Stan>, normalny: Stan): EnergyNetworkModel {
   return {
     ...enm,
-    branches: enm.branches.map((b) => (stany.has(b.ref_id) ? { ...b, status: stany.get(b.ref_id)! } : b)),
+    branches: enm.branches.map((b) =>
+      stany.has(b.ref_id) ? { ...b, status: stany.get(b.ref_id)!, normal_state: normalny } : b,
+    ),
   } as EnergyNetworkModel;
 }
 
@@ -115,13 +117,17 @@ interface Wariant {
   readonly siec: (typeof SIECI)[number];
   readonly wn: Stan | null;
   readonly sn: Stan;
+  /** Pozycja normalna łączników szyn (`normal_state`) — cecha niezależna od stanu. */
+  readonly norm: Stan;
 }
 
 const WARIANTY: Wariant[] = SIECI.flatMap((siec) => {
   const enm = wczytaj(siec);
   const maLacznikWn = lacznikiSekcji(enm, 'gpz_hv_sections').length > 0;
   const stanyWn: (Stan | null)[] = maLacznikWn ? ['open', 'closed'] : [null];
-  return stanyWn.flatMap((wn) => (['open', 'closed'] as const).map((sn) => ({ siec, wn, sn })));
+  return stanyWn.flatMap((wn) =>
+    (['open', 'closed'] as const).flatMap((sn) => (['open', 'closed'] as const).map((norm) => ({ siec, wn, sn, norm }))),
+  );
 });
 
 describe('GPZ z sekcjami — iloczyn sieć × łącznik 110 kV × łącznik SN × wynik', () => {
@@ -130,6 +136,9 @@ describe('GPZ z sekcjami — iloczyn sieć × łącznik 110 kV × łącznik SN �
     expect(WARIANTY.filter((w) => w.wn === 'closed').length).toBeGreaterThan(0);
     expect(WARIANTY.filter((w) => w.wn === null).length).toBeGreaterThan(0);
     expect(new Set(WARIANTY.map((w) => w.sn))).toEqual(new Set(['open', 'closed']));
+    // Odstępstwo stanu od pozycji normalnej i zgodność — obie obecne w iloczynie.
+    expect(WARIANTY.some((w) => w.sn !== w.norm)).toBe(true);
+    expect(WARIANTY.some((w) => w.sn === w.norm)).toBe(true);
   });
 
   for (const w of WARIANTY) {
@@ -140,13 +149,13 @@ describe('GPZ z sekcjami — iloczyn sieć × łącznik 110 kV × łącznik SN �
       ...lacznikiWn.map((r) => [r, w.wn ?? 'open'] as [string, Stan]),
       ...lacznikiSn.map((r) => [r, w.sn] as [string, Stan]),
     ]);
-    const enm = zeStanami(bazowy, stany);
+    const enm = zeStanami(bazowy, stany, w.norm);
     const scene = buildSceneV3(enm, 2);
     const sekcjeWn = (enm.substations ?? []).flatMap((s) => s.gpz_hv_sections ?? []);
     const sekcjeSn = (enm.substations ?? []).flatMap((s) => s.gpz_sections ?? []);
     const szynyWn = przedzialySzyn(scene, '#hv-bus');
     const szynySn = przedzialySzyn(scene, '#bus-primary');
-    const nazwa = `${w.siec} · łącznik 110 kV ${w.wn ?? 'brak'} · łącznik SN ${w.sn}`;
+    const nazwa = `${w.siec} · łącznik 110 kV ${w.wn ?? 'brak'} · łącznik SN ${w.sn} · pozycja normalna ${w.norm}`;
 
     describe(nazwa, () => {
       it('jeden odcinek szyny 110 kV na sekcję modelu, ref wyniku = szyna sekcji', () => {
@@ -154,16 +163,33 @@ describe('GPZ z sekcjami — iloczyn sieć × łącznik 110 kV × łącznik SN �
         expect(szynySn.map((p) => p.busRef).sort()).toEqual(sekcjeSn.map((s) => s.bus_ref).sort());
       });
 
-      // Stan łącznika (`status`) i pozycja normalna (`normal_state`, znacznik „NO") to dwa
-      // różne fakty modelu: łącznik zamknięty łączeniowo zostaje punktem normalnie otwartym.
-      it('łączniki szyn 110 kV i SN w stanie z gałęzi modelu; znacznik NO z pozycji normalnej', () => {
+      // Stan łącznika (`status`) i pozycja normalna (`normal_state`) to dwa różne fakty
+      // modelu. Karta GPZ-H5-SLD etap 2 (wpis 7 architekta): łącznik szyn GPZ NIE jest
+      // punktem podziału — na ŻADNYM poziomie szczegółu nie dostaje znacznika `noPoint` ani
+      // podpisu „NO" punktu podziału; pozycja normalna jest drugorzędna w jego własnej
+      // symbolice (dana glifu + skrót przy oznaczeniu), odstępstwo = ramka glifu.
+      it('łączniki szyn 110 kV i SN w stanie z gałęzi; pozycja normalna w symbolice łącznika, bez znacznika NO', () => {
         for (const [ref, stan] of stany) {
           const symbole = scene.symbols.filter((s) => s.meta?.ownerRef === ref && s.symbolId !== 'noPoint');
           expect(symbole, `łącznik ${ref} narysowany dokładnie raz`).toHaveLength(1);
           expect(symbole[0].state, `stan łącznika ${ref}`).toBe(stan);
-          const galaz = enm.branches.find((b) => b.ref_id === ref) as { normal_state?: string } | undefined;
-          const znacznikNo = scene.symbols.filter((s) => s.meta?.ownerRef === ref && s.symbolId === 'noPoint');
-          expect(znacznikNo, `znacznik NO łącznika ${ref}`).toHaveLength(galaz?.normal_state === 'open' ? 1 : 0);
+          const galaz = enm.branches.find((b) => b.ref_id === ref) as { normal_state?: string; name?: string } | undefined;
+          expect(galaz?.normal_state, `fikstura deklaruje pozycję normalną ${ref}`).toMatch(/^(open|closed)$/);
+          expect(symbole[0].pozycjaNormalna, `pozycja normalna łącznika ${ref}`).toBe(galaz?.normal_state);
+          const podpis = scene.labels.find((l) => l.ownerRef === `${ref}#designation`);
+          expect(podpis?.text, `podpis łącznika ${ref}: nazwa gałęzi i skrót pozycji normalnej`).toBe(
+            `${galaz?.name} · ${galaz?.normal_state === 'open' ? 'NO' : 'NZ'}`,
+          );
+        }
+        for (const lod of [0, 1, 2] as const) {
+          const scenaLod = buildSceneV3(enm, lod);
+          for (const ref of stany.keys()) {
+            expect(
+              scenaLod.symbols.filter((s) => s.symbolId === 'noPoint' && s.meta?.ownerRef === ref),
+              `L${lod}: łącznik szyn ${ref} bez znacznika punktu podziału`,
+            ).toHaveLength(0);
+            expect(scenaLod.labels.filter((l) => l.ownerRef === `${ref}#no-point`), `L${lod}: bez podpisu NO ${ref}`).toHaveLength(0);
+          }
         }
       });
 

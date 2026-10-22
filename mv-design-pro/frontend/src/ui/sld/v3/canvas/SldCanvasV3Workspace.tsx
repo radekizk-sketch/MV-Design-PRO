@@ -207,7 +207,6 @@ import {
   type SldV3Overlay,
   type TransformerOltcOverlay,
 } from './overlay';
-import { buildGpzWynikiOverlay, payloadWynikowGpz } from './gpzWyniki';
 import {
   applyResultLabelFilter,
   buildResultLabelsFromScene,
@@ -215,7 +214,7 @@ import {
   resultLabelsHaveExceedances,
   resultRefForSegment,
   summarizeResultPointCoverage,
-  resultPointsInGpzTable,
+  resultPointsInGpzPanel,
   type ResultLabelComparison,
   type ResultLabelComparisonMode,
   type ResultLabelEntry,
@@ -244,11 +243,8 @@ import { useExecutionRunsStore } from '../../../study-cases/runStore';
 import { useStudyCasesStore } from '../../../study-cases/store';
 import {
   ETYKIETA_SWIEZOSCI,
-  payloadNakladki,
   rodzinaAnalizy,
   swiezoscBiegu,
-  useAktywnyBieg,
-  useWynikBiegu,
   type SwiezoscBiegu,
 } from '../../../../ui2/wyniki/kontekst/kontekstWyniku';
 import { ANALYSIS_TYPE_LABELS } from '../../../study-cases/types';
@@ -1031,15 +1027,15 @@ function SldV3ResultCoverageLine(props: {
   }
   const niewidoczne =
     coverage.hiddenByModel + coverage.withoutTemplate + coverage.inStationNnBoard + coverage.withoutAnchor;
-  const wTabeliGpz = coverage.inGpzTable;
+  const wKarcieGpz = coverage.inGpzPanel;
   return (
     <div className="flex flex-col gap-0.5 border-t border-scada-border pt-1" data-testid="sld-v3-result-coverage">
       <span data-testid="sld-v3-result-coverage-liczby">
         {`Etykiety: ${coverage.labelled} z ${coverage.total} punktów wyniku`}
       </span>
-      {wTabeliGpz > 0 && (
+      {wKarcieGpz > 0 && (
         <span data-testid="sld-v3-result-coverage-gpz">
-          {`W tabeli pól GPZ: ${wTabeliGpz} punktów wyniku (pola i bilans GPZ)`}
+          {`W karcie GPZ (kliknij nagłówek GPZ): ${wKarcieGpz} punktów wyniku (pola i bilans GPZ)`}
         </span>
       )}
       {niewidoczne > 0 && (
@@ -1477,9 +1473,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         resultLabelsByOwnerRef,
         resultPointsHiddenByModel(snapshot),
         resultPointsInStationNnBoard(snapshot),
-        // GPZ-PARYTET: wiersze pól i bilansu GPZ są opisane w tabeli bloku GPZ
-        // (scena rozwinięta L2 — ten sam zbiór kart, który rysuje kanwa).
-        resultPointsInGpzTable(labelsPayload && snapshot ? scenaSld(snapshot, 2) : null),
+        // GPZ-PARYTET: wiersze pól i bilansu GPZ są opisane w karcie GPZ inspektora
+        // (scena rozwinięta L2 — ta sama lista pól, z której inspektor buduje tabelę).
+        resultPointsInGpzPanel(labelsPayload && snapshot ? scenaSld(snapshot, 2) : null),
       ),
     [labelsPayload, resultLabelsByOwnerRef, snapshot],
   );
@@ -1549,30 +1545,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     };
   }, [nakladkaRoznic, rawOverlayPayload, swiezoscNakladki]);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  // GPZ-PARYTET (§0 pkt 5): wyniki pól i bilansu GPZ — odczyt wierszy backendu.
-  // Karta GPZ-H5-SLD pkt 3b (R15): blok GPZ czyta kontekst RODZINY rozpływu (K8) — gdy
-  // schemat pokazuje bieg zwarciowy, wyniki pól pochodzą z aktywnego biegu rozpływu, a tytuł
-  // tabeli mówi to jawnie; świeżość liczona dla TEGO biegu (ten sam predykat co nakładka).
-  const biegRozplywu = useAktywnyBieg('rozplyw');
-  const wynikRozplywu = useWynikBiegu(biegRozplywu?.id ?? null);
-  const payloadRozplywu = useMemo(
-    () =>
-      wynikRozplywu?.rodzaj === 'gotowe' && wynikRozplywu.wynik.runId === biegRozplywu?.id
-        ? payloadNakladki(wynikRozplywu.wynik)
-        : null,
-    [biegRozplywu?.id, wynikRozplywu],
-  );
-  const gpzWyniki = useMemo(() => {
-    const zrodlo = payloadWynikowGpz(rawOverlayPayload, payloadRozplywu);
-    const wyniki = buildGpzWynikiOverlay(zrodlo.payload, zrodlo.zBieguSpozaWidoku);
-    if (!wyniki || !zrodlo.payload) return wyniki;
-    const run = runsRejestru.find((r) => r.id === zrodlo.payload?.run_id);
-    const nieaktualny = run ? swiezoscBiegu(run, rewizjaModelu, werdyktPrzypadku).stan === 'nieaktualny' : false;
-    return { ...wyniki, nieaktualny };
-  }, [payloadRozplywu, rawOverlayPayload, rewizjaModelu, runsRejestru, werdyktPrzypadku]);
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance, gpzWyniki }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance, gpzWyniki],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, faultPointMarkerRefs, filteredResultLabels, resultsStale, provenance],
   );
 
   // K11-A (dyrektywa SLD-first): Escape ZDEJMUJE selekcję — kanoniczny gest

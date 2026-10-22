@@ -75,8 +75,7 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
       ...Object.entries(p.voltage).map(([k, v]) => [`voltage.${k}`, v] as const),
       ...Object.entries(p.state).map(([k, v]) => [`state.${k}`, v] as const),
       ...Object.entries(p.highlight).map(([k, v]) => [`highlight.${k}`, v] as const),
-      ...Object.entries(p.rolaPola).map(([k, v]) => [`rolaPola.${k}`, v] as const),
-    ];
+      ];
     const ekran = liscie(DARK_SCADA_SLD_PALETTE);
     const dokument = new Map(liscie(LIGHT_TECHNICAL_V3));
     for (const [klucz, ciemna] of ekran) {

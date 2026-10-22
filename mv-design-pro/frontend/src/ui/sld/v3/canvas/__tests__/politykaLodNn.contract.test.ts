@@ -150,6 +150,7 @@ describe('T2-LOD §1 — LOD_CLASS_BY_OWNER_KIND jest KOMPLETNA i zgodna z plane
     'branch-point',
     'protection',
     'odbior',
+    'odbior-dane',
   ];
 
   it('KAŻDY rodzaj właściciela ma przypisaną klasę LOD', () => {
@@ -167,6 +168,10 @@ describe('T2-LOD §1 — LOD_CLASS_BY_OWNER_KIND jest KOMPLETNA i zgodna z plane
       'no-point',
       'branch-point',
       'station-name',
+      // Karta GPZ-H5-SLD etap 2 (wymaganie 5): NAZWA odbioru jest tożsamością (L0); jego
+      // dane P · Q przeszły do osobnego rodzaju `odbior-dane` (L2) — intencja „podpis odbioru
+      // jest adnotacją drugorzędną" dotyczy danych, sprawdzana niżej.
+      'odbior',
     ];
     for (const kind of oczekiwaneL0) {
       expect(LOD_CLASS_BY_OWNER_KIND[kind], kind).toBe('L0');
@@ -182,7 +187,7 @@ describe('T2-LOD §1 — LOD_CLASS_BY_OWNER_KIND jest KOMPLETNA i zgodna z plane
     expect(LOD_CLASS_BY_OWNER_KIND['port-caption']).toBe('L2');
     expect(LOD_CLASS_BY_OWNER_KIND['segment-endpoint']).toBe('L2');
     expect(LOD_CLASS_BY_OWNER_KIND.protection).toBe('L2');
-    expect(LOD_CLASS_BY_OWNER_KIND.odbior).toBe('L2');
+    expect(LOD_CLASS_BY_OWNER_KIND['odbior-dane']).toBe('L2');
   });
 
   it('ŻADEN rodzaj klasy `dane` nie jest L0 (rozłączność L0 od reszty)', () => {
@@ -192,7 +197,7 @@ describe('T2-LOD §1 — LOD_CLASS_BY_OWNER_KIND jest KOMPLETNA i zgodna z plane
       'segment-endpoint',
       'port-caption',
       'protection',
-      'odbior',
+      'odbior-dane',
     ];
     for (const kind of daneKinds) {
       expect(LOD_CLASS_BY_OWNER_KIND[kind], kind).not.toBe('L0');

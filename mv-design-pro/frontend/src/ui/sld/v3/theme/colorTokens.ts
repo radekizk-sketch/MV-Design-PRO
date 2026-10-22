@@ -34,7 +34,6 @@
  * `BASE_STROKE`/`CANVAS_BACKGROUND` (te same wartości co dotąd, zero zmiany
  * zachowania) — nie klasyfikatory napięcia/stanu.
  */
-import type { RolaPolaGpz } from '../../v2/canvas/canonicalGpzModel';
 import type { SymbolId } from '../symbols/defs';
 
 /**
@@ -142,10 +141,6 @@ export interface SldPalette {
   readonly voltage: Readonly<Record<VoltageClass, string>>;
   readonly state: Readonly<Record<'closed' | 'open' | 'nop', string>>;
   readonly highlight: Readonly<Record<HighlightKey, string>>;
-  /** GPZ-PARYTET (§0 pkt 3): kolor roli pola rozdzielni GPZ — tło pola (`gpz.bay.panel`,
-   *  wypełnienie półprzezroczyste + obrys), próbka w tabeli „Pola GPZ" i legenda ról.
-   *  Rola pochodzi z modelu (`Bay.bay_role`), kolor jest wyłącznie kodem roli. */
-  readonly rolaPola: Readonly<Record<RolaPolaGpz, string>>;
 }
 
 /**
@@ -332,25 +327,12 @@ export const HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
  * w JEDEN obiekt. Ta struktura (nie luźne stałe) jest tym, co render przekazuje
  * przez kontekst, a eksport bierze jako źródło substytucji.
  */
-/** GPZ-PARYTET: kolory ról pól GPZ motywu dyspozytorskiego — sześć odcieni wzajemnie
- *  rozróżnialnych, każdy ≥ 3:1 na tle kanwy (test `palette.test.ts`), żaden nie powtarza
- *  wartości innego tokenu (eksport mapuje kolor ekranu na jeden cel dokumentowy). */
-export const ROLA_POLA_COLOR: Readonly<Record<RolaPolaGpz, string>> = {
-  zasilajace: '#E0A040',
-  liniowe: '#4FA3E0',
-  transformatorowe: '#B48CF0',
-  sprzeglo: '#9AA4AF',
-  pomiarowe: '#3FBFA8',
-  zrodlowe: '#7CC85A',
-};
-
 export const DARK_SCADA_SLD_PALETTE: SldPalette = {
   canvasBackground: CANVAS_BACKGROUND,
   baseStroke: BASE_STROKE,
   voltage: VOLTAGE_COLOR,
   state: STATE_COLOR,
   highlight: HIGHLIGHT_COLOR,
-  rolaPola: ROLA_POLA_COLOR,
 };
 
 // ---------------------------------------------------------------------------

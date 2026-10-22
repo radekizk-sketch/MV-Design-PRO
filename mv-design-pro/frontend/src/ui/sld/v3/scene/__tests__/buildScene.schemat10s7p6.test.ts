@@ -182,7 +182,10 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // kolejność remisu ciągów); kod karty na fiksturze bazy daje dokładnie 21240/44016/44016,
     // treść fikstury bazy z samymi nowymi identyfikatorami — 21576/44352/44352; atrybucja per
     // przyczyna przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21576);
+    // GPZ-H5-SLD etap 2 (2026-10-22): L0 21576 → 21912 (+336) — objazd przęsła GPZ→S01 pod
+    // ramą strefy GPZ pogłębioną pełnym pasmem oznaczenia pola; L1/L2 bez zmian. Atrybucja
+    // liść po liściu przy `VERTICAL_LENGTH_BASELINE` w `scripts/sld_v3_acceptance.mjs`.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21912);
     expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(44352);
     expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(44352);
   });

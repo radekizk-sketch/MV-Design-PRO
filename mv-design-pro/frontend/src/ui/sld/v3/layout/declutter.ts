@@ -59,7 +59,8 @@ export const LABEL_PRIORITY: Readonly<Record<OwnerKind, number>> = {
   'segment-endpoint': 40, // „koniec otwarty" / odsyłacz ciągu dalszego
   'segment-span': 30, // PARAMETRY przęsła poziomego (typ·przekrój·długość)
   'segment-lateral': 30, // PARAMETRY przęsła pionowego
-  odbior: 25, // podpis odbioru (nazwa · P · Q z modelu)
+  odbior: 60, // NAZWA odbioru — tożsamość, waga identyfikatora aparatu
+  'odbior-dane': 25, // dane odbioru (P · Q z modelu)
 };
 
 /** Priorytet etykiety wg jej `ownerKind` (audyt §3). */

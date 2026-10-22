@@ -5,7 +5,8 @@
  * Iloczyn 3c: stan danych pola {rezerwowe, bez odpływu, bez aparatu, kompletne} × bieg
  * rozpływu {brak, jest} × wartości pola w wyniku {brak, są}. Reguła: wartości z wyniku mają
  * pierwszeństwo; bez wartości — stan danych pola; bez stanu danych i bez biegu — „obliczenie
- * niewykonane"; bieg jest, wartości brak, pole kompletne — kolumny „brak" (null).
+ * niewykonane"; bieg jest, wartości brak, pole kompletne — kolumny „brak" (null). Stan
+ * „bez aparatu" nie daje napisu wiersza (etap 2, wymaganie 7 — zbiorczo w karcie GPZ).
  *
  * Iloczyn 3b: payload schematu {brak, rozpływ, zwarcie} × payload rodziny rozpływu {brak,
  * rozpływ}: blok GPZ czyta rozpływ schematu, a gdy schemat pokazuje inny bieg — aktywny
@@ -15,12 +16,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { buildGpzWynikiOverlay, payloadWynikowGpz } from '../../canvas/gpzWyniki';
-import { snapUp } from '../../core/grid';
-import { measureLabelWidth } from '../../core/text';
 import {
-  KLASA_DANYCH_GPZ,
   stanDanychPolaGpz,
-  szerokoscTytuluTabeliGpz,
   TEKST_STANU_POLA_GPZ,
   tekstStanuWartosciPolaGpz,
   tekstTytuluTabeliGpz,
@@ -49,7 +46,9 @@ describe('stan danych pola GPZ × bieg × wartości (3c)', () => {
           const stan = stanDanychPolaGpz(pole);
           const napis = tekstStanuWartosciPolaGpz(stan, maWynik, maWartosci);
           if (maWartosci) expect(napis).toBeNull();
-          else if (stan !== null) expect(napis).toBe(TEKST_STANU_POLA_GPZ[stan]);
+          // Etap 2, wymaganie 7: „bez aparatu" raz przy obiekcie i raz zbiorczo w karcie GPZ,
+          // nie w każdym wierszu — wiersz takiego pola mówi o stanie obliczenia.
+          else if (stan !== null && stan !== 'bez_aparatu') expect(napis).toBe(TEKST_STANU_POLA_GPZ[stan]);
           else if (!maWynik) expect(napis).toBe(TEKST_STANU_POLA_GPZ.niewykonane);
           else expect(napis).toBeNull();
         });
@@ -108,18 +107,10 @@ describe('kontekst rodziny rozpływu bloku GPZ (3b)', () => {
   });
 });
 
-describe('tytuł tabeli pól GPZ — wariant „inny bieg" nie poszerza ramy GPZ', () => {
-  // Szerokość slotu tytułu współtworzy szerokość ramy GPZ, a ta przesuwa świat sieci i łamanie
-  // arkusza (`buildSceneV3`: `gpzLeadWidth`, `mainRowDx`). Pierwsza wersja przyrostka „inny
-  // bieg" poszerzała ramę o 440 jednostek na KAŻDEJ sieci z GPZ (pomiar na
-  // `sldSubstrate52s`: rama 456 → 896, pin F9.7 −2400 na L0). Iloczyn: maWynik × nieaktualny ×
-  // innyBieg — każdy wariant mieści się w szerokości wariantów bez „innego biegu".
-  const zwykle = [
-    tekstTytuluTabeliGpz(false, false),
-    tekstTytuluTabeliGpz(true, false),
-    tekstTytuluTabeliGpz(true, true),
-  ];
-  const limit = snapUp(Math.max(...zwykle.map((t) => measureLabelWidth(t, KLASA_DANYCH_GPZ))));
+describe('tytuł karty pól GPZ — iloczyn maWynik × nieaktualny × innyBieg', () => {
+  // Karta GPZ-H5-SLD etap 2: tytuł stoi w karcie GPZ inspektora, nie w geometrii ramy, więc
+  // dawny limit szerokości (wariant „inny bieg" poszerzał ramę) nie ma już przedmiotu. Zostaje
+  // treść: stan wyniku jawnie w tytule.
   it.each([
     [false, false, false],
     [false, false, true],
@@ -131,11 +122,8 @@ describe('tytuł tabeli pól GPZ — wariant „inny bieg" nie poszerza ramy GPZ
     [true, true, true],
   ] as const)('maWynik=%s nieaktualny=%s innyBieg=%s', (maWynik, nieaktualny, innyBieg) => {
     const tytul = tekstTytuluTabeliGpz(maWynik, nieaktualny, innyBieg);
-    expect(measureLabelWidth(tytul, KLASA_DANYCH_GPZ)).toBeLessThanOrEqual(limit);
     expect(tytul.includes('nieaktualny')).toBe(maWynik && nieaktualny);
     expect(tytul.includes('z innego biegu')).toBe(maWynik && innyBieg);
-  });
-  it('slot tytułu = szerokość wariantów bez „innego biegu"', () => {
-    expect(szerokoscTytuluTabeliGpz()).toBe(limit);
+    expect(tytul.includes('brak wyniku rozpływu mocy')).toBe(!maWynik);
   });
 });

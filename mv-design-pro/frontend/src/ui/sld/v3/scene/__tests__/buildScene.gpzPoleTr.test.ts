@@ -101,8 +101,8 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
             expect(wylacznikToru!.meta?.deviceRef).toBe(WYLACZNIK);
             expect(wylacznikToru!.state).toBe('open');
             expect(wylacznikToru!.meta?.ownerRef).toBe(POLE_TR);
-            expect(scena.meta.gpzAdnotacje?.tabela?.karty.map((k) => k.bayRef)).toContain(POLE_TR);
-            expect(scena.meta.gpzAdnotacje?.panele.map((p) => p.bayRef)).toContain(POLE_TR);
+            // Pole TR toru transformatora jest wierszem karty GPZ inspektora (lista pól sceny).
+            expect(scena.meta.gpzPola?.map((p) => p.bayRef)).toContain(POLE_TR);
             expect(
               scena.symbols.some((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === POLE_TR),
             ).toBe(true);
@@ -120,6 +120,6 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
     const a = buildSceneV3(migawka('w polu TR', 'Yd11').enm, 2);
     const b = buildSceneV3(migawka('w polu TR', 'Yd11').enm, 2);
     expect(JSON.stringify(b.symbols)).toBe(JSON.stringify(a.symbols));
-    expect(JSON.stringify(b.meta.gpzAdnotacje)).toBe(JSON.stringify(a.meta.gpzAdnotacje));
+    expect(JSON.stringify(b.meta.gpzPola)).toBe(JSON.stringify(a.meta.gpzPola));
   });
 });

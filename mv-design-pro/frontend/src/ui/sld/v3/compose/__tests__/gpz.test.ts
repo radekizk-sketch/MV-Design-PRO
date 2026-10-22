@@ -28,18 +28,10 @@ import {
   ETYKIETA_ROLI_POLA_PL,
   KONTRAKT_NEGATYWNY_GPZ,
   ROLE_POL_GPZ,
-  szerokoscSlotowNaglowka,
   tekstAlarmowGpz,
   tekstOdplywowGpz,
   tekstTytuluTabeliGpz,
   tekstZasilaniaGpz,
-  ulozTabeliGpz,
-  ulozWariantTabeliGpz,
-  wariantJednowierszowyMiesciSie,
-  WYSOKOSC_KARTY_GPZ,
-  WYSOKOSC_KARTY_JEDNOWIERSZOWEJ_GPZ,
-  type GpzAdnotacje,
-  type PoleTabeliGpzWejscie,
 } from '../gpzAdnotacje';
 import {
   allGpzSymbolsOnGrid,
@@ -803,7 +795,8 @@ describe('V3 compose/gpz — FIX-D: kontrprzykłady wyroczni noDirectTransformer
       bbox: { x: 0, y: 0, width: 0, height: 0 },
       neutralEarthingNotePl: null,
       zone: null,
-      adnotacje: null,
+      pola: [],
+      pasmaOznaczenPol: [],
     };
   }
 
@@ -1247,11 +1240,6 @@ function prostokatyOdcinkow(c: GpzComposition): Prost[] {
   });
 }
 
-/** Prostokąty wszystkich treści adnotacji belki i tabeli (bez teł pól). */
-function prostokatyAdnotacji(adn: GpzAdnotacje): Prost[] {
-  return [adn.zasilanie, adn.odplywy, adn.alarmy, ...(adn.tabela ? [adn.tabela.rect] : [])];
-}
-
 /** Pełny GPZ: strona WN z polem zasilającym, transformator, dwie sekcje SN z polami
  *  wszystkich ról, sprzęgło — każda rola modelu obecna. */
 function pelnyGpz(overrides: Partial<CanonicalGpzProps> = {}): CanonicalGpzProps {
@@ -1299,26 +1287,19 @@ describe('GPZ-PARYTET — rama i nagłówek (gpz.frame / gpz.header / gpz.header
     ['pełny (WN + 2 sekcje + sprzęgło, wszystkie role)', pelnyGpz()],
     ['bez nazwy w modelu', pelnyGpz({ name: null })],
     // Pola z rekordami aparatów (szerokość kolumny pola z danych — GEOMETRIA-STACJI §0 pkt 4).
-    ['wiele pól (łamanie kart)', baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: Array.from({ length: 9 }, (_, i) => lineBay(`b-${i}`, { bayNumber: String(i + 1).padStart(2, '0'), primaryDevices: rekordy(`b-${i}`, APARATY_POLA_LINIOWEGO) })) }] })],
+    ['wiele pól', baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: Array.from({ length: 9 }, (_, i) => lineBay(`b-${i}`, { bayNumber: String(i + 1).padStart(2, '0'), primaryDevices: rekordy(`b-${i}`, APARATY_POLA_LINIOWEGO) })) }] })],
   ];
 
   for (const [opis, props] of warianty) {
-    it(`${opis}: rama obejmuje symbole, odcinki, nagłówek i tabelę z marginesem ≥ GRID; nic z nagłówka/tabeli nie koliduje z treścią`, () => {
+    it(`${opis}: rama obejmuje symbole, odcinki i nagłówek z marginesem ≥ GRID; nagłówek nie koliduje z treścią`, () => {
       const c = composeGpz(props, ORIGIN);
       expect(c.zone).not.toBeNull();
-      expect(c.adnotacje).not.toBeNull();
       const zone = c.zone!;
       const wnetrze = { x: zone.x + GRID, y: zone.y + GRID / 2, width: zone.width - 2 * GRID, height: zone.height - GRID };
       for (const r of [...prostokatySymboli(c), ...prostokatyOdcinkow(c)]) expect(zawiera(zone, r)).toBe(true);
       expect(zawiera(wnetrze, c.labels.stationName.nameSlot)).toBe(true);
-      for (const r of prostokatyAdnotacji(c.adnotacje!)) expect(zawiera(wnetrze, r)).toBe(true);
       const tresc = [...prostokatySymboli(c), ...prostokatyOdcinkow(c), ...c.labels.transformerLabels.map((l) => l.nameSlot)];
-      for (const r of [c.labels.stationName.nameSlot, ...prostokatyAdnotacji(c.adnotacje!)]) {
-        expect(tresc.filter((t) => przecina(r, t))).toEqual([]);
-      }
-      // Wiersze belki nie nachodzą na siebie ani na tabelę.
-      const belka = [c.labels.stationName.nameSlot, ...prostokatyAdnotacji(c.adnotacje!)];
-      belka.forEach((a, i) => belka.slice(i + 1).forEach((b) => expect(przecina(a, b)).toBe(false)));
+      expect(tresc.filter((t) => przecina(c.labels.stationName.nameSlot, t))).toEqual([]);
       expect(c.parityKeys.has('gpz.frame')).toBe(true);
       expect(c.parityKeys.has('gpz.header')).toBe(true);
     });
@@ -1343,33 +1324,6 @@ describe('GPZ-PARYTET — rama i nagłówek (gpz.frame / gpz.header / gpz.header
     });
   }
 
-  it('tabela łamie karty w szerokości treści: wiele pól ⇒ wiele kolumn kart, a tabela nie wystaje poza wnętrze ramy', () => {
-    const c = composeGpz(warianty[3][1], ORIGIN);
-    const tabela = c.adnotacje!.tabela!;
-    expect(tabela.karty).toHaveLength(9);
-    expect(tabela.kolumnyKart.length).toBeGreaterThan(1);
-    expect(tabela.rect.x + tabela.rect.width).toBeLessThanOrEqual(c.zone!.x + c.zone!.width - GRID);
-    // Karty rozłączne parami.
-    tabela.karty.forEach((a, i) => tabela.karty.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect)).toBe(false)));
-  });
-
-  it('karta szersza niż dostępna szerokość (bardzo długie oznaczenie z modelu): jedna kolumna kart, rama rośnie do karty — tekst nie jest ucinany', () => {
-    const dlugie = 'Pole odpływowe zasilające osiedle Północ — linia kablowa nr 17';
-    const c = composeGpz(baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { bayNumber: dlugie })] }] }), ORIGIN);
-    const tabela = c.adnotacje!.tabela!;
-    expect(tabela.kolumnyKart).toHaveLength(1);
-    expect(tabela.karty[0].oznaczenie).toBe(dlugie);
-    expect(zawiera(c.zone!, tabela.rect)).toBe(true);
-  });
-
-  it('pola bez oznaczenia w modelu (brak numeru i nazwy pola WN): karta mówi „bez oznaczenia" — nie wymyśla numeru', () => {
-    const c = composeGpz(
-      baseProps({ hvSections: [{ sectionId: 'hv-1', order: 1, label: '110 kV', busRef: null, busVoltageKv: 110, lineFieldName: null, incomingSourceRef: null, bays: [lineBay('hv-b-1', { bayNumber: undefined, feederName: undefined, fieldRole: 'LINE_IN' })] }] }),
-      ORIGIN,
-    );
-    const karta = c.adnotacje!.tabela!.karty.find((k) => k.bayRef === 'hv-b-1')!;
-    expect(karta.oznaczenie).toBe('bez oznaczenia');
-  });
 });
 
 describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.transformer.winding.hv/.sn)', () => {
@@ -1417,85 +1371,59 @@ describe('GPZ-PARYTET — uzwojenia transformatora z grupy połączeń (gpz.tran
   }
 });
 
-describe('GPZ-PARYTET — tła pól wg roli (gpz.bay.panel) i legenda ról', () => {
-  it('każda rola modelu ma etykietę polską i pozycję w legendzie w stałej kolejności', () => {
+// Karta GPZ-H5-SLD etap 2 (odrzucenie B-02, wymaganie 1): tła pól wg roli, tabela „Pola GPZ"
+// oraz bilans i alarmy nagłówka ZESZŁY ze schematu do karty GPZ prawego inspektora
+// (`network-build/inspektor-elementu/SekcjaKartyGpz.tsx`, test natywny
+// `kartaGpz.iloczyn.test.tsx`). Kompozycja oddaje wyłącznie LISTĘ pól (`pola`) — kolejność,
+// oznaczenie, rola, plakietki i stan danych — a te testy przypinają tę listę oraz to, że
+// schemat nie emituje już kluczy parytetu danych pól (przeniesione na elementy karty).
+const KLUCZE_DANYCH_POL = ['gpz.bay.panel', 'gpz.status_flags', 'gpz.measurements', 'gpz.header.balance', 'gpz.header.alarms'] as const;
+
+describe('GPZ-H5-SLD etap 2 — lista pól GPZ (karta inspektora) zamiast tabeli w geometrii', () => {
+  it('każda rola modelu ma etykietę polską (kolejność ról stała)', () => {
     expect(ROLE_POL_GPZ).toHaveLength(6);
     for (const rola of ROLE_POL_GPZ) expect(ETYKIETA_ROLI_POLA_PL[rola].length).toBeGreaterThan(0);
   });
 
-  it('pełny GPZ: tło dla każdego pola z rolą z modelu; tła rozłączne parami i nie zachodzą na symbole INNYCH pól', () => {
-    const c = composeGpz(pelnyGpz(), ORIGIN);
-    const panele = c.adnotacje!.panele;
-    expect(c.parityKeys.has('gpz.bay.panel')).toBe(true);
-    const oczekiwane: Record<string, string> = { 'hv-b-1': 'zasilajace', 'b-1': 'liniowe', 'b-2': 'pomiarowe', 'b-3': 'zrodlowe', 'b-4': 'liniowe' };
-    for (const [ref, rola] of Object.entries(oczekiwane)) {
-      expect(panele.find((p) => p.bayRef === ref)?.rola, ref).toBe(rola);
-    }
-    panele.forEach((a, i) => panele.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect), `${a.bayRef} × ${b.bayRef}`).toBe(false)));
-    for (const panel of panele) {
-      const obce = c.symbols.filter((sym) => sym.meta.bayRef !== undefined && sym.meta.bayRef !== panel.bayRef);
-      const kolizje = obce.filter((sym) => przecina(panel.rect, { x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height }));
-      expect(kolizje.map((k) => k.meta.bayRef), panel.bayRef).toEqual([]);
-      // Własne symbole pola są w tle w całości.
-      const wlasne = c.symbols.filter((sym) => sym.meta.bayRef === panel.bayRef);
-      for (const sym of wlasne) {
-        expect(zawiera(panel.rect, { x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height })).toBe(true);
-      }
-      // Tło w ramie.
-      expect(zawiera(c.zone!, panel.rect)).toBe(true);
-    }
-  });
+  for (const [opis, props] of [['minimalny', baseProps()], ['pełny', pelnyGpz()], ['bez nazwy', pelnyGpz({ name: null })]] as const) {
+    it(`${opis}: schemat NIE emituje kluczy danych pól (tła ról, plakietki, pomiary, bilans, alarmy)`, () => {
+      const c = composeGpz(props, ORIGIN);
+      for (const klucz of KLUCZE_DANYCH_POL) expect(c.parityKeys.has(klucz), klucz).toBe(false);
+    });
+  }
 
-  it('legenda zawiera WYŁĄCZNIE role obecne w GPZ, w kolejności ROLE_POL_GPZ', () => {
-    const c = composeGpz(pelnyGpz(), ORIGIN);
-    const legenda = c.adnotacje!.tabela!.legenda.map((l) => l.rola);
-    expect(legenda).toEqual(['zasilajace', 'liniowe', 'pomiarowe', 'zrodlowe']);
-    const minimalny = composeGpz(baseProps(), ORIGIN);
-    expect(minimalny.adnotacje!.tabela!.legenda.map((l) => l.rola)).toEqual(['liniowe']);
+  it('pełny GPZ: pola w kolejności kompozycji — WN, sprzęgła WN, pola toru TR, sekcje SN po kolei, sprzęgła SN (z polem w modelu)', () => {
+    const z = pelnyGpz({
+      couplers: [{ couplerId: 'spr-1', leftSectionId: 'sec-1', rightSectionId: 'sec-2', designation: 'SP', closedState: 'closed', bayRef: 'spr-bay' }],
+    });
+    const c = composeGpz(z, ORIGIN);
+    expect(c.pola.map((p) => p.bayRef)).toEqual(['hv-b-1', 'b-1', 'b-2', 'b-3', 'b-4', 'spr-bay']);
+    const sprzeglo = c.pola.find((p) => p.bayRef === 'spr-bay')!;
+    expect(sprzeglo).toEqual({ bayRef: 'spr-bay', oznaczenie: 'SP', rola: 'sprzeglo', plakietki: [], stanDanych: null });
+    // Sprzęgło bez pola w modelu nie dostaje wiersza (nie wymyślamy refu pola).
+    expect(composeGpz(pelnyGpz(), ORIGIN).pola.map((p) => p.bayRef)).toEqual(['hv-b-1', 'b-1', 'b-2', 'b-3', 'b-4']);
   });
 
   for (const rola of ROLE_POL_GPZ) {
-    it(`rola „${rola}" z modelu → tło i próbka karty tej roli (rola nie jest wyprowadzana ze stosu aparatów)`, () => {
+    it(`rola „${rola}" z modelu → rola pola na liście (rola nie jest wyprowadzana ze stosu aparatów)`, () => {
       const c = composeGpz(baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { rolaPola: rola })] }] }), ORIGIN);
-      expect(c.adnotacje!.panele.map((p) => p.rola)).toEqual([rola]);
-      expect(c.adnotacje!.tabela!.karty.map((k) => k.rola)).toEqual([rola]);
+      expect(c.pola.map((p) => p.rola)).toEqual([rola]);
     });
   }
-});
 
-describe('GPZ-PARYTET — plakietki automatyki (gpz.status_flags) z danych EAZ modelu', () => {
   for (const flagi of [[], ['SPZ'], ['SCO'], ['SPZ', 'SCO']] as const) {
-    it(`pole z plakietkami [${flagi.join(', ')}]: karta niesie dokładnie te plakietki w tej kolejności; klucz status_flags ⇔ co najmniej jedna`, () => {
+    it(`pole z plakietkami [${flagi.join(', ')}]: lista niesie dokładnie te plakietki w tej kolejności`, () => {
       const c = composeGpz(baseProps({ sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1', { statusFlags: [...flagi] })] }] }), ORIGIN);
-      const karta = c.adnotacje!.tabela!.karty[0];
-      expect(karta.plakietki.map((p) => p.flaga)).toEqual([...flagi]);
-      expect(c.parityKeys.has('gpz.status_flags')).toBe(flagi.length > 0);
-      // Plakietki w obrysie karty i rozłączne parami.
-      for (const p of karta.plakietki) expect(zawiera(karta.rect, p.rect)).toBe(true);
-      karta.plakietki.forEach((a, i) => karta.plakietki.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect)).toBe(false)));
+      expect(c.pola[0].plakietki).toEqual([...flagi]);
     });
   }
-});
 
-describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.header.balance / gpz.header.alarms)', () => {
-  it('kompozycja rezerwuje sloty bilansu i alarmów oraz tabelę pomiarów (wartości dokleja kanwa z wyniku backendu)', () => {
-    const c = composeGpz(pelnyGpz(), ORIGIN);
-    expect(c.parityKeys.has('gpz.measurements')).toBe(true);
-    expect(c.parityKeys.has('gpz.header.balance')).toBe(true);
-    expect(c.parityKeys.has('gpz.header.alarms')).toBe(true);
-    const tabela = c.adnotacje!.tabela!;
-    expect(tabela.kolumnyWartosci.map((k) => k.naglowek)).toEqual(['P [MW]', 'Q [Mvar]', 'I [A]', 'U [kV]']);
-    // Kolejność kart = kolejność pól kompozycji: WN, potem sekcje SN po kolei.
-    expect(tabela.karty.map((k) => k.bayRef)).toEqual(['hv-b-1', 'b-1', 'b-2', 'b-3', 'b-4']);
-  });
-
-  it('sloty belki mieszczą NAJDŁUŻSZY wariant tekstu (brak wyniku / wynik / wynik nieaktualny) — geometria nie zależy od stanu biegu', () => {
-    const sloty = szerokoscSlotowNaglowka();
-    const pelny = { pZasilaniaMw: '−8888,8888', qZasilaniaMvar: '−8888,8888', pOdplywowMw: '−8888,8888', qOdplywowMvar: '−8888,8888' };
-    const miara = (t: string): number => Math.ceil(t.length * 13 * 0.62);
-    for (const t of [tekstZasilaniaGpz(null), tekstZasilaniaGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.zasilanie);
-    for (const t of [tekstOdplywowGpz(null), tekstOdplywowGpz(pelny)]) expect(miara(t)).toBeLessThanOrEqual(sloty.odplywy);
-    for (const t of [tekstAlarmowGpz(null, false, false), tekstAlarmowGpz('8888', true, true)]) expect(miara(t)).toBeLessThanOrEqual(sloty.alarmy);
+  it('pola bez oznaczenia w modelu (brak numeru i nazwy pola WN): oznaczenie `null` — inspektor pisze „bez oznaczenia", nie wymyśla numeru', () => {
+    const c = composeGpz(
+      baseProps({ hvSections: [{ sectionId: 'hv-1', order: 1, label: '110 kV', busRef: null, busVoltageKv: 110, lineFieldName: null, incomingSourceRef: null, bays: [lineBay('hv-b-1', { bayNumber: undefined, feederName: undefined, fieldRole: 'LINE_IN' })] }] }),
+      ORIGIN,
+    );
+    expect(c.pola.find((p) => p.bayRef === 'hv-b-1')!.oznaczenie).toBeNull();
   });
 
   it('teksty stanu wyniku: brak wyniku ≠ zero, wynik nieaktualny jawnie oznaczony, metryka nieobecna ≠ zero', () => {
@@ -1509,87 +1437,11 @@ describe('GPZ-PARYTET — pomiary, bilans i alarmy (gpz.measurements / gpz.heade
     expect(tekstAlarmowGpz('0', true, false)).toBe('Przeciążenia w GPZ: 0');
     expect(tekstAlarmowGpz('2', true, true)).toBe('Przeciążenia w GPZ: 2 · wynik nieaktualny');
     expect(tekstTytuluTabeliGpz(true, true)).toBe('Pola GPZ — wynik rozpływu mocy · wynik nieaktualny');
+    expect(tekstTytuluTabeliGpz(true, false, true)).toBe('Pola GPZ — rozpływ z innego biegu niż schemat');
     const niepelny = { ...bilans, pZasilaniaMw: null };
     expect(tekstZasilaniaGpz(niepelny)).toBe('Zasilanie GPZ: brak wyniku źródła');
     expect(tekstOdplywowGpz({ ...bilans, qOdplywowMvar: null })).toBe('Odpływy GPZ: brak kompletu wyników pól');
     expect(tekstAlarmowGpz(null, true, false)).toBe('Przeciążenia w GPZ: brak wyniku');
-  });
-
-  it('układ tabeli: szerokość dostępna steruje liczbą kolumn kart (wąsko ⇒ 1, szeroko ⇒ wszystkie w jednym wierszu)', () => {
-    const pola = Array.from({ length: 4 }, (_, i) => ({ bayRef: `b-${i}`, oznaczenie: `0${i}`, rola: 'liniowe' as const, plakietki: [], stanDanych: null }));
-    const waska = ulozTabeliGpz(pola, 0, 0, 0);
-    expect(waska.kolumnyKart).toHaveLength(1);
-    const szeroka = ulozTabeliGpz(pola, 0, 0, 100000);
-    expect(szeroka.kolumnyKart).toHaveLength(4);
-    expect(szeroka.rect.height).toBeLessThan(waska.rect.height);
-  });
-
-  // Iloczyn cech: szerokość dostępna (wąska / jednowierszowa ledwo / szeroka) × liczba
-  // pól (1, 4, 9) × plakietki (brak / dwie). Wyrocznie: wybrany wariant ma wysokość
-  // = min z wariantów wykonalnych; w karcie jednowierszowej wartości nie zachodzą na
-  // opis pola; karty rozłączne i w obrysie tabeli; legenda nie zachodzi na tytuł
-  // ani na karty.
-  const polaTabeli = (n: number, plakietki: readonly ('SPZ' | 'SCO')[]): PoleTabeliGpzWejscie[] =>
-    Array.from({ length: n }, (_, i) => ({
-      bayRef: `b-${i}`,
-      oznaczenie: `Pole liniowe ${i + 1}`,
-      rola: (i % 2 === 0 ? 'liniowe' : 'zrodlowe') as PoleTabeliGpzWejscie['rola'],
-      stanDanych: null,
-      plakietki: [...plakietki],
-    }));
-  const progJednowierszowy = (pola: readonly PoleTabeliGpzWejscie[]): number => {
-    // Szerokość karty jednowierszowej CAŁEGO zbioru pól (kolumny wspólne dla tabeli).
-    return ulozWariantTabeliGpz(pola, 0, 0, 0, true).karty[0].rect.width;
-  };
-  for (const n of [1, 4, 9]) {
-    for (const plakietki of [[], ['SPZ', 'SCO']] as const) {
-      const pola = polaTabeli(n, plakietki);
-      const prog = progJednowierszowy(pola);
-      for (const [nazwa, szerokosc] of [['wąska', prog - GRID], ['próg jednowierszowy', prog], ['szeroka', 100000]] as const) {
-        it(`wariant karty: ${n} pól × plakietki [${plakietki.join(', ')}] × szerokość ${nazwa} — najniższa tabela, wartości obok opisu bez zachodzenia`, () => {
-          const tabela = ulozTabeliGpz(pola, 0, 0, szerokosc);
-          const dwu = ulozWariantTabeliGpz(pola, 0, 0, szerokosc, false);
-          const miesciSie = wariantJednowierszowyMiesciSie(pola, szerokosc);
-          expect(miesciSie).toBe(szerokosc >= prog);
-          const wysokosci = [dwu.rect.height, ...(miesciSie ? [ulozWariantTabeliGpz(pola, 0, 0, szerokosc, true).rect.height] : [])];
-          expect(tabela.rect.height).toBe(Math.min(...wysokosci));
-          const jednowierszowa = tabela.karty[0].rect.height === WYSOKOSC_KARTY_JEDNOWIERSZOWEJ_GPZ;
-          if (!miesciSie) expect(tabela.karty[0].rect.height).toBe(WYSOKOSC_KARTY_GPZ);
-          for (const karta of tabela.karty) {
-            expect(zawiera(tabela.rect, karta.rect), karta.bayRef).toBe(true);
-            if (jednowierszowa) {
-              expect(karta.wartosciY).toBe(karta.rect.y);
-              const startWartosci = karta.kolumnaX + tabela.kolumnyWartosci[0].dx;
-              const koniecOpisu = Math.max(karta.rolaX, ...karta.plakietki.map((pl) => pl.rect.x + pl.rect.width));
-              expect(startWartosci, karta.bayRef).toBeGreaterThanOrEqual(koniecOpisu + GRID);
-            } else {
-              expect(karta.wartosciY).toBe(karta.rect.y + karta.rect.height / 2);
-            }
-            // Ostatnia kolumna wartości w obrysie karty.
-            const ostatnia = tabela.kolumnyWartosci[tabela.kolumnyWartosci.length - 1];
-            expect(karta.kolumnaX + ostatnia.dx + ostatnia.width).toBeLessThanOrEqual(karta.rect.x + karta.rect.width);
-          }
-          tabela.karty.forEach((a, i) => tabela.karty.slice(i + 1).forEach((b) => expect(przecina(a.rect, b.rect)).toBe(false)));
-          for (const pozycja of tabela.legenda) {
-            expect(przecina(pozycja.probka, tabela.tytul), pozycja.rola).toBe(false);
-            for (const karta of tabela.karty) expect(przecina(pozycja.probka, karta.rect)).toBe(false);
-            expect(zawiera(tabela.rect, pozycja.probka)).toBe(true);
-          }
-        });
-      }
-    }
-  }
-
-  it('legenda w wierszu tytułu, gdy cała mieści się na prawo od tytułu; inaczej pod kartami (łamana)', () => {
-    const dwieRole = polaTabeli(2, []);
-    const szeroka = ulozTabeliGpz(dwieRole, 0, 0, 100000);
-    expect(szeroka.legenda.every((l) => l.y === szeroka.tytul.y)).toBe(true);
-    expect(Math.min(...szeroka.legenda.map((l) => l.probka.x))).toBeGreaterThanOrEqual(szeroka.tytul.x + szeroka.tytul.width + GRID);
-    const wszystkieRole: PoleTabeliGpzWejscie[] = ROLE_POL_GPZ.map((rola, i) => ({ bayRef: `r-${i}`, oznaczenie: `0${i}`, rola, plakietki: [], stanDanych: null }));
-    const waska = ulozTabeliGpz(wszystkieRole, 0, 0, 0);
-    const dolKart = Math.max(...waska.karty.map((k) => k.rect.y + k.rect.height));
-    expect(waska.legenda.every((l) => l.y >= dolKart)).toBe(true);
-    expect(new Set(waska.legenda.map((l) => l.y)).size).toBeGreaterThan(1);
   });
 });
 
@@ -1611,55 +1463,19 @@ describe('GPZ-PARYTET — kontrakt negatywny nagłówka SCADA i plakietki OWG', 
     it(`${opis}: kompozycja NIE emituje żadnego klucza kontraktu negatywnego; plakietki wyłącznie z alfabetu SPZ/SCO`, () => {
       const c = composeGpz(props, ORIGIN);
       for (const klucz of Object.keys(KONTRAKT_NEGATYWNY_GPZ)) expect(c.parityKeys.has(klucz), klucz).toBe(false);
-      const plakietki = c.adnotacje!.tabela!.karty.flatMap((k) => k.plakietki.map((p) => p.flaga));
+      const plakietki = c.pola.flatMap((p) => p.plakietki);
       expect(plakietki.every((f) => f === 'SPZ' || f === 'SCO')).toBe(true);
     });
   }
 });
 
-describe('GPZ-PARYTET — determinizm adnotacji', () => {
-  it('to samo wejście ⇒ identyczne adnotacje (głęboka równość i równość serializacji)', () => {
+describe('GPZ-H5-SLD etap 2 — determinizm listy pól', () => {
+  it('to samo wejście ⇒ identyczna lista pól i klucze parytetu; przesunięcie originu nie zmienia listy (lista nie niesie geometrii)', () => {
     const a = composeGpz(pelnyGpz(), ORIGIN);
     const b = composeGpz(pelnyGpz(), ORIGIN);
-    expect(JSON.stringify(a.adnotacje)).toBe(JSON.stringify(b.adnotacje));
+    expect(JSON.stringify(a.pola)).toBe(JSON.stringify(b.pola));
     expect([...a.parityKeys].sort()).toEqual([...b.parityKeys].sort());
-  });
-
-  it('adnotacje leżą na siatce (tabela, karty; plakietki i tła pól na półsiatce); wiersze belki — krokiem linii pisma pasma nazw', () => {
-    const c = composeGpz(pelnyGpz(), ORIGIN);
-    const adn = c.adnotacje!;
-    const naSiatce = (v: number, krok: number): boolean => Math.abs(v / krok - Math.round(v / krok)) < 1e-9;
-    for (const r of [adn.tabela!.rect, ...adn.tabela!.karty.map((k) => k.rect)]) {
-      expect(naSiatce(r.x, GRID) && naSiatce(r.y, GRID / 2), JSON.stringify(r)).toBe(true);
-    }
-    // Plakietki: odstęp między plakietkami to pół siatki.
-    for (const r of adn.tabela!.karty.flatMap((k) => k.plakietki.map((p) => p.rect))) {
-      expect(naSiatce(r.x, GRID / 2) && naSiatce(r.y, GRID / 2), JSON.stringify(r)).toBe(true);
-    }
-    // Wiersze belki (bilans, alarmy) są wierszami tekstu jak pasmo nazw stacji:
-    // kolejne wiersze co wysokość linii t1 pod wierszem nazwy, x wyrównany z nazwą
-    // (etykiety są poza zakresem wyroczni siatki, spec §11.2). Wcięcie GRID = odsunięcie
-    // tekstu nazwy w jej slocie (slot = tekst + 2·GRID, tekst wyśrodkowany) — wiersze belki
-    // i tabela zaczynają się w tej samej pionowej linii co tekst nazwy.
-    const nazwa = c.labels.stationName.nameSlot;
-    expect([adn.zasilanie, adn.odplywy, adn.alarmy].map((r) => [r.x, r.y - nazwa.y])).toEqual([
-      [nazwa.x + GRID, nazwa.height],
-      [nazwa.x + GRID, 2 * nazwa.height],
-      [nazwa.x + GRID, 3 * nazwa.height],
-    ]);
-    expect(adn.tabela!.rect.x).toBe(nazwa.x + GRID);
-    for (const p of adn.panele) expect(naSiatce(p.rect.x, GRID / 2) && naSiatce(p.rect.y, GRID / 2)).toBe(true);
-  });
-
-  it('przesunięcie originu przesuwa adnotacje o ten sam wektor (translacja, nie przeliczenie)', () => {
-    const a = composeGpz(pelnyGpz(), ORIGIN);
-    const b = composeGpz(pelnyGpz(), { x: 10 * GRID, y: 20 * GRID });
-    const dx = b.zone!.x - a.zone!.x;
-    const dy = b.zone!.y - a.zone!.y;
-    expect(b.adnotacje!.tabela!.rect).toEqual({ ...a.adnotacje!.tabela!.rect, x: a.adnotacje!.tabela!.rect.x + dx, y: a.adnotacje!.tabela!.rect.y + dy });
-    b.adnotacje!.panele.forEach((p, i) => {
-      expect(p.rect.x - a.adnotacje!.panele[i].rect.x).toBe(dx);
-      expect(p.rect.y - a.adnotacje!.panele[i].rect.y).toBe(dy);
-    });
+    const c = composeGpz(pelnyGpz(), { x: 10 * GRID, y: 20 * GRID });
+    expect(JSON.stringify(c.pola)).toBe(JSON.stringify(a.pola));
   });
 });

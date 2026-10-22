@@ -42,7 +42,14 @@
  */
 
 import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
-import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
+import { PROG_SKALI_L0_L1 } from '../core/progiLod';
+import {
+  LABEL_TYPOGRAPHY,
+  MIN_READABLE_LABEL_SCREEN_PX,
+  labelLineHeight,
+  liczbaRysunkuPl,
+  measureLabelWidth,
+} from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { SwitchState } from '../symbols/glyphs';
@@ -62,16 +69,7 @@ import {
   type StationNameBandRow,
 } from '../layout/labels';
 import { stackFootprint } from './station';
-import {
-  panelePolGpz,
-  przesunAdnotacjeGpz,
-  szerokoscSlotowNaglowka,
-  ulozTabeliGpz,
-  wymiaryTabeliGpz,
-  type GpzAdnotacje,
-  stanDanychPolaGpz,
-  type PoleTabeliGpzWejscie,
-} from './gpzAdnotacje';
+import { stanDanychPolaGpz, type PoleTabeliGpzWejscie } from './gpzAdnotacje';
 import { createUnikalnyTestId } from './unikalnyTestId';
 import {
   LATERAL_APPARATUS_SYMBOLS,
@@ -189,6 +187,9 @@ export interface ComposedGpzSymbolInstance {
   /** GPZ-PARYTET (§0 pkt 2): oznaczenie uzwojeń z grupy połączeń modelu — WYŁĄCZNIE
    *  dla symbolu `transformer2W`; przechodzi przez scenę do glifu. */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** Pozycja normalna łącznika szyn (`CanonicalGpzCoupler.normalState`) — WYŁĄCZNIE glify
+   *  łączników szyn; przechodzi przez scenę do glifu (`GlyphProps.pozycjaNormalna`). */
+  readonly pozycjaNormalna?: 'open' | 'closed';
   /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): ref rekordu aparatu tej
    *  pozycji stosu (`BayPrimaryDevice.device_ref` albo ref gałęzi pola) — stos GPZ jest
    *  budowany Z rekordów (`specyfikacjaPolaGpz`, GEOMETRIA-STACJI §0 pkt 4), więc każda
@@ -316,6 +317,10 @@ export interface GpzComposition {
    *  — nie uczestniczy w wyroczniach toru/parity). Patrz docstring
    *  `ComposedGpzProtectionSymbol`. */
   readonly protectionSymbols: readonly ComposedGpzProtectionSymbol[];
+  /** Karta GPZ-H5-SLD etap 2: prostokąty pionowych pasm oznaczeń pól sekcji SN (pod torem
+   *  pola, obok osi zejścia kabla) — te same, które poszerzają ramę GPZ. Trasa kabla z GPZ
+   *  nie biegnie poziomo przez pasmo (`buildScene`, objazd rynną pod blokiem). */
+  readonly pasmaOznaczenPol: readonly V3Rect[];
   /** F11.1 (spec §17.1/§20.1): tor(y) wyzwalania (linia przerywana 4-2)
    *  przekaźnik→wyłącznik — ODDZIELNE od `segments` (jak `protectionSymbols`
    *  wyżej), lustro `StationComposition.protectionSegments`
@@ -331,10 +336,12 @@ export interface GpzComposition {
    *  (rysowana przez kanwę/preview z meta sceny), NIE segment toru mocy;
    *  `null` dla kompozycji pustej. */
   readonly zone: GpzZoneDecoration | null;
-  /** GPZ-PARYTET: adnotacje bloku (tła pól wg roli, tabela „Pola GPZ", sloty bilansu
-   *  i alarmów w nagłówku) — geometria bez wartości; wartości dokłada render z wyniku
-   *  backendu. `null` razem z `zone` (kompozycja pusta). */
-  readonly adnotacje: GpzAdnotacje | null;
+  /** Pola GPZ w porządku kompozycji (sekcje 110 kV, tory transformatorów, sekcje SN) —
+   *  oznaczenie, rola, plakietki automatyki i stan danych pola, BEZ geometrii. Karta GPZ-H5-SLD
+   *  etap 2: tabela pól, bilans i alarmy są w prawym inspektorze (karta GPZ, sekcja „Wyniki"),
+   *  nie w ramie schematu; ta lista jest jednym źródłem porządku i oznaczeń pól dla inspektora
+   *  i rachunku pokrycia wyników (`resultPointsInGpzPanel`). */
+  readonly pola: readonly PoleTabeliGpzWejscie[];
   readonly bbox: V3Rect;
 }
 
@@ -349,6 +356,9 @@ const FIELD_GAP = 2 * GRID;
 const SECTION_GAP = 4 * GRID;
 const HV_MARGIN_TOP = 4 * GRID;
 const STACK_GAP = 2 * GRID;
+/** Margines ramy strefy GPZ wokół treści elektrycznej (rezerwacja na etykiety kotwicowe
+ *  rozwiązywane dopiero na poziomie sceny: opisy sekcji nad lewym końcem szyny, oznaczenia pól). */
+const FRAME_MARGIN_GPZ = 6 * GRID;
 
 // ---------------------------------------------------------------------------
 // Role pola → stos aparatów + parityKeys (spec §3, migracja kluczy z v2 —
@@ -766,6 +776,27 @@ function gpzFieldOrdinalDesignation(role: BayFieldRole, counters: Map<string, nu
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
 }
 
+/**
+ * Karta GPZ-H5-SLD etap 2 (wymaganie 3/5): powiększenie pisma `t3` do progu czytelności
+ * przy NAJMNIEJSZEJ skali, przy której GPZ jest rysowany rozwinięty (`PROG_SKALI_L0_L1`;
+ * poniżej jest glifem L0) — kompozycja rezerwuje pod nie miejsce, żeby w kadrze „Dopasuj
+ * widok" oznaczenia pól nie były skracane (pomiar przed zmianą, H5 1×3 przy 1000×700:
+ * „Pole…A1", „Ł…1-2").
+ */
+const POWIEKSZENIE_T3_NA_PROGU_L1 = Math.max(
+  1,
+  MIN_READABLE_LABEL_SCREEN_PX / (LABEL_TYPOGRAPHY.t3.fontSize * PROG_SKALI_L0_L1),
+);
+
+/** Szerokość pionowego pasma oznaczenia pola obok osi toru: prześwit `GRID/2` od krawędzi
+ *  toru i wiersz `t3` pisma powiększonego (`POWIEKSZENIE_T3_NA_PROGU_L1`). */
+const SZEROKOSC_PASMA_OZNACZENIA = snapUp(GRID / 2 + Math.ceil(labelLineHeight('t3') * POWIEKSZENIE_T3_NA_PROGU_L1));
+
+/** Długość pasma oznaczenia pola wzdłuż tekstu — napis przy piśmie powiększonym. */
+function dlugoscPasmaOznaczenia(tekst: string): number {
+  return snapUp(Math.ceil(measureLabelWidth(tekst, 't3') * POWIEKSZENIE_T3_NA_PROGU_L1));
+}
+
 /** Kolumna odbioru przyłączonego do szyny sekcji GPZ (karta GPZ-H5-SLD): strzałka odbioru
  *  pod szyną, podpis pod strzałką. */
 interface KolumnaOdbioru {
@@ -797,8 +828,14 @@ function layoutSectionFields(
     const designation =
       (bay.bayNumber ?? bay.feederName ?? '').trim() ||
       gpzFieldOrdinalDesignation(bay.fieldRole, ordinalCounters);
-    const reserved = snapUp(fieldColumnRequiredWidth(bay, spec, designation));
-    const centerX = snapToGrid(cursor + footprint.width / 2);
+    // Karta GPZ-H5-SLD etap 2: oznaczenie pola sekcji stoi w pionowym pasmie po LEWEJ
+    // stronie toru pola, od szyny w dół (strona prawa należy do rozszerzenia bocznego
+    // ES/VT/SA i adnotacji CT/zabezpieczeń), więc kolumna rezerwuje szerokość tego pasma
+    // zamiast napisu bocznego — dawniej boczny napis („Pole liniowe A1", 84 j.św., po
+    // powiększeniu do progu czytelności 140 j.św.) wchodził na tor sąsiedniego pola i był
+    // skracany.
+    const reserved = snapUp(fieldColumnRequiredWidth(bay, spec, '') + SZEROKOSC_PASMA_OZNACZENIA);
+    const centerX = snapToGrid(cursor + SZEROKOSC_PASMA_OZNACZENIA + footprint.width / 2);
     fields.push({ bay, index, spec, designation, centerX, rightX: cursor + reserved });
     cursor += reserved + FIELD_GAP;
   });
@@ -842,7 +879,7 @@ function layoutSections(
   const out: SectionLayout[] = [];
   let cursor = startX;
   let poprzednia: { readonly prawaSzyny: number; readonly zajetosc: number; readonly pas: number } | null = null;
-  for (const section of ordered) {
+  for (const [indeks, section] of ordered.entries()) {
     const polowaEtykiety = polowaEtykietySekcji(section);
     if (poprzednia !== null) {
       const brak = poprzednia.zajetosc + poprzednia.pas + polowaEtykiety - cursor;
@@ -862,7 +899,18 @@ function layoutSections(
     if (grupa) {
       const naSrodku = snapToGrid(cursor + width / 2 - grupa.rozpietosc / 2);
       const zaEtykieta = snapUp(cursor + polowaEtykiety + FIELD_GAP + grupa.lewo);
-      const baza = Math.max(naSrodku, zaEtykieta);
+      // Karta GPZ-H5-SLD etap 2 (wymaganie 2, „zwarte bloki funkcjonalne", układ H):
+      // przy co najmniej dwóch sekcjach wieże sekcji SKRAJNYCH stoją przy łącznikach szyn —
+      // pierwszej przy prawym końcu kolumny pól, ostatniej zaraz za opisem sekcji; sekcje
+      // środkowe jak dotąd (wieże na środku). Dawniej wieża ostatniej sekcji H5 2×2 stała
+      // przy jej prawym końcu, 488 j.św. od łącznika szyn, a wieża pierwszej — na środku.
+      const skrajna = ordered.length >= 2 && (indeks === 0 || indeks === ordered.length - 1);
+      const przyPrawymKoncu = snapToGrid(cursor + width - SECTION_MARGIN - grupa.rozpietosc);
+      const baza = !skrajna
+        ? Math.max(naSrodku, zaEtykieta)
+        : indeks === 0
+          ? Math.max(przyPrawymKoncu, zaEtykieta)
+          : zaEtykieta;
       width = Math.max(width, snapUp(baza + grupa.rozpietosc + SECTION_MARGIN - cursor));
       grupa.wieze.forEach((wieza, i) => osieWiez.set(wieza.transformer.transformerRef, baza + grupa.przesuniecia[i]));
       prawaWiez = baza + grupa.rozpietosc + grupa.prawo;
@@ -892,8 +940,25 @@ function symbolSprzegla(coupler: CanonicalGpzCoupler): 'lineBreaker' | 'lineSwit
   return coupler.rodzaj === 'wylacznik' ? 'lineBreaker' : 'lineSwitch';
 }
 
+/** Skrót pozycji normalnej łącznika szyn w podpisie (drugorzędny wobec oznaczenia). */
+export const SKROT_POZYCJI_NORMALNEJ_PL: Readonly<Record<'open' | 'closed', string>> = {
+  open: 'NO',
+  closed: 'NZ',
+};
+
+/**
+ * Karta GPZ-H5-SLD etap 2 (wymaganie 4, wpis 7 architekta): podpis łącznika szyn = jego
+ * oznaczenie i — drugorzędnie, po kropce — pozycja normalna („NO" normalnie otwarty, „NZ"
+ * normalnie zamknięty); brak deklaracji = samo oznaczenie (zero domysłu). Stan rzeczywisty
+ * niesie geometria glifu, odstępstwo od pozycji normalnej — ramka glifu. Łącznik szyn nie
+ * dostaje znacznika punktu podziału (różowe kółko „NO", skarga B-02).
+ */
+export function tekstLacznikaSzyn(coupler: Pick<CanonicalGpzCoupler, 'designation' | 'normalState'>): string {
+  return coupler.normalState ? `${coupler.designation} · ${SKROT_POZYCJI_NORMALNEJ_PL[coupler.normalState]}` : coupler.designation;
+}
+
 function szerokoscPasaSprzegla(coupler: CanonicalGpzCoupler): number {
-  return snapUp(Math.max(SYMBOL_DEFS[symbolSprzegla(coupler)].width, measureLabelWidth(coupler.designation, 't3')) + 2 * FIELD_GAP);
+  return snapUp(Math.max(SYMBOL_DEFS[symbolSprzegla(coupler)].width, measureLabelWidth(tekstLacznikaSzyn(coupler), 't3')) + 2 * FIELD_GAP);
 }
 
 /** Połowa szerokości etykiety sekcji (etykieta wyśrodkowana na lewym końcu szyny). */
@@ -1012,7 +1077,19 @@ interface ZasiegWiezy {
   readonly prawo: number;
 }
 
-function zasiegWiezy(transformer: CanonicalGpzTransformer): ZasiegWiezy {
+/**
+ * Oznaczenie pola toru transformatora (pole WN TR, pole TR) na schemacie: wyłącznie numer
+ * pola z modelu (`bayNumber`). Karta GPZ-H5-SLD etap 2 (wymaganie 5, hierarchia „oznaczenie
+ * > dane"): dawniej bez numeru pola wchodziła pełna nazwa pola („Pole transformatorowe
+ * 110 kV TR1", 179 j.św.) — dublowała oznaczenie transformatora, które opisuje wieżę, i jej
+ * kolumna poszerzała zasięg wieży, a z nim cały GPZ (pomiar H5 1×3: rozstaw sekcji SN 504
+ * j.św. wyznaczony przez ten napis). Nazwa pola zostaje w wierszu pola karty GPZ.
+ */
+function oznaczeniePolaToruTransformatora(pole: CanonicalGpzBay): string {
+  return (pole.bayNumber ?? '').trim();
+}
+
+function zasiegWiezy(transformer: CanonicalGpzTransformer, tabliczkaPoLewej = false): ZasiegWiezy {
   const polowaTr = SYMBOL_DEFS.transformer2W.width / 2;
   let lewo = polowaTr;
   let prawo = polowaTr;
@@ -1026,11 +1103,13 @@ function zasiegWiezy(transformer: CanonicalGpzTransformer): ZasiegWiezy {
     lewo = Math.max(lewo, polowa);
     prawo = Math.max(prawo, plan.width - polowa);
     if (pole) {
-      const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
+      const oznaczenie = oznaczeniePolaToruTransformatora(pole);
       prawo = Math.max(prawo, snapUp(fieldColumnRequiredWidth(pole, specyfikacja, oznaczenie)) - polowa);
     }
   }
-  prawo = Math.max(prawo, odsuniecieTabliczki() + szerokoscTabliczki(wierszeTabliczkiTransformatora(transformer)));
+  const zasiegTabliczki = odsuniecieTabliczki() + szerokoscTabliczki(wierszeTabliczkiTransformatora(transformer));
+  if (tabliczkaPoLewej) lewo = Math.max(lewo, zasiegTabliczki);
+  else prawo = Math.max(prawo, zasiegTabliczki);
   return { lewo: snapUp(lewo), prawo: snapUp(prawo) };
 }
 
@@ -1051,6 +1130,7 @@ interface GrupaWiez {
 function grupaWiez(
   transformatory: readonly CanonicalGpzTransformer[],
   porzadekSekcjiWn: ReadonlyMap<string, number> = new Map(),
+  tabliczkaPoLewej = false,
 ): GrupaWiez {
   // Karta GPZ-H5-SLD: wieże jednej sekcji SN zasilane z różnych sekcji 110 kV stoją w
   // porządku sekcji 110 kV (zaczepy nie krzyżują szyn WN), potem `transformerRef`.
@@ -1058,7 +1138,7 @@ function grupaWiez(
     t.hvSectionId != null ? porzadekSekcjiWn.get(t.hvSectionId) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER;
   const wieze = [...transformatory]
     .sort((a, b) => rzadWn(a) - rzadWn(b) || (a.transformerRef < b.transformerRef ? -1 : a.transformerRef > b.transformerRef ? 1 : 0))
-    .map((transformer) => ({ transformer, zasieg: zasiegWiezy(transformer) }));
+    .map((transformer) => ({ transformer, zasieg: zasiegWiezy(transformer, tabliczkaPoLewej) }));
   const przesuniecia: number[] = [];
   let os = 0;
   wieze.forEach((wieza, i) => {
@@ -1185,13 +1265,11 @@ function wierszeZrodlaSystemowego(source: CanonicalGpzHvSystemSource): StationNa
   // (Z.1: „Linia 110 kV, kierunek stacja …") — wyłącznie z modelu.
   const tor = source.lineName && source.lineName !== source.name ? source.lineName : null;
   const kierunek = source.supplyingStation ? `kier. ${source.supplyingStation}` : null;
-  if (tor || kierunek) {
-    rows.push({
-      text: [tor ? `Tor zasilania: ${tor}` : null, kierunek].filter((x): x is string => x !== null).join(' · '),
-      labelClass: 't3',
-      role: 'dane',
-    });
-  }
+  // Karta GPZ-H5-SLD etap 2: tor i kierunek w DWÓCH wierszach — jeden wiersz „Tor
+  // zasilania: L1 · kier. Stacja 110 kV Północ" (257 j.św.) był najszerszym napisem bloku
+  // 110 kV i wyznaczał odstęp pola liniowego od zaczepów transformatorów.
+  if (tor) rows.push({ text: `Tor zasilania: ${tor}`, labelClass: 't3', role: 'dane' });
+  if (kierunek) rows.push({ text: kierunek, labelClass: 't3', role: 'dane' });
   // Recenzja NO-GO 2026-07-17 pkt 3: gdy źródło to EKWIWALENT na
   // szynach SN (`!sourceOnHvBus`), tabliczka mówi to WPROST — inaczej
   // czytelnik bierze dane zwarciowe ekwiwalentu za parametry
@@ -1273,17 +1351,25 @@ function tekstSekcjiWn(section: CanonicalGpzHvSection): string {
 }
 
 /** Podpis odbioru sekcji GPZ: nazwa z modelu i dane wejściowe P/Q (`Load.p_mw`/`q_mvar`). */
+/** Nazwa odbioru na schemacie (tożsamość, `ownerKind: 'odbior'`); brak nazwy = „Odbiór". */
 function tekstOdbioruGpz(load: CanonicalGpzLoad): string {
+  return load.name?.trim() || 'Odbiór';
+}
+
+/** Dane odbioru (P · Q z modelu, `ownerKind: 'odbior-dane'`); brak obu = `null`. */
+function tekstDanychOdbioruGpz(load: CanonicalGpzLoad): string | null {
   const czlony: string[] = [];
-  if (load.name) czlony.push(load.name);
   if (load.pMw != null) czlony.push(`P ${liczbaRysunkuPl(load.pMw)} MW`);
   if (load.qMvar != null) czlony.push(`Q ${liczbaRysunkuPl(load.qMvar)} Mvar`);
-  return czlony.length > 0 ? czlony.join(' · ') : 'Odbiór';
+  return czlony.length > 0 ? czlony.join(' · ') : null;
 }
 
 /** Szerokość kolumny odbioru: strzałka albo podpis (wyśrodkowany pod strzałką). */
 function szerokoscKolumnyOdbioru(load: CanonicalGpzLoad): number {
-  return snapUp(Math.max(SYMBOL_DEFS.loadArrow.width, measureLabelWidth(tekstOdbioruGpz(load), 't3')));
+  const dane = tekstDanychOdbioruGpz(load);
+  return snapUp(
+    Math.max(SYMBOL_DEFS.loadArrow.width, measureLabelWidth(tekstOdbioruGpz(load), 't3'), dane ? measureLabelWidth(dane, 't3') : 0),
+  );
 }
 
 /** Pas łącznika szyn: glif łącznika albo jego oznaczenie (szersze z nich) z prześwitem
@@ -1429,6 +1515,8 @@ export function composeGpz(
   // docstring `GpzComposition.protectionSegments`/`measurementSegments`.
   const protectionSegments: ComposedGpzSegment[] = [];
   const measurementSegments: ComposedGpzSegment[] = [];
+  /** Pasma oznaczeń pól sekcji (karta GPZ-H5-SLD etap 2) — rama GPZ je obejmuje. */
+  const pasmaOznaczen: V3Rect[] = [];
   const sectionMetas: GpzSectionMeta[] = [];
   const transformerMetas: GpzTransformerMeta[] = [];
 
@@ -1530,7 +1618,17 @@ export function composeGpz(
     transformatoryWgSekcji.set(sekcja, lista);
   });
   const grupyWiez = new Map<string, GrupaWiez>();
-  transformatoryWgSekcji.forEach((lista, sekcja) => grupyWiez.set(sekcja, grupaWiez(lista, porzadekSekcjiWn)));
+  // Karta GPZ-H5-SLD etap 2 (układ H): wieże pierwszej z co najmniej dwóch sekcji SN stoją
+  // przy prawym końcu sekcji, przy łączniku szyn (`layoutSections`), więc ich tabliczki stoją
+  // po stronie ZEWNĘTRZNEJ (lewej) — tabliczka po prawej zajmowała pas łącznika szyn i
+  // odsuwała sekcję następną (pomiar H5 2×2: pas łącznika SN 320 j.św.). Jedno źródło
+  // strony tabliczki dla zasięgu wieży i dla rysunku (`tabliczkaWiezyPoLewej`).
+  const pierwszaSekcjaSn = [...props.sections].sort((a, b) => a.order - b.order)[0]?.sectionId ?? null;
+  const tabliczkaWiezyPoLewej = (transformer: CanonicalGpzTransformer): boolean =>
+    props.sections.length >= 2 && sekcjaDocelowaTransformatora(transformer, idSekcji) === pierwszaSekcjaSn;
+  transformatoryWgSekcji.forEach((lista, sekcja) =>
+    grupyWiez.set(sekcja, grupaWiez(lista, porzadekSekcjiWn, props.sections.length >= 2 && sekcja === pierwszaSekcjaSn)),
+  );
 
   const blokZrodla = new Map<string, number>();
   zrodlaSnWgSekcji.forEach((lista, sekcja) => blokZrodla.set(sekcja, szerokoscBlokuZrodel(lista, wierszeZrodla)));
@@ -1572,7 +1670,7 @@ export function composeGpz(
       const lista = osie.get(transformer.hvSectionId) ?? [];
       lista.push(x);
       osie.set(transformer.hvSectionId, lista);
-      zasieg.set(transformer.hvSectionId, Math.max(zasieg.get(transformer.hvSectionId) ?? -Infinity, x + zasiegWiezy(transformer).prawo));
+      zasieg.set(transformer.hvSectionId, Math.max(zasieg.get(transformer.hvSectionId) ?? -Infinity, x + zasiegWiezy(transformer, tabliczkaWiezyPoLewej(transformer)).prawo));
     });
     return planujRzadWn(hvSections, osie, zasieg, zrodlaSekcjiWn, odbioryWgSekcji, lacznikiWnZa, wierszeZrodla, originX + SECTION_MARGIN);
   };
@@ -1830,6 +1928,17 @@ export function composeGpz(
       placement: 'below',
       obrysKotwicy: { x: arrowX, y: arrowY, width: arrowDef.width, height: arrowDef.height },
     });
+    const dane = tekstDanychOdbioruGpz(load);
+    if (dane) {
+      fieldDesignations.push({
+        ownerRef: `${load.loadRef}#load-data`,
+        ownerKind: 'odbior-dane',
+        text: dane,
+        labelClass: 't3',
+        anchor: { x: centerX, y: arrowY + arrowDef.height + labelLineHeight('t3') },
+        placement: 'below',
+      });
+    }
   };
 
   // -- 3. Geometria pionowa: WN → pole WN TR → TR2W → pole TR → szyna SN. --
@@ -2018,37 +2127,28 @@ export function composeGpz(
         meta: powerPathMeta,
       });
 
-      // pkt 8 (recenzja NO-GO 2026-07-17): oznacznik z layoutu (bay_number
-      // albo deterministyczne F01/FT1… — patrz `gpzFieldOrdinalDesignation`).
-      const designation = field.designation;
-      if (designation) {
-        // FIX (F6e, REBUILD_PLAN_V3 — residuum §11.1 `apparatus`): `stack.topPort.y`
-        // leży PRAKTYCZNIE NA szynie SN (`topY = snBusY + GRID` z konstrukcji
-        // wyżej, NIEZALEŻNIE od wysokości stosu pola — port to góra stosu, nie
-        // jego dół). Placement 'right' centruje prostokąt WERTYKALNIE na
-        // `anchor.y` (`resolveSimpleAnchoredLabel`: `y = anchor.y - height/2`),
-        // więc górna połowa etykiety lądowała NAD portem, na wysokości samej
-        // szyny SN — rozłączna z ŻADNYM pionem kończącym się na szynie w
-        // zasięgu X etykiety nie była z konstrukcji (potwierdzone sondą: pole
-        // bez `bayNumber` niesie surowy `feederName` „Pole liniowe GPZ", 90px
-        // — sięgało kolumny sąsiedniego transformatora/sprzęgła kończącej się
-        // na TEJ SAMEJ szynie). Wszystkie piony pól/transformatorów KOŃCZĄ SIĘ
-        // na szynie (nigdy nie sięgają poniżej `snBusY`) — podniesienie
-        // kotwicy o `height/2` przesuwa górną krawędź prostokąta z `anchor.y
-        // − height/2` na DOKŁADNIE `stack.topPort.y` (port), więc etykieta
-        // leży W CAŁOŚCI poniżej szyny, rozłączna z każdym pionem kończącym
-        // się na niej — bez znajomości X sąsiadów, bez zmiany geometrii
-        // przewodów/symboli.
+      // pkt 8 (recenzja NO-GO 2026-07-17): oznacznik z layoutu (bay_number albo
+      // deterministyczne F01/FT1… — patrz `gpzFieldOrdinalDesignation`). Karta GPZ-H5-SLD
+      // etap 2: oznaczenie stoi w pionowym pasmie po lewej stronie toru pola, od szyny
+      // w dół — czytane wzdłuż pola jak opisy pól na rysunkach rozdzielni.
+      if (field.designation) {
+        const srodekX =
+          field.centerX - footprint.mainStack.width / 2 - GRID / 2 - (SZEROKOSC_PASMA_OZNACZENIA - GRID / 2) / 2;
+        const dlugosc = dlugoscPasmaOznaczenia(field.designation);
         fieldDesignations.push({
           ownerRef: `${field.bay.bayRef}#designation`,
           ownerKind: 'apparatus',
-          text: designation,
+          text: field.designation,
           labelClass: 't3',
-          anchor: {
-            x: snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width),
-            y: stack.topPort.y + labelLineHeight('t3') / 2,
-          },
-          placement: 'right',
+          anchor: { x: srodekX, y: topY },
+          placement: 'below',
+          pasmoObrocone: { dlugoscPasma: dlugosc },
+        });
+        pasmaOznaczen.push({
+          x: srodekX - (SZEROKOSC_PASMA_OZNACZENIA - GRID / 2) / 2,
+          y: topY + GRID,
+          width: SZEROKOSC_PASMA_OZNACZENIA - GRID / 2,
+          height: dlugosc,
         });
       }
 
@@ -2145,6 +2245,7 @@ export function composeGpz(
       x: cbX,
       y: cbY,
       state: coupler.closedState,
+      ...(coupler.normalState ? { pozycjaNormalna: coupler.normalState } : {}),
       ports: portsInWorld(symbolId, cbX, cbY),
       meta: couplerMeta,
     });
@@ -2165,7 +2266,7 @@ export function composeGpz(
       // `kotwicaJednoZrodlo` B). Dawne `'apparatus'` dawało niewpisany rozjazd apparatus→galaz,
       // niewidoczny, bo żadna sieć wyroczni nie miała łącznika szyn GPZ (karta GPZ-H5-SLD).
       ownerKind: 'lacznik-toru',
-      text: coupler.designation,
+      text: tekstLacznikaSzyn(coupler),
       labelClass: 't3',
       anchor: { x: midX, y: cbY + cbDef.height },
       placement: 'below',
@@ -2357,7 +2458,7 @@ export function composeGpz(
       const planPola = gpzFieldPlanFootprint(specyfikacja);
       const lewaKrawedz = trCenterX - planPola.mainStack.width / 2;
       const textAnchorX = snapToGrid(lewaKrawedz + planPola.width);
-      const oznaczenie = (pole.bayNumber ?? pole.feederName ?? '').trim();
+      const oznaczenie = oznaczeniePolaToruTransformatora(pole);
       if (oznaczenie) {
         fieldDesignations.push({
           ownerRef: `${pole.bayRef}#designation`,
@@ -2406,7 +2507,9 @@ export function composeGpz(
     transformerLabels.push({
       ownerRef: `${transformer.transformerRef}#label`,
       nameSlot: {
-        x: trCenterX + odsuniecieTabliczki(),
+        x: tabliczkaWiezyPoLewej(transformer)
+          ? trCenterX - odsuniecieTabliczki() - szerokoscTabliczki(trRows)
+          : trCenterX + odsuniecieTabliczki(),
         y: trTopY,
         width: szerokoscTabliczki(trRows),
         height: trRows.reduce((sum, row) => sum + labelLineHeight(row.labelClass), 0),
@@ -2689,7 +2792,15 @@ export function composeGpz(
         voltageClass: 'hv',
       };
       tag(couplerMeta.parityKeys);
-      symbols.push({ symbolId, x: cbX, y: cbY, state: coupler.closedState, ports: portsInWorld(symbolId, cbX, cbY), meta: couplerMeta });
+      symbols.push({
+        symbolId,
+        x: cbX,
+        y: cbY,
+        state: coupler.closedState,
+        ...(coupler.normalState ? { pozycjaNormalna: coupler.normalState } : {}),
+        ports: portsInWorld(symbolId, cbX, cbY),
+        meta: couplerMeta,
+      });
       segments.push({
         ownerRef: `${coupler.couplerId}#tie-a`,
         points: [{ x: gapStart, y: hvBusY }, { x: Math.max(gapStart, cbX), y: hvBusY }],
@@ -2706,7 +2817,7 @@ export function composeGpz(
       fieldDesignations.push({
         ownerRef: `${coupler.couplerId}#designation`,
         ownerKind: 'lacznik-toru', // jw. — łącznik szyn 110 kV to gałąź `bus_coupler` modelu
-        text: coupler.designation,
+        text: tekstLacznikaSzyn(coupler),
         labelClass: 't3',
         anchor: { x: midX, y: cbY },
         placement: 'above',
@@ -2860,7 +2971,7 @@ export function composeGpz(
   // („Sk″ … · 110 kV", najszerszy wiersz kolumny WN) przebija prawą krawędź
   // ramy (D3 render-DoD: pion ramy przez środek tekstu). Etykiety kotwicowe
   // (sectionLabels/fieldDesignations/protection) rozwiązują się na poziomie
-  // sceny — je absorbuje margines `frameMargin` (6×GRID) jak dotychczas.
+  // sceny — je absorbuje margines `FRAME_MARGIN_GPZ` (6×GRID).
   const contentBboxSoFar = (() => {
     const base = computeBbox(symbols, segments);
     let minX = base.x;
@@ -2872,6 +2983,12 @@ export function composeGpz(
       minY = Math.min(minY, l.nameSlot.y);
       maxX = Math.max(maxX, l.nameSlot.x + l.nameSlot.width);
       maxY = Math.max(maxY, l.nameSlot.y + l.nameSlot.height);
+    });
+    pasmaOznaczen.forEach((r) => {
+      minX = Math.min(minX, r.x);
+      minY = Math.min(minY, r.y);
+      maxX = Math.max(maxX, r.x + r.width);
+      maxY = Math.max(maxY, r.y + r.height);
     });
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   })();
@@ -2894,24 +3011,30 @@ export function composeGpz(
   const headerText = firstTransformer
     ? `${headerName} · ${liczbaRysunkuPl(firstTransformer.uhvKv)}/${liczbaRysunkuPl(firstTransformer.ulvKv)} kV`
     : headerName;
-  // GPZ-PARYTET (§0 pkt 3–5): belka nagłówka ma CZTERY wiersze — nazwa, bilans
-  // zasilania, bilans odpływów, alarmy — a pod nią tabela „Pola GPZ" (karty pól: rola, automatyka, pomiary). Tabela stoi
-  // NAD treścią elektryczną, bo pod treścią wychodzą trasy kabli z pól (magistrala
-  // i odpływy) — tam przecinałyby ją tory.
-  const wierszNaglowka = labelLineHeight('t1');
-  const headerHeight = 4 * wierszNaglowka + GRID;
-  const slotyNaglowka = szerokoscSlotowNaglowka();
+  // Karta GPZ-H5-SLD etap 2 (odrzucenie B-02, wymaganie 1): belka nagłówka niesie WYŁĄCZNIE
+  // nazwę GPZ. Bilans zasilania i odpływów, alarmy oraz tabela pól (rola, automatyka, stan
+  // danych, wartości z wyniku) dawniej stały w geometrii ramy NAD treścią elektryczną i przy
+  // kadrze „Dopasuj widok" zajmowały więcej miejsca niż sam schemat; teraz są w prawym
+  // inspektorze (karta GPZ i sekcja „Wyniki" — UI-02b: szczegóły obiektu wyłącznie
+  // w inspektorze), a kompozycja oddaje tylko LISTĘ pól (`pola`, bez geometrii) — jedno
+  // źródło porządku i oznaczeń dla inspektora i rachunku pokrycia wyników.
+  const headerHeight = labelLineHeight('t1') + GRID;
   const polaTabeli: PoleTabeliGpzWejscie[] = [];
-  hvSections
-    .slice()
-    .sort((a, b) => a.order - b.order)
-    .forEach((hvSection) => {
-      hvSection.bays.forEach((bay) => {
-        polaTabeli.push(wejscieTabeliGpz(bay, (bay.bayNumber ?? bay.feederName ?? '').trim() || null));
-      });
+  hvSections.forEach((hvSection) => {
+    hvSection.bays.forEach((bay) => {
+      polaTabeli.push(wejscieTabeliGpz(bay, (bay.bayNumber ?? bay.feederName ?? '').trim() || null));
     });
-  // GPZ-PARYTET cz. 3 (pkt 2): pola toru transformatora (WN TR, TR) z modelu mają kartę
-  // w tabeli „Pola GPZ" jak każde pole — po przeniesieniu z sekcji do wieży nie znikają.
+  });
+  // Pola łączników szyn (110 kV i SN) — pole sprzęgła modelu wskazuje gałąź `bus_coupler`
+  // (`CanonicalGpzCoupler.bayRef`); gałąź JEST rekordem aparatu pola, więc stan danych
+  // pola jest kompletny. Bez tych wierszy karta gubiła dwa pola modelu H5 (pomiar etapu 2:
+  // 10 wierszy wobec 12 pól stacji) — przypięte w `kartaGpz.iloczyn.test.tsx`.
+  const wierszSprzegla = (coupler: CanonicalGpzCoupler): void => {
+    if (!coupler.bayRef) return;
+    polaTabeli.push({ bayRef: coupler.bayRef, oznaczenie: coupler.designation, rola: 'sprzeglo', plakietki: [], stanDanych: null });
+  };
+  (props.hvCouplers ?? []).forEach(wierszSprzegla);
+  // Pola toru transformatora (WN TR, TR) z modelu są polami GPZ jak każde inne.
   props.transformers.forEach((transformer) => {
     for (const pole of [transformer.poleWn, transformer.poleTr]) {
       if (!pole) continue;
@@ -2923,7 +3046,7 @@ export function composeGpz(
       polaTabeli.push(wejscieTabeliGpz(field.bay, field.designation));
     });
   });
-  let adnotacjePlan: GpzAdnotacje | null = null;
+  props.couplers.forEach(wierszSprzegla);
   let headerSlot = {
     x: originX,
     y: originY,
@@ -2931,70 +3054,26 @@ export function composeGpz(
     height: labelLineHeight('t1'),
   };
   if (Number.isFinite(contentBboxSoFar.width) && (contentBboxSoFar.width > 0 || contentBboxSoFar.height > 0)) {
-    // Margines strefy WIĘKSZY niż typowy odstęp kompozycji (SECTION_MARGIN =
-    // 2×GRID) — rezerwacja systemowa wokół całości GPZ, żeby powierzchnia
-    // strefy realnie dominowała nad przeciętną stacją wielopolową (D3-2bis;
-    // pomiar agenta na fixturze: bez marginesu 111488 < 135744 największej
-    // stacji).
-    const frameMargin = 6 * GRID;
-    // Szerokość wnętrza ramy bez tabeli: treść elektryczna z marginesami albo belka
-    // nagłówka (nazwa, bilans, alarmy). Tabela pól łamie karty w TEJ szerokości —
-    // nie poszerza ramy (szerokość GPZ przesuwa świat sieci i łamanie arkusza).
-    // Wiersze bilansu, alarmów i tabela są wcięte o GRID względem slotu nazwy — tyle,
-    // ile pasmo nazw odsuwa tekst nazwy od krawędzi swojego slotu (slot = tekst + 2·GRID,
-    // tekst wyśrodkowany), więc wszystkie wiersze belki zaczynają się w jednej pionowej linii.
-    const wciecieBelki = GRID;
-    const szerokoscBelkiNaglowka = Math.max(
-      headerSlot.width,
-      wciecieBelki + slotyNaglowka.zasilanie,
-      wciecieBelki + slotyNaglowka.odplywy,
-      wciecieBelki + slotyNaglowka.alarmy,
-    );
-    const dostepnaSzerokoscTabeli =
-      Math.max(contentBboxSoFar.width + 2 * frameMargin, 2 * GRID + szerokoscBelkiNaglowka) - 2 * GRID - wciecieBelki;
-    const wymiaryTabeli = wymiaryTabeliGpz(polaTabeli, dostepnaSzerokoscTabeli);
-    const tabelaHeight = wymiaryTabeli.height > 0 ? wymiaryTabeli.height + 2 * GRID : 0;
-    const frameLeft = snapToGrid(contentBboxSoFar.x - frameMargin);
-    const frameTop = snapToGrid(contentBboxSoFar.y - frameMargin - tabelaHeight - headerHeight);
-    // Rama obejmuje treść ORAZ belkę nagłówka i tabelę (mierzone szerokości).
-    const szerokoscBelki = Math.max(szerokoscBelkiNaglowka, wciecieBelki + wymiaryTabeli.width);
+    const frameLeft = snapToGrid(contentBboxSoFar.x - FRAME_MARGIN_GPZ);
+    const frameTop = snapToGrid(contentBboxSoFar.y - FRAME_MARGIN_GPZ - headerHeight);
     const frameRight = snapUp(
-      Math.max(contentBboxSoFar.x + contentBboxSoFar.width + frameMargin, frameLeft + GRID + szerokoscBelki + GRID),
+      Math.max(contentBboxSoFar.x + contentBboxSoFar.width + FRAME_MARGIN_GPZ, frameLeft + GRID + headerSlot.width + GRID),
     );
-    const frameBottom = snapUp(contentBboxSoFar.y + contentBboxSoFar.height + frameMargin);
+    const frameBottom = snapUp(contentBboxSoFar.y + contentBboxSoFar.height + FRAME_MARGIN_GPZ);
     zone = {
       x: frameLeft,
       y: frameTop,
       width: frameRight - frameLeft,
       height: frameBottom - frameTop,
     };
-    tag(['gpz.frame', 'gpz.header', 'gpz.header.balance', 'gpz.header.alarms']);
+    tag(['gpz.frame', 'gpz.header']);
     if (nazwaModelu !== null) tag(['gpz.header.name']);
-    // Nagłówek WEWNĄTRZ ramy (górna belka) — nigdy poza arkuszem po
-    // translacji końcowej niżej.
+    // Nagłówek WEWNĄTRZ ramy (górna belka) — nigdy poza arkuszem po translacji końcowej niżej.
     headerSlot = {
       x: snapToGrid(frameLeft + GRID),
       y: snapToGrid(frameTop + GRID / 2),
       width: headerSlot.width,
       height: headerSlot.height,
-    };
-    const tabela =
-      polaTabeli.length > 0
-        ? ulozTabeliGpz(
-            polaTabeli,
-            headerSlot.x + wciecieBelki,
-            snapUp(headerSlot.y + 4 * wierszNaglowka + GRID),
-            dostepnaSzerokoscTabeli,
-          )
-        : null;
-    if (tabela) tag(['gpz.measurements']);
-    if (polaTabeli.some((pole) => pole.plakietki.length > 0)) tag(['gpz.status_flags']);
-    adnotacjePlan = {
-      zasilanie: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + wierszNaglowka, width: slotyNaglowka.zasilanie, height: wierszNaglowka },
-      odplywy: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + 2 * wierszNaglowka, width: slotyNaglowka.odplywy, height: wierszNaglowka },
-      alarmy: { x: headerSlot.x + wciecieBelki, y: headerSlot.y + 3 * wierszNaglowka, width: slotyNaglowka.alarmy, height: wierszNaglowka },
-      tabela,
-      panele: [],
     };
   }
   const stationName: StationNameBandOwnerInput = {
@@ -3006,7 +3085,7 @@ export function composeGpz(
 
   // -- 10. Translacja końcowa do współrzędnych nieujemnych względem originu
   // (kontrakt k5b/D2: nic nie wystaje za lewą/górną krawędź arkusza; rama
-  // strefy wystaje o `frameMargin`+nagłówek PONAD treść, więc CAŁA kompozycja
+  // strefy wystaje o `FRAME_MARGIN_GPZ`+nagłówek PONAD treść, więc CAŁA kompozycja
   // jest przesuwana o tę nadwyżkę — czysta translacja, deterministyczna,
   // niezmiennicza dla dwuprzebiegowego wyrównania buildSceneV3, bo pass-1 i
   // pass-2 dostają IDENTYCZNE przesunięcie względne).
@@ -3016,30 +3095,12 @@ export function composeGpz(
     translateGpzComposition(shiftX, shiftY, {
       symbols, segments, protectionSymbols, protectionSegments, measurementSegments,
       sectionLabels, transformerLabels, fieldDesignations, fieldCaptions, protectionLabels,
-      stationName,
+      stationName, pasmaOznaczen,
     });
     if (zone) {
       zone = { ...zone, x: zone.x + shiftX, y: zone.y + shiftY };
     }
-    if (adnotacjePlan) adnotacjePlan = przesunAdnotacjeGpz(adnotacjePlan, shiftX, shiftY);
   }
-
-  // GPZ-PARYTET (§0 pkt 3): tła pól liczone PO translacji, z ostatecznych położeń
-  // symboli pola i okręgów jego zabezpieczeń.
-  const panele = panelePolGpz(polaTabeli, [
-    ...symbols
-      .filter((sym) => sym.meta.bayRef !== undefined)
-      .map((sym) => ({
-        bayRef: sym.meta.bayRef!,
-        rect: { x: sym.x, y: sym.y, width: SYMBOL_DEFS[sym.symbolId].width, height: SYMBOL_DEFS[sym.symbolId].height },
-      })),
-    ...protectionSymbols.map((p) => ({
-      bayRef: p.bayRef,
-      rect: { x: p.x, y: p.y, width: PROTECTION_ANNOTATION_DIAMETER, height: PROTECTION_ANNOTATION_DIAMETER },
-    })),
-  ]);
-  if (adnotacjePlan && panele.length > 0) tag(['gpz.bay.panel']);
-  const adnotacje: GpzAdnotacje | null = adnotacjePlan ? { ...adnotacjePlan, panele } : null;
 
   const contentBbox = computeBbox(symbols, segments);
   // Bbox kompozycji obejmuje ramę strefy (dekoracja też musi zmieścić się w
@@ -3071,10 +3132,11 @@ export function composeGpz(
     parityKeys,
     missingData,
     protectionSymbols,
+    pasmaOznaczenPol: pasmaOznaczen,
     protectionSegments,
     measurementSegments,
     zone,
-    adnotacje,
+    pola: polaTabeli,
     // V12K-223: opis do LEGENDY arkusza. Zero fabrykacji — brak modelu
     // uziemienia daje `null`, a legenda wtedy nic o nim nie pisze.
     neutralEarthingNotePl: props.snNeutralEarthing
@@ -3112,6 +3174,9 @@ function translateGpzComposition(
     fieldCaptions: PortCaptionOwnerInput[];
     protectionLabels: SimpleAnchoredOwnerInput[];
     stationName: StationNameBandOwnerInput;
+    /** Pasma oznaczeń pól — przeszkody tras i podpisów w świecie; przesuwane razem
+     *  z etykietą `#designation`, której są obrysem (jedno źródło pary). */
+    pasmaOznaczen: V3Rect[];
   },
 ): void {
   const movePoint = (p: { x: number; y: number }) => ({ x: p.x + dx, y: p.y + dy });
@@ -3140,6 +3205,9 @@ function translateGpzComposition(
   moveAnchored(parts.sectionLabels);
   moveAnchored(parts.fieldDesignations);
   moveAnchored(parts.protectionLabels);
+  parts.pasmaOznaczen.forEach((r, i) => {
+    parts.pasmaOznaczen[i] = { ...r, x: r.x + dx, y: r.y + dy };
+  });
   parts.transformerLabels.forEach((l, i) => {
     parts.transformerLabels[i] = { ...l, nameSlot: { ...l.nameSlot, x: l.nameSlot.x + dx, y: l.nameSlot.y + dy } };
   });
