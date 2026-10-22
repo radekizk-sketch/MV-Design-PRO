@@ -189,7 +189,7 @@ def test_bilans_obejmuje_czlony_poprzeczne_galezi(
     z TEJ macierzy, którą odwrócono. Przekładnia poza-znamionowa daje człon y·(1 − 1/a)² ≠ 0:
     bez niego suma wkładów źródeł NIE równa się I_k''(Th) — sprawdzone niżej, żeby test nie
     przechodził na członie zerowym. Admitancja poprzeczna kabla NIE wchodzi do sieci
-    zwarciowej składowej zgodnej (IEC 60909-0:2016 p. 5.2, karta BEZ-POJEMNOSCI), więc przy
+    zwarciowej składowej zgodnej (IEC 60909-0:2016 pkt 5.2 f), karta BEZ-POJEMNOSCI), więc przy
     przekładniach znamionowych człon jest zerowy, a suma wkładów źródeł sama równa się
     I_k''(Th)."""
     wynik = _licz(siec_h5(**wariant), rodzaj, punkt, 1.1)
@@ -228,7 +228,7 @@ def test_bilans_wkladow_zrodel_kabel_o_duzym_b_bez_czlonow_poprzecznych(
     zwarcia {3F, 1F, 2F, 2F+Z}. Asercje:
 
     * I_k''(Th), wpisy wkładów źródeł i prąd członów poprzecznych są BIT W BIT takie same dla
-      każdego B — susceptancja kabla nie wchodzi do sieci zgodnej (IEC 60909-0:2016 p. 5.2);
+      każdego B — susceptancja kabla nie wchodzi do sieci zgodnej (IEC 60909-0:2016 pkt 5.2 f));
     * przy przekładniach znamionowych Σ I_Q,k = I_k''(Th) w tolerancji kontraktu bilansu,
       a człon poprzeczny jest zerowy — także przy B·ℓ = 7,5 mS (B/2 przywrócone w sieci
       zgodnej dałoby tu prąd ładowania rzędu dziesiątek A, wielokrotność tolerancji);

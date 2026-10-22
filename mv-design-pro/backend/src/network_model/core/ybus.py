@@ -31,14 +31,16 @@ S_BASE_MVA: float = 100.0
 #: tekstu dla budowniczego (`AdmittanceMatrixBuilder.build(siec_zwarciowa=True)`) i kroku śladu
 #: WHITE BOX solvera IEC 60909 (`admitancje_poprzeczne_pominiete`).
 PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH: str = (
-    "IEC 60909-0:2016 p. 5.2 e) — założenia obliczeń: pojemności linii, admitancje "
-    "poprzeczne i obciążenia niewirujące pomija się, z wyjątkiem składowej zerowej; "
-    "p. 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem "
-    "czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje "
-    "szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli "
-    "(B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa zachowuje pojemność "
-    "doziemną B0 w osobnej macierzy (`enm/mapping.py`) — p. 5.3.2: w sieci z punktem "
-    "neutralnym izolowanym i skompensowanym pojemności zerowe linii uwzględnia się."
+    "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się "
+    "pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym "
+    "napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera "
+    "admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii "
+    "i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): "
+    "pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy "
+    "współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — "
+    "pkt 5.3.2. Obliczenie uwzględnia dziś pojemność doziemną B0 w macierzy składowej zerowej "
+    "(`enm/mapping.py`) bez sprawdzania tego warunku. Parafraza normy (nie cytat) — ustalenie "
+    "właściciela 2026-10-22."
 )
 
 
@@ -129,7 +131,7 @@ class AdmittanceMatrixBuilder:
 
         for _, from_idx, to_idx, y_series_pu, y_shunt_pu, ratio in self._stemple_galezi():
             if siec_zwarciowa:
-                # IEC 60909-0:2016 p. 5.2 e) — patrz PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH.
+                # IEC 60909-0:2016 pkt 5.2 f) — patrz PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH.
                 # Ten sam bocznik (ten sam iterator `_stemple_galezi`) wylicza
                 # `admitancje_poprzeczne_pominiete` dla śladu WHITE BOX. Dla gałęzi bez
                 # susceptancji (B = 0) bocznik i tak był zerem, więc taka sieć ma Y-bus bit

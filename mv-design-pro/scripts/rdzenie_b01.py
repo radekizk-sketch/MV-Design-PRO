@@ -44,7 +44,7 @@ from __future__ import annotations
 #: Grupa „IEC 60909" zmieniona zgodą B-01 architekta (karta BEZ-POJEMNOSCI, WYŁĄCZNIE klasa
 #: admitancji poprzecznych gałęzi w sieci zwarciowej): `build_zbus` buduje sieć zgodną
 #: (i przeciwną, Z_2 = Z_1) budowniczym w trybie `siec_zwarciowa=True` — bez B/2 linii i kabli
-#: (IEC 60909-0:2016 p. 5.2 e) i 5.3.1, jedno źródło tekstu podstawy
+#: (IEC 60909-0:2016 pkt 5.2 f) i 5.3.1, jedno źródło tekstu podstawy
 #: `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`); krok śladu
 #: `admitancje_poprzeczne_pominiete` (tylko gdy coś pominięto). Składowa zerowa (B0), rozpływ
 #: i estymacja stanu bez zmian. Liczby sieci z B > 0 zmieniają się celowo (sonda w meldunku).

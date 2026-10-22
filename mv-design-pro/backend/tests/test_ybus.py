@@ -108,7 +108,7 @@ def test_ybus_single_line_between_two_nodes():
 
 @pytest.mark.parametrize("b_us_per_km", [0.0, 5.0, 250.0])
 def test_ybus_siec_zwarciowa_pomija_admitancje_poprzeczna_linii(b_us_per_km: float) -> None:
-    """IEC 60909-0:2016 p. 5.2 e) (karta BEZ-POJEMNOSCI): sieć zwarciowa składowej zgodnej
+    """IEC 60909-0:2016 pkt 5.2 f) (karta BEZ-POJEMNOSCI): sieć zwarciowa składowej zgodnej
     = admitancje szeregowe bez B/2; model π (``siec_zwarciowa=False``) różni się od niej
     DOKŁADNIE o B/2 na przekątnej. Iloczyn: B {0, małe, kabel SN} × tryb {zwarciowy, π}."""
     graph = NetworkGraph()

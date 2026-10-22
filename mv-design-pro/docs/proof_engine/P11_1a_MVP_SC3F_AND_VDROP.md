@@ -631,7 +631,7 @@ $$
 &\text{Rezystancja zwarcia: } R_f = 0\,\Omega \text{ (zwarcie metaliczne)} \\
 &\text{Częstotliwość: } f = 50\,\text{Hz} \\
 &\text{Obciążenia: pominięte w chwili zwarcia} \\
-&\text{Pojemności linii i kabli: pominięte w składowej zgodnej i przeciwnej (p. 5.2 e))} \\
+&\text{Pojemności linii i kabli: pominięte w składowej zgodnej i przeciwnej (pkt 5.2 f))} \\
 &\text{Transformatory: stan jałowy przed zwarciem} \\
 &\text{Współczynnik napięciowy: } c = c_{\max}
 \end{aligned}

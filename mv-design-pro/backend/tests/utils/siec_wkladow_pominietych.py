@@ -7,7 +7,7 @@ GPZ na szynie głównej, kabel SN do szyny OZE z falownikiem PV i dwa odgałęzi
   zgodnej, IEC 60909-0 p. 6.6) — kilka mikroamperów, NAD progiem |I| < 1e-6 A, więc wpis
   MUSI zostać na liście wkładów. Do karty BEZ-POJEMNOSCI ten prąd był prądem ładowania
   pojemności kabla; sieć zwarciowa składowej zgodnej nie ma admitancji poprzecznych gałęzi
-  (IEC 60909-0:2016 p. 5.2 e)), więc źródłem realnego małego prądu musi być źródło zwarciowe
+  (IEC 60909-0:2016 pkt 5.2 f)), więc źródłem realnego małego prądu musi być źródło zwarciowe
   — intencja testu (realny mały prąd nad progiem zostaje na liście) bez zmian;
 - „Kabel bez ładowania” (b = 0) prowadzi do szyny bez żadnego odbioru i bez pojemności —
   prąd zwarciowy w nim jest fizycznie zerem, a numerycznie zerem albo resztą

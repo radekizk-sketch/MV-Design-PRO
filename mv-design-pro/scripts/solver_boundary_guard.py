@@ -146,7 +146,7 @@ SANCTIONED_CHANGES = {
         " Zgoda B-01 architekta (karta BEZ-POJEMNOSCI, WYLACZNIE klasa admitancji poprzecznych"
         " galezi w sieci zwarciowej): krok sladu `admitancje_poprzeczne_pominiete` (linie i kable,"
         " ktorych B*l nie weszlo do sieci zgodnej i przeciwnej, suma B, podstawa IEC 60909-0:2016"
-        " p. 5.2 e) z `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`; brak kroku, gdy"
+        " pkt 5.2 f) z `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`; brak kroku, gdy"
         " nic nie pominieto). Rozplyw Thevenina po galeziach liczy prad z admitancji szeregowej"
         " TEJ SAMEJ sieci co Z-bus — bilans KCL wezla zwarcia dokladny. Liczby sieci z B > 0"
         " zmieniaja sie celowo (sonda przed/po w meldunku), sieci z B = 0 bit w bit. Testy"
@@ -216,16 +216,22 @@ SANCTIONED_CHANGES = {
         "Zmiana liczb ib_a usankcjonowana karta. Wpis do usuniecia po scaleniu do main."
         " Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): `build_zbus` buduje siec zgodna"
         " (i przeciwna, Z_2 = Z_1) w trybie `siec_zwarciowa=True` budowniczego — bez B/2 linii"
-        " i kabli (IEC 60909-0:2016 p. 5.2 e) i 5.3.1). Jedyne wejscie sieci zgodnej wszystkich"
+        " i kabli (IEC 60909-0:2016 pkt 5.2 f) i 5.3.1). Jedyne wejscie sieci zgodnej wszystkich"
         " sciezek zwarciowych. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/core/ybus.py": (
         "Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): jeden predykat `siec_zwarciowa` w"
         " `AdmittanceMatrixBuilder.build` (dawny `ground_slack_buses`) — w sieci zwarciowej"
-        " admitancje poprzeczne galezi pominiete (IEC 60909-0:2016 p. 5.2 e) i 5.3.1, stala"
+        " admitancje poprzeczne galezi pominiete (IEC 60909-0:2016 pkt 5.2 f) i 5.3.1, stala"
         " PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH), boczniki zrodel i maszyn bez zmian;"
         " `admitancje_poprzeczne_pominiete()` — zbior pominietych galezi dla sladu. Plik"
         " dopisany do DODATKOWE_CHRONIONE ta sama karta. Wpis do usuniecia po scaleniu do main."
+        " Partia integracji BEZ-POJEMNOSCI + WKLAD-ZRODLA: tekst stalej podstawy poprawiony na"
+        " jednostke redakcyjna IEC 60909-0:2016 pkt 5.2 f) (ustalenie wlasciciela 2026-10-22,"
+        " parafraza): pominiecie pojemnosci linii w skladowej zgodnej i przeciwnej, warunek"
+        " skladowej zerowej (mala impedancja uziemienia, wspolczynnik zwarcia doziemnego > 1,4),"
+        " metoda skladowych pkt 5.3.2, uczciwy stan B0 (dzis bezwarunkowo). Zmienia sie tylko"
+        " tekst `notes` kroku sladu; liczby bez zmian."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "

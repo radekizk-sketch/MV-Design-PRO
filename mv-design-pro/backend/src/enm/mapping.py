@@ -534,9 +534,13 @@ def _assemble_zero_sequence_y0(
         # bocznik do ziemi w modelu π (podział /2 na każdy koniec — ten sam co
         # dla susceptancji zgodnej w `AdmittanceMatrixBuilder._get_branch_admittances_pu`).
         # Sieć zgodna i przeciwna zwarć NIE ma tej susceptancji (karta BEZ-POJEMNOSCI,
-        # `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`: IEC 60909-0:2016 p. 5.2 —
-        # pojemności pomija się z wyjątkiem składowej zerowej), więc B0 tutaj jest
-        # JEDYNĄ pojemnością linii w obliczeniu zwarciowym.
+        # `ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`: IEC 60909-0:2016 pkt 5.2 f)),
+        # więc B0 tutaj jest JEDYNĄ pojemnością linii w obliczeniu zwarciowym. B0 wchodzi
+        # dziś BEZWARUNKOWO; pkt 5.2 f) każe uwzględniać pojemności linii w składowej
+        # zerowej w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia
+        # doziemnego > 1,4 (ustalenie właściciela 2026-10-22) — ten warunek wdroży karta
+        # rdzenia ZEROWA-POJEMNOSCI; do tego czasu B0 stoi tu dla każdego sposobu
+        # uziemienia punktu neutralnego.
         # Przed kartą fali F B0 było CAŁKOWICIE pomijane w sieci
         # składowej zerowej SC_1F/2F+G — dla sieci o punkcie neutralnym
         # izolowanym/skompensowanym (Petersen) ta pojemność jest DOMINUJĄCĄ

@@ -41,7 +41,7 @@ R5 — uziemienie węzłów zasilających i maszyn. Wyłącznie kontekst zwarcio
 R6 — admitancje poprzeczne gałęzi (B/2 linii i kabli). RÓŻNICA CELOWA, Z PODSTAWĄ NORMY
      (karta BEZ-POJEMNOSCI, zgoda B-01 architekta): sieć zwarciowa składowej zgodnej
      i przeciwnej (`build(siec_zwarciowa=True)`, jedyne wejście `short_circuit_core.build_zbus`)
-     NIE zawiera B/2 — IEC 60909-0:2016 p. 5.2 e) i p. 5.3.1
+     NIE zawiera B/2 — IEC 60909-0:2016 pkt 5.2 f) i pkt 5.3.1
      (`ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`); rozpływ zawiera, bo w stanie
      ustalonym pojemność linii jest fizyką (prąd ładowania, Ferranti). Parytet porównuje
      model π (`siec_zwarciowa=False`); test `test_r6_*` przypina, że macierz zwarciowa różni się

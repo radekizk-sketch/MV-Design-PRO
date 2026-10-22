@@ -130,7 +130,7 @@
       "result": {
         "pominieta_susceptancja_suma_s": 9.3e-06
       },
-      "notes": "IEC 60909-0:2016 p. 5.2 e) — założenia obliczeń: pojemności linii, admitancje poprzeczne i obciążenia niewirujące pomija się, z wyjątkiem składowej zerowej; p. 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa zachowuje pojemność doziemną B0 w osobnej macierzy (`enm/mapping.py`) — p. 5.3.2: w sieci z punktem neutralnym izolowanym i skompensowanym pojemności zerowe linii uwzględnia się.",
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Obliczenie uwzględnia dziś pojemność doziemną B0 w macierzy składowej zerowej (`enm/mapping.py`) bez sprawdzania tego warunku. Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
       "step": 3,
       "target_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
       "element_id": "bus_sn_main",
@@ -639,7 +639,7 @@
       "result": {
         "pominieta_susceptancja_suma_s": 9.3e-06
       },
-      "notes": "IEC 60909-0:2016 p. 5.2 e) — założenia obliczeń: pojemności linii, admitancje poprzeczne i obciążenia niewirujące pomija się, z wyjątkiem składowej zerowej; p. 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa zachowuje pojemność doziemną B0 w osobnej macierzy (`enm/mapping.py`) — p. 5.3.2: w sieci z punktem neutralnym izolowanym i skompensowanym pojemności zerowe linii uwzględnia się.",
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Obliczenie uwzględnia dziś pojemność doziemną B0 w macierzy składowej zerowej (`enm/mapping.py`) bez sprawdzania tego warunku. Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
       "step": 14,
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
       "element_id": "bus_hv",
@@ -1148,7 +1148,7 @@
       "result": {
         "pominieta_susceptancja_suma_s": 9.3e-06
       },
-      "notes": "IEC 60909-0:2016 p. 5.2 e) — założenia obliczeń: pojemności linii, admitancje poprzeczne i obciążenia niewirujące pomija się, z wyjątkiem składowej zerowej; p. 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa zachowuje pojemność doziemną B0 w osobnej macierzy (`enm/mapping.py`) — p. 5.3.2: w sieci z punktem neutralnym izolowanym i skompensowanym pojemności zerowe linii uwzględnia się.",
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Obliczenie uwzględnia dziś pojemność doziemną B0 w macierzy składowej zerowej (`enm/mapping.py`) bez sprawdzania tego warunku. Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
       "step": 25,
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
       "element_id": "bus_nn",
@@ -1657,7 +1657,7 @@
       "result": {
         "pominieta_susceptancja_suma_s": 9.3e-06
       },
-      "notes": "IEC 60909-0:2016 p. 5.2 e) — założenia obliczeń: pojemności linii, admitancje poprzeczne i obciążenia niewirujące pomija się, z wyjątkiem składowej zerowej; p. 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa zachowuje pojemność doziemną B0 w osobnej macierzy (`enm/mapping.py`) — p. 5.3.2: w sieci z punktem neutralnym izolowanym i skompensowanym pojemności zerowe linii uwzględnia się.",
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Obliczenie uwzględnia dziś pojemność doziemną B0 w macierzy składowej zerowej (`enm/mapping.py`) bez sprawdzania tego warunku. Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
       "step": 36,
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
       "element_id": "bus_sn_b",
@@ -2166,7 +2166,7 @@
       "result": {
         "pominieta_susceptancja_suma_s": 9.3e-06
       },
-      "notes": "IEC 60909-0:2016 p. 5.2 e) — założenia obliczeń: pojemności linii, admitancje poprzeczne i obciążenia niewirujące pomija się, z wyjątkiem składowej zerowej; p. 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa zachowuje pojemność doziemną B0 w osobnej macierzy (`enm/mapping.py`) — p. 5.3.2: w sieci z punktem neutralnym izolowanym i skompensowanym pojemności zerowe linii uwzględnia się.",
+      "notes": "IEC 60909-0:2016 pkt 5.2 f) — w składowej zgodnej i przeciwnej pojemności linii się pomija; pkt 5.3.1 — zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jest jedynym napięciem czynnym sieci. Sieć składowej zgodnej i przeciwnej (Z_2 = Z_1) zawiera admitancje szeregowe gałęzi oraz boczniki zasilań i maszyn wirujących; pojemności linii i kabli (B/2 na każdym końcu) nie wchodzą do niej. Składowa zerowa — warunek pkt 5.2 f): pojemności linii uwzględnia się w sieciach uziemionych przez małą impedancję, gdy współczynnik zwarcia doziemnego jest większy niż 1,4; metoda składowych symetrycznych — pkt 5.3.2. Obliczenie uwzględnia dziś pojemność doziemną B0 w macierzy składowej zerowej (`enm/mapping.py`) bez sprawdzania tego warunku. Parafraza normy (nie cytat) — ustalenie właściciela 2026-10-22.",
       "step": 47,
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
       "element_id": "bus_sn_c",
@@ -2918,7 +2918,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "e9cdf3f016401858f6c61a393c155aeaf411ccd5decf6e8360b1c8765ac214be",
+      "result_hash": "e0db4e766b190904c99f619618212a0bc7027b8004513473630023c1dd976931",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",

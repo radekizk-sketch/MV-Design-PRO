@@ -1,11 +1,13 @@
 """Sieć zwarciowa bez admitancji poprzecznych gałęzi — karta BEZ-POJEMNOSCI (zgoda B-01 architekta).
 
-Podstawa: IEC 60909-0:2016 p. 5.2 e) (założenia obliczeń: pojemności linii, admitancje
-poprzeczne i obciążenia niewirujące pomija się — z wyjątkiem składowej zerowej) i p. 5.3.1
-(zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jedynym napięciem czynnym sieci); tekst
-w `network_model.core.ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`. Składowa zerowa
-zachowuje pojemność doziemną B0 (p. 5.3.2: w sieci izolowanej i skompensowanej pojemności
-zerowe linii uwzględnia się — to jedyna droga prądu doziemnego).
+Podstawa: IEC 60909-0:2016 pkt 5.2 f) (w składowej zgodnej i przeciwnej pojemności linii się
+pomija) i pkt 5.3.1 (zastępcze źródło napięcia c·U_n/√3 w miejscu zwarcia jedynym napięciem
+czynnym sieci) — parafraza, ustalenie właściciela 2026-10-22; tekst
+w `network_model.core.ybus.PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH`. Składowa zerowa:
+pkt 5.2 f) każe uwzględnić pojemności linii w sieciach uziemionych przez małą impedancję przy
+współczynniku zwarcia doziemnego > 1,4 (metoda składowych symetrycznych — pkt 5.3.2);
+obliczenie uwzględnia dziś pojemność doziemną B0 bezwarunkowo (także w sieci izolowanej, gdzie
+jest jedyną drogą prądu doziemnego) — warunek pkt 5.2 f) wdroży karta ZEROWA-POJEMNOSCI.
 
 Przed kartą `short_circuit_core.build_zbus` wstawiał B/2 linii i kabli na każdym końcu do sieci
 zgodnej (a przez Z_2 = Z_1 — także przeciwnej), a rozpływ prądu po gałęziach
@@ -295,8 +297,9 @@ def test_doziemne_siec_izolowana_b0_zostaje_w_skladowej_zerowej(
     miejsce: str,
     rodzaj: str,
 ) -> None:
-    """Zwarcia z ziemią w sieci izolowanej: Z_1 = Z_2 bez B (p. 5.2 e)), Z_0 z pojemnością
-    doziemną B0 (p. 5.3.2 — jedyna droga prądu zerowego) — prąd z rachunku ręcznego."""
+    """Zwarcia z ziemią w sieci izolowanej: Z_1 = Z_2 bez B (pkt 5.2 f)), Z_0 z pojemnością
+    doziemną B0 (jedyna droga prądu zerowego; B0 wchodzi dziś bezwarunkowo — warunek
+    pkt 5.2 f) wdroży karta ZEROWA-POJEMNOSCI) — prąd z rachunku ręcznego."""
     run, szyny = biegi[(susceptancja, "promieniowa", rodzaj)]
     wiersz = _wiersz(run, szyny[miejsce])
     z1 = _z1_reczne("promieniowa", miejsce)
@@ -339,7 +342,14 @@ def test_slad_white_box_nazywa_pominiete_admitancje_z_podstawa(
     suma = sum(DLUGOSC_KM[n[2:]] for n in nazwy) * B_KM_S
     assert krok["result"]["pominieta_susceptancja_suma_s"] == pytest.approx(suma, rel=1e-12)
     assert krok["notes"] == PODSTAWA_POMINIECIA_ADMITANCJI_POPRZECZNYCH
-    assert "IEC 60909-0:2016 p. 5.2 e)" in krok["notes"]
+    # Jednostka redakcyjna podstawy: pkt 5.2 f) (ustalenie właściciela 2026-10-22, parafraza);
+    # składowa zerowa — warunek pkt 5.2 f), metoda składowych pkt 5.3.2; uczciwy stan B0.
+    assert "IEC 60909-0:2016 pkt 5.2 f)" in krok["notes"]
+    assert "współczynnik zwarcia doziemnego jest większy niż 1,4" in krok["notes"]
+    assert "bez sprawdzania tego warunku" in krok["notes"]
+    assert "ustalenie właściciela 2026-10-22" in krok["notes"]
+    assert "5.2 e)" not in krok["notes"]
+    assert "do potwierdzenia" not in krok["notes"]
 
 
 # ---------------------------------------------------------------------------

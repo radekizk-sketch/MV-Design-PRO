@@ -89,7 +89,7 @@ def build_zbus(graph: NetworkGraph) -> tuple[AdmittanceMatrixBuilder, np.ndarray
     JEDYNE wejście sieci zgodnej dla każdej ścieżki zwarciowej (3F/2F/1F/2F+G, wkłady
     falowników i rozpływ Thevenina po gałęziach, maszyny wirujące, pętla zwarcia IEC 60364,
     ekwiwalent sieci nadrzędnej nN). Budowniczy w trybie `siec_zwarciowa=True`: admitancje
-    poprzeczne gałęzi pominięte (IEC 60909-0:2016 p. 5.2 e) i 5.3.1, karta BEZ-POJEMNOSCI),
+    poprzeczne gałęzi pominięte (IEC 60909-0:2016 pkt 5.2 f) i 5.3.1, karta BEZ-POJEMNOSCI),
     zasilania i maszyny jako boczniki źródeł.
     """
     builder = AdmittanceMatrixBuilder(graph)
