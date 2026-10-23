@@ -284,6 +284,26 @@ def tolerancja_bilansu_a(prad_a: float) -> float:
     return max(TOLERANCJA_WZGLEDNA_BILANSU * abs(prad_a), PROG_WKLADU_POMIJALNEGO_A)
 
 
+def prad_do_tekstu_sladu(prad_a: float) -> float:
+    """Prąd [A] do TEKSTU śladu WHITE BOX: wartość o module poniżej
+    `PROG_WKLADU_POMIJALNEGO_A` wypisywana jako 0.
+
+    Prąd poniżej progu wkładu pomijalnego jest w tekście szumem arytmetyki — przy
+    I_k'' rzędu 1e4 A część urojona sumy fazorowej wkładów i prąd członów poprzecznych
+    wychodzą rzędu 1e-13 A, a ich znak i cyfry zależą od maszyny (kolejność sumowania
+    iloczynów macierzowych BLAS). Ten sam predykat co klasyfikacja wkładu
+    (`jest_wkladem_pominietym`) — jedno źródło prawdy progu. Reguła dotyczy wyłącznie
+    TEKSTU (``substitution``/``substitution_latex``); pola liczbowe kroku niosą wartość pełną.
+    """
+    return 0.0 if jest_wkladem_pominietym(prad_a) else prad_a
+
+
+def fazor_do_tekstu_sladu(fazor_a: complex) -> complex:
+    """Fazor prądu [A] do TEKSTU śladu: każda część (rzeczywista, urojona) osobno
+    przez `prad_do_tekstu_sladu`."""
+    return complex(prad_do_tekstu_sladu(fazor_a.real), prad_do_tekstu_sladu(fazor_a.imag))
+
+
 @dataclass(frozen=True)
 class WkladZrodla:
     """Wkład jednego źródła do prądu zwarciowego w węźle zwarcia (karta WKLAD-ZRODLA).

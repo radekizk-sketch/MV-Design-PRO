@@ -41,6 +41,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.core.voltage_factor import (
     TolerancjaNapieciaNn,
     c_for_node,
@@ -136,7 +137,7 @@ class FaultLoopResult:
 
     @property
     def z_loop_magnitude_ohm(self) -> float:
-        return abs(self.z_loop_ohm)
+        return modul_zespolony(self.z_loop_ohm)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize per V12.xx canonical pattern (complex → re/im)."""
@@ -291,7 +292,7 @@ def zsumuj_skladowe_petli(
         "result": {
             "r_total_ohm": z_loop_complex.real,
             "x_total_ohm": z_loop_complex.imag,
-            "magnitude_ohm": abs(z_loop_complex),
+            "magnitude_ohm": modul_zespolony(z_loop_complex),
         },
     }
     return z_loop_complex, krok
@@ -418,7 +419,10 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
     # Krok 2: oblicz Ik z c MIN/MAX (tabela 1 IEC 60909-0, wiersz nN wg tolerancji sieci).
     c = wspolczynniki_c_petli(data)
     ik_min, ik_max, krok_pradu = prad_z_petli(
-        u_v=data.u_nom_v, z_magnitude=abs(z_loop_complex), fault_node_id=data.fault_node_id, c=c
+        u_v=data.u_nom_v,
+        z_magnitude=modul_zespolony(z_loop_complex),
+        fault_node_id=data.fault_node_id,
+        c=c,
     )
     trace.append(krok_pradu)
 

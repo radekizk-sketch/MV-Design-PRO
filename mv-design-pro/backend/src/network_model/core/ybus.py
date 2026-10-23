@@ -98,13 +98,15 @@ class AdmittanceMatrixBuilder:
         """Napięcie znamionowe węzła reprezentatywnego [kV]."""
         return self._graph.nodes[rep_id].voltage_level
 
-    def build(self, *, siec_zwarciowa: bool = True) -> np.ndarray:
+    def build(self, *, siec_zwarciowa: bool) -> np.ndarray:
         """
         Buduje macierz Y-bus w systemie per-unit.
 
         Zamknięte łączniki scalają węzły (zero-impedance merge).
 
-        ``siec_zwarciowa`` — JEDEN predykat reprezentacji sieci zwarciowej IEC 60909 składowej
+        ``siec_zwarciowa`` (argument OBOWIĄZKOWY, bez wartości domyślnej — każdy wołający
+        nazywa reprezentację jawnie; pin: ``test_ybus.py::test_build_wymaga_jawnej_reprezentacji``)
+        — JEDEN predykat reprezentacji sieci zwarciowej IEC 60909 składowej
         zgodnej; solver przyjmuje ją także za sieć składowej przeciwnej (Z_2 = Z_1,
         `short_circuit_core.compute_equivalent_impedance` bez `z2_bus` — żaden wołający go nie
         podaje):

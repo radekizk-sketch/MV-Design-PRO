@@ -33,6 +33,7 @@ from network_model.core.impedancja_przejscia import (
     kod_odmowy_impedancji,
 )
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.core.ybus import S_BASE_MVA
 from network_model.nazwy import opis_rodzaju_i_nazwy
 from network_model.odmowa_danych import (
@@ -593,7 +594,7 @@ def compute_machine_contributions(
     vn_k_kv = graph.nodes[fault_node_id].voltage_level
     i_base_k = S_BASE_MVA * 1.0e3 / (_SQRT3 * vn_k_kv)  # A — fault-bus current base
     # Total I″k from the Z-bus (machines included): I_f_pu = c / Z_kk_pu.
-    ikss_total_a = (c_factor / abs(z_petli)) * i_base_k
+    ikss_total_a = (c_factor / modul_zespolony(z_petli)) * i_base_k
 
     def partial_a(node_id: str, z_internal_ohm: complex) -> tuple[float, float, float, dict]:
         """Prad czesciowy maszyny + wartosci posrednie do wywodu WHITE BOX.
@@ -617,17 +618,22 @@ def compute_machine_contributions(
         i_pu = c_factor * z_mk / (z_petli * z_m_pu)
         i_base_m = S_BASE_MVA * 1.0e3 / (_SQRT3 * graph.nodes[node_id].voltage_level)
         detale = {
-            "z_mk_pu": abs(z_mk),
-            "z_kk_pu": abs(z_kk),
-            "z_m_pu": abs(z_m_pu),
+            "z_mk_pu": modul_zespolony(z_mk),
+            "z_kk_pu": modul_zespolony(z_kk),
+            "z_m_pu": modul_zespolony(z_m_pu),
             "i_base_a": i_base_k,
-            "i_zaciski_a": abs(i_pu) * i_base_m,
+            "i_zaciski_a": modul_zespolony(i_pu) * i_base_m,
             "x_m_pu": z_m_pu.imag,
-            "i_m_pu": abs(i_pu),
-            "delta_u_wzgledne": z_m_pu.imag * abs(i_pu) / c_factor,
-            **({"z_petli_pu": abs(z_petli)} if z_f_pu is not None else {}),
+            "i_m_pu": modul_zespolony(i_pu),
+            "delta_u_wzgledne": z_m_pu.imag * modul_zespolony(i_pu) / c_factor,
+            **({"z_petli_pu": modul_zespolony(z_petli)} if z_f_pu is not None else {}),
         }
-        return abs(i_pu) * i_base_k, detale["i_zaciski_a"], detale["delta_u_wzgledne"], detale
+        return (
+            modul_zespolony(i_pu) * i_base_k,
+            detale["i_zaciski_a"],
+            detale["delta_u_wzgledne"],
+            detale,
+        )
 
     def wywod_maszyny(
         *,
@@ -658,7 +664,7 @@ def compute_machine_contributions(
                 ),
                 "latex": (
                     rf"Z''_m = {z_internal_ohm.real:.4f} + j\,{z_internal_ohm.imag:.4f}"
-                    rf"\;\Omega,\qquad |Z''_m| = {abs(z_internal_ohm):.4f}\;\Omega"
+                    rf"\;\Omega,\qquad |Z''_m| = {modul_zespolony(z_internal_ohm):.4f}\;\Omega"
                 ),
             },
         ]

@@ -1089,7 +1089,7 @@ def build_slack_radial_graph() -> NetworkGraph:
 
 def build_z_bus_local(graph: NetworkGraph) -> np.ndarray:
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
     return np.linalg.inv(y_bus)
 
 

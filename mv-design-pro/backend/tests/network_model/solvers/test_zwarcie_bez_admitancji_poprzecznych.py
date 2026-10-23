@@ -421,7 +421,7 @@ def b_polowa_w_sieci_zgodnej(monkeypatch: pytest.MonkeyPatch) -> None:
     """Iniekcja stanu sprzed karty: tryb zwarciowy przywraca B/2 na końcach gałęzi."""
     oryginal = AdmittanceMatrixBuilder.build
 
-    def build(self: AdmittanceMatrixBuilder, *, siec_zwarciowa: bool = True) -> Any:
+    def build(self: AdmittanceMatrixBuilder, *, siec_zwarciowa: bool) -> Any:
         y = oryginal(self, siec_zwarciowa=siec_zwarciowa)
         if siec_zwarciowa:
             for galaz, y_konca_pu in self.admitancje_poprzeczne_pominiete():

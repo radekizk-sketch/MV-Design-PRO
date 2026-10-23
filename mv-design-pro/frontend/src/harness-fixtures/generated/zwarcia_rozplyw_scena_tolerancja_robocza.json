@@ -318,8 +318,8 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 8953.14-j1.13687e-13 A, prąd członów poprzecznych gałęzi 1.26134e-12+j3.07203e-13 A, razem 8953.14+j1.93516e-13 A wobec I_k''(Th) = 8953.14 A; reszta 3.64312e-12 A, dopuszczalna 8.95314e-06 A.",
-        "substitution_latex": "\\left(8953.14 - j 1.13687e-13\\right) + \\left(1.26134e-12 + j 3.07203e-13\\right) = \\left(8953.14 + j 1.93516e-13\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
+        "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 8953.14360646,
@@ -338,7 +338,7 @@
           "tolerancja_a": 8.95314360646e-06,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "analysis_case_context": {
@@ -389,7 +389,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "b2bbfd89b650a962626505a53c69808a017255a43b365084840a96e9c21dde37",
+        "result_hash": "08d7618fc6827b81c4d832b6655f7ffad72ebe7c4d9f52f9f286cf5a3d977d9a",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -737,8 +737,8 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 13984.5-j9.32587e-14 A, prąd członów poprzecznych gałęzi 1.62519e-13+j3.02631e-14 A, razem 13984.5-j6.29957e-14 A wobec I_k''(Th) = 13984.5 A; reszta 6.29957e-14 A, dopuszczalna 1.39845e-05 A.",
-        "substitution_latex": "\\left(13984.5 - j 9.32587e-14\\right) + \\left(1.62519e-13 + j 3.02631e-14\\right) = \\left(13984.5 - j 6.29957e-14\\right)\\,\\mathrm{A} \\approx 13984.5\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 13984.5+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 13984.5+j0 A wobec I_k''(Th) = 13984.5 A; reszta ≤ dopuszczalnej 1.39845e-05 A.",
+        "substitution_latex": "\\left(13984.5 + j 0\\right) + \\left(0 + j 0\\right) = \\left(13984.5 + j 0\\right)\\,\\mathrm{A} \\approx 13984.5\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 1.39845e-05\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 13984.4749902,
@@ -757,7 +757,7 @@
           "tolerancja_a": 1.39844749902e-05,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "analysis_case_context": {
@@ -808,7 +808,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "b2bbfd89b650a962626505a53c69808a017255a43b365084840a96e9c21dde37",
+        "result_hash": "08d7618fc6827b81c4d832b6655f7ffad72ebe7c4d9f52f9f286cf5a3d977d9a",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1127,8 +1127,8 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 20516.2-j3.29692e-12 A, prąd członów poprzecznych gałęzi 2.89038e-12+j7.03958e-13 A, razem 20516.2-j2.59296e-12 A wobec I_k''(Th) = 20516.2 A; reszta 7.72418e-12 A, dopuszczalna 2.05162e-05 A.",
-        "substitution_latex": "\\left(20516.2 - j 3.29692e-12\\right) + \\left(2.89038e-12 + j 7.03958e-13\\right) = \\left(20516.2 - j 2.59296e-12\\right)\\,\\mathrm{A} \\approx 20516.2\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 20516.2+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 20516.2+j0 A wobec I_k''(Th) = 20516.2 A; reszta ≤ dopuszczalnej 2.05162e-05 A.",
+        "substitution_latex": "\\left(20516.2 + j 0\\right) + \\left(0 + j 0\\right) = \\left(20516.2 + j 0\\right)\\,\\mathrm{A} \\approx 20516.2\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 2.05162e-05\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 20516.2023668,
@@ -1147,7 +1147,7 @@
           "tolerancja_a": 2.05162023668e-05,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "analysis_case_context": {
@@ -1198,7 +1198,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "b2bbfd89b650a962626505a53c69808a017255a43b365084840a96e9c21dde37",
+        "result_hash": "08d7618fc6827b81c4d832b6655f7ffad72ebe7c4d9f52f9f286cf5a3d977d9a",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1540,8 +1540,8 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 8953.14-j1.13687e-13 A, prąd członów poprzecznych gałęzi 1.26134e-12+j3.07203e-13 A, razem 8953.14+j1.93516e-13 A wobec I_k''(Th) = 8953.14 A; reszta 3.64312e-12 A, dopuszczalna 8.95314e-06 A.",
-        "substitution_latex": "\\left(8953.14 - j 1.13687e-13\\right) + \\left(1.26134e-12 + j 3.07203e-13\\right) = \\left(8953.14 + j 1.93516e-13\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 8953.14+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 8953.14+j0 A wobec I_k''(Th) = 8953.14 A; reszta ≤ dopuszczalnej 8.95314e-06 A.",
+        "substitution_latex": "\\left(8953.14 + j 0\\right) + \\left(0 + j 0\\right) = \\left(8953.14 + j 0\\right)\\,\\mathrm{A} \\approx 8953.14\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 8.95314e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 8953.14360646,
@@ -1560,7 +1560,7 @@
           "tolerancja_a": 8.95314360646e-06,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "analysis_case_context": {
@@ -1611,7 +1611,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "b2bbfd89b650a962626505a53c69808a017255a43b365084840a96e9c21dde37",
+        "result_hash": "08d7618fc6827b81c4d832b6655f7ffad72ebe7c4d9f52f9f286cf5a3d977d9a",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
@@ -1959,8 +1959,8 @@
           "tolerancja_wzgledna": 1e-09,
           "prog_wkladu_pominietego_a": 1e-06
         },
-        "substitution": "Suma fazorowa wkładów źródeł 4603.52-j3.12639e-13 A, prąd członów poprzecznych gałęzi 9.13698e-13+j2.30406e-13 A, razem 4603.52-j8.22325e-14 A wobec I_k''(Th) = 4603.52 A; reszta 9.13205e-13 A, dopuszczalna 4.60352e-06 A.",
-        "substitution_latex": "\\left(4603.52 - j 3.12639e-13\\right) + \\left(9.13698e-13 + j 2.30406e-13\\right) = \\left(4603.52 - j 8.22325e-14\\right)\\,\\mathrm{A} \\approx 4603.52\\,\\mathrm{A}",
+        "substitution": "Suma fazorowa wkładów źródeł 4603.52+j0 A, prąd członów poprzecznych gałęzi 0+j0 A, razem 4603.52+j0 A wobec I_k''(Th) = 4603.52 A; reszta ≤ dopuszczalnej 4.60352e-06 A.",
+        "substitution_latex": "\\left(4603.52 + j 0\\right) + \\left(0 + j 0\\right) = \\left(4603.52 + j 0\\right)\\,\\mathrm{A} \\approx 4603.52\\,\\mathrm{A}, \\quad \\left| \\Delta \\right| \\le 4.60352e-06\\,\\mathrm{A}",
         "result": {
           "suma_fazorowa_zrodel_a": {
             "re": 4603.52239368,
@@ -1979,7 +1979,7 @@
           "tolerancja_a": 4.60352239368e-06,
           "bilans_domkniety": true
         },
-        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
+        "notes": "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. Człony poprzeczne gałęzi to suma kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok `admitancje_poprzeczne_pominiete`); przy przekładniach znamionowych człony są zerowe. Źródło pominięte albo dopisane w rozbiciu na źródła zostawia resztę równą swojemu wkładowi. Źródła przekształtnikowe nie są bocznikami macierzy — ich wkład I_k(fal) stoi per źródło w liście `contributions` wyniku. Rozkład w sieci zgodnej (macierz Z-bus składowej zgodnej) dla każdego rodzaju zwarcia, tak jak wkłady gałęziowe; dla zwarć doziemnych prąd składowej zerowej rozpływa się w sieci zerowej, której rozkładu na źródła rdzeń nie liczy."
       }
     ],
     "analysis_case_context": {
@@ -2030,7 +2030,7 @@
         "formula_set_version": "iec60909_v1",
         "standard_basis_ref": "IEC_60909",
         "input_hash": "36d2f84aab1c7e8352cb4748ebd68120372833681f7a113ccd131325877d6164",
-        "result_hash": "b2bbfd89b650a962626505a53c69808a017255a43b365084840a96e9c21dde37",
+        "result_hash": "08d7618fc6827b81c4d832b6655f7ffad72ebe7c4d9f52f9f286cf5a3d977d9a",
         "domain_model_version": "1.0",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",

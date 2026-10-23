@@ -6,6 +6,7 @@ from enum import Enum
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.core.ybus import AdmittanceMatrixBuilder
 from network_model.odmowa_danych import (
     RODZAJ_WEZEL,
@@ -210,7 +211,7 @@ def compute_ikss(
     z_equiv: complex,
 ) -> float:
     voltage_factor = voltage_factor_for_fault(short_circuit_type)
-    return (c_factor * un_v * voltage_factor) / abs(z_equiv)
+    return (c_factor * un_v * voltage_factor) / modul_zespolony(z_equiv)
 
 
 def _thermal_mn_factors(kappa: float, tk_s: float, f_hz: float = 50.0) -> tuple[float, float]:

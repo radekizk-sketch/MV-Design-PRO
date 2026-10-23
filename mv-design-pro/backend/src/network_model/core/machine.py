@@ -20,6 +20,7 @@ import math
 import uuid
 from dataclasses import dataclass, field
 
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.core.voltage_factor import (
     TolerancjaNapieciaNn,
     c_for_node,
@@ -166,7 +167,7 @@ class SynchronousMachineSource:
             "c_max_zrodlo": self.c_max_zrodlo,
             "k_g": self.k_g,
             "z_internal_ohm": z,
-            "z_abs_ohm": abs(z),
+            "z_abs_ohm": modul_zespolony(z),
             "ir_a": self.ir_a,
         }
 
@@ -263,6 +264,6 @@ class AsynchronousMachineSource:
             "p_per_pole_mw": self.p_per_pole_mw,
             "r_over_x": self.r_over_x_ratio,
             "z_internal_ohm": z,
-            "z_abs_ohm": abs(z),
+            "z_abs_ohm": modul_zespolony(z),
             "pole_pairs": self.pole_pairs,
         }

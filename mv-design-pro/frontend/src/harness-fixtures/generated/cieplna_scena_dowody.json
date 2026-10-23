@@ -45,7 +45,7 @@
           "title": "Czas trwania zwarcia z założenia przypadku",
           "inputs": {
             "i_galezi_a": {
-              "value": 643.603362,
+              "value": 643.641077,
               "unit": "A",
               "label": "Prąd zwarciowy gałęzi"
             }
