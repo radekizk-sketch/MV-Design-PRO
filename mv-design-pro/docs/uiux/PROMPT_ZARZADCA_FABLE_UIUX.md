@@ -5,6 +5,21 @@ Sterowanie: `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (program) +
 Format zgodny z wzorcem promptów wykonawczych repo (`docs/prompts/PROMPT_F0_*.md`).
 Do wklejenia jako pierwsza wiadomość nowej sesji agenta prowadzącego.
 
+> **MANDAT OBOWIĄZUJĄCY OD 2026-10-23 — UWAGA OPIEKA NAD JEDNYM PROGRAMEM.**
+> Głównym wykonawcą/zarządcą **Programu UI/UX klasy przemysłowej jest Claude Opus 5.5**,
+> zgodnie z decyzją właściciela. Ten plik jest jedynie instrukcją uruchomienia zarządcy;
+> nie tworzy własnej listy priorytetów. **Jedyna lista kart UX-00…UX-09** i ich status
+> istnieją w [`PROGRAM_UIUX_2026-07.md` §12](PROGRAM_UIUX_2026-07.md#12-zintegrowana-kolejka-wykonawcza--uiux-przemyslowy-decyzja-wlasciciela-2026-10-23).
+> W razie sprzeczności z fragmentem starego promptu (np. planowanie od U0, osobny wątek
+> SLD, nierealne zakazy prac w kanwie) **§12 i aktualna decyzja V12K-084 mają pierwszeństwo**.
+> U0/U1 i historyczne karty nie są nowymi zadaniami; nie ponawiaj ich bez stwierdzonej
+> regresji. Opus rozpoczyna od weryfikacji UX-00 i realizacji P0 UX-01…UX-06,
+> bez proszenia o nowy plan i bez zatrzymania prac inżynierskich W/A-B.
+> Pakiet [SEL Blueframe](../research/sel-blueframe/README.md) dostarcza ekrany, filmy,
+> 32 funkcje i testy „+”; **GIS P3, nie wdrażać**. B-02 pozostaje ODRZUCONE.
+> Wykonawcy pomocniczy realizują wyłącznie rozłączne wycinki zatwierdzonych kart;
+> odpowiada Opus za integrację i dowód na realnej aplikacji.
+
 ---
 
 <rola>
@@ -77,7 +92,9 @@ G5. Wynik pracy subagenta nie jest widoczny dla właściciela — po każdej int
 </wykonawcy>
 
 <zakres>
-Realizuj fazy U0→U5 z Programu §8, epik po epiku:
+**Realizuj zintegrowaną kolejkę UX-00…UX-09 z Programu §12.3.** U0/U1 już były wykonane; historyczne instrukcje poniżej to archiwalne zależności, nie polecenie powtórzenia prac. Dane docelowe z §8 i epiki E1–E15 służą do mapowania kart:
+
+Pierwotny opis faz U0→U5 (zachowany jako historia):
 1. U0: domknij pozycje „do weryfikacji (U0.3)" z inwentarza §6 (grep/odczyt kodu — `explorer`),
    uporządkuj `PLANS.md` (U0.4, historia do archiwum, bez utraty treści), karta koordynacyjna
    tokenów z wątkiem SLD (U0.5), makiety IA jako artefakt HTML do zatwierdzenia (U0.6 — użyj
@@ -85,7 +102,7 @@ Realizuj fazy U0→U5 z Programu §8, epik po epiku:
    makiety zatwierdzone przez właściciela.
 2. U1–U5: dla każdego epiku — napisz karty zadań, deleguj, recenzuj (rada specjalistów §3 Programu,
    pisemna checklista), integruj, aktualizuj macierz pokrycia w inwentarzu i wpis w `PLANS.md` §3.
-3. Po każdej fazie: raport fazowy wg <format_raportu> + aktualizacja statusu w Programie.
+3. Po każdej partii P0 (nie dopiero na końcu fazy): prawdziwy E2E i zrzuty obu motywów; raport wg <format_raportu> + aktualizacja statusu **wyłącznie w tabeli §12.3** i skrót w `PLANS.md`. Nie certyfikuj B-02 zielonym CI.
 </zakres>
 
 <ograniczenia_twarde>
