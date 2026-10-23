@@ -81,3 +81,13 @@ i snapshot OpenAPI przegenerowane; 38 nowych testów, 6 iniekcji czerwonych). Do
 3. Zrzuty po naprawie selektora; obecne w `zrzuty/zrzuty_dp2/` (walidacja energetyczna pokazuje
    jeszcze stary bieg).
 4. Niezależna weryfikacja sesji głównej, potem scalenie po partii 2.
+
+## Aktualizacja: bramka B-01 partii 2 ZIELONA
+
+`bramka_scalenia.py --baza d543faf3c --glowa db1c688a5 --procesy 2` (log:
+`bramka_partia2_db1c688a5.log`): pytest backendu 38 798 passed (RC=0, 48 min 54 s); vitest
+237 plików / 4 604 testy (RC=0); guardy_z_ci 3 908 samotestów + guardy (RC=0). Punkt 1 sekcji
+„Partia 2 — co zostało” jest ZAMKNIĘTY. Zostało: CI 9 workflowów na `db1c688a5`
+(wystartowało 2026-10-23 06:39 UTC, w kolejce) → przy pełnej zieleni fast-forward programu:
+`git merge-base --is-ancestor origin/claude/mv-design-pro-twin-audit-u4lhy0 db1c688a5 &&
+git push origin db1c688a5:claude/mv-design-pro-twin-audit-u4lhy0` (bez force).
