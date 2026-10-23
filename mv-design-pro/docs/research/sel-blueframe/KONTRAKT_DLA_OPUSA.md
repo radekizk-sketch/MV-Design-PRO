@@ -1,6 +1,13 @@
-# MV-DESIGN PRO — kontrakt wykonawczy dla Claude Opus 5.5 / Fable
+# MV-DESIGN PRO — szczegółowy kontrakt P0 inteligentnego „+” dla Opusa
 
-**Misja:** przenieś najlepszą ergonomię edytora SEL Power System Model, w pierwszej kolejności **inteligentny znak „+” w punktach elektrycznych na kanwie SN**. NIE kopiuj gotowego SEL, nie twórz nowego SLD, nie rozwijaj teraz GIS. Materiały źródłowe, obrazy i filmy są zebrane w tym samym katalogu: [GALERIA_I_FILMY.md](GALERIA_I_FILMY.md) oraz [REJESTR_32_FUNKCJE.md](REJESTR_32_FUNKCJE.md).
+> **NIE JEST TO OSOBNY PLAN.** Jedynym planem wykonawczym UI/UX jest
+> [`PROGRAM_UIUX_2026-07.md` §12](../../uiux/PROGRAM_UIUX_2026-07.md#12-zintegrowana-kolejka-wykonawcza--uiux-przemyslowy-decyzja-wlasciciela-2026-10-23).
+> Ten dokument jest **szczegółową kartą techniczną i zestawem testów dla UX-01/UX-02/UX-03/UX-06**,
+> nie tworzy nowych priorytetów, ról ani równoległego rejestru postępu.
+> Opus 5.5 zarządza jednym programem. Po każdym wdrożeniu dowody i status wracają
+> do JEDNEJ tabeli §12.3, a GIS pozostaje P3/STOP.
+
+**Podzadanie P0 (UX-01/02):** przenieś najlepszą ergonomię edytora SEL Power System Model, w pierwszej kolejności **inteligentny znak „+” w punktach elektrycznych na kanwie SN**. NIE kopiuj gotowego SEL, nie twórz nowego SLD, nie rozwijaj teraz GIS. Materiały źródłowe, obrazy i filmy są zebrane w tym samym katalogu: [GALERIA_I_FILMY.md](GALERIA_I_FILMY.md) oraz [REJESTR_32_FUNKCJE.md](REJESTR_32_FUNKCJE.md).
 
 ## 0. Zasady uruchomienia prac
 
@@ -95,6 +102,9 @@ Oprócz testów pojedynczych przeprowadź **E2E pełnej ścieżki**: GPZ → pol
 **P3 — ZAKAZ W TEJ MISJI:** GIS/GeoJSON/CIM jako nowy moduł, warstwa geograficzna, mapy, wizualna oś trasy, DNP3, SCADA, szczegółowa rozdzielnia WN. Materiały pozostają w galerii jako inspiracja do przyszłego osobnego mandatu.
 
 ## 6. Krótka instrukcja dla Opusa (do skopiowania do sesji)
+
+**Najpierw przeczytaj główny Program UI/UX §12 i uruchom/ kontynuuj UX-00…UX-06.**
+Po wykonaniu tej karty nie twórz nowego harmonogramu, status przechodzi do głównego programu.
 
 > W repozytorium MV-DESIGN PRO przeczytaj `mv-design-pro/docs/research/sel-blueframe/README.md`, `GALERIA_I_FILMY.md`, `REJESTR_32_FUNKCJE.md` i `KONTRAKT_DLA_OPUSA.md`. Wykorzystaj już osadzone ekrany SEL i własne zrzuty aplikacji. Zrealizuj P0 inteligentnych punktów „+” na istniejącej kanwie `SldCanvasV3`, wyłącznie przez kanoniczny ENM, `PortRef` i istniejący `sldActionExecutor`. Zapewnij właściwy panel parametrów, walidację, zachowanie kadru i działającą ścieżkę projektanta. Nie twórz drugiej kanwy, nie wchodź w pełne 110 kV. GIS to P3: tylko zachowaj odniesienia, **nic z GIS nie implementuj**. Wykonaj T+01…T+10 i rzeczywiste E2E, pokaż zrzuty obu motywów oraz raport dowodowy. B-02 pozostaje odrzucone do decyzji właściciela.
 
