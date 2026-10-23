@@ -53,9 +53,10 @@ def _roots(question: str) -> list[str]:
             ("pradow", "prad"), ("pradu", "prad"), ("prad", "prad"),
             ("now", "now"), ("przebud", "przebud"), ("kompakt", "kompakt"),
         )
-        root = next((short for prefix, short in mapping if word.startswith(prefix)), word)
-        if len(root) > 7 and root.isalpha():
-            root = root[:7]
+        known_root = next((short for prefix, short in mapping if word.startswith(prefix)), None)
+        # Pełny rdzeń rozpoznany słownikowo jest stabilnym kluczem kart;
+        # skracanie go (np. transformator → transfo) usuwałoby dopasowanie.
+        root = known_root if known_root is not None else (word[:7] if len(word) > 7 else word)
         if root not in roots:
             roots.append(root)
     return roots[:12]
