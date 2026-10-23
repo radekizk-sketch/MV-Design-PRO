@@ -155,7 +155,9 @@ def test_catalog_repository_lists_deterministically() -> None:
                     "equipment_kind": "DISCONNECTOR",
                     "un_kv": 15.0,
                     "in_a": 630.0,
-                    "ik_ka": 20.0,
+                    # Odłącznik nie ma zdolności wyłączania zwarć: I_k „nie dotyczy” rodzaju,
+                    # więc pole niesie None (bramka KAT-T-048 odrzuca liczbę w tym polu).
+                    "ik_ka": None,
                     "icw_ka": 20.0,
                 },
             },
