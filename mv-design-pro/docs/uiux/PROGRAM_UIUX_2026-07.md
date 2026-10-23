@@ -309,7 +309,7 @@ identyfikatory testów, commitów i zrzutów.
 | **UX-01** | **P0** | U2; E3/E14/E15; W7 | inteligentny **„+”** w legalnych punktach elektrycznych, lista akcji zależna od portu i zajętości, klawiatura/dotyk | T+01, T+04, T+05, widoczny uchwyt na SLD V3 | **DO WDROŻENIA/OCENY ISTNIEJĄCYCH MECHANIZMÓW** |
 | **UX-02** | **P0** | U2; E3/E4/E5/E14; W7/W9 | z punktu „+” dodaj kabel, pole, ZKSN, stację przelotową/końcową i PV/BESS; automatyczna topologia i rozmieszczenie | T+02/03/06/07/08/09, poprawne `PortRef` i ENM, rzeczywisty solver | **DO WDROŻENIA/OCENY** |
 | **UX-03** | **P0** | U2; E4/E5/E6; W9 | drzewo, inspektor, katalog, źródło danych i walidacja w jednym kontekście zaznaczonego elementu | zmiana parametru → ENM → odświeżenie SLD/wyniku; błąd → aparat | **DO WERYFIKACJI I DOMKNIĘCIA** |
-| **UX-04** | **P0** | U1/U5; E1/E14; W7 | wspólna estetyka przemysłowa inspirowana SEL: dominująca kanwa, proporcje, motywy, panele niezasłaniające schematu | zrzuty rzeczywistego produktu jasny/ciemny, bez alternatywnych makiet | **B-02 ODRZUCONE** |
+| **UX-04 — H5/ENEA/SLD** | **P0** | U1/U5; E1/E14; W7 | **przebudowa nieodebranego SLD wg rysunków ENEA, funkcji pola i symboliki PN-EN 60617**: pola SN, tor kablowy, kolejność aparatów, magistrale/sprzęgła, proporcje, LOD, dopiero dalej jednolita estetyka inspirowana SEL | macierz rysunek ENEA → aparat/port ENM → symbol SldCanvasV3 → zrzut → werdykt; H5 i B-02 do oceny właściciela w obu motywach; §12.5a | **H5 3/10 / B-02 ODRZUCONE — P0 NAPRAWA FUNKCJONALNO-INŻYNIERSKA** |
 | **UX-05** | **P0** | U3/U4; E7/E8/E9/E10/E11; W2/W4/W5/W6 | obliczenia, nakładki na ten sam SLD, wynik → wywód White Box → dowód, brak fikcyjnych liczb i pozornych werdyktów | prawdziwe wejścia solwera, nieaktualność po zmianie ENM, walidacja fizyki | **CZĘŚCIOWE / NIEODEBRANE PRZEKROJOWO** |
 | **UX-06** | **P0** | U5; E1–E15; W9 | pełna ścieżka projektanta w jednej aplikacji od GPZ do raportu i odbioru | T+01…T+10 + Playwright na realnym backendzie, regresja obu motywów, B-02 | **NIEODEBRANE** |
 | **UX-07** | P1 | U1/U4; E12/E15; W9/W10 | wersje projektu, szkic, cofnij/ponów, porównanie A/B i stany przed/po | operacje odwracalne w ENM z historią i własnym wynikiem, E2E | DO OCENY |
@@ -359,6 +359,66 @@ ponowny odczyt i powtórzenie obliczeń; ekran przy małej szerokości i oba mot
 - wynik Playwright na realnej aplikacji i backendzie + testy odmów i pełnej regresji,
   zrzuty obu motywów dla dokładnie tego samego modelu;
 - ocena wizualna **B-02 wyłącznie przez właściciela**; zielone CI ≠ B-02.
+
+### 12.5a OBOWIĄZKOWA BRAMKA UX-04 — H5, symbole i rysunki ENEA (P0)
+
+**To jest część ISTNIEJĄCEGO programu UI/UX prowadzonego przez Opusa, a nie osobna
+roadmapa ani nowy epik.** Nazwa „H5” w raporcie/ocenie wizualnej nie jest automatycznie
+synonimem **układu H5 rozdzielni 110 kV** — zakres tej bramki dotyczy przede wszystkim
+schematów SN i poprawności reprezentacji GPZ w projekcie sieci SN.
+
+**Ustalony stan:** w rundzie H5 właściciel ocenił dotychczasowy schemat na **3/10**
+i zażądał przebudowy względem oryginalnych rysunków ENEA, bez pozornej kosmetyki.
+**B-02 pozostaje odrzucone.** Programu nie wolno uznać za zamknięty na podstawie
+historycznych oznaczeń „SLD ukończone” albo zielonego CI.
+
+**Zakres rzeczowy — minimum do uzyskania odbioru:**
+
+1. **Podstawa rysunkowa:** zestaw oryginalnych rysunków ENEA z ocenianej rundy
+   (w rozmowie wskazano Z.1, Z.4–Z.8), z numerem, rewizją, legendą i źródłem;
+   osobno sprawdzić aktualną bibliotekę symboli zgodnie z **IEC/PN-EN 60617**.
+   **Materiały operatora i norma to nie to samo**. Jeżeli rysunków źródłowych
+   nie ma w lokalnym repo ani jako dostępny załącznik, stan dowodu = **BRAK ŹRÓDŁA**;
+   nie przypisywać ENEA wymagań wymyślonych na podstawie pamięci, nie certyfikować zgodności.
+2. **Pola SN, każde według własnej funkcji:** liniowe, transformatorowe, pomiarowe,
+   sekcyjne/sprzęgłowe, odgałęźne i odpływowe. Kolejność aparatury i występowanie
+   rozłącznika/wyłącznika/uziemnika/przekładników/głowicy wynikają z **typu pola,
+   faktycznego ENM i zatwierdzonego rysunku**, nie wspólnego stosu ikon.
+3. **Ciągłość elektryczna:** GPZ → właściwe pole SN → głowica/port → kabel/linia →
+   pole wejściowe następnej stacji → aparaty → szyna → dalszy tor/TR/odpływ.
+   Zakaz podłączenia przewodu prosto do symbolu stacji i kabla bez głowicy/pola.
+4. **Język rysunku:** pozycje aparatów, piony dojść, szyny, sprzęgła, oznaczenia,
+   czytelne stany łączników, przekładniki CT/VT, symbole, proporcje i LOD
+   muszą zachować sens w obu motywach; nie zastępować tego etykietami i dekoracją SCADA.
+5. **Granica GPZ/110 kV:** zachować tylko tyle źródła i transformatorów 110/SN,
+   ile jest konieczne do wyjaśnienia zasilania i topologii SN.
+   **ZAKAZ** rozbudowy programu o szczegółowy projekt pól, szyn, sprzęgieł
+   i aparatury WN/110 kV. Materiały ENEA 110 kV są referencją dla granicy
+   zasilania i czytelności, **nie poleceniem budowania edytora WN**.
+6. **Jedna kanwa:** praca wyłącznie na aktualnym `SldCanvasV3` i kanonicznym
+   ENM (dwie projekcje SN/nN). Automatyczny uchwyt „+” (UX-01/02) wskazuje
+   wyłącznie **prawdziwy port** i po wstawieniu zachowuje poprawny schemat pola;
+   nie tworzyć równoległego renderera, zestawu symboli ani geometrii „pod H5”.
+7. **Testy i odbiór:** minimum rzeczywiste przypadki: pole liniowe, transformatorowe,
+   pomiarowe, sprzęgło sekcji, stacja końcowa/przelotowa/odgałęźna, GPZ→kabel→
+   stacja→TR→nN, zmiana stanu łącznika i „+” z legalnego pola.
+   Wszystkie ze sprawdzeniem ENM/PortRef, SLD i zrzutów jasny/ciemny na tej samej
+   migawce modelu. **Właściciel ocenia schemat inżyniersko i wizualnie**;
+   walidacja testowa bez tej oceny nie zamyka H5 ani B-02.
+
+**Macierz dowodowa UX-04 (w jednym raporcie głównego programu):**
+
+| Pozycja | JEST (stan H5) | POWINNO BYĆ | Dowód konieczny | Werdykt |
+|---|---|---|---|---|
+| H5-01 | obecny GPZ/SLD, ocena 3/10 | poprawny, proporcjonalny schemat z granicą 110/SN | pary: ENEA Z.n ↔ SLD, opis różnic | OCZEKUJE |
+| H5-02 | symbole i pola nieodebrane | zgodna rola pola i prawidłowa symbolika IEC 60617 + praktyka ENEA | tabela aparatów/pól, katalog symboli, ENM | OCZEKUJE |
+| H5-03 | nieodebrana kompozycja połączeń | pełen tor przez porty i głowice, bez sztucznych połączeń | ścieżka ENM↔SLD i E2E dla SN | OCZEKUJE |
+| H5-04 | UX-01/02 P0 w kolejce | inteligentny „+” na rzeczywistej topologii stacji/pól | test dodania + rezultat na tym samym SLD | OCZEKUJE |
+| H5-05 | B-02 ODRZUCONE | dwa motywy, właściwe LOD i wizualna czytelność klasy przemysłowej | zrzuty pełnych realnych scen, ocena właściciela | ODRZUCONE |
+
+**Nie tworzyć osobnego „planu H5”:** H5-01…05 są kryteriami odbiorowymi **UX-04**,
+a poprawki UX-01/02 i UX-06 muszą być wykazane w tym samym dokumencie §12.3.
+Żadna praca nad 110 kV nie może zastępować odbioru rysunku SN.
 
 ### 12.6 Reguła raportowania i pomiaru procentów
 
