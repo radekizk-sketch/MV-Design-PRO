@@ -474,21 +474,43 @@ bieg ze scenariuszem: `POST /api/execution/study-cases/{case_id}/runs` z `scenar
 
 ### 3.7b `set_bay_equipment`
 
-**Cel:** Ustawienie wyposazenia (aparatow pierwotnych) pola SN, catalog-first. Stan danych
-kazdego aparatu wyprowadzany z `catalog_ref` (bez nowego pola): `MODEL` (pozycja katalogowa),
-`PROPOZYCJA` (wartosc robocza z szablonu --- w odpowiedzi jako `DanaPrzyjeta` z jakoscia
-`ESTIMATED`), `BRAK_DANYCH` (pole bez aparatow).
+**Cel:** Ustawienie wyposazenia (aparatow pierwotnych) pola SN, catalog-first. Odpowiedz niesie
+sklad pola (`enm.sklad_pola.sklad_pola`, karta GPZ-H5-APARATURA) — jedna funkcja statusu kazdego
+gniazda i aparatu: `ZAPROJEKTOWANE`, `WYMAGANE_STANDARDEM_BRAK` (gniazdo szablonu standardu bez
+pozycji katalogu), `BRAK_POZYCJI_KATALOGU`, `RODZAJ_BEZ_KATALOGU`, `BRAK_TYPU_GRANICA_WN`
+(lacznik pola 110 kV — granica zasilania sieci SN), kazdy ze zdaniem wyjasnienia i podstawa.
+Dawne stany `MODEL` / `PROPOZYCJA` / `BRAK_DANYCH` skasowane.
 
 | Pole | Typ | Wymagane | Opis |
 |------|-----|----------|------|
-| `bay_ref` | `string` | TAK | Pole SN (pole nN --- odmowa `bay_equipment.bay_not_mv`) |
-| `mode` | `"katalog" \| "szablon" \| "wyczysc"` | TAK | Zrodlo wyposazenia |
-| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem SN: APARAT_SN / CT / VT / OGRANICZNIK_SN; zabroniony dla rodzajow bez katalogu), opcjonalnie `designation`, `earthing_role` (uziemnik, ogranicznik), `linked_ref` (lacznik TEGO pola) |
+| `bay_ref` | `string` | TAK | Pole SN (pole nN --- odmowa `bay_equipment.bay_not_mv`; pole na szynie 110 kV --- odmowa `bay_equipment.bay_hv_boundary` w kazdym trybie) |
+| `mode` | `"katalog" \| "szablon" \| "standard" \| "wymagania" \| "wyczysc"` | TAK | Zrodlo wyposazenia |
+| `devices` | `list` | przy `katalog` | Aparaty: `kind`, `placement`, `catalog_ref` (wymagany dla rodzajow z katalogiem: APARAT_SN / CT / VT / OGRANICZNIK_SN / ELEMENT_POLA_SN, chyba ze aparat obsadza gniazdo standardu `gniazdo_ref` bez wyboru; odmawiany przy `linked_ref` — katalog niesie element modelu), opcjonalnie `designation`, `earthing_role`, `linked_ref` (lacznik albo przekladnik TEGO pola), `gniazdo_ref` |
 | `bay_template_ref` | `string` | przy `szablon` (albo z rekordu pola) | Szablon kanoniczny albo katalogowe pole rodziny tej samej funkcji pola |
+| `szablon_standardu_ref` | `string` | przy `standard` | Szablon pola standardu ENEA (`network_model/catalog/gniazda_pol_enea.py`); musi przyslugiwac roli pola; szyna pola w tabeli 3 IEC 60038 (odmowa `bay_equipment.standard_template_voltage_mismatch`) |
 
-Odpowiedz niesie dodatkowo `wyposazenie_pola` (`stan_danych`, stan kazdego aparatu,
-`dane_przyjete`). Zdarzenie: `BAY_EQUIPMENT_SET`. Operacja nie ocenia doboru aparatu (warstwa
-analizy) i nie ustawia stanu lacznika (stan zyje na galezi).
+Tryb `wymagania` obsadza WOLNE gniazda szablonu standardu pozycjami wymagan standardu
+(`mv_wymagania_enea_catalog.POZYCJE_WYMAGAN_GNIAZD`) ta sama brama, co tryb `katalog`. U_m
+pozycji jest sprawdzane wobec miejsca w polu (odmowa `bay_equipment.um_mismatch`). Przekladnik
+CT/VT z pozycja i bez `linked_ref` powstaje jako rekord `Measurement` pola.
+
+Odpowiedz niesie dodatkowo `wyposazenie_pola` (sklad pola). Zdarzenie: `BAY_EQUIPMENT_SET`.
+Operacja nie ocenia doboru aparatu wobec pradow (warstwa analizy wytrzymalosci) i nie ustawia
+stanu lacznika (stan zyje na galezi; stan lacznika pola 110 kV zmienia scenariusz laczeniowy
+przypadku).
+
+**Granica zasilania 110 kV (decyzja wlasciciela 2026-10-22).** Strona 110 kV GPZ jest wylacznie
+funkcjonalna granica zasilania sieci SN: pole 110 kV ma jeden lacznik pola z galezia modelu, bez
+typu. Ten sam predykat (`enm.sklad_pola.pole_granicy_wn`) odmawia operacjom stawiajacym aparat,
+albo pole SN na szynie 110 kV — kod `{prefiks}.bus_hv_boundary`: `add_ct` (`ct`),
+`add_vt` (`vt`), `add_sn_bay` i `add_sn_bay_from_catalog` (`sn`), `add_surge_arrester_sn`
+(`spd`), `append_station_on_endpoint` (`station.append`),
+`insert_station_on_segment_sn` (`station.insert`), `insert_section_switch_sn` (`switch`),
+`insert_zksn_on_segment_sn` i `insert_branch_pole_on_segment_sn` (`branch_point`) — oraz
+przypisaniu katalogu lacznikowi strony 110 kV (`assign_catalog_to_element`,
+`update_element_parameters`): `catalog.switch_hv_boundary`. Odcinek linii/kabla
+(`continue_trunk_segment_sn`, `connect_secondary_ring_sn`) nie jest aparatem pola i bramy nie ma
+(import XLSX i sieci odniesienia buduja nimi linie sieci WN).
 
 ---
 

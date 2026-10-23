@@ -48,6 +48,7 @@ const WYNIK = {
       sk_mva: 325.1,
       fault_type: '1F',
       flags: [],
+      flags_pl: [],
       rk_ohm: 0.5121,
       xk_ohm: 1.2345,
       zk_ohm: 1.3365,

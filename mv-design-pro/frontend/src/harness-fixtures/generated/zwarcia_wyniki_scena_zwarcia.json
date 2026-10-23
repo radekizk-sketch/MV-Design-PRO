@@ -85,7 +85,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -171,7 +174,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -257,7 +263,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -343,7 +352,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -429,7 +441,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     }
   ],
   "zrodla_sieciowe": [
@@ -575,7 +590,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+      "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

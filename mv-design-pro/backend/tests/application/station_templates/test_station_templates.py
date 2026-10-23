@@ -338,6 +338,12 @@ def test_nazwa_obiecujaca_pomiar_deklaruje_role_measurement() -> None:
         schema = template.schema
         if schema.sn_bays_count is None:
             continue
+        if schema.gpz_uklad is not None:
+            # GPZ: skład pól z operacji `add_grid_source_sn` (szablony pól standardu); pole
+            # pomiaru napięcia szyn deklaruje skład ról szablonu (przypięte przez
+            # `test_gpz_h5_akceptacja.py::test_podglad_szablonu_h5_*`).
+            assert "MEASUREMENT" in [r.role for r in schema.sn_bay_roles], template.id
+            continue
         zbadane += 1
         role = _resolve_sn_bay_roles(template, schema.sn_bays_count.default)
         assert "MEASUREMENT" in role, (

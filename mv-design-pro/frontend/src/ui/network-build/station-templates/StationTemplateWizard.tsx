@@ -20,6 +20,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { jestRodzajemStacji, podpisRodzajuStacjiPl } from '../../shared/rodzajStacji';
+import { STATUS_SKLADU_POLA_PL } from '../../field/wyposazeniePola';
+import { fieldRoleLabelPl } from '../../sld/v2/station-rozdzielnia/contract';
 
 import {
   applyStationTemplate,
@@ -843,12 +845,14 @@ function PreviewStep(props: {
               </span>
               <span className="text-zinc-500"> ({preview.effective_config.sn_bays_count} pól)</span>
             </div>
-            <div>
-              <span className="text-zinc-400">Pola SN: </span>
-              <span className="text-zinc-300">
-                {preview.effective_config.sn_bay_roles.join(' → ')}
-              </span>
-            </div>
+            {preview.effective_config.gpz_bays == null && (
+              <div>
+                <span className="text-zinc-400">Pola SN: </span>
+                <span data-testid="preview-pola-sn" className="text-zinc-300">
+                  {preview.effective_config.sn_bay_roles.map((rola) => fieldRoleLabelPl(rola)).join(' → ')}
+                </span>
+              </div>
+            )}
             <div>
               <span className="text-zinc-400">Odpływy nN: </span>
               <span className="text-zinc-300">{preview.effective_config.nn_feeders_count}</span>
@@ -893,14 +897,52 @@ function PreviewStep(props: {
               ))}
           </div>
 
+          {preview.effective_config.gpz_bays != null && (
+            <PodgladPolGpz pola={preview.effective_config.gpz_bays} />
+          )}
+
           <div className="bg-amber-950/30 border border-amber-700/50 px-3 py-2 rounded text-xs">
             <div className="text-amber-300">
-              📐 Szacowana liczba elementów do utworzenia:{' '}
+              Szacowana liczba elementów do utworzenia:{' '}
               <span className="font-bold">{preview.estimated_elements_count}</span>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Skład pól GPZ w podglądzie szablonu — kolejność rozdzielni (ENEA Zeszyt 1, zał. Z.1/Z.2)
+ * i te same wiersze składu, co na karcie pola (status zawsze z wyjaśnieniem `opis_pl`).
+ * Pole strony 110 kV (granica zasilania sieci SN) nie ma szablonu standardu: jego skład to
+ * łącznik pola ze stanem „brak typu” albo transformator.
+ */
+function PodgladPolGpz(props: { pola: NonNullable<PreviewTemplateResult['effective_config']['gpz_bays']> }): JSX.Element {
+  return (
+    <div data-testid="preview-pola-gpz" className="bg-zinc-800 p-3 rounded text-xs">
+      <div className="text-zinc-400 mb-2">Pola rozdzielni w kolejności rozdzielni (zał. Z.1 i Z.2)</div>
+      <ol className="space-y-2">
+        {props.pola.map((pole) => (
+          <li key={pole.bay_ref} data-testid={`preview-pole-gpz-${pole.bay_ref}`}>
+            <div className="text-zinc-200">
+              {pole.name ?? fieldRoleLabelPl(pole.bay_role)}
+              {pole.bus_name ? <span className="text-zinc-500"> · {pole.bus_name}</span> : null}
+            </div>
+            <div className="text-zinc-400" data-testid={`preview-pole-gpz-${pole.bay_ref}-szablon`}>
+              {pole.szablon_standardu_nazwa_pl ?? 'bez szablonu pola standardu'}
+            </div>
+            <ul className="ml-3 list-disc text-zinc-300">
+              {pole.sklad.map((wiersz, i) => (
+                <li key={`${pole.bay_ref}:${i}`} title={wiersz.opis_pl}>
+                  {wiersz.gniazdo_nazwa_pl ?? wiersz.rodzaj_pl} — {STATUS_SKLADU_POLA_PL[wiersz.status]}
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

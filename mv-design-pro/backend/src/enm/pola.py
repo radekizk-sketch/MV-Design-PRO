@@ -277,8 +277,15 @@ def pola_wg_szyny(
     return wg_szyny
 
 
+#: Role pola (kontrakt `Bay.bay_role`), w których może stać źródło wytwórcze: pole źródłowe
+#: SN (`OZE` — kanonicznie PV_SN/BESS_SN/FW_SN) i pole odpływowe (`FEEDER` — także pole źródła
+#: nN z `meta.feeder_role` ZRODLO_NN_*). Pole wejściowe, wyjściowe liniowe, transformatorowe,
+#: sprzęgłowe, pomiarowe, uziemiające i kompensacyjne źródła nie przyjmuje. Czyta je walidator
+#: modelu (kod W011, `enm/validator.py`).
+ROLE_POLA_ZRODLA: frozenset[str] = frozenset({"OZE", "FEEDER"})
+
 #: Klucz relacji wytwórcy z polem rozdzielnicy (`Generator.meta`) — zapisują go operacje
-#: budowy źródła i promocja aparatów nN; czytają: reguła DER walidatora semantycznego, widoki
+#: budowy źródła i promocja aparatów nN; czytają: walidator modelu (W011), widoki
 #: wytwórcy (przekładniki, funkcje zabezpieczeń) i ta funkcja. Model `Generator` nie ma pola
 #: `bay_ref` — do karty W5-B czytelnicy szukali relacji pod tym kluczem i zawsze dostawali brak.
 KLUCZ_POLA_WYTWORCY = "field_ref"
@@ -390,6 +397,7 @@ def zbuduj_pole(
     config_id: str | None = None,
     catalog_bindings: Mapping[str, Any] | None = None,
     primary_devices: Iterable[Mapping[str, Any]] | None = None,
+    szablon_standardu_ref: str | None = None,
     tags: Iterable[str] | None = None,
     meta: Mapping[str, Any] | None = None,
     funkcja_pomiaru: str | None = None,
@@ -456,6 +464,7 @@ def zbuduj_pole(
         "config_id": _napis(config_id),
         "catalog_bindings": copy.deepcopy(dict(catalog_bindings)) if catalog_bindings else None,
         "primary_devices": [copy.deepcopy(dict(d)) for d in (primary_devices or [])],
+        "szablon_standardu_ref": _napis(szablon_standardu_ref),
         "funkcja_pomiaru": _napis(funkcja_pomiaru),
         "rodzaj_pomiaru": _napis(rodzaj_pomiaru),
         "wybor_bloku": wybor,

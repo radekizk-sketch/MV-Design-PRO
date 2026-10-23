@@ -9,7 +9,8 @@ wyprowadza JEDNA funkcja (``enm.topology.role_lacznikow``) i jej lustro
 
 Iloczyn cech: rodzaj łącznika {łącznik szyn 110 kV GPZ (ŁS-110), łącznik szyn SN GPZ (ŁS-SN),
 łącznik sekcyjny magistrali, sprzęgło stacji SN w magistrali (stacja sekcyjna), sprzęgło
-sekcji rozdzielnicy nN, łącznik pola transformatorowego (rezerwa jawna)} × pozycja normalna
+sekcji rozdzielnicy nN, łącznik pola transformatorowego (rezerwa jawna), łącznik pola
+liniowego 110 kV (tor L1 — karta GPZ-H5-APARATURA)} × pozycja normalna
 {open, closed} × strona {backend (ten plik), TS (``roleLacznikowParytet.test.ts``)}. Wspólna
 tablica: ``backend/schemas/role_lacznikow_parytet_v1.json`` (migawki przycięte do pól, które
 czyta reguła, i oczekiwane role, punkty podziału, kandydaci). Każda pozycja normalna powstaje
@@ -38,6 +39,7 @@ from enm.models import EnergyNetworkModel
 from enm.stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
 from enm.topology import (
     ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
+    ROLA_LACZNIK_POLA_ZASILAJACEGO_WN,
     ROLA_LACZNIK_SZYN_NN,
     ROLA_LACZNIK_SZYN_SN,
     ROLA_LACZNIK_SZYN_WN,
@@ -110,6 +112,11 @@ def _przytnij(enm: dict[str, Any]) -> dict[str, Any]:
                 "lv_bus_ref": t.get("lv_bus_ref"),
             }
             for t in sorted(enm.get("transformers", []), key=lambda t: t["ref_id"])
+        ],
+        # Tor zasilania sekcji 110 kV (`tory_zasilania_sekcji_wn_gpz`) czyta szynę źródła.
+        "sources": [
+            {"ref_id": z["ref_id"], "bus_ref": z.get("bus_ref")}
+            for z in sorted(enm.get("sources", []), key=lambda z: z["ref_id"])
         ],
     }
 
@@ -217,6 +224,16 @@ def przypadki() -> list[dict[str, Any]]:
     zamknieta = copy.deepcopy(jawna)
     _galaz(zamknieta, wylacznik).update(normal_state="closed", status="closed")
     dodaj("pole_tr_closed", "POLE_TR", "closed", zamknieta, wylacznik)
+    # Łącznik pola liniowego 110 kV (tor L1): operacja tworzenia GPZ zapisuje go normalnie
+    # zamkniętym; pozycja „otwarty” (tor odstawiony, sekcja 110 kV zasilana przez zamknięty
+    # łącznik szyn 110 kV) nie ma pola wejścia operacji, więc wariant otwarty jest kopią
+    # z pozycją zmienioną — reguła roli nie czyta pozycji tego łącznika, co przypadek przypina.
+    h5 = _h5("open")
+    tor_l1 = refy(h5).wylacznik_l1
+    dodaj("pole_zasilajace_wn_closed", "POLE_ZASILAJACE_WN", "closed", h5, tor_l1)
+    odstawiony = copy.deepcopy(h5)
+    _galaz(odstawiony, tor_l1).update(normal_state="open", status="open")
+    dodaj("pole_zasilajace_wn_open", "POLE_ZASILAJACE_WN", "open", odstawiony, tor_l1)
     # Łącznik sekcyjny magistrali: operacja wstawienia zapisuje go BEZ pozycji normalnej
     # (niezadeklarowana); `set_normal_open_point` w pierścieniu otwiera wskazany łącznik
     # i zamyka poprzedni punkt podziału — jedna migawka daje oba stany.
@@ -313,6 +330,8 @@ ROLA_RODZAJU: dict[tuple[str, str | None], str | None] = {
     ("LS_SN", "closed"): ROLA_LACZNIK_SZYN_SN,
     ("POLE_TR", "open"): ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
     ("POLE_TR", "closed"): ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
+    ("POLE_ZASILAJACE_WN", "open"): ROLA_LACZNIK_POLA_ZASILAJACEGO_WN,
+    ("POLE_ZASILAJACE_WN", "closed"): ROLA_LACZNIK_POLA_ZASILAJACEGO_WN,
     ("MAGISTRALA", "open"): ROLA_PUNKT_PODZIALU,
     ("MAGISTRALA", "closed"): None,
     ("MAGISTRALA", None): None,
@@ -329,6 +348,7 @@ I001_RODZAJU: dict[str, str] = {
     "LS_110": "jest łącznikiem szyn 110 kV normalnie otwartym",
     "LS_SN": "jest łącznikiem szyn SN normalnie otwartym",
     "POLE_TR": "jest łącznikiem pola transformatorowego normalnie otwartym",
+    "POLE_ZASILAJACE_WN": "jest łącznikiem pola liniowego 110 kV normalnie otwartym",
     "MAGISTRALA": "jest punktem normalnie otwartym — dzieli sieć",
     "STACJA_SEKCYJNA": "jest punktem normalnie otwartym — dzieli sieć",
     "SPRZEGLO_NN": "jest łącznikiem szyn nN normalnie otwartym",

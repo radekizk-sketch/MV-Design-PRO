@@ -134,6 +134,7 @@ def preview_station_template(
         _resolve_sn_bay_roles,
         _resolve_sn_fields,
         _resolve_station_type,
+        podglad_pol_gpz_szablonu,
         rozstrzygnij_parametry_szablonu,
     )
 
@@ -203,14 +204,27 @@ def preview_station_template(
     # POMIAR-ODGAŁĘZIENIE `_resolve_sn_bay_roles` odmawia (zamiast po cichu ciąć
     # pole pomiarowe), więc poza `try` dawałoby projektantowi błąd 500 zamiast
     # komunikatu z minimalną liczbą pól.
+    # Szablon GPZ (korzeń modelu, `add_grid_source_sn`): skład pól buduje operacja wg
+    # szablonów pól standardu (ENEA Zeszyt 1, zał. Z.1/Z.2) — podgląd to TA SAMA operacja na
+    # pustym modelu (`podglad_pol_gpz_szablonu`), nie role pól stacji wstawianej w odcinek
+    # (dawniej pole pomiaru napięcia szyn GPZ dostawało semantykę układu rozliczeniowego).
+    gpz_bays: list[dict[str, Any]] | None = None
+    liczba_elementow_gpz = 0
     try:
-        bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
-        sn_fields = _resolve_sn_fields(
-            template,
-            bay_roles=bay_roles,
-            overrides=dict(overrides),
-            catalog_profile=profile,
-        )
+        if template.schema.gpz_uklad is not None:
+            gpz_bays, liczba_elementow_gpz = podglad_pol_gpz_szablonu(
+                template, overrides, parametry, profile
+            )
+            bay_roles = [str(p["bay_role"]) for p in gpz_bays]
+            sn_fields: list[dict[str, Any]] = []
+        else:
+            bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
+            sn_fields = _resolve_sn_fields(
+                template,
+                bay_roles=bay_roles,
+                overrides=dict(overrides),
+                catalog_profile=profile,
+            )
     except TemplateApplyError as exc:
         raise HTTPException(
             status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}
@@ -221,7 +235,7 @@ def preview_station_template(
         "template_name_pl": template.name_pl,
         "category": template.category.value,
         "nc_rfg_type": template.nc_rfg_type,
-        "station_type": _resolve_station_type(bay_roles),
+        "station_type": "gpz" if gpz_bays is not None else _resolve_station_type(bay_roles),
         "catalog_profile_applied": profile,
         "effective_config": {
             "transformer_ref": transformer_ref,
@@ -235,9 +249,14 @@ def preview_station_template(
             "protection_relay_ref": protection_ref,
             "der_total_count": der_count,
             "der_mix": der_summary,
+            # Addytywnie: skład pól GPZ z operacji (None dla stacji wstawianej w odcinek).
+            "gpz_bays": gpz_bays,
         },
+        # GPZ: dokładna liczba elementów z operacji wykonanej na pustym modelu.
         "estimated_elements_count": (
-            1 + sn_bays_count + transformer_count + nn_feeders_count + der_count  # station
+            liczba_elementow_gpz
+            if gpz_bays is not None
+            else 1 + sn_bays_count + transformer_count + nn_feeders_count + der_count
         ),
     }
 

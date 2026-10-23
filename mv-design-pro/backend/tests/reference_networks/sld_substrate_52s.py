@@ -422,21 +422,26 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
         enm,
         "add_grid_source_sn",
         {
-            # Karta GPZ-MODEL + GPZ-H5: strona 110 kV w modelu — jedna sekcja szyn 110 kV
-            # z torem zasilania (Sk″ = 3000 MVA, R/X = 0,1; przykładowe dane przypadku
-            # testowego) i jeden transformator 110/15 kV 25 MVA przypisany jawnie sekcja
-            # 110 kV 1 → sekcja SN 1. Kontrakty SLD substratu badają kolumnę WN bloku GPZ
+            # Karta GPZ-MODEL + GPZ-H5-APARATURA: strona 110 kV w modelu w układzie H5
+            # z ograniczoną liczbą transformatorów (ENEA Zeszyt 1 §11.1 — stacja z jedną
+            # linią zasilającą nie jest dopuszczona): dwie sekcje szyn 110 kV z torami
+            # zasilania (Sk″ = 3000 MVA, R/X = 0,1; przykładowe dane przypadku testowego),
+            # łącznik szyn 110 kV normalnie otwarty, jeden transformator 110/15 kV 25 MVA
+            # przypisany jawnie sekcja 110 kV 1 → sekcja SN 1, jedno pole liniowe sekcji SN
+            # (dana projektu, zał. Z.2). Kontrakty SLD substratu badają kolumnę WN bloku GPZ
             # (tabliczka TR, szyna WN), więc substrat wybiera tryb, w którym transformator
-            # JEST elementem modelu obliczeniowego. Układ H5 (dwa tory) ma własny przypadek
-            # odbiorowy (`tests/reference_networks/gpz_h5.py`).
+            # JEST elementem modelu obliczeniowego. Pełny układ H5 (dwa transformatory) ma
+            # własny przypadek odbiorowy (`tests/reference_networks/gpz_h5.py`).
             "voltage_kv": 15.0,
             "source_name": "GPZ Referencyjny 110 kV",
+            "line_fields_per_section": 1,
+            "hv_coupler": {"normal_state": "open"},
             "hv_sections": [
                 {
                     "supply": {
-                        "line_name": "Linia 110 kV zasilająca",
+                        "line_name": f"Linia 110 kV zasilająca L{tor}",
                         "supplying_station_name": (
-                            "Stacja zasilająca — przykładowe dane przypadku testowego"
+                            f"Stacja zasilająca {tor} — przykładowe dane przypadku testowego"
                         ),
                         "manual_equivalent": {
                             "hv_voltage_kv": 110.0,
@@ -445,6 +450,7 @@ def build_sld_substrate_52s() -> dict[str, Any]:  # noqa: C901 — acceptable co
                         },
                     }
                 }
+                for tor in (1, 2)
             ],
             "transformers": [
                 {

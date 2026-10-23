@@ -411,6 +411,7 @@ def _surowe_rekordy_wszystkich_katalogow() -> list[tuple[str, dict[str, Any]]]:
     from network_model.catalog import mv_source_catalog as so
     from network_model.catalog import mv_surge_arrester_catalog as sa
     from network_model.catalog import mv_switch_catalog as sw
+    from network_model.catalog import mv_wymagania_enea_catalog as wym
 
     zrodla = (
         cl.get_all_line_types,
@@ -437,6 +438,7 @@ def _surowe_rekordy_wszystkich_katalogow() -> list[tuple[str, dict[str, Any]]]:
         bench.get_all_benchmark_shunt_capacitor_records,
         bench.get_all_benchmark_synchronous_generator_records,
         pt.get_all_ptpiree_generator_certificates,
+        wym.get_enea_field_element_types,
     )
     rekordy: list[tuple[str, dict[str, Any]]] = []
     for funkcja in zrodla:
@@ -451,9 +453,12 @@ def test_kazdy_surowy_rekord_kazdego_katalogu_ma_jawne_zrodlo() -> None:
     może zastępować źródła pozycji: każdy rekord danych niesie `source_reference` jawnie
     (przed rundą 3: 3 obciążenia bez źródła, 2 baterie z ogólnikiem „profil przemysłowy").
     Pomiar 2026-10-15: 7851 = 7829 + 18 transformatorów blokowych 0,65 kV + 4 warianty
-    Vestas V112 (karta KATALOG-TURBINY-TOR-V112)."""
+    Vestas V112 (karta KATALOG-TURBINY-TOR-V112). Pomiar 2026-10-22 (karta GPZ-H5-APARATURA):
+    7863 = 7851 + 4 pozycje wymagań ENEA aparatury łączeniowej SN (odłączniki trójpołożeniowe
+    630/1250/2000 A, uziemnik szyn) + 1 przekładnik Ferrantiego 100/1 + 7 pozycji wyposażenia
+    pól SN (przestrzeń ELEMENT_POLA_SN — rodzina dotąd poza wyliczeniem)."""
     rekordy = _surowe_rekordy_wszystkich_katalogow()
-    assert len(rekordy) == 7851
+    assert len(rekordy) == 7863
     bez_zrodla = [klucz for klucz, dane in rekordy if not str(dane.get("source_reference") or "")]
     assert bez_zrodla == []
 

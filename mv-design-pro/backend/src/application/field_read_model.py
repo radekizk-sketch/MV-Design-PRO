@@ -43,25 +43,21 @@ from enm.nastawy_zabezpieczen import (
     JEDNOSTKA_PROGU_NIEUSTALONA_PL,
 )
 from enm.pola import pola_wszystkich_stacji, punkt_przylaczenia_pola
-from enm.rola_pola_sn import ROLA_POLA_SN_Z_ALIASU
-from enm.wyposazenie_pola import dane_przyjete_wyposazenia, stan_danych_wyposazenia
+from enm.sklad_pola import (
+    ROLA_KANONICZNA_Z_ALIASU,
+    aparaty_pola,
+    indeks_modelu_pola,
+    rola_pola_w_skladzie,
+    sklad_pola,
+)
+from network_model.catalog.gniazda_pol_enea import szablon_pola_standardu
 from network_model.core.uziemienie import TypPunktuNeutralnego
 
 #: Rola pola w modelu (`Bay.bay_role`) → rola kanoniczna read-modelu (`field_role`). Wyprowadzona
 #: z kanonu `enm.rola_pola_sn.ROLA_POLA_SN_Z_ALIASU` — tej samej tablicy, z której backend nazywa
-#: pola (karta #141): rola w read-modelu i nazwa pola nie mogą się rozjechać.
-CANONICAL_BAY_ROLE_MAP: dict[str, str] = {
-    alias: rola for alias, rola in ROLA_POLA_SN_Z_ALIASU.items() if alias != rola
-}
-
-BRANCH_KIND_MAP: dict[str, tuple[str, str, bool]] = {
-    "breaker": ("CB", "MIDSTREAM", True),
-    "bus_coupler": ("CB", "MIDSTREAM", True),
-    "disconnector": ("DS", "UPSTREAM", True),
-    "switch": ("LOAD_SWITCH", "MIDSTREAM", True),
-    "fuse": ("FUSE", "DOWNSTREAM", False),
-    "cable": ("CABLE_HEAD", "DOWNSTREAM", False),
-}
+#: pola (karta #141): rola w read-modelu i nazwa pola nie mogą się rozjechać. Jedna tablica:
+#: `enm.sklad_pola.ROLA_KANONICZNA_Z_ALIASU` (skład pola i odczyt pola czytają tę samą).
+CANONICAL_BAY_ROLE_MAP: dict[str, str] = ROLA_KANONICZNA_Z_ALIASU
 
 FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
     "overcurrent_50": {
@@ -156,20 +152,16 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
     coupler_fields_count = 0
     fields_with_results_count = 0
 
+    # Karta GPZ-H5-APARATURA: aparaty pola i status gniazd z JEDNEJ funkcji składu pola
+    # (`enm.sklad_pola`) — rekord `primary_devices` złączony z elementami modelu pola.
+    indeks_pola = indeks_modelu_pola(enm)
     for bay in bays:
-        canonical_role = _resolve_canonical_bay_role(bay, generators_by_bus)
-        primary_devices = _zloz_stan_ruchowy(
-            bay=bay,
-            devices=_build_primary_devices(
-                bay=bay,
-                canonical_role=canonical_role,
-                branches=branches,
-                measurements_by_bay=measurements_by_bay,
-                transformers_by_bus=transformers_by_bus,
-                generators_by_bus=generators_by_bus,
-            ),
-            branches=branches,
-        )
+        canonical_role = rola_pola_w_skladzie(indeks_pola, bay)
+        aparaty = aparaty_pola(indeks_pola, bay)
+        if canonical_role == "SPRZEGLO" and not bay.primary_devices:
+            # Pole sprzęgła bez rekordu aparatów: strona szyny aparatów wyprowadzonych z gałęzi.
+            _assign_coupler_sides(aparaty)
+        primary_devices = _zloz_stan_ruchowy(bay=bay, devices=aparaty, branches=branches)
         measurement_chain = _build_measurement_chain(bay, measurements_by_bay)
         source_endpoint = _build_source_endpoint(bay, generators_by_bus)
         protection_config = _build_protection_config(
@@ -210,10 +202,13 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
             bay_template_ref=bay.bay_template_ref,
             switchgear_family_ref=bay.switchgear_family_ref,
-            equipment_data_state=stan_danych_wyposazenia(list(bay.primary_devices)),
-            equipment_assumed_data=dane_przyjete_wyposazenia(
-                [device.model_dump(mode="json") for device in bay.primary_devices]
+            szablon_standardu_ref=bay.szablon_standardu_ref,
+            szablon_standardu_nazwa_pl=(
+                szablon.nazwa_pl
+                if (szablon := szablon_pola_standardu(bay.szablon_standardu_ref)) is not None
+                else None
             ),
+            sklad=sklad_pola(indeks_pola, bay),
         )
 
         project_results = _build_project_results(
@@ -320,172 +315,6 @@ def _group_generators_by_bus(generators: list[Generator]) -> dict[str, list[Gene
     for items in grouped.values():
         items.sort(key=lambda item: item.ref_id)
     return grouped
-
-
-def _resolve_canonical_bay_role(
-    bay: Bay,
-    generators_by_bus: dict[str, list[Generator]],
-) -> str:
-    if bay.bay_role == "OZE":
-        generators = generators_by_bus.get(bay.bus_ref, [])
-        generator_types = {str(generator.gen_type).upper() for generator in generators}
-        if {"BESS", "BESS_INVERTER"} & generator_types:
-            return "BESS_SN"
-        if {"WIND_INVERTER", "FW_PMSG", "FW_DFIG", "FW_SCIG"} & generator_types:
-            return "FW_SN"
-        return "PV_SN"
-    # Każda rola `Bay.bay_role` poza `OZE` jest w mapie kanonu (zamknięty `Literal`) — dawny
-    # zapas „LINIA_OUT” zgadywał rolę pola spoza mapy (karta GPZ-H5: pola funkcyjne ZU/BKR
-    # trafiały do read-modelu jako pola liniowe wyjściowe, zanim dostały rolę w kanonie).
-    return CANONICAL_BAY_ROLE_MAP[bay.bay_role]
-
-
-def _build_primary_devices(
-    *,
-    bay: Bay,
-    canonical_role: str,
-    branches: dict[str, Branch],
-    measurements_by_bay: dict[str, list[Measurement]],
-    transformers_by_bus: dict[str, list[Transformer]],
-    generators_by_bus: dict[str, list[Generator]],
-) -> list[BayPrimaryDevice]:
-    # W1 (RECENZJA_L2 §12.1, V12K-145): PRYMAT DANYCH nad przeliczeniem — jeśli
-    # pole niesie już zmaterializowane aparaty pierwotne (szablon kreatora,
-    # rekord `Bay.primary_devices`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
-    # zamiast wnioskować z equipment. Puste = przelicz z equipment jak dotąd.
-    if bay.primary_devices:
-        return list(bay.primary_devices)
-    devices: list[BayPrimaryDevice] = []
-    for ref in sorted(bay.equipment_refs):
-        branch = branches.get(ref)
-        if branch is None:
-            continue
-        mapped = _branch_to_primary_device(branch)
-        if mapped is not None:
-            devices.append(mapped)
-
-    for measurement in measurements_by_bay.get(bay.ref_id, []):
-        devices.append(_measurement_to_primary_device(measurement))
-
-    if canonical_role == "TRANSFORMATOROWE":
-        # POLA-W-TORZE: transformator leży na ZACISKU pola transformatorowego (aparat pola
-        # w torze) — pole bez własnego zacisku (dane zastane) wskazuje szynę pola.
-        punkt_pola = punkt_przylaczenia_pola(bay)
-        transformers = transformers_by_bus.get(punkt_pola, []) if punkt_pola else []
-        if transformers:
-            transformer = transformers[0]
-            devices.append(
-                BayPrimaryDevice(
-                    device_ref=transformer.ref_id,
-                    linked_ref=transformer.ref_id,
-                    catalog_ref=transformer.catalog_ref,
-                    symbol_ref="symbol:transformer_device",
-                    kind="TRANSFORMER_DEVICE",
-                    placement="DOWNSTREAM",
-                    is_controllable=False,
-                    render_variant="kanoniczny",
-                )
-            )
-
-    generators = generators_by_bus.get(bay.bus_ref, [])
-    generator = generators[0] if generators else None
-    if canonical_role == "PV_SN" and generator is not None:
-        devices.append(
-            BayPrimaryDevice(
-                device_ref=generator.ref_id,
-                linked_ref=generator.ref_id,
-                catalog_ref=generator.catalog_ref,
-                symbol_ref="symbol:generator_pv",
-                kind="GENERATOR_PV",
-                placement="DOWNSTREAM",
-                is_controllable=False,
-                render_variant="kanoniczny",
-            )
-        )
-    if canonical_role == "BESS_SN" and generator is not None:
-        devices.append(
-            BayPrimaryDevice(
-                device_ref=generator.ref_id,
-                linked_ref=generator.ref_id,
-                catalog_ref=generator.catalog_ref,
-                symbol_ref="symbol:generator_bess",
-                kind="GENERATOR_BESS",
-                placement="DOWNSTREAM",
-                is_controllable=False,
-                render_variant="kanoniczny",
-            )
-        )
-    if canonical_role == "FW_SN" and generator is not None:
-        devices.append(
-            BayPrimaryDevice(
-                device_ref=generator.ref_id,
-                linked_ref=generator.ref_id,
-                catalog_ref=generator.catalog_ref,
-                symbol_ref="symbol:generator_fw",
-                kind="GENERATOR_FW",
-                placement="DOWNSTREAM",
-                is_controllable=False,
-                render_variant="kanoniczny",
-            )
-        )
-
-    # G-STK-8: ograniczniki przepięć pola (typowane `Bay.surge_arresters`, operacja
-    # `add_surge_arrester_sn`). Aparat gałęzi uziemiającej (GROUND_BRANCH,
-    # earthing_role=surge_ground) — rysowany na SLD (glif surge_arrester_10ka) i czytany
-    # przez most koordynacji izolacji IEC 60071. Zero domysłu: tylko gdy dane obecne.
-    for ogranicznik in bay.surge_arresters:
-        if ogranicznik.device_ref:
-            devices.append(
-                BayPrimaryDevice(
-                    device_ref=ogranicznik.device_ref,
-                    catalog_ref=ogranicznik.catalog_ref,
-                    symbol_ref="symbol:surge_arrester_10ka",
-                    kind="SURGE_ARRESTER",
-                    placement="GROUND_BRANCH",
-                    is_controllable=False,
-                    render_variant="kanoniczny",
-                    earthing_role="surge_ground",
-                )
-            )
-
-    devices.sort(key=lambda item: (item.placement, item.device_ref))
-
-    if canonical_role == "SPRZEGLO":
-        _assign_coupler_sides(devices)
-
-    return devices
-
-
-def _branch_to_primary_device(branch: Branch) -> BayPrimaryDevice | None:
-    mapped = BRANCH_KIND_MAP.get(getattr(branch, "type", ""))
-    if mapped is None:
-        return None
-    kind, placement, controllable = mapped
-    return BayPrimaryDevice(
-        device_ref=branch.ref_id,
-        linked_ref=branch.ref_id,
-        catalog_ref=getattr(branch, "catalog_ref", None),
-        symbol_ref=f"symbol:{kind.lower()}",
-        kind=kind,
-        placement=placement,
-        is_controllable=controllable,
-        render_variant="kanoniczny",
-    )
-
-
-def _measurement_to_primary_device(measurement: Measurement) -> BayPrimaryDevice:
-    kind = "CT" if measurement.measurement_type == "CT" else "VT"
-    placement = "MIDSTREAM" if kind == "CT" else "OFF_PATH"
-    return BayPrimaryDevice(
-        device_ref=measurement.ref_id,
-        linked_ref=measurement.ref_id,
-        catalog_ref=measurement.catalog_ref,
-        symbol_ref=f"symbol:{kind.lower()}",
-        kind=kind,
-        placement=placement,
-        is_controllable=False,
-        render_variant="kanoniczny",
-    )
 
 
 #: Stany polecenia, w których polecenie jest „w toku" (``commanded_state`` aparatu).

@@ -56,6 +56,25 @@ class OverlaySeverity(StrEnum):
     BLOCKER = "BLOCKER"
 
 
+#: Znaczniki STANU elementu wyniku (wiersz `flags`) — kontrakt wspólny warstwy wyników
+#: (`enm.canonical_analysis` je emituje, nakładka SLD czyta). Stan „bez napięcia”: szyna wyspy
+#: bez źródła (rozpływ `not_solved`, zwarcie bez impedancji do odniesienia); brak drogi
+#: składowej zerowej: węzeł zwarcia doziemnego bez drogi prądu Z0 do ziemi.
+ZNACZNIK_SZYNY_BEZ_NAPIECIA = "BEZ_NAPIECIA"
+ZNACZNIK_BEZ_DROGI_ZEROWEJ = "BEZ_DROGI_ZEROWEJ"
+#: Znacznik szyny bilansującej rozpływu i gałęzi obciążonej powyżej 100 % obciążalności —
+#: kody wiersza wyniku w JEDNYM miejscu z kodami stanu (czyta je też `enm.wyniki_pol_gpz`).
+ZNACZNIK_WEZEL_BILANSUJACY = "SLACK"
+ZNACZNIK_PRZECIAZENIE = "OVERLOADED"
+#: Znacznik stanu → dotkliwość odznaki nakładki (karta GPZ-H5-APARATURA). Znaczniki ról
+#: i progów (węzeł bilansujący, przeciążenie) odznaki nie dają — niesie je metryka
+#: elementu (`LOADING_PCT`) i rola węzła; odznaka jest dla stanu, w którym liczby NIE MA.
+ZNACZNIKI_STANU_NAKLADKI: dict[str, OverlaySeverity] = {
+    ZNACZNIK_SZYNY_BEZ_NAPIECIA: OverlaySeverity.WARNING,
+    ZNACZNIK_BEZ_DROGI_ZEROWEJ: OverlaySeverity.WARNING,
+}
+
+
 class OverlayMetricSource(StrEnum):
     """Source of an overlay metric value."""
 

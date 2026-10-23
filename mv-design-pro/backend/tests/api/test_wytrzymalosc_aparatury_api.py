@@ -378,7 +378,13 @@ def test_bieg_niewlasciwy_jest_odrzucany(klient: TestClient, bieg: Any, kod: int
 
 
 def _pole_z_nastaw(widok: dict[str, Any]) -> dict[str, Any]:
-    z_nastaw = [p for p in widok["pola"] if p["czas_wylaczenia"]["zrodlo"] == "nastawy_pola"]
+    # Wiersz WYŁĄCZNIKA pola (gałąź łącznikowa — wartości projektanta nadaje się na niej);
+    # przekładnik prądowy tego pola ma osobny wiersz wytrzymałości bez tej akcji.
+    z_nastaw = [
+        p
+        for p in widok["pola"]
+        if p["czas_wylaczenia"]["zrodlo"] == "nastawy_pola" and p["wartosci_projektanta_edytowalne"]
+    ]
     assert z_nastaw, "Pole z nastawami musi dostać człon wyprowadzony z charakterystyki"
     return z_nastaw[0]
 

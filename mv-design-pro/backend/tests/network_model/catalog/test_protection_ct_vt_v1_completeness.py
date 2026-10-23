@@ -17,9 +17,20 @@ def test_ct_vt_catalog_has_industrial_series_width_and_metadata() -> None:
     for item in ct_types:
         data = item.to_dict()
         assert data["verification_status"] == CatalogVerificationStatus.REFERENCYJNY.value
-        assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
+        # Karta GPZ-H5-APARATURA: przekładnik Ferrantiego pola liniowego SN jest pozycją
+        # WYMAGANIA standardu ENEA (§13, rys. Z.10) — bez producenta, źródło w standardzie.
+        if data["catalog_status"] == CatalogStatus.WYMAGANIE_STANDARDU_V1.value:
+            assert data["manufacturer"] is None, data["id"]
+            assert data["source_reference"].startswith("ENEA Operator"), data["id"]
+        else:
+            assert data["catalog_status"] == CatalogStatus.REFERENCYJNY_V1.value
         assert data["source_reference"]
         assert data["contract_version"] == "2.0"
+    assert [
+        item.id
+        for item in ct_types
+        if item.catalog_status == CatalogStatus.WYMAGANIE_STANDARDU_V1.value
+    ] == ["enea-wym-sn-ct-ferranti-100-1"]
 
     for item in vt_types:
         data = item.to_dict()

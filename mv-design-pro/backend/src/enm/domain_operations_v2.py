@@ -85,6 +85,7 @@ from .domain_operations import (
     _make_id,
     _materialize_catalog_payload,
     _nazwa_pola_w_modelu,
+    _odmowa_granicy_wn,
     _odmowa_typu_ladunku,
     _opt_float_any,
     _powod_odmowy_tolerancji_nn,
@@ -643,8 +644,15 @@ def _field_adapter_error(
 # ---------------------------------------------------------------------------
 
 
-def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def add_ct(
+    enm: dict[str, Any], payload: dict[str, Any], *, gniazdo_ref: str | None = None
+) -> dict[str, Any]:
     """Dodaj przekładnik prądowy CT do pola stacji albo przy wyłączniku liniowym.
+
+    ``gniazdo_ref`` (wyłącznie wywołanie z ``set_bay_equipment``, nie pole ładunku API) —
+    gniazdo szablonu pola standardu, które przekładnik obsadza: wchodzi do ziarna
+    identyfikatora (dwa gniazda z tą samą pozycją katalogu w jednym polu to dwa przekładniki)
+    i do ``meta.gniazdo_ref``. Bez niego ziarno jest takie jak przed kartą GPZ-H5-APARATURA.
 
     Kotwica przekładnika: pole rozdzielnicy (``bay_ref``) ALBO wyłącznik liniowy wstawiony w
     odcinek SN (``breaker_ref`` bez pola — karta BIEG-ZABEZPIECZEN-Z-MODELU: wyłącznik
@@ -687,6 +695,11 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         assert wylacznik is not None
         bus_ref = wylacznik.get("from_bus_ref")
         nazwa_miejsca = opis_elementu(enm, breaker_anchor, "wyłącznika")
+    odmowa_wn = _odmowa_granicy_wn(
+        enm, str(bus_ref), przedmiot_pl="przekładnik prądowy", prefiks_kodu="ct"
+    )
+    if odmowa_wn is not None:
+        return odmowa_wn
 
     # JEDNA przestrzeń katalogu na całą operację: wybiera akcesor materializacji
     # i jest znacznikiem pochodzenia w migawce (V12K-316 dług 4).
@@ -756,6 +769,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 "catalog_ref": catalog_ref,
                 "ratio_primary_a": primary,
                 "ratio_secondary_a": secondary,
+                **({"gniazdo_ref": gniazdo_ref} if gniazdo_ref else {}),
             }
             if field_ref
             else {
@@ -771,9 +785,8 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # model W MIEJSCU, więc izolacja modelu wołającego należy do granicy operacji —
     # dokładnie tak, jak robi to `add_sn_bay` czy `add_grid_source_sn`. Bez tej kopii
     # `_zastosuj_wyposazenie_pol` (gwarancja B-3: albo pole z kompletnym wyposażeniem,
-    # albo nic) zostawiałby CT dopisane przed błędem kolejnego kroku serii, a
-    # `execute_domain_operation` liczyłby `semantic_issues` z modelu PO zmianie —
-    # inaczej niż wszystkie pozostałe operacje domenowe.
+    # albo nic) zostawiałby CT dopisane przed błędem kolejnego kroku serii — inaczej niż
+    # wszystkie pozostałe operacje domenowe.
     roboczy = kopia_graniczna_enm(enm)
     result = create_measurement(
         roboczy,
@@ -793,7 +806,11 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "purpose": payload.get("purpose") or "protection",
             "tags": ["field_ct" if field_ref else "breaker_ct", "catalog_bound"],
             "meta": (
-                {"field_ref": field_ref, "catalog_binding": binding}
+                {
+                    "field_ref": field_ref,
+                    "catalog_binding": binding,
+                    **({"gniazdo_ref": gniazdo_ref} if gniazdo_ref else {}),
+                }
                 if field_ref
                 else {"breaker_ref": breaker_anchor, "catalog_binding": binding}
             ),
@@ -855,8 +872,10 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj przekładnik napięciowy VT do pola stacji."""
+def add_vt(
+    enm: dict[str, Any], payload: dict[str, Any], *, gniazdo_ref: str | None = None
+) -> dict[str, Any]:
+    """Dodaj przekładnik napięciowy VT do pola stacji (``gniazdo_ref`` — jak w ``add_ct``)."""
     field_ref = payload.get("field_ref") or payload.get("bay_ref")
     if not field_ref:
         return _error_response(
@@ -874,6 +893,11 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             f"{_opis_pola(enm, field_ref)} nie ma przypisanej szyny pomiarowej.",
             "vt.bus_missing",
         )
+    odmowa_wn = _odmowa_granicy_wn(
+        enm, bus_ref, przedmiot_pl="przekładnik napięciowy", prefiks_kodu="vt"
+    )
+    if odmowa_wn is not None:
+        return odmowa_wn
 
     przestrzen_katalogu = "VT"
     binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
@@ -939,6 +963,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 "catalog_ref": catalog_ref,
                 "ratio_primary_v": primary,
                 "ratio_secondary_v": secondary,
+                **({"gniazdo_ref": gniazdo_ref} if gniazdo_ref else {}),
             }
         ),
         "measurement",
@@ -962,7 +987,11 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "connection": payload.get("connection") or "star",
             "purpose": payload.get("purpose") or "protection",
             "tags": ["field_vt", "catalog_bound"],
-            "meta": {"field_ref": field_ref, "catalog_binding": binding},
+            "meta": {
+                "field_ref": field_ref,
+                "catalog_binding": binding,
+                **({"gniazdo_ref": gniazdo_ref} if gniazdo_ref else {}),
+            },
         },
     )
     if not result.success:
@@ -2076,6 +2105,9 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_ref)
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+    odmowa_wn = _odmowa_granicy_wn(enm, bus_ref, przedmiot_pl="pole SN", prefiks_kodu="sn")
+    if odmowa_wn is not None:
+        return odmowa_wn
 
     bay_role = _normalize_sn_bay_role(payload)
     pola_sn = pola_sn_stacji(enm, station.get("ref_id"))
@@ -2645,6 +2677,9 @@ def add_sn_bay_from_catalog(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     )
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+    odmowa_wn = _odmowa_granicy_wn(enm, bus_ref, przedmiot_pl="pole SN", prefiks_kodu="sn")
+    if odmowa_wn is not None:
+        return odmowa_wn
     napiecie_szyny_kv = _bus_voltage_kv(enm, bus_ref)
     if napiecie_szyny_kv is None:
         return _error_response(
@@ -7474,6 +7509,11 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     )
     if station is None:
         return _error_response("Nie znaleziono stacji dla pola SN.", "spd.station_not_found")
+    odmowa_wn = _odmowa_granicy_wn(
+        enm, bus_ref, przedmiot_pl="ogranicznik przepięć SN", prefiks_kodu="spd"
+    )
+    if odmowa_wn is not None:
+        return odmowa_wn
 
     # Jak wyżej: `get_surge_arrester_type` przesądza przestrzeń rodzajem elementu.
     przestrzen_katalogu = "OGRANICZNIK_SN"
@@ -8369,12 +8409,12 @@ V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
         "druga droga wskazania pozycji",
     ),
     # W5-C: wyposażenie pola SN — aparat rodzaju z katalogiem SN wskazuje pozycję
-    # przestrzeni tego rodzaju (`enm.wyposazenie_pola.PRZESTRZEN_KATALOGU_APARATU`),
+    # przestrzeni tego rodzaju (`enm.sklad_pola.PRZESTRZEN_KATALOGU_APARATU`),
     # sprawdzaną bramą istnienia `_pozycja_katalogu`.
     PozycjaBramyKatalogowejV2(
         "set_bay_equipment",
         "devices[].catalog_ref",
-        "APARAT_SN|CT|VT|OGRANICZNIK_SN",
+        "APARAT_SN|CT|VT|OGRANICZNIK_SN|ELEMENT_POLA_SN",
         True,
         "przestrzeń wynika z rodzaju aparatu (`kind`) wpisu listy",
     ),

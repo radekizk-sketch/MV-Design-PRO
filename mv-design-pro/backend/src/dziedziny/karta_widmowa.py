@@ -32,7 +32,12 @@ from werdykt.kontrakt import DziedzinaFizyki, PodstawaWymagania, Tekst
 
 #: Status katalogu rekordu — wartości ``CatalogStatus`` (parytet przypięty testem).
 StatusKataloguKarty = Literal[
-    "PRODUKCYJNY_V1", "REFERENCYJNY_V1", "ANALITYCZNY_V1", "TESTOWY", "PROJEKTOWY_V1"
+    "PRODUKCYJNY_V1",
+    "REFERENCYJNY_V1",
+    "ANALITYCZNY_V1",
+    "TESTOWY",
+    "PROJEKTOWY_V1",
+    "WYMAGANIE_STANDARDU_V1",
 ]
 #: Przestrzeń, z której pochodzi karta zmaterializowana w elemencie.
 PrzestrzenKarty = Literal["STATYCZNA", "PROJEKT"]

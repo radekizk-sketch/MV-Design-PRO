@@ -202,7 +202,7 @@ export function mapujWierszZwarcia(
     zk: komorkaWielkosci(row.zk_ohm ?? null, fmtOhm, dowodRef),
     xr: komorkaWielkosci(row.xr_ratio ?? null, fmtKappa, dowodRef),
     kappa: komorkaWielkosci(row.kappa ?? null, fmtKappa, dowodRef),
-    uwagi: { wartosc: uwagiZwarciaPL(row.flags) },
+    uwagi: { wartosc: uwagiZwarciaPL(row.flags_pl) },
     [KLUCZ_PUNKT]: { wartosc: row.target_id },
   };
 }

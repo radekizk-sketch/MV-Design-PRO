@@ -4,7 +4,7 @@ import hashlib
 import json
 import logging
 import math
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, cast
@@ -40,6 +40,12 @@ from application.v126_artifacts import (
 )
 from domain.canonical_operations import READINESS_CODES
 from domain.execution import BiegAnulowanyError, KontekstWykonania, PostepBiegu
+from domain.result_contract_v1 import (
+    ZNACZNIK_BEZ_DROGI_ZEROWEJ,
+    ZNACZNIK_PRZECIAZENIE,
+    ZNACZNIK_SZYNY_BEZ_NAPIECIA,
+    ZNACZNIK_WEZEL_BILANSUJACY,
+)
 from enm.adapter_dynamiki import (
     KLUCZ_BIEGU_ROZPLYWU,
     KOD_PUNKT_PRACY_BRAK,
@@ -226,6 +232,23 @@ _KODY_BRAKU_SKLADOWEJ_ZEROWEJ = ("W001", "W002")
 OGRANICZENIE_WEZLY_POZA_WYSPA = "unsolved_nodes_outside_slack_island"
 OGRANICZENIE_BRAK_ZBIEZNOSCI = "solver_non_convergence"
 
+#: Powód nieraportowalności wiersza zwarcia ustalony z TOPOLOGII (nie z liczb):
+#: węzeł zwarcia leży w wyspie bez żadnego elementu z impedancją do odniesienia.
+POWOD_WEZEL_BEZ_ODNIESIENIA = "fault_node_without_reference_impedance"
+#: Powód nieraportowalności wiersza zwarcia doziemnego (1F, 2F+Z) ustalony z TOPOLOGII sieci
+#: zerowej (karta GPZ-H5): węzeł zwarcia leży w składowej sieci zerowej bez drogi prądu do
+#: ziemi (punkt neutralny nieuziemiony w danych, brak danych składowej zerowej gałęzi na
+#: drodze do uziemionego punktu neutralnego, brak pojemności doziemnej B0) — Z0 nie
+#: istnieje, zwarcie doziemne nie jest liczone (``enm.mapping.SiecSkladowejZerowej``).
+POWOD_WEZEL_BEZ_DROGI_ZEROWEJ = "fault_node_without_zero_sequence_path"
+
+#: Ograniczenia, które czynią wiersz zwarcia nieraportowalnym — w kolejności wykazu biegu.
+_OGRANICZENIA_WIERSZA_NIERAPORTOWALNEGO: tuple[str, ...] = (
+    OGRANICZENIE_WYNIK_NIEFIZYCZNY,
+    POWOD_WEZEL_BEZ_ODNIESIENIA,
+    POWOD_WEZEL_BEZ_DROGI_ZEROWEJ,
+)
+
 #: Etykiety PL statusu raportowalności i statusu uzasadnienia wyniku oraz opisy PL kodów
 #: ograniczeń raportowych (karta #145) — JEDNO źródło dla odpowiedzi wszystkich torów.
 #: Etykieta jest wyprowadzana z KODU statusu przy ODCZYCIE wyniku (`etykiety_raportowe_pl`),
@@ -258,6 +281,19 @@ OPISY_OGRANICZEN_RAPORTOWYCH_PL: dict[str, str] = {
         "Zwarcie przez impedancję przejścia Z_f jest poza zakresem normy IEC 60909, która "
         "definiuje prąd zwarciowy dla zwarcia metalicznego — wynik nie jest podstawą doboru "
         "wytrzymałości zwarciowej ani pakietu dowodowego aparatury."
+    ),
+    # Powody nieraportowalności wiersza zwarcia ustalone z topologii (karta GPZ-H5-APARATURA:
+    # są ograniczeniem raportowym wiersza zamiast mylącego „wyniku niefizycznego").
+    POWOD_WEZEL_BEZ_ODNIESIENIA: (
+        "Węzeł zwarcia leży w części sieci odciętej od źródeł zasilania (szyna bez napięcia) — "
+        "impedancja zwarciowa do odniesienia nie istnieje, prądu zwarciowego nie liczono. "
+        "To stan łączeniowy sieci, nie błąd obliczenia."
+    ),
+    POWOD_WEZEL_BEZ_DROGI_ZEROWEJ: (
+        "Węzeł zwarcia nie ma drogi prądu składowej zerowej do ziemi (punkt neutralny sieci "
+        "nieuziemiony w danych, brak danych składowej zerowej gałęzi na drodze do uziemionego "
+        "punktu neutralnego albo brak pojemności doziemnej) — impedancja Z0 nie istnieje, "
+        "prądu zwarcia doziemnego nie liczono."
     ),
 }
 
@@ -293,20 +329,46 @@ def etykiety_raportowe_pl(zrodlo: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-#: Powód nieraportowalności wiersza zwarcia ustalony z TOPOLOGII (nie z liczb):
-#: węzeł zwarcia leży w wyspie bez żadnego elementu z impedancją do odniesienia.
-POWOD_WEZEL_BEZ_ODNIESIENIA = "fault_node_without_reference_impedance"
-#: Powód nieraportowalności wiersza zwarcia doziemnego (1F, 2F+Z) ustalony z TOPOLOGII sieci
-#: zerowej (karta GPZ-H5): węzeł zwarcia leży w składowej sieci zerowej bez drogi prądu do
-#: ziemi (punkt neutralny nieuziemiony w danych, brak danych składowej zerowej gałęzi na
-#: drodze do uziemionego punktu neutralnego, brak pojemności doziemnej B0) — Z0 nie
-#: istnieje, zwarcie doziemne nie jest liczone (``enm.mapping.SiecSkladowejZerowej``).
-POWOD_WEZEL_BEZ_DROGI_ZEROWEJ = "fault_node_without_zero_sequence_path"
-
 #: Znacznik wiersza wyników (`flags`) szyny wyspy bez źródła zasilania — stan „bez napięcia”,
 #: nie wynik liczbowy. Rozpływ (`build_bus_results`): solver `status == "not_solved"`;
-#: zwarcia (`build_short_circuit_results`): `non_physical_reason == POWOD_WEZEL_BEZ_ODNIESIENIA`.
-ZNACZNIK_SZYNY_BEZ_NAPIECIA = "BEZ_NAPIECIA"
+#: zwarcia (`znaczniki_wiersza_zwarcia`): `non_physical_reason == POWOD_WEZEL_BEZ_ODNIESIENIA`.
+#: Znacznik wiersza zwarcia doziemnego węzła bez drogi składowej zerowej do ziemi
+#: (`non_physical_reason == POWOD_WEZEL_BEZ_DROGI_ZEROWEJ`) — Z0 nie istnieje, prąd zwarcia
+#: doziemnego nie jest liczony; szyna JEST pod napięciem (to nie stan „bez napięcia”).
+#: Kody znaczników (stanu oraz SLACK/OVERLOADED) są kontraktem warstwy wyników
+#: (`domain.result_contract_v1`), bo nakładka SLD buduje z nich odznakę.
+#: Etykiety PL znaczników wiersza wyniku — JEDNO źródło dla wierszy rozpływu i zwarć,
+#: `element_results` i nakładki SLD (karta GPZ-H5-APARATURA: dawniej trzy słowniki frontu,
+#: z których żaden nie znał „bez napięcia”, więc ekran pokazywał kod znacznika).
+ETYKIETY_ZNACZNIKOW_WYNIKU_PL: dict[str, str] = {
+    ZNACZNIK_WEZEL_BILANSUJACY: "węzeł bilansujący",
+    ZNACZNIK_SZYNY_BEZ_NAPIECIA: "bez napięcia",
+    ZNACZNIK_BEZ_DROGI_ZEROWEJ: "brak drogi składowej zerowej do ziemi",
+    ZNACZNIK_PRZECIAZENIE: "przeciążenie",
+}
+#: Powód nieraportowalności wiersza zwarcia → znacznik stanu wiersza (jedna reguła).
+_ZNACZNIK_POWODU_ZWARCIA: dict[str, str] = {
+    POWOD_WEZEL_BEZ_ODNIESIENIA: ZNACZNIK_SZYNY_BEZ_NAPIECIA,
+    POWOD_WEZEL_BEZ_DROGI_ZEROWEJ: ZNACZNIK_BEZ_DROGI_ZEROWEJ,
+}
+
+
+def znaczniki_wiersza(flags: Sequence[str]) -> dict[str, list[str]]:
+    """Znaczniki wiersza wyniku i ich etykiety PL (`flags`, `flags_pl`) — jedna reguła.
+
+    Znacznik spoza `ETYKIETY_ZNACZNIKOW_WYNIKU_PL` podnosi ``KeyError``: etykieta nie jest
+    zgadywana, a kompletność mapy przypina test (``tests/enm/test_znaczniki_wyniku.py``).
+    """
+    lista = list(flags)
+    return {"flags": lista, "flags_pl": [ETYKIETY_ZNACZNIKOW_WYNIKU_PL[f] for f in lista]}
+
+
+def znaczniki_wiersza_zwarcia(item: Mapping[str, Any]) -> list[str]:
+    """Znaczniki stanu wiersza zwarcia z jego powodu nieraportowalności (topologia sieci)."""
+    znacznik = _ZNACZNIK_POWODU_ZWARCIA.get(str(item.get("non_physical_reason") or ""))
+    return [znacznik] if znacznik is not None else []
+
+
 #: Pola wiersza zwarcia będące DANYMI WEJŚCIOWYMI biegu (nie wynikiem solvera) —
 #: jedyne liczby, które zostają w wierszu węzła bez impedancji do odniesienia.
 _KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA: frozenset[str] = frozenset({"c_factor", "un_v", "tk_s", "tb_s"})
@@ -369,8 +431,8 @@ def _oznacz_wiersz_bez_odniesienia(
     """Wiersz zwarcia węzła bez impedancji do odniesienia: NIERAPORTOWALNY z topologii.
 
     Zwraca NOWY wiersz: każda liczba wyniku solvera → ``None`` (zostają wyłącznie dane
-    wejściowe ``_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA``), ograniczenie
-    ``solver_result_non_physical`` + wykaz pól kontraktu w ``non_physical_fields`` +
+    wejściowe ``_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA``), ograniczenie raportowe równe
+    przyczynie z topologii (``powod``) + wykaz pól kontraktu w ``non_physical_fields`` +
     ``non_physical_reason`` (addytywne pole: DLACZEGO). Zero liczb solvera w takim
     wierszu to nie strata informacji — IEC 60909 nie definiuje dla niego Z_kk, a
     wartości oddane przez odwrócenie osobliwej macierzy są szumem biblioteki, nie
@@ -378,9 +440,12 @@ def _oznacz_wiersz_bez_odniesienia(
     """
     wyzerowany, pola = _zeruj_liczby_wyniku(payload, zachowaj=_KLUCZE_WEJSCIOWE_WIERSZA_ZWARCIA)
     wiersz: dict[str, Any] = wyzerowany
+    # Karta GPZ-H5-APARATURA: ograniczenie raportowe to POWÓD z topologii (węzeł bez napięcia
+    # albo bez drogi składowej zerowej), nie „wynik niefizyczny" — tamto zdanie mówi
+    # o wartości nieskończonej albo κ spoza normy, a tu solver w ogóle nie liczył.
     ograniczenia = list(wiersz.get("reporting_limitations") or [])
-    if OGRANICZENIE_WYNIK_NIEFIZYCZNY not in ograniczenia:
-        ograniczenia.append(OGRANICZENIE_WYNIK_NIEFIZYCZNY)
+    if powod not in ograniczenia:
+        ograniczenia.append(powod)
     wiersz.update(
         {
             "reporting_status": "not_reportable",
@@ -2743,11 +2808,21 @@ def _execute_short_circuit(
     # PERF-SC-50: skan bez kopii — ślad zdrowy wraca jako ten sam obiekt (patrz
     # `enm/wartosci_niefinitowe.py`; dotąd każdy bieg kopiował cały ślad rekurencyjnie).
     trace_steps, _niefinitowe_w_sladzie = podmien_niefinitowe(trace_steps)
+    # Karta GPZ-H5-APARATURA: wiersz nieraportowalny to wynik niefizyczny ALBO węzeł
+    # nieliczony z przyczyny topologii — oba trafiają do wykazu biegu, a ograniczenia biegu
+    # są sumą ograniczeń tych wierszy w stałej kolejności (determinizm).
     wiersze_niefizyczne = sorted(
         str(row.get("fault_node_id"))
         for row in rows
-        if OGRANICZENIE_WYNIK_NIEFIZYCZNY in (row.get("reporting_limitations") or [])
+        if set(row.get("reporting_limitations") or [])
+        & set(_OGRANICZENIA_WIERSZA_NIERAPORTOWALNEGO)
     )
+    ograniczenia_wierszy = {
+        wpis
+        for row in rows
+        for wpis in (row.get("reporting_limitations") or [])
+        if wpis in _OGRANICZENIA_WIERSZA_NIERAPORTOWALNEGO
+    }
 
     zalozenia_biegu = [
         *wejscie.zalozenia,
@@ -2767,7 +2842,7 @@ def _execute_short_circuit(
             "ENM_COMMITTED" if _short_circuit_requires_z0(short_circuit_type) else "NOT_APPLICABLE"
         ),
         "reporting_limitations": (
-            ([OGRANICZENIE_WYNIK_NIEFIZYCZNY] if wiersze_niefizyczne else [])
+            [k for k in _OGRANICZENIA_WIERSZA_NIERAPORTOWALNEGO if k in ograniczenia_wierszy]
             + (
                 [OGRANICZENIE_POZA_ZAKRESEM_IEC60909]
                 if wejscie.impedancja_zwarcia is not None
@@ -3732,7 +3807,7 @@ def build_bus_results(run: CanonicalRun) -> dict[str, Any]:
         node = graph_nodes.get(bus_id, {})
         flags: list[str] = []
         if node.get("node_type") == "SLACK":
-            flags.append("SLACK")
+            flags.append(ZNACZNIK_WEZEL_BILANSUJACY)
         # Karta GPZ-H5 (R7): szyna wyspy bez źródła (np. sekcja GPZ po utracie linii L1)
         # nie jest odmową całego biegu — solver oznacza ją `not_solved` (U = brak), a wiersz
         # niesie jawny znacznik stanu „bez napięcia” dla tabeli i nakładki SLD.
@@ -3749,7 +3824,7 @@ def build_bus_results(run: CanonicalRun) -> dict[str, Any]:
                 "angle_deg": item.get("angle_deg"),
                 "synthetic": node.get("synthetic"),
                 "graph_role": node.get("graph_role"),
-                "flags": flags,
+                **znaczniki_wiersza(flags),
             }
         )
     rows.sort(key=lambda row: (row["name"], row["bus_id"]))
@@ -3854,7 +3929,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
         )
         flags: list[str] = []
         if loading_pct is not None and loading_pct > 100.0:
-            flags.append("OVERLOADED")
+            flags.append(ZNACZNIK_PRZECIAZENIE)
         rows.append(
             {
                 "element_id": branch.get("element_id") or branch_id,
@@ -3884,7 +3959,7 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
                 "delta_u_pct": delta_u_pct,
                 "synthetic": branch.get("synthetic"),
                 "graph_role": branch.get("graph_role"),
-                "flags": flags,
+                **znaczniki_wiersza(flags),
             }
         )
     rows.sort(key=lambda row: (row["name"], row["branch_id"]))
@@ -4122,11 +4197,12 @@ def build_short_circuit_results(
                 # punkt zwarcia w wyspie bez źródła (np. sekcja GPZ po utracie toru L1) nie ma
                 # impedancji do odniesienia, więc wiersz jest nieraportowalny z przyczyną
                 # `POWOD_WEZEL_BEZ_ODNIESIENIA`, a tabela i nakładka SLD czytają jawny znacznik.
-                "flags": (
-                    [ZNACZNIK_SZYNY_BEZ_NAPIECIA]
-                    if item.get("non_physical_reason") == POWOD_WEZEL_BEZ_ODNIESIENIA
-                    else []
-                ),
+                **znaczniki_wiersza(znaczniki_wiersza_zwarcia(item)),
+                # Karta GPZ-H5-APARATURA (werdykt wyjaśnialny): DLACZEGO wiersz nie ma liczb —
+                # przyczyna z topologii i wykaz wyzerowanych pól kontraktu (addytywnie;
+                # wiersz liczony ich nie niesie).
+                "non_physical_reason": item.get("non_physical_reason"),
+                "non_physical_fields": item.get("non_physical_fields"),
             }
         )
     rows.sort(key=lambda row: row["target_id"] or "")
@@ -4794,6 +4870,14 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                             if item.get("tb_zrodlo") is not None
                             else {}
                         ),
+                        # Karta GPZ-H5-APARATURA: stan wiersza i przyczyna braku liczb — TE
+                        # SAME pola co wiersz `/results/short-circuit` (jedna reguła
+                        # `znaczniki_wiersza_zwarcia`); nakładka SLD czyta z nich odznakę.
+                        "flags": item.get("flags"),
+                        "flags_pl": item.get("flags_pl"),
+                        "non_physical_reason": item.get("non_physical_reason"),
+                        "reporting_limitations": item.get("reporting_limitations"),
+                        "reporting_limitations_pl": item.get("reporting_limitations_pl"),
                     },
                     "proof_ref": item.get("proof_ref"),
                     "proof_status": item.get("proof_status"),

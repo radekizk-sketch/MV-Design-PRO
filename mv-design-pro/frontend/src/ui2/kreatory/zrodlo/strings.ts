@@ -9,7 +9,6 @@ export const ZRODLO_STRINGS = {
     'Dodaj Główny Punkt Zasilający (GPZ) — źródło systemowe SN dla obliczeń. '
     + 'Dane zwarciowe i normowe czyta backend (IEC 60909); zapis tworzy szyny, sekcje i pola liniowe.',
   odznakaNowy: 'Nowy GPZ',
-  odznakaEdycja: 'Edycja GPZ',
 
   // Katalog.
   katalogTytul: 'Źródło danych i katalog',
@@ -34,9 +33,6 @@ export const ZRODLO_STRINGS = {
   uziemienie: 'Uziemienie punktu neutralnego',
   uziemienieR: 'R uziemienia',
   uziemienieX: 'X cewki',
-  uziemienieZTransformatora: (grupa: string | null): string => (grupa
-    ? `Przy równoważniku sieci 110 kV punkt neutralny sieci SN jest punktem neutralnym uzwojenia SN transformatorów 110/SN (grupa ${grupa}) — opis wynika z grupy połączeń. Sieć SN uziemioną przez transformator uziemiający opisz równoważnikiem na szynach SN z R0/X0.`
-    : 'Przy równoważniku sieci 110 kV punkt neutralny sieci SN wynika z grupy połączeń transformatora 110/SN — wybierz transformator z katalogu.'),
 
   // Parametry zwarciowe.
   zwarcieTytul: 'Parametry zwarciowe na szynach SN',
@@ -82,14 +78,9 @@ export const ZRODLO_STRINGS = {
     'IEC 60909-0 tab. 1 per węzeł — wg pasma napięcia i scenariusza MAX/MIN przypadku obliczeniowego',
 
   // Sekcje (advanced).
-  sekcjeTytul: 'Sekcje szyn GPZ',
   liczbaSekcji: 'Liczba sekcji szyn SN',
   liczbaTrafo: 'Transformatory 110/SN',
-  polNaSekcje: 'Pola liniowe na sekcję',
-  nazwaSekcji: 'Nazwa sekcji',
-  nazwaPola: 'Nazwa pola liniowego',
   aparatRodzaj: 'Aparat pola liniowego',
-  aparatKatalog: 'Typ aparatu z katalogu',
   aparatPlaceholder: '— wybierz aparat SN —',
   aparatBlad: 'Nie udało się pobrać katalogu aparatury SN.',
 
@@ -124,7 +115,6 @@ export const ZRODLO_STRINGS = {
   podsumZrodloWartosc: 'Obliczenie IEC 60909 po stronie serwera',
   podsumBrak: 'nie wyznaczono',
   podsumBladDomyslny: 'Nie udało się wyznaczyć podsumowania GPZ.',
-  podsumBrakZero: 'Backend nie zwrócił składowej zerowej — wynik zwarcia doziemnego pozostaje niedostępny.',
 
   // Kontrola / gotowość.
   kontrolaTytul: 'Kontrola GPZ',
@@ -152,85 +142,28 @@ export const ZRODLO_STRINGS = {
   trybRecznyInfo:
     'Tryb ekspercki: wpisujesz ekwiwalent zwarciowy ręcznie (bez pakietu katalogowego). '
     + 'Używaj, gdy dysponujesz danymi OSD/PSE dla konkretnego węzła.',
-  stronaTytul: 'Strona odniesienia parametrów',
-  stronaSn: 'Strona SN',
-  stronaHv: 'Strona 110 kV',
   trybParamTytul: 'Postać parametru zwarciowego',
   trybMoc: 'Moc zwarciowa Sk″',
   trybImpedancja: 'Impedancja R + jX',
-  napiecieHv: 'Napięcie szyny 110 kV',
-  sk3Hv: 'Moc zwarciowa Sk″ (110 kV)',
   rOhm: 'Rezystancja R',
   xOhm: 'Reaktancja X',
 
   // Transformatory.
-  transformatoryOpis:
-    'Liczba i typ transformatorów 110/SN łączących wspólną szynę 110 kV (na niej równoważnik '
-    + 'sieci) z sekcjami SN — transformator n zasila sekcję n (po kolei, cyklicznie). Parametry '
-    + '(Sn, uk, grupa połączeń) pochodzą z katalogu; rozpływ przez każdy transformator i wkłady '
-    + 'zwarciowe liczy backend dla rzeczywistego stanu sprzęgła.',
   transformatoryPozaModelem:
     'Równoważnik sieci podany na szynach SN (z katalogu albo ręcznie po stronie SN) to moc '
     + 'zwarciowa widziana z szyn SN — zawiera już impedancję transformatorów 110/SN. Granicą '
     + 'modelu są wtedy szyny SN GPZ: transformatory 110/SN nie są elementami obliczeń i kreator '
-    + 'ich nie tworzy. Równoważnik zasila sekcję 1; kolejne sekcje zasila sprzęgło. Aby '
-    + 'zamodelować transformatory 110/SN (rozpływ przez każdy z nich, wkłady zwarciowe, '
-    + 'regulacja zaczepów), wybierz w kroku „Źródło” ręczny ekwiwalent (ekspercki) po stronie '
-    + '110 kV — transformatory połączą wtedy wspólną szynę 110 kV z sekcjami SN.',
+    + 'ich nie tworzy. Równoważnik zasila sekcję 1; kolejne sekcje zasila sprzęgło.',
   transformatoryPozaModelemKrotko: 'W równoważniku SN (poza modelem)',
-  transformatorKatalog: 'Typ transformatora 110/SN z katalogu',
-  transformatorPlaceholder: '— transformator domyślny (dobór automatyczny) —',
-  transformatorBlad: 'Nie udało się pobrać katalogu transformatorów.',
-  transformatorSn: 'Moc znamionowa Sn',
-  transformatorUk: 'Napięcie zwarcia uk',
-  transformatorGrupa: 'Grupa połączeń',
-
-  // Regulacja zaczepów (OLTC/DETC) — V12K-045.
-  oltcTytul: 'Regulacja napięcia (przełącznik zaczepów)',
-  oltcOpis:
-    'Regulacja przekładni transformatora 110/SN. OLTC (pod obciążeniem) reguluje '
-    + 'napięcie szyny SN automatycznie; DETC ustawia stały zaczep bez obciążenia. '
-    + 'Wynik regulacji liczy rozpływ (pętla OLTC), nie UI.',
-  oltcTyp: 'Rodzaj regulacji',
-  oltcKatalog: 'Przełącznik zaczepów z katalogu',
-  oltcKatalogPlaceholder: '— dobór ręczny (bez katalogu) —',
-  oltcKatalogBlad: 'Nie udało się pobrać katalogu przełączników zaczepów.',
-  oltcUzwojenie: 'Regulowane uzwojenie',
-  oltcNeutral: 'Pozycja neutralna',
-  oltcBiezaca: 'Pozycja bieżąca',
-  oltcMin: 'Pozycja min.',
-  oltcMax: 'Pozycja maks.',
-  oltcKrok: 'Wielkość kroku',
-  oltcTryb: 'Tryb sterowania',
-  oltcSetpoint: 'Napięcie zadane',
-  oltcDeadband: 'Pasmo nieczułości',
-  oltcOpoznienie: 'Opóźnienie zadziałania',
-  oltcLdc: 'Kompensacja spadku na linii (LDC)',
-  oltcLdcR: 'LDC — rezystancja R',
-  oltcLdcX: 'LDC — reaktancja X',
-  oltcTrybAutoInfo:
-    'W trybie automatycznym pętla rozpływu przesuwa jeden zaczep na krok, aż napięcie '
-    + 'szyny SN znajdzie się w paśmie nieczułości wokół wartości zadanej.',
-  oltcTypy: [
-    { id: 'NONE', etykieta: 'Brak regulacji' },
-    { id: 'DETC', etykieta: 'DETC (bez obciążenia)' },
-    { id: 'OLTC', etykieta: 'OLTC (pod obciążeniem)' },
-  ],
-  oltcUzwojenia: [
-    { id: 'HV', etykieta: 'Górne (110 kV)' },
-    { id: 'LV', etykieta: 'Dolne (SN)' },
-  ],
-  oltcTryby: [
-    { id: 'MANUAL', etykieta: 'Ręczny' },
-    { id: 'AUTOMATIC', etykieta: 'Automatyczny (AVR)' },
-    { id: 'PROFILE', etykieta: 'Profil dobowy' },
-    { id: 'REMOTE', etykieta: 'Zdalny (SCADA)' },
-  ],
+  // Karta GPZ-H5-APARATURA: GPZ ze stroną 110 kV buduje szablon stacji H5 z galerii.
+  gpz110Szablon:
+    'GPZ ze stroną 110 kV — dwa tory zasilania 110 kV, transformatory 110/SN w modelu, łącznik '
+    + 'szyn 110 kV i rezerwa (układ H5, ENEA Zeszyt 1 §11.1) — buduje szablon stacji z galerii '
+    + '„Szablony stacji”: dane projektu z podstawą (tory zasilania, stan łącznika szyn, tryb '
+    + 'rezerwy, aparaty pól), rozpływ przez każdy transformator i wkłady zwarciowe liczy backend.',
+  gpz110SzablonAkcja: 'Otwórz szablony stacji (GPZ 110/SN)',
 
   // Rozdzielnia.
-  rozdzielniaOpis:
-    'Liczba sekcji szyn SN i sposób uziemienia punktu neutralnego. Sprzęgło powstaje '
-    + 'automatycznie między sekcjami (dla ≥ 2 sekcji).',
   sprzegloNota: 'Sprzęgło sekcyjne: powstaje automatycznie dla 2+ sekcji.',
 
   // Sekcje i pola (per sekcja).
@@ -248,7 +181,6 @@ export const ZRODLO_STRINGS = {
     + 'wg katalogu producenta i norm. Zasila układ pola na schemacie (SLD) i ocenę zgodności.',
   rodzinaPole: 'Rodzina rozdzielnicy',
   rodzinaPlaceholder: '— rozdzielnica uniwersalna (bez producenta) —',
-  rodzinaBlad: 'Nie udało się pobrać rodzin rozdzielnic.',
   sekcjaSzablon: 'Szablon pola (producent)',
   sekcjaSzablonPlaceholder: '— szablon domyślny —',
   sekcjaSzablonPomoc: 'Szablon pola liniowego z wybranej rodziny — determinuje skład aparatury pola.',

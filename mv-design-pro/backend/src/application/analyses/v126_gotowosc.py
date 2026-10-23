@@ -46,6 +46,7 @@ from solver_input.v126_contracts import (
     generatory_przeksztaltnikowe_v126,
     odbiorcy_z_parametrow,
     ograniczniki_bez_uziemienia_sieci,
+    ograniczniki_poza_dziedzina_koordynacji,
     pominiete_zrodla_v126,
 )
 
@@ -679,14 +680,24 @@ def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list
     # punktu neutralnego sieci) — liczone RAZ, czytane przez oba warunki poniżej, żeby zdanie
     # „model nie zawiera ograniczników" nie padło, gdy ograniczniki są, a brakuje uziemienia.
     bez_uziemienia = ograniczniki_bez_uziemienia_sieci(enm)
+    poza_dziedzina = ograniczniki_poza_dziedzina_koordynacji(enm)
     if model.insulation:
         opis_ogranicznikow = (
             f"Miejsca zainstalowania ograniczników przepięć w modelu: {len(model.insulation)}"
         )
-    elif bez_uziemienia:
+    elif bez_uziemienia or poza_dziedzina:
+        przyczyny = [
+            przyczyna
+            for przyczyna, miejsca in (
+                ("brak uziemienia punktu neutralnego sieci", bez_uziemienia),
+                ("napięcie sieci poza dziedziną koordynacji (U_m > 36 kV)", poza_dziedzina),
+            )
+            if miejsca
+        ]
         opis_ogranicznikow = (
-            f"Ograniczniki przepięć w modelu: {len(bez_uziemienia)} miejsc, żadne nie wchodzi "
-            "do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)"
+            f"Ograniczniki przepięć w modelu: {len(bez_uziemienia) + len(poza_dziedzina)} "
+            f"miejsc, żadne nie wchodzi do koordynacji izolacji — {'; '.join(przyczyny)} "
+            "(warunki niżej)"
         )
     else:
         opis_ogranicznikow = (
@@ -748,6 +759,23 @@ def _warunki_izolacji(enm: EnergyNetworkModel, model: V126AcademicInput) -> list
                 ),
                 spelniony=False,
                 elementy=bez_uziemienia,
+            )
+        )
+    # GPZ-H5-APARATURA: ogranicznik na szynie sieci o U_m powyżej 36 kV (sieć 35 kV, szyna WN)
+    # leży poza tablicą poziomów izolacji solvera (IEC 60071-1 do U_m = 36 kV) — miejsce NIE jest oceniane (brak wiersza
+    # wejścia), a gotowość mówi to wprost; warunek nieblokujący dla miejsc SN.
+    if poza_dziedzina:
+        warunki.append(
+            Warunek(
+                kod="ograniczniki.poza_dziedzina_koordynacji",
+                opis_pl=(
+                    f"{len(poza_dziedzina)} miejsc z ogranicznikiem przy napięciu najwyższym "
+                    "sieci powyżej 36 kV — koordynacja izolacji solvera obejmuje tablicę "
+                    "IEC 60071-1 do U_m = 36 kV; miejsca nieocenione"
+                ),
+                spelniony=False,
+                elementy=poza_dziedzina,
+                blokujacy=False,
             )
         )
     return warunki

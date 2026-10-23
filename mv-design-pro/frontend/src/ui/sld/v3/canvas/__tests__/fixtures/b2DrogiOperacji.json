@@ -2,64 +2,73 @@
   "add_grid_source_sn": {
     "typ": "substation",
     "utworzone": [
-      "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
-      "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
-      "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/wn_sn",
-      "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/source",
-      "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
-      "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01"
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bus_wn",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bus_wn",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/terminal_sn",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/breaker_sn",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/wn_sn",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/terminal_line",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/breaker_line",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/source",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/terminal_line",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/breaker_line",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/source",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_coupler/001",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation",
+      "gpz/e7b9607ece78ddcf8d362bc0582084a7/corridor_01"
     ],
-    "wskazanie": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+    "wskazanie": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation",
     "zoom_to": true
   },
   "add_sn_bay": {
     "typ": "bay",
     "utworzone": [
-      "sn/b59362d9ddddf3204865181a20cab88a/bay",
-      "sn/b59362d9ddddf3204865181a20cab88a/bay_terminal",
-      "sn/b59362d9ddddf3204865181a20cab88a/bay_device"
+      "sn/b1782d1668236dee8b14e11222685dec/bay",
+      "sn/b1782d1668236dee8b14e11222685dec/bay_terminal",
+      "sn/b1782d1668236dee8b14e11222685dec/bay_device"
     ],
-    "wskazanie": "sn/b59362d9ddddf3204865181a20cab88a/bay",
+    "wskazanie": "sn/b1782d1668236dee8b14e11222685dec/bay",
     "zoom_to": true
   },
   "continue_trunk_segment_sn": {
     "typ": "bus",
     "utworzone": [
-      "bus/146ff026284a0837b2ba17040865255e/downstream",
-      "seg/146ff026284a0837b2ba17040865255e/segment"
+      "bus/777b8ee645e26d62a61a980990e12873/downstream",
+      "seg/777b8ee645e26d62a61a980990e12873/segment"
     ],
-    "wskazanie": "bus/146ff026284a0837b2ba17040865255e/downstream",
+    "wskazanie": "bus/777b8ee645e26d62a61a980990e12873/downstream",
     "zoom_to": true
   },
   "insert_station_on_segment_sn": {
     "typ": "substation",
     "utworzone": [
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_bus",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/000",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_breaker/000",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/001",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_breaker/001",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/002",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_breaker/002",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/003",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_breaker/003",
-      "seg/f45968a52d5278aac15c0a3797827b83/segment_L",
-      "seg/f45968a52d5278aac15c0a3797827b83/segment_R",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/nn_bus",
-      "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/transformer"
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_bus",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_terminal/000",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_breaker/000",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_terminal/001",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_breaker/001",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_terminal/002",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_breaker/002",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_terminal/003",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/sn_field_breaker/003",
+      "seg/161d93b2b770c261c638538982115e8e/segment_L",
+      "seg/161d93b2b770c261c638538982115e8e/segment_R",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/station",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/nn_bus",
+      "stn/04ecdb18a943a9e2775aa7fae7c815ed/transformer"
     ],
-    "wskazanie": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station",
+    "wskazanie": "stn/04ecdb18a943a9e2775aa7fae7c815ed/station",
     "zoom_to": true
   },
   "start_branch_segment_sn": {
     "typ": "branch",
     "utworzone": [
-      "bus/28132fa3458c74df13f96610149c6611/branch_end",
-      "seg/28132fa3458c74df13f96610149c6611/branch_segment",
-      "corridor/b31f39ed3d11d49cceb6d7bb00fe1309/branch"
+      "bus/8bfb4daec0710e4219e359011ab49ae0/branch_end",
+      "seg/8bfb4daec0710e4219e359011ab49ae0/branch_segment",
+      "corridor/a7ed33503715443a508fc23431cff5f1/branch"
     ],
-    "wskazanie": "seg/28132fa3458c74df13f96610149c6611/branch_segment",
+    "wskazanie": "seg/8bfb4daec0710e4219e359011ab49ae0/branch_segment",
     "zoom_to": true
   }
 }

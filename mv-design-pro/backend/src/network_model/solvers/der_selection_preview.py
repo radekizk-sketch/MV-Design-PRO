@@ -24,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from network_model.odmowa_danych import OdmowaDanychError
+from network_model.pochodne.pasma_napieciowe import tabela_napiec_sieci, tabela_napiec_urzadzenia
 from network_model.solvers.cable_ampacity_derating import (
     WARUNKI_KATALOGOWE,
     WspolczynnikiObciazalnosci,
@@ -579,7 +580,10 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
 # 3) DOBÓR APARATU GŁÓWNEGO POLA SN (wymaganie 11)
 # ===========================================================================
 
-_FIELD_FORMULA_REF = "In ≥ I_TR · (1 + rezerwa);  Un_aparatu ≥ napięcie sieci"
+_FIELD_FORMULA_REF = (
+    "In ≥ I_TR · (1 + rezerwa);  Un_aparatu ≥ napięcie sieci;  U_m aparatu z tabeli napięć "
+    "sieci (IEC 60038 tab. 3/4)"
+)
 
 
 @dataclass(frozen=True)
@@ -662,6 +666,22 @@ def propose_mv_field_apparatus(
                     candidate.name,
                     "rodzaj_niewlasciwy",
                     f"Rodzaj aparatu „{candidate.equipment_kind}” nie nadaje się na aparat główny pola.",
+                )
+            )
+            continue
+        # Karta GPZ-H5-APARATURA: aparat innej tabeli napięć IEC 60038 (np. wyłącznik 110 kV
+        # o U_r = U_m 123 kV dla pola SN) nie jest aparatem tej sieci, choć jego napięcie
+        # przewyższa napięcie sieci — ta sama reguła co zgodność U_m w składzie pola.
+        tabela_sieci = tabela_napiec_sieci(data.system_voltage_kv)
+        if tabela_sieci is not None and tabela_napiec_urzadzenia(candidate.un_kv) != tabela_sieci:
+            rejected.append(
+                RejectedCandidate(
+                    candidate.catalog_ref,
+                    candidate.name,
+                    "pasmo_napiecia_niewlasciwe",
+                    f"Aparat o napięciu znamionowym {candidate.un_kv:g} kV nie należy do urządzeń "
+                    f"sieci {data.system_voltage_kv:g} kV (IEC 60038 tabela "
+                    f"{'3' if tabela_sieci == 'TAB3' else '4'}).",
                 )
             )
             continue

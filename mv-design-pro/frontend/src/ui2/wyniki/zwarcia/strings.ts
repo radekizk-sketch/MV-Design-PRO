@@ -297,29 +297,11 @@ export function rodzajZwarciaPL(faultType: string | null): string {
   return RODZAJ_ZWARCIA_PL[znormalizowany] ?? ZWARCIA_STRINGS.rodzajNieznany;
 }
 
-/**
- * Słownik polskich etykiet flag wiersza zwarciowego (`ShortCircuitRow.flags`).
- * Spójny z kanoniczną pulą tokenów flag repozytorium
- * (`ui/results-inspector/types.ts:460-464`). Tokeny nierozpoznane pokazywane są
- * dosłownie (dane, nie literał UI). Docelowa pula flag zwarciowych jest
- * WŁASNOŚCIĄ BACKENDU (dziś pusta — `enm/canonical_analysis.py`, pole `flags`
- * emitowane jako `[]`); ten słownik NIE zgaduje tokenów, których backend
- * jeszcze nie wysyła.
- */
-/** Flagi wiersza zwarciowego (kanoniczna pula tokenów flag wyników). */
-export type FlagaWierszaZwarcia = 'SLACK' | 'SYNTHETIC' | 'VOLTAGE_VIOLATION' | 'OVERLOADED';
-
-export const FLAGI_ZWARCIA_PL: Readonly<Record<FlagaWierszaZwarcia, string>> = {
-  SLACK: 'Węzeł bilansujący',
-  SYNTHETIC: 'Węzeł syntetyczny',
-  VOLTAGE_VIOLATION: 'Naruszenie napięcia',
-  OVERLOADED: 'Przeciążenie',
-};
-
-/** Łączy flagi wiersza w polski tekst uwag (pusta lista → „—"). */
-export function uwagiZwarciaPL(flagi: string[]): string {
-  if (!flagi || flagi.length === 0) return ZWARCIA_STRINGS.kreska;
-  return flagi.map((flaga) => etykietaZeSlownika(FLAGI_ZWARCIA_PL, flaga)).join(', ');
+/** Łączy etykiety PL znaczników wiersza (`flags_pl`, nadane przez backend) w tekst uwag;
+ * pusta lista → „—". Ekran nie ma własnego słownika znaczników. */
+export function uwagiZwarciaPL(etykiety: readonly string[]): string {
+  if (etykiety.length === 0) return ZWARCIA_STRINGS.kreska;
+  return etykiety.join(', ');
 }
 
 /** Format liczby z przecinkiem dziesiętnym (deterministyczny). */

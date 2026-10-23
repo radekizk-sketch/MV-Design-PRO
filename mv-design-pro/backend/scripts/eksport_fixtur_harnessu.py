@@ -4270,41 +4270,6 @@ def _segmenty_szablonu(
     return wynik
 
 
-def punkt_neutralny_sn_grup_polaczen() -> dict[str, Any]:
-    """Punkt neutralny sieci SN, który daje transformator WN/SN każdej grupy słownika
-    IEC 60076-1 bez konfiguracji ``lv_neutral`` (karta GPZ-MODEL) — wyrocznia lustra
-    ``punktNeutralnySnTransformatora`` kreatora źródła. Liczy go TEN SAM model połączeń
-    składowej zerowej, który czyta zwarcie 1F i walidator (E-W5-01):
-    droga zerowa po stronie SN (szeregowa albo bocznik dolny) ⇒ ``directly_grounded``,
-    inaczej ``isolated``."""
-    from enm.grupa_polaczen import GRUPY_POLACZEN_IEC60076
-    from enm.models import Transformer
-    from enm.zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
-
-    wynik: dict[str, str] = {}
-    for grupa in sorted(GRUPY_POLACZEN_IEC60076):
-        model = build_transformer_zero_seq_model(
-            Transformer(
-                ref_id="tr",
-                name="tr",
-                hv_bus_ref="wn",
-                lv_bus_ref="sn",
-                sn_mva=25.0,
-                uhv_kv=110.0,
-                ulv_kv=15.0,
-                uk_percent=11.0,
-                pk_kw=120.0,
-                vector_group=grupa,
-            )
-        )
-        droga_sn = model.connection in (
-            ZeroSeqConnection.SERIES_THROUGH,
-            ZeroSeqConnection.LV_SHUNT_GROUND,
-        )
-        wynik[grupa] = "directly_grounded" if droga_sn else "isolated"
-    return {"grupy": wynik}
-
-
 def segmenty_referencji_modelu() -> dict[str, Any]:
     """Pełne słownictwo segmentów identyfikatorów elementów, które buduje backend.
 
@@ -5217,7 +5182,6 @@ FIXTURY: dict[str, Any] = {
     "identyfikatory_grafu": identyfikatory_grafu,
     "katalogi_odniesien_v126": katalogi_odniesien_v126,
     "segmenty_referencji_modelu": segmenty_referencji_modelu,
-    "punkt_neutralny_sn_grup_polaczen": punkt_neutralny_sn_grup_polaczen,
     "gotowosc_v126_scena_akademickie_parametry": gotowosc_v126_scena_akademickie_parametry,
     "werdykt_projektowy_scena_ocena": werdykt_projektowy_scena_ocena,
     "werdykt_projektowy_scena_ocena_przekroczenia": werdykt_projektowy_scena_ocena_przekroczenia,

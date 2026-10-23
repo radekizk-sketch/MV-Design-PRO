@@ -2459,7 +2459,10 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
     expect(byRef.get('gen-2')).toMatchObject({ connectionRef: 'bus-nn-2', ratedPower: 0.2 });
   });
 
-  it('sonda fixtura sldSubstrate52s: liczba źródeł per kind (1 external_grid GPZ + 20 DER: 8 pv, 8 bess, 4 wind)', () => {
+  // Karta GPZ-H5-APARATURA: GPZ substratu w układzie H5 ma DWA tory zasilania 110 kV (ENEA
+  // Zeszyt 1 §11.1 — stacja z jedną linią zasilającą nie jest dopuszczona), każdy z własnym
+  // równoważnikiem sieci na zacisku pola liniowego — stąd 2 źródła external_grid.
+  it('sonda fixtura sldSubstrate52s: liczba źródeł per kind (2 external_grid GPZ — tory L1/L2 + 20 DER: 8 pv, 8 bess, 4 wind)', () => {
     const fixturePath = resolveFixturePath('sldSubstrate52s.enm.json');
     const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
@@ -2469,8 +2472,8 @@ describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 �
       byKind.set(s.kind, (byKind.get(s.kind) ?? 0) + 1);
     }
 
-    expect(r.sources).toHaveLength(21);
-    expect(byKind.get('external_grid')).toBe(1);
+    expect(r.sources).toHaveLength(22);
+    expect(byKind.get('external_grid')).toBe(2);
     expect(byKind.get('pv')).toBe(8);
     expect(byKind.get('bess')).toBe(8);
     expect(byKind.get('wind')).toBe(4);

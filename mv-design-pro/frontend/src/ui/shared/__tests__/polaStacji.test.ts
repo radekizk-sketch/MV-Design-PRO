@@ -13,6 +13,7 @@ import type { Bay } from '../../../types/enm';
 import { pole } from '../../../test/pola';
 import {
   czyPoleNn,
+  czyPoleWn,
   napieciaSzyn,
   pola,
   polaNn,
@@ -154,5 +155,41 @@ describe('polaStacji — dane brzegowe', () => {
     expect(polaStacji(model, '  ')).toEqual([]);
     expect(zaciskPola(null)).toBeNull();
     expect(punktPrzylaczeniaPola(pole({ ref_id: 'p', bay_role: 'IN', bus_ref: '' }))).toBeNull();
+  });
+});
+
+/**
+ * Karta GPZ-H5-APARATURA: `czyPoleWn` jest lustrem bramy `bay_equipment.bay_hv_boundary`
+ * (`enm/wyposazenie_pola.py`, predykat `enm.sklad_pola.pole_granicy_wn` = pasmo WN, Uₙ ≥ 110 kV).
+ * Iloczyn {napięcie szyny: nN, SN, granica 109,999/110 kV, WN 220 kV, brak napięcia, szyna
+ * nieznana, brak szyny pola} — pole WN i pole nN rozłączne (jedno pasmo na pole).
+ */
+describe('czyPoleWn — granica zasilania 110 kV', () => {
+  const m = {
+    buses: [
+      { ref_id: 'nn', voltage_kv: 0.4 },
+      { ref_id: 'sn', voltage_kv: 15 },
+      { ref_id: 'sn_max', voltage_kv: 109.999 },
+      { ref_id: 'wn', voltage_kv: 110 },
+      { ref_id: 'wn220', voltage_kv: 220 },
+      { ref_id: 'bez', voltage_kv: null },
+    ],
+  };
+  it.each([
+    ['nn', false],
+    ['sn', false],
+    ['sn_max', false],
+    ['wn', true],
+    ['wn220', true],
+    ['bez', false],
+    ['nieznana', false],
+    ['', false],
+  ])('szyna %s → pole WN: %s', (szyna, oczekiwane) => {
+    expect(czyPoleWn(m, { bus_ref: szyna })).toBe(oczekiwane);
+    if (oczekiwane) expect(czyPoleNn(m, { bus_ref: szyna })).toBe(false);
+  });
+  it('brak modelu = NIE WN (brak danej ≠ granica 110 kV)', () => {
+    expect(czyPoleWn(null, { bus_ref: 'wn' })).toBe(false);
+    expect(czyPoleWn(undefined, { bus_ref: 'wn' })).toBe(false);
   });
 });

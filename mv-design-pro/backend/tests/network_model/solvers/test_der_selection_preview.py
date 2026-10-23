@@ -260,6 +260,41 @@ def test_field_apparatus_voltage_too_low_rejected() -> None:
     assert "napiecie_aparatu_za_niskie" in reason_codes
 
 
+@pytest.mark.parametrize(
+    ("prad_tr_a", "napiecie_sieci_kv", "oczekiwany"),
+    [
+        # Prąd mieści się w aparacie SN — wyłącznik 110 kV odrzucony pasmem, nie wybrany.
+        (100.0, 15.0, "cb-sn-630"),
+        # Prąd przekracza każdy aparat SN — wyłącznik 110 kV (3150 A) NIE ratuje doboru.
+        (2000.0, 15.0, None),
+        # Sieć 110 kV — aparat SN 24 kV odrzucony pasmem (tabela 3 ≠ tabela 4).
+        (300.0, 110.0, "cb-110"),
+    ],
+)
+def test_field_apparatus_innej_tabeli_napiec_odrzucony(
+    prad_tr_a: float, napiecie_sieci_kv: float, oczekiwany: str | None
+) -> None:
+    """Karta GPZ-H5-APARATURA: iloczyn „pasmo kandydata (SN/WN) × prąd (mieści się / ponad
+    każdy aparat SN) × pasmo sieci": aparat innej tabeli napięć IEC 60038 jest odrzucany
+    kodem ``pasmo_napiecia_niewlasciwe`` — wcześniej wyłącznik 123 kV przechodził kryterium
+    „U_n aparatu ≥ napięcie sieci" w polu SN."""
+    kandydaci = (
+        FieldApparatusCandidate("cb-sn-630", "Wyłącznik SN 630 A", "CIRCUIT_BREAKER", 24.0, 630.0),
+        FieldApparatusCandidate("cb-110", "Wyłącznik 110 kV", "CIRCUIT_BREAKER", 123.0, 3150.0),
+    )
+    result = propose_mv_field_apparatus(
+        FieldApparatusSelectionInput(
+            transformer_current_a=prad_tr_a,
+            system_voltage_kv=napiecie_sieci_kv,
+            candidates=kandydaci,
+        )
+    )
+    assert (result.proposal.catalog_ref if result.proposal else None) == oczekiwany
+    powody = {r.catalog_ref: r.reason_code for r in result.rejected}
+    obcy = "cb-110" if napiecie_sieci_kv < 35.0 else "cb-sn-630"
+    assert powody[obcy] == "pasmo_napiecia_niewlasciwe"
+
+
 # ---------------------------------------------------------------------------
 # Karta F-K1 — TRZECIE kryterium doboru: wytrzymalosc zwarciowa zyly (IEC 60949).
 # Znalezisko Z1 audytu FLOW: przekroj poprawny pradowo i napieciowo moze ulec

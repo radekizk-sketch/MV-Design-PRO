@@ -317,6 +317,13 @@ const RODZAJ_URZADZENIA_PL: Readonly<Record<BayPrimaryDevice['kind'], string>> =
   PCS: 'Układ przekształtnikowy PCS',
   BATTERY: 'Bateria',
   SURGE_ARRESTER: 'Ogranicznik przepięć',
+  // GPZ-H5-APARATURA: rodzaje gniazd szablonów pól standardu (ENEA Zeszyt 1 §13, §16, §17).
+  DS_ES: 'Odłącznik trójpołożeniowy (zamknięty / otwarty / uziemiony)',
+  VOLTAGE_INDICATOR: 'Wskaźnik obecności napięcia',
+  EARTHING_TRANSFORMER: 'Transformator uziemiający',
+  NEUTRAL_REACTOR: 'Dławik gaszący',
+  NEUTRAL_RESISTOR: 'Rezystor uziemiający',
+  CAPACITOR_BANK: 'Bateria kondensatorów',
 };
 
 const RODZAJ_ZABEZPIECZENIA_PL: Readonly<Record<ProtectionAssignment['device_type'], string>> = {

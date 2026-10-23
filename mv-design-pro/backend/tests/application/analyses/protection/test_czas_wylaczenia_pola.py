@@ -154,7 +154,18 @@ def _enm(
             )
         ],
         # Karta W5-B: pole stacji jest rekordem `bays` (jedyny nośnik pól).
-        bays=[Bay(ref_id=POLE, name="P-01", bay_role="IN", substation_ref="stn", bus_ref="sn")],
+        bays=[
+            Bay(
+                ref_id=POLE,
+                name="P-01",
+                bay_role="IN",
+                substation_ref="stn",
+                bus_ref="sn",
+                # Aparaty pola należą do pola przez `equipment_refs` (jedna prawda składu
+                # pola, `enm.sklad_pola.aparaty_pola`).
+                equipment_refs=[APARAT, *(["aparat/02"] if drugi_aparat else [])],
+            )
+        ],
     )
 
 

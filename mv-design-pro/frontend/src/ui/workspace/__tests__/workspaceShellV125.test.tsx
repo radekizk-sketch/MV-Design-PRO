@@ -519,6 +519,7 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
               sk_mva: 2192.171,
               fault_type: '3F',
               flags: [],
+              flags_pl: [],
             },
           ],
         });

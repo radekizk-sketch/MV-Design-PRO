@@ -187,8 +187,8 @@ def test_bridge_wymusza_nie_dotyczy_nawet_gdy_katalog_ma_sprzeczne_dane() -> Non
 
 
 def test_kazdy_wpis_sn_bez_zdolnosci_wylaczania_ma_i_cu_ka_none_w_katalogu() -> None:
-    """Iloczyn cech na CALYM katalogu: LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH
-    -> i_cu_ka MUSI byc None. Wykrywa iniekcje "nadaj rozlacznikowi i_cu_ka
+    """Iloczyn cech na CALYM katalogu: LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH/
+    DISCONNECTOR_EARTH_SWITCH (odlacznik trojpolozeniowy) -> i_cu_ka MUSI byc None. Wykrywa iniekcje "nadaj rozlacznikowi i_cu_ka
     z liczba" w SAMYM zrodle danych (nie tylko w moscie).
     """
     zbadane_rodzaje: set[str] = set()
@@ -203,7 +203,7 @@ def test_kazdy_wpis_sn_bez_zdolnosci_wylaczania_ma_i_cu_ka_none_w_katalogu() -> 
             )
         else:
             assert kind in {"CIRCUIT_BREAKER", "RECLOSER", "FUSE"}
-    # Miara pokrycia: wszystkie 6 rodzajow aparatury SN musialy wystapic w
+    # Miara pokrycia: wszystkie 7 rodzajow aparatury SN musialy wystapic w
     # probce, inaczej test niczego by nie sprawdzal dla brakujacego rodzaju.
     assert zbadane_rodzaje == {
         "CIRCUIT_BREAKER",
@@ -212,6 +212,7 @@ def test_kazdy_wpis_sn_bez_zdolnosci_wylaczania_ma_i_cu_ka_none_w_katalogu() -> 
         "RECLOSER",
         "FUSE",
         "EARTH_SWITCH",
+        "DISCONNECTOR_EARTH_SWITCH",
     }
 
 

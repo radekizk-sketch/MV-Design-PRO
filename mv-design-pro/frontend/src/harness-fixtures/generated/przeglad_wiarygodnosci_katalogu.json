@@ -24,7 +24,7 @@
     {
       "rodzina": "aparaty-sn",
       "etykieta_pl": "Aparatura SN",
-      "liczba_pozycji": 48,
+      "liczba_pozycji": 52,
       "sprawdzone_reguly": [
         "KAT-W-003"
       ],
@@ -32,7 +32,7 @@
         {
           "kod": "KAT-W-003",
           "policzone": 28,
-          "pominiete": 20,
+          "pominiete": 24,
           "powod_pominiecia": "aparat bez dodatniej zdolności wyłączania — odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego"
         }
       ],

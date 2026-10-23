@@ -87,7 +87,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "notes",
             # Karta GPZ-H5 (układ ENEA H5): struktura JAWNA — sekcje 110 kV z torami
             # zasilania, łączniki szyn ze stanem normalnym, transformatory przypisane
-            # sekcja 110 kV → sekcja SN, tryb rezerwy, propozycja składu aparatów pól 110 kV.
+            # sekcja 110 kV → sekcja SN, tryb rezerwy; pola standardu ENEA (karta
+            # GPZ-H5-APARATURA): wariant pola zespołu uziemiającego, obsadzenie gniazd.
             "hv_sections",
             "hv_coupler",
             "sn_coupler",
@@ -95,7 +96,8 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "reserve_mode",
             "reserve_transformer",
             "reserve_transformer_apparatus",
-            "hv_bay_apparatus_proposal",
+            "earthing_bay_template",
+            "bay_apparatus",
         ),
     ),
     "continue_trunk_segment_sn": OperationSpec(
@@ -185,12 +187,12 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         canonical_name="set_bay_equipment",
         category=OperationCategory.SN_NETWORK,
         description_pl=(
-            "Ustawienie wyposażenia pola SN — aparaty z katalogu, propozycja z szablonu "
-            "pola albo usunięcie wyposażenia"
+            "Ustawienie wyposażenia pola SN i 110 kV — aparaty z katalogu, aparaty z szablonu "
+            "pola, gniazda szablonu pola standardu albo usunięcie wyposażenia"
         ),
         target_layer="Domain / NetworkModel",
         required_fields=("bay_ref", "mode"),
-        optional_fields=("devices", "bay_template_ref"),
+        optional_fields=("devices", "bay_template_ref", "szablon_standardu_ref"),
         creates_elements=False,
     ),
     "add_sn_bay": OperationSpec(
@@ -1033,7 +1035,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Odcinek nie ma zdefiniowanej długości",
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "length_m"},
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "length_km"},
     ),
     "trunk.segment_length_invalid": ReadinessCodeSpec(
         code="trunk.segment_length_invalid",
@@ -1041,7 +1043,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.BLOCKER,
         message_pl="Nieprawidłowa długość odcinka (musi być > 0)",
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "length_m"},
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "length_km"},
     ),
     "trunk.catalog_missing": ReadinessCodeSpec(
         code="trunk.catalog_missing",
@@ -2714,8 +2716,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.CATALOGS,
         priority=3,
         level=ReadinessLevel.WARNING,
-        message_pl="Moc czynna obciążenia wynosi 0 kW",
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "p_kw"},
+        # Emiter: walidator ENM W013 (`enm/validator.py::_check_spojnosc_opisu_modelu`).
+        # Warunek: P = 0 i Q = 0 (odbiór czysto bierny wpływa na rozpływ, więc nie jest
+        # „bez mocy"); pole fokusu to pole kontraktu `Load.p_mw` (dawne `p_kw` — fantom).
+        message_pl="Moc czynna i bierna odbioru wynoszą 0",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "p_mw"},
     ),
     # LV cable
     "nn.cable_catalog_missing": ReadinessCodeSpec(

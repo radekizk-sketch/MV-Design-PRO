@@ -87,7 +87,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "0d7c6ace-aa1f-57f9-a257-c1e7910d6961",
@@ -175,7 +178,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "1ebcd0d1-6e2d-56c6-afe4-cf56b255e63a",
@@ -263,7 +269,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "37c2925e-edbc-5956-b23a-7fed082c4f7d",
@@ -351,7 +360,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "3e08cad5-6e87-5064-99fc-ea2b2941fa4d",
@@ -439,7 +451,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "4dd77a8f-9709-50f3-8bba-cf2e862ca070",
@@ -527,7 +542,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "50c539d0-8153-5690-aaef-3e2dd34a8955",
@@ -615,7 +633,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "6357b55f-ef8a-519a-b44c-1b158f867a2e",
@@ -703,7 +724,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "7aac8feb-7aba-5fe7-b625-233c4319c6ea",
@@ -791,7 +815,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "808cbcc5-400c-5551-b72d-6766120604a4",
@@ -879,7 +906,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "90e3195b-cc5e-56d3-8fc8-4256f397c138",
@@ -967,7 +997,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "9ac1a8a4-a5bc-567c-9a6d-f3a87c96ab16",
@@ -1055,7 +1088,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "b57445d5-b9a2-5d92-9efc-ad6c52e91c94",
@@ -1143,7 +1179,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "ca76019f-80a4-5c39-a2bf-05a87029ab21",
@@ -1231,7 +1270,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "cb457794-285a-5119-b8ff-6fa51aebcf8c",
@@ -1319,7 +1361,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "ccbc99bf-8e6c-5428-a41f-02f0ed8d0c93",
@@ -1407,7 +1452,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "ced0a047-2b12-5ea2-a71c-98cf34a60a61",
@@ -1495,7 +1543,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     }
   ],
   "zrodla_sieciowe": [
@@ -1782,7 +1833,7 @@
       "catalog_materialization_status": "partial",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+      "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
       "model_revision": 2,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

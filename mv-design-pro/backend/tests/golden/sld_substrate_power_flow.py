@@ -52,20 +52,14 @@ import uuid
 from typing import Any, Literal
 
 import networkx as nx
-from enm.mapping import map_enm_to_network_graph
+from enm.assembler import WejscieRozplywu, zloz_wejscie_rozplywu
 from enm.models import EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
+from enm.rozplyw_wysp import scal_rozwiazania_wysp
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
-from network_model.core.node import NodeType
 from network_model.solvers.power_flow_newton import (
     PowerFlowNewtonSolution,
     solve_power_flow_physics,
-)
-from network_model.solvers.power_flow_types import (
-    PowerFlowInput,
-    PowerFlowOptions,
-    PQSpec,
-    SlackSpec,
 )
 
 # Production load-flow defaults — identical to canonical_analysis._execute_power_flow.
@@ -85,78 +79,27 @@ def _ref_to_graph_id(ref_id: str) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, ref_id))
 
 
-def _build_power_flow_input(enm: EnergyNetworkModel) -> tuple[PowerFlowInput, str]:
-    """Build the production ``PowerFlowInput`` for the substrate ENM.
+def rozwiaz_rozplyw(enm: EnergyNetworkModel) -> tuple[WejscieRozplywu, PowerFlowNewtonSolution]:
+    """Rozpływ substratu TORem produktu: wejście z assemblera (``zloz_wejscie_rozplywu`` —
+    jedna szyna bilansująca na wyspę zasiloną), solver FROZEN na każdej wyspie, scalenie
+    ``scal_rozwiazania_wysp`` — to samo, co ``canonical_analysis._execute_power_flow``.
 
-    Same construction as ``canonical_analysis._execute_power_flow`` (map ENM →
-    graph, slack from the SLACK node, PQ from node net injections). Returns the
-    input and the chosen slack node id.
+    Karta GPZ-H5-APARATURA: dawny bliźniaczy budowniczy wejścia (jeden SLACK całej sieci,
+    własna kopia konwersji PQSpec) był drugą ścieżką tej samej fizyki; przy GPZ H5 z dwoma
+    torami 110 kV (§11.1) oznaczał sekcję 110 kV z własnym źródłem jako „bez napięcia”,
+    bo liczył wyłącznie pierwszą wyspę. Towarzysz liczy dziś każdą wyspę zasiloną.
     """
-    graph = map_enm_to_network_graph(enm)
-    slack_nodes = sorted(
-        node_id for node_id, node in graph.nodes.items() if node.node_type == NodeType.SLACK
+    wejscie = zloz_wejscie_rozplywu(
+        enm.model_dump(mode="json"),
+        {
+            "base_mva": _BASE_MVA,
+            "tolerance": _TOLERANCE,
+            "max_iter": _MAX_ITER,
+            "trace_level": "basic",
+        },
     )
-    if not slack_nodes:
-        raise ValueError("Substrate ENM has no SLACK node (no grid source).")
-    slack_node_id = slack_nodes[0]
-
-    def _wymagana_moc_pq(wezel: Any, node_id: str, pole: str) -> float:
-        """FAB-E (E1): brak mocy wezla PQ NIE jest moca zerowa.
-
-        `Node.__post_init__` (network_model/core/node.py) juz WYMUSZA
-        active_power/reactive_power != None dla wezlow PQ przy konstrukcji
-        grafu — `x or 0.0` tutaj bylo wiec martwym zabezpieczeniem, ktore w
-        razie zlamania tego kontraktu (np. przyszla zmiana walidacji Node)
-        cicho wstawialoby fikcyjne zero zamiast ujawnic naruszenie kontraktu.
-        """
-        wartosc = getattr(wezel, pole)
-        if wartosc is None:
-            raise ValueError(
-                f"Wezel PQ {node_id!r} bez zdefiniowanej mocy '{pole}' — sprzeczne "
-                "z kontraktem Node (network_model/core/node.py), ktory wymusza te "
-                "wartosc dla wezlow PQ przy konstrukcji grafu."
-            )
-        return float(wartosc)
-
-    pq_specs = [
-        PQSpec(
-            node_id=node_id,
-            # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` use the
-            # GENERATION convention (positive = injection; see enm/mapping.py,
-            # pinned by test_enm_mapping.py). `PQSpec.p_mw`/`q_mvar` are consumed
-            # by `power_flow_newton_internal.build_power_spec_v2`, which negates
-            # them again expecting the LOAD convention. This is the single
-            # conversion point gen->load at the PQSpec construction boundary;
-            # mirrors `enm.canonical_analysis._execute_power_flow`.
-            p_mw=-_wymagana_moc_pq(node, node_id, "active_power"),
-            q_mvar=-_wymagana_moc_pq(node, node_id, "reactive_power"),
-            zip_coeffs=node.zip_coeffs,
-            # Defect D1 (audit 2026-08-01): the ZIP polynomial scales the LOAD
-            # part only; generation on the same bus is constant power. Mirrors
-            # `enm.canonical_analysis._execute_power_flow` (same twin builder).
-            zip_base_p_mw=(
-                None if node.zip_load_active_power is None else -float(node.zip_load_active_power)
-            ),
-            zip_base_q_mvar=(
-                None
-                if node.zip_load_reactive_power is None
-                else -float(node.zip_load_reactive_power)
-            ),
-        )
-        for node_id, node in sorted(graph.nodes.items())
-        if node.node_type == NodeType.PQ and node_id != slack_node_id
-    ]
-
-    pf_input = PowerFlowInput(
-        graph=graph,
-        base_mva=_BASE_MVA,
-        slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
-        pq=pq_specs,
-        options=PowerFlowOptions(
-            tolerance=_TOLERANCE, max_iter=_MAX_ITER, trace_level="basic", validate=False
-        ),
-    )
-    return pf_input, slack_node_id
+    rozwiazania = [(wyspa, solve_power_flow_physics(wyspa.pf_input)) for wyspa in wejscie.wyspy]
+    return wejscie, scal_rozwiazania_wysp(rozwiazania, wejscie.graph)
 
 
 def _flow_direction(p_from_mva: float) -> FlowDirection:
@@ -228,8 +171,7 @@ def compute_substrate_power_flow(
           "open_point_branch_refs":[ ... ],     # ENM switch branches with status=open
         }
     """
-    pf_input, _slack = _build_power_flow_input(enm)
-    solution: PowerFlowNewtonSolution = solve_power_flow_physics(pf_input)
+    _wejscie, solution = rozwiaz_rozplyw(enm)
 
     # Invert the deterministic ref → graph-id map for buses and branches.
     bus_uuid_to_ref = {_ref_to_graph_id(b.ref_id): b.ref_id for b in enm.buses}

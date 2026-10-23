@@ -44,6 +44,7 @@ export const NAMESPACE_TO_PICKER_CATEGORY: Readonly<Record<CatalogNamespace, Typ
   NASTAWY_ZABEZPIECZEN: 'PROTECTION_DEVICE',
   PTPIREE_CERTYFIKAT_GENERATORA: 'PTPIREE_CERTIFICATE',
   CONVERTER: 'CONVERTER',
+  ELEMENT_POLA_SN: 'FIELD_ELEMENT',
   mv_branch_points: 'BRANCH_POLE',
 } as const;
 
@@ -75,6 +76,7 @@ export const NAMESPACE_LABEL_PL: Readonly<Record<CatalogNamespace, string>> = {
   NASTAWY_ZABEZPIECZEN: 'Szablony nastaw zabezpieczeń',
   PTPIREE_CERTYFIKAT_GENERATORA: 'Certyfikaty PTPiREE generatorów',
   CONVERTER: 'Typy konwerterów',
+  ELEMENT_POLA_SN: 'Typy elementów wyposażenia pól SN',
   mv_branch_points: 'Typy punktów rozgałęzienia SN',
 } as const;
 

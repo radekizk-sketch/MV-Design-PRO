@@ -142,3 +142,67 @@ def szyna_poza_pasmem_sn(voltage_kv: float | None) -> bool:
     if voltage_kv is None:
         return False
     return pasmo_napieciowe(voltage_kv) != "SN"
+
+
+# ---------------------------------------------------------------------------
+# Napięcie najwyższe sieci U_m (karta GPZ-H5-APARATURA)
+# ---------------------------------------------------------------------------
+
+TabelaNapiec: TypeAlias = Literal["TAB3", "TAB4"]
+
+#: Napięcie znamionowe sieci Uₙ → napięcie najwyższe sieci U_m [kV]. PODSTAWA: ENEA Operator,
+#: Stacje elektroenergetyczne 110 kV, Zeszyt 1 (wersja 02.2023-2), tabela 5 (15 → 17,5;
+#: 20 → 24; 110 → 123 kV) oraz IEC 60038:2009 (PN-EN 60038:2012) tabela 3 seria I (sieci
+#: powyżej 1 kV do 35 kV: 3 → 3,6; 6 → 7,2; 10 → 12; 15 → 17,5; 20 → 24; 30 → 36;
+#: 35 → 40,5 kV) i tabela 4 (sieci powyżej 35 kV do 230 kV: 66 → 72,5; 110 → 123;
+#: 132 → 145; 150 → 170; 220 → 245 kV). Napięcie spoza szeregu = U_m nieustalone.
+NAPIECIE_NAJWYZSZE_SIECI_KV: dict[float, float] = {
+    3.0: 3.6,
+    6.0: 7.2,
+    10.0: 12.0,
+    15.0: 17.5,
+    20.0: 24.0,
+    30.0: 36.0,
+    35.0: 40.5,
+    66.0: 72.5,
+    110.0: 123.0,
+    132.0: 145.0,
+    150.0: 170.0,
+    220.0: 245.0,
+}
+
+#: Granica tabel IEC 60038: tabela 3 — sieci o Uₙ powyżej 1 kV do 35 kV włącznie (urządzenia
+#: o U_m do 40,5 kV), tabela 4 — sieci powyżej 35 kV do 230 kV (urządzenia o U_m od 52 kV).
+TAB3_UN_MAX_KV = 35.0
+TAB3_UM_MAX_KV = 40.5
+TAB4_UM_MIN_KV = 52.0
+
+
+def napiecie_najwyzsze_sieci_kv(voltage_kv: float | None) -> float | None:
+    """U_m sieci dla napięcia znamionowego z szeregu (``None`` — spoza szeregu albo brak)."""
+    napiecie = _znane(voltage_kv)
+    if napiecie is None:
+        return None
+    return next(
+        (um for un, um in NAPIECIE_NAJWYZSZE_SIECI_KV.items() if math.isclose(un, napiecie)),
+        None,
+    )
+
+
+def tabela_napiec_sieci(voltage_kv: float | None) -> TabelaNapiec | None:
+    """Tabela IEC 60038 sieci o napięciu znamionowym Uₙ (``None`` — nN albo brak danej)."""
+    napiecie = _znane(voltage_kv)
+    if napiecie is None or napiecie <= PASMO_NN_MAX_KV:
+        return None
+    return "TAB3" if napiecie <= TAB3_UN_MAX_KV else "TAB4"
+
+
+def tabela_napiec_urzadzenia(u_m_kv: float | None) -> TabelaNapiec | None:
+    """Tabela IEC 60038 urządzenia o napięciu najwyższym U_m (``None`` — luka 40,5–52 kV,
+    nN albo brak danej)."""
+    napiecie = _znane(u_m_kv)
+    if napiecie is None or napiecie <= PASMO_NN_MAX_KV:
+        return None
+    if napiecie <= TAB3_UM_MAX_KV:
+        return "TAB3"
+    return "TAB4" if napiecie >= TAB4_UM_MIN_KV else None

@@ -27,7 +27,7 @@ from application.dokumentacja_wykonawcza import (
     komunikat_odmowy,
     ocen_gotowosc_dokumentacji_wykonawczej,
 )
-from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import CanonicalRun, znaczniki_wiersza, znaczniki_wiersza_zwarcia
 from enm.nazwy_elementow import opis_bez_nazwy
 from fastapi import HTTPException, status
 from fastapi.responses import Response
@@ -776,6 +776,10 @@ def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | N
                     "source_standard": "IEC 60909",
                 },
                 "proof_ref": item.get("proof_ref"),
+                # Karta GPZ-H5-APARATURA: węzeł bez liczb niesie stan i przyczynę (ta sama
+                # reguła co wiersz `/results/short-circuit`) — brak wartości ≠ zero.
+                **znaczniki_wiersza(znaczniki_wiersza_zwarcia(item)),
+                "non_physical_reason": item.get("non_physical_reason"),
             }
         )
     if not rows:

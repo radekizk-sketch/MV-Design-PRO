@@ -28,7 +28,6 @@ import {
   rxRatioZrodloPL,
   trybZrodlaSiecowegoPL,
   typMaszynyPL,
-  uwagiZwarciaPL,
 } from '../../zwarcia/strings';
 import {
   METODY_SOLVERA_PL,
@@ -95,10 +94,6 @@ describe('funkcje etykiet ekranów — kod spoza słownika nigdy surowo', () => 
     ['wielkość pomiaru', (k: string) => wielkoscPL(k as never)],
   ])('%s', (_nazwa, funkcja) => {
     expect(funkcja('KOD_SPOZA_SLOWNIKA')).toBe(SPOZA);
-  });
-
-  it('flagi wiersza zwarciowego: flaga spoza słownika nie trafia do uwag jako kod', () => {
-    expect(uwagiZwarciaPL(['OVERLOADED', 'NOWA_FLAGA'])).toBe(`Przeciążenie, ${SPOZA}`);
   });
 
   it('tryb danych źródła z sufiksem scenariusza nazywa bazę ze słownika', () => {

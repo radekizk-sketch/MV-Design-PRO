@@ -259,6 +259,11 @@ def test_kazdy_szablon_z_pomiarem_ma_rozstrzygnieta_klase_przylaczenia() -> None
     bo to ona decyduje o drodze zabudowy (odgałęzienie vs wcięcie)."""
     zbadane = 0
     for template in list_templates():
+        if template.schema.gpz_uklad is not None:
+            # GPZ — korzeń modelu (`add_grid_source_sn`), nie przyłącze: jego pole pomiarowe
+            # mierzy napięcie szyn sekcji (ENEA Zeszyt 1 §13), a skład pól buduje operacja
+            # wg szablonów pól standardu, nie role szablonu stacji wstawianej w odcinek.
+            continue
         role = _resolve_sn_bay_roles(template, template.schema.sn_bays_count.default)
         if "MEASUREMENT" not in role:
             assert _klasa_przylaczenia(role) == "A"
@@ -712,6 +717,9 @@ def test_kazdy_szablon_z_pomiarem_deklaruje_uklad_podstawowy_jawnie() -> None:
     operacji."""
     zbadane = 0
     for template in list_templates():
+        if template.schema.gpz_uklad is not None:
+            # GPZ: pole pomiaru napięcia szyn, nie punkt rozliczeniowy — patrz wyżej.
+            continue
         role = _resolve_sn_bay_roles(template, template.schema.sn_bays_count.default)
         specyfikacje = _resolve_sn_fields(
             template, bay_roles=role, overrides={}, catalog_profile=None

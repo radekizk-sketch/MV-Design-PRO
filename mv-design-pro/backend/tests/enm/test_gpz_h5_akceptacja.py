@@ -45,6 +45,7 @@ from typing import Any
 from uuid import UUID
 
 import pytest
+from domain.result_contract_v1 import ZNACZNIK_BEZ_DROGI_ZEROWEJ
 from enm.canonical_analysis import (
     POWOD_WEZEL_BEZ_DROGI_ZEROWEJ,
     POWOD_WEZEL_BEZ_ODNIESIENIA,
@@ -60,25 +61,28 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.pola import punkt_przylaczenia_pola
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
+from enm.sklad_pola import indeks_modelu_pola, sklad_pola
 from enm.store import set_enm
 from enm.topology import (
     ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
     ROLA_LACZNIK_SZYN_SN,
     ROLA_LACZNIK_SZYN_WN,
     ROLA_PUNKT_PODZIALU,
+    SekcjaSnTransformatoraGpz,
     polaczenia_niezaleznych_zrodel,
     role_lacznikow,
+    sekcje_sn_transformatorow_gpz,
     transformatory_zasilajace_gpz,
 )
 from enm.topology_ops import usun_galaz, usun_urzadzenie, usun_wezel
 from enm.validator import ENMValidator
+from network_model.catalog.gniazda_pol_enea import szablon_pola_standardu
 from network_model.odmowa_danych import OdmowaNazwana
 
 from tests.reference_networks.gpz_h5 import (
     ODBIOR_A,
     ODBIOR_B,
     OPIS_DANYCH,
-    PROPOZYCJA_APARATOW_110,
     RX_110,
     TOR_L1,
     TOR_L2,
@@ -106,6 +110,12 @@ UN_WN_V = 110e3
 UN_SN_V = 15e3
 C_MAX = 1.1
 C_MIN = 1.0
+#: Zamknięty łącznik w rozpływie Newtona–Raphsona (rdzeń FROZEN
+#: `network_model/solvers/power_flow_newton_internal.py`, `Y_CLOSED_SWITCH`): admitancja
+#: 1/(R + jX) przy R = X = 0,0001 Ω na poziomie napięcia węzła — nie fuzja węzłów. Prąd
+#: transformatora płynie przez wyłącznik pola SN (gniazdo „W”, zał. Z.7), więc rachunek
+#: niezależny dodaje tę impedancję jawnie (zwarcia IEC 60909 łączą węzły łącznika bez niej).
+Z_ZAMKNIETEGO_LACZNIKA_ROZPLYWU_OHM = complex(1e-4, 1e-4)
 
 
 def _z_q(sk_mva: float, c: float, rx: float, un_v: float) -> complex:
@@ -161,10 +171,12 @@ def ik1_wn(tor: tuple[str, str, float, float], *, maks: bool = True) -> float:
 def rozplyw_dwuwezlowy(p_mw: float, q_mvar: float) -> tuple[float, float, float, float]:
     """Rozpływ: szyna 110 kV = węzeł bilansujący |U| = 1 pu, kąt 0; odbiór S na szynie SN
     za impedancją szeregową TR (u_k, P_k; gałąź poprzeczna transformatora poza modelem
-    rozpływu — ograniczenie rdzenia, V12K-162) i przesunięciem fazowym Yd11 (+30°).
+    rozpływu — ograniczenie rdzenia, V12K-162), zamkniętym wyłącznikiem pola SN
+    (`Z_ZAMKNIETEGO_LACZNIKA_ROZPLYWU_OHM`) i przesunięciem fazowym Yd11 (+30°).
     Iteracja prosta U2 = U1·e^{j30°} − Z·conj(S/U2) w jednostkach względnych S_rT.
     Zwraca (|U2| pu, kąt U2 [°], P źródła [MW], Q źródła [Mvar])."""
     z_pu = complex(PK_W / S_RT_VA, math.sqrt(UK**2 - (PK_W / S_RT_VA) ** 2))
+    z_pu += Z_ZAMKNIETEGO_LACZNIKA_ROZPLYWU_OHM / (U_RT_SN_V**2 / S_RT_VA)
     s_pu = complex(p_mw, q_mvar) / (S_RT_VA / 1e6)
     u1 = cmath.rect(1.0, math.radians(30.0))
     u2 = u1
@@ -297,12 +309,40 @@ def test_struktura_h5_dwa_tory_dwie_szyny_wn(h5: dict[str, Any], r: RefyH5) -> N
         assert zrodlo["sk3_mva"] == pytest.approx(sk_max)
         assert zrodlo["sk3_min_mva"] == pytest.approx(sk_min)
         assert zrodlo["z0_z1_ratio"] == pytest.approx(Z0_Z1_110)
-    assert _element(h5, "sources", r.zrodlo_l1)["bus_ref"] == r.szyna_wn_1
-    assert _element(h5, "sources", r.zrodlo_l2)["bus_ref"] == r.szyna_wn_2
+    # Pole zasilające 110 kV = granica zasilania sieci SN (decyzja właściciela 2026-10-22):
+    # równoważnik toru stoi na zacisku pola, a łącznik pola (gałąź modelu, bez katalogu,
+    # bez typu) łączy zacisk z szyną sekcji — jego stan wchodzi do obliczeń.
+    for zrodlo, zacisk, wylacznik, szyna_wn in (
+        (r.zrodlo_l1, r.zacisk_l1, r.wylacznik_l1, r.szyna_wn_1),
+        (r.zrodlo_l2, r.zacisk_l2, r.wylacznik_l2, r.szyna_wn_2),
+    ):
+        assert _element(h5, "sources", zrodlo)["bus_ref"] == zacisk
+        galaz = _galaz(h5, wylacznik)
+        assert galaz["type"] == "breaker"
+        assert (galaz["from_bus_ref"], galaz["to_bus_ref"]) == (szyna_wn, zacisk)
+        assert (galaz["status"], galaz["normal_state"]) == ("closed", "closed")
+        assert galaz["catalog_ref"] is None
+        assert _element(h5, "buses", zacisk)["voltage_kv"] == pytest.approx(110.0)
+        (pole_linii,) = (
+            p for p in h5["bays"] if p["bus_ref"] == szyna_wn and p["bay_role"] == "IN"
+        )
+        assert pole_linii["equipment_refs"] == [wylacznik]
+        assert pole_linii["terminal_bus_ref"] == zacisk
+        assert pole_linii.get("szablon_standardu_ref") is None
+        assert pole_linii.get("primary_devices") in (None, [])
     tr1 = _element(h5, "transformers", r.tr1)
     tr2 = _element(h5, "transformers", r.tr2)
-    assert (tr1["hv_bus_ref"], tr1["lv_bus_ref"]) == (r.szyna_wn_1, r.szyna_sn_a)
-    assert (tr2["hv_bus_ref"], tr2["lv_bus_ref"]) == (r.szyna_wn_2, r.szyna_sn_b)
+    # Strona dolna każdego transformatora leży na zacisku pola SN, za wyłącznikiem pola
+    # (gniazdo „W” zał. Z.7) — gałęzią łączeniową modelu, która łączy zacisk z szyną sekcji.
+    for tr, wylacznik, szyna_wn, szyna_sn in (
+        (tr1, r.wylacznik_tr1, r.szyna_wn_1, r.szyna_sn_a),
+        (tr2, r.wylacznik_tr2, r.szyna_wn_2, r.szyna_sn_b),
+    ):
+        galaz = _galaz(h5, wylacznik)
+        assert tr["hv_bus_ref"] == szyna_wn
+        assert galaz["type"] == "breaker"
+        assert (galaz["from_bus_ref"], galaz["to_bus_ref"]) == (szyna_sn, tr["lv_bus_ref"])
+        assert (galaz["status"], galaz["normal_state"]) == ("closed", "closed")
     assert "transformer_count" not in ladunek_h5()
     # Ustalenie 7: znacznik danych przykładowych w danych modelu.
     assert OPIS_DANYCH in h5["header"]["name"]
@@ -341,9 +381,11 @@ def test_jedna_linia_110_kv_w_szablonie_h5_odmowa() -> None:
 
 
 def test_pola_funkcyjne_bez_aparatow_i_cele_lacznika(h5: dict[str, Any], r: RefyH5) -> None:
-    """Ustalenie 4 (§13, zał. Z.2): pola ZU/BKR/POMIAR na każdej sekcji SN bez aparatu
-    domyślnego i bez elementu; łącznik szyn SN w dwóch celach; ustalenie 6: propozycja
-    aparatów 110 kV zapisana jako PROPOZYCJA szablonu, odróżniona od aparatów w modelu."""
+    """Ustalenie 4 (§13, zał. Z.2): pola ZU/BKR/POMIAR na każdej sekcji SN bez elementu;
+    łącznik szyn SN w dwóch celach — gałąź łącznika należy do celi wyłącznikowej (cela 2),
+    cela sprzęgła (cela 1) jej nie wskazuje; karta GPZ-H5-APARATURA: każde pole ma szablon
+    pola standardu ENEA i gniazda w kolejności szablonu, a kolejność pól w modelu jest
+    kolejnością rozdzielni (zał. Z.1 i Z.2)."""
     stacja = _element(h5, "substations", r.stacja)
     pola = [p for p in h5["bays"] if p.get("substation_ref") == r.stacja]
     for szyna in (r.szyna_sn_a, r.szyna_sn_b):
@@ -357,28 +399,70 @@ def test_pola_funkcyjne_bez_aparatow_i_cele_lacznika(h5: dict[str, Any], r: Refy
         for pole in pola:
             if pole.get("bus_ref") == szyna and pole["bay_role"] in {"EARTHING", "CAPACITOR"}:
                 assert pole.get("equipment_refs") in (None, [])
-    cele = sorted(
-        p["meta"]["gpz_coupler_cell"]
+    cele = {
+        p["meta"]["gpz_coupler_cell"]: (p["szablon_standardu_ref"], p["equipment_refs"])
         for p in pola
-        if p["bay_role"] == "COUPLER" and p.get("equipment_refs") == [r.lacznik_sn]
-    )
-    assert cele == [1, 2]
+        if p["bay_role"] == "COUPLER" and p.get("bus_ref") in {r.szyna_sn_a, r.szyna_sn_b}
+    }
+    assert cele == {
+        1: ("ENEA_SN_LS_CELA_SPRZEGLA", []),
+        2: ("ENEA_SN_LS_CELA_WYLACZNIKOWA", [r.lacznik_sn]),
+    }
     szyny_wn = {r.szyna_wn_1, r.szyna_wn_2}
     pola_wn = [p for p in pola if p.get("bus_ref") in szyny_wn]
-    assert sorted(p["bay_role"] for p in pola_wn) == ["COUPLER", "IN", "IN", "TR", "TR"]
+    # Zał. Z.1: sekcja A (linia, transformator), łącznik szyn, sekcja B (linia, transformator).
+    # Strona 110 kV = granica zasilania sieci SN (decyzja właściciela 2026-10-22): pola bez
+    # szablonu standardu i bez gniazd; każde pole wskazuje wyłącznie element, któremu służy.
+    assert [
+        (p["bay_role"], p.get("szablon_standardu_ref"), p["equipment_refs"]) for p in pola_wn
+    ] == [
+        ("IN", None, [r.wylacznik_l1]),
+        ("TR", None, [r.tr1]),
+        ("COUPLER", None, [r.lacznik_wn]),
+        ("IN", None, [r.wylacznik_l2]),
+        ("TR", None, [r.tr2]),
+    ]
+    # Skład pola 110 kV: łącznik pola z gałęzią modelu ze stanem „brak typu” (bez braku do
+    # uzupełnienia, bez gniazd WYMAGANE_STANDARDEM_BRAK); transformator — element modelu
+    # z własnym katalogiem.
+    model = EnergyNetworkModel.model_validate(h5)
+    indeks = indeks_modelu_pola(model)
     for pole in pola_wn:
-        propozycja = pole["meta"]["apparatus_proposal"]
-        assert propozycja["modelled"] is False
-        assert propozycja["basis"] == PROPOZYCJA_APARATOW_110["basis"]
-        rodzaj = {"IN": "line", "TR": "transformer", "COUPLER": "coupler"}[pole["bay_role"]]
-        assert propozycja["apparatus"] == PROPOZYCJA_APARATOW_110[rodzaj]
-        # Pole 110 kV wskazuje wyłącznie element, któremu służy (TR, łącznik szyn) —
-        # aparatów łączeniowych pól 110 kV model nie ma (propozycja ≠ aparat modelu).
-        assert set(pole.get("equipment_refs") or []) <= {r.tr1, r.tr2, r.lacznik_wn}
+        bay = next(b for b in model.bays if b.ref_id == pole["ref_id"])
+        wiersze = sklad_pola(indeks, bay)
+        assert len(wiersze) == 1, [w.rodzaj for w in wiersze]
+        (wiersz,) = wiersze
+        assert wiersz.linked_ref == pole["equipment_refs"][0]
+        if pole["bay_role"] == "TR":
+            assert (wiersz.rodzaj, wiersz.status) == ("TRANSFORMER_DEVICE", "ZAPROJEKTOWANE")
+        else:
+            assert (wiersz.rodzaj, wiersz.status) == ("CB", "BRAK_TYPU_GRANICA_WN")
+            assert wiersz.catalog_ref is None and "brak typu" in wiersz.opis_pl
+            assert "?" not in wiersz.opis_pl
+    # Zał. Z.2, dla każdej sekcji SN: łącznik szyn, BKR, ZU, transformator, pomiar, linie.
+    for szyna in (r.szyna_sn_a, r.szyna_sn_b):
+        assert [p["szablon_standardu_ref"] for p in pola if p.get("bus_ref") == szyna] == [
+            "ENEA_SN_LS_CELA_SPRZEGLA" if szyna == r.szyna_sn_a else "ENEA_SN_LS_CELA_WYLACZNIKOWA",
+            "ENEA_SN_BKR",
+            "ENEA_SN_ZU_REZYSTOR",
+            "ENEA_SN_TR",
+            "ENEA_SN_POMIAR",
+            "ENEA_SN_LINIA",
+        ]
+    for pole in pola:
+        if pole.get("bus_ref") in szyny_wn:
+            continue
+        szablon = szablon_pola_standardu(pole["szablon_standardu_ref"])
+        assert szablon is not None
+        assert [d["gniazdo_ref"] for d in pole["primary_devices"]] == [
+            g.id for g in szablon.gniazda
+        ]
     laczniki_wn = [
         g for g in h5["branches"] if g["from_bus_ref"] in szyny_wn or g["to_bus_ref"] in szyny_wn
     ]
-    assert [g["ref_id"] for g in laczniki_wn] == [r.lacznik_wn]
+    assert sorted(g["ref_id"] for g in laczniki_wn) == sorted(
+        [r.lacznik_wn, r.wylacznik_l1, r.wylacznik_l2]
+    )
     assert stacja["gpz_reserve_mode"] == "hidden"
 
 
@@ -418,16 +502,21 @@ def test_sc01_rozplyw_zgodny_z_rachunkiem_dwuwezlowym(h5: dict[str, Any], r: Ref
     assert run.raw_result is not None
     wezly = {w["bus_id"]: w["element_id"] for w in build_bus_results(run)["rows"]}
     szyny = {wezly[b["bus_id"]]: b for b in run.raw_result["result_v1"]["bus_results"]}
-    for szyna_sn, szyna_wn, (_nazwa, p, q) in (
-        (r.szyna_sn_a, r.szyna_wn_1, ODBIOR_A),
-        (r.szyna_sn_b, r.szyna_wn_2, ODBIOR_B),
+    for szyna_sn, szyna_wn, zacisk, (_nazwa, p, q) in (
+        (r.szyna_sn_a, r.szyna_wn_1, r.zacisk_l1, ODBIOR_A),
+        (r.szyna_sn_b, r.szyna_wn_2, r.zacisk_l2, ODBIOR_B),
     ):
         u, kat, p_zr, q_zr = rozplyw_dwuwezlowy(p, q)
         assert szyny[szyna_sn]["v_pu"] == pytest.approx(u, abs=1e-6)
         assert szyny[szyna_sn]["angle_deg"] == pytest.approx(kat, abs=1e-4)
-        assert szyny[szyna_wn]["v_pu"] == pytest.approx(1.0, abs=1e-12)
-        assert szyny[szyna_wn]["p_injected_mw"] == pytest.approx(p_zr, abs=1e-5)
-        assert szyny[szyna_wn]["q_injected_mvar"] == pytest.approx(q_zr, abs=1e-5)
+        # Węzeł bilansujący = zacisk pola liniowego 110 kV (równoważnik toru stoi na
+        # zacisku, za łącznikiem pola). Zamknięty łącznik pola rozpływ NR odwzorowuje gałęzią
+        # R = X = 1e-4 Ω (rdzeń FROZEN, admitancja łącznika zamkniętego), więc szyna sekcji
+        # różni się od zacisku o spadek rzędu 1e-7 p.u. — poniżej dokładności porównania.
+        assert szyny[zacisk]["v_pu"] == pytest.approx(1.0, abs=1e-12)
+        assert szyny[szyna_wn]["v_pu"] == pytest.approx(1.0, abs=1e-6)
+        assert szyny[zacisk]["p_injected_mw"] == pytest.approx(p_zr, abs=1e-5)
+        assert szyny[zacisk]["q_injected_mvar"] == pytest.approx(q_zr, abs=1e-5)
 
 
 # ---------------------------------------------------------------------------
@@ -487,6 +576,83 @@ def test_sc02b_utrata_l1_i_zamkniety_ls110_oba_tory_z_l2(h5: dict[str, Any], r: 
         assert ik[szyna] == pytest.approx(ik3_sn(TOR_L2), rel=1e-6)
 
 
+@pytest.mark.parametrize("ls110", ["open", "closed"], ids=["LS110-otwarty", "LS110-zamkniety"])
+def test_otwarty_wylacznik_pola_l1_w_scenariuszu_rowny_utracie_toru_l1(
+    h5: dict[str, Any], r: RefyH5, ls110: str
+) -> None:
+    """Pole zasilające 110 kV = przyłącze z łącznikiem, którego stan wchodzi do obliczeń
+    (decyzja właściciela 2026-10-22). Iloczyn: przyczyna utraty toru L1 {otwarty wyłącznik
+    pola w scenariuszu łączeniowym, tor wyłączony z pracy} × stan ŁS-110 {otwarty, zamknięty}
+    → ten sam wynik na szynach sekcji (SC-02 / SC-02b); zacisk pola jest szyną pomocniczą
+    bez wiersza wyniku zwarcia.
+    Iniekcja „scenariusz gubi stan łącznika pola 110 kV” — sekcja A ma liczbę z L1."""
+    sekcje = (r.szyna_wn_1, r.szyna_wn_2, r.szyna_sn_a, r.szyna_sn_b)
+    stan_ls = {r.lacznik_wn: ls110} if ls110 == "closed" else {}
+    przez_wylacznik = _ikss(
+        _bieg(
+            h5,
+            "short_circuit_sn",
+            OPCJE_3F_MAX,
+            _scenariusz("L1-wylacznik", stany={r.wylacznik_l1: "open", **stan_ls}),
+        )
+    )
+    przez_wylaczenie = _ikss(
+        _bieg(
+            h5,
+            "short_circuit_sn",
+            OPCJE_3F_MAX,
+            _scenariusz("L1-wylaczenie", stany=stan_ls, wylaczone=(r.zrodlo_l1,)),
+        )
+    )
+    assert {s: przez_wylacznik[s] for s in sekcje} == {s: przez_wylaczenie[s] for s in sekcje}
+    if ls110 == "open":
+        assert przez_wylacznik[r.szyna_sn_a] is None and przez_wylacznik[r.szyna_wn_1] is None
+        assert przez_wylacznik[r.szyna_sn_b] == pytest.approx(ik3_sn(TOR_L2), rel=1e-6)
+    else:
+        for szyna in (r.szyna_sn_a, r.szyna_sn_b):
+            assert przez_wylacznik[szyna] == pytest.approx(ik3_sn(TOR_L2), rel=1e-6)
+
+
+def _z_stanami_normalnymi(tryb: str, stany: dict[str, str]) -> tuple[dict[str, Any], RefyH5]:
+    enm = copy.deepcopy(zbuduj_h5(reserve_mode=tryb))
+    rr = refy(enm)
+    for atrybut, stan in stany.items():
+        galaz = _galaz(enm, getattr(rr, atrybut))
+        galaz["normal_state"] = stan
+        galaz["status"] = stan
+    return enm, rr
+
+
+@pytest.mark.parametrize("ls110", ["open", "closed"])
+@pytest.mark.parametrize("tryb", ["hidden", "explicit"])
+def test_wylacznik_pola_l1_normalnie_otwarty_w063_e065_z_przyczyna(tryb: str, ls110: str) -> None:
+    """Iloczyn: tryb rezerwy {ukryty, jawny} × stan normalny ŁS-110 {otwarty, zamknięty} przy
+    NORMALNIE OTWARTYM wyłączniku pola L1. ŁS-110 otwarty: sekcja 110 kV 1 nie ma toru pod
+    napięciem — W063 nazywa przyczynę (łącznik pola liniowego 110 kV), E065 wskazuje
+    łącznik do zamknięcia (w tym wyłącznik pola L1), I001 opisuje rolę (tor odstawiony, nie
+    punkt podziału). ŁS-110 zamknięty: obie sekcje 110 kV z L2 — bez W063, E065 i E067.
+    Iniekcja „W063 nie czyta stanu wyłącznika pola 110 kV” — brak W063 (czerwony)."""
+    enm, rr = _z_stanami_normalnymi(tryb, {"wylacznik_l1": "open", "lacznik_wn": ls110})
+    zgloszenia = ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues
+    kody = {z.code for z in zgloszenia}
+    (i001,) = (
+        z for z in zgloszenia if z.code == "I001" and rr.wylacznik_l1 in (z.element_refs or [])
+    )
+    assert "łącznikiem pola liniowego 110 kV" in i001.message_pl
+    assert "to nie jest punkt podziału sieci" in i001.message_pl
+    if ls110 == "closed":
+        assert not kody & {"W063", "E065", "E067"}, kody
+        return
+    (w063,) = (z for z in zgloszenia if z.code == "W063")
+    assert "Sekcja 110 kV 1" in w063.message_pl
+    assert "łącznik pola liniowego 110 kV normalnie otwarty" in w063.message_pl
+    (e065,) = (z for z in zgloszenia if z.code == "E065")
+    assert {rr.wylacznik_l1, rr.lacznik_wn} <= set(e065.element_refs or [])
+    assert "łącznik pola liniowego 110 kV" in e065.message_pl
+    assert "Zamknij łącznik wskazany w zgłoszeniu" in (e065.suggested_fix or "")
+    assert rr.szyna_sn_a in (e065.element_refs or [])
+
+
 # ---------------------------------------------------------------------------
 # SC-03 / SC-05a — przełączenie rezerwowe SN przy jednym TR
 # ---------------------------------------------------------------------------
@@ -509,6 +675,145 @@ def test_sc03_sc05a_jeden_tr_i_zamkniety_ls_sn_zasila_obie_sekcje(
     rozplyw = _wiersze_szyn(_bieg(h5, "PF", None, sc))
     for szyna in (r.szyna_sn_a, r.szyna_sn_b):
         assert rozplyw[szyna]["u_pu"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Utrata transformatora jako stan łączeniowy: wyłącznik pola SN (gniazdo „W”, zał. Z.7)
+# ---------------------------------------------------------------------------
+#
+# Iloczyn cech: {sposób utraty: otwarty wyłącznik pola SN, wyłączenie z eksploatacji} ×
+# {TR1, TR2} × {ŁS-SN zamknięty, otwarty} × {zwarcie 3F, rozpływ}. Para dowodowa: oba sposoby
+# utraty dają TE SAME wyniki strony SN (wyłącznik w torze transformatora jest jedynym
+# połączeniem transformatora z szyną sekcji).
+
+
+def _utrata_tr(r: RefyH5, tr: str, sposob: str, ls_sn: str) -> OperatingScenario:
+    stany = {r.lacznik_sn: ls_sn}
+    if sposob == "wylacznik":
+        stany[getattr(r, f"wylacznik_{tr}")] = "open"
+        return _scenariusz(f"utrata-{tr}-wylacznik-{ls_sn}", stany=stany)
+    return _scenariusz(f"utrata-{tr}-wylaczenie-{ls_sn}", stany=stany, wylaczone=(getattr(r, tr),))
+
+
+@pytest.mark.parametrize("tryb", ["hidden", "explicit"])
+def test_wylacznik_pola_sn_kazdego_tr_w_gniezdzie_w_i_sekcja_z_jednej_funkcji(tryb: str) -> None:
+    """Wyłącznik pola SN każdego transformatora jest gałęzią modelu wskazaną przez gniazdo
+    „W” pola transformatorowego SN (skład pola, jedna prawda `primary_devices`), a sekcję,
+    którą transformator zasila, wyprowadza jedna funkcja (`sekcje_sn_transformatorow_gpz`) —
+    ta sama, którą czyta walidator trybu rezerwy (W063) i przynależność do GPZ (E066)."""
+    from enm.sklad_pola import indeks_modelu_pola, sklad_pola
+
+    enm = zbuduj_h5(reserve_mode=tryb)
+    rr = refy(enm)
+    model = EnergyNetworkModel.model_validate(enm)
+    indeks = indeks_modelu_pola(model)
+    sekcje = sekcje_sn_transformatorow_gpz(enm)
+    rezerwowy = next(s for s in enm["substations"] if s.get("gpz_hv_sections")).get(
+        "gpz_reserve_transformer_ref"
+    )
+    for tr, wylacznik, szyna in (
+        (rr.tr1, rr.wylacznik_tr1, rr.szyna_sn_a),
+        (rr.tr2, rr.wylacznik_tr2, rr.szyna_sn_b),
+    ):
+        assert sekcje[tr] == SekcjaSnTransformatoraGpz(szyna, wylacznik)
+        assert transformatory_zasilajace_gpz(enm) >= {tr}
+        (pole_tr,) = (
+            b
+            for b in model.bays
+            if b.bay_role == "TR" and b.bus_ref == szyna and tr in b.equipment_refs
+        )
+        assert pole_tr.terminal_bus_ref == _element(enm, "transformers", tr)["lv_bus_ref"]
+        assert wylacznik in pole_tr.equipment_refs
+        (wiersz_w,) = (w for w in sklad_pola(indeks, pole_tr) if w.gniazdo_ref == "W")
+        assert wiersz_w.linked_ref == wylacznik
+        galaz = _galaz(enm, wylacznik)
+        if tr == rezerwowy:
+            assert (galaz["normal_state"], wiersz_w.status) == ("open", "ZAPROJEKTOWANE")
+            assert wiersz_w.catalog_ref == galaz["catalog_ref"] is not None
+        else:
+            # Pozycji wyłącznika transformatora pracującego standard nie wyraża jedną pozycją
+            # (prąd wg mocy transformatora, tabele 3/4) — gniazdo czeka na dobór, bieg nie.
+            assert galaz["catalog_ref"] is None and galaz["normal_state"] == "closed"
+            assert wiersz_w.status == "WYMAGANE_STANDARDEM_BRAK"
+
+
+def test_dobor_aparatu_wylacznika_pola_sn_tr_z_katalogu_obsadza_gniazdo_w(r: RefyH5) -> None:
+    """Pozycję wyłącznika pola SN transformatora pracującego nadaje się na GAŁĘZI modelu
+    (`assign_catalog_to_element`) — gniazdo „W” czyta ją przez `linked_ref`."""
+    from enm.sklad_pola import indeks_modelu_pola, sklad_pola
+
+    enm = zbuduj_h5()
+    wynik = execute_domain_operation(
+        enm_dict=enm,
+        op_name="assign_catalog_to_element",
+        payload={
+            "element_ref": r.wylacznik_tr1,
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_namespace": "APARAT_SN",
+        },
+    )
+    assert wynik.get("error") is None, wynik.get("error")
+    po = EnergyNetworkModel.model_validate(wynik["snapshot"])
+    (pole_tr,) = (b for b in po.bays if b.bay_role == "TR" and r.wylacznik_tr1 in b.equipment_refs)
+    (wiersz_w,) = (w for w in sklad_pola(indeks_modelu_pola(po), pole_tr) if w.gniazdo_ref == "W")
+    assert (wiersz_w.status, wiersz_w.catalog_ref) == ("ZAPROJEKTOWANE", "sw-cb-abb-vd4-17kv-630a")
+
+
+@pytest.mark.parametrize("sposob", ["wylacznik", "wylaczenie"])
+@pytest.mark.parametrize(
+    ("tr", "tor_pozostaly", "sekcja_tr", "sekcja_pozostala"),
+    [("tr1", TOR_L2, "szyna_sn_a", "szyna_sn_b"), ("tr2", TOR_L1, "szyna_sn_b", "szyna_sn_a")],
+    ids=["TR1", "TR2"],
+)
+@pytest.mark.parametrize("ls_sn", ["closed", "open"], ids=["LS-SN-zamkniety", "LS-SN-otwarty"])
+def test_utrata_tr_wylacznikiem_albo_wylaczeniem_ta_sama_strona_sn(
+    h5: dict[str, Any],
+    r: RefyH5,
+    sposob: str,
+    tr: str,
+    tor_pozostaly: tuple[str, str, float, float],
+    sekcja_tr: str,
+    sekcja_pozostala: str,
+    ls_sn: str,
+) -> None:
+    """SC-03 (utrata TR i zamknięty ŁS-SN): obie sekcje z toru drugiego transformatora;
+    przy otwartym ŁS-SN sekcja utraconego transformatora „bez napięcia” — oba sposoby
+    utraty (otwarcie wyłącznika pola SN, wyłączenie transformatora z eksploatacji)."""
+    sc = _utrata_tr(r, tr, sposob, ls_sn)
+    zwarcie = _bieg(h5, "short_circuit_sn", OPCJE_3F_MAX, sc)
+    ik = _ikss(zwarcie)
+    rozplyw = _wiersze_szyn(_bieg(h5, "PF", None, sc))
+    pozostala, utracona = getattr(r, sekcja_pozostala), getattr(r, sekcja_tr)
+    assert ik[pozostala] == pytest.approx(ik3_sn(tor_pozostaly), rel=1e-6)
+    assert rozplyw[pozostala]["u_pu"] is not None
+    if ls_sn == "closed":
+        assert ik[utracona] == pytest.approx(ik3_sn(tor_pozostaly), rel=1e-6)
+        assert rozplyw[utracona]["u_pu"] is not None
+    else:
+        assert ik[utracona] is None
+        assert _wiersze_zwarcia(zwarcie)[utracona]["flags"] == [ZNACZNIK_SZYNY_BEZ_NAPIECIA]
+        assert rozplyw[utracona]["u_pu"] is None
+        assert ZNACZNIK_SZYNY_BEZ_NAPIECIA in rozplyw[utracona]["flags"]
+
+
+@pytest.mark.parametrize("tryb", ["hidden", "explicit"])
+def test_wylacznik_pracujacego_tr_normalnie_otwarty_w063_nazywa_sekcje(tryb: str) -> None:
+    """Predykaty parami: sekcja zasilana w stanie normalnym = sekcja transformatora
+    (`sekcje_sn_transformatorow_gpz`) przez łącznik pola NORMALNIE zamknięty. Wyłącznik
+    pola SN transformatora pracującego normalnie otwarty = sekcja bez transformatora pod
+    napięciem (W063 z nazwą sekcji); rezerwa jawna — obie sekcje (łącznik szyn SN zamknięty)."""
+    enm = copy.deepcopy(zbuduj_h5(reserve_mode=tryb))
+    rr = refy(enm)
+    galaz = _galaz(enm, rr.wylacznik_tr1)
+    galaz["normal_state"] = galaz["status"] = "open"
+    (w063,) = (
+        i
+        for i in ENMValidator().validate(EnergyNetworkModel.model_validate(enm)).issues
+        if i.code == "W063"
+    )
+    oczekiwane = {rr.szyna_sn_a} if tryb == "hidden" else {rr.szyna_sn_a, rr.szyna_sn_b}
+    assert oczekiwane <= set(w063.element_refs)
+    assert "nie ma w stanie normalnym transformatora 110/SN pod napięciem" in w063.message_pl
 
 
 # ---------------------------------------------------------------------------
@@ -607,8 +912,11 @@ def test_sc08_z_z0_szyny_110_liczone_szyny_sn_bez_drogi_zerowej(
             assert ik[szyna] is None
             assert przyczyny[szyna] == POWOD_WEZEL_BEZ_DROGI_ZEROWEJ
         wiersze = _wiersze_zwarcia(run)
-        # Węzeł bez drogi zerowej MA napięcie — nie jest „bez napięcia”.
-        assert wiersze[r.szyna_sn_a]["flags"] == []
+        # Węzeł bez drogi zerowej MA napięcie — nie jest „bez napięcia”; karta
+        # GPZ-H5-APARATURA (zmiana kanonu): wiersz niesie znacznik przyczyny braku liczby.
+        for szyna in (r.szyna_sn_a, r.szyna_sn_b):
+            assert wiersze[szyna]["flags"] == [ZNACZNIK_BEZ_DROGI_ZEROWEJ]
+            assert ZNACZNIK_SZYNY_BEZ_NAPIECIA not in wiersze[szyna]["flags"]
 
 
 # ---------------------------------------------------------------------------
@@ -639,17 +947,20 @@ def test_role_lacznikow_h5_niezalezne_od_polozenia(r: RefyH5, h5: dict[str, Any]
     łączników: zamknięcie w scenariuszu nie zmienia, czym łącznik jest."""
     jawna = _h5_jawna()
     rj = refy(jawna)
-    wylacznik = _wylacznik_rezerwy(jawna)
+    assert _wylacznik_rezerwy(jawna) == rj.wylacznik_tr2
+    # Wyłącznik pola SN KAŻDEGO transformatora (pracującego i rezerwowego) ma rolę łącznika
+    # pola transformatorowego w obu trybach rezerwy.
     oczekiwane = {
-        "ukryta": (h5, {r.lacznik_wn: ROLA_LACZNIK_SZYN_WN, r.lacznik_sn: ROLA_LACZNIK_SZYN_SN}),
-        "jawna": (
-            jawna,
+        tryb: (
+            enm,
             {
-                rj.lacznik_wn: ROLA_LACZNIK_SZYN_WN,
-                rj.lacznik_sn: ROLA_LACZNIK_SZYN_SN,
-                wylacznik: ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
+                rr.lacznik_wn: ROLA_LACZNIK_SZYN_WN,
+                rr.lacznik_sn: ROLA_LACZNIK_SZYN_SN,
+                rr.wylacznik_tr1: ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
+                rr.wylacznik_tr2: ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
             },
-        ),
+        )
+        for tryb, enm, rr in (("ukryta", h5, r), ("jawna", jawna, rj))
     }
     for _tryb, (enm, role_oczekiwane) in oczekiwane.items():
         model = EnergyNetworkModel.model_validate(enm)
@@ -680,14 +991,17 @@ def _e067(enm: dict[str, Any], stany: dict[str, str], wylaczone: tuple[str, ...]
 
 @pytest.mark.parametrize("wn", ["open", "closed"])
 @pytest.mark.parametrize("sn", ["open", "closed"])
+@pytest.mark.parametrize("w_tr1", ["open", "closed"], ids=["W-TR1-otwarty", "W-TR1-zamkniety"])
 @pytest.mark.parametrize("bez_l1", [False, True], ids=["oba-tory", "bez-L1"])
 def test_e067_iloczyn_stanow_lacznikow_i_zrodel_ukryta(
-    h5: dict[str, Any], r: RefyH5, wn: str, sn: str, bez_l1: bool
+    h5: dict[str, Any], r: RefyH5, wn: str, sn: str, w_tr1: str, bez_l1: bool
 ) -> None:
-    """E067 ⇔ (oba tory w ruchu) ∧ (ŁS-110 zamknięty ∨ ŁS-SN zamknięty)."""
+    """E067 ⇔ (oba tory w ruchu) ∧ (ŁS-110 zamknięty ∨ (ŁS-SN zamknięty ∧ wyłącznik pola
+    SN TR1 zamknięty)) — otwarty wyłącznik TR1 odcina tor L1 od szyn SN."""
     wylaczone = (r.zrodlo_l1,) if bez_l1 else ()
-    oczekiwane = not bez_l1 and "closed" in (wn, sn)
-    assert _e067(h5, {r.lacznik_wn: wn, r.lacznik_sn: sn}, wylaczone) is oczekiwane
+    oczekiwane = not bez_l1 and (wn == "closed" or (sn == "closed" and w_tr1 == "closed"))
+    stany = {r.lacznik_wn: wn, r.lacznik_sn: sn, r.wylacznik_tr1: w_tr1}
+    assert _e067(h5, stany, wylaczone) is oczekiwane
 
 
 @pytest.mark.parametrize("wylacznik_stan", ["open", "closed"])
@@ -746,7 +1060,7 @@ def test_transformator_h5_jest_granica_zasilania_nie_transformatorem_blokowym(
 def test_pierwszy_odcinek_bez_wskazania_wychodzi_z_pola_liniowego_sn(reserve_mode: str) -> None:
     """Predykaty parami: pole startu pustej magistrali (zacisk `trunk_out` widoków
     logicznych) i pole, z którego `continue_trunk_segment_sn` BEZ wskazania wyprowadza
-    pierwszy odcinek, to TO SAMO wolne pole liniowe SN — nigdy pole zasilające 110 kV ani
+    pierwszy odcinek, to TO SAMO wolne pole liniowe SN — nigdy pole liniowe 110 kV ani
     transformatorowe, choć równoważniki H5 stoją na szynach 110 kV (dawniej wybór startu
     dopuszczał rolę IN i operacja odmawiała `trunk.source_field_not_line_bay`)."""
     enm = zbuduj_h5(reserve_mode=reserve_mode, odbiory=False)
@@ -880,7 +1194,7 @@ def _usun_operacja_topologiczna(enm: dict[str, Any], ref: str, rodzaj: str) -> d
         wynik = usun_galaz(kopia, ref)
     else:
         wynik = usun_urzadzenie(kopia, {"tr": "transformer", "zrodlo": "source"}[rodzaj], ref)
-    assert wynik.success, [i.message for i in wynik.issues]
+    assert wynik.success, [i.message_pl for i in wynik.issues]
     return dict(wynik.enm)
 
 
@@ -940,12 +1254,15 @@ def test_kasowanie_elementu_h5_zostawia_stacje_i_czysci_odwolania(
 def test_kasowanie_szyny_sekcji_wn_zostawia_stacje(
     h5: dict[str, Any], r: RefyH5, droga: Any
 ) -> None:
-    """Szyna sekcji 110 kV 2 razem z elementami na niej (źródło L2, TR2, ŁS-110): sekcja
-    znika z rejestru, stacja i sekcje SN zostają. Droga topologiczna usuwa szynę dopiero po
-    usunięciu przyłączonych elementów (prymityw odmawia szyny w użyciu)."""
+    """Szyna sekcji 110 kV 2 razem z elementami na niej (łącznik pola L2 z zaciskiem i źródłem
+    L2, TR2, ŁS-110): sekcja znika z rejestru, stacja i sekcje SN zostają. Droga topologiczna
+    usuwa szynę dopiero po usunięciu przyłączonych elementów (prymityw odmawia szyny
+    w użyciu)."""
     enm = h5
     if droga is _usun_operacja_topologiczna:
         enm = droga(enm, r.zrodlo_l2, "zrodlo")
+        enm = droga(enm, r.wylacznik_l2, "lacznik")
+        enm = droga(enm, r.zacisk_l2, "szyna")
         enm = droga(enm, r.tr2, "tr")
         enm = droga(enm, r.lacznik_wn, "lacznik")
     po = droga(enm, r.szyna_wn_2, "szyna")
@@ -990,13 +1307,78 @@ def _przypadek_h5(client: Any, enm: dict[str, Any]) -> str:
     return case_id
 
 
-def _zapisz_scenariusz_http(client: Any, case_id: str, nazwa: str, stany: dict[str, str]) -> str:
-    odpowiedz = client.post(
-        f"/api/scenariusze-laczeniowe/study-cases/{case_id}",
-        json={"name": nazwa, "switch_states": stany},
-    )
+def _zapisz_scenariusz_http(
+    client: Any,
+    case_id: str,
+    nazwa: str,
+    stany: dict[str, str],
+    wylaczone: list[str] | None = None,
+) -> str:
+    zadanie: dict[str, Any] = {"name": nazwa, "switch_states": stany}
+    if wylaczone is not None:
+        zadanie["out_of_service"] = wylaczone
+    odpowiedz = client.post(f"/api/scenariusze-laczeniowe/study-cases/{case_id}", json=zadanie)
     assert odpowiedz.status_code == 201, odpowiedz.text
     return str(odpowiedz.json()["scenario_id"])
+
+
+def _bieg_zwarcia_http(client: Any, case_id: str, scenario_id: str) -> CanonicalRun:
+    from enm.canonical_analysis import get_run
+
+    from tests.utils.biegi import wykonaj_bieg
+
+    bieg = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "SC_3F", "solver_input": {}, "scenario_id": scenario_id},
+    )
+    assert bieg.status_code == 201, bieg.text
+    koniec = wykonaj_bieg(client, bieg.json()["id"])
+    assert koniec.json()["status"] == "DONE", koniec.json()
+    assert koniec.json()["scenario_ref"]["scenario_id"] == scenario_id
+    run = get_run(UUID(bieg.json()["id"]))
+    assert run is not None
+    return run
+
+
+@pytest.mark.parametrize(
+    "wariant",
+    ["SC-02-utrata-L1", "SC-03-wylacznik-TR1", "SC-03-wylaczenie-TR1"],
+)
+def test_sc02_sc03_z_interfejsu_scenariusz_http_i_bieg(
+    client: Any, h5: dict[str, Any], r: RefyH5, wariant: str
+) -> None:
+    """SC-02 i SC-03 osiągalne torem użytkownika: zapis scenariusza końcówką scenariuszy
+    łączeniowych (wyłączenie z eksploatacji albo stan wyłącznika pola SN) → bieg zwarcia ze
+    `scenario_id` → wiersze wyniku. Model bazowy bez zmian."""
+    case_id = _przypadek_h5(client, h5)
+    if wariant == "SC-02-utrata-L1":
+        scenario_id = _zapisz_scenariusz_http(client, case_id, "Utrata L1", {}, [r.zrodlo_l1])
+    elif wariant == "SC-03-wylacznik-TR1":
+        scenario_id = _zapisz_scenariusz_http(
+            client,
+            case_id,
+            "Utrata TR1 — wyłącznik pola SN otwarty, SZR SN",
+            {r.wylacznik_tr1: "open", r.lacznik_sn: "closed"},
+        )
+    else:
+        scenario_id = _zapisz_scenariusz_http(
+            client, case_id, "Utrata TR1, SZR SN", {r.lacznik_sn: "closed"}, [r.tr1]
+        )
+    run = _bieg_zwarcia_http(client, case_id, scenario_id)
+    ik = _ikss(run)
+    wiersze = _wiersze_zwarcia(run)
+    if wariant == "SC-02-utrata-L1":
+        assert ik[r.szyna_sn_a] is None
+        assert wiersze[r.szyna_sn_a]["flags"] == [ZNACZNIK_SZYNY_BEZ_NAPIECIA]
+        assert ik[r.szyna_sn_b] == pytest.approx(ik3_sn(TOR_L2), rel=1e-6)
+    else:
+        for szyna in (r.szyna_sn_a, r.szyna_sn_b):
+            assert ik[szyna] == pytest.approx(ik3_sn(TOR_L2), rel=1e-6)
+            assert wiersze[szyna]["flags"] == []
+    model = client.get(f"/api/cases/{case_id}/enm").json()
+    assert {z["ref_id"] for z in model["sources"]} == {r.zrodlo_l1, r.zrodlo_l2}
+    assert {t["ref_id"] for t in model["transformers"]} == {r.tr1, r.tr2}
+    assert _galaz(model, r.wylacznik_tr1)["status"] == "closed"
 
 
 @pytest.mark.parametrize(
@@ -1095,6 +1477,9 @@ def test_szablon_h5_buduje_jawna_strukture_z_danych_projektu(tpl_id: str, un_sn_
             "hv_sections": ladunek_h5()["hv_sections"],
             "hv_coupler": {"normal_state": "open"},
             "reserve_mode": "hidden",
+            # Dane projektu z formularza szablonu (wartości listy wyboru są napisami).
+            "line_fields_per_section": "2",
+            "earthing_bay_template": "ENEA_SN_ZU_DLAWIK",
         },
     )
     enm = get_enm(klucz).model_dump(mode="json")
@@ -1115,6 +1500,16 @@ def test_szablon_h5_buduje_jawna_strukture_z_danych_projektu(tpl_id: str, un_sn_
     )
     kody = _kody(enm)
     assert not kody & {"E067", "W063"}
+    # Dane projektu z formularza: dwa pola liniowe na sekcję SN, wariant pola ZU z dławikiem.
+    for szyna in (rr.szyna_sn_a, rr.szyna_sn_b):
+        pola_sekcji = [p for p in enm["bays"] if p.get("bus_ref") == szyna]
+        assert [p["szablon_standardu_ref"] for p in pola_sekcji if p["bay_role"] == "OUT"] == [
+            "ENEA_SN_LINIA",
+            "ENEA_SN_LINIA",
+        ]
+        assert [p["szablon_standardu_ref"] for p in pola_sekcji if p["bay_role"] == "EARTHING"] == [
+            "ENEA_SN_ZU_DLAWIK"
+        ]
     # Bez trybu rezerwy szablon nie zgaduje — odmowa operacji.
     from application.station_templates.apply import TemplateApplyError
 
@@ -1126,8 +1521,32 @@ def test_szablon_h5_buduje_jawna_strukture_z_danych_projektu(tpl_id: str, un_sn_
             params_override={
                 "hv_sections": ladunek_h5()["hv_sections"],
                 "hv_coupler": {"normal_state": "open"},
+                "line_fields_per_section": "2",
+                "earthing_bay_template": "ENEA_SN_ZU_DLAWIK",
             },
         )
+    # Bez liczby pól liniowych (dana projektu, zał. Z.2) i bez wariantu pola ZU (§16) —
+    # odmowa operacji przekazana przez szablon, nie wartość domyślna.
+    for brak, kod in (
+        ("line_fields_per_section", "source.gpz_line_fields_required"),
+        ("earthing_bay_template", "source.gpz_bay_standard_invalid"),
+    ):
+        dane = {
+            "hv_sections": ladunek_h5()["hv_sections"],
+            "hv_coupler": {"normal_state": "open"},
+            "reserve_mode": "hidden",
+            "line_fields_per_section": "2",
+            "earthing_bay_template": "ENEA_SN_ZU_DLAWIK",
+        }
+        del dane[brak]
+        with pytest.raises(TemplateApplyError) as blad:
+            apply_template_to_case(
+                template=szablon,
+                klucz_twin=_klucz(pusty_model()),
+                target_segment_id=None,
+                params_override=dane,
+            )
+        assert blad.value.code == kod, (brak, blad.value.message_pl)
 
 
 #: Wpis 7 koordynacji pkt 6: stany normalne łączników H5 są polami wejścia z podpowiedzią
@@ -1204,6 +1623,8 @@ def test_brak_stanu_lacznika_h5_odmowa_z_podpowiedzia_i_podstawa(droga: str, klu
             "hv_sections": ladunek_h5()["hv_sections"],
             "hv_coupler": {"normal_state": "open"},
             "reserve_mode": "hidden",
+            "line_fields_per_section": "1",
+            "earthing_bay_template": "ENEA_SN_ZU_REZYSTOR",
         }
         del dane[klucz_ladunku]
         with pytest.raises(TemplateApplyError) as blad:
@@ -1269,3 +1690,71 @@ def test_brak_stanu_lacznika_sn_bez_strony_110_odmowa_z_podstawa() -> None:
     assert wynik["error_code"] == "source.gpz_coupler_state_required", wynik.get("error")
     assert PODPOWIEDZ_STANU_LACZNIKA_SZYN_SN_PL in wynik["error"]
     assert PODSTAWA_TRYBU_REZERWY_PL in wynik["error"]
+
+
+@pytest.mark.parametrize("tpl_id", _SZABLONY_H5)
+def test_podglad_szablonu_h5_to_sklad_pol_z_operacji(client: Any, tpl_id: str) -> None:
+    """Podgląd kreatora szablonu GPZ = TA SAMA operacja `add_grid_source_sn` na pustym
+    modelu (predykaty parami: podgląd i zastosowanie z jednej funkcji ładunku). Iloczyn:
+    {dane projektu kompletne → skład pól w kolejności rozdzielni z szablonami pól standardu,
+    brak liczby pól liniowych → odmowa 422 z kodem operacji}. Dawniej podgląd liczył role
+    szablonu stacji wstawianej w odcinek i nadawał polu pomiaru napięcia szyn semantykę
+    układu rozliczeniowego."""
+    dane = {
+        "hv_sections": ladunek_h5()["hv_sections"],
+        "hv_coupler": {"normal_state": "open"},
+        "reserve_mode": "hidden",
+        "line_fields_per_section": "2",
+        "earthing_bay_template": "ENEA_SN_ZU_REZYSTOR",
+    }
+    odpowiedz = client.post(
+        f"/api/station-templates/{tpl_id}/preview", json={"params_override": dane}
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    podglad = odpowiedz.json()
+    assert podglad["station_type"] == "gpz"
+    pola = podglad["effective_config"]["gpz_bays"]
+    assert podglad["effective_config"]["sn_fields"] == []
+    # Zastosowanie szablonu z tymi danymi daje te same pola w tej samej kolejności.
+    from application.station_templates import get_template
+    from application.station_templates.apply import apply_template_to_case
+    from enm.store import get_enm
+
+    szablon = get_template(tpl_id)
+    assert szablon is not None
+    klucz = _klucz(pusty_model())
+    wynik = apply_template_to_case(
+        template=szablon, klucz_twin=klucz, target_segment_id=None, params_override=dane
+    )
+    enm = get_enm(klucz).model_dump(mode="json")
+    assert [(p["bay_role"], p["szablon_standardu_ref"]) for p in pola] == [
+        (p["bay_role"], p["szablon_standardu_ref"]) for p in enm["bays"]
+    ]
+    assert podglad["estimated_elements_count"] == len(wynik["created_element_refs"])
+    role = [p["bay_role"] for p in pola]
+    assert role.count("MEASUREMENT") == 2, "pole pomiaru napięcia w każdej sekcji SN (§13)"
+    for pole in pola:
+        szablon_pola = szablon_pola_standardu(pole["szablon_standardu_ref"])
+        if pole["voltage_kv"] >= 110.0:
+            # Strona 110 kV — granica zasilania: bez szablonu, skład = łącznik pola („brak
+            # typu”) albo transformator (element z własnym katalogiem); ten sam skład co karta.
+            assert szablon_pola is None and pole["szablon_standardu_nazwa_pl"] is None
+            assert [w["status"] for w in pole["sklad"]] in (
+                ["BRAK_TYPU_GRANICA_WN"],
+                ["ZAPROJEKTOWANE"],
+            )
+            continue
+        assert szablon_pola is not None
+        w_gniazdach = [w for w in pole["sklad"] if w["gniazdo_ref"] is not None]
+        assert [w["gniazdo_nazwa_pl"] for w in w_gniazdach] == [
+            g.nazwa_pl for g in szablon_pola.gniazda
+        ]
+        # Poza gniazdami wyłącznie element powiązany z własnym katalogiem: transformator,
+        # który pole transformatorowe SN zasila (ta sama gałąź, co w polu TR strony 110 kV).
+        poza = [(w["rodzaj"], w["status"]) for w in pole["sklad"] if w["gniazdo_ref"] is None]
+        tr = [("TRANSFORMER_DEVICE", "ZAPROJEKTOWANE")]
+        assert poza == (tr if pole["bay_role"] == "TR" else [])
+    del dane["line_fields_per_section"]
+    odmowa = client.post(f"/api/station-templates/{tpl_id}/preview", json={"params_override": dane})
+    assert odmowa.status_code == 422, odmowa.text
+    assert odmowa.json()["detail"]["code"] == "source.gpz_line_fields_required"

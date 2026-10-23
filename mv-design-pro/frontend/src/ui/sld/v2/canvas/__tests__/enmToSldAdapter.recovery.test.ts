@@ -25,10 +25,13 @@ const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { enm: EnergyNetwo
 describe('SLD recovery — electrical/semantic oracles', () => {
   const data = buildSldDataFromSnapshot(enm, null);
 
-  // E01: the ENM has exactly one source; the SLD must not render two
-  // independent source-looking blocks. Proxy: exactly one GPZ block.
-  it('E01: renders exactly one GPZ / source block (single source in ENM)', () => {
-    expect(enm.sources.length).toBe(1);
+  // E01: the SLD must not render two independent source-looking blocks for ONE GPZ.
+  // Karta GPZ-H5-APARATURA: GPZ substratu w układzie H5 ma dwa tory zasilania 110 kV
+  // (ENEA Zeszyt 1 §11.1), każdy z równoważnikiem sieci przypisanym do TEJ SAMEJ stacji —
+  // dwa źródła modelu, jeden blok GPZ. Proxy: exactly one GPZ block.
+  it('E01: renders exactly one GPZ block (two 110 kV supply equivalents of one GPZ in ENM)', () => {
+    expect(enm.sources.length).toBe(2);
+    expect(new Set(enm.sources.map((s) => s.substation_ref)).size).toBe(1);
     expect(data.gpzs.length).toBe(1);
   });
 

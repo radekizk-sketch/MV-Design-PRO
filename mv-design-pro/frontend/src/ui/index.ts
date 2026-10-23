@@ -65,10 +65,7 @@ export type {
 } from './protection';
 
 // Inspector (READ-ONLY ReadOnlyPropertyGrid - Canonical parity)
-export {
-  INSPECTOR_SECTION_LABELS,
-  FLAG_LABELS as INSPECTOR_FLAG_LABELS,
-} from './inspector';
+export { INSPECTOR_SECTION_LABELS } from './inspector';
 export type {
   InspectorSection,
   InspectorField,

@@ -1340,6 +1340,10 @@ class Bay(ENMElement):
     # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
     # (ścieżka konwencji rysunku, zero domysłu).
     primary_devices: list[BayPrimaryDevice] = []
+    # GPZ-H5-APARATURA: szablon pola standardu operatora (`network_model/catalog/
+    # gniazda_pol_enea.py::SZABLONY_POL_STANDARDU`, np. "ENEA_SN_LINIA") — uporządkowany ciąg
+    # gniazd aparatury z wymaganymi znamionami i podstawą. `None` = pole bez standardu.
+    szablon_standardu_ref: str | None = None
 
     @model_validator(mode="after")
     def _wlasciciel_pola(self) -> Bay:
@@ -1418,6 +1422,17 @@ class BayPrimaryDevice(BaseModel):
         # F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
         # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
         "SURGE_ARRESTER",
+        # GPZ-H5-APARATURA (ENEA Zeszyt 1 §13, §16, §17): odłącznik trójpołożeniowy
+        # (załączony–wyłączony–uziemiony) pola SN, stacjonarny wskaźnik obecności napięcia,
+        # transformator uziemiający, dławik gaszący, rezystor uziemiający punktu neutralnego
+        # i bateria kondensatorów pola BKR — rodzaje gniazd szablonów
+        # `network_model/catalog/gniazda_pol_enea.py`.
+        "DS_ES",
+        "VOLTAGE_INDICATOR",
+        "EARTHING_TRANSFORMER",
+        "NEUTRAL_REACTOR",
+        "NEUTRAL_RESISTOR",
+        "CAPACITOR_BANK",
     ]
     placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
@@ -1439,6 +1454,11 @@ class BayPrimaryDevice(BaseModel):
     # W5-A: jeden słownik ról (`network_model/core/uziemienie.py::RolaUziemnika`) —
     # ten sam czyta pisarz w `add_sn_bay` (payload `earthing_role`) i front.
     earthing_role: RolaUziemnika | None = None
+    # GPZ-H5-APARATURA: gniazdo szablonu pola standardu (`Bay.szablon_standardu_ref`), które ten
+    # aparat obsadza (`GniazdoPola.id`, np. "OSZ", "W", "PIU_CT"). `None` = aparat spoza
+    # gniazd standardu (pole bez szablonu albo aparat dodatkowy). Status gniazda wylicza
+    # JEDNA funkcja `enm.sklad_pola.sklad_pola`.
+    gniazdo_ref: str | None = None
 
 
 class BayMeasurements(BaseModel):
@@ -1660,6 +1680,35 @@ class BaySourceEndpoint(BaseModel):
     ] = "gotowosc"
 
 
+StatusSkladuPola = Literal[
+    "ZAPROJEKTOWANE",
+    "WYMAGANE_STANDARDEM_BRAK",
+    "BRAK_POZYCJI_KATALOGU",
+    "RODZAJ_BEZ_KATALOGU",
+    "BRAK_TYPU_GRANICA_WN",
+]
+
+
+class WierszSkladuPola(BaseModel):
+    """Jeden wiersz składu pola: gniazdo standardu (z aparatem albo bez) albo aparat spoza
+    gniazd. Status jest maszynowy i ZAWSZE związany z wyjaśnieniem ``opis_pl`` (kontrakt
+    werdyktu wyjaśnialnego): co stoi w gnieździe, z jakiej pozycji katalogu, czego brakuje."""
+
+    gniazdo_ref: str | None = None
+    gniazdo_nazwa_pl: str | None = None
+    rodzaj: str
+    rodzaj_pl: str
+    device_ref: str | None = None
+    linked_ref: str | None = None
+    catalog_ref: str | None = None
+    catalog_namespace: str | None = None
+    status: StatusSkladuPola
+    opis_pl: str
+    podstawa_pl: str | None = None
+    interpretacja_pl: str | None = None
+    wymagania: list[dict[str, Any]] = []
+
+
 class BayBaseModel(BaseModel):
     bay_ref: str
     bay_role: Literal[
@@ -1710,14 +1759,12 @@ class BayBaseModel(BaseModel):
     # (exclude_none). Nie wypełniać na istniejących fixture'ach.
     bay_template_ref: str | None = None
     switchgear_family_ref: str | None = None
-    # W5-C: stan danych wyposażenia pola — z REKORDU `Bay.primary_devices` (nie z aparatów
-    # wyprowadzonych z gałęzi pola, którymi odczyt uzupełnia rysunek pola bez rekordu):
-    # MODEL (każdy aparat z pozycją katalogową), PROPOZYCJA (wartość robocza — z szablonu
-    # albo rodzaj bez katalogu SN), BRAK_DANYCH (rekord bez aparatów). Reguła jedna:
-    # `enm.wyposazenie_pola.stan_danych_wyposazenia`; dane przyjęte (jakość ESTIMATED) —
-    # `dane_przyjete_wyposazenia`.
-    equipment_data_state: Literal["MODEL", "PROPOZYCJA", "BRAK_DANYCH"] = "BRAK_DANYCH"
-    equipment_assumed_data: list[dict[str, Any]] = []
+    # GPZ-H5-APARATURA: skład pola — gniazda szablonu standardu ze statusem i aparaty spoza
+    # gniazd (JEDNA funkcja `enm.sklad_pola.sklad_pola`; kasuje dawne trzy stany danych
+    # MODEL/PROPOZYCJA/BRAK_DANYCH). Każdy wiersz niesie wyjaśnienie: co, wymaganie, podstawa.
+    szablon_standardu_ref: str | None = None
+    szablon_standardu_nazwa_pl: str | None = None
+    sklad: list[WierszSkladuPola] = []
 
 
 class BayShortCircuitSourceContribution(BaseModel):

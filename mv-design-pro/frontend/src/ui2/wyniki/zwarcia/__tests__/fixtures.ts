@@ -28,6 +28,7 @@ export function shortCircuitRowFixture(over: Partial<ShortCircuitRow> = {}): Sho
     sk_mva: 320.75,
     fault_type: '3F',
     flags: [],
+    flags_pl: [],
     // Pelny bilans IEC 60909 (ZWARCIA-PRO F1) — ksztalt 1:1 z
     // `build_short_circuit_results` (pola addytywne z FROZEN solvera).
     rk_ohm: 0.0821,
@@ -208,7 +209,8 @@ export function shortCircuitResultsFixture(
         ith_ka: 8.5,
         sk_mva: 218.1,
         fault_type: '1F',
-        flags: ['SYNTHETIC'],
+        flags: ['SLACK'],
+        flags_pl: ['węzeł bilansujący'],
       }),
       shortCircuitRowFixture({
         target_id: 'BUS-ST2',
@@ -219,7 +221,8 @@ export function shortCircuitResultsFixture(
         ith_ka: null,
         sk_mva: null,
         fault_type: null,
-        flags: ['SLACK', 'NIEZNANA_FLAGA'],
+        flags: ['BEZ_NAPIECIA'],
+        flags_pl: ['bez napięcia'],
         // Starszy wynik bez bilansu (kontrakt addytywny) — uczciwe kreski.
         rk_ohm: null,
         xk_ohm: null,

@@ -21,7 +21,6 @@ import type { ResultsInspectorTab, BusResultRow, BranchResultRow } from '../type
 import {
   RESULTS_TAB_LABELS,
   RESULT_STATUS_LABELS,
-  FLAG_LABELS,
   SOLVER_KIND_LABELS,
 } from '../types';
 
@@ -233,12 +232,6 @@ describe('Polish Labels (i18n)', () => {
     expect(RESULT_STATUS_LABELS.OUTDATED).toBe('Wyniki nieaktualne');
   });
 
-  it('should have Polish flag labels', () => {
-    expect(FLAG_LABELS.SLACK).toBe('Węzeł bilansujący');
-    expect(FLAG_LABELS.VOLTAGE_VIOLATION).toBe('Naruszenie napięcia');
-    expect(FLAG_LABELS.OVERLOADED).toBe('Przeciążenie');
-  });
-
   it('should have Polish solver kind labels', () => {
     expect(SOLVER_KIND_LABELS.PF).toBe('Rozpływ mocy');
     expect(SOLVER_KIND_LABELS.short_circuit_sn).toBe('Zwarcie SN');
@@ -252,9 +245,9 @@ describe('Polish Labels (i18n)', () => {
 describe('Deterministic Sorting', () => {
   it('should sort bus results by name then id (frontend filter)', () => {
     const rows: BusResultRow[] = [
-      { bus_id: 'z-id', name: 'Szyna C', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [] },
-      { bus_id: 'a-id', name: 'Szyna A', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [] },
-      { bus_id: 'm-id', name: 'Szyna B', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [] },
+      { bus_id: 'z-id', name: 'Szyna C', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [], flags_pl: [] },
+      { bus_id: 'a-id', name: 'Szyna A', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [], flags_pl: [] },
+      { bus_id: 'm-id', name: 'Szyna B', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [], flags_pl: [] },
     ];
 
     // Simulate frontend sorting (backend provides sorted data, but we verify frontend filter)
@@ -271,9 +264,9 @@ describe('Deterministic Sorting', () => {
 
   it('should sort branch results by name then id (frontend filter)', () => {
     const rows: BranchResultRow[] = [
-      { branch_id: 'z-id', name: 'Linia Z', from_bus: '', to_bus: '', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [] },
-      { branch_id: 'a-id', name: 'Linia A', from_bus: '', to_bus: '', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [] },
-      { branch_id: 'm-id', name: 'Linia M', from_bus: '', to_bus: '', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [] },
+      { branch_id: 'z-id', name: 'Linia Z', from_bus: '', to_bus: '', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [], flags_pl: [] },
+      { branch_id: 'a-id', name: 'Linia A', from_bus: '', to_bus: '', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [], flags_pl: [] },
+      { branch_id: 'm-id', name: 'Linia M', from_bus: '', to_bus: '', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [], flags_pl: [] },
     ];
 
     const sorted = [...rows].sort((a, b) => {
@@ -300,8 +293,8 @@ describe('Filtered Results Hooks', () => {
   it('useFilteredBusResults should filter by search query', () => {
     // Note: This test verifies the filter logic, not actual API calls
     const mockRows: BusResultRow[] = [
-      { bus_id: '1', name: 'Szyna główna', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [] },
-      { bus_id: '2', name: 'Szyna pomocnicza', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [] },
+      { bus_id: '1', name: 'Szyna główna', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [], flags_pl: [] },
+      { bus_id: '2', name: 'Szyna pomocnicza', un_kv: 15, u_kv: null, u_pu: null, angle_deg: null, flags: [], flags_pl: [] },
     ];
 
     // Simulate filter logic
@@ -318,8 +311,8 @@ describe('Filtered Results Hooks', () => {
 
   it('useFilteredBranchResults should filter by search query', () => {
     const mockRows: BranchResultRow[] = [
-      { branch_id: '1', name: 'Linia SN-01', from_bus: 'bus1', to_bus: 'bus2', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [] },
-      { branch_id: '2', name: 'Kabel nN-01', from_bus: 'bus3', to_bus: 'bus4', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [] },
+      { branch_id: '1', name: 'Linia SN-01', from_bus: 'bus1', to_bus: 'bus2', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [], flags_pl: [] },
+      { branch_id: '2', name: 'Kabel nN-01', from_bus: 'bus3', to_bus: 'bus4', i_a: null, s_mva: null, p_mw: null, q_mvar: null, loading_pct: null, flags: [], flags_pl: [] },
     ];
 
     const query = 'Linia';

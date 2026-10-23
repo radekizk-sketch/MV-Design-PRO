@@ -285,7 +285,6 @@ MODULY_KOMUNIKATOW: tuple[ZakresModulu, ...] = (
     ),
     ZakresModulu("network_model/catalog/switchgear/family_validation.py"),
     ZakresModulu("network_model/catalog/materialization.py"),
-    ZakresModulu("network_model/validation/semantic_rules.py"),
     ZakresModulu("reference_engine/validation.py"),
     ZakresModulu("reference_engine/compliance.py"),
     ZakresModulu("api/domain_ops_policy.py"),
@@ -392,9 +391,6 @@ _KOLEKCJE_TEKSTOW: dict[str, str] = {
     "api/enm.py:rozbieznosci": "rozbieżności bramy wyniku — elementy nazwane `opis_elementu`",
     "enm/katalog_projektu_karty.py:obce": "zdania o kartach z `_opis_karty`/`_opis_typu`",
     "enm/topology_ops.py:deps": "elementy zależne szyny nazwane `opis_elementu`",
-    "network_model/validation/semantic_rules.py:brakujace_strony": (
-        "strony transformatora słowami („górnego napięcia”, „dolnego napięcia”)"
-    ),
     "enm/domain_operations.py:missing": "nazwy pól tabliczki transformatora z `pole()`",
     "reference_engine/compliance.py:missing": (
         "nazwy pomiarów słowami („napięcia (VT)”, „prądu (CT)”)"
@@ -1395,7 +1391,6 @@ def test_ostrzezenia_i_podpowiedzi_gotowosci_bez_kodow(
         *(z["message_pl"] for z in gotowosc.get("blockers", [])),
         *(z["message_pl"] for z in gotowosc.get("warnings", [])),
         *(a["message_pl"] for a in wynik.get("fix_actions") or []),
-        *(k.get("message") or "" for k in wynik.get("semantic_issues") or []),
     ]
     assert teksty, wynik
     for tekst in teksty:

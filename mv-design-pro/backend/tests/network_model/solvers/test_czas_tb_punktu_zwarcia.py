@@ -114,6 +114,8 @@ def _pole(
         "bay_role": "FEEDER",
         "substation_ref": STACJA,
         "bus_ref": szyna_sn,
+        # Wyłącznik należy do pola przez `equipment_refs` (jedna prawda składu pola).
+        "equipment_refs": [f"wyl/{sufiks}"],
     }
     zacisk = {
         "ref_id": f"zacisk/{sufiks}",

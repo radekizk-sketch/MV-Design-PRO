@@ -1,0 +1,652 @@
+{
+  "_zrodlo": "tests/application/station_templates/test_dane_projektu_wymagalnosc.py",
+  "dane_projektu": [
+    {
+      "klucz": "hv_sections",
+      "label_pl": "„Sekcje szyn 110 kV”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Dla każdej z dwóch sekcji szyn 110 kV tor zasilania: nazwa linii 110 kV, stacja zasilająca i równoważnik sieci z warunków przyłączenia OSD (Sk″ max i min, R/X, składowa zerowa)",
+      "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §11.1 — układ H5 ma dwie linie zasilające 110 kV, stacja z jedną linią 110 kV nie jest dopuszczona",
+      "typ_wartosci": "tory_zasilania_110kv",
+      "wartosci": [],
+      "warunek_pl": "",
+      "wymagalnosc": "zawsze",
+      "wymagana_gdy": []
+    },
+    {
+      "klucz": "hv_coupler.normal_state",
+      "label_pl": "„Stan normalny łącznika szyn 110 kV”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Przy dwóch niezależnych torach zasilania L1, L2 stan otwarty utrzymuje każdą sekcję 110 kV na własnym torze (tak przyjmuje przypadek odbiorczy H5); stan zamknięty łączy dwa niezależne równoważniki sieci i wymaga wariantu ze wspólnym punktem zasilania (model B) — w tym modelu rozpływ i zwarcia nie są wtedy liczone.",
+      "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.8.4 — podziały planowe sieci 110 kV wyznacza ODM/KDM, standard nie ustala stanu normalnego łącznika szyn 110 kV",
+      "typ_wartosci": "wybor",
+      "wartosci": [
+        {
+          "label_pl": "otwarty",
+          "wartosc": "open"
+        },
+        {
+          "label_pl": "zamknięty",
+          "wartosc": "closed"
+        }
+      ],
+      "warunek_pl": "",
+      "wymagalnosc": "zawsze",
+      "wymagana_gdy": []
+    },
+    {
+      "klucz": "hv_coupler.justification",
+      "label_pl": "„Uzasadnienie stanu łącznika szyn 110 kV”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Dlaczego łącznik szyn 110 kV pracuje normalnie zamknięty",
+      "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.8.4 — podziały planowe sieci 110 kV wyznacza ODM/KDM, standard nie ustala stanu normalnego łącznika szyn 110 kV",
+      "typ_wartosci": "tekst",
+      "wartosci": [],
+      "warunek_pl": "wymagane, gdy „Stan normalny łącznika szyn 110 kV” ma wartość „zamknięty”",
+      "wymagalnosc": "warunkowo",
+      "wymagana_gdy": [
+        {
+          "co_najmniej": null,
+          "klucz": "hv_coupler.normal_state",
+          "rowna": "closed"
+        }
+      ]
+    },
+    {
+      "klucz": "reserve_mode",
+      "label_pl": "„Tryb rezerwy transformatorowej”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Rezerwa ukryta: każdy transformator 110/SN pracuje na swojej sekcji SN, łącznik szyn SN jest normalnie otwarty, przy utracie transformatora SZR SN zamyka łącznik. Rezerwa jawna: transformator rezerwowy nie jest obciążony (wyłącznik jego pola SN normalnie otwarty), łącznik szyn SN jest normalnie zamknięty.",
+      "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.10.5",
+      "typ_wartosci": "wybor",
+      "wartosci": [
+        {
+          "label_pl": "rezerwa ukryta",
+          "wartosc": "hidden"
+        },
+        {
+          "label_pl": "rezerwa jawna",
+          "wartosc": "explicit"
+        }
+      ],
+      "warunek_pl": "",
+      "wymagalnosc": "zawsze",
+      "wymagana_gdy": []
+    },
+    {
+      "klucz": "reserve_transformer",
+      "label_pl": "„Transformator rezerwowy”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Numer transformatora rezerwowego (nieobciążonego w normalnej pracy)",
+      "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.10.5",
+      "typ_wartosci": "liczba_calkowita",
+      "wartosci": [
+        {
+          "label_pl": "transformator 1",
+          "wartosc": "1"
+        },
+        {
+          "label_pl": "transformator 2",
+          "wartosc": "2"
+        }
+      ],
+      "warunek_pl": "wymagane, gdy „Tryb rezerwy transformatorowej” ma wartość „rezerwa jawna” i „Liczba transformatorów 110/SN (pola transformatorowe H5)” wynosi co najmniej 2",
+      "wymagalnosc": "warunkowo",
+      "wymagana_gdy": [
+        {
+          "co_najmniej": null,
+          "klucz": "reserve_mode",
+          "rowna": "explicit"
+        },
+        {
+          "co_najmniej": 2,
+          "klucz": "transformer_count",
+          "rowna": null
+        }
+      ]
+    },
+    {
+      "klucz": "reserve_transformer_apparatus",
+      "label_pl": "„Wyłącznik pola SN transformatora rezerwowego”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Wyłącznik pola SN transformatora rezerwowego z katalogu — normalnie otwarty",
+      "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.10.5",
+      "typ_wartosci": "pozycja_katalogu",
+      "wartosci": [],
+      "warunek_pl": "wymagane, gdy „Tryb rezerwy transformatorowej” ma wartość „rezerwa jawna” i „Liczba transformatorów 110/SN (pola transformatorowe H5)” wynosi co najmniej 2",
+      "wymagalnosc": "warunkowo",
+      "wymagana_gdy": [
+        {
+          "co_najmniej": null,
+          "klucz": "reserve_mode",
+          "rowna": "explicit"
+        },
+        {
+          "co_najmniej": 2,
+          "klucz": "transformer_count",
+          "rowna": null
+        }
+      ]
+    },
+    {
+      "klucz": "line_fields_per_section",
+      "label_pl": "„Liczba pól liniowych na sekcję SN”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Liczba pól liniowych na każdej sekcji SN (odpływy magistral)",
+      "podstawa_pl": "ENEA Operator, Zeszyt 1, zał. Z.2 — liczba pól liniowych dostosowana do potrzeb (rysunek pokazuje 11 pól liniowych na sekcję); §13 — rozdzielnica na co najmniej 32 pola docelowo",
+      "typ_wartosci": "liczba_calkowita",
+      "wartosci": [
+        {
+          "label_pl": "1",
+          "wartosc": "1"
+        },
+        {
+          "label_pl": "2",
+          "wartosc": "2"
+        },
+        {
+          "label_pl": "3",
+          "wartosc": "3"
+        },
+        {
+          "label_pl": "4",
+          "wartosc": "4"
+        },
+        {
+          "label_pl": "5",
+          "wartosc": "5"
+        },
+        {
+          "label_pl": "6",
+          "wartosc": "6"
+        },
+        {
+          "label_pl": "7",
+          "wartosc": "7"
+        },
+        {
+          "label_pl": "8",
+          "wartosc": "8"
+        },
+        {
+          "label_pl": "9",
+          "wartosc": "9"
+        },
+        {
+          "label_pl": "10",
+          "wartosc": "10"
+        },
+        {
+          "label_pl": "11",
+          "wartosc": "11"
+        },
+        {
+          "label_pl": "12",
+          "wartosc": "12"
+        }
+      ],
+      "warunek_pl": "",
+      "wymagalnosc": "zawsze",
+      "wymagana_gdy": []
+    },
+    {
+      "klucz": "earthing_bay_template",
+      "label_pl": "„Wariant pola zespołu uziemiającego”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Sposób uziemienia punktu neutralnego sieci SN — wynik analizy projektu stacji; wyznacza wariant pola zespołu uziemiającego obu sekcji",
+      "podstawa_pl": "ENEA Operator, Zeszyt 1 §16 (sieć kablowa — rezystor, sieć kablowo-napowietrzna — dławik, w uzasadnionych przypadkach układ równoległy rezystor–dławik; dobór na połączoną sieć SN sekcji A + B), rys. Z.13–Z.15",
+      "typ_wartosci": "wybor",
+      "wartosci": [
+        {
+          "label_pl": "pole zespołu uziemiającego SN — rezystor (sieć kablowa)",
+          "wartosc": "ENEA_SN_ZU_REZYSTOR"
+        },
+        {
+          "label_pl": "pole zespołu uziemiającego SN — dławik z regulacją nadążną (sieć skompensowana)",
+          "wartosc": "ENEA_SN_ZU_DLAWIK"
+        },
+        {
+          "label_pl": "pole zespołu uziemiającego SN — układ równoległy dławik ‖ rezystor",
+          "wartosc": "ENEA_SN_ZU_DLAWIK_REZYSTOR"
+        }
+      ],
+      "warunek_pl": "",
+      "wymagalnosc": "zawsze",
+      "wymagana_gdy": []
+    },
+    {
+      "klucz": "bay_apparatus",
+      "label_pl": "„Obsadzenie gniazd aparatury pól”",
+      "operacja": "add_grid_source_sn",
+      "podpowiedz_pl": "Obsadzenie gniazd pól pozycjami wymagań standardu ENEA (progi wymagań z podstawą, bez producenta) — do zastąpienia doborem producenta",
+      "podstawa_pl": "ENEA Operator, Zeszyt 1 — §9.1, §9.2, §11.1, §13, §16, §17, §19, tabele 2–5, rys. Z.1–Z.17 (wymagania aparatury pól)",
+      "typ_wartosci": "wybor",
+      "wartosci": [
+        {
+          "label_pl": "pozycje wymagań standardu ENEA w gniazdach",
+          "wartosc": "wymagania_standardu"
+        }
+      ],
+      "warunek_pl": "opcjonalne — bez wyboru gniazda czekają na dobór aparatu",
+      "wymagalnosc": "opcjonalnie",
+      "wymagana_gdy": []
+    }
+  ],
+  "przypadki": [
+    {
+      "dane": {},
+      "klucz": "hv_sections",
+      "wymagana": true
+    },
+    {
+      "dane": {},
+      "klucz": "hv_coupler.normal_state",
+      "wymagana": true
+    },
+    {
+      "dane": {},
+      "klucz": "hv_coupler.justification",
+      "wymagana": false
+    },
+    {
+      "dane": {},
+      "klucz": "reserve_mode",
+      "wymagana": true
+    },
+    {
+      "dane": {},
+      "klucz": "reserve_transformer",
+      "wymagana": false
+    },
+    {
+      "dane": {},
+      "klucz": "reserve_transformer_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {},
+      "klucz": "line_fields_per_section",
+      "wymagana": true
+    },
+    {
+      "dane": {},
+      "klucz": "earthing_bay_template",
+      "wymagana": true
+    },
+    {
+      "dane": {},
+      "klucz": "bay_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "hv_sections",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "hv_coupler.normal_state",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "hv_coupler.justification",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "reserve_mode",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "reserve_transformer",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "reserve_transformer_apparatus",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "line_fields_per_section",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "earthing_bay_template",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit"
+      },
+      "klucz": "bay_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "hv_sections",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "hv_coupler.normal_state",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "hv_coupler.justification",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "reserve_mode",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "reserve_transformer",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "reserve_transformer_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "line_fields_per_section",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "earthing_bay_template",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "explicit",
+        "transformer_count": 1
+      },
+      "klucz": "bay_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "hv_sections",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "hv_coupler.normal_state",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "hv_coupler.justification",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "reserve_mode",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "reserve_transformer",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "reserve_transformer_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "line_fields_per_section",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "earthing_bay_template",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "reserve_mode": "hidden",
+        "transformer_count": 2
+      },
+      "klucz": "bay_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "hv_sections",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "hv_coupler.normal_state",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "hv_coupler.justification",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "reserve_mode",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "reserve_transformer",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "reserve_transformer_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "line_fields_per_section",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "earthing_bay_template",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "closed"
+        }
+      },
+      "klucz": "bay_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "hv_sections",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "hv_coupler.normal_state",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "hv_coupler.justification",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "reserve_mode",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "reserve_transformer",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "reserve_transformer_apparatus",
+      "wymagana": false
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "line_fields_per_section",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "earthing_bay_template",
+      "wymagana": true
+    },
+    {
+      "dane": {
+        "hv_coupler": {
+          "normal_state": "open"
+        }
+      },
+      "klucz": "bay_apparatus",
+      "wymagana": false
+    }
+  ],
+  "transformer_count_default": 2
+}

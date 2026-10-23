@@ -6,11 +6,11 @@ Mierzy 10 kryteriów 10/10 per etap workflow projektowania sieci SN/WN.
 Każde kryterium = statyczny check (grep/AST) — wynik powtarzalny.
 
 Etapy (operacje kanoniczne):
-  1. GPZ        → add_grid_source_sn        → AddGridSourceForm + GridSourceEditor
-  2. Pola SN    → add_sn_bay                → AddSnBayForm
-  3. Segmenty   → continue_trunk_segment_sn → ContinueTrunkForm + StartBranchForm
-  4. Stacje     → insert_station_on_segment_sn → InsertStationForm
-  5. OZE/DER    → add_converter_source      → AddDerWizard / AddConverterSourceForm
+  1. GPZ        → add_grid_source_sn        → KreatorZrodloZasilania (ui2)
+  2. Pola SN    → add_sn_bay                → KreatorPolaSn (ui2)
+  3. Segmenty   → continue_trunk_segment_sn → KreatorMagistralaSn + KreatorOdgalezienia (ui2)
+  4. Stacje     → insert_station_on_segment_sn → KreatorStacjiSnNn (ui2)
+  5. OZE/DER    → add_converter_source      → AddDerWizard
 
 Użycie:
   python scripts/ux_audit.py            # audyt wszystkich etapów, JSON do docs/ux/AUDIT_LATEST.json
@@ -33,16 +33,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 FE = REPO_ROOT / "frontend/src"
 STORE = FE / "ui/topology/snapshotStore.ts"
 MESSAGES = FE / "ui/topology/operationSuccessMessages.ts"
-ROUTER = FE / "ui/workspace/WorkspaceSurfaceRouter.tsx"
-# Zero-Debt (karta NAWIGACJA-JEDEN-KANON): obie dawne sciezki shellu
-# (AppShellV12.tsx, CanonicalLayoutV3.tsx) zostaly skasowane odpowiednio w
-# a88c6960 i 3693c01e, wiec `_semantic_banner_wired` pytal o NIEISTNIEJACE
-# pliki i mogl zwrocic falszywy wynik. Zywa powloka to ui2: AppShell +
-# LegacyWarsztat (ten drugi montuje SemanticIssuesBanner nad warsztatem).
-SHELL_CANDIDATES = [
-    FE / "ui2/shell/AppShell.tsx",
-    FE / "ui2/legacy/LegacyWarsztat.tsx",
-]
+# Karta GPZ-H5-APARATURA: walidacja real-time to gotowość odpowiedzi operacji domenowej
+# (`readiness` — jeden walidator modelu `enm/validator.py`) przechowana w magazynie migawki
+# i pokazana na pasku stanu powłoki ui2. Dawny baner `SemanticIssuesBanner` czytał DRUGĄ
+# ścieżkę walidacji (`semantic_issues`), skasowaną razem z nim.
+STATUS_BAR = FE / "ui2/shell/StatusBar.tsx"
+SHELL = FE / "ui2/shell/AppShell.tsx"
+READINESS_ADAPTER = FE / "ui2/spaces/gotowosc/adapters/gotowoscAdapter.ts"
 
 
 @dataclass
@@ -59,16 +56,15 @@ STAGES: list[Stage] = [
         "gpz",
         "GPZ — źródło zasilające",
         "add_grid_source_sn",
-        [
-            FE / "ui/network-build/forms/AddGridSourceForm.tsx",
-            FE / "ui/network-build/forms/shared/GridSourceEditor.tsx",
-        ],
+        # Kanoniczny kreator ui2 (formularze `ui/network-build/forms/**` skasowane — ścieżki
+        # martwe dawały pomiar pustych plików, karta GPZ-H5-APARATURA).
+        [FE / "ui2/kreatory/zrodlo/KreatorZrodloZasilania.tsx"],
     ),
     Stage(
         "bays",
         "Pola SN",
         "add_sn_bay",
-        [FE / "ui/network-build/forms/AddSnBayForm.tsx"],
+        [FE / "ui2/kreatory/pole/KreatorPolaSn.tsx"],
     ),
     Stage(
         "segments",
@@ -77,7 +73,7 @@ STAGES: list[Stage] = [
         [
             # Kanoniczny kreator ui2 (retirowany ContinueTrunkForm/TrunkContinueModal).
             FE / "ui2/kreatory/magistrala/KreatorMagistralaSn.tsx",
-            FE / "ui/network-build/forms/StartBranchForm.tsx",
+            FE / "ui2/kreatory/odgalezienie/KreatorOdgalezienia.tsx",
         ],
         uses_catalog=True,
     ),
@@ -85,7 +81,7 @@ STAGES: list[Stage] = [
         "stations",
         "Stacje",
         "insert_station_on_segment_sn",
-        [FE / "ui/network-build/forms/InsertStationForm.tsx"],
+        [FE / "ui2/kreatory/stacja/KreatorStacjiSnNn.tsx"],
     ),
     Stage(
         "der",
@@ -138,10 +134,14 @@ def _message_mapped(op: str) -> bool:
     return bool(re.search(rf"^\s{{2}}{re.escape(op)}:\s*'", text, re.MULTILINE))
 
 
-def _semantic_banner_wired() -> bool:
-    """SemanticIssuesBanner podpięty w routerze albo shellu (global)."""
-    targets = [ROUTER] + SHELL_CANDIDATES
-    return any("SemanticIssuesBanner" in _read(t) for t in targets)
+def _readiness_live_wired() -> bool:
+    """Gotowość z odpowiedzi operacji trafia do magazynu i na pasek stanu powłoki."""
+    return (
+        "readiness: response.readiness" in _read(STORE)
+        and "useSnapshotStore((s) => s.readiness)" in _read(READINESS_ADAPTER)
+        and "usePodsumowanieGotowosci" in _read(SHELL)
+        and "mvd-status-gotowosc" in _read(STATUS_BAR)
+    )
 
 
 def _spine_error_coloring() -> bool:
@@ -184,16 +184,16 @@ def audit_stage(stage: Stage) -> StageResult:
         )
     )
 
-    # C3 — walidacja real-time (SemanticIssuesBanner globalnie podpięty)
+    # C3 — walidacja real-time (gotowość odpowiedzi operacji na pasku stanu)
     res.criteria.append(
         CriterionResult(
             3,
-            "walidacja real-time (banner)",
-            _semantic_banner_wired(),
+            "walidacja real-time (gotowość)",
+            _readiness_live_wired(),
             (
-                "SemanticIssuesBanner wired"
-                if _semantic_banner_wired()
-                else "banner NIE podpięty globalnie"
+                "gotowość operacji na pasku stanu"
+                if _readiness_live_wired()
+                else "gotowość operacji NIE trafia na pasek stanu"
             ),
         )
     )

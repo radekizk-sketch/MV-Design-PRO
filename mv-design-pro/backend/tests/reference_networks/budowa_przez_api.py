@@ -131,22 +131,26 @@ class KlientBudowy:
         )
 
     def gpz_110kv(self) -> dict[str, Any]:
-        """GPZ 110/15 kV z jednym torem zasilania 110 kV (Sk″ = 3000 MVA, R/X = 0,1 —
-        przykładowe dane przypadku testowego) i jednym transformatorem 110/15 kV 25 MVA
-        przypisanym jawnie: sekcja 110 kV 1 → sekcja SN 1 (kontrakt `hv_sections` +
-        `transformers` karty GPZ-H5; bez liczby transformatorów i bez przydziału
-        domyślnego)."""
+        """GPZ 110/15 kV w układzie H5 z ograniczoną liczbą transformatorów (ENEA Operator,
+        Zeszyt 1 „Stacje 110 kV" §11.1: dwie linie zasilające 110 kV, dopuszczona
+        ograniczona liczba pól transformatorowych): dwie sekcje szyn 110 kV, każda z torem
+        zasilania (Sk″ = 3000 MVA, R/X = 0,1 — przykładowe dane przypadku testowego),
+        łącznik szyn 110 kV normalnie otwarty, jeden transformator 110/15 kV 25 MVA
+        przypisany jawnie: sekcja 110 kV 1 → sekcja SN 1, jedno pole liniowe sekcji SN
+        (dana projektu, zał. Z.2). Kontrakt `hv_sections` + `transformers` karty GPZ-H5 —
+        bez liczby transformatorów i bez przydziału domyślnego."""
         return self.operacja(
             "add_grid_source_sn",
             {
                 "voltage_kv": 15.0,
                 "sections_count": 1,
+                "line_fields_per_section": 1,
                 "hv_sections": [
                     {
                         "supply": {
-                            "line_name": "Linia 110 kV zasilająca",
+                            "line_name": f"Linia 110 kV zasilająca L{tor}",
                             "supplying_station_name": (
-                                "Stacja zasilająca — przykładowe dane przypadku testowego"
+                                f"Stacja zasilająca {tor} — przykładowe dane przypadku testowego"
                             ),
                             "manual_equivalent": {
                                 "hv_voltage_kv": 110.0,
@@ -155,7 +159,9 @@ class KlientBudowy:
                             },
                         }
                     }
+                    for tor in (1, 2)
                 ],
+                "hv_coupler": {"normal_state": "open"},
                 "transformers": [
                     {
                         "hv_section": 1,
@@ -286,11 +292,18 @@ def segmenty_korytarza(enm: dict[str, Any], indeks: int = 0) -> list[str]:
 
 
 def pole_gpz(enm: dict[str, Any], indeks: int = 0) -> str:
-    """Identyfikator pola liniowego GPZ o danym indeksie (kolejność rekordów ``bays`` GPZ —
-    kolejność tworzenia pól, karta W5-B)."""
+    """Identyfikator pola liniowego SN GPZ o danym indeksie (kolejność rekordów ``bays`` GPZ —
+    kolejność rozdzielni, karty W5-B i GPZ-H5). Wyłącznie pola liniowe SN (``OUT``/``FEEDER``):
+    GPZ ze stroną 110 kV ma na początku listy pola zasilające 110 kV (granica zasilania sieci
+    SN), z których odcinek SN nie wychodzi."""
     from enm.pola import pola_stacji
 
     for stacja in enm["substations"]:
         if stacja.get("station_type") == "gpz":
-            return str(pola_stacji(enm, stacja["ref_id"])[indeks]["ref_id"])
+            liniowe = [
+                p
+                for p in pola_stacji(enm, stacja["ref_id"])
+                if p.get("bay_role") in {"OUT", "FEEDER"}
+            ]
+            return str(liniowe[indeks]["ref_id"])
     raise BladBudowy("brak GPZ w migawce")

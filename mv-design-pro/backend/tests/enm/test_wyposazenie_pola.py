@@ -1,16 +1,20 @@
-"""Wyposażenie pola SN (``set_bay_equipment``, karta W5-C) — iloczyn cech.
+"""Wyposażenie pola SN (``set_bay_equipment``, karty W5-C i GPZ-H5-APARATURA) — iloczyn cech.
 
 Cechy iloczynu:
 
-* stan danych wyposażenia ∈ {MODEL (tryb ``katalog``), PROPOZYCJA (tryb ``szablon`` —
-  dana przyjęta ``ESTIMATED``), BRAK_DANYCH (tryb ``wyczysc`` i pole świeżo utworzone)}
-  × rola pola SN ∈ {IN, OUT, TR, FEEDER (wcięcie stacji), COUPLER, MEASUREMENT, OZE
+* status wiersza składu pola (JEDNA funkcja ``enm.sklad_pola.sklad_pola``) ∈ {ZAPROJEKTOWANE
+  (tryb ``katalog`` — aparat z pozycją katalogu, sam albo przez element modelu),
+  BRAK_POZYCJI_KATALOGU (tryb ``szablon`` — rodzaj z katalogiem bez pozycji),
+  RODZAJ_BEZ_KATALOGU (głowica kablowa, wkładki, transformator pola)} × tryb ∈ {pole świeże,
+  ``katalog``, ``szablon``, ``wyczysc``} × rola pola SN ∈ {IN, OUT, TR, FEEDER (wcięcie stacji), COUPLER, MEASUREMENT, OZE
   (``add_sn_bay``)} — każda kombinacja z sieci zbudowanej operacjami domenowymi;
 * przestrzeń katalogu aparatu ∈ {APARAT_SN × rodzaj katalogowy, CT, VT, OGRANICZNIK_SN,
-  rodzaj bez katalogu SN} × {pozycja istnieje, pozycja nie istnieje, pozycja innego
-  rodzaju, brak pozycji};
+  ELEMENT_POLA_SN, rodzaj bez katalogu SN} × {pozycja istnieje, pozycja nie istnieje, pozycja
+  innego rodzaju, brak pozycji} — pozycja „poprawna" ma U_m właściwe dla szyny 15 kV
+  (pozycja wymagań standardu 110 kV w polu SN jest odmawiana: ``bay_equipment.um_mismatch``);
 * aparat z gałęzią (``linked_ref``) × {łącznik tego pola, łącznik innego pola, kabel,
   aparat bez gałęzi} × stan łącznika w modelu (odczyt pola po ``open_switch``);
+* odczyt pola (``build_field_read_model``) niesie TEN SAM skład co odpowiedź operacji;
 * atomowość każdej odmowy (model wejściowy nietknięty, brak migawki) i determinizm.
 """
 
@@ -25,11 +29,11 @@ from enm.domain_operations import execute_domain_operation
 from enm.katalog_projektu import katalog_biezacy
 from enm.models import EnergyNetworkModel
 from enm.pole_katalogowe import _rejestr_pol_katalogowych
+from enm.sklad_pola import dane_pozycji_aparatu, zgodnosc_um_aparatu
 from enm.wyposazenie_pola import (
     PRZESTRZEN_KATALOGU_APARATU,
     RODZAJE_BEZ_KATALOGU_SN,
     RODZAJE_KATALOGOWE_APARATU,
-    stan_danych_wyposazenia,
 )
 
 from tests.enm.siec_lacznikowa import _gpz, _kable, _odcinki, _pusty, galaz, wykonaj
@@ -49,27 +53,56 @@ SZABLON_ROLI: dict[str, str] = {
 ROLE = tuple(SZABLON_ROLI)
 
 
-def _pierwsza(slownik: dict[str, Any], warunek: Any = None) -> str:
-    return next(ref for ref, typ in sorted(slownik.items()) if warunek is None or warunek(typ))
+#: Napięcie znamionowe szyn stacji sieci testowej (kV).
+NAPIECIE_SZYNY_KV = 15.0
+
+
+def _pierwsza(przestrzen: str, slownik: dict[str, Any], warunek: Any = None) -> str:
+    """Pierwsza pozycja przestrzeni (kolejność ``ref``) spełniająca warunek, o U_m właściwym
+    dla szyny 15 kV — ta sama funkcja zgodności U_m, co operacja zapisu."""
+    katalog = katalog_biezacy()
+    return next(
+        ref
+        for ref, typ in sorted(slownik.items())
+        if (warunek is None or warunek(typ))
+        and zgodnosc_um_aparatu(
+            dane_pozycji_aparatu(katalog, przestrzen, ref).u_m_kv,
+            NAPIECIE_SZYNY_KV,
+            wymagane_znane=False,
+        ).zgodna
+    )
 
 
 def _ref_aparatu_sn(rodzaj_katalogowy: str) -> str:
     return _pierwsza(
-        katalog_biezacy().mv_apparatus_types, lambda t: t.device_kind == rodzaj_katalogowy
+        "APARAT_SN",
+        katalog_biezacy().mv_apparatus_types,
+        lambda t: t.device_kind == rodzaj_katalogowy,
     )
 
 
 def _ref_przestrzeni(przestrzen: str) -> str:
     katalog = katalog_biezacy()
     return {
-        "CT": lambda: _pierwsza(katalog.ct_types),
-        "VT": lambda: _pierwsza(katalog.vt_types),
-        "OGRANICZNIK_SN": lambda: _pierwsza(katalog.surge_arrester_types),
+        "CT": lambda: _pierwsza("CT", katalog.ct_types),
+        "VT": lambda: _pierwsza("VT", katalog.vt_types),
+        "OGRANICZNIK_SN": lambda: _pierwsza("OGRANICZNIK_SN", katalog.surge_arrester_types),
     }[przestrzen]()
 
 
-#: Rodzaj aparatu pola → poprawna pozycja katalogowa (MODEL).
+def _ref_elementu_pola(rodzaj: str) -> str:
+    dozwolone = RODZAJE_KATALOGOWE_APARATU[rodzaj]
+    return _pierwsza(
+        "ELEMENT_POLA_SN",
+        katalog_biezacy().element_pola_types,
+        lambda t: t.rodzaj in dozwolone,
+    )
+
+
+#: Rodzaj aparatu pola → poprawna pozycja katalogowa (status ZAPROJEKTOWANE).
 def _poprawny_ref(rodzaj: str) -> str:
+    if PRZESTRZEN_KATALOGU_APARATU[rodzaj] == "ELEMENT_POLA_SN":
+        return _ref_elementu_pola(rodzaj)
     if rodzaj in RODZAJE_KATALOGOWE_APARATU:
         return _ref_aparatu_sn(sorted(RODZAJE_KATALOGOWE_APARATU[rodzaj])[0])
     return _ref_przestrzeni(PRZESTRZEN_KATALOGU_APARATU[rodzaj])
@@ -158,38 +191,84 @@ def _ladunek_katalogowy(rola: str) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Iloczyn: stan danych × rola pola SN
+# Iloczyn: status składu × tryb × rola pola SN
 # ---------------------------------------------------------------------------
 
 
+def _status_oczekiwany(wiersz: dict[str, Any]) -> str:
+    """Reguła statusu wiersza aparatu spoza gniazd — wyprowadzona niezależnie od modułu
+    (z przestrzeni katalogu rodzaju i obecności pozycji)."""
+    if wiersz["catalog_ref"]:
+        return "ZAPROJEKTOWANE"
+    if wiersz["rodzaj"] in PRZESTRZEN_KATALOGU_APARATU:
+        return "BRAK_POZYCJI_KATALOGU"
+    return "RODZAJ_BEZ_KATALOGU"
+
+
+def _sprawdz_wiersze(sklad: list[dict[str, Any]]) -> None:
+    for wiersz in sklad:
+        assert wiersz["gniazdo_ref"] is None, "pole bez szablonu standardu nie ma gniazd"
+        assert wiersz["status"] == _status_oczekiwany(wiersz), wiersz
+        assert wiersz["opis_pl"], "status bez wyjaśnienia"
+
+
 @pytest.mark.parametrize("rola", ROLE)
-def test_pole_swieze_bez_szablonu_jest_brakiem_danych(siec: Any, rola: str) -> None:
+def test_pole_swieze_ma_sklad_z_elementow_modelu(siec: Any, rola: str) -> None:
+    """Pole świeże (bez rekordu aparatów) — skład to aparaty wyprowadzone z elementów modelu
+    pola (łączniki ``equipment_refs``, głowica kabla, transformator), każdy ze statusem
+    reguły katalogu; pole bez szablonu standardu nie ma wierszy gniazd."""
     enm, pola, _ = siec
-    assert stan_danych_wyposazenia(_pole(enm, pola[rola])["primary_devices"]) == "BRAK_DANYCH"
+    rekord = _pole(enm, pola[rola])
+    assert rekord["primary_devices"] == []
+    sklad = _odczyt_pola(enm, pola[rola])["sklad"]
+    _sprawdz_wiersze(sklad)
+    assert {w["linked_ref"] for w in sklad} <= set(rekord["equipment_refs"]) | {
+        t["ref_id"] for t in enm.get("transformers", [])
+    } | {g["ref_id"] for g in enm.get("generators", [])}
 
 
 @pytest.mark.parametrize("rola", ROLE)
-def test_tryb_katalog_daje_model(siec: Any, rola: str) -> None:
+def test_tryb_katalog_daje_zaprojektowane(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
     devices = _ladunek_katalogowy(rola)
     wynik = _wykonaj(enm, {"bay_ref": pola[rola], "mode": "katalog", "devices": devices})
 
     assert wynik.get("error") is None, wynik.get("error")
     zapisane = _pole(wynik["snapshot"], pola[rola])["primary_devices"]
-    assert [(a["kind"], a["placement"], a["catalog_ref"]) for a in zapisane] == [
-        (d["kind"], d["placement"], d["catalog_ref"]) for d in devices
+    assert [(a["kind"], a["placement"]) for a in zapisane] == [
+        (d["kind"], d["placement"]) for d in devices
     ]
     assert [a["device_ref"] for a in zapisane] == [
         f"{pola[rola]}::dev::{i}" for i in range(len(devices))
     ]
+    # Przekładnik pola to rekord ``Measurement`` (jedna reprezentacja): aparat rekordu go
+    # wskazuje, katalog niesie przekładnik; pozostałe rodzaje niosą katalog same.
+    pomiary = {m["ref_id"]: m for m in wynik["snapshot"].get("measurements", [])}
+    utworzone = []
+    for aparat, wpis in zip(zapisane, devices, strict=True):
+        if aparat["kind"] in {"CT", "VT"}:
+            assert aparat.get("catalog_ref") is None
+            przekladnik = pomiary[aparat["linked_ref"]]
+            assert przekladnik["catalog_ref"] == wpis["catalog_ref"]
+            assert przekladnik["bay_ref"] == pola[rola]
+            assert przekladnik["measurement_type"] == aparat["kind"]
+            utworzone.append(aparat["linked_ref"])
+        else:
+            assert aparat["catalog_ref"] == wpis["catalog_ref"]
     opis = wynik["wyposazenie_pola"]
-    assert opis["stan_danych"] == "MODEL"
-    assert {a["stan_danych"] for a in opis["aparaty"]} == {"MODEL"}
-    assert opis["dane_przyjete"] == []
+    assert opis["bay_ref"] == pola[rola]
+    assert opis["szablon_standardu_ref"] is None
+    wiersze_rekordu = [
+        w for w in opis["sklad"] if w["device_ref"] in {a["device_ref"] for a in zapisane}
+    ]
+    assert len(wiersze_rekordu) == len(zapisane)
+    assert {w["status"] for w in wiersze_rekordu} == {"ZAPROJEKTOWANE"}
+    _sprawdz_wiersze(opis["sklad"])
     assert wynik["domain_events"] == [
         {"event_seq": 1, "event_type": "BAY_EQUIPMENT_SET", "element_id": pola[rola]}
     ]
     assert wynik["changes"]["updated_element_ids"] == [pola[rola]]
+    assert sorted(wynik["changes"].get("created_element_ids") or []) == sorted(utworzone)
     # Jedna prawda: pozostałe pola i gałęzie bez zmian.
     for inne in wynik["snapshot"]["bays"]:
         if inne["ref_id"] != pola[rola]:
@@ -199,7 +278,10 @@ def test_tryb_katalog_daje_model(siec: Any, rola: str) -> None:
 
 
 @pytest.mark.parametrize("rola", ROLE)
-def test_tryb_szablon_daje_propozycje_jako_dana_przyjeta(siec: Any, rola: str) -> None:
+def test_tryb_szablon_daje_aparaty_bez_pozycji(siec: Any, rola: str) -> None:
+    """Szablon kanoniczny pola daje rodzaje aparatów BEZ pozycji katalogowej — skład pokazuje
+    je jako ``BRAK_POZYCJI_KATALOGU`` (albo ``RODZAJ_BEZ_KATALOGU``), chyba że aparat związał się
+    z łącznikiem pola niosącym katalog (wtedy ``ZAPROJEKTOWANE`` z katalogu łącznika)."""
     enm, pola, _ = siec
     wynik = _wykonaj(
         enm, {"bay_ref": pola[rola], "mode": "szablon", "bay_template_ref": SZABLON_ROLI[rola]}
@@ -209,18 +291,17 @@ def test_tryb_szablon_daje_propozycje_jako_dana_przyjeta(siec: Any, rola: str) -
     rekord = _pole(wynik["snapshot"], pola[rola])
     assert rekord["bay_template_ref"] == SZABLON_ROLI[rola]
     assert rekord["primary_devices"], "szablon roli bez aparatów"
-    opis = wynik["wyposazenie_pola"]
-    assert opis["stan_danych"] == "PROPOZYCJA"
-    propozycje = [a for a in opis["aparaty"] if a["stan_danych"] == "PROPOZYCJA"]
-    assert len(opis["dane_przyjete"]) == len(propozycje) > 0
-    for dana in opis["dane_przyjete"]:
-        assert dana["jakosc"] == "ESTIMATED"
-        assert dana["powod_pl"] and dana["nazwa_pl"]
-        assert dana["wartosc"] is None
+    sklad = wynik["wyposazenie_pola"]["sklad"]
+    _sprawdz_wiersze(sklad)
+    galezie = {g["ref_id"]: g for g in enm["branches"]}
+    for wiersz in sklad:
+        if wiersz["status"] == "ZAPROJEKTOWANE":
+            assert wiersz["catalog_ref"] == galezie[wiersz["linked_ref"]]["catalog_ref"]
+    assert any(w["status"] == "BRAK_POZYCJI_KATALOGU" for w in sklad), sklad
 
 
 @pytest.mark.parametrize("rola", ROLE)
-def test_tryb_wyczysc_daje_brak_danych(siec: Any, rola: str) -> None:
+def test_tryb_wyczysc_wraca_do_skladu_z_elementow(siec: Any, rola: str) -> None:
     enm, pola, _ = siec
     wyposazone = wykonaj(
         enm,
@@ -231,8 +312,9 @@ def test_tryb_wyczysc_daje_brak_danych(siec: Any, rola: str) -> None:
 
     assert wynik.get("error") is None, wynik.get("error")
     assert _pole(wynik["snapshot"], pola[rola])["primary_devices"] == []
-    assert wynik["wyposazenie_pola"]["stan_danych"] == "BRAK_DANYCH"
-    assert wynik["wyposazenie_pola"]["aparaty"] == []
+    sklad = wynik["wyposazenie_pola"]["sklad"]
+    _sprawdz_wiersze(sklad)
+    assert not any("::dev::" in str(w["device_ref"]) for w in sklad)
 
 
 def _odczyt_pola(migawka: dict[str, Any], pole_ref: str) -> dict[str, Any]:
@@ -241,47 +323,29 @@ def _odczyt_pola(migawka: dict[str, Any], pole_ref: str) -> dict[str, Any]:
     return pole_odczytu["canonical_model"]["base_model"]
 
 
-@pytest.mark.parametrize("tryb", ["swieze", "katalog", "szablon", "wyczysc"])
+@pytest.mark.parametrize("tryb", ["katalog", "szablon", "wyczysc"])
 @pytest.mark.parametrize("rola", ROLE)
-def test_odczyt_pola_niesie_stan_danych_wyposazenia_z_operacji(
-    siec: Any, rola: str, tryb: str
-) -> None:
-    """Karta pola (E-11) czyta stan danych wyposażenia z odczytu pola — ta sama reguła,
-    co odpowiedź operacji (`stan_danych_wyposazenia`), z REKORDU pola: pole świeże bez
-    rekordu aparatów to BRAK_DANYCH, choć rysunek pola uzupełnia aparaty z gałęzi."""
+def test_odczyt_pola_niesie_sklad_z_operacji(siec: Any, rola: str, tryb: str) -> None:
+    """Karta pola (E-11) czyta skład z odczytu pola — TA SAMA funkcja co odpowiedź operacji
+    (``sklad_pola``): wiersze, statusy i wyjaśnienia są identyczne."""
     enm, pola, _ = siec
     ref = pola[rola]
-    if tryb == "swieze":
-        migawka, oczekiwany, przyjete = enm, "BRAK_DANYCH", []
-    else:
-        ladunek: dict[str, Any] = {"bay_ref": ref, "mode": tryb}
-        if tryb == "katalog":
-            ladunek["devices"] = _ladunek_katalogowy(rola)
-        if tryb == "szablon":
-            ladunek["bay_template_ref"] = SZABLON_ROLI[rola]
-        if tryb == "wyczysc":
-            enm = wykonaj(
-                enm,
-                "set_bay_equipment",
-                {"bay_ref": ref, "mode": "katalog", "devices": _ladunek_katalogowy(rola)},
-            )
-        wynik = _wykonaj(enm, ladunek)
-        assert wynik.get("error") is None, wynik.get("error")
-        migawka = wynik["snapshot"]
-        oczekiwany = wynik["wyposazenie_pola"]["stan_danych"]
-        przyjete = wynik["wyposazenie_pola"]["dane_przyjete"]
-    model_pola = _odczyt_pola(migawka, ref)
-    assert model_pola["equipment_data_state"] == oczekiwany
-    assert model_pola["equipment_assumed_data"] == przyjete
-    assert (
-        oczekiwany
-        == {
-            "swieze": "BRAK_DANYCH",
-            "katalog": "MODEL",
-            "szablon": "PROPOZYCJA",
-            "wyczysc": "BRAK_DANYCH",
-        }[tryb]
-    )
+    ladunek: dict[str, Any] = {"bay_ref": ref, "mode": tryb}
+    if tryb == "katalog":
+        ladunek["devices"] = _ladunek_katalogowy(rola)
+    if tryb == "szablon":
+        ladunek["bay_template_ref"] = SZABLON_ROLI[rola]
+    if tryb == "wyczysc":
+        enm = wykonaj(
+            enm,
+            "set_bay_equipment",
+            {"bay_ref": ref, "mode": "katalog", "devices": _ladunek_katalogowy(rola)},
+        )
+    wynik = _wykonaj(enm, ladunek)
+    assert wynik.get("error") is None, wynik.get("error")
+    model_pola = _odczyt_pola(wynik["snapshot"], ref)
+    assert model_pola["sklad"] == wynik["wyposazenie_pola"]["sklad"]
+    assert model_pola["szablon_standardu_ref"] == wynik["wyposazenie_pola"]["szablon_standardu_ref"]
 
 
 @pytest.mark.parametrize("rola", ["FEEDER", "IN", "OUT", "TR", "COUPLER", "MEASUREMENT"])
@@ -317,8 +381,12 @@ def test_szablon_pola_producenta_daje_model_z_bomu(rola: str) -> None:
     aparaty = _pole(wynik["snapshot"], pole_gpz["ref_id"])["primary_devices"]
     bom = {i.device_template_ref for i in szablony[szablon].device_instances}
     assert aparaty and {a["catalog_ref"] for a in aparaty} <= bom
-    assert wynik["wyposazenie_pola"]["stan_danych"] == "MODEL"
-    assert wynik["wyposazenie_pola"]["dane_przyjete"] == []
+    wiersze_rekordu = [
+        w
+        for w in wynik["wyposazenie_pola"]["sklad"]
+        if w["device_ref"] in {a["device_ref"] for a in aparaty}
+    ]
+    assert {w["status"] for w in wiersze_rekordu} == {"ZAPROJEKTOWANE"}
 
 
 def test_szablon_z_rekordu_pola_bez_wskazania_w_ladunku(siec: Any) -> None:
@@ -333,9 +401,9 @@ def test_szablon_z_rekordu_pola_bez_wskazania_w_ladunku(siec: Any) -> None:
     assert ponownie["snapshot"] == ze_wskazaniem
 
 
-def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_propozycja(siec: Any) -> None:
+def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_rodzajem_bez_katalogu(siec: Any) -> None:
     """Rozłącznik bezpiecznikowy z katalogu + wkładki (rodzaj bez katalogu SN) — wyposażenie
-    mieszane: stan PROPOZYCJA, dana przyjęta wyłącznie dla wkładek."""
+    mieszane: rozłącznik ZAPROJEKTOWANE, wkładki RODZAJ_BEZ_KATALOGU z wyjaśnieniem."""
     enm, pola, _ = siec
     wynik = _wykonaj(
         enm,
@@ -353,12 +421,13 @@ def test_tryb_katalog_z_rodzajem_bez_katalogu_jest_propozycja(siec: Any) -> None
         },
     )
     assert wynik.get("error") is None, wynik.get("error")
-    opis = wynik["wyposazenie_pola"]
-    assert opis["stan_danych"] == "PROPOZYCJA"
-    assert [a["stan_danych"] for a in opis["aparaty"]] == ["MODEL", "PROPOZYCJA"]
-    (dana,) = opis["dane_przyjete"]
-    assert dana["nazwa_pl"] == "bezpieczniki F1"
-    assert "bez katalogu SN" in dana["powod_pl"]
+    wiersze = {w["device_ref"]: w for w in wynik["wyposazenie_pola"]["sklad"]}
+    rozlacznik = wiersze[f"{pola['TR']}::dev::0"]
+    wkladki = wiersze[f"{pola['TR']}::dev::1"]
+    assert rozlacznik["status"] == "ZAPROJEKTOWANE"
+    assert wkladki["status"] == "RODZAJ_BEZ_KATALOGU"
+    assert "bezpieczniki F1" in wkladki["opis_pl"]
+    assert "bez katalogu" in wkladki["opis_pl"]
 
 
 # ---------------------------------------------------------------------------
@@ -379,7 +448,13 @@ def test_pozycja_katalogowa_kazdej_przestrzeni(siec: Any, rodzaj: str) -> None:
 
     poprawny = _wykonaj(enm, ladunek(_poprawny_ref(rodzaj)))
     assert poprawny.get("error") is None, poprawny.get("error")
-    assert poprawny["wyposazenie_pola"]["stan_danych"] == "MODEL"
+    (wiersz,) = (
+        w
+        for w in poprawny["wyposazenie_pola"]["sklad"]
+        if w["device_ref"] == f"{pola['IN']}::dev::0"
+    )
+    assert wiersz["status"] == "ZAPROJEKTOWANE"
+    assert wiersz["catalog_namespace"] == PRZESTRZEN_KATALOGU_APARATU[rodzaj]
 
     _odmowa(enm, ladunek(None), "bay_equipment.catalog_ref_missing")
     _odmowa(enm, ladunek("   "), "bay_equipment.catalog_ref_missing")
@@ -389,20 +464,26 @@ def test_pozycja_katalogowa_kazdej_przestrzeni(siec: Any, rodzaj: str) -> None:
 
 @pytest.mark.parametrize("rodzaj", sorted(RODZAJE_KATALOGOWE_APARATU))
 def test_pozycja_aparatu_innego_rodzaju(siec: Any, rodzaj: str) -> None:
+    """Pozycja ISTNIEJĄCA w przestrzeni rodzaju, ale innego rodzaju pozycji (APARAT_SN:
+    ``device_kind``, ELEMENT_POLA_SN: ``rodzaj``) — odmowa rodzaju, nie braku pozycji."""
     enm, pola, _ = siec
-    obcy = next(
-        k
-        for k in ("UZIEMNIK", "WYLACZNIK", "ODLACZNIK")
-        if k not in RODZAJE_KATALOGOWE_APARATU[rodzaj]
-    )
+    dozwolone = RODZAJE_KATALOGOWE_APARATU[rodzaj]
+    if PRZESTRZEN_KATALOGU_APARATU[rodzaj] == "ELEMENT_POLA_SN":
+        obca_pozycja = _pierwsza(
+            "ELEMENT_POLA_SN",
+            katalog_biezacy().element_pola_types,
+            lambda t: t.rodzaj not in dozwolone,
+        )
+    else:
+        obca_pozycja = _ref_aparatu_sn(
+            next(k for k in ("UZIEMNIK", "WYLACZNIK", "ODLACZNIK") if k not in dozwolone)
+        )
     _odmowa(
         enm,
         {
             "bay_ref": pola["IN"],
             "mode": "katalog",
-            "devices": [
-                {"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": _ref_aparatu_sn(obcy)}
-            ],
+            "devices": [{"kind": rodzaj, "placement": "MIDSTREAM", "catalog_ref": obca_pozycja}],
         },
         "bay_equipment.catalog_kind_mismatch",
     )
@@ -452,12 +533,9 @@ def _wylacznik_pola(enm: dict[str, Any], pole_ref: str) -> str:
 
 
 def _cb(linked_ref: str) -> dict[str, Any]:
-    return {
-        "kind": "CB",
-        "placement": "MIDSTREAM",
-        "catalog_ref": APARAT_POLA,
-        "linked_ref": linked_ref,
-    }
+    """Wyłącznik pola wskazujący łącznik modelu — bez ``catalog_ref``: katalog niesie łącznik
+    (jedna prawda katalogu; dubel odmawiany ``bay_equipment.catalog_on_linked_element``)."""
+    return {"kind": "CB", "placement": "MIDSTREAM", "linked_ref": linked_ref}
 
 
 def test_aparat_wskazuje_lacznik_pola_i_odczyt_pola_czyta_jego_stan(siec: Any) -> None:
@@ -481,6 +559,25 @@ def test_aparat_wskazuje_lacznik_pola_i_odczyt_pola_czyta_jego_stan(siec: Any) -
     assert stan_aparatu(otwarte)["actual_state"] == "otwarty"
     # Operacja łącznika nie rusza wyposażenia pola (jedna prawda: stan na gałęzi).
     assert _pole(otwarte, pola["OUT"]) == _pole(wyposazone, pola["OUT"])
+
+
+def test_aparat_z_lacznikiem_nie_dubluje_katalogu_lacznika(siec: Any) -> None:
+    enm, pola, _ = siec
+    lacznik = _wylacznik_pola(enm, pola["OUT"])
+    assert galaz(enm, lacznik)["catalog_ref"]
+    _odmowa(
+        enm,
+        {
+            "bay_ref": pola["OUT"],
+            "mode": "katalog",
+            "devices": [{**_cb(lacznik), "catalog_ref": APARAT_POLA}],
+        },
+        "bay_equipment.catalog_on_linked_element",
+    )
+    wynik = _wykonaj(enm, {"bay_ref": pola["OUT"], "mode": "katalog", "devices": [_cb(lacznik)]})
+    (wiersz,) = (w for w in wynik["wyposazenie_pola"]["sklad"] if w["linked_ref"] == lacznik)
+    assert wiersz["status"] == "ZAPROJEKTOWANE"
+    assert wiersz["catalog_ref"] == galaz(enm, lacznik)["catalog_ref"]
 
 
 def test_aparat_nie_wskazuje_lacznika_innego_pola(siec: Any) -> None:

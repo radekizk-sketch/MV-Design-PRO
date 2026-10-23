@@ -1,19 +1,21 @@
 /**
- * KARTA W5-C — edytor wyposażenia pola SN (`set_bay_equipment`), ścieżka projektanta:
- * natywny klik „Zmień wyposażenie" → wybór trybu i aparatów → „Zapisz wyposażenie" →
- * ładunek operacji → wynik albo odmowa backendu na karcie.
+ * KARTY W5-C i GPZ-H5-APARATURA — edytor wyposażenia pola (`set_bay_equipment`), ścieżka
+ * projektanta: natywny klik „Zmień wyposażenie" → wybór trybu i aparatów → „Zapisz
+ * wyposażenie" → ładunek operacji → skład pola z odpowiedzi albo odmowa backendu na karcie.
  *
- * Iloczyn cech: tryb {katalog, szablon, wyczysc} × rola pola SN {IN, OUT, TR, FEEDER,
- * COUPLER, MEASUREMENT, OZE} × odpowiedź {sukces, odmowa z kodem, brak odpowiedzi}.
- * Do tego reguły kształtu formularza: pozycje katalogu filtrowane rodzajem, łącznik
- * wyłącznie z gałęzi TEGO pola, zmiana rodzaju czyści pola nowego rodzaju, katalog
- * odpytywany dopiero po otwarciu edycji.
+ * Iloczyn cech: tryb {katalog, szablon, standard, wymagania, wyczysc} × rola pola SN {IN, OUT,
+ * TR, FEEDER, COUPLER, MEASUREMENT, OZE} × odpowiedź {sukces ze składem, odmowa z kodem, brak
+ * odpowiedzi}. Do tego reguły kształtu formularza: pozycje katalogu filtrowane rodzajem
+ * (także przestrzeń ELEMENT_POLA_SN), gniazdo standardu tylko dla rodzaju gniazda, szablony
+ * standardu zawężone do roli i poziomu napięcia szyny, łącznik wyłącznie z gałęzi TEGO pola,
+ * zmiana rodzaju czyści pola nowego rodzaju, katalog odpytywany dopiero po otwarciu edycji,
+ * status wiersza składu ZAWSZE ze zdaniem wyjaśnienia.
  */
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Bay, DomainOpResponseV1, EnergyNetworkModel } from '../../../types/enm';
+import type { Bay, DomainOpResponseV1, EnergyNetworkModel, WierszSkladuPola } from '../../../types/enm';
 import { pole } from '../../../test/pola';
 
 const katalogApi = vi.hoisted(() => ({
@@ -21,7 +23,9 @@ const katalogApi = vi.hoisted(() => ({
   fetchCtTypes: vi.fn(),
   fetchVtTypes: vi.fn(),
   fetchSurgeArresterTypes: vi.fn(),
+  fetchElementPolaTypes: vi.fn(),
   fetchCompleteBayTemplates: vi.fn(),
+  fetchBayStandardTemplates: vi.fn(),
 }));
 
 vi.mock('../../catalog/api', () => ({
@@ -35,6 +39,7 @@ const ROLE = ['IN', 'OUT', 'TR', 'FEEDER', 'COUPLER', 'MEASUREMENT', 'OZE'] as c
 type Rola = (typeof ROLE)[number];
 
 const MIGAWKA = {
+  buses: [{ ref_id: 'szyna-sn', voltage_kv: 15 }],
   branches: [
     { ref_id: 'q1', id: 'q1', name: 'Q1', type: 'breaker', status: 'closed' },
     { ref_id: 'f1', id: 'f1', name: 'F1', type: 'fuse', status: 'closed' },
@@ -53,18 +58,56 @@ function polePola(rola: Rola, aparaty: Bay['primary_devices'] = []): Bay {
   });
 }
 
-function odpowiedz(stan: 'MODEL' | 'PROPOZYCJA' | 'BRAK_DANYCH'): DomainOpResponseV1 {
+function wiersz(zmiany: Partial<WierszSkladuPola>): WierszSkladuPola {
+  return {
+    gniazdo_ref: null,
+    gniazdo_nazwa_pl: null,
+    rodzaj: 'CB',
+    rodzaj_pl: 'wyłącznik',
+    device_ref: 'pole::dev::0',
+    linked_ref: null,
+    catalog_ref: null,
+    catalog_namespace: null,
+    status: 'ZAPROJEKTOWANE',
+    opis_pl: 'Aparat pola (wyłącznik) z pozycją katalogową wyl-1.',
+    podstawa_pl: null,
+    interpretacja_pl: null,
+    wymagania: [],
+    ...zmiany,
+  };
+}
+
+/** Skład pola po zapisie w danym trybie — statusy, jakie liczy backend (`enm/sklad_pola.py`). */
+const SKLAD_TRYBU: Readonly<Record<string, WierszSkladuPola[]>> = {
+  katalog: [wiersz({ catalog_ref: 'wyl-1', catalog_namespace: 'APARAT_SN' })],
+  szablon: [
+    wiersz({ status: 'BRAK_POZYCJI_KATALOGU', opis_pl: 'Aparat pola (wyłącznik) nie ma pozycji katalogowej.' }),
+  ],
+  standard: [
+    wiersz({
+      gniazdo_ref: 'W',
+      gniazdo_nazwa_pl: 'wyłącznik pola',
+      status: 'WYMAGANE_STANDARDEM_BRAK',
+      opis_pl: 'Gniazdo „wyłącznik pola” jest wymagane standardem, a pole nie ma w nim aparatu.',
+      podstawa_pl: 'ENEA Zeszyt 1, zał. Z.2',
+    }),
+  ],
+  wymagania: [
+    wiersz({
+      gniazdo_ref: 'W',
+      gniazdo_nazwa_pl: 'wyłącznik pola',
+      catalog_ref: 'enea-wym-sn-cb',
+      opis_pl: 'Gniazdo „wyłącznik pola” obsadzone aparatem z katalogu (pozycja enea-wym-sn-cb).',
+      podstawa_pl: 'ENEA Zeszyt 1, zał. Z.2',
+    }),
+  ],
+  wyczysc: [],
+};
+
+function odpowiedz(sklad: WierszSkladuPola[]): DomainOpResponseV1 {
   return {
     snapshot: {},
-    wyposazenie_pola: {
-      bay_ref: 'pole',
-      stan_danych: stan,
-      aparaty: [],
-      dane_przyjete:
-        stan === 'PROPOZYCJA'
-          ? [{ nazwa_pl: 'Wyłącznik Q1', wartosc: 'CB', powod_pl: 'aparat z szablonu bez pozycji', jakosc: 'ESTIMATED' }]
-          : [],
-    },
+    wyposazenie_pola: { bay_ref: 'pole', szablon_standardu_ref: null, sklad },
   } as unknown as DomainOpResponseV1;
 }
 
@@ -79,6 +122,21 @@ beforeEach(() => {
   katalogApi.fetchCtTypes.mockResolvedValue([{ id: 'ct-1', name: 'Przekładnik 200/5' }]);
   katalogApi.fetchVtTypes.mockResolvedValue([{ id: 'vt-1', name: 'Przekładnik 15/0,1' }]);
   katalogApi.fetchSurgeArresterTypes.mockResolvedValue([{ id: 'og-1', name: 'Ogranicznik 18 kV' }]);
+  katalogApi.fetchElementPolaTypes.mockResolvedValue([
+    { id: 'wsk-1', name: 'Wskaźnik napięcia 24 kV', rodzaj: 'WSKAZNIK_NAPIECIA', u_m_kv: 24 },
+    { id: 'tu-1', name: 'Transformator uziemiający', rodzaj: 'TRANSFORMATOR_UZIEMIAJACY' },
+    { id: 'dl-1', name: 'Dławik gaszący', rodzaj: 'DLAWIK_GASZACY' },
+    { id: 'rz-1', name: 'Rezystor uziemiający', rodzaj: 'REZYSTOR_UZIEMIAJACY' },
+    { id: 'rw-1', name: 'Rezystor wymuszający', rodzaj: 'REZYSTOR_WYMUSZAJACY' },
+    { id: 'bk-1', name: 'Bateria kondensatorów', rodzaj: 'BATERIA_KONDENSATOROW' },
+  ]);
+  // Szablony standardu (wyłącznie rozdzielnica SN): po jednym dla każdej roli — lista edytora
+  // pokazuje szablony roli pola, a dla szyny spoza tabeli 3 IEC 60038 żadnego.
+  katalogApi.fetchBayStandardTemplates.mockResolvedValue(
+    ROLE.map((rola) => ({
+      id: `STD_SN_${rola}`, nazwa_pl: `Pole SN ${rola}`, role_pola: [rola], podstawa_pl: 'ENEA', gniazda: [], uwagi_pl: null,
+    })),
+  );
   katalogApi.fetchCompleteBayTemplates.mockResolvedValue(
     ROLE.map((rola) => ({ template_ref: `szablon-${rola}`, template_name_pl: `Szablon ${rola}`, bay_role: rola })),
   );
@@ -89,13 +147,21 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function renderuj(bay: Bay, wykonaj: ReturnType<typeof vi.fn>, opcje: { caseId?: string | null; blad?: string } = {}) {
+function renderuj(
+  bay: Bay,
+  wykonaj: ReturnType<typeof vi.fn>,
+  opcje: {
+    caseId?: string | null;
+    blad?: string;
+    sklad?: WierszSkladuPola[] | null;
+    snapshot?: EnergyNetworkModel;
+  } = {},
+) {
   render(
     <EdytorWyposazeniaPola
       bay={bay}
-      snapshot={MIGAWKA}
-      stanDanych="BRAK_DANYCH"
-      danePrzyjete={[]}
+      snapshot={opcje.snapshot ?? MIGAWKA}
+      sklad={opcje.sklad === undefined ? [] : opcje.sklad}
       activeCaseId={opcje.caseId === undefined ? 'case-1' : opcje.caseId}
       executeDomainOperation={wykonaj as never}
       bladStore={() => opcje.blad ?? null}
@@ -108,17 +174,44 @@ async function otworz(user: ReturnType<typeof userEvent.setup>) {
   await waitFor(() => expect(katalogApi.fetchCompleteBayTemplates).toHaveBeenCalled());
 }
 
+type Tryb = 'katalog' | 'szablon' | 'standard' | 'wymagania' | 'wyczysc';
+
 describe('EdytorWyposazeniaPola — tryb × rola pola SN × odpowiedź', () => {
-  const przypadki: Array<[string, 'katalog' | 'szablon' | 'wyczysc', Rola]> = [];
-  for (const tryb of ['katalog', 'szablon', 'wyczysc'] as const) {
+  const przypadki: Array<[string, Tryb, Rola]> = [];
+  for (const tryb of ['katalog', 'szablon', 'standard', 'wymagania', 'wyczysc'] as const) {
     for (const rola of ROLE) przypadki.push([`${tryb} × ${rola}`, tryb, rola]);
   }
 
-  it.each(przypadki)('%s: ładunek operacji i wynik na karcie', async (_opis, tryb, rola) => {
+  it.each([
+    [66, false],
+    [35, true],
+    [15, true],
+  ] as const)(
+    'szyna %s kV: szablony standardu pola (tylko rozdzielnica SN, tabela 3 IEC 60038) — %s',
+    async (napiecie, sa) => {
+      const user = userEvent.setup();
+      const migawka = { ...MIGAWKA, buses: [{ ref_id: 'szyna-sn', voltage_kv: napiecie }] } as unknown as EnergyNetworkModel;
+      renderuj(polePola('OUT'), vi.fn(), { snapshot: migawka });
+      await otworz(user);
+      await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'standard');
+      await waitFor(() =>
+        expect(
+          Array.from((screen.getByTestId('wyposazenie-pola-szablon-standardu') as HTMLSelectElement).options).map(
+            (o) => o.value,
+          ),
+        ).toEqual(sa ? ['', 'STD_SN_OUT'] : ['']),
+      );
+    },
+  );
+
+  it.each(przypadki)('%s: ładunek operacji i skład pola na karcie', async (_opis, tryb, rola) => {
     const user = userEvent.setup();
-    const stanWyniku = tryb === 'katalog' ? 'MODEL' : tryb === 'szablon' ? 'PROPOZYCJA' : 'BRAK_DANYCH';
-    const wykonaj = vi.fn().mockResolvedValue(odpowiedz(stanWyniku));
-    renderuj(polePola(rola), wykonaj);
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz(SKLAD_TRYBU[tryb]));
+    // Tryb „wymagania" obsadza gniazda szablonu standardu — pole ma go w rekordzie.
+    renderuj(
+      tryb === 'wymagania' ? { ...polePola(rola), szablon_standardu_ref: `STD_SN_${rola}` } : polePola(rola),
+      wykonaj,
+    );
     await otworz(user);
 
     await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), tryb);
@@ -137,6 +230,18 @@ describe('EdytorWyposazeniaPola — tryb × rola pola SN × odpowiedź', () => {
       expect(opcje).toEqual(['', `szablon-${rola}`]);
       await user.selectOptions(screen.getByTestId('wyposazenie-pola-szablon'), `szablon-${rola}`);
     }
+    if (tryb === 'standard') {
+      // Lista szablonów standardu zawężona do roli pola (szyna 15 kV — rozdzielnica SN).
+      await waitFor(() =>
+        expect(
+          Array.from((screen.getByTestId('wyposazenie-pola-szablon-standardu') as HTMLSelectElement).options).map(
+            (o) => o.value,
+          ),
+        ).toEqual(['', `STD_SN_${rola}`]),
+      );
+      expect(screen.getByTestId('wyposazenie-pola-zapisz')).toBeDisabled();
+      await user.selectOptions(screen.getByTestId('wyposazenie-pola-szablon-standardu'), `STD_SN_${rola}`);
+    }
     await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
 
     const oczekiwany =
@@ -148,13 +253,25 @@ describe('EdytorWyposazeniaPola — tryb × rola pola SN × odpowiedź', () => {
           }
         : tryb === 'szablon'
           ? { bay_ref: `pole-${rola}`, mode: 'szablon', bay_template_ref: `szablon-${rola}` }
-          : { bay_ref: `pole-${rola}`, mode: 'wyczysc' };
+          : tryb === 'standard'
+            ? { bay_ref: `pole-${rola}`, mode: 'standard', szablon_standardu_ref: `STD_SN_${rola}` }
+            : { bay_ref: `pole-${rola}`, mode: tryb };
     expect(wykonaj).toHaveBeenCalledWith('case-1', 'set_bay_equipment', oczekiwany);
 
-    const wynik = await screen.findByTestId('wyposazenie-pola-wynik');
-    expect(wynik.getAttribute('data-stan')).toBe(stanWyniku);
-    // Dane przyjęte (jakość szacowana) widoczne wyłącznie, gdy backend je zwrócił.
-    expect(screen.queryByTestId('wyposazenie-pola-wynik-dane-przyjete') !== null).toBe(tryb === 'szablon');
+    expect(await screen.findByTestId('wyposazenie-pola-wynik')).toBeInTheDocument();
+    // Skład z odpowiedzi operacji: status maszynowy w atrybucie, etykieta i zdanie wyjaśnienia
+    // w treści (status nigdy bez wyjaśnienia).
+    const oczekiwaneWiersze = SKLAD_TRYBU[tryb];
+    if (oczekiwaneWiersze.length === 0) {
+      expect(screen.getByTestId('wyposazenie-pola-sklad-pusty')).toBeInTheDocument();
+    } else {
+      oczekiwaneWiersze.forEach((w, i) => {
+        const el = screen.getByTestId(`wyposazenie-pola-sklad-wiersz-${i}`);
+        expect(el.getAttribute('data-status')).toBe(w.status);
+        expect(el).toHaveTextContent(w.opis_pl);
+        if (w.podstawa_pl) expect(el).toHaveTextContent(w.podstawa_pl);
+      });
+    }
     // Po zapisie edytor wraca do karty — formularz zamknięty.
     expect(screen.queryByTestId('wyposazenie-pola-tryb')).toBeNull();
   });
@@ -187,11 +304,58 @@ describe('EdytorWyposazeniaPola — tryb × rola pola SN × odpowiedź', () => {
 });
 
 describe('EdytorWyposazeniaPola — kształt formularza', () => {
-  it('karta bez otwarcia edycji nie odpytuje katalogu', () => {
-    renderuj(polePola('OUT'), vi.fn());
-    expect(screen.getByTestId('wyposazenie-pola-stan').getAttribute('data-stan')).toBe('BRAK_DANYCH');
+  it('karta bez otwarcia edycji pokazuje skład z modelu odczytu i nie odpytuje katalogu', () => {
+    renderuj(polePola('OUT'), vi.fn(), { sklad: SKLAD_TRYBU.standard });
+    const el = screen.getByTestId('wyposazenie-pola-sklad-wiersz-0');
+    expect(el.getAttribute('data-status')).toBe('WYMAGANE_STANDARDEM_BRAK');
+    expect(el).toHaveTextContent('wymagane standardem — brak aparatu z katalogu');
     expect(katalogApi.fetchMvApparatusTypes).not.toHaveBeenCalled();
     expect(katalogApi.fetchCompleteBayTemplates).not.toHaveBeenCalled();
+    expect(katalogApi.fetchBayStandardTemplates).not.toHaveBeenCalled();
+  });
+
+  it('model odczytu pola niedostępny: jawny stan zamiast pustego składu', () => {
+    renderuj(polePola('OUT'), vi.fn(), { sklad: null });
+    expect(screen.getByTestId('wyposazenie-pola-sklad-niedostepny')).toBeInTheDocument();
+    expect(screen.queryByTestId('wyposazenie-pola-sklad-pusty')).toBeNull();
+  });
+
+  it('tryb „wymagania" bez szablonu standardu w polu: zapis zablokowany z powodem', async () => {
+    const user = userEvent.setup();
+    renderuj(polePola('OUT'), vi.fn());
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-tryb'), 'wymagania');
+    expect(screen.getByTestId('wyposazenie-pola-wymagania-opis')).toHaveTextContent('nie ma szablonu pola standardu');
+    expect(screen.getByTestId('wyposazenie-pola-zapisz')).toBeDisabled();
+  });
+
+  it('gniazdo standardu: wybór tylko gniazd rodzaju aparatu, w ładunku jako gniazdo_ref', async () => {
+    const user = userEvent.setup();
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz(SKLAD_TRYBU.wymagania));
+    const sklad = [
+      wiersz({ gniazdo_ref: 'OS', gniazdo_nazwa_pl: 'odłącznik szynowy', rodzaj: 'DS_ES', status: 'WYMAGANE_STANDARDEM_BRAK' }),
+      wiersz({ gniazdo_ref: 'W', gniazdo_nazwa_pl: 'wyłącznik pola', rodzaj: 'CB', status: 'WYMAGANE_STANDARDEM_BRAK' }),
+    ];
+    renderuj({ ...polePola('OUT'), szablon_standardu_ref: 'STD_SN_OUT' }, wykonaj, { sklad });
+    await otworz(user);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-rodzaj'), 'CB');
+    const opcje = Array.from(
+      (screen.getByTestId('wyposazenie-pola-aparat-0-gniazdo') as HTMLSelectElement).options,
+    ).map((o) => o.value);
+    expect(opcje).toEqual(['', 'W']);
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-gniazdo'), 'W');
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-katalog'), 'wyl-1');
+    // Umiejscowienie aparatu w gnieździe wynika ze standardu — wiersz kompletny bez niego.
+    await user.click(screen.getByTestId('wyposazenie-pola-zapisz'));
+    expect(wykonaj).toHaveBeenCalledWith('case-1', 'set_bay_equipment', {
+      bay_ref: 'pole-OUT',
+      mode: 'katalog',
+      devices: [{ kind: 'CB', catalog_ref: 'wyl-1', gniazdo_ref: 'W' }],
+    });
+    // Rodzaj bez gniazda w szablonie: brak wyboru gniazda.
+    await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
+    await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-rodzaj'), 'CT');
+    expect(screen.queryByTestId('wyposazenie-pola-aparat-0-gniazdo')).toBeNull();
   });
 
   it.each([
@@ -202,6 +366,12 @@ describe('EdytorWyposazeniaPola — kształt formularza', () => {
     ['CT', ['', 'ct-1']],
     ['VT', ['', 'vt-1']],
     ['SURGE_ARRESTER', ['', 'og-1']],
+    ['DS_ES', ['']],
+    ['VOLTAGE_INDICATOR', ['', 'wsk-1']],
+    ['EARTHING_TRANSFORMER', ['', 'tu-1']],
+    ['NEUTRAL_REACTOR', ['', 'dl-1']],
+    ['NEUTRAL_RESISTOR', ['', 'rz-1', 'rw-1']],
+    ['CAPACITOR_BANK', ['', 'bk-1']],
     ['FUSE', null],
     ['CABLE_HEAD', null],
     ['TRANSFORMER_DEVICE', null],
@@ -222,10 +392,10 @@ describe('EdytorWyposazeniaPola — kształt formularza', () => {
         ).toEqual(pozycje),
       );
     }
-    const zGalezia = ['CB', 'LOAD_SWITCH', 'DS', 'FUSE'].includes(rodzaj);
+    const zGalezia = ['CB', 'LOAD_SWITCH', 'DS', 'DS_ES', 'FUSE'].includes(rodzaj);
     expect(screen.queryByTestId('wyposazenie-pola-aparat-0-lacznik') !== null).toBe(zGalezia);
     expect(screen.queryByTestId('wyposazenie-pola-aparat-0-uziemienie') !== null).toBe(
-      ['ES', 'SURGE_ARRESTER'].includes(rodzaj),
+      ['DS_ES', 'ES', 'SURGE_ARRESTER'].includes(rodzaj),
     );
   });
 
@@ -242,7 +412,7 @@ describe('EdytorWyposazeniaPola — kształt formularza', () => {
 
   it('zmiana rodzaju czyści pozycję katalogową i łącznik (zero przeniesionych fantomów)', async () => {
     const user = userEvent.setup();
-    const wykonaj = vi.fn().mockResolvedValue(odpowiedz('PROPOZYCJA'));
+    const wykonaj = vi.fn().mockResolvedValue(odpowiedz(SKLAD_TRYBU.szablon));
     renderuj(polePola('OUT'), wykonaj);
     await otworz(user);
     await user.selectOptions(screen.getByTestId('wyposazenie-pola-aparat-0-rodzaj'), 'CB');
@@ -281,8 +451,7 @@ describe('EdytorWyposazeniaPola — kształt formularza', () => {
       <EdytorWyposazeniaPola
         bay={polePola('OUT')}
         snapshot={MIGAWKA}
-        stanDanych="BRAK_DANYCH"
-        danePrzyjete={[]}
+        sklad={[]}
         activeCaseId="case-1"
         executeDomainOperation={wykonaj as never}
       />,
@@ -296,15 +465,14 @@ describe('EdytorWyposazeniaPola — kształt formularza', () => {
           { device_ref: 'd1', symbol_ref: 's', kind: 'VT', placement: 'DOWNSTREAM', catalog_ref: 'vt-1' },
         ] as never)}
         snapshot={MIGAWKA}
-        stanDanych="MODEL"
-        danePrzyjete={[]}
+        sklad={SKLAD_TRYBU.katalog}
         activeCaseId="case-1"
         executeDomainOperation={wykonaj as never}
       />,
     );
     await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
     expect((screen.getByTestId('wyposazenie-pola-aparat-0-rodzaj') as HTMLSelectElement).value).toBe('VT');
-    expect(screen.getByTestId('wyposazenie-pola-stan').getAttribute('data-stan')).toBe('MODEL');
+    expect(screen.getByTestId('wyposazenie-pola-sklad-wiersz-0').getAttribute('data-status')).toBe('ZAPROJEKTOWANE');
   });
 
   it('Anuluj zamyka edycję bez zapisu', async () => {

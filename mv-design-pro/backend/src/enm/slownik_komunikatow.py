@@ -118,7 +118,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "funkcja_pomiaru": "Rodzaj pomiaru",  # pole/strings.ts rodzajPomiaru (jeden wybór funkcji i rodzaju)
     "gpz_section.bus_ref": "Szyna",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "gpz_section.left_coupler_ref": "Sprzęgło z lewej",  # sekcja GPZ (bez pola w edytorze)
-    "gpz_section.line_field_name": "Nazwa pola liniowego",  # zrodlo/strings.ts nazwaPola
+    "gpz_section.line_field_name": "Nazwa pola liniowego",  # sekcja GPZ (bez pola w edytorze)
     "gpz_section.name": "Nazwa",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "gpz_section.order": "Porządek",  # ui/network-build/cards/GpzSectionsEditor.tsx
     "gpz_section.right_coupler_ref": "Sprzęgło z prawej",  # sekcja GPZ (bez pola w edytorze)
@@ -130,7 +130,7 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "has_disturbance_recorder": "Rejestrator zakłóceń",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "has_scada_communication": "Łączność SCADA operatora",  # ui2/oze/ncrfg/strings.ts ETYKIETY_FLAG_DEKLARACJI
     "add_transformer_sn_nn:hv_bus_ref": "Szyna SN (górne napięcie)",  # transformator/strings.ts hvBus
-    "add_grid_source_sn:hv_voltage_kv": "Napięcie szyny 110 kV",  # zrodlo/strings.ts napiecieHv
+    "add_grid_source_sn:hv_voltage_kv": "Napięcie szyny 110 kV",  # szablon stacji GPZ 110/SN (bez pola w kreatorze źródła)
     "hvrt_curve_ref": "Charakterystyka HVRT (przepięcie)",  # zrodlo-oze/strings.ts frtHvrt
     "ik3_min_ka": "Ik″min",  # zrodlo/strings.ts ik3Min
     "insert_station_on_segment_sn:insert_at": "Odległość stacji od początku odcinka [m]",  # stacja/strings.ts insertAt
@@ -204,9 +204,10 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "set_bay_equipment:mode": "Sposób wyposażenia pola",
     "set_bay_equipment:devices": "Aparaty pola",
     "set_bay_equipment:bay_template_ref": "Szablon pola",
-    "tap_changer.control_mode": "Tryb sterowania",  # zrodlo/strings.ts oltcTryb
-    "tap_changer.regulated_winding": "Regulowane uzwojenie",  # zrodlo/strings.ts oltcUzwojenie
-    "tap_changer.regulation_type": "Rodzaj regulacji",  # zrodlo/strings.ts oltcTyp; transformator regTyp
+    "set_bay_equipment:szablon_standardu_ref": "Szablon pola standardu",
+    "tap_changer.control_mode": "Tryb sterowania",  # ui/catalog/TypeLibraryBrowser.tsx control_mode
+    "tap_changer.regulated_winding": "Regulowane uzwojenie",  # transformator/strings.ts regUzwojenie
+    "tap_changer.regulation_type": "Rodzaj regulacji",  # transformator/strings.ts regTyp
     "add_nn_switch_device:to_bus_ref": "Szyna do",  # aparat-nn/strings.ts szynaDo
     "connect_secondary_ring_sn:to_bus_ref": "Zacisk B",  # pierscien/strings.ts zaciskB
     # Karta GPZ-H5 (układ ENEA H5): pola struktury JAWNEJ GPZ ze stroną 110 kV.
@@ -225,7 +226,11 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_grid_source_sn:sn_coupler.cells": "Liczba cel łącznika szyn SN",
     "add_grid_source_sn:gpz_sections.supply": "Równoważnik sieci sekcji SN",
     "add_grid_source_sn:gpz_sections.function_bays": "Pola funkcyjne sekcji SN",
-    "add_grid_source_sn:hv_bay_apparatus_proposal": "Propozycja składu aparatów pól 110 kV",
+    "add_grid_source_sn:earthing_bay_template": "Wariant pola zespołu uziemiającego",
+    "add_grid_source_sn:bay_apparatus": "Obsadzenie gniazd aparatury pól",
+    "add_grid_source_sn:gpz_sections.bays.szablon_standardu_ref": "Wariant pola liniowego SN",
+    "add_grid_source_sn:bay_template_ref": "Szablon pola producenta",
+    "add_grid_source_sn:line_fields_per_section": "Liczba pól liniowych na sekcję SN",
     "add_grid_source_sn:reserve_mode": "Tryb rezerwy transformatorowej",
     "add_grid_source_sn:reserve_transformer": "Transformator rezerwowy",
     "add_grid_source_sn:reserve_transformer_apparatus": (
@@ -236,10 +241,10 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "add_grid_source_sn:grounding": "Uziemienie punktu neutralnego",
     "add_grid_source_sn:zero_sequence": "Składowa zerowa równoważnika",
     "add_grid_source_sn:lv_voltage_tolerance": "Tolerancja napięcia sieci nN",
-    "add_grid_source_sn:transformer_catalog_ref": "Typ transformatora 110/SN z katalogu",  # zrodlo/strings.ts transformatorKatalog
+    "add_grid_source_sn:transformer_catalog_ref": "Typ transformatora 110/SN z katalogu",  # szablon stacji GPZ 110/SN (bez pola w kreatorze źródła)
     "insert_station_on_segment_sn:transformer_catalog_ref": "Typ transformatora z katalogu",  # stacja/strings.ts typKatalog
     "transformer_catalog_ref": "Typ transformatora z katalogu",  # transformator/strings.ts typKatalog
-    "transformer_sn_mva": "Moc znamionowa Sn",  # zrodlo/strings.ts transformatorSn
+    "transformer_sn_mva": "Moc znamionowa Sn",  # ui/property-grid/field-definitions.ts rated_power_mva
     "tryb_pracy": "Tryb pracy przyłącza",  # ui2/spaces/projekt/strings.ts osdTrybPracy
     "u_max_czas_s": "U> — czas [s]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
     "u_max_pu": "U> — próg [p.u. U_n]",  # ui2/oze/ncrfg/formularz.ts ETYKIETY_POL_NASTAW
@@ -538,6 +543,7 @@ NAZWY_STATUSOW_KATALOGU_PL: dict[str, str] = {
     "ANALITYCZNY_V1": "Analityczny",
     "TESTOWY": "Testowy",
     "PROJEKTOWY_V1": "Projektowy (dane z arkusza)",
+    "WYMAGANIE_STANDARDU_V1": "Wymagania standardu (bez producenta)",
 }
 
 

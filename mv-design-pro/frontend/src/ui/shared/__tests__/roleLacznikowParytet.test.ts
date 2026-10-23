@@ -5,7 +5,7 @@
  * (`tests/enm/test_role_lacznikow_parytet.py`) z migawek zbudowanych operacjami domenowymi:
  * iloczyn {łącznik szyn 110 kV GPZ, łącznik szyn SN GPZ, łącznik sekcyjny magistrali,
  * sprzęgło stacji sekcyjnej w pierścieniu, sprzęgło rozdzielnicy nN, łącznik pola
- * transformatorowego} × pozycja normalna {open, closed, niezadeklarowana}. Ten plik
+ * transformatorowego, łącznik pola liniowego 110 kV} × pozycja normalna {open, closed, niezadeklarowana}. Ten plik
  * sprawdza, że lustro `roleLacznikow` i czytelnicy (`punktyPodzialu`,
  * `kandydaciNaPunktPodzialu`, `czyPunktPodzialu`, `etykietaPozycjiNormalnej`) dają na tych
  * samych migawkach to samo, co `enm.topology.role_lacznikow` i `punkty_podzialu`.
@@ -45,7 +45,15 @@ describe('rola łącznika — parytet z enm.topology.role_lacznikow', () => {
   it('tablica obejmuje iloczyn rodzaj × pozycja normalna', () => {
     const rodzaje = new Set(PRZYPADKI.map((p) => p.rodzaj));
     expect([...rodzaje].sort()).toEqual(
-      ['LS_110', 'LS_SN', 'MAGISTRALA', 'POLE_TR', 'SPRZEGLO_NN', 'STACJA_SEKCYJNA'].sort(),
+      [
+        'LS_110',
+        'LS_SN',
+        'MAGISTRALA',
+        'POLE_TR',
+        'POLE_ZASILAJACE_WN',
+        'SPRZEGLO_NN',
+        'STACJA_SEKCYJNA',
+      ].sort(),
     );
     for (const rodzaj of rodzaje) {
       const stany = new Set(PRZYPADKI.filter((p) => p.rodzaj === rodzaj).map((p) => p.stan));

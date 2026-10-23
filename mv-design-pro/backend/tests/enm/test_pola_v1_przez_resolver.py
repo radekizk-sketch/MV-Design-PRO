@@ -466,8 +466,8 @@ MIEJSCA_BUDOWY_POLA: dict[str, dict[str, int]] = {
         "domain_operations.py:_domknij_pole": 1,  # pole domykane stacji końca ciągu
         # pola struktury GPZ H5 (karta GPZ-H5): pole liniowe 110 kV sekcji, pola
         # transformatorowe obu stron, pola łączników szyn i pola funkcyjne SN — BEZ aparatów
-        # domyślnych (aparat wybiera projektant operacją wyposażenia pola; propozycja składu
-        # 110 kV jest w `meta.apparatus_proposal` z `modelled: False`).
+        # domyślnych (aparat pola SN wybiera projektant operacją wyposażenia pola; pole 110 kV
+        # ma wyłącznie łącznik pola z gałęzią modelu, bez typu — granica zasilania sieci SN).
         "domain_operations.py:_pole_struktury": 1,
         "domain_operations_v2.py:_add_nn_outgoing_field_internal": 1,
         "domain_operations_v2.py:_append_nn_source_meta_field": 1,

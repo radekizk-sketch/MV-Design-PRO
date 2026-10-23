@@ -113,6 +113,9 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "wybor_bloku",
         "metadane_pochodzenia",
         "surge_arresters",
+        # Karta GPZ-H5-APARATURA: szablon pola standardu operatora. `None` = pole bez
+        # standardu — poza odciskiem (pola sprzed karty haszują jak przed nią).
+        "szablon_standardu_ref",
     ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego
@@ -190,6 +193,16 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE: dict[str, tuple[str, ...]] = {
 _POLA_SKASOWANE_W_ODCISKU_PELNYM: dict[str, tuple[str, ...]] = {"sources": ("c_max", "c_min")}
 
 
+#: Pola ADDYTYWNE elementów ZAGNIEŻDŻONYCH (kolekcja → klucz listy → pola), poza odciskiem gdy
+#: `None` — ta sama zasada co `_POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE`, o jeden poziom głębiej.
+#: Karta GPZ-H5-APARATURA: gniazdo szablonu standardu obsadzone przez aparat pola
+#: (`BayPrimaryDevice.gniazdo_ref`); aparat bez gniazda haszuje jak przed kartą.
+#: Przypięte testem `tests/enm/test_sklad_pola.py`.
+_POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE: dict[str, dict[str, tuple[str, ...]]] = {
+    "bays": {"primary_devices": ("gniazdo_ref",)},
+}
+
+
 def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool = True) -> None:
     """JEDNA regula postaci elementu pod odcisk (trzy hashe pelne + semantyczny):
     bez `id`, bez pol addytywnych o wartosci `None` (i pustej liście dla pol-list z
@@ -202,6 +215,20 @@ def _postac_kanoniczna_elementu(item: dict[str, Any], key: str, *, pelna: bool =
     for pole in _POLA_ADDYTYWNE_POZA_HASHEM_GDY_PUSTE.get(key, ()):
         if pole in item and item[pole] == []:
             del item[pole]
+    for lista, pola_listy in _POLA_ZAGNIEZDZONE_POZA_HASHEM_GDY_NONE.get(key, {}).items():
+        elementy = item.get(lista)
+        if not isinstance(elementy, list):
+            continue
+        # Nowa lista nowych słowników: kopia pod hash jest PŁYTKA (`_kopia_pod_hash`), więc
+        # mutacja elementu zagnieżdżonego dotknęłaby migawki wołającego.
+        item[lista] = [
+            (
+                {k: v for k, v in element.items() if not (k in pola_listy and v is None)}
+                if isinstance(element, dict)
+                else element
+            )
+            for element in elementy
+        ]
     for pole in _POLA_SKASOWANE_W_ODCISKU.get(key, ()):
         item.setdefault(pole, None)
     if pelna:

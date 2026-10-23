@@ -12,8 +12,10 @@ dyspozytor, który woła `POST /api/cases/{id}/enm/domain-ops`):
   sekcja SN A, TR2 sekcja 110 kV 2 → sekcja SN B;
 * tryb rezerwy transformatorowej jawny w danych (§26.10.5): ukryta (łącznik szyn SN normalnie
   otwarty) albo jawna (TR2 rezerwowy, łącznik szyn SN normalnie zamknięty);
-* pola funkcyjne sekcji SN (§13, zał. Z.2): zespół uziemiający, bateria kondensatorów, pomiar —
-  bez aparatów i bez elementów; łącznik szyn SN w dwóch celach;
+* pola funkcyjne sekcji SN (§13, zał. Z.2): zespół uziemiający (wariant z rezystorem, §16 —
+  przykładowa dana przypadku: sieć kablowa), bateria kondensatorów, pomiar — bez elementów;
+  łącznik szyn SN w dwóch celach; każde pole z gniazdami szablonu standardu ENEA (opcjonalnie
+  obsadzonymi pozycjami wymagań standardu — `bay_apparatus`);
 * po jednym odpływie SN na sekcję (pole liniowe z wyłącznikiem z katalogu);
 * odbiory 6 + j2 MVA na sekcji A i 4 + j1,5 MVA na sekcji B (przykładowe dane).
 
@@ -25,7 +27,6 @@ odmową z przyczyną (brak drogi prądu zerowego), nigdy wynikiem z założenia.
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,13 +52,9 @@ TOR_L2 = ("L2", f"Stacja zasilająca B — {OPIS_DANYCH}", 1800.0, 1200.0)
 ODBIOR_A = ("Odbiór sekcji A", 6.0, 2.0)
 ODBIOR_B = ("Odbiór sekcji B", 4.0, 1.5)
 
-#: Propozycja składu aparatów pól 110 kV (§11.1) — ta sama co szablonu H5.
-PROPOZYCJA_APARATOW_110 = {
-    "basis": "ENEA Operator, Zeszyt 1 „Stacje 110 kV” §11.1 (układ H5)",
-    "line": ["OSZ(U)", "W", "PIU", "OL(U)", "OGR"],
-    "transformer": ["OSZ(U)", "W", "PIU", "OGR"],
-    "coupler": ["OS(U)", "W", "PIU", "(U)OS"],
-}
+#: Wariant pola zespołu uziemiającego (§16) — przykładowa dana przypadku: sieć kablowa,
+#: punkt neutralny uziemiony przez rezystor.
+WARIANT_ZU = "ENEA_SN_ZU_REZYSTOR"
 
 
 def tor_zasilania(
@@ -89,6 +86,7 @@ def ladunek_h5(
     z0: bool = True,
     hv_coupler_state: str = "open",
     line_fields_count: int = 1,
+    bay_apparatus: str | None = None,
 ) -> dict[str, Any]:
     """Ładunek `add_grid_source_sn` GPZ H5 110/15 kV (kontrakt ENM karty GPZ-H5)."""
     ladunek: dict[str, Any] = {
@@ -116,8 +114,10 @@ def ladunek_h5(
         "sn_coupler": {"cells": 2},
         "reserve_mode": reserve_mode,
         "gpz_line_field_apparatus": {"catalog_ref": APARAT_SN_15},
-        "hv_bay_apparatus_proposal": copy.deepcopy(PROPOZYCJA_APARATOW_110),
+        "earthing_bay_template": WARIANT_ZU,
     }
+    if bay_apparatus is not None:
+        ladunek["bay_apparatus"] = bay_apparatus
     if reserve_mode == "explicit":
         ladunek["reserve_transformer"] = 2
         ladunek["reserve_transformer_apparatus"] = {"catalog_ref": APARAT_SN_15}
@@ -139,6 +139,15 @@ class RefyH5:
     lacznik_sn: str
     tr1: str
     tr2: str
+    #: Wyłączniki pól SN transformatorów (gniazdo „W” pola, gałąź łączeniowa modelu).
+    wylacznik_tr1: str
+    wylacznik_tr2: str
+    #: Pola zasilające 110 kV (granica zasilania sieci SN): zacisk pola, na którym stoi
+    #: równoważnik toru, i łącznik pola — gałąź modelu szyna sekcji → zacisk.
+    zacisk_l1: str
+    zacisk_l2: str
+    wylacznik_l1: str
+    wylacznik_l2: str
     odbior_a: str | None
     odbior_b: str | None
 
@@ -157,6 +166,21 @@ def refy(enm: dict[str, Any]) -> RefyH5:
     sn = sorted(stacja["gpz_sections"], key=lambda s: s["order"])
     transformatory = {t["hv_bus_ref"]: t["ref_id"] for t in enm["transformers"]}
     odbiory = {o["bus_ref"]: o["ref_id"] for o in enm.get("loads") or []}
+    galezie = {g["ref_id"] for g in enm.get("branches") or []}
+    szyny_sn = {s["bus_ref"] for s in sn}
+    wylaczniki_tr = {
+        ref_tr: ref
+        for pole_tr in enm.get("bays") or []
+        if pole_tr.get("bay_role") == "TR" and pole_tr.get("bus_ref") in szyny_sn
+        for ref_tr in pole_tr.get("equipment_refs") or []
+        for ref in pole_tr.get("equipment_refs") or []
+        if ref in galezie
+    }
+    pola_linii_wn = {
+        pole_wn["bus_ref"]: pole_wn
+        for pole_wn in enm.get("bays") or []
+        if "gpz_hv_line_field" in (pole_wn.get("tags") or [])
+    }
     return RefyH5(
         stacja=stacja["ref_id"],
         szyna_wn_1=wn[0]["bus_ref"],
@@ -169,6 +193,12 @@ def refy(enm: dict[str, Any]) -> RefyH5:
         lacznik_sn=sn[0]["right_coupler_ref"],
         tr1=transformatory[wn[0]["bus_ref"]],
         tr2=transformatory[wn[1]["bus_ref"]],
+        wylacznik_tr1=wylaczniki_tr[transformatory[wn[0]["bus_ref"]]],
+        wylacznik_tr2=wylaczniki_tr[transformatory[wn[1]["bus_ref"]]],
+        zacisk_l1=pola_linii_wn[wn[0]["bus_ref"]]["terminal_bus_ref"],
+        zacisk_l2=pola_linii_wn[wn[1]["bus_ref"]]["terminal_bus_ref"],
+        wylacznik_l1=pola_linii_wn[wn[0]["bus_ref"]]["equipment_refs"][0],
+        wylacznik_l2=pola_linii_wn[wn[1]["bus_ref"]]["equipment_refs"][0],
         odbior_a=odbiory.get(sn[0]["bus_ref"]),
         odbior_b=odbiory.get(sn[1]["bus_ref"]),
     )
@@ -186,12 +216,18 @@ def zbuduj_h5(
     z0: bool = True,
     odbiory: bool = True,
     line_fields_count: int = 1,
+    bay_apparatus: str | None = None,
 ) -> dict[str, Any]:
     """Migawka ENM przypadku odbiorowego H5 (operacje domenowe, deterministycznie)."""
     enm = _operacja(
         pusty_model(),
         "add_grid_source_sn",
-        ladunek_h5(reserve_mode=reserve_mode, z0=z0, line_fields_count=line_fields_count),
+        ladunek_h5(
+            reserve_mode=reserve_mode,
+            z0=z0,
+            line_fields_count=line_fields_count,
+            bay_apparatus=bay_apparatus,
+        ),
     )
     if odbiory:
         r = refy(enm)
@@ -207,7 +243,6 @@ def zbuduj_h5(
 def ladunek_gpz_110kv(
     sekcje_sn: int = 1,
     *,
-    tory: int | None = None,
     sk3_hv_mva: float = 3000.0,
     rx_ratio: float = RX_110,
     transformer_catalog_ref: str = TRAFO_110_15,
@@ -215,13 +250,15 @@ def ladunek_gpz_110kv(
 ) -> dict[str, Any]:
     """Fragment ładunku `add_grid_source_sn` GPZ ze stroną 110 kV w kontrakcie karty GPZ-H5
     dla testów, które badają INNĄ cechę niż sam układ H5 (regulacja zaczepów, pola, granica
-    zasilania): `tory` torów 110 kV (domyślnie po jednym na sekcję SN), transformator k
-    przypisany jawnie sekcja 110 kV min(k, tory) → sekcja SN k, łącznik szyn 110 kV normalnie
-    otwarty i tryb rezerwy transformatorowej przy dwóch sekcjach SN. Wartości równoważnika to
-    przykładowe dane przypadku testowego."""
-    liczba_torow = sekcje_sn if tory is None else tory
+    zasilania): dwa tory 110 kV L1/L2 (ENEA Zeszyt 1 §11.1 — stacja z jedną linią
+    zasilającą nie jest dopuszczona), transformator k przypisany jawnie sekcja 110 kV k →
+    sekcja SN k (przy jednej sekcji SN — ograniczona liczba transformatorów, jeden),
+    łącznik szyn 110 kV normalnie otwarty, jedno pole liniowe na sekcję SN (dana projektu,
+    zał. Z.2) i tryb rezerwy transformatorowej przy dwóch sekcjach SN. Wartości
+    równoważnika to przykładowe dane przypadku testowego."""
     ladunek: dict[str, Any] = {
         "sections_count": sekcje_sn,
+        "line_fields_per_section": 1,
         "hv_sections": [
             {
                 "supply": {
@@ -234,21 +271,21 @@ def ladunek_gpz_110kv(
                     },
                 }
             }
-            for n in range(1, liczba_torow + 1)
+            for n in (1, 2)
         ],
+        "hv_coupler": {"normal_state": "open"},
         "transformers": [
             {
-                "hv_section": min(k, liczba_torow),
+                "hv_section": k,
                 "sn_section": k,
                 "transformer_catalog_ref": transformer_catalog_ref,
             }
             for k in range(1, sekcje_sn + 1)
         ],
     }
-    if liczba_torow >= 2:
-        ladunek["hv_coupler"] = {"normal_state": "open"}
     if sekcje_sn >= 2:
         ladunek["reserve_mode"] = reserve_mode
         if reserve_mode == "explicit":
             ladunek["reserve_transformer"] = sekcje_sn
+            ladunek["reserve_transformer_apparatus"] = {"catalog_ref": APARAT_SN_15}
     return ladunek

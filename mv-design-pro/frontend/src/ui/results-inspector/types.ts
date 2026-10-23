@@ -106,6 +106,8 @@ export interface BusResultRow {
   u_pu: number | null;
   angle_deg: number | null;
   flags: string[];
+  /** Etykiety PL znaczników w kolejności `flags` — z backendu (`znaczniki_wiersza`). */
+  flags_pl: string[];
 }
 
 /**
@@ -146,6 +148,8 @@ export interface BranchResultRow {
   /** Powód braku obciążenia (addytywne; `null`, gdy obciążenie policzono). */
   loading_powod_braku_pl?: string | null;
   flags: string[];
+  /** Etykiety PL znaczników w kolejności `flags` — z backendu (`znaczniki_wiersza`). */
+  flags_pl: string[];
 }
 
 /**
@@ -194,6 +198,8 @@ export interface ShortCircuitRow {
   sk_mva: number | null;
   fault_type: string | null;
   flags: string[];
+  /** Etykiety PL znaczników w kolejności `flags` — z backendu (`znaczniki_wiersza`). */
+  flags_pl: string[];
   // Pelny bilans IEC 60909 (ZWARCIA-PRO F1) — pola addytywne z wierszy
   // kanonicznych (`build_short_circuit_results`); starsze wyniki bez pol.
   rk_ohm?: number | null;
@@ -864,15 +870,6 @@ export const RESULT_STATUS_SEVERITY: Record<string, 'info' | 'success' | 'warnin
   FRESH: 'success',
   VALID: 'success',
   OUTDATED: 'warning',
-};
-
-/**
- * Flag labels (Polish).
- */
-export const FLAG_LABELS: Record<string, string> = {
-  SLACK: 'Węzeł bilansujący',
-  VOLTAGE_VIOLATION: 'Naruszenie napięcia',
-  OVERLOADED: 'Przeciążenie',
 };
 
 /**

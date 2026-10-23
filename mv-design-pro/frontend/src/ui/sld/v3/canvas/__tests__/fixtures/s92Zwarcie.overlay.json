@@ -1,7 +1,7 @@
 {
   "analysis_type": "SC_3F",
   "elements": {
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bus_wn": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -34,10 +34,46 @@
           "value": 2999.99272792
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bus_wn",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bus_wn": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "IK_3F_A": {
+          "code": "IK_3F_A",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kA",
+          "value": 15.7459164324
+        },
+        "IP_A": {
+          "code": "IP_A",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kA",
+          "value": 38.8801239801
+        },
+        "ITH_A": {
+          "code": "ITH_A",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kA",
+          "value": 16.0123391925
+        },
+        "SK_MVA": {
+          "code": "SK_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 3000.0
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bus_wn",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -70,10 +106,10 @@
           "value": 235.049912958
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
       "severity": "INFO"
     },
-    "nn/2fdfe8a9306be12e95b5437a5ecbf2c5/feeder_bus": {
+    "nn/07daf827dce1fd39dcf7dbb1ed53f571/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -106,10 +142,10 @@
           "value": 20.5889107007
         }
       },
-      "ref_id": "nn/2fdfe8a9306be12e95b5437a5ecbf2c5/feeder_bus",
+      "ref_id": "nn/07daf827dce1fd39dcf7dbb1ed53f571/feeder_bus",
       "severity": "INFO"
     },
-    "nn/3c59062a875015b22113504e8baab6e2/feeder_bus": {
+    "nn/40c3def10d0650fb7fdf675bcb471c63/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -142,10 +178,10 @@
           "value": 20.5889107007
         }
       },
-      "ref_id": "nn/3c59062a875015b22113504e8baab6e2/feeder_bus",
+      "ref_id": "nn/40c3def10d0650fb7fdf675bcb471c63/feeder_bus",
       "severity": "INFO"
     },
-    "nn/6f229c1ec51188c92f48976d7c5b3b35/feeder_bus": {
+    "nn/73f11a0731de8d3c260b6c6593f63862/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -178,10 +214,10 @@
           "value": 20.5889107007
         }
       },
-      "ref_id": "nn/6f229c1ec51188c92f48976d7c5b3b35/feeder_bus",
+      "ref_id": "nn/73f11a0731de8d3c260b6c6593f63862/feeder_bus",
       "severity": "INFO"
     },
-    "nn/7880279508c9e4ef31e4ea2e1465c65e/feeder_bus": {
+    "nn/94375a5e6bdd7273be1f8750141df7a8/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -214,10 +250,10 @@
           "value": 20.5889107007
         }
       },
-      "ref_id": "nn/7880279508c9e4ef31e4ea2e1465c65e/feeder_bus",
+      "ref_id": "nn/94375a5e6bdd7273be1f8750141df7a8/feeder_bus",
       "severity": "INFO"
     },
-    "nn/da05a8f833a5ad57d3f0f71d2462853b/feeder_bus": {
+    "nn/a3a6d63cbe6bf099158aaac22c682a74/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -250,10 +286,10 @@
           "value": 20.5889107007
         }
       },
-      "ref_id": "nn/da05a8f833a5ad57d3f0f71d2462853b/feeder_bus",
+      "ref_id": "nn/a3a6d63cbe6bf099158aaac22c682a74/feeder_bus",
       "severity": "INFO"
     },
-    "nn/f560a9ed80c09b8168bf2952ea129767/feeder_bus": {
+    "nn/fe10a335a08f9e8f59508220e6ae3c80/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -286,10 +322,10 @@
           "value": 20.5889107007
         }
       },
-      "ref_id": "nn/f560a9ed80c09b8168bf2952ea129767/feeder_bus",
+      "ref_id": "nn/fe10a335a08f9e8f59508220e6ae3c80/feeder_bus",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/nn_bus": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/nn_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -322,10 +358,10 @@
           "value": 20.5889107007
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/nn_bus",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/nn_bus",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/sn_bus": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/sn_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -358,7 +394,7 @@
           "value": 230.420506348
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_bus",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/sn_bus",
       "severity": "INFO"
     }
   },

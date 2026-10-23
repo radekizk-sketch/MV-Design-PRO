@@ -127,12 +127,15 @@ _ROLA_A_C_E_TEMPLATES: tuple[tuple[str, float], ...] = (
 UKLAD_NN_PROJEKTANTA: dict[str, Any] = {"nn_earthing": {"lv_system": "TN-C-S"}}
 
 #: Dane projektu GPZ H5 (karta GPZ-H5): tory zasilania L1/L2 (przykładowe dane przypadku
-#: testowego), stan normalny łącznika szyn 110 kV i tryb rezerwy — szablon H5 ich nie niesie
-#: i bez nich odmawia (`test_gpz_h5_akceptacja.py`).
+#: testowego), stan normalny łącznika szyn 110 kV, tryb rezerwy, liczba pól liniowych na
+#: sekcję SN (zał. Z.2) i wariant pola zespołu uziemiającego (§16) — szablon H5 ich nie
+#: niesie i bez nich odmawia (`test_gpz_h5_akceptacja.py`).
 DANE_PROJEKTU_H5: dict[str, Any] = {
     "hv_sections": ladunek_h5()["hv_sections"],
     "hv_coupler": {"normal_state": "open"},
     "reserve_mode": "hidden",
+    "line_fields_per_section": "2",
+    "earthing_bay_template": "ENEA_SN_ZU_REZYSTOR",
 }
 
 

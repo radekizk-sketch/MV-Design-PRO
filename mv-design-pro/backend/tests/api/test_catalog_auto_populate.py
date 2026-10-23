@@ -229,3 +229,46 @@ def test_certyfikat_ptpiree_propozycji_wylacznie_z_dowodu(
     else:
         # Pomiar 2026-10-15: żadna pozycja tych rodzin nie ma dokumentu certyfikatu.
         assert not any(p["certyfikat_ptpiree"] for p in propozycje), element_type
+
+
+#: Iloczyn cech propozycji aparatury łączeniowej (karta GPZ-H5-APARATURA): rodzaj aparatu
+#: {uziemnik — prąd ciągły nie przysługuje, odłącznik trójpołożeniowy — ma prąd ciągły,
+#: wyłącznik} × producent {brak — pozycja wymagania standardu, jest} × filtr prądu roboczego
+#: {brak, 500 A}. Uziemnik nigdy nie jest „0 A” i nie przechodzi filtru prądu roboczego;
+#: brak producenta nie jest „(None)”; napięcie 17,5 kV nie jest obcinane do „17 kV”.
+@pytest.mark.parametrize("prad_a", [None, 500.0])
+def test_propozycja_aparatury_rodzaj_x_producent_x_prad(prad_a: float | None) -> None:
+    client = _make_client()
+    zadanie: dict[str, float] = {"voltage_kv": 24.0}
+    if prad_a is not None:
+        zadanie["expected_current_a"] = prad_a
+    response = client.post("/api/catalog/auto-populate/switch", json=zadanie)
+    assert response.status_code == 200, response.text
+    propozycje = {s["catalog_ref"]: s for s in response.json()["suggestions"]}
+    uziemnik = propozycje.get("enea-wym-sn-es-24kv-16ka-3s")
+    if prad_a is None:
+        assert uziemnik is not None
+        assert uziemnik["rationale_pl"] == (
+            "24 kV / prąd ciągły nie dotyczy (uziemnik) (bez producenta)"
+        )
+    else:
+        assert uziemnik is None, "uziemnik nie prowadzi prądu roboczego"
+    odlacznik = propozycje["enea-wym-sn-ds-es-24kv-630a-16ka-3s"]
+    assert odlacznik["rationale_pl"] == "24 kV / 630 A (bez producenta)"
+    assert odlacznik["manufacturer"] is None
+    for s in propozycje.values():
+        assert "(None)" not in s["rationale_pl"], s
+        assert "/ 0 A" not in s["rationale_pl"], s
+        assert not s["rationale_pl"].startswith("17 kV"), s
+
+
+def test_propozycja_aparatury_napiecie_17_5_kv_bez_obciecia() -> None:
+    client = _make_client()
+    response = client.post(
+        "/api/catalog/auto-populate/switch",
+        json={"voltage_kv": 17.5, "expected_current_a": 600.0},
+    )
+    assert response.status_code == 200, response.text
+    rationale = [s["rationale_pl"] for s in response.json()["suggestions"]]
+    assert any(r.startswith("17.5 kV / ") for r in rationale), rationale
+    assert not any(r.startswith("17 kV") for r in rationale), rationale

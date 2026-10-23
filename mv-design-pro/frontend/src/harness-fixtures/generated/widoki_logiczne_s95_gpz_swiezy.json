@@ -2,57 +2,75 @@
   "branches": [],
   "line_fields": [
     {
-      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+      "attachment_bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
+      "field_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/bay/001/001",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
+      "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation"
     },
     {
-      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+      "attachment_bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bus_wn",
+      "bay_role": "COUPLER",
+      "corridor_refs": [],
+      "field_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_coupler/001/bay",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation"
+    },
+    {
+      "attachment_bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/terminal_line",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bay_line",
+      "field_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bay_line",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
+      "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation"
     },
     {
-      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
-      "bay_role": "TR",
+      "attachment_bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/terminal_line",
+      "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_sn",
+      "field_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bay_line",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
+      "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation"
     },
     {
-      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+      "attachment_bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/terminal_sn",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_wn",
+      "field_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/bay_sn",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
+      "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation"
+    },
+    {
+      "attachment_bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bus_wn",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/bay_wn",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation"
     }
   ],
   "secondary_connectors": [],
   "terminals": [
     {
       "branch_id": null,
-      "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
-      "element_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
+      "bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
+      "element_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/bay/001/001",
       "port_id": "trunk_out",
-      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+      "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation",
       "status": "OTWARTY",
-      "trunk_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01"
+      "trunk_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/corridor_01"
     }
   ],
   "trunks": [
     {
-      "corridor_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01",
+      "corridor_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/corridor_01",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [],
@@ -60,12 +78,12 @@
       "terminals": [
         {
           "branch_id": null,
-          "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
-          "element_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
+          "bus_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
+          "element_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/bay/001/001",
           "port_id": "trunk_out",
-          "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+          "station_ref": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation",
           "status": "OTWARTY",
-          "trunk_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01"
+          "trunk_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/corridor_01"
         }
       ]
     }

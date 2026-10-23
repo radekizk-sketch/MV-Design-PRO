@@ -2,12 +2,16 @@
 
 Dwa tryby równoważnika sieci GPZ (`add_grid_source_sn`):
 
-* **równoważnik po stronie 110 kV** — jeden tor zasilania 110 kV (jedna sekcja szyn 110 kV
-  z równoważnikiem), każdy transformator 110/SN przypisany JAWNIE do sekcji SN wpisem
-  `transformers` (karta GPZ-H5: bez liczby transformatorów i bez przydziału domyślnego).
-  Dawny układ „2 sekcje × 3 transformatory" (TR1→S1, TR2→S2, TR3→S1) jest tu WYŁĄCZNIE
-  jawnym ładunkiem testowym (`_przydzial`), nie zachowaniem operacji; rozpływ przez każdy
-  transformator i wkład zwarciowy wynikają z solvera dla rzeczywistego stanu sprzęgła.
+* **równoważnik po stronie 110 kV** — układ H5 (ENEA Operator, Zeszyt 1 „Stacje 110 kV"
+  §11.1, rys. Z.1; karta GPZ-H5-APARATURA): dwie sekcje szyn 110 kV, każda z własnym torem
+  zasilania (linia 110 kV + równoważnik sieci), łącznik szyn 110 kV ze stanem normalnym
+  z ładunku, jeden albo dwa transformatory 110/SN — co najwyżej jeden w sekcji 110 kV —
+  przypisane JAWNIE wpisem `transformers` (bez liczby transformatorów i bez przydziału
+  domyślnego). Przydział ładunku testowego TR(i) → sekcja 110 kV i, sekcja SN (i mod
+  sekcje) jest WYŁĄCZNIE jawnym ładunkiem (`_przydzial`), nie zachowaniem operacji. Dawny
+  układ „jedna sekcja 110 kV × 3 transformatory" jest spoza standardu i przypięty jako
+  odmowa operacji (`test_odmowa_ukladu_spoza_h5`); rozpływ przez każdy transformator
+  i wkład zwarciowy wynikają z solvera dla rzeczywistego stanu obu łączników szyn.
   Stan normalny łącznika szyn SN wynika z trybu rezerwy (ENEA Zeszyt 1 §26.10.5): rezerwa
   ukryta — otwarty, rezerwa jawna — zamknięty; stan badany ustawia potem operacja
   łączeniowa (`open_switch` / `close_switch`). Układ ENEA H5 (dwa tory L1/L2) bada
@@ -18,8 +22,13 @@ Dwa tryby równoważnika sieci GPZ (`add_grid_source_sn`):
   odcięta otwartym sprzęgłem jest zgłoszeniem „sekcja GPZ bez zasilania" (E065, IMPORTANT)
   i w wynikach jest bez napięcia (karta GPZ-H5, R7).
 
-ILOCZYN CECH (reguła KLASA, NIE INSTANCJA): {1, 2 sekcje} × {1, 3 transformatory} ×
-{sprzęgło zamknięte, otwarte} × {równoważnik 110 kV, równoważnik SN}. Kombinacje bez
+ILOCZYN CECH (reguła KLASA, NIE INSTANCJA): układ standardu H5 {1 sekcja SN
+× 1 TR, 1 sekcja SN × 2 TR z rezerwowym, 2 sekcje SN × 1 TR, 2 sekcje SN × 2 TR z rezerwą
+ukrytą, 2 sekcje SN × 2 TR z rezerwą jawną} × {sprzęgło SN zamknięte, otwarte} ×
+{równoważnik 110 kV, równoważnik SN}; stan normalny łącznika szyn 110 kV {otwarty,
+zamknięty z uzasadnieniem} — w strukturze modelu (zamknięty łącznik szyn 110 kV łączy
+niezależne równoważniki obu torów i bieg jest odmawiany zgłoszeniem E067 — przypięte
+w `tests/enm/test_gpz_h5_akceptacja.py`, SC-04). Kombinacje bez
 fizycznego sensu są jawnie przypięte jako ODMOWY, nie pominięte: transformatory przy
 równoważniku SN (odmowa operacji), sprzęgło przy jednej sekcji (nie istnieje — sprawdzone),
 sekcja bez transformatora przy otwartym sprzęgle w stanie normalnym (odmowa operacji
@@ -32,7 +41,10 @@ strony 110 kV" — iloczyn {stan GPZ} × {sekcje} × {sprzęgło} × {sekcja daw
 KAŻDA liczba solvera jest porównana z NIEZALEŻNYM rachunkiem w tym pliku:
 * zwarcie 3F — IEC 60909-0:2016: Z_Q = c·U_nQ²/S″_kQ przeliczone na stronę SN przez t_r²
   (§6.2), korekcja impedancji transformatora K_T = 0,95·c_max/(1 + 0,6·x_T) (§6.3.3,
-  wzór 12a), I″_k = c·U_n/(√3·|Z_k|) (wzór 29), c_max = 1,1 (tab. 1, sieci 1–35 kV);
+  wzór 12a), I″_k = c·U_n/(√3·|Z_k|) (wzór 29), c_max = 1,1 (tab. 1, sieci 1–35 kV
+  i powyżej 35 kV); Z_k miejsca zwarcia to impedancja Thevenina pasywnej sieci zastępczej
+  (metoda zastępczego źródła napięcia, §4.3.1) — wyznaczana tu odwróceniem macierzy
+  admitancyjnej węzłów W1, W2, S1, S2 zbudowanej z tabliczki, nie z wyniku solvera;
 * rozpływ — bilans mocy i rozwiązanie stałopunktowe obwodu zastępczego „źródło napięcia
   110 kV (węzeł bilansujący) → n transformatorów równolegle → odbiór PQ" na stronie SN,
   wyprowadzone tu z tabliczki katalogu, nie z wyniku solvera.
@@ -53,6 +65,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pytest
 from api.main import app
 from fastapi.testclient import TestClient
@@ -64,6 +77,7 @@ from tests.reference_networks.budowa_przez_api import (
     KlientBudowy,
     wiazanie,
 )
+from tests.reference_networks.gpz_h5 import APARAT_SN_15
 from tests.utils.biegi import wykonaj_bieg
 
 #: IEC 60909-0:2016 tab. 1 — współczynnik napięciowy c_max dla sieci SN (1–35 kV).
@@ -131,32 +145,64 @@ def _ladunek_gpz_sn(sekcje: int, **dodatkowe: Any) -> dict[str, Any]:
 
 
 def _przydzial(sekcje: int, liczba_tr: int) -> list[tuple[int, int]]:
-    """Jawny przydział (sekcja 110 kV, sekcja SN) transformatorów ładunku TESTOWEGO: dawny
-    układ TR(i) → S(i mod sekcje) zapisany wprost, jedna sekcja 110 kV."""
-    return [(1, i % sekcje + 1) for i in range(liczba_tr)]
+    """Jawny przydział (sekcja 110 kV, sekcja SN) transformatorów ładunku TESTOWEGO:
+    TR(i) → sekcja 110 kV i (układ H5: co najwyżej jeden transformator w sekcji 110 kV),
+    sekcja SN (i mod sekcje)."""
+    return [(i + 1, i % sekcje + 1) for i in range(liczba_tr)]
 
 
-def _tryb_rezerwy(sekcje: int, liczba_tr: int) -> str | None:
-    """Tryb rezerwy ładunku testowego: jeden transformator na dwie sekcje — rezerwa jawna
-    (łącznik szyn SN normalnie zamknięty, jedyna droga zasilania sekcji 2); co najmniej dwa
-    transformatory — rezerwa ukryta (każda sekcja ze swojego transformatora)."""
-    if sekcje >= 2 and liczba_tr == 1:
+#: Układy standardu H5 przyjmowane przez operację: nazwa → (sekcje SN, transformatory,
+#: transformator rezerwowy rezerwy jawnej). Jedna sekcja SN zasilana z dwóch torów 110 kV
+#: naraz łączyłaby L1 i L2 na stałe (odmowa `source.gpz_sn_section_two_hv_supplies`), więc
+#: drugi transformator przy jednej sekcji jest rezerwowy (wyłącznik pola SN otwarty).
+UKLADY_H5: dict[str, tuple[int, int, int | None]] = {
+    "1S-1TR": (1, 1, None),
+    "1S-2TR-rezerwa": (1, 2, 2),
+    "2S-1TR": (2, 1, None),
+    "2S-2TR-ukryta": (2, 2, None),
+    "2S-2TR-jawna": (2, 2, 2),
+}
+
+
+def _stan_normalny_sn(sekcje: int, liczba_tr: int, rezerwowy: int | None) -> str:
+    """Stan normalny łącznika szyn SN z trybu rezerwy (ENEA Zeszyt 1 §26.10.5)."""
+    return "open" if _tryb_rezerwy(sekcje, liczba_tr, rezerwowy) == "hidden" else "closed"
+
+
+def _tryb_rezerwy(sekcje: int, liczba_tr: int, rezerwowy: int | None = None) -> str | None:
+    """Tryb rezerwy ładunku testowego: transformator rezerwowy albo jeden transformator na
+    dwie sekcje — rezerwa jawna (łącznik szyn SN normalnie zamknięty); co najmniej dwa
+    pracujące transformatory — rezerwa ukryta (każda sekcja ze swojego transformatora)."""
+    if rezerwowy is not None or (sekcje >= 2 and liczba_tr == 1):
         return "explicit"
     if sekcje >= 2 or liczba_tr >= 2:
         return "hidden"
     return None
 
 
-def _ladunek_gpz_110kv(sekcje: int, liczba_tr: int, **dodatkowe: Any) -> dict[str, Any]:
+def _ladunek_gpz_110kv(
+    sekcje: int,
+    liczba_tr: int,
+    *,
+    wn: str = "open",
+    rezerwowy: int | None = None,
+    **dodatkowe: Any,
+) -> dict[str, Any]:
+    """Ładunek trybu 110 kV w układzie H5: dwa tory zasilania 110 kV o tym samym
+    równoważniku (Sk″ = 3000 MVA, R/X = 0,1 — przykładowe dane przypadku testowego), łącznik
+    szyn 110 kV w stanie normalnym `wn` (zamknięty — z uzasadnieniem), transformatory
+    z `_przydzial`, przy rezerwie jawnej transformator rezerwowy `rezerwowy` z wyłącznikiem
+    pola SN z katalogu."""
     ladunek: dict[str, Any] = {
         "voltage_kv": U_N_SN_KV,
         "sections_count": sekcje,
+        "line_fields_per_section": 1,
         "hv_sections": [
             {
                 "supply": {
-                    "line_name": "Linia 110 kV zasilająca",
+                    "line_name": f"Linia 110 kV zasilająca L{tor}",
                     "supplying_station_name": (
-                        "Stacja zasilająca — przykładowe dane przypadku testowego"
+                        f"Stacja zasilająca {tor} — przykładowe dane przypadku testowego"
                     ),
                     "manual_equivalent": {
                         "hv_voltage_kv": U_N_WN_KV,
@@ -165,7 +211,16 @@ def _ladunek_gpz_110kv(sekcje: int, liczba_tr: int, **dodatkowe: Any) -> dict[st
                     },
                 }
             }
+            for tor in (1, 2)
         ],
+        "hv_coupler": (
+            {"normal_state": wn}
+            if wn == "open"
+            else {
+                "normal_state": wn,
+                "justification": "Sekcje 110 kV zasilane wspólnie — dane przypadku testowego.",
+            }
+        ),
         "transformers": [
             {
                 "hv_section": wn,
@@ -175,9 +230,12 @@ def _ladunek_gpz_110kv(sekcje: int, liczba_tr: int, **dodatkowe: Any) -> dict[st
             for wn, sn in _przydzial(sekcje, liczba_tr)
         ],
     }
-    tryb = _tryb_rezerwy(sekcje, liczba_tr)
+    tryb = _tryb_rezerwy(sekcje, liczba_tr, rezerwowy)
     if tryb is not None:
         ladunek["reserve_mode"] = tryb
+    if rezerwowy is not None:
+        ladunek["reserve_transformer"] = rezerwowy
+        ladunek["reserve_transformer_apparatus"] = {"catalog_ref": APARAT_SN_15}
     return {**ladunek, **dodatkowe}
 
 
@@ -190,18 +248,50 @@ def _sekcje(migawka: dict[str, Any]) -> list[str]:
     return [str(s["bus_ref"]) for s in _gpz(migawka)["gpz_sections"]]
 
 
+def _szyny_wn(migawka: dict[str, Any]) -> list[str]:
+    return [str(s["bus_ref"]) for s in _gpz(migawka).get("gpz_hv_sections") or []]
+
+
 def _sprzegla(migawka: dict[str, Any]) -> list[dict[str, Any]]:
-    return [g for g in migawka["branches"] if g.get("type") == "bus_coupler"]
+    """Łącznik szyn SN (sprzęgło sekcji SN) — łącznik szyn 110 kV zwraca `_lacznik_wn`."""
+    sekcje = set(_sekcje(migawka))
+    return [
+        g
+        for g in migawka["branches"]
+        if g.get("type") == "bus_coupler" and g["from_bus_ref"] in sekcje
+    ]
+
+
+def _lacznik_wn(migawka: dict[str, Any]) -> dict[str, Any]:
+    szyny = set(_szyny_wn(migawka))
+    (lacznik,) = (
+        g
+        for g in migawka["branches"]
+        if g.get("type") == "bus_coupler" and g["from_bus_ref"] in szyny
+    )
+    return dict(lacznik)
 
 
 def _zbuduj(
-    klient: TestClient, tryb: str, sekcje: int, liczba_tr: int, sprzeglo: str
+    klient: TestClient,
+    tryb: str,
+    sekcje: int,
+    liczba_tr: int,
+    sprzeglo: str,
+    wn: str = "open",
+    rezerwowy: int | None = None,
 ) -> tuple[KlientBudowy, dict[str, Any]]:
     """GPZ w zadanym trybie + odbiory sekcji + stan sprzęgła ustawiony ISTNIEJĄCĄ operacją
-    `open_switch` (ta sama, którą inspektor i schemat otwierają łącznik — karta W5-C)."""
-    budowa = KlientBudowy(klient, f"granica-{tryb}-{sekcje}s-{liczba_tr}tr-{sprzeglo}")
+    `open_switch` (ta sama, którą inspektor i schemat otwierają łącznik — karta W5-C);
+    stan normalny łącznika szyn 110 kV (`wn`) pochodzi z ładunku operacji."""
+    budowa = KlientBudowy(
+        klient, f"granica-{tryb}-{sekcje}s-{liczba_tr}tr-{sprzeglo}-{wn}-r{rezerwowy}"
+    )
     if tryb == "110kV":
-        budowa.operacja("add_grid_source_sn", _ladunek_gpz_110kv(sekcje, liczba_tr))
+        budowa.operacja(
+            "add_grid_source_sn",
+            _ladunek_gpz_110kv(sekcje, liczba_tr, wn=wn, rezerwowy=rezerwowy),
+        )
     else:
         assert liczba_tr == 0, "równoważnik SN nie ma transformatorów w modelu"
         budowa.operacja("add_grid_source_sn", _ladunek_gpz_sn(sekcje))
@@ -271,26 +361,86 @@ def _impedancja_sieci_sn(tryb: str) -> complex:
     return complex(rx * x_q, x_q)
 
 
-def _ik_niezalezne_ka(tryb: str, liczba_tr_zasilajacych: int) -> float:
-    """I″_k3 na szynie sekcji SN [kA]: równoważnik + n transformatorów równolegle z K_T."""
-    z_k = _impedancja_sieci_sn(tryb)
-    if tryb == "110kV":
-        z_t, x_t = _tabliczka_tr()
-        k_t = 0.95 * C_MAX / (1.0 + 0.6 * x_t)
-        z_k += k_t * z_t / liczba_tr_zasilajacych
-    return C_MAX * U_N_SN_KV / (math.sqrt(3.0) * abs(z_k))
+def _ik_niezalezne_sn_ka() -> float:
+    """I″_k3 na szynie sekcji SN [kA] przy równoważniku na szynach SN (bez transformatorów)."""
+    return C_MAX * U_N_SN_KV / (math.sqrt(3.0) * abs(_impedancja_sieci_sn("SN")))
 
 
-def _rozplyw_niezalezny(liczba_tr: int, p_mw: float, q_mvar: float) -> tuple[float, float, float]:
-    """(U_SN [kV], P po stronie 110 kV na JEDEN transformator [MW], straty [MW]) dla wyspy
-    „szyna 110 kV (węzeł bilansujący, U = U_n) → n transformatorów → odbiór PQ".
+def _impedancje_thevenina_110kv(
+    sekcje: int, liczba_tr: int, sprzeglo: str, rezerwowy: int | None = None
+) -> dict[str, complex]:
+    """Impedancja Thevenina [Ω, po stronie SN] węzłów W1, W2 (szyny 110 kV) i S1, S2
+    (sekcje SN) w pasywnej sieci zastępczej IEC 60909-0 §4.3.1: Z_Qt każdego toru zasilania
+    do ziemi, K_T·Z_T PRACUJĄCEGO transformatora TR(i) między W(i) i S((i−1 mod sekcje)+1)
+    (rezerwowy ma otwarty wyłącznik pola SN — gałąź ślepa bez prądu), zamknięty łącznik
+    szyn SN = jeden węzeł (impedancja zerowa, jak w rdzeniu zwarciowym). Łącznik szyn
+    110 kV jest otwarty: zamknięty łączy niezależne równoważniki i bieg jest odmawiany
+    (E067). Węzeł bez drogi do żadnego toru zasilania nie ma impedancji (sekcja odcięta)."""
+    z_t, x_t = _tabliczka_tr()
+    k_t = 0.95 * C_MAX / (1.0 + 0.6 * x_t)
+    z_q = _impedancja_sieci_sn("110kV")
+    wezly = ["W1", "W2", "S1", "S2"][: 2 + sekcje]
+    scal = {w: w for w in wezly}
+    if sekcje == 2 and sprzeglo == "closed":
+        scal["S2"] = "S1"
+    glowne = sorted(set(scal.values()))
+    indeks = {w: glowne.index(scal[w]) for w in wezly}
+    y = np.zeros((len(glowne), len(glowne)), dtype=complex)
+    for tor in ("W1", "W2"):
+        y[indeks[tor], indeks[tor]] += 1.0 / z_q
+    sasiedzi: dict[int, set[int]] = {i: set() for i in range(len(glowne))}
+    for numer, (wn_tr, sn_tr) in enumerate(_przydzial(sekcje, liczba_tr), start=1):
+        if numer == rezerwowy:
+            continue
+        a, b = indeks[f"W{wn_tr}"], indeks[f"S{sn_tr}"]
+        y_t = 1.0 / (k_t * z_t)
+        y[a, a] += y_t
+        y[b, b] += y_t
+        y[a, b] -= y_t
+        y[b, a] -= y_t
+        sasiedzi[a].add(b)
+        sasiedzi[b].add(a)
+    # Składowa spójna z torem zasilania (W1 zawsze ma tor); węzły poza nią są odcięte.
+    zasilane = {indeks["W1"], indeks["W2"]}
+    kolejka = list(zasilane)
+    while kolejka:
+        for n in sasiedzi[kolejka.pop()]:
+            if n not in zasilane:
+                zasilane.add(n)
+                kolejka.append(n)
+    rzad = sorted(zasilane)
+    z_bus = np.linalg.inv(y[np.ix_(rzad, rzad)])
+    return {
+        w: complex(z_bus[rzad.index(indeks[w]), rzad.index(indeks[w])])
+        for w in wezly
+        if indeks[w] in zasilane
+    }
 
-    Obwód zastępczy po stronie SN, na fazę: V = V₀ − (Z_T/n)·conj(S/(3V)); przekładnia
-    znamionowa 110/15 równa ilorazowi napięć szyn (zaczep neutralny), więc V₀ = 15/√3 kV.
-    Gałąź poprzeczna magnesowania nie wchodzi do rozpływu (tor solvera — patrz
-    `test_bilans_mocy_rozplywu`, który przypina, że straty są wyłącznie stratami w miedzi)."""
+
+def _rozplyw_niezalezny(
+    liczba_tr: int, p_mw: float, q_mvar: float
+) -> tuple[float, float, float, float]:
+    """(U_SN [kV], P po stronie 110 kV na JEDEN transformator [MW], strata wyłączników pól SN
+    transformatorów [MW], strata wyłączników pól liniowych 110 kV [MW]) dla wyspy „zacisk
+    linii 110 kV (węzeł bilansujący, U = U_n) → zamknięty wyłącznik pola liniowego 110 kV →
+    sekcja szyn 110 kV → transformator → zamknięty wyłącznik pola SN (gniazdo „W”, zał. Z.7)
+    → odbiór PQ”, n takich torów równolegle.
+
+    Obwód zastępczy po stronie SN, na fazę: V = V₀ − ((Z_T + Z_ł + Z_ł,WN·(15/110)²)/n)·
+    conj(S/(3V)). Każdy pracujący transformator ma WŁASNY tor: układ H5 przyjmuje co
+    najwyżej jeden transformator w sekcji 110 kV (`_przydzial`), a każda sekcja 110 kV ma
+    własny tor zasilania z wyłącznikiem pola liniowego (granica zasilania, decyzja właściciela
+    2026-10-22). Zamknięty łącznik rozpływu to `Z_LACZNIKA_ROZPLYWU_OHM` liczone NA POZIOMIE
+    NAPIĘCIA łącznika (`_base_scale` rdzenia NR), więc wyłącznik 110 kV sprowadzony na stronę
+    SN to Z_ł·(U_SN/U_WN)². Przekładnia znamionowa 110/15 równa ilorazowi napięć szyn
+    (zaczep neutralny), więc V₀ = 15/√3 kV. Moc P_TR wyniku jest mierzona na zacisku 110 kV
+    transformatora, ZA wyłącznikiem pola liniowego — nie zawiera jego straty, którą niesie
+    dopiero moc źródła. Gałąź poprzeczna magnesowania nie wchodzi do rozpływu (tor solvera —
+    patrz `test_bilans_mocy_rozplywu`, który przypina, że straty transformatorów są wyłącznie
+    stratami w miedzi, a resztę bilansu niosą straty wyłączników zwracane tutaj)."""
     z_t, _x_t = _tabliczka_tr()
-    z_eq = z_t / liczba_tr
+    z_wn_na_sn = Z_LACZNIKA_ROZPLYWU_OHM * (U_N_SN_KV / U_N_WN_KV) ** 2
+    z_eq = (z_t + Z_LACZNIKA_ROZPLYWU_OHM + z_wn_na_sn) / liczba_tr
     s_faza = complex(p_mw, q_mvar) / 3.0
     v0 = complex(U_N_SN_KV / math.sqrt(3.0), 0.0)
     v = v0
@@ -302,7 +452,14 @@ def _rozplyw_niezalezny(liczba_tr: int, p_mw: float, q_mvar: float) -> tuple[flo
         v = v_nowe
     prad = abs((s_faza / v).conjugate())
     straty = 3.0 * prad**2 * z_eq.real
-    return math.sqrt(3.0) * abs(v), (p_mw + straty) / liczba_tr, straty
+    straty_wylacznikow = 3.0 * prad**2 * Z_LACZNIKA_ROZPLYWU_OHM.real / liczba_tr
+    straty_wylacznikow_wn = 3.0 * prad**2 * z_wn_na_sn.real / liczba_tr
+    return (
+        math.sqrt(3.0) * abs(v),
+        (p_mw + straty - straty_wylacznikow_wn) / liczba_tr,
+        straty_wylacznikow,
+        straty_wylacznikow_wn,
+    )
 
 
 def _po_sufiksie(metryki: dict[str, dict[str, float]], sufiks: str) -> dict[str, float]:
@@ -311,36 +468,74 @@ def _po_sufiksie(metryki: dict[str, dict[str, float]], sufiks: str) -> dict[str,
 
 
 # ---------------------------------------------------------------------------
-# Struktura modelu: jedna szyna 110 kV, równoważnik na niej, TR → sekcje
+# Struktura modelu: dwie sekcje szyn 110 kV z torami zasilania, TR → sekcje (układ H5)
 # ---------------------------------------------------------------------------
 
-#: Iloczyn trybu 110 kV: (sekcje, transformatory).
-ILOCZYN_110KV = [(1, 1), (1, 3), (2, 1), (2, 3)]
+#: Iloczyn trybu 110 kV: układ standardu H5 × stan normalny łącznika szyn 110 kV.
+ILOCZYN_110KV = [(uklad, wn) for uklad in UKLADY_H5 for wn in ("open", "closed")]
 
 
-@pytest.mark.parametrize(("sekcje", "liczba_tr"), ILOCZYN_110KV)
-def test_tryb_110kv_jedna_szyna_wn_wszystkie_tr_i_rownowaznik(
-    klient: TestClient, sekcje: int, liczba_tr: int
+@pytest.mark.parametrize(("uklad", "wn"), ILOCZYN_110KV)
+def test_tryb_110kv_dwie_sekcje_wn_z_torami_i_transformatory(
+    klient: TestClient, uklad: str, wn: str
 ) -> None:
-    _budowa, migawka = _zbuduj(klient, "110kV", sekcje, liczba_tr, "closed")
+    sekcje, liczba_tr, rezerwowy = UKLADY_H5[uklad]
+    stan_sn = _stan_normalny_sn(sekcje, liczba_tr, rezerwowy)
+    _budowa, migawka = _zbuduj(klient, "110kV", sekcje, liczba_tr, stan_sn, wn, rezerwowy)
     gpz = _gpz(migawka)
     szyny_wn = [b for b in migawka["buses"] if "gpz_hv_bus" in (b.get("tags") or [])]
-    assert len(szyny_wn) == 1, "jeden tor zasilania — jedna sekcja szyn 110 kV"
-    (szyna_wn,) = szyny_wn
-    assert szyna_wn["voltage_kv"] == U_N_WN_KV
-    assert [s["bus_ref"] for s in gpz["gpz_hv_sections"]] == [szyna_wn["ref_id"]]
-    (zrodlo,) = migawka["sources"]
-    assert zrodlo["bus_ref"] == szyna_wn["ref_id"], "równoważnik stoi na szynie 110 kV"
-    assert gpz["gpz_hv_sections"][0]["incoming_source_ref"] == zrodlo["ref_id"]
+    assert len(szyny_wn) == 2, "układ H5 — dwie sekcje szyn 110 kV, każda z torem zasilania"
+    assert [s["bus_ref"] for s in gpz["gpz_hv_sections"]] == [b["ref_id"] for b in szyny_wn]
+    assert all(b["voltage_kv"] == U_N_WN_KV for b in szyny_wn)
+    zrodla = {z["ref_id"]: z for z in migawka["sources"]}
+    assert len(zrodla) == 2
+    napiecia = {b["ref_id"]: b["voltage_kv"] for b in migawka["buses"]}
+    for sekcja, szyna in zip(gpz["gpz_hv_sections"], szyny_wn, strict=True):
+        zrodlo = zrodla[sekcja["incoming_source_ref"]]
+        # Tor zasilania = równoważnik linii 110 kV na ZACISKU pola liniowego + jedyny łącznik
+        # pola (wyłącznik z gałęzią modelu, bez typu katalogowego — strona 110 kV jest granicą
+        # zasilania, decyzja właściciela 2026-10-22) między zaciskiem a szyną sekcji; stan
+        # tego wyłącznika wpływa na obliczenia (otwarty = utrata toru).
+        zacisk = zrodlo["bus_ref"]
+        assert zacisk != szyna["ref_id"], "równoważnik toru stoi na zacisku pola, nie na szynie"
+        assert napiecia[zacisk] == U_N_WN_KV
+        (wylacznik_linii,) = (
+            g for g in migawka["branches"] if zacisk in (g["from_bus_ref"], g["to_bus_ref"])
+        )
+        assert wylacznik_linii["type"] == "breaker"
+        assert {wylacznik_linii["from_bus_ref"], wylacznik_linii["to_bus_ref"]} == {
+            szyna["ref_id"],
+            zacisk,
+        }
+        assert (wylacznik_linii["status"], wylacznik_linii["normal_state"]) == (
+            "closed",
+            "closed",
+        )
+        assert wylacznik_linii.get("catalog_ref") is None, "pole 110 kV pokazuje „brak typu”"
+    assert _lacznik_wn(migawka)["status"] == wn, "stan normalny łącznika szyn 110 kV z ładunku"
     transformatory = sorted(migawka["transformers"], key=lambda t: t["ref_id"])
     assert len(transformatory) == liczba_tr
     szyny_sn = _sekcje(migawka)
     # Przydział z JAWNEGO ładunku (`_przydzial`), nie z reguły operacji.
-    for tr, (_wn, sn) in zip(transformatory, _przydzial(sekcje, liczba_tr), strict=True):
-        assert tr["hv_bus_ref"] == szyna_wn["ref_id"], tr["name"]
-        assert tr["lv_bus_ref"] == szyny_sn[sn - 1], tr["name"]
+    galezie = {g["ref_id"]: g for g in migawka["branches"]}
+    for numer, (tr, (wn_tr, sn)) in enumerate(
+        zip(transformatory, _przydzial(sekcje, liczba_tr), strict=True), start=1
+    ):
+        assert tr["hv_bus_ref"] == szyny_wn[wn_tr - 1]["ref_id"], tr["name"]
+        # Każdy transformator: wyłącznik pola SN (gniazdo „W”, ENEA zał. Z.7) między zaciskiem
+        # SN transformatora a sekcją — normalnie otwarty wyłącznie dla transformatora
+        # rezerwowego (Zeszyt 1 §26.10.5, rezerwa jawna).
+        (wylacznik,) = (
+            g
+            for g in galezie.values()
+            if g.get("type") == "breaker" and g["to_bus_ref"] == tr["lv_bus_ref"]
+        )
+        assert tr["lv_bus_ref"] not in szyny_sn, tr["name"]
+        assert wylacznik["from_bus_ref"] == szyny_sn[sn - 1], tr["name"]
+        oczekiwany = "open" if numer == rezerwowy else "closed"
+        assert (wylacznik["status"], wylacznik["normal_state"]) == (oczekiwany, oczekiwany)
     assert sorted(gpz["transformer_refs"]) == [t["ref_id"] for t in transformatory]
-    assert len(_sprzegla(migawka)) == sekcje - 1, "sprzęgło istnieje tylko przy 2 sekcjach"
+    assert len(_sprzegla(migawka)) == sekcje - 1, "sprzęgło SN istnieje tylko przy 2 sekcjach"
 
 
 @pytest.mark.parametrize("sekcje", [1, 2])
@@ -450,11 +645,68 @@ def test_odmowa_sekcji_sn_bez_transformatora_w_stanie_normalnym(klient: TestClie
 
 def test_odmowa_trybu_110kv_przy_niezgodnym_napieciu_wn(klient: TestClient) -> None:
     budowa = KlientBudowy(klient, "odmowa-napiecie")
-    ladunek = _ladunek_gpz_110kv(1, 2)
+    ladunek = _ladunek_gpz_110kv(1, 1)
     ladunek["hv_sections"][0]["supply"]["manual_equivalent"]["hv_voltage_kv"] = 220.0
     wynik = _surowa_operacja(klient, budowa.case_id, "add_grid_source_sn", ladunek)
     assert wynik["error_code"] == "source.hv_voltage_mismatch", wynik
     assert budowa.migawka()["sources"] == []
+
+
+def _uklad_spoza_h5(wariant: str) -> dict[str, Any]:
+    ladunek = _ladunek_gpz_110kv(2, 2)
+    tr = {"transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN)}
+    if wariant == "jedna_sekcja_wn":
+        ladunek["hv_sections"] = ladunek["hv_sections"][:1]
+        ladunek["transformers"] = [{**tr, "hv_section": 1, "sn_section": 1}]
+        del ladunek["hv_coupler"]
+    elif wariant == "trzy_sekcje_wn":
+        ladunek["hv_sections"] = [*ladunek["hv_sections"], ladunek["hv_sections"][0]]
+    elif wariant == "dwa_tr_w_sekcji_wn":
+        ladunek["transformers"] = [
+            {**tr, "hv_section": 1, "sn_section": 1},
+            {**tr, "hv_section": 1, "sn_section": 2},
+        ]
+    elif wariant == "trzy_tr":
+        ladunek["transformers"] = [
+            {**tr, "hv_section": 1, "sn_section": 1},
+            {**tr, "hv_section": 2, "sn_section": 2},
+            {**tr, "hv_section": 2, "sn_section": 1},
+        ]
+    elif wariant == "trzy_sekcje_sn":
+        ladunek["sections_count"] = 3
+        ladunek["transformers"] = [
+            {**tr, "hv_section": 1, "sn_section": 1},
+            {**tr, "hv_section": 2, "sn_section": 3},
+        ]
+    elif wariant == "bez_liczby_pol_liniowych":
+        del ladunek["line_fields_per_section"]
+    return ladunek
+
+
+#: Iloczyn odmów układu spoza H5 (ENEA Zeszyt 1 §11.1, rys. Z.1, §13 i rys. Z.2): liczba
+#: sekcji szyn 110 kV {1, 3} × {≥ 2 transformatory w sekcji 110 kV, 3 transformatory} ×
+#: {3 sekcje SN} × {brak liczby pól liniowych — dana projektu, zał. Z.2}. Każda odmowa
+#: z podstawą (Zeszyt 1 ENEA) i bez skutku w modelu.
+ODMOWY_UKLADU = [
+    ("jedna_sekcja_wn", "source.invalid_hv_sections_count"),
+    ("trzy_sekcje_wn", "source.invalid_hv_sections_count"),
+    ("dwa_tr_w_sekcji_wn", "source.gpz_layout_outside_standard"),
+    ("trzy_tr", "source.gpz_layout_outside_standard"),
+    ("trzy_sekcje_sn", "source.gpz_layout_outside_standard"),
+    ("bez_liczby_pol_liniowych", "source.gpz_line_fields_required"),
+]
+
+
+@pytest.mark.parametrize(("wariant", "kod"), ODMOWY_UKLADU, ids=[w for w, _k in ODMOWY_UKLADU])
+def test_odmowa_ukladu_spoza_h5(klient: TestClient, wariant: str, kod: str) -> None:
+    budowa = KlientBudowy(klient, f"odmowa-uklad-{wariant}")
+    wynik = _surowa_operacja(klient, budowa.case_id, "add_grid_source_sn", _uklad_spoza_h5(wariant))
+    assert wynik["error_code"] == kod, wynik
+    podstawa = "zał. Z.2" if wariant == "bez_liczby_pol_liniowych" else "§11.1"
+    assert "Zeszyt 1" in wynik["error"] and podstawa in wynik["error"], wynik["error"]
+    migawka = budowa.migawka()
+    assert migawka["sources"] == [] and migawka["transformers"] == []
+    assert migawka["substations"] == [], "odmowa nie zostawia żadnego skutku"
 
 
 # ---------------------------------------------------------------------------
@@ -466,7 +718,7 @@ def test_odmowa_trybu_110kv_przy_niezgodnym_napieciu_wn(klient: TestClient) -> N
 def test_nazwy_pol_liniowych_gpz_sekcja_kropka_pole(klient: TestClient, tryb: str) -> None:
     budowa = KlientBudowy(klient, f"pola-{tryb}")
     ladunek = (
-        _ladunek_gpz_110kv(2, 3, line_fields_per_section=3)
+        _ladunek_gpz_110kv(2, 2, line_fields_per_section=3)
         if tryb == "110kV"
         else _ladunek_gpz_sn(2, line_fields_per_section=3)
     )
@@ -483,21 +735,28 @@ def test_nazwy_pol_liniowych_gpz_sekcja_kropka_pole(klient: TestClient, tryb: st
 # Rozpływ mocy — iloczyn {sekcje} × {TR} × {sprzęgło} w trybie 110 kV
 # ---------------------------------------------------------------------------
 
-#: (sekcje, TR, sprzęgło) z zasilaniem każdej sekcji; (2, 1, open) → osobny test E065.
-ILOCZYN_ROZPLYWU = [
-    (1, 1, "closed"),
-    (1, 3, "closed"),
-    (2, 1, "closed"),
-    (2, 3, "closed"),
-    (2, 3, "open"),
-]
+#: Układy standardu H5 w stanie normalnym (łącznik szyn SN z trybu rezerwy, łącznik szyn
+#: 110 kV otwarty). Stany łączeniowe poza normalnym: otwarte sprzęgło przy jednym TR →
+#: E065 (`test_otwarte_sprzeglo_*`), zamknięte sprzęgło przy rezerwie ukrytej albo
+#: zamknięty łącznik szyn 110 kV → E067 (`test_gpz_h5_akceptacja.py`, SC-04 i SC-05b).
+ILOCZYN_ROZPLYWU = list(UKLADY_H5)
 
 
-def _wyspy(sekcje: int, liczba_tr: int, sprzeglo: str) -> list[tuple[list[int], list[int]]]:
-    """Wyspy zasilania: (indeksy sekcji, indeksy TR) — z przydziału TR(i) → S(i mod sekcje)."""
+def _parametry(uklad: str) -> tuple[int, int, str, int | None]:
+    sekcje, liczba_tr, rezerwowy = UKLADY_H5[uklad]
+    return sekcje, liczba_tr, _stan_normalny_sn(sekcje, liczba_tr, rezerwowy), rezerwowy
+
+
+def _wyspy(
+    sekcje: int, liczba_tr: int, sprzeglo: str, rezerwowy: int | None = None
+) -> list[tuple[list[int], list[int]]]:
+    """Wyspy zasilania strony SN: (indeksy sekcji, indeksy PRACUJĄCYCH TR) z przydziału
+    TR(i) → S(i mod sekcje); transformator rezerwowy (wyłącznik pola SN otwarty) nie zasila
+    żadnej wyspy."""
+    pracujace = [t for t in range(liczba_tr) if t + 1 != rezerwowy]
     if sekcje == 1 or sprzeglo == "closed":
-        return [(list(range(sekcje)), list(range(liczba_tr)))]
-    return [([s], [t for t in range(liczba_tr) if t % sekcje == s]) for s in range(sekcje)]
+        return [(list(range(sekcje)), pracujace)]
+    return [([s], [t for t in pracujace if t % sekcje == s]) for s in range(sekcje)]
 
 
 #: Impedancja zamkniętego łącznika w macierzy admitancyjnej rozpływu NR [Ω] — stała
@@ -530,20 +789,25 @@ def _tolerancje_rozplywu(sekcje: int, sprzeglo: str) -> tuple[float, float]:
     return 1e-6, 1e-6
 
 
-@pytest.mark.parametrize(("sekcje", "liczba_tr", "sprzeglo"), ILOCZYN_ROZPLYWU)
+@pytest.mark.parametrize("uklad", ILOCZYN_ROZPLYWU)
 def test_rozplyw_przez_kazdy_transformator_z_niezaleznego_obwodu(
-    klient: TestClient, sekcje: int, liczba_tr: int, sprzeglo: str
+    klient: TestClient, uklad: str
 ) -> None:
-    budowa, migawka = _zbuduj(klient, "110kV", sekcje, liczba_tr, sprzeglo)
+    sekcje, liczba_tr, sprzeglo, rezerwowy = _parametry(uklad)
+    budowa, migawka = _zbuduj(klient, "110kV", sekcje, liczba_tr, sprzeglo, "open", rezerwowy)
     metryki = _bieg(klient, budowa.case_id, "LOAD_FLOW")
     transformatory = sorted(migawka["transformers"], key=lambda t: t["ref_id"])
     szyny = _sekcje(migawka)
     odbiory = (ODBIOR_S1, ODBIOR_S2)
     tolerancja_p, tolerancja_u = _tolerancje_rozplywu(sekcje, sprzeglo)
-    for indeksy_sekcji, indeksy_tr in _wyspy(sekcje, liczba_tr, sprzeglo):
+    if rezerwowy is not None:
+        # Rezerwowy pod napięciem od strony 110 kV, wyłącznik pola SN otwarty — bez prądu.
+        bieg_rez = metryki.get(transformatory[rezerwowy - 1]["ref_id"], {})
+        assert abs(bieg_rez.get("P_MW", 0.0)) <= TOLERANCJA_NR_MW, bieg_rez
+    for indeksy_sekcji, indeksy_tr in _wyspy(sekcje, liczba_tr, sprzeglo, rezerwowy):
         p = sum(odbiory[s][0] for s in indeksy_sekcji)
         q = sum(odbiory[s][1] for s in indeksy_sekcji)
-        u_kv, p_na_tr, _straty = _rozplyw_niezalezny(len(indeksy_tr), p, q)
+        u_kv, p_na_tr, _straty_sn, _straty_wn = _rozplyw_niezalezny(len(indeksy_tr), p, q)
         for t in indeksy_tr:
             wynik_tr = metryki[transformatory[t]["ref_id"]]
             assert wynik_tr["P_MW"] == pytest.approx(p_na_tr, abs=tolerancja_p), (
@@ -558,35 +822,66 @@ def test_rozplyw_przez_kazdy_transformator_z_niezaleznego_obwodu(
             )
 
 
-@pytest.mark.parametrize(("sekcje", "liczba_tr", "sprzeglo"), ILOCZYN_ROZPLYWU)
-def test_bilans_mocy_rozplywu(
-    klient: TestClient, sekcje: int, liczba_tr: int, sprzeglo: str
-) -> None:
-    """P_źródła = Σ P_TR (strona 110 kV) = Σ P_odbiorów + Σ strat TR (+ strata łącznika
-    sprzęgła, której wynik nie raportuje); straty TR są stratami w miedzi P_k·(S/S_r)² —
-    gałąź magnesowania nie wchodzi do rozpływu."""
-    budowa, migawka = _zbuduj(klient, "110kV", sekcje, liczba_tr, sprzeglo)
+@pytest.mark.parametrize("uklad", ILOCZYN_ROZPLYWU)
+def test_bilans_mocy_rozplywu(klient: TestClient, uklad: str) -> None:
+    """Σ P_źródeł = Σ P_TR (zacisk 110 kV) + strata wyłączników pól liniowych 110 kV
+    = Σ P_odbiorów + Σ strat TR + strata wszystkich zamkniętych łączników (wyłączniki pól
+    liniowych 110 kV, wyłączniki pól SN transformatorów, sprzęgło — wynik ich nie raportuje,
+    łącznik nie jest gałęzią wyniku); straty TR są stratami w miedzi P_k·(S/S_r)² — gałąź
+    magnesowania nie wchodzi do rozpływu. Tor bez transformatora (jeden TR, łącznik szyn
+    110 kV otwarty) nie oddaje mocy."""
+    sekcje, liczba_tr, sprzeglo, rezerwowy = _parametry(uklad)
+    budowa, migawka = _zbuduj(klient, "110kV", sekcje, liczba_tr, sprzeglo, "open", rezerwowy)
     metryki = _bieg(klient, budowa.case_id, "LOAD_FLOW")
-    (zrodlo,) = migawka["sources"]
-    p_zrodla = metryki[zrodlo["ref_id"]]["P_MW"]
-    wyniki_tr = [metryki[t["ref_id"]] for t in migawka["transformers"]]
+    zrodla = migawka["sources"]
+    assert len(zrodla) == 2
+    p_zrodla = sum(metryki[z["ref_id"]]["P_MW"] for z in zrodla)
+    wyniki_tr = [
+        metryki[t["ref_id"]]
+        for numer, t in enumerate(sorted(migawka["transformers"], key=lambda t: t["ref_id"]), 1)
+        if numer != rezerwowy
+    ]
     p_odbiorow = sum(p for p, _q in (ODBIOR_S1, ODBIOR_S2)[:sekcje])
     straty = sum(w["LOSSES_P_MW"] for w in wyniki_tr)
-    assert p_zrodla == pytest.approx(sum(w["P_MW"] for w in wyniki_tr), abs=TOLERANCJA_NR_MW)
+    oddanie_ponad_tr = p_zrodla - sum(w["P_MW"] for w in wyniki_tr)
     niezbilansowanie = p_zrodla - (p_odbiorow + straty)
     if _sprzeglo_przewodzi(sekcje, sprzeglo):
-        # Górne ograniczenie straty łącznika: CAŁA moc odbiorów przez sprzęgło,
+        # Górne ograniczenie straty łączników: CAŁA moc odbiorów przez sprzęgło, CAŁA przez
+        # wyłączniki pól SN pracujących transformatorów (Σ I² ≤ (Σ I)²) i CAŁA przez
+        # wyłączniki pól liniowych 110 kV (prąd sprowadzony przekładnią 15/110), każdy człon
         # 3·I²·R_ł przy I = S/(√3·U_min sekcji).
         s_calk = math.hypot(sum(p for p, _ in (ODBIOR_S1, ODBIOR_S2)), 3.5)
         u_min = min(metryki[sz]["U_kV"] for sz in _sekcje(migawka))
         prad_max = s_calk / (math.sqrt(3.0) * u_min)
-        strata_max = 3.0 * prad_max**2 * Z_LACZNIKA_ROZPLYWU_OHM.real
+        strata_ogniwa = 3.0 * prad_max**2 * Z_LACZNIKA_ROZPLYWU_OHM.real
+        strata_wn_max = strata_ogniwa * (U_N_SN_KV / U_N_WN_KV) ** 2
+        strata_max = 2.0 * strata_ogniwa + strata_wn_max
+        assert -TOLERANCJA_NR_MW <= oddanie_ponad_tr <= strata_wn_max + TOLERANCJA_NR_MW, (
+            oddanie_ponad_tr,
+            strata_wn_max,
+        )
         assert -TOLERANCJA_NR_MW <= niezbilansowanie <= strata_max + TOLERANCJA_NR_MW, (
             niezbilansowanie,
             strata_max,
         )
     else:
-        assert niezbilansowanie == pytest.approx(0.0, abs=TOLERANCJA_NR_MW)
+        # Bez przewodzącego sprzęgła bilans domyka DOKŁADNIE strata zamkniętych wyłączników
+        # pól SN transformatorów i pól liniowych 110 kV (rozpływ jej nie raportuje — łącznik
+        # nie jest gałęzią wyniku); moc źródła ponad moc zacisków 110 kV transformatorów to
+        # DOKŁADNIE strata wyłączników pól liniowych 110 kV.
+        referencja = [
+            _rozplyw_niezalezny(
+                len(indeksy_tr),
+                sum((ODBIOR_S1, ODBIOR_S2)[s][0] for s in indeksy_sekcji),
+                sum((ODBIOR_S1, ODBIOR_S2)[s][1] for s in indeksy_sekcji),
+            )
+            for indeksy_sekcji, indeksy_tr in _wyspy(sekcje, liczba_tr, sprzeglo, rezerwowy)
+        ]
+        straty_wn = sum(r[3] for r in referencja)
+        assert oddanie_ponad_tr == pytest.approx(straty_wn, abs=TOLERANCJA_NR_MW)
+        assert niezbilansowanie == pytest.approx(
+            sum(r[2] for r in referencja) + straty_wn, abs=TOLERANCJA_NR_MW
+        )
     typ = get_default_mv_catalog().get_transformer_type(TRANSFORMATOR_WN_SN)
     assert typ is not None
     for w in wyniki_tr:
@@ -648,60 +943,73 @@ def test_zamkniete_sprzeglo_zasila_sekcje_2_bez_zgloszenia(klient: TestClient, t
 # Zwarcie 3F — iloczyn pełny z niezależnym IEC 60909
 # ---------------------------------------------------------------------------
 
-#: (tryb, sekcje, TR, sprzęgło) — wszystkie kombinacje z zasilaną każdą sekcją.
-ILOCZYN_ZWARCIA = [
-    ("110kV", 1, 1, "closed"),
-    ("110kV", 1, 3, "closed"),
-    ("110kV", 2, 1, "closed"),
-    ("110kV", 2, 3, "closed"),
-    ("110kV", 2, 3, "open"),
-    ("SN", 1, 0, "closed"),
-    ("SN", 2, 0, "closed"),
-]
+#: (tryb, układ) — układy standardu H5 w stanie normalnym i równoważnik SN (1, 2 sekcje).
+ILOCZYN_ZWARCIA = [("110kV", uklad) for uklad in UKLADY_H5] + [("SN", "1S"), ("SN", "2S")]
+
+#: Przekładnia znamionowa transformatora 110/15 kV (przeliczenie impedancji na stronę SN).
+T_R = U_N_WN_KV / U_N_SN_KV
 
 
-@pytest.mark.parametrize(("tryb", "sekcje", "liczba_tr", "sprzeglo"), ILOCZYN_ZWARCIA)
+@pytest.mark.parametrize(("tryb", "uklad"), ILOCZYN_ZWARCIA)
 def test_zwarcie_3f_na_sekcjach_z_niezaleznego_iec60909(
-    klient: TestClient, tryb: str, sekcje: int, liczba_tr: int, sprzeglo: str
+    klient: TestClient, tryb: str, uklad: str
 ) -> None:
-    budowa, migawka = _zbuduj(klient, tryb, sekcje, liczba_tr, sprzeglo)
+    if tryb == "SN":
+        sekcje, liczba_tr, sprzeglo, rezerwowy = int(uklad[0]), 0, "closed", None
+    else:
+        sekcje, liczba_tr, sprzeglo, rezerwowy = _parametry(uklad)
+    budowa, migawka = _zbuduj(klient, tryb, sekcje, liczba_tr, sprzeglo, "open", rezerwowy)
     metryki = _bieg(klient, budowa.case_id, "SC_3F")
     szyny = _sekcje(migawka)
-    wyspy = _wyspy(sekcje, liczba_tr, sprzeglo) if tryb == "110kV" else [(list(range(sekcje)), [])]
-    for indeksy_sekcji, indeksy_tr in wyspy:
-        oczekiwane = _ik_niezalezne_ka(tryb, len(indeksy_tr))
-        for s in indeksy_sekcji:
-            # Tolerancja względna 1·10⁻⁹: solver i rachunek niezależny liczą ten sam wzór
-            # normowy na tych samych danych katalogu — różnica wyłącznie zmiennoprzecinkowa.
-            assert metryki[szyny[s]]["IK_3F_A"] == pytest.approx(oczekiwane, rel=1e-9), (
-                tryb,
-                sekcje,
-                liczba_tr,
-                sprzeglo,
-                s,
-            )
-            assert metryki[szyny[s]]["SK_MVA"] == pytest.approx(
-                math.sqrt(3.0) * U_N_SN_KV * oczekiwane, rel=1e-9
-            )
+    if tryb == "SN":
+        oczekiwane_sn = {s: _ik_niezalezne_sn_ka() for s in range(sekcje)}
+    else:
+        z_th = _impedancje_thevenina_110kv(sekcje, liczba_tr, sprzeglo, rezerwowy)
+        oczekiwane_sn = {
+            s: C_MAX * U_N_SN_KV / (math.sqrt(3.0) * abs(z_th[f"S{s + 1}"])) for s in range(sekcje)
+        }
+    for s, oczekiwane in oczekiwane_sn.items():
+        # Tolerancja względna 1·10⁻⁹: solver i rachunek niezależny liczą ten sam wzór
+        # normowy na tych samych danych katalogu — różnica wyłącznie zmiennoprzecinkowa.
+        assert metryki[szyny[s]]["IK_3F_A"] == pytest.approx(oczekiwane, rel=1e-9), (
+            tryb,
+            uklad,
+            s,
+        )
+        assert metryki[szyny[s]]["SK_MVA"] == pytest.approx(
+            math.sqrt(3.0) * U_N_SN_KV * oczekiwane, rel=1e-9
+        )
     if tryb == "110kV":
-        (szyna_wn,) = (b for b in migawka["buses"] if "gpz_hv_bus" in (b.get("tags") or []))
-        # Zwarcie na szynie 110 kV: wyłącznie równoważnik (transformatory nie mają źródła
-        # po stronie SN) — I″_k = S″_kQ/(√3·U_nQ), bo Z_Q = c·U_nQ²/S″_kQ.
-        assert metryki[szyna_wn["ref_id"]]["IK_3F_A"] == pytest.approx(
+        # Zwarcie na szynie 110 kV: tor zasilania sekcji i — gdy dwa pracujące
+        # transformatory łączy strona SN — tor drugiej sekcji drogą zwrotną przez oba
+        # transformatory; impedancja Thevenina węzła przeliczona na stronę 110 kV przez t_r².
+        for numer, szyna_wn in enumerate(_szyny_wn(migawka), start=1):
+            oczekiwane = C_MAX * U_N_WN_KV / (math.sqrt(3.0) * abs(z_th[f"W{numer}"]) * T_R**2)
+            assert metryki[szyna_wn]["IK_3F_A"] == pytest.approx(oczekiwane, rel=1e-9), (
+                numer,
+                uklad,
+            )
+
+
+def test_kazdy_transformator_ma_wlasny_tor_zasilania(klient: TestClient) -> None:
+    """Regresja dawnego modelu (szyna 110 kV na transformator, równoważnik tylko na TR1 —
+    pozostałe transformatory bez zasilania od strony 110 kV): w układzie H5 z rezerwą ukrytą
+    każda sekcja SN jest zasilana z WŁASNEGO toru 110 kV, więc prąd zwarcia obu sekcji jest
+    równy Z_Qt + K_T·Z_T, a każda szyna 110 kV widzi wyłącznie swój tor (strona SN rozcięta
+    otwartym sprzęgłem — brak drogi zwrotnej)."""
+    budowa, migawka = _zbuduj(klient, "110kV", 2, 2, "open")
+    metryki = _bieg(klient, budowa.case_id, "SC_3F")
+    z_t, x_t = _tabliczka_tr()
+    k_t = 0.95 * C_MAX / (1.0 + 0.6 * x_t)
+    ik_sekcji = (
+        C_MAX * U_N_SN_KV / (math.sqrt(3.0) * abs(_impedancja_sieci_sn("110kV") + k_t * z_t))
+    )
+    for szyna in _sekcje(migawka):
+        assert metryki[szyna]["IK_3F_A"] == pytest.approx(ik_sekcji, rel=1e-9), szyna
+    for szyna_wn in _szyny_wn(migawka):
+        assert metryki[szyna_wn]["IK_3F_A"] == pytest.approx(
             SK_WN_MVA / (math.sqrt(3.0) * U_N_WN_KV), rel=1e-9
         )
-
-
-def test_wklad_trzech_transformatorow_rosnie_wzgledem_jednego(klient: TestClient) -> None:
-    """Regresja dawnego modelu (szyna 110 kV na transformator, równoważnik tylko na TR1):
-    trzy transformatory dawały prąd JEDNEGO (9,05 kA). Teraz 3 TR równolegle ≈ 23,5 kA."""
-    budowa_1, m1 = _zbuduj(klient, "110kV", 1, 1, "closed")
-    budowa_3, m3 = _zbuduj(klient, "110kV", 1, 3, "closed")
-    ik_1 = _bieg(klient, budowa_1.case_id, "SC_3F")[_sekcje(m1)[0]]["IK_3F_A"]
-    ik_3 = _bieg(klient, budowa_3.case_id, "SC_3F")[_sekcje(m3)[0]]["IK_3F_A"]
-    assert ik_1 == pytest.approx(_ik_niezalezne_ka("110kV", 1), rel=1e-9)
-    assert ik_3 == pytest.approx(_ik_niezalezne_ka("110kV", 3), rel=1e-9)
-    assert ik_3 > 2.5 * ik_1
 
 
 # ---------------------------------------------------------------------------
@@ -775,7 +1083,12 @@ def test_transformator_gpz_bez_rownowaznika_wn_blokuje_gotowosc(
     klient: TestClient, stan: str, sekcje: int, sprzeglo: str, sekcja_tr: int
 ) -> None:
     tryb = stan.split("+")[0]
-    budowa, migawka = _zbuduj(klient, tryb, sekcje, 2 if tryb == "110kV" else 0, sprzeglo)
+    # Tryb 110 kV: dwa transformatory w układzie H5 — przy jednej sekcji SN drugi rezerwowy,
+    # przy dwóch sekcjach z łącznikiem zamkniętym rezerwa jawna, z otwartym rezerwa ukryta.
+    rezerwowy = 2 if tryb == "110kV" and (sekcje == 1 or sprzeglo == "closed") else None
+    budowa, migawka = _zbuduj(
+        klient, tryb, sekcje, 2 if tryb == "110kV" else 0, sprzeglo, rezerwowy=rezerwowy
+    )
     dawny = (
         _wstaw_dawny_transformator(klient, budowa, migawka, sekcja_tr) if "dawny" in stan else None
     )
@@ -906,7 +1219,9 @@ def test_transformator_zasilajacy_gpz_nie_jest_transformatorem_blokowym(
     110/SN zasilający sekcję SN nigdy nie zostaje transformatorem blokowym — ani
     automatycznie (jedyny „transformator stacji"), ani wskazany wprost. Dawniej przy jednym
     TR operacja przyjmowała go jako blokowy i stawiała falownik na sekcji SN 15 kV."""
-    budowa, migawka = _zbuduj(klient, "110kV", 1, liczba_tr, "closed")
+    budowa, migawka = _zbuduj(
+        klient, "110kV", 1, liczba_tr, "closed", rezerwowy=2 if liczba_tr == 2 else None
+    )
     technologia, katalog = falownik
     ladunek: dict[str, Any] = {
         "source_technology": technologia,
@@ -936,7 +1251,9 @@ def test_szyna_nn_stacji_gpz_nie_jest_strona_dolna_transformatora_zasilajacego(
     transformatorem stacji SN/nN — jego strona dolna to sekcja SN 15 kV, więc stacja GPZ
     bez rozdzielnicy nN dostaje nazwaną odmowę „brak szyny nN", a nie sekcję SN udającą
     szynę nN (dawniej tak trafiała do operacji)."""
-    budowa, migawka = _zbuduj(klient, "110kV", 1, liczba_tr, "closed")
+    budowa, migawka = _zbuduj(
+        klient, "110kV", 1, liczba_tr, "closed", rezerwowy=2 if liczba_tr == 2 else None
+    )
     projekt = klient.get(f"/api/study-cases/{budowa.case_id}").json()["project_id"]
     odpowiedz = klient.post(
         f"/api/projects/{projekt}/cases/{budowa.case_id}/generators",
@@ -987,9 +1304,10 @@ def test_spadek_napiecia_kv_nie_jest_podawany_dla_transformatora(klient: TestCli
 
 @pytest.mark.parametrize("tryb", TRYBY)
 def test_determinizm_identyfikatorow_i_wyniku(klient: TestClient, tryb: str) -> None:
-    liczba_tr = 3 if tryb == "110kV" else 0
-    b1, m1 = _zbuduj(klient, tryb, 2, liczba_tr, "closed")
-    b2, m2 = _zbuduj(klient, tryb, 2, liczba_tr, "closed")
+    liczba_tr = 2 if tryb == "110kV" else 0
+    rezerwowy = 2 if tryb == "110kV" else None
+    b1, m1 = _zbuduj(klient, tryb, 2, liczba_tr, "closed", rezerwowy=rezerwowy)
+    b2, m2 = _zbuduj(klient, tryb, 2, liczba_tr, "closed", rezerwowy=rezerwowy)
     for kolekcja in ("buses", "branches", "transformers", "sources", "bays", "substations"):
         assert sorted(e["ref_id"] for e in m1.get(kolekcja, [])) == sorted(
             e["ref_id"] for e in m2.get(kolekcja, [])
@@ -999,11 +1317,25 @@ def test_determinizm_identyfikatorow_i_wyniku(klient: TestClient, tryb: str) -> 
 
 
 def test_kat_zwarcia_niezalezny_jest_spojny_z_r_x() -> None:
-    """Strażnik samego rachunku niezależnego: R/X równoważnika zachowane po przeliczeniu."""
+    """Strażnik samego rachunku niezależnego: R/X równoważnika zachowane po przeliczeniu,
+    a sieć zastępcza dwóch torów odtwarza wzory zamknięte (jeden TR: Z_Qt + K_T·Z_T; dwa
+    pracujące TR na wspólnej stronie SN: (Z_Qt + K_T·Z_T)/2; transformator rezerwowy nie
+    zmienia impedancji; szyna 110 kV bez drogi zwrotnej: Z_Qt)."""
     for tryb in TRYBY:
         z = _impedancja_sieci_sn(tryb)
         assert z.real / z.imag == pytest.approx(0.1, rel=1e-12)
         assert cmath.phase(z) > 0.0
+    z_t, x_t = _tabliczka_tr()
+    k_t = 0.95 * C_MAX / (1.0 + 0.6 * x_t)
+    z_q = _impedancja_sieci_sn("110kV")
+    jeden = _impedancje_thevenina_110kv(1, 1, "closed")
+    assert jeden["S1"] == pytest.approx(z_q + k_t * z_t, rel=1e-12)
+    assert jeden["W2"] == pytest.approx(z_q, rel=1e-12)
+    assert _impedancje_thevenina_110kv(1, 2, "closed", 2) == pytest.approx(jeden, rel=1e-12)
+    dwa = _impedancje_thevenina_110kv(2, 2, "closed")
+    assert dwa["S1"] == pytest.approx((z_q + k_t * z_t) / 2.0, rel=1e-12)
+    odciete = _impedancje_thevenina_110kv(2, 1, "open")
+    assert "S2" not in odciete, "sekcja odcięta nie ma impedancji Thevenina"
 
 
 @pytest.mark.parametrize("droga", ["szyna_sekcji", "rejestr_stacji"])

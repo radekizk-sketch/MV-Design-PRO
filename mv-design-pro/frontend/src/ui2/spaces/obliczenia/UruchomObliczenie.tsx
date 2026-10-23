@@ -27,12 +27,21 @@
  * wyborem ŚWIADOMYM operatora, z krótkim „po co" pod selektorem — jedyne
  * wejście używane do walidacji krzyżowej metod w ekranie „Jakość"
  * (`SekcjaPorownaniaMetod`).
+ *
+ * STAN ŁĄCZENIOWY (karta GPZ-H5-APARATURA, defekt 5): wybór „stan normalny modelu” albo
+ * scenariusza łączeniowego zapisanego w panelu „Scenariusze łączeniowe” (ten sam magazyn
+ * listy, `scenariuszeLaczeniowe/store.ts`). Wybrany scenariusz idzie do biegu jako
+ * `scenario_id` — migawka efektywna ADR-017 (np. SC-02 utrata linii zasilającej, SC-03
+ * utrata transformatora z zamkniętym łącznikiem sekcji SN), model bez zmian. Dotyczy
+ * każdego rodzaju analizy z wyboru (zwarcie, rozpływ, rozpływ niesymetryczny).
  */
 
 import { useState } from 'react';
 
 import { ANALYSIS_TYPE_LABELS, type ExecutionAnalysisType } from '../../../ui/study-cases/types';
+import { useAppStateStore } from '../../../ui/app-state';
 import { useUruchomObliczenie } from './uruchomObliczenie';
+import { useScenariuszeLaczeniowePrzypadku } from './scenariuszeLaczeniowe/store';
 import { PRZYPADKI_STRINGS as T } from './strings';
 
 /** Rodzaje oferowane w wyborze (rozstrzygnięcie karty K6 §0.1 + W5-D). */
@@ -55,7 +64,14 @@ export interface UruchomObliczenieProps {
 export function UruchomObliczenie({ testid = 'mvd-uruchom-obliczenie' }: UruchomObliczenieProps) {
   const [rodzaj, setRodzaj] = useState<ExecutionAnalysisType>('SC_3F');
   const [metoda, setMetoda] = useState<MetodaRozplywu>('newton-raphson');
+  const [scenariuszId, setScenariuszId] = useState('');
   const { uruchom, anuluj, wToku, biegId } = useUruchomObliczenie();
+  const activeCaseId = useAppStateStore((stan) => stan.activeCaseId);
+  const scenariusze = useScenariuszeLaczeniowePrzypadku(activeCaseId);
+  // Wybór wskazujący scenariusz spoza listy przypadku (zmiana przypadku) = stan normalny.
+  const wybranyScenariusz = scenariusze.some((s) => s.scenario_id === scenariuszId)
+    ? scenariuszId
+    : '';
 
   const jestRozplywem = rodzaj === 'LOAD_FLOW';
   const opisMetody = METODY.find((m) => m.wartosc === metoda)?.opis ?? '';
@@ -102,11 +118,35 @@ export function UruchomObliczenie({ testid = 'mvd-uruchom-obliczenie' }: Uruchom
           </p>
         </div>
       )}
+      <label className="mvd-uruchom-label" htmlFor={`${testid}-scenariusz`}>
+        {T.uruchomStanLaczeniowy}
+      </label>
+      <select
+        id={`${testid}-scenariusz`}
+        className="mvd-uruchom-select"
+        value={wybranyScenariusz}
+        onChange={(e) => setScenariuszId(e.target.value)}
+        title={T.uruchomStanLaczeniowyOpis}
+        data-testid={`${testid}-scenariusz`}
+      >
+        <option value="">{T.uruchomStanNormalny}</option>
+        {scenariusze.map((s) => (
+          <option key={s.scenario_id} value={s.scenario_id}>
+            {T.uruchomScenariuszOpcja(s.name, s.revision)}
+          </option>
+        ))}
+      </select>
       <button
         type="button"
         className="mvd-btn mvd-btn-primary"
         disabled={wToku}
-        onClick={() => uruchom(rodzaj, jestRozplywem ? { solver_method: metoda } : undefined)}
+        onClick={() =>
+          uruchom(
+            rodzaj,
+            jestRozplywem ? { solver_method: metoda } : undefined,
+            wybranyScenariusz || null,
+          )
+        }
         title={T.uruchomOpis}
         data-testid={`${testid}-przycisk`}
       >

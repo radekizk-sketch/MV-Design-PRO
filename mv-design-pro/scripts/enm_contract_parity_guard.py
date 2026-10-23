@@ -154,6 +154,8 @@ SPRAWDZANE: dict[str, str] = {
     "TapChanger": "TapChanger",
     "Transformer": "Transformer",
     "TrendState": "TrendState",
+    # Karta GPZ-H5-APARATURA: wiersz składu pola (odczyt pola i odpowiedź `set_bay_equipment`).
+    "WierszSkladuPola": "WierszSkladuPola",
     "WyborBlokuPola": "WyborBlokuPola",
 }
 

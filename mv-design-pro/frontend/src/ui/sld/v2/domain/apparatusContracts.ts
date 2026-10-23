@@ -132,6 +132,17 @@ export const BAY_PRIMARY_DEVICE_TO_APPARATUS: Readonly<
   GENERATOR_FW: null,
   PCS: null,
   BATTERY: null,
+  // GPZ-H5-APARATURA (ENEA Zeszyt 1 §13, §16, §17): odłącznik trójpołożeniowy rysowany
+  // symbolem odłącznika (jego uziemnik niesie `earthing_role`), transformator uziemiający —
+  // symbolem transformatora. Wskaźnik napięcia, dławik gaszący, rezystor uziemiający
+  // i bateria kondensatorów nie mają symbolu aparatu pola w zbiorze v2 (`null` = brak
+  // symbolu aparatu, nie domysł innego symbolu).
+  DS_ES: APPARATUS_KIND.DISCONNECTOR,
+  VOLTAGE_INDICATOR: null,
+  EARTHING_TRANSFORMER: APPARATUS_KIND.TRANSFORMER,
+  NEUTRAL_REACTOR: null,
+  NEUTRAL_RESISTOR: null,
+  CAPACITOR_BANK: null,
 };
 
 // =============================================================================

@@ -38,6 +38,7 @@
     "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "gpz_line_field"
     ],
@@ -84,6 +85,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -131,6 +133,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -182,6 +185,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -223,6 +227,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "nn_main_breaker"
     ],
@@ -270,6 +275,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/9394e8c9c68ed230fa4044e922380761/feeder_bus",
     "wybor_bloku": null
@@ -315,6 +321,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/05a39ee163dcad405299e615dee2a25c/feeder_bus",
     "wybor_bloku": null
@@ -360,6 +367,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/a63d9cf52e7acd2b1cf44dcddef36e28/feeder_bus",
     "wybor_bloku": null
@@ -405,6 +413,7 @@
     "substation_ref": "stn/60906c356e0f9a3e6946ccbf17a52c29/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/7f54824c8f5cfd95dd0d798ec1284cce/feeder_bus",
     "wybor_bloku": null
@@ -449,6 +458,7 @@
     "substation_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -496,6 +506,7 @@
     "substation_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -547,6 +558,7 @@
     "substation_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -588,6 +600,7 @@
     "substation_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "nn_main_breaker"
     ],
@@ -635,6 +648,7 @@
     "substation_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/66557e4eff2b3f4352b21018e5e1e64f/feeder_bus",
     "wybor_bloku": null
@@ -680,6 +694,7 @@
     "substation_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/d1c5efe0bcb5bf650361c190ecdeb667/feeder_bus",
     "wybor_bloku": null
@@ -725,6 +740,7 @@
     "substation_ref": "stn/c16428a6c5b18ea62371d813e0a3d084/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/dd858b2b9c1ae839d8427879603dd20f/feeder_bus",
     "wybor_bloku": null
@@ -769,6 +785,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -816,6 +833,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -867,6 +885,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -914,6 +933,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -961,6 +981,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -1002,6 +1023,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "nn_main_breaker"
     ],
@@ -1049,6 +1071,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/a07e6d49990784992cd199b928597e07/feeder_bus",
     "wybor_bloku": null
@@ -1094,6 +1117,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/09c77920d6f3cc9041911994dcfe815d/feeder_bus",
     "wybor_bloku": null
@@ -1139,6 +1163,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/711ac6fe2f5b66ac71c26204342b3484/feeder_bus",
     "wybor_bloku": null
@@ -1184,6 +1209,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/2904674cdfe956336dc8849c3d2496e0/feeder_bus",
     "wybor_bloku": null
@@ -1229,6 +1255,7 @@
     "substation_ref": "stn/b90fe112224f1de151746da1e8b35949/station",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/6b222e1181846cfff96488a31fe3f777/feeder_bus",
     "wybor_bloku": null
@@ -1264,6 +1291,7 @@
     "substation_ref": null,
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": null,
     "wybor_bloku": null
@@ -1299,6 +1327,7 @@
     "substation_ref": null,
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": null,
     "wybor_bloku": null
@@ -1334,6 +1363,7 @@
     "substation_ref": null,
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": null,
     "wybor_bloku": null
@@ -1377,6 +1407,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "bus/ed9391b0cd05c80ed6631c0043c6b682/sn_field_terminal/001",
     "wybor_bloku": null
@@ -1416,6 +1447,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -1467,6 +1499,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "bus/ed9391b0cd05c80ed6631c0043c6b682/sn_field_terminal/002",
     "wybor_bloku": null
@@ -1506,6 +1539,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "nn_main_breaker"
     ],
@@ -1553,6 +1587,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/714d9bff03eebba2fde2d19e743549c3/feeder_bus",
     "wybor_bloku": null
@@ -1598,6 +1633,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/f333465b553fab9ac6473b744321ce5d/feeder_bus",
     "wybor_bloku": null
@@ -1643,6 +1679,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/eabfbf069d639e5bb1fd647d45a4820a/feeder_bus",
     "wybor_bloku": null
@@ -1688,6 +1725,7 @@
     "substation_ref": "sub/ed9391b0cd05c80ed6631c0043c6b682/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/19945ba3f42965dcd2681d5b3c82a52d/feeder_bus",
     "wybor_bloku": null
@@ -1731,6 +1769,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "bus/ac04375d68166f4e570661e425317f57/sn_field_terminal/001",
     "wybor_bloku": null
@@ -1770,6 +1809,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -1821,6 +1861,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "bus/ac04375d68166f4e570661e425317f57/sn_field_terminal/002",
     "wybor_bloku": null
@@ -1865,6 +1906,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "station_sn_field"
     ],
@@ -1906,6 +1948,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [
      "nn_main_breaker"
     ],
@@ -1953,6 +1996,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/20c74038aef6bc104c7260998ef7da63/feeder_bus",
     "wybor_bloku": null
@@ -1998,6 +2042,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/651bc515883cf88bf96d1ded5ca88396/feeder_bus",
     "wybor_bloku": null
@@ -2043,6 +2088,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/abdfca55b93573547d81fdf5fe01ff0d/feeder_bus",
     "wybor_bloku": null
@@ -2088,6 +2134,7 @@
     "substation_ref": "sub/ac04375d68166f4e570661e425317f57/substation",
     "surge_arresters": [],
     "switchgear_family_ref": null,
+    "szablon_standardu_ref": null,
     "tags": [],
     "terminal_bus_ref": "nn/85912d2460f3ed756937449dc220e2ec/feeder_bus",
     "wybor_bloku": null

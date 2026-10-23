@@ -3,15 +3,17 @@
     {
       "key": "gpz",
       "name_pl": "GPZ — źródło zasilające",
-      "score": 10,
+      "score": 9,
       "max": 10,
-      "failing": [],
+      "failing": [
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText"
+      ],
       "criteria": [
         {
           "id": 1,
           "name": "brak duplikatu wejść",
           "passed": true,
-          "detail": "['AddGridSourceForm.tsx']"
+          "detail": "['KreatorZrodloZasilania.tsx']"
         },
         {
           "id": 2,
@@ -21,15 +23,15 @@
         },
         {
           "id": 3,
-          "name": "walidacja real-time (banner)",
+          "name": "walidacja real-time (gotowość)",
           "passed": true,
-          "detail": "SemanticIssuesBanner wired"
+          "detail": "gotowość operacji na pasku stanu"
         },
         {
           "id": 4,
           "name": "tooltipy inżynierskie",
-          "passed": true,
-          "detail": "obecne"
+          "passed": false,
+          "detail": "brak tooltipów/helperText"
         },
         {
           "id": 5,
@@ -59,7 +61,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "StationOnRunRenderer issue-aware"
+          "detail": "kanwa v3 barwi wg severity wyniku"
         },
         {
           "id": 10,
@@ -72,15 +74,18 @@
     {
       "key": "bays",
       "name_pl": "Pola SN",
-      "score": 10,
+      "score": 8,
       "max": 10,
-      "failing": [],
+      "failing": [
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
+        "C7 auto-fill parametryczny: brak auto-fill"
+      ],
       "criteria": [
         {
           "id": 1,
           "name": "brak duplikatu wejść",
           "passed": true,
-          "detail": "['AddSnBayForm.tsx']"
+          "detail": "['KreatorPolaSn.tsx']"
         },
         {
           "id": 2,
@@ -90,15 +95,15 @@
         },
         {
           "id": 3,
-          "name": "walidacja real-time (banner)",
+          "name": "walidacja real-time (gotowość)",
           "passed": true,
-          "detail": "SemanticIssuesBanner wired"
+          "detail": "gotowość operacji na pasku stanu"
         },
         {
           "id": 4,
           "name": "tooltipy inżynierskie",
-          "passed": true,
-          "detail": "obecne"
+          "passed": false,
+          "detail": "brak tooltipów/helperText"
         },
         {
           "id": 5,
@@ -115,8 +120,8 @@
         {
           "id": 7,
           "name": "auto-fill parametryczny",
-          "passed": true,
-          "detail": "obecne (catalog-driven)"
+          "passed": false,
+          "detail": "brak auto-fill"
         },
         {
           "id": 8,
@@ -128,7 +133,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "StationOnRunRenderer issue-aware"
+          "detail": "kanwa v3 barwi wg severity wyniku"
         },
         {
           "id": 10,
@@ -141,15 +146,18 @@
     {
       "key": "segments",
       "name_pl": "Segmenty (kabel/napowietrzne)",
-      "score": 10,
+      "score": 8,
       "max": 10,
-      "failing": [],
+      "failing": [
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText",
+        "C6 catalog search+filtry: brak wyszukiwarki katalogu"
+      ],
       "criteria": [
         {
           "id": 1,
           "name": "brak duplikatu wejść",
           "passed": true,
-          "detail": "['ContinueTrunkForm.tsx', 'TrunkContinueModal.tsx', 'StartBranchForm.tsx']"
+          "detail": "['KreatorMagistralaSn.tsx', 'KreatorOdgalezienia.tsx']"
         },
         {
           "id": 2,
@@ -159,15 +167,15 @@
         },
         {
           "id": 3,
-          "name": "walidacja real-time (banner)",
+          "name": "walidacja real-time (gotowość)",
           "passed": true,
-          "detail": "SemanticIssuesBanner wired"
+          "detail": "gotowość operacji na pasku stanu"
         },
         {
           "id": 4,
           "name": "tooltipy inżynierskie",
-          "passed": true,
-          "detail": "obecne"
+          "passed": false,
+          "detail": "brak tooltipów/helperText"
         },
         {
           "id": 5,
@@ -178,8 +186,8 @@
         {
           "id": 6,
           "name": "catalog search+filtry",
-          "passed": true,
-          "detail": "obecne"
+          "passed": false,
+          "detail": "brak wyszukiwarki katalogu"
         },
         {
           "id": 7,
@@ -197,7 +205,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "StationOnRunRenderer issue-aware"
+          "detail": "kanwa v3 barwi wg severity wyniku"
         },
         {
           "id": 10,
@@ -210,15 +218,17 @@
     {
       "key": "stations",
       "name_pl": "Stacje",
-      "score": 10,
+      "score": 9,
       "max": 10,
-      "failing": [],
+      "failing": [
+        "C4 tooltipy inżynierskie: brak tooltipów/helperText"
+      ],
       "criteria": [
         {
           "id": 1,
           "name": "brak duplikatu wejść",
           "passed": true,
-          "detail": "['InsertStationForm.tsx']"
+          "detail": "['KreatorStacjiSnNn.tsx']"
         },
         {
           "id": 2,
@@ -228,15 +238,15 @@
         },
         {
           "id": 3,
-          "name": "walidacja real-time (banner)",
+          "name": "walidacja real-time (gotowość)",
           "passed": true,
-          "detail": "SemanticIssuesBanner wired"
+          "detail": "gotowość operacji na pasku stanu"
         },
         {
           "id": 4,
           "name": "tooltipy inżynierskie",
-          "passed": true,
-          "detail": "obecne"
+          "passed": false,
+          "detail": "brak tooltipów/helperText"
         },
         {
           "id": 5,
@@ -266,7 +276,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "StationOnRunRenderer issue-aware"
+          "detail": "kanwa v3 barwi wg severity wyniku"
         },
         {
           "id": 10,
@@ -297,9 +307,9 @@
         },
         {
           "id": 3,
-          "name": "walidacja real-time (banner)",
+          "name": "walidacja real-time (gotowość)",
           "passed": true,
-          "detail": "SemanticIssuesBanner wired"
+          "detail": "gotowość operacji na pasku stanu"
         },
         {
           "id": 4,
@@ -335,7 +345,7 @@
           "id": 9,
           "name": "error na SLD",
           "passed": true,
-          "detail": "StationOnRunRenderer issue-aware"
+          "detail": "kanwa v3 barwi wg severity wyniku"
         },
         {
           "id": 10,
@@ -346,5 +356,5 @@
       ]
     }
   ],
-  "mean_score": 10.0
+  "mean_score": 8.8
 }

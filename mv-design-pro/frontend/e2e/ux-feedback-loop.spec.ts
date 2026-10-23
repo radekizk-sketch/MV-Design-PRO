@@ -5,8 +5,8 @@
  * są FAKTYCZNIE WIDOCZNE w renderowanej aplikacji (Chromium):
  *
  *   C2 — toast sukcesu (notification-toast) po operacji domenowej
- *   C3 — globalny banner walidacji semantycznej (semantic-issues-banner)
- *        gdy backend zwróci semantic_issues
+ *   C3 — walidacja na żywo: gotowość z odpowiedzi operacji domenowej (jeden
+ *        walidator modelu) na pasku stanu powłoki (mvd-status-gotowosc)
  *   C4 — inżynierska pomoc pola w kreatorze GPZ (dawny ukryty help-tooltip →
  *        dziś widoczna pomoc `.mvd-pole-pomoc`, FLOW §0.3)
  *
@@ -108,8 +108,8 @@ function snapshotWithGpz() {
 }
 
 interface MockOptions {
-  /** Gdy true, domain-ops zwraca semantic_issues (test bannera C3). */
-  withSemanticIssues?: boolean;
+  /** Gdy true, domain-ops zwraca w gotowości ostrzeżenie walidatora modelu (test C3). */
+  withReadinessWarning?: boolean;
 }
 
 /** Stan przechwycony przez mocka, czytany PO teście — dowód kontraktu
@@ -266,7 +266,6 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<MockS
             domain_events: [],
             materialized_params: { lines_sn: {}, transformers_sn_nn: {}, sources_sn: {} },
             layout: { layout_hash: '', layout_version: '1.0' },
-            semantic_issues: [],
           }),
         });
         return;
@@ -274,17 +273,21 @@ async function mockBackend(page: Page, options: MockOptions = {}): Promise<MockS
       const response = opName === 'add_grid_source_sn'
         ? (snapshotWithGpz() as Record<string, unknown>)
         : pustaOdpowiedzDomainOps();
-      if (options.withSemanticIssues) {
-        response.semantic_issues = [
-          {
-            code: 'SOURCE_WITHOUT_FEEDER',
-            message: 'Źródło GPZ nie ma jeszcze pola odpływowego — dodaj pole SN.',
-            severity: 'WARNING',
-            element_id: 'src-gpz',
-            field: null,
-            suggested_fix: 'Dodaj pole SN do GPZ',
-          },
-        ];
+      if (options.withReadinessWarning) {
+        // Kształt zgłoszenia gotowości odpowiedzi operacji (`_build_readiness`): kod
+        // walidatora modelu W013 (odbiór bez mocy, `enm/validator.py`).
+        response.readiness = {
+          ready: true,
+          blockers: [],
+          warnings: [
+            {
+              code: 'W013',
+              message_pl: 'Odbiór „Odbiór 1” ma P = 0 MW i Q = 0 Mvar — nie wpływa na rozpływ mocy.',
+              element_ref: 'load-1',
+            },
+          ],
+          info: [],
+        };
       }
       await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(response) });
       return;
@@ -395,21 +398,20 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / pomoc pola)
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });
 
-  test('C3: semantic_issues z backendu → globalny banner walidacji', async ({ page }) => {
+  test('C3: gotowość z odpowiedzi operacji → pasek stanu powłoki', async ({ page }) => {
     const guards = installConsoleGuards(page);
-    await mockBackend(page, { withSemanticIssues: true });
+    await mockBackend(page, { withReadinessWarning: true });
     await createProjectAndOpenSld(page);
 
     await openGpzCreator(page);
     await przejdzNaKrokZrodlaIZaczekajNaKatalog(page);
     await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
 
-    // C3 (intencja bez zmian): globalny banner walidacji semantycznej widoczny
-    // z treścią ostrzeżenia (SemanticIssuesBanner w warsztacie, store:
-    // lastSemanticIssues z odpowiedzi domain-ops).
-    const banner = page.getByTestId('semantic-issues-banner');
-    await expect(banner).toBeVisible({ timeout: 10000 });
-    await expect(banner).toContainText('pola odpływowego');
+    // C3 (intencja bez zmian: walidacja widoczna od razu po operacji). Karta
+    // GPZ-H5-APARATURA skasowała drugą ścieżkę walidacji (`semantic_issues` + baner);
+    // ostrzeżenie walidatora modelu z `readiness` odpowiedzi trafia na pasek stanu.
+    const gotowosc = page.getByTestId('mvd-status-gotowosc');
+    await expect(gotowosc).toContainText('Gotowość: 1 ostrzeżenie', { timeout: 10000 });
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });

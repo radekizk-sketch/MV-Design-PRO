@@ -8,20 +8,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DANE_DOMYSLNE,
-  punktNeutralnySnTransformatora,
+  WIERSZ_TRANSFORMATOROW,
   scalDanePoczatkowe,
-  transformatoryWModelu,
   trybParametruZwarciowego,
-  typyUziemieniaDozwolone,
   walidujFormularz,
-  wierszTransformatorow,
   wierszeGotowosci,
   zbudujOznaczenieGpz,
   zbudujPayloadZrodla,
   zbudujZadaniePodgladu,
   type GridSourceFormData,
 } from '../zrodloModel';
-import wyroczniaPunktuNeutralnego from '../../../../harness-fixtures/generated/punkt_neutralny_sn_grup_polaczen.json';
 
 function daneKompletne(nadpisz: Partial<GridSourceFormData> = {}): GridSourceFormData {
   return {
@@ -30,29 +26,6 @@ function daneKompletne(nadpisz: Partial<GridSourceFormData> = {}): GridSourceFor
     gpz_line_field_apparatus_catalog_ref: 'APP-001',
     ...nadpisz,
   };
-}
-
-/** Równoważnik sieci po stronie 110 kV (tryb ekspercki) — jedyny tryb, w którym
- *  transformatory 110/SN są elementami modelu (karta GPZ-MODEL). */
-function dane110kV(nadpisz: Partial<GridSourceFormData> = {}): GridSourceFormData {
-  return daneKompletne({
-    manual_mode: true,
-    catalog_ref: null,
-    short_circuit_input_side: 'HV_110',
-    hv_voltage_kv: 110,
-    sk3_hv_mva: 3000,
-    rx_ratio: 0.1,
-    transformer_count: 2,
-    transformer_catalog_ref: 'TR-110-15-25',
-    transformer_sn_mva: 25,
-    transformer_uk_percent: 12.5,
-    transformer_vector_group: 'YNd11',
-    // YNd11: uzwojenie SN w trójkąt — punkt neutralny SN w modelu jest izolowany, a opis
-    // sieci SN musi być z nim zgodny (`typyUziemieniaDozwolone`, backend E-W5-01).
-    grounding_type: 'isolated',
-    grounding_r_ohm: null,
-    ...nadpisz,
-  });
 }
 
 /** Klucze ładunku, które backend traktuje jako żądanie transformatorów 110/SN
@@ -64,70 +37,59 @@ function kluczeTransformatorow(payload: Record<string, unknown>): string[] {
     .sort();
 }
 
-/** Granice SN (katalog, ręczny SN moc, ręczny SN impedancja) — iloczyn cech z danymi
- *  transformatora i regulacji pozostawionymi w formularzu po przełączeniu trybu. */
+/** Granice zasilania kreatora: katalog, ręczny moc, ręczny impedancja — wszystkie na
+ *  szynach SN (karta GPZ-H5-APARATURA: GPZ ze stroną 110 kV buduje szablon stacji H5). */
 const GRANICE_SN: ReadonlyArray<[string, Partial<GridSourceFormData>]> = [
   ['katalog', {}],
-  ['ręczny SN — moc zwarciowa', { manual_mode: true, catalog_ref: null, short_circuit_input_side: 'SN', sk3_mva: 250 }],
+  ['ręczny — moc zwarciowa', { manual_mode: true, catalog_ref: null, sk3_mva: 250 }],
   [
-    'ręczny SN — impedancja',
-    { manual_mode: true, catalog_ref: null, short_circuit_input_side: 'SN', short_circuit_mode: 'IMPEDANCE', r_ohm: 0.1, x_ohm: 0.9 },
+    'ręczny — impedancja',
+    { manual_mode: true, catalog_ref: null, short_circuit_mode: 'IMPEDANCE', r_ohm: 0.1, x_ohm: 0.9 },
   ],
 ];
-const POZOSTALOSCI_TRANSFORMATORA: Partial<GridSourceFormData> = {
+
+/** Dawne klucze trybu „równoważnik 110 kV” w kontekście operacji (np. zapis sprzed karty) —
+ *  `scalDanePoczatkowe` przyjmuje kontekst bez filtra, więc ładunek nie może ich przenieść. */
+const DAWNE_KLUCZE_WN = {
+  short_circuit_input_side: 'HV_110',
+  hv_voltage_kv: 110,
+  sk3_hv_mva: 3000,
   transformer_count: 3,
   transformer_catalog_ref: 'TR-110-15-25',
-  transformer_sn_mva: 25,
-  oltc_regulation_type: 'OLTC',
-  oltc_step_percent: 0,
-  oltc_voltage_setpoint_kv: null,
-};
+  transformer_regulation_type: 'OLTC',
+} as unknown as Partial<GridSourceFormData>;
 
-describe('granica zasilania SN — transformatory 110/SN tylko przy równoważniku 110 kV', () => {
-  it.each(GRANICE_SN)('%s: ładunek bez żadnego klucza transformatora ani napięcia WN', (_opis, tryb) => {
-    const dane = daneKompletne({ ...POZOSTALOSCI_TRANSFORMATORA, ...tryb });
-    expect(transformatoryWModelu(dane)).toBe(false);
-    const payload = zbudujPayloadZrodla(dane);
+describe('granica zasilania — kreator buduje GPZ z równoważnikiem na szynach SN', () => {
+  it.each(GRANICE_SN)('%s: ładunek bez klucza transformatora ani napięcia WN, strona SN', (_opis, tryb) => {
+    const payload = zbudujPayloadZrodla(daneKompletne(tryb));
     expect(kluczeTransformatorow(payload)).toEqual([]);
+    expect(payload.short_circuit_input_side).toBe('SN');
+    expect(payload.sk3_hv_mva).toBeUndefined();
     const rownowaznik = payload.manual_equivalent as Record<string, unknown> | undefined;
-    expect(rownowaznik?.hv_voltage_kv).toBeUndefined();
+    if (rownowaznik !== undefined) {
+      expect(rownowaznik.short_circuit_input_side).toBe('SN');
+      expect(rownowaznik.hv_voltage_kv).toBeUndefined();
+      expect(rownowaznik.sk3_hv_mva).toBeUndefined();
+    }
   });
 
-  it.each(GRANICE_SN)('%s: walidacja nie wymaga transformatora ani nastaw zaczepów', (_opis, tryb) => {
-    const bledy = walidujFormularz(daneKompletne({ ...POZOSTALOSCI_TRANSFORMATORA, ...tryb, transformer_catalog_ref: null }));
-    expect(bledy.filter((b) => b.field.startsWith('transformer_') || b.field.startsWith('oltc_'))).toEqual([]);
+  it.each(GRANICE_SN)('%s: dawne klucze trybu 110 kV z kontekstu nie trafiają do ładunku', (_opis, tryb) => {
+    const dane = scalDanePoczatkowe({ ...daneKompletne(tryb), ...DAWNE_KLUCZE_WN });
+    const payload = zbudujPayloadZrodla(dane);
+    expect(kluczeTransformatorow(payload)).toEqual([]);
+    expect(payload.short_circuit_input_side).toBe('SN');
+    expect(JSON.stringify(payload)).not.toContain('HV_110');
+    expect(zbudujZadaniePodgladu(dane)?.voltage_kv ?? dane.sn_voltage_kv).toBe(dane.sn_voltage_kv);
   });
 
   it.each(GRANICE_SN)('%s: wiersz gotowości mówi, że transformatory są w równoważniku', (_opis, tryb) => {
-    expect(wierszTransformatorow(daneKompletne(tryb))).toEqual({
+    const wiersze = wierszeGotowosci(daneKompletne(tryb));
+    expect(wiersze[wiersze.length - 1]).toEqual(WIERSZ_TRANSFORMATOROW);
+    expect(WIERSZ_TRANSFORMATOROW).toEqual({
       etykieta: 'Transformatory 110/SN',
       stan: 'kompletne',
       wartosc: 'W równoważniku SN (poza modelem)',
     });
-  });
-
-  it('110 kV: ładunek niesie liczbę, pozycję katalogową i napięcie WN (bez tabliczki — tę czyta backend)', () => {
-    const payload = zbudujPayloadZrodla(dane110kV());
-    expect(transformatoryWModelu(dane110kV())).toBe(true);
-    expect(kluczeTransformatorow(payload)).toEqual(['hv_voltage_kv', 'transformer_catalog_ref', 'transformer_count']);
-    expect(payload).toMatchObject({ hv_voltage_kv: 110, transformer_count: 2, transformer_catalog_ref: 'TR-110-15-25' });
-    expect(payload.manual_equivalent).toMatchObject({ short_circuit_input_side: 'HV_110', hv_voltage_kv: 110, sk3_hv_mva: 3000 });
-  });
-
-  it('110 kV: wiersz gotowości liczy transformatory w modelu albo żąda typu', () => {
-    expect(wierszTransformatorow(dane110kV({ transformer_count: 3 }))).toMatchObject({ stan: 'kompletne', wartosc: '3 × w modelu' });
-    expect(wierszTransformatorow(dane110kV({ transformer_catalog_ref: null }))).toMatchObject({ stan: 'brak' });
-  });
-
-  it('110 kV × impedancja pozostawiona w danych: wysyłana jest moc Sk″ widoczna na ekranie', () => {
-    const dane = dane110kV({ short_circuit_mode: 'IMPEDANCE', r_ohm: 1, x_ohm: 5 });
-    expect(trybParametruZwarciowego(dane)).toBe('SHORT_CIRCUIT_POWER');
-    const payload = zbudujPayloadZrodla(dane);
-    expect(payload.short_circuit_mode).toBe('SHORT_CIRCUIT_POWER');
-    expect(payload.r_ohm).toBeUndefined();
-    expect(payload.sk3_hv_mva).toBe(3000);
-    expect(payload.manual_equivalent).toMatchObject({ short_circuit_mode: 'SHORT_CIRCUIT_POWER', sk3_hv_mva: 3000 });
-    expect(zbudujZadaniePodgladu(dane)).toMatchObject({ voltage_kv: 110, sk3_mva: 3000, short_circuit_mode: 'SHORT_CIRCUIT_POWER' });
   });
 
   it('katalog × impedancja pozostawiona w danych: tryb katalogowy wysyła moc zwarciową', () => {
@@ -162,20 +124,6 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(sekcje[1].line_field_names).toHaveLength(1);
   });
 
-  it('tryb ręczny (110 kV) buduje manual_equivalent i sk3_hv_mva zamiast katalogu', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne({
-      manual_mode: true,
-      short_circuit_input_side: 'HV_110',
-      hv_voltage_kv: 110,
-      sk3_hv_mva: 2500,
-      rx_ratio: 0.1,
-    }));
-    expect(payload.catalog_binding).toBeUndefined();
-    expect(payload.sk3_hv_mva).toBe(2500);
-    expect(payload.source_mode).toBe('EKSPERCKI_RECZNY');
-    expect(payload.manual_equivalent).toMatchObject({ short_circuit_input_side: 'HV_110', sk3_hv_mva: 2500 });
-  });
-
   it('uziemienie bezpośrednie: literał kontraktu directly_grounded 1:1, bez R/X (W5-A)', () => {
     const payload = zbudujPayloadZrodla(daneKompletne({ grounding_type: 'directly_grounded' }));
     expect(payload.grounding).toEqual({ type: 'directly_grounded' });
@@ -195,11 +143,6 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.zero_sequence).toMatchObject({ enabled: true, z0_z1_ratio: 3.2 });
     expect(payload.short_circuit_input_side).toBe('SN');
     expect(payload.short_circuit_mode).toBe('SHORT_CIRCUIT_POWER');
-  });
-
-  it('ogranicza liczbę transformatorów do zakresu 1-4 (równoważnik 110 kV)', () => {
-    const payload = zbudujPayloadZrodla(dane110kV({ transformer_count: 9 }));
-    expect(payload.transformer_count).toBe(4);
   });
 
   it('rodzina rozdzielnicy → pola komponowane ze szablonu producenta (bays[] + refy)', () => {
@@ -224,122 +167,6 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(sekcje[0].bays).toBeUndefined();
   });
 
-  it('bez wybranego transformatora payload nie niesie tabliczki transformatora (kompat.)', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne({
-      transformer_catalog_ref: null,
-      transformer_sn_mva: null,
-      transformer_uk_percent: null,
-      transformer_vector_group: null,
-    }));
-    expect(payload.transformer_catalog_ref).toBeUndefined();
-    expect(payload.transformer_sn_mva).toBeUndefined();
-    expect(payload.transformer_uk_percent).toBeUndefined();
-    expect(payload.transformer_vector_group).toBeUndefined();
-  });
-
-  it('wybrany transformator 110/SN trafia do payloadu jako pozycja katalogowa — tabliczka (Sn/uk/grupa) nie', () => {
-    // Tabliczkę materializuje backend z katalogu (karta FAB-G); dawne klucze
-    // transformer_uk_percent / transformer_vector_group backend ignorował (fantomy).
-    const payload = zbudujPayloadZrodla(dane110kV());
-    expect(payload.transformer_catalog_ref).toBe('TR-110-15-25');
-    expect(payload.transformer_sn_mva).toBeUndefined();
-    expect(payload.transformer_uk_percent).toBeUndefined();
-    expect(payload.transformer_vector_group).toBeUndefined();
-  });
-
-  it('bez regulacji payload nie niesie kluczy OLTC (kompat./determinizm)', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne());
-    expect(payload.transformer_regulation_type).toBeUndefined();
-    expect(payload.transformer_voltage_setpoint_kv).toBeUndefined();
-    expect(payload.transformer_ldc_enabled).toBeUndefined();
-  });
-
-  it('OLTC automatyczny mapuje pełny kontrakt TapChanger na klucze transformer_*', () => {
-    const payload = zbudujPayloadZrodla(dane110kV({
-      oltc_regulation_type: 'OLTC',
-      oltc_tap_changer_catalog_ref: 'tc_oltc_110sn_19_125',
-      oltc_regulated_winding: 'HV',
-      oltc_neutral_position: 0,
-      oltc_current_position: 1,
-      oltc_min_position: -9,
-      oltc_max_position: 9,
-      oltc_step_percent: 1.25,
-      oltc_control_mode: 'AUTOMATIC',
-      oltc_voltage_setpoint_kv: 15.3,
-      oltc_deadband_kv: 0.2,
-      oltc_delay_seconds: 30,
-      oltc_ldc_enabled: true,
-      oltc_ldc_r_ohm: 0.5,
-      oltc_ldc_x_ohm: 1.2,
-    }));
-    expect(payload.transformer_regulation_type).toBe('OLTC');
-    expect(payload.transformer_tap_changer_catalog_ref).toBe('tc_oltc_110sn_19_125');
-    expect(payload.transformer_regulated_winding).toBe('HV');
-    expect(payload.transformer_tap_min_position).toBe(-9);
-    expect(payload.transformer_tap_max_position).toBe(9);
-    expect(payload.transformer_tap_step_percent).toBe(1.25);
-    expect(payload.transformer_control_mode).toBe('AUTOMATIC');
-    expect(payload.transformer_voltage_setpoint_kv).toBe(15.3);
-    expect(payload.transformer_deadband_kv).toBe(0.2);
-    expect(payload.transformer_delay_seconds).toBe(30);
-    expect(payload.transformer_ldc_enabled).toBe(true);
-    expect(payload.transformer_ldc_r_ohm).toBe(0.5);
-    expect(payload.transformer_ldc_x_ohm).toBe(1.2);
-  });
-
-  it('DETC nie niesie kluczy specyficznych dla OLTC (setpoint/deadband/LDC)', () => {
-    const payload = zbudujPayloadZrodla(dane110kV({
-      oltc_regulation_type: 'DETC',
-      oltc_step_percent: 2.5,
-      oltc_min_position: -2,
-      oltc_max_position: 2,
-    }));
-    expect(payload.transformer_regulation_type).toBe('DETC');
-    expect(payload.transformer_voltage_setpoint_kv).toBeUndefined();
-    expect(payload.transformer_ldc_enabled).toBeUndefined();
-  });
-});
-
-describe('walidujFormularz — regulacja zaczepów (OLTC)', () => {
-  it('OLTC automatyczny bez napięcia zadanego → błąd', () => {
-    const bledy = walidujFormularz(dane110kV({
-      oltc_regulation_type: 'OLTC',
-      oltc_control_mode: 'AUTOMATIC',
-      oltc_voltage_setpoint_kv: null,
-    }));
-    expect(bledy.some((b) => b.field === 'oltc_voltage_setpoint_kv')).toBe(true);
-  });
-
-  it('krok zaczepu = 0 jest blokowany', () => {
-    const bledy = walidujFormularz(dane110kV({
-      oltc_regulation_type: 'OLTC',
-      oltc_step_percent: 0,
-    }));
-    expect(bledy.some((b) => b.field === 'oltc_step_percent')).toBe(true);
-  });
-
-  it('zły zakres (min >= max) jest blokowany', () => {
-    const bledy = walidujFormularz(dane110kV({
-      oltc_regulation_type: 'DETC',
-      oltc_min_position: 5,
-      oltc_max_position: 3,
-    }));
-    expect(bledy.some((b) => b.field === 'oltc_max_position')).toBe(true);
-  });
-
-  it('pozycja bieżąca poza zakresem jest blokowana', () => {
-    const bledy = walidujFormularz(dane110kV({
-      oltc_regulation_type: 'OLTC',
-      oltc_min_position: -9,
-      oltc_max_position: 9,
-      oltc_current_position: 15,
-    }));
-    expect(bledy.some((b) => b.field === 'oltc_current_position')).toBe(true);
-  });
-
-  it('bez regulacji (NONE) nie zgłasza błędów OLTC', () => {
-    expect(walidujFormularz(dane110kV()).some((b) => b.field.startsWith('oltc_'))).toBe(false);
-  });
 });
 
 describe('zbudujPayloadZrodla — scenariusz MIN (CV-4.3 K7)', () => {
@@ -371,23 +198,6 @@ describe('zbudujPayloadZrodla — scenariusz MIN (CV-4.3 K7)', () => {
     expect('sk3_min_mva' in manual).toBe(false);
     expect('ik3_min_ka' in manual).toBe(false);
     expect('rx_ratio_min' in manual).toBe(false);
-  });
-
-  it('tryb ręczny WN/SN (HV_110): manual_equivalent niesie dane MIN po tej samej stronie', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne({
-      manual_mode: true,
-      catalog_ref: null,
-      short_circuit_input_side: 'HV_110',
-      hv_voltage_kv: 110,
-      sk3_hv_mva: 2500,
-      rx_ratio: 0.1,
-      sk3_min_mva: 1500,
-    }));
-    expect(payload.manual_equivalent).toMatchObject({
-      short_circuit_input_side: 'HV_110',
-      sk3_hv_mva: 2500,
-      sk3_min_mva: 1500,
-    });
   });
 
   it('tryb impedancyjny: manual_equivalent NIGDY nie niesie danych MIN (brak wariantu MIN)', () => {
@@ -434,23 +244,6 @@ describe('zbudujPayloadZrodla — napięcie zadane szyny bilansującej (CV-4.3 K
       u_set_pu: 0.95,
     }));
     expect(payload.manual_equivalent).toMatchObject({ u_set_pu: 0.95 });
-  });
-
-  // Iloczyn cech: u_set_pu × strona WN (HV_110) — ta sama bezwarunkowość.
-  it('tryb ręczny WN/SN (HV_110): manual_equivalent niesie u_set_pu gdy podane', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne({
-      manual_mode: true,
-      catalog_ref: null,
-      short_circuit_input_side: 'HV_110',
-      hv_voltage_kv: 110,
-      sk3_hv_mva: 2500,
-      rx_ratio: 0.1,
-      u_set_pu: 1.02,
-    }));
-    expect(payload.manual_equivalent).toMatchObject({
-      short_circuit_input_side: 'HV_110',
-      u_set_pu: 1.02,
-    });
   });
 
   it('brak u_set_pu → manual_equivalent BEZ tego klucza (zero fabrykacji, null = znamionowe)', () => {
@@ -540,19 +333,6 @@ describe('walidujFormularz — scenariusz MIN (CV-4.3 K7)', () => {
       sk3_mva: 250,
       rx_ratio: 0.1,
       sk3_min_mva: 150,
-    }));
-    expect(bledy.some((b) => b.field === 'sk3_min_mva')).toBe(false);
-  });
-
-  it('Sk″min (WN/SN, HV_110) porównywane z Sk″ (110 kV), nie z Sk″ (SN)', () => {
-    const bledy = walidujFormularz(daneKompletne({
-      manual_mode: true,
-      catalog_ref: null,
-      short_circuit_input_side: 'HV_110',
-      hv_voltage_kv: 110,
-      sk3_hv_mva: 2500,
-      rx_ratio: 0.1,
-      sk3_min_mva: 1500,
     }));
     expect(bledy.some((b) => b.field === 'sk3_min_mva')).toBe(false);
   });
@@ -650,30 +430,10 @@ describe('walidujFormularz', () => {
     expect(bledy.some((b) => b.field === 'gpz_line_field_apparatus_catalog_ref')).toBe(true);
   });
 
-  it('wymaga transformatora 110/SN z katalogu przy równoważniku 110 kV (karta FAB-G)', () => {
-    expect(walidujFormularz(dane110kV())).toEqual([]);
-    const bledy = walidujFormularz(dane110kV({ transformer_catalog_ref: null }));
-    expect(bledy.some((b) => b.field === 'transformer_catalog_ref')).toBe(true);
-  });
-
-  it('tryb ręczny 110 kV wymaga Sk″ i napięcia strony WN (nie katalogu)', () => {
-    const bledy = walidujFormularz(daneKompletne({
-      manual_mode: true,
-      catalog_ref: null,
-      short_circuit_input_side: 'HV_110',
-      hv_voltage_kv: null,
-      sk3_hv_mva: null,
-    }));
-    expect(bledy.some((b) => b.field === 'catalog_ref')).toBe(false);
-    expect(bledy.some((b) => b.field === 'hv_voltage_kv')).toBe(true);
-    expect(bledy.some((b) => b.field === 'sk3_hv_mva')).toBe(true);
-  });
-
   it('tryb ręczny impedancja wymaga dodatniej reaktancji X', () => {
     const bledy = walidujFormularz(daneKompletne({
       manual_mode: true,
       catalog_ref: null,
-      short_circuit_input_side: 'SN',
       short_circuit_mode: 'IMPEDANCE',
       r_ohm: 0.1,
       x_ohm: null,
@@ -730,49 +490,5 @@ describe('scalDanePoczatkowe / oznaczenie', () => {
 
   it('buduje czytelne oznaczenie GPZ', () => {
     expect(zbudujOznaczenieGpz('GPZ 1')).toBe('GPZ-01');
-  });
-});
-
-
-/* Karta GPZ-MODEL — punkt neutralny SN przy równoważniku 110 kV wynika z grupy połączeń
-   transformatorów 110/SN modelu. Lustro kreatora porównane z WYROCZNIĄ backendu (ten sam
-   model połączeń składowej zerowej, który czyta zwarcie 1F i walidator E-W5-01) dla
-   KAŻDEJ grupy słownika IEC 60076-1 — nie z ręczną listą przykładów. Iloczyn cech:
-   {grupa: cały słownik} × {granica zasilania: SN, 110 kV} × {opis: zgodny, sprzeczny}. */
-describe('punkt neutralny SN z grupy transformatora 110/SN (karta GPZ-MODEL)', () => {
-  const grupy = Object.entries((wyroczniaPunktuNeutralnego as { grupy: Record<string, string> }).grupy);
-
-  it('wyrocznia obejmuje cały słownik grup i oba wyniki', () => {
-    expect(grupy.length).toBeGreaterThan(30);
-    expect(new Set(grupy.map(([, punkt]) => punkt))).toEqual(new Set(['isolated', 'directly_grounded']));
-  });
-
-  it.each(grupy)('grupa %s ⇒ punkt neutralny SN %s (parytet z modelem zerowym backendu)', (grupa, punkt) => {
-    expect(punktNeutralnySnTransformatora(grupa)).toBe(punkt);
-  });
-
-  it('brak grupy ⇒ brak rozstrzygnięcia', () => {
-    expect(punktNeutralnySnTransformatora(null)).toBeNull();
-  });
-
-  it('równoważnik na szynach SN ⇒ dowolny opis punktu neutralnego (Z0 podaje projektant)', () => {
-    expect(typyUziemieniaDozwolone(daneKompletne({ transformer_vector_group: 'Yd11' }))).toBeNull();
-    expect(walidujFormularz(daneKompletne()).filter((b) => b.field === 'grounding_type')).toEqual([]);
-  });
-
-  it('równoważnik 110 kV ⇒ dokładnie punkt neutralny z grupy; sprzeczny opis jest błędem pola', () => {
-    expect(typyUziemieniaDozwolone(dane110kV({ transformer_vector_group: 'Yd11' }))).toEqual(['isolated']);
-    expect(typyUziemieniaDozwolone(dane110kV({ transformer_vector_group: 'Dyn11' }))).toEqual(['directly_grounded']);
-    expect(typyUziemieniaDozwolone(dane110kV({ transformer_vector_group: null }))).toEqual([]);
-
-    expect(walidujFormularz(dane110kV()).filter((b) => b.field === 'grounding_type')).toEqual([]);
-    const sprzeczny = walidujFormularz(dane110kV({ grounding_type: 'resistor_grounded', grounding_r_ohm: 12 }))
-      .filter((b) => b.field === 'grounding_type');
-    expect(sprzeczny).toHaveLength(1);
-    expect(sprzeczny[0].message).toContain('YNd11');
-    expect(sprzeczny[0].message).toContain('izolowany');
-    const bezTransformatora = walidujFormularz(dane110kV({ transformer_vector_group: null }))
-      .filter((b) => b.field === 'grounding_type');
-    expect(bezTransformatora).toHaveLength(1);
   });
 });

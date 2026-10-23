@@ -130,6 +130,7 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.CT.value: "get_ct_type",
     CatalogNamespace.VT.value: "get_vt_type",
     CatalogNamespace.OGRANICZNIK_SN.value: "get_surge_arrester_type",
+    CatalogNamespace.ELEMENT_POLA_SN.value: "get_element_pola_type",
     CatalogNamespace.OBCIAZENIE.value: "get_load_type",
     CatalogNamespace.KOMPENSATOR_SN.value: "get_shunt_capacitor_type",
     CatalogNamespace.ZRODLO_SN.value: "get_source_system_type",

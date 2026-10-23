@@ -10,7 +10,7 @@ BINDING RULE (PR-F konsolidacji UI):
 
 Cel: spójność envelope (project_id + snapshot_base_hash + operation envelope
 z idempotency_key), spójna obsługa błędów (DomainApiError), spójne propagowanie
-semantic_issues do snapshotStore.
+gotowości (`readiness`) do snapshotStore.
 
 Usage:
   python scripts/domain_ops_unified_guard.py

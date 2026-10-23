@@ -98,7 +98,10 @@ def test_zwarcie_wiersz_niefizyczny_jest_nieraportowalny_z_wykazem_pol(siec_z_wy
         assert row["reporting_status_pl"] == "nieraportowalny"
         assert row["dopuszczalnosc_raportowa"] is False
         assert row["proof_status"] == "partial"
-        assert OGRANICZENIE_WYNIK_NIEFIZYCZNY in row["reporting_limitations"]
+        # Karta GPZ-H5-APARATURA (zmiana kanonu, intencja bez zmian: wiersz wyspy jest
+        # nieraportowalny z NAZWANĄ przyczyną): ograniczenie wiersza wyspy bez zasilania to
+        # przyczyna z topologii, nie „wynik niefizyczny" (solver tego węzła nie liczył).
+        assert row["reporting_limitations"] == [POWOD_WEZEL_BEZ_ODNIESIENIA]
         assert row["non_physical_fields"] == sorted(set(row["non_physical_fields"]))
         assert any(p in ("$.ith_a", "$.kappa", "$.m_factor") for p in row["non_physical_fields"])
     zdrowe = [row for row in raw["results"] if not row.get("non_physical_fields")]
@@ -106,7 +109,7 @@ def test_zwarcie_wiersz_niefizyczny_jest_nieraportowalny_z_wykazem_pol(siec_z_wy
     for row in zdrowe:
         assert row["reporting_status"] == "reportable"
         assert 1.02 <= row["kappa"] <= 2.0
-    assert raw["reporting_limitations"] == [OGRANICZENIE_WYNIK_NIEFIZYCZNY]
+    assert raw["reporting_limitations"] == [POWOD_WEZEL_BEZ_ODNIESIENIA]
     assert raw["non_reportable_fault_node_ids"] == sorted(
         str(row["fault_node_id"]) for row in niefizyczne
     )
@@ -157,7 +160,8 @@ def test_zwarcie_w_wyspie_bez_impedancji_do_odniesienia_jest_nieraportowalne_z_t
         assert row["non_physical_reason"] == POWOD_WEZEL_BEZ_ODNIESIENIA
         assert row["reporting_status"] == "not_reportable"
         assert row["dopuszczalnosc_raportowa"] is False
-        assert OGRANICZENIE_WYNIK_NIEFIZYCZNY in row["reporting_limitations"]
+        assert row["reporting_limitations"] == [POWOD_WEZEL_BEZ_ODNIESIENIA]
+        assert OGRANICZENIE_WYNIK_NIEFIZYCZNY not in row["reporting_limitations"]
         for klucz in (
             "kappa",
             "ip_a",

@@ -31,7 +31,6 @@ import type {
   DomainEvent,
   TerminalRef,
 } from '../../types/enm';
-import type { SemanticIssue } from '../../types/domainOps';
 import { publicBusName } from '../shared/enmVisibility';
 import { identyfikatorGrafu } from './identyfikatorGrafu';
 import { executeDomainOp } from './domainApi';
@@ -88,8 +87,6 @@ export interface SnapshotState {
   lastChanges: ChangesInfo | null;
   /** Last domain events. */
   lastEvents: DomainEvent[];
-  /** Semantic issues z ostatniej operacji (validate_semantic post-hook). */
-  lastSemanticIssues: SemanticIssue[];
   /** History of domain operations for the snapshot timeline. */
   operationHistory: SnapshotOperationHistoryEntry[];
   /** Loading state. */
@@ -401,7 +398,6 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   selectionHint: null,
   lastChanges: null,
   lastEvents: [],
-  lastSemanticIssues: [],
   operationHistory: [],
   loading: false,
   error: null,
@@ -432,7 +428,6 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
             createHistoryEntry(opName, payload, response, 'error'),
             ...get().operationHistory,
           ],
-          lastSemanticIssues: response.semantic_issues ?? [],
           loading: false,
           error: response.error,
           errorCode: response.error_code ?? null,
@@ -445,7 +440,6 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         selectionHint: response.selection_hint,
         lastChanges: response.changes,
         lastEvents: response.domain_events,
-        lastSemanticIssues: response.semantic_issues ?? [],
         operationHistory: [
           createHistoryEntry(opName, payload, response, 'success'),
           ...get().operationHistory,
@@ -521,7 +515,6 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
             selectionHint: retryResponse.selection_hint,
             lastChanges: retryResponse.changes,
             lastEvents: retryResponse.domain_events,
-            lastSemanticIssues: retryResponse.semantic_issues ?? [],
             operationHistory: [
               createHistoryEntry(opName, payload, retryResponse, 'success'),
               ...get().operationHistory,
@@ -692,8 +685,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       selectionHint: null,
       lastChanges: null,
       lastEvents: [],
-      lastSemanticIssues: [],
-      operationHistory: [],
+          operationHistory: [],
       loading: false,
       error: null,
       errorCode: null,

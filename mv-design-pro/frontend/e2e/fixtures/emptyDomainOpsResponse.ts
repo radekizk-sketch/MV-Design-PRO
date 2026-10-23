@@ -75,6 +75,5 @@ export function pustaOdpowiedzDomainOps() {
     domain_events: [],
     materialized_params: { lines_sn: {}, transformers_sn_nn: {}, sources_sn: {} },
     layout: { layout_hash: `sha256:${'0'.repeat(64)}`, layout_version: '1.0' },
-    semantic_issues: [],
   };
 }

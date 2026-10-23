@@ -34,6 +34,13 @@ export const PRZYPADKI_STRINGS = {
   uruchomAnulujOpis:
     'Anuluj bieg: z kolejki od razu, w toku — w najbliższym punkcie przerwania (zwarcie: między punktami zwarcia; rozpływ nie ma punktów przerwania i zakończy się sam).',
   uruchomRodzaj: 'Rodzaj analizy',
+  // Karta GPZ-H5-APARATURA (defekt 5): stan łączeniowy biegu — stan normalny modelu albo
+  // scenariusz łączeniowy z panelu „Scenariusze łączeniowe" (`scenario_id` biegu).
+  uruchomStanLaczeniowy: 'Stan łączeniowy',
+  uruchomStanLaczeniowyOpis:
+    'Stan normalny modelu albo scenariusz łączeniowy (położenie łączników, elementy wyłączone z eksploatacji). Scenariusz nie zmienia modelu — zmienia sieć liczoną w tym biegu.',
+  uruchomStanNormalny: 'Stan normalny modelu',
+  uruchomScenariuszOpcja: (nazwa: string, rewizja: number) => `${nazwa} (rewizja ${rewizja})`,
   uruchomOpis:
     'Uruchamia przebieg wybranego rodzaju dla aktywnego zakresu obliczeń i otwiera wyniki.',
   // W3-G1: metoda rozpływu mocy — opcja WIDOCZNA wyłącznie dla rodzaju „Rozpływ

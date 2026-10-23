@@ -6549,7 +6549,8 @@
        "REFERENCYJNY_V1",
        "ANALITYCZNY_V1",
        "TESTOWY",
-       "PROJEKTOWY_V1"
+       "PROJEKTOWY_V1",
+       "WYMAGANIE_STANDARDU_V1"
       ],
       "title": "Catalog Status",
       "type": "string"
@@ -17286,13 +17287,28 @@
     "type": "object"
    },
    "ZapisScenariuszaLaczeniowego": {
-    "description": "Scenariusz nazwany ze stanami łączników — nowy (``scenario_id`` pominięte) albo nowa\nrewizja istniejącego (``scenario_id`` podane).",
+    "description": "Scenariusz nazwany ze stanami łączników i wyłączeniami elementów — nowy\n(``scenario_id`` pominięte) albo nowa rewizja istniejącego (``scenario_id`` podane).\n\nPole pominięte (``None``) w nowej rewizji zachowuje wartość poprzedniej rewizji, w nowym\nscenariuszu oznacza brak nadpisań tego rodzaju; scenariusz po zapisie musi zmieniać stan\nłączeniowy (choć jeden stan łącznika albo jedno wyłączenie).",
     "properties": {
      "name": {
       "description": "Nazwa scenariusza",
       "minLength": 1,
       "title": "Name",
       "type": "string"
+     },
+     "out_of_service": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Elementy wyłączone z eksploatacji w scenariuszu (ref_id; gałąź, transformator, źródło, wytwórca, odbiór, bateria kondensatorów) — nieobecne w migawce efektywnej",
+      "title": "Out Of Service"
      },
      "scenario_id": {
       "anyOf": [
@@ -17307,22 +17323,27 @@
       "title": "Scenario Id"
      },
      "switch_states": {
-      "additionalProperties": {
-       "enum": [
-        "closed",
-        "open"
-       ],
-       "type": "string"
-      },
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "enum": [
+          "closed",
+          "open"
+         ],
+         "type": "string"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
       "description": "Łącznik (ref_id) → położenie w scenariuszu",
-      "minProperties": 1,
-      "title": "Switch States",
-      "type": "object"
+      "title": "Switch States"
      }
     },
     "required": [
-     "name",
-     "switch_states"
+     "name"
     ],
     "title": "ZapisScenariuszaLaczeniowego",
     "type": "object"
@@ -22223,6 +22244,33 @@
     ]
    }
   },
+  "/api/catalog/bay-standard-templates": {
+   "get": {
+    "description": "Szablony pól SN standardu operatora (ENEA Zeszyt 1, karta GPZ-H5-APARATURA): pola\nliniowe, transformatorowe, łącznika szyn (także w dwóch celach), ZU, BKR i pomiaru napięcia\n— gniazda aparatury w kolejności od szyny, wymagania gniazd z jednostką i podstawą (punkt\nstandardu). Strona 110 kV nie ma szablonów (granica zasilania, decyzja właściciela\n2026-10-22). Tryb „z szablonu pola standardu\" operacji\n``set_bay_equipment`` przyjmuje ``szablon_standardu_ref`` z tej listy.",
+    "operationId": "list_bay_standard_templates_api_catalog_bay_standard_templates_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Bay Standard Templates Api Catalog Bay Standard Templates Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Bay Standard Templates",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
   "/api/catalog/bess-battery-types": {
    "get": {
     "description": "List all BESS battery PACK types (karta FAB-J) — sprzęt oddzielny od PCS.\n\nKatalog pojemności [kWh] / napięcia DC / C-rate / chemii pakietu baterii;\ntyp przekształtnika magazynu (moc, Q, cosφ) niesie `/bess-inverter-types`\npowyżej.",
@@ -22534,6 +22582,33 @@
      }
     },
     "summary": "List Der Dynamic Profiles",
+    "tags": [
+     "Type Catalog"
+    ]
+   }
+  },
+  "/api/catalog/field-element-types": {
+   "get": {
+    "description": "Wyposażenie pól SN (przestrzeń ELEMENT_POLA_SN): wskaźnik napięcia, transformator\nuziemiający, dławik gaszący, rezystory, bateria kondensatorów pola BKR.",
+    "operationId": "list_field_element_types_api_catalog_field_element_types_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "additionalProperties": true,
+          "type": "object"
+         },
+         "title": "Response List Field Element Types Api Catalog Field Element Types Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Field Element Types",
     "tags": [
      "Type Catalog"
     ]
@@ -31209,7 +31284,7 @@
   },
   "/api/scenariusze-laczeniowe/study-cases/{case_id}": {
    "get": {
-    "description": "Scenariusze nazwane projektu ze stanami łączników (kolejność magazynu).",
+    "description": "Scenariusze nazwane projektu ze stanami łączników albo wyłączeniami elementów\n(kolejność magazynu).",
     "operationId": "get_scenariusze_laczeniowe_api_scenariusze_laczeniowe_study_cases__case_id__get",
     "parameters": [
      {
@@ -31252,7 +31327,7 @@
     ]
    },
    "post": {
-    "description": "Zapisz scenariusz nazwany ze stanami łączników.\n\n422 — stan wskazuje element, którego model nie ma, albo element niebędący łącznikiem;\n404 — ``scenario_id`` nieistniejące. Nowa rewizja istniejącego scenariusza zachowuje\njego pozostałe nadpisania (harmonogram dynamiki, nastawy) — zmienia nazwę i stany.",
+    "description": "Zapisz scenariusz nazwany ze stanami łączników i wyłączeniami elementów.\n\n422 — stan wskazuje element, którego model nie ma, albo element niebędący łącznikiem;\nwyłączenie wskazuje element spoza kolekcji wyłączalnych albo powtarza element; scenariusz\nbez żadnego stanu i wyłączenia. 404 — ``scenario_id`` nieistniejące. Nowa rewizja\nistniejącego scenariusza zachowuje jego pozostałe nadpisania (harmonogram dynamiki,\nnastawy) i pola pominięte w żądaniu. Lista wyłączeń jest zapisywana w kolejności\n``ref_id`` — ta sama treść scenariusza daje ten sam odcisk niezależnie od kolejności\nzaznaczeń w formularzu (determinizm).",
     "operationId": "post_scenariusz_laczeniowy_api_scenariusze_laczeniowe_study_cases__case_id__post",
     "parameters": [
      {

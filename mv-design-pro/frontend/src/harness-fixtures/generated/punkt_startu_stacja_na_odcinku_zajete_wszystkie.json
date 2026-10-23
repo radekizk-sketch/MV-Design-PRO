@@ -179,6 +179,7 @@
         "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "gpz_line_field"
         ],
@@ -233,6 +234,7 @@
         "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "gpz_line_field"
         ],
@@ -279,6 +281,7 @@
         "substation_ref": "stn/298177b52cf4013c836740b86946c50f/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "station_sn_field"
         ],
@@ -326,6 +329,7 @@
         "substation_ref": "stn/298177b52cf4013c836740b86946c50f/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "station_sn_field"
         ],
@@ -373,6 +377,7 @@
         "substation_ref": "stn/298177b52cf4013c836740b86946c50f/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "station_sn_field"
         ],
@@ -420,6 +425,7 @@
         "substation_ref": "stn/298177b52cf4013c836740b86946c50f/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "station_sn_field"
         ],
@@ -475,6 +481,7 @@
         "substation_ref": "stn/298177b52cf4013c836740b86946c50f/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "station_sn_field"
         ],
@@ -514,6 +521,7 @@
         "substation_ref": "stn/298177b52cf4013c836740b86946c50f/station",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "nn_main_breaker"
         ],

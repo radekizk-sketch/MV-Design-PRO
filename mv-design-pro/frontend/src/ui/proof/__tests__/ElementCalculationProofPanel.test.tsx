@@ -65,6 +65,7 @@ const shortCircuitPayload: ShortCircuitResults = {
       ith_ka: 12.8,
       sk_mva: 320,
       flags: [],
+      flags_pl: [],
     },
   ],
 };
@@ -224,7 +225,8 @@ describe('ElementCalculationProofPanel', () => {
           ip_ka: null,
           ith_ka: null,
           sk_mva: null,
-          flags: ['PARTIAL'],
+          flags: ['BEZ_NAPIECIA'],
+          flags_pl: ['bez napięcia'],
         },
       ],
     });

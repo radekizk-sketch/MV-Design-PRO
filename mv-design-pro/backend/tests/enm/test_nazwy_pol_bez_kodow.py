@@ -336,10 +336,13 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
                 # Karta GPZ-H5: transformator WN/SN jest elementem modelu wyłącznie w GPZ ze
                 # stroną 110 kV — sekcja 110 kV z torem zasilania i jawne przypisanie
                 # sekcja 110 kV → sekcja SN.
+                # Układ H5 (§11.1): dwa tory 110 kV, łącznik szyn 110 kV, jedno pole liniowe.
+                "line_fields_per_section": 1,
+                "hv_coupler": {"normal_state": "open"},
                 "hv_sections": [
                     {
                         "supply": {
-                            "line_name": "L1",
+                            "line_name": tor,
                             "supplying_station_name": "Stacja zasilająca (dane testowe)",
                             "manual_equivalent": {
                                 "hv_voltage_kv": napiecie_wn,
@@ -348,6 +351,7 @@ def test_nazwa_transformatora_gpz_z_napiecia_gornego_katalogu_nie_stalego_110() 
                             },
                         }
                     }
+                    for tor in ("L1", "L2")
                 ],
                 "transformers": [
                     {"hv_section": 1, "sn_section": 1, "transformer_catalog_ref": katalog}

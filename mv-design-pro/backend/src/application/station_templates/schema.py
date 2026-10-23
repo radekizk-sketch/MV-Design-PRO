@@ -20,7 +20,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from domain.generator_validation import (
     moc_czynna_jednostki_mw,
@@ -153,6 +153,47 @@ class BayRoleSpec:
         return nazwa_roli_pola_sn_z_okresleniem(self.role, self.okreslenie_pl)
 
 
+#: Typ wartości danej projektu — jak formularz ma ją zebrać i w jakiej postaci wysłać
+#: (karta GPZ-H5-APARATURA, meldunek koordynatora pkt 4): `wybor` — tekst z listy `wartosci`;
+#: `liczba_calkowita` — liczba całkowita (lista `wartosci` niesie dozwolone liczby zapisane
+#: tekstem, formularz wysyła liczbę); `tekst` — tekst swobodny niepusty; `pozycja_katalogu` —
+#: pozycja katalogu aparatury SN (`{"catalog_ref": …}`); `tory_zasilania_110kv` — lista torów
+#: zasilania sekcji 110 kV (linia, stacja zasilająca, równoważnik sieci).
+TypWartosciDanejProjektu = Literal[
+    "wybor", "liczba_calkowita", "tekst", "pozycja_katalogu", "tory_zasilania_110kv"
+]
+TYPY_WARTOSCI_DANEJ_PROJEKTU: tuple[str, ...] = (
+    "wybor",
+    "liczba_calkowita",
+    "tekst",
+    "pozycja_katalogu",
+    "tory_zasilania_110kv",
+)
+#: Wymagalność danej projektu wyprowadzona z kontraktu (nie wpisywana obok).
+Wymagalnosc = Literal["zawsze", "warunkowo", "opcjonalnie"]
+
+
+@dataclass(frozen=True)
+class WarunekWymagalnosci:
+    """Składnik koniunkcji warunku wymagalności danej projektu (warunek MASZYNOWY).
+
+    `klucz` — ścieżka (z kropką dla pola zagnieżdżonego) w danych zastosowania szablonu:
+    inna dana projektu albo parametr szablonu (`transformer_count`). Dokładnie jedno z pól
+    `rowna` (wartość tekstowa danej równa tej) albo `co_najmniej` (liczba ≥ progu; parametr
+    szablonu niepodany ma wartość domyślną szablonu)."""
+
+    klucz: str
+    rowna: str | None = None
+    co_najmniej: int | None = None
+
+    def __post_init__(self) -> None:
+        if (self.rowna is None) == (self.co_najmniej is None):
+            raise ValueError(
+                f"Warunek wymagalności „{self.klucz}”: podaj dokładnie jedno z pól "
+                "`rowna` albo `co_najmniej`."
+            )
+
+
 @dataclass(frozen=True)
 class DanaProjektuSzablonu:
     """Pole wejścia, które szablon WYMAGA od projektanta i którego NIE wypełnia (karta GPZ-H5,
@@ -160,17 +201,48 @@ class DanaProjektuSzablonu:
 
     `klucz` — ścieżka pola ładunku operacji `operacja` (np. ``hv_coupler.normal_state``);
     nazwa pola pochodzi ze słownika nazw pól operacji (`enm.slownik_komunikatow.pole`), więc
-    formularz i komunikat odmowy nazywają je tym samym słowem. `wartosci` — dozwolone wartości
-    z nazwą (pusta krotka = dana złożona albo tekst). Brak wartości domyślnej jest cechą
-    kontraktu: szablon nie ma pola `default`. `warunek_pl` — kiedy dana jest wymagana
-    (pusty = zawsze)."""
+    formularz i komunikat odmowy nazywają je tym samym słowem. `typ_wartosci` — postać
+    wartości (`TypWartosciDanejProjektu`). `wartosci` — dozwolone wartości z nazwą (pusta
+    krotka = dana złożona albo tekst). Brak wartości domyślnej jest cechą kontraktu: szablon
+    nie ma pola `default`.
+
+    Wymagalność jest MASZYNOWA (karta GPZ-H5-APARATURA): `wymagana_gdy` — koniunkcja
+    warunków (pusta = zawsze wymagana), `opcjonalna` — dana nie jest wymagana nigdy (skutek
+    braku w `skutek_braku_pl`). Zdanie `warunek_pl` jest WYPROWADZANE z warunku
+    (`opis_warunku_pl`), a zgodność warunku z odmową operacji przypina test
+    (`tests/application/station_templates/test_dane_projektu_wymagalnosc.py`)."""
 
     klucz: str
     podpowiedz_pl: str
     podstawa_pl: str
+    typ_wartosci: TypWartosciDanejProjektu
     operacja: str = "add_grid_source_sn"
     wartosci: tuple[tuple[str, str], ...] = ()
-    warunek_pl: str = ""
+    wymagana_gdy: tuple[WarunekWymagalnosci, ...] = ()
+    opcjonalna: bool = False
+    skutek_braku_pl: str = ""
+
+    def __post_init__(self) -> None:
+        if self.typ_wartosci not in TYPY_WARTOSCI_DANEJ_PROJEKTU:
+            raise ValueError(f"Dana projektu „{self.klucz}”: nieznany typ wartości.")
+        if self.typ_wartosci == "wybor" and not self.wartosci:
+            raise ValueError(f"Dana projektu „{self.klucz}”: wybór bez listy wartości.")
+        if self.typ_wartosci == "liczba_calkowita" and any(
+            not w.isdigit() for w, _ in self.wartosci
+        ):
+            raise ValueError(f"Dana projektu „{self.klucz}”: wartości liczby nie są liczbami.")
+        if self.typ_wartosci in ("tekst", "pozycja_katalogu", "tory_zasilania_110kv") and (
+            self.wartosci
+        ):
+            raise ValueError(f"Dana projektu „{self.klucz}”: typ bez listy wartości.")
+        if self.opcjonalna and self.wymagana_gdy:
+            raise ValueError(
+                f"Dana projektu „{self.klucz}”: opcjonalna nie ma warunku wymagalności."
+            )
+        if bool(self.skutek_braku_pl) != self.opcjonalna:
+            raise ValueError(
+                f"Dana projektu „{self.klucz}”: skutek braku opisuje wyłącznie daną opcjonalną."
+            )
 
     @property
     def label_pl(self) -> str:
@@ -180,6 +252,67 @@ class DanaProjektuSzablonu:
     def klucz_ladunku(self) -> str:
         """Klucz najwyższego poziomu ładunku operacji, pod którym leży dana."""
         return self.klucz.split(".", 1)[0]
+
+    @property
+    def wymagalnosc(self) -> Wymagalnosc:
+        if self.opcjonalna:
+            return "opcjonalnie"
+        return "warunkowo" if self.wymagana_gdy else "zawsze"
+
+
+def _wartosc_sciezki(dane: Mapping[str, Any], sciezka: str) -> Any:
+    wartosc: Any = dane
+    for czesc in sciezka.split("."):
+        if not isinstance(wartosc, Mapping):
+            return None
+        wartosc = wartosc.get(czesc)
+    return wartosc
+
+
+def dana_projektu_wymagana(
+    dana: DanaProjektuSzablonu, schema: TemplateSchema, dane: Mapping[str, Any]
+) -> bool:
+    """Czy dana projektu jest wymagana przy danych zastosowania `dane` — JEDYNA reguła
+    odczytu warunku maszynowego (lustro TS: `wymagalnoscDanychProjektu.ts`, przypięte
+    wspólną fiksturą przypadków). Parametr szablonu niepodany ma wartość domyślną szablonu."""
+    if dana.opcjonalna:
+        return False
+    for warunek in dana.wymagana_gdy:
+        wartosc = _wartosc_sciezki(dane, warunek.klucz)
+        if wartosc is None:
+            parametr = getattr(schema, warunek.klucz, None)
+            if isinstance(parametr, TemplateParamInt):
+                wartosc = parametr.default
+        if warunek.rowna is not None and (wartosc is None or str(wartosc) != warunek.rowna):
+            return False
+        if warunek.co_najmniej is not None and (
+            isinstance(wartosc, bool)
+            or not isinstance(wartosc, int)
+            or wartosc < warunek.co_najmniej
+        ):
+            return False
+    return True
+
+
+def opis_warunku_pl(dana: DanaProjektuSzablonu, schema: TemplateSchema) -> str:
+    """Zdanie PL wymagalności wyprowadzone z warunku maszynowego (jedno źródło)."""
+    if dana.opcjonalna:
+        return f"opcjonalne — {dana.skutek_braku_pl}"
+    if not dana.wymagana_gdy:
+        return ""
+    po_kluczu = {d.klucz: d for d in schema.dane_projektu}
+    skladniki: list[str] = []
+    for warunek in dana.wymagana_gdy:
+        inna = po_kluczu.get(warunek.klucz)
+        if warunek.rowna is not None:
+            if inna is None:
+                raise KeyError(warunek.klucz)
+            etykieta = dict(inna.wartosci)[warunek.rowna]
+            skladniki.append(f"{inna.label_pl} ma wartość „{etykieta}”")
+        else:
+            parametr = getattr(schema, warunek.klucz)
+            skladniki.append(f"„{parametr.label_pl}” wynosi co najmniej {warunek.co_najmniej}")
+    return "wymagane, gdy " + " i ".join(skladniki)
 
 
 @dataclass(frozen=True)
@@ -1307,19 +1440,25 @@ def _schema_to_dict(schema: TemplateSchema) -> dict:
         "shunt_capacitor_options": [_choice_to_dict(c) for c in schema.shunt_capacitor_options],
         "grid_source_options": [_choice_to_dict(c) for c in schema.grid_source_options],
         "gpz_uklad": schema.gpz_uklad,
-        "dane_projektu": [_dana_projektu_to_dict(d) for d in schema.dane_projektu],
+        "dane_projektu": [_dana_projektu_to_dict(d, schema) for d in schema.dane_projektu],
     }
 
 
-def _dana_projektu_to_dict(d: DanaProjektuSzablonu) -> dict:
+def _dana_projektu_to_dict(d: DanaProjektuSzablonu, schema: TemplateSchema) -> dict:
     return {
         "klucz": d.klucz,
         "operacja": d.operacja,
         "label_pl": d.label_pl,
         "podpowiedz_pl": d.podpowiedz_pl,
         "podstawa_pl": d.podstawa_pl,
+        "typ_wartosci": d.typ_wartosci,
         "wartosci": [{"wartosc": w, "label_pl": n} for w, n in d.wartosci],
-        "warunek_pl": d.warunek_pl,
+        "wymagalnosc": d.wymagalnosc,
+        "wymagana_gdy": [
+            {"klucz": w.klucz, "rowna": w.rowna, "co_najmniej": w.co_najmniej}
+            for w in d.wymagana_gdy
+        ],
+        "warunek_pl": opis_warunku_pl(d, schema),
     }
 
 

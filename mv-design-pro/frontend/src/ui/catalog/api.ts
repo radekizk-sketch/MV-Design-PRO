@@ -10,6 +10,7 @@ import type {
   CatalogNamespace,
   ConverterType,
   CTCatalogType,
+  ElementPolaCatalogType,
   LineType,
   LoadCatalogType,
   LVApparatusType,
@@ -21,6 +22,7 @@ import type {
   ProtectionDeviceType,
   SourceSystemCatalogType,
   SwitchEquipmentType,
+  SzablonPolaStandardu,
   ShuntCapacitorCatalogType,
   SurgeArresterCatalogType,
   TapChangerCatalogType,
@@ -82,6 +84,7 @@ export type CatalogListItem =
   | BranchPointCatalogType
   | SurgeArresterCatalogType
   | ShuntCapacitorCatalogType
+  | ElementPolaCatalogType
   | PtpireeGeneratorCertificateCatalogType;
 
 const DECATALOGING_BLOCKED_MESSAGE =
@@ -304,6 +307,18 @@ export async function fetchVtTypes(): Promise<VTCatalogType[]> {
 
 export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogType[]> {
   return fetchCatalogJson<SurgeArresterCatalogType[]>('/api/catalog/surge-arrester-types');
+}
+
+/** Wyposażenie pól SN (przestrzeń ELEMENT_POLA_SN): wskaźnik napięcia, transformator
+ *  uziemiający, dławik gaszący, rezystory, bateria kondensatorów pola BKR. */
+export async function fetchElementPolaTypes(): Promise<ElementPolaCatalogType[]> {
+  return fetchCatalogJson<ElementPolaCatalogType[]>('/api/catalog/field-element-types');
+}
+
+/** Szablony pól standardu operatora — źródło `szablon_standardu_ref` trybu „z szablonu pola
+ *  standardu" operacji `set_bay_equipment`. */
+export async function fetchBayStandardTemplates(): Promise<SzablonPolaStandardu[]> {
+  return fetchCatalogJson<SzablonPolaStandardu[]>('/api/catalog/bay-standard-templates');
 }
 
 export async function fetchShuntCapacitorTypes(): Promise<ShuntCapacitorCatalogType[]> {
@@ -693,6 +708,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'SHUNT_CAPACITOR':
       types = await fetchShuntCapacitorTypes();
+      break;
+    case 'FIELD_ELEMENT':
+      types = await fetchElementPolaTypes();
       break;
     case 'PTPIREE_CERTIFICATE':
       types = await fetchPtpireeGeneratorCertificates();

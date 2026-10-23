@@ -541,7 +541,7 @@
         },
         {
           "kod": "model.ograniczniki",
-          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)",
+          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunki niżej)",
           "spelniony": false,
           "elementy": [],
           "blokujacy": true,
@@ -561,7 +561,7 @@
       "braki": [
         {
           "kod": "model.ograniczniki",
-          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunek niżej)",
+          "opis_pl": "Ograniczniki przepięć w modelu: 1 miejsc, żadne nie wchodzi do koordynacji izolacji — brak uziemienia punktu neutralnego sieci (warunki niżej)",
           "spelniony": false,
           "elementy": [],
           "blokujacy": true,

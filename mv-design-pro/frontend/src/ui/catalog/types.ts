@@ -482,6 +482,81 @@ export interface SurgeArresterCatalogType extends CatalogType {
 }
 
 /**
+ * Element wyposażenia pola SN (przestrzeń ELEMENT_POLA_SN, karta GPZ-H5-APARATURA).
+ * Source: backend `ElementPolaType` (`network_model/catalog/types.py`). Pola nieobecne
+ * (`null`) = dana nie występuje w źródle pozycji (pozycja wymagań standardu podaje wyłącznie
+ * to, co podaje standard).
+ */
+export interface ElementPolaCatalogType extends CatalogType {
+  rodzaj:
+    | 'WSKAZNIK_NAPIECIA'
+    | 'TRANSFORMATOR_UZIEMIAJACY'
+    | 'DLAWIK_GASZACY'
+    | 'REZYSTOR_UZIEMIAJACY'
+    | 'REZYSTOR_WYMUSZAJACY'
+    | 'BATERIA_KONDENSATOROW';
+  u_m_kv?: number | null;
+  uzgadnianie_faz?: boolean | null;
+  grupa_polaczen?: string | null;
+  regulacja_pl?: string | null;
+  chlodzenie?: string | null;
+  u_nn_v?: number | null;
+  s_nn_kva_min?: number | null;
+  prad_zakres_min_a?: number | null;
+  prad_zakres_max_a?: number | null;
+  regulacja_zakres_pl?: string | null;
+  uzwojenie_wtorne_pl?: string | null;
+  przekladnik_pl?: string | null;
+  tryb_pracy_pl?: string | null;
+  prad_wymuszany_min_a?: number | null;
+  prad_wymuszany_max_a?: number | null;
+  obudowa_pl?: string | null;
+  uklad?: string | null;
+  q_ogniwa_min_kvar?: number | null;
+  jednostki_pl?: string | null;
+  przekladnik_niezrownowazenia?: boolean | null;
+  verification_status?: string;
+  source_reference?: string;
+  catalog_status?: string;
+  verification_note?: string | null;
+}
+
+/** Wymaganie gniazda szablonu pola standardu (`GET /api/catalog/bay-standard-templates`). */
+export interface WymaganieGniazdaStandardu {
+  parametr: string;
+  nazwa_pl: string;
+  relacja: 'CO_NAJMNIEJ' | 'CO_NAJWYZEJ' | 'ROWNE';
+  wartosc: number | string | boolean;
+  jednostka: string | null;
+  podstawa_pl: string;
+  warunek_pl: string | null;
+  interpretacja_pl: string | null;
+}
+
+/** Gniazdo szablonu pola standardu (kolejność od szyny). */
+export interface GniazdoPolaStandardu {
+  id: string;
+  rodzaj: string;
+  nazwa_pl: string;
+  placement: string;
+  podstawa_pl: string;
+  wymagania: WymaganieGniazdaStandardu[];
+  interpretacja_pl: string | null;
+  earthing_role: string | null;
+  izolacja: string | null;
+}
+
+/** Szablon pola standardu operatora (`network_model/catalog/gniazda_pol_enea.py`). */
+export interface SzablonPolaStandardu {
+  id: string;
+  nazwa_pl: string;
+  role_pola: string[];
+  podstawa_pl: string;
+  gniazda: GniazdoPolaStandardu[];
+  uwagi_pl: string | null;
+}
+
+/**
  * Shunt capacitor bank type (KOMPENSATOR_SN).
  * Source: backend ShuntCapacitorType dataclass.
  */
@@ -583,6 +658,9 @@ export type CatalogNamespace =
   | 'NASTAWY_ZABEZPIECZEN'
   | 'PTPIREE_CERTYFIKAT_GENERATORA'
   | 'CONVERTER'
+  // GPZ-H5-APARATURA: wyposażenie pól SN (wskaźnik napięcia, transformator uziemiający,
+  // dławik gaszący, rezystory, bateria kondensatorów pola BKR) — `GET /api/catalog/field-element-types`.
+  | 'ELEMENT_POLA_SN'
   | 'mv_branch_points';
 
 /**
@@ -592,7 +670,8 @@ export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS' | 'LV_RCD'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
-  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
+  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN'
+  | 'FIELD_ELEMENT';
 
 /**
  * Type reference in element (points to catalog).

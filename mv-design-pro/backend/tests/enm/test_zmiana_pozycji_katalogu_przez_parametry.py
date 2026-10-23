@@ -50,6 +50,12 @@ def _build_base_network_with_line_catalog() -> dict[str, Any]:
 
 
 def _element(enm: dict[str, Any], kolekcja: str) -> dict[str, Any]:
+    """Element iloczynu: gałąź KABLOWA (kolekcja `branches` niesie też łącznik szyn 110 kV
+    układu H5 — łącznik bez impedancji, którego pozycję wybiera obsadzenie gniazda, nie ta
+    operacja) albo transformator 110/15 kV."""
+    if kolekcja == "branches":
+        (kabel,) = (g for g in enm["branches"] if g["type"] == "cable")
+        return kabel
     element: dict[str, Any] = enm[kolekcja][0]
     return element
 

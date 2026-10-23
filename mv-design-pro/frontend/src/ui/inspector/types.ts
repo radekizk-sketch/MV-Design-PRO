@@ -142,13 +142,3 @@ export const INSPECTOR_SECTION_LABELS: Record<string, string> = {
   flags: 'Flagi i ostrzezenia',
 };
 
-/**
- * Etykiety flag (Polish).
- */
-export const FLAG_LABELS: Record<string, string> = {
-  VOLTAGE_VIOLATION: 'Przekroczenie napięcia',
-  OVERLOAD: 'Przeciążenie',
-  SLACK: 'Węzeł bilansujący',
-  UNDERVOLTAGE: 'Zbyt niskie napięcie',
-  OVERVOLTAGE: 'Zbyt wysokie napięcie',
-};

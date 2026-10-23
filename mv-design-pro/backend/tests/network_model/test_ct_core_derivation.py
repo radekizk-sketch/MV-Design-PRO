@@ -68,9 +68,58 @@ class TestAlfZKlasy:
         assert alf_ct_z_klasy("5P") is None
 
 
+def _referencyjne_ct() -> list:
+    """Pozycje REFERENCYJNE katalogu CT (wartości odniesienia IEC 61869-2) — bez pozycji
+    WYMAGAŃ standardu ENEA (`WYMAGANIE_STANDARDU_V1`, karta GPZ-H5-APARATURA), które niosą
+    wyłącznie progi wymagań operatora i których kontrakt przypina
+    `TestPozycjeWymaganStandardu` niżej."""
+    from network_model.catalog.types import CatalogStatus
+
+    return [
+        t
+        for t in get_default_mv_catalog().list_ct_types()
+        if t.catalog_status != CatalogStatus.WYMAGANIE_STANDARDU_V1.value
+    ]
+
+
+class TestPozycjeWymaganStandardu:
+    """Przekładnik Ferrantiego pola liniowego SN (ENEA Zeszyt 1 §13, rys. Z.10): standard
+    podaje przekładnię, nie klasę, obciążalność ani prąd cieplny — tych danych pozycja NIE
+    niesie (brak ≠ zero, brak ≠ wartość odniesienia), a dobór wykonawczy wymaga pozycji
+    producenta."""
+
+    def test_pozycja_wymagania_nie_fabrykuje_danych_wyrobu(self) -> None:
+        from network_model.catalog.types import CatalogStatus
+
+        wymagania = [
+            t.to_dict()
+            for t in get_default_mv_catalog().list_ct_types()
+            if t.catalog_status == CatalogStatus.WYMAGANIE_STANDARDU_V1.value
+        ]
+        assert [t["id"] for t in wymagania] == ["enea-wym-sn-ct-ferranti-100-1"]
+        (ferranti,) = wymagania
+        assert (ferranti["ratio_primary_a"], ferranti["ratio_secondary_a"]) == (100.0, 1.0)
+        assert ferranti["odmiana"] == "FERRANTI"
+        for pole in (
+            "accuracy_class",
+            "burden_va",
+            "ith_ka_1s",
+            "idyn_ka_peak",
+            "fs_safety_factor",
+            "rct_ohm",
+            "application",
+            "accuracy_limit_factor",
+            "manufacturer",
+        ):
+            assert ferranti[pole] is None, pole
+        assert "§13" in ferranti["source_reference"]
+        assert "Z.10" in ferranti["source_reference"]
+        assert "Interpretacja rysunku" in ferranti["verification_note"]
+
+
 class TestKatalogReferencyjny:
     def test_kazdy_typ_wystawia_rodzaj_rdzenia(self) -> None:
-        typy = get_default_mv_catalog().list_ct_types()
+        typy = _referencyjne_ct()
         assert len(typy) == 12  # pełny inwentarz katalogu referencyjnego (pomiar)
 
         for typ in typy:
@@ -83,7 +132,7 @@ class TestKatalogReferencyjny:
         # POMIAR: 9 rdzeni zabezpieczeniowych (2× 5P10, 6× 5P20, 1× 10P10) i 3 pomiarowe
         # (3× 0.5). Liczba ma znaczenie inżynierskie: to WSZYSTKIE typy, na których może
         # dziś stanąć oś zabezpieczeń.
-        typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
+        typy = [t.to_dict() for t in _referencyjne_ct()]
         zabezpieczeniowe = [t for t in typy if t["application"] == "protection"]
         pomiarowe = [t for t in typy if t["application"] == "metering"]
 
@@ -132,9 +181,8 @@ class TestDoborCieplnyIDynamiczny:
     """
 
     def test_wszystkie_typy_katalogowe_maja_prad_cieplny_i_dynamiczny(self) -> None:
-        from network_model.catalog.repository import get_default_mv_catalog
 
-        typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
+        typy = [t.to_dict() for t in _referencyjne_ct()]
         assert len(typy) == 12
         bez_ith = [t["id"] for t in typy if t["ith_ka_1s"] is None]
         bez_idyn = [t["id"] for t in typy if t["idyn_ka_peak"] is None]
@@ -167,9 +215,8 @@ class TestDoborCieplnyIDynamiczny:
     def test_Fs_dotyczy_WYLACZNIE_rdzeni_pomiarowych(self) -> None:
         # Rdzen zabezpieczeniowy ma zachowywac dokladnosc DO ALF, wiec Fs go nie dotyczy;
         # podstawienie liczby mieszaloby dwa rozne pojecia normowe (IEC 61869-2).
-        from network_model.catalog.repository import get_default_mv_catalog
 
-        typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
+        typy = [t.to_dict() for t in _referencyjne_ct()]
         pomiarowe = [t for t in typy if t["application"] == "metering"]
         zabezpieczeniowe = [t for t in typy if t["application"] == "protection"]
         assert pomiarowe and zabezpieczeniowe
@@ -179,18 +226,16 @@ class TestDoborCieplnyIDynamiczny:
     def test_rezystancja_uzwojenia_zostaje_BRAKIEM_bez_karty_producenta(self) -> None:
         # Rct nie ma wyprowadzenia normowego. Wpisanie liczby byloby fabrykacja —
         # kryterium nasycenia liczy sie z obciazalnosci znamionowej (VA).
-        from network_model.catalog.repository import get_default_mv_catalog
 
-        typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
+        typy = [t.to_dict() for t in _referencyjne_ct()]
         assert all(t["rct_ohm"] is None for t in typy)
         assert all(t["burden_va"] is not None for t in typy)
 
     def test_prowieniencja_danych_jest_JAWNA_w_rekordzie(self) -> None:
         # Wartosci odniesienia MUSZA byc rozpoznawalne jako odniesienia — inaczej
         # projektant wzialby je za liczby z karty katalogowej wyrobu.
-        from network_model.catalog.repository import get_default_mv_catalog
 
-        for typ in get_default_mv_catalog().list_ct_types():
+        for typ in _referencyjne_ct():
             assert typ.verification_status == "REFERENCYJNY"
             assert "IEC 61869-2" in (typ.source_reference or "")
             assert "IEC 62271-200" in (typ.source_reference or "")

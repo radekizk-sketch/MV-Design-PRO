@@ -17,8 +17,6 @@ from .oze_validators import (
     validate_pv_has_transformer,
     validate_voltage_compatibility,
 )
-from .semantic_rules import SEMANTIC_RULES
-from .semantic_validator import validate_semantic, validate_semantic_as_dicts
 from .validator import (
     NetworkValidator,
     Severity,
@@ -33,10 +31,6 @@ __all__ = [
     "ValidationIssue",
     "Severity",
     "validate_network",
-    # Semantic validators (PR-C)
-    "SEMANTIC_RULES",
-    "validate_semantic",
-    "validate_semantic_as_dicts",
     # OZE validators
     "validate_pv_has_transformer",
     "validate_voltage_compatibility",

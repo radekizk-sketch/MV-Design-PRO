@@ -102,9 +102,24 @@ function item(templateRef: string | null, familyRef: string | null): FieldReadMo
         source_endpoint: null,
         bay_template_ref: templateRef,
         switchgear_family_ref: familyRef,
-        equipment_data_state: 'PROPOZYCJA',
-        equipment_assumed_data: [
-          { nazwa_pl: 'Wyłącznik Q1', wartosc: 'CB', powod_pl: 'aparat z szablonu pola bez pozycji katalogowej', jakosc: 'ESTIMATED' },
+        szablon_standardu_ref: 'ENEA_SN_LINIA',
+        szablon_standardu_nazwa_pl: 'Pole liniowe SN (ENEA)',
+        sklad: [
+          {
+            gniazdo_ref: 'W',
+            gniazdo_nazwa_pl: 'wyłącznik pola',
+            rodzaj: 'CB',
+            rodzaj_pl: 'wyłącznik',
+            device_ref: 'bay-1::gn::W',
+            linked_ref: null,
+            catalog_ref: null,
+            catalog_namespace: null,
+            status: 'WYMAGANE_STANDARDEM_BRAK',
+            opis_pl: 'Gniazdo „wyłącznik pola” (Pole liniowe SN) jest wymagane standardem, a pole nie ma w nim aparatu — wskaż typ z katalogu.',
+            podstawa_pl: 'ENEA Zeszyt 1, zał. Z.2',
+            interpretacja_pl: null,
+            wymagania: [],
+          },
         ],
       },
       runtime_state: null,
@@ -189,6 +204,7 @@ function podstawFetch(odp: Odpowiedzi) {
     if (
       u.startsWith('/api/catalog/mv-apparatus-types') || u.startsWith('/api/catalog/ct-types')
       || u.startsWith('/api/catalog/vt-types') || u.startsWith('/api/catalog/surge-arrester-types')
+      || u.startsWith('/api/catalog/field-element-types') || u.startsWith('/api/catalog/bay-standard-templates')
     ) {
       return json([]);
     }
@@ -349,7 +365,7 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
       { element_ref: 'bay-1', parameters: { name: 'Pole L-7' } },
     );
   });
-  // Karta W5-C: wyposażenie pola SN — stan danych i dane przyjęte z modelu odczytu pola,
+  // Karty W5-C i GPZ-H5-APARATURA: wyposażenie pola — skład pola z modelu odczytu pola,
   // zapis natywnym klikiem przez operację `set_bay_equipment` magazynu. Iloczyn:
   // napięcie szyny pola {SN 15 kV, brak napięcia w migawce, nN 0,4 kV} → edytor
   // {jest, jest, brak} (pole nN ma własne operacje nN, nie wyposażenie pola SN).
@@ -365,20 +381,23 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
     expect(screen.queryByTestId('wyposazenie-pola') !== null).toBe(obecny);
   });
 
-  it('wyposażenie pola: stan danych z modelu pola i zapis operacją magazynu', async () => {
+  it('wyposażenie pola: skład z modelu pola i zapis operacją magazynu', async () => {
     const stub = podstawFetch({ pole: item(null, null) });
     ustawModel(null, 15);
     const operacja = vi.fn().mockResolvedValue({
       snapshot: {},
-      wyposazenie_pola: { bay_ref: 'bay_ref_1', stan_danych: 'BRAK_DANYCH', aparaty: [], dane_przyjete: [] },
+      wyposazenie_pola: { bay_ref: 'bay_ref_1', szablon_standardu_ref: null, sklad: [] },
     });
     useSnapshotStore.setState({ executeDomainOperation: operacja });
     const user = userEvent.setup();
     render(<BayConfiguratorSurface surface={surface('bay-1')} />);
     await waitFor(() =>
-      expect(screen.getByTestId('wyposazenie-pola-stan').getAttribute('data-stan')).toBe('PROPOZYCJA'),
+      expect(screen.getByTestId('wyposazenie-pola-sklad-wiersz-0').getAttribute('data-status')).toBe(
+        'WYMAGANE_STANDARDEM_BRAK',
+      ),
     );
-    expect(screen.getByTestId('wyposazenie-pola-dane-przyjete')).toHaveTextContent('Wyłącznik Q1');
+    expect(screen.getByTestId('wyposazenie-pola-sklad-wiersz-0')).toHaveTextContent('zał. Z.2');
+    expect(screen.getByTestId('wyposazenie-pola-standard')).toHaveTextContent('Pole liniowe SN (ENEA)');
     expect(stub.mock.calls.some(([u]) => String(u).startsWith('/api/catalog/mv-apparatus-types'))).toBe(false);
     await user.click(screen.getByTestId('wyposazenie-pola-edytuj'));
     await waitFor(() =>
@@ -391,6 +410,39 @@ describe('Karta pola SN (E-11) — jeden model pola', () => {
       'set_bay_equipment',
       { bay_ref: 'bay_ref_1', mode: 'wyczysc' },
     );
-    expect(await screen.findByTestId('wyposazenie-pola-wynik')).toHaveAttribute('data-stan', 'BRAK_DANYCH');
+    expect(await screen.findByTestId('wyposazenie-pola-wynik')).toBeInTheDocument();
+    expect(screen.getByTestId('wyposazenie-pola-sklad-pusty')).toBeInTheDocument();
+  });
+
+  /**
+   * Karta GPZ-H5-APARATURA: pole na szynie 110 kV (granica zasilania sieci SN) nie ma edytora
+   * wyposażenia — lustro odmowy `bay_equipment.bay_hv_boundary`. Iloczyn napięcia szyny
+   * {nN 0,4 kV, SN 15 kV, SN 66 kV, WN 110 kV, WN 220 kV, brak szyny}: jawne zdanie granicy tylko
+   * dla WN, edytor tylko dla SN, pole nN bez obu (ma własne operacje rozdzielnicy nN).
+   */
+  it.each([
+    [0.4, false, false],
+    [15, false, true],
+    [66, false, true],
+    [110, true, false],
+    [220, true, false],
+    [null, false, true],
+  ])('szyna %s kV: zdanie granicy 110 kV %s, edytor wyposażenia %s', async (kv, granica, edytor) => {
+    podstawFetch({ pole: item(null, null) });
+    ustawModel(null, kv);
+    render(<BayConfiguratorSurface surface={surface('bay-1')} />);
+    await waitFor(() => expect(screen.getByTestId('engineering-field-device_0')).toBeInTheDocument());
+    if (edytor) {
+      await waitFor(() => expect(screen.getByTestId('wyposazenie-pola-edytuj')).toBeInTheDocument());
+    } else {
+      expect(screen.queryByTestId('wyposazenie-pola-edytuj')).not.toBeInTheDocument();
+    }
+    const zdanie = screen.queryByTestId('bay-card-granica-wn');
+    if (granica) {
+      expect(zdanie).toHaveTextContent('Pole 110 kV jest granicą zasilania sieci SN');
+      expect(zdanie).toHaveTextContent('Scenariusze łączeniowe');
+    } else {
+      expect(zdanie).not.toBeInTheDocument();
+    }
   });
 });

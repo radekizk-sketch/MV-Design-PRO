@@ -7,13 +7,13 @@
       "target_name": "Szyna SN",
       "ikss_ka": 0.00281274591728,
       "ip_ka": 0.00795577147986,
-      "ith_ka": 0.0048769148332,
+      "ith_ka": 0.00487691483326,
       "sk_mva": 0.0730772825627,
-      "rk_ohm": 0.108279252032,
+      "rk_ohm": 0.108279253306,
       "xk_ohm": -10160.476333,
       "zk_ohm": 10160.4763336,
-      "rx_ratio": -1.06569070665e-05,
-      "xr_ratio": -93835.8562915,
+      "rx_ratio": -1.06569071918e-05,
+      "xr_ratio": -93835.8551875,
       "kappa": 2.00003133181,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
@@ -30,11 +30,11 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 0.00281274591728,
-      "i_dc_ka": 0.00397915540849,
+      "i_dc_ka": 0.0039791554085,
       "ik_ka": 0.00281274591728,
       "ik_thevenin_ka": 0.00281274591728,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842982903e-05,
+      "i2t_ka2s": 2.37842982909e-05,
       "z1_ohm": {
         "re": 0.0541396260155,
         "im": 1.06264651202
@@ -44,7 +44,7 @@
         "im": 1.06264651202
       },
       "z0_ohm": {
-        "re": 5.11590769747e-13,
+        "re": 1.2745363594e-09,
         "im": -10162.601626
       },
       "branch_contributions": null,
@@ -92,7 +92,12 @@
       ],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": [
+        "$.kappa"
+      ]
     },
     {
       "target_id": "80c21edb-e0ec-5378-acd6-e90f5ec0bc57",
@@ -181,7 +186,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "d70aff7b-d056-5804-acce-c9bc5707612b",
@@ -270,7 +278,10 @@
       "reporting_limitations": [],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": null
     },
     {
       "target_id": "d93618a6-23da-5d59-ae10-a7242961b790",
@@ -278,13 +289,13 @@
       "target_name": "Stacja B SN",
       "ikss_ka": 0.00281274591728,
       "ip_ka": 0.00795577147986,
-      "ith_ka": 0.0048769148332,
+      "ith_ka": 0.00487691483326,
       "sk_mva": 0.0730772825627,
-      "rk_ohm": 0.108279252032,
+      "rk_ohm": 0.108279253306,
       "xk_ohm": -10160.476333,
       "zk_ohm": 10160.4763336,
-      "rx_ratio": -1.06569070665e-05,
-      "xr_ratio": -93835.8562915,
+      "rx_ratio": -1.06569071918e-05,
+      "xr_ratio": -93835.8551875,
       "kappa": 2.00003133181,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
@@ -301,11 +312,11 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 0.00281274591728,
-      "i_dc_ka": 0.00397915540849,
+      "i_dc_ka": 0.0039791554085,
       "ik_ka": 0.00281274591728,
       "ik_thevenin_ka": 0.00281274591728,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.37842982903e-05,
+      "i2t_ka2s": 2.37842982909e-05,
       "z1_ohm": {
         "re": 0.0541396260155,
         "im": 1.06264651202
@@ -315,7 +326,7 @@
         "im": 1.06264651202
       },
       "z0_ohm": {
-        "re": 5.11590769747e-13,
+        "re": 1.2745363594e-09,
         "im": -10162.601626
       },
       "branch_contributions": null,
@@ -363,7 +374,12 @@
       ],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": [
+        "$.kappa"
+      ]
     },
     {
       "target_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
@@ -371,13 +387,13 @@
       "target_name": "Stacja C SN",
       "ikss_ka": 0.00281425467467,
       "ip_ka": 0.00796330038795,
-      "ith_ka": 0.00501865678158,
+      "ith_ka": 0.00501865678164,
       "sk_mva": 0.0731164812294,
-      "rk_ohm": 2.93745101618,
+      "rk_ohm": 2.93745101745,
       "xk_ohm": -10155.0287494,
       "zk_ohm": 10155.0291742,
-      "rx_ratio": -0.000289260728717,
-      "xr_ratio": -3457.08871175,
+      "rx_ratio": -0.000289260728842,
+      "xr_ratio": -3457.08871026,
       "kappa": 2.00085079564,
       "c_factor": 1.1,
       "c_zrodlo": "IEC 60909-0 tab. 1, pasmo SN, MAX",
@@ -394,11 +410,11 @@
         "ib_z_udzialem_maszyn": false
       },
       "ib_ka": 0.00281425467467,
-      "i_dc_ka": 0.00401628939943,
+      "i_dc_ka": 0.00401628939945,
       "ik_ka": 0.00281425467467,
       "ik_thevenin_ka": 0.00281425467467,
       "ik_inverters_ka": 0.0,
-      "i2t_ka2s": 2.51869158913e-05,
+      "i2t_ka2s": 2.51869158919e-05,
       "z1_ohm": {
         "re": 0.75572550809,
         "im": 1.92643832363
@@ -408,7 +424,7 @@
         "im": 1.92643832363
       },
       "z0_ohm": {
-        "re": 1.426,
+        "re": 1.42600000127,
         "im": -10158.881626
       },
       "branch_contributions": null,
@@ -456,7 +472,12 @@
       ],
       "synthetic": false,
       "graph_role": null,
-      "flags": []
+      "flags": [],
+      "flags_pl": [],
+      "non_physical_reason": null,
+      "non_physical_fields": [
+        "$.kappa"
+      ]
     }
   ],
   "zrodla_sieciowe": [
@@ -591,7 +612,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "54f244ddf89a3fb6d00dbbefd7e047deac933b854c55b68e87fece3eae5784a3",
+      "result_hash": "0553c6830ec78e813bc2be23c5e9e37f53871daff8843464045ff3301628c98a",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -602,7 +623,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+      "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",
