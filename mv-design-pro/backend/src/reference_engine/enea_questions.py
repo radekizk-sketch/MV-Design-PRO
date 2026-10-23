@@ -41,7 +41,7 @@ def _roots(question: str) -> list[str]:
             continue
         # Rdzenie specjalistyczne rozpoznają różne odmiany (słupowej/słupową).
         mapping = (
-            ("slup", "slup"), ("stacj", "stacj"), ("kabl", "kabl"),
+            ("slup", "slup"), ("stac", "stac"), ("kabl", "kabl"),
             ("podej", "podej"), ("przyl", "przyl"), ("uziem", "uziem"),
             ("rozdziel", "rozdziel"), ("napowietrz", "napowietrz"),
             ("transformator", "transformator"), ("telemechan", "telemechan"),
