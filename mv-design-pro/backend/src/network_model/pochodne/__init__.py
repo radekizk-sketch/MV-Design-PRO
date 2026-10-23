@@ -41,6 +41,7 @@ from network_model.pochodne.skladowe_symetryczne import (
     impedancja_zgodna_ohm,
 )
 from network_model.pochodne.skladowe_zerowe import (
+    impedancja_dlawika_z_rezystorem_rownoleglym_ohm,
     impedancja_punktu_neutralnego_ohm,
     impedancja_rozproszenia_transformatora_pu,
 )
@@ -82,6 +83,7 @@ __all__ = [
     "a_na_ka",
     "calka_joule_ka2s",
     "czlon_wykladniczy_kappa",
+    "impedancja_dlawika_z_rezystorem_rownoleglym_ohm",
     "impedancja_odniesiona_do_napiecia_ohm",
     "impedancja_punktu_neutralnego_ohm",
     "impedancja_rozproszenia_transformatora_pu",

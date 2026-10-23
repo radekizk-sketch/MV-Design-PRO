@@ -23,11 +23,13 @@ został skasowany procedurą; bramka wskrzeszenia: ``scripts/legacy_public_path_
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import partial
 from typing import Any, cast
 from uuid import NAMESPACE_DNS, uuid5
 
+import numpy as np
 from application.solvers.lv_temperature_correction import build_min_scenario_graph
 from domain.canonical_operations import READINESS_CODES
 from enm.load_zip_model import (
@@ -56,6 +58,7 @@ from enm.nazwy_elementow import (
     nazwa_po_identyfikatorze,
     zbuduj_indeks_nazw,
 )
+from enm.przyczyny_zwarcia_doziemnego import PrzyczynaBrakuZwarciaDoziemnego, Wymaganie
 from enm.slownik_komunikatow import opis_elementu, opis_obiektu
 from enm.tolerancja_nn import zalozenia_tolerancji_nn
 from enm.topology import Wyspa, derive
@@ -145,6 +148,15 @@ def _short_circuit_requires_z0(short_circuit_type: ShortCircuitType) -> bool:
         ShortCircuitType.SINGLE_PHASE_GROUND,
         ShortCircuitType.TWO_PHASE_GROUND,
     }
+
+
+def _wymaganie_sieci_zerowej(short_circuit_type: ShortCircuitType) -> Wymaganie:
+    """Wymaganie zwarcia wobec sieci zerowej: 1F potrzebuje zwarcia doziemnego w rozumieniu
+    IEC 60909-0 (sieć uziemiona), 2F+Z — wyłącznie obliczalnej impedancji zerowej
+    (``enm.przyczyny_zwarcia_doziemnego.Wymaganie``)."""
+    if short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
+        return "zwarcie_1f"
+    return "impedancja_z0"
 
 
 def _build_snapshot_graph_element_context(
@@ -544,7 +556,8 @@ class WejscieZwarcia:
     enm: EnergyNetworkModel
     graph: NetworkGraph
     solve_graph: NetworkGraph
-    z0_bus: Any
+    #: Macierz Z0-bus (``SiecSkladowejZerowej.z0_bus``) albo ``None`` (rodzaj zwarcia bez Z0).
+    z0_bus: np.ndarray | None
     short_circuit_type: ShortCircuitType
     scenario_c: Scenario
     #: Karta WSPOLCZYNNIK-C-JEDEN-NOSNIK (O-59): ręczne nadpisanie c z uzasadnieniem albo
@@ -562,10 +575,12 @@ class WejscieZwarcia:
     graph_nodes: dict[str, dict[str, Any]]
     graph_branches: dict[str, dict[str, Any]]
     wezly_bez_odniesienia: frozenset[str]
-    #: Karta GPZ-H5: węzły grafu solvera bez drogi prądu składowej zerowej do ziemi
-    #: (``enm.mapping.SiecSkladowejZerowej``) — dla zwarć 1F/2F+Z ich Z0 nie istnieje, wiersz
-    #: powstaje bez solvera z przyczyną; pusty zbiór dla 3F/2F (sieć zerowa nie jest budowana).
-    wezly_bez_drogi_zerowej: frozenset[str]
+    #: Karta GPZ-H5-SKLADOWA-ZEROWA: węzły grafu solvera bez wyniku zwarcia doziemnego i ich
+    #: przyczyna (brak danych / fizyczny brak drogi / nie dotyczy —
+    #: ``enm.mapping.SiecSkladowejZerowej.przyczyny_dla`` wymagania typu zwarcia — 1F: zwarcie
+    #: doziemne, 2F+Z: impedancja zerowa) — dla zwarć 1F/2F+Z wiersz takiego węzła
+    #: powstaje bez solvera z tą przyczyną; pusty słownik dla 3F/2F (sieć zerowa nie powstaje).
+    przyczyny_braku_z0: Mapping[str, PrzyczynaBrakuZwarciaDoziemnego]
     #: CV-4.3 K6: ślad WHITE BOX wyprowadzenia Z_Q każdego źródła sieciowego
     #: (c wg IEC 60909-0:2016 §6.2.1 eq. 6) — ``enm.mapping.build_grid_source_trace``.
     zrodla_sieciowe_trace: tuple[dict[str, Any], ...]
@@ -1133,17 +1148,20 @@ def zloz_wejscie_zwarcia(
     # Z0 w porządku węzłów grafu SOLVERA (ten sam ``AdmittanceMatrixBuilder``):
     # impedancje składowej zerowej pochodzą z pól ENM, więc dla grafu bez wysp
     # pływających macierz jest tożsama z liczoną dotąd z ``graph``.
-    # Karta GPZ-H5: węzły bez drogi prądu zerowego do ziemi (np. szyna SN za trójkątem
-    # transformatora 110/SN bez zespołu uziemiającego w danych) — wiersz zwarcia doziemnego
-    # takiego węzła powstaje bez solvera, z przyczyną (`POWOD_WEZEL_BEZ_DROGI_ZEROWEJ`).
+    # Karta GPZ-H5-SKLADOWA-ZEROWA: węzły bez wyniku zwarcia doziemnego (brak danych,
+    # fizyczny brak drogi, dla 1F także sieć kompensowana i izolowana) — wiersz takiego węzła
+    # powstaje bez solvera, z przyczyną z `SiecSkladowejZerowej.przyczyny_dla` (jedno źródło
+    # dla biegu i dowodu; wymaganie wg typu zwarcia — `_wymaganie_sieci_zerowej`).
     siec_zerowa = (
         zbuduj_siec_zerowa(enm, solve_graph, scenario=scenario_c)
         if _short_circuit_requires_z0(short_circuit_type)
         else None
     )
     z0_bus = siec_zerowa.z0_bus if siec_zerowa is not None else None
-    wezly_bez_drogi_zerowej = (
-        siec_zerowa.wezly_bez_drogi_zerowej if siec_zerowa is not None else frozenset()
+    przyczyny_braku_z0 = (
+        siec_zerowa.przyczyny_dla(_wymaganie_sieci_zerowej(short_circuit_type))
+        if siec_zerowa is not None
+        else {}
     )
 
     reportable_fault_node_ids = [
@@ -1252,7 +1270,7 @@ def zloz_wejscie_zwarcia(
         graph_nodes=graph_nodes,
         graph_branches=graph_branches,
         wezly_bez_odniesienia=wezly_bez_odniesienia,
-        wezly_bez_drogi_zerowej=wezly_bez_drogi_zerowej,
+        przyczyny_braku_z0=przyczyny_braku_z0,
         zrodla_sieciowe_trace=zrodla_sieciowe_trace,
         zalozenia=zalozenia,
         wklady_w_biegu=wklady_w_biegu,

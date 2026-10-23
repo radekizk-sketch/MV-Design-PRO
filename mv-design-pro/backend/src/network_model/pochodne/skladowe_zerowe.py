@@ -26,6 +26,15 @@ def impedancja_punktu_neutralnego_ohm(r_ohm: float | None, x_ohm: float | None) 
     return complex(r_ohm if r_ohm is not None else 0.0, x_ohm if x_ohm is not None else 0.0)
 
 
+def impedancja_dlawika_z_rezystorem_rownoleglym_ohm(
+    z_dlawika_ohm: complex, r_rownolegly_ohm: float
+) -> complex:
+    """Z_N = Z_L·R_p/(Z_L + R_p) — dławik z rezystorem przyłączonym równolegle (ENEA Operator,
+    Zeszyt 1, zał. Z.14). ``Z_L = R_L + jX_L`` (rezystancja strat dławika i jego reaktancja),
+    ``R_p > 0`` — rezystor równoległy. Wołający rozstrzyga kompletność danych przed wywołaniem."""
+    return z_dlawika_ohm * r_rownolegly_ohm / (z_dlawika_ohm + r_rownolegly_ohm)
+
+
 def impedancja_rozproszenia_transformatora_pu(
     uk_percent: float, pk_kw: float, sn_mva: float
 ) -> complex:

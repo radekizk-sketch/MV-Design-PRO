@@ -19,11 +19,12 @@ samym uziomie napięcie dotykowe MUSI odziedziczyć tę różnicę: U_d(Dyn) > U
 proporcjonalnie do I″k1. Gdyby most/pack liczył od stałej zamiast od prądu 1F —
 asercje by padły.
 
-Wartości referencyjne I″k1 (hand-calc, RE-BASELINE V12K-184 — patrz
-test_vector_group_earth_fault_chain.test_reference_currents): Dyn11=8849.00 A,
-YNyn0=7932.23 A. Uziom testowy R_u=10 Ω, r=0.6 ⇒ U_d(Dyn)=53094.00 V,
-U_d(YNyn)=47593.36 V (zgodnie z asercjami niżej — poprzednie wartości
-9750.24/8649.10 A i 58501.44/51894.60 V są NIEAKTUALNE sprzed V12K-184).
+Wartości referencyjne I″k1 (hand-calc, RE-BASELINE karty GPZ-H5-SKLADOWA-ZEROWA — K_T
+transformatora także w składowej zerowej, IEC 60909-0:2016 §6.3.3; patrz
+test_vector_group_earth_fault_chain.test_reference_currents): Dyn11=8902.63 A,
+YNyn0=7975.29 A. Uziom testowy R_u=10 Ω, r=0.6 ⇒ U_d(Dyn)=53415.76 V,
+U_d(YNyn)=47851.73 V (zgodnie z asercjami niżej — poprzednie wartości
+8849.00/7932.23 A i 53094.00/47593.36 V są NIEAKTUALNE sprzed korekty K_T w Z0).
 """
 
 from __future__ import annotations
@@ -115,7 +116,9 @@ class TestTouchVoltageReactsToGroup:
         # RE-BASELINE odniesienia prądowego (V12K-184): 8649.10/9750.24 → 7932.23/8849.00
         # (zasilanie systemowe wchodzi teraz do składowej zgodnej — patrz
         # test_vector_group_earth_fault_chain.test_reference_currents).
-        assert u_ynyn / u_dyn == pytest.approx(7932.23 / 8849.00, rel=1e-3)
+        # RE-BASELINE (karta GPZ-H5-SKLADOWA-ZEROWA): 7932.23/8849.00 → 7975.29/8902.63
+        # (K_T transformatora także w składowej zerowej, IEC 60909-0:2016 §6.3.3).
+        assert u_ynyn / u_dyn == pytest.approx(7975.29 / 8902.63, rel=1e-3)
 
     def test_reference_touch_voltages(self) -> None:
         """Wartości referencyjne dla audytu (U_d = r·I″k1·R_u).
@@ -126,9 +129,12 @@ class TestTouchVoltageReactsToGroup:
         YNyn 6.0·7932.23 = 47593.36 V (było 6.0·8649.10 = 51894.60).
         Uziom (R_u, r) i tor uziemieniowy są nietknięte — zmienił się wyłącznie
         prąd wejściowy, bo impedancja sieci zasilającej przestała być zwierana.
+
+        RE-BASELINE (karta GPZ-H5-SKLADOWA-ZEROWA): Dyn 6.0·8902.63 = 53415.76 V,
+        YNyn 6.0·7975.29 = 47851.73 V — prąd 1F po korekcie K_T w Z0 transformatora.
         """
-        assert _touch_voltage_for("Dyn11") == pytest.approx(53094.00, rel=1e-4)
-        assert _touch_voltage_for("YNyn0") == pytest.approx(47593.36, rel=1e-4)
+        assert _touch_voltage_for("Dyn11") == pytest.approx(53415.76, rel=1e-4)
+        assert _touch_voltage_for("YNyn0") == pytest.approx(47851.73, rel=1e-4)
 
 
 # ---------------------------------------------------------------------------

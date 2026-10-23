@@ -113,6 +113,10 @@ _POLA_ADDYTYWNE_POZA_HASHEM_GDY_NONE: dict[str, tuple[str, ...]] = {
         "wybor_bloku",
         "metadane_pochodzenia",
         "surge_arresters",
+        # Karta GPZ-H5-SKLADOWA-ZEROWA: zespół uziemiający pola uziemiającego. `None` = pole
+        # bez danych zespołu — poza odciskiem (pola sprzed karty haszują jak przed nią);
+        # podany zespół zmienia sieć składowej zerowej, więc zmienia odcisk.
+        "zespol_uziemiajacy",
     ),
     # Karta W6-1: parametry dynamiczne zrodla (kontrakt czasu RMS/DAE, unia
     # dyskryminowana `ParametryDynamiczne`). `None` = brak wejscia zdefiniowanego

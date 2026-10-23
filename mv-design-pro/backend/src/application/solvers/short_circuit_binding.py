@@ -292,17 +292,17 @@ def wynik_zwarcia_1f_ze_snapshotu(
         rozszerzenia_audit2=rozszerzenia_audit2,
     )
     dobor_c = _dobor_c_wezla(wejscie, fault_node_id)
-    if fault_node_id in wejscie.wezly_bez_drogi_zerowej:
-        # Karta GPZ-H5: ta sama przyczyna co wiersz biegu (`POWOD_WEZEL_BEZ_DROGI_ZEROWEJ`) —
-        # Z0 węzła nie istnieje, więc dowód zwarcia doziemnego nie powstaje z wartości
-        # algebraicznej, którą macierz ma w tym miejscu wyłącznie dla odwracalności.
+    przyczyna = wejscie.przyczyny_braku_z0.get(fault_node_id)
+    if przyczyna is not None:
+        # Karta GPZ-H5-SKLADOWA-ZEROWA: ta sama przyczyna co wiersz biegu
+        # (`SiecSkladowejZerowej.przyczyny_dla("zwarcie_1f")` — brak danych / fizyczny brak
+        # drogi / nie dotyczy):
+        # dowód zwarcia doziemnego nie powstaje z wartości algebraicznej, którą macierz ma
+        # w tym miejscu wyłącznie dla odwracalności.
         raise OdmowaDanychError(
-            f"{nazwa_elementu(wejscie.graph.nodes[fault_node_id], 'buses')}: brak drogi prądu "
-            "składowej zerowej do ziemi — punkt neutralny sieci nie jest uziemiony w danych "
-            "modelu (np. uzwojenie w trójkąt transformatora zasilającego bez zespołu "
-            "uziemiającego), na drodze do uziemionego punktu neutralnego brakuje danych "
-            "składowej zerowej (r0, x0 linii i kabli, Z0 źródła) albo pojemności doziemnej B0. "
-            "Zwarcie doziemne w tym węźle nie jest liczone; uzupełnij te dane."
+            f"{nazwa_elementu(wejscie.graph.nodes[fault_node_id], 'buses')}: zwarcie doziemne "
+            f"nie jest liczone ({przyczyna.to_dict()['status_pl']}) — {przyczyna.opis_pl} "
+            f"Podstawa: {przyczyna.podstawa}."
         )
     # Solver IEC 60909 jest rdzeniem B-01: odmowę wejścia (węzeł zwarcia spoza grafu, gałąź
     # bez nazwy) podnosi rekordem strukturalnym (decyzja O-59) — pierwsza granica składa zdanie

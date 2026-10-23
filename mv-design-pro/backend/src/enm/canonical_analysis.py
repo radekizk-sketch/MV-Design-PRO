@@ -296,12 +296,15 @@ def etykiety_raportowe_pl(zrodlo: Mapping[str, Any]) -> dict[str, Any]:
 #: Powód nieraportowalności wiersza zwarcia ustalony z TOPOLOGII (nie z liczb):
 #: węzeł zwarcia leży w wyspie bez żadnego elementu z impedancją do odniesienia.
 POWOD_WEZEL_BEZ_ODNIESIENIA = "fault_node_without_reference_impedance"
-#: Powód nieraportowalności wiersza zwarcia doziemnego (1F, 2F+Z) ustalony z TOPOLOGII sieci
-#: zerowej (karta GPZ-H5): węzeł zwarcia leży w składowej sieci zerowej bez drogi prądu do
-#: ziemi (punkt neutralny nieuziemiony w danych, brak danych składowej zerowej gałęzi na
-#: drodze do uziemionego punktu neutralnego, brak pojemności doziemnej B0) — Z0 nie
-#: istnieje, zwarcie doziemne nie jest liczone (``enm.mapping.SiecSkladowejZerowej``).
-POWOD_WEZEL_BEZ_DROGI_ZEROWEJ = "fault_node_without_zero_sequence_path"
+#: Powody nieraportowalności wiersza zwarcia doziemnego (1F, 2F+Z) — karta
+#: GPZ-H5-SKLADOWA-ZEROWA: trzy ROZRÓŻNIONE przyczyny z jednego źródła
+#: (``enm.przyczyny_zwarcia_doziemnego``, wyznaczane przez ``enm.mapping.zbuduj_siec_zerowa``):
+#: brak danych składowej zerowej, fizyczny brak drogi prądu zerowego do ziemi (brak
+#: jakiegokolwiek bocznika do ziemi — punkt neutralny nieuziemiony, uzwojenie w trójkąt, model
+#: bez pojemności doziemnej) i — wyłącznie dla 1F — sieć kompensowana albo izolowana
+#: (doziemienie nie jest zwarciem IEC 60909-0; 2F+Z liczone z impedancją zerową dławika albo
+#: pojemności doziemnych).
+#: Wiersz niesie kod w ``non_physical_reason`` i wyjaśnienie w ``przyczyna_braku_wyniku``.
 
 #: Znacznik wiersza wyników (`flags`) szyny wyspy bez źródła zasilania — stan „bez napięcia”,
 #: nie wynik liczbowy. Rozpływ (`build_bus_results`): solver `status == "not_solved"`;
@@ -2413,7 +2416,7 @@ def _wynik_solvera_punktu(
     pola lokalne > wartość robocza), dyspozycję rodzaju zwarcia ``wynik_zwarcia_punktu`` —
     te same funkcje co pakiety dowodowe.
     """
-    if node_id in wejscie.wezly_bez_odniesienia or node_id in wejscie.wezly_bez_drogi_zerowej:
+    if node_id in wejscie.wezly_bez_odniesienia or node_id in wejscie.przyczyny_braku_z0:
         return None
     # Odmowa wejścia rdzenia (rekord strukturalny, decyzja O-59) ze zdaniem z nazwami z grafu.
     with nazwy_w_odmowach_rdzenia(wejscie.solve_graph):
@@ -2729,8 +2732,10 @@ def _execute_short_circuit(
             ]
         if node_id in wezly_bez_odniesienia:
             payload = _oznacz_wiersz_bez_odniesienia(payload)
-        elif node_id in wejscie.wezly_bez_drogi_zerowej:
-            payload = _oznacz_wiersz_bez_odniesienia(payload, POWOD_WEZEL_BEZ_DROGI_ZEROWEJ)
+        elif node_id in wejscie.przyczyny_braku_z0:
+            przyczyna = wejscie.przyczyny_braku_z0[node_id]
+            payload = _oznacz_wiersz_bez_odniesienia(payload, przyczyna.powod)
+            payload["przyczyna_braku_wyniku"] = przyczyna.to_dict()
         rows.append(_oznacz_wiersz_zwarcia_niefizyczny(payload))
 
     if not rows:
@@ -4126,6 +4131,14 @@ def build_short_circuit_results(
                     [ZNACZNIK_SZYNY_BEZ_NAPIECIA]
                     if item.get("non_physical_reason") == POWOD_WEZEL_BEZ_ODNIESIENIA
                     else []
+                ),
+                # Karta GPZ-H5-SKLADOWA-ZEROWA: przyczyna braku wyniku zwarcia doziemnego
+                # (brak danych / fizyczny brak drogi / nie dotyczy) z wyjaśnieniem i elementami
+                # — addytywnie, wyłącznie w wierszu, który ją niesie.
+                **(
+                    {"przyczyna_braku_wyniku": item["przyczyna_braku_wyniku"]}
+                    if item.get("przyczyna_braku_wyniku") is not None
+                    else {}
                 ),
             }
         )

@@ -155,6 +155,8 @@ SPRAWDZANE: dict[str, str] = {
     "Transformer": "Transformer",
     "TrendState": "TrendState",
     "WyborBlokuPola": "WyborBlokuPola",
+    # Karta GPZ-H5-SKLADOWA-ZEROWA: zespół uziemiający pola uziemiającego SN (`Bay`).
+    "ZespolUziemiajacy": "ZespolUziemiajacy",
 }
 
 # Interfejsy TS, z ktorych encje dziedzicza pola. `ENMElement` obowiazuje

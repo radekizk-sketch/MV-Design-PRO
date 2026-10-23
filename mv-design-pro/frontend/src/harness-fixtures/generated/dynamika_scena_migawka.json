@@ -41,7 +41,8 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -82,7 +83,8 @@
         "nn_source_field"
       ],
       "terminal_bus_ref": "nn/dfd8dcc0c5a4e42def08217f87fba17d/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -123,7 +125,8 @@
         "nn_main_breaker"
       ],
       "terminal_bus_ref": "nn/e920fa05978ce828b25a0ced83c45e0b/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -169,7 +172,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/000",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -216,7 +220,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/001",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -263,7 +268,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/002",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -314,7 +320,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/sn_field_terminal/003",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     }
   ],
   "branch_points": [],

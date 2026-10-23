@@ -280,7 +280,11 @@ def test_no_any_in_domain_types():
     # We allow justified Any usages at serialization boundaries
     # (canonicalize, stable_sort_key, to_dict/from_dict, protection interop)
     # but flag excessive use beyond the baseline
-    max_allowed = 30
+    # Karta GPZ-H5-SKLADOWA-ZEROWA (2026-10-22): 30 -> 28 — POMIAR tym testem: 31 przy
+    # dwóch nowych `uzwojenie: Any` w `enm/mapping.py` (otypowane `WindingZeroSeq`) i zastanym
+    # `WejscieZwarcia.z0_bus: Any` w `enm/assembler.py` (otypowane `np.ndarray | None`);
+    # po naprawie 28. Zapadka w dół.
+    max_allowed = 28
     if len(violations) > max_allowed:
         violation_text = "\n".join(violations[:20])
         pytest.fail(

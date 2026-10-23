@@ -42,7 +42,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -79,7 +80,8 @@
           "gpz_hv_line_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -118,7 +120,8 @@
           "gpz_hv_transformer_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -157,7 +160,8 @@
           "gpz_sn_transformer_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       }
     ],
     "branch_points": [],

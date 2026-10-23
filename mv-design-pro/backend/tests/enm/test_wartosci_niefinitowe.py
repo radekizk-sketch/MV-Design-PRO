@@ -16,11 +16,11 @@ from typing import Any
 import pytest
 from enm.canonical_analysis import (
     OGRANICZENIE_WYNIK_NIEFIZYCZNY,
-    POWOD_WEZEL_BEZ_DROGI_ZEROWEJ,
     _execute_power_flow,
     _execute_short_circuit,
 )
 from enm.models import EnergyNetworkModel
+from enm.przyczyny_zwarcia_doziemnego import KOD_POWODU
 from enm.wartosci_niefinitowe import podmien_niefinitowe, sciezki_niefinitowe
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
@@ -183,7 +183,8 @@ def test_tor_zwarciowy_oznacza_wiersz_niefizyczny_dla_kazdego_rodzaju_i_miejsca(
     bez_drogi = {
         str(w["fault_node_id"])
         for w in raw["results"]
-        if w.get("non_physical_reason") == POWOD_WEZEL_BEZ_DROGI_ZEROWEJ
+        if w.get("non_physical_reason") in KOD_POWODU.values()
+        and w.get("przyczyna_braku_wyniku") is not None
     }
     assert bool(bez_drogi) == (rodzaj in ("1F", "2FG"))
     chore = [

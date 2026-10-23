@@ -34,10 +34,13 @@ Tablica połączeń (strona HV, strona LV → połączenie sekwencji zerowej):
 Założenia (jawne, IEC 60909-0 § 3.3.3 / § 6):
     Z_T0 (impedancja zerowa transformatora) — model ENM ``Transformer`` NIE
     niesie odrębnej impedancji zerowej, więc przyjmujemy standardowy domyślny
-    Z_T0 = Z_T (impedancja rozproszenia zgodnej, NIEskorygowana K_T; korekcja
-    K_T dotyczy toru zgodnego prądu zwarciowego, nie zerowego). Jest to
-    udokumentowane założenie — jeśli producent poda odrębne Z_T0/Z_T1, należy
-    je wprowadzić jako rozszerzenie modelu (dług jawny, patrz raport SM-3).
+    Z_T0 = Z_T (impedancja rozproszenia zgodnej). Jest to udokumentowane założenie
+    — jeśli producent poda odrębne Z_T0/Z_T1, należy je wprowadzić jako rozszerzenie
+    modelu. ``z0_pu`` tego modułu jest NIESKORYGOWANE (tory spoza zwarć: rozpływ
+    niesymetryczny, pętla zwarcia nN); sieć zerowa zwarć IEC 60909 (``enm.mapping``)
+    stosuje K_T do Z_T0 tym samym współczynnikiem co w sieci zgodnej, a 3·Z_N bez
+    korekcji (IEC 60909-0:2016 §6.3.3, karta GPZ-H5-SKLADOWA-ZEROWA — dawne zdanie „K_T
+    dotyczy wyłącznie toru zgodnego” było sprzeczne z normą).
 
     Uziemienie punktu neutralnego: impedancja uziemienia Z_N wchodzi do obwodu
     składowej zerowej jako 3·Z_N (norma). ``directly_grounded`` → Z_N = 0;
@@ -104,6 +107,12 @@ class TransformerZeroSeqModel:
         z0_pu: impedancja zerowa w per-unit na S_base — szeregowa (SERIES_THROUGH)
             albo bocznikowa (HV/LV_SHUNT_GROUND). None dla OPEN.
         trace: ślad WHITE BOX (lista kroków — wzór + podstawienie).
+        zn_hv_ohm / zn_lv_ohm: impedancja uziemienia punktu neutralnego Z_N [Ω] uzwojenia
+            górnego / dolnego (0 przy uziemieniu bezpośrednim i przy uzwojeniu bez drogi
+            do ziemi). Sieć zerowa zwarć IEC 60909 (``enm.mapping``) składa z nich
+            ``K_T·Z_T0 + 3·Z_N`` na bazie węzła (IEC 60909-0:2016 §6.3.3: korekcja K_T dotyczy
+            impedancji zerowej transformatora, 3·Z_N wchodzi bez korekcji); ``z0_pu`` zostaje
+            nieskorygowane dla torów spoza zwarć (rozpływ niesymetryczny, pętla zwarcia).
     """
 
     connection: ZeroSeqConnection
@@ -111,6 +120,8 @@ class TransformerZeroSeqModel:
     lv_winding: WindingZeroSeq
     z0_pu: complex | None
     trace: list[dict]
+    zn_hv_ohm: complex = 0j
+    zn_lv_ohm: complex = 0j
 
 
 #: Strona uzwojenia w treści odmowy (projektant czyta „górne/dolne", nie skrót HV/LV).
@@ -334,6 +345,8 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         lv_winding=lv_winding,
         z0_pu=z0_pu,
         trace=tracer.to_list(),
+        zn_hv_ohm=zn_hv_ohm,
+        zn_lv_ohm=zn_lv_ohm,
     )
 
 

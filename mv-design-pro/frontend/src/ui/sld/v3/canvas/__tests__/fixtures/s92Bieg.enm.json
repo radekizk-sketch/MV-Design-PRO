@@ -41,7 +41,8 @@
         "gpz_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -78,7 +79,8 @@
         "gpz_hv_line_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -117,7 +119,8 @@
         "gpz_hv_transformer_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -156,7 +159,8 @@
         "gpz_sn_transformer_field"
       ],
       "terminal_bus_ref": null,
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -202,7 +206,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/000",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -249,7 +254,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/001",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -300,7 +306,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/002",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -347,7 +354,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/003",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -394,7 +402,8 @@
         "station_sn_field"
       ],
       "terminal_bus_ref": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/004",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -435,7 +444,8 @@
         "nn_main_breaker"
       ],
       "terminal_bus_ref": "nn/3c59062a875015b22113504e8baab6e2/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -480,7 +490,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/f560a9ed80c09b8168bf2952ea129767/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -525,7 +536,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/2fdfe8a9306be12e95b5437a5ecbf2c5/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -570,7 +582,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/6f229c1ec51188c92f48976d7c5b3b35/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -615,7 +628,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/7880279508c9e4ef31e4ea2e1465c65e/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     },
     {
       "apparatus_catalog_ref": null,
@@ -660,7 +674,8 @@
       "switchgear_family_ref": null,
       "tags": [],
       "terminal_bus_ref": "nn/da05a8f833a5ad57d3f0f71d2462853b/feeder_bus",
-      "wybor_bloku": null
+      "wybor_bloku": null,
+      "zespol_uziemiajacy": null
     }
   ],
   "branch_points": [],

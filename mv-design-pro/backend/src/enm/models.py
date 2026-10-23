@@ -1250,6 +1250,62 @@ class OgranicznikPrzepiecPola(BaseModel):
     catalog_namespace: str | None = None
 
 
+#: Układ transformatora uziemiającego zespołu uziemiającego (ENEA Operator, Zeszyt 1, zał.
+#: Z.13–Z.15): zygzak z wyprowadzonym punktem neutralnym (ZN) albo gwiazda z wyprowadzonym
+#: punktem neutralnym i uzwojeniem w trójkąt (YNd). Oba dają drogę składowej zerowej do ziemi
+#: na swoim zacisku (IEC 60909-0:2016 §6.3.1, tabela połączeń składowej zerowej).
+UkladTransformatoraUziemiajacego = Literal["ZN", "YNd"]
+
+
+class ZespolUziemiajacy(BaseModel):
+    """Zespół uziemiający ZU pola uziemiającego sekcji SN (karta GPZ-H5-SKLADOWA-ZEROWA).
+
+    ENEA Operator, Zeszyt 1 „Stacje 110 kV”, zał. Z.13–Z.15: transformator uziemiający
+    (zygzak albo YNd) przyłączony do szyny sekcji SN, punkt neutralny uziemiony przez dławik,
+    dławik z rezystorem równolegle albo rezystor. Rekord ZU jest JEDYNYM nośnikiem tych danych
+    (pole ``Bay.zespol_uziemiajacy`` roli ``EARTHING``); sieć składowej zerowej
+    (``enm.mapping``) stawia w węźle szyny pola bocznik ``Z_0,ZU + 3·Z_N``.
+
+    Dane mogą być niepełne (projektant uzupełnia je etapami): brak impedancji zerowej albo
+    sposobu uziemienia jest w wyniku zwarcia doziemnego przyczyną ``BRAK_DANYCH`` z listą
+    brakujących pól — nigdy wartością przyjętą po cichu. Sprzeczność danych (rezystor
+    równoległy bez dławika, wartość ujemna) jest odmową kontraktu.
+
+    * ``uklad`` — zygzak (``ZN``) albo gwiazda–trójkąt (``YNd``);
+    * ``r0_ohm``/``x0_ohm`` — impedancja zerowa transformatora uziemiającego [Ω/fazę], bez
+      ``3·Z_N`` (dana producenta);
+    * ``punkt_neutralny`` — sposób uziemienia punktu neutralnego (dławik — sieć kompensowana,
+      rezystor, uziemienie bezpośrednie albo punkt odłączony — izolowany; dławik: ``x_ohm``
+      [Ω] i opcjonalnie rezystancja strat ``r_ohm``; rezystor: ``r_ohm`` [Ω]);
+    * ``rezystor_rownolegly_ohm`` — rezystor przyłączony równolegle do dławika (Z.14) [Ω].
+    """
+
+    uklad: UkladTransformatoraUziemiajacego
+    r0_ohm: float | None = None
+    x0_ohm: float | None = None
+    punkt_neutralny: GroundingConfig | None = None
+    rezystor_rownolegly_ohm: float | None = None
+
+    @model_validator(mode="after")
+    def _spojnosc(self) -> ZespolUziemiajacy:
+        for nazwa, wartosc in (
+            ("r0_ohm", self.r0_ohm),
+            ("x0_ohm", self.x0_ohm),
+            ("rezystor_rownolegly_ohm", self.rezystor_rownolegly_ohm),
+        ):
+            if wartosc is not None and not (wartosc >= 0.0):
+                raise ValueError(f"zespół uziemiający: {nazwa} musi być liczbą nieujemną")
+        if self.rezystor_rownolegly_ohm is not None:
+            if self.rezystor_rownolegly_ohm <= 0.0:
+                raise ValueError("zespół uziemiający: rezystor równoległy musi mieć R > 0 Ω")
+            if self.punkt_neutralny is None or self.punkt_neutralny.type != "petersen_coil":
+                raise ValueError(
+                    "zespół uziemiający: rezystor równoległy (zał. Z.14) przyłącza się do "
+                    "dławika — punkt neutralny musi być uziemiony przez dławik"
+                )
+        return self
+
+
 class Bay(ENMElement):
     """Pole rozdzielnicy — JEDYNY nośnik pól SN, nN i ZKSN (karta W5-B, 2026-09-30).
 
@@ -1340,6 +1396,10 @@ class Bay(ENMElement):
     # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
     # (ścieżka konwencji rysunku, zero domysłu).
     primary_devices: list[BayPrimaryDevice] = []
+    # Karta GPZ-H5-SKLADOWA-ZEROWA: zespół uziemiający ZU pola UZIEMIAJĄCEGO (rola `EARTHING`,
+    # ENEA Zeszyt 1 zał. Z.13–Z.15). `None` = pole bez danych zespołu (zwarcie doziemne sekcji
+    # nazywa ten brak przyczyną `BRAK_DANYCH`); poza odciskiem, gdy `None` (`enm/hash.py`).
+    zespol_uziemiajacy: ZespolUziemiajacy | None = None
 
     @model_validator(mode="after")
     def _wlasciciel_pola(self) -> Bay:
@@ -1355,6 +1415,11 @@ class Bay(ENMElement):
         if self.branch_point_port_id is not None and not ma_punkt:
             raise ValueError(
                 f"pole {self.ref_id!r}: branch_point_port_id dotyczy wyłącznie pola ZKSN"
+            )
+        if self.zespol_uziemiajacy is not None and self.bay_role != "EARTHING":
+            raise ValueError(
+                f"pole {self.ref_id!r}: zespół uziemiający należy wyłącznie do pola zespołu "
+                "uziemiającego"
             )
         return self
 

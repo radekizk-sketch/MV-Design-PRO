@@ -31,6 +31,25 @@ export interface GroundingConfig {
   x_ohm?: number | null;
 }
 
+/** Układ transformatora uziemiającego zespołu uziemiającego (lustro
+ *  `enm.models.UkladTransformatoraUziemiajacego`): zygzak albo gwiazda–trójkąt. */
+export type UkladTransformatoraUziemiajacego = 'ZN' | 'YNd';
+
+/** Zespół uziemiający ZU pola uziemiającego sekcji SN (lustro `enm.models.ZespolUziemiajacy`,
+ *  karta GPZ-H5-SKLADOWA-ZEROWA; ENEA Zeszyt 1 zał. Z.13–Z.15). Sieć składowej zerowej stawia
+ *  w węźle szyny pola bocznik `Z_0,ZU + 3·Z_N`; brak danych to przyczyna braku wyniku
+ *  zwarcia doziemnego (BRAK_DANYCH), nigdy wartość przyjęta po cichu. */
+export interface ZespolUziemiajacy {
+  uklad: UkladTransformatoraUziemiajacego;
+  /** Impedancja zerowa transformatora uziemiającego [Ω/fazę], bez 3·Z_N. */
+  r0_ohm?: number | null;
+  x0_ohm?: number | null;
+  /** Sposób uziemienia punktu neutralnego (dławik, rezystor, bezpośrednio, odłączony). */
+  punkt_neutralny?: GroundingConfig | null;
+  /** Rezystor równoległy do dławika (zał. Z.14) [Ω]. */
+  rezystor_rownolegly_ohm?: number | null;
+}
+
 export interface BusLimits {
   u_min_pu?: number | null;
   u_max_pu?: number | null;
@@ -1194,6 +1213,8 @@ export interface Bay extends ENMElement {
   wybor_bloku?: WyborBlokuPola | null;
   metadane_pochodzenia?: MetadanePochodzeniaPola | null;
   surge_arresters?: OgranicznikPrzepiecPola[];
+  /** Zespół uziemiający — wyłącznie w polu roli `EARTHING` (karta GPZ-H5-SKLADOWA-ZEROWA). */
+  zespol_uziemiajacy?: ZespolUziemiajacy | null;
   gpz_section_id?: string | null;
   equipment_refs: string[];
   protection_ref?: string | null;

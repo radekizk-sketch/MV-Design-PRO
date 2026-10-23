@@ -141,7 +141,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -195,7 +196,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -249,7 +251,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/002/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -303,7 +306,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/002/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -342,7 +346,8 @@
           "gpz_sn_coupler_field"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       }
     ],
     "branch_points": [],

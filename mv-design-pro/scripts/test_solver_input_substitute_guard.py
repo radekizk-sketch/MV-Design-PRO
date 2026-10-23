@@ -1948,7 +1948,17 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # odslonilo zastane `payload.get("sections_count", ...) or 1` (zadane 0 -> po cichu jedna
     # sekcja) — naprawione u zrodla (odmowa zakresu), nie dopisane do budzetu. PASS
     # niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4355." in wyjscie, wyjscie
+    # Karta GPZ-H5-SKLADOWA-ZEROWA (2026-10-22): 4355 -> 4361 — POMIAR `contract_fields()` na
+    # bazie karty `88557ceb7` (`git archive`: 4355, pin zgodny) i na drzewie karty (4361).
+    # Roznica zbiorow (`comm -3` dwoch zrzutow) +7, -1: rekord zespolu uziemiajacego pola
+    # uziemiajacego SN (`zespol_uziemiajacy`, `punkt_neutralny`, `rezystor_rownolegly_ohm`),
+    # impedancje punktow neutralnych w modelu zerowym transformatora (`zn_hv_ohm`,
+    # `zn_lv_ohm`), przyczyny braku wyniku zwarcia doziemnego (`przyczyny_braku_z0`,
+    # `brakujace_pola`); skasowane `wezly_bez_drogi_zerowej` (jeden zbior „bez drogi” zastapiony
+    # trzema przyczynami). Nowa skala napieciowa impedancji zerowej transformatora odslonila
+    # podstawienie `1.0` za brak napiecia wezla — naprawione u zrodla (odmowa nazwana), nie
+    # dopisane do budzetu. PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4361." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2217,7 +2227,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta GPZ-H5-BACKEND (2026-10-22): 588 -> 590 (+2 enm: `enm/rezerwa_gpz.py` — tryb
         # rezerwy i stany normalne łączników szyn GPZ, `enm/czyszczenie_odwolan.py` — jedno
         # czyszczenie odwołań kasowanego elementu); pomiar guardem na drzewie karty.
-        "Przeskanowano 590 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta GPZ-H5-SKLADOWA-ZEROWA (2026-10-22): 590 -> 591 (+1 enm:
+        # `enm/przyczyny_zwarcia_doziemnego.py` — jedno zrodlo przyczyny braku wyniku zwarcia
+        # doziemnego, zero wpisow w zapadce i wykluczeniach); pomiar guardem na drzewie karty.
+        "Przeskanowano 591 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2482,7 +2495,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # = 71; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie scalonym.
         # Karta GPZ-H5-BACKEND (2026-10-22): enm 71 -> 73 (+2 `rezerwa_gpz.py`,
         # `czyszczenie_odwolan.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=73, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta GPZ-H5-SKLADOWA-ZEROWA (2026-10-22): enm 73 -> 74 (+1
+        # `przyczyny_zwarcia_doziemnego.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem.
+        "  enm: pliki_skanowane=74, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

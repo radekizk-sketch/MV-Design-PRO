@@ -36,15 +36,26 @@ WARTOSCI: dict[str, Any] = {
     "wybor_bloku": {"factory_configuration_ref": "blok", "factory_unit_index": 1},
     "metadane_pochodzenia": {"bay_kind": "liniowe_doplywowe"},
     "surge_arresters": [{"device_ref": "ogr"}],
+    # Karta GPZ-H5-SKLADOWA-ZEROWA: zespół uziemiający — dopuszczalny wyłącznie w polu
+    # uziemiającym (`Bay._wlasciciel_pola`), więc rekord testowy dostaje rolę EARTHING.
+    "zespol_uziemiajacy": {
+        "uklad": "ZN",
+        "r0_ohm": 2.0,
+        "x0_ohm": 6.0,
+        "punkt_neutralny": {"type": "resistor_grounded", "r_ohm": 20.0},
+    },
 }
 
+#: Pola, które rekord pola przyjmuje wyłącznie w określonej roli (rola rekordu testowego).
+ROLA_POLA: dict[str, str] = {"zespol_uziemiajacy": "EARTHING"}
 
-def _enm(**pola: Any) -> EnergyNetworkModel:
+
+def _enm(rola: str = "IN", **pola: Any) -> EnergyNetworkModel:
     return EnergyNetworkModel(
         header=ENMHeader(name="hash-w5b"),
         buses=[Bus(ref_id="b", name="B", voltage_kv=15.0)],
         substations=[Substation(ref_id="s", name="S", station_type="mv_lv", bus_refs=["b"])],
-        bays=[Bay(ref_id="p", name="P", bay_role="IN", substation_ref="s", bus_ref="b", **pola)],
+        bays=[Bay(ref_id="p", name="P", bay_role=rola, substation_ref="s", bus_ref="b", **pola)],
     )
 
 
@@ -59,8 +70,9 @@ def test_rejestr_nazywa_kazde_nowe_pole_bay() -> None:
     assert set(NOWE_POLA_BAY) == set(WARTOSCI) | {"branch_point_ref", "branch_point_port_id"}
 
 
-def test_rekord_bez_nowych_wartosci_haszuje_jak_przed_karta() -> None:
-    enm = _enm()
+@pytest.mark.parametrize("rola", ["IN", "EARTHING"])
+def test_rekord_bez_nowych_wartosci_haszuje_jak_przed_karta(rola: str) -> None:
+    enm = _enm(rola)
     sprzed = _sprzed_karty(enm)
     assert hash_migawki_enm(enm.model_dump(mode="json")) == hash_migawki_enm(copy.deepcopy(sprzed))
     assert compute_enm_hash(enm) == hash_migawki_enm(sprzed)
@@ -69,7 +81,8 @@ def test_rekord_bez_nowych_wartosci_haszuje_jak_przed_karta() -> None:
 
 @pytest.mark.parametrize("pole", sorted(WARTOSCI))
 def test_nadana_wartosc_zmienia_odcisk(pole: str) -> None:
-    bez, z_wartoscia = _enm(), _enm(**{pole: WARTOSCI[pole]})
+    rola = ROLA_POLA.get(pole, "IN")
+    bez, z_wartoscia = _enm(rola), _enm(rola, **{pole: WARTOSCI[pole]})
     assert compute_enm_hash(bez) != compute_enm_hash(z_wartoscia)
     assert hash_migawki_enm(bez.model_dump(mode="json")) != hash_migawki_enm(
         z_wartoscia.model_dump(mode="json")

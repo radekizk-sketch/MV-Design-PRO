@@ -177,7 +177,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -231,7 +232,8 @@
           "gpz_line_field"
         ],
         "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -277,7 +279,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/000",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -324,7 +327,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/001",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -371,7 +375,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/002",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -418,7 +423,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/003",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -473,7 +479,8 @@
           "station_sn_field"
         ],
         "terminal_bus_ref": "stn/298177b52cf4013c836740b86946c50f/sn_field_terminal/004",
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       },
       {
         "apparatus_catalog_ref": null,
@@ -512,7 +519,8 @@
           "nn_main_breaker"
         ],
         "terminal_bus_ref": null,
-        "wybor_bloku": null
+        "wybor_bloku": null,
+        "zespol_uziemiajacy": null
       }
     ],
     "branch_points": [],

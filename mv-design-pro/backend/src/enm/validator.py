@@ -36,6 +36,7 @@ from .interlock_rules import earthing_interlock_violation
 from .migrations.promocja_aparatow_nn import META_KLUCZ_NN_PROMOCJA_BEZ_WIAZANIA
 from .models import (
     GEN_TYPES_PRZEKSZTALTNIKOWE,
+    Bay,
     Branch,
     Cable,
     EnergyNetworkModel,
@@ -107,7 +108,11 @@ from .tor_pola import (
     naruszenia_zasady_toru,
 )
 from .uklad_sieci_nn import transformatory_bez_ukladu_nn
-from .uziemienie import blad_konfiguracji_uziemienia, uziemienie_grounded
+from .uziemienie import (
+    blad_konfiguracji_uziemienia,
+    opis_uziemienia_dotyczy_szyny_zrodla,
+    uziemienie_grounded,
+)
 from .zajetosc_pol import zajetosc_pol
 from .zero_sequence_transformer import ZeroSeqConnection, build_transformer_zero_seq_model
 from .zrodlo_zwarcie import PASMO_U_SET_PU, dane_zwarciowe_zrodla, u_set_pu_w_pasmie
@@ -2852,11 +2857,52 @@ class ENMValidator:
         def _ta_sama(a: GroundingConfig, b: GroundingConfig) -> bool:
             return (a.type, a.r_ohm, a.x_ohm) == (b.type, b.r_ohm, b.x_ohm)
 
-        fizyka = [_uziemienie_sn(t) for t in z_droga] or [GroundingConfig(type="isolated")]
+        # Karta GPZ-H5-SKLADOWA-ZEROWA: zespół uziemiający (transformator ZN/YNd z punktem
+        # neutralnym) w polu uziemiającym sieci SN zasilanej przez te transformatory jest
+        # TĄ SAMĄ fizyką punktu neutralnego, którą czyta solver 1F (bocznik w sieci
+        # składowej zerowej, `mapping._assemble_zero_sequence_y0`). Sieć SN = składowa
+        # spójna szyn dolnych w grafie elementów „w ruchu” BEZ transformatorów.
+        podzial = podziel_krawedzie(enm)
+        skladowe = skladowe_spojne(
+            podzial.szyny,
+            ((k.szyna_a, k.szyna_b) for k in podzial.w_ruchu if k.rodzaj != "transformator"),
+        )
+        skladowa_szyny = {szyna: skladowa for skladowa in skladowe for szyna in skladowa}
+        szyny_sn = {
+            szyna
+            for trafo in transformatory
+            for szyna in skladowa_szyny.get(trafo.lv_bus_ref, (trafo.lv_bus_ref,))
+        }
+        zespoly: list[tuple[Bay, GroundingConfig]] = []
+        for pole_uz in sorted(enm.bays, key=lambda b: b.ref_id):
+            zespol = pole_uz.zespol_uziemiajacy
+            if (
+                pole_uz.bay_role == "EARTHING"
+                and zespol is not None
+                and zespol.punkt_neutralny is not None
+                and zespol.punkt_neutralny.type != "isolated"
+                and (pole_uz.terminal_bus_ref or pole_uz.bus_ref) in szyny_sn
+            ):
+                zespoly.append((pole_uz, zespol.punkt_neutralny))
+        fizyka = [_uziemienie_sn(t) for t in z_droga] + [pn for _, pn in zespoly] or [
+            GroundingConfig(type="isolated")
+        ]
         if any(_ta_sama(opis, f) for f in fizyka):
             return
         etykieta = ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(opis.type, opis.type)
-        if not z_droga:
+        if zespoly:
+            uziemienia_zu = "; ".join(
+                f"{opis_obiektu(pole_uz, 'Pole uziemiające')}: "
+                f"{ETYKIETA_PL_PUNKTU_NEUTRALNEGO.get(pn.type, '?')}"
+                + (f", R_N {pn.r_ohm} Ω" if pn.r_ohm else "")
+                + (f", X_N {pn.x_ohm} Ω" if pn.x_ohm else "")
+                for pole_uz, pn in zespoly
+            )
+            przyczyna = (
+                "a sieć SN jest uziemiona przez zespół uziemiający, który czyta zwarcie 1F, "
+                f"inaczej ({uziemienia_zu}) — opis i fizyka są sprzeczne"
+            )
+        elif not z_droga:
             grupy = "; ".join(
                 f"{opis_obiektu(t, 'Transformator')}: {t.vector_group or 'brak grupy'}"
                 for t in transformatory
@@ -2892,8 +2938,9 @@ class ENMValidator:
                     "Opisz punkt neutralny SN tak, jak uziemione jest uzwojenie SN "
                     "transformatorów WN/SN (grupa Yd11 — sieć SN izolowana), albo zmień "
                     "transformator lub uziemienie jego punktu neutralnego SN; sieć uziemioną "
-                    "przez transformator uziemiający opisz równoważnikiem na szynach SN "
-                    "z R0/X0 (Z0/Z1)."
+                    "przez transformator uziemiający opisz zespołem uziemiającym w polu "
+                    "uziemiającym rozdzielnicy SN (transformator ZN/YNd, R0/X0, punkt "
+                    "neutralny) i opisz punkt neutralny sieci tak, jak uziemia go ten zespół."
                 ),
                 fix_action=FixAction(
                     action_type="OPEN_MODAL",
@@ -2955,10 +3002,8 @@ class ENMValidator:
                 )
                 continue
             bus = bus_by_ref.get(source.bus_ref)
-            po_stronie_sn = (
-                source.source_side != "HV_110"
-                and bus is not None
-                and pasmo_napieciowe(bus.voltage_kv) == "SN"
+            po_stronie_sn = bus is not None and opis_uziemienia_dotyczy_szyny_zrodla(
+                source.source_side, pasmo_napieciowe(bus.voltage_kv)
             )
             if not po_stronie_sn:
                 # Karta GPZ-MODEL: przy równoważniku sieci 110 kV opis punktu neutralnego

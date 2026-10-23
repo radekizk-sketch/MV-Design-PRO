@@ -8,6 +8,9 @@ CO TU JEST (moduł-liść: wyłącznie stdlib, importowany przez ``enm/models.py
   Ten sam warunek czyta walidator (``E-W5-01``), operacje domenowe (odmowa
   nazwana na wejściu) i model składowej zerowej (odmowa fizyki) — predykaty
   parami z jednego źródła prawdy.
+* ``opis_uziemienia_dotyczy_szyny_zrodla`` — czy opis punktu neutralnego źródła dotyczy
+  jego własnej szyny (źródło SN), czy sieci SN za transformatorem (równoważnik 110 kV);
+  czytają go walidator i budowa sieci składowej zerowej.
 * ``migruj_uziemienie_slownika`` — migracja przy wczytaniu (Pydantic
   ``model_validator(mode="before")`` na ``EnergyNetworkModel``): skasowane
   reprezentacje zastanego zapisu przenoszone do jedynych nośników:
@@ -63,6 +66,20 @@ def blad_konfiguracji_uziemienia(
 def uziemienie_grounded(typ: str | None) -> bool:
     """Czy typ opisuje punkt neutralny POŁĄCZONY z ziemią (fizyka stawia 3·Z_N)."""
     return typ in ("directly_grounded", "resistor_grounded", "petersen_coil")
+
+
+def opis_uziemienia_dotyczy_szyny_zrodla(source_side: str | None, pasmo_szyny: str | None) -> bool:
+    """Czy ``Source.neutral_grounding`` opisuje punkt neutralny sieci NA SZYNIE źródła.
+
+    Źródło po stronie SN (``source_side`` inne niż ``HV_110`` i szyna w paśmie SN) — opis
+    dotyczy jego własnego bocznika zerowego (dławik, rezystor, izolacja na tej szynie).
+    Równoważnik sieci 110 kV (``HV_110`` albo szyna poza pasmem SN) — opis dotyczy sieci SN
+    ZA transformatorem WN/SN (W5-A, karta GPZ-MODEL), a impedancja zerowa równoważnika jest
+    uziemieniem sieci 110 kV. Ten sam predykat czyta walidator (``E-W5-01``) i budowa sieci
+    składowej zerowej (``enm/mapping.py``) — predykaty parami z jednego źródła prawdy.
+    ``pasmo_szyny`` — wynik ``network_model.pochodne.pasma_napieciowe.pasmo_napieciowe``
+    (moduł-liść bierze go parametrem)."""
+    return source_side != "HV_110" and pasmo_szyny == "SN"
 
 
 @dataclass(frozen=True)

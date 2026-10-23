@@ -1316,7 +1316,7 @@
     "scenario_id": "MAX",
     "station_ref": "stAB"
   },
-  "projection_hash": "185bf90dbf2e920917f6ff326b9fb759cef7bf60a88c9b755e7d05ff8e995161",
+  "projection_hash": "a4f5476f647e69e6d04b808bc7e673fedcfb2be14a88931ef16d396fd542cfe4",
   "result_snapshot": {
     "analysis_type": null,
     "overlay_payload": null,
@@ -2958,7 +2958,7 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": "Źródło 'src2' wskazuje nieistniejącą szynę 'sn2' — walidator ENM zgłasza `sources.bus_missing`; assembler nie pomija źródeł po cichu.",
+      "z0_missing_reason_pl": "Z0 sieci SN nieobliczalne — brak danych składowej zerowej elementów na drodze do ziemi (GPZ Północ — brak impedancji zerowej równoważnika sieci). Zwarcie doziemne nie jest liczone, dopóki tych danych nie uzupełnisz — brak danej nie jest ani uziemieniem, ani jego brakiem.",
       "z0_ohm": null,
       "z1_ohm": {
         "r": 0.1,
@@ -2996,7 +2996,7 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": "Źródło 'src' wskazuje nieistniejącą szynę 'sn' — walidator ENM zgłasza `sources.bus_missing`; assembler nie pomija źródeł po cichu.",
+      "z0_missing_reason_pl": "Z0 sieci SN nieobliczalne — brak danych składowej zerowej elementów na drodze do ziemi (GPZ Południe — brak impedancji zerowej równoważnika sieci). Zwarcie doziemne nie jest liczone, dopóki tych danych nie uzupełnisz — brak danej nie jest ani uziemieniem, ani jego brakiem.",
       "z0_ohm": null,
       "z1_ohm": {
         "r": 0.12,

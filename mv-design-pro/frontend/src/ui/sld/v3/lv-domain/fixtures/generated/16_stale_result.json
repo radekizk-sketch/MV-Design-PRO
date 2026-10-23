@@ -966,7 +966,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "975f8796649bdbd065ac74a040a2727a3e0dd68aea3d75954c7d069de7511486",
+  "projection_hash": "cd39376a7a03d15a9f91b205789ac4a9b32f9e609849f49e5248bd8ce32c2586",
   "result_snapshot": {
     "analysis_type": "LOAD_FLOW",
     "overlay_payload": {
@@ -3115,7 +3115,7 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": "Sieć SN bez drogi prądu zerowego do ziemi (punkt neutralny nieuziemiony w danych, brak danych składowej zerowej gałęzi albo pojemności doziemnej B0) — Z0 nieobliczalne.",
+      "z0_missing_reason_pl": "Z0 sieci SN nieobliczalne — brak danych składowej zerowej elementów na drodze do ziemi (GPZ — brak impedancji zerowej równoważnika sieci). Zwarcie doziemne nie jest liczone, dopóki tych danych nie uzupełnisz — brak danej nie jest ani uziemieniem, ani jego brakiem.",
       "z0_ohm": null,
       "z1_ohm": {
         "r": 0.1,

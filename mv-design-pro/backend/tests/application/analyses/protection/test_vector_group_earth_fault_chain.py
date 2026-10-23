@@ -20,9 +20,10 @@ Skutek fizyczny (IEC 60909, składowe symetryczne): Z0(Dyn) < Z0(YNyn) ⇒
 |Z1+Z2+Z0|(Dyn) < |…|(YNyn) ⇒ I″k1(Dyn) > I″k1(YNyn).
 
 Wartości referencyjne (hand-calc, słabe źródło HV r0=2, x0=20 Ω):
-    Z_T0 na nN = 0.0396 + j0.98921 Ω (uk=11%, pk=110 kW, 25 MVA, 15 kV) —
-    NIEZALEŻNE od źródła dla Dyn (delta blokuje), więc I″k1(Dyn)=9750.24 A stałe;
-    YNyn: I″k1=8649.10 A (Z0 powiększone o drogę szeregową źródła).
+    Z_T0 na nN = K_T·(0.0396 + j0.98921) Ω (uk=11%, pk=110 kW, 25 MVA, 15 kV; K_T wg
+    IEC 60909-0:2016 §6.3.3 także dla impedancji zerowej transformatora) —
+    NIEZALEŻNE od źródła dla Dyn (delta blokuje), I″k1(Dyn)=8902.63 A;
+    YNyn: I″k1=7975.29 A (Z0 powiększone o drogę szeregową źródła).
 
 KASACJA (karta W3-C1, 2026-09): konsument ziemnozwarciowy 50N/51N
 (``application/analyses/protection/overcurrent/**``, metodyka V12K-189) miał
@@ -69,6 +70,17 @@ def _hand_zt0_ohm_lv() -> complex:
     x_pu = math.sqrt(z_pu * z_pu - r_pu * r_pu)
     z_base_lv = (_ULV_KV**2) / _SN_MVA
     return complex(r_pu, x_pu) * z_base_lv
+
+
+def _hand_kt() -> float:
+    """K_T = 0,95·c_max/(1 + 0,6·x_T) (IEC 60909-0:2016 wzór 12a), c_max = 1,1 (strona 15 kV).
+
+    x_T = √(0,11² − 0,0044²) = 0,109912 ⇒ K_T = 1,045/1,065947 = 0,980349. §6.3.3 normy:
+    K_T stosuje się TAKŻE do impedancji zerowej transformatora (karta GPZ-H5-SKLADOWA-ZEROWA)."""
+    z_pu = _UK_PCT / 100.0
+    r_pu = (_PK_KW / 1000.0) / _SN_MVA
+    x_t = math.sqrt(z_pu * z_pu - r_pu * r_pu)
+    return 0.95 * 1.1 / (1.0 + 0.6 * x_t)
 
 
 def _run_1ph_on_lv(vector_group: str, c_factor: float = 1.1) -> ShortCircuitResult:
@@ -129,9 +141,19 @@ def _run_1ph_on_lv(vector_group: str, c_factor: float = 1.1) -> ShortCircuitResu
 
 class TestGroupControlsEarthFaultCurrent:
     def test_delta_blocks_source_zero_sequence(self) -> None:
-        """Dyn: strona nN widzi w Z0 TYLKO Z_T0 (delta HV izoluje Z0 źródła)."""
+        """Dyn: strona nN widzi w Z0 TYLKO K_T·Z_T0 (delta HV izoluje Z0 źródła)."""
         r = _run_1ph_on_lv("Dyn11")
-        assert r.z0_ohm == pytest.approx(_hand_zt0_ohm_lv())
+        assert r.z0_ohm == pytest.approx(_hand_kt() * _hand_zt0_ohm_lv())
+
+    def test_ynyn_series_path_hand_calc(self) -> None:
+        """YNyn: Z0 = K_T·Z_T0 + Z0_src·(U_nN/U_WN)² — K_T wyłącznie na transformatorze.
+
+        Z0_src na 15 kV = (2 + j20)·(15/110)² = 0,037190 + j0,371901 Ω;
+        K_T·Z_T0 = 0,980349·(0,0396 + j0,989208) = 0,038822 + j0,969769 Ω;
+        Z0 = 0,076012 + j1,341670 Ω."""
+        r = _run_1ph_on_lv("YNyn0")
+        z_src0_lv = complex(_SRC_R0, _SRC_X0) * (_ULV_KV / _UHV_KV) ** 2
+        assert r.z0_ohm == pytest.approx(_hand_kt() * _hand_zt0_ohm_lv() + z_src0_lv)
 
     def test_ynyn_series_path_raises_z0_and_lowers_current(self) -> None:
         """YNyn: droga szeregowa dokłada Z0 źródła ⇒ Z0 większe, I″k1 mniejszy niż Dyn."""
@@ -153,6 +175,12 @@ class TestGroupControlsEarthFaultCurrent:
         systemowego była ZWIERANA (wirtualny węzeł ziemi uziemiany admitancją
         idealną); teraz zasilanie jest SEM za Z_Q (IEC 60909-0 §3.2), więc realnie
         wchodzi do składowej zgodnej i prąd 1F jest odpowiednio mniejszy.
+
+        RE-BASELINE (karta GPZ-H5-SKLADOWA-ZEROWA, IEC 60909-0:2016 §6.3.3): Dyn
+        8849.00 → 8902.63 A, YNyn 7932.23 → 7975.29 A. Z1 = Z2 bez zmian; Z0 transformatora
+        dostaje współczynnik K_T = 0,980349 (wcześniej K_T korygował wyłącznie składową
+        zgodną). Dyn: |2·Z1 + Z0| = |0,146218 + j3,206826| = 3,210158 Ω ⇒
+        I″k1 = √3·1,1·15 kV/3,210158 Ω = 8902,63 A.
         """
-        assert _run_1ph_on_lv("Dyn11").ikss_a == pytest.approx(8849.00, rel=1e-4)
-        assert _run_1ph_on_lv("YNyn0").ikss_a == pytest.approx(7932.23, rel=1e-4)
+        assert _run_1ph_on_lv("Dyn11").ikss_a == pytest.approx(8902.63, rel=1e-4)
+        assert _run_1ph_on_lv("YNyn0").ikss_a == pytest.approx(7975.29, rel=1e-4)

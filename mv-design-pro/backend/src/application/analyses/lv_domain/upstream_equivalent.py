@@ -89,9 +89,9 @@ def _hv_zero_sequence_ohm(
     solver zwarciowy używa dla zwarć 1F/2F+G) + `short_circuit_core.build_zbus`
     WYŁĄCZNIE dla indeksu węzła/z_base (deterministyczne, dzielą kolejność
     węzłów z `zbuduj_siec_zerowa` — udokumentowane wprost w jej
-    docstringu). Zwraca `(None, powód_pl)` gdy sieć zerowa jest osobliwa
-    (brak drogi powrotu prądu zerowego do ziemi — sieć izolowana bez B0) —
-    NIGDY fabrykowane zero.
+    docstringu). Zwraca `(None, powód_pl)` gdy impedancja zerowa węzła nie
+    jest obliczalna — przyczyna (brak danych, fizyczny brak drogi) z
+    `SiecSkladowejZerowej.przyczyny_dla("impedancja_z0")` — NIGDY fabrykowane zero.
     """
     try:
         graph = map_enm_to_network_graph(enm)
@@ -112,14 +112,13 @@ def _hv_zero_sequence_ohm(
         siec_zerowa = zbuduj_siec_zerowa(enm, graph)
     except OdmowaDanychError as exc:
         return None, str(exc)
-    # Karta GPZ-H5: węzeł bez drogi prądu zerowego do ziemi nie ma Z0 — dawniej macierz
-    # niosła w tym miejscu sfabrykowane Z0 ≈ 0 (bocznik 1e6 pu), czyli uziemienie bezpośrednie.
-    if hv_node_id in siec_zerowa.wezly_bez_drogi_zerowej:
-        return None, (
-            "Sieć SN bez drogi prądu zerowego do ziemi (punkt neutralny nieuziemiony w danych, "
-            "brak danych składowej zerowej gałęzi albo pojemności doziemnej B0) — Z0 "
-            "nieobliczalne."
-        )
+    # Karta GPZ-H5-SKLADOWA-ZEROWA: kotwica potrzebuje impedancji zerowej sieci SN (nie
+    # zwarcia doziemnego w niej) — wymaganie `impedancja_z0`, to samo co zwarcie 2F+Z biegu:
+    # sieć kompensowana i izolowana mają Z0 (dławik, pojemności doziemne); brak danych
+    # i fizyczny brak drogi — przyczyna z tego samego źródła co bieg zwarć.
+    przyczyna = siec_zerowa.przyczyny_dla("impedancja_z0").get(hv_node_id)
+    if przyczyna is not None:
+        return None, f"Z0 sieci SN nieobliczalne — {przyczyna.opis_pl}"
     z0_bus = siec_zerowa.z0_bus
     z_base_ohm = builder.get_zbase_ohm(hv_node_id)
     z0_ohm = complex(z0_bus[node_index, node_index]) * z_base_ohm

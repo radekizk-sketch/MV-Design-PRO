@@ -63,6 +63,20 @@ def _hand_zt0_ohm_lv() -> complex:
     return complex(r_pu, x_pu) * z_base_lv
 
 
+def _hand_kt() -> float:
+    """K_T = 0,95·c_max/(1 + 0,6·x_T) (IEC 60909-0:2016 wzór 12a), c_max = 1,1 (SN 15 kV).
+
+    x_T = √(0,11² − 0,0044²) = 0,109912; K_T = 1,045/1,065947 = 0,980349. Karta
+    GPZ-H5-SKLADOWA-ZEROWA: §6.3.3 normy stosuje K_T TAKŻE do impedancji zerowej
+    transformatora (3·Z_N bez korekcji) — sieć zerowa zwarć bierze K_T z tej samej gałęzi grafu
+    co sieć zgodna; model czysty transformatora (`build_transformer_zero_seq_model`) zostaje
+    nieskorygowany."""
+    z_pu = _UK_PCT / 100.0
+    r_pu = (_PK_KW / 1000.0) / _SN_MVA
+    x_t = math.sqrt(z_pu * z_pu - r_pu * r_pu)
+    return 0.95 * 1.1 / (1.0 + 0.6 * x_t)
+
+
 def _mk_transformer(vector_group, hv_neutral=None, lv_neutral=None) -> Transformer:
     return Transformer(
         ref_id="tr1",
@@ -255,7 +269,7 @@ def _build_network(source_z0=(0.16, 1.6), vector_group="Dyn11"):
 
 class TestHandCalc1F:
     def test_z0_at_lv_equals_transformer_leakage(self):
-        """Dyn: strona LV (yn) widzi TYLKO Z_T0 do ziemi (delta blokuje sieć HV)."""
+        """Dyn: strona LV (yn) widzi TYLKO K_T·Z_T0 do ziemi (delta blokuje sieć HV)."""
         enm, graph, lv = _build_network()
         z0_bus = zbuduj_siec_zerowa(enm, graph).z0_bus
         result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
@@ -266,7 +280,7 @@ class TestHandCalc1F:
             z0_bus=z0_bus,
             czas_tb=czas_tb_roboczy(),
         )
-        assert result.z0_ohm == pytest.approx(_hand_zt0_ohm_lv())
+        assert result.z0_ohm == pytest.approx(_hand_kt() * _hand_zt0_ohm_lv())
 
     def test_ik1_matches_iec_formula(self):
         """I_k1'' = √3·c·U_n / |Z1 + Z2 + Z0| (IEC 60909, składowe symetryczne)."""
@@ -284,7 +298,14 @@ class TestHandCalc1F:
         ik1_hand = math.sqrt(3.0) * 1.1 * (_ULV_KV * 1000.0) / z_sum
         assert result.ikss_a == pytest.approx(ik1_hand)
         # Hand-calc wartości referencyjne (dla audytu): Z1 = Z2 = 0.053698 + j1.118529 Ω;
-        # Z0 = 0.0396 + j0.98921 Ω; |Z1+Z2+Z0| = 3.229612 Ω; I_k1'' ≈ 8849.00 A.
+        # Z0 = K_T·Z_T0 = 0.980349·(0.0396 + j0.989208) = 0.038822 + j0.969769 Ω;
+        # |Z1+Z2+Z0| = |0.146218 + j3.206827| = 3.210159 Ω;
+        # I_k1'' = √3·1,1·15 000/3.210159 ≈ 8902.63 A.
+        #
+        # RE-BASELINE 8849.00 → 8902.63 A (karta GPZ-H5-SKLADOWA-ZEROWA): IEC 60909-0:2016
+        # §6.3.3 stosuje K_T także do impedancji zerowej transformatora; dotąd sieć zerowa
+        # brała Z_T0 bez korekcji (Z0 = 0.0396 + j0.98921 Ω), wbrew normie i niespójnie
+        # z siecią zgodną tej samej gałęzi.
         #
         # RE-BASELINE 9750.24 → 8849.00 A (V12K-184). Asercja formuły wyżej trzyma
         # bez zmian — zmieniło się WEJŚCIE, nie sposób liczenia. Z0 pozostało
@@ -296,7 +317,7 @@ class TestHandCalc1F:
         # (1e6 pu), co ZWIERAŁO Z_Q — impedancja sieci nie wchodziła do składowej
         # zgodnej wcale. Teraz jest SEM za Z_Q (bocznik Y_Q = 1/Z_Q, IEC 60909-0 §3.2),
         # więc prąd doziemny jest mniejszy — kierunek zmiany jest fizycznie poprawny.
-        assert result.ikss_a == pytest.approx(8849.00, rel=1e-4)
+        assert result.ikss_a == pytest.approx(8902.63, rel=1e-4)
 
     def test_delta_blocks_source_zero_sequence(self):
         """Dyn: strona trójkąta (HV) izoluje Z0 źródła — 10× zmiana Z0 źródła
@@ -447,21 +468,36 @@ class TestPustaSiecZ0:
 
 class TestLineShuntCapacitanceZ0:
     def test_isolated_network_without_b0_has_no_zero_sequence_path(self):
-        """Kontrolne: bez B0 (jak przed naprawą) sieć SN CAŁKOWICIE izolowana nie ma drogi
-        prądu zerowego do ziemi. Karta GPZ-H5: to JAWNY brak per węzeł (oba węzły SN
-        w ``wezly_bez_drogi_zerowej``), nie odmowa całej macierzy — szyna 110 kV ze źródłem
-        z Z0 zostaje liczalna. Obserwowana naprawa B0 (test niżej) WYMAGA bocznika B0."""
+        """Kontrolne: bez B0 sieć SN CAŁKOWICIE izolowana (Dyn11 z punktem yn izolowanym) nie
+        ma drogi prądu zerowego do ziemi. Karta GPZ-H5-SKLADOWA-ZEROWA: to JAWNA przyczyna per
+        węzeł — FIZYCZNY brak drogi z elementem, który ją przerywa (punkt neutralny izolowany),
+        nie brak danych i nie odmowa całej macierzy — szyna 110 kV ze źródłem z Z0 zostaje
+        liczalna. Blok bez żadnego bocznika: ta sama przyczyna dla zwarcia 1F i dla
+        impedancji zerowej (2F+Z, kotwica nN)."""
         enm, graph, b2, _, _, _, _ = _build_isolated_cable_network(b0_siemens_per_km=0.0)
         siec = zbuduj_siec_zerowa(enm, graph)
         wezel = {n.name: n.id for n in graph.nodes.values()}
-        assert siec.wezly_bez_drogi_zerowej == frozenset({wezel["LV"], b2})
-        assert wezel["HV"] not in siec.wezly_bez_drogi_zerowej
+        for wymaganie in ("zwarcie_1f", "impedancja_z0"):
+            przyczyny = siec.przyczyny_dla(wymaganie)
+            assert set(przyczyny) == {wezel["LV"], b2}
+            assert wezel["HV"] not in przyczyny
+            przyczyna = przyczyny[b2]
+            assert przyczyna.status == "BRAK_DROGI_FIZYCZNEJ"
+            assert [e.ref_id for e in przyczyna.elementy] == ["tr1"]
+            assert "izolowany" in przyczyna.elementy[0].opis_pl
 
-    def test_isolated_network_with_b0_has_zero_sequence_path(self):
-        """Para predykatu: ta sama sieć z B0 > 0 ma drogę prądu zerowego (pojemność
-        doziemna) — żaden węzeł nie jest wykluczony."""
-        enm, graph, _, _, _, _, _ = _build_isolated_cable_network(b0_siemens_per_km=3.0e-6)
-        assert zbuduj_siec_zerowa(enm, graph).wezly_bez_drogi_zerowej == frozenset()
+    def test_isolated_network_with_b0_capacitive_path_is_not_short_circuit(self):
+        """Para predykatu: ta sama sieć z B0 > 0 ma drogę WYŁĄCZNIE pojemnościową — macierz Z0
+        istnieje (test niżej sprawdza ją rachunkiem ręcznym), ale doziemienie w sieci
+        izolowanej nie jest zwarciem IEC 60909-0 (rozdz. 1 i 3): zwarcie 1F — NIE_DOTYCZY
+        z nazwaną drogą pojemnościową (dawniej liczono „I″k1” z prądu pojemnościowego);
+        impedancja zerowa (zwarcie 2F+Z, kotwica nN) — obliczalna, bez przyczyny."""
+        enm, graph, b2, _, _, _, _ = _build_isolated_cable_network(b0_siemens_per_km=3.0e-6)
+        siec = zbuduj_siec_zerowa(enm, graph)
+        przyczyna = siec.przyczyny_dla("zwarcie_1f")[b2]
+        assert przyczyna.status == "NIE_DOTYCZY"
+        assert "izolowana" in przyczyna.opis_pl and "pojemnościowym" in przyczyna.opis_pl
+        assert b2 not in siec.przyczyny_dla("impedancja_z0")
 
     def test_isolated_network_z0_matches_hand_calc_series_shunt_circuit(self):
         """Hand-calc niezależny (obwód 2-węzłowy szereg+bocznik, algebra
@@ -550,7 +586,7 @@ class TestHandCalc2FZ:
         # voltage_factor dla 2F-Z = 1.0
         ik_hand = 1.1 * (_ULV_KV * 1000.0) / abs(z_k_hand)
         assert result.ikss_a == pytest.approx(ik_hand)
-        assert result.z0_ohm == pytest.approx(_hand_zt0_ohm_lv())
+        assert result.z0_ohm == pytest.approx(_hand_kt() * _hand_zt0_ohm_lv())
 
 
 # ---------------------------------------------------------------------------

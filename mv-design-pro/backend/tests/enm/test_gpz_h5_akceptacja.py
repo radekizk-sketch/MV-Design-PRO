@@ -46,7 +46,6 @@ from uuid import UUID
 
 import pytest
 from enm.canonical_analysis import (
-    POWOD_WEZEL_BEZ_DROGI_ZEROWEJ,
     POWOD_WEZEL_BEZ_ODNIESIENIA,
     ZNACZNIK_SZYNY_BEZ_NAPIECIA,
     CanonicalRun,
@@ -59,6 +58,7 @@ from enm.canonical_analysis import (
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.pola import punkt_przylaczenia_pola
+from enm.przyczyny_zwarcia_doziemnego import POWOD_BRAK_DANYCH_SKLADOWEJ_ZEROWEJ
 from enm.scenariusze import OperatingScenario, RodzajScenariusza, apply_scenario
 from enm.store import set_enm
 from enm.topology import (
@@ -591,24 +591,38 @@ def test_sc08_bez_z0_torow_odmowa_1f() -> None:
     assert odmowa.value.kod == "sc.model_bez_skladowej_zerowej"
 
 
-def test_sc08_z_z0_szyny_110_liczone_szyny_sn_bez_drogi_zerowej(
+def test_sc08_z_z0_szyny_110_liczone_szyny_sn_brak_danych_zespolu_uziemiajacego(
     h5: dict[str, Any], r: RefyH5
 ) -> None:
-    """Z Z0 torów: 1F na szynach 110 kV liczone (MAX i MIN); szyny SN — odmowa PER WĘZEŁ
-    (Yd11 bez punktu neutralnego, zespół uziemiający bez elementu — ENEA §16). Dawniej
-    bocznik 1e6 pu uziemiał każdy węzeł bez drogi zerowej i dawał I″k1 = 1,5·I″k3."""
+    """Z Z0 torów: 1F na szynach 110 kV liczone (MAX i MIN); szyny SN — bez wyniku PER WĘZEŁ.
+    Dawniej bocznik 1e6 pu uziemiał każdy węzeł bez drogi zerowej i dawał I″k1 = 1,5·I″k3,
+    a potem jeden zbiór „bez drogi” zlewał brak danych z fizycznym brakiem drogi.
+
+    Karta GPZ-H5-SKLADOWA-ZEROWA: szablon H5 ma w każdej sekcji pole zespołu uziemiającego
+    (ENEA Zeszyt 1 §16) bez danych zespołu — sieć SN JEST uziemiana tym zespołem, nie znamy
+    jego impedancji, więc przyczyna to BRAK DANYCH z nazwą pola i brakującym polem, nie
+    fizyczny brak drogi (Yd11). Pełny iloczyn wariantów zespołu:
+    ``tests/enm/test_gpz_h5_skladowa_zerowa.py``."""
+    pola_uziemiajace = {
+        b["bus_ref"]: b["ref_id"] for b in h5["bays"] if b["bay_role"] == "EARTHING"
+    }
     for opcje, maks in ((OPCJE_1F_MAX, True), (OPCJE_1F_MIN, False)):
         run = _bieg(h5, "short_circuit_sn", opcje)
         ik = _ikss(run)
         przyczyny = _przyczyny(run)
         assert ik[r.szyna_wn_1] == pytest.approx(ik1_wn(TOR_L1, maks=maks), rel=1e-6)
         assert ik[r.szyna_wn_2] == pytest.approx(ik1_wn(TOR_L2, maks=maks), rel=1e-6)
+        wiersze = _wiersze_zwarcia(run)
         for szyna in (r.szyna_sn_a, r.szyna_sn_b):
             assert ik[szyna] is None
-            assert przyczyny[szyna] == POWOD_WEZEL_BEZ_DROGI_ZEROWEJ
-        wiersze = _wiersze_zwarcia(run)
-        # Węzeł bez drogi zerowej MA napięcie — nie jest „bez napięcia”.
-        assert wiersze[r.szyna_sn_a]["flags"] == []
+            assert przyczyny[szyna] == POWOD_BRAK_DANYCH_SKLADOWEJ_ZEROWEJ
+            przyczyna = wiersze[szyna]["przyczyna_braku_wyniku"]
+            assert przyczyna["status"] == "BRAK_DANYCH"
+            (element,) = przyczyna["elementy"]
+            assert element["ref_id"] == pola_uziemiajace[szyna]
+            assert element["brakujace_pola"] == ["zespol_uziemiajacy"]
+            # Węzeł bez wyniku zwarcia doziemnego MA napięcie — nie jest „bez napięcia”.
+            assert wiersze[szyna]["flags"] == []
 
 
 # ---------------------------------------------------------------------------

@@ -112,6 +112,9 @@ def test_rejestr_pol_addytywnych_nazywa_pola_k7() -> None:
             "wybor_bloku",
             "metadane_pochodzenia",
             "surge_arresters",
+            # Karta GPZ-H5-SKLADOWA-ZEROWA: zespół uziemiający pola uziemiającego SN — to samo
+            # prawo (pola bez zespołu haszują jak przed kartą; `tests/enm/test_hash_w5b_bays.py`).
+            "zespol_uziemiajacy",
         ),
         # Karta GPZ-H5: tryb rezerwy transformatorowej GPZ i transformator rezerwowy (ENEA
         # Zeszyt 1 §26.10.5) — to samo prawo (stacje bez strony 110 kV haszują jak przed kartą).

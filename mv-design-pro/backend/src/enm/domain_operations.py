@@ -10871,6 +10871,11 @@ _PARAMETRY_POLA_EDYTOWALNE: frozenset[str] = frozenset(
         "outgoing_destination_ref",
         "protection_codes",
         "meta",
+        # Karta GPZ-H5-SKLADOWA-ZEROWA: dane zespołu uziemiającego pola uziemiającego (ENEA
+        # Zeszyt 1 zał. Z.13–Z.15). Kontrakt `ZespolUziemiajacy` waliduje pisarz `zmien_pole`
+        # (rola pola EARTHING, spójność rezystora równoległego z dławikiem); `None` zdejmuje
+        # dane zespołu (zwarcie doziemne sekcji wraca do przyczyny „brak danych”).
+        "zespol_uziemiajacy",
     }
 )
 
