@@ -203,6 +203,21 @@ app.include_router(solver_input_router)
 app.include_router(karty_widmowe_router)
 
 
+# GIS DIGPRO R06: izolowane badanie na danych SYNTETYCZNYCH.
+# Funkcja pozostaje wylaczona w konfiguracji domyslnej. Nie udostepnia
+# tras do zapisu ENM, nie importuje danych operatora i nie uruchamia solverow.
+# Nie wlaczac w produkcji (takze przez blad konfiguracji wdrozenia).
+if os.getenv("MV_ENABLE_SYNTHETIC_GIS_LAB_R06") == "1":
+    if any(
+        os.getenv(name, "").casefold() in {"production", "prod"}
+        for name in ("MV_DESIGN_ENV", "ENVIRONMENT", "APP_ENV")
+    ):
+        raise RuntimeError("GIS_R06_FORBIDDEN_IN_PRODUCTION")
+    from api.gis_lab import router as gis_lab_router
+
+    app.include_router(gis_lab_router)
+
+
 @app.get("/")
 async def root() -> dict[str, str]:
     """Root endpoint."""
