@@ -314,6 +314,83 @@ def sync(directory: Path, catalog: dict, doc_id: str | None, no_index: bool) -> 
     return 1 if failed else 0
 
 
+def audit_index(directory: Path, catalog: dict) -> dict:
+    """Niezależna bramka kompletności pobrania i indeksu 25 standardów + IRiESD.
+
+    Raport nie twierdzi, że OCR odczytał wszystkie wartości techniczne poprawnie.
+    """
+    state = _load_state(directory)
+    db_path = directory / "search.sqlite3"
+    indexed: dict[str, tuple[str, int, int, int]] = {}
+    if db_path.is_file():
+        with connect_db(directory) as conn:
+            for row in conn.execute(
+                "SELECT i.doc_id, i.sha256, i.page_count,"
+                " (SELECT COUNT(*) FROM pages_fts p WHERE p.doc_id=i.doc_id),"
+                " (SELECT COUNT(*) FROM pages_fts p WHERE p.doc_id=i.doc_id"
+                " AND length(trim(p.body))>=25) FROM indexed_files i"
+            ):
+                indexed[row[0]] = (row[1], row[2], row[3], row[4])
+    documents = []
+    for source in catalog["sources"]:
+        doc_id = source["id"]
+        file = directory / "pdf" / (doc_id + ".pdf")
+        manifest_record = state.get(doc_id, {})
+        errors: list[str] = []
+        if not file.exists():
+            errors.append("BRAK_PDF")
+            content_sha = None
+        else:
+            content = file.read_bytes()
+            content_sha = hashlib.sha256(content).hexdigest()
+            if not content.startswith(b"%PDF-"):
+                errors.append("NIE_JEST_PDF")
+            if content_sha != manifest_record.get("sha256"):
+                errors.append("NIEZGODNA_SUMA_SHA256")
+        entry = indexed.get(doc_id)
+        if entry is None:
+            errors.append("BRAK_INDEKSU")
+            pages, indexed_pages, text_pages = 0, 0, 0
+        else:
+            db_sha, pages, indexed_pages, text_pages = entry
+            if not content_sha or db_sha != content_sha:
+                errors.append("INDEKS_NIEODPOWIADA_WERSJI_PDF")
+            if indexed_pages != pages or pages <= 0:
+                errors.append("NIEPELNA_NUMERACJA_STRON")
+            if text_pages <= 0:
+                errors.append("BRAK_CZYTELNEGO_TEKSTU")
+        documents.append({
+            "id": doc_id,
+            "status": "OK" if not errors else "BLOKADA",
+            "errors": errors,
+            "page_count": pages,
+            "indexed_pages": indexed_pages,
+            "pages_with_text": text_pages,
+            "sha256": content_sha,
+            "source_url": manifest_record.get("url"),
+        })
+    standards = [x for x in documents if next(
+        r["id"] == x["id"] and r["family"] == "standard"
+        for r in catalog["sources"]
+    )]
+    good = sum(x["status"] == "OK" for x in standards)
+    report = {
+        "schema_version": 1,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "catalog_as_of": catalog["as_of"],
+        "standard_count": 25,
+        "standards_complete": good,
+        "all_documents_count": len(documents),
+        "all_documents_complete": sum(x["status"] == "OK" for x in documents),
+        "acceptance": "PASS" if good == 25 and all(
+            x["status"] == "OK" for x in documents
+        ) else "FAIL",
+        "note": "PASS oznacza integralność i dostępność tekstu, NIE walidację merytoryczną całego OCR.",
+        "documents": documents,
+    }
+    return report
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Baza wiedzy ENEA Operator — lokalna, wersjonowana")
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DIR)
@@ -330,6 +407,7 @@ def main() -> int:
     p_ask.add_argument("question")
     p_ask.add_argument("--date", dest="as_of", default=None, help="Stan na RRRR-MM-DD")
     p_ask.add_argument("--limit", type=int, default=5)
+    sub.add_parser("audit", help="Audyt wszystkich PDF: sumy, numeracja i pokrycie stron")
     sub.add_parser("status", help="Kontrola integralności pobranych plików")
     args = parser.parse_args()
     catalog = load_catalog()
@@ -354,6 +432,11 @@ def main() -> int:
                     print(f'BŁĄD {row["id"]}: {exc}', file=sys.stderr)
         conn.close()
         return 1 if failures else 0
+    if args.cmd == "audit":
+        report = audit_index(directory, catalog)
+        _save_json(directory / "audit.json", report)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0 if report["acceptance"] == "PASS" else 1
     if args.cmd == "ask":
         import importlib.util
         question_module = ROOT / "backend/src/reference_engine/enea_questions.py"
