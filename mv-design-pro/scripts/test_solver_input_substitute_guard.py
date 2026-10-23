@@ -2156,7 +2156,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 13 (2026-10-21): 577 bazy + `core/czas_wylaczenia.py` +
         # `catalog/wartosci_robocze.py` + 1 plik application wniesiony partia 12 bez przypiecia
         # = 580. POMIAR guardem na drzewie scalenia.
-        "Przeskanowano 580 plikow w zakresie: network_model, solver_input, enm, "
+        # Partia zwarc, naprawa CI (2026-10-23): 580 -> 581 (+1 `network_model/core/
+        # modul_zespolony.py` — jedno zrodlo modulu liczby zespolonej niezalezne od libm; zero
+        # wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie partii (`2e5b06ad9`).
+        # Karta DETERMINIZM-HISTORII-PROCESU (2026-10-23): 581 -> 582 (+1 `network_model/
+        # watki_blas.py` — jedna polityka watkow BLAS procesu); dlug i wykluczenia bez zmian.
+        # POMIAR guardem na drzewie scalenia karty z programem (`c64f40f0c`).
+        "Przeskanowano 582 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2341,7 +2347,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
-        "  network_model: pliki_skanowane=186, dlug=10 plikow/suma 67, "
+        # Partia zwarc, naprawa CI (2026-10-23): network_model 186 -> 187 (+1
+        # `core/modul_zespolony.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        # Karta DETERMINIZM-HISTORII-PROCESU: network_model 187 -> 188 (+1 `watki_blas.py`).
+        # POMIAR guardem.
+        "  network_model: pliki_skanowane=188, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
