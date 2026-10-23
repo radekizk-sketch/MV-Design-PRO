@@ -127,3 +127,58 @@ def test_route_422_dla_nieprawidlowej_daty(app_client) -> None:
         params={"pytanie": "stacja słupowa", "data": "2026-17-91"},
     )
     assert resp.status_code == 422
+
+
+def test_qa_stacja_kompaktowa_liczba_pol_z_aktualnego_z1(tmp_path: Path) -> None:
+    odp = answer_question(
+        "Ile pól liniowych ma mieć stacja kompaktowa prefabrykowana?",
+        data_dir=tmp_path,
+        as_of="2026-10-23",
+    )
+    assert odp["verdict"] == "WYMAGANE"
+    assert "dwóch do czterech" in odp["answer_pl"]
+    assert odp["sources"][0]["section"].startswith("4.3.1")
+    assert odp["sources"][0]["page_pdf"] == 12
+    assert odp["sources"][0]["edition"] == "06.2024"
+
+
+def test_qa_parametry_rozdzielnicy_stacji_sn(tmp_path: Path) -> None:
+    odp = answer_question(
+        "Jakie parametry ma mieć rozdzielnica SN w stacji kompaktowej?",
+        data_dir=tmp_path,
+        as_of="2026-10-23",
+    )
+    assert odp["verdict"] == "WYMAGANE_MINIMA"
+    assert "24 kV" in odp["answer_pl"]
+    assert "630 A" in odp["answer_pl"]
+
+
+def test_qa_pomiary_telemechaniki_pradu_i_napiecia(tmp_path: Path) -> None:
+    odp = answer_question(
+        "Czy pomiar napięcia i prądu jest wymagany dla pola liniowego?",
+        data_dir=tmp_path,
+        as_of="2026-10-23",
+    )
+    assert odp["verdict"] == "WYMAGANE"
+    assert odp["rule_id"] == "ENEA-TELE-0641-U-I"
+    assert odp["sources"][0]["section"] == "6.4.1 Pomiary"
+    assert odp["sources"][0]["page_pdf"] == 14
+
+
+def test_qa_historyczna_data_wyklucza_telemechanike_2026(tmp_path: Path) -> None:
+    odp = answer_question(
+        "Czy pomiar napięcia i prądu jest wymagany dla pola liniowego?",
+        data_dir=tmp_path,
+        as_of="2024-10-23",
+    )
+    assert odp["verdict"] is None
+
+
+def test_qa_wersja_dokumentu_wynika_z_karty_nie_z_zapytania(tmp_path: Path) -> None:
+    odp = answer_question(
+        "Czy pole transformatorowe może mieć bezpieczniki?",
+        data_dir=tmp_path,
+        as_of="2026-10-23",
+    )
+    assert odp["sources"][0]["edition"] == "06.2024"
+    assert odp["sources"][0]["section"].startswith("4.3.3")
