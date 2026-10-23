@@ -102,3 +102,66 @@ def test_cli_question_with_evidence_works_offline(tmp_path):
     assert response["verdict"] == "NIEDOPUSZCZONE"
     assert response["sources"][0]["page_pdf"] == 3
     assert response["sources"][0]["url"].endswith("#page=3")
+
+
+
+def test_audit_odmawia_przy_brakujacych_dokumentach(tmp_path):
+    """Katalog 25 pozycji nie może zostać uznany za gotowy bez lokalnych PDF."""
+    catalog = knowledge.load_catalog()
+    report = knowledge.audit_index(tmp_path, catalog)
+    assert report["standard_count"] == 25
+    assert report["standards_complete"] == 0
+    assert report["acceptance"] == "FAIL"
+    assert "BRAK_PDF" in report["documents"][0]["errors"]
+
+
+def test_audit_wymaga_sha_liczby_stron_i_kompletnego_indeksu(tmp_path):
+    """Pełna bramka na syntetycznym kompletnym zestawie 25+2 dokumentów."""
+    import hashlib
+
+    catalog = knowledge.load_catalog()
+    conn = knowledge.connect_db(tmp_path)
+    state = {}
+    for row in catalog["sources"]:
+        doc_id = row["id"]
+        data = b"%PDF-1.4\n" + doc_id.encode("ascii")
+        path = tmp_path / "pdf" / (doc_id + ".pdf")
+        digest = knowledge._save_pdf(path, data)
+        knowledge.index_document(conn, doc_id, digest, [
+            "Wymagania techniczne standardu ENEA Operator dla sieci elektrycznych SN.",
+            "Wymagania telemechaniki i dokumentacji powykonawczej ENEA Operator.",
+        ])
+        state[doc_id] = {"sha256": digest, "url": row["url"]}
+    conn.close()
+    knowledge._save_json(tmp_path / "manifest.json", state)
+    result = knowledge.audit_index(tmp_path, catalog)
+    assert result["acceptance"] == "PASS"
+    assert result["standards_complete"] == 25
+    assert result["all_documents_complete"] == len(catalog["sources"])
+    # Zmiana zawartości pliku bez aktualizacji manifestu musi zablokować odbiór.
+    doc = catalog["sources"][0]
+    (tmp_path / "pdf" / (doc["id"] + ".pdf")).write_bytes(b"%PDF-1.4\nzmieniono")
+    altered = knowledge.audit_index(tmp_path, catalog)
+    assert altered["acceptance"] == "FAIL"
+    assert "NIEZGODNA_SUMA_SHA256" in altered["documents"][0]["errors"]
+
+
+def test_pdf_pages_ocr_skany_i_zachowanie_numeracji(tmp_path, monkeypatch):
+    """Rozpoznawanie stron skanowanych weryfikujemy bez zależności od sieci."""
+    fitz = __import__("pytest").importorskip("fitz")
+    pdf = fitz.open()
+    pdf.new_page().insert_text((50, 50), "Dokument standardu ENEA — pierwsza strona tekstowa.")
+    pdf.new_page()
+    path = tmp_path / "fixture.pdf"
+    pdf.save(path)
+    pdf.close()
+    calls = []
+    def fake_ocr(filename, page_number):
+        calls.append(page_number)
+        return "Stacja transformatorowa sredniego napiecia, druga strona OCR."
+    monkeypatch.setattr(knowledge, "_ocr_page", fake_ocr)
+    pages = knowledge.pdf_pages(path)
+    assert len(pages) == 2
+    assert "pierwsza strona" in pages[0]
+    assert "druga strona OCR" in pages[1]
+    assert calls == [2]
