@@ -52,7 +52,7 @@
       "answer_pl": "Dla budowy nowego układu pracy sieci lub przebudowy układu ze stacją transformatorową SN/nN standard wskazuje jako podstawowe rozwiązanie stację kompaktową prefabrykowaną.",
       "scope_pl": "Budowa i przebudowa układów ze stacjami SN/nN; stosować zgodnie z zakresem dokumentu.",
       "required_roots": [
-        "stacj",
+        "stac",
         "kompakt"
       ],
       "confidence": "zweryfikowane_bezposrednio"
