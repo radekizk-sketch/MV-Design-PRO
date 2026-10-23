@@ -148,6 +148,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/cases/{case_id}/reference/compliance` | v12xx | aktywny | 2026-07-17 | - | Raport zgodnosci referencyjnej + Reference Score (Reference Engine V1, V12K-060). | tests/api/test_reference_engine_api.py | Architekt API |
 | `GET /api/reference/packs` | v12xx | aktywny | 2026-07-17 | - | Lista pakietow referencyjnych (Reference Engine V1). | tests/api/test_reference_engine_api.py | Architekt API |
 | `GET /api/reference/packs/{pack_id}` | v12xx | aktywny | 2026-07-17 | - | Pelny pakiet referencyjny (profile pol, slownik symboli). | tests/api/test_reference_engine_api.py | Architekt API |
+| `GET /api/reference/enea/pytanie` | v12xx | aktywny | 2026-10-23 | - | Odczyt odpowiedzi na pytanie o standard ENEA: ręcznie zweryfikowane karty wymagań i opcjonalny lokalny indeks FTS5 (bez obliczeń i mutacji ENM). Przy braku źródeł jawna odmowa wydania werdyktu; lokalny indeks domyślnie wyłączony. | tests/reference_engine/test_enea_questions.py | Architekt referencji |
 | `GET /api/reference-patterns/fixtures/{fixture_file}` | v12xx | aktywny | 2026-04-24 | - | Fixture sieci wzorcowych. | reference pattern tests | Architekt testow |
 | `GET /api/reference-patterns/fixtures/{fixture_file}/export/docx` | v12xx | aktywny | 2026-04-24 | - | Eksport DOCX fixture. | reference export tests | Architekt testow |
 | `GET /api/reference-patterns/fixtures/{fixture_file}/export/pdf` | v12xx | aktywny | 2026-04-24 | - | Eksport PDF fixture. | reference export tests | Architekt testow |
