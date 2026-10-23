@@ -244,6 +244,15 @@ def sync(directory: Path, catalog: dict, doc_id: str | None, no_index: bool) -> 
         try:
             content = _download_bytes(url)
             pdf_path = directory / "pdf" / (key + ".pdf")
+            sha_candidate = hashlib.sha256(content).hexdigest()
+            previous_sha = state.get(key, {}).get("sha256")
+            if previous_sha and previous_sha != sha_candidate:
+                candidate_path = directory / "do_weryfikacji" / (key + "-" + sha_candidate[:16] + ".pdf")
+                _save_pdf(candidate_path, content)
+                raise ValueError(
+                    "Zmiana zawartości źródła: zachowano dotychczasowy PDF. "
+                    "Nowy plik zapisano do weryfikacji: " + str(candidate_path)
+                )
             sha = _save_pdf(pdf_path, content)
             record = {"sha256": sha, "bytes": len(content), "url": url, "downloaded_at": datetime.now(timezone.utc).isoformat()}
             if conn is not None:
