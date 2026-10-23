@@ -110,6 +110,20 @@ Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty 
 
 ### 3.-1 Program UI/UX klasy przemysłowej 2026-07 (ACTIVE)
 
+> **AKTUALIZACJA WŁAŚCICIELSKA 2026-10-23 — JEDEN PROGRAM UI/UX PROWADZONY PRZEZ OPUSA.**
+> Jedyna kolejka operacyjna UI/UX, jego decyzje, statusy i reguły odbioru są w
+> [`docs/uiux/PROGRAM_UIUX_2026-07.md` §12](docs/uiux/PROGRAM_UIUX_2026-07.md#12-zintegrowana-kolejka-wykonawcza--uiux-przemyslowy-decyzja-wlasciciela-2026-10-23).
+> Materiały [SEL Blueframe](docs/research/sel-blueframe/README.md) to referencje
+> i kryteria UX-01…UX-06, **nie osobny program ani kolejka**. Historyczne plany SLD
+> i W1–W12 są technicznymi specyfikacjami / mapą zdolności produktu; AB zachowuje
+> własną fizykę i dowody, ale ekrany/UI prowadzi program Opusa.
+> **P0:** inteligentny znak „+” na SLD, automatyczne operacje ENM, wspólny
+> inspektor, walidacja, motywy, White Box i pełny tor E2E.
+> **GIS: P3/STOP. B-02: ODRZUCONE.**
+> Wpisy poniżej (U0–U5, stare postępy i raporty) to **historia prac**,
+> nie bieżące procenty ani alternatywna lista zadań. Realne postępy aktualizuje
+> się wyłącznie w §12 programu i skrótowo tutaj.
+
 Objective: przebudowa całego UI/UX do klasy ETAP/PowerFactory wg
 [`docs/uiux/PROGRAM_UIUX_2026-07.md`](docs/uiux/PROGRAM_UIUX_2026-07.md) (fazy U0–U5),
 zakres funkcjonalny gwarantowany przez
