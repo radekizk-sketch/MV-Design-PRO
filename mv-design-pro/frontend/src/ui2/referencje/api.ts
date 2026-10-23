@@ -54,6 +54,24 @@ export interface ReferenceStationRule {
   implemented: boolean;
 }
 
+/** Publiczny katalog ENEA — metadane, bez treści chronionych dokumentów. */
+export interface EneaSourceDocument {
+  id: string;
+  title: string;
+  family: 'standard' | 'iriesd';
+  area: 'SN' | 'nN' | 'WN' | '110/SN';
+  effective_from: string | null;
+  effective_to: string | null;
+  url: string | null;
+  index_url: string;
+  engineering_scope: string;
+}
+
+export interface EneaSourceCatalog {
+  as_of: string;
+  sources: EneaSourceDocument[];
+}
+
 /** Pełny pakiet referencyjny (HANDOFF §1.1, `GET /api/reference/packs/{pack_id}`). */
 export interface ReferencePackFull extends ReferencePackSummary {
   field_profiles?: unknown;
@@ -61,6 +79,7 @@ export interface ReferencePackFull extends ReferencePackSummary {
   cell_configurations?: ReferenceCellConfiguration[];
   station_rules?: ReferenceStationRule[];
   notes_pl?: string | null;
+  source_catalog?: EneaSourceCatalog;
 }
 
 /** Pobierz listę pakietów referencyjnych (opcjonalny filtr rodzaju). */
