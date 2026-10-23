@@ -8,12 +8,14 @@ katalogu, nie tylko przyklad z karty (regula KLASA-NIE-INSTANCJA).
 
 from __future__ import annotations
 
+import pytest
 from application.equipment_proof.catalog_bridge import (
     RODZAJE_SN_BEZ_ZDOLNOSCI_WYLACZANIA,
     resolve_um_icu_from_catalog,
 )
 from network_model.catalog.mv_auxiliary_catalog import get_all_lv_apparatus_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
+from network_model.catalog.niezmienniki_katalogu import OdmowaKatalogu
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import LVApparatusType, SwitchEquipmentType
 
@@ -152,29 +154,39 @@ def test_brak_type_ref_zwraca_pusty_wynik_bez_przeszukiwania() -> None:
 
 # ---------------------------------------------------------------------------
 # Predykaty parami (regula KLASA-NIE-INSTANCJA §4.3): decyzja "nie dotyczy"
-# i wyzerowanie i_cu_ka pochodza z JEDNEGO zrodla prawdy (equipment_kind), nie
-# z dwoch niezaleznych pol, ktore moglyby sie rozjechac. Test buduje rekord z
-# CELOWO SPRZECZNA danych katalogu (LOAD_SWITCH z wypelnionym i_cu_ka — stan,
-# ktorego katalog produkcyjny nie powinien nigdy miec, ale most MUSI byc
-# odporny, gdyby sie pojawil) i sprawdza, ze most i tak wymusza NIE_DOTYCZY.
+# I_cu pochodzi z JEDNEGO zrodla prawdy (equipment_kind) — tego samego, z ktorego
+# bramka rekordu KAT-T-048 odrzuca wielkosc niewlasciwa rodzajowi. Rekord
+# sprzeczny (LOAD_SWITCH z wypelnionym i_cu_ka) nie daje sie wiec w ogole zbudowac,
+# a most dla prawdziwego rozlacznika czyta „nie dotyczy” z rodzaju.
 # ---------------------------------------------------------------------------
 
 
-def test_bridge_wymusza_nie_dotyczy_nawet_gdy_katalog_ma_sprzeczne_dane() -> None:
-    uszkodzony_typ = SwitchEquipmentType(
-        id="sw-test-corrupted",
-        name="Testowy rozlacznik z blednym I_cu",
+def test_rekord_sprzeczny_z_rodzajem_nie_powstaje_a_most_czyta_rodzaj() -> None:
+    with pytest.raises(OdmowaKatalogu) as odmowa:
+        SwitchEquipmentType(
+            id="sw-test-corrupted",
+            name="Testowy rozlacznik z blednym I_cu",
+            equipment_kind="LOAD_SWITCH",
+            un_kv=12.0,
+            in_a=630.0,
+            icw_ka=20.0,
+            u_m_kv=12.0,
+            i_cu_ka=99.0,  # DANE SPRZECZNE: rozlacznik nie ma zdolnosci wylaczania.
+        )
+    assert odmowa.value.kod == "KAT-T-048"
+
+    rozlacznik = SwitchEquipmentType(
+        id="sw-test-rozlacznik",
+        name="Testowy rozlacznik",
         equipment_kind="LOAD_SWITCH",
         un_kv=12.0,
         in_a=630.0,
-        ik_ka=0.0,
         icw_ka=20.0,
         u_m_kv=12.0,
-        i_cu_ka=99.0,  # DANE SPRZECZNE: rozlacznik nie powinien miec i_cu_ka.
     )
-    repo = _mini_repo(switch_equipment_types={"sw-test-corrupted": uszkodzony_typ})
+    repo = _mini_repo(switch_equipment_types={"sw-test-rozlacznik": rozlacznik})
 
-    wynik = resolve_um_icu_from_catalog("sw-test-corrupted", repo=repo)
+    wynik = resolve_um_icu_from_catalog("sw-test-rozlacznik", repo=repo)
 
     assert wynik.i_cu_not_applicable is True
     assert wynik.i_cu_ka is None

@@ -26,12 +26,19 @@ Usage:
 import math
 import re
 import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.catalog.rodzaje_aparatury import (
+    WIELKOSCI_ZWARCIOWE_APARATU_SN,
+    WIELKOSCI_ZWARCIOWE_LACZNIKA,
+    wielkosc_zwarciowa_aparatu_sn_dotyczy,
+    wielkosc_zwarciowa_lacznika_dotyczy,
+)
 from network_model.catalog.wartosci_robocze import pochodzenie_danej_karty
 from network_model.ir_fields import (
     wymagany_float,
@@ -1474,6 +1481,41 @@ class TransformerType:
         )
 
 
+def _sprawdz_wielkosci_zwarciowe(
+    item_id: str,
+    rodzaj: str,
+    wartosci: tuple[tuple[str, float | None], ...],
+    dotyczy: Callable[[str, str], bool],
+) -> None:
+    """KAT-T-048: wielkość zwarciowa aparatu dodatnia albo ``None`` — nigdy zero.
+
+    Zero NIE jest ani brakiem danej, ani „nie dotyczy”: 0 kA zdolności wyłączania
+    wyłącznika albo prądu krótkotrwałego odłącznika opisuje aparat, który nie istnieje,
+    a każdy konsument (dobór, dowód wytrzymałości, eksport, raport, interfejs)
+    przeczytałby je jako liczbę. Wielkość, której rodzaj aparatu z definicji normy NIE
+    MA (zdolność wyłączania rozłącznika/odłącznika/uziemnika, I_cw bezpiecznika), jest
+    zawsze ``None`` — o „nie dotyczy” rozstrzyga rodzaj (``dotyczy(rodzaj, pole)``),
+    a ``None`` przy wielkości właściwej rodzajowi znaczy „brak danej z karty”.
+    """
+    for pole, wartosc in wartosci:
+        if wartosc is None:
+            continue
+        if not dotyczy(rodzaj, pole):
+            odmowa_twarda(
+                "KAT-T-048",
+                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — tej wielkości "
+                "rodzaj aparatu z definicji normy nie ma; „nie dotyczy” zapisuje się jako "
+                "None, rozstrzyga rodzaj.",
+            )
+        if not math.isfinite(wartosc) or wartosc <= 0:
+            odmowa_twarda(
+                "KAT-T-048",
+                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — prąd zwarciowy "
+                "aparatu jest dodatni; brak danej z karty zapisuje się jako None, nigdy "
+                "jako 0.",
+            )
+
+
 @dataclass(frozen=True)
 class SwitchEquipmentType:
     """
@@ -1489,8 +1531,12 @@ class SwitchEquipmentType:
         equipment_kind: Equipment kind (CIRCUIT_BREAKER, DISCONNECTOR, EARTH_SWITCH).
         un_kv: Rated voltage [kV].
         in_a: Rated current [A].
-        ik_ka: Short-circuit breaking current [kA] (for breakers).
-        icw_ka: Short-time withstand current [kA] (for disconnectors).
+        ik_ka: Znamionowy prąd zwarciowy łączeniowy [kA] (wyłącznik, reklozer,
+            bezpiecznik). ``None`` = brak danej z karty katalogowej — nigdy 0.0
+            (bramka KAT-T-048). Dla rodzaju bez zdolności wyłączania
+            (``RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA``) pole nie dotyczy.
+        icw_ka: Prąd krótkotrwały wytrzymywany I_cw [kA], 1 s. ``None`` = brak danej
+            z karty — nigdy 0.0 (KAT-T-048); dla bezpiecznika nie dotyczy.
         medium: Quenching medium (e.g., "SF6", "VACUUM").
         u_m_kv: Napiecie najwyzsze urzadzenia U_m [kV] wg IEC 62271-1 — karta
             UM-ICU-KATALOG. Dla aparatury SN rownowazne Ur z karty katalogowej
@@ -1511,16 +1557,30 @@ class SwitchEquipmentType:
     equipment_kind: str = "CIRCUIT_BREAKER"
     un_kv: float = 0.0
     in_a: float = 0.0
-    ik_ka: float = 0.0
-    icw_ka: float = 0.0
+    ik_ka: float | None = None
+    icw_ka: float | None = None
     medium: str | None = None
     u_m_kv: float | None = None
     i_cu_ka: float | None = None
+    #: Jakość danych pól pozycji (``{pole -> CardFieldStatus.to_dict()}``, ten sam kształt co
+    #: ``ConverterType.card_field_status``): pole wartości roboczej ma ``quality=ESTIMATED``
+    #: z podstawą (``source_ref``: norma z tablicą / standard OSD z punktem i stroną) albo
+    #: z jawnym założeniem (``note``). ``None`` = pozycja bez takiej deklaracji (dane
+    #: przepisane z karty katalogowej producenta) — klucz pomijany w ``to_dict``.
+    card_field_status: dict[str, dict[str, Any]] | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        _sprawdz_wielkosci_zwarciowe(
+            self.id,
+            self.equipment_kind,
+            tuple((pole, getattr(self, pole)) for pole in WIELKOSCI_ZWARCIOWE_LACZNIKA),
+            wielkosc_zwarciowa_lacznika_dotyczy,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -1536,6 +1596,7 @@ class SwitchEquipmentType:
             "medium": self.medium,
             "u_m_kv": self.u_m_kv,
             "i_cu_ka": self.i_cu_ka,
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1555,11 +1616,16 @@ class SwitchEquipmentType:
             equipment_kind=str(data.get("equipment_kind", "CIRCUIT_BREAKER")),
             un_kv=wymagany_float(data, "un_kv", context="SwitchEquipmentType"),
             in_a=wymagany_float(data, "in_a", context="SwitchEquipmentType"),
-            ik_ka=wymagany_float(data, "ik_ka", context="SwitchEquipmentType"),
-            icw_ka=wymagany_float(data, "icw_ka", context="SwitchEquipmentType"),
+            ik_ka=wymagany_float_lub_nieznany(data, "ik_ka", context="SwitchEquipmentType"),
+            icw_ka=wymagany_float_lub_nieznany(data, "icw_ka", context="SwitchEquipmentType"),
             medium=data.get("medium"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentów",
@@ -2947,11 +3013,25 @@ class MVApparatusType:
     #: przez projektanta — nigdy sam człon nastawczy, który zaniżałby czas i zawyżał limit
     #: cieplny aparatu (karta WYTRZYMALOSC-PRAD-POLA).
     break_time_s: float | None = None
+    #: Jakość danych pól pozycji (``{pole -> CardFieldStatus.to_dict()}``, ten sam kształt co
+    #: ``ConverterType.card_field_status``): pole wartości roboczej ma ``quality=ESTIMATED``
+    #: z podstawą (``source_ref``: norma z tablicą / standard OSD z punktem i stroną) albo
+    #: z jawnym założeniem (``note``). ``None`` = pozycja bez takiej deklaracji (dane
+    #: przepisane z karty katalogowej producenta) — klucz pomijany w ``to_dict``.
+    card_field_status: dict[str, dict[str, Any]] | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        _sprawdz_wielkosci_zwarciowe(
+            self.id,
+            self.device_kind,
+            tuple((pole, getattr(self, pole)) for pole in WIELKOSCI_ZWARCIOWE_APARATU_SN),
+            wielkosc_zwarciowa_aparatu_sn_dotyczy,
+        )
 
     def pochodzenie_i_th(self) -> str | None:
         """Skąd pochodzi I_th tej pozycji (``None`` = karta tej danej nie niesie)."""
@@ -2979,6 +3059,7 @@ class MVApparatusType:
             "i_dyn_ka": self.i_dyn_ka,
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
             "break_time_s": self.break_time_s,
+            **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3016,6 +3097,11 @@ class MVApparatusType:
             i_dyn_ka=(float(data["i_dyn_ka"]) if data.get("i_dyn_ka") is not None else None),
             break_time_s=(
                 float(data["break_time_s"]) if data.get("break_time_s") is not None else None
+            ),
+            card_field_status=(
+                {str(k): dict(v) for k, v in data["card_field_status"].items()}
+                if data.get("card_field_status")
+                else None
             ),
             **_catalog_metadata_kwargs(
                 data,

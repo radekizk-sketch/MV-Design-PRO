@@ -2212,7 +2212,13 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta MENU-KANON cz. 4 (2026-10-22): 577 -> 576 (−1 skasowany `api/switchgear_config.py`). POMIAR guardem.
         # Scalenie karty MENU-KANON z galezia UI/UX (2026-10-22): 588 − 1 (`api/switchgear_config.py`)
         # = 587. POMIAR guardem na drzewie scalonym.
-        "Przeskanowano 587 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KATALOG-APARATURA-WN (2026-10-23): 588 -> 589 (+1
+        # `network_model/catalog/rodzaje_aparatury.py` — jedno zrodlo rozstrzygniecia
+        # „nie dotyczy” wielkosci zwarciowych wg rodzaju aparatu; zero nowych nazw pol (4337 bez
+        # zmian), zero wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie karty.
+        # Scalenie karty KATALOG-APARATURA-WN z galezia UI/UX (2026-10-23): 587 + 1
+        # (`catalog/rodzaje_aparatury.py`) = 588. POMIAR guardem na drzewie scalonym.
+        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2407,7 +2413,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
-        "  network_model: pliki_skanowane=186, dlug=10 plikow/suma 67, "
+        # Karta KATALOG-APARATURA-WN (2026-10-23): 186 -> 187 (+1
+        # `catalog/rodzaje_aparatury.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=187, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

@@ -34,6 +34,7 @@ import type {
   Transformer,
 } from '../../../types/enm';
 import type { MVApparatusType } from '../../catalog/types';
+import { wielkoscAparatuSnDotyczy } from '../../catalog/pradZwarciowyKatalogu';
 import {
   nazwaStacjiJakWDrzewie,
   publicTechnicalLabel,
@@ -454,12 +455,56 @@ const TYPY_LACZNIKOW: ReadonlySet<Branch['type']> = new Set(['breaker', 'switch'
 const PRIORYTET_GALEZI: readonly Branch['type'][] = ['breaker', 'bus_coupler', 'switch', 'fuse', 'disconnector'];
 const PRIORYTET_URZADZENIA: readonly BayPrimaryDevice['kind'][] = ['CB', 'LOAD_SWITCH', 'FUSE', 'DS'];
 
+/** Rodzaj aparatu SN (`device_kind` projekcji APARAT_SN) z rodzaju urządzenia pola modelu. */
+const RODZAJ_APARATU_SN_Z_URZADZENIA: Readonly<Partial<Record<BayPrimaryDevice['kind'], string>>> = {
+  CB: 'WYLACZNIK',
+  LOAD_SWITCH: 'ROZLACZNIK',
+  DS: 'ODLACZNIK',
+  ES: 'UZIEMNIK',
+  FUSE: 'ROZLACZNIK_BEZPIECZNIKOWY',
+};
+/** Rodzaj aparatu SN z typu gałęzi modelu (łącznik ogólny i sprzęgło — bez rozstrzygnięcia). */
+const RODZAJ_APARATU_SN_Z_GALEZI: Readonly<Partial<Record<Branch['type'], string>>> = {
+  breaker: 'WYLACZNIK',
+  disconnector: 'ODLACZNIK',
+  fuse: 'ROZLACZNIK_BEZPIECZNIKOWY',
+};
+/** Nazwa rodzaju aparatu SN w dopisku „nie dotyczy (…)”. */
+const NAZWA_RODZAJU_APARATU_SN_PL: Readonly<Record<string, string>> = {
+  WYLACZNIK: 'wyłącznik',
+  ROZLACZNIK: 'rozłącznik',
+  ODLACZNIK: 'odłącznik',
+  UZIEMNIK: 'uziemnik',
+  ROZLACZNIK_BEZPIECZNIKOWY: 'bezpiecznik',
+  REKLOZER: 'reklozer',
+};
+
+/**
+ * Wielkość zwarciowa aparatu: liczba z jednostką; bez liczby — „nie dotyczy (rodzaj)”, gdy
+ * rodzaj aparatu tej wielkości z definicji normy nie ma (jedno źródło:
+ * `wielkoscAparatuSnDotyczy`, odbicie predykatów bramki KAT-T-048), albo `null` = „brak
+ * danych”, gdy wielkość jest właściwa rodzajowi, a karta/model jej nie podaje.
+ */
+function wielkoscZwarciowaAparatu(
+  wartosc: number | null,
+  rodzaj: string | null,
+  pole: 'breaking_capacity_ka' | 'i_th_ka',
+): string | null {
+  if (wartosc !== null) return zapisLiczby(wartosc, 'kA');
+  if (rodzaj !== null && !wielkoscAparatuSnDotyczy(rodzaj, pole)) {
+    return `nie dotyczy (${NAZWA_RODZAJU_APARATU_SN_PL[rodzaj] ?? rodzaj})`;
+  }
+  return null;
+}
+
 interface AparatPola {
   readonly ref: string;
   readonly rodzajPl: string;
   readonly galaz: Branch | null;
   readonly urzadzenie: BayPrimaryDevice | null;
-  readonly odlacznik: boolean;
+  /** Rodzaj aparatu SN z modelu (`device_kind` projekcji APARAT_SN) — `null`, gdy model
+   *  rodzaju nie rozstrzyga (łącznik ogólny, sprzęgło). */
+  readonly rodzajSnModelu: string | null;
   readonly lacznik: boolean;
   readonly priorytet: number;
 }
@@ -471,7 +516,7 @@ function aparatZGalezi(galaz: Branch): AparatPola {
     rodzajPl: RODZAJ_GALEZI_PL[galaz.type],
     galaz,
     urzadzenie: null,
-    odlacznik: galaz.type === 'disconnector',
+    rodzajSnModelu: RODZAJ_APARATU_SN_Z_GALEZI[galaz.type] ?? null,
     lacznik: TYPY_LACZNIKOW.has(galaz.type),
     priorytet: p >= 0 ? p : 99,
   };
@@ -490,7 +535,7 @@ function aparatyPola(ix: IndeksModelu, bay: Bay): AparatPola[] {
       rodzajPl: RODZAJ_URZADZENIA_PL[u.kind] ?? 'Aparat',
       galaz,
       urzadzenie: u,
-      odlacznik: u.kind === 'DS' || u.kind === 'ES',
+      rodzajSnModelu: RODZAJ_APARATU_SN_Z_URZADZENIA[u.kind] ?? null,
       lacznik: p >= 0 || u.kind === 'ES',
       priorytet: p >= 0 ? p : 99,
     });
@@ -534,11 +579,20 @@ function znamionaAparatu(aparat: AparatPola, katalogi: KatalogiKarty): ZnamionaA
   const bezpiecznik = galaz?.type === 'fuse' ? galaz : null;
   const ur = liczba(mp?.u_n_kv) ?? liczba(bezpiecznik?.rated_voltage_kv) ?? liczba(kat?.u_n_kv);
   const ir = liczba(mp?.i_n_a) ?? liczba(bezpiecznik?.rated_current_a) ?? liczba(kat?.i_n_a);
-  const ik = aparat.odlacznik
-    ? 'nie dotyczy (odłącznik)'
-    : zapisLiczby(liczba(mp?.breaking_capacity_ka) ?? liczba(kat?.breaking_capacity_ka), 'kA');
-  const ith = liczba(kat?.i_th_ka);
+  // Rodzaj rozstrzygający „nie dotyczy”: pozycja katalogu (z niej pochodzą znamiona), a bez
+  // niej — rodzaj aparatu w modelu.
+  const rodzaj = napis(kat?.device_kind) ?? aparat.rodzajSnModelu;
+  const ik = wielkoscZwarciowaAparatu(
+    liczba(mp?.breaking_capacity_ka) ?? liczba(kat?.breaking_capacity_ka),
+    rodzaj,
+    'breaking_capacity_ka',
+  );
+  const ithLiczba = liczba(kat?.i_th_ka);
   const czasIth = liczba(kat?.i_th_duration_s);
+  const ith =
+    ithLiczba !== null
+      ? `${zapisLiczby(ithLiczba, 'kA')}${czasIth !== null ? ` / ${zapisLiczby(czasIth, 's')}` : ''}`
+      : wielkoscZwarciowaAparatu(null, rodzaj, 'i_th_ka');
   const typ = kat?.name ?? (catalogRef ? `pozycja katalogu ${catalogRef}` : null);
   const zrodloPl = galaz
     ? zrodloDanychElementuPl(galaz, kat?.name ?? null)
@@ -550,7 +604,7 @@ function znamionaAparatu(aparat: AparatPola, katalogi: KatalogiKarty): ZnamionaA
     ur: zapisLiczby(ur, 'kV'),
     ir: zapisLiczby(ir, 'A', 0),
     ik,
-    ith: ith !== null ? `${zapisLiczby(ith, 'kA')}${czasIth !== null ? ` / ${zapisLiczby(czasIth, 's')}` : ''}` : null,
+    ith,
     idyn: zapisLiczby(kat?.i_dyn_ka, 'kA'),
     zrodloPl,
   };
@@ -991,7 +1045,8 @@ function kartaAparatu(
           wiersz('ur', 'Napięcie znamionowe Uᵣ', zn.ur),
           wiersz('ir', 'Prąd znamionowy Iᵣ', zn.ir),
           wiersz('ik_wyl', 'Zdolność wyłączalna', aparat.lacznik ? zn.ik : 'nie dotyczy'),
-          ...(zn.ith ? [wiersz('ith', 'Prąd cieplny Iₜₕ / czas', zn.ith)] : []),
+          // Wiersz zawsze dla łącznika: „brak danych” (null) odróżniony od „nie dotyczy”.
+          ...(aparat.lacznik || zn.ith ? [wiersz('ith', 'Prąd cieplny Iₜₕ / czas', zn.ith)] : []),
           ...(zn.idyn ? [wiersz('idyn', 'Prąd szczytowy I_dyn', zn.idyn)] : []),
         ],
         zrodloPl: zn.zrodloPl,

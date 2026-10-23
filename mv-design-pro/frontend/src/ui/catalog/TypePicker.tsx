@@ -3,6 +3,11 @@ import { clsx } from 'clsx';
 import type { CatalogListItem } from './api';
 import { fetchTypesByCategory, getCatalogErrorMessage } from './api';
 import type { TypeCategory } from './types';
+import {
+  pradAparatuSnKatalogu,
+  pradKaLubBrakDanych,
+  pradLacznikaKatalogu,
+} from './pradZwarciowyKatalogu';
 
 interface TypePickerProps {
   category: TypeCategory;
@@ -44,11 +49,11 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
     case 'TRANSFORMER':
       return `${record.rated_power_mva ?? '-'} MVA, ${record.voltage_hv_kv ?? '-'} / ${record.voltage_lv_kv ?? '-'} kV, uk=${record.uk_percent ?? '-'}%`;
     case 'SWITCH_EQUIPMENT':
-      return `${record.un_kv ?? '-'} kV, ${record.in_a ?? '-'} A, ${record.ik_ka ?? '-'} kA`;
+      return `${record.un_kv ?? '-'} kV, ${record.in_a ?? '-'} A, Ik ${pradLacznikaKatalogu(record, 'ik_ka')}`;
     case 'MV_APPARATUS':
-      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, ${record.breaking_capacity_ka ?? '-'} kA`;
+      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, Ik ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
     case 'LV_APPARATUS':
-      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, ${record.breaking_capacity_ka ?? '-'} kA`;
+      return `${record.u_n_kv ?? '-'} kV, ${record.i_n_a ?? '-'} A, Ik ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
     case 'LV_RCD':
       return `IΔn=${record.i_delta_n_a ?? '-'} A, typ ${record.rcd_type ?? '-'}, In=${record.in_a ?? '-'} A, ta=${record.t_a_s ?? '-'} s`;
     case 'LV_CABLE':

@@ -218,6 +218,14 @@ from infrastructure.persistence.db import (  # noqa: E402
 )
 from infrastructure.persistence.unit_of_work import build_uow_factory  # noqa: E402
 from network_model.catalog.repository import get_default_mv_catalog  # noqa: E402
+from network_model.catalog.rodzaje_aparatury import (  # noqa: E402
+    RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA,
+    RODZAJE_APARATURY_LACZENIOWEJ,
+    WIELKOSCI_ZWARCIOWE_APARATU_SN,
+    WIELKOSCI_ZWARCIOWE_LACZNIKA,
+    wielkosc_zwarciowa_aparatu_sn_dotyczy,
+    wielkosc_zwarciowa_lacznika_dotyczy,
+)
 from network_model.solvers.cable_voltage_drop import (  # noqa: E402
     CableRatedCurrentInput,
     compute_cable_rated_current,
@@ -1075,6 +1083,36 @@ def kody_metryk_wynikow() -> dict[str, Any]:
     return {
         "zrodlo": "domain/result_builder_v1.py::METRYKI_ELEMENTOW_WYNIKU",
         "kody": [{"kod": kod, "jednostki": sorted(jednostki[kod])} for kod in sorted(jednostki)],
+    }
+
+
+def rodzaje_wielkosci_zwarciowych_aparatury() -> dict[str, Any]:
+    """Która wielkość zwarciowa jest właściwa któremu rodzajowi aparatu SN — POMIAR
+    predykatów ``network_model/catalog/rodzaje_aparatury.py`` (jednego źródła bramki
+    KAT-T-048, projekcji ``APARAT_SN`` i rejestru wartości roboczych).
+
+    Wyrocznia rozróżnienia „nie dotyczy” / „brak danych” we froncie
+    (`ui/catalog/pradZwarciowyKatalogu.ts`, test `ui/catalog/__tests__/
+    pradZwarciowyKatalogu.test.ts`): `null` w polu niewłaściwym rodzajowi to „nie dotyczy”,
+    w polu właściwym — „brak danych”. Zmiana zbioru w backendzie bez zmiany odbicia we
+    froncie zapala czerwień w obu warstwach.
+    """
+    return {
+        "zrodlo": "network_model/catalog/rodzaje_aparatury.py",
+        "lacznik": {
+            rodzaj: {
+                pole: wielkosc_zwarciowa_lacznika_dotyczy(rodzaj, pole)
+                for pole in WIELKOSCI_ZWARCIOWE_LACZNIKA
+            }
+            for rodzaj in sorted(RODZAJE_APARATURY_LACZENIOWEJ)
+        },
+        "aparat_sn": {
+            rodzaj: {
+                pole: wielkosc_zwarciowa_aparatu_sn_dotyczy(rodzaj, pole)
+                for pole in WIELKOSCI_ZWARCIOWE_APARATU_SN
+            }
+            for rodzaj in sorted(RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.values())
+        },
     }
 
 
@@ -5184,6 +5222,7 @@ FIXTURY: dict[str, Any] = {
     "werdykt_projektowy_scena_uwaga": werdykt_projektowy_sceny_uwaga,
     "katalog_analiz_v126": katalog_analiz_v126,
     "kody_metryk_wynikow": kody_metryk_wynikow,
+    "rodzaje_wielkosci_zwarciowych_aparatury": rodzaje_wielkosci_zwarciowych_aparatury,
     "gotowosc_v126_scena_akademickie": gotowosc_v126_scena_akademickie,
     "nazwy_obiektow_scen_akademickich": nazwy_obiektow_scen_akademickich,
     "identyfikatory_grafu": identyfikatory_grafu,

@@ -46,6 +46,7 @@ from network_model.catalog.types import (
     ConverterType,
     LVFuseLinkType,
     LVRcdType,
+    SwitchEquipmentType,
     _normalize_catalog_status,
     _normalize_verification_status,
     _validate_float_range,
@@ -511,7 +512,26 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
         lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5),
         lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5, t_nieczuly_min_s=0.13),
     ),
+    # Karta KATALOG-APARATURA-WN — `SwitchEquipmentType`: 0 kA jako „brak danej”.
+    "KAT-T-048": (
+        # Zero odłącznika w polu, którego rodzaj nie ma — zero nie jest zapisem „nie dotyczy”.
+        lambda: _lacznik(equipment_kind="DISCONNECTOR", ik_ka=0.0, icw_ka=20.0),
+        # Brak danej (None) u wyłącznika i None w polu, którego rodzaj nie ma (zdolność
+        # wyłączania odłącznika, I_cw bezpiecznika) — legalne.
+        lambda: (
+            _lacznik(equipment_kind="CIRCUIT_BREAKER", ik_ka=None, icw_ka=None),
+            _lacznik(equipment_kind="DISCONNECTOR", ik_ka=None, icw_ka=20.0),
+            _lacznik(equipment_kind="FUSE", ik_ka=63.0, icw_ka=None, i_cu_ka=63.0),
+        ),
+    ),
 }
+
+
+def _lacznik(**zmiany: Any) -> SwitchEquipmentType:
+    """Rekord łącznika z danymi TESTOWYMI (kształt rekordu, nie wartości katalogowe)."""
+    pola: dict[str, Any] = {"id": "lacznik_test", "name": "Łącznik testowy", "un_kv": 12.0}
+    pola.update(zmiany)
+    return SwitchEquipmentType(**pola)
 
 
 def _rcd(**zmiany: Any) -> LVRcdType:

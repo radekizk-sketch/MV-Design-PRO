@@ -11,6 +11,7 @@ from network_model.pochodne import mva_na_kva, mw_na_kw
 
 from .karty_widmowe import karta_widmowa_z_rekordu
 from .mv_benchmark_catalog import jest_rekordem_benchmarku
+from .rodzaje_aparatury import RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA
 from .types import (
     POLA_KARTY_PROJEKCJI,
     BESSBatteryType,
@@ -143,44 +144,52 @@ def _certyfikat_ptpiree_z_memo(record: dict) -> PtpireeGeneratorCertificate:
 _ICW_CZAS_ODNIESIENIA_S = 1.0
 
 
-def _dodatnia(wartosc: object) -> float | None:
-    """Liczba dodatnia albo ``None`` — zero w katalogu znaczy „nie dotyczy”.
+#: Pole rekordu łącznika → pole projekcji ``MVApparatusType`` (te same wielkości, inne
+#: nazwy). Jakość danych pola (``card_field_status``) idzie za wielkością, nie za nazwą.
+_POLA_PROJEKCJI_APARATU: dict[str, str] = {
+    "un_kv": "u_n_kv",
+    "in_a": "i_n_a",
+    "ik_ka": "breaking_capacity_ka",
+    "icw_ka": "i_th_ka",
+}
 
-    Bezpiecznik topikowy ma ``icw_ka = 0.0`` (nie ma wytrzymałości
-    krótkotrwałej — przepala się), a uziemnik ``ik_ka = 0.0`` (nie łączy
-    prądów zwarciowych). Przepisanie takiego zera jako znamiona dałoby werdykt
-    „nie wytrzymuje” tam, gdzie kryterium w ogóle nie istnieje.
-    """
-    if wartosc is None:
-        return None
-    try:
-        liczba = float(wartosc)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-    return liczba if liczba > 0 else None
+
+def _jakosc_pol_projekcji_aparatu(status: object) -> dict[str, object]:
+    """``card_field_status`` rekordu łącznika przepisany na nazwy pól projekcji aparatu.
+
+    Pole rekordu bez odpowiednika w projekcji (``u_m_kv``, ``i_cu_ka`` — projekcja ich nie
+    niesie) nie przechodzi. Rekord bez deklaracji daje projekcję bez klucza (bajtowo jak
+    przed kartą KATALOG-APARATURA-WN)."""
+    if not isinstance(status, dict) or not status:
+        return {}
+    wynik: dict[str, dict] = {}
+    for pole_rekordu, wpis in status.items():
+        pole_projekcji = _POLA_PROJEKCJI_APARATU.get(str(pole_rekordu))
+        if pole_projekcji is None or not isinstance(wpis, dict):
+            continue
+        wynik[pole_projekcji] = {**wpis, "field_name": pole_projekcji}
+    return {"card_field_status": wynik} if wynik else {}
 
 
 def _derive_mv_apparatus_records(
     switch_equipment_records: Iterable[dict],
 ) -> list[dict]:
-    kind_map = {
-        "CIRCUIT_BREAKER": "WYLACZNIK",
-        "LOAD_SWITCH": "ROZLACZNIK",
-        "DISCONNECTOR": "ODLACZNIK",
-        "EARTH_SWITCH": "UZIEMNIK",
-        "FUSE": "ROZLACZNIK_BEZPIECZNIKOWY",
-        "RECLOSER": "REKLOZER",
-    }
+    # Wielkości zwarciowe przechodzą BEZ przekształcenia: te same rekordy budują w
+    # ``from_records`` ``SwitchEquipmentType``, którego bramka KAT-T-048 gwarantuje
+    # ``ik_ka``/``icw_ka`` dodatnie albo ``None`` (zero odrzucone w każdej wielkości,
+    # wielkość niewłaściwa rodzajowi zawsze ``None``). Dawny filtr „zero → None” był
+    # drugą, cichą konwencją „nie dotyczy” — o „nie dotyczy” rozstrzyga rodzaj
+    # (``device_kind``), o „brak danej” — ``None`` przy wielkości właściwej rodzajowi.
     derived: list[dict] = []
     for record in switch_equipment_records:
         params = dict(record.get("params") or {})
-        icw_ka = _dodatnia(params.get("icw_ka"))
+        icw_ka = params.get("icw_ka")
         derived.append(
             {
                 "id": record.get("id"),
                 "name": record.get("name"),
                 "params": {
-                    "device_kind": kind_map.get(
+                    "device_kind": RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.get(
                         str(params.get("equipment_kind", "")).upper(),
                         "APARAT_SN",
                     ),
@@ -199,6 +208,7 @@ def _derive_mv_apparatus_records(
                     "i_th_ka": icw_ka,
                     "i_th_duration_s": (_ICW_CZAS_ODNIESIENIA_S if icw_ka is not None else None),
                     "manufacturer": params.get("manufacturer"),
+                    **_jakosc_pol_projekcji_aparatu(params.get("card_field_status")),
                     **_copy_catalog_quality(record),
                 },
             }

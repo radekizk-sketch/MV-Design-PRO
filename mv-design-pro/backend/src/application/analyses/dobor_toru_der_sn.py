@@ -37,6 +37,7 @@ from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_typ
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
 from network_model.odmowa_danych import OdmowaDanychError
 from network_model.pochodne import kv_na_v
+from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 from network_model.solvers.cable_ampacity_derating import wspolczynniki_z_opisu
 from network_model.solvers.der_selection_preview import (
     BlockTransformerCandidate,
@@ -159,7 +160,13 @@ def kandydaci_kabli_sn() -> tuple[CableCandidate, ...]:
 
 
 def kandydaci_aparatow_pola_sn() -> tuple[FieldApparatusCandidate, ...]:
-    """Aparatura SN katalogu z rodzajem, napięciem i prądem znamionowym."""
+    """Aparatura SN katalogu z rodzajem, napięciem i prądem znamionowym.
+
+    Pozycje spoza pasma SN (łączniki topologii zasilania 110 kV, U_m 123 kV) nie są
+    kandydatami aparatu pola SN: napięciowo „wystarczają”, ale aparat WN w polu SN nie
+    jest propozycją doboru, tylko pomyłką klasy napięcia. ``ik_ka = None`` to brak danej
+    z karty i tak przechodzi do propozycji (nigdy 0.0 — bramka KAT-T-048).
+    """
     candidates: list[FieldApparatusCandidate] = []
     for record in get_all_switch_equipment_types():
         params = record.get("params") or {}
@@ -167,6 +174,8 @@ def kandydaci_aparatow_pola_sn() -> tuple[FieldApparatusCandidate, ...]:
         un_kv = params.get("un_kv")
         in_a = params.get("in_a")
         if kind is None or un_kv is None or in_a is None:
+            continue
+        if pasmo_napieciowe(float(un_kv)) != "SN":
             continue
         candidates.append(
             FieldApparatusCandidate(

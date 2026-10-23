@@ -168,6 +168,10 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
         "Kanon ma `source.sk3_invalid` (wartość NIEPRAWIDŁOWA), a warunek mówi o BRAKU "
         "parametrów — brak i błędna wartość prowadzą do różnych napraw."
     ),
+    "apparatus.hv_switch_catalog_missing": (
+        "Kanon nie ma kodu wiązania katalogowego łącznika — kod dotyczy łącznika topologii "
+        "zasilania 110 kV bez typu (reguła wiązania katalogowego), nie braku danych projektu."
+    ),
     "sources.sk_ik_voltage_inconsistent": (
         "Kanon nie ma kodu dla niespójności Ik''/Sk''/napięcia źródła."
     ),

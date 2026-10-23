@@ -42,6 +42,11 @@ _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny — pozycja bez niego ma odcisk
     # sprzed karty.
     "ConverterType": POLA_TORU_MASZYNY,
+    # Karta KATALOG-APARATURA-WN: jakość pól pozycji łącznika (``card_field_status``) —
+    # pozycja bez deklaracji ma odcisk sprzed karty; odcisk zmieniają wyłącznie nowe pozycje
+    # minimalnych łączników 110 kV, które ją niosą.
+    "SwitchEquipmentType": ("card_field_status",),
+    "MVApparatusType": ("card_field_status",),
 }
 #: Pola SKASOWANE z typów, które odcisk ZACHOWUJE jako `null` (wzorzec W5-A z
 #: `enm/hash.py::_POLA_SKASOWANE_W_ODCISKU`). `ConverterType.harmonic_spectrum_percent`

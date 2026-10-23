@@ -92,8 +92,9 @@ def test_wartosc_producenta_ma_pierwszenstwo_przed_derywacja() -> None:
 def test_pozycja_bez_wytrzymalosci_krotkotrwalej_zostaje_bez_znamion() -> None:
     """Bezpiecznik topikowy nie ma Icw — i nie dostaje żadnej liczby zastępczej.
 
-    W katalogu zapisano `icw_ka = 0.0` („nie dotyczy"). Przepisanie tego zera do
-    znamion dałoby werdykt „nie wytrzymuje" tam, gdzie kryterium nie istnieje.
+    W katalogu `icw_ka = None` — „nie dotyczy” rozstrzyga rodzaj (bramka KAT-T-048 odrzuca
+    zero w każdej wielkości). Liczba zastępcza w znamionach dałaby werdykt „nie wytrzymuje”
+    tam, gdzie kryterium nie istnieje.
     """
     pozycja = _pozycja(BEZPIECZNIK_ETI)
     zapis = pozycja.to_dict()

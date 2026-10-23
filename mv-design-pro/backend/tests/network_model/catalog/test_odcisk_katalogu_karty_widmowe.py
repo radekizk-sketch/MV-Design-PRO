@@ -79,6 +79,68 @@ ODCISK_SPRZED_KARTY = "1a8bcd4ba4a73c5dfb14a1f0315f82492a820cbb785226991432f8636
 #: `ODCISK_SPRZED_KARTY` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
 #: poniżej (przeliczona na drzewie partii 9, po katalogu z proweniencją i torze V112).
 ODCISK_PO_W5E_TTIT = "e83ee88bce1a45b0ef7e57931612c100764968c4fcd42281b133215fc3b1c062"
+#: Karta KATALOG-APARATURA-WN (2026-10-22, zakres po decyzji właściciela: 110 kV to granica
+#: zasilania GPZ): 2 typy minimalne łączników topologii 110 kV (rekord aparatury łączeniowej
+#: + jego projekcja APARAT_SN). Dowód liść po liściu (zrzut kanoniczny baza `956e3e37d` vs
+#: drzewo karty): wyłącznie nowe identyfikatory, 0 zmienionych pozycji istniejących — pole
+#: `card_field_status` dodane do obu typów jest poza odciskiem, gdy ma wartość `None`
+#: (`odcisk._POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE`). Zrzut z wyciętymi pozycjami karty daje
+#: DOKŁADNIE `ODCISK_PO_W5E_TTIT`.
+POZYCJE_APARATURY_WN: dict[str, tuple[str, ...]] = {
+    "switch_equipment_types": ("sw-cb-110kv", "sw-ds-110kv"),
+    "mv_apparatus_types": ("sw-cb-110kv", "sw-ds-110kv"),
+}
+#: Wartość zrzutu z wyciętymi polami karty projekcji (jak `ODCISK_PO_W5E_TTIT`); pełny odcisk
+#: katalogu domyślnego po karcie: 0d50891f64dd97c345b62dbe0bbb7b1b4a6cfdd8477c77cc6154930a26f290fd.
+ODCISK_PO_APARATURZE_WN = "f9295f20b4955ebe0decac54818aaa7c5bed0d6d0e58ddd8a0362eaf2638859b"
+#: Decyzja architekta 2026-10-22 (karta KATALOG-APARATURA-WN, commit 3): zero nie jest zapisem
+#: „nie dotyczy” — wielkość niewłaściwa rodzajowi aparatu jest ``None`` (bramka KAT-T-048).
+#: Dowód liść po liściu (zrzut kanoniczny `757814661` vs drzewo): różni się DOKŁADNIE 41
+#: liści, wszystkie wartość → null i wszystkie wypisane w `MIGRACJA_ZERA`: `ik_ka` 17 rekordów
+#: łączników (13 × 0.0 rozłączników/odłączników/uziemników, 4 × dodatnia kopia I_cw
+#: rozłączników i odłączników ZPUE/Elektrometal), `icw_ka` 7 bezpieczników ETI VV (0.0) i ich
+#: lustro `breaking_capacity_ka` w 17 projekcjach APARAT_SN; 0 nowych i 0 usuniętych pozycji.
+#: Zrzut z przywróconymi dawnymi wartościami tych liści daje DOKŁADNIE `ODCISK_PO_APARATURZE_WN`.
+#: Pełny odcisk katalogu domyślnego po migracji:
+#: 1e263e8341928cfc122f72521187c585336dbbb1dbd222531b45e15efab5f157 (przed: 0d50891f…290fd).
+ODCISK_PO_MIGRACJI_ZERA = "337501af699a826a088b967352e4b488e2afc7a7ea5ffefa65800f5c01c524a7"
+_IK_PRZED_MIGRACJA: dict[str, float] = {
+    **{
+        ref: 0.0
+        for ref in (
+            "sw-ds-abb-ojs-12kv-630a",
+            "sw-ds-abb-ojs-17kv-630a",
+            "sw-ds-abb-ojs-24kv-630a",
+            "sw-ds-generic-slupowy-17kv-400a",
+            "sw-es-generic-12kv",
+            "sw-es-generic-17kv",
+            "sw-ls-abb-nal-12kv-400a",
+            "sw-ls-abb-nal-12kv-630a",
+            "sw-ls-abb-nal-24kv-400a",
+            "sw-ls-abb-nal-24kv-630a",
+            "sw-ls-schneider-rm6-12kv-630a",
+            "sw-ls-schneider-rm6-17kv-400a",
+            "sw-ls-schneider-sm6-24kv-630a",
+        )
+    },
+    "sw-ds-elektrometal-12kv-630a": 16.0,
+    "sw-ds-elektrometal-24kv-1250a": 20.0,
+    "sw-ls-zpue-nal-12kv-630a": 16.0,
+    "sw-ls-zpue-nal-24kv-630a": 16.0,
+}
+#: (przestrzeń, pozycja, pole) → wartość przed migracją (po migracji: ``None``).
+MIGRACJA_ZERA: dict[tuple[str, str, str], float] = {
+    **{("switch_equipment_types", ref, "ik_ka"): v for ref, v in _IK_PRZED_MIGRACJA.items()},
+    **{
+        ("mv_apparatus_types", ref, "breaking_capacity_ka"): v
+        for ref, v in _IK_PRZED_MIGRACJA.items()
+    },
+    **{
+        ("switch_equipment_types", f"sw-fuse-eti-vv-{wariant}", "icw_ka"): 0.0
+        for wariant in ("12kv-16a", "12kv-40a", "12kv-63a", "12kv-100a", "12kv-200a")
+        + ("17kv-63a", "17kv-100a")
+    },
+}
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -116,6 +178,16 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_MIGRACJI_ZERA
+    assert len(MIGRACJA_ZERA) == 41
+    for (przestrzen, identyfikator, pole), dawna in MIGRACJA_ZERA.items():
+        postac = zrzut[przestrzen][identyfikator]  # type: ignore[index]
+        assert postac[pole] is None, (przestrzen, identyfikator, pole)
+        postac[pole] = dawna
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_APARATURZE_WN
+    for przestrzen, identyfikatory in POZYCJE_APARATURY_WN.items():
+        for identyfikator in identyfikatory:
+            zrzut[przestrzen].pop(identyfikator)  # type: ignore[attr-defined]
     assert _odcisk_zrzutu(zrzut) == ODCISK_PO_W5E_TTIT
     bez_rcd = {
         przestrzen: postac for przestrzen, postac in zrzut.items() if przestrzen != "lv_rcd_types"
