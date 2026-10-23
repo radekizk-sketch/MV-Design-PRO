@@ -13,7 +13,7 @@
 > 4. `SYSTEM_SPEC.md` — executive overview
 > 5. `ARCHITECTURE.md` — architektura techniczna
 > 6. `AGENTS.md` — zasady pracy agentów
-> 7. `PLANS.md` — status operacyjny (LIVING)
+> 7. `PLANS.md` — jedyny nadrzędny rejestr postępu, priorytetów i odpowiedzialności (LIVING, część A §C)
 > 8. `docs/INDEX.md`, `docs/INDEX_KANONICZNY.md` — aktywne indeksy kanonu
 > 9. `docs/spec/SPEC_CHAPTER_*.md` (18 rozdziałów) — **ARCHIWALNE** (V11 reference; nie aktywny kanon)
 > 10. `docs/audit/archive/`, `docs/audit/historical_execplans/` — archiwum
@@ -65,7 +65,7 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Do
 **Krok 1: Zrozumieć kontekst (15 min)**
 1. [../SYSTEM_SPEC.md](../SYSTEM_SPEC.md) — wykonawcza specyfikacja systemu (1 strona)
 2. [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) — kanon V12.xx (binding, frozen 2026-04-24)
-3. [../PLANS.md](../PLANS.md) — aktualny status faz i prace bieżące
+3. [../PLANS.md](../PLANS.md) — jedyny nadrzędny rejestr postępu: jedna kolejka zadań P0–P3 (część A §C)
 
 **Krok 2: Zrozumieć cel (10 min)**
 4. [sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md](./sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md) — docelowy SLD klasy przemysłowej
@@ -165,7 +165,7 @@ Wynik mandatu „FINAL MASTER ARCHITECTURE MANDATE" (FAZY A–F, STOP §180). Do
 - [INDEX_KANONICZNY.md](./INDEX_KANONICZNY.md) - indeks wiążących dokumentów V12.5
 - [../SYSTEM_SPEC.md](../SYSTEM_SPEC.md) - wykonawcza specyfikacja systemu
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - architektura referencyjna
-- [../PLANS.md](../PLANS.md) - aktywny plan wykonawczy
+- [../PLANS.md](../PLANS.md) - jedyny plan wykonawczy (rejestr nadrzędny, część A)
 - [01-Core.md](./01-Core.md) - kanon domeny i kontraktów rdzenia
 - [04-Application.md](./04-Application.md) - aktywna architektura aplikacji
 - [domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md](./domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md) - kontrakty operacji domenowych

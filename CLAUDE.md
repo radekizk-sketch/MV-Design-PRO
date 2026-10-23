@@ -137,7 +137,7 @@ MV-Design-PRO/
 │   ├── SYSTEM_SPEC.md            # Executive overview + navigation hub (BINDING, v4.1)
 │   ├── AGENTS.md                 # Agent governance rules (BINDING, v4.3)
 │   ├── ARCHITECTURE.md           # Technical architecture reference (BINDING, v4.0)
-│   ├── PLANS.md                  # Operational status & next steps (LIVING, v5.1)
+│   ├── PLANS.md                  # Jedyny nadrzędny rejestr postępu, priorytetów i odpowiedzialności (LIVING, v6.0)
 │   ├── docker-compose.yml        # 3 services: backend, frontend, postgres
 │   ├── backend/
 │   │   ├── pyproject.toml        # Poetry configuration
@@ -327,7 +327,7 @@ Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K
 | 4 | `mv-design-pro/SYSTEM_SPEC.md` | Executive overview + navigation hub |
 | 5 | `mv-design-pro/ARCHITECTURE.md` | Technical architecture reference |
 | 6 | `mv-design-pro/AGENTS.md` | Agent governance rules |
-| 7 | `mv-design-pro/PLANS.md` | Operational status & next steps (LIVING) |
+| 7 | `mv-design-pro/PLANS.md` | Jedyny nadrzędny rejestr postępu, priorytetów i odpowiedzialności całego produktu (część A §C — jedna kolejka P0–P3; LIVING, konsolidacja 2026-10-23). Dokumenty programów niżej niosą treść kart i kryteria, bez konkurencyjnych harmonogramów |
 | 8 | `mv-design-pro/docs/INDEX.md` + `mv-design-pro/docs/INDEX_KANONICZNY.md` | Active canon indexes |
 | 9 | `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) | ARCHIVAL — V11 reference for spec-vs-code audit. All 28 files marked "Historical note (V12.5)". |
 | 10 | `mv-design-pro/docs/audit/archive/` + `mv-design-pro/docs/audit/historical_execplans/` | ARCHIVE (closed audits, ExecPlans) |
@@ -337,7 +337,7 @@ Note: `POWERFACTORY_COMPLIANCE.md` was removed in the V12.5.1 hard cut (2026-04-
 
 In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
-Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). **Nadrzędna misja właściciela od 2026-09-09:** `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (domknięcie całego produktu w 12 domenach; architektura, kolejność, kontrakty i wdrożenie po stronie architekta; bramki właściciela B-01/B-02 bez zmian; mapa domknięcia budowana z dowodów repo, nie z planów). **Mapa domknięcia (2026-09-09):** `mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` — klasyfikacja każdej zdolności 12 domen z dowodem, klasy defektów, kolejność wycinków W1–W12; pierwszy wycinek W1 (jedna prawda sieci: import XLSX → ENM, kasacja legacy ORM). See "Active programs" in Project Status below.
+**Jeden plan wykonawczy (konsolidacja 2026-10-23):** `mv-design-pro/PLANS.md` część A — stan bazowy (§B), jedna kolejka zadań P0–P3 (§C), rozstrzygnięcia sprzeczności (§D). Agent nie zakłada nowego programu, planu, roadmapy ani rejestru postępu; aktualizuje wiersz w §C. Active operational programs (2026-07, subordinate to the canon above and to `PLANS.md` §C): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). **Nadrzędna misja właściciela od 2026-09-09:** `mv-design-pro/docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (domknięcie całego produktu w 12 domenach; architektura, kolejność, kontrakty i wdrożenie po stronie architekta; bramki właściciela B-01/B-02 bez zmian; mapa domknięcia budowana z dowodów repo, nie z planów). **Mapa domknięcia (2026-09-09):** `mv-design-pro/docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` — klasyfikacja każdej zdolności 12 domen z dowodem, klasy defektów, kolejność wycinków W1–W12; pierwszy wycinek W1 (jedna prawda sieci: import XLSX → ENM, kasacja legacy ORM). See "Active programs" in Project Status below.
 
 ## Architecture Layer Boundaries (CRITICAL)
 

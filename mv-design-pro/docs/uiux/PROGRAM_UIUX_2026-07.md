@@ -3,7 +3,7 @@
 **Status:** JEDYNY AKTYWNY PROGRAM WYKONAWCZY UI/UX (podrzędny wobec kanonu V12.xx i specyfikacji `docs/system/`)
 **Data:** 2026-07-15; zintegrowany mandat wykonawczy: 2026-10-23
 > **JEDYNY AKTYWNY PLAN WYKONAWCZY UI/UX — UJEDNOLICENIE 2026-10-23.**
-> Właściciel podtrzymuje istniejący program „UI/UX klasy przemysłowej”; NIE uruchamia kolejnego programu SEL/SLD. **Claude Opus 5.5** jest zarządcą wykonawczym tego programu (zespół pomocniczy tylko wg delegacji). Jedna kolejka, jeden status, jedna kontrola E2E i odbiór właścicielski. Niniejszy dokument jest **jedynym miejscem zmiany priorytetów, kart i bramek UI/UX**; patrz §12. `PLANS.md` jest skrótem postępu, nie konkurencyjnym planem. Materiały SEL są referencją oraz kryteriami, nie odrębnym programem.
+> Właściciel podtrzymuje istniejący program „UI/UX klasy przemysłowej”; NIE uruchamia kolejnego programu SEL/SLD. **Claude Opus 5.5** jest zarządcą wykonawczym tego programu (zespół pomocniczy tylko wg delegacji). Jedna kolejka, jeden status, jedna kontrola E2E i odbiór właścicielski. Niniejszy dokument jest **jedynym miejscem treści kart, kryteriów odbioru i bramek UI/UX**; patrz §12. **Status, priorytet, odpowiedzialność i następna czynność każdej karty UX-00…UX-09 są prowadzone w `PLANS.md` część A §C (jedyny nadrzędny rejestr całego produktu, konsolidacja 2026-10-23)** — ten dokument nie prowadzi konkurencyjnego harmonogramu; po każdej zmianie karty aktualizuje się wiersz w `PLANS.md`, a macierz §12.3 niesie kryteria i dowody. Materiały SEL są referencją oraz kryteriami, nie odrębnym programem.
 > **B-02 NADAL ODRZUCONE. GIS P3 — NIE WDRAŻAĆ W AKTUALNYM ZAKRESIE.**
 
 **Dokumenty powiązane (wiążące dla programu):**
@@ -244,17 +244,17 @@ Improwizacja = odrzucenie PR.
 
 ## 10. Bramki jakości programu
 
-Przed każdym mergem: `npm run type-check`, `npm run lint`, pełny `vitest run --no-file-parallelism`,
+Przed każdym mergem: `npm run type-check`, `npm run lint`, pełny `npm test` (dwa kroki: pula `forks`, potem budżety czasu procesora — karta SZYBKIE-TESTY 2026-09-30),
 `npm run guard:codenames`, guardy: `forbidden_ui_terms_guard.py`, `ui_terminology_guard.py`,
 `dialog_completeness_guard.py`, `dead_click_guard.py`, `overlay_no_physics_guard.py`,
 `utf8_mojibake_guard.py`, `docs_guard.py` (przy zmianach doc).
-Zmiany wizualne: artefakt renderu + samoocena vs makieta zatwierdzona w U0.6.
+Zmiany wizualne: zrzuty żywej aplikacji w obu motywach do oceny właściciela (B-02); makiety U0.6 nie są kryterium.
 Backend (tylko gdy karta jawnie obejmuje API): pełny pytest + guardy backendowe.
 
 ## 11. Rejestr decyzji
 
 Decyzje programowe i konflikty → `docs/v12xx/REJESTR_KONFLIKTOW.md` (kanał istniejący).
-Postęp faz → `PLANS.md` §3 (wpis programu). Zmiany tego dokumentu wymagają zgody właściciela.
+Postęp kart → `PLANS.md` część A §C (rejestr nadrzędny). Zmiany tego dokumentu wymagają zgody właściciela.
 
 ---
 
@@ -266,12 +266,14 @@ Postęp faz → `PLANS.md` §3 (wpis programu). Zmiany tego dokumentu wymagają 
 części programu wyłącznie na polecenie Opusa, na rozłącznych plikach, bez tworzenia konkurencyjnej
 roadmapy i bez autonomicznej zmiany kolejności priorytetów właściciela.
 
-**Jedyny aktywny plan zadań UI/UX:** bieżący dokument, §6 (istniejące epiki E1–E15), §8
-(bramki U0–U5) oraz poniższa **jedna kolejka §12.3**. Zadania „SEL +”, „SLD rework”, „ekrany
+**Jedyna treść kart UI/UX:** bieżący dokument, §6 (istniejące epiki E1–E15), §8
+(bramki U0–U5) oraz poniższa **jedna kolejka §12.3**; status i kolejność między kartami
+prowadzi `PLANS.md` część A §C (rejestr nadrzędny całego produktu, 2026-10-23). Zadania „SEL +”, „SLD rework”, „ekrany
 obliczeń” i „flow” to karty **tych samych epików**, a nie osobne programy.
 
-**Status i dowody:** jedna tabela §12.3 aktualizowana po każdej weryfikacji i scaleniu;
-`PLANS.md` §3.-1 publikuje tylko krótkie podsumowanie z linkiem do tego dokumentu.
+**Status i dowody:** jedna tabela §12.3 (kryteria, dowody) aktualizowana po każdej weryfikacji i scaleniu
+RAZEM z wierszem karty w `PLANS.md` część A §C (status, priorytet, odpowiedzialny, następna czynność);
+`PLANS.md` część B §3.-1 jest historią prac.
 `docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` pozostaje historycznym dowodem, nie aktualnym
 wynikiem. Dokumenty techniczne SLD, W1–W12 i A/B zachowują wartość specyfikacji i
 rejestrów fizyki, **nie mogą deklarować innego statusu UI**. Zadanie jest ZAMKNIĘTE tylko,
@@ -280,15 +282,15 @@ obu motywów + ocena użytkowa mają dowód. Istnienie ekranu, testy jednostkowe
 nie wystarczają.
 
 **Priorytety:** P0 natychmiast i równolegle z konieczną naprawą poprawności obliczeń;
-P1 po stabilizacji P0; P2 po odbiorze kluczowego przepływu; P3 GIS — tylko
+P1 po stabilizacji P0; P2 po P0 UI/UX (UX-00…UX-06) i bez blokowania P1 (`PLANS.md` §D.12); P3 GIS — tylko
 biblioteka inspiracji, bez realizacji. Żaden element P1/P2/P3 nie może blokować P0.
 
 ### 12.2 Rozstrzygnięcie rozproszenia planów — co jest źródłem prawdy
 
 | Dokument | Rola po konsolidacji | Które tematy pobieramy |
 |---|---|---|
-| **TEN `PROGRAM_UIUX_2026-07.md`** | **JEDYNE sterowanie i postęp UI/UX** | U0–U5, E1–E15, kolejka P0–P3, odbiór, decyzje właściciela |
-| `PLANS.md` §3.-1 | tylko skrót postępu i odnośnik | bez nowej listy konkurencyjnych działań |
+| **`PLANS.md` część A §C** | **JEDYNY nadrzędny rejestr postępu, priorytetów i odpowiedzialności** całego produktu (w tym kart UX-00…UX-09) | status, priorytet, odpowiedzialny, zależności, następna czynność |
+| **TEN `PROGRAM_UIUX_2026-07.md`** | **treść kart UI/UX, kryteria odbioru i bramki** (bez konkurencyjnego harmonogramu) | U0–U5, E1–E15, karty UX-00…UX-09 z kryteriami, H5-01…H5-05, odbiór, decyzje właściciela |
 | `PLAN_SLD_REWORK.md`, `SLD_CAD_*`, `SCHEMAT-10` | specyfikacje techniczne, historia oraz testy SLD | symbole PN-EN 60617, geometria, porty, LOD, deterministyczność, regresja |
 | `MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` W1–W12 | nadrzędna mapa **zdolności całego produktu**, nie osobny program UX | W2: uczciwość UI; W7: SLD; W9: ciąg pracy; W4/W5/W6/W8/W10/W11: ekrany zależne od fizyki |
 | `PLAN_AB_DYNAMIKA_A_B_2026-09.md` | obowiązujący specjalistyczny program **modelowania i walidacji fizyki A/B** | ekrany RMS, FRT, harmoniczne, zgodność dopiero na autentycznym wyniku |

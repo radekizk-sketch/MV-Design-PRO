@@ -2,7 +2,9 @@
 
 > **TO JEST PIERWSZE CZYTANIE DLA KAŻDEGO AGENTA.** Ten plik mówi, gdzie jesteśmy, i odsyła do dokumentów, które
 > niosą pomiar. **Repo > specy > ten rejestr** (gdy rejestr jest nieaktualny, prawdą jest świeży skan repo).
-> Kanon i hierarchia dokumentów: `CLAUDE.md` („Document Hierarchy"). Misja właściciela (nadrzędna operacyjnie):
+> Kanon i hierarchia dokumentów: `CLAUDE.md` („Document Hierarchy"). **Jedyny nadrzędny rejestr postępu, priorytetów
+> i odpowiedzialności (konsolidacja 2026-10-23): `PLANS.md` część A §C** — §7 B–D tego pliku to pomiar i tory, nie
+> konkurencyjna kolejka. Misja właściciela (nadrzędna operacyjnie):
 > `docs/plan/MISJA_DOMKNIECIA_PRODUKTU_2026-09.md` (część I 2026-09-09, część II 2026-09-16). Program bieżący:
 > `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` (decyzje O-1…O-56, sekwencja §5, rejestr postępu §7, bramki §12).
 > **Wznowienie po przerwie: §7 (pakiet wznowienia A–L) — czytaj przed jakąkolwiek pracą.**
