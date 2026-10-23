@@ -1,7 +1,11 @@
 # PROGRAM UI/UX KLASY PRZEMYSŁOWEJ — MV-DESIGN-PRO (2026-07)
 
-**Status:** AKTYWNY PROGRAM (podrzędny wobec kanonu V12.xx i specyfikacji `docs/system/`)
-**Data:** 2026-07-15
+**Status:** JEDYNY AKTYWNY PROGRAM WYKONAWCZY UI/UX (podrzędny wobec kanonu V12.xx i specyfikacji `docs/system/`)
+**Data:** 2026-07-15; zintegrowany mandat wykonawczy: 2026-10-23
+> **JEDYNY AKTYWNY PLAN WYKONAWCZY UI/UX — UJEDNOLICENIE 2026-10-23.**
+> Właściciel podtrzymuje istniejący program „UI/UX klasy przemysłowej”; NIE uruchamia kolejnego programu SEL/SLD. **Claude Opus 5.5** jest zarządcą wykonawczym tego programu (zespół pomocniczy tylko wg delegacji). Jedna kolejka, jeden status, jedna kontrola E2E i odbiór właścicielski. Niniejszy dokument jest **jedynym miejscem zmiany priorytetów, kart i bramek UI/UX**; patrz §12. `PLANS.md` jest skrótem postępu, nie konkurencyjnym planem. Materiały SEL są referencją oraz kryteriami, nie odrębnym programem.
+> **B-02 NADAL ODRZUCONE. GIS P3 — NIE WDRAŻAĆ W AKTUALNYM ZAKRESIE.**
+
 **Dokumenty powiązane (wiążące dla programu):**
 - `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` — inwentarz funkcji + macierz pokrycia (nic nie pomijamy)
 - `docs/uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md` — gramatyka interakcji + REJESTR OKIEN (każde okno od nowa)
@@ -15,8 +19,10 @@
 - `docs/uiux/KONTRAKT_PREZENTACJI_INZYNIERSKIEJ_V12_7.md` — KANON prezentacji inżynierskiej (V12.7): matematyka wyłącznie KaTeX (nigdy ASCII), metadane produkcyjne poza pierwszym planem, werdykt nie szerszy niż zakres kryterium, wiarygodność ≠ spełnienie, hierarchia jawności obliczeń — obowiązuje przy KAŻDEJ nowej analizie/kryterium na ekranach wyników
 - `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md` — prompt zarządcy programu (Fable)
 - `docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` — program inżynieryjny 10x (perymetr, jakość, współbieżność)
-- `docs/plan/PLAN_SLD_REWORK.md` + `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — rework SLD (OSOBNY WĄTEK)
+- `docs/plan/PLAN_SLD_REWORK.md` + `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — historyczne fazy i szczegółowe wymagania SLD, **bez oddzielnego zarządzania UI/UX**, realizacja w niniejszym programie; §12
 - `docs/ui/` — istniejące kontrakty UI (obowiązują, dopóki karta zadania ich jawnie nie zastąpi)
+- `docs/research/sel-blueframe/` — osadzone ekrany SEL, filmy, rejestr 32 funkcji i kontrakt wdrożenia „+”; **materiał referencyjny i wejście do kolejki §12, nie nowa roadmapa**
+- `docs/plan/MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` (W1–W12) i `docs/plan/PLAN_AB_DYNAMIKA_A_B_2026-09.md` — plany **domeny i fizyki produktu**, które dostarczają funkcje UI; nie stanowią osobnych kolejek interfejsu; §12.2
 
 ---
 
@@ -29,7 +35,7 @@ inspiracja i dowód zakresu funkcjonalnego, a stare okno ginie w tym samym PR, w
 przejmuje jego funkcję. Cel jakościowy: klasa narzędzi ETAP / DIgSILENT PowerFactory /
 ABB e-Design, mierzona bramką „100× lepiej" (MODEL_INTERAKCJI §5), z zachowaniem wszystkich
 przewag repo: WHITE BOX obliczeń, determinizm, katalog-first, jeden model sieci.
-Granica przebudowy: backend, solvery, kontrakty API i pliki wątku SLD — nietknięte.
+Granica przebudowy: solverów i fizyki nie przenosi się do UI; kontrakty API respektują wersjonowanie. Zmiany backendu i plików SLD są dozwolone tylko w ramach realnego domknięcia zdolności i istniejącego kanonu (decyzja §2.0 oraz aktualizacja §2.3).
 
 **Użytkownik pierwszoplanowy:** inżynier projektujący sieci SN ze źródłami OZE (PV, BESS, FW),
 prowadzący projekt od GPZ przez magistrale, stacje SN/nn, przyłączenia DER, po analizy, dowody
@@ -82,15 +88,21 @@ Program 10x (F0–F4) właśnie zabezpiecza fundament (bramki CI, auth, współb
 Program UI/UX nie dubluje jego zadań: auth, sekrety, offload event-loopu, mypy — poza zakresem.
 Punkt styku: charakteryzacja OpenAPI (F0.5a) jest szwem, na którym UI może bezpiecznie budować.
 
-### 2.3 Relacja do wątku SLD (RÓWNOLEGŁA SESJA — twarda granica)
-Naprawa/rework SLD (plan F1–F5 z `PLAN_SLD_REWORK.md`) biegnie w **osobnym wątku**. W tym programie:
-- ZAKAZ modyfikacji: `frontend/src/ui/sld/**`, `frontend/src/ui/sld-editor/**`,
-  `frontend/src/engine/sld-layout/**`, symboli kanonicznych, silnika layoutu, rendererów.
-- DOZWOLONE: konsumowanie kontraktów SLD (osadzenie widoku SLD w nowej powłoce, wywołanie
-  nakładek wyników przez ich publiczne API), projektowanie miejsc na SLD w architekturze informacji.
-- Punkty styku wymagające kart koordynacyjnych (uzgodnienie między wątkami, nie samowolna zmiana):
-  tokeny motywów `dark_scada`/`light_technical` (SLD F4), API nakładek wyników, panel szczegółów.
-- Kolizja plików z wątkiem SLD wykryta w PR → STOP, eskalacja do właściciela.
+### 2.3 Relacja do SLD — JEDEN PROGRAM (decyzja właściciela 2026-07-21, V12K-084; konsolidacja 2026-10-23)
+**Poprzednia zasada osobnego wątku SLD jest UCHYLONA.** `PLANS.md` §3.-1 potwierdza zniesienie
+rozdziału od 2026-07-21. Program UI/UX prowadzi **całą interakcję SLD + kreatory + inspektory +
+nakładki wyników + przepływ projektanta** aż do odbioru; SLD jest integralną częścią jednego produktu.
+- Wolno modyfikować `frontend/src/ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`,
+  gdy jest to konieczne do wykonania karty i zachowania zgodności z nadrzędnym kanonem.
+- **Tylko `SldCanvasV3` i istniejące symbole/projekcja**: zakaz tworzenia nowego SLD, drugiego
+  grafu lub zastępowania renderera nowym edytorem. Dwie osobne projekcje SN i nN z jednego ENM.
+- Jedno źródło `ownerRef`, `PortRef`, katalogu i stanu aparatu dla SLD, drzewa, inspektora
+  i wyników. Nie kopiować fizyki ani rozwiązań backendowych do interfejsu.
+- Konflikt współbieżnych zmian rozstrzyga Opus jako integrator; praca na izolowanych gałęziach,
+  a nie dwa niezależne programy i dwa źródła statusu.
+- Historyczne `PLAN_SLD_REWORK.md` i dokumenty F1–F13 / SCHEMAT-10 są **specyfikacjami
+  technicznymi i dowodami**, nie ponownym harmonogramem programu. Odbiór B-02 przez właściciela
+  pozostaje niezaliczony niezależnie od deklarowanych zakończeń dawnych etapów.
 
 ## 3. Rada specjalistów (poziom recenzji „profesorski")
 
@@ -175,7 +187,7 @@ wykonawca (O=Opus, S=Sonnet, G=Codex GPT, F=Fable-zarządca; szczegóły w promp
 | E11 OZE i zgodność NC RfG | testy NC RfG/PTPiREE, FRT/HVRT, NOWE powierzchnie: siła sieci (SCR), adekwatność mocy biernej, SSCI, arc flash; bilans mocy do wniosku przyłączeniowego | ncrfg-tests | O | U4 |
 | E12 Porównania (konsolidacja) | JEDEN moduł porównań A/B dla LF/SC/zabezpieczeń/scenariuszy — likwidacja duplikacji comparison / power-flow-comparison / protection-comparison | comparison, power-flow-comparison, protection-comparison | S | U4 |
 | E13 Raporty i dokumentacja | centrum raportów: PDF/DOCX, zestawienia materiałowe, kompletność techniczna, import XLSX | reports, audit | S | U4 |
-| E14 Integracja SLD | osadzenie SLD w nowej powłoce, nawigacja model↔schemat↔wyniki, nakładki przez publiczne API | sld-overlay (konsumpcja) | F (koordynacja) | U5 |
+| E14 Integracja SLD | bezpośrednia praca na `SldCanvasV3`: dodawanie, edycja, inspektor, łącza ENM, nawigacja model↔schemat↔wyniki i nakładki | sld-overlay, `SldCanvasV3Workspace`, istniejący executor | **O (prowadzi całość)** | **U2+U5 / P0** |
 | E15 Fundament stanu | app-state, selection, history (undo/redo), context-menu, contracts, canon, field — audyt i uporządkowanie pod nową IA; WIĄŻĄCE: `SPEC_POWIAZANIA_WARSTW_2026-07.md` (magistrala zdarzeń powłoki, selekcja globalna, kontrakt świeżości rewizji) | app-state, selection, history, context-menu, contracts, canon, field, common, shared, config, icons | S | U1 |
 
 Reguła konsolidacji: stary moduł znika w tym samym PR, w którym nowy przejmuje jego funkcję
@@ -243,3 +255,136 @@ Backend (tylko gdy karta jawnie obejmuje API): pełny pytest + guardy backendowe
 
 Decyzje programowe i konflikty → `docs/v12xx/REJESTR_KONFLIKTOW.md` (kanał istniejący).
 Postęp faz → `PLANS.md` §3 (wpis programu). Zmiany tego dokumentu wymagają zgody właściciela.
+
+---
+
+## 12. ZINTEGROWANA KOLEJKA WYKONAWCZA — UI/UX PRZEMYSŁOWY (decyzja właściciela 2026-10-23)
+
+### 12.1 Jedna odpowiedzialność, jedno miejsce rozliczenia
+
+**Zarządca wykonawczy:** Claude Opus 5.5 (pełny program UI/UX). Fable i inni agenci mogą dostarczać
+części programu wyłącznie na polecenie Opusa, na rozłącznych plikach, bez tworzenia konkurencyjnej
+roadmapy i bez autonomicznej zmiany kolejności priorytetów właściciela.
+
+**Jedyny aktywny plan zadań UI/UX:** bieżący dokument, §6 (istniejące epiki E1–E15), §8
+(bramki U0–U5) oraz poniższa **jedna kolejka §12.3**. Zadania „SEL +”, „SLD rework”, „ekrany
+obliczeń” i „flow” to karty **tych samych epików**, a nie osobne programy.
+
+**Status i dowody:** jedna tabela §12.3 aktualizowana po każdej weryfikacji i scaleniu;
+`PLANS.md` §3.-1 publikuje tylko krótkie podsumowanie z linkiem do tego dokumentu.
+`docs/uiux/AUDYT_BRAMEK_U2_U5_2026-08.md` pozostaje historycznym dowodem, nie aktualnym
+wynikiem. Dokumenty techniczne SLD, W1–W12 i A/B zachowują wartość specyfikacji i
+rejestrów fizyki, **nie mogą deklarować innego statusu UI**. Zadanie jest ZAMKNIĘTE tylko,
+gdy kod + rzeczywiste kliknięcie użytkownika + poprawne dane ENM/solver + pełne E2E + zrzuty
+obu motywów + ocena użytkowa mają dowód. Istnienie ekranu, testy jednostkowe i zielone CI
+nie wystarczają.
+
+**Priorytety:** P0 natychmiast i równolegle z konieczną naprawą poprawności obliczeń;
+P1 po stabilizacji P0; P2 po odbiorze kluczowego przepływu; P3 GIS — tylko
+biblioteka inspiracji, bez realizacji. Żaden element P1/P2/P3 nie może blokować P0.
+
+### 12.2 Rozstrzygnięcie rozproszenia planów — co jest źródłem prawdy
+
+| Dokument | Rola po konsolidacji | Które tematy pobieramy |
+|---|---|---|
+| **TEN `PROGRAM_UIUX_2026-07.md`** | **JEDYNE sterowanie i postęp UI/UX** | U0–U5, E1–E15, kolejka P0–P3, odbiór, decyzje właściciela |
+| `PLANS.md` §3.-1 | tylko skrót postępu i odnośnik | bez nowej listy konkurencyjnych działań |
+| `PLAN_SLD_REWORK.md`, `SLD_CAD_*`, `SCHEMAT-10` | specyfikacje techniczne, historia oraz testy SLD | symbole PN-EN 60617, geometria, porty, LOD, deterministyczność, regresja |
+| `MAPA_DOMKNIECIA_PRODUKTU_2026-09.md` W1–W12 | nadrzędna mapa **zdolności całego produktu**, nie osobny program UX | W2: uczciwość UI; W7: SLD; W9: ciąg pracy; W4/W5/W6/W8/W10/W11: ekrany zależne od fizyki |
+| `PLAN_AB_DYNAMIKA_A_B_2026-09.md` | obowiązujący specjalistyczny program **modelowania i walidacji fizyki A/B** | ekrany RMS, FRT, harmoniczne, zgodność dopiero na autentycznym wyniku |
+| `docs/research/sel-blueframe/` (PR #490) | ekranowe źródła, filmy, 32 wzorce, kontrakt testów | inteligentne „+”, drzewo, inspektor, walidacja; **GIS P3** |
+| `INWENTARZ_FUNKCJI_2026-07.md`, `FLOW_PROJEKTANTA_2026-07.md` | macierz pokrycia zdolności i kontrakt zachowania, nie drugie harmonogramy | kontrola kompletności i jednolity proces E1–E8 |
+
+### 12.3 JEDNA kolejka — karty powiązane z istniejącymi epikami
+
+Każdy wiersz = ta sama karta niezależnie, czy dotyka SLD, ENM, katalogu czy ekranu.
+Pola: **identyfikator, priorytet, epiki U/E i domenowe W, wymagany produkt, dowód, status**.
+Poniższe statusy powstały z analizy dokumentów i kodu z 2026-10-23; **nie udają odbioru
+żywej aplikacji**. Opus po przejściu rzeczywistych kliknięć aktualizuje je i dopisuje
+identyfikatory testów, commitów i zrzutów.
+
+| Karta | Priorytet | Epiki / wejście W | Produkt widoczny dla inżyniera | Obowiązkowy dowód | Status na 2026-10-23 |
+|---|---|---|---|---|---|
+| **UX-00** | **P0** | U2/U5; E3/E5/E6/E14; W7/W9 | audyt żywego procesu GPZ→SN→stacja→TR→nN→OZE→obliczenia, mapa już działających interakcji i braków; nie pisz nowej kanwy | video/zrzuty obu motywów, lista braków z konkretnymi plikami i klikami | **DO WERYFIKACJI** |
+| **UX-01** | **P0** | U2; E3/E14/E15; W7 | inteligentny **„+”** w legalnych punktach elektrycznych, lista akcji zależna od portu i zajętości, klawiatura/dotyk | T+01, T+04, T+05, widoczny uchwyt na SLD V3 | **DO WDROŻENIA/OCENY ISTNIEJĄCYCH MECHANIZMÓW** |
+| **UX-02** | **P0** | U2; E3/E4/E5/E14; W7/W9 | z punktu „+” dodaj kabel, pole, ZKSN, stację przelotową/końcową i PV/BESS; automatyczna topologia i rozmieszczenie | T+02/03/06/07/08/09, poprawne `PortRef` i ENM, rzeczywisty solver | **DO WDROŻENIA/OCENY** |
+| **UX-03** | **P0** | U2; E4/E5/E6; W9 | drzewo, inspektor, katalog, źródło danych i walidacja w jednym kontekście zaznaczonego elementu | zmiana parametru → ENM → odświeżenie SLD/wyniku; błąd → aparat | **DO WERYFIKACJI I DOMKNIĘCIA** |
+| **UX-04** | **P0** | U1/U5; E1/E14; W7 | wspólna estetyka przemysłowa inspirowana SEL: dominująca kanwa, proporcje, motywy, panele niezasłaniające schematu | zrzuty rzeczywistego produktu jasny/ciemny, bez alternatywnych makiet | **B-02 ODRZUCONE** |
+| **UX-05** | **P0** | U3/U4; E7/E8/E9/E10/E11; W2/W4/W5/W6 | obliczenia, nakładki na ten sam SLD, wynik → wywód White Box → dowód, brak fikcyjnych liczb i pozornych werdyktów | prawdziwe wejścia solwera, nieaktualność po zmianie ENM, walidacja fizyki | **CZĘŚCIOWE / NIEODEBRANE PRZEKROJOWO** |
+| **UX-06** | **P0** | U5; E1–E15; W9 | pełna ścieżka projektanta w jednej aplikacji od GPZ do raportu i odbioru | T+01…T+10 + Playwright na realnym backendzie, regresja obu motywów, B-02 | **NIEODEBRANE** |
+| **UX-07** | P1 | U1/U4; E12/E15; W9/W10 | wersje projektu, szkic, cofnij/ponów, porównanie A/B i stany przed/po | operacje odwracalne w ENM z historią i własnym wynikiem, E2E | DO OCENY |
+| **UX-08** | P2 | U2/U4; E4/E13; W10 | wygoda katalogów, szablonów i eksportów bez nowych równoległych modułów | kompletna karta, raport, lista urządzeń i parytet zdolności | DO OCENY |
+| **UX-09** | **P3 / STOP** | poza bieżącą misją UI | GIS, MDI, mapy, import geograficzny, DNP3/SCADA — zachować jedynie referencje i ewentualny przyszły interfejs danych | brak implementacji bez odrębnego polecenia właściciela | **ODŁOŻONE** |
+
+Nie jest to nowy plan względem E1–E15: to **jawne uporządkowanie i integracja w tych samych
+epikach**; w §6 nie wolno tworzyć duplikujących epików ani w planach W i SLD kolejnej kolejki UI.
+
+### 12.4 Kolejność wykonania, bez zatrzymywania pracy Opusa
+
+1. **UX-00 → UX-01/UX-02/UX-03/UX-04**: inspekcja i niezwłoczne wykonanie najbliższej
+   brakującej interakcji. Opus prowadzi UX-01/02 na istniejących `SldCanvasV3`,
+   `SldCanvasV3Workspace`, `SldCommandService`, `sldActionExecutor`, `PortRef`
+   i operacjach backendu. Dotknięte pliki wymagają jednej gałęzi integracyjnej
+   i właściciela zmiany; zespół może równolegle weryfikować UX-03/04 na innych plikach.
+2. **UX-05** biegnie równolegle pod warunkiem spójności fizyki i nie może udawać odbioru
+   naukowego na podstawie zielonego UI. W razie błędu P0 liczenia priorytet ma korekta
+   fizyki; po niej podłącz wynik do widoku bez zmiany kontraktu ENM.
+3. **UX-06** jest bramką integracyjną P0 każdej partii. **Nie odkładać do ostatniego etapu**:
+   po każdej nowej zdolności sprawdzaj cały tor GPZ→stacje→OZE→obliczenia→wynik→dowód/raport.
+4. **UX-07/08** tylko po zamknięciu odpowiadających im P0. **UX-09: stop.**
+5. Zrzuty i protokół właściciela są aktualizowane po każdej istotnej zmianie ekranu;
+   automatyczna regresja wizualna nie zastępuje werdyktu właściciela.
+6. Brak zgody właściciela wymaganej przez B-02 nie blokuje napraw P0, ale blokuje
+   deklarację akceptacji wizualnej produktu.
+
+### 12.5 Jeden obowiązkowy scenariusz odbioru
+
+Projektant tworzy GPZ (model zasilania SN, **bez szczegółowej rozdzielnicy 110 kV**), pole
+liniowe SN, wyprowadza kabel znakiem `+`, wstawia stację przelotową 15/0,4 kV
+(2 pola liniowe + transformatorowe), kontynuuje ciąg, dodaje ZKSN i stację końcową,
+przechodzi portalem do osobnego SLD nN, dodaje PV/BESS zgodnie z portami i rzeczywistym
+katalogiem, oblicza rozpływ i zwarcia, przechodzi z liczby na SLD do szczegółu dowodu,
+zmienia parametr kabla/transformatora, widzi oznaczenie wcześniejszych wyników jako
+nieaktualnych, przelicza, porównuje warianty i generuje raport. Każdy brak danych ma
+uczciwą odmowę z nazwanym elementem i akcją naprawczą. Na końcu zapis projektu,
+ponowny odczyt i powtórzenie obliczeń; ekran przy małej szerokości i oba motywy.
+
+**Bramki (wszystkie wymagane):**
+- jedna spójna ENM i poprawny tor od GPZ do odbiorcy, porty w polach, żadnych połączeń
+  „kreska do kreski”; brak nieuprawnionej architektury WN;
+- selekcja drzewa, SLD, inspektora, katalogu i wyników na tym samym `ownerRef`;
+- bilans i zwarcia z niezależną wyrocznią, kontrakt źródeł i prądów gałęziowych bez
+  nieudowodnionego sumowania modułów jako fazorów;
+- widoczny i prawidłowo aktualizowany stan obliczenia, źródło parametrów i White Box A–D;
+- wynik Playwright na realnej aplikacji i backendzie + testy odmów i pełnej regresji,
+  zrzuty obu motywów dla dokładnie tego samego modelu;
+- ocena wizualna **B-02 wyłącznie przez właściciela**; zielone CI ≠ B-02.
+
+### 12.6 Reguła raportowania i pomiaru procentów
+
+Po każdej zmianie Opus raportuje **jedną tabelę** w programie: `UX-ID |
+jest → wykonano | wersja/commit | jednostkowe | E2E real | zrzuty ciemny/jasny |
+ocena właściciela | status`. Nie ma drugiej listy statusów w SLD i SEL; pliki
+referencyjne wskazują identyfikator `UX-ID` z tego dokumentu.
+
+**Procenty**: liczba kart P0 z kompletem dowodów / liczba kart P0 (UX-00…UX-06);
+dodatkowo oddzielny procent spełnionych kryteriów faz U2/U3/U4/U5 wg ZAKTUALIZOWANEJ
+macierzy. Częściowych kart nie liczyć jako ukończonych, nie ważyć commitami, liniami
+kodu ani liczbą testów. **Stan bazowy jest niezweryfikowany po PR #489** i wymaga audytu
+UX-00; nie podawać aktualnego procentu z raportu sierpniowego.
+
+### 12.7 Rygor stanu repo i odpowiedzialności
+
+W chwili konsolidacji 2026-10-23 GitHub pokazuje PR #489 jako **OPEN** (nawet jeśli
+właściciel przyjmuje na potrzeby planowania, że jest scalony). Repo nie wolno
+sztucznie traktować jako innej gałęzi niż rzeczywista. Pakiet źródeł SEL jest w
+PR #490. **Zapis niniejszego mandatu do PR #490** powoduje, że Opus po scaleniu
+#490 do właściwej gałęzi ma JEDEN dokument programu, a nie kolejną roadmapę;
+dalszy rozwój implementacyjny dopiero na rzeczywistym aktualnym HEAD.
+
+**Nadrzędność:** `CLAUDE.md` / kanon V12.xx / normy i poprawna fizyka >
+program UI/UX jako jedyna kolejka prezentacji > szczegółowe specyfikacje
+SLD/SEL/UI/UX jako materiały implementacyjne. Każdą kolizję rozstrzyga się
+na podstawie aktualniejszej decyzji właściciela i rzeczywistego kodu, z
+udokumentowanym śladem, bez domniemywania „wdrożone”.
+
