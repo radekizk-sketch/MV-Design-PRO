@@ -2,7 +2,7 @@
 
 **Wersja:** 6.0 (konsolidacja 2026-10-23, misja właściciela „jeden obowiązujący plan wykonawczy")
 **Status:** LIVING — **JEDYNY NADRZĘDNY REJESTR POSTĘPU, PRIORYTETÓW I ODPOWIEDZIALNOŚCI** całego produktu.
-**Ostatnia aktualizacja:** 2026-10-23 (czubek gałęzi programu `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281`; `main` = `8f7ed3c27`, PR #489 OPEN)
+**Ostatnia aktualizacja:** 2026-10-23 (`main` = `e973ad2cd` — merge commit PR #489 z czubkiem programu `b2cf550d9`; gałąź programu `claude/mv-design-pro-twin-audit-u4lhy0` zrestartowana od `main`)
 **Kanon (nadrzędny wobec tego planu):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md), konstytucja programu konwergencji (`docs/architecture/*`), [`docs/system/`](docs/system/), `CLAUDE.md` (hierarchia dokumentów). Ten plan nie zmienia kanonu — porządkuje wykonanie.
 **Część B (od sekcji „Archiwum operacyjne") to historia:** zapis sesji 2026-05…2026-08 zachowany bez zmian treści; nie jest źródłem statusu.
 
@@ -51,7 +51,7 @@
 | Pozycja | Stan | Dowód |
 |---|---|---|
 | Gałąź programu | `claude/mv-design-pro-twin-audit-u4lhy0` = `a5996c281` (partia integracji 2 linii programu `0e7a5e7d6` + PR #490 pakiet SEL + PR #491 UX-04 H5/ENEA) | `git log`, PR #490/#491 MERGED |
-| `main` | `8f7ed3c27`, przodek gałęzi programu; PR #489 integracja → `main` **OPEN** (296 commitów, 2 213 plików) | GitHub PR #489 |
+| `main` | `e973ad2cd` — merge commit PR #489 (298 commitów, 2 213 plików; rodzice `8f7ed3c27` i `b2cf550d9`) | GitHub PR #489 |
 | CI na `0e7a5e7d6` | 9/9 workflowów zielonych | GitHub Actions |
 | Weryfikacja lokalna przed scaleniem #489 | **NIEDOKOŃCZONA** — pełny backend przerwany dwukrotnie restartem kontenera (ostatnio 38 %); `guardy_z_ci.py` + samotesty 3 908 zielone; `npm test`, type-check, lint, e2e 4 shardy — do wykonania | logi sesji integratora |
 | Pełna regresja (ostatnia zmierzona) | backend 39 083 passed (KATALOG-APARATURA-WN, 2026-10-23, gałąź UI/UX); vitest 893 pliki / 16 269 (tamże); bramka scalenia partii 2: pytest 38 798, vitest 4 604, guardy RC=0 | plan A/B §7 wiersze 2026-10-23 |
@@ -72,8 +72,8 @@ Zapisy `§7 YYYY-MM-DD` odsyłają do wiersza rejestru `docs/plan/PLAN_AB_DYNAMI
 
 | ID | Obszar | Priorytet | Status | Odpowiedzialny | Zależności | Dowód wykonania | Następna czynność |
 |---|---|---|---|---|---|---|---|
-| INT-489 | Integracja gałęzi programu → `main` (PR #489, merge commit, bez squasha) | P0 | W TOKU | Fable (integrator) | CI 9/9 na czubku; pełna weryfikacja lokalna (backend, `guardy_z_ci.py`, `npm test` dwa kroki, type-check, lint, e2e 4 shardy); porównanie czerwieni z bazą | PR #489 OPEN; CI 9/9 na `0e7a5e7d6`; samotesty guardów 3 908 passed | dokończyć weryfikację na `a5996c281`, komentarz z kodami wyjścia, merge commit; po scaleniu `main` = czubek programu |
-| JEDEN-PLAN | Konsolidacja planów (ta karta) | P0 | DO WERYFIKACJI | Fable | — | commit `bafd30392` na `…-karta-jeden-plan` (6 plików dokumentacji, 0 plików aplikacji); 12 guardów dokumentów RC=0, self-testy guardów 40 passed; CI na gałęzi karty: 7 workflowów (e2e filtrowane ścieżką — zmiana bez `frontend/**`/`backend/**`) | po CI zielonym fast-forward gałęzi programu (czubek PR #489 przesuwa się); odbiór planu przez właściciela; dalsze zmiany statusów wyłącznie w tym pliku |
+| INT-489 | Integracja gałęzi programu → `main` (PR #489, merge commit, bez squasha) | P0 | DOMKNIĘTA | Fable (integrator) | CI 9/9 na czubku; pełna weryfikacja lokalna (backend, `guardy_z_ci.py`, `npm test` dwa kroki, type-check, lint, e2e 4 shardy); porównanie czerwieni z bazą | PR #489 MERGED jako `e973ad2cd`; na czubku `b2cf550d9`: 44 check runy CI success; lokalnie backend 38 798 passed, `guardy_z_ci` rc 0, vitest 885 plików/14 399 passed + budżety 8 plików/193 passed, type-check i lint rc 0, e2e shardy 1/2/4 zielone, shard 3: 2 przypadki `kreator-stacji-zrzuty` (`socket hang up` w przygotowaniu sieci + zależna para dark/light), po jednym powtórzeniu 3 passed — przyczyna zerwania połączenia nieustalona; komentarz z kodami wyjścia pod PR | brak; kolejne partie integracji liczone od `main` |
+| JEDEN-PLAN | Konsolidacja planów (ta karta) | P0 | DO WERYFIKACJI | Fable | — | commit `bafd30392` na `…-karta-jeden-plan` (6 plików dokumentacji, 0 plików aplikacji); 12 guardów dokumentów RC=0, self-testy guardów 40 passed; CI na gałęzi karty: 7 workflowów (e2e filtrowane ścieżką — zmiana bez `frontend/**`/`backend/**`) | wdrożona na `main` w `e973ad2cd` (CI 7/7 na `b2cf550d9`); odbiór planu przez właściciela; dalsze zmiany statusów wyłącznie w tym pliku |
 | UX-00 | Audyt stanu bazowego UI/UX po PR #489 (rzeczywisty HEAD, nie raport sierpniowy) | P0 | DO WERYFIKACJI | Opus (zarządca UI/UX) | INT-489 (HEAD), T+01…T+10 z `docs/research/sel-blueframe/KONTRAKT_DLA_OPUSA.md` §3 | — | tabela `UX-ID \| jest → wykonano \| commit \| jednostkowe \| E2E real \| zrzuty \| ocena właściciela` (PROGRAM §12.6) |
 | UX-04 | SLD SN wg rysunków ENEA, funkcji pola i symboliki PN-EN 60617 (H5-01…H5-05; 110 kV tylko granica zasilania; jedna kanwa `SldCanvasV3`) | P0 | OTWARTA (H5 3/10, B-02 ODRZUCONE, audyt 2026-10-20 NO-GO) | Opus; werdykt — właściciel (B-02) | rysunki ENEA (BRAK ŹRÓDŁA → wpis BRAK DOWODU), ENM/PortRef, W7 (SLD jako projekcja ENM) dla trwałej geometrii | PROGRAM §12.5a macierz H5: wszystkie OCZEKUJE/ODRZUCONE | macierz rysunek → aparat/port ENM → symbol → zrzut → werdykt; pary ENEA ↔ SLD; zrzuty obu motywów do oceny właściciela |
 | UX-04/GPZ-H5-APARATURA | Cała aparatura pól SN GPZ w ENM/katalogu (U_m 7,2 kV, rola `surge_ground`, sprzęgło z `catalog_ref`, pickery z filtrem napięciowym, „brak danych/nie dotyczy" w karcie technicznej) | P0 | OTWARTA (materiał na gałęzi `…-aparatura-wn-wklad-sn`, nie do scalenia wprost) | wątek UI/UX (gałąź `…-karta-uiux-przemyslowy`); B-01 — Fable | KATALOG-APARATURA-WN ✓ (2026-10-23) | — | karta z inwentarzem klasy, testy iloczynu cech, wpis statusu tutaj i H5-02 |
@@ -218,8 +218,8 @@ Jeden wykonawca na tor; granice plików wg `STAN_REPO.md` §7 F:
 |---|---|
 | Wiersze kolejki §C.1–C.4 (zadania uporządkowane) | 64 |
 | w tym P0 / P1 / P2 / P3 | 19 / 35 / 7 / 3 (sekwencje AB-1d…AB-7 i AB-H2…H4 liczone jako po jednym wierszu) |
-| Nieukończone (OTWARTA/OTWARTE 46, W TOKU 3, DO WERYFIKACJI 5, CZĘŚCIOWE 1, NIEODEBRANE 1) | 56 |
-| DOMKNIĘTE w kolejce (zachowane dla ciągłości torów) | 5 |
+| Nieukończone (OTWARTA/OTWARTE 46, W TOKU 2, DO WERYFIKACJI 5, CZĘŚCIOWE 1, NIEODEBRANE 1) | 55 |
+| DOMKNIĘTE w kolejce (zachowane dla ciągłości torów) | 6 |
 | ZABLOKOWANA / ODRZUCONE / STOP | 1 / 1 / 1 |
 | Pozycje domknięte §C.5 (programy i karty, bez odtwarzania) | 16 wierszy zbiorczych |
 | Dokumenty scalone w jeden rejestr | 12: PLANS 5.1, PROGRAM_UIUX §8/§12, PROMPT_ZARZADCA, MAPA §8, PLAN_AB §2/§5/§7/§11/§14, PLAN_SLD_REWORK §0, STAN_REPO §7 B–D, sel-blueframe (README, GALERIA, REJESTR_32, KONTRAKT), audyty SLD 2026-10-20 ×2, PROMPT_KONTYNUACJI_2026-10-23 |
