@@ -99,3 +99,13 @@ Czubek `-partia-2` to teraz `0e7a5e7d6` (= `db1c688a5` + aktualizacja planu A/B 
 Fast-forward programu robisz na `0e7a5e7d6` po pełnej zieleni CI na tym commicie. Nowa sesja
 zaczyna od promptu z `docs/prompts/PROMPT_KONTYNUACJI_2026-10-23.md` (część A — wątek prowadzący,
 część B — wątek UI/UX); do czasu fast-forwardu plik jest na gałęzi `-partia-2`.
+
+## Aktualizacja: partia 2 w programie (2026-10-23 ~10:01 UTC)
+
+CI na `0e7a5e7d6`: Python tests (run 39916729073, 6 jobów: pytest, ANDES, pandapower,
+PostgreSQL 16, pełny zestaw mutacji, aparat dowodowy) — success; pozostałe 6 workflowów zielone
+na tym commicie; E2E smoke i full filtrowane ścieżkami (commit tylko dokumentów) — zielone na
+`db1c688a5` z identycznym kodem. `git merge-base --is-ancestor` potwierdzone, fast-forward
+programu `d543faf3c..0e7a5e7d6` wykonany bez force. Gałąź `-partia-2` jest odtąd wchłonięta.
+Następny krok: dokończenie karty DANE-PRZYJETE-EKRANY (sekcja „Aktualizacja: commit WIP”) na bazie
+programu `0e7a5e7d6`, potem kolejka kart rdzenia.
