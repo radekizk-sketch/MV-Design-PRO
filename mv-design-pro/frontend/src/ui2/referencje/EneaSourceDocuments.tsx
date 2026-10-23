@@ -15,6 +15,7 @@ const GROUP_LABELS: Record<Group, string> = {
 export function EneaSourceDocuments(): JSX.Element {
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState<Group>('sn');
+  const [term, setTerm] = useState('');
   const [catalog, setCatalog] = useState<EneaSourceCatalog | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -36,7 +37,7 @@ export function EneaSourceDocuments(): JSX.Element {
     if (doc.family !== 'standard') return false;
     if (group === 'gpz') return doc.area === 'WN' || doc.area === '110/SN';
     return doc.area === (group === 'sn' ? 'SN' : 'nN');
-  }), [catalog, group]);
+  }).filter((doc) => `${doc.title} ${doc.engineering_scope}`.toLocaleLowerCase('pl').includes(term.trim().toLocaleLowerCase('pl'))), [catalog, group, term]);
 
   return (
     <section className="mvd-enea-sources" aria-label="Dokumenty ENEA Operator">
@@ -64,6 +65,13 @@ export function EneaSourceDocuments(): JSX.Element {
                   </button>
                 ))}
               </div>
+              <label className="mvd-enea-search-label" htmlFor="mvd-enea-search">
+                Szukaj dokumentu
+              </label>
+              <input id="mvd-enea-search" className="mvd-enea-search" type="search"
+                value={term} onChange={(event) => setTerm(event.target.value)}
+                placeholder="np. linie kablowe, uziemienia" />
+              <p className="mvd-refwybor-stan">Liczba dokumentów: {shown.length}</p>
               <ul className="mvd-enea-list">
                 {shown.map((doc) => (
                   <li key={doc.id}>
