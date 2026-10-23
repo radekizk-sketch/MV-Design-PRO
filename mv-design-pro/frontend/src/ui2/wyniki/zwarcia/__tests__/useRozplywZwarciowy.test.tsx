@@ -223,7 +223,7 @@ describe('useRozplywZwarciowy (V12K-281, karta WB-ROZPLYW)', () => {
       source_id: 'THEVENIN_GRID',
       tor: 'thevenin',
       i_ka: 5.01e-15,
-      kat_deg: -84.2,
+      kat_deg: null,
     };
     // Próg celowo INNY niż dzisiejsza definicja rdzenia — hook przenosi wartość
     // z odpowiedzi, nie podstawia własnej stałej.

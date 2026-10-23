@@ -3,7 +3,8 @@
 Wkład gałęziowy rozpływu prądu zwarciowego o |I| < 1e-6 A to „wkład pominięty na podstawie
 tolerancji numerycznej (|I| < 1e-6 A)” — nie trafia na listę `branch_contributions` ani do
 kroków `thevenin_flow_<gałąź>` śladu, tylko do addytywnego zestawienia `wklady_pominiete`
-(surowe |I| i kąt fazora, 3 cyfry znaczące w stronę zera) i kroku śladu `wklady_pominiete`.
+(surowe |I|, 3 cyfry znaczące w stronę zera; kąt fazora NIE jest określony — ``kat_deg`` =
+``None``, karta KAT-WKLADU-POMINIETEGO) i kroku śladu `wklady_pominiete`.
 
 Iloczyn cech (wymaganie 5 właściciela):
 - wartość: {0, +1e-17 kA, −1e-17 kA, tuż poniżej progu, dokładnie na progu, tuż powyżej};
@@ -17,8 +18,9 @@ we wszystkich czterech rodzajach.
 Wartości graniczne trafiają do predykatu rdzenia DOKŁADNIE: graf i macierz Z-bus testu są
 dobrane tak, że współczynnik podziału gałęzi sondy wynosi 2⁻⁴⁰ (potęga dwójki — mnożenie
 bez błędu zaokrąglenia), więc prąd gałęzi = I_źródła · 2⁻⁴⁰ bit w bit. „−1e-17 kA” to ten
-sam prąd w gałęzi o odwróconej orientacji (fazor ze znakiem przeciwnym, kąt +180°) — moduł
-w rdzeniu jest zawsze nieujemny, znak niesie fazor i kierunek.
+sam prąd w gałęzi o odwróconej orientacji (fazor ze znakiem przeciwnym) — moduł w rdzeniu jest
+zawsze nieujemny; kąt żadnego z tych fazorów nie jest publikowany (poniżej progu jest resztą
+arytmetyki, a nie wielkością fizyczną).
 """
 
 from __future__ import annotations
@@ -40,6 +42,7 @@ from network_model.solvers.short_circuit_contributions import (
     NAZWA_WKLADU_POMINIETEGO,
     OPIS_PROGU_WKLADU_POMIJALNEGO,
     PROG_WKLADU_POMIJALNEGO_A,
+    PRZYCZYNA_KATA_NIEOKRESLONEGO,
     TOR_FALOWNIK,
     TOR_THEVENIN,
     WkladPominiety,
@@ -149,26 +152,28 @@ def test_zaokraglenie_trzy_cyfry_w_strone_zera(x: float, oczekiwane: float) -> N
     assert abs(zaokraglij_cyfry_znaczace(x)) <= abs(x)
 
 
-def test_rekord_wkladu_pominietego_kat_i_zero() -> None:
-    zero = WkladPominiety.z_wartosci(
-        tor=TOR_THEVENIN, source_id="THEVENIN_GRID", branch_id="g", i_a=0.0, fazor_a=0j
-    )
-    assert zero.to_dict() == {
-        "tor": "thevenin",
-        "source_id": "THEVENIN_GRID",
+@pytest.mark.parametrize("prad_a", [0.0, 1e-14, math.nextafter(PROG, 0.0)])
+def test_rekord_wkladu_pominietego_bez_kata(prad_a: float) -> None:
+    """Karta KAT-WKLADU-POMINIETEGO: wpis zestawienia nie ma atrybutu kąta, a JSON niesie
+    ``kat_deg`` = ``None`` (kontrakt pola bez zmian) — dla zera, szumu i wartości tuż
+    poniżej progu tak samo."""
+    wpis = WkladPominiety.z_wartosci(tor=TOR_FALOWNIK, source_id="pv", branch_id="g", i_a=prad_a)
+    assert not hasattr(wpis, "kat_deg")
+    assert wpis.to_dict() == {
+        "tor": "falownik",
+        "source_id": "pv",
         "branch_id": "g",
-        "i_a": 0.0,
-        "kat_deg": None,  # fazor zerowy nie ma kąta — brak, nie 0°
+        "i_a": zaokraglij_cyfry_znaczace(prad_a),
+        "kat_deg": None,  # kąt nieokreślony poniżej progu — brak, nie liczba
     }
-    plus = WkladPominiety.z_wartosci(
-        tor=TOR_FALOWNIK, source_id="pv", branch_id="g", i_a=1e-14, fazor_a=complex(1e-14, 0.0)
-    )
-    minus = WkladPominiety.z_wartosci(
-        tor=TOR_FALOWNIK, source_id="pv", branch_id="g", i_a=1e-14, fazor_a=complex(-1e-14, 0.0)
-    )
-    assert plus.kat_deg == 0.0
-    assert minus.kat_deg == 180.0
-    assert plus.i_a == minus.i_a == 1e-14
+
+
+@pytest.mark.parametrize("prad_a", [PROG, math.nextafter(PROG, math.inf), 1.0, math.nan])
+def test_rekord_wkladu_pominietego_tylko_ponizej_progu(prad_a: float) -> None:
+    """Para predykatów: wpis zestawienia powstaje WYŁĄCZNIE z |I| spełniającego
+    `jest_wkladem_pominietym` — ten sam predykat, który odkłada wkład z listy."""
+    with pytest.raises(ValueError, match="nie jest pominięty"):
+        WkladPominiety.z_wartosci(tor=TOR_THEVENIN, source_id="Q", branch_id="g", i_a=prad_a)
 
 
 # ---------------------------------------------------------------------------
@@ -275,11 +280,9 @@ def test_wartosci_graniczne_iloczyn_cech(wartosc: str, tor: str, rodzaj: ShortCi
         wpis = zestawienie[klucz]
         oczekiwany_prad = 0.0 if galaz_sondy == "g_zero" else zaokraglij_cyfry_znaczace(prad_a)
         assert wpis.i_a == oczekiwany_prad
-        if galaz_sondy == "g_zero":
-            assert wpis.kat_deg is None
-        elif galaz_sondy == "g_sonda_odwrocona":
-            # −1e-17 kA: ten sam moduł, fazor o przeciwnym znaku (kąt różny o 180°).
-            assert abs(wpis.kat_deg - zestawienie[(zrodlo, "g_sonda")].kat_deg) == 180.0
+        # Karta KAT-WKLADU-POMINIETEGO: kąt żadnego wpisu nie jest publikowany — ani fazora
+        # zerowego, ani szumu, ani wartości tuż poniżej progu, ani fazora odwróconego.
+        assert [w.to_dict()["kat_deg"] for w in pominiete] == [None] * len(pominiete)
     else:
         assert opublikowane[klucz].i_contrib_a == prad_a  # bit w bit, bez korekty
 
@@ -300,6 +303,9 @@ def test_wartosci_graniczne_iloczyn_cech(wartosc: str, tor: str, rodzaj: ShortCi
         assert wynik[f"liczba_pominietych_{tor}"] == len(pominiete)
         assert NAZWA_WKLADU_POMINIETEGO in kroki[0]["notes"]
         assert "nie zero" in kroki[0]["notes"]
+        assert PRZYCZYNA_KATA_NIEOKRESLONEGO in kroki[0]["notes"]
+        # Suma fazorowa z kątów nieokreślonych nie miałaby treści — krok jej nie podaje.
+        assert not [k for k in wynik if k.startswith("suma_fazorowa")]
 
 
 @pytest.mark.usefixtures("_rdzen_testowy")

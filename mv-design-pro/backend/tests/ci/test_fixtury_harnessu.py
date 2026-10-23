@@ -45,11 +45,9 @@ from enm.models import EnergyNetworkModel
 
 from tests.ci.tolerancja_fikstur import (
     HEX_SKROTU,
-    KLUCZ_ZESTAWIENIA_POMINIETYCH,
     PASMO_BEZWYMIAROWYCH,
     PASMO_ZERA_FIXTUR,
     POLA_BEZWYMIAROWE_OGRANICZONE,
-    POLA_KATA_WKLADU_POMINIETEGO,
     POLA_SKROTOW_NIEPRZENOSNYCH,
     POLA_TEKSTU_Z_LICZBAMI,
     RTOL_FIXTUR,
@@ -232,24 +230,31 @@ def _pominiety(i_ka: float, kat_deg: float | None, branch_id: str = "tr_sn_nn") 
     }
 
 
-def test_kat_wkladu_pominietego_poza_porownaniem() -> None:
-    """Iloczyn cech zestawienia `wklady_pominiete`: {kąt None vs liczba, liczba vs inna
-    liczba} — poza porównaniem (kąt fazora o module reszty zmiennoprzecinkowej);
-    {moduł w paśmie zera, skład: inna gałąź, długość listy} — nadal porównywane ściśle.
-    Ten sam klucz `kat_deg` POZA zestawieniem jest porównywany normalnie (lista zamknięta,
-    klasa pola, nie nazwa)."""
+def test_kat_wkladu_pominietego_porownywany_jak_kazde_pole() -> None:
+    """Karta KAT-WKLADU-POMINIETEGO: rdzeń nie publikuje kąta fazora wkładu pominiętego
+    (``kat_deg`` = ``None`` — kąt nieokreślony poniżej progu), więc porównanie fixtur NIE ma
+    wykluczenia tego pola (dawna lista `POLA_KATA_WKLADU_POMINIETEGO` maskowała defekt
+    produktu: publikowany kąt szumu 166,0° vs −177,0° między jądrami BLAS). Iloczyn cech
+    zestawienia `wklady_pominiete`: {kąt None po obu stronach, liczba po jednej stronie,
+    dwie różne liczby} × {moduł w paśmie zera} — liczba kąta jest RÓŻNICĄ (regresja
+    publikacji kąta szumu, nie szum), a None = None przechodzi; skład (inna gałąź) i długość
+    listy — porównywane ściśle; moduł wpisu [kA] leży w paśmie zera (relacja progu)."""
     from network_model.solvers.short_circuit_contributions import PROG_WKLADU_POMIJALNEGO_A
 
     # Relacja progu i pasma zera: każdy moduł wpisu pominiętego [kA] leży w paśmie zera.
     assert PROG_WKLADU_POMIJALNEGO_A / 1000.0 <= PASMO_ZERA_FIXTUR
-    assert POLA_KATA_WKLADU_POMINIETEGO == {"kat_deg"}
-    assert KLUCZ_ZESTAWIENIA_POMINIETYCH == "wklady_pominiete"
-    k = KLUCZ_ZESTAWIENIA_POMINIETYCH
+    k = "wklady_pominiete"
     assert (
-        roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: [_pominiety(1.4e-17, 37.2)]}) == []
+        roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: [_pominiety(1.4e-17, None)]}) == []
     )
     assert (
-        roznice_z_tolerancja({k: [_pominiety(1e-12, -12.0)]}, {k: [_pominiety(2e-12, 171.0)]}) == []
+        roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: [_pominiety(1.4e-17, 37.2)]}) != []
+    )
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(1e-12, 37.2)]}, {k: [_pominiety(1e-12, None)]}) != []
+    )
+    assert (
+        roznice_z_tolerancja({k: [_pominiety(1e-12, -12.0)]}, {k: [_pominiety(2e-12, 171.0)]}) != []
     )
     # skład: inna gałąź = różnica
     assert (
@@ -260,8 +265,31 @@ def test_kat_wkladu_pominietego_poza_porownaniem() -> None:
     )
     # długość listy = różnica (wpis pominięty na jednej maszynie, brak na drugiej)
     assert roznice_z_tolerancja({k: [_pominiety(0.0, None)]}, {k: []}) != []
-    # ten sam kąt POZA zestawieniem — porównywany
-    assert roznice_z_tolerancja({"inne": [{"kat_deg": 37.2}]}, {"inne": [{"kat_deg": 12.0}]}) != []
+
+
+def test_fixtury_nie_niosa_kata_wkladu_pominietego() -> None:
+    """Każdy wpis zestawienia `wklady_pominiete` w fixturach z generatora ma ``kat_deg``
+    = ``None`` i każdy wpis `wklady_zrodel` klasy ``POMINIETY`` też — fixtura z liczbą
+    w tym polu znaczyłaby publikację kąta szumu (karta KAT-WKLADU-POMINIETEGO). Pin
+    niepustości: co najmniej jedna fixtura niesie wpis pominięty (inaczej test byłby pusty)."""
+    wpisy: list[dict[str, Any]] = []
+
+    def _zbierz(w: Any) -> None:
+        if isinstance(w, dict):
+            for klucz, wartosc in w.items():
+                if klucz == "wklady_pominiete" and isinstance(wartosc, list):
+                    wpisy.extend(wartosc)
+                elif klucz == "wklady_zrodel" and isinstance(wartosc, list):
+                    wpisy.extend(x for x in wartosc if x.get("klasa") == "POMINIETY")
+                _zbierz(wartosc)
+        elif isinstance(w, list):
+            for x in w:
+                _zbierz(x)
+
+    for sciezka in sorted(eksport.FIXTURES_DIR.glob("*.json")):
+        _zbierz(json.loads(sciezka.read_text(encoding="utf-8")))
+    assert wpisy
+    assert [w for w in wpisy if w["kat_deg"] is not None] == []
 
 
 def test_listy_pol_wylaczonych_sa_zamkniete() -> None:

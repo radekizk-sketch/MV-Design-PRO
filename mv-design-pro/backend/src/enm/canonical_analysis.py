@@ -4028,8 +4028,9 @@ def _sc_wklady_pominiete(
     Ta sama projekcja prezentacyjna co lista wkładów (`_sc_rozplyw_galeziowy`): ``ref_id``
     gałęzi z grafu przebiegu, nazwa z modelu, prąd A→kA, ten sam sort (branch_id,
     source_id). Każdy wpis to „wkład pominięty na podstawie tolerancji numerycznej
-    (|I| < 1e-6 A)” — surowe |I| (3 cyfry znaczące) i kąt fazora z rdzenia bez zmian
-    treści. ``None`` = punkt bez wkładów pominiętych albo bieg bez wkładów.
+    (|I| < 1e-6 A)” — surowe |I| (3 cyfry znaczące) z rdzenia bez zmian treści; kąt fazora
+    rdzeń podaje jako ``None`` (nieokreślony poniżej progu,
+    `PRZYCZYNA_KATA_NIEOKRESLONEGO`), projekcja przenosi go bez zmian. ``None`` = punkt bez wkładów pominiętych albo bieg bez wkładów.
     """
     if raw is None:
         return None

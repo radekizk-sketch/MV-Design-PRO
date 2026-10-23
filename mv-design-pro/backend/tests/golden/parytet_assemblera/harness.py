@@ -101,10 +101,13 @@ def _bieg(
 #: kontraktu; G04/00 ``branch_contributions`` 9 vs 10, ``branch_flow_trace`` 6 vs 7). Od
 #: tej karty jeden próg |I| < 1e-6 A (``PROG_WKLADU_POMIJALNEGO_A``) odcina szum (pomiar
 #: korpusu: szum ≤ 2,5·10⁻⁸ A, sygnał ≥ 1,0001·10⁻⁶ A), więc SKŁAD i kolejność list są
-#: przenośne; maska zostaje z dwóch innych powodów: (1) WARTOŚCI wkładów pominiętych
-#: (``wklady_pominiete``) to szum zależny od maszyny z natury — zestawienie podaje je
-#: audytowo, nie jako wielkość fizyczną; (2) ``white_box_trace`` niesie liczby
-#: sformatowane w napisach (podstawienia), których tolerancja liczbowa nie obejmie. Od
+#: przenośne; maska zostaje, bo ``white_box_trace`` niesie liczby sformatowane w napisach
+#: (podstawienia), których tolerancja liczbowa nie obejmie. Zestawienie wkładów
+#: pominiętych (``wklady_pominiete``) NIE jest maskowane (karta KAT-WKLADU-POMINIETEGO):
+#: rdzeń nie publikuje już kąta fazora wpisu (``kat_deg`` = ``None``, kąt nieokreślony
+#: poniżej progu), a moduł wpisu leży z definicji poniżej progu 1e-6 A, więc w
+#: ``ATOL_PARYTETU`` — dawny powód maski („wartości to szum z natury") znikł z naprawą u
+#: źródła; skład i kolejność wpisów porównuje się jak kontrakt. Od
 #: PERF-SC-50 bieg domyślny (``on_demand``) nie niesie w wierszu wkładów, śladu podziału
 #: ani zestawienia pominiętych (tylko flagę dostępności) — maska działa na biegach
 #: ``in_run``. Rozmiar
@@ -139,7 +142,6 @@ KLUCZE_SLADU_LICZBOWEGO: frozenset[str] = frozenset(
         "branch_contributions",
         "branch_flow_trace",
         "white_box_trace",
-        "wklady_pominiete",
         "wklady_zrodel_slad",
     }
 )

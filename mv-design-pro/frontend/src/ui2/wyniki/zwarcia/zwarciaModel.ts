@@ -733,19 +733,17 @@ export const KOLUMNY_POMINIETYCH: DefinicjaKolumny[] = [
     jednostka: ZWARCIA_STRINGS.jednKA,
     mono: true,
   },
-  {
-    klucz: 'kat',
-    etykieta: ZWARCIA_STRINGS.rozplywKolKat,
-    jednostka: ZWARCIA_STRINGS.jednStopnie,
-    mono: true,
-  },
+  // Kąt fazora wkładu pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO) —
+  // kolumna tekstowa bez jednostki: komórka „nie określono", nigdy liczba stopni.
+  { klucz: 'kat', etykieta: ZWARCIA_STRINGS.rozplywKolKat, wyrownanie: 'lewo' },
 ];
 
 /**
  * Wiersze zestawienia wkładów pominiętych (kolejność backendu: branch_id, source_id).
  * Moduł w zapisie z potęgą dziesięciu (`formatujWartosc` śladu WHITE BOX) — format
- * stałoprzecinkowy kA pokazałby „0,000", czyli fałszywe zero. Kąt `null` (fazor
- * zerowy) → kreska, nie 0°.
+ * stałoprzecinkowy kA pokazałby „0,000", czyli fałszywe zero. Kąt fazora wkładu
+ * pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO: rdzeń podaje `null`,
+ * przyczyna w notatce kroku śladu) → „nie określono", nigdy liczba ani 0°.
  */
 export function naWierszePominietych(
   pominiete: readonly WkladPominietyRozplywu[],
@@ -756,10 +754,7 @@ export function naWierszePominietych(
     zrodlo: { wartosc: zrodloRozplywuPL(wpis.source_id, nazwa) },
     tor: { wartosc: torPominietegoPL(wpis.tor) },
     prad: { wartosc: formatujWartosc(wpis.i_ka), sortKey: wpis.i_ka },
-    kat:
-      wpis.kat_deg === null
-        ? { wartosc: ZWARCIA_STRINGS.kreska, sortKey: Number.NEGATIVE_INFINITY }
-        : { wartosc: formatujWartosc(wpis.kat_deg), sortKey: wpis.kat_deg },
+    kat: { wartosc: ZWARCIA_STRINGS.katNieokreslony },
     [KLUCZ_POMINIETY]: { wartosc: `${wpis.branch_id}::${wpis.source_id}` },
   }));
 }
