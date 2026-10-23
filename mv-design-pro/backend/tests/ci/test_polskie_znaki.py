@@ -164,7 +164,9 @@ def slowa_bez_znakow(tekst: str, kody: frozenset[str] = frozenset()) -> list[str
         if slowo.isupper() and len(slowo) > 1:
             przed = tekst[m.start() - 1] if m.start() else ""
             po = tekst[m.end()] if m.end() < len(tekst) else ""
-            przylega_do_kodu = (przed != "" and przed in "-/_") or (po != "" and po in "-/_")
+            # Oznaczenie aparatu ze znakiem w nawiasie („OS(U)”, „(U)OS” — symbole aparatów
+            # pól 110 kV wg ENEA Zeszyt 1 §11.1) jest kodem tak samo jak „KAT-T-001”.
+            przylega_do_kodu = (przed != "" and przed in "-/_)") or (po != "" and po in "-/_(")
             if slowo in kody or przylega_do_kodu:
                 continue
         elif not (slowo.islower() or slowo[0].isupper() and slowo[1:].islower()):
@@ -390,6 +392,9 @@ def test_nazwy_w_fiksturach_harnessu_frontu():
         # kod WIELKIMI literami przy łączniku albo jako samodzielny literał
         ('X = "reguła KAT-T-001"', []),
         ('A = "OSTRZEZENIE"\nB = "zawsze OSTRZEZENIE"', []),
+        # oznaczenie aparatu z nawiasem (symbol pola 110 kV) jest kodem; słowo w nawiasie nie
+        ('X = ["OS(U)", "(U)OS"]', []),
+        ('X = "wybierz (Os) albo zrodlo"', ["Os", "zrodlo"]),
         # słowo przyklejone do liter z diakrytykami nie jest osobnym słowem
         ('X = "moc prawidłową"', []),
         # skrót z kropką („kat." = kategoria) nie jest słowem bez znaków, „kat" bez kropki jest

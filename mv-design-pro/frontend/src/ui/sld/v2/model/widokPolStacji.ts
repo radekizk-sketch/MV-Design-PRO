@@ -44,6 +44,9 @@ export interface BayPrimaryDeviceView {
    *  (`Bay.primary_devices`) albo `'galaz_pola'` (gałąź łączeniowa modelu wskazana
    *  w `Bay.equipment_refs`, gdy pole nie niesie `primary_devices`; `deviceRef` = ref gałęzi). */
   readonly pochodzenie?: 'rekord_pola' | 'galaz_pola';
+  /** Karta GPZ-H5-SLD etap 3 (d): pozycja normalna aparatu z GAŁĘZI łączeniowej
+   *  (`Branch.normal_state`); rekord `Bay.primary_devices` jej nie niesie (`undefined`). */
+  readonly pozycjaNormalna?: 'open' | 'closed';
   /** GEOMETRIA-STACJI (§0 pkt 4a): typ aparatu z modelu — `catalog_ref` rekordu albo
    *  gałęzi (`null` = model go nie niesie; brak typu nie jest uzupełniany). */
   readonly typeRef?: string | null;

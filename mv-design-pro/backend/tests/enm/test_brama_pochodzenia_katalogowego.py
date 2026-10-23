@@ -162,6 +162,13 @@ def _payload_gpz(
         "sections_count": sections_count,
         "line_fields_per_section": line_fields_per_section,
     }
+    if sections_count >= 2:
+        # Karta GPZ-H5: stan normalny łącznika szyn SN jest daną (bez stanu domyślnego);
+        # jeden równoważnik na szynach SN zasila obie sekcje przy łączniku zamkniętym.
+        payload["sn_coupler"] = {
+            "normal_state": "closed",
+            "justification": "Obie sekcje zasilane jednym równoważnikiem sieci.",
+        }
     if apparatus_ref is None:
         return payload
     aparat: dict[str, Any] = {"apparatus_kind": apparatus_kind}

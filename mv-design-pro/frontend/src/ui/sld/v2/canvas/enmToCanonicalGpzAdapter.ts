@@ -22,6 +22,8 @@ import type {
   Bus,
   EnergyNetworkModel,
   Generator,
+  GPZSection,
+  Load,
   Source,
   Substation,
   Transformer,
@@ -33,6 +35,7 @@ import type {
   CanonicalGpzCoupler,
   CanonicalGpzHvSection,
   CanonicalGpzHvSystemSource,
+  CanonicalGpzLoad,
   CanonicalGpzProps,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
@@ -90,6 +93,8 @@ export function buildCanonicalGpzProps(
     // puste czyta `snapshot.sources` (źródło systemowe na szynie GPZ) —
     // addytywne, `buildScene.ts` przekazuje PEŁNY `EnergyNetworkModel`.
     | 'sources'
+    // Karta GPZ-H5-SLD: odbiory przyłączone do szyn sekcji GPZ rysują się przy sekcji.
+    | 'loads'
   >,
   substationRef: string,
 ): CanonicalGpzProps {
@@ -131,13 +136,15 @@ export function buildCanonicalGpzProps(
   // nie drugi raz w sekcji. Jeden zbiór przypisań steruje OBIEMA stronami: wyłączeniem pola
   // z sekcji i dołączeniem go do toru transformatora (predykaty parami z jednego źródła).
   const transformatoryWgRef = new Map(allTransformers.map((tr) => [tr.ref_id, tr]));
-  const hvSectionIds = new Set((substation.gpz_hv_sections ?? []).map((sec) => sec.section_id));
+  // Karta GPZ-H5-SLD: przydział pola do sekcji 110 kV z JEDNEJ funkcji (`sekcjaWnPola`) — tej
+  // samej dla pól toru transformatora (niżej) i pól rzędu WN (`buildHvSections`).
+  const hvSectionDefs = substation.gpz_hv_sections ?? [];
   const polaTrSn = przypiszPolaTr(
     allBays.filter((bay) => isLvBay(bay, enm.buses ?? [])),
     transformatoryWgRef,
   );
   const polaTrWn = przypiszPolaTr(
-    allBays.filter((bay) => bay.gpz_section_id != null && hvSectionIds.has(bay.gpz_section_id)),
+    allBays.filter((bay) => sekcjaWnPola(bay, hvSectionDefs) !== null),
     transformatoryWgRef,
   );
   const polaWToruTransformatora = new Set<string>(
@@ -145,8 +152,13 @@ export function buildCanonicalGpzProps(
   );
   // GEOMETRIA-STACJI (Z-07): pole sprzęgła wskazujące narysowane sprzęgło NIE jest osobnym
   // polem sekcji — jego oznaczenie i aparat niesie sprzęgło (jedno miejsce na rysunku).
-  const couplers = buildCouplers(substation, allBays, enm.branches ?? []);
-  const polaSprzegiel = new Set(couplers.map((c) => c.bayRef).filter((ref): ref is string => ref != null));
+  // Karta GPZ-H5-SLD: łącznik szyn 110 kV z TEGO SAMEGO źródła co sprzęgło SN — gałąź
+  // `bus_coupler` między szynami dwóch sekcji tej samej strony (`sprzeglaMiedzySekcjami`).
+  const couplers = buildCouplers(substation.gpz_sections ?? [], allBays, enm.branches ?? []);
+  const hvCouplers = buildCouplers(hvSectionDefs, allBays, enm.branches ?? []);
+  const polaSprzegiel = new Set(
+    [...couplers, ...hvCouplers].map((c) => c.bayRef).filter((ref): ref is string => ref != null),
+  );
   const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id) && !polaSprzegiel.has(bay.ref_id));
 
   const lvSections = buildLvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx);
@@ -160,7 +172,12 @@ export function buildCanonicalGpzProps(
   // Każdy transformator stacji rysuje się torem transformatora; pole TR przypisane wyżej
   // niesie stan łączników i tożsamość pola toru (dawniej transformator z polem TR był
   // pomijany, a szablon pola TR w sekcji nie miał symbolu transformatora — znikał z rysunku).
-  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef, (tr) => ({
+  const sectionIdByHvBusRef = new Map<string, string>();
+  for (const sec of hvSectionDefs) {
+    if (sec.bus_ref) sectionIdByHvBusRef.set(sec.bus_ref, sec.section_id);
+  }
+
+  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef, sectionIdByHvBusRef, (tr) => ({
     poleTr: polaTrSn.has(tr.ref_id) ? buildBay(polaTrSn.get(tr.ref_id)!, protectionCtx) : null,
     poleWn: polaTrWn.has(tr.ref_id) ? buildBay(polaTrWn.get(tr.ref_id)!, protectionCtx) : null,
   }));
@@ -176,16 +193,14 @@ export function buildCanonicalGpzProps(
     // `Source.neutral_grounding` źródła GPZ tej stacji (jedyny nośnik po kasacji
     // `Bus.grounding`). Mapowanie 1:1 z kanonu ENM, zero domysłu: brak opisu daje
     // `null`, a schemat wtedy nie rysuje aparatu uziemiającego.
-    snNeutralEarthing: deriveSnNeutralEarthing(enm, substation, enm.buses ?? [], enm.sources ?? []),
+    ...uziemienieSieciSn(enm, substation, enm.buses ?? [], enm.sources ?? []),
     couplers,
     hvSections: buildHvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx),
-    // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
-    // ścieżka `hvSectionDefs` (niepuste) jest nadrzędna i NIE potrzebuje tego
-    // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
-    hvSystemSource:
-      (substation.gpz_hv_sections ?? []).length === 0
-        ? deriveHvSystemSource(enm, substation, enm.buses ?? [], enm.sources ?? [])
-        : null,
+    hvCouplers,
+    // Karta GPZ-H5-SLD: KAŻDE źródło na szynie GPZ (dawniej `sources.find` — jedno S″k dla
+    // GPZ zasilanego dwiema liniami 110 kV). Także przy sekcjach 110 kV.
+    systemSources: deriveSystemSources(enm, substation, enm.buses ?? [], enm.sources ?? []),
+    loads: buildGpzLoads(substation, enm.loads ?? []),
     // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ — patrz `gpzHvBusResultRef`
     // (odmowa przy niejednoznaczności, karta WN-WYNIK).
     hvBusRef: gpzHvBusResultRef(substation, enm.buses ?? []),
@@ -232,76 +247,109 @@ function gpzHvBusResultRef(substation: Substation, buses: readonly Bus[]): strin
 }
 
 /**
- * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10): wywodzi tabliczkę źródła
- * systemowego (sieć zasilająca GPZ) z relacji PIERWSZOKLASOWYCH ENM — zero
- * zgadywania, brak `Source` na szynie GPZ ⇒ `null` (uczciwy brak, `compose/gpz.ts`
- * NIE dopisuje etykiety/tabliczki danych).
- *   1. Karta GPZ-MODEL: źródło systemowe NIE wymaga transformatora WN/SN. Przy
- *      równoważniku sieci na szynach SN transformatorów 110/SN nie ma w modelu,
- *      a tabliczka (nazwa, „Ekwiwalent sieci zasilającej", Sk″/Ik″) jest tam
- *      JEDYNYM opisem zasilania GPZ na rysunku — dawny warunek „najpierw TR w paśmie
- *      WN" pochodził z czasu, gdy kreator dokładał transformator bez zasilania do
- *      każdego GPZ, i w trybie SN gubił tabliczkę.
- *   2. szyna WN = `gpzHvBuses` (wpisy `Substation.bus_refs` w paśmie WN)
- *      — JEDNO źródło prawdy z `hvBusRef`; jej brak (tryb SN) daje
- *      `hvBusVoltageKv = null` i `sourceOnHvBus = false`. Etykieta szyny WN opisuje
- *      POZIOM napięcia, więc kilka szyn WN o TYM SAMYM poziomie (jawne sekcje WN
- *      110 kV) jest tu jednoznaczne; szyny o RÓŻNYCH poziomach ⇒ `null` (karta
- *      WN-WYNIK: rysunek ma jedną szynę WN, a „110 kV" i „220 kV" nie są tym
- *      samym zdaniem — uczciwy brak zamiast pierwszej z brzegu).
- *   3. źródło systemowe = `snapshot.sources` z `bus_ref` na szynie GPZ z lustra
- *      `szynyStacji` (SN lub WN — obie należą do GPZ), nazwa z `meta.source_id` (fallback
- *      `Source.name`).
+ * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10) + karta GPZ-H5-SLD: tabliczki źródeł
+ * systemowych (sieć zasilająca GPZ) z relacji PIERWSZOKLASOWYCH ENM — zero zgadywania:
+ *   1. źródło systemowe = KAŻDE `Source` z `bus_ref` na szynie GPZ z lustra `szynyStacji`
+ *      (SN lub WN — obie należą do GPZ). Dawne `sources.find` brało PIERWSZE źródło, więc
+ *      GPZ zasilany dwiema liniami 110 kV (układ H5: równoważnik L1 na sekcji A, L2 na
+ *      sekcji B) pokazywał jedno S″k dla całej stacji, a drugie źródło bez opisu;
+ *   2. nazwa = `Source.name` (nazwa ŹRÓDŁA z modelu: L1, L2 …); źródło bez nazwy nie dostaje
+ *      tabliczki (glif zostaje, nazwa nie jest wymyślana). `meta.source_id` to tożsamość
+ *      GPZ w sieci (unikalność kolejnego GPZ, `add_grid_source_sn`), wspólna dla wszystkich
+ *      równoważników jednego GPZ — jako etykieta dawała każdemu źródłu 110 kV H5 nazwę stacji
+ *      (decyzja architekta 2026-10-22: etykietą źródła jest nazwa źródła z modelu);
+ *   3. nazwa toru zasilania = `line_field_name` sekcji, której `incoming_source_ref`
+ *      wskazuje to źródło (dana sekcji, bez dopasowania po nazwach);
+ *   4. szyna WN = `gpzHvBuses` (wpisy `Substation.bus_refs` w paśmie WN) — `sourceOnHvBus`
+ *      pyta o ZBIÓR szyn WN; `hvBusVoltageKv` opisuje POZIOM napięcia, więc szyny WN
+ *      o RÓŻNYCH poziomach dają `null` (uczciwy brak zamiast pierwszej z brzegu).
+ * Porządek: `sourceRef` (deterministycznie, niezależnie od kolejności tablicy `sources`).
  */
-function deriveHvSystemSource(
+function deriveSystemSources(
   enm: ModelSzyn,
   gpz: Substation,
   buses: readonly Bus[],
   sources: readonly Source[],
-): CanonicalGpzHvSystemSource | null {
+): CanonicalGpzHvSystemSource[] {
   const hvBuses = gpzHvBuses(gpz, buses);
   const hvBus = hvBuses[0] ?? null;
-  if (hvBus !== null && hvBuses.some((b) => b.voltage_kv !== hvBus.voltage_kv)) return null;
-
-  // SZYNY-STACJI-LUSTRO: źródło należy do GPZ, gdy stoi na szynie GPZ z jednego lustra
-  // `szynyStacji` (szyny główne, zaciski pól, końce aparatów pól nN).
+  const hvBusVoltageKv =
+    hvBus !== null && hvBuses.every((b) => b.voltage_kv === hvBus.voltage_kv) ? hvBus.voltage_kv ?? null : null;
   const gpzBusRefs = szynyStacji(enm, gpz);
-  const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
-  if (!source) return null;
+  const sekcje = [...(gpz.gpz_hv_sections ?? []), ...(gpz.gpz_sections ?? [])];
+  const busesByRef = new Map(buses.map((b) => [b.ref_id, b]));
+  return sources
+    .filter((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref))
+    .slice()
+    .sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0))
+    .flatMap((source): CanonicalGpzHvSystemSource[] => {
+      const name = readString(source.name);
+      if (!name) return [];
+      const sekcjaToru = sekcje.find((sec) => sec.incoming_source_ref === source.ref_id) ?? null;
+      // Recenzja NO-GO 2026-07-17 pkt 2/3: napięcie tabliczki = szyna ŹRÓDŁA
+      // (spójność Sk″/Ik″/U), a strona zaczepu podąża za `Source.bus_ref` —
+      // ekwiwalent na szynach SN NIE jest rysowany jako przyłącze WN.
+      const sourceBus = busesByRef.get(source.bus_ref) ?? null;
+      return [{
+        sourceRef: source.ref_id,
+        busRef: source.bus_ref ?? null,
+        lineName: readString(source.supply_line_name) ?? readString(sekcjaToru?.line_field_name),
+        supplyingStation: readString(source.supplying_station_name),
+        name,
+        sk3Mva: source.sk3_mva ?? null,
+        ik3Ka: source.ik3_ka ?? null,
+        sk3MinMva: source.sk3_min_mva ?? null,
+        ik3MinKa: source.ik3_min_ka ?? null,
+        uSetPu: source.u_set_pu ?? null,
+        voltageKv: sourceBus?.voltage_kv ?? null,
+        sourceOnHvBus: hvBuses.some((b) => b.ref_id === source.bus_ref),
+        hvBusVoltageKv,
+      }];
+    });
+}
 
-  const name = readString(asRecord(source.meta)?.source_id) ?? readString(source.name);
-  if (!name) return null;
+/**
+ * Karta GPZ-H5-SLD: odbiory na szynach sekcji GPZ (SN: `gpz_sections`, WN:
+ * `gpz_hv_sections`) — rysowane przy swojej sekcji. Odbiór na szynie spoza sekcji (np. zacisk
+ * pola) nie jest odbiorem sekcji; porządek `loadRef`.
+ */
+function buildGpzLoads(gpz: Substation, loads: readonly Load[]): CanonicalGpzLoad[] {
+  const sekcjaWgSzyny = new Map<string, { readonly sectionId: string; readonly side: 'sn' | 'wn' }>();
+  for (const sec of gpz.gpz_sections ?? []) sekcjaWgSzyny.set(sec.bus_ref, { sectionId: sec.section_id, side: 'sn' });
+  for (const sec of gpz.gpz_hv_sections ?? []) sekcjaWgSzyny.set(sec.bus_ref, { sectionId: sec.section_id, side: 'wn' });
+  return loads
+    .filter((load) => sekcjaWgSzyny.has(load.bus_ref))
+    .slice()
+    .sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0))
+    .map((load) => {
+      const sekcja = sekcjaWgSzyny.get(load.bus_ref)!;
+      return {
+        loadRef: load.ref_id,
+        name: readString(load.name),
+        busRef: load.bus_ref,
+        sectionId: sekcja.sectionId,
+        side: sekcja.side,
+        pMw: typeof load.p_mw === 'number' ? load.p_mw : null,
+        qMvar: typeof load.q_mvar === 'number' ? load.q_mvar : null,
+      };
+    });
+}
 
-  // Recenzja NO-GO 2026-07-17 pkt 2/3: napięcie tabliczki = szyna ŹRÓDŁA
-  // (spójność Sk″/Ik″/U), a strona zaczepu podąża za `Source.bus_ref` —
-  // ekwiwalent na szynach SN NIE jest rysowany jako przyłącze WN.
-  const sourceBus = buses.find((b) => b.ref_id === source.bus_ref) ?? null;
-  return {
-    sourceRef: source.ref_id,
-    name,
-    sk3Mva: source.sk3_mva ?? null,
-    ik3Ka: source.ik3_ka ?? null,
-    sk3MinMva: source.sk3_min_mva ?? null,
-    ik3MinKa: source.ik3_min_ka ?? null,
-    uSetPu: source.u_set_pu ?? null,
-    voltageKv: sourceBus?.voltage_kv ?? null,
-    // WN-WYNIK (uczciwość w obrębie pliku): „czy źródło stoi po stronie WN" to
-    // pytanie o ZBIÓR szyn WN stacji, nie o pierwszą z nich — GPZ z jawnymi
-    // sekcjami WN ma kilka szyn 110 kV i źródło na drugiej też jest po stronie WN.
-    sourceOnHvBus: hvBuses.some((b) => b.ref_id === source.bus_ref),
-    hvBusVoltageKv: hvBus?.voltage_kv ?? null,
-  };
+/**
+ * Karta GPZ-H5-SLD: sekcja 110 kV pola — `Bay.gpz_section_id` wskazujący sekcję 110 kV, a gdy
+ * go brak — sekcja 110 kV, której szyną jest `Bay.bus_ref`. JEDNA funkcja dla pól toru
+ * transformatora (pole WN TR) i pól rzędu WN (predykaty parami).
+ */
+function sekcjaWnPola(bay: Bay, hvSectionDefs: readonly GPZSection[]): GPZSection | null {
+  if (bay.gpz_section_id != null) {
+    return hvSectionDefs.find((sec) => sec.section_id === bay.gpz_section_id) ?? null;
+  }
+  return hvSectionDefs.find((sec) => sec.bus_ref === bay.bus_ref) ?? null;
 }
 
 /* =============================================================================
    Sub-builders
    ============================================================================= */
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -337,6 +385,7 @@ function przypiszPolaTr(
 function buildTransformers(
   transformers: readonly Transformer[],
   sectionIdByLvBusRef: ReadonlyMap<string, string>,
+  sectionIdByHvBusRef: ReadonlyMap<string, string>,
   polaToru: (tr: Transformer) => Pick<CanonicalGpzTransformer, 'poleTr' | 'poleWn'>,
 ): CanonicalGpzTransformer[] {
   return transformers
@@ -356,6 +405,7 @@ function buildTransformers(
       pkKw: tr.pk_kw ?? null,
       lvSectionId: sectionIdByLvBusRef.get(tr.lv_bus_ref) ?? null,
       hvBusRef: tr.hv_bus_ref ?? null,
+      hvSectionId: sectionIdByHvBusRef.get(tr.hv_bus_ref) ?? null,
       // SLD-02 (V12K-091): adnotacja OLTC/DETC z kanonicznego tap_changer
       // (reuse buildOltcAnnotation; null gdy brak regulacji).
       oltc: buildOltcAnnotation(tr.tap_changer),
@@ -496,14 +546,17 @@ function buildHvSections(
     .slice()
     .sort((a, b) => a.order - b.order)
     .map((sec, idx) => {
-      const hvBays = bays.filter((b) => b.gpz_section_id === sec.section_id);
+      const hvBays = bays.filter((b) => sekcjaWnPola(b, hvSectionDefs)?.section_id === sec.section_id);
       const bus = buses.find((b) => b.ref_id === sec.bus_ref);
       return {
         sectionId: sec.section_id,
         order: sec.order,
-        label: sec.name ?? `HV-${idx + 1}`,
+        busRef: sec.bus_ref ?? null,
+        label: readString(sec.name) ?? `Sekcja ${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? null,
         bays: hvBays.map((b) => buildBay(b, protectionCtx)),
+        lineFieldName: readString(sec.line_field_name),
+        incomingSourceRef: readString(sec.incoming_source_ref),
       };
     });
 }
@@ -549,17 +602,19 @@ function buildBay(bay: Bay, protectionCtx: ProtectionCtx): CanonicalGpzBay {
 
 /**
  * GEOMETRIA-STACJI (Z-07, §0 pkt 2): sprzęgła GPZ z JEDNEGO źródła — gałęzi `bus_coupler`
- * modelu łączących szyny sekcji SN (`sprzeglaMiedzySekcjami`, ta sama funkcja co stacje SN).
+ * modelu łączących szyny sekcji JEDNEJ strony (`sprzeglaMiedzySekcjami`, ta sama funkcja co
+ * stacje SN). Karta GPZ-H5-SLD: wołana dla sekcji SN (`gpz_sections`) i dla sekcji 110 kV
+ * (`gpz_hv_sections`) — łącznik szyn 110 kV ma to samo źródło stanu co sprzęgło SN.
  * Do karty sprzęgło wymagało rekordu pola COUPLER, którego operacja GPZ nie tworzy, więc
  * sprzęgło z modelu znikało z rysunku. Rekord pola sprzęgła, gdy jest, dokłada oznaczenie
  * i rodzaj aparatu; stan rysunku pochodzi ze `status` gałęzi.
  */
 function buildCouplers(
-  gpz: Substation,
+  sekcje: readonly GPZSection[],
   bays: readonly Bay[],
   branches: readonly Branch[],
 ): CanonicalGpzCoupler[] {
-  const sectionDefs = [...(gpz.gpz_sections ?? [])].sort((a, b) => a.order - b.order);
+  const sectionDefs = [...sekcje].sort((a, b) => a.order - b.order);
   if (sectionDefs.length < 2) return [];
   const sectionIdByBus = new Map(sectionDefs.map((sec) => [sec.bus_ref, sec.section_id]));
   return sprzeglaMiedzySekcjami(branches, sectionDefs.map((sec) => sec.bus_ref), bays).flatMap((sprzeglo) => {
@@ -576,6 +631,7 @@ function buildCouplers(
       closedState: sprzeglo.state,
       rodzaj: sprzeglo.rodzaj,
       bayRef: sprzeglo.bayRef,
+      normalState: sprzeglo.normalState,
     }];
   });
 }
@@ -595,7 +651,15 @@ function mapBayRoleToFieldRole(role: Bay['bay_role']): BayFieldRole {
     // GPZ-PARYTET cz. 3 (pkt 1): pole źródłowe — gramatyka pola kablowego + glif rodzaju
     // źródła (`rolaZrodla`); dawniej zlewane z polem liniowym odpływowym.
     case 'OZE': return 'SOURCE';
-    default: return 'LINE_OUT';
+    // Karta GPZ-H5-SLD etap 3: pola funkcyjne sekcji SN mają własne role; dawna gałąź
+    // `default → 'LINE_OUT'` rysowała je jako pole liniowe. Wyliczenie wyczerpujące — nowa
+    // rola modelu bez odwzorowania jest błędem typu.
+    case 'EARTHING': return 'EARTHING';
+    case 'CAPACITOR': return 'CAPACITOR';
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola GPZ bez odwzorowania na rysunku: ${String(nieobsluzona)}`);
+    }
   }
 }
 
@@ -618,6 +682,12 @@ function deriveQDesignations(role: BayFieldRole): CanonicalGpzBay['qDesignations
       return { cb: 'Q0', dsBus: 'Q1', ct: 'T1' };
     case 'MEASUREMENT':
       return { dsBus: 'Q1', es: 'Q8' };
+    // Pola funkcyjne powstają BEZ aparatów (operacja GPZ, `_pola_funkcyjne_sekcji`) — rola
+    // nie przesądza składu, więc nie niesie oznaczeń Q; aparaty i ich oznaczenia wyłącznie
+    // z rekordów modelu.
+    case 'EARTHING':
+    case 'CAPACITOR':
+      return {};
   }
 }
 
@@ -646,6 +716,8 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
     case 'TR': return 'transformatorowe';
     case 'COUPLER': return 'sprzeglo';
     case 'MEASUREMENT': return 'pomiarowe';
+    case 'EARTHING': return 'uziemiajace';
+    case 'CAPACITOR': return 'kompensacyjne';
     case 'OZE': return 'zrodlowe';
   }
 }
@@ -654,40 +726,52 @@ export function rolaPolaGpz(role: Bay['bay_role']): RolaPolaGpz {
  * Sposób pracy punktu neutralnego sieci SN z modelu (V12K-219).
  *
  * Szukamy szyny SN tej stacji (pasmo SN: powyżej 1 kV i poniżej 110 kV — `wPasmieSn`,
- * to samo lustro granic co `hvBusRef` powyżej) i przepisujemy jej
- * `Source.neutral_grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
- * inżynierska (sieć pracuje z izolowanym punktem neutralnym), a BRAK pola to
+ * to samo lustro granic co `hvBusRef` powyżej) i przepisujemy
+ * `Source.neutral_grounding` źródeł stacji. Rozstrzygnięcie należy do MODELU: `isolated` to
+ * informacja inżynierska (sieć pracuje z izolowanym punktem neutralnym), a BRAK pola to
  * brak danej — te dwa stany nie mogą się zlać, bo prąd zwarcia doziemnego różni
  * się między konfiguracjami o rzędy wielkości.
+ *
+ * Karta GPZ-H5-SLD (uczciwość w obrębie pliku, ta sama klasa co `sources.find` źródła
+ * systemowego): GPZ z kilkoma źródłami (H5: równoważnik toru L1 i toru L2) może nieść
+ * kilka opisów. Zgodne opisy = jeden symbol; RÓŻNE = `null` + `snNeutralEarthingAmbiguous`
+ * (dawniej rysunek brał opis pierwszego źródła tablicy).
  */
-function deriveSnNeutralEarthing(
+function uziemienieSieciSn(
   enm: ModelSzyn,
   substation: Substation,
   buses: readonly Bus[],
   sources: readonly Source[],
-): CanonicalGpzProps['snNeutralEarthing'] {
+): Pick<CanonicalGpzProps, 'snNeutralEarthing' | 'snNeutralEarthingAmbiguous'> {
   // SZYNY-STACJI-LUSTRO: przynależność szyny źródła do stacji z jednego lustra.
   const stationBusRefs = szynyStacji(enm, substation);
-  const source = sources.find(
-    (s) =>
-      Boolean(s.neutral_grounding)
-      && (s.substation_ref === substation.ref_id || stationBusRefs.has(s.bus_ref)),
-  );
-  const g = source?.neutral_grounding;
-  if (!g) return null;
+  const opisy = sources
+    .filter(
+      (s) =>
+        Boolean(s.neutral_grounding)
+        && (s.substation_ref === substation.ref_id || stationBusRefs.has(s.bus_ref)),
+    )
+    .map((s) => s.neutral_grounding!)
+    .map((g) => ({
+      kind:
+        g.type === 'resistor_grounded'
+          ? ('resistor' as const)
+          : g.type === 'petersen_coil'
+            ? ('coil' as const)
+            : g.type === 'directly_grounded'
+              ? ('direct' as const)
+              : ('isolated' as const),
+      rOhm: g.r_ohm ?? undefined,
+      xOhm: g.x_ohm ?? undefined,
+    }));
+  if (opisy.length === 0) return { snNeutralEarthing: null };
+  const klucz = (o: (typeof opisy)[number]): string => `${o.kind}|${o.rOhm ?? ''}|${o.xOhm ?? ''}`;
+  if (new Set(opisy.map(klucz)).size > 1) return { snNeutralEarthing: null, snNeutralEarthingAmbiguous: true };
   // Rysowany przy szynie SN (transformator Yd11 nie ma punktu neutralnego SN) —
   // szyna SN stacji istnieje niezależnie od tego, czy źródło stoi po stronie 110 kV.
   const snBus = buses.find(
     (b) => stationBusRefs.has(b.ref_id) && wPasmieSn(b.voltage_kv),
   );
-  if (!snBus) return null;
-  const kind =
-    g.type === 'resistor_grounded'
-      ? 'resistor'
-      : g.type === 'petersen_coil'
-        ? 'coil'
-        : g.type === 'directly_grounded'
-          ? 'direct'
-          : 'isolated';
-  return { kind, rOhm: g.r_ohm ?? undefined, xOhm: g.x_ohm ?? undefined };
+  if (!snBus) return { snNeutralEarthing: null };
+  return { snNeutralEarthing: opisy[0] };
 }

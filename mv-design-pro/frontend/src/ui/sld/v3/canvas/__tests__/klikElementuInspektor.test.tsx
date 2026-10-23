@@ -23,7 +23,7 @@ import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverl
 import { useKontekstElementuKanwy } from '../../../shared/kontekstElementuKanwy';
 import { useShellStore } from '../../../../../ui2/shell/useShellStore';
 import { InspektorKanwyTestowy } from '../../../../network-build/inspektor-elementu/__tests__/inspektorKanwyTestowy';
-import { POLOZENIE_LACZNIKA_PL } from '../../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { POLOZENIE_LACZNIKA_PL } from '../../../../shared/stanLacznika';
 import { zRekordamiAparatowPol } from '../../scene/__tests__/fixtures/rekordyAparatowPola';
 
 afterEach(() => {

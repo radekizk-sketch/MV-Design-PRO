@@ -16,6 +16,7 @@
  * - Deterministic (sorted by element ID)
  */
 
+import { formaLiczebnikowa } from '../../shared/odmianaLiczebnikowa';
 import type { Command } from '../Command';
 import { generateCommandId } from '../Command';
 
@@ -64,8 +65,7 @@ export class PropertyBatchEditCommand implements Command {
     this.id = generateCommandId();
 
     const elementCount = params.changes.length;
-    const elementLabel = elementCount === 1 ? 'element' :
-                        (elementCount >= 2 && elementCount <= 4) ? 'elementy' : 'elementów';
+    const elementLabel = formaLiczebnikowa(elementCount, { jeden: 'element', kilka: 'elementy', wiele: 'elementów' });
 
     this.name_pl = `Edycja "${params.fieldLabel}" (${elementCount} ${elementLabel})`;
     this.timestamp = Date.now();

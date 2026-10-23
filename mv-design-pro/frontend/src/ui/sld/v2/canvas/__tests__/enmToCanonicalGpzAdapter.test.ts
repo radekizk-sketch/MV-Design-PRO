@@ -36,6 +36,8 @@ type EnmFragment = Pick<
   // puste czyta `snapshot.sources` — `buildCanonicalGpzProps` wymaga tej
   // kolekcji dokładnie jak produkcyjny wywołujący (`buildScene.ts`).
   | 'sources'
+  // Karta GPZ-H5-SLD: odbiory przyłączone do szyny sekcji GPZ (`CanonicalGpzSection.loads`).
+  | 'loads'
 >;
 
 function emptyEnm(): EnmFragment {
@@ -49,6 +51,7 @@ function emptyEnm(): EnmFragment {
     protection_assignments: [],
     measurements: [],
     sources: [],
+    loads: [],
   };
 }
 
@@ -694,7 +697,16 @@ describe('buildCanonicalGpzProps — sprzęgła', () => {
     expect(props.couplers[0].leftSectionId).toBe('s1');
     expect(props.couplers[0].rightSectionId).toBe('s2');
     expect(props.couplers[0].bayRef).toBe('cpl-9');
-    expect(props.couplers[0].designation).toBe('Pole sprzęgła S1–S2');
+    // Karta GPZ-H5-SLD etap 2 (wymaganie 5): rysowany element to gałąź łącznika, więc jej
+    // nazwa ma pierwszeństwo; nazwa pola COUPLER oznacza łącznik tylko, gdy gałąź jest bez
+    // nazwy (intencja dawnej asercji: pole „dokłada oznaczenie" — zachowana w drugim
+    // przypadku poniżej).
+    expect(props.couplers[0].designation).toBe('Sprzęgło q-cpl');
+    const bezNazwyGalezi: EnmFragment = {
+      ...enm,
+      branches: [{ ...(sprzeglo('q-cpl', 'bus-15b', 'bus-15a') as object), name: '' } as never],
+    };
+    expect(buildCanonicalGpzProps(bezNazwyGalezi, 'g').couplers[0].designation).toBe('Pole sprzęgła S1–S2');
   });
 
   it('gałąź bus_coupler BEZ pola COUPLER → sprzęgło z nazwą gałęzi (pole nie warunkuje istnienia)', () => {
@@ -1080,7 +1092,10 @@ describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)'
    ze spacją}) × ścieżka (funkcja czysta, adapter end-to-end).
    --------------------------------------------------------------------------- */
 
-const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = ['IN', 'OUT', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE'];
+// Karta GPZ-H5: pola funkcyjne sekcji SN GPZ H5 (ENEA Zeszyt 1 §13) — EARTHING, CAPACITOR.
+const ROLE_ENM: ReadonlyArray<Bay['bay_role']> = [
+  'IN', 'OUT', 'FEEDER', 'TR', 'COUPLER', 'MEASUREMENT', 'OZE', 'EARTHING', 'CAPACITOR',
+];
 
 describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)', () => {
   const OCZEKIWANA = {
@@ -1091,6 +1106,8 @@ describe('buildCanonicalGpzProps — rola pola 1:1 z modelu (bez zlewania ról)'
     COUPLER: 'sprzeglo',
     MEASUREMENT: 'pomiarowe',
     OZE: 'zrodlowe',
+    EARTHING: 'uziemiajace',
+    CAPACITOR: 'kompensacyjne',
   } as const;
 
   for (const rola of ROLE_ENM) {

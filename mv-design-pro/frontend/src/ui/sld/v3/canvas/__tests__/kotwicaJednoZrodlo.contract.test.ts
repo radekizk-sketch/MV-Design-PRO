@@ -68,6 +68,10 @@ function loadEnm(relative: string): EnergyNetworkModel {
 const SIECI: readonly { readonly nazwa: string; readonly enm: EnergyNetworkModel }[] = [
   { nazwa: 'sldSubstrate52s', enm: loadEnm('../../../v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json') },
   { nazwa: 'gpzFeeder', enm: loadEnm('../../scene/__tests__/fixtures/gpzFeeder.enm.json') },
+  // Karta GPZ-H5-SLD: GPZ z dwiema sekcjami 110 kV, łącznikiem szyn 110 kV, dwoma źródłami
+  // i odbiorami sekcji — nowe klasy obiektów rysunku (łącznik WN, podpis odbioru) pod tą
+  // samą wyrocznią A/B/D.
+  { nazwa: 'gpzH5_2x2', enm: loadEnm('../../scene/__tests__/fixtures/gpzH5_2x2.enm.json') },
 ];
 const LODY: readonly SceneLod[] = [0, 1, 2];
 
@@ -177,7 +181,8 @@ const DOZWOLONE_ROZJAZDY: ReadonlySet<string> = new Set([
   // w modelu GAŁĄŹ switch/breaker, więc kotwica to `galaz`. Deklaracja 'segment'
   // byłaby fałszywa w drugą stronę (pod refem łącznika nie ma odcinka — §6a
   // `wlasnoscEtykiet`). Rozjazd OCZEKIWANY z tego samego powodu co wyżej: rodzaj
-  // obiektu bierze się z kotwicy.
+  // obiektu bierze się z kotwicy. Karta GPZ-H5-SLD: TEN SAM rodzaj niesie nazwa łącznika
+  // szyn GPZ (SN i 110 kV) — w modelu gałąź `bus_coupler`, na rysunku symbol łącznika.
   'lacznik-toru→galaz',
   // K2b §0.4: podpis „NO" punktu normalnie otwartego wskazanego w
   // `Corridor.no_point_ref` refem ŁĄCZNIKA albo ODCINKA. Na rysunku to znacznik
@@ -283,7 +288,22 @@ describe('C — kontrola czułości wyroczni', () => {
     // (`gpz/…/substation#name-row-N`) mają TĘ SAMĄ bazę refu, co kreska szyny WN
     // (`gpz/…/substation#hv-bus`). Dziedziczenie bez filtru „czy ten napis mówi
     // o szynie" podmieniłoby menu stacji GPZ na menu sekcji szyny 110 kV.
-    const { enm } = SIECI[0];
+    // GPZ-H5-SLD etap 3: od scalenia backendu H5 strona 110 kV GPZ jest SEKCJĄ modelu,
+    // a jej szyna ma bazę refu sekcji (`gpz/…/hv_section/NNN#hv-bus`) — w fiksturach
+    // generatora pułapka zniknęła strukturalnie (asercja niżej). Ścieżka bez sekcji 110 kV
+    // w modelu (`compose/gpz.ts`: `${props.id}#hv-bus`, baza = stacja) nadal istnieje
+    // w kompozycji, więc kontrola czułości ćwiczy ją na tej samej sieci bez
+    // `gpz_hv_sections` — tam baza napisu nazwy GPZ NAPRAWDĘ niesie ref szyny WN.
+    const { enm: zSekcjami } = SIECI[0];
+    const wgBazySekcji = buildKanonicznyRefSzynyWgBazy(buildSceneV3(zSekcjami, 2).segments);
+    const gpzRef = (zSekcjami.substations ?? []).find((s) => s.station_type === 'gpz')!.ref_id;
+    expect(wgBazySekcji.get(gpzRef), 'z sekcjami 110 kV baza stacji GPZ nie niesie szyny WN').toBeUndefined();
+    const enm: EnergyNetworkModel = {
+      ...zSekcjami,
+      substations: (zSekcjami.substations ?? []).map((s) =>
+        s.station_type === 'gpz' ? { ...s, gpz_hv_sections: [] } : s,
+      ),
+    };
     const scene = buildSceneV3(enm, 2);
     const wgBazy = buildKanonicznyRefSzynyWgBazy(scene.segments);
     const nazwaGpz = scene.labels.find(
@@ -332,7 +352,11 @@ describe('D — pokrycie iloczynu cech', () => {
     'tor×galaz',
     'tor×pole',
     'aparat×pole',
-    'aparat×transformator',
+    // GPZ-H5-SLD etap 3: dawna para `aparat×transformator` pochodziła WYŁĄCZNIE z aparatów
+    // pola TR GPZ, które nie miało rekordu pola w modelu (ownerRef = transformator, sonda:
+    // `…/transformer/001/wn_sn` na L1/L2 starych fikstur). Backend H5 zakłada pola TR po
+    // obu stronach (`transformer/NNN/bay_wn`, `bay_sn`), więc te aparaty kotwiczą się na
+    // SWOIM polu — test E niżej przypina to wprost; para wypadła z wymagań z tej przyczyny.
     'transformator×pole',
     'zrodlo×zrodlo',
   ];
@@ -420,15 +444,70 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
     }
   });
 
-  it('`lv-load` NIE MA producenta — deklaracja `bus` w tabeli napisów jest nieużywana', () => {
-    // Nagłówek `LABEL_OWNER_ELEMENT_KIND` twierdzi, że ten wpis istnieje wyłącznie
-    // z powodu kompletności `satisfies`. Gdy producent się pojawi, ten test padnie
-    // i wymusi świadome rozstrzygnięcie kategorii (dziś odziedziczyłaby
-    // niesprawdzone `'bus'`, czyli weszłaby w bramkę przejścia stacja→szyna).
-    for (const { nazwa, enm } of SIECI) {
-      for (const lod of LODY) {
-        const producenci = buildSceneV3(enm, lod).labels.filter((l) => l.ownerKind === 'lv-load');
-        expect(producenci.map((l) => l.ownerRef), `${nazwa} LOD ${lod}`).toEqual([]);
+  // Karta GPZ-H5-SLD (przepisany do obecnego kanonu): dawny `'lv-load'` nie miał producenta
+  // i deklarował niesprawdzone `'bus'` — test przypinał brak producenta, żeby pojawienie się
+  // go wymusiło świadomą decyzję. Producent się pojawił (odbiory sekcji GPZ, rodzaj `'odbior'`)
+  // i decyzja jest tu przypięta: podpis odbioru celuje w TĘ SAMĄ kategorię co symbol
+  // `loadArrow` tego samego `Load.ref_id` (menu i inspektor odbioru, nie szyny). Iloczyn:
+  // {H5 2×2, równoważnik SN 2 sekcje} × LOD {1, 2} (L0 nie rysuje podpisów danych).
+  it('podpis odbioru (`odbior`) i symbol odbioru — ten sam ref i ta sama kategoria menu', () => {
+    const fikstury = ['gpzH5_2x2', 'gpzRownowaznikSn2'];
+    for (const nazwa of fikstury) {
+      const enm = (JSON.parse(
+        readFileSync(resolve(here, `../../scene/__tests__/fixtures/${nazwa}.enm.json`), 'utf-8'),
+      ) as { enm: EnergyNetworkModel }).enm;
+      const odbiory = (enm.loads ?? []).map((l) => l.ref_id).sort();
+      expect(odbiory.length, `${nazwa}: fikstura bez odbiorów nie sprawdza niczego`).toBeGreaterThan(0);
+      for (const lod of [1, 2] as const) {
+        const scene = buildSceneV3(enm, lod);
+        const podpisy = scene.labels.filter((l) => l.ownerKind === 'odbior');
+        const symbole = scene.symbols.filter((sym) => sym.symbolId === 'loadArrow');
+        // Podpis to kompozyt `${Load.ref_id}#load-label` — należy do odbioru (konwencja
+        // `bazaRefu` / `baseRefOf`: część przed `#`).
+        const baza = (ref: string) => ref.split('#')[0];
+        expect(podpisy.every((l) => l.ownerRef.endsWith('#load-label')), `${nazwa} LOD ${lod}: kompozyt podpisu`).toBe(true);
+        expect([...new Set(podpisy.map((l) => baza(l.ownerRef)))].sort(), `${nazwa} LOD ${lod}: podpisy`).toEqual(odbiory);
+        expect([...new Set(symbole.map((sym) => sym.meta?.ownerRef))].sort(), `${nazwa} LOD ${lod}: symbole`).toEqual(odbiory);
+        const areas = buildCanvasHitAreas({
+          symbols: scene.symbols,
+          segments: scene.segments,
+          labels: scene.labels.map((label, i) => ({ index: i, label, rect: label.rect })) as never,
+          resultMarkers: [],
+          scale: 1,
+        });
+        const index = buildCanvasModelIndex(enm);
+        for (const ref of odbiory) {
+          const obiekty = areas.filter((a) => a.ownerRef !== undefined && baza(a.ownerRef) === ref);
+          const podpis = obiekty.filter((a) => a.klasa === 'etykieta');
+          const symbol = obiekty.filter((a) => a.testId.includes('gpz-canonical-load-'));
+          // Karta GPZ-H5-SLD etap 2 (wymaganie 5, „oznaczenie > dane"): odbiór ma JEDNĄ nazwę
+          // (`#load-label`, tożsamość) i co najwyżej jeden wiersz danych P · Q
+          // (`#load-data`, `odbior-dane`) — oba należą do odbioru i deklarują tę samą kategorię.
+          const nazwy = podpis.filter((a) => (a.ownerRef ?? '').endsWith('#load-label'));
+          const dane = podpis.filter((a) => (a.ownerRef ?? '').endsWith('#load-data'));
+          expect(nazwy.length, `${nazwa} LOD ${lod} ${ref}: podpis`).toBe(1);
+          expect(dane.length, `${nazwa} LOD ${lod} ${ref}: dane`).toBeLessThanOrEqual(1);
+          expect(nazwy.length + dane.length, `${nazwa} LOD ${lod} ${ref}: tylko nazwa i dane`).toBe(podpis.length);
+          expect(symbol.length, `${nazwa} LOD ${lod} ${ref}: symbol`).toBe(1);
+          // Podpis deklaruje kategorię symbolu (`LABEL_OWNER_ELEMENT_KIND.odbior`).
+          for (const p of podpis) {
+            expect(p.elementKind).toBe(symbol[0].elementKind);
+            expect(p.elementKind).toBe(LABEL_OWNER_ELEMENT_KIND.odbior);
+          }
+          expect(LABEL_OWNER_ELEMENT_KIND['odbior-dane']).toBe(LABEL_OWNER_ELEMENT_KIND.odbior);
+          // JEDNO orzeczenie o obiekcie: podpis, symbol i zejście odbioru rozstrzygają się
+          // tak samo — i nigdy na kontener (GPZ z „Usuń stację"), klasa defektu A.
+          const orzeczenia = new Set(
+            obiekty.map((a) =>
+              JSON.stringify(
+                resolveCanvasMenuSubject({ klasa: a.klasa, ownerRef: a.ownerRef, elementKind: a.elementKind }, index),
+              ),
+            ),
+          );
+          expect(orzeczenia.size, `${nazwa} LOD ${lod} ${ref}: ${[...orzeczenia].join(' | ')}`).toBe(1);
+          const wynik = JSON.parse([...orzeczenia][0]) as CanvasMenuSubjectResult;
+          expect(kotwicaWyniku(wynik), `${nazwa} LOD ${lod} ${ref}: awans do kontenera`).not.toBe('stacja');
+        }
       }
     }
   });
@@ -514,4 +593,45 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
     }
     expect(sprawdzonych, 'nie ma czego porównywać — para kreska↔napis musi być realna').toBeGreaterThan(50);
   });
+});
+
+// ---------------------------------------------------------------------------
+// E. APARAT POLA TR GPZ KOTWICZY SIĘ NA SWOIM POLU (GPZ-H5-SLD etap 3)
+// ---------------------------------------------------------------------------
+
+describe('E — aparat pola TR GPZ × strona transformatora (WN/SN) × LOD → kotwica „pole" tego pola', () => {
+  for (const { nazwa, enm } of SIECI) {
+    const polaTr = new Set(
+      (enm.bays ?? []).filter((b) => /\/transformer\/\d+\/bay_(wn|sn)$/.test(b.ref_id)).map((b) => b.ref_id),
+    );
+    for (const lod of [1, 2] as const) {
+      it(`${nazwa} LOD ${lod}: każdy aparat pola TR (bay_wn, bay_sn) → pole o tym samym refie`, () => {
+        // Kontrola wejścia: fikstura generatora niesie pola TR po obu stronach.
+        expect([...polaTr].some((r) => r.endsWith('/bay_wn'))).toBe(true);
+        expect([...polaTr].some((r) => r.endsWith('/bay_sn'))).toBe(true);
+        const scene = buildSceneV3(enm, lod);
+        const index = buildCanvasModelIndex(enm);
+        const areas = buildCanvasHitAreas({
+          symbols: scene.symbols,
+          segments: scene.segments,
+          labels: [] as never,
+          resultMarkers: [],
+          scale: 1,
+        });
+        const strony = new Set<string>();
+        for (const area of areas) {
+          if (area.klasa !== 'aparat' || !polaTr.has(area.ownerRef ?? '')) continue;
+          const wynik = resolveCanvasMenuSubject(
+            { klasa: area.klasa, ownerRef: area.ownerRef, elementKind: area.elementKind, busRef: undefined },
+            index,
+          );
+          expect(kotwicaWyniku(wynik), area.testId).toBe('pole');
+          expect(wynik.stan === 'temat' ? wynik.temat.modelRef : null, area.testId).toBe(area.ownerRef);
+          strony.add(area.ownerRef!.slice(area.ownerRef!.lastIndexOf('_') + 1));
+        }
+        // Obie strony transformatora ćwiczone (nie pusty zbiór).
+        expect([...strony].sort()).toEqual(['sn', 'wn']);
+      });
+    }
+  }
 });

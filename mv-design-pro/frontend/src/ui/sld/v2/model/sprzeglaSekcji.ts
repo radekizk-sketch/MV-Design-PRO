@@ -18,6 +18,7 @@
  * rekordu), bez przechodzenia grafu.
  */
 import type { Bay, Branch } from '../../../../types/enm';
+import { pozycjaNormalna, type PolozenieLacznika } from '../../../shared/stanLacznika';
 import { stanGaleziPola, type StanLacznikaRysunku } from './stanAparatowPola';
 
 /** Rodzaj łącznika sprzęgła rysowany glifem toru poziomego: `wylacznik` →
@@ -37,9 +38,16 @@ export interface SprzegloSekcjiView {
   readonly state: StanLacznikaRysunku;
   /** Pole sprzęgła wskazujące tę gałąź (`null` = brak rekordu pola). */
   readonly bayRef: string | null;
-  /** Oznaczenie: nazwa pola sprzęgła, inaczej nazwa gałęzi, inaczej jej ref. */
+  /** Oznaczenie: nazwa GAŁĘZI łącznika (rysowany element to gałąź `bus_coupler`), inaczej
+   *  nazwa pola sprzęgła, inaczej ref gałęzi. Karta GPZ-H5-SLD etap 2 (wymaganie 5): dawniej
+   *  nazwa pola miała pierwszeństwo, więc pod glifem łącznika stało „Pole łącznika szyn ŁS
+   *  110 kV 1-2" — nazwa pola, nie łącznika, dwa razy szersza; nazwa pola zostaje w wierszu
+   *  pola karty GPZ inspektora. */
   readonly designation: string;
   readonly rodzaj: RodzajLacznikaSprzegla;
+  /** Pozycja normalna łącznika (`normal_state`, jedno lustro `shared/stanLacznika`);
+   *  `null` = niezadeklarowana. Stan rysunku (`state`) i pozycja normalna to dwa fakty. */
+  readonly normalState: PolozenieLacznika | null;
 }
 
 function napis(value: unknown): string | null {
@@ -93,8 +101,9 @@ export function sprzeglaMiedzySekcjami(
         toBusRef: to,
         state: stanGaleziPola(branch, bay?.primary_devices ?? []),
         bayRef: bay?.ref_id ?? null,
-        designation: napis(bay?.name) ?? napis(branch.name) ?? ref,
+        designation: napis(branch.name) ?? napis(bay?.name) ?? ref,
         rodzaj: rodzajLacznika(branch, bay),
+        normalState: pozycjaNormalna(branch),
       },
     });
   }

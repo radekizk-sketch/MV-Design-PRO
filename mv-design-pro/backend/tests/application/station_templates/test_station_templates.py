@@ -1,7 +1,7 @@
-"""Tests for K30-16/V12T-016 station templates library — 71 templates across
-15 categories (57 K30-16 + 16 V12T-016 delta: role A GPZ_110_SN/
-ROZDZIELNIA_SIECIOWA, role C STACJA_ABONENCKA, role E KOMPENSACJA/
-REZERWA_ZASILANIA)."""
+"""Tests for K30-16/V12T-016 station templates library — 73 templates across
+15 categories (57 K30-16 − 2 withdrawn wind templates + 16 V12T-016 delta: role A
+GPZ_110_SN/ROZDZIELNIA_SIECIOWA, role C STACJA_ABONENCKA, role E KOMPENSACJA/
+REZERWA_ZASILANIA + 2 ENEA H5 GPZ templates of card GPZ-H5)."""
 
 from __future__ import annotations
 
@@ -15,15 +15,17 @@ from application.station_templates import (
     list_templates,
     list_templates_by_category,
 )
+from application.station_templates.schema import GPZ_UKLAD_H5, StationTemplate
 from application.station_templates.service import count_by_category
 
 
 def test_total_template_count_matches_plan() -> None:
     """K30-16 + V12T-016 plan: 73 szablony, minus 2 wiatrowe wycofane 2026-10-15
-    (2 szablony wiatrowe wycofane 2026-10-15, `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`) = 71 w 15 kategoriach. Liczba dokładna: wycofanie albo
+    (`wiatrowe.SZABLONY_WIATROWE_WYCOFANE`) = 71, plus 2 szablony GPZ H5 110/15 i 110/20 kV
+    (karta GPZ-H5, 2026-10-22) = 73 w 15 kategoriach. Liczba dokładna: wycofanie albo
     przywrócenie szablonu musi zmienić ten pin jawnie."""
     templates = list_templates()
-    assert len(templates) == 71, f"Expected 71 templates, got {len(templates)}"
+    assert len(templates) == 73, f"Expected 73 templates, got {len(templates)}"
 
 
 def test_all_15_categories_present() -> None:
@@ -52,7 +54,8 @@ def test_category_breakdown_per_plan() -> None:
     # 4 z planu minus 2 wycofane (`wiatrowe.SZABLONY_WIATROWE_WYCOFANE`, 2026-10-15).
     assert counts[TemplateCategory.WIATROWA.value] == 2
     assert counts[TemplateCategory.SEKCYJNA.value] == 3
-    assert counts[TemplateCategory.GPZ_110_SN.value] == 3
+    # 3 z planu V12T-016 (równoważnik na szynach SN) + 2 układu ENEA H5 (karta GPZ-H5).
+    assert counts[TemplateCategory.GPZ_110_SN.value] == 5
     assert counts[TemplateCategory.ROZDZIELNIA_SIECIOWA.value] == 3
     assert counts[TemplateCategory.STACJA_ABONENCKA.value] == 4
     assert counts[TemplateCategory.KOMPENSACJA.value] == 3
@@ -176,9 +179,11 @@ def test_structural_fields_present_for_every_template() -> None:
     rola A „rozdzielnia sieciowa"/E „kompensacja"/„rezerwa zasilania" — oraz GPZ
     110/SN: karta GPZ-MODEL, szablon GPZ buduje równoważnik sieci na szynach SN,
     a transformatory 110/SN są poza modelem — zmierzone niżej: dokładnie te
-    4 kategorie, 12 szablonów)."""
+    4 kategorie, 12 szablonów). Karta GPZ-H5: szablony GPZ w układzie ENEA H5 MAJĄ
+    transformatory 110/SN z katalogu (strona 110 kV w modelu) — w kategorii GPZ bez
+    transformatora są wyłącznie szablony równoważnika na szynach SN."""
     templates = list_templates()
-    assert len(templates) == 71
+    assert len(templates) == 73
     bez_tr_kategorie = {
         TemplateCategory.ROZDZIELNIA_SIECIOWA,
         TemplateCategory.KOMPENSACJA,
@@ -201,7 +206,8 @@ def test_structural_fields_present_for_every_template() -> None:
         assert d["category_label_pl"] == TEMPLATE_CATEGORY_LABELS_PL[t.category], t.id
         assert d["bay_role_categories"] == sorted({r.role for r in t.schema.sn_bay_roles}), t.id
         bez_transformatora = not t.schema.transformer_options
-        assert bez_transformatora == (t.category in bez_tr_kategorie), (
+        oczekiwany_bez_tr = t.category in bez_tr_kategorie and t.schema.gpz_uklad != GPZ_UKLAD_H5
+        assert bez_transformatora == oczekiwany_bez_tr, (
             f"{t.id}: brak transformer_options poza zamkniętym zbiorem kategorii "
             f"BEZ transformatora ({[c.value for c in bez_tr_kategorie]})"
         )
@@ -354,6 +360,33 @@ def test_pomiar_degraduje_przed_polem_tr_przy_obnizonej_liczbie_pol() -> None:
         assert "TR" in role, f"count={count}: pole TR wypadło przed pomiarowym ({role})"
 
 
+def _pomiar_napiecia_szyn_gpz(template: StationTemplate) -> bool:
+    """Pole pomiarowe GPZ H5 to pole POMIARU NAPIĘCIA SZYN sekcji SN (ENEA Zeszyt 1 §13,
+    zał. Z.2), nie układ pomiarowo-rozliczeniowy klienta: GPZ jest źródłem sieci SN,
+    zasilanie wchodzi na sekcję przez pole transformatorowe, więc reguły „pomiar pierwszy od
+    kierunku zasilania” i „część kliencka za pomiarem” (kontrakt
+    `POMIAR_ROZLICZENIOWY_SN_V1.md`) go nie dotyczą. Predykat sprawdza OBA warunki naraz
+    (kategoria GPZ i określenie roli „napięcia szyn”), a test niżej przypina, że innych
+    pól pomiarowych w szablonach GPZ nie ma."""
+    return template.category == TemplateCategory.GPZ_110_SN and any(
+        r.role == "MEASUREMENT" and r.okreslenie_pl == "napięcia szyn"
+        for r in template.schema.sn_bay_roles
+    )
+
+
+def test_pole_pomiarowe_gpz_to_wylacznie_pomiar_napiecia_szyn() -> None:
+    """Para do wyłączenia `_pomiar_napiecia_szyn_gpz`: każde pole MEASUREMENT szablonu GPZ
+    jest polem pomiaru napięcia szyn i występuje wyłącznie w układzie H5 (pole funkcyjne
+    sekcji SN); szablony spoza GPZ nie korzystają z wyłączenia."""
+    for template in list_templates():
+        pomiary = [r for r in template.schema.sn_bay_roles if r.role == "MEASUREMENT"]
+        if template.category != TemplateCategory.GPZ_110_SN:
+            assert not _pomiar_napiecia_szyn_gpz(template), template.id
+            continue
+        assert all(r.okreslenie_pl == "napięcia szyn" for r in pomiary), template.id
+        assert bool(pomiary) == (template.schema.gpz_uklad == GPZ_UKLAD_H5), template.id
+
+
 def test_pole_pomiarowe_przed_polem_tr_w_kazdym_szablonie() -> None:
     """Standard układów pomiarowych OSD (dyrektywa właściciela 2026-08-06,
     V12K-330): pole pomiarowe leży PIERWSZE od kierunku zasilania — przed
@@ -365,6 +398,8 @@ def test_pole_pomiarowe_przed_polem_tr_w_kazdym_szablonie() -> None:
     for template in list_templates():
         role = [r.role for r in template.schema.sn_bay_roles]
         if "MEASUREMENT" not in role or "TR" not in role:
+            continue
+        if _pomiar_napiecia_szyn_gpz(template):
             continue
         zbadane += 1
         assert role.index("MEASUREMENT") < role.index("TR"), (
@@ -427,6 +462,8 @@ def test_pomiar_rozliczeniowy_nie_lezy_w_torze_tranzytu() -> None:
         role = [r.role for r in template.schema.sn_bay_roles]
         if "MEASUREMENT" not in role:
             continue
+        if _pomiar_napiecia_szyn_gpz(template):
+            continue
         zbadane += 1
         przed = role[: role.index("MEASUREMENT")]
         assert "TR" not in przed, (
@@ -480,6 +517,7 @@ def test_structural_power_zgadza_sie_z_transformatorem_ktory_zmaterializuje_appl
         )
         moc_kafla, _ = catalog_choice_rated_kva(wyswietlana_opcja)
         assert moc_kafla is not None and moc_kafla > 0, t.id
-    # 71 szablonów (2 wiatrowe wycofane 2026-10-15) - 12 bez TR = 59 (karta GPZ-MODEL:
-    # 3 szablony GPZ bez transformatorów 110/SN — równoważnik sieci na szynach SN).
-    assert zbadane == 59, f"Oczekiwano 59 szablonów z TR (71 - 12 bez TR), zmierzono {zbadane}"
+    # 73 szablony (2 wiatrowe wycofane 2026-10-15, 2 GPZ H5 dodane 2026-10-22) - 12 bez TR
+    # = 61 (karta GPZ-MODEL: 3 szablony GPZ bez transformatorów 110/SN — równoważnik sieci
+    # na szynach SN; karta GPZ-H5: 2 szablony H5 z transformatorami 110/SN z katalogu).
+    assert zbadane == 61, f"Oczekiwano 61 szablonów z TR (73 - 12 bez TR), zmierzono {zbadane}"

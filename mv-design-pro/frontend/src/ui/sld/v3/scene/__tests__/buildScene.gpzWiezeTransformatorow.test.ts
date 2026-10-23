@@ -27,8 +27,9 @@
  * fikstury, sekcja 1 bez pól (wąska: zasięg tabliczki wieży sięga sekcji następnej)}
  * × {bez sprzęgła, ze sprzęgłem} × LOD {1, 2}; druga sekcja zawsze z jednym
  * transformatorem (sąsiad grupy). Kryteria: jeden symbol TR2W na transformator,
- * zejście na szynie SN sekcji docelowej i zaczep na szynie WN, osie rosnące
- * w porządku refów, źródło nad prawym końcem szyny WN, wyłącznik sprzęgła między
+ * zejście na szynie SN sekcji docelowej i zaczep na szynie sekcji 110 kV, osie rosnące
+ * w porządku refów, źródło wieńczące pole zasilające sekcji 110 kV (karta GPZ-H5-SLD
+ * etap 3: migawka backendu ma stronę 110 kV jako sekcję modelu), wyłącznik sprzęgła między
  * szynami, brak przecięcia prostokątów (symbole i etykiety) wieży, źródła i sprzęgła
  * z czymkolwiek spoza nich, żadna etykieta GPZ nieusunięta przez silnik etykiet,
  * determinizm względem kolejności transformatorów w modelu.
@@ -97,7 +98,7 @@ function migawka(badana: Sekcja, liczba: number, w: Warianty = {}): Migawka {
   // Źródło zasilania GPZ: równoważnik sieci po stronie 110 kV na wspólnej szynie WN
   // (górna szyna transformatora fikstury) — jedyny tryb z transformatorami w modelu.
   const zrodlo = enm.sources.find((src) => src.bus_ref === tr1.hv_bus_ref);
-  expect(zrodlo, 'równoważnik sieci na szynie WN GPZ fikstury').toBeDefined();
+  expect(zrodlo, 'równoważnik sieci na szynie sekcji 110 kV GPZ fikstury').toBeDefined();
   if (sprzeglo) {
     gpz.gpz_sections![0] = { ...gpz.gpz_sections![0], right_coupler_ref: POLE_SPRZEGLA };
     gpz.gpz_sections![1] = { ...gpz.gpz_sections![1], left_coupler_ref: POLE_SPRZEGLA };
@@ -234,7 +235,15 @@ function osWiezy(scena: SceneV3, trRef: string): number {
 }
 
 function sprawdzWieze(m: Migawka, scena: SceneV3): void {
-  const hv = scena.segments.find((g) => g.meta?.testId === 'gpz-canonical-hv-bus')!;
+  // Karta GPZ-H5-SLD etap 3: migawka backendu (przegenerowana fikstura `gpzFeeder`) niesie
+  // stronę 110 kV jako sekcję modelu (`gpz_hv_sections`: szyna `bus_wn`, pole liniowe IN
+  // z równoważnikiem toru zasilania `incoming_source_ref`, pole WN transformatora) — szyna WN
+  // jest odcinkiem SEKCJI 110 kV (`gpz-canonical-hv-bus-<sekcja>`), nie dawną wspólną szyną.
+  const gpz = m.enm.substations.find((st) => st.station_type === 'gpz')!;
+  const [sekcjaWn] = gpz.gpz_hv_sections!;
+  expect(gpz.gpz_hv_sections, 'jedna sekcja 110 kV w migawce backendu').toHaveLength(1);
+  const hv = scena.segments.find((g) => g.meta?.testId === `gpz-canonical-hv-bus-${sekcjaWn.section_id}`)!;
+  expect(hv, 'szyna sekcji 110 kV').toBeDefined();
   const hvXs = hv.points.map((p) => p.x);
   const wszystkie = [...m.wgSekcji.values()].flat();
   for (const sekcja of SEKCJE) {
@@ -262,19 +271,25 @@ function sprawdzWieze(m: Migawka, scena: SceneV3): void {
     expect(zaczep.points[0].x).toBeLessThan(Math.max(...hvXs));
   }
   expect(kolizjeWiez(scena, wszystkie, m.zrodloRef)).toEqual([]);
-  // Źródło nad prawym końcem szyny WN: przedłużenie szyny WN zaczyna się na jej końcu,
-  // zejście źródła na wysokości szyny WN; żadne przedłużenie szyny SN (źródło nie stoi
-  // na szynach SN).
-  const prawoWN = Math.max(...hvXs);
+  // Źródło sekcji 110 kV wieńczy jej pole liniowe zasilające (równoważnik toru zasilania na
+  // zaciskach pola): zejście źródła kończy się na szczycie stosu pola, w osi pola, a pole
+  // zaczepia się do szyny sekcji w jej obrębie; źródło nie stoi ani na końcu szyny WN
+  // (przedłużenie bloku źródeł), ani na szynach SN.
+  expect(sekcjaWn.incoming_source_ref, 'źródło sekcji 110 kV').toBe(m.zrodloRef);
+  const poleZasilajace = m.enm.bays.find((b) => b.gpz_section_id === sekcjaWn.section_id && b.bay_role === 'IN')!;
+  expect(poleZasilajace, 'pole liniowe zasilające sekcji 110 kV').toBeDefined();
+  const zaczepPola = odcinek(scena, `${poleZasilajace.ref_id}#hv-bus-tap`)!;
+  expect(zaczepPola, 'zaczep pola zasilającego do szyny 110 kV').toBeDefined();
+  const osPola = zaczepPola.points[0].x;
+  expect(zaczepPola.points[zaczepPola.points.length - 1].y).toBe(hv.points[0].y);
+  expect(osPola).toBeGreaterThan(Math.min(...hvXs));
+  expect(osPola).toBeLessThan(Math.max(...hvXs));
   const zejscieZrodla = odcinek(scena, `${m.zrodloRef}#grid-source-drop`);
   expect(zejscieZrodla, 'zejście źródła').toBeDefined();
   const dolZrodla = zejscieZrodla!.points[zejscieZrodla!.points.length - 1];
-  expect(dolZrodla.y).toBe(hv.points[0].y);
-  expect(dolZrodla.x).toBeGreaterThan(prawoWN);
-  const przedluzenie = scena.segments.find(
-    (g) => g.meta?.ownerRef?.endsWith('#hv-bus-source-extension') && g.points[0].x === prawoWN,
-  );
-  expect(przedluzenie, 'przedłużenie szyny WN do zaczepu źródła').toBeDefined();
+  expect(dolZrodla.x, 'źródło w osi pola zasilającego').toBe(osPola);
+  expect(dolZrodla.y, 'zejście źródła nad szyną 110 kV').toBeLessThan(hv.points[0].y);
+  expect(scena.segments.filter((g) => g.meta?.ownerRef?.endsWith('#hv-bus-source-extension'))).toEqual([]);
   expect(scena.segments.filter((g) => g.meta?.ownerRef?.endsWith('#source-bus-extension'))).toEqual([]);
   expect(scena.meta.missingData).not.toContain('gpz.source.unattached');
   expect(scena.labels.some((l) => l.ownerRef.startsWith(`${m.zrodloRef}#system-source-label`))).toBe(true);

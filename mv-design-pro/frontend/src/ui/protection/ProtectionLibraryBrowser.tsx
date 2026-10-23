@@ -17,6 +17,7 @@
  * Wszystkie etykiety w języku polskim (100% PL).
  */
 
+import { liczbaZOdmiana } from '../shared/odmianaLiczebnikowa';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { clsx } from 'clsx';
 import {
@@ -342,7 +343,7 @@ export function ProtectionLibraryBrowser({
 
           {/* Footer: Type Count */}
           <div className="border-t border-gray-200 bg-gray-50 px-4 py-2 text-xs text-gray-600">
-            Znaleziono: {filteredTypes.length} {filteredTypes.length === 1 ? 'typ' : 'typów'}
+            Znaleziono: {liczbaZOdmiana(filteredTypes.length, { jeden: 'typ', kilka: 'typy', wiele: 'typów' })}
           </div>
         </div>
 

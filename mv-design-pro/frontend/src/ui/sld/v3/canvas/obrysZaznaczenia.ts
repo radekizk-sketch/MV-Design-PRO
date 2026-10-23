@@ -2,10 +2,11 @@
  * Karta GEOMETRIA-STACJI (§0 pkt 5) — obrys zaznaczenia obiektu na kanwie v3.
  *
  * Do karty kanwa w ogóle nie rysowała zaznaczenia: jedynym wyróżnieniem pola była
- * barwa roli pola (`palette.rolaPola`), więc „zaznaczone pole liniowe" i „każde pole
- * liniowe" wyglądały tak samo. Obrys zaznaczenia jest osobną warstwą (`sld-v3-zaznaczenie`)
- * w barwie `palette.highlight.selection` — tokenie, który nie należy do żadnej roli, stanu
- * ani nakładki wyników — więc wyróżnienie zaznaczenia nie zależy od barwy roli.
+ * barwa roli pola, więc „zaznaczone pole liniowe" i „każde pole liniowe" wyglądały tak
+ * samo. Obrys zaznaczenia jest osobną warstwą (`sld-v3-zaznaczenie`) w barwie
+ * `palette.highlight.selection` — tokenie, który nie należy do żadnego stanu ani nakładki
+ * wyników (karta GPZ-H5-SLD etap 2: barwę roli pola zdjęto ze schematu w ogóle — kanał
+ * koloru „zaznaczenie = obrys" jest jedynym wyróżnieniem obiektu).
  *
  * Geometria obrysu: prostokąt obejmujący wszystkie symbole i odcinki sceny, których
  * `ownerRef` albo `deviceRef` równa się refowi zaznaczenia (pole = cały stos aparatów

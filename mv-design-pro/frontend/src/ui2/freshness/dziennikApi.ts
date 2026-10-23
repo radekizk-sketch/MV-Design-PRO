@@ -16,6 +16,8 @@
  * wywracał ekran).
  */
 
+import { formaLiczebnikowa } from '../../ui/shared/odmianaLiczebnikowa';
+
 export interface WpisDziennika {
   readonly rewizja: number;
   readonly znacznik_czasu: string;
@@ -98,9 +100,9 @@ export function podsumowaniePl(dziennik: DziennikZmian): string {
     return 'Model nie zmienił się od czasu tego wyniku.';
   }
   const elementow = dziennik.wpisy.reduce((suma, w) => suma + w.liczba_elementow, 0);
-  const slowoZmiana = zmian === 1 ? 'zmiana' : zmian < 5 ? 'zmiany' : 'zmian';
+  const slowoZmiana = formaLiczebnikowa(zmian, { jeden: 'zmiana', kilka: 'zmiany', wiele: 'zmian' });
   const slowoElement =
-    elementow === 1 ? 'element' : elementow < 5 ? 'elementy' : 'elementów';
+    formaLiczebnikowa(elementow, { jeden: 'element', kilka: 'elementy', wiele: 'elementów' });
   return (
     `Od tego wyniku model zmienił się ${zmian} ${slowoZmiana} `
     + `(${elementow} ${slowoElement}). Wynik trzeba przeliczyć.`

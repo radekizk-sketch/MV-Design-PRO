@@ -1336,8 +1336,8 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/2f1f0b34048eb60224c2557c30055539/downstream",
-        "id": "0cc24099-77e3-50bf-92c6-3b68c934f697",
+        "from_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "id": "a376d429-381a-5038-9402-78e066e016dc",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1345,29 +1345,237 @@
           "u_n_kv": 17.5
         },
         "meta": {
-          "bay_role": "TR",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/5479c8038b3ce967fae13b12319add05/tr",
-          "field_role": "TRANSFORMATOROWE",
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
           "render_on_sld": false,
           "requires_catalog_binding": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/5479c8038b3ce967fae13b12319add05/substation"
+          "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+          "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal"
         },
-        "name": "Wyłącznik pola SN 2",
+        "name": "Aparat Pole liniowe GPZ 1.1",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/002",
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/apparatus",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
-          "station_field_device"
+          "gpz_field_device"
         ],
-        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/002",
+        "to_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
         "type": "breaker",
         "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
+        "id": "4f992fcc-fa9d-5fbd-8d5a-121743ea5d5b",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+          "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 1.2",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 0.00012252211349,
+        "cable_joints": [],
+        "catalog_namespace": "KABEL_SN",
+        "catalog_ref": "cable-tfk-yakxs-3x120",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "bus/fe376eaf3dfe7a4ad9606fe2d2f3e71f/downstream",
+        "id": "42fbf586-efc2-5b14-9d0e-32cb59cbfc4a",
+        "insulation": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "length_km": 0.25,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "c_nf_per_km": 390.0,
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "legacy",
+          "conductor_material": "AL",
+          "cross_section_mm2": 120.0,
+          "frequency_hz": 50.0,
+          "insulation_type": "XLPE",
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 94.0,
+          "max_temperature_c": 90.0,
+          "number_of_cores": 3,
+          "r0_ohm_per_km": 1.330562,
+          "r_ohm_per_km": 0.253,
+          "rated_current_a": 230.0,
+          "return_conductor_cross_section_mm2": 16.0,
+          "return_conductor_ith_1s_a": 2288.0,
+          "return_conductor_jth_1s_a_per_mm2": 143.0,
+          "return_conductor_material": "CU",
+          "return_conductor_r_ohm_per_km_20c": 1.077562,
+          "short_circuit_temperature_c": 250.0,
+          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+          "trade_name": "YAKXS 3x120/16",
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 0.3,
+          "x_ohm_per_km": 0.1
+        },
+        "meta": {
+          "catalog_item_version": "legacy"
+        },
+        "n_parallel": null,
+        "name": "Odcinek 3 (1)",
+        "number_of_cores": 3,
+        "operating_temperature_c": 90.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/2f1f0b34048eb60224c2557c30055539/segment_L",
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "return_conductor_x_ohm_per_km": null,
+        "screen_bonding": null,
+        "short_circuit_temperature_c": 250.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/000",
+        "type": "cable",
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
+      },
+      {
+        "b0_siemens_per_km": null,
+        "b_siemens_per_km": 0.00012252211349,
+        "cable_joints": [],
+        "catalog_namespace": "KABEL_SN",
+        "catalog_ref": "cable-tfk-yakxs-3x120",
+        "conductor_material": "AL",
+        "cross_section_mm2": 120.0,
+        "endpoint_a_port": null,
+        "endpoint_b_port": null,
+        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/001",
+        "id": "abd1b12e-3cc1-50c8-bd28-022b779ecd10",
+        "insulation": "XLPE",
+        "ith_1s_a": null,
+        "jth_1s_a_per_mm2": 94.0,
+        "length_km": 0.25,
+        "materialized_params": {
+          "b0_siemens_per_km": null,
+          "c_nf_per_km": 390.0,
+          "catalog_item_id": "cable-tfk-yakxs-3x120",
+          "catalog_item_version": "legacy",
+          "conductor_material": "AL",
+          "cross_section_mm2": 120.0,
+          "frequency_hz": 50.0,
+          "insulation_type": "XLPE",
+          "ith_1s_a": null,
+          "jth_1s_a_per_mm2": 94.0,
+          "max_temperature_c": 90.0,
+          "number_of_cores": 3,
+          "r0_ohm_per_km": 1.330562,
+          "r_ohm_per_km": 0.253,
+          "rated_current_a": 230.0,
+          "return_conductor_cross_section_mm2": 16.0,
+          "return_conductor_ith_1s_a": 2288.0,
+          "return_conductor_jth_1s_a_per_mm2": 143.0,
+          "return_conductor_material": "CU",
+          "return_conductor_r_ohm_per_km_20c": 1.077562,
+          "short_circuit_temperature_c": 250.0,
+          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+          "trade_name": "YAKXS 3x120/16",
+          "voltage_rating_kv": 20.0,
+          "x0_ohm_per_km": 0.3,
+          "x_ohm_per_km": 0.1
+        },
+        "meta": {
+          "catalog_item_version": "legacy"
+        },
+        "n_parallel": null,
+        "name": "Odcinek 3 (2)",
+        "number_of_cores": 3,
+        "operating_temperature_c": 90.0,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r0_ohm_per_km": 1.330562,
+        "r_ohm_per_km": 0.253,
+        "rating": {
+          "idyn_ka": null,
+          "in_a": 230.0,
+          "ith_ka": null
+        },
+        "ref_id": "seg/2f1f0b34048eb60224c2557c30055539/segment_R",
+        "return_conductor_cross_section_mm2": 16.0,
+        "return_conductor_ith_1s_a": 2288.0,
+        "return_conductor_jth_1s_a_per_mm2": 143.0,
+        "return_conductor_material": "CU",
+        "return_conductor_r_ohm_per_km_20c": 1.077562,
+        "return_conductor_x_ohm_per_km": null,
+        "screen_bonding": null,
+        "short_circuit_temperature_c": 250.0,
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [],
+        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
+        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/001",
+        "type": "cable",
+        "x0_ohm_per_km": 0.3,
+        "x_ohm_per_km": 0.1
       },
       {
         "b0_siemens_per_km": null,
@@ -1529,236 +1737,6 @@
         "x_ohm_per_km": 0.1
       },
       {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/c49dc5b710a20a15cd013af3d490ca35/branch_end",
-        "id": "348c2067-3fdb-52aa-a3e9-25a6f2c198c4",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "TR",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/2013a824dfb5f91e1f24ef2089b22623/tr",
-          "field_role": "TRANSFORMATOROWE",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "sub/2013a824dfb5f91e1f24ef2089b22623/substation"
-        },
-        "name": "Wyłącznik pola SN 2",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/002",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "bus/2013a824dfb5f91e1f24ef2089b22623/sn_field_terminal/002",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus",
-        "id": "3510e235-0659-557a-8d3c-61752b4fc06b",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "IN",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/000",
-          "field_role": "LINIA_IN",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/station"
-        },
-        "name": "Wyłącznik pola SN 1",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/000",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/000",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
-        "id": "374de16f-6209-5962-8483-8a542d770992",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "TR",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/004",
-          "field_role": "TRANSFORMATOROWE",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
-        },
-        "name": "Wyłącznik pola SN 5",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/004",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/004",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349,
-        "cable_joints": [],
-        "catalog_namespace": "KABEL_SN",
-        "catalog_ref": "cable-tfk-yakxs-3x120",
-        "conductor_material": "AL",
-        "cross_section_mm2": 120.0,
-        "endpoint_a_port": null,
-        "endpoint_b_port": null,
-        "from_bus_ref": "bus/fe376eaf3dfe7a4ad9606fe2d2f3e71f/downstream",
-        "id": "42fbf586-efc2-5b14-9d0e-32cb59cbfc4a",
-        "insulation": "XLPE",
-        "ith_1s_a": null,
-        "jth_1s_a_per_mm2": 94.0,
-        "length_km": 0.25,
-        "materialized_params": {
-          "b0_siemens_per_km": null,
-          "c_nf_per_km": 390.0,
-          "catalog_item_id": "cable-tfk-yakxs-3x120",
-          "catalog_item_version": "legacy",
-          "conductor_material": "AL",
-          "cross_section_mm2": 120.0,
-          "frequency_hz": 50.0,
-          "insulation_type": "XLPE",
-          "ith_1s_a": null,
-          "jth_1s_a_per_mm2": 94.0,
-          "max_temperature_c": 90.0,
-          "number_of_cores": 3,
-          "r0_ohm_per_km": 1.330562,
-          "r_ohm_per_km": 0.253,
-          "rated_current_a": 230.0,
-          "return_conductor_cross_section_mm2": 16.0,
-          "return_conductor_ith_1s_a": 2288.0,
-          "return_conductor_jth_1s_a_per_mm2": 143.0,
-          "return_conductor_material": "CU",
-          "return_conductor_r_ohm_per_km_20c": 1.077562,
-          "short_circuit_temperature_c": 250.0,
-          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-          "trade_name": "YAKXS 3x120/16",
-          "voltage_rating_kv": 20.0,
-          "x0_ohm_per_km": 0.3,
-          "x_ohm_per_km": 0.1
-        },
-        "meta": {
-          "catalog_item_version": "legacy"
-        },
-        "n_parallel": null,
-        "name": "Odcinek 3 (1)",
-        "number_of_cores": 3,
-        "operating_temperature_c": 90.0,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r0_ohm_per_km": 1.330562,
-        "r_ohm_per_km": 0.253,
-        "rating": {
-          "idyn_ka": null,
-          "in_a": 230.0,
-          "ith_ka": null
-        },
-        "ref_id": "seg/2f1f0b34048eb60224c2557c30055539/segment_L",
-        "return_conductor_cross_section_mm2": 16.0,
-        "return_conductor_ith_1s_a": 2288.0,
-        "return_conductor_jth_1s_a_per_mm2": 143.0,
-        "return_conductor_material": "CU",
-        "return_conductor_r_ohm_per_km_20c": 1.077562,
-        "return_conductor_x_ohm_per_km": null,
-        "screen_bonding": null,
-        "short_circuit_temperature_c": 250.0,
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [],
-        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/000",
-        "type": "cable",
-        "x0_ohm_per_km": 0.3,
-        "x_ohm_per_km": 0.1
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "id": "4f992fcc-fa9d-5fbd-8d5a-121743ea5d5b",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "apparatus_kind": "BREAKER",
-          "bay_role": "OUT",
-          "catalog_binding": {
-            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-            "catalog_item_version": "2024.1",
-            "catalog_namespace": "APARAT_SN",
-            "materialize": true,
-            "snapshot_mapping_version": "1.0"
-          },
-          "catalog_item_version": "2024.1",
-          "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
-          "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal"
-        },
-        "name": "Aparat Pole liniowe GPZ 1.2",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/apparatus",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "gpz_field_device"
-        ],
-        "to_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/002/terminal",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
         "b0_siemens_per_km": null,
         "b_siemens_per_km": 0.00012252211349,
         "cable_joints": [],
@@ -1836,416 +1814,6 @@
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
-        "id": "6718f350-4ee2-5798-9a99-f04f01d9f901",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "FEEDER",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/003",
-          "field_role": "LINIA_ODG",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
-        },
-        "name": "Wyłącznik pola SN 4",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/003",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/003",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_bus",
-        "id": "775d1c1d-4e37-54ec-b73b-d92c3d001c76",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "TR",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/002",
-          "field_role": "TRANSFORMATOROWE",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/station"
-        },
-        "name": "Wyłącznik pola SN 3",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/002",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_terminal/002",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "b0_siemens_per_km": null,
-        "b_siemens_per_km": 0.00012252211349,
-        "cable_joints": [],
-        "catalog_namespace": "KABEL_SN",
-        "catalog_ref": "cable-tfk-yakxs-3x120",
-        "conductor_material": "AL",
-        "cross_section_mm2": 120.0,
-        "endpoint_a_port": null,
-        "endpoint_b_port": null,
-        "from_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_terminal/001",
-        "id": "7b041f06-3b58-59cd-adb6-7dd08ab8851c",
-        "insulation": "XLPE",
-        "ith_1s_a": null,
-        "jth_1s_a_per_mm2": 94.0,
-        "length_km": 0.25,
-        "materialized_params": {
-          "b0_siemens_per_km": null,
-          "c_nf_per_km": 390.0,
-          "catalog_item_id": "cable-tfk-yakxs-3x120",
-          "catalog_item_version": "legacy",
-          "conductor_material": "AL",
-          "cross_section_mm2": 120.0,
-          "frequency_hz": 50.0,
-          "insulation_type": "XLPE",
-          "ith_1s_a": null,
-          "jth_1s_a_per_mm2": 94.0,
-          "max_temperature_c": 90.0,
-          "number_of_cores": 3,
-          "r0_ohm_per_km": 1.330562,
-          "r_ohm_per_km": 0.253,
-          "rated_current_a": 230.0,
-          "return_conductor_cross_section_mm2": 16.0,
-          "return_conductor_ith_1s_a": 2288.0,
-          "return_conductor_jth_1s_a_per_mm2": 143.0,
-          "return_conductor_material": "CU",
-          "return_conductor_r_ohm_per_km_20c": 1.077562,
-          "short_circuit_temperature_c": 250.0,
-          "source_reference": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-          "trade_name": "YAKXS 3x120/16",
-          "voltage_rating_kv": 20.0,
-          "x0_ohm_per_km": 0.3,
-          "x_ohm_per_km": 0.1
-        },
-        "meta": {
-          "catalog_item_version": "legacy"
-        },
-        "n_parallel": null,
-        "name": "Odcinek 2 (2)",
-        "number_of_cores": 3,
-        "operating_temperature_c": 90.0,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r0_ohm_per_km": 1.330562,
-        "r_ohm_per_km": 0.253,
-        "rating": {
-          "idyn_ka": null,
-          "in_a": 230.0,
-          "ith_ka": null
-        },
-        "ref_id": "seg/fe376eaf3dfe7a4ad9606fe2d2f3e71f/segment_R",
-        "return_conductor_cross_section_mm2": 16.0,
-        "return_conductor_ith_1s_a": 2288.0,
-        "return_conductor_jth_1s_a_per_mm2": 143.0,
-        "return_conductor_material": "CU",
-        "return_conductor_r_ohm_per_km_20c": 1.077562,
-        "return_conductor_x_ohm_per_km": null,
-        "screen_bonding": null,
-        "short_circuit_temperature_c": 250.0,
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [],
-        "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bus/fe376eaf3dfe7a4ad9606fe2d2f3e71f/downstream",
-        "type": "cable",
-        "x0_ohm_per_km": 0.3,
-        "x_ohm_per_km": 0.1
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_bus",
-        "id": "7bc1a446-728b-5fb9-90de-14b9cf49e400",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "OUT",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/001",
-          "field_role": "LINIA_OUT",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/station"
-        },
-        "name": "Wyłącznik pola SN 2",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/001",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_terminal/001",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/c49dc5b710a20a15cd013af3d490ca35/branch_end",
-        "id": "8df75577-386b-59d5-9baf-c578f063de55",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "IN",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/2013a824dfb5f91e1f24ef2089b22623/1",
-          "field_role": "LINIA_IN",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "sub/2013a824dfb5f91e1f24ef2089b22623/substation"
-        },
-        "name": "Wyłącznik pola SN 1",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/001",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "bus/2013a824dfb5f91e1f24ef2089b22623/sn_field_terminal/001",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus_b",
-        "id": "93134843-a685-5478-9ccb-0b745d33800d",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "OUT",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/001",
-          "field_role": "LINIA_OUT",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/station"
-        },
-        "name": "Wyłącznik pola SN 2",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/001",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/001",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/2f1f0b34048eb60224c2557c30055539/downstream",
-        "id": "9a2f799d-454d-5e83-bb2b-177cc46783a6",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "OUT",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/5479c8038b3ce967fae13b12319add05/2",
-          "field_role": "LINIA_OUT",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "sub/5479c8038b3ce967fae13b12319add05/substation"
-        },
-        "name": "Wyłącznik pola SN 3",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/003",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/003",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
-        "id": "9d7f98e6-ffa5-57fe-a34a-d84bf4e064cc",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "FEEDER",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/002",
-          "field_role": "LINIA_ODG",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
-        },
-        "name": "Wyłącznik pola SN 3",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/002",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/002",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
-        "id": "a164b830-862e-56de-b0a9-9bc957b2623f",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "bay_role": "OUT",
-          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/001",
-          "field_role": "LINIA_OUT",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
-        },
-        "name": "Wyłącznik pola SN 2",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/001",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "station_field_device"
-        ],
-        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/001",
-        "type": "breaker",
-        "x_ohm": 0.0
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
-        "id": "a376d429-381a-5038-9402-78e066e016dc",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "apparatus_kind": "BREAKER",
-          "bay_role": "OUT",
-          "catalog_binding": {
-            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-            "catalog_item_version": "2024.1",
-            "catalog_namespace": "APARAT_SN",
-            "materialize": true,
-            "snapshot_mapping_version": "1.0"
-          },
-          "catalog_item_version": "2024.1",
-          "field_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
-          "terminal_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal"
-        },
-        "name": "Aparat Pole liniowe GPZ 1.1",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/apparatus",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "gpz_field_device"
-        ],
-        "to_bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/bay/001/001/terminal",
-        "type": "breaker",
-        "x_ohm": 0.0
       },
       {
         "b0_siemens_per_km": null,
@@ -2335,8 +1903,8 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/001",
-        "id": "abd1b12e-3cc1-50c8-bd28-022b779ecd10",
+        "from_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_terminal/001",
+        "id": "7b041f06-3b58-59cd-adb6-7dd08ab8851c",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -2373,7 +1941,7 @@
           "catalog_item_version": "legacy"
         },
         "n_parallel": null,
-        "name": "Odcinek 3 (2)",
+        "name": "Odcinek 2 (2)",
         "number_of_cores": 3,
         "operating_temperature_c": 90.0,
         "overrides": [],
@@ -2385,7 +1953,7 @@
           "in_a": 230.0,
           "ith_ka": null
         },
-        "ref_id": "seg/2f1f0b34048eb60224c2557c30055539/segment_R",
+        "ref_id": "seg/fe376eaf3dfe7a4ad9606fe2d2f3e71f/segment_R",
         "return_conductor_cross_section_mm2": 16.0,
         "return_conductor_ith_1s_a": 2288.0,
         "return_conductor_jth_1s_a_per_mm2": 143.0,
@@ -2398,7 +1966,7 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/001",
+        "to_bus_ref": "bus/fe376eaf3dfe7a4ad9606fe2d2f3e71f/downstream",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
@@ -2442,8 +2010,8 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
-        "id": "c33bebae-5332-5c5f-8329-0a9c28513ed3",
+        "from_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_bus",
+        "id": "7bc1a446-728b-5fb9-90de-14b9cf49e400",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2451,35 +2019,71 @@
           "u_n_kv": 17.5
         },
         "meta": {
-          "bay_role": "IN",
+          "bay_role": "OUT",
           "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/000",
-          "field_role": "LINIA_IN",
+          "field_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/001",
+          "field_role": "LINIA_OUT",
           "render_on_sld": false,
           "requires_catalog_binding": false,
           "show_in_project_tree": false,
-          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
+          "station_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/station"
         },
-        "name": "Wyłącznik pola SN 1",
+        "name": "Wyłącznik pola SN 2",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/000",
+        "ref_id": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/001",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
           "station_field_device"
         ],
-        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/000",
+        "to_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_terminal/001",
         "type": "breaker",
         "x_ohm": 0.0
       },
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/2f1f0b34048eb60224c2557c30055539/downstream",
-        "id": "dc66b77e-8d42-5562-a070-9b8db5b7c66d",
+        "from_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_bus",
+        "id": "775d1c1d-4e37-54ec-b73b-d92c3d001c76",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field/002",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/station"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_breaker/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/0f850aca35bf21cbebb5b96cdfb43110/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "bus/c49dc5b710a20a15cd013af3d490ca35/branch_end",
+        "id": "8df75577-386b-59d5-9baf-c578f063de55",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2489,25 +2093,166 @@
         "meta": {
           "bay_role": "IN",
           "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/5479c8038b3ce967fae13b12319add05/1",
+          "field_ref": "field/2013a824dfb5f91e1f24ef2089b22623/1",
           "field_role": "LINIA_IN",
           "render_on_sld": false,
           "requires_catalog_binding": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/5479c8038b3ce967fae13b12319add05/substation"
+          "station_ref": "sub/2013a824dfb5f91e1f24ef2089b22623/substation"
         },
         "name": "Wyłącznik pola SN 1",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/001",
+        "ref_id": "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/001",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
           "station_field_device"
         ],
-        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/001",
+        "to_bus_ref": "bus/2013a824dfb5f91e1f24ef2089b22623/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "bus/c49dc5b710a20a15cd013af3d490ca35/branch_end",
+        "id": "348c2067-3fdb-52aa-a3e9-25a6f2c198c4",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "field/2013a824dfb5f91e1f24ef2089b22623/tr",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "sub/2013a824dfb5f91e1f24ef2089b22623/substation"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/2013a824dfb5f91e1f24ef2089b22623/sn_field_apparatus/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "bus/2013a824dfb5f91e1f24ef2089b22623/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus",
+        "id": "f7cda4ac-84d8-5796-aa52-aca3268f9532",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "COUPLER",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/002",
+          "field_role": "SPRZEGLO",
+          "station_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/station"
+        },
+        "name": "Sprzęgło sekcyjne Stacja Sekcyjna",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": null,
+        "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_coupler",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus_b",
+        "type": "bus_coupler",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus",
+        "id": "3510e235-0659-557a-8d3c-61752b4fc06b",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "IN",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/000",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/station"
+        },
+        "name": "Wyłącznik pola SN 1",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/000",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus_b",
+        "id": "93134843-a685-5478-9ccb-0b745d33800d",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/001",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/station"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_breaker/001",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field_terminal/001",
         "type": "breaker",
         "x_ohm": 0.0
       },
@@ -2550,8 +2295,8 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus",
-        "id": "f7cda4ac-84d8-5796-aa52-aca3268f9532",
+        "from_bus_ref": "bus/2f1f0b34048eb60224c2557c30055539/downstream",
+        "id": "dc66b77e-8d42-5562-a070-9b8db5b7c66d",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -2559,26 +2304,281 @@
           "u_n_kv": 17.5
         },
         "meta": {
-          "bay_role": "COUPLER",
+          "bay_role": "IN",
           "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_field/002",
-          "field_role": "SPRZEGLO",
-          "station_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/station"
+          "field_ref": "field/5479c8038b3ce967fae13b12319add05/1",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "sub/5479c8038b3ce967fae13b12319add05/substation"
         },
-        "name": "Sprzęgło sekcyjne Stacja Sekcyjna",
+        "name": "Wyłącznik pola SN 1",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
-        "r_ohm": null,
-        "ref_id": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_coupler",
+        "r_ohm": 0.0,
+        "ref_id": "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/001",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
           "station_field_device"
         ],
-        "to_bus_ref": "stn/20dbab97b9f9aaf0b74a7eaeb956e879/sn_bus_b",
-        "type": "bus_coupler",
-        "x_ohm": null
+        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "bus/2f1f0b34048eb60224c2557c30055539/downstream",
+        "id": "0cc24099-77e3-50bf-92c6-3b68c934f697",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "field/5479c8038b3ce967fae13b12319add05/tr",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "sub/5479c8038b3ce967fae13b12319add05/substation"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "bus/2f1f0b34048eb60224c2557c30055539/downstream",
+        "id": "9a2f799d-454d-5e83-bb2b-177cc46783a6",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "field/5479c8038b3ce967fae13b12319add05/2",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "sub/5479c8038b3ce967fae13b12319add05/substation"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/5479c8038b3ce967fae13b12319add05/sn_field_apparatus/003",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "bus/5479c8038b3ce967fae13b12319add05/sn_field_terminal/003",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
+        "id": "c33bebae-5332-5c5f-8329-0a9c28513ed3",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "IN",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/000",
+          "field_role": "LINIA_IN",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
+        },
+        "name": "Wyłącznik pola SN 1",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/000",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/000",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
+        "id": "a164b830-862e-56de-b0a9-9bc957b2623f",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "OUT",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/001",
+          "field_role": "LINIA_OUT",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
+        },
+        "name": "Wyłącznik pola SN 2",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/001",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/001",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
+        "id": "9d7f98e6-ffa5-57fe-a34a-d84bf4e064cc",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "FEEDER",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/002",
+          "field_role": "LINIA_ODG",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
+        },
+        "name": "Wyłącznik pola SN 3",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/002",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/002",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
+        "id": "6718f350-4ee2-5798-9a99-f04f01d9f901",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "FEEDER",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/003",
+          "field_role": "LINIA_ODG",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
+        },
+        "name": "Wyłącznik pola SN 4",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/003",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/003",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_bus",
+        "id": "374de16f-6209-5962-8483-8a542d770992",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "bay_role": "TR",
+          "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+          "field_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field/004",
+          "field_role": "TRANSFORMATOROWE",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "stn/95ba2e77cebab8213ea070577ff5f811/station"
+        },
+        "name": "Wyłącznik pola SN 5",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_breaker/004",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "station_field_device"
+        ],
+        "to_bus_ref": "stn/95ba2e77cebab8213ea070577ff5f811/sn_field_terminal/004",
+        "type": "breaker",
+        "x_ohm": 0.0
       }
     ],
     "buses": [
@@ -3306,6 +3306,8 @@
         "source_mode": "KATALOG",
         "source_side": "SN",
         "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
+        "supply_line_name": null,
+        "supplying_station_name": null,
         "tags": [],
         "u_set_pu": null,
         "voltage_hv_kv": null,
@@ -3324,6 +3326,8 @@
         "entry_point_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
         "external_ports": [],
         "gpz_hv_sections": [],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [
           {
             "bus_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/section/001/bus_sn",
@@ -3338,11 +3342,9 @@
         ],
         "id": "50b2b9dc-8519-5589-ba92-3d7b6d395a76",
         "meta": {
-          "gpz_hv_bus_refs": [],
           "gpz_section_count": 1,
           "short_circuit_input_side": "SN",
-          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-          "wn_sn_transformer_count": 0
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER"
         },
         "name": "GPZ 15 kV",
         "nn_sections": [],
@@ -3362,6 +3364,8 @@
         "entry_point_ref": null,
         "external_ports": [],
         "gpz_hv_sections": [],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [],
         "id": "6aa8d915-90e7-5af8-9b7e-61b28a85003b",
         "meta": {},
@@ -3385,6 +3389,8 @@
         "entry_point_ref": null,
         "external_ports": [],
         "gpz_hv_sections": [],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [],
         "id": "15ee7efa-dd0d-54ac-b9cd-4fe9fb9c35c1",
         "meta": {},
@@ -3409,6 +3415,8 @@
         "entry_point_ref": null,
         "external_ports": [],
         "gpz_hv_sections": [],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [],
         "id": "46ddf213-f540-5c42-960a-d6d5653e7e1b",
         "meta": {},
@@ -3432,6 +3440,8 @@
         "entry_point_ref": null,
         "external_ports": [],
         "gpz_hv_sections": [],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [],
         "id": "41a928b4-8647-5da9-8205-4e7fe52e6ca1",
         "meta": {
@@ -3458,6 +3468,8 @@
         "entry_point_ref": null,
         "external_ports": [],
         "gpz_hv_sections": [],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [],
         "id": "64ce25a9-c828-54d8-af64-65842dcdbd8d",
         "meta": {

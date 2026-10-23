@@ -24,7 +24,7 @@ const BRAK_DZIALAN: ReadonlySet<string> = new Set();
 
 /** Czy stan panelu ma cokolwiek do pokazania (obiekt kanwy, działania albo szkic układu). */
 export function panelMaTresc(stan: StanPaneluElementu | null): stan is StanPaneluElementu {
-  return Boolean(stan && (stan.dane || stan.temat || stan.szkicDer));
+  return Boolean(stan && (stan.dane || stan.temat || stan.szkicDer || stan.kartaGpz));
 }
 
 /** Sekcje obiektu z kanwy do pokazania nad aktywnym oknem technicznym — albo `null`. */

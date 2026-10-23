@@ -28,6 +28,7 @@ import type { SimpleAnchoredOwnerInput } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { stanStatusuGalezi, TYPY_GALEZI_LACZNIKA_TORU } from '../../v2/model/stanAparatowPola';
+import { pozycjaNormalna } from '../../../shared/stanLacznika';
 
 export interface WynikElementowToru {
   /** Pełna lista odcinków sceny po zmianach (przerwy pod łącznikami, powiązania,
@@ -75,6 +76,7 @@ export function elementyToru(
   const poRefie = (a: { readonly ref_id: string }, b: { readonly ref_id: string }): number =>
     a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0;
   const galezie = [...((snapshot.branches ?? []) as unknown as readonly Galaz[])].sort(poRefie);
+  const galezModelu = new Map((snapshot.branches ?? []).map((b) => [b.ref_id, b]));
   const symbols: PreviewSymbol[] = [];
   const labels: SimpleAnchoredOwnerInput[] = [];
   const stopNotes: string[] = [];
@@ -150,11 +152,15 @@ export function elementyToru(
     const x = snapToGrid(a.x - def.width / 2);
     const y = snapToGrid(a.y - def.height / 2);
     const stan = stanStatusuGalezi(galaz.status);
+    // Karta GPZ-H5-SLD etap 3 (d): pozycja normalna łącznika toru — odstępstwo stanu od niej
+    // glif pokazuje ramką (ta sama reguła co łączniki szyn i aparaty pól).
+    const normalna = pozycjaNormalna(galezModelu.get(galaz.ref_id));
     symbols.push({
       symbolId,
       x,
       y,
       state: stan,
+      ...(normalna ? { pozycjaNormalna: normalna } : {}),
       meta: { testId: `sld-v3-lacznik-toru-${galaz.ref_id}`, ownerRef: galaz.ref_id, elementKind: 'apparatus' },
     });
     // Przerwa toru pod glifem: kawałki odcinków dochodzą do PORTÓW glifu (na

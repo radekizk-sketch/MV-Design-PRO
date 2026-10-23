@@ -32,12 +32,18 @@ ROLA_POLA_SN_Z_ALIASU: dict[str, str] = {
     "TR": "TRANSFORMATOROWE",
     "COUPLER": "SPRZEGLO",
     "MEASUREMENT": "POMIAROWE",
+    # Karta GPZ-H5 (ENEA Zeszyt 1 §13, zał. Z.2): pola funkcyjne sekcji SN GPZ — pole zespołu
+    # uziemiającego (ZU) i pole baterii kondensatorów (BKR).
+    "EARTHING": "UZIEMIAJACE",
+    "CAPACITOR": "KOMPENSACYJNE",
     "LINIA_IN": "LINIA_IN",
     "LINIA_OUT": "LINIA_OUT",
     "LINIA_ODG": "LINIA_ODG",
     "TRANSFORMATOROWE": "TRANSFORMATOROWE",
     "SPRZEGLO": "SPRZEGLO",
     "POMIAROWE": "POMIAROWE",
+    "UZIEMIAJACE": "UZIEMIAJACE",
+    "KOMPENSACYJNE": "KOMPENSACYJNE",
 }
 
 #: Polska nazwa pola SN wg roli kanonicznej. Kod roli (`LINIA_IN`, `TR`) jest wartością pola
@@ -50,6 +56,8 @@ NAZWA_ROLI_POLA_SN_PL: dict[str, str] = {
     "TRANSFORMATOROWE": "Pole transformatorowe",
     "SPRZEGLO": "Pole sprzęgła",
     "POMIAROWE": "Pole pomiarowe",
+    "UZIEMIAJACE": "Pole zespołu uziemiającego",
+    "KOMPENSACYJNE": "Pole baterii kondensatorów",
     "PV_SN": "Pole źródłowe PV",
     "BESS_SN": "Pole źródłowe BESS",
     "FW_SN": "Pole źródłowe FW",

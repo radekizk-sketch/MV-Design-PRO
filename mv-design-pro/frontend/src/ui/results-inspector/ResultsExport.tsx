@@ -14,6 +14,9 @@ import type {
   RunHeader,
   ShortCircuitRow,
 } from './types';
+// Jedno źródło etykiet flag wiersza wyniku (dawniej lokalna kopia bez polskich znaków,
+// która rozjechała się ze słownikiem tabel przy pierwszej nowej fladze).
+import { FLAG_LABELS } from './types';
 
 interface ExportData {
   activeTab: ResultsInspectorTab;
@@ -69,11 +72,6 @@ const TAB_LABELS: Record<ResultsInspectorTab, string> = {
   TRACE: 'Slad obliczen',
 };
 
-const FLAG_LABELS: Record<string, string> = {
-  SLACK: 'Wezel bilansujacy',
-  VOLTAGE_VIOLATION: 'Naruszenie napiecia',
-  OVERLOADED: 'Przeciazenie',
-};
 
 type ReportProfile = 'standardowy' | 'audytowy';
 type ReportDetail = 'skrocony' | 'pelny';

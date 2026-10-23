@@ -14,7 +14,7 @@
  * kanwa dostaje je od orkiestratora.
  *   * `s92Bieg.enm.json`         — migawka ENM (`GET /api/cases/{case}/enm`);
  *   * `s92Zwarcie.overlay.json`  — nakładka biegu zwarciowego (10 punktów);
- *   * `s92Rozplyw.overlay.json`  — nakładka biegu rozpływowego (23 punkty).
+ *   * `s92Rozplyw.overlay.json`  — nakładka biegu rozpływowego (28 punktów).
  *
  * ATRYBUCJA LICZB (karta SLD-SUBSTRAT, regeneracja z API zamiast zrzutu ręcznego):
  *   * zwarcie 3 → 9 punktów: +6 szyn odpływów nN — automigracja promocji pól nN
@@ -27,6 +27,11 @@
  *     od POMIAR-ODG do odgałęzienia przez ZKSN, którego przed pierwszą stacją ciągu
  *     rysunek dziś nie kładzie — kontrakt „wyniki na kanwie" potrzebuje stacji NA
  *     rysunku (znalezisko zgłoszone w meldunku karty).
+ *   * rozpływ 25 → 28 punktów (karta GPZ-H5, scalenie backendu 88557ceb7): strona 110 kV
+ *     GPZ jest sekcją modelu z polem liniowym (`hv_section/001/bay_line`), a transformator
+ *     WN/SN ma pola po obu stronach (`transformer/001/bay_wn`, `bay_sn`); trzy nowe pola
+ *     niosą wiersze rozpływu i — jak pole SN — trafiają do karty GPZ inspektora (2 → 5).
+ *     Źródło zmieniło ref (`source/main` → `hv_section/001/source`), liczba bez zmian.
  *   * zwarcie 9 → 10 punktów (karta GPZ-MODEL): GPZ fikstury ma równoważnik sieci
  *     110 kV i transformator WN/SN (tryb A), więc w modelu jest realna szyna WN GPZ
  *     (`gpz/…/hv_section/001/bus_wn`), a solver liczy zwarcie także w niej. Szyna WN
@@ -49,7 +54,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildResultLabelsForSnapshot, buildFlowOverlayForSnapshot } from '../SldCanvasV3Workspace';
-import { resultPointsInGpzTable, summarizeResultPointCoverage } from '../resultLabels';
+import { resultPointsInGpzPanel, summarizeResultPointCoverage } from '../resultLabels';
 import { buildSceneV3 } from '../../scene/buildScene';
 import { resultPointsHiddenByModel, resultPointsInStationNnBoard } from '../resultRefBridge';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
@@ -64,7 +69,7 @@ const zwarcie = readFixture<RawOverlayPayload>('s92Zwarcie.overlay.json');
 const rozplyw = readFixture<RawOverlayPayload>('s92Rozplyw.overlay.json');
 const hidden = resultPointsHiddenByModel(enm);
 const nnBoard = resultPointsInStationNnBoard(enm);
-const gpzTabela = resultPointsInGpzTable(buildSceneV3(enm, 2));
+const gpzTabela = resultPointsInGpzPanel(buildSceneV3(enm, 2));
 
 // Tożsamość elementów wyprowadzana z modelu po NAZWACH/strukturze, nie z ziaren
 // identyfikatorów (te zmieniają się z każdą zmianą ziarna operacji domenowej).
@@ -105,7 +110,7 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
       total: 10,
       labelled: 4,
       hiddenByModel: 0,
-      inGpzTable: 0,
+      inGpzPanel: 0,
       withoutTemplate: 0,
       inStationNnBoard: 6,
       withoutAnchor: 0,
@@ -134,29 +139,31 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
 describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () => {
   const entries = buildResultLabelsForSnapshot(enm, rozplyw);
 
-  it('kontrola wejścia: nakładka biegu niesie 25 punktów (szyny, gałęzie, transformatory, źródło, pole i bilans GPZ)', () => {
-    expect(Object.keys(rozplyw.elements)).toHaveLength(25);
+  it('kontrola wejścia: nakładka biegu niesie 28 punktów (szyny, gałęzie, transformatory, źródło, pole i bilans GPZ)', () => {
+    expect(Object.keys(rozplyw.elements)).toHaveLength(28);
     expect(new Set(Object.values(rozplyw.elements).map((element) => element.kind))).toEqual(
       new Set(['bus', 'branch', 'generator', 'bay', 'substation']),
     );
   });
 
-  it('GPZ-PARYTET: wiersze pola i bilansu GPZ liczą się jako opisane w tabeli GPZ (nie „bez wielkości dla tej analizy")', () => {
+  it('GPZ-PARYTET: wiersze pola i bilansu GPZ liczą się jako opisane w karcie GPZ inspektora (nie „bez wielkości dla tej analizy")', () => {
     const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
     const wierszeGpz = Object.keys(rozplyw.elements).filter((ref) => ['bay', 'substation'].includes(rozplyw.elements[ref].kind));
-    expect(wierszeGpz).toHaveLength(2);
+    // 4 pola (SN liniowe, liniowe 110 kV, TR po stronie WN i SN) + bilans stacji.
+    expect(wierszeGpz).toHaveLength(5);
     expect(wierszeGpz).toContain(gpz.ref_id);
+    expect(wierszeGpz.filter((ref) => rozplyw.elements[ref].kind === 'bay')).toHaveLength(4);
     expect(wierszeGpz.every((ref) => gpzTabela.has(ref))).toBe(true);
     const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
-    expect(coverage.inGpzTable).toBe(2);
+    expect(coverage.inGpzPanel).toBe(5);
     expect(coverage.withoutTemplate).toBe(0);
-    // Bez zbioru tabeli GPZ te same wiersze spadają do „bez wielkości" (kategoria
+    // Bez zbioru karty GPZ te same wiersze spadają do „bez wielkości" (kategoria
     // nie jest pusta z definicji — predykat realnie rozstrzyga).
     const bezTabeli = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, new Set());
-    expect(bezTabeli.inGpzTable).toBe(0);
-    expect(bezTabeli.withoutTemplate).toBe(2);
+    expect(bezTabeli.inGpzPanel).toBe(0);
+    expect(bezTabeli.withoutTemplate).toBe(5);
     // L0: blok GPZ zwinięty, adnotacji nie ma — zbiór pusty.
-    expect(resultPointsInGpzTable(buildSceneV3(enm, 0)).size).toBe(0);
+    expect(resultPointsInGpzPanel(buildSceneV3(enm, 0)).size).toBe(0);
   });
 
   it('model DEKLARUJE 7 punktów jako nierysowane (2 mufy ciągu + 5 zacisków pól RMU) — to nie jest brak warstwy', () => {
@@ -176,16 +183,17 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
 
   it('ODBIÓR: INWARIANT SUMY sześciu kategorii === total, przy withoutAnchor = 0', () => {
     const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
-    expect(coverage.total).toBe(25);
+    expect(coverage.total).toBe(28);
     expect(coverage.labelled).toBeGreaterThan(0);
     expect(
-      coverage.labelled + coverage.hiddenByModel + coverage.inGpzTable + coverage.withoutTemplate
+      coverage.labelled + coverage.hiddenByModel + coverage.inGpzPanel + coverage.withoutTemplate
         + coverage.inStationNnBoard + coverage.withoutAnchor,
     ).toBe(coverage.total);
     expect(coverage.withoutAnchorRefs).toEqual([]);
     expect(coverage.labelled).toBe(10);
     expect(coverage.hiddenByModel).toBe(7);
     expect(coverage.inStationNnBoard).toBe(6);
+    expect(coverage.inGpzPanel).toBe(5);
   });
 
   it('bez predykatu rozdzielnicy nN te same szyny spadają do „bez elementu na schemacie" (kategoria nie jest pusta z definicji)', () => {

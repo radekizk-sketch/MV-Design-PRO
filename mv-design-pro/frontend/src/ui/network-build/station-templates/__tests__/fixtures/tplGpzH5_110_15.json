@@ -1,0 +1,257 @@
+{
+  "id": "tpl_gpz_h5_110_15_2x25mva",
+  "name_pl": "GPZ 110/15 kV w układzie H5, 2 × 25 MVA",
+  "category": "gpz_110_sn",
+  "description_pl": "Główny Punkt Zasilania 110/15 kV w układzie H5 (ENEA Operator, Zeszyt 1 §11.1): dwie linie 110 kV (tory zasilania L1 i L2 z danych projektu), dwie sekcje szyn 110 kV z łącznikiem szyn, dwa transformatory 110/15 kV z katalogu przypisane jawnie do sekcji, dwie sekcje SN z łącznikiem szyn SN w dwóch celach, na każdej sekcji SN pola zespołu uziemiającego, baterii kondensatorów i pomiaru napięcia.",
+  "use_case_pl": "Typowa stacja 110/15 kV OSD z dwoma liniami zasilającymi 110 kV i rezerwą transformatorową.",
+  "nc_rfg_type": null,
+  "schema": {
+    "transformer_options": [
+      {
+        "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
+        "label_pl": "TR 110/15 kV 25 MVA Yd11",
+        "namespace": "TRAFO_SN_NN",
+        "default": true,
+        "badge_pl": null
+      }
+    ],
+    "transformer_count": {
+      "default": 2,
+      "min_value": 1,
+      "max_value": 2,
+      "step": 1,
+      "label_pl": "Liczba transformatorów 110/SN (pola transformatorowe H5)"
+    },
+    "sn_switchgear_manufacturers": [
+      "ZPUE_WLOSZCZOWA",
+      "ELEKTROMETAL",
+      "ABB",
+      "SIEMENS",
+      "SCHNEIDER"
+    ],
+    "sn_switchgear_default": "ZPUE_WLOSZCZOWA",
+    "sn_bays_count": {
+      "default": 4,
+      "min_value": 1,
+      "max_value": 12,
+      "step": 1,
+      "label_pl": "Liczba pól liniowych na sekcję SN"
+    },
+    "sn_bay_roles": [
+      {
+        "role": "TR",
+        "label_pl": "Pole transformatorowe (sekcja 1)",
+        "apparatus_options": []
+      },
+      {
+        "role": "TR",
+        "label_pl": "Pole transformatorowe (sekcja 2)",
+        "apparatus_options": []
+      },
+      {
+        "role": "FEEDER",
+        "label_pl": "Pole odgałęźne (sekcja 1)",
+        "apparatus_options": []
+      },
+      {
+        "role": "FEEDER",
+        "label_pl": "Pole odgałęźne (sekcja 2)",
+        "apparatus_options": []
+      },
+      {
+        "role": "EARTHING",
+        "label_pl": "Pole zespołu uziemiającego",
+        "apparatus_options": []
+      },
+      {
+        "role": "CAPACITOR",
+        "label_pl": "Pole baterii kondensatorów",
+        "apparatus_options": []
+      },
+      {
+        "role": "MEASUREMENT",
+        "label_pl": "Pole pomiarowe napięcia szyn",
+        "apparatus_options": []
+      },
+      {
+        "role": "COUPLER",
+        "label_pl": "Pole sprzęgła szyn SN (dwie cele)",
+        "apparatus_options": []
+      }
+    ],
+    "sn_bay_protection_options": [
+      {
+        "device_catalog_ref": "EM_E2TANGO_600",
+        "label_pl": "Elektrometal e2TANGO-600 (feeder PL)",
+        "vendor": "ELEKTROMETAL",
+        "settings_template_id": "tpl_feeder_15kv_typowa",
+        "badge_pl": "PTPiREE"
+      },
+      {
+        "device_catalog_ref": "SIEMENS_7SJ82",
+        "label_pl": "Siemens SIPROTEC 7SJ82",
+        "vendor": "SIEMENS",
+        "settings_template_id": "tpl_feeder_15kv_typowa",
+        "badge_pl": null
+      },
+      {
+        "device_catalog_ref": "ABB_REF615",
+        "label_pl": "ABB Relion REF615",
+        "vendor": "ABB",
+        "settings_template_id": "tpl_feeder_15kv_typowa",
+        "badge_pl": null
+      },
+      {
+        "device_catalog_ref": "SCHNEIDER_P3M30",
+        "label_pl": "Schneider Easergy P3M30",
+        "vendor": "SCHNEIDER",
+        "settings_template_id": "tpl_feeder_15kv_typowa",
+        "badge_pl": null
+      }
+    ],
+    "sn_bay_apparatus_options": [
+      {
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "label_pl": "Wyłącznik ABB VD4 17,5 kV 630 A",
+        "namespace": "APARAT_SN",
+        "default": true,
+        "badge_pl": null
+      },
+      {
+        "catalog_ref": "sw-cb-abb-vd4-17kv-1250a",
+        "label_pl": "Wyłącznik ABB VD4 17,5 kV 1250 A",
+        "namespace": "APARAT_SN",
+        "default": false,
+        "badge_pl": null
+      }
+    ],
+    "nn_feeders_count": {
+      "default": 0,
+      "min_value": 0,
+      "max_value": 0,
+      "step": 1,
+      "label_pl": "Bez odpływów nN"
+    },
+    "nn_feeder_cb_options": [],
+    "nn_load_default_kw": {
+      "default": 0.0,
+      "min_value": 0.0,
+      "max_value": 0.0,
+      "step": 0.01,
+      "unit": "kW",
+      "label_pl": "Bez odbioru nN"
+    },
+    "der_options": [],
+    "der_total_count": {
+      "default": 0,
+      "min_value": 0,
+      "max_value": 20,
+      "step": 1,
+      "label_pl": "Liczba modułów DER"
+    },
+    "protection_settings_default": "tpl_feeder_15kv_sectional",
+    "ct_options": [],
+    "vt_options": [],
+    "energy_meter_options": [],
+    "manufacturer_profile_default": "ZPUE_WLOSZCZOWA",
+    "shunt_capacitor_options": [],
+    "grid_source_options": [],
+    "gpz_uklad": "H5",
+    "dane_projektu": [
+      {
+        "klucz": "hv_sections",
+        "operacja": "add_grid_source_sn",
+        "label_pl": "„Sekcje szyn 110 kV”",
+        "podpowiedz_pl": "Dla każdej z dwóch sekcji szyn 110 kV tor zasilania: nazwa linii 110 kV, stacja zasilająca i równoważnik sieci z warunków przyłączenia OSD (Sk″ max i min, R/X, składowa zerowa)",
+        "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §11.1 — układ H5 ma dwie linie zasilające 110 kV, stacja z jedną linią 110 kV nie jest dopuszczona",
+        "wartosci": [],
+        "warunek_pl": ""
+      },
+      {
+        "klucz": "hv_coupler.normal_state",
+        "operacja": "add_grid_source_sn",
+        "label_pl": "„Stan normalny łącznika szyn 110 kV”",
+        "podpowiedz_pl": "Przy dwóch niezależnych torach zasilania L1, L2 stan otwarty utrzymuje każdą sekcję 110 kV na własnym torze (tak przyjmuje przypadek odbiorczy H5); stan zamknięty łączy dwa niezależne równoważniki sieci i wymaga wariantu ze wspólnym punktem zasilania (model B) — w tym modelu rozpływ i zwarcia nie są wtedy liczone.",
+        "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.8.4 — podziały planowe sieci 110 kV wyznacza ODM/KDM, standard nie ustala stanu normalnego łącznika szyn 110 kV",
+        "wartosci": [
+          {
+            "wartosc": "open",
+            "label_pl": "otwarty"
+          },
+          {
+            "wartosc": "closed",
+            "label_pl": "zamknięty"
+          }
+        ],
+        "warunek_pl": ""
+      },
+      {
+        "klucz": "hv_coupler.justification",
+        "operacja": "add_grid_source_sn",
+        "label_pl": "„Uzasadnienie stanu łącznika szyn 110 kV”",
+        "podpowiedz_pl": "Dlaczego łącznik szyn 110 kV pracuje normalnie zamknięty",
+        "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.8.4 — podziały planowe sieci 110 kV wyznacza ODM/KDM, standard nie ustala stanu normalnego łącznika szyn 110 kV",
+        "wartosci": [],
+        "warunek_pl": "wymagane przy stanie normalnym „zamknięty”"
+      },
+      {
+        "klucz": "reserve_mode",
+        "operacja": "add_grid_source_sn",
+        "label_pl": "„Tryb rezerwy transformatorowej”",
+        "podpowiedz_pl": "Rezerwa ukryta: każdy transformator 110/SN pracuje na swojej sekcji SN, łącznik szyn SN jest normalnie otwarty, przy utracie transformatora SZR SN zamyka łącznik. Rezerwa jawna: transformator rezerwowy nie jest obciążony (wyłącznik jego pola SN normalnie otwarty), łącznik szyn SN jest normalnie zamknięty.",
+        "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.10.5",
+        "wartosci": [
+          {
+            "wartosc": "hidden",
+            "label_pl": "rezerwa ukryta"
+          },
+          {
+            "wartosc": "explicit",
+            "label_pl": "rezerwa jawna"
+          }
+        ],
+        "warunek_pl": ""
+      },
+      {
+        "klucz": "reserve_transformer",
+        "operacja": "add_grid_source_sn",
+        "label_pl": "„Transformator rezerwowy”",
+        "podpowiedz_pl": "Numer transformatora rezerwowego (nieobciążonego w normalnej pracy)",
+        "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.10.5",
+        "wartosci": [],
+        "warunek_pl": "wymagane przy trybie „rezerwa jawna”"
+      },
+      {
+        "klucz": "reserve_transformer_apparatus",
+        "operacja": "add_grid_source_sn",
+        "label_pl": "„Wyłącznik pola SN transformatora rezerwowego”",
+        "podpowiedz_pl": "Wyłącznik pola SN transformatora rezerwowego z katalogu — normalnie otwarty",
+        "podstawa_pl": "Wymagania techniczne ENEA Operator, Zeszyt 1, §26.10.5",
+        "wartosci": [],
+        "warunek_pl": "wymagane przy trybie „rezerwa jawna”"
+      }
+    ]
+  },
+  "tags": [
+    "GPZ",
+    "zasilanie sieci",
+    "korzeń modelu",
+    "ENEA H5",
+    "strona 110 kV"
+  ],
+  "icon": "station-gpz",
+  "category_label_pl": "GPZ 110/SN",
+  "rated_power_kva": 25000,
+  "voltage_hv_kv": 110.0,
+  "voltage_lv_kv": 15.0,
+  "bay_role_categories": [
+    "CAPACITOR",
+    "COUPLER",
+    "EARTHING",
+    "FEEDER",
+    "MEASUREMENT",
+    "TR"
+  ],
+  "sn_voltage_kv": 15.0,
+  "wchodzi_w_segment": false
+}

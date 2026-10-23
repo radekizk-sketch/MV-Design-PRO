@@ -85,7 +85,16 @@ export type OwnerKind =
   | 'no-point'           // badge „NO" (t3) przy symbolu
   | 'branch-point'       // ODG-RYSUNEK: nazwa punktu odgałęźnego (ZKSN / słup rozgałęźny) z danych
   | 'protection'         // F9.9: numer urządzenia „52" (spec §17.1/§17.3, ANSI/IEEE C37.2)
-  | 'lv-load';           // recenzja NO-GO pkt 6: odbiór zagregowany / granica modelu (t4) pod szyną nN
+  // Karta GPZ-H5-SLD: podpis ODBIORU (`Load`) pod strzałką odbioru — nazwa i dane P/Q
+  // z modelu. Zastępuje martwy rodzaj `'lv-load'` (zadeklarowany dla odbioru nN, bez
+  // producenta — przypięte dawniej testem `kotwicaJednoZrodlo`); pierwszym producentem
+  // są odbiory przyłączone do szyn sekcji GPZ (`compose/gpz.ts`).
+  | 'odbior'             // NAZWA odbioru (t3) pod strzałką odbioru — tożsamość
+  // Karta GPZ-H5-SLD etap 2 (wymaganie 5, „oznaczenie > dane"): dane odbioru (P · Q z
+  // modelu) osobnym wierszem pod nazwą. Jeden podpis „Odbiór SN 1 · P 1,2 MW · Q 0,4 Mvar"
+  // był w całości DANYMI, więc w kadrze „Dopasuj widok" znikała razem z liczbami nazwa
+  // odbioru (pomiar H5 2×2 przy 1400×800: oba odbiory bez nazwy).
+  | 'odbior-dane';       // dane odbioru (P · Q, t3) pod nazwą odbioru
 
 /**
  * KD-11: KLASA ZNACZENIOWA etykiety wyprowadzona z RODZAJU WŁAŚCICIELA — dana
@@ -118,7 +127,7 @@ export type OwnerKind =
  *    ADNOTACJAMI toru, a karta zalicza nastawy do danych szczegółowych;
  *  - `port-caption` — podpis kierunku pola („⟨linia⟩ · kier. S03") i
  *    zakończenia toru;
- *  - `lv-load` — odbiór zagregowany nN / granica modelu.
+ *  - `odbior-dane` — dane odbioru (P · Q z modelu); NAZWA odbioru (`odbior`) jest tożsamością.
  */
 export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = {
   'station-name': 'tozsamosc',
@@ -138,7 +147,8 @@ export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = 
   // pożyczały, więc warstwa czytelności widzi DOKŁADNIE to samo co przed
   // zmianą (rozdział dotyczy CELU KLIKNIĘCIA, nie widoczności).
   'segment-endpoint': 'dane',
-  'lv-load': 'dane',
+  odbior: 'tozsamosc',
+  'odbior-dane': 'dane',
 };
 
 /**
@@ -170,7 +180,7 @@ const DANE_LOD_TIER_BY_OWNER_KIND: Partial<Record<OwnerKind, 'L1' | 'L2'>> = {
   'segment-endpoint': 'L2',
   'port-caption': 'L2',
   protection: 'L2',
-  'lv-load': 'L2',
+  'odbior-dane': 'L2',
 };
 
 export const LOD_CLASS_BY_OWNER_KIND: Readonly<Record<OwnerKind, LodClass>> = Object.fromEntries(
@@ -697,7 +707,7 @@ export type SimpleAnchorPlacement = 'above' | 'below' | 'left' | 'right';
 
 export interface SimpleAnchoredOwnerInput {
   readonly ownerRef: string;
-  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'lv-load' | 'branch-point' | 'lacznik-toru';
+  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'odbior' | 'odbior-dane' | 'branch-point' | 'lacznik-toru';
   readonly text: string;
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;
@@ -725,6 +735,16 @@ export interface SimpleAnchoredOwnerInput {
    *  co `anchor`) — przenoszony 1:1 na `OwnedLabel.obrysKotwicy`. Przesunięcie
    *  kotwicy przesuwa go razem z nią (`przesunKotwiczonaEtykiete`). */
   readonly obrysKotwicy?: V3Rect;
+  /**
+   * Karta GPZ-H5-SLD etap 2 (wymaganie 5): etykieta OBRÓCONA (czytana z dołu, jak podpis
+   * lateralu) w pionowym PAŚMIE pod kotwicą — oznaczenie pola GPZ pod jego torem.
+   * `dlugoscPasma` — długość pasma wzdłuż tekstu [j.św.] zarezerwowana przez kompozycję
+   * (pismo powiększone do progu czytelności przy najmniejszej skali rysunku); tekst
+   * w rozmiarze naturalnym stoi w środku pasma, powiększony rośnie symetrycznie w jego
+   * granicach. Kotwica = środek GÓRNEJ krawędzi pasma (prześwit `clearance` od niej).
+   * Wymaga `placement: 'below'`.
+   */
+  readonly pasmoObrocone?: { readonly dlugoscPasma: number };
 }
 
 /** Przesunięcie etykiety zakotwiczonej o (dx, dy): kotwica i obrys symbolu
@@ -747,6 +767,30 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
   const width = measureLabelWidth(owner.text, owner.labelClass);
   const height = labelLineHeight(owner.labelClass);
   const przeswit = owner.clearance ?? GRID;
+  if (owner.pasmoObrocone !== undefined) {
+    if (owner.placement !== 'below') {
+      throw new Error(`Etykieta obrócona „${owner.ownerRef}": pasmo obrócone wymaga placement 'below'.`);
+    }
+    const dlugosc = Math.max(width, owner.pasmoObrocone.dlugoscPasma);
+    const gora = owner.anchor.y + przeswit;
+    return {
+      ownerRef: owner.ownerRef,
+      ownerKind: owner.ownerKind,
+      labelClass: owner.labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND[owner.ownerKind],
+      text: owner.text,
+      slotIndex: 1,
+      rotated: true,
+      // Tusz (BLOK-PUSTY) u GÓRY pasma, tuż pod kotwicą; pasmo = rezerwacja
+      // (`labelReservationRect` dla etykiety obróconej „below" rozciąga ją od górnej
+      // krawędzi w dół). Plan powiększa pismo od tej samej krawędzi w dół (`placement`).
+      rect: { x: owner.anchor.x - height / 2, y: gora, width: height, height: width },
+      placement: 'below',
+      rezerwacjaSzerokosci: dlugosc,
+      ...(owner.designationSource !== undefined ? { designationSource: owner.designationSource } : {}),
+      ...(owner.unresolved !== undefined ? { unresolved: owner.unresolved } : {}),
+    };
+  }
   let x: number;
   let y: number;
   switch (owner.placement) {
@@ -913,6 +957,12 @@ export function labelReservationRect(label: OwnedLabel): V3Rect {
   if (rezerwacja == null) return label.rect;
   if (label.rotated) {
     if (rezerwacja <= label.rect.height) return label.rect;
+    // Etykieta obrócona w pasmie pod kotwicą (`pasmoObrocone`, karta GPZ-H5-SLD etap 2):
+    // tusz stoi u góry pasma, a pismo powiększone rośnie od tej krawędzi w dół
+    // (`anchoredRect` „below"), więc i rezerwacja biegnie od górnej krawędzi w dół.
+    if (label.placement === 'below') {
+      return { x: label.rect.x, y: label.rect.y, width: label.rect.width, height: rezerwacja };
+    }
     const cy = label.rect.y + label.rect.height / 2;
     return { x: label.rect.x, y: cy - rezerwacja / 2, width: label.rect.width, height: rezerwacja };
   }

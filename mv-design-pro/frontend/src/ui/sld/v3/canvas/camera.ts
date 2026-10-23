@@ -48,6 +48,7 @@
  *      zachowany) vs 'resize' (viewport się zmienia, świat ten sam — pan/zoom
  *      i skala ZACHOWANE, dostosowywany jest tylko punkt centrowania).
  */
+import { PROG_SKALI_L0_L1, PROG_SKALI_L1_L2 } from '../core/progiLod';
 import {
   centerOnPoint,
   fitToView,
@@ -142,7 +143,7 @@ export interface LodThresholds {
  * `refScale` z konstrukcji — nie może retriggerować przejścia w odwrotną
  * stronę na następnym ticku.
  */
-export const DEFAULT_LOD_THRESHOLDS: LodThresholds = { l0Max: 0.6, l1Max: 1.2 };
+export const DEFAULT_LOD_THRESHOLDS: LodThresholds = { l0Max: PROG_SKALI_L0_L1, l1Max: PROG_SKALI_L1_L2 };
 
 /**
  * Margines histerezy — daje OSOBNE progi wejścia/wyjścia wokół każdej granicy

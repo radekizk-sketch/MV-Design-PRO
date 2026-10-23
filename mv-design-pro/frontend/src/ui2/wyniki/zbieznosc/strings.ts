@@ -5,6 +5,8 @@
  * `{...}` z danych. Formatery CZYSTE (Determinism Rule) — przecinek dziesiętny PL.
  */
 
+import { formaLiczebnikowa } from '../../../ui/shared/odmianaLiczebnikowa';
+
 export const ZBIEZNOSC_STRINGS = {
   eyebrow: 'ROZPŁYW MOCY',
   tytul: 'Zbieżność rozpływu i zaczepy',
@@ -146,8 +148,8 @@ export const ZBIEZNOSC_STRINGS = {
 
 /** Odmiana słowa „iteracja" (deterministyczna, PL). */
 export function odmianaIteracji(n: number): string {
-  if (n === 1) return 'iteracji'; // „w 1 iteracji"
-  return 'iteracjach';
+  // Miejscownik rządzony przez „w"/„po": „w 1 iteracji", „w 3 iteracjach", „w 5 iteracjach".
+  return formaLiczebnikowa(n, { jeden: 'iteracji', kilka: 'iteracjach', wiele: 'iteracjach' });
 }
 
 /** Format liczby z przecinkiem dziesiętnym (deterministyczny). */

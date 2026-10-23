@@ -152,6 +152,11 @@ export const FIELD_ROLE = {
   TRANSFORMER: 'TRANSFORMER',
   COUPLER: 'COUPLER',
   MEASUREMENT: 'MEASUREMENT',
+  /** Pole zespołu uziemiającego (ZU) — pole funkcyjne sekcji SN (`Bay.bay_role = 'EARTHING'`,
+   *  ENEA Zeszyt 1 §13, zał. Z.2). Własna rola: dawniej zlewana z polem liniowym. */
+  EARTHING: 'EARTHING',
+  /** Pole baterii kondensatorów (BKR) — pole funkcyjne sekcji SN (`Bay.bay_role = 'CAPACITOR'`). */
+  CAPACITOR: 'CAPACITOR',
   GPZ_LINE_BAY: 'GPZ_LINE_BAY',
   RMU_LINE: 'RMU_LINE',
   RMU_TRANSFORMER: 'RMU_TRANSFORMER',
@@ -177,6 +182,8 @@ export function isSnFieldRole(role: FieldRole): boolean {
     role === FIELD_ROLE.TRANSFORMER ||
     role === FIELD_ROLE.COUPLER ||
     role === FIELD_ROLE.MEASUREMENT ||
+    role === FIELD_ROLE.EARTHING ||
+    role === FIELD_ROLE.CAPACITOR ||
     role === FIELD_ROLE.GPZ_LINE_BAY ||
     role === FIELD_ROLE.RMU_LINE ||
     role === FIELD_ROLE.RMU_TRANSFORMER ||

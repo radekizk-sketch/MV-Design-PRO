@@ -20,6 +20,7 @@ from typing import Any
 
 from application.station_templates.schema import (
     COS_PHI_ODBIORU_NN_SZABLONU,
+    GPZ_UKLAD_H5,
     WARIANT_TORU_DER_SN,
     JednostkaDer,
     NieprawidlowyParametrSzablonuError,
@@ -38,6 +39,11 @@ from application.station_templates.schema import (
     template_wchodzi_w_segment,
     transformer_voltages_kv,
     wymagania_transformatora_stacji,
+)
+from application.station_templates.templates.gpz_110_sn import (
+    CELE_LACZNIKA_SN_H5,
+    POLA_FUNKCYJNE_SEKCJI_H5,
+    PROPOZYCJA_APARATOW_110_H5,
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
 from enm.models import EnergyNetworkModel
@@ -157,12 +163,140 @@ def apply_template_to_case(
         )
 
 
-#: GPZ 2-sekcyjny (układ H5 + mostek) — sekcje FIXED na 2 dla WSZYSTKICH
-#: szablonów `GPZ_110_SN` (V12T-016): to definiująca cecha tej kategorii
-#: (nazwa/opis KAŻDEGO szablonu obiecuje „2-sekcyjny"), nie parametr do
-#: nadpisania — `add_grid_source_sn` buduje sprzęgło międzysekcyjne
-#: automatycznie dla `sections_count >= 2`.
+#: Liczba sekcji szyn SN szablonów GPZ (oba układy: H5 i równoważnik na szynach SN) —
+#: definiująca cecha szablonów tej kategorii (nazwa i opis każdego szablonu obiecują dwie
+#: sekcje), nie parametr do nadpisania.
 _GPZ_SECTIONS_COUNT = 2
+
+
+def _ladunek_gpz_rownowaznik_sn(
+    template: StationTemplate,
+    overrides: Mapping[str, Any],
+    parametry: ParametrySzablonu,
+    catalog_profile: str | None,
+    aparat_pol: dict[str, Any],
+) -> dict[str, Any]:
+    """Ładunek `add_grid_source_sn` szablonu „równoważnik na szynach SN”: każda sekcja SN
+    z WŁASNYM równoważnikiem z katalogu (`grid_source_options`), łącznik szyn SN normalnie
+    otwarty (rezerwa ukryta ENEA Zeszyt 1 §26.10.5 — `templates/gpz_110_sn.py`)."""
+    source_ref = overrides.get("grid_source_ref") or _cascade_manufacturer_choice(
+        template.schema.grid_source_options, catalog_profile
+    )
+    if not source_ref:
+        raise TemplateApplyError(
+            code="template.grid_source_catalog_missing",
+            message_pl=(
+                f"Szablon „{template.name_pl}” nie wskazuje warunków zasilania GPZ (typ z katalogu "
+                "źródeł zasilania SN)."
+            ),
+        )
+    voltage_kv = grid_source_voltage_kv(source_ref)
+    if voltage_kv is None:
+        raise TemplateApplyError(
+            code="template.grid_source_catalog_missing",
+            message_pl=(
+                f"Szablon „{template.name_pl}”: katalog nie ma napięcia znamionowego "
+                f"równoważnika sieci ({opis_pozycji_katalogu(source_ref, None, 'typ')})."
+            ),
+        )
+    zasilanie: dict[str, Any] = {"catalog_ref": source_ref}
+    # Punkt neutralny SN — dana projektu (ENEA Zeszyt 1 §16), bez założenia szablonu.
+    if overrides.get("grounding") is not None:
+        zasilanie["grounding"] = overrides["grounding"]
+    return {
+        "name_pl": template.name_pl,
+        "source_name": template.name_pl,
+        "voltage_kv": voltage_kv,
+        "sections_count": _GPZ_SECTIONS_COUNT,
+        "gpz_sections": [
+            {
+                "order": indeks,
+                "name": f"Sekcja SN {indeks + 1}",
+                "line_fields_count": parametry.sn_bays_count,
+                "supply": dict(zasilanie),
+            }
+            for indeks in range(_GPZ_SECTIONS_COUNT)
+        ],
+        "sn_coupler": {"normal_state": "open", "cells": CELE_LACZNIKA_SN_H5},
+        "gpz_line_field_apparatus": aparat_pol,
+    }
+
+
+def _ladunek_gpz_h5(
+    template: StationTemplate,
+    overrides: Mapping[str, Any],
+    parametry: ParametrySzablonu,
+    aparat_pol: dict[str, Any],
+) -> dict[str, Any]:
+    """Ładunek `add_grid_source_sn` szablonu ENEA H5 (`templates/gpz_110_sn.py`).
+
+    Struktura z szablonu (jawna, bez cyklu): dwie sekcje 110 kV, dwie sekcje SN,
+    transformator n: sekcja 110 kV n → sekcja SN n (n = 1..`transformer_count`), pola
+    funkcyjne sekcji SN, łącznik szyn SN w dwóch celach, propozycja aparatów pól 110 kV.
+    Dane projektu (tory L1/L2, stan normalny łącznika szyn 110 kV, tryb rezerwy) — wyłącznie
+    z `params_override`; ENEA Zeszyt 1 §11.1 nie dopuszcza stacji z jedną linią 110 kV."""
+    tory = overrides.get("hv_sections")
+    if not isinstance(tory, list) or len(tory) != _GPZ_SECTIONS_COUNT:
+        raise TemplateApplyError(
+            code="template.gpz_h5_supply_tracks_required",
+            message_pl=(
+                f"Szablon „{template.name_pl}”: układ H5 ma dwie linie zasilające 110 kV — "
+                "podaj dla każdej z dwóch sekcji szyn 110 kV tor zasilania (nazwa linii, "
+                "stacja zasilająca, równoważnik sieci z warunków przyłączenia). Stacja z "
+                "jedną linią 110 kV nie jest dopuszczona (ENEA Operator, Zeszyt 1 §11.1)."
+            ),
+        )
+    if overrides.get("grounding") is not None:
+        raise TemplateApplyError(
+            code="template.param_invalid",
+            message_pl=(
+                f"Szablon „{template.name_pl}”: w układzie H5 punkt neutralny sieci SN wynika "
+                "z uzwojenia transformatora 110/SN i zespołu uziemiającego w polu sekcji "
+                "(element z danych projektu) — uziemienie równoważnika na szynach SN tu nie "
+                "występuje."
+            ),
+        )
+    transformer_ref = parametry.transformer_ref
+    _napiecie_gn, voltage_kv = transformer_voltages_kv(transformer_ref)
+    if transformer_ref is None or voltage_kv is None:
+        raise TemplateApplyError(
+            code="template.transformer_catalog_missing",
+            message_pl=(
+                f"Szablon „{template.name_pl}”: katalog nie ma napięcia strony dolnej "
+                "transformatora 110/SN — nie da się zbudować szyn SN."
+            ),
+        )
+    payload: dict[str, Any] = {
+        "name_pl": template.name_pl,
+        "source_name": template.name_pl,
+        "voltage_kv": voltage_kv,
+        "sections_count": _GPZ_SECTIONS_COUNT,
+        "gpz_sections": [
+            {
+                "order": indeks,
+                "name": f"Sekcja SN {indeks + 1}",
+                "line_fields_count": parametry.sn_bays_count,
+                "function_bays": list(POLA_FUNKCYJNE_SEKCJI_H5),
+            }
+            for indeks in range(_GPZ_SECTIONS_COUNT)
+        ],
+        "hv_sections": tory,
+        "transformers": [
+            {"hv_section": n, "sn_section": n, "transformer_catalog_ref": transformer_ref}
+            for n in range(1, parametry.transformer_count + 1)
+        ],
+        "sn_coupler": {"cells": CELE_LACZNIKA_SN_H5},
+        "gpz_line_field_apparatus": aparat_pol,
+        "hv_bay_apparatus_proposal": PROPOZYCJA_APARATOW_110_H5,
+    }
+    # Dane projektu (stan normalny łącznika szyn 110 kV, tryb rezerwy, transformator
+    # rezerwowy) — WYŁĄCZNIE klucze zadeklarowane w `schema.dane_projektu` szablonu (jedno
+    # źródło deklaracji i przekazania); szablon nie uzupełnia ich wartością domyślną — brak
+    # rozstrzyga operacja odmową nazwaną z podpowiedzią i podstawą.
+    for klucz in dict.fromkeys(d.klucz_ladunku for d in template.schema.dane_projektu):
+        if klucz != "hv_sections" and overrides.get(klucz) is not None:
+            payload[klucz] = overrides[klucz]
+    return payload
 
 
 def _zastosuj_gpz_pod_blokada(
@@ -176,13 +310,10 @@ def _zastosuj_gpz_pod_blokada(
     """Zastosuj szablon GPZ (rola A, V12T-016) — `add_grid_source_sn`, KORZEŃ
     modelu, nie wcięcie w segment.
 
-    Granica zasilania SN (karta GPZ-MODEL, `templates/gpz_110_sn.py` docstring):
-    równoważnik systemowy (`grid_source_options`, ZRODLO_SN) niesie Sk3/R/X widziane
-    z szyny SN, więc transformatory 110/SN nie są elementami modelu i szablon ich nie
-    tworzy. Napięcie SN = napięcie znamionowe wybranego równoważnika z katalogu
-    (`grid_source_voltage_kv` — ta sama liczba, którą materializuje operacja).
-    Uziemienie punktu neutralnego: `isolated` — jedyny wybór bez fabrykowanego R/X
-    (najczęstszy w sieciach SN 15/20 kV).
+    Dwa układy (`TemplateSchema.gpz_uklad`, docstring `templates/gpz_110_sn.py`): ENEA H5
+    (strona 110 kV w modelu, tory L1/L2 z danych projektu) albo równoważnik sieci z
+    katalogu na każdej sekcji SN (granica modelu = szyny SN). Aparat pól liniowych SN —
+    z szablonu albo wskazania projektanta; uziemienie punktu neutralnego — dana projektu.
     """
     overrides = params_override or {}
 
@@ -191,17 +322,6 @@ def _zastosuj_gpz_pod_blokada(
     enm = _get_enm(klucz)
     enm_dict: dict[str, Any] = enm.model_dump(mode="json")
 
-    source_ref = overrides.get("grid_source_ref") or _cascade_manufacturer_choice(
-        template.schema.grid_source_options, catalog_profile
-    )
-    if not source_ref:
-        raise TemplateApplyError(
-            code="template.grid_source_catalog_missing",
-            message_pl=(
-                f"Szablon „{template.name_pl}” nie wskazuje warunków zasilania GPZ (typ z katalogu "
-                "źródeł zasilania SN)."
-            ),
-        )
     apparatus_ref = overrides.get("sn_bay_apparatus_ref") or _cascade_manufacturer_choice(
         template.schema.sn_bay_apparatus_options, catalog_profile
     )
@@ -210,32 +330,13 @@ def _zastosuj_gpz_pod_blokada(
             code="template.sn_bay_apparatus_missing",
             message_pl=f"Szablon „{template.name_pl}” nie wskazuje aparatu pól liniowych GPZ.",
         )
-    line_fields_per_section = parametry.sn_bays_count
-    voltage_kv = grid_source_voltage_kv(source_ref)
-    if voltage_kv is None:
-        raise TemplateApplyError(
-            code="template.grid_source_catalog_missing",
-            message_pl=(
-                f"Szablon „{template.name_pl}”: katalog nie ma napięcia znamionowego "
-                f"równoważnika sieci ({opis_pozycji_katalogu(source_ref, None, 'typ')})."
-            ),
+    aparat_pol = {"catalog_ref": apparatus_ref, "apparatus_kind": "BREAKER"}
+    if template.schema.gpz_uklad == GPZ_UKLAD_H5:
+        payload = _ladunek_gpz_h5(template, overrides, parametry, aparat_pol)
+    else:
+        payload = _ladunek_gpz_rownowaznik_sn(
+            template, overrides, parametry, catalog_profile, aparat_pol
         )
-
-    payload = {
-        "name_pl": template.name_pl,
-        "source_name": template.name_pl,
-        "voltage_kv": voltage_kv,
-        "catalog_ref": source_ref,
-        "sections_count": _GPZ_SECTIONS_COUNT,
-        "line_fields_count": line_fields_per_section,
-        "gpz_line_field_apparatus": {
-            "catalog_ref": apparatus_ref,
-            "apparatus_kind": "BREAKER",
-        },
-        # Sieć izolowana — najczęstszy wybór polskich sieci SN 15/20 kV, bez
-        # fabrykowanego R/X rezystora/dławika (katalog produkcyjny go nie niesie).
-        "grounding": {"type": "isolated"},
-    }
     result = execute_domain_operation(
         enm_dict=enm_dict, op_name="add_grid_source_sn", payload=payload
     )

@@ -98,6 +98,8 @@ const MOCK_TEMPLATE_FULL = {
     energy_meter_options: [],
     manufacturer_profile_default: 'ZPUE_WLOSZCZOWA',
     grid_source_options: [],
+    gpz_uklad: null,
+    dane_projektu: [],
   },
 };
 

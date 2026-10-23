@@ -26,11 +26,8 @@ import { makeCalculationReadySnapshot } from '../../../../test/enmCalculationSna
 import type { Bay, BayDeviceState, BayPrimaryDevice, BaySwitchState, EnergyNetworkModel } from '../../../../types/enm';
 import { buildSldDataFromSnapshot, projectBayPrimaryDevices } from '../../v2/canvas/enmToSldAdapter';
 import { buildDaneElementuStacji, type DaneElementuKanwy } from '../daneElementuKanwy';
-import {
-  BRAK_POLOZENIA_W_MODELU,
-  POLOZENIE_LACZNIKA_PL,
-  SekcjaStanuAparatu,
-} from '../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { SekcjaStanuAparatu } from '../../../network-build/inspektor-elementu/PanelElementuKanwy';
+import { BRAK_POLOZENIA_W_MODELU, POLOZENIE_LACZNIKA_PL } from '../../../shared/stanLacznika';
 import { BRAK_TELEMETRII } from '../../../field/fieldLabels';
 
 type Zrodlo = 'runtime' | 'aparat' | 'brak';

@@ -542,6 +542,13 @@ class Source(ENMElement):
     # założeniem biegu `fault.c_tolerancja_nn_robocza`, nigdy cicha domyślka. Dawne pola `c_max`/`c_min` źródła
     # (fantom: zapisywane, nigdy nieczytane — c dobiera wyłącznie `voltage_factor`) skasowane.
     lv_voltage_tolerance: TolerancjaNapieciaNn | None = None
+    # Karta GPZ-H5 (ENEA H5): tożsamość toru zasilania równoważnika 110 kV sekcji GPZ —
+    # linia 110 kV (L1, L2) i stacja, z której ta linia przychodzi. Dane z warunków
+    # przyłączenia operatora, nazwy, nie fizyka (biegi ich nie czytają). `None` = źródło
+    # bez toru 110 kV (równoważnik na szynach SN albo poza GPZ); operacja budowy GPZ
+    # z sekcjami 110 kV wymaga obu (odmowa nazwana, nigdy nazwa domyślna).
+    supply_line_name: str | None = None
+    supplying_station_name: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -1139,10 +1146,21 @@ class Substation(ENMElement):
     transformer_refs: list[str] = []
     entry_point_ref: str | None = None
     gpz_sections: list[GPZSection] = []
-    # Phase 0A audit fix 8/8: GPZ HV side (110 kV) — eliminuje synthesize w adapterze.
-    # Każda sekcja HV ma własny bus, opcjonalnie source_ref + couplery do innych sekcji.
-    # Pusta lista = single 110 kV bus (kanon) — adapter generuje 1 sekcję domyślną.
+    # Karta GPZ-H5 (ENEA H5): sekcje szyn 110 kV GPZ — każda z własną szyną, własnym
+    # torem zasilania (`incoming_source_ref` = równoważnik linii L1/L2 na szynie sekcji)
+    # i łącznikiem szyn 110 kV do sąsiedniej sekcji (`left/right_coupler_ref`).
+    # Przypisanie transformatora 110/SN do sekcji wynika z grafu (`Transformer.hv_bus_ref`
+    # na szynie sekcji 110 kV, `lv_bus_ref` na szynie sekcji SN), nie z drugiego pola.
+    # Pusta lista = GPZ bez strony 110 kV w modelu (równoważnik na szynach SN).
     gpz_hv_sections: list[GPZSection] = []
+    # Karta GPZ-H5 (ENEA Zeszyt 1 §26.10.5): tryb rezerwy transformatorowej — JAWNY wybór
+    # w danych stacji (`enm.rezerwa_gpz`): `hidden` (rezerwa ukryta, łącznik szyn SN normalnie
+    # otwarty) albo `explicit` (rezerwa jawna, łącznik szyn SN normalnie zamknięty,
+    # transformator rezerwowy `gpz_reserve_transformer_ref` z wyłącznikiem pola SN normalnie
+    # otwartym). Stany normalne łączników są z trybu WYPROWADZANE (operacja budowy) i z nim
+    # sprawdzane (walidator W063). `None` = GPZ bez strony 110 kV albo bez rezerwy.
+    gpz_reserve_mode: Literal["hidden", "explicit"] | None = None
+    gpz_reserve_transformer_ref: str | None = None
     # PR-3 rebuild SLD: porty zewnętrzne stacji + multi-voltage nN
     external_ports: list[Port] = []
     nn_voltage_levels: list[float] = []  # poziomy nN (np. [0.4, 0.69])
@@ -1251,7 +1269,9 @@ class Bay(ENMElement):
     odmawia dubli.
     """
 
-    bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
+    bay_role: Literal[
+        "IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE", "EARTHING", "CAPACITOR"
+    ]
     # Właściciel pola: stacja (pole SN/nN) ALBO punkt rozgałęzienia ZKSN — dokładnie jedno.
     substation_ref: str | None = None
     branch_point_ref: str | None = None
@@ -1259,7 +1279,7 @@ class Bay(ENMElement):
     branch_point_port_id: str | None = None
     bus_ref: str
     # Rola KANONICZNA pola (`enm.rola_pola_sn`: LINIA_IN/LINIA_OUT/LINIA_ODG/TRANSFORMATOROWE/
-    # SPRZEGLO/POMIAROWE/PV_SN/BESS_SN/FW_SN). `bay_role` jest aliasem modelu; rola kanoniczna
+    # SPRZEGLO/POMIAROWE/UZIEMIAJACE/KOMPENSACYJNE/PV_SN/BESS_SN/FW_SN). `bay_role` jest aliasem modelu; rola kanoniczna
     # rozróżnia np. pole odgałęźne (OUT + LINIA_ODG) od wyjściowego ciągu (OUT + LINIA_OUT).
     field_role: str | None = None
     # Własny ZACISK pola — szyna za aparatem pola (POLA-W-TORZE). JEDYNY nośnik zacisku
@@ -1649,6 +1669,8 @@ class BayBaseModel(BaseModel):
         "LINIA_ODG",
         "SPRZEGLO",
         "POMIAROWE",
+        "UZIEMIAJACE",
+        "KOMPENSACYJNE",
         "PV_SN",
         "BESS_SN",
         "FW_SN",

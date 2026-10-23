@@ -106,7 +106,12 @@ BENCHMARK_DICT_ZASTANE: dict[str, int] = {}
 #: `tests/reference_networks/sld_substrate_52s.py` (deklaracja `nn_earthing.lv_system=TN-C-S`
 #: przy budowie stacji + zamknięcie pierścienia do sąsiedniego odgałęzienia zamiast martwego
 #: końca za NOP) — 0 pozostałych blokerów. Zapadka w obie strony.
-BLOKERY_ZASTANE: dict[str, int] = {"G04": 15, "G05": 15, "G00": 0}
+#: Karta GPZ-H5 (2026-10-22, pomiar): część sieci bez źródła NIE blokuje biegu (E003, E060
+#: i E065 — IMPORTANT: bieg liczy część zasilaną, część odcięta jest w wynikach bez napięcia),
+#: więc dawne 15 blokerów G04/G05 (5× E003 + 10× E060) to dziś ostrzeżenia. Jedyny BLOCKER
+#: to E067 w scenariuszu `scenariusz-stAB` (zamknięty łącznik szyn „QBC” łączy równoważniki
+#: „GPZ Północ” i „GPZ Południe” — źródła równoległe są treścią scenariusza konfliktowego).
+BLOKERY_ZASTANE: dict[str, int] = {"G04": 1, "G05": 1, "G00": 0}
 
 #: Wpisy, których determinizm budowy (dwie budowy → ten sam hash) pomijamy tu ze względu na koszt
 #: budowy (G00: ok. 40 s) — determinizm substratu pilnuje `tests/reference_networks/sld_substrate_52s.py`.

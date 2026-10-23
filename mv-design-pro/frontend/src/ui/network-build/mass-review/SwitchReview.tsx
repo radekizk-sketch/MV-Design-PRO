@@ -11,6 +11,7 @@ import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useSelectionStore } from '../../selection';
+import { ETYKIETA_POLOZENIA_PL } from '../../shared/stanLacznika';
 
 // =============================================================================
 // Helpers
@@ -27,13 +28,8 @@ function switchTypeLabel(kind: string | null | undefined): string {
 }
 
 function switchStateLabel(state: string | null | undefined): string {
-  switch (state) {
-    case 'OPEN':
-    case 'open': return 'Otwarty';
-    case 'CLOSED':
-    case 'closed': return 'Zamknięty';
-    default: return state ?? '—';
-  }
+  const s = state?.toLowerCase();
+  return s === 'open' || s === 'closed' ? ETYKIETA_POLOZENIA_PL[s] : (state ?? '—');
 }
 
 // =============================================================================

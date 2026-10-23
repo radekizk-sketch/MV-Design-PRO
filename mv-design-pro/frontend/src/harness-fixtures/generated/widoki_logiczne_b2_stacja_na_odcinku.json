@@ -2,100 +2,127 @@
   "branches": [],
   "line_fields": [
     {
-      "attachment_bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
+      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
       "occupied": true,
       "segment_refs": [
-        "seg/a5bbe69d296d0aae8c684174a0d64363/segment"
+        "seg/73c7aeb7482f7886bfc0fba8babd89fd/segment"
       ],
-      "station_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation"
+      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
     },
     {
-      "attachment_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/000",
+      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/319231e7ab73f91a142f24546e888ddd/segment_L"
-      ],
-      "station_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/station"
-    },
-    {
-      "attachment_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/319231e7ab73f91a142f24546e888ddd/segment_R"
-      ],
-      "station_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/station"
-    },
-    {
-      "attachment_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/002",
-      "bay_role": "FEEDER",
-      "corridor_refs": [],
-      "field_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/002",
+      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bay_line",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/station"
+      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
     },
     {
-      "attachment_bus_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field_terminal/003",
+      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/sn_field/003",
+      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_sn",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/885d2eb948f80ab1765ba89be1491d7c/station"
+      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
+    },
+    {
+      "attachment_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_wn",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
+    },
+    {
+      "attachment_bus_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/f45968a52d5278aac15c0a3797827b83/segment_L"
+      ],
+      "station_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station"
+    },
+    {
+      "attachment_bus_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/f45968a52d5278aac15c0a3797827b83/segment_R"
+      ],
+      "station_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station"
+    },
+    {
+      "attachment_bus_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/002",
+      "bay_role": "FEEDER",
+      "corridor_refs": [],
+      "field_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station"
+    },
+    {
+      "attachment_bus_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field_terminal/003",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/sn_field/003",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/8c07b0a0a7e09c036d53e3d8fa1928f4/station"
     }
   ],
   "secondary_connectors": [],
   "terminals": [
     {
       "branch_id": null,
-      "element_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+      "element_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
       "port_id": "trunk_start",
       "status": "OTWARTY",
-      "trunk_id": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01"
+      "trunk_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01"
     },
     {
       "branch_id": null,
-      "element_id": "bus/908556526fbac181d1be24f1f0a3f251/downstream",
+      "element_id": "bus/146ff026284a0837b2ba17040865255e/downstream",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01"
+      "trunk_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01"
     }
   ],
   "trunks": [
     {
-      "corridor_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
+      "corridor_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [],
       "segments": [
-        "seg/a5bbe69d296d0aae8c684174a0d64363/segment",
-        "seg/319231e7ab73f91a142f24546e888ddd/segment_L",
-        "seg/319231e7ab73f91a142f24546e888ddd/segment_R",
-        "seg/908556526fbac181d1be24f1f0a3f251/segment"
+        "seg/73c7aeb7482f7886bfc0fba8babd89fd/segment",
+        "seg/f45968a52d5278aac15c0a3797827b83/segment_L",
+        "seg/f45968a52d5278aac15c0a3797827b83/segment_R",
+        "seg/146ff026284a0837b2ba17040865255e/segment"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+          "element_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
           "port_id": "trunk_start",
           "status": "OTWARTY",
-          "trunk_id": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01"
+          "trunk_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01"
         },
         {
           "branch_id": null,
-          "element_id": "bus/908556526fbac181d1be24f1f0a3f251/downstream",
+          "element_id": "bus/146ff026284a0837b2ba17040865255e/downstream",
           "port_id": "trunk_end",
           "status": "OTWARTY",
-          "trunk_id": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01"
+          "trunk_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01"
         }
       ]
     }

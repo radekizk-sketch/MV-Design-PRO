@@ -302,18 +302,26 @@ export function rodzajZwarciaPL(faultType: string | null): string {
  * Spójny z kanoniczną pulą tokenów flag repozytorium
  * (`ui/results-inspector/types.ts:460-464`). Tokeny nierozpoznane pokazywane są
  * dosłownie (dane, nie literał UI). Docelowa pula flag zwarciowych jest
- * WŁASNOŚCIĄ BACKENDU (dziś pusta — `enm/canonical_analysis.py`, pole `flags`
- * emitowane jako `[]`); ten słownik NIE zgaduje tokenów, których backend
+ * WŁASNOŚCIĄ BACKENDU (`enm/canonical_analysis.py`, pole `flags`; wiersz zwarcia niesie
+ * dziś wyłącznie `BEZ_NAPIECIA`); ten słownik NIE zgaduje tokenów, których backend
  * jeszcze nie wysyła.
  */
 /** Flagi wiersza zwarciowego (kanoniczna pula tokenów flag wyników). */
-export type FlagaWierszaZwarcia = 'SLACK' | 'SYNTHETIC' | 'VOLTAGE_VIOLATION' | 'OVERLOADED';
+export type FlagaWierszaZwarcia =
+  | 'SLACK'
+  | 'SYNTHETIC'
+  | 'VOLTAGE_VIOLATION'
+  | 'OVERLOADED'
+  | 'BEZ_NAPIECIA';
 
 export const FLAGI_ZWARCIA_PL: Readonly<Record<FlagaWierszaZwarcia, string>> = {
   SLACK: 'Węzeł bilansujący',
   SYNTHETIC: 'Węzeł syntetyczny',
   VOLTAGE_VIOLATION: 'Naruszenie napięcia',
   OVERLOADED: 'Przeciążenie',
+  // Karta GPZ-H5-SLD (d): znacznik backendu `ZNACZNIK_SZYNY_BEZ_NAPIECIA` — punkt zwarcia
+  // w wyspie bez źródła (brak impedancji do odniesienia), wiersz bez liczby.
+  BEZ_NAPIECIA: 'Bez napięcia — wyspa bez źródła zasilania',
 };
 
 /** Łączy flagi wiersza w polski tekst uwag (pusta lista → „—"). */

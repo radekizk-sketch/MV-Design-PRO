@@ -209,7 +209,33 @@ NAZWY_POL_KONTRAKTU_PL: dict[str, str] = {
     "tap_changer.regulation_type": "Rodzaj regulacji",  # zrodlo/strings.ts oltcTyp; transformator regTyp
     "add_nn_switch_device:to_bus_ref": "Szyna do",  # aparat-nn/strings.ts szynaDo
     "connect_secondary_ring_sn:to_bus_ref": "Zacisk B",  # pierscien/strings.ts zaciskB
-    "add_grid_source_sn:transformer_count": "Transformatory 110/SN",  # zrodlo/strings.ts liczbaTrafo
+    # Karta GPZ-H5 (układ ENEA H5): pola struktury JAWNEJ GPZ ze stroną 110 kV.
+    "add_grid_source_sn:transformers": "Transformatory 110/SN",
+    "add_grid_source_sn:transformers.hv_section": "Sekcja 110 kV transformatora",
+    "add_grid_source_sn:transformers.sn_section": "Sekcja SN transformatora",
+    "add_grid_source_sn:hv_sections": "Sekcje szyn 110 kV",
+    "add_grid_source_sn:hv_sections.supply": "Tor zasilania sekcji 110 kV",
+    "add_grid_source_sn:hv_sections.supply.line_name": "Linia zasilająca 110 kV",
+    "add_grid_source_sn:hv_sections.supply.supplying_station_name": "Stacja zasilająca",
+    "add_grid_source_sn:hv_sections.supply.manual_equivalent": "Równoważnik sieci toru 110 kV",
+    "add_grid_source_sn:hv_coupler.normal_state": "Stan normalny łącznika szyn 110 kV",
+    "add_grid_source_sn:hv_coupler.justification": "Uzasadnienie stanu łącznika szyn 110 kV",
+    "add_grid_source_sn:sn_coupler.normal_state": "Stan normalny łącznika szyn SN",
+    "add_grid_source_sn:sn_coupler.justification": "Uzasadnienie stanu łącznika szyn SN",
+    "add_grid_source_sn:sn_coupler.cells": "Liczba cel łącznika szyn SN",
+    "add_grid_source_sn:gpz_sections.supply": "Równoważnik sieci sekcji SN",
+    "add_grid_source_sn:gpz_sections.function_bays": "Pola funkcyjne sekcji SN",
+    "add_grid_source_sn:hv_bay_apparatus_proposal": "Propozycja składu aparatów pól 110 kV",
+    "add_grid_source_sn:reserve_mode": "Tryb rezerwy transformatorowej",
+    "add_grid_source_sn:reserve_transformer": "Transformator rezerwowy",
+    "add_grid_source_sn:reserve_transformer_apparatus": (
+        "Wyłącznik pola SN transformatora rezerwowego"
+    ),
+    "add_grid_source_sn:catalog_binding": "Typ źródła z katalogu",
+    "add_grid_source_sn:manual_equivalent": "Równoważnik sieci (dane ręczne)",
+    "add_grid_source_sn:grounding": "Uziemienie punktu neutralnego",
+    "add_grid_source_sn:zero_sequence": "Składowa zerowa równoważnika",
+    "add_grid_source_sn:lv_voltage_tolerance": "Tolerancja napięcia sieci nN",
     "add_grid_source_sn:transformer_catalog_ref": "Typ transformatora 110/SN z katalogu",  # zrodlo/strings.ts transformatorKatalog
     "insert_station_on_segment_sn:transformer_catalog_ref": "Typ transformatora z katalogu",  # stacja/strings.ts typKatalog
     "transformer_catalog_ref": "Typ transformatora z katalogu",  # transformator/strings.ts typKatalog

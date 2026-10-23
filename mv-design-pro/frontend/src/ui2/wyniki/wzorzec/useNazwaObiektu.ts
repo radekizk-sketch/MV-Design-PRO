@@ -130,6 +130,18 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   // Pola, aparaty i zaciski.
   section: 'sekcja',
   hv_section: 'sekcja WN',
+  // GPZ H5 (karta GPZ-H5): łącznik szyn 110 kV, pola struktury i aparaty transformatora
+  // rezerwowego (rezerwa jawna).
+  hv_coupler: 'łącznik szyn WN',
+  bay_line: 'pole liniowe',
+  bay_wn: 'pole strony WN',
+  bay_sn: 'pole strony SN',
+  bay_cell: 'cela',
+  bay_function: 'pole funkcyjne',
+  earthing: 'zespół uziemiający',
+  capacitor: 'bateria kondensatorów',
+  breaker_sn: 'wyłącznik strony SN',
+  terminal_sn: 'zacisk strony SN',
   coupler: 'sprzęgło',
   sn_coupler: 'sprzęgło SN',
   section_coupler: 'sprzęgło sekcyjne',

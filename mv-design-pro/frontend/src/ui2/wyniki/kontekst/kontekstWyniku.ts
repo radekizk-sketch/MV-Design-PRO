@@ -213,6 +213,30 @@ export interface WynikBiegu {
   readonly qualityStatus: string | null;
   readonly proofStatus: string | null;
   readonly runFinishedAt: string | null;
+  /**
+   * Karta GPZ-H5-SLD (d): refy elementów, których wiersz wyniku niesie znacznik backendu
+   * `BEZ_NAPIECIA` (`element_results[].values.flags`, `enm/canonical_analysis.py::
+   * ZNACZNIK_SZYNY_BEZ_NAPIECIA` — szyna wyspy bez źródła zasilania w stanie łączników
+   * biegu). Posortowane; pusta lista = żaden wiersz nie niesie znacznika.
+   */
+  readonly szynyBezNapiecia: readonly string[];
+}
+
+/** Znacznik wiersza wyniku: szyna wyspy bez źródła zasilania (stan, nie liczba). */
+export const ZNACZNIK_BEZ_NAPIECIA = 'BEZ_NAPIECIA';
+
+/** Refy wierszy `element_results` ze znacznikiem `BEZ_NAPIECIA` (posortowane, bez powtórzeń). */
+export function refyBezNapiecia(elementResults: unknown): string[] {
+  if (!Array.isArray(elementResults)) return [];
+  const refy = new Set<string>();
+  for (const wiersz of elementResults) {
+    const ref = wiersz?.element_ref;
+    const flagi = wiersz?.values?.flags;
+    if (typeof ref === 'string' && Array.isArray(flagi) && flagi.includes(ZNACZNIK_BEZ_NAPIECIA)) {
+      refy.add(ref);
+    }
+  }
+  return [...refy].sort();
 }
 
 export type StanWynikuBiegu =
@@ -250,6 +274,7 @@ export async function pobierzWynikBiegu(runId: string): Promise<WynikBiegu> {
     qualityStatus: tekst(dane?.global_results?.quality_status),
     proofStatus: tekst(dane?.global_results?.proof_status),
     runFinishedAt: tekst(dane?.run_finished_at),
+    szynyBezNapiecia: refyBezNapiecia(dane?.element_results),
   };
 }
 
@@ -483,6 +508,7 @@ export function payloadNakladki(wynik: WynikBiegu): RawOverlayPayload {
     quality_status: wynik.qualityStatus,
     proof_status: wynik.proofStatus,
     run_finished_at: wynik.runFinishedAt,
+    bez_napiecia_refs: wynik.szynyBezNapiecia,
   };
 }
 

@@ -135,8 +135,12 @@ def _extract_duration(trace_payload: Any) -> float | None:
 
 
 def _stable_sort_key(item: Any) -> str:
+    # `ref_id` PRZED `id`: element ENM (np. `branches` migawki biegu) niesie `id` losowane przy
+    # konstrukcji modelu (uuid4), a tożsamością domenową jest `ref_id` — klucz `id` dawał
+    # kolejność gałęzi migawki losową między dwoma budowami tego samego modelu (ta sama reguła
+    # co `domain/execution.py::_stable_sort_key`).
     if isinstance(item, dict):
-        for key in ("id", "node_id", "branch_id", "result_type", "key", "title"):
+        for key in ("ref_id", "id", "node_id", "branch_id", "result_type", "key", "title"):
             if key in item and item[key] is not None:
                 return str(item[key])
     return str(item)

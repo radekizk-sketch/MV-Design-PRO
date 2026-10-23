@@ -107,6 +107,14 @@ def _postac_sprzed_karty(model: EnergyNetworkModel) -> dict:
         zrodlo["c_min"] = None
     for transformator in dane["transformers"]:
         transformator.pop("lv_voltage_tolerance", None)
+    # Karta GPZ-H5 (późniejsza niż W5-A): tor zasilania 110 kV źródła i tryb rezerwy GPZ nie
+    # istniały — pola addytywne, poza odciskiem gdy `None`.
+    for zrodlo in dane["sources"]:
+        zrodlo.pop("supply_line_name", None)
+        zrodlo.pop("supplying_station_name", None)
+    for stacja in dane.get("substations", []):
+        stacja.pop("gpz_reserve_mode", None)
+        stacja.pop("gpz_reserve_transformer_ref", None)
     return dane
 
 

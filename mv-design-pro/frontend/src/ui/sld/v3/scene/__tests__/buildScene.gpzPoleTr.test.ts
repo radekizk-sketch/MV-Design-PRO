@@ -11,25 +11,34 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Branch, Bus, EnergyNetworkModel } from '../../../../../types/enm';
-import { pole } from '../../../../../test/pola';
 import { buildSceneV3 } from '../buildScene';
 import { buildDerSnFixture } from './fixtures/w2cDerSnFixtures';
 
 type Miejsce = 'w polu TR' | 'poza polem';
 const MIEJSCA: readonly Miejsce[] = ['w polu TR', 'poza polem'];
 const GRUPY: readonly (string | null)[] = ['Yd11', null];
-const POLE_TR = 'gpz-test/pole-tr';
 const WYLACZNIK = 'gpz-test/pole-tr/q0';
 
-function migawka(miejsce: Miejsce, grupa: string | null): { enm: EnergyNetworkModel; trRef: string } {
+/** Karta GPZ-H5-SLD etap 3: migawka backendu (przegenerowana fikstura `gpzFeeder`) tworzy
+ *  dla transformatora 110/SN pole TR po stronie SN (`transformer/NNN/bay_sn`, bez aparatów)
+ *  i pole WN transformatora w sekcji 110 kV. Wymiar „w polu TR" wyposaża TO pole modelu
+ *  w wyłącznik (gałąź w `equipment_refs`); wymiar „poza polem" usuwa pole TR strony SN —
+ *  tor transformatora bez pola TR w modelu. Dawniej fikstura nie miała pola TR, a test
+ *  dokładał własne (dziś byłoby drugim polem TR tego samego transformatora). */
+function migawka(miejsce: Miejsce, grupa: string | null): { enm: EnergyNetworkModel; trRef: string; poleTr: string } {
   const { enm } = buildDerSnFixture([]);
   const gpz = enm.substations.find((s) => s.station_type === 'gpz')!;
   const trRef = gpz.transformer_refs[0];
   const tr = enm.transformers.find((t) => t.ref_id === trRef)! as { vector_group?: string | null };
   if (grupa === null) delete tr.vector_group;
   else tr.vector_group = grupa;
+  const sekcja = gpz.gpz_sections![0];
+  const poleTrModelu = enm.bays.find(
+    (b) => b.bay_role === 'TR' && b.gpz_section_id === sekcja.section_id && (b.equipment_refs ?? []).includes(trRef),
+  );
+  expect(poleTrModelu, 'pole TR strony SN transformatora w migawce backendu').toBeDefined();
+  const poleTr = poleTrModelu!.ref_id;
   if (miejsce === 'w polu TR') {
-    const sekcja = gpz.gpz_sections![0];
     const zacisk = `${WYLACZNIK}/k`;
     enm.buses.push({
       id: zacisk, ref_id: zacisk, name: 'Zacisk pola TR', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {},
@@ -38,21 +47,15 @@ function migawka(miejsce: Miejsce, grupa: string | null): { enm: EnergyNetworkMo
       id: WYLACZNIK, ref_id: WYLACZNIK, name: 'Q0', type: 'breaker', status: 'open',
       from_bus_ref: sekcja.bus_ref!, to_bus_ref: zacisk, tags: [], meta: {},
     } as unknown as Branch);
-    enm.bays.push(
-      pole({
-        ref_id: POLE_TR,
-        name: 'Pole TR',
-        bay_role: 'TR',
-        substation_ref: gpz.ref_id,
-        bus_ref: sekcja.bus_ref!,
-        gpz_section_id: sekcja.section_id,
-        bay_number: 'FT1',
-        equipment_refs: [trRef, WYLACZNIK],
-        protection_codes: ['87T', '51'],
-      }),
+    enm.bays = enm.bays.map((b) =>
+      b.ref_id === poleTr
+        ? { ...b, bay_number: 'FT1', equipment_refs: [trRef, WYLACZNIK], protection_codes: ['87T', '51'] }
+        : b,
     );
+  } else {
+    enm.bays = enm.bays.filter((b) => b.ref_id !== poleTr);
   }
-  return { enm, trRef };
+  return { enm, trRef, poleTr };
 }
 
 describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce × grupa × LOD', () => {
@@ -60,7 +63,7 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
     for (const grupa of GRUPY) {
       for (const lod of [1, 2] as const) {
         it(`${miejsce} × ${grupa ?? 'brak grupy'} × L${lod}`, () => {
-          const { enm, trRef } = migawka(miejsce, grupa);
+          const { enm, trRef, poleTr: POLE_TR } = migawka(miejsce, grupa);
           const scena = buildSceneV3(enm, lod);
           const transformatory = scena.symbols.filter(
             (s) => s.symbolId === 'transformer2W' && s.meta?.ownerRef === trRef,
@@ -101,8 +104,8 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
             expect(wylacznikToru!.meta?.deviceRef).toBe(WYLACZNIK);
             expect(wylacznikToru!.state).toBe('open');
             expect(wylacznikToru!.meta?.ownerRef).toBe(POLE_TR);
-            expect(scena.meta.gpzAdnotacje?.tabela?.karty.map((k) => k.bayRef)).toContain(POLE_TR);
-            expect(scena.meta.gpzAdnotacje?.panele.map((p) => p.bayRef)).toContain(POLE_TR);
+            // Pole TR toru transformatora jest wierszem karty GPZ inspektora (lista pól sceny).
+            expect(scena.meta.gpzPola?.map((p) => p.bayRef)).toContain(POLE_TR);
             expect(
               scena.symbols.some((s) => s.symbolId === 'protectionRelay' && s.meta?.ownerRef === POLE_TR),
             ).toBe(true);
@@ -120,6 +123,6 @@ describe('GPZ: transformator pola TR rysowany torem z uzwojeniami — miejsce ×
     const a = buildSceneV3(migawka('w polu TR', 'Yd11').enm, 2);
     const b = buildSceneV3(migawka('w polu TR', 'Yd11').enm, 2);
     expect(JSON.stringify(b.symbols)).toBe(JSON.stringify(a.symbols));
-    expect(JSON.stringify(b.meta.gpzAdnotacje)).toBe(JSON.stringify(a.meta.gpzAdnotacje));
+    expect(JSON.stringify(b.meta.gpzPola)).toBe(JSON.stringify(a.meta.gpzPola));
   });
 });

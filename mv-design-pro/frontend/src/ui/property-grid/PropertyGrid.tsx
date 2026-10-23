@@ -14,6 +14,7 @@
  * - Validation section with all issues
  */
 
+import { liczbaZOdmiana } from '../shared/odmianaLiczebnikowa';
 import { useState, useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 import type { ElementType, PropertyField, PropertySection as PropertySectionType, ValidationMessage } from '../types';
@@ -312,7 +313,7 @@ function PropertySection({
           )}
         </span>
         <span className="text-xs text-gray-500">
-          {section.fields.length} {section.fields.length === 1 ? 'pole' : 'pól'}
+          {liczbaZOdmiana(section.fields.length, { jeden: 'pole', kilka: 'pola', wiele: 'pól' })}
         </span>
       </button>
 

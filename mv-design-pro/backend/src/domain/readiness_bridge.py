@@ -66,6 +66,15 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # „Transformator GPZ bez zasilania od strony 110 kV" (karta GPZ-MODEL) == ten sam
     # warunek (jeden predykat `enm/validator.py::transformatory_gpz_bez_zasilania_wn`).
     "E066": "source.gpz_transformer_hv_unsupplied",
+    # „Zamknięty łącznik szyn łączy niezależne równoważniki sieci" (karta GPZ-H5) == ten
+    # sam warunek (jeden predykat `enm.topology.polaczenia_niezaleznych_zrodel`).
+    "E067": "source.gpz_coupler_joins_independent_equivalents",
+    # „Struktura GPZ niekompletna" (karta GPZ-H5) == ten sam warunek (jeden predykat
+    # `enm/validator.py::_niekompletnosc_struktury_gpz`, tryb rezerwy z `enm.rezerwa_gpz`).
+    "W063": "station.gpz_structure_incomplete",
+    # „Łącznik szyn SN zamknięty działaniem SZR przy generacji" (karta GPZ-H5, ENEA §26.10.4)
+    # == ten sam warunek (`enm/validator.py::_szr_sn_przy_generacji`).
+    "W064": "station.szr_sn_with_generation",
     # „Magistrala nie ma segmentow" == brak segmentu magistrali.
     "I004": "trunk.segment_missing",
     # „Zrodlo nie jest podlaczone do istniejacej szyny" == zrodlo bez polaczenia

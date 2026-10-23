@@ -130,24 +130,39 @@ class KlientBudowy:
             },
         )
 
-    def gpz_110kv(self, transformer_count: int, sections_count: int = 1) -> dict[str, Any]:
-        """GPZ z równoważnikiem sieci po stronie 110 kV (Sk″ = 3000 MVA, R/X = 0,1)
-        i `transformer_count` transformatorami 110/15 kV 25 MVA na wspólnej szynie 110 kV
-        — jedyny tryb, w którym transformatory 110/SN są elementami modelu (karta
-        GPZ-MODEL)."""
+    def gpz_110kv(self) -> dict[str, Any]:
+        """GPZ 110/15 kV z jednym torem zasilania 110 kV (Sk″ = 3000 MVA, R/X = 0,1 —
+        przykładowe dane przypadku testowego) i jednym transformatorem 110/15 kV 25 MVA
+        przypisanym jawnie: sekcja 110 kV 1 → sekcja SN 1 (kontrakt `hv_sections` +
+        `transformers` karty GPZ-H5; bez liczby transformatorów i bez przydziału
+        domyślnego)."""
         return self.operacja(
             "add_grid_source_sn",
             {
                 "voltage_kv": 15.0,
-                "manual_equivalent": {
-                    "short_circuit_input_side": "HV_110",
-                    "hv_voltage_kv": 110.0,
-                    "sk3_hv_mva": 3000.0,
-                    "rx_ratio": 0.1,
-                },
-                "sections_count": sections_count,
-                "transformer_count": transformer_count,
-                "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
+                "sections_count": 1,
+                "hv_sections": [
+                    {
+                        "supply": {
+                            "line_name": "Linia 110 kV zasilająca",
+                            "supplying_station_name": (
+                                "Stacja zasilająca — przykładowe dane przypadku testowego"
+                            ),
+                            "manual_equivalent": {
+                                "hv_voltage_kv": 110.0,
+                                "sk3_hv_mva": 3000.0,
+                                "rx_ratio": 0.1,
+                            },
+                        }
+                    }
+                ],
+                "transformers": [
+                    {
+                        "hv_section": 1,
+                        "sn_section": 1,
+                        "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
+                    }
+                ],
             },
         )
 

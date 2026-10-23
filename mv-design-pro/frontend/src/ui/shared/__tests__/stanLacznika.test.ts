@@ -2,10 +2,12 @@
  * KARTA W5-C — lustro frontu reguł stanu łącznika (`ui/shared/stanLacznika.ts`).
  *
  * Iloczyn cech: typ gałęzi {switch, breaker, bus_coupler, disconnector, fuse, cable} ×
- * pozycja normalna {open, closed, brak} × bieżące położenie {open, closed}. Pozycja normalna
- * i punkt podziału wynikają WYŁĄCZNIE z `normal_state` łącznika z pozycją normalną —
- * bieżące położenie (`status`) ani typ bezpiecznika nigdy nie czynią punktu podziału
- * (dawny domysł „otwarty = NOP" jest defektem tej klasy).
+ * pozycja normalna {open, closed, brak} × bieżące położenie {open, closed}, dla łącznika
+ * POZA szynami stacji (migawka bez stacji). Pozycja normalna wynika WYŁĄCZNIE z
+ * `normal_state` łącznika z pozycją normalną — bieżące położenie (`status`) ani typ
+ * bezpiecznika nigdy nie czynią punktu podziału (dawny domysł „otwarty = NOP" jest defektem
+ * tej klasy). Rolę łącznika szyn stacji (karta GPZ-H5) pokrywa parytet z backendem
+ * `roleLacznikowParytet.test.ts`.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -17,6 +19,8 @@ import {
   etykietaPolozenia,
   etykietaPozycjiNormalnej,
   kandydaciNaPunktPodzialu,
+  polozenieSlownie,
+  tekstStanuLacznikaSzyn,
   lacznikiPortowPunktu,
   lacznikTematu,
   opisLacznikowPortow,
@@ -66,9 +70,8 @@ describe('stanLacznika — iloczyn typ × pozycja normalna × położenie', () =
     expect(czyLacznik(g)).toBe(typ !== 'cable');
     expect(czyLacznikZPozycjaNormalna(g)).toBe(zPozycja);
     expect(pozycjaNormalna(g)).toBe(zPozycja ? normal : null);
-    expect(czyPunktPodzialu(g)).toBe(zPozycja && normal === 'open');
-
     const migawka = { branches: [g] } as Pick<EnergyNetworkModel, 'branches'>;
+    expect(czyPunktPodzialu(migawka, g)).toBe(zPozycja && normal === 'open');
     expect(punktyPodzialu(migawka).map((b) => b.ref_id)).toEqual(
       zPozycja && normal === 'open' ? ['g1'] : [],
     );
@@ -108,19 +111,25 @@ describe('etykiety i opisy — brak deklaracji nazwany wprost', () => {
   });
 
   it.each([
-    ['open', 'Normalnie otwarty (punkt podziału)'],
-    ['closed', 'Normalnie zamknięty'],
-    [null, 'Niezadeklarowana'],
-  ] as const)('etykietaPozycjiNormalnej(%s) = %s', (pozycja, oczekiwana) => {
-    expect(etykietaPozycjiNormalnej(pozycja)).toBe(oczekiwana);
+    ['open', null, 'Normalnie otwarty (punkt podziału)'],
+    ['open', 'PUNKT_PODZIALU', 'Normalnie otwarty (punkt podziału)'],
+    ['open', 'LACZNIK_SZYN_WN', 'Normalnie otwarty (łącznik szyn 110 kV, sekcje pracują osobno)'],
+    ['open', 'LACZNIK_SZYN_SN', 'Normalnie otwarty (łącznik szyn SN, sekcje pracują osobno)'],
+    ['open', 'LACZNIK_SZYN_NN', 'Normalnie otwarty (łącznik szyn nN, sekcje pracują osobno)'],
+    ['open', 'LACZNIK_POLA_TRANSFORMATOROWEGO', 'Normalnie otwarty (pole transformatora odstawione)'],
+    ['closed', 'LACZNIK_SZYN_SN', 'Normalnie zamknięty'],
+    ['closed', null, 'Normalnie zamknięty'],
+    [null, null, 'Niezadeklarowana'],
+  ] as const)('etykietaPozycjiNormalnej(%s, %s) = %s', (pozycja, rola, oczekiwana) => {
+    expect(etykietaPozycjiNormalnej(pozycja, rola)).toBe(oczekiwana);
   });
 
   it('opis bezpiecznika nie wspomina pozycji normalnej, łącznika — zawsze', () => {
-    expect(opisStanuLacznika(galaz('f', 'fuse', 'closed', null) as never)).toBe('Zamknięty');
-    expect(opisStanuLacznika(galaz('s', 'switch', 'open', null) as never)).toBe(
+    expect(opisStanuLacznika(null, galaz('f', 'fuse', 'closed', null) as never)).toBe('Zamknięty');
+    expect(opisStanuLacznika(null, galaz('s', 'switch', 'open', null) as never)).toBe(
       'Otwarty · pozycja normalna: niezadeklarowana',
     );
-    expect(opisStanuLacznika(galaz('s', 'switch', 'closed', 'open') as never)).toBe(
+    expect(opisStanuLacznika(null, galaz('s', 'switch', 'closed', 'open') as never)).toBe(
       'Zamknięty · pozycja normalna: normalnie otwarty (punkt podziału)',
     );
   });
@@ -187,4 +196,39 @@ describe('lacznikTematu — obiekt rysunku × liczba łączników pola', () => {
   it('brak migawki: powód zamiast wyjątku', () => {
     expect(lacznikTematu(null, 'sw-1').lacznik).toBeNull();
   });
+});
+
+/**
+ * Karta GPZ-H5-SLD etap 2 (poprawka P0 koordynatora): jedno słownictwo stanu łącznika
+ * i podpis łącznika szyn ze stanem rzeczywistym. Iloczyn: stan {open, closed, unknown,
+ * brak, OPEN} × pozycja normalna {open, closed, brak}. Wyrocznia dosłowna.
+ */
+describe('podpis łącznika szyn — stan rzeczywisty słownie, odstępstwo drugorzędnie', () => {
+  const STANY: readonly (string | undefined)[] = ['open', 'closed', 'unknown', undefined, 'OPEN'];
+  const SLOWNIE: Record<string, string> = {
+    open: 'otwarty',
+    closed: 'zamknięty',
+    unknown: 'nieustalony (model niejednoznaczny)',
+    brak: 'brak stanu w modelu',
+    OPEN: 'otwarty',
+  };
+  for (const stan of STANY) {
+    for (const pozycja of ['open', 'closed', null] as const) {
+      it(`stan ${stan ?? 'brak'} × pozycja normalna ${pozycja ?? 'brak'}`, () => {
+        const slowo = SLOWNIE[stan ?? 'brak'];
+        expect(polozenieSlownie(stan)).toBe(slowo);
+        const tekst = tekstStanuLacznikaSzyn('ŁS SN 1-2', stan, pozycja);
+        expect(tekst.glowny).toBe(`ŁS SN 1-2 · ${slowo}`);
+        // Odstępstwo tylko przy stanie znanym (open/closed, wielkość liter bez znaczenia) i pozycji
+        // zadeklarowanej, różnych od siebie.
+        const znany = stan?.toLowerCase() === 'open' ? 'open' : stan === 'closed' ? 'closed' : null;
+        const oczekiwane =
+          znany !== null && pozycja !== null && znany !== pozycja
+            ? [pozycja === 'open' ? 'normalnie otwarty' : 'normalnie zamknięty', '(odstępstwo)']
+            : null;
+        expect(tekst.odstepstwo).toEqual(oczekiwane);
+        expect(tekst.glowny.endsWith(' · NO') || tekst.glowny.endsWith(' · NZ')).toBe(false);
+      });
+    }
+  }
 });

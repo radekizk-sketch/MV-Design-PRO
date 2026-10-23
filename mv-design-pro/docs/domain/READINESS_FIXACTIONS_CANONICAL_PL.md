@@ -54,14 +54,14 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **165** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
 | `nn.source.field_missing` | SOURCES | 1 | BLOCKER | Źródło nN nie jest przypięte do pola źródłowego | panel: `inspector`, tab: `pole`, focus: `field_ref` |
 | `nn.source.parameters_missing` | SOURCES | 1 | BLOCKER | Źródło nN nie ma wymaganych parametrów elektrycznych | panel: `inspector`, tab: `parametry`, focus: `rated_power` |
 | `nn.source.switch_missing` | SOURCES | 1 | BLOCKER | Pole źródłowe nN nie posiada aparatu łączeniowego | panel: `inspector`, tab: `pole`, focus: `switch_kind` |
-| `source.gpz_section_unsupplied` | SOURCES | 1 | BLOCKER | Sekcja GPZ bez zasilania — sekcja nie ma własnego równoważnika sieci, a sprzęgło sekcji jest otwarte (zamknij sprzęgło albo zasil sekcję) | panel: `inspector`, tab: `polaczenia` |
+| `source.gpz_coupler_joins_independent_equivalents` | SOURCES | 1 | BLOCKER | Zamknięty łącznik szyn GPZ łączy niezależne równoważniki sieci (tory zasilania 110 kV) — rozpływ i zwarcia nie są liczone (zbuduj wariant ze wspólnym punktem zasilania (model B) albo otwórz łącznik szyn) | panel: `inspector`, tab: `polaczenia` |
 | `source.gpz_transformer_hv_unsupplied` | SOURCES | 1 | BLOCKER | Transformator GPZ bez zasilania od strony 110 kV — za jego szyną 110 kV nie ma równoważnika sieci, odbioru ani generatora (zbuduj GPZ od nowa z równoważnikiem po stronie 110 kV albo z równoważnikiem na szynach SN bez transformatorów 110/SN) | panel: `inspector`, tab: `polaczenia` |
 | `source.grid_supply_missing` | SOURCES | 1 | BLOCKER | Brak źródła zasilania sieciowego (GPZ) | panel: `wizard`, modal: `add_grid_source` |
 | `source.sk3_invalid` | SOURCES | 1 | BLOCKER | Nieprawidłowa moc zwarciowa źródła Sk3 | panel: `inspector`, tab: `parametry`, focus: `sk3_mva` |
@@ -72,6 +72,7 @@ Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `connection.power_limit_missing` | SOURCES | 2 | WARNING | Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `moc_przylaczeniowa_mw` |
 | `earthing.neutral_grounding_inconsistent` | SOURCES | 2 | BLOCKER | Konfiguracja punktu neutralnego niespójna: rezystor bez R_N, dławik bez X_N albo punkt izolowany ze skończoną impedancją zerową — popraw typ i impedancję | panel: `inspector`, tab: `parametry`, focus: `neutral_grounding` |
 | `source.connection_missing` | SOURCES | 2 | BLOCKER | Źródło zasilania nie jest podłączone do szyny | panel: `inspector`, tab: `polaczenia` |
+| `source.gpz_section_unsupplied` | SOURCES | 2 | WARNING | Sekcja GPZ bez zasilania — sekcja nie ma równoważnika sieci ani transformatora pod napięciem, a łącznik szyn jest otwarty; rozpływ i zwarcia liczą część zasilaną, sekcja jest w wynikach bez napięcia (zamknij łącznik albo zasil sekcję) | panel: `inspector`, tab: `polaczenia` |
 | `source.multiple_grid_sources_in_island` | SOURCES | 2 | BLOCKER | Dwa lub więcej źródeł sieciowych w jednej wyspie — rozpływ mocy wymaga jednej szyny bilansującej na wyspę (otwórz sprzęgło albo pozostaw jedno źródło sieciowe w wyspie) | panel: `inspector`, tab: `polaczenia` |
 | `connection.cos_phi_required_missing` | SOURCES | 3 | WARNING | Brak wymaganego cosφ z warunków OSD — uzupełnij, by ocenić współczynnik mocy w punkcie przyłączenia | panel: `projekt`, tab: `przylaczenie`, focus: `wymagany_cos_phi` |
 | `nn.measurement.required_missing` | SOURCES | 3 | WARNING | Źródło nN nie ma przypisanego punktu pomiaru energii | panel: `inspector`, tab: `pomiary`, focus: `measurement_point` |
@@ -137,6 +138,7 @@ Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `nn.brak_r_b` | STATIONS | 2 | BLOCKER | Układ TT: transformator stacji nie ma punktu neutralnego nN uziemionego bezpośrednio z rezystancją uziomu stacji | panel: `inspector`, tab: `parametry`, focus: `lv_neutral` |
 | `nn.brak_rcd` | STATIONS | 2 | BLOCKER | Układ TT: na trasie do punktu obwodu nN nie ma wyłącznika różnicowoprądowego z katalogu (I_Δn) — ochrona przez samoczynne wyłączenie nie ma czym wyłączyć | panel: `inspector`, tab: `nn`, modal: `add_nn_rcd` |
 | `nn.bus_missing` | STATIONS | 2 | BLOCKER | Stacja wymaga szyny nN | panel: `inspector`, tab: `nn` |
+| `station.gpz_structure_incomplete` | STATIONS | 2 | WARNING | Struktura GPZ niekompletna — brak toru zasilania sekcji 110 kV, transformatora sekcji SN, łącznika szyn albo stan łączników niezgodny z trybem rezerwy | panel: `inspector`, tab: `polaczenia` |
 | `station.type_invalid` | STATIONS | 2 | BLOCKER | Nieprawidłowy typ stacji | panel: `inspector`, tab: `parametry` |
 | `station.voltage_missing` | STATIONS | 2 | BLOCKER | Stacja nie ma zdefiniowanego napięcia | panel: `inspector`, tab: `parametry`, focus: `voltage_kv` |
 | `transformer.connection_missing` | STATIONS | 2 | BLOCKER | Transformator nie ma zdefiniowanego połączenia | panel: `inspector`, tab: `polaczenia` |
@@ -152,6 +154,7 @@ Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `station.kind_mismatch` | STATIONS | 3 | WARNING | Zadeklarowany rodzaj stacji różni się od rodzaju wynikającego z topologii (liczba pól liniowych, sprzęgło) — rysunek i drzewo pokazują rodzaj z topologii | panel: `inspector`, modal: `update_element_parameters` |
 | `station.line_field_multiple_segments` | STATIONS | 3 | BLOCKER | Z jednego pola liniowego SN wychodzi więcej niż jeden odcinek | panel: `inspector`, tab: `pola` |
 | `station.required_field_missing` | STATIONS | 3 | BLOCKER | Stacja nie ma wymaganego pola SN | panel: `inspector`, tab: `pola` |
+| `station.szr_sn_with_generation` | STATIONS | 3 | WARNING | Łącznik szyn SN zamknięty działaniem SZR przy pracujących źródłach wytwórczych — SZR SN wymaga wyłączenia linii w trybie generacji, inaczej jest blokowany | panel: `inspector`, tab: `polaczenia` |
 | `transformer.bay_missing` | STATIONS | 3 | WARNING | Transformator jest połączony elektrycznie z szyną SN, lecz nie posiada kompletnej konfiguracji pola transformatorowego po stronie SN | panel: `inspector`, tab: `pola` |
 | `station.nn_outgoing_min_1` | STATIONS | 4 | WARNING | Stacja powinna mieć co najmniej 1 odpływ nN | panel: `inspector`, tab: `nn`, modal: `add_nn_outgoing` |
 | `oze.bess_no_transformer` | GENERATORS | 1 | BLOCKER | Źródło BESS nie ma transformatora w ścieżce zasilania (zakaz przyłączenia do SN bez transformatora) | panel: `inspector`, tab: `transformator`, modal: `MODAL_WSTAW_STACJE_SN_NN_WARIANT_2` |
@@ -226,20 +229,20 @@ Wszystkie **162** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | Poziom | Liczba kodów |
 |--------|---------------|
 | BLOCKER | 104 |
-| WARNING | 55 |
+| WARNING | 58 |
 | INFO | 3 |
-| **Razem** | **162** |
+| **Razem** | **165** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
-| SOURCES | 18 |
+| SOURCES | 19 |
 | TOPOLOGY | 6 |
 | CATALOGS | 49 |
-| STATIONS | 23 |
+| STATIONS | 25 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **162** |
+| **Razem** | **165** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

@@ -135,7 +135,6 @@ import {
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
 import type { SceneV3 } from '../scene/buildScene';
-import type { GpzWynikiOverlay } from './gpzWyniki';
 
 export interface SldV3Overlay {
   /**
@@ -259,13 +258,6 @@ export interface SldV3Overlay {
    * `false` ⇒ prezentacja normalna. Zero fizyki, zero zgadywania — sam sygnał.
    */
   readonly resultsStale?: boolean;
-  /**
-   * GPZ-PARYTET (§0 pkt 5): wyniki pól i bilansu GPZ z `results/v1` (wiersze `Bay`
-   * i `Substation` liczone przez backend) dla belki nagłówka i tabeli „Pola GPZ".
-   * `null`/brak = brak wyniku rozpływu mocy — kanwa pisze to jawnie w nagłówku
-   * i w tytule tabeli, wartości „brak". Nieaktualność: `resultsStale`.
-   */
-  readonly gpzWyniki?: GpzWynikiOverlay | null;
   /**
    * Deklaracja POCHODZENIA nakładki (spec §14.2 „overlay wyłącznie z
    * wyniku", program P-A): z którego przypadku obliczeniowego pochodzą

@@ -103,8 +103,16 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
       return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.FW_SN);
     case FIELD_ROLE.DER_UNKNOWN:
       return fieldLabelInSentencePl(FIELD_SOURCE_LABEL_PL);
-    default:
-      return 'pole';
+    // Karta GPZ-H5-SLD etap 3: pola funkcyjne sekcji SN (ENEA Zeszyt 1 §13) — własne nazwy
+    // z kanonu; dawniej oba wpadały w gałąź domyślną („pole") albo w rolę liniową.
+    case FIELD_ROLE.EARTHING:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.UZIEMIAJACE);
+    case FIELD_ROLE.CAPACITOR:
+      return fieldLabelInSentencePl(FIELD_ROLE_LABEL_PL.KOMPENSACYJNE);
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola bez oznaczenia funkcyjnego: ${String(nieobsluzona)}`);
+    }
   }
 }
 
@@ -138,24 +146,48 @@ export function fieldFunctionalDesignation(role: FieldRole): string {
  *
  * KONWENCJA (jedna dla całego rysunku): `F01`, `F02`… pola liniowe · `FT1`…
  * transformatorowe · `FS1`… sprzęgła · `FP1`… pomiarowe · `FG1`… źródłowe
- * (DER). Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
+ * (DER) · `FU1`… zespołu uziemiającego · `FK1`… baterii kondensatorów. Liczniki są ODRĘBNE per klasa roli, więc dodanie pola
  * jednej klasy nie przenumerowuje pozostałych.
  */
 export function fieldOrdinalDesignation(role: FieldRole, counters: Map<string, number>): string {
-  const cls =
-    role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER
-      ? 'FT'
-      : role === FIELD_ROLE.COUPLER
-        ? 'FS'
-        : role === FIELD_ROLE.MEASUREMENT
-          ? 'FP'
-          : role === FIELD_ROLE.DER_PV || role === FIELD_ROLE.DER_BESS || role === FIELD_ROLE.DER_FW
-            || role === FIELD_ROLE.DER_UNKNOWN
-            ? 'FG'
-            : 'F';
+  const cls = klasaOznacznikaPola(role);
   const next = (counters.get(cls) ?? 0) + 1;
   counters.set(cls, next);
   return cls === 'F' ? `F${String(next).padStart(2, '0')}` : `${cls}${next}`;
+}
+
+/** Klasa oznacznika pozycyjnego pola (konwencja wyżej; karta GPZ-H5-SLD etap 3: `FU`…
+ *  pola zespołu uziemiającego, `FK`… pola baterii kondensatorów). JEDNO źródło dla stacji
+ *  i GPZ (`compose/gpz.ts`); wyliczenie wyczerpujące — nowa rola bez klasy jest błędem typu. */
+export function klasaOznacznikaPola(role: FieldRole): 'F' | 'FT' | 'FS' | 'FP' | 'FG' | 'FU' | 'FK' {
+  switch (role) {
+    case FIELD_ROLE.LINE_IN:
+    case FIELD_ROLE.LINE_OUT:
+    case FIELD_ROLE.LINE_BRANCH:
+    case FIELD_ROLE.RMU_LINE:
+    case FIELD_ROLE.GPZ_LINE_BAY:
+      return 'F';
+    case FIELD_ROLE.TRANSFORMER:
+    case FIELD_ROLE.RMU_TRANSFORMER:
+      return 'FT';
+    case FIELD_ROLE.COUPLER:
+      return 'FS';
+    case FIELD_ROLE.MEASUREMENT:
+      return 'FP';
+    case FIELD_ROLE.DER_PV:
+    case FIELD_ROLE.DER_BESS:
+    case FIELD_ROLE.DER_FW:
+    case FIELD_ROLE.DER_UNKNOWN:
+      return 'FG';
+    case FIELD_ROLE.EARTHING:
+      return 'FU';
+    case FIELD_ROLE.CAPACITOR:
+      return 'FK';
+    default: {
+      const nieobsluzona: never = role;
+      throw new Error(`Rola pola bez klasy oznacznika: ${String(nieobsluzona)}`);
+    }
+  }
 }
 
 /**

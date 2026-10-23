@@ -464,6 +464,11 @@ MIEJSCA_BUDOWY_POLA: dict[str, dict[str, int]] = {
         "domain_operations.py:_allocate_gpz_line_field_for_branch": 1,
         "domain_operations.py:_zbuduj_pola_nn": 2,  # wyłącznik główny nN + odpływy nN
         "domain_operations.py:_domknij_pole": 1,  # pole domykane stacji końca ciągu
+        # pola struktury GPZ H5 (karta GPZ-H5): pole liniowe 110 kV sekcji, pola
+        # transformatorowe obu stron, pola łączników szyn i pola funkcyjne SN — BEZ aparatów
+        # domyślnych (aparat wybiera projektant operacją wyposażenia pola; propozycja składu
+        # 110 kV jest w `meta.apparatus_proposal` z `modelled: False`).
+        "domain_operations.py:_pole_struktury": 1,
         "domain_operations_v2.py:_add_nn_outgoing_field_internal": 1,
         "domain_operations_v2.py:_append_nn_source_meta_field": 1,
         "domain_operations_v2.py:_append_converter_field_if_needed": 1,
@@ -511,7 +516,7 @@ def _wywolania_buildera() -> dict[str, dict[str, int]]:
 
 
 def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
-    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (14 wywołań buildera),
+    """Każde wywołanie `zbuduj_pole` pochodzi z zadeklarowanego miejsca (15 wywołań buildera),
     a drogi z wyborem katalogowym przekazują aparaty i konfigurację z resolvera."""
     znalezione = _wywolania_buildera()
     assert znalezione == MIEJSCA_BUDOWY_POLA, (
@@ -519,7 +524,7 @@ def test_inwentarz_miejsc_budowy_pola_jest_zamkniety() -> None:
         "rozstrzygnac, skad bierze aparaty pola (resolver katalogu vs jawny argument) i "
         f"dopisac sie do inwentarza. Jest: {znalezione}"
     )
-    assert sum(sum(g.values()) for g in znalezione.values()) == 14
+    assert sum(sum(g.values()) for g in znalezione.values()) == 15
 
 
 def test_zadna_operacja_nie_sklada_rekordu_pola_recznie() -> None:

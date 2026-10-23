@@ -26,6 +26,9 @@ function snapshotFixture(revision = 1): EnergyNetworkModel {
   } as unknown as EnergyNetworkModel;
 }
 
+// Blokada fikstury (`source.grid_supply_missing`, brak zasilania) stoi od karty
+// GPZ-H5-SLD pkt 3d w sekcji „Do uruchomienia obliczeń" (`mvd-cel-wspolne`) — blokuje
+// każdy bieg, nie tylko zwarcia. Intencja testów sekcji bez zmian: sekcja blokady.
 function ustawZBlokadami() {
   useSnapshotStore.setState({
     snapshot: snapshotFixture(),
@@ -87,7 +90,7 @@ describe('PanelGotowosci — stany przestrzeni', () => {
   it('lista: sekcje wg celu + podsumowanie liczbowe', () => {
     ustawZBlokadami();
     render(<PanelGotowosci {...props()} />);
-    expect(screen.getByTestId('mvd-cel-zwarcia')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-cel-wspolne')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-cel-zabezpieczenia')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-gotowosc-blokady-calkowite')).toHaveTextContent('1');
     expect(screen.getByTestId('mvd-gotowosc-ostrzezenia-calkowite')).toHaveTextContent('1');
@@ -157,8 +160,8 @@ describe('PanelGotowosci — filtry (waga/cel/gałąź)', () => {
     fireEvent.change(screen.getByLabelText(GOTOWOSC_STRINGS.filtrCelEtykieta), {
       target: { value: 'zabezpieczenia' },
     });
-    const sekcjaZwarcia = screen.getByTestId('mvd-cel-zwarcia');
-    expect(within(sekcjaZwarcia).getByText(GOTOWOSC_STRINGS.filtrBrakWynikow)).toBeInTheDocument();
+    const sekcjaBlokady = screen.getByTestId('mvd-cel-wspolne');
+    expect(within(sekcjaBlokady).getByText(GOTOWOSC_STRINGS.filtrBrakWynikow)).toBeInTheDocument();
     const sekcjaZabezp = screen.getByTestId('mvd-cel-zabezpieczenia');
     expect(within(sekcjaZabezp).getByText('REL-2')).toBeInTheDocument();
   });
@@ -187,8 +190,8 @@ describe('PanelGotowosci — zwijanie sekcji', () => {
 
   it('klik nagłówka sekcji zwija treść (aria-expanded)', () => {
     render(<PanelGotowosci {...props()} />);
-    const naglowek = within(screen.getByTestId('mvd-cel-zwarcia')).getByRole('button', {
-      name: /Do obliczeń zwarciowych/,
+    const naglowek = within(screen.getByTestId('mvd-cel-wspolne')).getByRole('button', {
+      name: /Do uruchomienia obliczeń/,
     });
     expect(naglowek).toHaveAttribute('aria-expanded', 'true');
     fireEvent.click(naglowek);

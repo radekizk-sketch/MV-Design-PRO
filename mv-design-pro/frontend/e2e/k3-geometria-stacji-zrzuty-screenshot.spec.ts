@@ -17,9 +17,11 @@
  *  - otwarcie sprzęgła istniejącą operacją `set_normal_open_point` (operacji łączeniowych nie
  *    dopisujemy — zakres W5-C) → rysunek sprzęgła otwarty → nowy bieg rozpływu mocy. Przed
  *    otwarciem szyna sekcji B ma wynik napięcia; po otwarciu sekcja B wraz z ciągiem za nią
- *    jest wyspą bez zasilania i backend ODMAWIA biegu blokadą walidatora E003 z tą szyną
- *    w `element_refs` (stan dzisiejszy: wyspa bez zasilania blokuje każdą analizę; wynik
- *    „sekcja bez napięcia" zamiast odmowy należy do stanów łączeniowych karty W5-C).
+ *    jest wyspą bez zasilania: walidator zgłasza E003 (ważne, nie blokuje) z tą szyną
+ *    w `element_refs`, a bieg rozpływu liczy część zasilaną i oznacza szynę sekcji B
+ *    znacznikiem `BEZ_NAPIECIA` w wierszu wyniku (kanon karty GPZ-H5 R7 — dawniej wyspa
+ *    bez zasilania blokowała bieg odmową 409; intencja testu, czyli „sekcja B po otwarciu
+ *    sprzęgła jest odcięta od zasilania, a backend to wie", zostaje).
  *
  * Zrzuty: `katalogZrzutow` (domyślnie `test-results/zrzuty-dokumentacji/…`), pięć stacji × dwa
  * motywy + sprzęgło otwarte × dwa motywy.
@@ -121,19 +123,13 @@ async function kadrStacji(page: Page, st: Stacja): Promise<void> {
   await page.waitForTimeout(400);
 }
 
-/** Napięcie szyny z wyniku rozpływu (results/v1, nakładka elementów) — `null`, gdy wynik nie
- *  niesie wartości (szyna bez zasilania). */
-/** Odmowa utworzenia biegu rozpływu (409) — treść odpowiedzi backendu. */
-async function odmowaBieguRozplywu(request: APIRequestContext, caseId: string): Promise<string> {
-  const utworz = await request.post(`${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`, {
-    data: { analysis_type: 'LOAD_FLOW' },
-    timeout: 60000,
-  });
-  expect(utworz.status(), 'bieg rozpływu przy wyspie bez zasilania').toBe(409);
-  return utworz.text();
+interface WynikRozplywu {
+  readonly elementy: Record<string, Record<string, unknown>>;
+  readonly wiersze: readonly { element_ref?: string; values?: { flags?: string[] } }[];
 }
 
-async function biegRozplywu(request: APIRequestContext, caseId: string): Promise<Record<string, Record<string, unknown>>> {
+/** Bieg rozpływu do końca: elementy nakładki i wiersze `element_results` (results/v1). */
+async function biegRozplywu(request: APIRequestContext, caseId: string): Promise<WynikRozplywu> {
   const utworz = await request.post(`${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`, {
     data: { analysis_type: 'LOAD_FLOW' },
     timeout: 60000,
@@ -143,8 +139,11 @@ async function biegRozplywu(request: APIRequestContext, caseId: string): Promise
   await wykonajBiegDoKonca(request, BACKEND_BASE, runId);
   const wynik = await request.get(`${BACKEND_BASE}/api/execution/runs/${runId}/results/v1`);
   expect(wynik.ok()).toBeTruthy();
-  return ((await wynik.json()) as { overlay_payload: { elements: Record<string, Record<string, unknown>> } }).overlay_payload
-    .elements;
+  const cialo = (await wynik.json()) as {
+    overlay_payload: { elements: Record<string, Record<string, unknown>> };
+    element_results?: WynikRozplywu['wiersze'];
+  };
+  return { elementy: cialo.overlay_payload.elements, wiersze: cialo.element_results ?? [] };
 }
 
 test('GEOMETRIA-STACJI — stacje pięciu rodzajów z topologii, sekcje i sprzęgło z modelu (oba motywy)', async ({
@@ -235,8 +234,12 @@ test('GEOMETRIA-STACJI — stacje pięciu rodzajów z topologii, sekcje i sprzę
   const przed = await biegRozplywu(request, seed.caseId);
   model = await operacjaDomenowa(request, seed.caseId, 'set_normal_open_point', { switch_ref: sprzeglo.ref_id });
   expect((model.branches ?? []).find((g) => g.ref_id === sprzeglo.ref_id)?.status).toBe('open');
-  expect(przed[sekcjaB], 'wynik szyny sekcji B przy zamkniętym sprzęgle').toBeTruthy();
-  const odmowa = await odmowaBieguRozplywu(request, seed.caseId);
+  expect(przed.elementy[sekcjaB], 'wynik szyny sekcji B przy zamkniętym sprzęgle').toBeTruthy();
+  const flagiSekcjiB = (w: WynikRozplywu) =>
+    w.wiersze.filter((r) => r.element_ref === sekcjaB).flatMap((r) => r.values?.flags ?? []);
+  expect(flagiSekcjiB(przed), 'sekcja B zasilana przy zamkniętym sprzęgle').not.toContain('BEZ_NAPIECIA');
+  const po = await biegRozplywu(request, seed.caseId);
+  expect(flagiSekcjiB(po), 'po otwarciu sprzęgła sekcja B bez napięcia w wyniku').toContain('BEZ_NAPIECIA');
   const walidacja = await request.get(`${BACKEND_BASE}/api/cases/${seed.caseId}/enm/validate`, { timeout: 30000 });
   expect(walidacja.ok()).toBeTruthy();
   const wyspy = ((await walidacja.json()) as { issues: { code: string; element_refs: string[] }[] }).issues.filter(
@@ -248,7 +251,7 @@ test('GEOMETRIA-STACJI — stacje pięciu rodzajów z topologii, sekcje i sprzę
   ).toBe(true);
   test.info().annotations.push({
     type: 'sekcja B przed i po otwarciu sprzęgła',
-    description: `przed otwarciem: ${JSON.stringify(przed[sekcjaB])}; po otwarciu: odmowa biegu ${odmowa}`,
+    description: `przed otwarciem: ${JSON.stringify(przed.elementy[sekcjaB])}; po otwarciu: ${JSON.stringify(po.elementy[sekcjaB] ?? null)}, znaczniki ${JSON.stringify(flagiSekcjiB(po))}`,
   });
 
   await page.reload({ waitUntil: 'commit' });

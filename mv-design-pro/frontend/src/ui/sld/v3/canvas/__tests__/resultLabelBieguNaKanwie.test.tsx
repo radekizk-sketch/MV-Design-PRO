@@ -173,15 +173,18 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
     expect(container.querySelectorAll('[data-testid^="sld-v3-flow-arrow-"]').length).toBeGreaterThan(0);
   });
 
-  it('POKRYCIE w panelu: 10 z 25 punktów + 2 w tabeli pól GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
+  it('POKRYCIE w panelu: 10 z 28 punktów + 5 w karcie GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
     const uzytkownik = userEvent.setup();
     renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 10 z 25 punktów wyniku',
+      // GPZ-H5-SLD etap 3: 25 → 28 — backend H5 (scalenie 88557ceb7) zakłada pole liniowe
+      // 110 kV sekcji WN oraz pola TR po obu stronach transformatora (`bay_wn`, `bay_sn`);
+      // każde z nich niesie wiersz rozpływu i trafia do karty GPZ (2 → 5), etykiet bez zmian.
+      'Etykiety: 10 z 28 punktów wyniku',
     );
     expect(screen.getByTestId('sld-v3-result-coverage-gpz').textContent).toBe(
-      'W tabeli pól GPZ: 2 punktów wyniku (pola i bilans GPZ)',
+      'W karcie GPZ (kliknij nagłówek GPZ): 5 punktów wyniku (pola i bilans GPZ)',
     );
     const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
     expect(braki).toContain('7 nierysowanych w modelu');

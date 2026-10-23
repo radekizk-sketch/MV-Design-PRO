@@ -187,11 +187,19 @@ const LF_BUS: readonly ResultLabelLineSpec[] = [
   { code: 'ANGLE_DEG', prefix: 'δ', format: formatScalar },
 ];
 
-/** Rozpływ — transformator: obciążenie [%] najważniejsze (L1, wym. 5), potem
- *  moc pozorna S i straty ΔP. Pozycja zaczepu = ISTNIEJĄCY badge OLTC (nie
- *  dublujemy tutaj — §0.5). */
+/** Rozpływ — transformator: obciążenie [%] najważniejsze (L1, wym. 5), potem moc czynna
+ *  P i bierna Q z KIERUNKIEM (karta GPZ-H5-SLD pkt 3a), moc pozorna S i straty ΔP. P/Q to
+ *  `p_from_mw`/`q_from_mvar` wiersza gałęzi backendu (`canonical_analysis.build_branch_results`,
+ *  kody P_MW/Q_Mvar) — moc na zacisku WN (`enm/mapping.py`: `from_node_id` transformatora =
+ *  szyna WN). Kierunek odniesienia jest w podpisie („WN→SN"), znak w wartości: „+" przepływ
+ *  WN→SN, „-" przepływ zwrotny SN→WN (np. generacja OZE). Bez kierunku sam moduł S nie mówi,
+ *  czy GPZ pobiera, czy oddaje moc. Pozycja zaczepu = ISTNIEJĄCY badge OLTC (nie dublujemy
+ *  tutaj — §0.5). */
+export const KIERUNEK_MOCY_TRANSFORMATORA_PL = 'WN→SN';
 const LF_TRANSFORMER: readonly ResultLabelLineSpec[] = [
   { code: 'LOADING_PCT', prefix: 'obc.', format: formatScalar },
+  { code: 'P_MW', prefix: `P ${KIERUNEK_MOCY_TRANSFORMATORA_PL}`, format: formatSignedScalar },
+  { code: 'Q_Mvar', prefix: `Q ${KIERUNEK_MOCY_TRANSFORMATORA_PL}`, format: formatSignedScalar },
   { code: 'S_MVA', prefix: 'S', format: formatScalar },
   { code: 'LOSSES_P_MW', prefix: 'ΔP', format: formatScalar },
 ];

@@ -27,6 +27,7 @@
  * każdej stacji każdego modelu ENM z fikstur generowanych i na modelu iloczynu cech (plik
  * oczekiwań wytwarza backend, `tests/reference_networks/rodzaj_stacji_parytet.py`).
  */
+import { liczbaZOdmiana } from './odmianaLiczebnikowa';
 import { polaSnStacji, type ModelPol, type RekordPola } from './polaStacji';
 import { szynyStacji, type GalazDlaSzyn, type StacjaDlaSzyn } from './szynyStacji';
 
@@ -68,6 +69,10 @@ export const KATEGORIA_ROLI_POLA: Readonly<Record<string, KategoriaRoli>> = {
   TR: 'inne',
   POMIAROWE: 'inne',
   MEASUREMENT: 'inne',
+  UZIEMIAJACE: 'inne',
+  EARTHING: 'inne',
+  KOMPENSACYJNE: 'inne',
+  CAPACITOR: 'inne',
   PV_SN: 'inne',
   PV: 'inne',
   OZE_PV: 'inne',
@@ -149,11 +154,7 @@ export function jestRodzajemStacji(value: unknown): value is RodzajStacji {
 
 /** „1 pole liniowe", „2 pola liniowe", „5 pól liniowych" (lustro `liczba_pol_pl`). */
 function liczbaPolLiniowychPl(liczba: number): string {
-  if (liczba === 1) return '1 pole liniowe';
-  if ([2, 3, 4].includes(liczba % 10) && ![12, 13, 14].includes(liczba % 100)) {
-    return `${liczba} pola liniowe`;
-  }
-  return `${liczba} pól liniowych`;
+  return liczbaZOdmiana(liczba, { jeden: 'pole liniowe', kilka: 'pola liniowe', wiele: 'pól liniowych' });
 }
 
 /** Przyczyna rodzaju w słowach projektanta (lustro `przyczyna_rodzaju_pl`). */

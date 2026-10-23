@@ -133,7 +133,7 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
       ? lacznikiPortow.map((lacznik) => ({
           key: `switch_${lacznik.ref_id}`,
           label: `Stan łącznika — ${lacznik.name}`,
-          value: opisStanuLacznika(lacznik),
+          value: opisStanuLacznika(snapshot, lacznik),
         }))
       : [{ key: 'switch_none', label: 'Stan łącznika', value: 'Brak łączników portów w modelu' }];
 

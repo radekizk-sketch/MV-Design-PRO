@@ -46,6 +46,7 @@ import {
   type KartaTechniczna,
 } from '../../sld/shared/kartaTechnicznaElementu';
 import { useKatalogiKarty } from './katalogiKarty';
+import { useStanKartyGpz, type StanKartyGpz } from './stanKartyGpz';
 
 /** Bieg, z którego pochodzi sekcja „Wyniki" (karta K8: atrybuty `data-run-id`/`data-swiezosc`). */
 interface ZrodloWynikowElementu {
@@ -136,6 +137,9 @@ export interface StanPaneluElementu {
   /** Zmiana wartości karty operacją domenową; `null` poza trybem edycji modelu i dla
    *  obiektu tylko do odczytu (bez przycisku „Zmień" — bez atrapy). */
   readonly edytuj: ((edycja: EdycjaWiersza) => void) | null;
+  /** Karta GPZ-H5-SLD etap 2: karta GPZ (bilans, przeciążenia, tabela pól) — `null`, gdy
+   *  selekcja nie jest GPZ rysowanym na schemacie (`stanKartyGpz.ts`). */
+  readonly kartaGpz: StanKartyGpz | null;
 }
 
 export function useStanPaneluElementu(): StanPaneluElementu | null {
@@ -166,6 +170,7 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     [kontekstKanwy, selekcjaId, snapshot, index],
   );
   const wykonawca = useSldActionExecutor({ readOnly: kontekst?.tylkoOdczyt ?? false });
+  const kartaGpz = useStanKartyGpz(kontekst?.temat?.modelRef ?? selekcjaId);
 
   const dane = useMemo(() => {
     if (!kontekst) return null;
@@ -270,5 +275,6 @@ export function useStanPaneluElementu(): StanPaneluElementu | null {
     konfiguracja,
     karta,
     edytuj: edycjaDozwolona ? edytuj : null,
+    kartaGpz,
   };
 }

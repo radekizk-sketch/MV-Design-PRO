@@ -1249,9 +1249,38 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // z SAMYMI nowymi identyfikatorami (odwzorowanie 1:1 po pozycji, 487 ziaren, 0 konfliktów)
     // — 23168/46400/46400 = fikstura nowa. Całe +416 to inna kolejność remisu
     // `id.localeCompare`, nie trasowanie.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(23168);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(46400);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(46400);
+    // GPZ-H5-SLD etap 2 (2026-10-22): L0 23168 → 23296 (+128), L1/L2 bez zmian. Oznaczenie pola
+    // GPZ stoi w pionowym pasmie po lewej stronie toru, od szyny w dół („Pole liniowe GPZ 1.1",
+    // 192 px wzdłuż tekstu), dłuższym niż stos pola (ostatni symbol 384 + 16) — pasmo jest
+    // przeszkodą świata, więc dół bbox kompozycji GPZ schodzi o 64 px niżej. Objazd rynną
+    // GPZ → S0 schodzi pod dół bbox (`belowY`, ten sam świat na każdym LOD — ciągłość LOD),
+    // więc na L0 (GPZ zwinięty, port glifu nad wejściem S0) ciąg z pola 001 ma +64 px w dół
+    // i +64 px w górę: rozbicie per właściciel (sonda karty, kod bazy d82493842 vs kod karty,
+    // ta sama fikstura) — `…/segment` 152 → 232 (+80), `…/segment_L` 136 → 184 (+48); poza tymi
+    // dwoma właścicielami różnic brak. Na L1/L2 objazd już wcześniej schodził pod pasmo pól.
+    // GPZ-H5-SLD etap 3 (2026-10-22, scalenie backendu H5): 23296/46400/46400 →
+    // 22368/45584/45584 — REGENERACJA fikstury, nie zmiana kodu. Backend tworzy stronę 110 kV
+    // GPZ jako sekcję modelu (`gpz_hv_sections`: szyna `bus_wn`, pole liniowe 110 kV z torem
+    // zasilania, pola WN i SN transformatora); ładunek operacji GPZ i ziarno identyfikatorów
+    // są nowe (487 ziaren). DOWÓD 2×2 (sonda karty, ten sam kod; treść fikstury sprzed
+    // scalenia z SAMYMI nowymi identyfikatorami — odwzorowanie 1:1 po pozycji, 487 ziaren,
+    // 0 konfliktów): (1) same nowe identyfikatory — 22368/45472/45472 (−928 jednolicie, inna
+    // kolejność remisu `id.localeCompare` pasm odgałęzień, precedens SLD-SUBSTRAT/GPZ-MODEL);
+    // (2) sama nowa treść GPZ — L0 ±0, L1/L2 +112 wyłącznie w GPZ: zaczep pola 110 kV
+    // `#hv-bus-tap` +40, zejście źródła na szczyt pola 110 kV 56 zamiast 24 przy końcu szyny
+    // (+32), `#hv-field-to-tr` 16 → 48 (+32), `#tr-field-to-bus` 40 → 48 (+8); przesunięcia
+    // tras GPZ → S0 między właścicielami odcinków sumują się do zera.
+    // GPZ-H5-INTEGRACJA (2026-10-22): 22368/45584/45584 → 22368/45568/45568 — REGENERACJA
+    // fikstury, nie zmiana kodu. Nazwa źródła 110 kV to nazwa toru („Linia 110 kV zasilająca"),
+    // stacja wyłącznie w `supplying_station_name` (`add_grid_source_sn`); fikstura różni się
+    // WYŁĄCZNIE nazwą źródła. DOWÓD (sonda per właściciel odcinka, ten sam kod, fikstura
+    // przed/po): tabliczka źródła traci wiersz „Tor zasilania: …" (tor = nazwa), więc
+    // `…/hv_section/001/source#grid-source-drop` 56 → 40 (−16) na L1/L2; poza nim tylko
+    // przesunięcie pionów między dwoma odcinkami odgałęzienia (`…/segment_R` i `…/segment`:
+    // L0 −48/+48, L1 −48/+48, L2 −56/+56), sumujące się do zera — L0 ±0.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22368);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45568);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45568);
   });
 });
 
@@ -1371,7 +1400,10 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
       // unikalnym per stacja).
       expect(zStacji.length).toBeGreaterThan(1);
       expect(new Set(zStacji.map((l) => l.text)).size).toBe(zStacji.length);
-      expect(busbarLabels.some((l) => /^Szyna WN( · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
+      // GPZ-H5-SLD etap 3: strona 110 kV substratu jest sekcją modelu (`gpz_hv_sections`) —
+      // opis szyny WN niesie nazwę sekcji 110 kV z backendu („Sekcja 110 kV 1"); dawna forma
+      // „Szyna WN · V kV" zostaje dla szyny WN bez sekcji modelu (wyrocznia produkcyjna wyżej).
+      expect(busbarLabels.some((l) => l.ownerRef.endsWith('#hv-bus-label') && /^Sekcja 110 kV \d+$/.test(l.text))).toBe(true);
     }
   });
 

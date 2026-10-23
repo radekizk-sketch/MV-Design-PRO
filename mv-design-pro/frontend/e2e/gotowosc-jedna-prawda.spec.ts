@@ -9,11 +9,21 @@
  * blokad były ZAWSZE zerowe, choć panel gotowości pokazywał blokady.
  *
  * SCENARIUSZ (kliki natywne, realny backend):
- * 1. sieć z BLOKADĄ gotowości (odcinek bez typu katalogowego) → drzewo topologii
- *    przestrzeni „Model" pokazuje NIEZEROWY licznik blokad na tym elemencie,
- *    zgodny z liczbą blokad w panelu gotowości i z odpowiedzią serwera;
- * 2. po naprawie blokady (przypisanie katalogu) licznik ZNIKA, a panel gotowości
- *    przestaje pokazywać ten element — obie prawdy idą razem.
+ * 1. sieć z UWAGĄ gotowości na szynach (łącznik normalnie otwarty odcina ciąg od źródła
+ *    ⇒ wyspa bez zasilania, E003) → drzewo topologii przestrzeni „Model" pokazuje
+ *    NIEZEROWY licznik ostrzeżeń na szynie wyspy, zgodny z liczbą ostrzeżeń w panelu
+ *    gotowości, w chromie i w odpowiedzi serwera;
+ * 2. po naprawie (zamknięcie łącznika) licznik ZNIKA, a chrom i panel liczą tyle, ile
+ *    serwer — obie prawdy idą razem.
+ *
+ * KANON (karta GPZ-H5, R7; korekta przy scaleniu GPZ-H5-INTEGRACJA 2026-10-22): wyspa
+ * odcięta od źródła NIE blokuje biegu — rozpływ i zwarcia liczą część zasilaną, a wyspa
+ * jest w wynikach „bez napięcia"; E003 ma ważność IMPORTANT. Dawny scenariusz zakładał
+ * E003 jako BLOKADĘ (`ready=false`) i padał na kanonie H5. Intencja (jedna prawda
+ * liczników we wszystkich czytelnikach — dawniej drzewo czytało nigdy nieodświeżany store
+ * i liczniki były ZAWSZE zerowe) jest ta sama: liczniki ostrzeżeń idą tą samą ścieżką
+ * (`budujLicznikiZReadiness`) co liczniki blokad, a operacje domenowe nie pozwalają
+ * zbudować blokady wskazującej szyny (odcinek bez katalogu jest odrzucany na wejściu).
  *
  * Wzorzec seedu i budowy sieci: e2e/stany-zerowe-akcje.spec.ts (real backend).
  */
@@ -212,9 +222,14 @@ async function zrzutObuMotywow(page: Page, nazwa: string): Promise<void> {
   await przelaczMotyw(page);
 }
 
-/** Liczba blokad wg SERWERA (źródło 1). */
-function blokadySerwera(gotowosc: ReadinessResponse): number {
-  return gotowosc.by_severity?.BLOCKER ?? 0;
+/** Liczba ostrzeżeń (IMPORTANT) wg SERWERA (źródło 1). */
+function ostrzezeniaSerwera(gotowosc: ReadinessResponse): number {
+  return gotowosc.by_severity?.IMPORTANT ?? 0;
+}
+
+/** Etykieta chromu dla `n` ostrzeżeń (`readinessLabel`, `ui2/shell/strings.ts`). */
+function etykietaOstrzezen(n: number): RegExp {
+  return new RegExp(`Gotowość: ${n} ostrzeże(nie|nia|ń)`);
 }
 
 /** Szyny widoczne w drzewie topologii (te same, na których siadają liczniki). */
@@ -245,7 +260,7 @@ async function rozwinGrupyDrzewa(page: Page): Promise<void> {
   }
 }
 
-test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gasną razem po naprawie', async ({
+test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ uwagę — i gasną razem po naprawie', async ({
   page,
   request,
 }) => {
@@ -275,28 +290,30 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   const segmenty = op?.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(segmenty.length).toBeGreaterThan(1);
 
-  // --- BLOKADA GOTOWOŚCI: łącznik normalnie otwarty odcina ciąg od źródła ---
+  // --- UWAGA GOTOWOŚCI: łącznik normalnie otwarty odcina ciąg od źródła ---------
   // (realna sytuacja projektowa: NOP na pierwszym odcinku ⇒ wyspa bez zasilania,
-  // walidator zwraca blokadę E003 wskazującą SZYNY — czyli węzły drzewa.)
+  // walidator zwraca E003 (IMPORTANT, kanon H5 R7) wskazujące SZYNY — węzły drzewa.)
   // Karta W5-C: punktem normalnie otwartym jest WYŁĄCZNIE łącznik (odcinek linii nie ma
   // pozycji normalnej) — projektant wstawia rozłącznik sekcyjny z katalogu na pierwszym
   // odcinku i przenosi na niego punkt podziału (dawniej spec wskazywał sam odcinek).
   const lacznik = await wstawLacznikNormalnieOtwarty(request, seed.caseId, segmenty[0]);
 
-  // ŹRÓDŁO 1 (serwer): blokada istnieje i wskazuje szyny obecne w drzewie.
+  // ŹRÓDŁO 1 (serwer): uwaga E003 istnieje, wskazuje szyny obecne w drzewie, a bieg nie
+  // jest blokowany (część zasilana liczona).
   const gotowoscPrzed = await pobierzGotowosc(request, seed.caseId);
-  expect(gotowoscPrzed.ready).toBe(false);
-  expect(blokadySerwera(gotowoscPrzed)).toBeGreaterThan(0);
+  expect(gotowoscPrzed.ready).toBe(true);
+  expect(gotowoscPrzed.by_severity?.BLOCKER ?? 0).toBe(0);
+  expect(ostrzezeniaSerwera(gotowoscPrzed)).toBeGreaterThan(0);
 
   const szyny = await szynyDrzewa(request, seed.caseId);
-  const blokadyNaSzynach = new Set<string>();
+  const uwagiNaSzynach = new Set<string>();
   for (const issue of gotowoscPrzed.issues ?? []) {
-    if (issue.severity !== 'BLOCKER') continue;
+    if (issue.severity !== 'IMPORTANT' || issue.code !== 'E003') continue;
     for (const ref of [issue.element_ref, ...(issue.element_refs ?? [])]) {
-      if (ref && szyny.has(ref)) blokadyNaSzynach.add(ref);
+      if (ref && szyny.has(ref)) uwagiNaSzynach.add(ref);
     }
   }
-  expect(blokadyNaSzynach.size).toBeGreaterThan(0);
+  expect(uwagiNaSzynach.size).toBeGreaterThan(0);
 
   await przeladujPowloke(page);
 
@@ -304,41 +321,48 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   // samej szynie, o której mówi serwer. Przed KD-1 badge NIE POJAWIAL sie nigdy.
   await page.getByRole('button', { name: /^Model sieci \d$/ }).click();
   await rozwinGrupyDrzewa(page);
-  const pierwszaSzyna = [...blokadyNaSzynach].sort()[0];
+  const pierwszaSzyna = [...uwagiNaSzynach].sort()[0];
   const badge = page.getByTestId(`mvd-tree-badge-${pierwszaSzyna}`);
   await expect(badge).toBeVisible({ timeout: 20000 });
   // Jeden problem = JEDEN wpis (regresja podwojnego liczenia element_ref/element_refs).
-  await expect(badge.locator('.mvd-tree-badge-blokady')).toHaveText('1');
+  await expect(badge.locator('.mvd-tree-badge-ostrzezenia')).toHaveText('1');
+  await expect(badge.locator('.mvd-tree-badge-blokady')).toHaveCount(0);
 
-  // ŹRÓDŁO 3 (chrom powłoki) — ta sama liczba blokad co u serwera.
-  await expect(page.getByTestId('mvd-status-gotowosc')).toContainText(
-    String(blokadySerwera(gotowoscPrzed)),
+  // ŹRÓDŁO 3 (chrom powłoki) — ta sama liczba ostrzeżeń co u serwera.
+  await expect(page.getByTestId('mvd-status-gotowosc')).toHaveText(
+    etykietaOstrzezen(ostrzezeniaSerwera(gotowoscPrzed)),
   );
 
   // Zrzut do oceny właściciela: DRZEWO topologii z licznikiem blokad na węźle
   // (przed KD-1 ten znacznik nie pojawiał się nigdy — liczniki były zerowe).
   await zrzutObuMotywow(page, 'gotowosc-drzewo');
 
-  // ŹRÓDŁO 4 (panel gotowości) — liczy DOKŁADNIE tyle blokad co serwer.
+  // ŹRÓDŁO 4 (panel gotowości) — liczy DOKŁADNIE tyle ostrzeżeń (i zero blokad) co serwer.
   await page.getByRole('button', { name: /^Gotowość \d$/ }).click();
   await expect(page.getByTestId('mvd-gotowosc-panel')).toBeVisible({ timeout: 20000 });
-  await expect(page.getByTestId('mvd-gotowosc-blokady-calkowite')).toHaveText(
-    String(blokadySerwera(gotowoscPrzed)),
+  await expect(page.getByTestId('mvd-gotowosc-ostrzezenia-calkowite')).toHaveText(
+    String(ostrzezeniaSerwera(gotowoscPrzed)),
   );
+  await expect(page.getByTestId('mvd-gotowosc-blokady-calkowite')).toHaveText('0');
 
-  // --- NAPRAWA blokady: zamkniecie lacznika przywraca zasilanie ciagu -------
+  // --- NAPRAWA: zamkniecie lacznika przywraca zasilanie ciagu ------------------
   await executeDomainOp(request, seed.caseId, 'close_switch', { switch_ref: lacznik });
 
   const gotowoscPo = await pobierzGotowosc(request, seed.caseId);
-  expect(blokadySerwera(gotowoscPo)).toBe(0);
+  expect((gotowoscPo.issues ?? []).filter((i) => i.code === 'E003')).toEqual([]);
+  expect(ostrzezeniaSerwera(gotowoscPo)).toBeLessThan(ostrzezeniaSerwera(gotowoscPrzed));
 
   await przeladujPowloke(page);
   await page.getByRole('button', { name: /^Model sieci \d$/ }).click();
   await rozwinGrupyDrzewa(page);
 
-  // Obie prawdy gasna RAZEM: licznik znika z drzewa, chrom przestaje liczyc blokady.
+  // Obie prawdy gasna RAZEM: licznik znika z drzewa, chrom liczy tyle ostrzeżeń co serwer.
   await expect(page.getByTestId(`mvd-tree-badge-${pierwszaSzyna}`)).toHaveCount(0, {
     timeout: 20000,
   });
-  await expect(page.getByTestId('mvd-status-gotowosc')).not.toContainText('blokad');
+  await expect(page.getByTestId('mvd-status-gotowosc')).toHaveText(
+    ostrzezeniaSerwera(gotowoscPo) > 0
+      ? etykietaOstrzezen(ostrzezeniaSerwera(gotowoscPo))
+      : /Gotowość: brak uwag/,
+  );
 });

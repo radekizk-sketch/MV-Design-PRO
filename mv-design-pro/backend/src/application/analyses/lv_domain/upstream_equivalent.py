@@ -21,7 +21,7 @@ Reuse-mapa (dowód "zero nowej fizyki"):
   IEC 60909-0 Tab.1, już używane przez `TransformerBranch.
   get_voltage_factor_c_max` i assembler zwarć `enm/assembler.py`) → c(MAX/MIN) z
   tolerancją sieci nN szyny (`enm.tolerancja_nn`; karta WSPOLCZYNNIK-C-JEDEN-NOSNIK).
-- `enm.mapping.build_zero_sequence_zbus` (sieć Z0 solvera zwarciowego dla
+- `enm.mapping.zbuduj_siec_zerowa` (sieć Z0 solvera zwarciowego dla
   zwarć 1F/2F+G, NIETKNIĘTA) → Z0 na szynie HV, best-effort (patrz
   `_hv_zero_sequence_ohm`).
 - `enm.hash.compute_switching_snapshot_hash`/`compute_enm_hash` (V12S-010,
@@ -50,7 +50,7 @@ from application.analyses.fault_loop.service import (
 )
 from application.analyses.kontrakt_liczb import kwantyzuj_kontrakt
 from enm.hash import compute_enm_hash, compute_switching_snapshot_hash
-from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
+from enm.mapping import map_enm_to_network_graph, zbuduj_siec_zerowa
 from enm.models import EnergyNetworkModel
 from enm.tolerancja_nn import wyspy_wezlow_nn
 from network_model.catalog.wartosci_robocze import rozstrzygnij_tolerancje_nn
@@ -85,10 +85,10 @@ def _hv_zero_sequence_ohm(
 ) -> tuple[complex | None, str | None]:
     """Z0 sieci SN w węźle HV transformatora — best effort, fail-closed.
 
-    Reuse: `enm.mapping.build_zero_sequence_zbus` (TA SAMA sieć Z0, której
+    Reuse: `enm.mapping.zbuduj_siec_zerowa` (TA SAMA sieć Z0, której
     solver zwarciowy używa dla zwarć 1F/2F+G) + `short_circuit_core.build_zbus`
     WYŁĄCZNIE dla indeksu węzła/z_base (deterministyczne, dzielą kolejność
-    węzłów z `build_zero_sequence_zbus` — udokumentowane wprost w jej
+    węzłów z `zbuduj_siec_zerowa` — udokumentowane wprost w jej
     docstringu). Zwraca `(None, powód_pl)` gdy sieć zerowa jest osobliwa
     (brak drogi powrotu prądu zerowego do ziemi — sieć izolowana bez B0) —
     NIGDY fabrykowane zero.
@@ -109,9 +109,18 @@ def _hv_zero_sequence_ohm(
     if node_index is None:
         return None, "Szyna HV poza rozwiązywalną siecią — Z0 nieobliczalne."
     try:
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        siec_zerowa = zbuduj_siec_zerowa(enm, graph)
     except OdmowaDanychError as exc:
         return None, str(exc)
+    # Karta GPZ-H5: węzeł bez drogi prądu zerowego do ziemi nie ma Z0 — dawniej macierz
+    # niosła w tym miejscu sfabrykowane Z0 ≈ 0 (bocznik 1e6 pu), czyli uziemienie bezpośrednie.
+    if hv_node_id in siec_zerowa.wezly_bez_drogi_zerowej:
+        return None, (
+            "Sieć SN bez drogi prądu zerowego do ziemi (punkt neutralny nieuziemiony w danych, "
+            "brak danych składowej zerowej gałęzi albo pojemności doziemnej B0) — Z0 "
+            "nieobliczalne."
+        )
+    z0_bus = siec_zerowa.z0_bus
     z_base_ohm = builder.get_zbase_ohm(hv_node_id)
     z0_ohm = complex(z0_bus[node_index, node_index]) * z_base_ohm
     return z0_ohm, None

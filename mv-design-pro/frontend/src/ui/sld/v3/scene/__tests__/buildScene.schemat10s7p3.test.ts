@@ -41,6 +41,7 @@ import {
   TOP_LEVEL_FIELD_CLEARANCE,
 } from '../../layout/clearances';
 import { computeStationTaps } from '../../layout/segments';
+import { bridgePointsForPolyline, interiorCrossings } from '../crossings';
 import { GRID } from '../../core/grid';
 import type { StationMeasureInput } from '../../layout/measure';
 import { czasProcesoraMs } from '../../../../../test/czasProcesora';
@@ -67,6 +68,11 @@ const FIXTURES: ReadonlyArray<{ readonly klasa: string; readonly nazwa: string; 
 ];
 
 const bigEnm = FIXTURES[FIXTURES.length - 1].enm;
+
+/** Skrzyżowania wymuszone kolejnością pól GPZ z modelu (ciąg z pola 001 do wiersza
+ *  pierwszego × ciąg z pola 002 do wiersza drugiego) — pomiar karty GPZ-H5-SLD etap 2,
+ *  ten sam na L0/L1/L2 (`buildScene.odczepTOdgalezienia.test.ts`). */
+const SKRZYZOWANIA_WYMUSZONE: Readonly<Record<string, number>> = { openBranch: 1, gpzFeeder: 1 };
 
 /** Podpis BAJT-poziomu sceny — symbole + segmenty + etykiety + węzły/crossings,
  *  deterministycznie posortowane (do porównania permutacyjnego §5). */
@@ -173,7 +179,8 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
     const rows: string[] = [];
     for (const fx of FIXTURES) {
       for (const lod of [0, 1, 2] as const) {
-        const m = layoutMetricsReport(buildSceneV3(fx.enm, lod));
+        const scena = buildSceneV3(fx.enm, lod);
+        const m = layoutMetricsReport(scena);
         rows.push(
           `${fx.klasa} ${fx.nazwa} L${lod}: subs=${fx.enm.substations.length} kol=${m.labelCollisionCount} przec=${m.subtreeIntersectionCount} nieort=${m.nonOrthogonalSegmentCount} niejedn=${m.ambiguousConnectionCount} cross=${m.crossingCount}`,
         );
@@ -181,7 +188,20 @@ describe('SCHEMAT-10 S7 etap 3 — generalizacja świateł + packingu (WYTYCZNE 
         expect(m.subtreeIntersectionCount, `${fx.nazwa} L${lod} przecięcia poddrzew`).toBe(0);
         expect(m.nonOrthogonalSegmentCount, `${fx.nazwa} L${lod} nieortogonalne`).toBe(0);
         expect(m.ambiguousConnectionCount, `${fx.nazwa} L${lod} niejednoznaczne`).toBe(0);
-        expect(m.crossingCount, `${fx.nazwa} L${lod} skrzyżowania`).toBe(0);
+        // Karta GPZ-H5-SLD etap 2 (intencja zachowana: zero skrzyżowań, których układ
+        // może uniknąć). Dawne „0" przechodziło dzięki fałszywym kropkom odczepu T: każde
+        // przecięcie sn×sn było rysowane jako POŁĄCZENIE. W fiksturach z dwoma polami GPZ
+        // (`openBranch`, `gpzFeeder`) magistrala z pola 001 idzie do wiersza pierwszego,
+        // a ciąg z pola 002 (na prawo od 001 wg kolejności pól modelu) do wiersza drugiego —
+        // ciąg z pola 002 schodzi wewnątrz pętli magistrali, więc jedno skrzyżowanie jest
+        // wymuszone kolejnością pól. Rysujemy je uczciwie: mostek, bez kropki węzła.
+        const przeciecia = interiorCrossings(scena.segments).filter((c) => !c.involvesBus);
+        const mostki = scena.segments.reduce(
+          (n, sg) => n + [...bridgePointsForPolyline(sg.points, przeciecia).values()].flat().length,
+          0,
+        );
+        expect(m.crossingCount, `${fx.nazwa} L${lod} skrzyżowania`).toBe(SKRZYZOWANIA_WYMUSZONE[fx.nazwa] ?? 0);
+        expect(mostki, `${fx.nazwa} L${lod} każde skrzyżowanie z mostkiem`).toBe(przeciecia.length);
       }
     }
     console.log('[S7 etap 3 §12 dowód generalizacji]\n' + rows.join('\n'));

@@ -6,6 +6,8 @@
  *  - nagłówek: rodzaj i nazwa obiektu (stacja — rodzaj z topologii, ta sama reguła co drzewo
  *    projektu), stacja › pole, identyfikator globalny aparatu;
  *  - formularz nowego układu PV/BESS/FW po upuszczeniu z palety (`FormularzSzkicuDer`);
+ *  - kartę GPZ (dla GPZ rysowanego na schemacie: bilans, przeciążenia, tabela pól z rolą,
+ *    automatyką i P/Q/I/U — `SekcjaKartyGpz`; schemat niesie oznaczenia i stan aparatów);
  *  - kartę techniczną obiektu (`KartaTechnicznaElementu`): identyfikacja, rozdzielnica z tabelą
  *    pól, transformator z danymi tabliczki i źródłem danej, strona nN, przyłączenia…;
  *  - węzeł SN (ZK SN, słup rozgałęźny) i stan aparatu z rekordu źródła runtime modelu;
@@ -26,8 +28,10 @@ import {
 } from '../../field/fieldLabels';
 import type { SldMenuAction } from '../../sld/v2/command/SldCommandService';
 import type { DaneElementuKanwy, RodzajElementuKanwy } from '../../sld/shared/daneElementuKanwy';
+import { BRAK_POLOZENIA_W_MODELU, POLOZENIE_LACZNIKA_PL } from '../../shared/stanLacznika';
 import { FormularzSzkicuDer } from './FormularzSzkicuDer';
 import { KartaTechnicznaElementu } from './KartaTechnicznaElementu';
+import { SekcjaKartyGpz } from './SekcjaKartyGpz';
 import type { StanPaneluElementu, StanWynikowElementu } from './stanPaneluElementu';
 
 const STYL_SEKCJI = {
@@ -205,13 +209,6 @@ export function SekcjaWezlaSn({ wezel }: { readonly wezel: NonNullable<DaneEleme
   );
 }
 
-/** Położenie łącznika w modelu — ten sam stan, który rysuje glif kanwy. */
-export const POLOZENIE_LACZNIKA_PL: Readonly<Record<'closed' | 'open' | 'unknown', string>> = {
-  closed: 'zamknięty',
-  open: 'otwarty',
-  unknown: 'nieustalony (model niejednoznaczny)',
-};
-export const BRAK_POLOZENIA_W_MODELU = 'brak stanu w modelu';
 
 /**
  * Karta #135 × GPZ-PARYTET cz. 2: położenie łącznika z MODELU (ten sam rachunek co glif
@@ -346,6 +343,7 @@ export function PanelElementuKanwy({
         </div>
       )}
       {szkicDer && daneSzkicuDer && <FormularzSzkicuDer dane={daneSzkicuDer} derKind={szkicDer.derKind} />}
+      {stan.kartaGpz && <SekcjaKartyGpz karta={stan.kartaGpz} />}
       {karta && <KartaTechnicznaElementu karta={karta} onEdytuj={edytuj} />}
       {dane?.kind === 'node' && dane.nodeSpec && <SekcjaWezlaSn wezel={dane.nodeSpec} />}
       {dane?.kind === 'apparatus' && <SekcjaStanuAparatu stan={dane.apparatusState ?? null} />}

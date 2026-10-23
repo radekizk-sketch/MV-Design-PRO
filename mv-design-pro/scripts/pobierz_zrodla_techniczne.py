@@ -10,10 +10,10 @@ import argparse
 import datetime as dt
 import hashlib
 import json
-from pathlib import Path
 import shutil
 import sys
 import tempfile
+from pathlib import Path
 from urllib import error, parse, request
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,7 +66,7 @@ def check_pdf(path: Path, item: dict) -> dict:
         "filename": item["filename"],
         "sha256": checksum,
         "size_bytes": path.stat().st_size,
-        "checked_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "checked_utc": dt.datetime.now(dt.UTC).isoformat(),
         "source": item.get("url", "plik dostarczony przez użytkownika"),
     }
 

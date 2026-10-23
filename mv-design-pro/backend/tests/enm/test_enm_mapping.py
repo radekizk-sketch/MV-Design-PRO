@@ -5,8 +5,8 @@ import math
 import pytest
 from enm.mapping import (
     build_inverter_k_sc_trace,
-    build_zero_sequence_zbus,
     map_enm_to_network_graph,
+    zbuduj_siec_zerowa,
 )
 from enm.models import (
     BranchRating,
@@ -201,7 +201,7 @@ class TestBasicMapping:
         )
         graph = map_enm_to_network_graph(enm)
 
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        z0_bus = zbuduj_siec_zerowa(enm, graph).z0_bus
 
         assert z0_bus.shape[0] > 0
 
@@ -402,7 +402,7 @@ class TestSolverRoundtrip:
             czas_tb=czas_tb_roboczy(),
         )
 
-        z0_bus = build_zero_sequence_zbus(enm, graph)
+        z0_bus = zbuduj_siec_zerowa(enm, graph).z0_bus
 
         result_3f_after = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,

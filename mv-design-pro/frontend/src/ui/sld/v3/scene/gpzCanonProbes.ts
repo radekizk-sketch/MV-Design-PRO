@@ -23,9 +23,9 @@
 import { SYMBOL_DEFS } from '../symbols/defs';
 import type { V3Rect } from '../core/grid';
 import type { SceneV3 } from './buildScene';
-import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '../../../../types/enm';
+import type { EnergyNetworkModel, Substation, Transformer } from '../../../../types/enm';
 import { wPasmieWn } from '../../../../ui2/model/pasmaNapieciowe';
-import { szynyStacji, type ModelSzyn } from '../../../shared/szynyStacji';
+import { szynyStacji } from '../../../shared/szynyStacji';
 import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
 
 /* =============================================================================
@@ -44,26 +44,6 @@ type GpzHvColumnSnapshot = Pick<EnergyNetworkModel, 'substations' | 'transformer
   // przyłącze systemowe WN od EKWIWALENTU na szynach SN. Pola opcjonalne
   // (Partial) — starzy wołający bez tych rekordów dostają regułę WN 1:1.
   Partial<Pick<EnergyNetworkModel, 'sources' | 'buses' | 'branches'>>;
-
-/** Lustro reguły adaptera (`enmToCanonicalGpzAdapter.ts` `deriveHvSystemSource`):
- *  źródło GPZ = pierwszy `Source` z `bus_ref` na którejś szynie GPZ; strona =
- *  napięcie TEJ szyny (pasmo WN, `wPasmieWn`). `null` gdy snapshot nie niesie
- *  `sources`/`buses` albo źródła nie da się dopasować (wyrocznia wraca wtedy
- *  do reguły WN — zachowanie sprzed recenzji NO-GO 2026-07-17). */
-function gpzSourceOnHvBus(
-  gpz: Substation,
-  snapshot: ModelSzyn & { readonly sources?: readonly Source[] | null; readonly buses?: readonly Bus[] | null },
-): boolean | null {
-  const { sources, buses } = snapshot;
-  if (!sources || !buses) return null;
-  // SZYNY-STACJI-LUSTRO: ten sam zbiór szyn GPZ co adapter (`szynyStacji`).
-  const gpzBusRefs = szynyStacji(snapshot, gpz);
-  const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
-  if (!source) return null;
-  const sourceBus = buses.find((b) => b.ref_id === source.bus_ref);
-  if (!sourceBus) return null;
-  return wPasmieWn(sourceBus.voltage_kv);
-}
 
 /**
  * KD-7 (Zero-Debt, dług zastany): czy scena rysuje blok TEGO GPZ jako
@@ -91,7 +71,7 @@ function gpzBlockCollapsed(scene: SceneV3, gpzRef?: string): boolean {
 }
 
 /** TR WN/SN wg tej samej reguły co adapter (`enmToCanonicalGpzAdapter.ts`
- *  `deriveHvSystemSource`): transformatory GPZ z `ui/shared/transformatoryStacji` → transformator z
+ *  `transformatoryGpz`): transformatory GPZ z `ui/shared/transformatoryStacji` → transformator z
  *  stroną górną w paśmie WN (`wPasmieWn`) — WYODRĘBNIONE tu, bo wyrocznia NIE może importować adaptera
  *  (warstwa `v2/canvas` → `v3/scene` byłaby odwrotną zależnością architektury). */
 function hvTransformersOfGpz(gpz: Substation, snapshot: GpzHvColumnSnapshot): readonly Transformer[] {
@@ -99,23 +79,157 @@ function hvTransformersOfGpz(gpz: Substation, snapshot: GpzHvColumnSnapshot): re
   return transformatoryNalezaceDoStacji(snapshot, gpz).filter((t) => wPasmieWn(t.uhv_kv));
 }
 
+type ScenePoint = { readonly x: number; readonly y: number };
+
+const TOLERANCJA = 0.5;
+
+function punktNaOdcinku(p: ScenePoint, points: readonly ScenePoint[]): boolean {
+  for (let i = 0; i + 1 < points.length; i += 1) {
+    const a = points[i];
+    const b = points[i + 1];
+    const minX = Math.min(a.x, b.x) - TOLERANCJA;
+    const maxX = Math.max(a.x, b.x) + TOLERANCJA;
+    const minY = Math.min(a.y, b.y) - TOLERANCJA;
+    const maxY = Math.max(a.y, b.y) + TOLERANCJA;
+    if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
+    const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    if (Math.abs(cross) / len <= TOLERANCJA) return true;
+  }
+  return false;
+}
+
+/** Odcinek szyny GPZ (sekcja 110 kV / szyna WN / szyna główna sekcji SN). */
+function jestSzynaGpz(ownerRef: string | undefined): boolean {
+  return ownerRef != null && (ownerRef.endsWith('#hv-bus') || ownerRef.endsWith('#bus-primary'));
+}
+
+/** Refy wyniku (`busResultRef`, = `Bus.ref_id` modelu) szyn GPZ, na których leży punkt;
+ *  szyna bez refu wyniku zgłaszana swoim `ownerRef` (rysunek bez wiązania z modelem). */
+function szynyPodPunktem(scene: SceneV3, p: ScenePoint): readonly string[] {
+  const wynik = new Set<string>();
+  for (const seg of scene.segments) {
+    if (!jestSzynaGpz(seg.meta?.ownerRef) || !punktNaOdcinku(p, seg.points)) continue;
+    wynik.add(seg.meta?.busResultRef ?? seg.meta?.ownerRef ?? '?');
+  }
+  return [...wynik].sort();
+}
+
+/** Szyny GPZ osiągalne torem rysunku z punktu `start`: przez odcinki (wspólny punkt) i symbole
+ *  aparatów (port → wszystkie porty), bez przechodzenia przez szyny, łączniki szyn
+ *  (`#tie-a`/`#tie-b`, symbole łączników sekcji) — te rozdzielają sekcje. */
+function szynyOsiagalne(scene: SceneV3, start: ScenePoint): readonly string[] {
+  const osiagniete = new Set<string>();
+  const odwiedzoneOdcinki = new Set<number>();
+  const odwiedzoneSymbole = new Set<number>();
+  const kolejka: ScenePoint[] = [start];
+  while (kolejka.length > 0) {
+    const p = kolejka.pop()!;
+    scene.segments.forEach((seg, i) => {
+      if (odwiedzoneOdcinki.has(i) || !punktNaOdcinku(p, seg.points)) return;
+      const ownerRef = seg.meta?.ownerRef;
+      if (jestSzynaGpz(ownerRef)) {
+        osiagniete.add(seg.meta?.busResultRef ?? ownerRef ?? '?');
+        return;
+      }
+      if (ownerRef?.endsWith('#tie-a') || ownerRef?.endsWith('#tie-b')) return;
+      odwiedzoneOdcinki.add(i);
+      kolejka.push(...seg.points);
+    });
+    scene.symbols.forEach((sym, i) => {
+      if (odwiedzoneSymbole.has(i)) return;
+      if (sym.meta?.parityKeys?.some((k) => k === 'gpz.coupler' || k === 'gpz.coupler.hv')) return;
+      const def = SYMBOL_DEFS[sym.symbolId];
+      const porty = def.ports.map((port) => ({ x: sym.x + port.x, y: sym.y + port.y }));
+      if (!porty.some((q) => Math.abs(q.x - p.x) <= TOLERANCJA && Math.abs(q.y - p.y) <= TOLERANCJA)) return;
+      odwiedzoneSymbole.add(i);
+      kolejka.push(...porty);
+    });
+  }
+  return [...osiagniete].sort();
+}
+
+/** Punkty 5–7 wyroczni `gpzHvColumnGaps` (sekcje 110 kV, łączniki szyn, źródła) dla GPZ. */
+function gpzModelParityGaps(
+  scene: SceneV3,
+  snapshot: GpzHvColumnSnapshot,
+  gpz: Substation,
+  trRef: string,
+): readonly GpzHvColumnGap[] {
+  const gaps: GpzHvColumnGap[] = [];
+  const luka = (reason: string): void => {
+    gaps.push({ gpzRef: gpz.ref_id, transformerRef: trRef, reason });
+  };
+  const sekcjeWn = gpz.gpz_hv_sections ?? [];
+  for (const sekcja of sekcjeWn) {
+    const odcinki = scene.segments.filter(
+      (seg) => (seg.meta?.ownerRef?.endsWith('#hv-bus') ?? false) && seg.meta?.busResultRef === sekcja.bus_ref,
+    );
+    if (odcinki.length !== 1) {
+      luka(`Sekcja 110 kV ${sekcja.section_id} (szyna ${sekcja.bus_ref}): ${odcinki.length} odcinków szyny WN na rysunku, oczekiwany 1.`);
+    }
+  }
+  const szynySekcji = new Set([...sekcjeWn, ...(gpz.gpz_sections ?? [])].map((sekcja) => sekcja.bus_ref));
+  for (const galaz of snapshot.branches ?? []) {
+    if (galaz.type !== 'bus_coupler') continue;
+    const from = galaz.from_bus_ref;
+    const to = galaz.to_bus_ref;
+    if (!from || !to || !szynySekcji.has(from) || !szynySekcji.has(to)) continue;
+    // Glif łącznika na osi szyny (`lineSwitch`/`lineBreaker`); znacznik punktu normalnie
+    // otwartego (`noPoint`) pod tym samym refem jest adnotacją stanu normalnego, nie łącznikiem.
+    const symbole = scene.symbols.filter(
+      (sym) => sym.meta?.ownerRef === galaz.ref_id && (sym.symbolId === 'lineSwitch' || sym.symbolId === 'lineBreaker'),
+    );
+    if (symbole.length !== 1) {
+      luka(`Łącznik szyn ${galaz.ref_id} (${from}–${to}): ${symbole.length} symboli na rysunku, oczekiwany 1.`);
+      continue;
+    }
+    const stan = symbole[0].state;
+    const status = galaz.status;
+    if ((status === 'closed' && stan === 'open') || (status === 'open' && stan === 'closed')) {
+      luka(`Łącznik szyn ${galaz.ref_id}: na rysunku „${stan}", w modelu status „${status}".`);
+    }
+  }
+  const szynyGpz = szynyStacji(snapshot, gpz);
+  for (const zrodlo of snapshot.sources ?? []) {
+    if (!zrodlo.bus_ref || !szynyGpz.has(zrodlo.bus_ref)) continue;
+    const symbole = scene.symbols.filter((sym) => sym.symbolId === 'gridSource' && sym.meta?.ownerRef === zrodlo.ref_id);
+    if (symbole.length !== 1) {
+      luka(`Źródło ${zrodlo.ref_id} (szyna ${zrodlo.bus_ref}): ${symbole.length} symboli na rysunku, oczekiwany 1.`);
+      continue;
+    }
+    const sym = symbole[0];
+    const port = SYMBOL_DEFS.gridSource.ports.find((q) => q.dir === 'S') ?? SYMBOL_DEFS.gridSource.ports[0];
+    const szyny = szynyOsiagalne(scene, { x: sym.x + port.x, y: sym.y + port.y });
+    if (szyny.length !== 1 || szyny[0] !== zrodlo.bus_ref) {
+      luka(`Źródło ${zrodlo.ref_id}: tor rysunku dochodzi do szyn [${szyny.join(', ')}], model: ${zrodlo.bus_ref}.`);
+    }
+  }
+  return gaps;
+}
+
 /**
- * D3-1 (spec §21.1): dla każdy GPZ (`station_type==='gpz'`) niosący ≥1
- * transformator WN/SN w ENM, scena musi mieć:
- *   1. symbol `transformer2W` z `meta.ownerRef === transformerRef` (kompozycja
- *      GPZ, `compose/gpz.ts`, taguje `transformerRef` jako jedyny ownerRef
- *      kandydat dla tego symbolu — patrz `gpzSymbolToPreview`),
- *   2. segment szyny WN tego GPZ (`testId==='gpz-canonical-hv-bus'`),
- *   3. połączenie szyna WN→TR (`ownerRef==='<TR>#hv-connector'`),
- *   4. połączenie TR→szyna SN (`ownerRef==='<TR>#tr-field-to-bus'`).
- * Dodatkowo (przyłącze systemowe, gdy obecne na scenie): jeżeli scena niesie
- * JAKIKOLWIEK symbol `gridSource`, jego zejście musi kończyć się na szynie
- * ŹRÓDŁA (recenzja NO-GO 2026-07-17 pkt 2/3): źródło z `bus_ref` na szynie WN
- * → `ownerRef==='<gpz>#hv-bus-source-extension'` („przyłącze→…→szyna SN" spec
- * §21.1 ciągłe przez WN); EKWIWALENT na szynach SN → `'<gpz>#source-bus-
- * extension'` (rysowanie go na WN = fałsz prezentacji danych zwarciowych).
- * Zero GPZ z danymi WN bez KOMPLETNEJ kolumny — każdy brakujący element
- * dopisuje osobny gap (WHITE BOX, audytowalne pojedynczo).
+ * D3-1 (spec §21.1) + karta GPZ-H5-SLD (parytet rysunku z modelem): dla każdego GPZ
+ * (`station_type==='gpz'`) niosącego ≥1 transformator WN/SN w ENM, scena ROZWINIĘTA musi mieć:
+ *   1. symbol `transformer2W` z `meta.ownerRef === transformerRef`;
+ *   2. szynę WN (odcinek `…#hv-bus`);
+ *   3. połączenie szyna WN→TR (`<TR>#hv-connector`), którego górny koniec leży na szynie
+ *      o refie wyniku `Transformer.hv_bus_ref` (i tylko na niej);
+ *   4. połączenie TR→szyna SN (`<TR>#tr-field-to-bus`), którego dolny koniec leży na szynie
+ *      o refie wyniku `Transformer.lv_bus_ref` (i tylko na niej);
+ *   5. sekcje 110 kV (`gpz_hv_sections`): KAŻDA sekcja = DOKŁADNIE JEDEN odcinek `…#hv-bus`
+ *      o refie wyniku `GPZSection.bus_ref` (jedna wspólna kreska przy dwóch sekcjach = luka);
+ *   6. łączniki szyn (`bus_coupler` między szynami sekcji 110 kV albo SN tego GPZ): symbol
+ *      o `ownerRef` = ref gałęzi, w stanie NIESPRZECZNYM ze `status` gałęzi (otwarty na
+ *      rysunku przy `status: 'closed'` albo odwrotnie = luka; `unknown` dopuszczony — rekordy
+ *      aparatów pola sprzeczne ze statusem, `stanAparatowPola.ts`);
+ *   7. źródła (`Source` z `bus_ref` na szynie GPZ): DOKŁADNIE JEDEN symbol `gridSource`
+ *      o `ownerRef` = ref źródła, którego tor (zejście → przedłużenie szyny albo aparaty pola
+ *      liniowego → zaczep pola) dochodzi do szyny o refie wyniku `Source.bus_ref` i do żadnej
+ *      innej (jedno źródło przy dwóch w modelu = luka; źródło na cudzej szynie = luka).
+ * Wyrocznia czyta surowe rekordy ENM (`branches`, `sources`, `gpz_hv_sections`) — nie
+ * adapter rysunku — więc błąd adaptera nie może jej „przekonać". Każdy brak dopisuje osobny
+ * gap (WHITE BOX, audytowalne pojedynczo).
  */
 export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): readonly GpzHvColumnGap[] {
   const gaps: GpzHvColumnGap[] = [];
@@ -126,9 +240,12 @@ export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): 
     // §21.1 opisuje kolumnę WN rysunku ROZWINIĘTEGO (patrz `gpzBlockCollapsed`).
     if (gpzBlockCollapsed(scene, gpz.ref_id)) continue;
     const hvTransformers = hvTransformersOfGpz(gpz, snapshot);
+    // Karta GPZ-H5-SLD: parytet sekcji, łączników i źródeł obowiązuje KAŻDY rozwinięty GPZ —
+    // także równoważnik na szynach SN bez transformatorów w modelu.
+    gaps.push(...gpzModelParityGaps(scene, snapshot, gpz, hvTransformers[0]?.ref_id ?? ''));
     if (hvTransformers.length === 0) continue; // ENM nie niesie TR WN/SN dla tego GPZ — poza zakresem D3-1.
 
-    const hvBusPresent = scene.segments.some((seg) => seg.meta?.testId === 'gpz-canonical-hv-bus');
+    const hvBusPresent = scene.segments.some((seg) => seg.meta?.ownerRef?.endsWith('#hv-bus') ?? false);
 
     for (const tr of hvTransformers) {
       const trSymbol = scene.symbols.find(
@@ -148,37 +265,29 @@ export function gpzHvColumnGaps(scene: SceneV3, snapshot: GpzHvColumnSnapshot): 
       if (!hvConnector) {
         gaps.push({ gpzRef: gpz.ref_id, transformerRef: tr.ref_id, reason: `Brak połączenia szyna WN→TR (#hv-connector) dla ${tr.ref_id}.` });
       }
-      const trToBus = scene.segments.some((seg) => seg.meta?.ownerRef === `${tr.ref_id}#tr-field-to-bus`);
+      const trToBus = scene.segments.find((seg) => seg.meta?.ownerRef === `${tr.ref_id}#tr-field-to-bus`);
       if (!trToBus) {
         gaps.push({ gpzRef: gpz.ref_id, transformerRef: tr.ref_id, reason: `Brak połączenia TR→szyna SN (#tr-field-to-bus) dla ${tr.ref_id}.` });
       }
-    }
-
-    // Przyłącze systemowe (gdy scena niesie symbol źródła) musi kończyć się
-    // na szynie ŹRÓDŁA (recenzja NO-GO 2026-07-17 pkt 2/3): przyłącze WN →
-    // `#hv-bus-source-extension` (kolumna WN torem ciągłym przyłącze→szyna
-    // WN→TR→szyna SN, spec §21.1); EKWIWALENT na szynach SN (`Source.bus_ref`
-    // = szyna SN) → `#source-bus-extension` — rysowanie go na szynie WN
-    // fałszowałoby prezentację (dane zwarciowe 15 kV przy 110 kV). Gdy strony
-    // nie da się ustalić (snapshot bez `sources`/`buses`), reguła WN jak
-    // dotychczas.
-    const gridSourcePresent = scene.symbols.some((s) => s.symbolId === 'gridSource');
-    if (gridSourcePresent) {
-      const onHvBus = gpzSourceOnHvBus(gpz, snapshot);
-      const expectedExtensionRef = onHvBus === false
-        ? `${gpz.ref_id}#source-bus-extension`
-        : `${gpz.ref_id}#hv-bus-source-extension`;
-      const attachedToOwnBus = scene.segments.some((seg) => seg.meta?.ownerRef === expectedExtensionRef);
-      if (!attachedToOwnBus) {
-        gaps.push({
-          gpzRef: gpz.ref_id,
-          transformerRef: hvTransformers[0]?.ref_id ?? '',
-          reason: onHvBus === false
-            ? 'Źródło-ekwiwalent na szynie SN obecne na scenie, ale nie zaczepione na szynie SN (#source-bus-extension) — strona zaczepu niezgodna z Source.bus_ref.'
-            : 'Przyłącze systemowe (gridSource) obecne na scenie, ale nie zaczepione na szynie WN (#hv-bus-source-extension) — tor WN nieciągły.',
-        });
+      // Karta GPZ-H5-SLD: zaczepy transformatora na SWOICH szynach modelu.
+      const hvConnectorSeg = scene.segments.find((seg) => seg.meta?.ownerRef === `${tr.ref_id}#hv-connector`);
+      const zaczepy: readonly [ScenePoint | undefined, string | null | undefined, string][] = [
+        [hvConnectorSeg?.points[0], tr.hv_bus_ref, 'WN'],
+        [trToBus?.points[trToBus.points.length - 1], tr.lv_bus_ref, 'SN'],
+      ];
+      for (const [punkt, busRef, strona] of zaczepy) {
+        if (!punkt || !busRef) continue;
+        const szyny = szynyPodPunktem(scene, punkt);
+        if (szyny.length !== 1 || szyny[0] !== busRef) {
+          gaps.push({
+            gpzRef: gpz.ref_id,
+            transformerRef: tr.ref_id,
+            reason: `Zaczep strony ${strona} transformatora ${tr.ref_id} leży na szynach [${szyny.join(', ')}], model: ${busRef}.`,
+          });
+        }
       }
     }
+
   }
 
   return gaps;

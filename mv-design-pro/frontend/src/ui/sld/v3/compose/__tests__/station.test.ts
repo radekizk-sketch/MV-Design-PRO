@@ -851,8 +851,9 @@ describe('V3 compose/station — GEOMETRIA-STACJI §0 pkt 4c: rozróżnienie ró
     for (const sygnatura of sygnatury) expect(sygnatura.startsWith('bayNoEquipment,')).toBe(true);
   });
 
-  it('ALL_FIELD_ROLES niesie WSZYSTKIE 13 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
-    expect(ALL_FIELD_ROLES.length).toBe(13);
+  // Karta GPZ-H5-SLD etap 3 (b): 13 → 15 (jawne role EARTHING i CAPACITOR pól funkcyjnych SN).
+  it('ALL_FIELD_ROLES niesie WSZYSTKIE 15 ról zdefiniowanych (sanity — wyrocznia globalna musi ćwiczyć cały zbiór, nie podzbiór wybrany ręcznie)', () => {
+    expect(ALL_FIELD_ROLES.length).toBe(15);
   });
 });
 

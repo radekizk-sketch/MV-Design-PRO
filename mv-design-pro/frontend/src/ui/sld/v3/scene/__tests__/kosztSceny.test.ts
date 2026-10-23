@@ -536,87 +536,146 @@ interface OdciskiLod {
  *    `obrysKotwicy` i drugie przejście stron przy obrysie symbolu ze styku K2b×K3, reguła
  *    W2C planu); dalej sondą ich nie rozkładano. Etykiet sceny jak w GPZ-MODEL: 55/520/914
  *    (referencyjna) i 108/1030/1816 (podwojona), czyli bez etykiet zgubionych ani dodanych.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-H5-SLD pkt 3c, 2026-10-22) — przeliczone 4 z 54 wpisów:
+ * odciski SCENY L1/L2 obu sieci. Przyczyna: karta tabeli pól GPZ niesie stan danych pola
+ * (`KartaPolaGpz.stanDanych` i `stanX` — napis „pole bez aparatu w modelu" zamiast „brak"),
+ * a karty siedzą w `scene.meta.gpzAdnotacje` (na L0 blok GPZ jest zwinięty, bez adnotacji).
+ * Pomiar sondą (kod karty vs kod bazy `82735bfc1`, ta sama fikstura): odcisk sceny z
+ * wyjętym `meta.gpzAdnotacje` jest IDENTYCZNY na wszystkich 6 scenach; symbole, odcinki,
+ * etykiety, węzły, skrzyżowania i bbox bez zmian. Declutter (6) i plany (42) bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-H5-SLD etap 2, 2026-10-22) — przeliczone WSZYSTKIE 54 wpisy.
+ * Przyczyna: bilans, alarmy i tabela „Pola GPZ" przechodzą ze schematu do karty GPZ
+ * inspektora (wymaganie 1), oznaczenia pól GPZ stoją w pionowym pasmie po lewej stronie
+ * toru, odczep T zostaje wyłącznie na pionie kabla odgałęzienia. Pomiar sondą (kod karty vs
+ * kod bazy `d82493842`, ta sama fikstura, porównanie po właścicielu: symbole rodzaj +
+ * ownerRef + x + y, etykiety właściciel + tekst + rect): liczby elementów BEZ ZMIAN na
+ * wszystkich 6 scenach (symbole 65/375/375 i 138/757/757, odcinki 114/600/600
+ * i 232/1198/1198, etykiety 55/520/914 i 108/1030/1816 — żadna etykieta zgubiona ani
+ * dodana); poza GPZ KAŻDY element przesunięty o jednakowy wektor wiersza arkusza — wiersz
+ * pierwszy (−8, −200), kolejne (0, −200): rama GPZ niższa o 200 (belka bez wierszy
+ * bilansu, bez tabeli), a węższa szyna SN GPZ przesuwa start korytarza wiersza pierwszego
+ * o 8. Skrzyżowań sceny 0 przed i po (sieć referencyjna nie ma skrzyżowań sn×sn, więc
+ * reguła odczepu T nie zabiera jej żadnej kropki — `buildScene.odczepTOdgalezienia.test.ts`).
+ * Odcinki poza GPZ (punkty, ten sam porównywacz): ten sam wektor wiersza dla wszystkich
+ * poza 3 (referencyjna) i 3–5 (podwojona) — dwa odcinki ciągu GPZ → S0 (`…/segment`,
+ * `…/segment_L`: tor pola GPZ przesunięty przez pasmo oznaczenia, objazd pod dołem bbox GPZ —
+ * ten sam rozkład co pin F9.7 w `buildScene.test.ts`) oraz odcinki przechodzące między
+ * wierszem pierwszym a drugim arkusza (początek z wektorem (−8, −200), koniec z (0, −200)).
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-H5-SLD etap 3, 2026-10-22, scalenie backendu H5 `88557ceb7`) —
+ * przeliczone WSZYSTKIE 54 wpisy. Rozkład przyczyn sondą (zrzut sceny L0/L1/L2, porównanie
+ * pełnego JSON-u): (1) KOD po scaleniu (scalony backend + etap 3) na fiksturze SPRZED
+ * scalenia vs kod `d253b8e8b` — sceny L0, L1 i L2 bajt-identyczne (kod nie zmienia rysunku
+ * tej sieci); (2) FIKSTURA przegenerowana
+ * przez backend H5 — strona 110 kV jest sekcją modelu z polem liniowym, transformator ma
+ * pola po obu stronach: symbole 65→70 / 375→381 / 375→381, odcinki 114→119 / 600→605 /
+ * 600→605, etykiety 55 / 520→523 / 914→917, węzły 7→12 / 18→23 / 18→23, skrzyżowania 0;
+ * GPZ szerszy (bbox 8024 → 8968), więc arkusz łamie się inaczej (wiersze 6+6 → 5+7).
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-H5-SLD etap 3 (d), 2026-10-22) — przeliczone 6 z 54 wpisów:
+ * odciski SCENY L0/L1/L2 obu sieci. Przyczyna: pozycja normalna łącznika przechodzi do glifu
+ * na każdym glifie łączeniowym (klasa odstępstwa od pozycji normalnej) — łącznik toru
+ * `sw/8ffea56f…/switch` (punkt normalnie otwarty sieci referencyjnej; w sieci podwojonej
+ * także jego kopia `…01ab/switch`) niesie teraz `pozycjaNormalna: 'open'` przy stanie
+ * `open` (bez odstępstwa). Pomiar sondą: odcisk sceny z wyjętym polem `pozycjaNormalna`
+ * symboli = poprzedni pin na wszystkich 6 scenach; declutter (6) i plany (42) bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-H5-INTEGRACJA, 2026-10-22) — przeliczone WSZYSTKIE 54 wpisy.
+ * Przyczyna: etykietą źródła 110 kV jest nazwa źródła z modelu (`Source.name`), nie tożsamość
+ * GPZ `meta.source_id` (`enmToCanonicalGpzAdapter.ts`, decyzja architekta), a nazwa źródła
+ * to nazwa toru (`add_grid_source_sn`). Na tej fiksturze tabliczka źródła z „GPZ Referencyjny
+ * 110 kV" + „Tor zasilania: Linia 110 kV zasilająca" + „kier. …" staje się „Linia 110 kV
+ * zasilająca" + „kier. …" (wiersz toru znika, bo tor = nazwa). DOWÓD (sonda 2×2): kod sprzed
+ * zmiany odczytu na fiksturze sprzed i po regeneracji — 8/8 testów pliku zielone na starych
+ * pinach (sama zmiana nazwy w fiksturze nie rusza sceny, gdy etykietą był `meta.source_id`);
+ * kod po zmianie: scena z nazwą = `meta.source_id` vs nazwą toru, symbole/odcinki/etykiety
+ * parami w tej samej kolejności — CAŁY świat pod tabliczką przesunięty o jednakowy wektor
+ * (0, −16) (L1: 380 z 381 symboli, 1380 z 1381 punktów odcinków, 518 z 519 etykiet poza
+ * tabliczką; jedyny symbol i punkt w miejscu to glif źródła), etykiet 523 → 522 (L1),
+ * 917 → 916 (L2), L0 55 bez zmian liczby.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: '4e6dbcc8571e568de22a96dab483d012',
-      declutter: 'd07fba87b2f56a1eef4c600fe0709a17',
+      scena: '27905963a7a791b09fa771290e7b16da',
+      declutter: '1b26bb304ec7e9bf58358708a80ab2c2',
       plany: [
-        '3073b65d61f123c6da6d042c95f705b4',
-        '6b10640883aa9a473b7279618649d1e1',
-        '172728286ead7bb23cd923432968a504',
-        '1d40ebb9aa22cf4b7d406cfd7a7dea89',
-        'f77dcd8f91618667280fff097f9fd7ee',
-        '11e9a49e4ea8cebb2745065ce73382a7',
-        '11e9a49e4ea8cebb2745065ce73382a7',
+        '926a2d090e65e811e55a88f75e392bc8',
+        'f84a6d4d1ab3cb178f06baeabca30d8a',
+        '4754e422039b3d8792c1755fd5ec9dc6',
+        '8b5b0bc59801c68682ffeaea6e20cd32',
+        '652e71741f4e892f53ab706628133f4b',
+        'c4083c19ffbcaa76767f57d51e128467',
+        'c4083c19ffbcaa76767f57d51e128467',
       ],
     },
     {
-      scena: '957d297d0fe9fcee6052eb9de9cf9c80',
-      declutter: '40b7251b852fc542752fe1ba1f29338e',
+      scena: '45b9fc27e7e9b1f31d6ee280fa667da3',
+      declutter: '3d3fcb99b9d069923c790af4f363c55a',
       plany: [
-        '06752775d45bbab5bd2330a0c33ea6b7',
-        '836e830b596dac4681f9e6855b8d5903',
-        'd14fde551e5c185fd96bf7f31f0a9569',
-        'a91c398d4eda4d56bf74eab60e87ca70',
-        '8aa76b130cababf582150067129767ec',
-        'e76685ef2a5da4093d1e774aa61fcce4',
-        'e76685ef2a5da4093d1e774aa61fcce4',
+        'a13fe841fc8435c10dee107a7cd3ef4c',
+        '9ff5ac0d5bdb82b7f976fc7187706a55',
+        '9afbe1ea4a75191506fc532764340973',
+        'cff0574536ba790d286bdf333865ebbf',
+        '5f2385a6a2af17a93bebc76664f52915',
+        '62c3297539aaba90981f3eab7684fafe',
+        '62c3297539aaba90981f3eab7684fafe',
       ],
     },
     {
-      scena: '83203575489a3a901a5628b7c7e66235',
-      declutter: '3ac69d221753e008d7ac680e0531d8d4',
+      scena: 'aa41804c259f292b4a979e76e284c61b',
+      declutter: 'cb6ddfbba8489228ec559042cd242e5d',
       plany: [
-        '67205bf8127c4c224ade425c47dd2246',
-        'bb6dfa40a0e49fcb070c10f0d0117059',
-        '793ee94663dae1ab0252c6bdd070b7eb',
-        '26d8e421568e2395a3ece2e59dd1ac2e',
-        '311a1b1aefbffa019832b301a7605eed',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
-        '09e6fcc06fd2a007070d9abd4eb4f083',
+        '08f5ccfc750aaee6b9380cb58b9b81fe',
+        'f01c24a8f858a59eeed1387a6d75a820',
+        'c3a390a079d432b4affdf6d071588e9c',
+        'a80d8e3e0085052b0a4d83e9e44de278',
+        'ccc59dd1b9f3aad1e532269639ce4491',
+        'a98e690d487758148798455296fb3633',
+        'a98e690d487758148798455296fb3633',
       ],
     },
   ],
   podwojona: [
     {
-      scena: 'b707bab8aef37db6f1e9844ce1e68a16',
-      declutter: 'fcaad8f6069e583ea05a5a8de5e14a11',
+      scena: '2581f2992833f9d05298c7f45d42b99e',
+      declutter: '5db586bfc0f69e05d11cd93c43628ddb',
       plany: [
-        'b8eea41ccf515f1acc228cd82b6436dd',
-        'bda4c229ea6367eb4a824f3a0511e4e6',
-        'eda8d972ac0062b74c5d1d3a1fb6b219',
-        '1c1f71a06b7b72d607069a888618b9af',
-        '799392b7e737ef4a3f90280596f220d8',
-        '5a8106565c8335db1702e7284d38d537',
-        '5a8106565c8335db1702e7284d38d537',
+        '7893da6ccf0af84d9e7567fa84972d48',
+        'd164931453c692bd07853d5ffcba244e',
+        '3fc47fbfa1eb816890c4a677ceaf7c73',
+        '6058a8e9be1015c6dfcb1a1bed6d201c',
+        '7fa16bda5436501453fcbd8457806eaa',
+        '2644d61ebaa5c82e0104c92bfa4e3477',
+        '2644d61ebaa5c82e0104c92bfa4e3477',
       ],
     },
     {
-      scena: 'ebde20e11332d8891f32a77a26e9afa9',
-      declutter: '4f9aaf8027131f0256f2d4dfdd1eea03',
+      scena: '5195ccbc06223cb93be82bd9051959b5',
+      declutter: 'b13ffb5d550f80eac88843012b63553e',
       plany: [
-        'bb96bce423fc0946291bdd36d49ed8c2',
-        '7823922d2b8bfa2a847f1e655be156d0',
-        'ddbc1230a5bccb4fa4daa6b6427de3ca',
-        '7b072d4ef954c286798124c8c0fa6c77',
-        '66fb0c6845420ad9f48030a9ae8b0866',
-        '1af119c9668b67927bf66a4c995e7195',
-        '1af119c9668b67927bf66a4c995e7195',
+        'ab8317ff23137c3acabda809253010ff',
+        'df8d2a042bb9c6762323412ef8f833ac',
+        'edc69aa14b8f6f3206410871fdf35e09',
+        'fa51dfa479df09112a300a388cda0d7d',
+        'c1926862b897867f4b59c7b1622d572c',
+        '8941e74d66314d6acaeb010744e33b53',
+        '8941e74d66314d6acaeb010744e33b53',
       ],
     },
     {
-      scena: '333a946c2d07fe6b49d43012fd586bff',
-      declutter: 'fd2ac4acf96701c6273059192dddd93f',
+      scena: '27807dc9f7278852f52abfb4ba69a58a',
+      declutter: '2dea48f3f0b00785def29d64ff2f365d',
       plany: [
-        '28965374c394c62b1d414eddfdd5e98a',
-        '831a2768e8325c241b3574cb8e460e52',
-        '6beb6ca8596df41241a64a39286e58ef',
-        'ad8cd0a9b733288867caf0ec67712d1b',
-        'dd7706bb913891b95bf649e9e0b5a4e2',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
-        '4d60be0ead8e5bc02800c365e32d2ad9',
+        '994306aa2da3e2628655c7b27e27a03e',
+        'a5ba799b69b75796716a61cf0d300e57',
+        '52fa8e0210881b5fe4a0a18f9a390659',
+        'dbc2a83b34c26e2cb4ca668cdef0e620',
+        'ad4b579a9245123ada0a44b9415ecb2a',
+        '9208131f562ab59e4c430c18463a481d',
+        '9208131f562ab59e4c430c18463a481d',
       ],
     },
   ],

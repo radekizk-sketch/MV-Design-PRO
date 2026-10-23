@@ -93,8 +93,8 @@ const POWOD_DANE_ZABEZPIECZENIOWE =
   'koordynacji.';
 
 /**
- * KOMPLETNA tabela kodów kanonu (162 kody, stan rejestru po nałożeniu GPZ-MODEL na partie
- * 9–13). Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
+ * KOMPLETNA tabela kodów kanonu (165 kodów, stan rejestru po nałożeniu GPZ-MODEL na partie
+ * 9–13 i karty GPZ-H5). Brak wpisu dla kodu z rejestru jest błędem wykrywanym testem klasy
  * `akcjeNaprawcze.klasa.test.ts`.
  */
 export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
@@ -120,6 +120,9 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
       '110 kV — zbuduj GPZ od nowa z równoważnikiem po stronie 110 kV albo z równoważnikiem ' +
       'na szynach SN bez transformatorów 110/SN.',
   ),
+  // E067 (karta GPZ-H5): emiter wskazuje zamknięty łącznik szyn łączący niezależne
+  // równoważniki — położenie łącznika zmienia edycja parametrów elementu (pole `status`).
+  'source.gpz_coupler_joins_independent_equivalents': EDYCJA,
   'source.sk_min_missing': EDYCJA,
   'source.sk_min_inconsistent': EDYCJA,
   'source.u_set_pu_out_of_range': EDYCJA,
@@ -143,6 +146,21 @@ export const AKCJE_KODOW_KANONU: Readonly<Record<string, WpisAkcjiKodu>> = {
     'schemat',
     'Pole o roli spoza słownika zastępuje się polem o znanej roli w konfiguratorze stacji ' +
       '(menu kontekstowe stacji na schemacie).',
+  ),
+  // W063 (karta GPZ-H5): strukturę GPZ (sekcje 110 kV z torami, transformatory 110/SN,
+  // łączniki szyn, tryb rezerwy) buduje operacja dodania GPZ — klik prowadzi do stacji.
+  'station.gpz_structure_incomplete': przestrzen(
+    'schemat',
+    'Strukturę GPZ (tor zasilania sekcji 110 kV, transformator 110/SN sekcji SN, łącznik ' +
+      'szyn, tryb rezerwy) buduje kreator źródła zasilania; stan normalny łącznika zmienia ' +
+      'edycja parametrów łącznika na schemacie.',
+  ),
+  // W064 (karta GPZ-H5, ENEA Zeszyt 1 §26.10.4): SZR SN przy generacji — naprawą jest
+  // wyłączenie linii ze źródłami w scenariuszu albo powrót łącznika do stanu normalnego.
+  'station.szr_sn_with_generation': przestrzen(
+    'schemat',
+    'SZR SN wymaga wyłączenia linii pracujących w trybie generacji — wyłącz je z ruchu ' +
+      'w scenariuszu albo przywróć stan normalny łącznika szyn SN.',
   ),
   'station.voltage_missing': EDYCJA,
   'station.nn_outgoing_min_1': formularz('add_nn_outgoing_field'),

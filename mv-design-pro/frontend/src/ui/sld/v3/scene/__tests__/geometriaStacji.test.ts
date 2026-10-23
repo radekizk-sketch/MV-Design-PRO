@@ -7,12 +7,12 @@
  * scena_geometrii_stacji.py`, eksport `scripts/eksport_fixtur_harnessu.py`) — po jednej
  * stacji każdego rodzaju z topologii (przelotowa, odgałęźna, sekcyjna typu D, końcowa,
  * końcowa odgałęzienia), `punkt_startu_gpz_z_zaciskami_wolne_kilka` (GPZ z równoważnikiem
- * na szynach SN: dwie sekcje SN, sprzęgło `bus_coupler` bez pola COUPLER, bez transformatorów)
- * oraz `geometria_stacji_gpz_110kv` (GPZ z równoważnikiem 110 kV: dwie sekcje SN ze
- * sprzęgłem i dwa transformatory 110/15 kV na WSPÓLNEJ szynie WN — karta GPZ-MODEL).
- * Kilka niepołączonych szyn WN to dziś wyłącznie kształt archiwum sprzed karty GPZ-MODEL
- * (walidator blokuje go zgłoszeniem E066), więc ten przypadek powstaje z migawki backendu
- * rozdzieleniem wspólnej szyny WN — rysunek nadal ma pokazać model taki, jaki jest.
+ * na szynach SN: dwie sekcje SN, sprzęgło `bus_coupler` z polem COUPLER, bez transformatorów)
+ * oraz `geometria_stacji_gpz_110kv` (GPZ ENEA H5 — karta GPZ-H5: dwie sekcje 110 kV, każda
+ * z własnym torem zasilania L1/L2, łącznik szyn 110 kV, transformator 110/15 kV każdej sekcji
+ * do sekcji SN, sprzęgło SN). Jedna szyna WN z oboma transformatorami to kształt archiwum
+ * sprzed karty GPZ-H5, więc ten przypadek powstaje z migawki backendu scaleniem sekcji 110 kV
+ * — rysunek nadal ma pokazać model taki, jaki jest.
  *
  * ILOCZYN CECH (reguła KLASA §2):
  *   rodzaj stacji {przelotowa, odgałęźna, sekcyjna, końcowa, końcowa odgałęzienia}
@@ -22,7 +22,10 @@
  *   × aparat {z modelu, brak danych} (propozycja szablonu: podgląd kreatora,
  *     `ui2/kreatory/stacja/__tests__/podgladRozdzielnicy.test.tsx`)
  *   × pole {czynne, wolne}
- *   × GPZ {jedna szyna WN (backend), kilka niepołączonych szyn WN (archiwum)}.
+ *   × GPZ {jedna wspólna szyna WN (archiwum), kilka szyn WN bez rejestru sekcji 110 kV
+ *     (archiwum)}. Rysunek sekcji 110 kV H5 z rejestru `gpz_hv_sections` (dwa odcinki WN,
+ *     łącznik szyn 110 kV ze stanem z modelu) należy do karty SLD K3 korekty GPZ-H5
+ *     (`docs/plan/KOREKTA_GPZ_H5_ENEA_2026-10.md` §D pkt 3) i tam ma test odbiorowy.
  * Asercja tożsamości: zbiór `ownerRef` odcinków szyn SN i `deviceRef` aparatów sceny =
  * zbiór z ENM fikstury (żaden element rysunku bez rekordu, żaden rekord bez rysunku).
  */
@@ -371,41 +374,58 @@ describe('GEOMETRIA-STACJI — GPZ: sprzęgło z gałęzi, szyna WN z szyn model
     (snap.transformers ?? []).map((t) => t.hv_bus_ref).filter((v, i, a) => a.indexOf(v) === i).sort();
   const odcinkiWn = (sc: SceneV3) => sc.segments.filter((s) => s.meta?.parityKeys?.includes('gpz.bus.hv'));
 
-  it('sprzęgło GPZ rysowane z gałęzi bus_coupler, chociaż model nie ma pola COUPLER', () => {
-    expect((GPZ_DWIE_SEKCJE.bays ?? []).some((b) => b.bay_role === 'COUPLER')).toBe(false);
+  it('sprzęgło GPZ rysowane z gałęzi bus_coupler (pole COUPLER wskazuje tę gałąź)', () => {
     const sprzeglo = (GPZ_DWIE_SEKCJE.branches ?? []).find((g) => g.type === 'bus_coupler')!;
+    // Karta GPZ-H5: budowa GPZ tworzy pole sprzęgła wskazujące gałąź łącznika; rysunek bierze
+    // aparat i jego stan z GAŁĘZI (stan normalny z projektu: zamknięty z uzasadnieniem).
+    expect(
+      (GPZ_DWIE_SEKCJE.bays ?? []).filter((b) => b.bay_role === 'COUPLER').map((b) => b.equipment_refs),
+    ).toEqual([[sprzeglo.ref_id]]);
     const sc = buildSceneV3(GPZ_DWIE_SEKCJE, 2);
     const symbol = sc.symbols.find((s) => s.meta?.ownerRef === sprzeglo.ref_id || s.meta?.deviceRef === sprzeglo.ref_id);
     expect(symbol).toBeDefined();
     expect(symbol!.state).toBe('closed');
   });
 
-  it('jedna szyna WN w modelu (oba transformatory na niej, migawka backendu) → JEDEN odcinek szyny WN', () => {
-    expect(szynyWn(GPZ_110KV)).toHaveLength(1);
-    expect((GPZ_110KV.transformers ?? []).map((t) => t.lv_bus_ref).filter((v, i, a) => a.indexOf(v) === i)).toHaveLength(2);
-    expect((GPZ_110KV.sources ?? []).map((s) => s.bus_ref)).toEqual(szynyWn(GPZ_110KV));
-    const odcinki = odcinkiWn(buildSceneV3(GPZ_110KV, 2));
+  it('jedna wspólna szyna WN (archiwum: oba transformatory na niej) → JEDEN odcinek szyny WN', () => {
+    const gpz = (GPZ_110KV.substations ?? []).find((s) => s.station_type === 'gpz')!;
+    const [pierwsza, druga] = [...(gpz.gpz_hv_sections ?? [])].sort((a, b) => a.order - b.order);
+    const lacznikWn = pierwsza.right_coupler_ref;
+    const jednaSzyna = {
+      ...GPZ_110KV,
+      buses: (GPZ_110KV.buses ?? []).filter((b) => b.ref_id !== druga.bus_ref),
+      sources: (GPZ_110KV.sources ?? []).filter((z) => z.bus_ref !== druga.bus_ref),
+      branches: (GPZ_110KV.branches ?? []).filter((g) => g.ref_id !== lacznikWn),
+      bays: (GPZ_110KV.bays ?? []).filter((p) => p.bus_ref !== druga.bus_ref),
+      substations: (GPZ_110KV.substations ?? []).map((s) =>
+        s.ref_id === gpz.ref_id
+          ? {
+              ...s,
+              bus_refs: (s.bus_refs ?? []).filter((r) => r !== druga.bus_ref),
+              gpz_hv_sections: [{ ...pierwsza, right_coupler_ref: null }],
+            }
+          : s,
+      ),
+      transformers: (GPZ_110KV.transformers ?? []).map((t) =>
+        t.hv_bus_ref === druga.bus_ref ? { ...t, hv_bus_ref: pierwsza.bus_ref } : t,
+      ),
+    } as EnergyNetworkModel;
+    expect(szynyWn(jednaSzyna)).toEqual([pierwsza.bus_ref]);
+    const odcinki = odcinkiWn(buildSceneV3(jednaSzyna, 2));
     expect(odcinki).toHaveLength(1);
-    expect(odcinki[0].meta?.busResultRef).toBe(szynyWn(GPZ_110KV)[0]);
+    expect(odcinki[0].meta?.busResultRef).toBe(pierwsza.bus_ref);
   });
 
-  it('kilka niepołączonych szyn WN w modelu (archiwum) → tyle samo rozłącznych odcinków, każdy z wynikiem SWOJEJ szyny', () => {
-    const [wspolna] = szynyWn(GPZ_110KV);
-    const gpz = (GPZ_110KV.substations ?? []).find((s) => s.station_type === 'gpz')!;
-    const tr2 = (GPZ_110KV.transformers ?? []).find((t) => t.name === 'TR2 110/15 kV')!;
-    const druga = `${wspolna}/archiwum-tr2`;
-    const szynaWspolna = (GPZ_110KV.buses ?? []).find((b) => b.ref_id === wspolna)!;
-    const dwieSzyny = {
+  it('kilka szyn WN bez rejestru sekcji 110 kV (archiwum) → tyle samo rozłącznych odcinków, każdy z wynikiem SWOJEJ szyny', () => {
+    const bezRejestru = {
       ...GPZ_110KV,
-      buses: [...(GPZ_110KV.buses ?? []), { ...szynaWspolna, ref_id: druga, name: 'Szyna 110 kV TR2' }],
       substations: (GPZ_110KV.substations ?? []).map((s) =>
-        s.ref_id === gpz.ref_id ? { ...s, bus_refs: [...(s.bus_refs ?? []), druga] } : s,
+        s.station_type === 'gpz' ? { ...s, gpz_hv_sections: [] } : s,
       ),
-      transformers: (GPZ_110KV.transformers ?? []).map((t) => (t.ref_id === tr2.ref_id ? { ...t, hv_bus_ref: druga } : t)),
     } as EnergyNetworkModel;
-    const odcinki = odcinkiWn(buildSceneV3(dwieSzyny, 2));
-    expect(szynyWn(dwieSzyny)).toHaveLength(2);
-    expect(odcinki.map((s) => s.meta?.busResultRef).sort()).toEqual(szynyWn(dwieSzyny));
+    expect(szynyWn(bezRejestru)).toHaveLength(2);
+    const odcinki = odcinkiWn(buildSceneV3(bezRejestru, 2));
+    expect(odcinki.map((s) => s.meta?.busResultRef).sort()).toEqual(szynyWn(bezRejestru));
     const zakresy = odcinki
       .map((s) => s.points.map((p) => p.x))
       .map((xs) => [Math.min(...xs), Math.max(...xs)] as const)

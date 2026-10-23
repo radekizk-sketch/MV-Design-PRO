@@ -1,3 +1,4 @@
+import { liczbaZOdmiana } from '../../shared/odmianaLiczebnikowa';
 import { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 
@@ -24,6 +25,7 @@ import {
   type WorkspaceSurfaceCode,
 } from '../../workspace/types';
 import { useRunIdOgladany } from '../../../ui2/wyniki/kontekst/kontekstWyniku';
+import { grupujOdbioryWgPasma, TYTUL_GRUPY_ODBIOROW } from '../../../ui2/model/odbioryWgPasma';
 
 type RowState = 'ok' | 'warn' | 'danger' | 'group';
 
@@ -99,7 +101,7 @@ function visibleTreeRowsLimit(title: string): number {
   if (title === 'Stacje SN/nN') return 24;
   if (title === 'Magistrale i odcinki SN') return 18;
   if (title === 'Układy PV/BESS/FW') return 12;
-  if (title === 'Odbiory nN') return 8;
+  if (Object.values(TYTUL_GRUPY_ODBIOROW).includes(title)) return 8;
   return DEFAULT_VISIBLE_TREE_ROWS;
 }
 
@@ -277,7 +279,7 @@ export function SchematContextPanel() {
 
     if (visibleBlockerCount > 0) {
       return {
-        label: `Konfiguracja układu: ${visibleBlockerCount} ${visibleBlockerCount === 1 ? 'zagadnienie' : 'zagadnień'}`,
+        label: `Konfiguracja układu: ${liczbaZOdmiana(visibleBlockerCount, { jeden: 'zagadnienie', kilka: 'zagadnienia', wiele: 'zagadnień' })}`,
         buttonLabel: 'Pokaż',
         stageLabel: 'w konfiguracji',
         sectionTitle: `Konfiguracja układu (${visibleBlockerCount})`,
@@ -636,7 +638,19 @@ function buildTreeSections(snapshot: SnapshotRecord | null, blockerRefs: Set<str
     buildSection('Stacje SN/nN', fieldStations, 'Stacja', blockerRefs, stationTarget, (item) => formatStationType(snapshot, item), formatStationTreeLabel),
     buildSection('Magistrale i odcinki SN', lineBranches, 'Odcinek', blockerRefs, branchTarget, (item) => formatBranchMeta(item)),
     buildSection('Układy PV/BESS/FW', getCollection(snapshot, 'generators'), 'Układ', blockerRefs, generatorTarget, (item) => formatGeneratorMeta(item, snapshot)),
-    buildSection('Odbiory nN', getCollection(snapshot, 'loads'), 'Odbiór', blockerRefs, loadTarget, (item) => formatLoadMeta(item)),
+    // Karta GPZ-H5-SLD: odbiory w grupach pasma napięciowego swojej szyny (`grupujOdbioryWgPasma`)
+    // — odbiór sekcji SN GPZ nie trafia do „Odbiory nN".
+    ...grupujOdbioryWgPasma(
+      getCollection(snapshot, 'loads'),
+      (item) => (typeof item.bus_ref === 'string' ? item.bus_ref : null),
+      getCollection(snapshot, 'buses').flatMap((bus) =>
+        typeof bus.ref_id === 'string'
+          ? [{ ref_id: bus.ref_id, voltage_kv: typeof bus.voltage_kv === 'number' ? bus.voltage_kv : null }]
+          : [],
+      ),
+    ).map((grupa) =>
+      buildSection(grupa.tytul, [...grupa.odbiory], 'Odbiór', blockerRefs, loadTarget, (item) => formatLoadMeta(item)),
+    ),
   ];
 
   return sections.filter((section): section is TreeSectionSpec => section !== null);

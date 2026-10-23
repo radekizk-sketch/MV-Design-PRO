@@ -1,4 +1,4 @@
-"""Station template registry — K30-16/V12T-016, 71 templates across 15 categories."""
+"""Station template registry — K30-16/V12T-016, 73 templates across 15 categories."""
 
 from application.station_templates.schema import StationTemplate
 from application.station_templates.templates.bess import BESS_TEMPLATES
@@ -35,7 +35,7 @@ ALL_TEMPLATES: tuple[StationTemplate, ...] = (
     *WIATROWE_TEMPLATES,  # 4
     *SEKCYJNE_TEMPLATES,  # 3
     # V12T-016 — delta rola A/C/E (rejestr długu, przegląd 2026-09):
-    *GPZ_110_SN_TEMPLATES,  # 3 (rola A)
+    *GPZ_110_SN_TEMPLATES,  # 5 (rola A: 2 wzorce H5 + 3 GPZ trybu równoważnika SN)
     *ROZDZIELNIA_SIECIOWA_TEMPLATES,  # 3 (rola A)
     *STACJA_ABONENCKA_TEMPLATES,  # 4 (rola C)
     *KOMPENSACJA_TEMPLATES,  # 3 (rola E)
@@ -43,4 +43,5 @@ ALL_TEMPLATES: tuple[StationTemplate, ...] = (
 )
 # Total: 71 templates (57 + 16 V12T-016 delta: 3 GPZ + 3 RS/RSM + 4 abonencka
 # + 3 kompensacja + 3 rezerwa zasilania; minus 2 wiatrowe wycofane 2026-10-15 —
-# `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`)
+# `wiatrowe.SZABLONY_WIATROWE_WYCOFANE`). Od karty GPZ-H5-BACKEND (2026-10-22): 73 —
+# plus 2 wzorce ENEA H5 110/15 i 110/20 kV w `GPZ_110_SN_TEMPLATES` (razem 5 GPZ).

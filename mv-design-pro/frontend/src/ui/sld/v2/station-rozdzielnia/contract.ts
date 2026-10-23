@@ -97,6 +97,15 @@ export const FIELD_ROLE_SHORT_TAG: Readonly<Record<StationFieldRole, string>> = 
   POMIAROWE: 'POM',
 };
 
+/** Short tag of the SN FUNCTION fields of a GPZ section (ENEA Zeszyt 1 §13, zał. Z.2): the
+ *  earthing-set field (ZU) and the capacitor-bank field (BKR). Not a `StationFieldRole` (this
+ *  unit does not render them as station fields), but they are model roles (`Bay.bay_role`
+ *  EARTHING/CAPACITOR) and every role tag on the schematic and in the tree comes from here. */
+export const FIELD_FUNCTION_ROLE_SHORT_TAG: Readonly<Record<'UZIEMIAJACE' | 'KOMPENSACYJNE', string>> = {
+  UZIEMIAJACE: 'ZU',
+  KOMPENSACYJNE: 'BKR',
+};
+
 // =============================================================================
 // Field role vocabulary — THE canon of SN field role names (karta #141)
 // =============================================================================
@@ -117,6 +126,8 @@ export const FIELD_ROLE_LABEL_PL: Readonly<Record<BayCanonicalRole, string>> = {
   LINIA_ODG: 'Pole odgałęźne',
   SPRZEGLO: 'Pole sprzęgła',
   POMIAROWE: 'Pole pomiarowe',
+  UZIEMIAJACE: 'Pole zespołu uziemiającego',
+  KOMPENSACYJNE: 'Pole baterii kondensatorów',
   PV_SN: 'Pole źródłowe PV',
   BESS_SN: 'Pole źródłowe BESS',
   FW_SN: 'Pole źródłowe FW',
@@ -140,6 +151,8 @@ export const MODEL_BAY_ROLE_TO_CANONICAL: Readonly<Record<string, BayCanonicalRo
   TR: 'TRANSFORMATOROWE',
   COUPLER: 'SPRZEGLO',
   MEASUREMENT: 'POMIAROWE',
+  EARTHING: 'UZIEMIAJACE',
+  CAPACITOR: 'KOMPENSACYJNE',
 };
 
 const MODEL_SOURCE_ROLE = 'OZE';
@@ -188,6 +201,7 @@ export function fieldRoleLabelPl(raw: string | null | undefined): string {
  */
 export function fieldRoleShortTagPl(raw: string | null | undefined): string | null {
   const role = canonicalFieldRole(raw);
+  if (role === 'UZIEMIAJACE' || role === 'KOMPENSACYJNE') return FIELD_FUNCTION_ROLE_SHORT_TAG[role];
   return role && Object.prototype.hasOwnProperty.call(FIELD_ROLE_SHORT_TAG, role)
     ? FIELD_ROLE_SHORT_TAG[role as StationFieldRole]
     : null;

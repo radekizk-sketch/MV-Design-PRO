@@ -18,7 +18,8 @@ istniejącej bramy katalogowej, z listą dopuszczalnych par w komunikacie PL.
 
 Karta GPZ-MODEL: transformatory WN/SN powstają WYŁĄCZNIE przy równoważniku sieci po
 stronie 110 kV — wszystkie testy tej bramy budują GPZ w tym trybie; napięcie WN pary
-katalogowej pochodzi z równoważnika (jedno źródło prawdy). Odmowę danych transformatora
+katalogowej pochodzi z równoważnika toru zasilania sekcji 110 kV, do której wpis
+transformatora jest przypisany (jedno źródło prawdy, karta GPZ-H5). Odmowę danych transformatora
 przy równoważniku na szynach SN przypina `test_gpz_granica_zasilania.py`.
 
 UWAGA (zweryfikowane empirycznie przed naprawą, probe_gpz.py): katalog niesie
@@ -43,32 +44,42 @@ def _empty_enm(sn_nominal_kv: float = 15.0) -> dict:
     return enm.model_dump(mode="json")
 
 
-def _base_payload(**nadpisania: object) -> dict:
-    """GPZ z równoważnikiem sieci po stronie 110 kV — JEDYNY tryb, w którym
-    transformatory WN/SN są elementami modelu (karta GPZ-MODEL: przy równoważniku na
-    szynach SN transformatorów nie ma i ich żądanie jest odmawiane)."""
+def _base_payload(
+    *,
+    voltage_kv: float = 15.0,
+    manual_equivalent: dict | None = None,
+    sekcje: int = 1,
+    **wpis: object,
+) -> dict:
+    """GPZ ze stroną 110 kV — JEDYNY tryb, w którym transformatory WN/SN są elementami
+    modelu (karta GPZ-MODEL: przy równoważniku na szynach SN transformatorów nie ma i ich
+    żądanie jest odmawiane). Kontrakt karty GPZ-H5: równoważnik 110 kV opisuje tor zasilania
+    sekcji szyn 110 kV (`hv_sections[].supply`), a typ transformatora (`transformer_*` ze
+    `wpis`) należy do JAWNEGO wpisu `transformers[]` — po jednym transformatorze na sekcję
+    SN, wszystkie z jednej sekcji 110 kV."""
     payload: dict[str, object] = {
-        "voltage_kv": 15.0,
-        "manual_equivalent": {
-            "short_circuit_input_side": "HV_110",
-            "hv_voltage_kv": 110.0,
-            "sk3_hv_mva": 3000.0,
-            "rx_ratio": 0.1,
-        },
-        "transformer_count": 1,
+        "voltage_kv": voltage_kv,
+        "sections_count": sekcje,
+        "hv_sections": [
+            {
+                "supply": {
+                    "line_name": "Linia 110 kV zasilająca",
+                    "supplying_station_name": (
+                        "Stacja zasilająca — przykładowe dane przypadku testowego"
+                    ),
+                    "manual_equivalent": manual_equivalent or _rownowaznik_110(110.0),
+                }
+            }
+        ],
+        "transformers": [{"hv_section": 1, "sn_section": n, **wpis} for n in range(1, sekcje + 1)],
     }
-    payload.update(nadpisania)
+    if sekcje >= 2:
+        payload["reserve_mode"] = "hidden"
     return payload
 
 
-def _rownowaznik_110(hv_voltage_kv: float, sn_voltage_kv: float = 15.0) -> dict:
-    return {
-        "short_circuit_input_side": "HV_110",
-        "hv_voltage_kv": hv_voltage_kv,
-        "sk3_hv_mva": 3000.0,
-        "rx_ratio": 0.1,
-        "sn_voltage_kv": sn_voltage_kv,
-    }
+def _rownowaznik_110(hv_voltage_kv: float) -> dict:
+    return {"hv_voltage_kv": hv_voltage_kv, "sk3_hv_mva": 3000.0, "rx_ratio": 0.1}
 
 
 class TestBrakTypuIBrakParyOdrzucone:
@@ -84,9 +95,13 @@ class TestBrakTypuIBrakParyOdrzucone:
         assert "„Moc znamionowa Sn”" in tresc, tresc
         assert "hv_voltage_kv" not in tresc and "transformer_sn_mva" not in tresc, tresc
 
-    def test_napiecie_wn_bez_mocy_odrzucone(self) -> None:
+    def test_napiecie_wn_toru_bez_mocy_odrzucone(self) -> None:
+        """Napięcie WN jest znane z toru zasilania sekcji 110 kV — samo napięcie bez mocy
+        nie wskazuje pozycji katalogu."""
         wynik = execute_domain_operation(
-            _empty_enm(), "add_grid_source_sn", _base_payload(hv_voltage_kv=110.0)
+            _empty_enm(),
+            "add_grid_source_sn",
+            _base_payload(manual_equivalent=_rownowaznik_110(110.0)),
         )
         assert wynik.get("error_code") == "catalog.ref_required", wynik
         assert wynik.get("snapshot") is None
@@ -178,7 +193,7 @@ class TestTypJawnyDajeTabliczkeZKatalogu:
             "add_grid_source_sn",
             _base_payload(
                 voltage_kv=20.0,
-                manual_equivalent=_rownowaznik_110(110.0, sn_voltage_kv=20.0),
+                manual_equivalent=_rownowaznik_110(110.0),
                 transformer_catalog_ref="tr-wn-sn-110-20-40mva-yd11",
             ),
         )
@@ -209,11 +224,7 @@ class TestTypJawnyDajeTabliczkeZKatalogu:
         wynik = execute_domain_operation(
             _empty_enm(),
             "add_grid_source_sn",
-            _base_payload(
-                sections_count=2,
-                transformer_count=2,
-                transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11",
-            ),
+            _base_payload(sekcje=2, transformer_catalog_ref="tr-wn-sn-110-15-25mva-yd11"),
         )
         assert wynik.get("error") is None, wynik.get("error")
         transformatory = wynik["snapshot"]["transformers"]

@@ -19,33 +19,23 @@ from typing import Any
 import pytest
 from enm.domain_operations import execute_domain_operation
 
-from tests.reference_networks.budowa_przez_api import TRANSFORMATOR_WN_SN, wiazanie
-from tests.test_catalog_materialization_step4_guardians import _empty_enm
+from tests.reference_networks.gpz_h5 import TRAFO_110_15, ladunek_gpz_110kv, pusty_model
 
 KABEL_INNY = "cable-base-epr-al-1c-240"
 TRAFO_INNY = "tr-wn-sn-110-15-40mva-yd11"
 SPOZA_KATALOGU = "pozycja-spoza-katalogu"
 
 
-def _siec() -> dict[str, Any]:
-    """GPZ z równoważnikiem po stronie 110 kV i jednym transformatorem 110/15 kV z katalogu
-    + odcinek kablowy magistrali z katalogu. Karta GPZ-MODEL: transformator 110/SN jest
-    elementem modelu WYŁĄCZNIE w tym trybie (równoważnik na szynach SN go nie ma), a obie
-    kolekcje iloczynu — gałąź i transformator — muszą istnieć w modelu wejściowym."""
+def _build_base_network_with_line_catalog() -> dict[str, Any]:
+    """GPZ ze stroną 110 kV (transformator 110/15 kV z katalogu) i odcinek kabla z katalogu.
+
+    Sieć bazowa testów strażników katalogu (`tests/test_catalog_materialization_step4_guardians.py`)
+    stoi na równoważniku szyn SN — bez transformatora — więc kolekcja `transformers` byłaby tu
+    pusta i połowa iloczynu cech nie miałaby elementu (stan zastany od karty GPZ-MODEL)."""
     wynik = execute_domain_operation(
-        _empty_enm(),
+        pusty_model(),
         "add_grid_source_sn",
-        {
-            "voltage_kv": 15.0,
-            "manual_equivalent": {
-                "short_circuit_input_side": "HV_110",
-                "hv_voltage_kv": 110.0,
-                "sk3_hv_mva": 3000.0,
-                "rx_ratio": 0.1,
-            },
-            "transformer_count": 1,
-            "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
-        },
+        {"voltage_kv": 15.0, "source_name": "Stacja zasilająca", **ladunek_gpz_110kv(1)},
     )
     assert wynik.get("error") is None, wynik.get("error")
     wynik = execute_domain_operation(
@@ -55,7 +45,8 @@ def _siec() -> dict[str, Any]:
     )
     assert wynik.get("error") is None, wynik.get("error")
     enm: dict[str, Any] = wynik["snapshot"]
-    assert len(enm["transformers"]) == 1 and enm["branches"], "obie kolekcje iloczynu w modelu"
+    assert [t["catalog_ref"] for t in enm["transformers"]] == [TRAFO_110_15]
+    assert enm["branches"], "obie kolekcje iloczynu (gałąź i transformator) w modelu"
     return enm
 
 
@@ -77,7 +68,7 @@ def _zmien(enm: dict[str, Any], ref: str, catalog_ref: str) -> dict[str, Any]:
     [("branches", KABEL_INNY), ("transformers", TRAFO_INNY)],
 )
 def test_inna_istniejaca_pozycja_materializuje_tabliczke(kolekcja: str, pozycja: str) -> None:
-    enm = _siec()
+    enm = _build_base_network_with_line_catalog()
     przed = _element(enm, kolekcja)
     wynik = _zmien(enm, przed["ref_id"], pozycja)
     assert wynik.get("error") is None, wynik.get("error")
@@ -91,7 +82,7 @@ def test_inna_istniejaca_pozycja_materializuje_tabliczke(kolekcja: str, pozycja:
 
 @pytest.mark.parametrize("kolekcja", ["branches", "transformers"])
 def test_pozycja_spoza_katalogu_jest_odmowa_bez_skutku(kolekcja: str) -> None:
-    enm = _siec()
+    enm = _build_base_network_with_line_catalog()
     stan = json.dumps(enm, sort_keys=True)
     ref = _element(enm, kolekcja)["ref_id"]
     wynik = _zmien(enm, ref, SPOZA_KATALOGU)
@@ -104,7 +95,7 @@ def test_pozycja_spoza_katalogu_jest_odmowa_bez_skutku(kolekcja: str) -> None:
 def test_ta_sama_pozycja_nie_przechodzi_ponownego_przypisania(kolekcja: str) -> None:
     """Ten sam `catalog_ref` (np. formularz odsyłający komplet pól) to nie zmiana pozycji —
     tabliczka zostaje bez zmian."""
-    enm = _siec()
+    enm = _build_base_network_with_line_catalog()
     przed = _element(enm, kolekcja)
     wynik = _zmien(enm, przed["ref_id"], przed["catalog_ref"])
     assert wynik.get("error") is None, wynik.get("error")

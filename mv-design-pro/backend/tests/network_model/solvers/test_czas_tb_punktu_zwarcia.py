@@ -423,13 +423,11 @@ def test_determinizm_dwa_biegi_i_kolejnosc_pol(rodzaj: str) -> None:
 #: Odciski ``raw_result["results"]`` biegów z t_b projektanta zmierzone na bazie karty
 #: (``5517d6eff``, przed TB-WARTOSC-ROBOCZA) skryptem sondy na tych samych migawkach —
 #: wynik i ślad biegu z podanym t_b są bit w bit te same (pole ``tb_zrodlo`` pominięte).
-#: Przeliczone 2026-10-22 przy nałożeniu GPZ-MODEL na drzewo scalone programu: GPZ-MODEL
-#: zmienia ładunek operacji GPZ (równoważnik na szynach SN bez transformatorów), więc ziarno
-#: daje nowe identyfikatory szyn, pól i gałęzi migawki. Sonda na wszystkich 15 parach
-#: (drzewo programu ``182d7df30`` — odtwarza dokładnie poprzednie piny — kontra drzewo
-#: scalone): ta sama liczba liści wyniku (322–342), różne WYŁĄCZNIE identyfikatory
-#: (``fault_node_id``, ``branch_id``, klucz ``KT[...]``, ``proof_ref``; 12 liści, 14 dla
-#: topologii z przekształtnikiem); każda liczba, t_b i ślad poza identyfikatorami bez zmian.
+#: Przepięte 2026-10-22 (karta GPZ-H5): karta GPZ-MODEL (``88e6d8828``) zmieniła odwołania
+#: szyn budowniczego sieci przykładu IEC 60909-4, więc zmieniły się WYŁĄCZNIE identyfikatory
+#: węzłów, gałęzi i ``proof_ref`` w wierszach. Sonda: wiersze z identyfikatorami UUID
+#: i ``proof_ref`` zamaskowanymi mają ten sam odcisk na ``10b475526`` (ostatni stan zielony
+#: pinu) i na drzewie karty dla wszystkich 15 par — liczby i ślad bez zmian.
 ODCISKI_BAZY: dict[tuple[str, float], str] = {
     ("asynchroniczna", 0.02): "8a42d17014e5c4abdbc5bc5fec2a304632fc417002c9116321e132e868e6dc11",
     ("asynchroniczna", 0.1): "d290090c4feeaaaf60a221a8edf158acf634f8c9f8b54a8ffc2fd1cbf0076fc0",

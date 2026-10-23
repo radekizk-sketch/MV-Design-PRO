@@ -7,7 +7,12 @@ from typing import Any
 
 from enm.slownik_komunikatow import opis_operacji, pole
 from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
-from enm.zrodlo_zwarcie import klucz_mocy_zwarciowej, strona_rownowaznika, tryb_danych
+from enm.zrodlo_zwarcie import (
+    STRONA_ROWNOWAZNIKA_WN,
+    klucz_mocy_zwarciowej,
+    strona_rownowaznika,
+    tryb_danych,
+)
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
     validate_catalog_binding,
@@ -146,6 +151,47 @@ def _uses_manual_grid_source_equivalent(payload: dict[str, Any]) -> bool:
     if parameter_source == "MANUAL_EQUIVALENT":
         return True
     return isinstance(payload.get("manual_equivalent"), dict)
+
+
+def _slowniki(wartosc: Any) -> list[dict[str, Any]]:
+    """Wpisy-słowniki listy z payloadu (inne wpisy odrzuca operacja odmową nazwaną)."""
+    return [w for w in wartosc if isinstance(w, dict)] if isinstance(wartosc, list) else []
+
+
+def _tory_zasilania_gpz(payload: dict[str, Any]) -> list[dict[str, Any]] | None:
+    """Tory zasilania GPZ podane NA SEKCJĘ (karta GPZ-H5) jako ładunki bramy, albo ``None``.
+
+    LUSTRO `add_grid_source_sn`: sekcje 110 kV (`hv_sections[].supply`, równoważnik po
+    stronie 110 kV) albo równoważnik na sekcję SN (`gpz_sections[].supply`). Tor 110 kV
+    dostaje stronę równoważnika i napięcie SN ładunku — ten sam predykat strony i klucza
+    S″_kQ co operacja (`enm/zrodlo_zwarcie.py`)."""
+    if payload.get("hv_sections") is not None:
+        tory = []
+        for sekcja in _slowniki(payload.get("hv_sections")):
+            zasilanie = sekcja.get("supply")
+            if not isinstance(zasilanie, dict):
+                continue
+            rownowaznik = zasilanie.get("manual_equivalent")
+            tory.append(
+                {
+                    **zasilanie,
+                    "voltage_kv": payload.get("voltage_kv"),
+                    "manual_equivalent": (
+                        {**rownowaznik, "short_circuit_input_side": STRONA_ROWNOWAZNIKA_WN}
+                        if isinstance(rownowaznik, dict)
+                        else rownowaznik
+                    ),
+                }
+            )
+        return tory
+    sekcje = _slowniki(payload.get("gpz_sections"))
+    if any(isinstance(s.get("supply"), dict) for s in sekcje):
+        return [
+            {**s["supply"], "voltage_kv": payload.get("voltage_kv")}
+            for s in sekcje
+            if isinstance(s.get("supply"), dict)
+        ]
+    return None
 
 
 def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
@@ -544,13 +590,30 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     # --- Źródło systemowe GPZ (V1) -----------------------------------------
     PozycjaBramyApi("add_grid_source_sn", "catalog_ref", "ZRODLO_SN", True),
     PozycjaBramyApi("add_grid_source_sn", "catalog_binding", "ZRODLO_SN", True),
-    PozycjaBramyApi("add_grid_source_sn", "transformer_catalog_ref", "TRAFO_SN_NN", True),
-    PozycjaBramyApi("add_grid_source_sn", "transformer_catalog_binding", "TRAFO_SN_NN", True),
+    # Karta GPZ-H5: transformatory 110/SN wyłącznie jako wpisy `transformers[]` (sekcja
+    # 110 kV → sekcja SN), równoważnik na sekcję SN w `gpz_sections[].supply`, wyłącznik
+    # pola SN transformatora rezerwowego (rezerwa jawna) w `reserve_transformer_apparatus`.
+    PozycjaBramyApi(
+        "add_grid_source_sn", "transformers[].transformer_catalog_ref", "TRAFO_SN_NN", True
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn", "transformers[].transformer_catalog_binding", "TRAFO_SN_NN", True
+    ),
     PozycjaBramyApi(
         "add_grid_source_sn",
-        "transformer_tap_changer_catalog_ref",
+        "transformers[].transformer_tap_changer_catalog_ref",
         PRZESTRZEN_ZACZEPY,
         True,
+    ),
+    PozycjaBramyApi("add_grid_source_sn", "gpz_sections[].supply.catalog_ref", "ZRODLO_SN", True),
+    PozycjaBramyApi(
+        "add_grid_source_sn", "gpz_sections[].supply.catalog_binding", "ZRODLO_SN", True
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn", "reserve_transformer_apparatus.catalog_ref", "APARAT_SN", True
+    ),
+    PozycjaBramyApi(
+        "add_grid_source_sn", "reserve_transformer_apparatus.catalog_binding", "APARAT_SN", True
     ),
     PozycjaBramyApi(
         "add_grid_source_sn", "gpz_line_field_apparatus.catalog_binding", "APARAT_SN", True
@@ -948,26 +1011,49 @@ def _referencje_dodatkowe(
             )
 
     if operation == "add_grid_source_sn":
-        _dodaj(
-            "Transformator WN/SN GPZ",
-            "TRAFO_SN_NN",
-            payload.get("transformer_catalog_ref"),
-            payload.get("transformer_catalog_binding"),
-        )
-        aparat_gpz = payload.get("gpz_line_field_apparatus")
-        if isinstance(aparat_gpz, dict):
-            # LUSTRO `_normalize_gpz_line_field_apparatus`: wiązanie ma pierwszeństwo,
-            # potem `catalog_ref`/`catalog_item_id` na wierzchu bloku.
+        # Karta GPZ-H5: transformatory 110/SN są wpisami `transformers[]` (LUSTRO
+        # `_wpisy_transformatorow_gpz` + `_resolve_gpz_wn_sn_transformer_catalog_ref`).
+        for numer, wpis in enumerate(_slowniki(payload.get("transformers")), start=1):
             _dodaj(
-                "Aparat pól liniowych GPZ",
-                "APARAT_SN",
-                _ref_z_wiazania(aparat_gpz.get("catalog_binding"))
-                or aparat_gpz.get("catalog_ref")
-                or aparat_gpz.get("catalog_item_id"),
-                aparat_gpz.get("catalog_binding"),
+                f"Transformator 110/SN GPZ {numer}",
+                "TRAFO_SN_NN",
+                wpis.get("transformer_catalog_ref"),
+                wpis.get("transformer_catalog_binding"),
             )
+            _dodaj(
+                f"Przełącznik zaczepów transformatora 110/SN GPZ {numer}",
+                PRZESTRZEN_ZACZEPY,
+                wpis.get("transformer_tap_changer_catalog_ref"),
+            )
+        # Równoważnik na sekcję SN (łącznik szyn SN normalnie otwarty) — LUSTRO
+        # `_rozstrzygnij_zasilanie_gpz` toru sekcji.
+        for numer, sekcja in enumerate(_slowniki(payload.get("gpz_sections")), start=1):
+            zasilanie = sekcja.get("supply")
+            if isinstance(zasilanie, dict):
+                _dodaj(
+                    f"Źródło systemowe GPZ sekcji {numer}",
+                    "ZRODLO_SN",
+                    zasilanie.get("catalog_ref"),
+                    zasilanie.get("catalog_binding"),
+                )
+        for klucz, opis in (
+            ("gpz_line_field_apparatus", "Aparat pól liniowych GPZ"),
+            ("reserve_transformer_apparatus", "Wyłącznik pola SN transformatora rezerwowego"),
+        ):
+            aparat_gpz = payload.get(klucz)
+            if isinstance(aparat_gpz, dict):
+                # LUSTRO `_normalize_gpz_line_field_apparatus`: wiązanie ma pierwszeństwo,
+                # potem `catalog_ref`/`catalog_item_id` na wierzchu bloku.
+                _dodaj(
+                    opis,
+                    "APARAT_SN",
+                    _ref_z_wiazania(aparat_gpz.get("catalog_binding"))
+                    or aparat_gpz.get("catalog_ref")
+                    or aparat_gpz.get("catalog_item_id"),
+                    aparat_gpz.get("catalog_binding"),
+                )
 
-    if operation in {"add_grid_source_sn", "add_transformer_sn_nn"}:
+    if operation == "add_transformer_sn_nn":
         _dodaj(
             "Przełącznik zaczepów transformatora",
             PRZESTRZEN_ZACZEPY,
@@ -1467,6 +1553,36 @@ def validate_and_materialize_catalog_binding(
     if operation == "append_station_on_endpoint" and not _append_station_tworzy_transformator(
         payload
     ):
+        return None, {}
+
+    if operation == "add_grid_source_sn" and _tory_zasilania_gpz(payload) is not None:
+        # Karta GPZ-H5: GPZ z torem zasilania NA SEKCJĘ (sekcje 110 kV albo równoważnik na
+        # sekcję SN) nie ma wiązania głównego — każdy tor jest albo pozycją katalogu
+        # (bramkowaną wyżej, `_referencje_dodatkowe`), albo kompletnym równoważnikiem ręcznym
+        # (ten sam predykat kompletności co GPZ z jednym równoważnikiem).
+        for numer, tor in enumerate(_tory_zasilania_gpz(payload) or [], start=1):
+            if _tekst_referencji(tor.get("catalog_ref")) or _ref_z_wiazania(
+                tor.get("catalog_binding")
+            ):
+                continue
+            if not _manual_grid_source_equivalent_complete(tor):
+                return (
+                    CatalogPolicyError(
+                        code="catalog.ref_required",
+                        message_pl="Element techniczny wymaga powiązania z katalogiem",
+                        errors=[
+                            {
+                                "code": "catalog.ref_required",
+                                "message_pl": (
+                                    f"Tor zasilania GPZ {numer}: ręczny odpowiednik musi być "
+                                    "kompletny (moc albo prąd zwarciowy i R/X) albo należy "
+                                    "wskazać pozycję katalogu źródeł zasilania."
+                                ),
+                            }
+                        ],
+                    ),
+                    {},
+                )
         return None, {}
 
     if operation == "add_grid_source_sn" and _uses_manual_grid_source_equivalent(payload):

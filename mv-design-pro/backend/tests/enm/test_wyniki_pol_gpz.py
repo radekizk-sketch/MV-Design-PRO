@@ -61,7 +61,7 @@ def siec_110kv() -> Any:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     with TestClient(app) as klient:
         b = KlientBudowy(klient, "Pomiar pól GPZ 110 kV")
-        b.gpz_110kv(1)
+        b.gpz_110kv()
         b.odcinek_magistrali(120, "Odcinek 0")
         yield (b.migawka(), None)
 

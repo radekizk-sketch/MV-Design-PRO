@@ -40,6 +40,7 @@ import type {
   Substation,
 } from '../../types/enm';
 import {
+  FIELD_FUNCTION_ROLE_SHORT_TAG,
   FIELD_ROLE_LABEL_PL,
   FIELD_ROLE_SHORT_TAG,
   FIELD_SOURCE_LABEL_PL,
@@ -293,10 +294,16 @@ function buildStationSubject(
     tr: liczbaPol('TRANSFORMATOROWE'),
     coupler: liczbaPol('SPRZEGLO'),
     measurement: liczbaPol('POMIAROWE'),
+    uziemiajace: liczbaPol('UZIEMIAJACE'),
+    kompensacyjne: liczbaPol('KOMPENSACYJNE'),
     oze: polaSn.filter((pole) => isSourceFieldRole(pole.field_role || pole.bay_role)).length,
   };
   const etykietaPol = (rola: StationFieldRole): string =>
     `${fieldLabelPluralPl(FIELD_ROLE_LABEL_PL[rola])} (${FIELD_ROLE_SHORT_TAG[rola]})`;
+  // Karta GPZ-H5-SLD etap 3: pola funkcyjne sekcji SN (role modelu EARTHING/CAPACITOR) mają
+  // własny wiersz — dawniej nie trafiały do żadnej liczności.
+  const etykietaPolaFunkcyjnego = (rola: 'UZIEMIAJACE' | 'KOMPENSACYJNE'): string =>
+    `${fieldLabelPluralPl(FIELD_ROLE_LABEL_PL[rola])} (${FIELD_FUNCTION_ROLE_SHORT_TAG[rola]})`;
 
   const transformerCount = selectStationDistributionTransformerRefs(snapshot, station).length;
 
@@ -324,6 +331,8 @@ function buildStationSubject(
         { key: 'pole_tr', label: etykietaPol('TRANSFORMATOROWE'), value: grouped.tr },
         { key: 'pole_sekcja', label: etykietaPol('SPRZEGLO'), value: grouped.coupler },
         { key: 'pole_pomiar', label: etykietaPol('POMIAROWE'), value: grouped.measurement },
+        { key: 'pole_uziemiajace', label: etykietaPolaFunkcyjnego('UZIEMIAJACE'), value: grouped.uziemiajace },
+        { key: 'pole_kompensacyjne', label: etykietaPolaFunkcyjnego('KOMPENSACYJNE'), value: grouped.kompensacyjne },
         { key: 'pole_oze', label: fieldLabelPluralPl(FIELD_SOURCE_LABEL_PL), value: grouped.oze },
       ],
     },

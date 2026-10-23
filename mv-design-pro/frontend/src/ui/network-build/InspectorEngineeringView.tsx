@@ -99,6 +99,7 @@ import {
 import { panelMaTresc } from './inspektor-elementu/panelNadOknem';
 import { useStanPaneluElementu } from './inspektor-elementu/stanPaneluElementu';
 import { useRunIdOgladany } from '../../ui2/wyniki/kontekst/kontekstWyniku';
+import { polozenieSlownie } from '../shared/stanLacznika';
 
 // =============================================================================
 // Types
@@ -2163,7 +2164,7 @@ function buildSectionsForElement(
           { key: 'ref_id', label: 'Oznaczenie aparatu', value: branch.ref_id },
           { key: 'name', label: 'Nazwa', value: branch.name },
           { key: 'kind', label: 'Rodzaj aparatu', value: apparatusLabel },
-          { key: 'status', label: 'Stan ruchowy', value: branch.status === 'closed' ? 'zamknięty' : 'otwarty' },
+          { key: 'status', label: 'Stan ruchowy', value: polozenieSlownie(branch.status) },
           ...(branchParent ? [{ key: 'parent_station', label: 'Stacja nadrzędna', value: branchParent }] : []),
         ],
       });

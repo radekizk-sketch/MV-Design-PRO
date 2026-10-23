@@ -66,6 +66,25 @@ export interface ProtectionRelaySpec {
   badge_pl: string | null;
 }
 
+/**
+ * Dana projektu wymagana przez szablon i NIE wypełniana przez niego (karta GPZ-H5: stan
+ * normalny łącznika szyn 110 kV, tryb rezerwy, tory zasilania L1/L2) — pole wejścia
+ * z podpowiedzią i podstawą, bez wartości domyślnej. Backend:
+ * `schema.py::DanaProjektuSzablonu` (`_dana_projektu_to_dict`).
+ */
+export interface DanaProjektuSzablonu {
+  /** Ścieżka pola ładunku operacji (np. `hv_coupler.normal_state`). */
+  klucz: string;
+  operacja: string;
+  label_pl: string;
+  podpowiedz_pl: string;
+  podstawa_pl: string;
+  /** Dozwolone wartości z nazwą; pusta lista — dana złożona albo tekst. */
+  wartosci: readonly { wartosc: string; label_pl: string }[];
+  /** Kiedy dana jest wymagana; pusty — zawsze. */
+  warunek_pl: string;
+}
+
 export interface TemplateSchema {
   transformer_options: readonly CatalogChoice[];
   transformer_count: TemplateParamInt;
@@ -92,6 +111,9 @@ export interface TemplateSchema {
    * Backend: `schema.py::_schema_to_dict` (`grid_source_options`).
    */
   grid_source_options: readonly CatalogChoice[];
+  /** Układ GPZ (`H5` — strona 110 kV w modelu, `ROWNOWAZNIK_SN`); `null` poza GPZ. */
+  gpz_uklad: 'H5' | 'ROWNOWAZNIK_SN' | null;
+  dane_projektu: readonly DanaProjektuSzablonu[];
 }
 
 export interface StationTemplateSummary {
@@ -186,7 +208,8 @@ export async function fetchStationTemplate(templateId: string): Promise<StationT
 
 export interface ApplyTemplateRequest {
   case_id: string;
-  target_segment_id: string;
+  /** `null` wyłącznie dla szablonu korzenia modelu (`wchodzi_w_segment === false`). */
+  target_segment_id: string | null;
   insert_at_ratio?: number;
   params_override?: Record<string, unknown>;
   catalog_profile?: string | null;

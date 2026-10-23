@@ -168,6 +168,8 @@ interface StackItemSpec {
    *  gałąź łączeniowa z `Bay.equipment_refs`) i odwołanie katalogowe typu. */
   readonly origin?: 'rekord_pola' | 'galaz_pola';
   readonly typeRef?: string | null;
+  /** Karta GPZ-H5-SLD etap 3 (d): pozycja normalna aparatu z gałęzi łączeniowej. */
+  readonly pozycjaNormalna?: 'open' | 'closed';
 }
 
 /**
@@ -206,6 +208,7 @@ function stackItemsForBay(
           designation: d.designation,
           origin: d.pochodzenie,
           typeRef: d.typeRef ?? null,
+          ...(d.pozycjaNormalna ? { pozycjaNormalna: d.pozycjaNormalna } : {}),
         }
       : { symbolId };
   });
@@ -346,6 +349,10 @@ export interface ComposedSymbolInstance {
    *  dla pozostałych symboli. Brak/nierozpoznana grupa = jawny stan glifu + wpis
    *  `missingData` (`station.transformer.vector_group.*`). */
   readonly uzwojenia?: UzwojeniaTransformatora;
+  /** Karta GPZ-H5-SLD etap 3 (d): pozycja normalna łącznika — sprzęgła sekcji
+   *  (`StationSnCoupler.normalState`) i aparatu pola z gałęzi łączeniowej
+   *  (`BayPrimaryDeviceView.pozycjaNormalna`); scena przepuszcza ją do glifu. */
+  readonly pozycjaNormalna?: 'open' | 'closed';
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -611,6 +618,7 @@ function buildBayStack(
       x,
       y,
       state: item.state,
+      ...(item.pozycjaNormalna ? { pozycjaNormalna: item.pozycjaNormalna } : {}),
       ports,
     };
     instances.push(instance);
@@ -694,6 +702,7 @@ function buildBayStack(
         x,
         y: lateralY,
         state: item.state,
+        ...(item.pozycjaNormalna ? { pozycjaNormalna: item.pozycjaNormalna } : {}),
         ports,
       };
       instances.push(instance);
@@ -1660,6 +1669,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           x,
           y,
           state: coupler.state,
+          ...(coupler.normalState ? { pozycjaNormalna: coupler.normalState } : {}),
           ports: portsInWorld(SYMBOL_DEFS[symbolId], x, y),
         });
         xsBySection.get(p.sectionBusRef)?.push(x);

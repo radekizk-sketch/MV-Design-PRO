@@ -11,11 +11,18 @@
  *
  * SCENARIUSZ (realny backend, realna droga inżyniera):
  * 1. sieć gotowa do obliczeń → bieg SC_3F (DONE),
- * 2. model PSUJE SIĘ po biegu (łącznik normalnie otwarty odcina ciąg od źródła
- *    ⇒ blokada gotowości u serwera),
+ * 2. model ZMIENIA SIĘ po biegu (łącznik normalnie otwarty odcina ciąg od źródła
+ *    ⇒ nowa uwaga gotowości u serwera: wyspa bez zasilania, E003),
  * 3. zimne wejście na link przebiegu `#analysis?run=…&case=…` (świeży kontekst
- *    przeglądarki = przeładowanie strony) — chip MUSI mówić „Model: w budowie"
- *    i liczyć blokady zgodnie z serwerem.
+ *    przeglądarki = przeładowanie strony) — chip MUSI liczyć uwagi BIEŻĄCEGO modelu
+ *    zgodnie z serwerem, a nie deklarować „brak uwag".
+ *
+ * KANON (karta GPZ-H5, R7; korekta przy scaleniu GPZ-H5-INTEGRACJA 2026-10-22): wyspa
+ * odcięta od źródła NIE blokuje biegu (część zasilana liczona, wyspa „bez napięcia"),
+ * więc E003 ma ważność IMPORTANT, a `ready` zostaje `true`. Dawny scenariusz zakładał
+ * blokadę i padał na kanonie H5. Intencja bramki AUD-F jest ta sama: zaszyte
+ * `{ready:true, blockers:[], warnings:[]}` dawało chip „brak uwag" — przy uwadze E003
+ * serwera chip MUSI pokazać jej liczbę.
  *
  * Zrzuty ŻYWEJ aplikacji (oba motywy) — dowód dla oceny właściciela (dyrektywa #8).
  *
@@ -99,8 +106,8 @@ async function pobierzGotowosc(
   return (await response.json()) as ReadinessResponse;
 }
 
-function blokadySerwera(gotowosc: ReadinessResponse): number {
-  return gotowosc.by_severity?.BLOCKER ?? 0;
+function ostrzezeniaSerwera(gotowosc: ReadinessResponse): number {
+  return gotowosc.by_severity?.IMPORTANT ?? 0;
 }
 
 async function createProjectAndCase(
@@ -278,9 +285,10 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
   const { caseId } = await createProjectAndCase(request);
   const segmentRefs = await zbudujSiecGotowaDoObliczen(request, caseId);
   const runId = await uruchomBiegScPrzezApi(request, caseId);
+  const gotowoscPrzedZmiana = await pobierzGotowosc(request, caseId);
 
   // Model PSUJE SIĘ PO biegu: łącznik normalnie otwarty odcina ciąg od źródła
-  // (realna sytuacja projektowa) ⇒ serwer zgłasza blokadę gotowości.
+  // (realna sytuacja projektowa) ⇒ serwer zgłasza uwagę E003 (IMPORTANT, kanon H5 R7).
   // Karta W5-C: punktem normalnie otwartym jest WYŁĄCZNIE łącznik (odcinek linii nie ma
   // pozycji normalnej) — rozłącznik sekcyjny z katalogu na pierwszym odcinku, potem
   // przeniesienie na niego punktu podziału (dawniej spec wskazywał sam odcinek).
@@ -296,8 +304,10 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
   expect(lacznik, 'rozłącznik sekcyjny w modelu').toBeTruthy();
   await executeDomainOp(request, caseId, 'set_normal_open_point', { switch_ref: lacznik });
   const gotowosc = await pobierzGotowosc(request, caseId);
-  expect(gotowosc.ready).toBe(false);
-  expect(blokadySerwera(gotowosc)).toBeGreaterThan(0);
+  expect(gotowosc.ready).toBe(true);
+  expect(gotowosc.by_severity?.BLOCKER ?? 0).toBe(0);
+  expect((gotowosc.issues ?? []).some((i) => i.code === 'E003' && i.severity === 'IMPORTANT')).toBe(true);
+  expect(ostrzezeniaSerwera(gotowosc)).toBeGreaterThan(ostrzezeniaSerwera(gotowoscPrzedZmiana));
 
   // ZIMNE wejście na link przebiegu — świeży kontekst przeglądarki (zero
   // pamięci poprzedniej karty), czyli sytuacja „przeładowanie strony na wyniku".
@@ -316,10 +326,10 @@ test('wynik biegu przy modelu z blokadą: chip pokazuje gotowość BIEŻĄCEGO m
     await expect(strona.getByTestId('mvd-wyniki-warsztat')).toBeVisible({ timeout: 30000 });
 
     // … a gotowość opisuje BIEŻĄCY model: pasek stanu (jedyne miejsce gotowości
-    // w chromie po karcie K1 POWLOKA) liczy blokady tak samo jak serwer i nie
+    // w chromie po karcie K1 POWLOKA) liczy ostrzeżenia tak samo jak serwer i nie
     // deklaruje modelu bez uwag.
-    await expect(strona.getByTestId('mvd-status-gotowosc')).toContainText(
-      String(blokadySerwera(gotowosc)),
+    await expect(strona.getByTestId('mvd-status-gotowosc')).toHaveText(
+      new RegExp(`Gotowość: ${ostrzezeniaSerwera(gotowosc)} ostrzeże(nie|nia|ń)`),
       { timeout: 30000 },
     );
     await expect(strona.getByTestId('mvd-status-gotowosc')).toHaveAttribute('data-ustalona', 'true');

@@ -2,24 +2,25 @@
  * KARTA GPZ-PARYTET — KADRY BLOKU GPZ z ŻYWEJ aplikacji i REALNEGO backendu (materiał oceny
  * wizualnej właściciela, bramka B-02; spec NIE wystawia werdyktu wizualnego).
  *
- * Kadry pokazują ramę i nagłówek GPZ (nazwa z modelu, bilans zasilania i odpływów, liczba
- * przeciążeń), tabelę „Pola GPZ" (karty pól z rolą, plakietką SPZ z kodu 79 pola i pomiarami
- * P/Q/I/U), tła pól wg roli z legendą oraz oznaczenie uzwojeń transformatora z grupy połączeń —
+ * Kadry pokazują ramę GPZ na schemacie z oznaczeniem uzwojeń transformatora z grupy połączeń
+ * oraz kartę GPZ w prawym inspektorze (bilans zasilania i odpływów, liczba przeciążeń, tabela
+ * „Pola GPZ" z rolą, plakietką SPZ z kodu 79 pola i pomiarami P/Q/I/U) —
  * PRZED biegiem (jawne „brak wyniku rozpływu mocy") i PO biegu rozpływu mocy (wartości z wierszy
  * `Bay`/`Substation` wyniku backendu), w obu motywach.
  *
  * Sieć budowana operacjami domenowymi API, bieg rozpływu przez kanoniczne
  * `POST /api/execution/study-cases/{case}/runs` + `execute`, wynik ładowany trasą schematu
  * `#sld?run=<id>` (ta sama droga co produkcja: orkiestrator pobiera `results/v1`). Motyw
- * przełączany REALNYM przyciskiem powłoki; przybliżenie kółkiem myszy nad belką GPZ.
+ * przełączany REALNYM przyciskiem powłoki; GPZ zaznaczany natywnym klikiem na kanwie — bilans,
+ * przeciążenia i tabela pól są w karcie GPZ prawego inspektora (karta GPZ-H5-SLD etap 2).
  *
- * Granica zasilania SN (karta GPZ-MODEL): transformatory 110/SN są elementami modelu wyłącznie
- * przy równoważniku sieci po stronie 110 kV — wszystkie łączą wspólną szynę 110 kV (na niej
- * równoważnik) z sekcjami SN. Pierwszy kadr: jeden transformator (oznaczenie uzwojeń z grupy
+ * Granica zasilania SN (karta GPZ-MODEL, kontrakt GPZ H5): transformatory 110/SN są elementami
+ * modelu wyłącznie przy GPZ ze stroną 110 kV — jawne wpisy `transformers` łączą sekcję szyn
+ * 110 kV (tor zasilania z równoważnikiem) z sekcjami SN. Pierwszy kadr: jeden transformator (oznaczenie uzwojeń z grupy
  * połączeń). Drugi kadr: dwie sekcje SN i trzy transformatory (operacja rozdziela je na sekcje
- * po kolei — dwa na sekcji 1): wieże jednej sekcji stoją obok siebie, nie jedna na drugiej.
+ * po kolei — dwa na sekcji 1, rezerwa ukryta): wieże jednej sekcji stoją obok siebie, nie jedna na drugiej.
  * Trzeci kadr: równoważnik z katalogu na szynach SN — dwie sekcje BEZ transformatorów (Sk″
- * widziane z szyn SN zawiera już ich impedancję), sekcja 2 zasilana przez sprzęgło.
+ * widziane z szyn SN zawiera już ich impedancję), sekcja 2 zasilana przez zamknięty łącznik szyn SN (stan normalny z uzasadnieniem).
  *
  * Zrzuty: `docs/uiux/zrzuty/gpz-parytet/gpz-<stan>-<motyw>.png` (do drzewa repo wyłącznie
  * z `ZRZUTY_DO_DOKUMENTACJI=1`, inaczej `test-results/zrzuty-dokumentacji/…`).
@@ -78,12 +79,51 @@ type UkladGpz =
 
 function zasilanieGpz(uklad: UkladGpz): Record<string, unknown> {
   if (uklad.rownowaznik === 'SN') {
-    return { sk3_mva: 250.0, catalog_binding: katalog('ZRODLO_SN', ZRODLO) };
+    // Kontrakt GPZ H5 (`add_grid_source_sn`): przy ≥ 2 sekcjach SN stan normalny łącznika szyn
+    // SN jest daną projektu bez wartości domyślnej; jeden równoważnik zasila obie sekcje przez
+    // zamknięty łącznik — stan zamknięty wymaga uzasadnienia.
+    return {
+      sk3_mva: 250.0,
+      catalog_binding: katalog('ZRODLO_SN', ZRODLO),
+      ...(uklad.sekcje >= 2
+        ? {
+            sn_coupler: {
+              normal_state: 'closed',
+              justification: 'Jeden równoważnik sieci zasila obie sekcje SN przez zamknięty łącznik szyn SN (przypadek testowy kadrów).',
+            },
+          }
+        : {}),
+    };
   }
+  // Kontrakt GPZ H5: równoważnik po stronie 110 kV jest torem zasilania sekcji szyn 110 kV
+  // (`hv_sections`), transformatory 110/SN są jawnymi wpisami (sekcja 110 kV, sekcja SN, typ
+  // z katalogu) — przypisanie do sekcji SN po kolei (1, 2, 1, …), jak dawne przypisanie
+  // cykliczne operacji. Przy ≥ 2 sekcjach SN albo ≥ 2 transformatorach tryb rezerwy jest
+  // jawnym wyborem (ENEA Zeszyt 1 §26.10.5): rezerwa ukryta — każda sekcja SN z własnego
+  // transformatora.
   return {
-    manual_equivalent: { short_circuit_input_side: 'HV_110', hv_voltage_kv: 110.0, sk3_hv_mva: 3000.0, rx_ratio: 0.1 },
-    transformer_count: uklad.transformatory,
-    transformer_catalog_binding: katalog('TRAFO_SN_NN', TRANSFORMATOR_WN_SN),
+    hv_sections: [
+      {
+        supply: {
+          line_name: 'L1',
+          supplying_station_name: 'Stacja zasilająca — przykładowe dane przypadku testowego',
+          manual_equivalent: {
+            hv_voltage_kv: 110.0,
+            sk3_hv_mva: 3000.0,
+            sk3_min_mva: 2000.0,
+            rx_ratio: 0.1,
+            rx_ratio_min: 0.1,
+            z0_z1_ratio: 1.2,
+          },
+        },
+      },
+    ],
+    transformers: Array.from({ length: uklad.transformatory }, (_, i) => ({
+      hv_section: 1,
+      sn_section: (i % uklad.sekcje) + 1,
+      transformer_catalog_binding: katalog('TRAFO_SN_NN', TRANSFORMATOR_WN_SN),
+    })),
+    ...(uklad.sekcje >= 2 || uklad.transformatory >= 2 ? { reserve_mode: 'hidden' } : {}),
   };
 }
 
@@ -129,7 +169,7 @@ async function siecGpz(
   const koniec = (enm.buses ?? []).find((b) => b.name === 'Zacisk końcowy Odcinek 1');
   expect(koniec, 'zacisk końcowy odcinka').toBeTruthy();
   await operacja(request, caseId, 'add_load_sn', { bus_ref: koniec!.ref_id, p_mw: 1.2, q_mvar: 0.3 });
-  return { projectId, projectName, caseId, caseName };
+  return { projectId, projectName, caseId, caseName, gpzRef: gpz!.ref_id };
 }
 
 async function otworzSchemat(
@@ -179,23 +219,20 @@ async function ustawMotyw(page: Page, docelowy: 'dark_scada' | 'light_technical'
     .toBe(docelowy);
 }
 
-/** Dopasuj widok realnym przyciskiem, potem przybliżaj kółkiem nad belką GPZ, aż pismo
- *  adnotacji przekroczy próg czytelności. */
-async function przyblizGpz(page: Page): Promise<void> {
+/** Zaznacz GPZ NATYWNYM klikiem w jego obszar trafienia na kanwie (pas tytułowy GPZ na L1/L2,
+ *  blok zwinięty na L0 — ten sam `ownerRef`) i poczekaj na kartę GPZ w prawym inspektorze.
+ *  Karta GPZ-H5-SLD etap 2 (wymaganie 1): bilans, przeciążenia i tabela pól z plakietkami
+ *  automatyki i P/Q/I/U są w inspektorze, nie na schemacie. */
+async function zaznaczGpz(page: Page, gpzRef: string): Promise<void> {
   await page.getByRole('button', { name: 'Dopasuj widok' }).click();
   await page.waitForTimeout(500);
-  const warstwa = page.getByTestId('sld-v3-gpz-adnotacje');
-  const strefa = page.getByTestId('sld-v3-gpz-zone');
-  await expect(strefa).toHaveCount(1, { timeout: 30000 });
-  for (let i = 0; i < 30; i += 1) {
-    if ((await warstwa.count()) === 1 && (await warstwa.getAttribute('data-gpz-teksty')) === 'widoczne') break;
-    const box = await strefa.boundingBox();
-    if (!box) break;
-    await page.mouse.move(box.x + Math.min(box.width / 2, 200), box.y + Math.min(box.height / 4, 120));
-    await page.mouse.wheel(0, -240);
-    await page.waitForTimeout(150);
-  }
-  await expect(warstwa).toHaveAttribute('data-gpz-teksty', 'widoczne', { timeout: 10000 });
+  const uchwyt = page
+    .locator(`[data-hit-role="obrys"][data-hit-owner-ref="${gpzRef}"], [data-hit-role="obrys"][data-hit-owner-ref^="${gpzRef}#"]`)
+    .first();
+  await expect(uchwyt).toHaveCount(1, { timeout: 30000 });
+  const ramka = (await uchwyt.boundingBox())!;
+  await page.mouse.click(ramka.x + ramka.width / 2, ramka.y + ramka.height / 2);
+  await expect(page.getByTestId('inspektor-karta-gpz')).toBeVisible({ timeout: 30000 });
   await page.waitForTimeout(400);
 }
 
@@ -211,10 +248,11 @@ test('GPZ-PARYTET — kadry bloku GPZ przed biegiem i po biegu rozpływu mocy (o
     { klucz: 'jasny', theme: 'light_technical' as const },
   ]) {
     await ustawMotyw(page, motyw.theme);
-    await przyblizGpz(page);
-    await expect(page.getByTestId('sld-v3-gpz-adnotacje')).toHaveAttribute('data-gpz-wynik', 'brak');
-    await expect(page.getByTestId('sld-v3-gpz-bilans-zasilania')).toHaveText('Zasilanie GPZ: brak wyniku rozpływu mocy');
-    await expect(page.locator('[data-testid^="sld-v3-gpz-plakietka-"][data-gpz-plakietka="SPZ"]')).toHaveCount(1);
+    await zaznaczGpz(page, seed.gpzRef);
+    const karta = page.getByTestId('inspektor-karta-gpz');
+    await expect(karta).toHaveAttribute('data-gpz-wynik', 'brak');
+    await expect(page.getByTestId('inspektor-gpz-zasilanie')).toHaveText('Zasilanie GPZ: brak wyniku rozpływu mocy');
+    await expect(karta.locator('[data-testid^="inspektor-gpz-plakietka-"][data-testid$="-SPZ"]')).toHaveCount(1);
     await expect(page.locator('[data-uzwojenia-stan]').first()).toBeAttached();
     await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-przed-biegiem-${motyw.klucz}.png`) });
   }
@@ -240,15 +278,15 @@ test('GPZ-PARYTET — kadry bloku GPZ przed biegiem i po biegu rozpływu mocy (o
   await page.reload({ waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 60000 });
   await expect(page.getByText('Wyniki: aktualne')).toBeVisible({ timeout: 60000 });
-  await expect(page.getByTestId('sld-v3-gpz-adnotacje')).toHaveAttribute('data-gpz-wynik', 'aktualny', { timeout: 60000 });
   for (const motyw of [
     { klucz: 'ciemny', theme: 'dark_scada' as const },
     { klucz: 'jasny', theme: 'light_technical' as const },
   ]) {
     await ustawMotyw(page, motyw.theme);
-    await przyblizGpz(page);
-    await expect(page.getByTestId('sld-v3-gpz-bilans-zasilania')).toHaveText(/^Zasilanie GPZ: P = -?\d+,\d{4} MW, Q = -?\d+,\d{4} Mvar$/);
-    await expect(page.getByTestId('sld-v3-gpz-tabela-tytul')).toHaveText('Pola GPZ — wynik rozpływu mocy');
+    await zaznaczGpz(page, seed.gpzRef);
+    await expect(page.getByTestId('inspektor-karta-gpz')).toHaveAttribute('data-gpz-wynik', 'aktualny', { timeout: 60000 });
+    await expect(page.getByTestId('inspektor-gpz-zasilanie')).toHaveText(/^Zasilanie GPZ: P = -?\d+,\d{4} MW, Q = -?\d+,\d{4} Mvar$/);
+    await expect(page.getByTestId('inspektor-gpz-tytul')).toHaveText('Pola GPZ — wynik rozpływu mocy');
     await page.screenshot({ path: resolve(KATALOG_ZRZUTOW, `gpz-po-biegu-${motyw.klucz}.png`) });
   }
 });

@@ -63,10 +63,23 @@ describe('resultLabelTemplates — rejestr treści (analiza × klasa elementu)',
     expect(specs[3].format(metric(0.95, '', 'fixed2'))).toBe('0,95');
   });
 
-  it('rozpływ · transformator: obciążenie→S→ΔP (zaczep osobno przez badge OLTC)', () => {
+  // Karta GPZ-H5-SLD pkt 3a: P i Q transformatora Z KIERUNKIEM — kierunek odniesienia w
+  // podpisie, znak w wartości (P_MW/Q_Mvar = p_from/q_from zacisku WN z backendu). Na L2
+  // (top-3) etykieta niesie obc. · P · Q — sam moduł S nie mówił, czy GPZ pobiera, czy oddaje.
+  it('rozpływ · transformator: obciążenie→P WN→SN→Q WN→SN→S→ΔP (zaczep osobno przez badge OLTC)', () => {
     const specs = selectResultLabelSpecs('load_flow', 'transformer');
-    expect(codesOf(specs)).toEqual(['LOADING_PCT', 'S_MVA', 'LOSSES_P_MW']);
-    expect(prefixesOf(specs)).toEqual(['obc.', 'S', 'ΔP']);
+    expect(codesOf(specs)).toEqual(['LOADING_PCT', 'P_MW', 'Q_Mvar', 'S_MVA', 'LOSSES_P_MW']);
+    expect(prefixesOf(specs)).toEqual(['obc.', 'P WN→SN', 'Q WN→SN', 'S', 'ΔP']);
+    // Przepływ WN→SN: „+"; przepływ zwrotny (generacja po stronie SN): „-"; S bez znaku.
+    expect(specs[1].format(metric(12.3456, 'MW', 'fixed4'))).toBe('+12,3456 MW');
+    expect(specs[1].format(metric(-3.5, 'MW', 'fixed1'))).toBe('-3,5 MW');
+    expect(specs[2].format(metric(-1.25, 'Mvar', 'fixed2'))).toBe('-1,25 Mvar');
+    expect(specs[3].format(metric(14.2, 'MVA'))).toBe('14,20 MVA');
+    const l2 = resultLabelLinesForLod(
+      specs.map((spec) => ({ prefix: spec.prefix, text: 'x' })),
+      2,
+    );
+    expect(l2.map((l) => l.prefix)).toEqual(['obc.', 'P WN→SN', 'Q WN→SN']);
   });
 
   it('rozpływ · szyna: U→(V_PU fallback)→δ', () => {

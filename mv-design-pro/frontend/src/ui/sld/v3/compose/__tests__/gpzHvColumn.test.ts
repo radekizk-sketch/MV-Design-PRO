@@ -50,7 +50,7 @@ const referenceEnm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonl
 
 type EnmFragment = Pick<
   EnergyNetworkModel,
-  'substations' | 'bays' | 'transformers' | 'buses' | 'generators' | 'branches' | 'protection_assignments' | 'measurements' | 'sources'
+  'substations' | 'bays' | 'transformers' | 'buses' | 'generators' | 'branches' | 'protection_assignments' | 'measurements' | 'sources' | 'loads'
 >;
 
 function bus(refId: string, voltageKv: number): Bus {
@@ -118,6 +118,7 @@ function fullFixture(): EnmFragment {
     protection_assignments: [],
     measurements: [],
     sources: [systemSource('src-1')],
+    loads: [],
   };
 }
 
@@ -126,15 +127,20 @@ function fullFixture(): EnmFragment {
    ============================================================================= */
 
 describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', () => {
-  it('gpz_hv_sections puste + TR/szyna WN/źródło pełne ⇒ hvSystemSource wywiedzione Z DANYCH', () => {
+  it('gpz_hv_sections puste + TR/szyna WN/źródło pełne ⇒ systemSources wywiedzione Z DANYCH', () => {
     const props = buildCanonicalGpzProps(fullFixture(), 'gpz-1');
     // INTENCJA (recenzja NO-GO 2026-07-17 pkt 2): napięcie tabliczki = szyna
     // ŹRÓDŁA (`Source.bus_ref` = bus-sn, 15 kV) — dawna semantyka „zawsze
     // napięcie szyny WN" (110) parowała dane zwarciowe 15 kV z cudzym
     // napięciem (Ik″=Sk″/(√3·U) przestawało się zgadzać). `sourceOnHvBus`
     // mówi kompozycji, po której stronie zaczepić symbol.
-    expect(props.hvSystemSource).toEqual({
+    expect(props.systemSources).toEqual([{
       sourceRef: 'src-1',
+      busRef: 'bus-sn',
+      // Karta GPZ-H5-SLD: fikstura nie nazywa toru zasilania (ani `Source.supply_line_name`,
+      // ani `line_field_name` sekcji) — null, bez wartości zastępczej.
+      lineName: null,
+      supplyingStation: null,
       name: 'GPZ Referencyjny 15 kV',
       sk3Mva: 250,
       ik3Ka: 9.62,
@@ -150,33 +156,33 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
       // Napięcie SZYNY WN — osobny kanał dla etykiety „Szyna WN · 110 kV"
       // (regres „Szyna WN · 15 kV" wykryty renderem gpzFeeder).
       hvBusVoltageKv: 110,
-    });
+    }]);
   });
 
   // CV-4.3 K7: dane scenariusza MIN (warunki przyłączenia OSD) — ta sama szyna
   // źródła co Sk3/Ik3 maks. powyżej (predykaty parami, jedno źródło prawdy).
-  it('źródło z danymi MIN ⇒ hvSystemSource niesie sk3MinMva/ik3MinKa Z DANYCH', () => {
+  it('źródło z danymi MIN ⇒ systemSources niesie sk3MinMva/ik3MinKa Z DANYCH', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { sk3_min_mva: 150, ik3_min_ka: 5.8 })] },
       'gpz-1');
-    expect(props.hvSystemSource).toMatchObject({ sk3MinMva: 150, ik3MinKa: 5.8 });
+    expect(props.systemSources?.[0]).toMatchObject({ sk3MinMva: 150, ik3MinKa: 5.8 });
   });
 
   // CV-4.3 K7c: napięcie zadane szyny bilansującej — ta sama szyna źródła co
   // Sk3/Ik3 (i MIN) powyżej (predykaty parami, jedno źródło prawdy).
-  it('źródło z u_set_pu ⇒ hvSystemSource niesie uSetPu Z DANYCH (CV-4.3 K7c)', () => {
+  it('źródło z u_set_pu ⇒ systemSources niesie uSetPu Z DANYCH (CV-4.3 K7c)', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { u_set_pu: 1.06 })] },
       'gpz-1');
-    expect(props.hvSystemSource).toMatchObject({ uSetPu: 1.06 });
+    expect(props.systemSources?.[0]).toMatchObject({ uSetPu: 1.06 });
   });
 
   // Iloczyn cech: u_set_pu × scenariusz MIN jednocześnie — DWA bloki
   // opcjonalne na tym samym źródle nie mogą się wzajemnie wypierać (predykaty
   // niezależne, nie parami).
-  it('źródło z u_set_pu ORAZ danymi MIN jednocześnie ⇒ hvSystemSource niesie OBA komplety danych', () => {
+  it('źródło z u_set_pu ORAZ danymi MIN jednocześnie ⇒ systemSources niesie OBA komplety danych', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       {
@@ -184,18 +190,18 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
         sources: [systemSource('src-1', { u_set_pu: 0.95, sk3_min_mva: 150, ik3_min_ka: 5.8 })],
       },
       'gpz-1');
-    expect(props.hvSystemSource).toMatchObject({ uSetPu: 0.95, sk3MinMva: 150, ik3MinKa: 5.8 });
+    expect(props.systemSources?.[0]).toMatchObject({ uSetPu: 0.95, sk3MinMva: 150, ik3MinKa: 5.8 });
   });
 
   // Karta GPZ-MODEL: tabliczka źródła systemowego nie zależy od transformatora WN/SN —
   // przy równoważniku na szynach SN transformatorów 110/SN nie ma w modelu, a tabliczka
   // jest jedynym opisem zasilania GPZ na rysunku (dawniej adapter zwracał tu `null`).
-  it('brak transformatora WN/SN (uhv_kv<=60) w ENM ⇒ hvSystemSource NADAL wywiedzione (tabliczka źródła)', () => {
+  it('brak transformatora WN/SN (uhv_kv<=60) w ENM ⇒ systemSources NADAL wywiedzione (tabliczka źródła)', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       { ...enm, transformers: [hvTransformer('tr-1', { uhv_kv: 15 })] },
       'gpz-1');
-    expect(props.hvSystemSource).toMatchObject({ sourceRef: 'src-1', sourceOnHvBus: false, voltageKv: 15 });
+    expect(props.systemSources?.[0]).toMatchObject({ sourceRef: 'src-1', sourceOnHvBus: false, voltageKv: 15 });
   });
 
   // SZYNY-STACJI-LUSTRO (commit 2): transformatory GPZ z JEDNEJ reguły „transformatory stacji” —
@@ -207,7 +213,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const props = buildCanonicalGpzProps(
       { ...enm, transformers: [], substations: [gpzSubstation({ transformer_refs: [] })] },
       'gpz-1');
-    expect(props.hvSystemSource?.sourceRef).toBe('src-1');
+    expect(props.systemSources?.[0]?.sourceRef).toBe('src-1');
     expect(props.transformers).toEqual([]);
   });
 
@@ -224,8 +230,13 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
       },
       'gpz-1');
     expect(props.transformers).toEqual([]);
-    expect(props.hvSystemSource).toEqual({
+    expect(props.systemSources).toEqual([{
       sourceRef: 'src-1',
+      busRef: 'bus-sn',
+      // Karta GPZ-H5-SLD: fikstura nie nazywa toru zasilania (ani `Source.supply_line_name`,
+      // ani `line_field_name` sekcji) — null, bez wartości zastępczej.
+      lineName: null,
+      supplyingStation: null,
       name: 'GPZ Referencyjny 15 kV',
       sk3Mva: 250,
       ik3Ka: 9.62,
@@ -235,7 +246,7 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
       voltageKv: 15,
       sourceOnHvBus: false,
       hvBusVoltageKv: null,
-    });
+    }]);
   });
 
   it('brak szyny WN w Substation.bus_refs (voltage_kv>60) ⇒ tabliczka źródła bez napięcia szyny WN', () => {
@@ -243,13 +254,13 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const props = buildCanonicalGpzProps(
       { ...enm, substations: [gpzSubstation({ bus_refs: ['bus-sn'] })] },
       'gpz-1');
-    expect(props.hvSystemSource).toMatchObject({ sourceRef: 'src-1', sourceOnHvBus: false, hvBusVoltageKv: null });
+    expect(props.systemSources?.[0]).toMatchObject({ sourceRef: 'src-1', sourceOnHvBus: false, hvBusVoltageKv: null });
   });
 
-  it('brak źródła na szynie GPZ (SN lub WN) ⇒ hvSystemSource null', () => {
+  it('brak źródła na szynie GPZ (SN lub WN) ⇒ systemSources puste', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps({ ...enm, sources: [] }, 'gpz-1');
-    expect(props.hvSystemSource).toBeNull();
+    expect(props.systemSources).toEqual([]);
   });
 
   it('źródło na szynie WN (nie tylko SN) jest TEŻ rozwiązywane (bus_ref ∈ szyny GPZ, SN lub WN)', () => {
@@ -257,10 +268,14 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     const props = buildCanonicalGpzProps(
       { ...enm, sources: [systemSource('src-1', { bus_ref: 'bus-110' })] },
       'gpz-1');
-    expect(props.hvSystemSource?.sourceRef).toBe('src-1');
+    expect(props.systemSources?.[0]?.sourceRef).toBe('src-1');
   });
 
-  it('gpz_hv_sections NIEPUSTE ⇒ hvSystemSource null (ścieżka hvSectionDefs nadrzędna, derywacja pominięta)', () => {
+  // Karta GPZ-H5-SLD (przepisany do obecnego kanonu): dawniej przy niepustych
+  // `gpz_hv_sections` tabliczka źródła znikała (derywacja pominięta) — GPZ z sekcjami 110 kV
+  // tracił na rysunku S″k zasilania. INTENCJA zachowana: sekcje WN pochodzą z rekordów
+  // (`hvSections`), a źródło z `Source.bus_ref` — teraz przypięte do swojej sekcji.
+  it('gpz_hv_sections NIEPUSTE ⇒ sekcje WN z rekordów ORAZ źródło sekcji z modelu', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       {
@@ -272,19 +287,26 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
         ],
       },
       'gpz-1');
-    expect(props.hvSystemSource).toBeNull();
     expect(props.hvSections).toHaveLength(1);
+    expect((props.systemSources ?? []).map((z) => z.sourceRef)).toEqual(['src-1']);
   });
 
-  it('nazwa źródła preferuje meta.source_id nad Source.name', () => {
+  // INTENCJA (decyzja architekta 2026-10-22, karta GPZ-H5-INTEGRACJA): etykietą źródła jest
+  // nazwa ŹRÓDŁA z modelu (`Source.name`: L1, L2 …). `meta.source_id` to tożsamość GPZ,
+  // wspólna dla wszystkich równoważników jednego GPZ — preferowana dawała każdemu źródłu 110 kV
+  // H5 nazwę stacji. Dawny test pinował odwrotną preferencję.
+  it('nazwa źródła to Source.name, nie tożsamość GPZ z meta.source_id', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       {
         ...enm,
-        sources: [systemSource('src-1', { name: 'inna nazwa', meta: { source_id: 'Nazwa z meta' } })],
+        sources: [
+          systemSource('src-1', { name: 'L1', meta: { source_id: 'GPZ H5 110/15 kV' } }),
+          systemSource('src-2', { name: 'L2', meta: { source_id: 'GPZ H5 110/15 kV' } }),
+        ],
       },
       'gpz-1');
-    expect(props.hvSystemSource?.name).toBe('Nazwa z meta');
+    expect(props.systemSources?.map((s) => s.name).sort()).toEqual(['L1', 'L2']);
   });
 });
 
@@ -329,7 +351,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     expect(composition.segments.some((s) => s.ownerRef === 'gpz-1#source-bus-extension')).toBe(false);
   });
 
-  it('nazwa źródła + tabliczka danych — WYŁĄCZNIE wartości z hvSystemSource (formatowanie PL, przecinek dziesiętny)', () => {
+  it('nazwa źródła + tabliczka danych — WYŁĄCZNIE wartości z systemSources (formatowanie PL, przecinek dziesiętny)', () => {
     const props = propsWithHvColumn();
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'src-1', connectionRef: 'bus-sn' }]);
     const label = composition.labels.transformerLabels.find((l) => l.ownerRef === 'src-1#system-source-label');
@@ -389,7 +411,7 @@ describe('composeGpz — F13.1 kolumna WN: gridSource na szczycie, etykiety z da
     );
   });
 
-  it('brak dopasowania hvSystemSource.sourceRef do wpisu gridSources ⇒ ZERO etykiety (glif źródła zostaje)', () => {
+  it('brak dopasowania systemSources.sourceRef do wpisu gridSources ⇒ ZERO etykiety (glif źródła zostaje)', () => {
     const props = propsWithHvColumn();
     const composition = composeGpz(props, { x: 0, y: 0 }, [{ id: 'inny-ref', connectionRef: 'bus-sn' }]);
     expect(composition.symbols.some((s) => s.symbolId === 'gridSource')).toBe(true);

@@ -959,7 +959,7 @@
     "scenario_id": "MAX",
     "station_ref": "stC"
   },
-  "projection_hash": "941931c269d1c89de493df54adb70d8f2e7c7f386383974734ac399f888dac59",
+  "projection_hash": "95a93206657feaf84a0c4c4f64f023fd3144949dd035145a480a9484a3c152a3",
   "result_snapshot": {
     "analysis_type": "SC_3F",
     "overlay_payload": {
@@ -2683,11 +2683,8 @@
       "uth_kv": 16.5,
       "voltage_kv": 15.0,
       "voltage_level_id": "kv:15",
-      "z0_missing_reason_pl": null,
-      "z0_ohm": {
-        "r": 2.25e-06,
-        "x": 0.0
-      },
+      "z0_missing_reason_pl": "Sieć SN bez drogi prądu zerowego do ziemi (punkt neutralny nieuziemiony w danych, brak danych składowej zerowej gałęzi albo pojemności doziemnej B0) — Z0 nieobliczalne.",
+      "z0_ohm": null,
       "z1_ohm": {
         "r": 0.1,
         "x": 0.5

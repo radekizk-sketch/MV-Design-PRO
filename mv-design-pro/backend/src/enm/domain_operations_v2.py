@@ -1988,7 +1988,17 @@ def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
     raw_role = payload.get("bay_role")
     if isinstance(raw_role, str):
         normalized = raw_role.strip().upper()
-        if normalized in {"IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"}:
+        if normalized in {
+            "IN",
+            "OUT",
+            "FEEDER",
+            "TR",
+            "COUPLER",
+            "MEASUREMENT",
+            "OZE",
+            "EARTHING",
+            "CAPACITOR",
+        }:
             return normalized
     return "FEEDER"
 

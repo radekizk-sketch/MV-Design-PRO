@@ -111,15 +111,19 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     zbior programu + `normal_state` + `equipment_data_state` − `BranchPointSN.switch_state`.
     Karta GPZ-MODEL podniosla ten sam pin na swojej bazie 122 -> 123 (ta sama korekta W5-C,
     bez nowego pola Literal); po jej nalozeniu na drzewo scalone pomiar guardem = 125, bez
-    zmiany."""
+    zmiany. Karta GPZ-H5 (jawna struktura H5 GPZ ENEA, 2026-10-22) dodaje JEDNO pole Literal
+    z lustrem w `types/enm.ts`: `Substation.gpz_reserve_mode` (`'hidden' | 'explicit'` — tryb
+    rezerwy transformatorowej GPZ, ENEA Zeszyt 1 §26.10.5); rozszerzenie wartosci
+    `bay_role` (EARTHING, CAPACITOR) nie zmienia liczby pol; licznik 125 -> 126 (pomiar guardem
+    na drzewie karty)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re
 
     dopasowanie = re.search(r"parytet wartosci\): (\d+)", wyjscie)
     assert dopasowanie is not None, wyjscie
-    assert int(dopasowanie.group(1)) == 125, (
-        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 125 — "
+    assert int(dopasowanie.group(1)) == 126, (
+        "Liczba sprawdzonych pol Literal[str,...] zmienila sie wobec oczekiwanej 126 — "
         "sprawdz, czy pola dziedziczone z bazy warunkowej (BranchBase) nie sa "
         "znowu cicho pomijane (spadek), albo opisz nowe pole Literal w docstringu "
         "tego testu i podnies licznik z uzasadnieniem (wzrost)."

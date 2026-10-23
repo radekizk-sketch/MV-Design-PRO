@@ -33,6 +33,7 @@
  * nie ukrywa nigdy drogi prądu, transformatora, aparatów ze stanem,
  * punktów otwartych, źródeł, odbiorów, granic ani stanu zasilania.
  */
+import { liczbaZOdmiana } from '../../../shared/odmianaLiczebnikowa';
 import { CAD_SYMBOL_STROKE_PX } from '../cad/CadSymbol';
 import { sldPaletteForTheme } from '../theme/palette';
 import type { ThemeMode } from '../../../../ui2/theme/themeMode';
@@ -520,11 +521,7 @@ export function elementyToru(): readonly ElementKanwyNn[] {
 
 /** Liczba odpływów sekcji po polsku (1 odpływ / 2–4 odpływy / 5+ odpływów). */
 export function licznikOdplywowLabel(liczba: number): string {
-  const setki = liczba % 100;
-  const jednosci = liczba % 10;
-  if (liczba === 1) return '1 odpływ';
-  if (jednosci >= 2 && jednosci <= 4 && !(setki >= 12 && setki <= 14)) return `${liczba} odpływy`;
-  return `${liczba} odpływów`;
+  return liczbaZOdmiana(liczba, { jeden: 'odpływ', kilka: 'odpływy', wiele: 'odpływów' });
 }
 
 // ===========================================================================

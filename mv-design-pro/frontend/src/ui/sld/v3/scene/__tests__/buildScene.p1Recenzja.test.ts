@@ -277,6 +277,31 @@ describe('RECENZJA EKSPERCKA — fixtury wielkoskalowe rodzina H (~100/250/500 s
 // ---------------------------------------------------------------------------
 // P1.4 — LOKALNOŚĆ (+1 stacja, WYTYCZNE §5/§9)
 // ---------------------------------------------------------------------------
+/**
+ * GPZ-H5-SLD etap 3 (pomiar po scaleniu backendu H5): kody stacji („S97") są nadawane
+ * w porządku obchodu — stacja dopisana na ogonie magistrali PRZENUMEROWUJE wszystkie
+ * stacje odgałęzień. Gdy numeracja przekracza granicę cyfr (S99 → S100, 25 → 33 j.św.
+ * szerokości napisu), footprint jednego lateralu rośnie o kwant siatki i packer
+ * interwałowy sadza laterale pakowane po nim o 16 niżej. To skutek TREŚCI (oznacznika),
+ * nie geometrii: z szerokością kodów znormalizowaną (`buildScene.lokalnoscKodow.test.ts`)
+ * ta sama edycja daje 0 przesunięć pionowych. Zbiór niżej jest jawną przyczyną
+ * dopuszczenia Δy — pusty zbiór ⇒ wymóg Δy = 0 bez wyjątków.
+ */
+function stacjeZeZmienionaSzerokosciaKodu(
+  before: ReturnType<typeof buildSceneV3>,
+  after: ReturnType<typeof buildSceneV3>,
+): ReadonlySet<string> {
+  const szerokosci = (scena: ReturnType<typeof buildSceneV3>): Map<string, number> =>
+    new Map(
+      scena.labels
+        .filter((l) => l.ownerKind === 'station-name' && l.ownerRef.startsWith('stn/') && l.ownerRef.endsWith('#name-row-0'))
+        .map((l) => [l.ownerRef.slice(0, l.ownerRef.indexOf('#')), l.rect.width] as const),
+    );
+  const a = szerokosci(before);
+  const b = szerokosci(after);
+  return new Set([...a].filter(([ref, w]) => b.has(ref) && b.get(ref) !== w).map(([ref]) => ref));
+}
+
 describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistrali)', () => {
   // Sieć średnia: 2 kopie (~106 stacji), by dodanie 1 stacji było zmianą LOKALNĄ
   // względem dużej sieci (nie dominowało obrazu).
@@ -330,8 +355,14 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
     const podzialNietkniety =
       rowsAfter.length === rowsBefore.length
       && rowsBefore.every((n, i) => rowsAfter[i] === n || (i === rowsBefore.length - 1 && rowsAfter[i] === n + 1));
-    if (podzialNietkniety) {
+    const kodyPoszerzone = stacjeZeZmienionaSzerokosciaKodu(before, after);
+    console.log(`[RECENZJA EKSPERCKA §9 lokalność] kody o zmienionej szerokości: ${kodyPoszerzone.size}`);
+    if (podzialNietkniety && kodyPoszerzone.size === 0) {
       expect(stab.movedVerticalCount).toBe(0);
+    } else if (podzialNietkniety) {
+      // Przyczyna Δy jawna (docstring `stacjeZeZmienionaSzerokosciaKodu`): ruch pionowy
+      // istnieje WYŁĄCZNIE w kwancie siatki i nigdy w górę (packer schodzi, nie wraca).
+      for (const d of stab.displacements) expect(d.dy >= 0).toBe(true);
     } else {
       // Podział zmieniony ⇒ liczność stacji nadal +1 (nic nie zniknęło), a
       // przesunięcia pionowe muszą istnieć (inaczej wiersze nie mogłyby się
@@ -362,7 +393,7 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
       expect(d.dx % GRID === 0).toBe(true);
       expect(d.dy % GRID === 0).toBe(true);
       if (podzialNietkniety) {
-        expect(d.dy).toBe(0);
+        if (kodyPoszerzone.size === 0) expect(d.dy).toBe(0);
         expect(d.dx).not.toBe(0);
       }
     }
@@ -495,8 +526,14 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
         const podzialNietkniety =
           rowsAfter.length === rowsBefore.length
           && rowsBefore.every((n, i) => rowsAfter[i] === n || (i === rowsBefore.length - 1 && rowsAfter[i] === n + 1));
-        if (podzialNietkniety) {
+        // GPZ-H5-SLD etap 3: Δy dopuszczone wyłącznie z JAWNEJ przyczyny treściowej —
+        // przenumerowania kodów przez granicę cyfr (docstring helpera wyżej).
+        const kodyPoszerzone = stacjeZeZmienionaSzerokosciaKodu(before, after);
+        const wymogZeraPionowego = podzialNietkniety && kodyPoszerzone.size === 0;
+        if (wymogZeraPionowego) {
           expect(stab.movedVerticalCount).toBe(0);
+        } else if (podzialNietkniety) {
+          for (const d of stab.displacements) expect(d.dy >= 0).toBe(true);
         } else {
           const pierwszyZmieniony = rowsBefore.findIndex((n, i) => rowsAfter[i] !== n);
           expect(pierwszyZmieniony).toBeGreaterThanOrEqual(0);
@@ -507,7 +544,7 @@ describe('RECENZJA EKSPERCKA — macierz lokalności (karta SLD-LOC L4): topolog
         for (const d of stab.displacements) {
           expect(d.dx % GRID === 0).toBe(true);
           expect(d.dy % GRID === 0).toBe(true);
-          if (podzialNietkniety) expect(d.dy).toBe(0);
+          if (wymogZeraPionowego) expect(d.dy).toBe(0);
         }
       });
     }

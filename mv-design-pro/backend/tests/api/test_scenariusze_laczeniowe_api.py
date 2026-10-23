@@ -7,8 +7,9 @@ scenariuszem istniejącą końcówką biegów (``scenario_id``) i czyta wynik. P
 * wynik biegu ze scenariuszem = wynik biegu na modelu przełączonym operacją domenową
   (ta sama fizyka — scenariusz trafia do migawki efektywnej, nie do osobnej ścieżki);
 * wynik ze scenariuszem ≠ wynik na modelu bazowym, a model bazowy po biegu bez zmian;
-* scenariusz odcinający wyspę jest odrzucany bramą gotowości TAK SAMO jak model z tym
-  stanem łącznika (409 z nazwą szyn), bez zmiany modelu;
+* scenariusz odcinający wyspę jest oceniany bramą gotowości TAK SAMO jak model z tym
+  stanem łącznika (E003 z nazwami szyn wyspy, ważne, nie blokujące — karta GPZ-H5), bieg
+  liczy część zasilaną, a szyny wyspy są w wyniku „bez napięcia”; model bez zmiany;
 * odmowy zapisu: element spoza modelu i nie-łącznik (422 z polem), pusta lista stanów
   i stan spoza słownika (422 kontraktu), nieistniejący scenariusz (404).
 """
@@ -124,26 +125,73 @@ def test_scenariusz_przeniesienia_punktu_podzialu_rowny_operacji_na_modelu(
     assert _rozplyw(client, case_id) == ze_scenariuszem
 
 
-def test_scenariusz_odcinajacy_wyspe_odrzucony_jak_model(client: TestClient) -> None:
+def _kody_gotowosci(
+    client: TestClient, case_id: str, scenario_id: str | None = None
+) -> dict[str, dict[str, Any]]:
+    parametry = {"scenario_id": scenario_id} if scenario_id is not None else {}
+    odpowiedz = client.get(f"/api/cases/{case_id}/enm/readiness", params=parametry)
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    return {i["code"]: i for i in odpowiedz.json()["validation"]["issues"]}
+
+
+def _bez_napiecia(rozplyw: dict[str, Any]) -> list[str]:
+    return sorted(
+        e["element_ref"]
+        for e in rozplyw["elementy"]
+        if e["element_type"] == "Bus" and "BEZ_NAPIECIA" in e["values"]["flags"]
+    )
+
+
+def test_scenariusz_odcinajacy_wyspe_liczony_jak_model_z_wyspa_bez_napiecia(
+    client: TestClient,
+) -> None:
+    """Karta GPZ-H5 (R7): wyspa odcięta od źródła nie blokuje biegu — część zasilana jest
+    liczona, a szyny wyspy są w wyniku „bez napięcia”; odmowa biegu wyłącznie przy modelu
+    bez żadnego źródła (E001). Dawna intencja testu zostaje: brama gotowości czyta MIGAWKĘ
+    SCENARIUSZA tak samo jak model z tym stanem łącznika (E003 z nazwami szyn wyspy tylko
+    ze scenariuszem), a bieg ze scenariuszem nie zmienia modelu bazowego."""
     siec = z_odbiorami(promieniowa())
     case_id = _przypadek_z_siecia(client, siec)
     zapis = client.post(
         _adres(case_id), json={"name": "Otwarty łącznik", "switch_states": {siec.cel: "open"}}
     )
     assert zapis.status_code == 201, zapis.text
+    scenario_id = zapis.json()["scenario_id"]
     model_przed = _model(client, case_id)
 
-    bieg = client.post(
-        f"/api/execution/study-cases/{case_id}/runs",
+    assert "E003" not in _kody_gotowosci(client, case_id)
+    e003 = _kody_gotowosci(client, case_id, scenario_id)["E003"]
+    assert e003["severity"] == "IMPORTANT"
+    assert "Wyspa sieci odcięta od źródła zasilania" in e003["message_pl"]
+    assert "bez napięcia" in e003["message_pl"]
+
+    bazowy = _rozplyw(client, case_id)
+    ze_scenariuszem = _rozplyw(client, case_id, scenario_id)
+    assert _model(client, case_id) == model_przed, "bieg ze scenariuszem zmienił model bazowy"
+    assert _bez_napiecia(bazowy) == []
+    assert _bez_napiecia(ze_scenariuszem) == sorted(e003["element_refs"])
+    for element in ze_scenariuszem["elementy"]:
+        if element["element_ref"] in e003["element_refs"]:
+            assert element["values"]["u_kv"] is None and element["values"]["u_pu"] is None
+
+    # Para dowodowa: ten sam stan łącznika operacją domenową na modelu → ta sama gotowość
+    # i ten sam wynik (jedna fizyka, scenariusz trafia do migawki efektywnej).
+    operacja = client.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
         json={
-            "analysis_type": "LOAD_FLOW",
-            "solver_input": {},
-            "scenario_id": zapis.json()["scenario_id"],
+            "project_id": "",
+            "snapshot_base_hash": "",
+            "operation": {
+                "name": "set_normal_open_point",
+                "idempotency_key": "gpz-h5-wyspa",
+                "payload": {"switch_ref": siec.cel},
+            },
         },
     )
-    assert bieg.status_code == 409, bieg.text
-    assert "Wyspa sieci odcięta od źródła zasilania" in bieg.json()["detail"]
-    assert _model(client, case_id) == model_przed
+    assert operacja.status_code == 200, operacja.text
+    assert operacja.json().get("error") is None, operacja.json().get("error")
+    assert _kody_gotowosci(client, case_id)["E003"]["element_refs"] == e003["element_refs"]
+    assert _rozplyw(client, case_id) == ze_scenariuszem
 
 
 def test_zapis_rewizja_lista_i_zachowanie_pozostalych_nadpisan(client: TestClient) -> None:

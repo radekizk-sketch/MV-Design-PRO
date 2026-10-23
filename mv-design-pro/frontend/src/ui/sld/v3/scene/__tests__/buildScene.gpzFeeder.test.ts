@@ -38,7 +38,7 @@ import {
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
-import { junctionDotGaps } from '../crossings';
+import { bridgePointsForPolyline, interiorCrossings, junctionDotGaps } from '../crossings';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -89,16 +89,24 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
     });
   }
 
-  it('kanon dedykowanych pól: feeder z WŁASNEGO pola (inna kolumna X niż magistrala); styk zejścia feederu z kablem magistrali = węzeł T z kropką (0 luk)', () => {
+  it('kanon dedykowanych pól: feeder z WŁASNEGO pola (inna kolumna X niż magistrala); przecięcie zejścia feederu z kablem magistrali = skrzyżowanie z mostkiem, BEZ kropki', () => {
     const scene = buildSceneV3(feederEnm, 2);
-    // SCHEMAT-10 S7-P2 (V12K-137): zejście feederu z własnego pola i tak
-    // przecina poziomy kabel magistrali — S7-P2 zamienia to na węzeł T
-    // (kabel magistrali rozcięty w punkcie styku, kropka `junction`), zamiast
-    // dawnego przecięcia/mostka. Golden przepisany: intencja „feeder z własnego
-    // pola" żyje w asercjach kolumn X niżej; tu dowodzimy, że kropka jest na
-    // REALNYM węźle tras (junction_dot_probe: 0 luk), a nie fabrykowana.
+    // Kontrakt (c) nagłówka: feeder z własnego pola nie tworzy węzła na trasie magistrali.
+    // Dawniej (S7-P2) to przecięcie dostawało kropkę węzła T — dwa niezależne kable (pole 001
+    // i pole 002) narysowane jako połączone; od karty GPZ-H5-SLD etap 2 odczep T powstaje
+    // wyłącznie na pionie kabla odgałęzienia, a to przecięcie zostaje skrzyżowaniem
+    // z mostkiem §22.1 (`bridgePointsForPolyline`).
     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toHaveLength(0);
-    expect(scene.symbols.filter((s) => s.symbolId === 'junction').length).toBeGreaterThan(0);
+    expect(scene.symbols.filter((s) => String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-t-'))).toEqual([]);
+    expect(scene.crossings.length).toBe(1);
+    // Te same przecięcia, z których kanwa rysuje mostki (`SldCanvasV3`: `interiorCrossings`).
+    const przeciecia = interiorCrossings(scene.segments).filter((c) => !c.involvesBus);
+    expect(przeciecia.length).toBe(1);
+    const mostki = scene.segments.reduce(
+      (n, s) => n + [...bridgePointsForPolyline(s.points, przeciecia).values()].flat().length,
+      0,
+    );
+    expect(mostki, 'każde skrzyżowanie ma mostek na pionie').toBe(przeciecia.length);
     // Pion feederu startuje w porcie pola 002 — X różny od portu pola 001
     // (magistrali). Porty odczytane z PIERWSZYCH wierzchołków tras obu
     // ciągów (kawałek 0 każdego ciągu zaczyna się w porcie jego pola).

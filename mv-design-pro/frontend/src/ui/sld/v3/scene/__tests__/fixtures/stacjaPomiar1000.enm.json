@@ -8,15 +8,15 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+        "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [],
         "feeder_short_name": null,
         "field_role": null,
         "funkcja_pomiaru": null,
-        "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
-        "id": "d31902c7-6b3e-54c1-b1fc-15393a93a5a2",
+        "gpz_section_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001",
+        "id": "7209b96c-d712-5328-a7a3-60c74fea0abb",
         "manufacturer_ref": null,
         "meta": {
           "field_status": "READY_FOR_TRUNK",
@@ -32,10 +32,10 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
+        "substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [
@@ -49,9 +49,124 @@
         "bay_number": null,
         "bay_role": "IN",
         "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001",
+        "id": "dae57a52-f39a-5687-9d4f-5e9272dc3888",
+        "manufacturer_ref": null,
+        "meta": {},
+        "metadane_pochodzenia": null,
+        "name": "Pole liniowe 110 kV Linia 110 kV zasilająca",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bay_line",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_hv_line_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "TR",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [
+          "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/wn_sn"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001",
+        "id": "dd97cea6-7fb9-5af1-8b4a-504842175af3",
+        "manufacturer_ref": null,
+        "meta": {},
+        "metadane_pochodzenia": null,
+        "name": "Pole transformatorowe 110 kV TR1 110/15 kV",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_wn",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_hv_transformer_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "TR",
+        "bay_template_ref": null,
+        "branch_point_port_id": null,
+        "branch_point_ref": null,
+        "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+        "catalog_bindings": null,
+        "config_id": null,
+        "equipment_refs": [
+          "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/wn_sn"
+        ],
+        "feeder_short_name": null,
+        "field_role": null,
+        "funkcja_pomiaru": null,
+        "gpz_section_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001",
+        "id": "0d4f13db-3d3c-5370-a878-c205c639e34e",
+        "manufacturer_ref": null,
+        "meta": {},
+        "metadane_pochodzenia": null,
+        "name": "Pole transformatorowe SN TR1 110/15 kV",
+        "outgoing_destination_ref": null,
+        "ports": [],
+        "primary_devices": [],
+        "protection_codes": [],
+        "protection_ref": null,
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_sn",
+        "rodzaj_pomiaru": null,
+        "runtime_state": null,
+        "substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+        "surge_arresters": [],
+        "switchgear_family_ref": null,
+        "tags": [
+          "gpz_sn_transformer_field"
+        ],
+        "terminal_bus_ref": null,
+        "wybor_bloku": null
+      },
+      {
+        "apparatus_catalog_ref": null,
+        "bay_number": null,
+        "bay_role": "IN",
+        "bay_template_ref": null,
         "branch_point_port_id": "MAIN_IN",
-        "branch_point_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
-        "bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
+        "branch_point_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn",
+        "bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [],
@@ -59,7 +174,7 @@
         "field_role": "LINIA_IN",
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "3aeb7523-7360-519b-9d69-6f85cf34d8d8",
+        "id": "542b56f8-93b1-5564-ab07-7a5ddcf03e18",
         "manufacturer_ref": null,
         "meta": {},
         "metadane_pochodzenia": null,
@@ -69,7 +184,7 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn/pole/MAIN_IN",
+        "ref_id": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn/pole/MAIN_IN",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
         "substation_ref": null,
@@ -85,8 +200,8 @@
         "bay_role": "OUT",
         "bay_template_ref": null,
         "branch_point_port_id": "MAIN_OUT",
-        "branch_point_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
-        "bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
+        "branch_point_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn",
+        "bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [],
@@ -94,7 +209,7 @@
         "field_role": "LINIA_OUT",
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "8d7db53f-a493-594f-a280-f0028663da78",
+        "id": "5de0afd8-1711-565b-936d-f5e6da1efb6a",
         "manufacturer_ref": null,
         "meta": {},
         "metadane_pochodzenia": null,
@@ -104,7 +219,7 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn/pole/MAIN_OUT",
+        "ref_id": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn/pole/MAIN_OUT",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
         "substation_ref": null,
@@ -120,8 +235,8 @@
         "bay_role": "OUT",
         "bay_template_ref": null,
         "branch_point_port_id": "BRANCH",
-        "branch_point_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
-        "bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
+        "branch_point_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn",
+        "bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [],
@@ -129,7 +244,7 @@
         "field_role": "LINIA_ODG",
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "e5e74f3e-fe68-55a7-9eea-729ea1cf56b7",
+        "id": "cf421c77-fc6f-56f9-9d54-8f1a99428e4e",
         "manufacturer_ref": null,
         "meta": {},
         "metadane_pochodzenia": null,
@@ -139,7 +254,7 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn/pole/BRANCH",
+        "ref_id": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn/pole/BRANCH",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
         "substation_ref": null,
@@ -156,17 +271,17 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/e0798a1ecd7b90bfce5367437583c89e/branch_end",
+        "bus_ref": "bus/6088cfd3fc754d74af934157d8941e1b/branch_end",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [
-          "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/001"
+          "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/001"
         ],
         "feeder_short_name": null,
         "field_role": "LINIA_IN",
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "e2645bf4-5bb3-52c5-8ebc-0e235473ceb1",
+        "id": "5481458e-4d6b-521a-a0bc-942ba540113a",
         "manufacturer_ref": null,
         "meta": {
           "created_by": "append_station_on_endpoint"
@@ -182,14 +297,14 @@
           "51N"
         ],
         "protection_ref": null,
-        "ref_id": "field/74b61dfe0dd2de5e5798a29c9465431a/1",
+        "ref_id": "field/f7b19058fc4e532f0fee0f6ca5e87a53/1",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
-        "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/001",
+        "terminal_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/001",
         "wybor_bloku": null
       },
       {
@@ -199,17 +314,17 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/e0798a1ecd7b90bfce5367437583c89e/branch_end",
+        "bus_ref": "bus/6088cfd3fc754d74af934157d8941e1b/branch_end",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [
-          "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/003"
+          "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/003"
         ],
         "feeder_short_name": null,
         "field_role": "POMIAROWE",
         "funkcja_pomiaru": "UKLAD_ENERGII",
         "gpz_section_id": null,
-        "id": "8d808b6f-e219-5460-a7fb-c997a1de75aa",
+        "id": "b6f2cdde-45ce-53c0-9353-181b86289bb1",
         "manufacturer_ref": null,
         "meta": {
           "created_by": "append_station_on_endpoint"
@@ -221,16 +336,16 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "field/74b61dfe0dd2de5e5798a29c9465431a/2",
+        "ref_id": "field/f7b19058fc4e532f0fee0f6ca5e87a53/2",
         "rodzaj_pomiaru": "PODSTAWOWY",
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [
           "station_sn_field"
         ],
-        "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
+        "terminal_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
         "wybor_bloku": null
       },
       {
@@ -240,22 +355,22 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [
-          "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/002",
-          "tr/74b61dfe0dd2de5e5798a29c9465431a/transformer"
+          "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/002",
+          "tr/f7b19058fc4e532f0fee0f6ca5e87a53/transformer"
         ],
         "feeder_short_name": null,
         "field_role": "TRANSFORMATOROWE",
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "50da10a1-18d9-589a-9a59-42f6f655878a",
+        "id": "2526a832-03a9-5719-8dd7-9baf1a38d9b5",
         "manufacturer_ref": null,
         "meta": {
           "created_by": "append_station_on_endpoint",
-          "transformer_ref": "tr/74b61dfe0dd2de5e5798a29c9465431a/transformer"
+          "transformer_ref": "tr/f7b19058fc4e532f0fee0f6ca5e87a53/transformer"
         },
         "metadane_pochodzenia": null,
         "name": "Pole transformatorowe — Stacja SN/nN 1000 kVA, RMU 4-pole + pomiary, 4 odpływy",
@@ -272,14 +387,14 @@
           "ciśnienie"
         ],
         "protection_ref": null,
-        "ref_id": "field/74b61dfe0dd2de5e5798a29c9465431a/3",
+        "ref_id": "field/f7b19058fc4e532f0fee0f6ca5e87a53/3",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
-        "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/002",
+        "terminal_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/002",
         "wybor_bloku": null
       },
       {
@@ -289,17 +404,17 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [
-          "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/004"
+          "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/004"
         ],
         "feeder_short_name": null,
         "field_role": "LINIA_OUT",
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "bf53c3f0-4760-5dea-a060-c25d43e983a1",
+        "id": "06e563f0-6a9b-5ee2-b7b8-5eab9262121a",
         "manufacturer_ref": null,
         "meta": {
           "created_by": "append_station_on_endpoint"
@@ -316,16 +431,16 @@
           "67N"
         ],
         "protection_ref": null,
-        "ref_id": "field/74b61dfe0dd2de5e5798a29c9465431a/4",
+        "ref_id": "field/f7b19058fc4e532f0fee0f6ca5e87a53/4",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [
           "station_sn_field"
         ],
-        "terminal_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/004",
+        "terminal_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/004",
         "wybor_bloku": null
       },
       {
@@ -335,20 +450,20 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
         "catalog_bindings": null,
         "config_id": null,
         "equipment_refs": [
-          "nn/8e7d006e33fb32bdc5f82900a4e509f8/feeder_device"
+          "nn/0c96b1bd267b4bae83312e65ecbd33ae/feeder_device"
         ],
         "feeder_short_name": null,
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "5822ff35-cf64-5a79-9cd4-2b9c001b9c6d",
+        "id": "b109e713-bead-5ce0-b7ba-1dc23de86789",
         "manufacturer_ref": null,
         "meta": {
-          "transformer_ref": "tr/74b61dfe0dd2de5e5798a29c9465431a/transformer"
+          "transformer_ref": "tr/f7b19058fc4e532f0fee0f6ca5e87a53/transformer"
         },
         "metadane_pochodzenia": null,
         "name": "Wyłącznik główny nN",
@@ -357,16 +472,16 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_main_breaker",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_main_breaker",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [
           "nn_main_breaker"
         ],
-        "terminal_bus_ref": "nn/8e7d006e33fb32bdc5f82900a4e509f8/feeder_bus",
+        "terminal_bus_ref": "nn/0c96b1bd267b4bae83312e65ecbd33ae/feeder_bus",
         "wybor_bloku": null
       },
       {
@@ -376,7 +491,7 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
         "catalog_bindings": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -386,13 +501,13 @@
         },
         "config_id": null,
         "equipment_refs": [
-          "nn/be2b58cb141e7d48a6a6fe4aaf390fb6/feeder_device"
+          "nn/4615459e4bf6e8848d4cb50985f366b3/feeder_device"
         ],
         "feeder_short_name": null,
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "f0576a5b-dff0-557b-ba77-8654d25b5531",
+        "id": "05007735-4faf-53b5-a9f8-34847e123adc",
         "manufacturer_ref": null,
         "meta": {
           "feeder_role": "ODPLYW_NN"
@@ -404,14 +519,14 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/000",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/000",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
-        "terminal_bus_ref": "nn/be2b58cb141e7d48a6a6fe4aaf390fb6/feeder_bus",
+        "terminal_bus_ref": "nn/4615459e4bf6e8848d4cb50985f366b3/feeder_bus",
         "wybor_bloku": null
       },
       {
@@ -421,7 +536,7 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
         "catalog_bindings": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -431,13 +546,13 @@
         },
         "config_id": null,
         "equipment_refs": [
-          "nn/d8521246a5d9de7b3abde55816c00d62/feeder_device"
+          "nn/567ad283604fd6fa15cc1b86cdc9a632/feeder_device"
         ],
         "feeder_short_name": null,
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "f0f4ec9b-ce45-515b-abac-16ae3575fce8",
+        "id": "6e964f8e-7d3b-5b42-9f1d-b2650bf50b15",
         "manufacturer_ref": null,
         "meta": {
           "feeder_role": "ODPLYW_NN"
@@ -449,14 +564,14 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/001",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/001",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
-        "terminal_bus_ref": "nn/d8521246a5d9de7b3abde55816c00d62/feeder_bus",
+        "terminal_bus_ref": "nn/567ad283604fd6fa15cc1b86cdc9a632/feeder_bus",
         "wybor_bloku": null
       },
       {
@@ -466,7 +581,7 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
         "catalog_bindings": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -476,13 +591,13 @@
         },
         "config_id": null,
         "equipment_refs": [
-          "nn/6f6c66842152fa831cf4339c02bfe61f/feeder_device"
+          "nn/e407d7a578f3863e5d63ddbf68904632/feeder_device"
         ],
         "feeder_short_name": null,
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "9a5e8814-7125-5b01-bdc7-cb4570193175",
+        "id": "7e358d73-4c17-5207-bc17-bc3e6a1fc905",
         "manufacturer_ref": null,
         "meta": {
           "feeder_role": "ODPLYW_NN"
@@ -494,14 +609,14 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/002",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/002",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
-        "terminal_bus_ref": "nn/6f6c66842152fa831cf4339c02bfe61f/feeder_bus",
+        "terminal_bus_ref": "nn/e407d7a578f3863e5d63ddbf68904632/feeder_bus",
         "wybor_bloku": null
       },
       {
@@ -511,7 +626,7 @@
         "bay_template_ref": null,
         "branch_point_port_id": null,
         "branch_point_ref": null,
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
         "catalog_bindings": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -521,13 +636,13 @@
         },
         "config_id": null,
         "equipment_refs": [
-          "nn/d601ff7ef89ae42ad1b537f26e514aca/feeder_device"
+          "nn/4755ae3785648753c12faf1d7b72dfcf/feeder_device"
         ],
         "feeder_short_name": null,
         "field_role": null,
         "funkcja_pomiaru": null,
         "gpz_section_id": null,
-        "id": "1350f64a-682c-5515-9118-73d8e82942b7",
+        "id": "b3c16cd9-faaa-5d31-a273-60b62237d809",
         "manufacturer_ref": null,
         "meta": {
           "feeder_role": "ODPLYW_NN"
@@ -539,29 +654,29 @@
         "primary_devices": [],
         "protection_codes": [],
         "protection_ref": null,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/003",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/003",
         "rodzaj_pomiaru": null,
         "runtime_state": null,
-        "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
         "tags": [],
-        "terminal_bus_ref": "nn/d601ff7ef89ae42ad1b537f26e514aca/feeder_bus",
+        "terminal_bus_ref": "nn/4755ae3785648753c12faf1d7b72dfcf/feeder_bus",
         "wybor_bloku": null
       }
     ],
     "branch_points": [
       {
         "branch_occupied": {
-          "BRANCH_1": "seg/e0798a1ecd7b90bfce5367437583c89e/branch_segment"
+          "BRANCH_1": "seg/6088cfd3fc754d74af934157d8941e1b/branch_segment"
         },
         "branch_point_type": "zksn",
-        "bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
+        "bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
         "catalog_namespace": "mv_branch_points",
         "catalog_ref": "RSN-6",
         "catalog_version": null,
         "completeness_status": "KOMPLETNY",
-        "id": "c6f9fec9-1aff-5ed9-8922-21ba6643bcd2",
+        "id": "ec5a192b-fe44-5c2a-994b-d3aa9158a0b8",
         "materialized_params": {
           "branch_ports_count": 1,
           "catalog_item_id": "RSN-6",
@@ -602,15 +717,15 @@
         },
         "meta": {},
         "name": "ZKSN SN",
-        "parent_segment_id": "seg/a9bc466ffbf7944f96515e31a111c281/segment",
+        "parent_segment_id": "seg/d80a52f498166b0cef6bbbdff43d7039/segment",
         "ports": {
           "BRANCH": [
-            "bp/7d563a1f61c64ed689d961a1c25ccd9f/branch_bus_1"
+            "bp/4b680151031c0aa944fcf9ae999c9c4a/branch_bus_1"
           ],
-          "MAIN_IN": "bus/911beddc62cbdc78ea673c88ce53c0af/downstream",
-          "MAIN_OUT": "bus/a9bc466ffbf7944f96515e31a111c281/downstream"
+          "MAIN_IN": "bus/1725d53687a76f51e67f10463d7a05ff/downstream",
+          "MAIN_OUT": "bus/d80a52f498166b0cef6bbbdff43d7039/downstream"
         },
-        "ref_id": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
+        "ref_id": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn",
         "runtime_inputs": {
           "apparatus_specs": null,
           "branch_ports_count": 1,
@@ -621,8 +736,8 @@
             "value": 0.5
           },
           "main_segment_refs": [
-            "seg/a9bc466ffbf7944f96515e31a111c281/segment_L_zksn",
-            "seg/a9bc466ffbf7944f96515e31a111c281/segment_R_zksn"
+            "seg/d80a52f498166b0cef6bbbdff43d7039/segment_L_zksn",
+            "seg/d80a52f498166b0cef6bbbdff43d7039/segment_R_zksn"
           ],
           "name": null,
           "operation_semantics": "insert_point_in_run",
@@ -643,8 +758,8 @@
               "role": "odgalezienie"
             }
           ],
-          "source_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
-          "source_segment_id": "seg/a9bc466ffbf7944f96515e31a111c281/segment"
+          "source_run_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01",
+          "source_segment_id": "seg/d80a52f498166b0cef6bbbdff43d7039/segment"
         },
         "source_mode": "KATALOG",
         "tags": []
@@ -661,8 +776,8 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
-        "id": "55e0b6d4-3f22-5e8a-a01d-135a1efa7b84",
+        "from_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+        "id": "daee987d-69f5-540c-b3d4-4fdc18782e76",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -698,7 +813,7 @@
         "meta": {
           "catalog_item_version": "2024.1",
           "origin_apparatus_kind": "cable_head",
-          "origin_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
+          "origin_bay_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
           "origin_port_role": "OUTGOING_HEAD"
         },
         "n_parallel": null,
@@ -714,7 +829,7 @@
           "in_a": 230.0,
           "ith_ka": null
         },
-        "ref_id": "seg/911beddc62cbdc78ea673c88ce53c0af/segment",
+        "ref_id": "seg/1725d53687a76f51e67f10463d7a05ff/segment",
         "return_conductor_cross_section_mm2": 16.0,
         "return_conductor_ith_1s_a": 2288.0,
         "return_conductor_jth_1s_a_per_mm2": 143.0,
@@ -727,7 +842,7 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bus/911beddc62cbdc78ea673c88ce53c0af/downstream",
+        "to_bus_ref": "bus/1725d53687a76f51e67f10463d7a05ff/downstream",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
@@ -742,8 +857,8 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "bus/911beddc62cbdc78ea673c88ce53c0af/downstream",
-        "id": "ee3043fb-0823-55ce-9636-f4ab32dabcf6",
+        "from_bus_ref": "bus/1725d53687a76f51e67f10463d7a05ff/downstream",
+        "id": "857e7ce4-454a-5eb1-94f6-3040b04e9779",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -792,7 +907,7 @@
           "in_a": 230.0,
           "ith_ka": null
         },
-        "ref_id": "seg/a9bc466ffbf7944f96515e31a111c281/segment_L_zksn",
+        "ref_id": "seg/d80a52f498166b0cef6bbbdff43d7039/segment_L_zksn",
         "return_conductor_cross_section_mm2": 16.0,
         "return_conductor_ith_1s_a": 2288.0,
         "return_conductor_jth_1s_a_per_mm2": 143.0,
@@ -805,7 +920,7 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
+        "to_bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
@@ -820,8 +935,8 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
-        "id": "7ec47b68-2548-58a9-95cf-67ce249167fb",
+        "from_bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
+        "id": "06c36ff1-3b10-523e-97cd-1a537d31ed77",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -870,7 +985,7 @@
           "in_a": 230.0,
           "ith_ka": null
         },
-        "ref_id": "seg/a9bc466ffbf7944f96515e31a111c281/segment_R_zksn",
+        "ref_id": "seg/d80a52f498166b0cef6bbbdff43d7039/segment_R_zksn",
         "return_conductor_cross_section_mm2": 16.0,
         "return_conductor_ith_1s_a": 2288.0,
         "return_conductor_jth_1s_a_per_mm2": 143.0,
@@ -883,7 +998,7 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bus/a9bc466ffbf7944f96515e31a111c281/downstream",
+        "to_bus_ref": "bus/d80a52f498166b0cef6bbbdff43d7039/downstream",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
@@ -891,11 +1006,11 @@
       {
         "catalog_namespace": null,
         "catalog_ref": null,
-        "from_bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
-        "id": "97deb2dd-d1c8-5f56-9206-8859d0312736",
+        "from_bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
+        "id": "4b4637d3-33fe-5be2-bb74-6826752f165d",
         "materialized_params": null,
         "meta": {
-          "branch_point_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
+          "branch_point_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn",
           "port_id": "BRANCH_1",
           "render_on_sld": false,
           "requires_catalog_binding": false,
@@ -907,13 +1022,13 @@
         "overrides": [],
         "parameter_source": null,
         "r_ohm": 0.0,
-        "ref_id": "bp/7d563a1f61c64ed689d961a1c25ccd9f/branch_connector_1",
+        "ref_id": "bp/4b680151031c0aa944fcf9ae999c9c4a/branch_connector_1",
         "source_mode": null,
         "status": "closed",
         "tags": [
           "branch_point_internal_connector"
         ],
-        "to_bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/branch_bus_1",
+        "to_bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/branch_bus_1",
         "type": "switch",
         "x_ohm": 0.0
       },
@@ -927,8 +1042,8 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/branch_bus_1",
-        "id": "4248ba2d-3c67-5b9b-bfb5-f26285039afb",
+        "from_bus_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/branch_bus_1",
+        "id": "47536b19-8043-5653-9d87-87d9b09e1836",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
@@ -977,7 +1092,7 @@
           "in_a": 230.0,
           "ith_ka": null
         },
-        "ref_id": "seg/e0798a1ecd7b90bfce5367437583c89e/branch_segment",
+        "ref_id": "seg/6088cfd3fc754d74af934157d8941e1b/branch_segment",
         "return_conductor_cross_section_mm2": 16.0,
         "return_conductor_ith_1s_a": 2288.0,
         "return_conductor_jth_1s_a_per_mm2": 143.0,
@@ -990,7 +1105,7 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/001",
+        "to_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/001",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
@@ -998,8 +1113,8 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/e0798a1ecd7b90bfce5367437583c89e/branch_end",
-        "id": "b466822a-4f35-5746-8849-a43b0763d2d1",
+        "from_bus_ref": "bus/6088cfd3fc754d74af934157d8941e1b/branch_end",
+        "id": "d6dfde24-f11b-58fe-80bf-f76302946713",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1009,33 +1124,33 @@
         "meta": {
           "bay_role": "IN",
           "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/1",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/1",
           "field_role": "LINIA_IN",
           "render_on_sld": false,
           "requires_catalog_binding": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation"
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation"
         },
         "name": "Wyłącznik pola SN 1",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/001",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/001",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
           "station_field_device"
         ],
-        "to_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/001",
+        "to_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/001",
         "type": "breaker",
         "x_ohm": 0.0
       },
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/e0798a1ecd7b90bfce5367437583c89e/branch_end",
-        "id": "3e1ba8bd-0da2-5da9-a5a7-6d84ae8ef4d7",
+        "from_bus_ref": "bus/6088cfd3fc754d74af934157d8941e1b/branch_end",
+        "id": "4fd2bd4d-a570-56c0-87a6-30516e143aa0",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1045,33 +1160,33 @@
         "meta": {
           "bay_role": "MEASUREMENT",
           "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/2",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/2",
           "field_role": "POMIAROWE",
           "render_on_sld": false,
           "requires_catalog_binding": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation"
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation"
         },
         "name": "Wyłącznik pola SN 3",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/003",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/003",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
           "station_field_device"
         ],
-        "to_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
+        "to_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
         "type": "breaker",
         "x_ohm": 0.0
       },
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
-        "id": "d058ed7d-18ad-5cdf-a578-259ab95d55dd",
+        "from_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
+        "id": "d083ce27-2e0e-5a73-b518-d71e440a15a4",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1081,33 +1196,33 @@
         "meta": {
           "bay_role": "TR",
           "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/3",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/3",
           "field_role": "TRANSFORMATOROWE",
           "render_on_sld": false,
           "requires_catalog_binding": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation"
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation"
         },
         "name": "Wyłącznik pola SN 2",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/002",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/002",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
           "station_field_device"
         ],
-        "to_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/002",
+        "to_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/002",
         "type": "breaker",
         "x_ohm": 0.0
       },
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
-        "id": "43d499aa-a5f7-5e02-b7e7-4f39a1bb53ea",
+        "from_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
+        "id": "ad6226ce-9c28-5ca5-af5d-580d12c3a130",
         "materialized_params": {
           "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
           "catalog_item_version": "2024.1",
@@ -1117,37 +1232,37 @@
         "meta": {
           "bay_role": "OUT",
           "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/4",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/4",
           "field_role": "LINIA_OUT",
           "render_on_sld": false,
           "requires_catalog_binding": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation"
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation"
         },
         "name": "Wyłącznik pola SN 4",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": 0.0,
-        "ref_id": "stn/74b61dfe0dd2de5e5798a29c9465431a/sn_field_apparatus/004",
+        "ref_id": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_apparatus/004",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [
           "station_field_device"
         ],
-        "to_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/004",
+        "to_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/004",
         "type": "breaker",
         "x_ohm": 0.0
       },
       {
         "catalog_namespace": null,
         "catalog_ref": null,
-        "from_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
-        "id": "1337195e-23ce-5d49-b0db-35e45984fbc7",
+        "from_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
+        "id": "86fb458b-386d-5442-b342-b4e85e2edb55",
         "materialized_params": null,
         "meta": {
           "nn_field_migrowana_rola": "IN",
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_main_breaker",
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_main_breaker",
           "nn_promocja_bez_wiazania_katalogowej": true
         },
         "name": "Wyłącznik główny nN",
@@ -1155,19 +1270,19 @@
         "overrides": [],
         "parameter_source": null,
         "r_ohm": null,
-        "ref_id": "nn/8e7d006e33fb32bdc5f82900a4e509f8/feeder_device",
+        "ref_id": "nn/0c96b1bd267b4bae83312e65ecbd33ae/feeder_device",
         "source_mode": "MIGRACJA",
         "status": "closed",
         "tags": [],
-        "to_bus_ref": "nn/8e7d006e33fb32bdc5f82900a4e509f8/feeder_bus",
+        "to_bus_ref": "nn/0c96b1bd267b4bae83312e65ecbd33ae/feeder_bus",
         "type": "breaker",
         "x_ohm": null
       },
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "cb_nn_400a",
-        "from_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
-        "id": "2779e73e-19bc-5432-81b0-ca8a4a978a6a",
+        "from_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
+        "id": "5698cb3a-d0a5-5b78-a634-a65848f60e38",
         "materialized_params": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -1200,26 +1315,26 @@
         "meta": {
           "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "FEEDER",
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/000"
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/000"
         },
         "name": "Odpływ nN 1",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
-        "ref_id": "nn/be2b58cb141e7d48a6a6fe4aaf390fb6/feeder_device",
+        "ref_id": "nn/4615459e4bf6e8848d4cb50985f366b3/feeder_device",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [],
-        "to_bus_ref": "nn/be2b58cb141e7d48a6a6fe4aaf390fb6/feeder_bus",
+        "to_bus_ref": "nn/4615459e4bf6e8848d4cb50985f366b3/feeder_bus",
         "type": "breaker",
         "x_ohm": null
       },
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "cb_nn_400a",
-        "from_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
-        "id": "539059c2-9259-5779-998a-ede8693eb8ab",
+        "from_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
+        "id": "f78f9354-ca7a-5619-b967-22ecae8c62d7",
         "materialized_params": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -1252,26 +1367,26 @@
         "meta": {
           "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "FEEDER",
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/001"
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/001"
         },
         "name": "Odpływ nN 2",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
-        "ref_id": "nn/d8521246a5d9de7b3abde55816c00d62/feeder_device",
+        "ref_id": "nn/567ad283604fd6fa15cc1b86cdc9a632/feeder_device",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [],
-        "to_bus_ref": "nn/d8521246a5d9de7b3abde55816c00d62/feeder_bus",
+        "to_bus_ref": "nn/567ad283604fd6fa15cc1b86cdc9a632/feeder_bus",
         "type": "breaker",
         "x_ohm": null
       },
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "cb_nn_400a",
-        "from_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
-        "id": "1cd778a8-858f-5860-8640-c6c13c968fb2",
+        "from_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
+        "id": "fd6d2f74-ba48-511c-945a-8e5b6b6d70b6",
         "materialized_params": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -1304,26 +1419,26 @@
         "meta": {
           "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "FEEDER",
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/002"
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/002"
         },
         "name": "Odpływ nN 3",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
-        "ref_id": "nn/6f6c66842152fa831cf4339c02bfe61f/feeder_device",
+        "ref_id": "nn/e407d7a578f3863e5d63ddbf68904632/feeder_device",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [],
-        "to_bus_ref": "nn/6f6c66842152fa831cf4339c02bfe61f/feeder_bus",
+        "to_bus_ref": "nn/e407d7a578f3863e5d63ddbf68904632/feeder_bus",
         "type": "breaker",
         "x_ohm": null
       },
       {
         "catalog_namespace": "APARAT_NN",
         "catalog_ref": "cb_nn_400a",
-        "from_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
-        "id": "8926e521-fae2-5198-a98f-4238b04c1d31",
+        "from_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
+        "id": "b5da3e43-d008-56d7-ad63-a52bc4880f88",
         "materialized_params": {
           "catalog_item_id": "cb_nn_400a",
           "catalog_item_version": "2024.1",
@@ -1356,18 +1471,18 @@
         "meta": {
           "catalog_item_version": "2024.1",
           "nn_field_migrowana_rola": "FEEDER",
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/003"
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/003"
         },
         "name": "Odpływ nN 4",
         "normal_state": null,
         "overrides": [],
         "parameter_source": "CATALOG",
         "r_ohm": null,
-        "ref_id": "nn/d601ff7ef89ae42ad1b537f26e514aca/feeder_device",
+        "ref_id": "nn/4755ae3785648753c12faf1d7b72dfcf/feeder_device",
         "source_mode": "KATALOG",
         "status": "closed",
         "tags": [],
-        "to_bus_ref": "nn/d601ff7ef89ae42ad1b537f26e514aca/feeder_bus",
+        "to_bus_ref": "nn/4755ae3785648753c12faf1d7b72dfcf/feeder_bus",
         "type": "breaker",
         "x_ohm": null
       }
@@ -1375,32 +1490,32 @@
     "buses": [
       {
         "frequency_hz": null,
-        "id": "98bcc312-fc38-54f6-9cae-d55fac899f66",
+        "id": "f3ebe645-9381-5dfc-93ed-0e02ec3bd0d9",
         "meta": {
-          "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
+          "gpz_section_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001",
           "gpz_section_order": 0,
-          "gpz_substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation"
+          "gpz_substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation"
         },
         "name": "Szyna GPZ S1 15 kV",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
         "tags": [],
         "voltage_kv": 15.0,
         "zone": "GPZ"
       },
       {
         "frequency_hz": null,
-        "id": "6267a8cd-d656-59d6-b8d2-0c6650b800fc",
+        "id": "de75ba37-97b6-51b4-97d0-e7019acf05f6",
         "meta": {
-          "gpz_substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
+          "gpz_substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
           "render_on_sld": true,
           "visual_role": "GPZ_HV_BUS"
         },
-        "name": "Szyna GPZ WN 110 kV",
+        "name": "Szyna GPZ WN S1 110 kV",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn",
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
         "tags": [
           "gpz_hv_bus"
         ],
@@ -1409,7 +1524,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "d3f8fc68-03fd-5f9a-9529-8f1b46e1b2aa",
+        "id": "d7bea6d8-09a4-5895-b7bc-eb593a98e7bc",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -1418,7 +1533,7 @@
         "name": "Zacisk końcowy Odcinek 0",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/911beddc62cbdc78ea673c88ce53c0af/downstream",
+        "ref_id": "bus/1725d53687a76f51e67f10463d7a05ff/downstream",
         "tags": [
           "helper_bus",
           "topology_terminal"
@@ -1428,7 +1543,7 @@
       },
       {
         "frequency_hz": null,
-        "id": "a9dee367-ac7e-5e74-9a8e-9f4cc50b2753",
+        "id": "88e7522d-c082-5433-b731-69250da222e8",
         "meta": {
           "render_on_sld": false,
           "show_in_project_tree": false,
@@ -1437,7 +1552,7 @@
         "name": "Zacisk końcowy Odcinek 1",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/a9bc466ffbf7944f96515e31a111c281/downstream",
+        "ref_id": "bus/d80a52f498166b0cef6bbbdff43d7039/downstream",
         "tags": [
           "helper_bus",
           "topology_terminal"
@@ -1447,41 +1562,41 @@
       },
       {
         "frequency_hz": null,
-        "id": "9585cabb-61be-57c2-8626-71a196343b0c",
+        "id": "7fa039a9-f53d-5c83-b03b-0c88e1c95ad3",
         "meta": {},
         "name": "ZKSN",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bp/7d563a1f61c64ed689d961a1c25ccd9f/bus",
+        "ref_id": "bp/4b680151031c0aa944fcf9ae999c9c4a/bus",
         "tags": [],
         "voltage_kv": 15.0,
         "zone": null
       },
       {
         "frequency_hz": null,
-        "id": "5c834189-41f1-5c5e-a728-4ee8e050b2b9",
+        "id": "5f18cac1-2ad3-5376-a6b9-ffa2360ee892",
         "meta": {},
         "name": "Port odgałęźny 1",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bp/7d563a1f61c64ed689d961a1c25ccd9f/branch_bus_1",
+        "ref_id": "bp/4b680151031c0aa944fcf9ae999c9c4a/branch_bus_1",
         "tags": [],
         "voltage_kv": 15.0,
         "zone": null
       },
       {
         "frequency_hz": null,
-        "id": "a2373de8-04bf-5b22-ad2c-b6bbfd1bc7db",
+        "id": "70a6c28d-91e4-52e6-b8df-33a6ddf7f398",
         "meta": {
           "render_on_sld": true,
           "show_in_project_tree": true,
-          "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+          "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
           "visual_role": "INLINE_TERMINAL"
         },
         "name": "Szyna odgałęzienia",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/e0798a1ecd7b90bfce5367437583c89e/branch_end",
+        "ref_id": "bus/6088cfd3fc754d74af934157d8941e1b/branch_end",
         "tags": [
           "substation_bus"
         ],
@@ -1490,18 +1605,18 @@
       },
       {
         "frequency_hz": null,
-        "id": "7515cfbe-d72e-5762-b8e1-e0e2f9357de2",
+        "id": "7aea777c-2259-5722-8086-60561c4da2f5",
         "meta": {
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/1",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/1",
           "render_on_sld": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
           "visual_role": "FIELD_TERMINAL"
         },
         "name": "Zacisk pola SN 1",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/001",
+        "ref_id": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/001",
         "tags": [
           "helper_bus",
           "field_terminal"
@@ -1511,18 +1626,18 @@
       },
       {
         "frequency_hz": null,
-        "id": "6252275d-7d24-5fec-9a8e-09719f2ecc8c",
+        "id": "7d56b34e-166d-526f-a710-239a4a752d8b",
         "meta": {
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/2",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/2",
           "render_on_sld": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
           "visual_role": "FIELD_TERMINAL"
         },
         "name": "Zacisk pola SN 3",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
+        "ref_id": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
         "tags": [
           "helper_bus",
           "field_terminal"
@@ -1532,18 +1647,18 @@
       },
       {
         "frequency_hz": null,
-        "id": "4e74afed-a303-5a67-be6a-c88c8e73dd2f",
+        "id": "09aab8d9-651b-5a12-b176-e41e0ed0c809",
         "meta": {
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/3",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/3",
           "render_on_sld": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
           "visual_role": "FIELD_TERMINAL"
         },
         "name": "Zacisk pola SN 2",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/002",
+        "ref_id": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/002",
         "tags": [
           "helper_bus",
           "field_terminal"
@@ -1553,18 +1668,18 @@
       },
       {
         "frequency_hz": null,
-        "id": "866668de-7eb8-5cab-a013-dba94c1dfab0",
+        "id": "f4ce9b65-16d0-5368-9aa1-f559019daaaa",
         "meta": {
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/4",
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/4",
           "render_on_sld": false,
           "show_in_project_tree": false,
-          "station_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+          "station_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
           "visual_role": "FIELD_TERMINAL"
         },
         "name": "Zacisk pola SN 4",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/004",
+        "ref_id": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/004",
         "tags": [
           "helper_bus",
           "field_terminal"
@@ -1574,89 +1689,89 @@
       },
       {
         "frequency_hz": null,
-        "id": "0da72907-8cb5-5f12-88d1-5815f7ad11e4",
+        "id": "54d4f31b-32dc-50c7-beaa-537c72688451",
         "meta": {
-          "substation_ref": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation"
+          "substation_ref": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation"
         },
         "name": "Szyna nN Stacja SN/nN 1000 kVA, RMU 4-pole + pomiary, 4 odpływy",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "bus/74b61dfe0dd2de5e5798a29c9465431a/nn",
+        "ref_id": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn",
         "tags": [],
         "voltage_kv": 0.4,
         "zone": null
       },
       {
         "frequency_hz": null,
-        "id": "055de467-f54a-59fa-8352-712c5c567706",
+        "id": "0828f8f2-ccb7-5cea-ac05-8a00d6bfe9c6",
         "meta": {
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_main_breaker",
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_main_breaker",
           "visual_role": "NN_FEEDER_BUS"
         },
         "name": "Wyłącznik główny nN",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "nn/8e7d006e33fb32bdc5f82900a4e509f8/feeder_bus",
+        "ref_id": "nn/0c96b1bd267b4bae83312e65ecbd33ae/feeder_bus",
         "tags": [],
         "voltage_kv": 0.4,
         "zone": null
       },
       {
         "frequency_hz": null,
-        "id": "e72f08d6-fa87-5669-bdd7-a686b8cb6b5b",
+        "id": "81a97e07-2171-55c2-bae9-66cf2beb3498",
         "meta": {
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/000",
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/000",
           "visual_role": "NN_FEEDER_BUS"
         },
         "name": "Odpływ nN 1",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "nn/be2b58cb141e7d48a6a6fe4aaf390fb6/feeder_bus",
+        "ref_id": "nn/4615459e4bf6e8848d4cb50985f366b3/feeder_bus",
         "tags": [],
         "voltage_kv": 0.4,
         "zone": null
       },
       {
         "frequency_hz": null,
-        "id": "2bb6030c-336d-5a41-86ea-9a8fc9e13a44",
+        "id": "3bc5bdc7-0c2f-57e1-8b64-025c63902751",
         "meta": {
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/001",
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/001",
           "visual_role": "NN_FEEDER_BUS"
         },
         "name": "Odpływ nN 2",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "nn/d8521246a5d9de7b3abde55816c00d62/feeder_bus",
+        "ref_id": "nn/567ad283604fd6fa15cc1b86cdc9a632/feeder_bus",
         "tags": [],
         "voltage_kv": 0.4,
         "zone": null
       },
       {
         "frequency_hz": null,
-        "id": "2ffe8b1c-b607-5c82-8756-3a86f9cf46ce",
+        "id": "fa83c1b0-1235-55db-95c4-82d947d72c8d",
         "meta": {
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/002",
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/002",
           "visual_role": "NN_FEEDER_BUS"
         },
         "name": "Odpływ nN 3",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "nn/6f6c66842152fa831cf4339c02bfe61f/feeder_bus",
+        "ref_id": "nn/e407d7a578f3863e5d63ddbf68904632/feeder_bus",
         "tags": [],
         "voltage_kv": 0.4,
         "zone": null
       },
       {
         "frequency_hz": null,
-        "id": "d8281aef-22ba-57c8-9c94-b4ec0b7d415d",
+        "id": "e486ef22-7ee7-5971-a124-217b6458b859",
         "meta": {
-          "nn_field_migrowany_z": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/003",
+          "nn_field_migrowany_z": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/003",
           "visual_role": "NN_FEEDER_BUS"
         },
         "name": "Odpływ nN 4",
         "nominal_limits": null,
         "phase_system": "3ph",
-        "ref_id": "nn/d601ff7ef89ae42ad1b537f26e514aca/feeder_bus",
+        "ref_id": "nn/4755ae3785648753c12faf1d7b72dfcf/feeder_bus",
         "tags": [],
         "voltage_kv": 0.4,
         "zone": null
@@ -1666,26 +1781,26 @@
     "corridors": [
       {
         "corridor_type": "radial",
-        "id": "ea0ee759-1ccd-52b4-b345-3c30398d8fbb",
+        "id": "67525fc9-e7f0-5bb8-92b6-dce463b9f50c",
         "meta": {},
         "name": "Magistrala 01",
         "ordered_segment_refs": [
-          "seg/911beddc62cbdc78ea673c88ce53c0af/segment",
-          "seg/a9bc466ffbf7944f96515e31a111c281/segment_L_zksn",
-          "seg/a9bc466ffbf7944f96515e31a111c281/segment_R_zksn"
+          "seg/1725d53687a76f51e67f10463d7a05ff/segment",
+          "seg/d80a52f498166b0cef6bbbdff43d7039/segment_L_zksn",
+          "seg/d80a52f498166b0cef6bbbdff43d7039/segment_R_zksn"
         ],
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01",
         "tags": []
       },
       {
         "corridor_type": "radial",
-        "id": "2f622caf-e29b-594e-80b4-fb927e642a0a",
+        "id": "69987c53-8441-56ef-a618-006fb285c173",
         "meta": {},
         "name": "Odgałęzienie SN kablowe",
         "ordered_segment_refs": [
-          "seg/e0798a1ecd7b90bfce5367437583c89e/branch_segment"
+          "seg/6088cfd3fc754d74af934157d8941e1b/branch_segment"
         ],
-        "ref_id": "corridor/2622e044b15dd3ab2e34946e3a0eba75/branch",
+        "ref_id": "corridor/bc684c1a9bb2ac25b58a781d12e433d4/branch",
         "tags": []
       }
     ],
@@ -1700,7 +1815,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "f6ffefcb2606ae6cde2dd23ec5987db5948c73f6ede4a5617a5b1d21bc0080c6",
+      "hash_sha256": "b41a39070ed2b8c664f8152fd56216f737c39ab01413b059acf8162ea4390792",
       "name": "Stacja z pomiarem za ZKSN",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1710,53 +1825,53 @@
     "line_runs": [
       {
         "branch_origin_station_ref": null,
-        "id": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
+        "id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01",
         "name": "Magistrala 01",
         "parent_run_ref": null,
         "run_kind": "main_trunk",
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/911beddc62cbdc78ea673c88ce53c0af/segment"
+            "segment_ref": "seg/1725d53687a76f51e67f10463d7a05ff/segment"
           },
           {
             "order": 2,
-            "segment_ref": "seg/a9bc466ffbf7944f96515e31a111c281/segment_L_zksn"
+            "segment_ref": "seg/d80a52f498166b0cef6bbbdff43d7039/segment_L_zksn"
           },
           {
             "order": 3,
-            "segment_ref": "seg/a9bc466ffbf7944f96515e31a111c281/segment_R_zksn"
+            "segment_ref": "seg/d80a52f498166b0cef6bbbdff43d7039/segment_R_zksn"
           }
         ],
-        "starting_bay_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
-        "starting_port_ref": "gpz/7e829af9255aa31ddb58717cba136313/bay/001/001",
+        "starting_bay_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
+        "starting_port_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
         "stations": []
       },
       {
-        "branch_origin_station_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
-        "id": "corridor/2622e044b15dd3ab2e34946e3a0eba75/branch",
+        "branch_origin_station_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn",
+        "id": "corridor/bc684c1a9bb2ac25b58a781d12e433d4/branch",
         "name": "Odgałęzienie SN kablowe",
-        "parent_run_ref": "gpz/7e829af9255aa31ddb58717cba136313/corridor_01",
+        "parent_run_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/corridor_01",
         "run_kind": "branch",
         "segments": [
           {
             "order": 1,
-            "segment_ref": "seg/e0798a1ecd7b90bfce5367437583c89e/branch_segment"
+            "segment_ref": "seg/6088cfd3fc754d74af934157d8941e1b/branch_segment"
           }
         ],
-        "starting_bay_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn",
-        "starting_port_ref": "bp/7d563a1f61c64ed689d961a1c25ccd9f/zksn.BRANCH_1",
+        "starting_bay_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn",
+        "starting_port_ref": "bp/4b680151031c0aa944fcf9ae999c9c4a/zksn.BRANCH_1",
         "stations": []
       }
     ],
     "loads": [
       {
-        "bus_ref": "nn/be2b58cb141e7d48a6a6fe4aaf390fb6/feeder_bus",
+        "bus_ref": "nn/4615459e4bf6e8848d4cb50985f366b3/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
         "earth_electrode_r_ohm": null,
-        "id": "10ee88a1-0963-5872-b8c3-d6c94d91c325",
+        "id": "2602bba2-3815-5e33-b694-f488d2f25d31",
         "materialized_params": null,
         "meta": {
           "catalog_binding": {
@@ -1768,7 +1883,7 @@
           },
           "connection_type": "TROJFAZOWY",
           "cos_phi": 0.95,
-          "feeder_ref": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/000",
+          "feeder_ref": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/000",
           "load_kind": "SKUPIONY"
         },
         "model": "pq",
@@ -1779,17 +1894,17 @@
         "phases": null,
         "q_mvar": 0.0164342052589,
         "quantity": null,
-        "ref_id": "nn/651b257e4504be1cde53f83d0fa746d2/load",
+        "ref_id": "nn/2837eafc2d26f474c69cbc3cee83e517/load",
         "source_mode": "KATALOG",
         "tags": []
       },
       {
-        "bus_ref": "nn/d8521246a5d9de7b3abde55816c00d62/feeder_bus",
+        "bus_ref": "nn/567ad283604fd6fa15cc1b86cdc9a632/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
         "earth_electrode_r_ohm": null,
-        "id": "933dcbb7-ff14-576c-add6-fe2312af33f1",
+        "id": "2fd5211b-6cf3-5636-acb9-1f4cbe1eb42e",
         "materialized_params": null,
         "meta": {
           "catalog_binding": {
@@ -1801,7 +1916,7 @@
           },
           "connection_type": "TROJFAZOWY",
           "cos_phi": 0.95,
-          "feeder_ref": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/001",
+          "feeder_ref": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/001",
           "load_kind": "SKUPIONY"
         },
         "model": "pq",
@@ -1812,17 +1927,17 @@
         "phases": null,
         "q_mvar": 0.0164342052589,
         "quantity": null,
-        "ref_id": "nn/11aaa2275a8f1adee99c7ac74e875812/load",
+        "ref_id": "nn/2069d5e104a5f17b3e3f2f3790aeb062/load",
         "source_mode": "KATALOG",
         "tags": []
       },
       {
-        "bus_ref": "nn/6f6c66842152fa831cf4339c02bfe61f/feeder_bus",
+        "bus_ref": "nn/e407d7a578f3863e5d63ddbf68904632/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
         "earth_electrode_r_ohm": null,
-        "id": "cb928033-f743-5535-8415-21a194bec276",
+        "id": "046aad1b-2152-5d30-896f-3cb515e5c88f",
         "materialized_params": null,
         "meta": {
           "catalog_binding": {
@@ -1834,7 +1949,7 @@
           },
           "connection_type": "TROJFAZOWY",
           "cos_phi": 0.95,
-          "feeder_ref": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/002",
+          "feeder_ref": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/002",
           "load_kind": "SKUPIONY"
         },
         "model": "pq",
@@ -1845,17 +1960,17 @@
         "phases": null,
         "q_mvar": 0.0164342052589,
         "quantity": null,
-        "ref_id": "nn/be2964aff22790cc1688f9d3827d396c/load",
+        "ref_id": "nn/ffb90f93db59cbf7a7bbba465d13920b/load",
         "source_mode": "KATALOG",
         "tags": []
       },
       {
-        "bus_ref": "nn/d601ff7ef89ae42ad1b537f26e514aca/feeder_bus",
+        "bus_ref": "nn/4755ae3785648753c12faf1d7b72dfcf/feeder_bus",
         "catalog_namespace": "OBCIAZENIE",
         "catalog_ref": "load_uslugi_30kw",
         "dynamika": null,
         "earth_electrode_r_ohm": null,
-        "id": "3f34f40b-0112-5309-8f86-d4c4f10cf88a",
+        "id": "dd188c82-9925-57a1-abdf-a94b710e94c6",
         "materialized_params": null,
         "meta": {
           "catalog_binding": {
@@ -1867,7 +1982,7 @@
           },
           "connection_type": "TROJFAZOWY",
           "cos_phi": 0.95,
-          "feeder_ref": "stn/74b61dfe0dd2de5e5798a29c9465431a/nn_feeder/003",
+          "feeder_ref": "stn/f7b19058fc4e532f0fee0f6ca5e87a53/nn_feeder/003",
           "load_kind": "SKUPIONY"
         },
         "model": "pq",
@@ -1878,21 +1993,21 @@
         "phases": null,
         "q_mvar": 0.0164342052589,
         "quantity": null,
-        "ref_id": "nn/5eb05225899f062b8d4d4e9f1ac86710/load",
+        "ref_id": "nn/ebc5611a2408df425532331b375cf9f1/load",
         "source_mode": "KATALOG",
         "tags": []
       }
     ],
     "measurements": [
       {
-        "bay_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/2",
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
+        "bay_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/2",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
         "catalog_namespace": "CT",
         "catalog_ref": "ct_400_5_5p20_15va_abb",
         "connection": "star",
         "ct_arrangement": null,
         "ct_cores": null,
-        "id": "db12d01f-6274-5f2d-b7a3-78bc9d3242d1",
+        "id": "cd1ed61a-ffa0-5bb3-ae79-acd65bacba21",
         "materialized_params": {
           "accuracy_class": "5P20",
           "burden_va": null,
@@ -1909,7 +2024,7 @@
             "materialize": true,
             "snapshot_mapping_version": "1.0"
           },
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/2"
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/2"
         },
         "name": "CT pola Pole pomiarowe — Stacja SN/nN 1000 kVA, RMU 4-pole + pomiary, 4 odpływy",
         "obwod_wtorny": null,
@@ -1922,7 +2037,7 @@
           "ratio_primary": 400.0,
           "ratio_secondary": 5.0
         },
-        "ref_id": "ct/88c546853f272789ffe1044ca22a9463/measurement",
+        "ref_id": "ct/1aa4079b5b20ab3f835e88dd1372d64c/measurement",
         "source_mode": "KATALOG",
         "tags": [
           "field_ct",
@@ -1933,14 +2048,14 @@
         "vt_uzwojenie": null
       },
       {
-        "bay_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/2",
-        "bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/003",
+        "bay_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/2",
+        "bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/003",
         "catalog_namespace": "VT",
         "catalog_ref": "vt_15kv_100v_3p_abb",
         "connection": "star",
         "ct_arrangement": null,
         "ct_cores": null,
-        "id": "6847056e-a2b1-5ca9-be87-981e1d4a5d78",
+        "id": "ca8dfacb-32bc-5cf0-bc9a-d4eb670b8a5b",
         "materialized_params": {
           "accuracy_class": null,
           "burden_va": null,
@@ -1957,7 +2072,7 @@
             "materialize": true,
             "snapshot_mapping_version": "1.0"
           },
-          "field_ref": "field/74b61dfe0dd2de5e5798a29c9465431a/2"
+          "field_ref": "field/f7b19058fc4e532f0fee0f6ca5e87a53/2"
         },
         "name": "VT pola Pole pomiarowe — Stacja SN/nN 1000 kVA, RMU 4-pole + pomiary, 4 odpływy",
         "obwod_wtorny": null,
@@ -1970,7 +2085,7 @@
           "ratio_primary": 15000.0,
           "ratio_secondary": 100.0
         },
-        "ref_id": "vt/b92fe7207da56e24cb200a10e6e0fe13/measurement",
+        "ref_id": "vt/5131cc1fd263ec4b3dd1d1b9e799224c/measurement",
         "source_mode": "KATALOG",
         "tags": [
           "field_vt",
@@ -1985,11 +2100,11 @@
     "shunt_capacitors": [],
     "sources": [
       {
-        "bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn",
+        "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
         "catalog_namespace": null,
         "catalog_ref": null,
         "gpz_section_id": null,
-        "id": "bd773355-dd3b-5f26-80a6-72533e8abffb",
+        "id": "e3a8f86e-dd00-56fa-913d-8c9bbdbfc22e",
         "ik3_ka": null,
         "ik3_min_ka": null,
         "lv_voltage_tolerance": null,
@@ -2011,13 +2126,13 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Źródło GPZ 110 kV",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",
         "r0_ohm": null,
         "r_ohm": null,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/source/main",
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/source",
         "rx_ratio": 0.1,
         "rx_ratio_min": null,
         "sk3_hv_mva": 3000.0,
@@ -2026,7 +2141,9 @@
         "sn_voltage_kv": 15.0,
         "source_mode": "EKSPERCKI_RECZNY",
         "source_side": "HV_110",
-        "substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
+        "substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+        "supply_line_name": "Linia 110 kV zasilająca",
+        "supplying_station_name": "Stacja zasilająca — przykładowe dane przypadku testowego",
         "tags": [],
         "u_set_pu": null,
         "voltage_hv_kv": 110.0,
@@ -2038,58 +2155,69 @@
     "substations": [
       {
         "bus_refs": [
-          "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
-          "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn"
+          "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+          "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn"
         ],
         "construction_type": null,
         "designation": null,
-        "entry_point_ref": "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn",
+        "entry_point_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
         "external_ports": [],
-        "gpz_hv_sections": [],
+        "gpz_hv_sections": [
+          {
+            "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+            "incoming_source_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/source",
+            "left_coupler_ref": null,
+            "line_field_name": "Pole liniowe 110 kV Linia 110 kV zasilająca",
+            "name": "Sekcja 110 kV 1",
+            "order": 0,
+            "right_coupler_ref": null,
+            "section_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001"
+          }
+        ],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [
           {
-            "bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+            "bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
             "incoming_source_ref": null,
             "left_coupler_ref": null,
             "line_field_name": "Pole liniowe GPZ 1.1",
             "name": "Sekcja 1",
             "order": 0,
             "right_coupler_ref": null,
-            "section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001"
+            "section_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001"
           }
         ],
-        "id": "e9cd0cc6-cd0b-53f4-802c-be5512fa1d2e",
+        "id": "d4635c5b-053b-5adc-a45c-e058af1b06c3",
         "meta": {
-          "gpz_hv_bus_refs": [
-            "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn"
-          ],
           "gpz_section_count": 1,
           "short_circuit_input_side": "HV_110",
-          "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-          "wn_sn_transformer_count": 1
+          "short_circuit_mode": "SHORT_CIRCUIT_POWER"
         },
         "name": "GPZ 15 kV",
         "nn_sections": [],
         "nn_voltage_levels": [],
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/substation",
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
         "station_type": "gpz",
         "tags": [],
         "transformer_refs": [
-          "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/wn_sn"
+          "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/wn_sn"
         ]
       },
       {
         "bus_refs": [
-          "bus/e0798a1ecd7b90bfce5367437583c89e/branch_end",
-          "bus/74b61dfe0dd2de5e5798a29c9465431a/nn"
+          "bus/6088cfd3fc754d74af934157d8941e1b/branch_end",
+          "bus/f7b19058fc4e532f0fee0f6ca5e87a53/nn"
         ],
         "construction_type": null,
         "designation": null,
         "entry_point_ref": null,
         "external_ports": [],
         "gpz_hv_sections": [],
+        "gpz_reserve_mode": null,
+        "gpz_reserve_transformer_ref": null,
         "gpz_sections": [],
-        "id": "08da7d03-c7f3-5fda-8ade-12ee84964cf5",
+        "id": "5ac35b73-9918-58d3-93e1-6eafc8e90b34",
         "meta": {
           "created_by": "append_station_on_endpoint",
           "nn_fields_promoted": true,
@@ -2098,11 +2226,11 @@
         "name": "Stacja SN/nN 1000 kVA, RMU 4-pole + pomiary, 4 odpływy",
         "nn_sections": [],
         "nn_voltage_levels": [],
-        "ref_id": "sub/74b61dfe0dd2de5e5798a29c9465431a/substation",
+        "ref_id": "sub/f7b19058fc4e532f0fee0f6ca5e87a53/substation",
         "station_type": "terminal",
         "tags": [],
         "transformer_refs": [
-          "tr/74b61dfe0dd2de5e5798a29c9465431a/transformer"
+          "tr/f7b19058fc4e532f0fee0f6ca5e87a53/transformer"
         ]
       }
     ],
@@ -2110,11 +2238,11 @@
       {
         "catalog_namespace": "TRAFO_SN_NN",
         "catalog_ref": "tr-wn-sn-110-15-25mva-yd11",
-        "hv_bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/hv_section/001/bus_wn",
+        "hv_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
         "hv_neutral": null,
         "i0_percent": 0.35,
-        "id": "801f6154-9e33-5d08-8b2d-c78140cfa89a",
-        "lv_bus_ref": "gpz/7e829af9255aa31ddb58717cba136313/section/001/bus_sn",
+        "id": "a6a4921f-2330-5713-8450-506953c5cc59",
+        "lv_bus_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
         "lv_earthing_system": null,
         "lv_neutral": null,
         "lv_voltage_tolerance": null,
@@ -2133,9 +2261,7 @@
         "meta": {
           "catalog_item_version": "2024.1",
           "catalog_role": "TRANSFORMATOR_WN_SN",
-          "gpz_section_id": "gpz/7e829af9255aa31ddb58717cba136313/section/001",
-          "gpz_section_order": 0,
-          "gpz_substation_ref": "gpz/7e829af9255aa31ddb58717cba136313/substation",
+          "gpz_substation_ref": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
           "visual_role": "GPZ_WN_SN_TRANSFORMER"
         },
         "n_parallel": null,
@@ -2144,7 +2270,7 @@
         "p0_kw": 25.0,
         "parameter_source": "CATALOG",
         "pk_kw": 120.0,
-        "ref_id": "gpz/7e829af9255aa31ddb58717cba136313/transformer/001/wn_sn",
+        "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/wn_sn",
         "sn_mva": 25.0,
         "source_mode": "KATALOG",
         "tags": [
@@ -2163,11 +2289,11 @@
       {
         "catalog_namespace": "TRAFO_SN_NN",
         "catalog_ref": "tr-sn-nn-15-04-1000kva-dyn11",
-        "hv_bus_ref": "bus/74b61dfe0dd2de5e5798a29c9465431a/sn_field_terminal/002",
+        "hv_bus_ref": "bus/f7b19058fc4e532f0fee0f6ca5e87a53/sn_field_terminal/002",
         "hv_neutral": null,
         "i0_percent": 1.2,
-        "id": "25ef87c3-0d9d-5d8e-9464-821408e5c816",
-        "lv_bus_ref": "nn/8e7d006e33fb32bdc5f82900a4e509f8/feeder_bus",
+        "id": "761df4a2-0134-5f15-bb11-5cce5429b971",
+        "lv_bus_ref": "nn/0c96b1bd267b4bae83312e65ecbd33ae/feeder_bus",
         "lv_earthing_system": null,
         "lv_neutral": null,
         "lv_voltage_tolerance": "PLUS_6",
@@ -2192,7 +2318,7 @@
         "p0_kw": 1.7,
         "parameter_source": "CATALOG",
         "pk_kw": 11.0,
-        "ref_id": "tr/74b61dfe0dd2de5e5798a29c9465431a/transformer",
+        "ref_id": "tr/f7b19058fc4e532f0fee0f6ca5e87a53/transformer",
         "sn_mva": 1.0,
         "source_mode": "KATALOG",
         "tags": [],

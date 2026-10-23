@@ -144,10 +144,14 @@ describe('KD-5 — L0: blok GPZ ZWINIĘTY (jeden symbol, zero geometrii pól wew
     // + transformator. L0: aparat ciągłości pola magistrali jest TYM SAMYM, co rysuje L1 —
     // sylwetka braku danych (do karty L0 rysował wyłącznik z konwencji w każdym polu).
     expect(gpzSymbols(sceneL0).map((s) => s.symbolId).sort()).toEqual(['bayNoEquipment', 'gpzCollapsed', 'gridSource']);
+    // AKTUALIZACJA (GPZ-H5-SLD etap 3, scalenie backendu H5): 5 → 6 na L1/L2. Substrat
+    // przegenerowany z API ma stronę 110 kV jako sekcję modelu z polem liniowym zasilającym
+    // (`gpz_hv_sections`, rekord pola bez aparatów) — czwarta sylwetka braku danych; źródło
+    // wieńczy to pole zamiast stać przy końcu wspólnej szyny WN. L0 bez zmian.
     expect(gpzSymbols(sceneL1).map((s) => s.symbolId).sort()).toEqual(
-      ['bayNoEquipment', 'bayNoEquipment', 'bayNoEquipment', 'gridSource', 'transformer2W'],
+      ['bayNoEquipment', 'bayNoEquipment', 'bayNoEquipment', 'bayNoEquipment', 'gridSource', 'transformer2W'],
     );
-    expect(gpzSymbols(sceneL2).length).toBe(5);
+    expect(gpzSymbols(sceneL2).length).toBe(6);
   });
 
   it('blok niesie TOŻSAMOŚĆ (ref GPZ + pas nazwy z napięciem i stanem) — nie anonimowy prostokąt', () => {
@@ -345,7 +349,9 @@ describe('KD-5 — REGRESJA WSTRZYKNIĘTA: kontrakt GRYZIE', () => {
   it('aparat pola na L0 pochodzi z rekordu modelu — pole bez rekordu: sylwetka braku danych, pole z rekordem: jego łącznik i stan', () => {
     // Karta GPZ-MODEL: substrat 52 stacji buduje GPZ z równoważnikiem 110 kV, a ziarno
     // identyfikatorów GPZ zależy od ładunku operacji — dawne `gpz/1021aa18…`.
-    const bayRef = 'gpz/371e5db9fef444f53336c1a460729f65/bay/001/001';
+    // GPZ-H5-SLD etap 3: ładunek operacji GPZ zmieniony przy scaleniu backendu H5 (strona
+    // 110 kV jako sekcje modelu) — ziarno nowe, dawne `gpz/371e5db9…`.
+    const bayRef = 'gpz/986490b1a9f1f0a019566e0e578f45d8/bay/001/001';
     const bezRekordu = aparatyPolL0(sceneL0);
     expect(bezRekordu.map((s) => [s.meta?.ownerRef, s.symbolId, s.state])).toEqual([[bayRef, 'bayNoEquipment', undefined]]);
 

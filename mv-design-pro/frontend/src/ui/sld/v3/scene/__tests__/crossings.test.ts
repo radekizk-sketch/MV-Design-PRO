@@ -169,8 +169,12 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     // pakuje pasma odgałęzień w innej kolejności (precedens SLD-SUBSTRAT). DOWÓD 2×2 (sonda
     // karty): STARA treść fikstury z SAMYMI nowymi identyfikatorami daje 18 węzłów T, nowy
     // kod na starej fiksturze — 21; luki kropka⇔węzeł = 0 we wszystkich czterech.
+    // GPZ-H5-SLD etap 3 (scalenie backendu H5): 18 → 23 — regeneracja fikstury, nie kod.
+    // DOWÓD 2×2 (sonda karty): stara treść z SAMYMI nowymi identyfikatorami — 21 (+3, remis
+    // `id.localeCompare`), nowa treść GPZ (strona 110 kV jako sekcja modelu) — 23 (+2);
+    // luki kropka⇔węzeł = 0 we wszystkich wariantach.
     const teeNodes = externalBranchNodes(scene.segments);
-    expect(teeNodes).toHaveLength(18);
+    expect(teeNodes).toHaveLength(23);
     // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) też są węzłami
     // z DANYCH odgałęzienia (`#lateral-…`, `points[0]` = oś toru) i dostają
     // kropkę w scenie produkcyjnej — dług W1b zamknięty.
@@ -182,8 +186,9 @@ describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny w�
     // Kropki dzielą się DOKŁADNIE na (a) węzły T tras i (b) odczepy lateralne —
     // suma pokrywa wszystkie kropki (kropka wyłącznie na realnym węźle).
     const dotsAtTee = dots.filter((s) => teeKeys.has(`${s.x + jdef.width / 2},${s.y + jdef.height / 2}`));
-    expect(dotsAtTee).toHaveLength(18);
-    expect(dots).toHaveLength(18 + lateralNodes.length);
+    // 23 = pin `teeNodes` wyżej (pomiar 2×2 po scaleniu backendu GPZ-H5, ten sam co tam).
+    expect(dotsAtTee).toHaveLength(23);
+    expect(dots).toHaveLength(23 + lateralNodes.length);
     // Obustronnie: każdy węzeł ma kropkę i żadna kropka nie wisi bez węzła.
     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
   });

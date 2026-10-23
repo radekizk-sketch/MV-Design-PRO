@@ -265,8 +265,13 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
   it('WN-WYNIK: szyna WN GPZ dostaje stan energizacji na kanwie (klucz odczytu == klucz budowy słownika)', () => {
     useSnapshotStore.setState({ snapshot: enm });
     const { container } = render(<SldCanvasV3Workspace width={1200} height={900} lodOverride={2} />);
-    const hvBus = container.querySelector('[data-testid="gpz-canonical-hv-bus"]');
-    expect(hvBus).toBeTruthy();
+    // GPZ-H5-SLD etap 3: strona 110 kV jest sekcją modelu (backend H5), więc szyna WN
+    // nosi identyfikator SWOJEJ sekcji (`gpz-canonical-hv-bus-<sekcja>`) — sprawdzamy
+    // każdą narysowaną szynę WN, nie jedną wspólną.
+    const hvBusy = [...container.querySelectorAll('[data-testid^="gpz-canonical-hv-bus-"]')]
+      .filter((el) => el.tagName.toLowerCase() !== 'g' && el.hasAttribute('stroke'));
+    expect(hvBusy.length).toBeGreaterThan(0);
+    const hvBus = hvBusy[0];
     // Nakładka wpisała stan (pod napięciem / beznapięciowo) — kolor BAZOWY
     // poziomu napięcia oznaczałby „brak danych", czyli dokładnie stan sprzed
     // naprawy. Sekcja SN GPZ tą samą regułą.
@@ -275,7 +280,8 @@ describe('SldCanvasV3Workspace — F8b-1 C: nakładka energizacji z realnych wyn
     // sprzed naprawy odczytu), a kolor wygaszenia byłby zdaniem NIEPRAWDZIWYM
     // (stan pośredni: wartość liczona z identyfikatora sekcji, którego
     // `SupplyPathHighlight` nie zna).
-    expect(hvBus!.getAttribute('stroke')).toBe('#2ECC71');
+    for (const szyna of hvBusy) expect(szyna.getAttribute('stroke'), szyna.getAttribute('data-testid') ?? '').toBe('#2ECC71');
+    expect(hvBus.getAttribute('stroke')).toBe('#2ECC71');
     const snBus = container.querySelector('[data-testid^="gpz-canonical-section-"]');
     expect(snBus).toBeTruthy();
     expect(snBus!.getAttribute('stroke')).toBe('#2ECC71');

@@ -266,107 +266,50 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
-      "from_bus_ref": "bus/1957cf3c0508edb544739f771886cd58/downstream",
-      "id": "28d44c28-f0c8-5889-93c6-af97353670f9",
+      "from_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/nn",
+      "id": "88d16ba6-2a61-5084-8eb7-a0800737fddd",
       "materialized_params": null,
       "meta": {
-        "apparatus_kind": "BREAKER",
-        "bay_role": "OZE",
-        "catalog_binding": null,
-        "field_ref": "nn/a900546aa477764f997d4c616bd1ff3c/source_field",
-        "render_on_sld": false,
-        "requires_catalog_binding": true,
-        "show_in_project_tree": false,
-        "station_ref": "sub/abf895244054e9481b88924a2bb075b2/substation",
-        "terminal_bus_ref": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_terminal"
+        "nn_field_migrowana_rola": "FEEDER",
+        "nn_field_migrowany_z": "stn/abf895244054e9481b88924a2bb075b2/nn_feeder/000",
+        "nn_promocja_bez_wiazania_katalogowej": true
       },
-      "name": "Aparat pola źródłowego SN Pole PV SN",
+      "name": "Odpływ nN 1",
       "normal_state": null,
       "overrides": [],
       "parameter_source": null,
-      "r_ohm": 0.0,
-      "ref_id": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_device",
-      "source_mode": null,
+      "r_ohm": null,
+      "ref_id": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_device",
+      "source_mode": "MIGRACJA",
       "status": "closed",
-      "tags": [
-        "gpz_field_device",
-        "source_field_device"
-      ],
-      "to_bus_ref": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_terminal",
+      "tags": [],
+      "to_bus_ref": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_bus",
       "type": "breaker",
-      "x_ohm": 0.0
+      "x_ohm": null
     },
     {
-      "catalog_namespace": "APARAT_SN",
-      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-      "from_bus_ref": "bus/1957cf3c0508edb544739f771886cd58/downstream",
-      "id": "3bb97252-11b7-5deb-97e0-6b11756f7951",
-      "materialized_params": {
-        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-        "catalog_item_version": "2024.1",
-        "i_n_a": 630.0,
-        "u_n_kv": 17.5
-      },
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/nn",
+      "id": "89319ed1-f79b-5043-87f7-036192cbdeb5",
+      "materialized_params": null,
       "meta": {
-        "bay_role": "TR",
-        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-        "field_ref": "field/abf895244054e9481b88924a2bb075b2/2",
-        "field_role": "TRANSFORMATOROWE",
-        "render_on_sld": false,
-        "requires_catalog_binding": false,
-        "show_in_project_tree": false,
-        "station_ref": "sub/abf895244054e9481b88924a2bb075b2/substation"
+        "nn_field_migrowana_rola": "IN",
+        "nn_field_migrowany_z": "stn/abf895244054e9481b88924a2bb075b2/nn_main_breaker",
+        "nn_promocja_bez_wiazania_katalogowej": true
       },
-      "name": "Wyłącznik pola SN 2",
+      "name": "Wyłącznik główny nN",
       "normal_state": null,
       "overrides": [],
-      "parameter_source": "CATALOG",
-      "r_ohm": 0.0,
-      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/002",
-      "source_mode": "KATALOG",
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_device",
+      "source_mode": "MIGRACJA",
       "status": "closed",
-      "tags": [
-        "station_field_device"
-      ],
-      "to_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/sn_field_terminal/002",
+      "tags": [],
+      "to_bus_ref": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_bus",
       "type": "breaker",
-      "x_ohm": 0.0
-    },
-    {
-      "catalog_namespace": "APARAT_SN",
-      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-      "from_bus_ref": "bus/1957cf3c0508edb544739f771886cd58/downstream",
-      "id": "485f0fc3-75d5-5f06-93f7-10682705140a",
-      "materialized_params": {
-        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-        "catalog_item_version": "2024.1",
-        "i_n_a": 630.0,
-        "u_n_kv": 17.5
-      },
-      "meta": {
-        "bay_role": "IN",
-        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-        "field_ref": "field/abf895244054e9481b88924a2bb075b2/1",
-        "field_role": "LINIA_IN",
-        "render_on_sld": false,
-        "requires_catalog_binding": false,
-        "show_in_project_tree": false,
-        "station_ref": "sub/abf895244054e9481b88924a2bb075b2/substation"
-      },
-      "name": "Wyłącznik pola SN 1",
-      "normal_state": null,
-      "overrides": [],
-      "parameter_source": "CATALOG",
-      "r_ohm": 0.0,
-      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/001",
-      "source_mode": "KATALOG",
-      "status": "closed",
-      "tags": [
-        "station_field_device"
-      ],
-      "to_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/sn_field_terminal/001",
-      "type": "breaker",
-      "x_ohm": 0.0
+      "x_ohm": null
     },
     {
       "b0_siemens_per_km": null,
@@ -452,50 +395,107 @@
     {
       "catalog_namespace": null,
       "catalog_ref": null,
-      "from_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/nn",
-      "id": "88d16ba6-2a61-5084-8eb7-a0800737fddd",
+      "from_bus_ref": "bus/1957cf3c0508edb544739f771886cd58/downstream",
+      "id": "28d44c28-f0c8-5889-93c6-af97353670f9",
       "materialized_params": null,
       "meta": {
-        "nn_field_migrowana_rola": "FEEDER",
-        "nn_field_migrowany_z": "stn/abf895244054e9481b88924a2bb075b2/nn_feeder/000",
-        "nn_promocja_bez_wiazania_katalogowej": true
+        "apparatus_kind": "BREAKER",
+        "bay_role": "OZE",
+        "catalog_binding": null,
+        "field_ref": "nn/a900546aa477764f997d4c616bd1ff3c/source_field",
+        "render_on_sld": false,
+        "requires_catalog_binding": true,
+        "show_in_project_tree": false,
+        "station_ref": "sub/abf895244054e9481b88924a2bb075b2/substation",
+        "terminal_bus_ref": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_terminal"
       },
-      "name": "Odpływ nN 1",
+      "name": "Aparat pola źródłowego SN Pole PV SN",
       "normal_state": null,
       "overrides": [],
       "parameter_source": null,
-      "r_ohm": null,
-      "ref_id": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_device",
-      "source_mode": "MIGRACJA",
+      "r_ohm": 0.0,
+      "ref_id": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_device",
+      "source_mode": null,
       "status": "closed",
-      "tags": [],
-      "to_bus_ref": "nn/7dca7ebb5c8b071f7437da1d62dbc8ad/feeder_bus",
+      "tags": [
+        "gpz_field_device",
+        "source_field_device"
+      ],
+      "to_bus_ref": "sn/a900546aa477764f997d4c616bd1ff3c/source_field_terminal",
       "type": "breaker",
-      "x_ohm": null
+      "x_ohm": 0.0
     },
     {
-      "catalog_namespace": null,
-      "catalog_ref": null,
-      "from_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/nn",
-      "id": "89319ed1-f79b-5043-87f7-036192cbdeb5",
-      "materialized_params": null,
-      "meta": {
-        "nn_field_migrowana_rola": "IN",
-        "nn_field_migrowany_z": "stn/abf895244054e9481b88924a2bb075b2/nn_main_breaker",
-        "nn_promocja_bez_wiazania_katalogowej": true
+      "catalog_namespace": "APARAT_SN",
+      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "from_bus_ref": "bus/1957cf3c0508edb544739f771886cd58/downstream",
+      "id": "485f0fc3-75d5-5f06-93f7-10682705140a",
+      "materialized_params": {
+        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+        "catalog_item_version": "2024.1",
+        "i_n_a": 630.0,
+        "u_n_kv": 17.5
       },
-      "name": "Wyłącznik główny nN",
+      "meta": {
+        "bay_role": "IN",
+        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+        "field_ref": "field/abf895244054e9481b88924a2bb075b2/1",
+        "field_role": "LINIA_IN",
+        "render_on_sld": false,
+        "requires_catalog_binding": false,
+        "show_in_project_tree": false,
+        "station_ref": "sub/abf895244054e9481b88924a2bb075b2/substation"
+      },
+      "name": "Wyłącznik pola SN 1",
       "normal_state": null,
       "overrides": [],
-      "parameter_source": null,
-      "r_ohm": null,
-      "ref_id": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_device",
-      "source_mode": "MIGRACJA",
+      "parameter_source": "CATALOG",
+      "r_ohm": 0.0,
+      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/001",
+      "source_mode": "KATALOG",
       "status": "closed",
-      "tags": [],
-      "to_bus_ref": "nn/e876a7a1bfb989b2e65dbb63ed883e13/feeder_bus",
+      "tags": [
+        "station_field_device"
+      ],
+      "to_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/sn_field_terminal/001",
       "type": "breaker",
-      "x_ohm": null
+      "x_ohm": 0.0
+    },
+    {
+      "catalog_namespace": "APARAT_SN",
+      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "from_bus_ref": "bus/1957cf3c0508edb544739f771886cd58/downstream",
+      "id": "3bb97252-11b7-5deb-97e0-6b11756f7951",
+      "materialized_params": {
+        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+        "catalog_item_version": "2024.1",
+        "i_n_a": 630.0,
+        "u_n_kv": 17.5
+      },
+      "meta": {
+        "bay_role": "TR",
+        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+        "field_ref": "field/abf895244054e9481b88924a2bb075b2/2",
+        "field_role": "TRANSFORMATOROWE",
+        "render_on_sld": false,
+        "requires_catalog_binding": false,
+        "show_in_project_tree": false,
+        "station_ref": "sub/abf895244054e9481b88924a2bb075b2/substation"
+      },
+      "name": "Wyłącznik pola SN 2",
+      "normal_state": null,
+      "overrides": [],
+      "parameter_source": "CATALOG",
+      "r_ohm": 0.0,
+      "ref_id": "stn/abf895244054e9481b88924a2bb075b2/sn_field_apparatus/002",
+      "source_mode": "KATALOG",
+      "status": "closed",
+      "tags": [
+        "station_field_device"
+      ],
+      "to_bus_ref": "bus/abf895244054e9481b88924a2bb075b2/sn_field_terminal/002",
+      "type": "breaker",
+      "x_ohm": 0.0
     }
   ],
   "buses": [
@@ -769,7 +769,7 @@
     },
     "description": null,
     "enm_version": "1.0",
-    "hash_sha256": "afa4fc5b15ce79a5f17e3b35721cf92d8dcb1420e5cfedcdda8b27c892adc09a",
+    "hash_sha256": "15f3629eb53145ef7da982ec40c202c5a215b8a25cedd58b4759d66c6414fbcc",
     "name": "Przyłączenie farmy PV 8 MW",
     "revision": 2,
     "updated_at": "2026-09-16T08:00:00Z"
@@ -886,6 +886,8 @@
       "source_mode": "KATALOG",
       "source_side": "SN",
       "substation_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+      "supply_line_name": null,
+      "supplying_station_name": null,
       "tags": [],
       "u_set_pu": null,
       "voltage_hv_kv": null,
@@ -904,6 +906,8 @@
       "entry_point_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [
         {
           "bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
@@ -918,11 +922,9 @@
       ],
       "id": "4365ab68-27ea-535f-881d-39d635c13e7e",
       "meta": {
-        "gpz_hv_bus_refs": [],
         "gpz_section_count": 1,
         "short_circuit_input_side": "SN",
-        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
-        "wn_sn_transformer_count": 0
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER"
       },
       "name": "GPZ 110/15",
       "nn_sections": [],
@@ -942,6 +944,8 @@
       "entry_point_ref": null,
       "external_ports": [],
       "gpz_hv_sections": [],
+      "gpz_reserve_mode": null,
+      "gpz_reserve_transformer_ref": null,
       "gpz_sections": [],
       "id": "3a3100ed-7e19-5d73-84b4-8c0ee9372d56",
       "meta": {

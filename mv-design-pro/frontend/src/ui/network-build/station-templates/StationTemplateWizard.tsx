@@ -33,6 +33,7 @@ import {
   type StationTemplateFull,
   type StationTemplateSummary,
 } from './api';
+import { BrakiDanychProjektu, DaneProjektuSekcja, brakiDanychProjektu } from './DaneProjektuSzablonu';
 
 export type WizardStep =
   | 'category'
@@ -208,7 +209,12 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
       case 'template':
         return state.selectedTemplateId != null;
       case 'location':
-        return props.targetSegmentRef != null;
+        // Szablon korzenia modelu (GPZ — `add_grid_source_sn`) nie wchodzi w odcinek:
+        // flaga z kontraktu szablonu (`wchodzi_w_segment`), ten sam predykat co backend.
+        return (
+          props.targetSegmentRef != null ||
+          (activeTemplate != null && !activeTemplate.wchodzi_w_segment)
+        );
       case 'params':
       case 'profile':
       case 'preview':
@@ -234,23 +240,29 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
 
   const [applying, setApplying] = useState(false);
   const [applyResult, setApplyResult] = useState<ApplyTemplateResult | null>(null);
+  const brakiDanych = useMemo(
+    () => (activeTemplate != null ? brakiDanychProjektu(activeTemplate, state.paramOverrides) : []),
+    [activeTemplate, state.paramOverrides],
+  );
+  const korzenModelu = activeTemplate != null && !activeTemplate.wchodzi_w_segment;
 
   const handleApply = async () => {
-    if (state.selectedTemplateId == null) return;
+    if (state.selectedTemplateId == null || brakiDanych.length > 0) return;
     // Legacy callback (for tests / external integrations)
     props.onApply?.({
       templateId: state.selectedTemplateId,
       paramOverrides: state.paramOverrides,
       catalogProfile: state.catalogProfile,
     });
-    // K30-21: backend apply if caseId + targetSegmentRef provided
-    if (props.caseId != null && props.targetSegmentRef != null) {
+    // K30-21: backend apply if caseId + targetSegmentRef provided; szablon korzenia modelu
+    // (GPZ) bez odcinka — backend odmawia wskazanego odcinka (`korzen_modelu_nie_wchodzi_w_segment`).
+    if (props.caseId != null && (props.targetSegmentRef != null || korzenModelu)) {
       setApplying(true);
       setError(null);
       try {
         const result = await applyStationTemplate(state.selectedTemplateId, {
           case_id: props.caseId,
-          target_segment_id: props.targetSegmentRef,
+          target_segment_id: korzenModelu ? null : (props.targetSegmentRef ?? null),
           insert_at_ratio: 0.5,
           params_override: state.paramOverrides,
           catalog_profile: state.catalogProfile,
@@ -319,13 +331,17 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
         )}
 
         {state.step === 'location' && (
-          <LocationStep targetSegmentRef={props.targetSegmentRef ?? null} />
+          <LocationStep
+            targetSegmentRef={props.targetSegmentRef ?? null}
+            korzenModelu={korzenModelu}
+          />
         )}
 
         {state.step === 'params' && activeTemplate != null && (
           <ParamsStep
             template={activeTemplate}
             overrides={state.paramOverrides}
+            onOverrides={(paramOverrides) => setState((s) => ({ ...s, paramOverrides }))}
             onChange={(key, value) =>
               setState((s) => {
                 const paramOverrides = { ...s.paramOverrides, [key]: value };
@@ -371,6 +387,7 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
             overrides={state.paramOverrides}
             applying={applying}
             applyResult={applyResult}
+            braki={brakiDanych}
             onConfirm={handleApply}
           />
         )}
@@ -399,7 +416,7 @@ export function StationTemplateWizard(props: StationTemplateWizardProps): JSX.El
             <button
               type="button"
               onClick={handleApply}
-              disabled={applying || applyResult != null}
+              disabled={applying || applyResult != null || brakiDanych.length > 0}
               className="px-4 py-1.5 text-sm bg-green-700 text-white rounded hover:bg-green-600 disabled:opacity-40"
               data-testid="wizard-apply"
             >
@@ -501,11 +518,19 @@ function TemplateStep(props: {
   );
 }
 
-function LocationStep(props: { targetSegmentRef: string | null }): JSX.Element {
+function LocationStep(props: {
+  targetSegmentRef: string | null;
+  korzenModelu: boolean;
+}): JSX.Element {
   return (
     <div data-testid="wizard-step-content-location">
       <h2 className="text-lg font-bold mb-3">Lokalizacja stacji</h2>
-      {props.targetSegmentRef != null ? (
+      {props.korzenModelu ? (
+        <div className="text-sm text-zinc-300" data-testid="lokalizacja-korzen-modelu">
+          Stacja zasilająca jest korzeniem modelu sieci — nie wstawia się jej w istniejący
+          odcinek. Szyny i pola powstaną w modelu przy zatwierdzeniu.
+        </div>
+      ) : props.targetSegmentRef != null ? (
         <div className="text-sm text-zinc-300">
           <div>Segment docelowy:</div>
           <div className="font-mono text-xs bg-zinc-800 p-2 rounded mt-1">
@@ -525,6 +550,7 @@ function ParamsStep(props: {
   template: StationTemplateFull;
   overrides: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
+  onOverrides: (overrides: Record<string, unknown>) => void;
 }): JSX.Element {
   const { template, overrides, onChange } = props;
   const [tab, setTab] = useState<
@@ -534,6 +560,7 @@ function ParamsStep(props: {
   return (
     <div data-testid="wizard-step-content-params">
       <h2 className="text-lg font-bold mb-3">Konfiguracja parametrów (wszystko edytowalne)</h2>
+      <DaneProjektuSekcja template={template} overrides={overrides} onChange={props.onOverrides} />
       <div className="flex gap-1 mb-3 text-xs">
         {(
           [
@@ -910,6 +937,7 @@ function ApplyStep(props: {
   overrides: Record<string, unknown>;
   applying: boolean;
   applyResult: ApplyTemplateResult | null;
+  braki: readonly { klucz: string; opis_pl: string }[];
   onConfirm: () => void;
 }): JSX.Element {
   return (
@@ -919,6 +947,9 @@ function ApplyStep(props: {
         <div className="text-sm">
           <div>Stacja zostanie utworzona na podstawie szablonu:</div>
           <div className="font-bold text-cyan-300 mt-1">{props.template.name_pl}</div>
+          <div className="mt-3">
+            <BrakiDanychProjektu braki={props.braki} />
+          </div>
           {props.applying && (
             <div data-testid="apply-pending" className="mt-3 text-amber-300">
               Wykonywanie operacji na snapshot ENM…

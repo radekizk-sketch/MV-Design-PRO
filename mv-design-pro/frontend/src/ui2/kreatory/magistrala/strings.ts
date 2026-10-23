@@ -1,5 +1,7 @@
 /** Teksty PL kreatora „Wyprowadź magistralę SN" (G-MAG). Język inżynierski. */
 
+import { liczbaZOdmiana } from '../../../ui/shared/odmianaLiczebnikowa';
+
 export const MAGISTRALA_STRINGS = {
   eyebrow: 'MODEL SIECI · MAGISTRALA SN',
   cel:
@@ -91,7 +93,7 @@ export const MAGISTRALA_STRINGS = {
   // Builder realnej sieci (M2, V12K-071).
   builderTytul: 'Magistrala w budowie',
   builderPusto: 'Dodaj pierwszy odcinek — kolejne dołączysz do jego końca, budując cały ciąg.',
-  builderLicznik: (n: number) => (n === 1 ? '1 odcinek' : `${n} odcinków`),
+  builderLicznik: (n: number) => liczbaZOdmiana(n, { jeden: 'odcinek', kilka: 'odcinki', wiele: 'odcinków' }),
   builderLaczna: 'Łączna długość',
   builderKoniec: 'Koniec ciągu (start kolejnego odcinka)',
   builderDodajKolejny: 'Wybierz „Kolejny odcinek", aby przedłużyć magistralę, albo postaw stację/ZK/odbiór na końcu.',

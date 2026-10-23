@@ -25,7 +25,7 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.validator import ENMValidator
 
 from tests.enm.test_canonical_sc_c_per_pasmo import N1, N2, _build_mv_lv_enm
-from tests.reference_networks.budowa_przez_api import TRANSFORMATOR_WN_SN, wiazanie
+from tests.reference_networks.gpz_h5 import ladunek_gpz_110kv
 
 REF_TRAFO_SN_NN = "tr-sn-nn-15-04-630kva-dyn11"
 
@@ -99,21 +99,9 @@ def _gpz() -> dict[str, Any]:
     wynik = execute_domain_operation(
         pusty,
         "add_grid_source_sn",
-        # Karta GPZ-MODEL: transformator 110/15 kV jest elementem modelu WYŁĄCZNIE przy
-        # równoważniku sieci po stronie 110 kV (równoważnik na szynach SN zawiera już jego
-        # impedancję i taki ładunek jest odmawiany). Ten sam GPZ co `KlientBudowy.gpz_110kv`.
-        {
-            "source_name": "Stacja zasilająca",
-            "voltage_kv": 15.0,
-            "manual_equivalent": {
-                "short_circuit_input_side": "HV_110",
-                "hv_voltage_kv": 110.0,
-                "sk3_hv_mva": 3000.0,
-                "rx_ratio": 0.1,
-            },
-            "transformer_count": 1,
-            "transformer_catalog_binding": wiazanie("TRAFO_SN_NN", TRANSFORMATOR_WN_SN),
-        },
+        # Karta GPZ-H5: GPZ ze stroną 110 kV w kontrakcie jawnym (sekcja 110 kV z torem
+        # zasilania, transformator 110/15 kV z katalogu przypisany sekcja 110 kV → sekcja SN).
+        {"source_name": "Stacja zasilająca", **ladunek_gpz_110kv(1)},
     )
     assert not wynik.get("error"), wynik
     migawka = wynik["snapshot"]

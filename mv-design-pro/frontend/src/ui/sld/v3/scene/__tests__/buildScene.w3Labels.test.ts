@@ -82,6 +82,8 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
       .map((l) => ({
         text: l.text,
         y: l.rect.y,
+        x0: l.rect.x,
+        x1: l.rect.x + l.rect.width,
         srodek: l.rect.x + l.rect.width / 2,
         kabel: zakresKabla.get(l.ownerRef.replace(/#segment-label$/, '')),
       }));
@@ -95,7 +97,13 @@ describe('W3 §17 — kotwiczenie etykiet przęseł do właściciela (anty-dryf)
 
     let sprawdzonych = 0;
     for (const p of podpisy) {
-      const doSwojego = odlegloscDo(p.srodek, p.kabel!);
+      // GPZ-H5-SLD etap 3 (predykaty parami z `slotDryfPrzesla.test.ts`): podpis DŁUŻSZY od
+      // swojego kawałka kabla, który ten kawałek POKRYWA w całości, leży na nim — to drugi
+      // dopuszczony układ tamtej wyroczni. Bez tego podpis pokrywający swój 48-jednostkowy
+      // kawałek („S07 ↔ S08", sieć referencyjna po scaleniu backendu H5) „przegrywał"
+      // z łącznikiem ciągu dalszego, który przebiega przez cały wiersz arkusza.
+      const pokrywaSwoj = p.x0 <= p.kabel!.min && p.x1 >= p.kabel!.max;
+      const doSwojego = pokrywaSwoj ? 0 : odlegloscDo(p.srodek, p.kabel!);
       for (const inny of podpisy) {
         if (inny === p || inny.y !== p.y) continue; // ten sam WIERSZ opisów B1
         expect(

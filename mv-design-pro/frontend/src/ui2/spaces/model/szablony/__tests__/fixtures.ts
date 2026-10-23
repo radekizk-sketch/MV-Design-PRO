@@ -160,6 +160,8 @@ export function szablonPelny(over: SzablonPelnyOverrides = {}): StationTemplateF
       energy_meter_options: [],
       manufacturer_profile_default: 'ZPUE_WLOSZCZOWA',
       grid_source_options: over.grid_source_options ?? [],
+      gpz_uklad: null,
+      dane_projektu: [],
     },
   };
 }
