@@ -112,7 +112,8 @@
       "url": "https://www.operator.enea.pl/media/683/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-1-stacje-transformatorowe-kompaktowe",
       "index_url": "https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
       "download_ordinal": 9,
-      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja"
+      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja",
+      "edition": "06.2024"
     },
     {
       "id": "ENEA-SN-Z2",
@@ -124,7 +125,8 @@
       "url": "https://www.operator.enea.pl/media/684/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-2-stacje-transformatorowe-kompaktowe",
       "index_url": "https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
       "download_ordinal": 10,
-      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja"
+      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja",
+      "edition": "06.2024"
     },
     {
       "id": "ENEA-SN-Z3",
@@ -136,7 +138,8 @@
       "url": "https://www.operator.enea.pl/media/685/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-3-stacje-transformatorowe-slupowe",
       "index_url": "https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
       "download_ordinal": 11,
-      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja"
+      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja",
+      "edition": "06.2021-2"
     },
     {
       "id": "ENEA-SN-Z4",
@@ -160,7 +163,8 @@
       "url": "https://www.operator.enea.pl/media/3463/uslugi-dystrybucyjne/linie-i-stacje-elektroenergetyczne-sredniego-napiecia-telemechanika",
       "index_url": "https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
       "download_ordinal": 13,
-      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja"
+      "engineering_scope": "sieci SN–TR–nN, SLD, katalogi, EAZ, walidacja",
+      "edition": "12.2025"
     },
     {
       "id": "ENEA-SN-Z6",
