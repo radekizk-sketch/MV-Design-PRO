@@ -1,0 +1,27 @@
+# STAN karty GPZ-H5-INTEGRACJA
+- baza H5: 0375bad51; scalana: 52400bde1; merge-base 82735bfc1
+- krok 1: git merge --no-ff 52400bde1 (w toku)
+- krok 1 DONE (index, nie commit): konflikty rozwiązane i dodane; fikstury przegenerowane 6 generatorami, 2. bieg bez różnic; szynyStacjiParytet.json zaktualizowany (zastany brak gpzH5RezerwaJawnaBezLsSn z 0375bad51)
+- UWAGA: merge w toku (MERGE_HEAD) — nie commitować przed regresją? (decyzja: commit merge, potem poprawki osobno? karta: jeden commit merge) 
+- celowane: backend 107 passed rc0; vitest 2 pliki 43 rc0; diff solvers vs 82735bfc1 i 52400bde1 pusty
+- krok 2: pełny pytest w tle -> <ścieżka lokalna> rc w pytest_full.rc
+- black0 ruff0 tsc0 lint0 mypy0 (167/21); guardy_z_ci w tle -> guardy.log
+- guardy_z_ci (bieg 1): czerwone repo_hygiene (5 naruszeń catalog_ref/transformer_catalog_ref w e2e H5 — zastane z 0375bad51) i ruff ../scripts (pobierz_zrodla_techniczne.py z gałęzi głównej: I001, UP017). Naprawione: e2e na catalog_binding; ruff --fix. Do ponowienia guardy_z_ci na końcu.
+- pełny pytest bieg 1: 13 failed / 1042 errors — DYSK PEŁNY (/ 97%, ~1.3G wolne, cudze artefakty). Bieg 2 z TMPDIR i basetemp na /dev/shm/h5i.
+- REAL RED (zastane z d82493842, linia H5): test_fikstury_enm_generowane::test_kazdy_model_enm_w_katalogach_fikstur_ma_generator — 4 ręczne fikstury: scene/gpzH5_2x2, gpzH5_1x3, gpzRownowaznikSn2, canvas/gpzH5RezerwaJawnaBezLsSn (+ .rozplyw/.zwarcie results). Plan: generator w fikstury_enm_sld.py.
+- pozostałe 12 z biegu 1 przechodzą osobno (dysk).
+- bieg 2 pełny pytest (tmpfs) -> pytest_full2.log / .rc
+- generator H5 fikstur dopisany w fikstury_enm_sld.py; read_model._stable_sort_key ref_id przed id (determinizm migawki biegu). Fikstury przegenerowane, tryb sprawdzania rc0.
+- kartaGpz.iloczyn: nazwy pól z rekordów modelu (zielony 295). Test read_model (6 zielonych, iniekcja 4 czerwone). test_fikstury_enm_generowane 6 passed.
+- BLOKADA (STOP, meldunek): na fiksturach z generatora 8 czerwonych kontraktów SLD H5: (A) tożsamość źródła 110 kV = meta.source_id (nazwa GPZ) zamiast nazwy źródła, (B) 1x3 1000x700: zamknięcie łączników SN -> LOD 0, (C) 1x3 próg L0/L1: „Pole liniowe GPZ 2.1" niepełne. Decyzja wątku SLD H5 / architekta.
+- (A) naprawa: adapter SLD czyta Source.name (nie meta.source_id); backend add_grid_source_sn H5: nazwa domyślna źródła = line_name (stacja tylko w supplying_station_name). Test tests/enm/test_gpz_h5_nazwa_zrodla.py (4, iniekcja 4 failed). gpzHvColumn test przepisany. gpzRownowaznikSn2 bez aparatu pól (intencja testu „?”). Fikstury przegenerowane (3 generatory), drugi bieg check rc=0 x6.
+- pin tr2wBezPola L1/L2 przepięty z sondą (−208,−16).
+- full vitest krok 1 -> vt_full1.log/.rc
+- pin buildScene.test vertical L1/L2 45584->45568 z sondą per właściciel.
+- pytest full3: 29 failed / 38179 passed (6457 s) — 28 harness (kolejność gałęzi po naprawie read_model + nazwa źródła) + sldNetwork53 (hash substratu). Zregenerowane: eksport_fixtur_harnessu.py --tylko 28, emit_sld_network_fixture.py; rerun 347 passed. backend nie zmieniany po starcie full3.
+- guardy_z_ci rc=0 (107 + 3978).
+- tsc 0, lint 0, accept:sld-v3 0.
+- full vitest 2 + budżety -> vt_full2/vt_budzety
+- budżety: kosztSceny 54 odciski przepięte (sonda 2×2: kod bazy+obie fikstury = stare piny; zmiana = odczyt Source.name, świat (0,−16)); schemat10s7p6 43592->43576; sld_v3_acceptance: VERTICAL L1/L2 43576, footprint L1/L2 1960, HORIZONTAL luz zastany 53064/68432/73080, SHEET_FILL podniesione. accept3 ALL PASS; budżety2 177 passed.
+- vitest full2: 1 timeout (wizard-to-store NC RfG, 5 s przy load 17; sam 1043 ms) -> full3 w toku
+- COMMIT ae3d740fe (merge 0375bad51 + 52400bde1). e2e 27 passed, guardy3 0, vitest full3 16200 passed, budżety 177.
