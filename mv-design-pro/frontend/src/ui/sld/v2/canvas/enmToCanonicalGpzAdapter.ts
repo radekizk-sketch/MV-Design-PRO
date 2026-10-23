@@ -253,8 +253,11 @@ function gpzHvBusResultRef(substation: Substation, buses: readonly Bus[]): strin
  *      (SN lub WN — obie należą do GPZ). Dawne `sources.find` brało PIERWSZE źródło, więc
  *      GPZ zasilany dwiema liniami 110 kV (układ H5: równoważnik L1 na sekcji A, L2 na
  *      sekcji B) pokazywał jedno S″k dla całej stacji, a drugie źródło bez opisu;
- *   2. nazwa z `meta.source_id` (preferowane) albo `Source.name`; źródło bez nazwy nie
- *      dostaje tabliczki (glif zostaje, nazwa nie jest wymyślana);
+ *   2. nazwa = `Source.name` (nazwa ŹRÓDŁA z modelu: L1, L2 …); źródło bez nazwy nie dostaje
+ *      tabliczki (glif zostaje, nazwa nie jest wymyślana). `meta.source_id` to tożsamość
+ *      GPZ w sieci (unikalność kolejnego GPZ, `add_grid_source_sn`), wspólna dla wszystkich
+ *      równoważników jednego GPZ — jako etykieta dawała każdemu źródłu 110 kV H5 nazwę stacji
+ *      (decyzja architekta 2026-10-22: etykietą źródła jest nazwa źródła z modelu);
  *   3. nazwa toru zasilania = `line_field_name` sekcji, której `incoming_source_ref`
  *      wskazuje to źródło (dana sekcji, bez dopasowania po nazwach);
  *   4. szyna WN = `gpzHvBuses` (wpisy `Substation.bus_refs` w paśmie WN) — `sourceOnHvBus`
@@ -280,7 +283,7 @@ function deriveSystemSources(
     .slice()
     .sort((a, b) => (a.ref_id < b.ref_id ? -1 : a.ref_id > b.ref_id ? 1 : 0))
     .flatMap((source): CanonicalGpzHvSystemSource[] => {
-      const name = readString(asRecord(source.meta)?.source_id) ?? readString(source.name);
+      const name = readString(source.name);
       if (!name) return [];
       const sekcjaToru = sekcje.find((sec) => sec.incoming_source_ref === source.ref_id) ?? null;
       // Recenzja NO-GO 2026-07-17 pkt 2/3: napięcie tabliczki = szyna ŹRÓDŁA
@@ -347,12 +350,6 @@ function sekcjaWnPola(bay: Bay, hvSectionDefs: readonly GPZSection[]): GPZSectio
 /* =============================================================================
    Sub-builders
    ============================================================================= */
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;

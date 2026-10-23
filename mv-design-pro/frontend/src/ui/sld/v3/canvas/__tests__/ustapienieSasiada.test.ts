@@ -10,9 +10,10 @@
  *
  * Geometria syntetyczna odtwarza tamten układ 1:1 (sloty i symbol z pomiaru
  * sceny). Iloczyn cech:
- *   sąsiad powiększony skracalny × sąsiad w piśmie naturalnym × sąsiad, który
- *   po odsunięciu nie ma gdzie wrócić × strona zajęta rysunkiem ×
- *   kolejność wejścia × determinizm.
+ *   sąsiad powiększony skracalny × druga strona sąsiada wolna albo zajęta rysunkiem
+ *   (reguła W2C: pełny tekst po każdej stronie przed skrótem) × sąsiad w piśmie
+ *   naturalnym × sąsiad, który po odsunięciu nie ma gdzie wrócić × strona zajęta
+ *   rysunkiem × kolejność wejścia × determinizm.
  * Każdy przypadek ma warunek wstępny „bez sąsiada Q1 rysuje się po lewej", żeby
  * wynik dotyczył mechanizmu ustąpienia, a nie przypadkowej geometrii.
  */
@@ -90,25 +91,45 @@ describe('plan etykiet (f) — ustąpienie skracalnego sąsiada', () => {
     bezKolizji(plan, [WYLACZNIK]);
   });
 
-  it('sąsiad POWIĘKSZONY i skracalny ustępuje: obie tożsamości narysowane, sąsiad ustępuje (druga strona albo skrót) z członem rozróżniającym', () => {
+  it('sąsiad z WOLNĄ drugą stroną ustępuje przeniesieniem pełnego tekstu, nie skrótem (W2C × (f))', () => {
+    // Ustąpienie (f) planuje sąsiada od nowa, a plan próbuje pełnego tekstu po każdej
+    // stronie kotwicy, zanim skróci napis (karta W2C-PLAN-ETYKIET). Lewa strona slotu
+    // oznaczenia GPZ jest wolna, więc oznaczenie przechodzi tam pełnym tekstem, a Q1 dostaje
+    // swoją lewą stronę — obie tożsamości bez skrótu. Bez ustąpienia Q1 ginie (iniekcja:
+    // wyłączenie `ustapSasiadow` czerwieni ten przypadek i następny).
     const plan = planSceneLabels([OZNACZENIE_GPZ, Q1], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ);
+    expect(plan.droppedIdentity).toEqual([]);
+    const q1 = narysowana(plan, Q1.ownerRef);
+    const gpz = narysowana(plan, OZNACZENIE_GPZ.ownerRef);
+    expect(q1?.text).toBe('Q1');
+    expect(gpz?.text).toBe(OZNACZENIE_GPZ.text);
+    expect(gpz?.enlarged).toBe(true);
+    // Strona „z lewej" slotu: prawa krawędź tuszu = prawa krawędź slotu.
+    expect(gpz!.rect.x + gpz!.rect.width).toBeCloseTo(OZNACZENIE_GPZ.rect.x + OZNACZENIE_GPZ.rect.width, 6);
+    bezKolizji(plan, [WYLACZNIK]);
+  });
+
+  it('sąsiad POWIĘKSZONY i skracalny ustępuje: obie tożsamości narysowane, sąsiad skrócony z członem rozróżniającym', () => {
+    // Lewą stronę slotu oznaczenia GPZ zajmuje rysunek, więc pełny tekst nie ma drugiej
+    // strony (reguła W2C nie pomaga) i dopiero ustąpienie (f) ratuje tożsamość Q1.
+    const rysunekZLewej: V3Rect = { x: 150, y: 555, width: 90, height: 40 };
+    const przeszkody = [WYLACZNIK, rysunekZLewej];
+    const samoQ1 = planSceneLabels([Q1], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
+    expect(narysowana(samoQ1, Q1.ownerRef)?.text).toBe('Q1');
+    const samoGpz = planSceneLabels([OZNACZENIE_GPZ], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
+    expect(narysowana(samoGpz, OZNACZENIE_GPZ.ownerRef)?.text).toBe(OZNACZENIE_GPZ.text);
+    const plan = planSceneLabels([OZNACZENIE_GPZ, Q1], przeszkody, SKALA_FIT_GPZ, ARKUSZ);
     expect(plan.droppedIdentity).toEqual([]);
     const q1 = narysowana(plan, Q1.ownerRef);
     const gpz = narysowana(plan, OZNACZENIE_GPZ.ownerRef);
     expect(q1?.text).toBe('Q1');
     expect(q1?.enlarged).toBe(true);
     expect(gpz?.enlarged).toBe(true);
-    // Sąsiad USTĄPIŁ (nie zniknął) i nadal niesie człon rozróżniający „1.2". Przepisane do
-    // obecnego kanonu planu (karta GPZ-H5-SLD, zmierzone): `najlepszeDopasowanie` sąsiada
-    // przenosi go na drugą stronę slotu PEŁNYM tekstem, gdy tam się mieści — to lepsze niż
-    // skrót, więc „ustąpienie" = inny prostokąt albo krótszy tekst niż w planie bez Q1.
-    // Dawna asercja „tekst ≠ pełny" wymuszała skrót i była czerwona na bazie 82735bfc1.
-    const samGpz = narysowana(planSceneLabels([OZNACZENIE_GPZ], [WYLACZNIK], SKALA_FIT_GPZ, ARKUSZ), OZNACZENIE_GPZ.ownerRef);
-    const ustapil = gpz!.text !== samGpz!.text || JSON.stringify(gpz!.rect) !== JSON.stringify(samGpz!.rect);
-    expect(ustapil).toBe(true);
+    // Sąsiad skrócony (nie zniknął) i nadal niesie człon rozróżniający „1.2".
+    expect(gpz!.text).not.toBe(OZNACZENIE_GPZ.text);
     expect(gpz!.text.endsWith('1.2')).toBe(true);
     expect(gpz!.rect.x + gpz!.rect.width).toBeLessThanOrEqual(q1!.rect.x);
-    bezKolizji(plan, [WYLACZNIK]);
+    bezKolizji(plan, przeszkody);
   });
 
   it('kolejność wejścia nie zmienia wyniku (pierwszeństwo z `labelResolutionOrder`, nie z tablicy)', () => {

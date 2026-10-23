@@ -39,6 +39,13 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
 const TRAFO_110_15 = 'tr-wn-sn-110-15-25mva-yd11';
 const APARAT_SN_15 = 'sw-cb-abb-vd4-17kv-630a';
 const OPIS_DANYCH = 'przykładowe dane przypadku testowego';
+const WERSJA_KATALOGU = '2024.1';
+/** Wiązanie katalogowe ładunku operacji — ta sama postać, którą wysyła kreator (catalog-first). */
+const katalog = (namespace: string, itemId: string) => ({
+  catalog_namespace: namespace,
+  catalog_item_id: itemId,
+  catalog_item_version: WERSJA_KATALOGU,
+});
 let opCounter = 0;
 
 type Galaz = {
@@ -99,15 +106,15 @@ function ladunekH5(rezerwa: 'hidden' | 'explicit') {
     ],
     hv_coupler: { normal_state: 'open' },
     transformers: [
-      { hv_section: 1, sn_section: 1, transformer_catalog_ref: TRAFO_110_15 },
-      { hv_section: 2, sn_section: 2, transformer_catalog_ref: TRAFO_110_15 },
+      { hv_section: 1, sn_section: 1, transformer_catalog_binding: katalog('TRAFO_SN_NN', TRAFO_110_15) },
+      { hv_section: 2, sn_section: 2, transformer_catalog_binding: katalog('TRAFO_SN_NN', TRAFO_110_15) },
     ],
     sn_coupler: { cells: 2 },
     reserve_mode: rezerwa,
     ...(rezerwa === 'explicit'
-      ? { reserve_transformer: 2, reserve_transformer_apparatus: { catalog_ref: APARAT_SN_15 } }
+      ? { reserve_transformer: 2, reserve_transformer_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT_SN_15) } }
       : {}),
-    gpz_line_field_apparatus: { catalog_ref: APARAT_SN_15 },
+    gpz_line_field_apparatus: { catalog_binding: katalog('APARAT_SN', APARAT_SN_15) },
     hv_bay_apparatus_proposal: {
       basis: 'ENEA Operator, Zeszyt 1 „Stacje 110 kV” §11.1 (układ H5)',
       line: ['OSZ(U)', 'W', 'PIU', 'OL(U)', 'OGR'],

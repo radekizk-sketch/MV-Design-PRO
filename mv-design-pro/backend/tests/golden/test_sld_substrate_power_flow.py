@@ -17,8 +17,9 @@ TRUTH for power-flow direction + energization:
   - the SECOND (maintenance) companion (E2E-FIX, 2026-09-05): a deterministically
     picked station taken out of service via ``OperatingScenario(kind=MAINTENANCE)``
     (``enm.scenariusze.apply_scenario`` — the one snapshot-with-overrides factory)
-    genuinely de-energises that station (and only the stations its
-    ``out_of_service`` branches strand); same frozen solver, same schema,
+    genuinely de-energises EVERY bus of that station (``enm.tor_pola.szyny_stacji``,
+    the render's own membership rule) and only the stations its
+    ``out_of_service`` branches strand; same frozen solver, same schema,
     determinism holds for this second companion too.
 """
 
@@ -29,6 +30,7 @@ import uuid
 import pytest
 from enm.models import Bus, Cable, EnergyNetworkModel, ENMHeader, Load, PortRef, Source
 from enm.scenariusze import OperatingScenario
+from enm.tor_pola import szyny_stacji
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
 
 from tests.golden.sld_substrate_power_flow import (
@@ -339,8 +341,8 @@ def test_maintenance_isolated_station_matches_out_of_service(
     touching a disabled branch must be de-energized. That equality holds
     ONLY for the picker's path (B): exact two-branch, single-station
     isolation (see its docstring). Path (C) — its OWN documented fallback,
-    reached whenever NO station qualifies for (B) — disables ALL branches
-    incident to the smallest-degree station, which routinely touches a
+    reached whenever NO station qualifies for (B) — disables ALL boundary branches
+    of the smallest-boundary station, which routinely touches a
     RING NEIGHBOUR that keeps an alternate feed via the ring's other side
     (redundancy is the entire point of a ring) and therefore stays
     energized. The production invariant (`_sprawdz_odlaczenie_stacji`,
@@ -354,13 +356,22 @@ def test_maintenance_isolated_station_matches_out_of_service(
     the picker or the solver being wrong. Fixed to check the REAL contract
     for BOTH paths, not just the one the old hashes happened to hit.
     """
-    substations = substrate["enm"]["substations"]
-    bus_to_station: dict[str, str] = {}
-    for station in substations:
-        if "/station" not in station.get("ref_id", ""):
-            continue
-        for bus_ref in station.get("bus_refs", []):
-            bus_to_station[bus_ref] = station["ref_id"]
+    # ONE membership rule (predykaty parami): the station's buses are
+    # `enm.tor_pola.szyny_stacji` — main buses + OWN SN-field terminals + nN-field
+    # apparatus ends — the same rule the picker, the generator's verification and
+    # the render (`szynyStacji`) use. A station counts as de-energized only when
+    # ALL its buses are (the render dims it only then).
+    enm = EnergyNetworkModel.model_validate(substrate["enm"])
+    station_buses = {
+        s.ref_id: szyny_stacji(enm, s) for s in enm.substations if "/station" in s.ref_id
+    }
+    bus_to_station: dict[str, str] = {
+        bus_ref: station_ref for station_ref, buses in station_buses.items() for bus_ref in buses
+    }
+    de_energized = set(companion_maintenance["de_energized_bus_refs"])
+    fully_de_energized_stations = {
+        ref for ref, buses in station_buses.items() if buses and buses <= de_energized
+    }
 
     de_energized_stations = {
         bus_to_station[ref]
@@ -394,14 +405,41 @@ def test_maintenance_isolated_station_matches_out_of_service(
         "the picker's own target station must be among the solver's de-energized stations "
         f"(target={target_station_ref!r}, de_energized={sorted(de_energized_stations)!r})"
     )
+    # ...and EVERY bus of it (incl. its own field terminals), so the render dims it.
+    assert target_station_ref in fully_de_energized_stations, (
+        "the picker's target station must lose ALL its buses (szyny_stacji), not just the "
+        "main SN bus: "
+        f"live={sorted(station_buses[target_station_ref] - de_energized)!r}"
+    )
+
+    # Every disabled branch lies on the target's BOUNDARY: exactly one end on the
+    # target's buses (the picker never opens the station's internal field breakers,
+    # which would leave the incoming-field terminal live from the ring cable).
+    target_buses = station_buses[target_station_ref]
+    for branch in branches:
+        if branch["ref_id"] in disabled_refs:
+            ends_on_target = sum(
+                1
+                for endpoint in (branch.get("from_bus_ref"), branch.get("to_bus_ref"))
+                if endpoint in target_buses
+            )
+            assert ends_on_target == 1, (
+                f"disabled branch {branch['ref_id']!r} is not on the target's boundary "
+                f"({ends_on_target} ends on the target's buses)"
+            )
 
     if len(disabled_refs) == 2:
-        # Path (B): exact two-branch, single-station isolation — the
-        # picker's OWN selection criterion (`stranded_stations_if_removed(..)
-        # == frozenset({station_ref})`) already proves the stranded set is
-        # EXACTLY the target, so the solver's result must equal it exactly.
-        assert disabled_endpoint_stations <= de_energized_stations
+        # Path (B): exact two-branch, single-station isolation — the picker's OWN
+        # selection criterion (all target buses stranded, no OTHER station losing
+        # any bus) already proves the stranded set is EXACTLY the target, so the
+        # solver's result must equal it exactly. The FAR end of each boundary
+        # cable is a ring neighbour's field terminal: it stays energised through
+        # the neighbour's own field breaker (the ring's other side), so
+        # `disabled_endpoint_stations` is the target PLUS its ring neighbours —
+        # never a subset of the de-energised set.
+        assert target_station_ref in disabled_endpoint_stations
         assert de_energized_stations == {target_station_ref}
+        assert fully_de_energized_stations == {target_station_ref}
     else:
         # Path (C) fallback (its own docstring: "CAN strand more than that
         # one station... documented, not hidden"): a ring neighbour touching
@@ -460,28 +498,49 @@ def test_maintenance_scenario_picker_is_a_pure_function_of_the_enm(substrate: di
     assert scenario_a.hash == scenario_b.hash
 
 
-@pytest.mark.parametrize("wariant", ["bez_nadpisan", "tylko_wylaczniki_pol"])
+@pytest.mark.parametrize(
+    "wariant", ["bez_nadpisan", "wszystkie_wylaczniki_pol", "wylaczniki_pol_bez_odcinka"]
+)
 def test_maintenance_refuses_scenario_that_leaves_the_station_energized(
     substrate: dict, monkeypatch: pytest.MonkeyPatch, wariant: str
 ) -> None:
     """Predykaty parami: wybór stacji (prognoza z grafu gałęzi) i prawda solvera
-    (wyspy bez źródła) muszą się zgadzać — rozjazd jest jawnym błędem generatora,
-    nie cichym companionem bez przyciemnionej stacji. Dwa warianty rozjazdu:
-    scenariusz bez nadpisań (nic nie odłączone — złapałby to sam warunek
-    „de_energized niepuste") oraz scenariusz wyłączający WYŁĄCZNIE wyłączniki pól
-    tej stacji, na których zaciskach NIE leży odcinek SN (pole transformatorowe:
-    odłącza zacisk pola i transformator, więc `de_energized` jest NIEPUSTE, a szyna
-    SN stacji pozostaje zasilona przez pola liniowe — warunek „niepuste" by to
-    przepuścił). Karta POLA-W-TORZE: odcinki leżą na zaciskach pól liniowych, więc
-    wyłączenie WSZYSTKICH wyłączników pól odłącza stację naprawdę — intencję
-    wariantu (odłączone terminale, zasilona szyna) niesie teraz podzbiór pól bez
-    odcinka."""
+    (wyspy bez źródła) muszą się zgadzać na JEDNEJ regule członkostwa
+    (`enm.tor_pola.szyny_stacji`) — rozjazd jest jawnym błędem generatora, nie cichym
+    companionem bez przyciemnionej stacji. Trzy warianty rozjazdu:
+
+    - `bez_nadpisan` — nic nie odłączone (złapałby to sam warunek „de_energized
+      niepuste");
+    - `wszystkie_wylaczniki_pol` — otwarte WSZYSTKIE wyłączniki pól wybranej stacji
+      (dawny scenariusz §0.C): szyna SN i transformator tracą zasilanie, ale zacisk pola
+      liniowego zostaje pod napięciem od kabla pierścienia, więc render NIE przyciemnia
+      stacji. Weryfikacja patrząca tylko na szynę SN przepuszczała ten wariant (zmierzone
+      na fiksturze GPZ-MODEL: 7 z 8 szyn stacji bez napięcia, zero przyciemnionych stacji,
+      e2e `sld-pa-powerflow-tor` czerwony) — stąd jedna reguła szyn stacji;
+    - `wylaczniki_pol_bez_odcinka` — tylko wyłączniki pól, na których zaciskach NIE leży
+      odcinek SN (pole transformatorowe): `de_energized` NIEPUSTE, szyna SN zasilona.
+    """
     import tests.golden.sld_substrate_power_flow as modul
 
     enm = EnergyNetworkModel.model_validate(substrate["enm"])
     pelny = select_ring_maintenance_scenario(enm)
+    station_ref = pelny.scenario_id.removeprefix(_PREFIKS_SCENARIUSZA_KONSERWACJI)
+    station = next(s for s in enm.substations if s.ref_id == station_ref)
+    szyny = szyny_stacji(enm, station)
+    wylaczniki_pol = tuple(
+        sorted(
+            b.ref_id
+            for b in enm.branches
+            if "/sn_field_breaker/" in b.ref_id
+            and b.from_bus_ref in szyny
+            and b.to_bus_ref in szyny
+        )
+    )
+    assert wylaczniki_pol, "wybrana stacja substratu ma wyłączniki pól SN"
     if wariant == "bez_nadpisan":
         nadpisania: tuple[str, ...] = ()
+    elif wariant == "wszystkie_wylaczniki_pol":
+        nadpisania = wylaczniki_pol
     else:
         galezie = {b.ref_id: b for b in enm.branches}
         szyny_odcinkow = {
@@ -492,8 +551,9 @@ def test_maintenance_refuses_scenario_that_leaves_the_station_energized(
         }
         nadpisania = tuple(
             ref
-            for ref in pelny.out_of_service
-            if "/sn_field_breaker/" in ref and galezie[ref].to_bus_ref not in szyny_odcinkow
+            for ref in wylaczniki_pol
+            if galezie[ref].to_bus_ref not in szyny_odcinkow
+            and galezie[ref].from_bus_ref not in szyny_odcinkow
         )
         assert nadpisania, "wybrana stacja substratu ma pole SN bez odcinka (pole TR)"
     rozjechany = OperatingScenario(

@@ -118,13 +118,13 @@ describe('zwrot grota wzdłuż rysunku — przepływ from→to × orientacja rys
 describe('substrat 52 stacji — rezerwa pierścieniowa narysowana znakami powiązania', () => {
   const sciezka = resolve(process.cwd(), 'public/test-fixtures/sldSubstrate52s.enm.json');
   const enm = (JSON.parse(readFileSync(sciezka, 'utf-8')) as { enm: EnergyNetworkModel }).enm;
-  // Ref odcinka zamknięcia pierścienia wyprowadzony z fikstury (jedyny `…/ring_closure`), nie
-  // zaszyty: identyfikator niesie skrót treści i zmienia się przy każdej regeneracji fikstury
-  // (GPZ-MODEL `88e6d8828` przeliczył go, a zaszyty ref zostawił test pusty — „0 znaczników").
+  // Odcinek zamknięcia pierścienia wyznaczony z fikstury (przyrostek `/ring_closure` nadaje
+  // operacja domenowa), nie zaszyty: identyfikatory całej sieci wynikają z ziarna ładunku GPZ
+  // i zmieniają się razem z nim (karta GPZ-MODEL). Dokładnie jeden taki odcinek.
   const pierscienie = (enm.branches ?? []).filter((b) => b.ref_id.endsWith('/ring_closure'));
   const PIERSCIEN = pierscienie[0]?.ref_id ?? '';
 
-  it('fikstura ma dokładnie jeden odcinek zamknięcia pierścienia', () => {
+  it('substrat ma dokładnie jeden odcinek zamknięcia pierścienia', () => {
     expect(pierscienie).toHaveLength(1);
   });
 

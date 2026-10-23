@@ -161,6 +161,10 @@ oznaczenia) i rekordy aparatów.
   transformatorów zgodnie z kanonem `gpz_hv_sections`, źródło 110 kV na tej szynie, rozstrzygnięcie
   roli transformatorów przy źródle zastępczym 15 kV (Z-06a/b, tryb B-01 architekta: zmiana wyników
   obliczeń); jedna reguła nazwy domyślnej pól GPZ z numerem sekcji (Z-10).
+  **Korekta 2026-10-22 (werdykt właściciela):** topologia „jedna szyna WN wspólna dla transformatorów”
+  odrzucona jako wzorzec ENEA. Wzorcem jest układ H5 (dwa tory 110 kV, łącznik szyn 110 kV i SN normalnie
+  otwarte). Tabela rozbieżności, wzorzec, analiza wpływu i plan korekty w tych samych kartach:
+  `docs/plan/KOREKTA_GPZ_H5_ENEA_2026-10.md`.
 - **K4** — warstwy per wielkość (U, I, P/Q z kierunkiem, obciążenie z barwą i skalą, ΔU, straty,
   zwarcie: miejsce i wkłady, przekroczenia, strefy EAZ), każda z flagą świeżości i trzema stanami;
   `ProtectionZoneMarker` wpięty w kanwę v3 albo skasowany na rzecz warstwy v3 (Z-15); na LOD 0 warstwa

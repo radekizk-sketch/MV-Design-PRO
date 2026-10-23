@@ -1061,48 +1061,48 @@
     "branch_points": [],
     "branches": [
       {
-        "catalog_namespace": null,
-        "catalog_ref": null,
-        "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
-        "id": "012c72b2-1256-5d19-847a-4882a91746c7",
-        "materialized_params": null,
-        "meta": {
-          "gpz_substation_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation"
-        },
-        "name": "Łącznik szyn 110 kV GPZ 1-2",
-        "normal_state": "open",
-        "overrides": [],
-        "parameter_source": null,
-        "r_ohm": null,
-        "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001",
-        "source_mode": null,
-        "status": "open",
-        "tags": [],
-        "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
-        "type": "bus_coupler",
-        "x_ohm": null
-      },
-      {
-        "catalog_namespace": null,
-        "catalog_ref": null,
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
-        "id": "8f0189cc-678d-5a44-afa4-98983b15b6a4",
-        "materialized_params": null,
-        "meta": {
-          "gpz_substation_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation"
+        "id": "df2bf409-6e80-5aab-acf7-5595eb8f8907",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
         },
-        "name": "Sprzęgło sekcji GPZ 1-2",
-        "normal_state": "open",
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+          "terminal_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 1.1",
+        "normal_state": null,
         "overrides": [],
-        "parameter_source": null,
-        "r_ohm": null,
-        "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001",
-        "source_mode": null,
-        "status": "open",
-        "tags": [],
-        "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
-        "type": "bus_coupler",
-        "x_ohm": null
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
       },
       {
         "catalog_namespace": "APARAT_SN",
@@ -1237,48 +1237,48 @@
         "x_ohm": 0.0
       },
       {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "catalog_namespace": null,
+        "catalog_ref": null,
         "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
-        "id": "df2bf409-6e80-5aab-acf7-5595eb8f8907",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
+        "id": "8f0189cc-678d-5a44-afa4-98983b15b6a4",
+        "materialized_params": null,
         "meta": {
-          "apparatus_kind": "BREAKER",
-          "bay_role": "OUT",
-          "catalog_binding": {
-            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-            "catalog_item_version": "2024.1",
-            "catalog_namespace": "APARAT_SN",
-            "materialize": true,
-            "snapshot_mapping_version": "1.0"
-          },
-          "catalog_item_version": "2024.1",
-          "field_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
-          "terminal_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal"
+          "gpz_substation_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation"
         },
-        "name": "Aparat Pole liniowe GPZ 1.1",
-        "normal_state": null,
+        "name": "Sprzęgło sekcji GPZ 1-2",
+        "normal_state": "open",
         "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/apparatus",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "gpz_field_device"
-        ],
-        "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
-        "type": "breaker",
-        "x_ohm": 0.0
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001",
+        "source_mode": null,
+        "status": "open",
+        "tags": [],
+        "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+        "type": "bus_coupler",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+        "id": "012c72b2-1256-5d19-847a-4882a91746c7",
+        "materialized_params": null,
+        "meta": {
+          "gpz_substation_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation"
+        },
+        "name": "Łącznik szyn 110 kV GPZ 1-2",
+        "normal_state": "open",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001",
+        "source_mode": null,
+        "status": "open",
+        "tags": [],
+        "to_bus_ref": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+        "type": "bus_coupler",
+        "x_ohm": null
       }
     ],
     "buses": [
@@ -1521,7 +1521,7 @@
           "source_id": "GPZ H5 110/15 kV"
         },
         "model": "short_circuit_power",
-        "name": "L1 (Stacja zasilająca A — przykładowe dane przypadku testowego)",
+        "name": "L1",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",
@@ -1576,7 +1576,7 @@
           "source_id": "GPZ H5 110/15 kV"
         },
         "model": "short_circuit_power",
-        "name": "L2 (Stacja zasilająca B — przykładowe dane przypadku testowego)",
+        "name": "L2",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

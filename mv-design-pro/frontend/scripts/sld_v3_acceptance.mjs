@@ -631,7 +631,16 @@ const EXPECTED_STATION_COUNT = 53;
 // „Magistrala 9" `seg/f80649eb…/segment` x=7184 (L0 1704, L1 1824, L2 1792) — ten sam
 // łącznik wierszy na innym przęśle, inna przyczyna, krótsza suma. Piony na L1/L2 „footprint"
 // 1936 → 1976 (+40): nowe zejścia struktury 110 kV GPZ (`#hv-`, `#tr-`) i `lv-drop`.
-const VERTICAL_LENGTH_BASELINE = { 0: 21112, 1: 43592, 2: 43592 };
+// GPZ-H5-INTEGRACJA (2026-10-22): 21112/43592/43592 → 21112/43576/43576 (SPADEK, zapadka
+// w dół). Etykietą źródła 110 kV jest `Source.name` (nie tożsamość GPZ `meta.source_id`,
+// `enmToCanonicalGpzAdapter.ts`), a nazwa źródła to nazwa toru (`add_grid_source_sn`,
+// fikstura przegenerowana). DOWÓD (sonda 2×2 tego pliku): kod sprzed zmiany odczytu na
+// fiksturze sprzed regeneracji daje dokładnie dawne wartości (sumy i przyczyny); kod
+// i fikstura po zmianie — tabliczka źródła traci wiersz „Tor zasilania: …" (tor = nazwa),
+// zejście `…/hv_section/001/source#grid-source-drop` 56 → 40 („footprint" L1/L2 1976 →
+// 1960); „rezerwacja-kanalu" i „jog-trasy" bez zmian na każdym LOD (przesunięcie −48/+48
+// i −56/+56 między dwoma przęsłami odgałęzienia zostaje w tych samych przyczynach).
+const VERTICAL_LENGTH_BASELINE = { 0: 21112, 1: 43576, 2: 43576 };
 
 /**
  * WZMOCNIENIE SONDY (karta CI-C — „ślepe podniesienie progu jest zakazane"):
@@ -695,10 +704,12 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
   // 21392/42048/42048 → 18824/39424/39456, „jog-trasy" 280/160/160 → 2048/1984/1952,
   // „footprint" L1/L2 1936 → 1976 — łącznik wierszy arkusza przeszedł z „rezerwacji kanału"
   // do „jogu trasy" na innym przęśle (atrybucja przy `VERTICAL_LENGTH_BASELINE`).
+  // GPZ-H5-INTEGRACJA (2026-10-22, zmierzone): „footprint" L1/L2 1976 → 1960 — zejście źródła
+  // 110 kV krótsze o wiersz tabliczki (atrybucja przy `VERTICAL_LENGTH_BASELINE`).
   0: { footprint: 32, 'rezerwacja-kanalu': 18824, 'jog-trasy': 2048, 'slupek-terminalny': 208 },
   // L1/L2 footprint 1912 → 1936 (pomiar końcowy — atrybucja przy `VERTICAL_LENGTH_BASELINE`).
-  1: { footprint: 1976, 'rezerwacja-kanalu': 39424, 'jog-trasy': 1984, 'slupek-terminalny': 208 },
-  2: { footprint: 1976, 'rezerwacja-kanalu': 39456, 'jog-trasy': 1952, 'slupek-terminalny': 208 },
+  1: { footprint: 1960, 'rezerwacja-kanalu': 39424, 'jog-trasy': 1984, 'slupek-terminalny': 208 },
+  2: { footprint: 1960, 'rezerwacja-kanalu': 39456, 'jog-trasy': 1952, 'slupek-terminalny': 208 },
 };
 
 /**
@@ -775,7 +786,11 @@ const VERTICAL_LENGTH_BY_CAUSE_BASELINE = {
 // GEOMETRIA-STACJI (2026-10-21, zmierzone): 55336/76512/80136 → 53520/68528/73160 — węższe
 // kolumny pól (stos z rekordów modelu bez dorysowanych aparatów konwencji), krótsze szyny
 // i przęsła; załamania bez zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 53520, 1: 68528, 2: 73160 };
+// GPZ-H5-INTEGRACJA (2026-10-22): OBNIŻONE do pomiaru 53520/68528/73160 → 53064/68432/73080.
+// Luz zastany, nie skutek tej karty: kod sprzed zmiany odczytu etykiety źródła na fiksturze
+// sprzed regeneracji mierzy już 53064/68432/73080 (spadek z GPZ-H5-SLD etap 3, nigdy nie
+// odebrany); kod i fikstura po zmianie — te same wartości. Załamania bez zmian.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 53064, 1: 68432, 2: 73080 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 
 /**
@@ -828,7 +843,13 @@ const BEND_COUNT_BASELINE = { 0: 43, 1: 171, 2: 171 };
 // wiersz 7 przęseł), a długość tras spadła (piony −800/−760/−760 i poziomy) — zmierzone
 // 0.013625/0.020394/0.021099. Kod karty na fiksturze sprzed scalenia daje dawne wartości.
 // Podłoga = NOWA zmierzona wartość minus 0.00005 na jitter metryk tekstu (reguła S7-P1/P4).
-const SHEET_FILL_FLOOR = { 0: 0.013575, 1: 0.020344, 2: 0.021049 };
+// GPZ-H5-INTEGRACJA (2026-10-22): PODNIESIONA 0.013575/0.020344/0.021049 → 0.013612/0.020397/
+// 0.021104 (zaryglowanie zysku). Tabliczka źródła 110 kV o wiersz niższa i węższa (nazwa toru
+// zamiast tożsamości GPZ + wiersza toru — atrybucja przy `VERTICAL_LENGTH_BASELINE`), więc
+// trasy krótsze przy tym samym pokryciu: zmierzone 0.013662/0.020447/0.021154 (kod sprzed
+// zmiany na fiksturze sprzed regeneracji: 0.013625/0.020394/0.021099). Podłoga = zmierzona
+// wartość minus 0.00005 (reguła S7-P1/P4).
+const SHEET_FILL_FLOOR = { 0: 0.013612, 1: 0.020397, 2: 0.021104 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —

@@ -291,15 +291,22 @@ describe('buildCanonicalGpzProps — F13.1 derywacja kolumny WN (spec §21.1)', 
     expect((props.systemSources ?? []).map((z) => z.sourceRef)).toEqual(['src-1']);
   });
 
-  it('nazwa źródła preferuje meta.source_id nad Source.name', () => {
+  // INTENCJA (decyzja architekta 2026-10-22, karta GPZ-H5-INTEGRACJA): etykietą źródła jest
+  // nazwa ŹRÓDŁA z modelu (`Source.name`: L1, L2 …). `meta.source_id` to tożsamość GPZ,
+  // wspólna dla wszystkich równoważników jednego GPZ — preferowana dawała każdemu źródłu 110 kV
+  // H5 nazwę stacji. Dawny test pinował odwrotną preferencję.
+  it('nazwa źródła to Source.name, nie tożsamość GPZ z meta.source_id', () => {
     const enm = fullFixture();
     const props = buildCanonicalGpzProps(
       {
         ...enm,
-        sources: [systemSource('src-1', { name: 'inna nazwa', meta: { source_id: 'Nazwa z meta' } })],
+        sources: [
+          systemSource('src-1', { name: 'L1', meta: { source_id: 'GPZ H5 110/15 kV' } }),
+          systemSource('src-2', { name: 'L2', meta: { source_id: 'GPZ H5 110/15 kV' } }),
+        ],
       },
       'gpz-1');
-    expect(props.systemSources?.[0]?.name).toBe('Nazwa z meta');
+    expect(props.systemSources?.map((s) => s.name).sort()).toEqual(['L1', 'L2']);
   });
 });
 

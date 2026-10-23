@@ -11762,7 +11762,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "634150f67adf0df4b6dfa961801b944fd2d0395859082e88d09d425976d53c6f",
+      "hash_sha256": "ad8e6fae7641e4a5f217619d4c34ea9bf7ab33ebaa3d1f9649ec8dc6316d07dc",
       "name": "Sieć Duza — po",
       "revision": 50,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -12512,7 +12512,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

@@ -370,6 +370,94 @@
       {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/section/001/bus_sn",
+        "id": "f3b4da0e-3bbb-5986-83de-de99a59ff425",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/932941e1af4fa138bff8eda563f23b74/substation",
+          "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 1.1",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/section/001/bus_sn",
+        "id": "68fa634f-5b6e-5deb-8e56-b0ecbd95b06f",
+        "materialized_params": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "i_n_a": 630.0,
+          "u_n_kv": 17.5
+        },
+        "meta": {
+          "apparatus_kind": "BREAKER",
+          "bay_role": "OUT",
+          "catalog_binding": {
+            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+            "catalog_item_version": "2024.1",
+            "catalog_namespace": "APARAT_SN",
+            "materialize": true,
+            "snapshot_mapping_version": "1.0"
+          },
+          "catalog_item_version": "2024.1",
+          "field_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002",
+          "render_on_sld": false,
+          "requires_catalog_binding": false,
+          "show_in_project_tree": false,
+          "station_ref": "gpz/932941e1af4fa138bff8eda563f23b74/substation",
+          "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002/terminal"
+        },
+        "name": "Aparat Pole liniowe GPZ 1.2",
+        "normal_state": null,
+        "overrides": [],
+        "parameter_source": "CATALOG",
+        "r_ohm": 0.0,
+        "ref_id": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002/apparatus",
+        "source_mode": "KATALOG",
+        "status": "closed",
+        "tags": [
+          "gpz_field_device"
+        ],
+        "to_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002/terminal",
+        "type": "breaker",
+        "x_ohm": 0.0
+      },
+      {
+        "catalog_namespace": "APARAT_SN",
+        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/section/002/bus_sn",
         "id": "25b29185-1714-5daf-a830-66a394b93b00",
         "materialized_params": {
@@ -488,12 +576,12 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/terminal",
-        "id": "6086eff9-bd13-5309-a4d0-491158793a11",
+        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/002/001/terminal",
+        "id": "ba90b2ac-bde0-5aa2-888b-ae571ad92aea",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
-        "length_km": 0.2,
+        "length_km": 0.202,
         "materialized_params": {
           "b0_siemens_per_km": null,
           "c_nf_per_km": 390.0,
@@ -525,11 +613,11 @@
         "meta": {
           "catalog_item_version": "legacy",
           "origin_apparatus_kind": "cable_head",
-          "origin_bay_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001",
+          "origin_bay_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/002/001",
           "origin_port_role": "OUTGOING_HEAD"
         },
         "n_parallel": null,
-        "name": "Zajmujący 0",
+        "name": "Zajmujący 2",
         "number_of_cores": 3,
         "operating_temperature_c": 90.0,
         "overrides": [],
@@ -541,7 +629,7 @@
           "in_a": 230.0,
           "ith_ka": null
         },
-        "ref_id": "seg/d467c6ab740c9c1a260ac727794ee1d0/segment",
+        "ref_id": "seg/801d83f2772b7dd9f9b191755fbd44fb/segment",
         "return_conductor_cross_section_mm2": 16.0,
         "return_conductor_ith_1s_a": 2288.0,
         "return_conductor_jth_1s_a_per_mm2": 143.0,
@@ -554,54 +642,10 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bus/d467c6ab740c9c1a260ac727794ee1d0/downstream",
+        "to_bus_ref": "bus/801d83f2772b7dd9f9b191755fbd44fb/downstream",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/section/001/bus_sn",
-        "id": "68fa634f-5b6e-5deb-8e56-b0ecbd95b06f",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "apparatus_kind": "BREAKER",
-          "bay_role": "OUT",
-          "catalog_binding": {
-            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-            "catalog_item_version": "2024.1",
-            "catalog_namespace": "APARAT_SN",
-            "materialize": true,
-            "snapshot_mapping_version": "1.0"
-          },
-          "catalog_item_version": "2024.1",
-          "field_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "gpz/932941e1af4fa138bff8eda563f23b74/substation",
-          "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002/terminal"
-        },
-        "name": "Aparat Pole liniowe GPZ 1.2",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002/apparatus",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "gpz_field_device"
-        ],
-        "to_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/002/terminal",
-        "type": "breaker",
-        "x_ohm": 0.0
       },
       {
         "b0_siemens_per_km": null,
@@ -694,12 +738,12 @@
         "cross_section_mm2": 120.0,
         "endpoint_a_port": null,
         "endpoint_b_port": null,
-        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/002/001/terminal",
-        "id": "ba90b2ac-bde0-5aa2-888b-ae571ad92aea",
+        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/terminal",
+        "id": "6086eff9-bd13-5309-a4d0-491158793a11",
         "insulation": "XLPE",
         "ith_1s_a": null,
         "jth_1s_a_per_mm2": 94.0,
-        "length_km": 0.202,
+        "length_km": 0.2,
         "materialized_params": {
           "b0_siemens_per_km": null,
           "c_nf_per_km": 390.0,
@@ -731,11 +775,11 @@
         "meta": {
           "catalog_item_version": "legacy",
           "origin_apparatus_kind": "cable_head",
-          "origin_bay_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/002/001",
+          "origin_bay_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001",
           "origin_port_role": "OUTGOING_HEAD"
         },
         "n_parallel": null,
-        "name": "Zajmujący 2",
+        "name": "Zajmujący 0",
         "number_of_cores": 3,
         "operating_temperature_c": 90.0,
         "overrides": [],
@@ -747,7 +791,7 @@
           "in_a": 230.0,
           "ith_ka": null
         },
-        "ref_id": "seg/801d83f2772b7dd9f9b191755fbd44fb/segment",
+        "ref_id": "seg/d467c6ab740c9c1a260ac727794ee1d0/segment",
         "return_conductor_cross_section_mm2": 16.0,
         "return_conductor_ith_1s_a": 2288.0,
         "return_conductor_jth_1s_a_per_mm2": 143.0,
@@ -760,54 +804,10 @@
         "status": "closed",
         "tags": [],
         "thermal_source_ref": "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN",
-        "to_bus_ref": "bus/801d83f2772b7dd9f9b191755fbd44fb/downstream",
+        "to_bus_ref": "bus/d467c6ab740c9c1a260ac727794ee1d0/downstream",
         "type": "cable",
         "x0_ohm_per_km": 0.3,
         "x_ohm_per_km": 0.1
-      },
-      {
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-        "from_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/section/001/bus_sn",
-        "id": "f3b4da0e-3bbb-5986-83de-de99a59ff425",
-        "materialized_params": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "i_n_a": 630.0,
-          "u_n_kv": 17.5
-        },
-        "meta": {
-          "apparatus_kind": "BREAKER",
-          "bay_role": "OUT",
-          "catalog_binding": {
-            "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-            "catalog_item_version": "2024.1",
-            "catalog_namespace": "APARAT_SN",
-            "materialize": true,
-            "snapshot_mapping_version": "1.0"
-          },
-          "catalog_item_version": "2024.1",
-          "field_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001",
-          "render_on_sld": false,
-          "requires_catalog_binding": false,
-          "show_in_project_tree": false,
-          "station_ref": "gpz/932941e1af4fa138bff8eda563f23b74/substation",
-          "terminal_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/terminal"
-        },
-        "name": "Aparat Pole liniowe GPZ 1.1",
-        "normal_state": null,
-        "overrides": [],
-        "parameter_source": "CATALOG",
-        "r_ohm": 0.0,
-        "ref_id": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/apparatus",
-        "source_mode": "KATALOG",
-        "status": "closed",
-        "tags": [
-          "gpz_field_device"
-        ],
-        "to_bus_ref": "gpz/932941e1af4fa138bff8eda563f23b74/bay/001/001/terminal",
-        "type": "breaker",
-        "x_ohm": 0.0
       }
     ],
     "buses": [

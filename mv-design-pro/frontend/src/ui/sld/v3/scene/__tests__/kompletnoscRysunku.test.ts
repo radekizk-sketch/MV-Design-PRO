@@ -158,8 +158,8 @@ describe('iniekcje: wyrocznia kompletności gryzie', () => {
 
   // Karta GPZ-H5-SLD etap 2: łącznik szyn GPZ (oba końce na szynach GPZ) jest wnętrzem
   // bloku WYŁĄCZNIE, gdy GPZ jest zwinięty do symbolu zbiorczego. Iloczyn: sieć {H5 2×2,
-  // H5 1×3} × LOD {0, 1, 2} × prymityw {łącznika, symbolu zbiorczego GPZ} usunięty.
-  for (const siec of ['gpzH5_2x2', 'gpzH5_1x3'] as const) {
+  // równoważnik SN na dwóch sekcjach} × LOD {0, 1, 2} × prymityw {łącznika, symbolu zbiorczego GPZ} usunięty.
+  for (const siec of ['gpzH5_2x2', 'gpzRownowaznikSn2'] as const) {
     const enm = wczytaj(resolve(FRONTEND, `src/ui/sld/v3/scene/__tests__/fixtures/${siec}.enm.json`))!;
     const lacznikiSzyn = (enm.branches ?? []).filter((g) => g.type === 'bus_coupler').map((g) => g.ref_id);
     const gpzRef = (enm.substations ?? []).find((st) => (st.gpz_sections ?? []).length > 0)!.ref_id;

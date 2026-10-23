@@ -283,8 +283,16 @@ describe('karta GPZ w inspektorze — klik w nagłówek GPZ na kanwie (ścieżka
     expect([...wiersze].sort()).toEqual(bayRefyModelu);
     // Predykat parami: rachunek pokrycia = wiersze karty + wiersz stacji.
     expect([...resultPointsInGpzPanel(scena)].sort()).toEqual([scena.meta.gpzId!, ...wiersze].sort());
-    // Nazwy pól z modelu, nie zastępcze.
-    expect(within(karta).getByText('Linia 110 kV L1')).toBeTruthy();
-    expect(within(karta).getByText('Pole liniowe A1')).toBeTruthy();
+    // Nazwy pól z modelu, nie zastępcze: pole liniowe 110 kV pierwszej sekcji 110 kV i pierwsze
+    // pole liniowe sekcji SN — nazwy z REKORDÓW pól (fikstura z generatora, nie zaszyte w teście).
+    const [sekcjaWn] = [...(gpz.gpz_hv_sections ?? [])].sort((a, b) => a.order - b.order);
+    const [sekcjaSn] = [...(gpz.gpz_sections ?? [])].sort((a, b) => a.order - b.order);
+    const polaGpz = (H5.bays ?? []).filter((b) => b.substation_ref === gpz.ref_id);
+    const poleWn = polaGpz.find((b) => b.bus_ref === sekcjaWn.bus_ref && b.bay_role === 'IN');
+    const poleSn = polaGpz.find((b) => b.bus_ref === sekcjaSn.bus_ref && b.bay_role === 'OUT');
+    expect(poleWn?.name, 'pole liniowe 110 kV sekcji 1 w modelu').toBeTruthy();
+    expect(poleSn?.name, 'pole liniowe sekcji SN 1 w modelu').toBeTruthy();
+    expect(within(karta).getByText(poleWn!.name!)).toBeTruthy();
+    expect(within(karta).getByText(poleSn!.name!)).toBeTruthy();
   });
 });

@@ -1,12 +1,12 @@
 /**
  * Karta GPZ-H5-SLD etap 2 — wymagania 3, 5 i 7 w kadrze „Dopasuj widok" (render kanwy).
  *
- * Przyczyna (pomiar przed etapem 2): w kadrze 1000×700 układ 1×3 spadał do glifu L0 (skala
- * 0,453) — L1, TR1…TR3, opisy sekcji i nazwy odpływów znikały; w pozostałych kadrach
+ * Przyczyna (pomiar przed etapem 2): w kadrze 1000×700 układ wielotransformatorowy spadał do
+ * glifu L0 — oznaczenia znikały (układ usunięty z produktu decyzją właściciela 2026-10-22); w kadrach
  * oznaczenia pól były skracane („Pole…A1", „Ł…1-2"), a nazwa odbioru znikała razem z jego
  * danymi (jeden podpis „Odbiór SN 1 · P · Q" był w całości danymi).
  *
- * Iloczyn cech: sieć {H5 2×2, H5 1×3} × kadr {1400×800, 1000×700}. Wyrocznie:
+ * Iloczyn cech: sieć {H5 2×2, równoważnik SN na dwóch sekcjach} × kadr {1400×800, 1000×700}. Wyrocznie:
  *  - GPZ rozwinięty (poziom szczegółu ≥ L1) — inaczej oznaczeń nie ma na czym sprawdzać;
  *  - KAŻDA etykieta tożsamości sceny narysowanego poziomu jest narysowana PEŁNYM tekstem
  *    (bez skrótu, bez porzucenia; `data-dropped-identity` = 0);
@@ -32,7 +32,7 @@ import { MIN_SYMBOL_SCREEN_PX, SYMBOL_DEFS } from '../../symbols/defs';
 import { SldCanvasV3 } from '../SldCanvasV3';
 
 const FX = `${__dirname}/../../scene/__tests__/fixtures`;
-const SIECI = ['gpzH5_2x2', 'gpzH5_1x3'] as const;
+const SIECI = ['gpzH5_2x2', 'gpzRownowaznikSn2'] as const;
 const KADRY = [
   [1400, 800],
   [1000, 700],
@@ -113,7 +113,7 @@ describe('GPZ w kadrze „Dopasuj widok" — oznaczenia nadrzędne pełne, glify
     // pismo oznaczeń do progu czytelności, więc pasmo oznaczenia pola musi mieścić napis
     // powiększony (`POWIEKSZENIE_T3_NA_PROGU_L1` w `compose/gpz.ts`) — w kadrach 1400×800
     // i 1000×700 skala jest wyższa i rezerwy pasma nie sprawdzają. Zakres wyroczni: oznaczenia
-    // pól sekcji (pasma). Pomiar przy tym kadrze (2×2: 816×466, 1×3: ok. 930×531): nazwa GPZ
+    // pól sekcji (pasma). Pomiar przy tym kadrze (2×2: 816×466): nazwa GPZ
     // w belce, nazwy źródeł („Sieć L1") i oznaczenie łącznika szyn („ŁS 1-2") są skracane
     // ze znakiem „…" — ich sloty są liczone pismem naturalnym; stan zgłoszony w meldunku.
     it(`${siec}: kadr na progu rozwinięcia GPZ — oznaczenia pól pełne`, () => {

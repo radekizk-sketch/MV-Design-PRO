@@ -2294,7 +2294,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "e1f9c7fc6289605d2e1c76a757301112bc86e5627a06cd381e2e668742bb8bbb",
+      "hash_sha256": "5b45ba2a117c27995883e30022ddbcb7135635d20d05a4a1ca387d5c092e5672",
       "name": "Elementy ciągu — lacznik",
       "revision": 14,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2456,7 +2456,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

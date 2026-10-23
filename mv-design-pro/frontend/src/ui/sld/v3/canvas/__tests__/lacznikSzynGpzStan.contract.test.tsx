@@ -7,7 +7,7 @@
  * różowy znacznik punktu podziału „NO" stał tuż przy glifie i zasłaniał jego stan; łącznik
  * szyn nie jest punktem podziału (wpis 7 architekta).
  *
- * Iloczyn cech: sieć {H5 2×2 (ŁS 110 kV + ŁS SN), H5 1×3 (dwa ŁS SN)} × kadr {1400×800,
+ * Iloczyn cech: sieć {H5 2×2 (ŁS 110 kV + ŁS SN), równoważnik SN na dwóch sekcjach (ŁS SN)} × kadr {1400×800,
  * 1000×700} × stan rzeczywisty {otwarty, zamknięty} × pozycja normalna {otwarty,
  * zamknięty}. Wyrocznia z DOM kanwy (to, co rysuje `SldCanvasV3`, przez `viewBox`):
  *  - zamknięty: tusz w osi toru ciągły przez cały glif (przerwa < 0,5 px ekranu);
@@ -33,7 +33,7 @@ import { MIN_SYMBOL_SCREEN_PX } from '../../symbols/defs';
 import { SldCanvasV3 } from '../SldCanvasV3';
 
 const FX = `${__dirname}/../../scene/__tests__/fixtures`;
-const SIECI = ['gpzH5_2x2', 'gpzH5_1x3'] as const;
+const SIECI = ['gpzH5_2x2', 'gpzRownowaznikSn2'] as const;
 const KADRY = [
   [1400, 800],
   [1000, 700],

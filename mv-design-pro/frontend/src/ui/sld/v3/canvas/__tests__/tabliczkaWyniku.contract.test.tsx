@@ -7,7 +7,7 @@
  * — H5 2×2 przy 1400×800: widok kończył się na 1664 j.św., tabliczka zajmowała
  * 1536…2429 j.św., więc „Moduł: … · Przebieg: …" był ucięty krawędzią kanwy.
  *
- * Iloczyn cech: sieć {H5 2×2, H5 1×3, równoważnik SN 2 sekcje} × kadr {1400×800, 1000×700,
+ * Iloczyn cech: sieć {H5 2×2, równoważnik SN 2 sekcje} × kadr {1400×800, 1000×700,
  * 1800×1100} × wyniki {aktualne, nieaktualne} × deklaracja {pełna z przypadkiem, bez
  * przypadku}. Wyrocznia: płyta i KAŻDY wiersz w całości w widoku, napis nie dłuższy niż
  * płyta, płyta rozłączna z podkładką wskaźnika ukrytych opisów i z podpisami arkusza.
@@ -31,7 +31,7 @@ import { SldCanvasV3 } from '../SldCanvasV3';
 import { buildSceneV3 } from '../../scene/buildScene';
 
 const FX = `${__dirname}/../../scene/__tests__/fixtures`;
-const SIECI = ['gpzH5_2x2', 'gpzH5_1x3', 'gpzRownowaznikSn2'] as const;
+const SIECI = ['gpzH5_2x2', 'gpzRownowaznikSn2'] as const;
 const KADRY = [
   [1400, 800],
   [1000, 700],

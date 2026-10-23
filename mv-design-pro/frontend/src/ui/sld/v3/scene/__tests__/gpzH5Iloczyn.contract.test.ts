@@ -1,8 +1,8 @@
 /**
  * Karta GPZ-H5-SLD pkt 4 — GPZ z sekcjami 110 kV jako ILOCZYN CECH, nie przykład z karty.
  *
- * Cechy: sieć {H5 2×2 (dwie sekcje 110 kV, dwa źródła, łącznik 110 kV), układ 1×3 (jedna
- * szyna 110 kV, trzy TR, trzy sekcje SN), równoważnik SN na dwóch sekcjach (bez 110 kV)} ×
+ * Cechy: sieć {H5 2×2 (dwie sekcje 110 kV, dwa źródła, łącznik 110 kV), równoważnik SN na
+ * dwóch sekcjach (bez 110 kV)} ×
  * łącznik 110 kV {otwarty, zamknięty; brak w modelu} × łącznik SN {otwarty, zamknięty} ×
  * wynik {bez wyniku, rozpływ, zwarcie}.
  *
@@ -29,7 +29,7 @@ import { KIERUNEK_MOCY_TRANSFORMATORA_PL } from '../../canvas/resultLabelTemplat
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3, type SceneV3 } from '../buildScene';
 
-const SIECI = ['gpzH5_2x2', 'gpzH5_1x3', 'gpzRownowaznikSn2'] as const;
+const SIECI = ['gpzH5_2x2', 'gpzRownowaznikSn2'] as const;
 type Stan = 'open' | 'closed';
 type Wynik = 'brak' | 'rozplyw' | 'zwarcie';
 

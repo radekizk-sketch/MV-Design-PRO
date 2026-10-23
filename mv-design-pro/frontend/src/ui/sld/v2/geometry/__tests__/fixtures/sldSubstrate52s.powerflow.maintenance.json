@@ -798,16 +798,16 @@
       "p_from_mw": 0.0
     },
     "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_L": {
-      "direction": "none",
-      "p_from_mw": 0.0
+      "direction": "forward",
+      "p_from_mw": 0.180284
     },
     "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_L": {
-      "direction": "none",
-      "p_from_mw": 0.0
+      "direction": "forward",
+      "p_from_mw": 0.120187
     },
     "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_L": {
-      "direction": "none",
-      "p_from_mw": 0.0
+      "direction": "forward",
+      "p_from_mw": 0.060093
     },
     "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_R": {
       "direction": "none",
@@ -815,23 +815,23 @@
     },
     "seg/0a8f86f4d162097c6ad29d043bd7727b/segment": {
       "direction": "reverse",
-      "p_from_mw": -6.356206
+      "p_from_mw": -6.236247
     },
     "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_L": {
       "direction": "reverse",
-      "p_from_mw": -3.724149
+      "p_from_mw": -3.72411
     },
     "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_L": {
       "direction": "reverse",
-      "p_from_mw": -2.794064
+      "p_from_mw": -2.794036
     },
     "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_L": {
       "direction": "reverse",
-      "p_from_mw": -1.862947
+      "p_from_mw": -1.862928
     },
     "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_R_L": {
       "direction": "reverse",
-      "p_from_mw": -0.931513
+      "p_from_mw": -0.931504
     },
     "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_R_R": {
       "direction": "none",
@@ -839,11 +839,11 @@
     },
     "seg/14d83d0f888886761b63920739f9aa6c/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.686076
+      "p_from_mw": -5.745916
     },
     "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.180283
+      "p_from_mw": 0.180284
     },
     "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_L": {
       "direction": "forward",
@@ -858,16 +858,16 @@
       "p_from_mw": 0.0
     },
     "seg/2b3424aa8d475accca2a800e6abb1bab/ring_closure": {
-      "direction": "forward",
-      "p_from_mw": 0.060092
+      "direction": "none",
+      "p_from_mw": 0.0
     },
     "seg/2ec2ba470da273e10727da26c98c81ec/segment": {
       "direction": "reverse",
-      "p_from_mw": -2.882166
+      "p_from_mw": -2.763237
     },
     "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.432636
+      "p_from_mw": 0.432639
     },
     "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_L": {
       "direction": "forward",
@@ -875,7 +875,7 @@
     },
     "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060093
+      "p_from_mw": 0.060094
     },
     "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_R_R": {
       "direction": "none",
@@ -899,7 +899,7 @@
     },
     "seg/32778e828e7bab1aa2d1ec63d9f06c9a/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.952361
+      "p_from_mw": -5.011703
     },
     "seg/372764b24140e78c9355f43b144d4539/branch_segment_L": {
       "direction": "forward",
@@ -915,7 +915,7 @@
     },
     "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.060091
+      "p_from_mw": 0.060092
     },
     "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_R_R": {
       "direction": "none",
@@ -923,51 +923,51 @@
     },
     "seg/3cc1115e4eb07821116c79e63484af6f/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.318618
+      "p_from_mw": -4.199386
     },
     "seg/3fe5b3abb7bd029721b57663ae926ec3/segment": {
       "direction": "forward",
-      "p_from_mw": 0.261414
+      "p_from_mw": 0.20129
     },
     "seg/4420f909f3c07510c4bd8646d70322c1/segment": {
       "direction": "forward",
-      "p_from_mw": 0.261372
+      "p_from_mw": 0.20126
     },
     "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -4.326916
+      "p_from_mw": -4.20756
     },
     "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_L": {
       "direction": "reverse",
-      "p_from_mw": -4.471427
+      "p_from_mw": -4.352022
     },
     "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_R": {
       "direction": "reverse",
-      "p_from_mw": -4.614248
+      "p_from_mw": -4.494817
     },
     "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -6.334147
+      "p_from_mw": -6.214702
     },
     "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -5.807174
+      "p_from_mw": -5.685968
     },
     "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_L_R": {
       "direction": "reverse",
-      "p_from_mw": -4.46437
+      "p_from_mw": -4.343114
     },
     "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -4.934065
+      "p_from_mw": -4.993053
     },
     "seg/563eb02750e1f8121d97164d7a247407/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -4.960075
+      "p_from_mw": -5.019566
     },
     "seg/563eb02750e1f8121d97164d7a247407/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -5.673079
+      "p_from_mw": -5.732669
     },
     "seg/6039588111f915478e7d040ee1da842f/branch_segment_L": {
       "direction": "forward",
@@ -981,37 +981,29 @@
       "direction": "none",
       "p_from_mw": 0.0
     },
-    "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SR": {
-      "direction": "none",
-      "p_from_mw": 0.0
-    },
-    "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_R": {
-      "direction": "reverse",
-      "p_from_mw": -0.060091
-    },
     "seg/7e0bea911929f6fc06e9c44fbacd8982/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.791853
+      "p_from_mw": -5.671061
     },
     "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -6.367772
+      "p_from_mw": -6.247544
     },
     "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -5.777324
+      "p_from_mw": -5.656927
     },
     "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.240377
+      "p_from_mw": 0.240378
     },
     "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.180278
+      "p_from_mw": 0.180279
     },
     "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120184
+      "p_from_mw": 0.120185
     },
     "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_R_L": {
       "direction": "forward",
@@ -1023,39 +1015,39 @@
     },
     "seg/8ab308e583a2baa7f210b6631714dc16/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.945937
+      "p_from_mw": -5.005155
     },
     "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_L": {
       "direction": "reverse",
-      "p_from_mw": -5.695078
+      "p_from_mw": -5.755089
     },
     "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_L": {
       "direction": "reverse",
-      "p_from_mw": -5.898388
+      "p_from_mw": -5.958441
     },
     "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_R": {
       "direction": "reverse",
-      "p_from_mw": -0.649455
+      "p_from_mw": -0.709584
     },
     "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_R": {
       "direction": "forward",
-      "p_from_mw": 0.26147
+      "p_from_mw": 0.201329
     },
     "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 1.250037
+      "p_from_mw": 1.250046
     },
     "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.937404
+      "p_from_mw": 0.93741
     },
     "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.624905
+      "p_from_mw": 0.624909
     },
     "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.312447
+      "p_from_mw": 0.312449
     },
     "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_R_R": {
       "direction": "none",
@@ -1063,47 +1055,47 @@
     },
     "seg/bfc3eab24f562e0c73fa3532e13901af/segment": {
       "direction": "reverse",
-      "p_from_mw": -6.342915
+      "p_from_mw": -6.223266
     },
     "seg/c30119c67bdded9a2739b59ee352ad4a/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.678644
+      "p_from_mw": -5.738341
     },
     "seg/da4134e04226616ae359781eb6dc6ede/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.306408
+      "p_from_mw": -4.187358
     },
     "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.300474
+      "p_from_mw": 0.240375
     },
     "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.240371
+      "p_from_mw": 0.180277
     },
     "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.180277
+      "p_from_mw": 0.120183
     },
     "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.120184
+      "p_from_mw": 0.060092
     },
     "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_R_R": {
-      "direction": "forward",
-      "p_from_mw": 0.060093
+      "direction": "none",
+      "p_from_mw": 0.0
     },
     "seg/de7a6d04d37ac11d4f25d63857daed65/segment_L": {
       "direction": "reverse",
-      "p_from_mw": -2.891948
+      "p_from_mw": -2.772974
     },
     "seg/de7a6d04d37ac11d4f25d63857daed65/segment_R": {
       "direction": "reverse",
-      "p_from_mw": -4.301835
+      "p_from_mw": -4.182853
     },
     "seg/e19d826bebb3ebd7677a94977f873952/segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.26134
+      "p_from_mw": 0.201237
     },
     "seg/e19d826bebb3ebd7677a94977f873952/segment_R": {
       "direction": "none",
@@ -1111,15 +1103,15 @@
     },
     "seg/ebb62f9676a8be36737f129155247300/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.937491
+      "p_from_mw": 0.937496
     },
     "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.624933
+      "p_from_mw": 0.624936
     },
     "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_R_L": {
       "direction": "forward",
-      "p_from_mw": 0.312456
+      "p_from_mw": 0.312458
     },
     "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_R_R": {
       "direction": "none",
@@ -1127,19 +1119,19 @@
     },
     "seg/ee8a08abb41839ecdc85952e29b849aa/segment": {
       "direction": "reverse",
-      "p_from_mw": -4.937593
+      "p_from_mw": -4.996649
     },
     "seg/eff8654b34e4be952c445b2d8550d323/segment": {
       "direction": "forward",
-      "p_from_mw": 0.261453
+      "p_from_mw": 0.201318
     },
     "seg/f80649eb0ebcd51053e495aadd8f23ba/segment": {
       "direction": "reverse",
-      "p_from_mw": -5.783549
+      "p_from_mw": -5.662982
     },
     "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_L": {
       "direction": "forward",
-      "p_from_mw": 0.180287
+      "p_from_mw": 0.180288
     },
     "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_L": {
       "direction": "forward",
@@ -1150,6 +1142,18 @@
       "p_from_mw": 0.060094
     },
     "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_R_R": {
+      "direction": "none",
+      "p_from_mw": 0.0
+    },
+    "stn/02b1351946124030c7642ed7e5b68a32/sn_field_breaker/000": {
+      "direction": "none",
+      "p_from_mw": 0.0
+    },
+    "stn/02b1351946124030c7642ed7e5b68a32/sn_field_breaker/001": {
+      "direction": "none",
+      "p_from_mw": 0.0
+    },
+    "stn/02b1351946124030c7642ed7e5b68a32/sn_field_breaker/002": {
       "direction": "none",
       "p_from_mw": 0.0
     },
@@ -1834,33 +1838,21 @@
   "case_ref": "case/sld-substrate-maintenance-isolated-station",
   "converged": true,
   "de_energized_bus_refs": [
-    "bus/072fac6a9f01d32ef787b499f771958f/branch_end",
-    "nn/118d557d70b1bce12cdd118c5812dedc/feeder_bus",
-    "nn/1d9e77fa20ad9591bd61f2621272106c/feeder_bus",
-    "nn/5e7554a6f1031f66363ce04f59392889/feeder_bus",
-    "nn/6ce23c2a20141497d7499d754a0bec52/feeder_bus",
-    "nn/6ea7edc35e8085d09f08db95f5e2aef8/feeder_bus",
-    "nn/9d12de573db463111d46018215bb9b09/feeder_bus",
-    "nn/c4a2339b88f4cd262a295eb7784aab30/feeder_bus",
-    "nn/c65b8b78ce65e47b67e13968d5ae16d9/feeder_bus",
-    "nn/d24b76de8c29682051aaabcd76ab151b/feeder_bus",
-    "stn/02b1351946124030c7642ed7e5b68a32/nn_bus",
-    "stn/02b1351946124030c7642ed7e5b68a32/sn_bus",
-    "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/001",
-    "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/002",
-    "stn/43a200de2c89436544c441ec5c7e3285/nn_bus",
-    "stn/43a200de2c89436544c441ec5c7e3285/sn_bus",
-    "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/000",
-    "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/001",
-    "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/002",
-    "stn/7cea11943e0f42d6bbf418b8a618b64a/nn_bus",
-    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_bus",
-    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/000",
-    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/001",
-    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/002"
+    "bus/8ffea56f3960688408a09bc3a6181d5d/switch_node_2",
+    "nn/68b595604ffacdbdd9c2830421f81959/feeder_bus",
+    "nn/b78ad8cc9ce09ce73e6e44d6fbe9ee32/feeder_bus",
+    "nn/e3240c4efeecadaf98d5bab1c280cbd1/feeder_bus",
+    "stn/0573d774e9f81f0a009d57054d319976/nn_bus",
+    "stn/0573d774e9f81f0a009d57054d319976/sn_bus",
+    "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/000",
+    "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/001",
+    "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/002"
   ],
   "energized_branch_refs": [
     "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_L",
+    "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_L",
+    "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_L",
+    "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_R",
     "seg/0a8f86f4d162097c6ad29d043bd7727b/segment",
     "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_L",
     "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_L",
@@ -1903,8 +1895,6 @@
     "seg/6039588111f915478e7d040ee1da842f/branch_segment_L",
     "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_L",
     "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SL",
-    "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SR",
-    "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_R",
     "seg/7e0bea911929f6fc06e9c44fbacd8982/segment",
     "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_L",
     "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_R",
@@ -1948,6 +1938,7 @@
     "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_R_R"
   ],
   "energized_bus_refs": [
+    "bus/072fac6a9f01d32ef787b499f771958f/branch_end",
     "bus/0a8f86f4d162097c6ad29d043bd7727b/downstream",
     "bus/12d03d5305a6dee385a65b5c43fcdf19/branch_end",
     "bus/14d83d0f888886761b63920739f9aa6c/downstream",
@@ -1969,7 +1960,6 @@
     "bus/87d421bc76e660ddd86f3581ccc082d5/branch_end",
     "bus/8ab308e583a2baa7f210b6631714dc16/downstream",
     "bus/8ffea56f3960688408a09bc3a6181d5d/switch_node",
-    "bus/8ffea56f3960688408a09bc3a6181d5d/switch_node_2",
     "bus/a9deadfcbcdc4f531d5c5ecce05b79ec/downstream",
     "bus/ab7e8efcb29f7ab2aae694d7be6e283e/branch_end",
     "bus/bfc3eab24f562e0c73fa3532e13901af/downstream",
@@ -1999,6 +1989,7 @@
     "nn/10b93344ea03095058ba0f026b8e4dd4/feeder_bus",
     "nn/112553aa188b5cdb4937312821c8ced3/feeder_bus",
     "nn/1130387550262186acedd1c7ebe31be3/feeder_bus",
+    "nn/118d557d70b1bce12cdd118c5812dedc/feeder_bus",
     "nn/11f83290d34cab581d2fc81fefe90b1b/feeder_bus",
     "nn/12660a58467b9bb946bcdd71e9f1fc67/feeder_bus",
     "nn/140fe859dfd6cbbb96355891f2b4ed9c/feeder_bus",
@@ -2014,6 +2005,7 @@
     "nn/1a3a5f41f90dce021c7e94d2561bda89/feeder_bus",
     "nn/1bb62ff161b057059dcadff263e40eae/feeder_bus",
     "nn/1cea5ffb4438850f199f927c6370eccb/feeder_bus",
+    "nn/1d9e77fa20ad9591bd61f2621272106c/feeder_bus",
     "nn/1dde5cbe85830b9807a2b23d98a9abce/feeder_bus",
     "nn/1e4fa06105c8cbd9f6f08f1a22e2eaad/feeder_bus",
     "nn/1fc8c2335813ef57ff50b80752425057/feeder_bus",
@@ -2053,6 +2045,7 @@
     "nn/5c27cfb989893623f24fe7bff4818d3c/feeder_bus",
     "nn/5d7f748513b97c158d2cd1ea51a4f333/feeder_bus",
     "nn/5e1290392ed429c2474a47312d98d2f0/feeder_bus",
+    "nn/5e7554a6f1031f66363ce04f59392889/feeder_bus",
     "nn/617dad529e6442e5bf955e275367081c/feeder_bus",
     "nn/61ac88bb0ec14edf19a1fb711b5602df/feeder_bus",
     "nn/627f4a07f2fb59028f8f7f06d6ae7e28/feeder_bus",
@@ -2060,11 +2053,12 @@
     "nn/64568560dca0729d8ddf55d9c5241969/feeder_bus",
     "nn/65c2bd8ea7adc08848ecd015de0af9fa/feeder_bus",
     "nn/66c7214b8fe7346c7999a1da222cdfbe/feeder_bus",
-    "nn/68b595604ffacdbdd9c2830421f81959/feeder_bus",
     "nn/6aa4d6bbbe6fdb5bf4f7c10a1a58779d/feeder_bus",
     "nn/6b230c944590746af95c0f4aecb9080e/feeder_bus",
     "nn/6bce7fc0acc8612f701b0eba973c7489/feeder_bus",
+    "nn/6ce23c2a20141497d7499d754a0bec52/feeder_bus",
     "nn/6d00810c95571efb46d84eadcbc7dd60/feeder_bus",
+    "nn/6ea7edc35e8085d09f08db95f5e2aef8/feeder_bus",
     "nn/70140064ee9de799eb87e12ea820f1c4/feeder_bus",
     "nn/70f8e7ffcd87107f7d6876c7c0a04f93/feeder_bus",
     "nn/71184428c404926b9d019061b237de00/feeder_bus",
@@ -2104,6 +2098,7 @@
     "nn/9898915c1cac8fbbd00256d8d5fd6fe7/feeder_bus",
     "nn/99ee0297ffcf64600923570b922daad1/feeder_bus",
     "nn/9aa0658c4db8f6e6a57afe151e218efb/feeder_bus",
+    "nn/9d12de573db463111d46018215bb9b09/feeder_bus",
     "nn/9dd64b8034fac2ebdd55a6f5c50aab50/feeder_bus",
     "nn/9dfb4814180475430f8aedf17159718c/feeder_bus",
     "nn/a0010a0a7952146f6c1f3b46a3875706/feeder_bus",
@@ -2125,7 +2120,6 @@
     "nn/af8615a488af606bc417c89a5bfa6e96/feeder_bus",
     "nn/b4591e0badff6394b5f7853b9f793d2c/feeder_bus",
     "nn/b6fd268a35ce99f9051e5a3905c047c4/feeder_bus",
-    "nn/b78ad8cc9ce09ce73e6e44d6fbe9ee32/feeder_bus",
     "nn/ba8f2e8870b15e27388c662aad558046/feeder_bus",
     "nn/baf0f344b9e363cfbf5f83316cb09ab2/feeder_bus",
     "nn/bc6ad8dd461cd7636299ee4667bc5f90/feeder_bus",
@@ -2133,6 +2127,8 @@
     "nn/c2b54ce81600b214b6d4e815b82c9075/feeder_bus",
     "nn/c32d7b4099769dd6a97fd48e5c582cc8/feeder_bus",
     "nn/c33a349792379520895eb370578d3e6e/feeder_bus",
+    "nn/c4a2339b88f4cd262a295eb7784aab30/feeder_bus",
+    "nn/c65b8b78ce65e47b67e13968d5ae16d9/feeder_bus",
     "nn/c84e9ae056f1925161440b38668aefac/feeder_bus",
     "nn/c9e308536a3d69ef9b3b7c6f04a34667/feeder_bus",
     "nn/ca1e4e3a174bcddcc4eddc1ce0fd4f11/feeder_bus",
@@ -2142,6 +2138,7 @@
     "nn/ce0f34ed7e021d74aa040ea04c6727c0/feeder_bus",
     "nn/ce5cbd9e342d7ac293add7edd1a674e5/feeder_bus",
     "nn/d1803c0770e67acd8897bbe936ccb3eb/feeder_bus",
+    "nn/d24b76de8c29682051aaabcd76ab151b/feeder_bus",
     "nn/d2930b1bd788bee58924e38dd6993803/feeder_bus",
     "nn/d491381789a472adbe0d6fdf13f1fedf/feeder_bus",
     "nn/d612b6268c69e861b2dc07759552939b/feeder_bus",
@@ -2154,7 +2151,6 @@
     "nn/e0742030a783c3ad954db05f3073d805/feeder_bus",
     "nn/e1ccd2c9441f87b54fc857c85d01ed78/feeder_bus",
     "nn/e219996a6d671f32a9677631458adb0f/feeder_bus",
-    "nn/e3240c4efeecadaf98d5bab1c280cbd1/feeder_bus",
     "nn/e3bbd1144de65945f7bf6f01301757d0/feeder_bus",
     "nn/e4886f2293fdb923ed5b316e30011950/feeder_bus",
     "nn/e70e4eaa0005f77e7444ee57888fc008/feeder_bus",
@@ -2175,17 +2171,16 @@
     "nn/fc8b64c85475349777f1af296ef4c001/feeder_bus",
     "nn/fd640e5008ef3274b46725e9ac599643/feeder_bus",
     "nn/fe4ae9539775066f4bbb6f6d68f81e7e/feeder_bus",
+    "stn/02b1351946124030c7642ed7e5b68a32/nn_bus",
+    "stn/02b1351946124030c7642ed7e5b68a32/sn_bus",
     "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/000",
+    "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/001",
+    "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/002",
     "stn/053dcd3b5c74e47a2146137104241ce0/nn_bus",
     "stn/053dcd3b5c74e47a2146137104241ce0/sn_bus",
     "stn/053dcd3b5c74e47a2146137104241ce0/sn_field_terminal/000",
     "stn/053dcd3b5c74e47a2146137104241ce0/sn_field_terminal/001",
     "stn/053dcd3b5c74e47a2146137104241ce0/sn_field_terminal/002",
-    "stn/0573d774e9f81f0a009d57054d319976/nn_bus",
-    "stn/0573d774e9f81f0a009d57054d319976/sn_bus",
-    "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/000",
-    "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/001",
-    "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/002",
     "stn/098d411f7c758b4941061c36f6be4c20/nn_bus",
     "stn/098d411f7c758b4941061c36f6be4c20/sn_bus",
     "stn/098d411f7c758b4941061c36f6be4c20/sn_field_terminal/000",
@@ -2242,6 +2237,11 @@
     "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field_terminal/000",
     "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field_terminal/001",
     "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field_terminal/002",
+    "stn/43a200de2c89436544c441ec5c7e3285/nn_bus",
+    "stn/43a200de2c89436544c441ec5c7e3285/sn_bus",
+    "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/000",
+    "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/001",
+    "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/002",
     "stn/44aa0ee35fd2315876056bcc68a3980d/nn_bus",
     "stn/44aa0ee35fd2315876056bcc68a3980d/sn_bus",
     "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field_terminal/000",
@@ -2349,6 +2349,11 @@
     "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field_terminal/000",
     "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field_terminal/001",
     "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field_terminal/002",
+    "stn/7cea11943e0f42d6bbf418b8a618b64a/nn_bus",
+    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_bus",
+    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/000",
+    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/001",
+    "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/002",
     "stn/96b2dc6257a9b86ef54b529a9bd814e0/nn_bus",
     "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_bus",
     "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_field_terminal/000",
@@ -2439,19 +2444,18 @@
     "stn/ff236ebd7c982151f0a145edfd600f05/sn_field_terminal/001",
     "stn/ff236ebd7c982151f0a145edfd600f05/sn_field_terminal/002"
   ],
-  "enm_hash": "21c29f33fd2c14ef767dc5759f611487fcf063dce1826576cc586e6f493b8ac2",
+  "enm_hash": "2f9b63eb7e0feb0e737bcb1eb69baabf0f0802c499fe2930d3243137ad52e524",
   "iterations": 4,
   "open_point_branch_refs": [
     "sw/8ffea56f3960688408a09bc3a6181d5d/switch"
   ],
   "scenario": {
     "out_of_service": [
-      "stn/02b1351946124030c7642ed7e5b68a32/sn_field_breaker/000",
-      "stn/02b1351946124030c7642ed7e5b68a32/sn_field_breaker/001",
-      "stn/02b1351946124030c7642ed7e5b68a32/sn_field_breaker/002"
+      "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SR",
+      "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_R"
     ],
-    "scenario_hash": "546ce24df65ebbb6a4ca443819b4f2cc8bbda214c397270044482bf60f2df94b",
-    "scenario_id": "__maintenance__stn/02b1351946124030c7642ed7e5b68a32/station"
+    "scenario_hash": "0716d5b0319769c67ad7b61481e10c9f9269a116b8b5569ea159cb6e6d2036e9",
+    "scenario_id": "__maintenance__stn/0573d774e9f81f0a009d57054d319976/station"
   },
   "schema": "sld_power_flow_companion_v1",
   "solver_method": "newton-raphson"

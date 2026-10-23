@@ -1815,7 +1815,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "cd0437a4edb1ab9246c10aa33e3634a49d46189093437115d3bf5748088aa265",
+      "hash_sha256": "b41a39070ed2b8c664f8152fd56216f737c39ab01413b059acf8162ea4390792",
       "name": "Stacja z pomiarem za ZKSN",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2126,7 +2126,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

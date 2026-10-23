@@ -260,40 +260,76 @@
   "branch_points": [],
   "branches": [
     {
-      "catalog_namespace": "APARAT_SN",
-      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-      "from_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
-      "id": "4970a196-8440-57d0-bd02-a7cb9e4b7527",
-      "materialized_params": {
-        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-        "catalog_item_version": "2024.1",
-        "i_n_a": 630.0,
-        "u_n_kv": 17.5
-      },
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
+      "id": "982140ea-71ca-573d-9f62-93768af87fbe",
+      "materialized_params": null,
       "meta": {
-        "bay_role": "TR",
-        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
-        "field_ref": "field/406ec9c7de80233f6ff070bc72972037/2",
-        "field_role": "TRANSFORMATOROWE",
-        "render_on_sld": false,
-        "requires_catalog_binding": false,
-        "show_in_project_tree": false,
-        "station_ref": "sub/406ec9c7de80233f6ff070bc72972037/substation"
+        "nn_field_migrowana_rola": "OZE",
+        "nn_field_migrowany_z": "nn/c1a1e43716bd107b156defedff227e32/source_field",
+        "nn_promocja_bez_wiazania_katalogowej": true
       },
-      "name": "Wyłącznik pola SN 2",
+      "name": "Pole PV nN",
       "normal_state": null,
       "overrides": [],
-      "parameter_source": "CATALOG",
-      "r_ohm": 0.0,
-      "ref_id": "stn/406ec9c7de80233f6ff070bc72972037/sn_field_apparatus/002",
-      "source_mode": "KATALOG",
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_device",
+      "source_mode": "MIGRACJA",
       "status": "closed",
-      "tags": [
-        "station_field_device"
-      ],
-      "to_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/sn_field_terminal/002",
+      "tags": [],
+      "to_bus_ref": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_bus",
       "type": "breaker",
-      "x_ohm": 0.0
+      "x_ohm": null
+    },
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
+      "id": "726b6a20-e38a-581f-8ab2-42a5451b398b",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "FEEDER",
+        "nn_field_migrowany_z": "stn/406ec9c7de80233f6ff070bc72972037/nn_feeder/000",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Odpływ nN 1",
+      "normal_state": null,
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/3561b466ab84603ce01b8dbf582839ab/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/3561b466ab84603ce01b8dbf582839ab/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
+    },
+    {
+      "catalog_namespace": null,
+      "catalog_ref": null,
+      "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
+      "id": "639f1550-e5bf-5739-b6bc-811d2163d7aa",
+      "materialized_params": null,
+      "meta": {
+        "nn_field_migrowana_rola": "IN",
+        "nn_field_migrowany_z": "stn/406ec9c7de80233f6ff070bc72972037/nn_main_breaker",
+        "nn_promocja_bez_wiazania_katalogowej": true
+      },
+      "name": "Wyłącznik główny nN",
+      "normal_state": null,
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": null,
+      "ref_id": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_device",
+      "source_mode": "MIGRACJA",
+      "status": "closed",
+      "tags": [],
+      "to_bus_ref": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_bus",
+      "type": "breaker",
+      "x_ohm": null
     },
     {
       "b0_siemens_per_km": null,
@@ -377,54 +413,6 @@
       "x_ohm_per_km": 0.1
     },
     {
-      "catalog_namespace": null,
-      "catalog_ref": null,
-      "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
-      "id": "639f1550-e5bf-5739-b6bc-811d2163d7aa",
-      "materialized_params": null,
-      "meta": {
-        "nn_field_migrowana_rola": "IN",
-        "nn_field_migrowany_z": "stn/406ec9c7de80233f6ff070bc72972037/nn_main_breaker",
-        "nn_promocja_bez_wiazania_katalogowej": true
-      },
-      "name": "Wyłącznik główny nN",
-      "normal_state": null,
-      "overrides": [],
-      "parameter_source": null,
-      "r_ohm": null,
-      "ref_id": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_device",
-      "source_mode": "MIGRACJA",
-      "status": "closed",
-      "tags": [],
-      "to_bus_ref": "nn/8b66bb2f9eb860792da7a1210dc0d04e/feeder_bus",
-      "type": "breaker",
-      "x_ohm": null
-    },
-    {
-      "catalog_namespace": null,
-      "catalog_ref": null,
-      "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
-      "id": "726b6a20-e38a-581f-8ab2-42a5451b398b",
-      "materialized_params": null,
-      "meta": {
-        "nn_field_migrowana_rola": "FEEDER",
-        "nn_field_migrowany_z": "stn/406ec9c7de80233f6ff070bc72972037/nn_feeder/000",
-        "nn_promocja_bez_wiazania_katalogowej": true
-      },
-      "name": "Odpływ nN 1",
-      "normal_state": null,
-      "overrides": [],
-      "parameter_source": null,
-      "r_ohm": null,
-      "ref_id": "nn/3561b466ab84603ce01b8dbf582839ab/feeder_device",
-      "source_mode": "MIGRACJA",
-      "status": "closed",
-      "tags": [],
-      "to_bus_ref": "nn/3561b466ab84603ce01b8dbf582839ab/feeder_bus",
-      "type": "breaker",
-      "x_ohm": null
-    },
-    {
       "catalog_namespace": "APARAT_SN",
       "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
       "from_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
@@ -461,28 +449,40 @@
       "x_ohm": 0.0
     },
     {
-      "catalog_namespace": null,
-      "catalog_ref": null,
-      "from_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/nn",
-      "id": "982140ea-71ca-573d-9f62-93768af87fbe",
-      "materialized_params": null,
-      "meta": {
-        "nn_field_migrowana_rola": "OZE",
-        "nn_field_migrowany_z": "nn/c1a1e43716bd107b156defedff227e32/source_field",
-        "nn_promocja_bez_wiazania_katalogowej": true
+      "catalog_namespace": "APARAT_SN",
+      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "from_bus_ref": "bus/3f5131ae7a62a37827252bd9317034e8/downstream",
+      "id": "4970a196-8440-57d0-bd02-a7cb9e4b7527",
+      "materialized_params": {
+        "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+        "catalog_item_version": "2024.1",
+        "i_n_a": 630.0,
+        "u_n_kv": 17.5
       },
-      "name": "Pole PV nN",
+      "meta": {
+        "bay_role": "TR",
+        "catalog_message": "Aparat pola SN z jawnie wskazanej pozycji katalogu — typ „ABB VD4 17.5 kV 630 A”.",
+        "field_ref": "field/406ec9c7de80233f6ff070bc72972037/2",
+        "field_role": "TRANSFORMATOROWE",
+        "render_on_sld": false,
+        "requires_catalog_binding": false,
+        "show_in_project_tree": false,
+        "station_ref": "sub/406ec9c7de80233f6ff070bc72972037/substation"
+      },
+      "name": "Wyłącznik pola SN 2",
       "normal_state": null,
       "overrides": [],
-      "parameter_source": null,
-      "r_ohm": null,
-      "ref_id": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_device",
-      "source_mode": "MIGRACJA",
+      "parameter_source": "CATALOG",
+      "r_ohm": 0.0,
+      "ref_id": "stn/406ec9c7de80233f6ff070bc72972037/sn_field_apparatus/002",
+      "source_mode": "KATALOG",
       "status": "closed",
-      "tags": [],
-      "to_bus_ref": "nn/32bc86f5af6bfdabfa42c7144f9cd89f/feeder_bus",
+      "tags": [
+        "station_field_device"
+      ],
+      "to_bus_ref": "bus/406ec9c7de80233f6ff070bc72972037/sn_field_terminal/002",
       "type": "breaker",
-      "x_ohm": null
+      "x_ohm": 0.0
     }
   ],
   "buses": [

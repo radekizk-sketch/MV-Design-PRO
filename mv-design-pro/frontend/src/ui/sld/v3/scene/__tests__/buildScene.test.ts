@@ -1270,9 +1270,17 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // `#hv-bus-tap` +40, zejście źródła na szczyt pola 110 kV 56 zamiast 24 przy końcu szyny
     // (+32), `#hv-field-to-tr` 16 → 48 (+32), `#tr-field-to-bus` 40 → 48 (+8); przesunięcia
     // tras GPZ → S0 między właścicielami odcinków sumują się do zera.
+    // GPZ-H5-INTEGRACJA (2026-10-22): 22368/45584/45584 → 22368/45568/45568 — REGENERACJA
+    // fikstury, nie zmiana kodu. Nazwa źródła 110 kV to nazwa toru („Linia 110 kV zasilająca"),
+    // stacja wyłącznie w `supplying_station_name` (`add_grid_source_sn`); fikstura różni się
+    // WYŁĄCZNIE nazwą źródła. DOWÓD (sonda per właściciel odcinka, ten sam kod, fikstura
+    // przed/po): tabliczka źródła traci wiersz „Tor zasilania: …" (tor = nazwa), więc
+    // `…/hv_section/001/source#grid-source-drop` 56 → 40 (−16) na L1/L2; poza nim tylko
+    // przesunięcie pionów między dwoma odcinkami odgałęzienia (`…/segment_R` i `…/segment`:
+    // L0 −48/+48, L1 −48/+48, L2 −56/+56), sumujące się do zera — L0 ±0.
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22368);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45584);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45584);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45568);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45568);
   });
 });
 

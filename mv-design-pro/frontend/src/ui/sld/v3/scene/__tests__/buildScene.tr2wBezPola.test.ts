@@ -300,9 +300,20 @@ describe('TR2W-BEZ-POLA T1 — stacja Z polem transformatorowym: zero regresu', 
   // etykiety „Szyna WN · 110 kV" i „Źródło GPZ 110 kV" → „Sekcja 110 kV 1", nazwa pola 110 kV,
   // tor zasilania i kierunek (L1 20 → 23, L2 28 → 31); jedyna różnica poza GPZ — podpis kabla
   // GPZ↔S01 na L2 przesunięty o 88 w prawo (pole GPZ w nowym miejscu względem stacji).
+  // AKTUALIZACJA ŚWIADOMA (GPZ-H5-INTEGRACJA, 2026-10-22): nazwa źródła 110 kV to nazwa toru
+  // („Linia 110 kV zasilająca"), stacja zasilająca wyłącznie w `supplying_station_name`
+  // (`add_grid_source_sn`, dawniej „Linia … (Stacja zasilająca — …)"); fikstura różni się
+  // WYŁĄCZNIE nazwą źródła i skrótem modelu. DOWÓD (sonda: ten sam kod, fikstura przed/po;
+  // symbole, odcinki i etykiety poza tabliczką źródła parami w tej samej kolejności, L0/L1/L2):
+  // tabliczka źródła 4 → 3 wiersze (wiersz „Tor zasilania: …" znika, bo tor = nazwa;
+  // identyfikacja 560 → 157 szerokości), przez co rama GPZ węższa: rozdzielnia SN GPZ i CAŁY
+  // świat poza GPZ przesunięte o jednakowy wektor (−208, −16) — 10 z 12 symboli, 38 z 43
+  // punktów odcinków, 16 z 19 etykiet na L1; kolumna 110 kV (szyna, pole liniowe, glif
+  // źródła) stoi w x bez zmian (0, −16 albo 0, 0). Rysunek stacji z polem TR względnie
+  // nietknięty; etykiet 23 → 22 (L1), 31 → 30 (L2).
   const ODCISK_Z_POLEM_TR: Readonly<Record<1 | 2, string>> = {
-    1: '69a4683180fee40196e5ec598d2c5bf1',
-    2: 'd7d59691951690c4caf1f70642990f4c',
+    1: '7abaf214c42011dd64d67e893f8deb65',
+    2: 'ef47946b75b10d356f8f4c2e3bbe4f55',
   };
   for (const lod of [1, 2] as const) {
     it(`L${lod}: odcisk rysunku stacji Z polem TR bez zmian (zapadka na dryf geometrii)`, () => {

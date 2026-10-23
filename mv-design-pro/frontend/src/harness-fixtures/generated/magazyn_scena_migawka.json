@@ -231,45 +231,6 @@
   "branch_points": [],
   "branches": [
     {
-      "catalog_namespace": "APARAT_SN",
-      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
-      "from_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
-      "id": "9c9de57b-784e-50d3-b139-f349068caa56",
-      "materialized_params": null,
-      "meta": {
-        "apparatus_kind": "BREAKER",
-        "bay_role": "OZE",
-        "catalog_binding": {
-          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
-          "catalog_item_version": "2024.1",
-          "catalog_namespace": "APARAT_SN",
-          "materialize": true,
-          "snapshot_mapping_version": "1.0"
-        },
-        "field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
-        "render_on_sld": false,
-        "requires_catalog_binding": false,
-        "show_in_project_tree": false,
-        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
-        "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal"
-      },
-      "name": "Aparat pola źródłowego SN Magazyn energii 1,5 MW",
-      "normal_state": null,
-      "overrides": [],
-      "parameter_source": null,
-      "r_ohm": 0.0,
-      "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
-      "source_mode": "KATALOG",
-      "status": "closed",
-      "tags": [
-        "gpz_field_device",
-        "der_source_field_device"
-      ],
-      "to_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal",
-      "type": "breaker",
-      "x_ohm": 0.0
-    },
-    {
       "b0_siemens_per_km": null,
       "b_siemens_per_km": 0.00012252211349,
       "cable_joints": [],
@@ -350,6 +311,45 @@
       "type": "cable",
       "x0_ohm_per_km": 0.3,
       "x_ohm_per_km": 0.1
+    },
+    {
+      "catalog_namespace": "APARAT_SN",
+      "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+      "from_bus_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/section/001/bus_sn",
+      "id": "9c9de57b-784e-50d3-b139-f349068caa56",
+      "materialized_params": null,
+      "meta": {
+        "apparatus_kind": "BREAKER",
+        "bay_role": "OZE",
+        "catalog_binding": {
+          "catalog_item_id": "sw-cb-abb-vd4-17kv-630a",
+          "catalog_item_version": "2024.1",
+          "catalog_namespace": "APARAT_SN",
+          "materialize": true,
+          "snapshot_mapping_version": "1.0"
+        },
+        "field_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/source_field",
+        "render_on_sld": false,
+        "requires_catalog_binding": false,
+        "show_in_project_tree": false,
+        "station_ref": "gpz/72f0ea3f99ee50369f495c7bce9d33c0/substation",
+        "terminal_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal"
+      },
+      "name": "Aparat pola źródłowego SN Magazyn energii 1,5 MW",
+      "normal_state": null,
+      "overrides": [],
+      "parameter_source": null,
+      "r_ohm": 0.0,
+      "ref_id": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_device",
+      "source_mode": "KATALOG",
+      "status": "closed",
+      "tags": [
+        "gpz_field_device",
+        "der_source_field_device"
+      ],
+      "to_bus_ref": "sn/5bd678b5dbce96516c72492e40298e5f/der/field_terminal",
+      "type": "breaker",
+      "x_ohm": 0.0
     }
   ],
   "buses": [

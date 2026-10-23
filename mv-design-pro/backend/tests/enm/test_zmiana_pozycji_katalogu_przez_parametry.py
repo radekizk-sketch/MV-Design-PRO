@@ -46,6 +46,7 @@ def _build_base_network_with_line_catalog() -> dict[str, Any]:
     assert wynik.get("error") is None, wynik.get("error")
     enm: dict[str, Any] = wynik["snapshot"]
     assert [t["catalog_ref"] for t in enm["transformers"]] == [TRAFO_110_15]
+    assert enm["branches"], "obie kolekcje iloczynu (gałąź i transformator) w modelu"
     return enm
 
 

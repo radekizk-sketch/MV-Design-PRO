@@ -121,7 +121,7 @@ function zasilanieGpz(uklad: UkladGpz): Record<string, unknown> {
     transformers: Array.from({ length: uklad.transformatory }, (_, i) => ({
       hv_section: 1,
       sn_section: (i % uklad.sekcje) + 1,
-      transformer_catalog_ref: TRANSFORMATOR_WN_SN,
+      transformer_catalog_binding: katalog('TRAFO_SN_NN', TRANSFORMATOR_WN_SN),
     })),
     ...(uklad.sekcje >= 2 || uklad.transformatory >= 2 ? { reserve_mode: 'hidden' } : {}),
   };

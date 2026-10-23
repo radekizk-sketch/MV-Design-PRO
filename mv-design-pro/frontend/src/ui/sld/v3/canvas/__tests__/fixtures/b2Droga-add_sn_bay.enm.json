@@ -1432,7 +1432,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "c212f908aa4d37d0108f617c7d01a84ecc3a5fdc410dcf19c1892d99832a0dea",
+      "hash_sha256": "1ae37b8d2164e07fa3a6500c4ba4b4061f882bf92d55994d72b9f502870ce15b",
       "name": "Drogi operacji budowy",
       "revision": 9,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1558,7 +1558,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

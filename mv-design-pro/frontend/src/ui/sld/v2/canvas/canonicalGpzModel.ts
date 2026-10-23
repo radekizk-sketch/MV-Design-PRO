@@ -284,7 +284,7 @@ export interface CanonicalGpzHvSystemSource {
   readonly lineName: string | null;
   /** Stacja, z której przychodzi linia toru (`Source.supplying_station_name`); `null` = brak. */
   readonly supplyingStation?: string | null;
-  /** `Source.meta.source_id` (preferowane) albo `Source.name` — nigdy wartość zastępcza. */
+  /** `Source.name` — nazwa źródła z modelu (nie tożsamość GPZ `meta.source_id`); nigdy wartość zastępcza. */
   readonly name: string;
   readonly sk3Mva: number | null;
   readonly ik3Ka: number | null;

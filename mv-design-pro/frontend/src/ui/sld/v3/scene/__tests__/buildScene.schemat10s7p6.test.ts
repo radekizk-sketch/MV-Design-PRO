@@ -191,9 +191,16 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // nowymi identyfikatorami — 21112/43552/43552 (−800: remis kolejności ciągów po
     // `id`), nowa treść GPZ (sekcja 110 kV z polem liniowym, pola TR po obu stronach) —
     // L0 ±0, L1/L2 +40 (zaczep pola do szyny sekcji 110 kV).
+    // GPZ-H5-INTEGRACJA (2026-10-22): 21112/43592/43592 → 21112/43576/43576 — regeneracja
+    // fikstury (nazwa źródła 110 kV = nazwa toru, `add_grid_source_sn`). Sonda: kod karty na
+    // fiksturze sprzed regeneracji daje dokładnie 21112/43592/43592; per właściciel odcinka
+    // (stara vs nowa fikstura) tabliczka źródła traci wiersz „Tor zasilania: …", więc
+    // `…/hv_section/001/source#grid-source-drop` 56 → 40 (−16) na L1/L2; poza nim tylko
+    // przesunięcie pionów między `…/segment_R` a `…/segment` odgałęzienia (L0 −48/+48,
+    // L1 −48/+48, L2 −56/+56), sumujące się do zera.
     expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21112);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(43592);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(43592);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(43576);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(43576);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {

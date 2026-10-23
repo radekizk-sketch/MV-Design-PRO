@@ -2,7 +2,7 @@
  * Karta GPZ-H5-SLD etap 2, wymaganie 6 — tabliczka pochodzenia wyniku (przestrzeń ekranu)
  * nie przecina urządzeń, etykiet ani przewodów schematu w kadrze „Dopasuj widok".
  *
- * Iloczyn cech: sieć {H5 2×2, H5 1×3, równoważnik SN 2 sekcje} × kadr {1400×800, 1000×700}
+ * Iloczyn cech: sieć {H5 2×2, równoważnik SN 2 sekcje} × kadr {1400×800, 1000×700}
  * × świeżość {aktualne, nieaktualne}. Wyrocznia z DOM kanwy: obrys płyty
  * (`sld-v3-tabliczka-wyniku-plyta`) rozłączny z obrysem KAŻDEGO glifu sceny narysowanego
  * poziomu (symbol × `SYMBOL_DEFS`, rzut przez `viewBox`) i z prostokątem tuszu KAŻDEJ
@@ -23,7 +23,7 @@ import { SYMBOL_DEFS } from '../../symbols/defs';
 import { FRAME_MARGIN } from '../../sheet/Frame';
 
 const FX = `${__dirname}/../../scene/__tests__/fixtures`;
-const SIECI = ['gpzH5_2x2', 'gpzH5_1x3', 'gpzRownowaznikSn2'] as const;
+const SIECI = ['gpzH5_2x2', 'gpzRownowaznikSn2'] as const;
 const KADRY = [
   [1400, 800],
   [1000, 700],

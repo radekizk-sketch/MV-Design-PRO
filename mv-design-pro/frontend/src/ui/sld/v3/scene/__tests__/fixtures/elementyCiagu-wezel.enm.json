@@ -1865,7 +1865,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "bfc22bee9703fcca8b1de6ed7770401a11895a83bf1d3fe086d590f74177b0d3",
+      "hash_sha256": "81b5a5c37c695f2bc86e8be404236e56fa12d2fe9eb92f6a6d2695f939ee465b",
       "name": "Elementy ciągu — wezel",
       "revision": 11,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2027,7 +2027,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

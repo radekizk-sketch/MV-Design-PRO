@@ -2670,7 +2670,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "4cb266486b7aedcb0607d02cbb5999fdf92a6b64de93b8c39828e075a981a785",
+      "hash_sha256": "decd699ea01ff43c3bf09ac867110c5a7e847668dcab46b3bc468659c00067ac",
       "name": "Sieć Mala — po",
       "revision": 12,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2872,7 +2872,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

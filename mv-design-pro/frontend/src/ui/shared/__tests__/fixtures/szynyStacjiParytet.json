@@ -24996,6 +24996,168 @@
         }
       }
     },
+    "src/ui/sld/v3/canvas/__tests__/fixtures/gpzH5RezerwaJawnaBezLsSn.enm.json": {
+      "": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_1": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_2": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001/bay": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bay_line": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bay_line": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/capacitor": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/earthing": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/measurement": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/capacitor": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/earthing": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/measurement": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_sn": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_wn": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_sn": false,
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_wn": false
+          },
+          "stacja_pola": {
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_1": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_2": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001/bay": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bay_line": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bay_line": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/capacitor": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/earthing": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/measurement": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/capacitor": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/earthing": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/measurement": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_wn": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_wn": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation"
+          },
+          "stacje": {
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bay_line",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bay_line",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_wn",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_sn",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_wn",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_sn",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001/bay",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_1",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_2",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/earthing",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/capacitor",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/measurement",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/earthing",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/capacitor",
+                "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/measurement"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bay_line",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001/bay",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_wn"
+            ],
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bay_line",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_wn"
+            ],
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_1",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/capacitor",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/earthing",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/measurement",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_sn"
+            ],
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn": [
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_2",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/capacitor",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/earthing",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/measurement",
+              "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_sn"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_1": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_2": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001/bay": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bay_line": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bay_line": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/capacitor": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/earthing": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/measurement": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/capacitor": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/earthing": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/measurement": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_wn": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_wn": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn"
+        },
+        "szyny": {
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/substation": [
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/substation": {
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn"
+          }
+        },
+        "transformatory": {
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/substation": [
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/wn_sn",
+            "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/wn_sn"
+          ]
+        },
+        "zaciski_pol": {
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/001/001/terminal",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001": "gpz/9a68495b5e3a139b18e847aa4a817c20/bay/002/001/terminal",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_1": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/coupler/001/bay_cell_2": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001/bay": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bay_line": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bay_line": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/capacitor": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/earthing": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bay_function/measurement": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/capacitor": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/earthing": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bay_function/measurement": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_sn": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/001/bay_wn": null,
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_sn": "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/terminal_sn",
+          "gpz/9a68495b5e3a139b18e847aa4a817c20/transformer/002/bay_wn": null
+        }
+      }
+    },
     "src/ui/sld/v3/canvas/__tests__/fixtures/s92Bieg.enm.json": {
       "": {
         "pola": {
@@ -26629,6 +26791,166 @@
         }
       }
     },
+    "src/ui/sld/v3/scene/__tests__/fixtures/gpzH5_2x2.enm.json": {
+      "/enm": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_1": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_2": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001/bay": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bay_line": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bay_line": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/capacitor": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/earthing": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/measurement": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/capacitor": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/earthing": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/measurement": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_sn": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_wn": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_sn": false,
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_wn": false
+          },
+          "stacja_pola": {
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_1": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_2": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001/bay": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bay_line": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bay_line": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/capacitor": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/earthing": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/measurement": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/capacitor": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/earthing": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/measurement": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_sn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_wn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_sn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_wn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation"
+          },
+          "stacje": {
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bay_line",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bay_line",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_wn",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_sn",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_wn",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_sn",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001/bay",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_1",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_2",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/earthing",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/capacitor",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/measurement",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/earthing",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/capacitor",
+                "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/measurement"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bay_line",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001/bay",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_wn"
+            ],
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bay_line",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_wn"
+            ],
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_1",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/capacitor",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/earthing",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/measurement",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_sn"
+            ],
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn": [
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_2",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/capacitor",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/earthing",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/measurement",
+              "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_sn"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_1": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_2": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001/bay": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bay_line": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bay_line": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/capacitor": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/earthing": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/measurement": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/capacitor": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/earthing": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/measurement": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_sn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_wn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_sn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_wn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn"
+        },
+        "szyny": {
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation": [
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation": {
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bus_wn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bus_wn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bus_sn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn": "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bus_sn"
+          }
+        },
+        "transformatory": {
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/substation": [
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/wn_sn",
+            "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/wn_sn"
+          ]
+        },
+        "zaciski_pol": {
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/001/001/terminal",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001": "gpz/a3e784f7e5c5f97099a75318cb7faf12/bay/002/001/terminal",
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_1": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/coupler/001/bay_cell_2": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_coupler/001/bay": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/001/bay_line": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/hv_section/002/bay_line": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/capacitor": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/earthing": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/001/bay_function/measurement": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/capacitor": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/earthing": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/section/002/bay_function/measurement": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_sn": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/001/bay_wn": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_sn": null,
+          "gpz/a3e784f7e5c5f97099a75318cb7faf12/transformer/002/bay_wn": null
+        }
+      }
+    },
     "src/ui/sld/v3/scene/__tests__/fixtures/gpzProtectionDataPath.enm.json": {
       "/enm": {
         "pola": {
@@ -26841,6 +27163,67 @@
           "stn/ed2ea901eb81393c8ddbe0023f54676b/sn_field/000": "stn/ed2ea901eb81393c8ddbe0023f54676b/sn_field_terminal/000",
           "stn/ed2ea901eb81393c8ddbe0023f54676b/sn_field/001": "stn/ed2ea901eb81393c8ddbe0023f54676b/sn_field_terminal/001",
           "stn/ed2ea901eb81393c8ddbe0023f54676b/sn_field/002": "stn/ed2ea901eb81393c8ddbe0023f54676b/sn_field_terminal/002"
+        }
+      }
+    },
+    "src/ui/sld/v3/scene/__tests__/fixtures/gpzRownowaznikSn2.enm.json": {
+      "/enm": {
+        "pola": {
+          "czy_pole_nn": {
+            "gpz/3263c637633b69c320522e52f22a2339/bay/001/001": false,
+            "gpz/3263c637633b69c320522e52f22a2339/bay/002/001": false,
+            "gpz/3263c637633b69c320522e52f22a2339/coupler/001/bay": false
+          },
+          "stacja_pola": {
+            "gpz/3263c637633b69c320522e52f22a2339/bay/001/001": "gpz/3263c637633b69c320522e52f22a2339/substation",
+            "gpz/3263c637633b69c320522e52f22a2339/bay/002/001": "gpz/3263c637633b69c320522e52f22a2339/substation",
+            "gpz/3263c637633b69c320522e52f22a2339/coupler/001/bay": "gpz/3263c637633b69c320522e52f22a2339/substation"
+          },
+          "stacje": {
+            "gpz/3263c637633b69c320522e52f22a2339/substation": {
+              "nn": [],
+              "sn": [
+                "gpz/3263c637633b69c320522e52f22a2339/bay/001/001",
+                "gpz/3263c637633b69c320522e52f22a2339/bay/002/001",
+                "gpz/3263c637633b69c320522e52f22a2339/coupler/001/bay"
+              ]
+            }
+          },
+          "wg_szyny": {
+            "gpz/3263c637633b69c320522e52f22a2339/section/001/bus_sn": [
+              "gpz/3263c637633b69c320522e52f22a2339/bay/001/001",
+              "gpz/3263c637633b69c320522e52f22a2339/coupler/001/bay"
+            ],
+            "gpz/3263c637633b69c320522e52f22a2339/section/002/bus_sn": [
+              "gpz/3263c637633b69c320522e52f22a2339/bay/002/001"
+            ]
+          },
+          "zksn": {}
+        },
+        "punkty_przylaczenia_rekordow_pol": {
+          "gpz/3263c637633b69c320522e52f22a2339/bay/001/001": "gpz/3263c637633b69c320522e52f22a2339/section/001/bus_sn",
+          "gpz/3263c637633b69c320522e52f22a2339/bay/002/001": "gpz/3263c637633b69c320522e52f22a2339/section/002/bus_sn",
+          "gpz/3263c637633b69c320522e52f22a2339/coupler/001/bay": "gpz/3263c637633b69c320522e52f22a2339/section/001/bus_sn"
+        },
+        "szyny": {
+          "gpz/3263c637633b69c320522e52f22a2339/substation": [
+            "gpz/3263c637633b69c320522e52f22a2339/section/001/bus_sn",
+            "gpz/3263c637633b69c320522e52f22a2339/section/002/bus_sn"
+          ]
+        },
+        "szyny_glowne": {
+          "gpz/3263c637633b69c320522e52f22a2339/substation": {
+            "gpz/3263c637633b69c320522e52f22a2339/section/001/bus_sn": "gpz/3263c637633b69c320522e52f22a2339/section/001/bus_sn",
+            "gpz/3263c637633b69c320522e52f22a2339/section/002/bus_sn": "gpz/3263c637633b69c320522e52f22a2339/section/002/bus_sn"
+          }
+        },
+        "transformatory": {
+          "gpz/3263c637633b69c320522e52f22a2339/substation": []
+        },
+        "zaciski_pol": {
+          "gpz/3263c637633b69c320522e52f22a2339/bay/001/001": null,
+          "gpz/3263c637633b69c320522e52f22a2339/bay/002/001": null,
+          "gpz/3263c637633b69c320522e52f22a2339/coupler/001/bay": null
         }
       }
     },

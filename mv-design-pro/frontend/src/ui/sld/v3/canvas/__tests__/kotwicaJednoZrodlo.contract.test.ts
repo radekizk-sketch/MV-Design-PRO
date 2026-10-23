@@ -449,9 +449,9 @@ describe('E — deklaracje z nagłówków mają pokrycie', () => {
   // go wymusiło świadomą decyzję. Producent się pojawił (odbiory sekcji GPZ, rodzaj `'odbior'`)
   // i decyzja jest tu przypięta: podpis odbioru celuje w TĘ SAMĄ kategorię co symbol
   // `loadArrow` tego samego `Load.ref_id` (menu i inspektor odbioru, nie szyny). Iloczyn:
-  // {H5 2×2, 1×3, równoważnik SN 2 sekcje} × LOD {1, 2} (L0 nie rysuje podpisów danych).
+  // {H5 2×2, równoważnik SN 2 sekcje} × LOD {1, 2} (L0 nie rysuje podpisów danych).
   it('podpis odbioru (`odbior`) i symbol odbioru — ten sam ref i ta sama kategoria menu', () => {
-    const fikstury = ['gpzH5_2x2', 'gpzH5_1x3', 'gpzRownowaznikSn2'];
+    const fikstury = ['gpzH5_2x2', 'gpzRownowaznikSn2'];
     for (const nazwa of fikstury) {
       const enm = (JSON.parse(
         readFileSync(resolve(here, `../../scene/__tests__/fixtures/${nazwa}.enm.json`), 'utf-8'),

@@ -1056,7 +1056,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "b413ff9f6ae8a49d462ad54f90b8a60d28a891c5ea45323f368c3b9d7d617558",
+      "hash_sha256": "16fbbc100a2b91f486dfafc8da67215730114fa0b435467dafe912a8a42fa06b",
       "name": "Odgałęzienie z pola GPZ",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1174,7 +1174,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

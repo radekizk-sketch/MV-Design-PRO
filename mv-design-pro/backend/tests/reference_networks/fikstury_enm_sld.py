@@ -27,6 +27,11 @@ Sieci (nazwy plików jak w repo, ścieżki względem ``frontend``):
 * ``nnBoardDemo`` (``public``) — ``openBranch`` + rozdzielnica nN z sekcją 2 i odpływami;
 * ``stacjaPomiar1000`` — dwa odcinki + szablon stacji 1000 kVA z pomiarem rozliczeniowym
   (ZKSN na odcinku zaraz za GPZ, stacja w odgałęzieniu);
+* ``gpzH5_2x2``, ``gpzRownowaznikSn2`` — GPZ z sekcjami: H5 2×2 (dwie sekcje 110 kV) i
+  równoważnik na dwóch sekcjach SN (karta GPZ-H5-SLD; układ wielotransformatorowy na jednej
+  sekcji 110 kV usunięty z produktu decyzją właściciela 2026-10-22 — nie ma fikstury SLD);
+* ``gpzH5RezerwaJawnaBezLsSn`` + ``.rozplyw``/``.zwarcie.results_v1`` — H5 z rezerwą jawną po
+  otwarciu łącznika szyn SN: migawka biegu i odpowiedzi wyników biegów rozpływu i zwarcia 3F;
 * ``elementyCiagu-<rodzaj>`` — macierz kompletności rysunku: GPZ, pięć odcinków, stacje na
   odcinkach 1 i 3, element rodzaju ZKSN / słup rozgałęźny / łącznik sekcyjny / węzeł nazwany
   na odcinkach 0 (za GPZ), 2 (między stacjami) i 4 (za ostatnią stacją).
@@ -50,9 +55,12 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import uuid
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -60,12 +68,14 @@ from tests.golden.zapis_fikstur import json_fikstury, tresc_z_kotwica, zaokragli
 from tests.reference_networks.budowa_przez_api import (
     APARAT_POLA_SN,
     TRANSFORMATOR_630,
+    ZRODLO_GPZ,
     KlientBudowy,
     normalizuj_migawke,
     pole_gpz,
     segmenty_korytarza,
     wiazanie,
 )
+from tests.reference_networks.gpz_h5 import ODBIOR_A, ODBIOR_B, ladunek_h5
 from tests.utils.biegi import wykonaj_bieg
 
 FRONTEND = Path(__file__).resolve().parents[3] / "frontend"
@@ -647,6 +657,137 @@ def _stacja_pomiar_1000(b: KlientBudowy) -> dict[str, Any]:
     return b.migawka()
 
 
+# --- GPZ z sekcjami 110 kV (karta GPZ-H5-SLD) ---------------------------------------
+#
+# Sieci kontraktów rysunku GPZ (iloczyn sieć × łącznik 110 kV × łącznik SN × wynik): do karty
+# GPZ-H5-INTEGRACJA były to pliki pisane ręcznie (identyfikatory „gpz/h5/…", transformatory
+# bez pozycji katalogu, odbiór na szynie 110 kV), których produkt nie wytwarza — test
+# `test_kazdy_model_enm_w_katalogach_fikstur_ma_generator` był na nich czerwony. Teraz
+# powstają TĄ SAMĄ operacją `add_grid_source_sn` z kontraktem karty GPZ-H5 co przypadek
+# odbiorowy (`tests/reference_networks/gpz_h5.py`).
+
+
+def _odbiory_sekcji(b: KlientBudowy, odbiory: tuple[tuple[str, float, float], ...]) -> None:
+    """Odbiory SN na kolejnych sekcjach SN GPZ (kolejność `gpz_sections[].order`)."""
+    (stacja,) = (s for s in b.migawka()["substations"] if s.get("station_type") == "gpz")
+    sekcje = sorted(stacja["gpz_sections"], key=lambda s: s["order"])
+    for sekcja, (nazwa, p_mw, q_mvar) in zip(sekcje, odbiory, strict=False):
+        b.operacja(
+            "add_load_sn",
+            {"bus_ref": sekcja["bus_ref"], "p_mw": p_mw, "q_mvar": q_mvar, "load_name": nazwa},
+        )
+
+
+def _gpz_h5_2x2(b: KlientBudowy) -> dict[str, Any]:
+    """H5 2×2: dwie sekcje 110 kV z torami L1/L2 i łącznikiem szyn 110 kV normalnie otwartym,
+    dwa transformatory 110/15 kV (TR k: sekcja 110 kV k → sekcja SN k), rezerwa ukryta
+    (łącznik szyn SN normalnie otwarty), odbiór na każdej sekcji SN."""
+    b.operacja("add_grid_source_sn", ladunek_h5())
+    _odbiory_sekcji(b, (ODBIOR_A, ODBIOR_B))
+    return b.migawka()
+
+
+def _gpz_rownowaznik_sn_2(b: KlientBudowy) -> dict[str, Any]:
+    """GPZ bez strony 110 kV: równoważnik sieci na każdej z dwóch sekcji SN (źródło z
+    katalogu), łącznik szyn SN normalnie otwarty. Pola liniowe sekcji BEZ aparatu
+    (`gpz_line_field_apparatus` pominięte) — scena tego przypadku jest wyrocznią znaku „?"
+    pola bez aparatu (`gpzOznaczeniaKadr.contract.test.tsx`)."""
+    zasilanie = {"catalog_binding": wiazanie("ZRODLO_SN", ZRODLO_GPZ)}
+    b.operacja(
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "source_name": "GPZ — równoważnik na sekcjach SN",
+            "sections_count": 2,
+            "sn_coupler": {"normal_state": "open"},
+            "gpz_sections": [
+                {"name": "Sekcja SN 1", "supply": dict(zasilanie)},
+                {"name": "Sekcja SN 2", "supply": dict(zasilanie)},
+            ],
+        },
+    )
+    _odbiory_sekcji(b, (("Odbiór sekcji SN 1", 1.0, 0.3),))
+    return b.migawka()
+
+
+#: Biegi sceny „łącznik szyn SN otwarty" (identyfikator biegu w fiksturze wyprowadzony z nazwy
+#: biegu — w produkcie losowy uuid4).
+_BIEGI_H5_BEZ_LS_SN: tuple[tuple[str, str], ...] = (("rozplyw", "LOAD_FLOW"), ("zwarcie", "SC_3F"))
+
+
+class _ZegarStaly:
+    """Zamiennik `datetime` w `enm.canonical_analysis` na czas biegu fikstury — moduł woła
+    wyłącznie `datetime.now(...)`."""
+
+    @staticmethod
+    def now(tz: Any = None) -> datetime:  # noqa: ARG004 - kontrakt `datetime.now`
+        return datetime.fromisoformat(_CZAS.replace("Z", "+00:00"))
+
+
+def _gpz_h5_rezerwa_jawna_bez_ls_sn(
+    klient: TestClient,
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
+    """GPZ H5, rezerwa transformatorowa jawna (TR2 rezerwowy, wyłącznik jego pola SN
+    normalnie otwarty, łącznik szyn SN normalnie zamknięty), po czym łącznik szyn SN
+    OTWARTY operacją `open_switch` (ta sama, którą wysyła menu kanwy „Otwórz łącznik") —
+    sekcja SN 2 nie ma w stanie łączników żadnego źródła. Biegi rozpływu i zwarcia 3F tego
+    stanu: migawka biegu (`GET /api/analysis-runs/{id}/snapshot`) i odpowiedzi
+    `GET /api/execution/runs/{id}/results/v1`."""
+    # Identyfikator przypadku wchodzi do odcisku wejścia biegu (`solver_input_hash`), a ten do
+    # `proof_ref` — przypadek fikstury ma więc identyfikator stały (wyprowadzony z nazwy
+    # fikstury), a drugi render w tym samym procesie (test determinizmu) usuwa poprzedni.
+    id_przypadku = uuid.uuid5(uuid.NAMESPACE_URL, "gpzH5RezerwaJawnaBezLsSn/przypadek")
+    if klient.get(f"/api/study-cases/{id_przypadku}").status_code == 200:
+        assert klient.delete(f"/api/study-cases/{id_przypadku}").status_code == 204
+    with patch("domain.study_case.uuid4", return_value=id_przypadku):
+        b = KlientBudowy(klient, "GPZ H5 — rezerwa jawna, łącznik szyn SN otwarty")
+    assert b.case_id == str(id_przypadku), b.case_id
+    b.operacja("add_grid_source_sn", ladunek_h5(reserve_mode="explicit"))
+    _odbiory_sekcji(b, (ODBIOR_A, ODBIOR_B))
+    enm = b.migawka()
+    (stacja,) = (s for s in enm["substations"] if s.get("station_type") == "gpz")
+    szyny_sn = {s["bus_ref"] for s in stacja["gpz_sections"]}
+    (lacznik_sn,) = (
+        g["ref_id"]
+        for g in enm["branches"]
+        if g.get("type") == "bus_coupler"
+        and {g.get("from_bus_ref"), g.get("to_bus_ref")} <= szyny_sn
+    )
+    b.operacja("open_switch", {"switch_ref": lacznik_sn})
+    from enm.canonical_analysis import has_run, reset_canonical_runs
+
+    wyniki: dict[str, dict[str, Any]] = {}
+    migawka: dict[str, Any] | None = None
+    for nazwa, rodzaj in _BIEGI_H5_BEZ_LS_SN:
+        # Tożsamość i zegar biegu przypięte NA WEJŚCIU (nie podmienione w odpowiedzi):
+        # `run.id` wchodzi do SHA-256 podpisu wyniku i `proof_ref`, a `created_at` do
+        # odpowiedzi — zamiana tekstowa po fakcie zostawiłaby losowe odciski.
+        id_biegu = uuid.uuid5(uuid.NAMESPACE_URL, f"gpzH5RezerwaJawnaBezLsSn/{nazwa}")
+        if has_run(id_biegu):
+            # Drugi render w tym samym procesie (test determinizmu generatora): rejestr
+            # biegów nie przyjmie drugiego biegu o tym samym identyfikatorze.
+            reset_canonical_runs()
+        with (
+            patch("enm.canonical_analysis.uuid4", return_value=id_biegu),
+            patch("enm.canonical_analysis.datetime", _ZegarStaly),
+        ):
+            bieg = klient.post(
+                f"/api/execution/study-cases/{b.case_id}/runs",
+                json={"analysis_type": rodzaj, "solver_input": {}},
+            ).json()
+            assert bieg["id"] == str(id_biegu), bieg
+            wykonaj_bieg(klient, bieg["id"])
+        wynik = klient.get(f"/api/execution/runs/{bieg['id']}/results/v1").json()
+        # Znacznik czasu ZBUDOWANIA odpowiedzi (`result_builder_v1`: chwila odczytu), nie dana
+        # biegu — w fiksturze stały, jak `run_finished_at` nakładek `s92`.
+        wynik["created_at"] = _CZAS
+        wyniki[nazwa] = wynik
+        if migawka is None:
+            migawka = klient.get(f"/api/analysis-runs/{bieg['id']}/snapshot").json()["snapshot"]
+    assert migawka is not None
+    return migawka, {n: zaokraglij_liczby(w) for n, w in wyniki.items()}
+
+
 #: Rodzaje elementów, które mogą stać NA CIĄGU GŁÓWNYM między węzłami ze stacją
 #: (inwentarz klasy karty SLD-SUBSTRAT, kontynuacja): punkt odgałęźny ZKSN (odcinek
 #: kablowy), słup rozgałęźny (odcinek napowietrzny), łącznik sekcyjny (punkt podziału),
@@ -729,6 +870,12 @@ _SIECI: tuple[tuple[tuple[str, ...], str, Callable[[KlientBudowy], dict[str, Any
         "Stacja z pomiarem za ZKSN",
         _stacja_pomiar_1000,
     ),
+    ((f"{SCENA}/gpzH5_2x2.enm.json",), "GPZ H5 2×2", _gpz_h5_2x2),
+    (
+        (f"{SCENA}/gpzRownowaznikSn2.enm.json",),
+        "GPZ — równoważnik na sekcjach SN",
+        _gpz_rownowaznik_sn_2,
+    ),
 )
 
 
@@ -760,6 +907,15 @@ def render_fikstur_enm_sld() -> dict[str, str]:
             nazwa = f"Elementy ciągu — {rodzaj}"
             tresci[f"{SCENA}/elementyCiagu-{rodzaj}.enm.json"] = _plik_enm(
                 _elementy_ciagu(KlientBudowy(klient, nazwa), rodzaj), nazwa
+            )
+
+        migawka_h5, wyniki_h5 = _gpz_h5_rezerwa_jawna_bez_ls_sn(klient)
+        tresci[f"{KANWA}/gpzH5RezerwaJawnaBezLsSn.enm.json"] = _plik_enm(
+            migawka_h5, "GPZ H5 — rezerwa jawna, łącznik szyn SN otwarty", opakuj=False
+        )
+        for nazwa_biegu, wynik_biegu in wyniki_h5.items():
+            tresci[f"{KANWA}/gpzH5RezerwaJawnaBezLsSn.{nazwa_biegu}.results_v1.json"] = (
+                json_fikstury(wynik_biegu)
             )
 
         bieg, zwarcie, rozplyw = _s92(klient)

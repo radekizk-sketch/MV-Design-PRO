@@ -1632,7 +1632,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "0bc26362968dded8fc2ee7da2c328f7a4a09abc1c9a5d2e9743752420027f657",
+      "hash_sha256": "7e088463cef8259e05aad7f671efd3a13196ec3d4022ec0af5673852134f0a5a",
       "name": "GPZ z magistralą i odgałęzieniem",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1794,7 +1794,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

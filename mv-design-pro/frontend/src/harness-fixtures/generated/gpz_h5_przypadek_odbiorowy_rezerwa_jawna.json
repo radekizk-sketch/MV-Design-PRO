@@ -980,28 +980,6 @@
         "x_ohm": 0.0
       },
       {
-        "catalog_namespace": null,
-        "catalog_ref": null,
-        "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
-        "id": "13159ab6-cd14-524b-b364-d0b7822965be",
-        "materialized_params": null,
-        "meta": {
-          "gpz_substation_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation"
-        },
-        "name": "Łącznik szyn 110 kV GPZ 1-2",
-        "normal_state": "open",
-        "overrides": [],
-        "parameter_source": null,
-        "r_ohm": null,
-        "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
-        "source_mode": null,
-        "status": "open",
-        "tags": [],
-        "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
-        "type": "bus_coupler",
-        "x_ohm": null
-      },
-      {
         "catalog_namespace": "APARAT_SN",
         "catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
@@ -1065,6 +1043,28 @@
         "status": "closed",
         "tags": [],
         "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+        "type": "bus_coupler",
+        "x_ohm": null
+      },
+      {
+        "catalog_namespace": null,
+        "catalog_ref": null,
+        "from_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+        "id": "13159ab6-cd14-524b-b364-d0b7822965be",
+        "materialized_params": null,
+        "meta": {
+          "gpz_substation_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/substation"
+        },
+        "name": "Łącznik szyn 110 kV GPZ 1-2",
+        "normal_state": "open",
+        "overrides": [],
+        "parameter_source": null,
+        "r_ohm": null,
+        "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_coupler/001",
+        "source_mode": null,
+        "status": "open",
+        "tags": [],
+        "to_bus_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
         "type": "bus_coupler",
         "x_ohm": null
       },
@@ -1380,7 +1380,7 @@
           "source_id": "GPZ H5 110/15 kV"
         },
         "model": "short_circuit_power",
-        "name": "L1 (Stacja zasilająca A — przykładowe dane przypadku testowego)",
+        "name": "L1",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",
@@ -1435,7 +1435,7 @@
           "source_id": "GPZ H5 110/15 kV"
         },
         "model": "short_circuit_power",
-        "name": "L2 (Stacja zasilająca B — przykładowe dane przypadku testowego)",
+        "name": "L2",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

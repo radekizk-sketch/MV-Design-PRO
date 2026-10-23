@@ -998,7 +998,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "8f428556620ad6b4109a4b84840d59f4a6d96417a0dd40329e17a0bb91407833",
+      "hash_sha256": "568fb617b10215cbe51973c30ddfdb9b3a549be246ad6f4050922539659a00de",
       "name": "Łańcuch odcinków magistrali",
       "revision": 6,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -1104,7 +1104,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

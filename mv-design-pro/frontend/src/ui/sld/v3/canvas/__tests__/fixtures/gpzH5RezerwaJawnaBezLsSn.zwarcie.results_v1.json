@@ -1,329 +1,329 @@
 {
- "analysis_type": "SC_3F",
- "contract_version": "1.0",
- "created_at": "2026-10-22T16:55:23.050963+00:00",
- "deterministic_signature": "e05fe1c7d725890ed267c3c2983b420c6638e1044d5200eaaa98925c1104c56c",
- "element_results": [
-  {
-   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
-   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
-   "element_type": "Bus",
-   "values": {
-    "analysis_type": "short_circuit_3f",
-    "dopuszczalnosc_raportowa": true,
-    "fault_type": "3F",
-    "i2t_ka2s": 178.0520877894444,
-    "i_dc_ka": 0.8019094661559146,
-    "ib_ka": 13.121597027036948,
-    "ikss_ka": 13.121597027036948,
-    "ip_ka": 32.400103316735304,
-    "ith_ka": 13.343615993779363,
-    "proof_ref": "proof:short-circuit:4d62336c478ed7a72c2a00a5920013d5f572a333551464ec10bf0f305f475062",
-    "proof_status": "complete",
-    "reporting_status": "reportable",
-    "rk_ohm": 0.5297578000677984,
-    "rx_ratio": 0.1,
-    "sk_mva": 2500.0,
-    "tb_s": 0.1,
-    "tb_zrodlo": {
-     "ib_z_udzialem_maszyn": false,
-     "jakosc": "ESTIMATED",
-     "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-     "pochodzenie": "PROPOZYCJA",
-     "wartosc_robocza": true,
-     "wartosc_s": 0.1,
-     "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
-    },
-    "tk_s": 1.0,
-    "xk_ohm": 5.297578000677984,
-    "xr_ratio": 10.0,
-    "zk_ohm": 5.324000000000002
-   }
-  },
-  {
-   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
-   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
-   "element_type": "Bus",
-   "values": {
-    "analysis_type": "short_circuit_3f",
-    "dopuszczalnosc_raportowa": true,
-    "fault_type": "3F",
-    "i2t_ka2s": 92.30220231004793,
-    "i_dc_ka": 0.5773748156322579,
-    "ib_ka": 9.447549859466601,
-    "ikss_ka": 9.447549859466601,
-    "ip_ka": 23.32807438804941,
-    "ith_ka": 9.607403515521138,
-    "proof_ref": "proof:short-circuit:745f0c72f8caf696aa2eb30637e378a1675e4f403876a6ffbf36198c9ee5221f",
-    "proof_status": "complete",
-    "reporting_status": "reportable",
-    "rk_ohm": 0.735774722316387,
-    "rx_ratio": 0.10000000000000003,
-    "sk_mva": 1799.9999999999993,
-    "tb_s": 0.1,
-    "tb_zrodlo": {
-     "ib_z_udzialem_maszyn": false,
-     "jakosc": "ESTIMATED",
-     "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-     "pochodzenie": "PROPOZYCJA",
-     "wartosc_robocza": true,
-     "wartosc_s": 0.1,
-     "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
-    },
-    "tk_s": 1.0,
-    "xk_ohm": 7.357747223163868,
-    "xr_ratio": 9.999999999999996,
-    "zk_ohm": 7.394444444444448
-   }
-  },
-  {
-   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn",
-   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn",
-   "element_type": "Bus",
-   "values": {
-    "analysis_type": "short_circuit_3f",
-    "dopuszczalnosc_raportowa": true,
-    "fault_type": "3F",
-    "i2t_ka2s": 84.88266143378955,
-    "i_dc_ka": 2.7132592226620678,
-    "ib_ka": 8.907947664090889,
-    "ikss_ka": 8.907947664090889,
-    "ip_ka": 23.511823163549337,
-    "ith_ka": 9.213178682397816,
-    "proof_ref": "proof:short-circuit:d9853f28a2416e42fc390ebe56378853140d165424ab5cc119559002095c61b2",
-    "proof_status": "complete",
-    "reporting_status": "reportable",
-    "rk_ohm": 0.05220233392429308,
-    "rx_ratio": 0.048872245906455364,
-    "sk_mva": 231.43526918054874,
-    "tb_s": 0.1,
-    "tb_zrodlo": {
-     "ib_z_udzialem_maszyn": false,
-     "jakosc": "ESTIMATED",
-     "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): żadne pole z wyłącznikiem przyłączone do szyny punktu zwarcia nie daje czasu wyłączenia z nastaw zabezpieczenia (pole Pole liniowe GPZ 1.1 — Aparat tego pola nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny). Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
-     "pochodzenie": "PROPOZYCJA",
-     "wartosc_robocza": true,
-     "wartosc_s": 0.1,
-     "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
-    },
-    "tk_s": 1.0,
-    "xk_ohm": 1.068138632798086,
-    "xr_ratio": 20.461511057094953,
-    "zk_ohm": 1.0694134946515812
-   }
-  },
-  {
-   "element_ref": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn",
-   "element_ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn",
-   "element_type": "Bus",
-   "values": {
-    "analysis_type": "short_circuit_3f",
-    "dopuszczalnosc_raportowa": false,
-    "fault_type": "3F",
-    "i2t_ka2s": null,
-    "i_dc_ka": null,
-    "ib_ka": null,
-    "ikss_ka": null,
-    "ip_ka": null,
-    "ith_ka": null,
-    "proof_ref": "proof:short-circuit:3ab7ecc2049cd8b57dea3221dc0b6d5a246e5a4f0cf19c280266895b3cff5b04",
-    "proof_status": "partial",
-    "reporting_status": "not_reportable",
-    "rk_ohm": null,
-    "rx_ratio": null,
-    "sk_mva": null,
-    "tb_s": null,
-    "tk_s": 1.0,
-    "xk_ohm": null,
-    "xr_ratio": null,
-    "zk_ohm": null
-   }
-  }
- ],
- "global_results": {
-  "analysis_type": "short_circuit_3f",
-  "count": 4,
-  "proof_status": "complete",
-  "reporting_status": "reportable",
-  "short_circuit_type": "3F"
- },
- "overlay_payload": {
-  "elements": {
-   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn": {
-    "badges": [],
-    "kind": "bus",
-    "metrics": {
-     "IK_3F_A": {
-      "code": "IK_3F_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 13.121597027036948
-     },
-     "IP_A": {
-      "code": "IP_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 32.400103316735304
-     },
-     "ITH_A": {
-      "code": "ITH_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 13.343615993779363
-     },
-     "SK_MVA": {
-      "code": "SK_MVA",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "MVA",
-      "value": 2500.0
-     }
-    },
-    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/001/bus_wn",
-    "severity": "INFO"
-   },
-   "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn": {
-    "badges": [],
-    "kind": "bus",
-    "metrics": {
-     "IK_3F_A": {
-      "code": "IK_3F_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 9.447549859466601
-     },
-     "IP_A": {
-      "code": "IP_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 23.32807438804941
-     },
-     "ITH_A": {
-      "code": "ITH_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 9.607403515521138
-     },
-     "SK_MVA": {
-      "code": "SK_MVA",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "MVA",
-      "value": 1799.9999999999993
-     }
-    },
-    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/hv_section/002/bus_wn",
-    "severity": "INFO"
-   },
-   "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn": {
-    "badges": [],
-    "kind": "bus",
-    "metrics": {
-     "IK_3F_A": {
-      "code": "IK_3F_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 8.907947664090889
-     },
-     "IP_A": {
-      "code": "IP_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 23.511823163549337
-     },
-     "ITH_A": {
-      "code": "ITH_A",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "kA",
-      "value": 9.213178682397816
-     },
-     "SK_MVA": {
-      "code": "SK_MVA",
-      "format_hint": "fixed2",
-      "source": "solver",
-      "unit": "MVA",
-      "value": 231.43526918054874
-     }
-    },
-    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/001/bus_sn",
-    "severity": "INFO"
-   },
-   "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn": {
-    "badges": [],
-    "kind": "bus",
-    "metrics": {},
-    "ref_id": "gpz/ae7a02f1d0a83080acdf314f294cd05f/section/002/bus_sn",
-    "severity": "INFO"
-   }
-  },
-  "legend": {
-   "entries": [
+  "analysis_type": "SC_3F",
+  "contract_version": "1.0",
+  "created_at": "2026-09-25T00:00:00Z",
+  "deterministic_signature": "7d79dc6cc6a637a8ed38ae155c3a0e55caf6b80959b506e7dfc10a3ba9992ab4",
+  "element_results": [
     {
-     "description": "Element poprawny, wyniki dostępne",
-     "label": "Poprawne",
-     "severity": "INFO"
+      "element_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+      "element_ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+      "element_type": "Bus",
+      "values": {
+        "analysis_type": "short_circuit_3f",
+        "dopuszczalnosc_raportowa": true,
+        "fault_type": "3F",
+        "i2t_ka2s": 178.052087789,
+        "i_dc_ka": 0.801909466156,
+        "ib_ka": 13.121597027,
+        "ikss_ka": 13.121597027,
+        "ip_ka": 32.4001033167,
+        "ith_ka": 13.3436159938,
+        "proof_ref": "proof:short-circuit:3fc4bf85918c02b54633206dfaf7c6629a157fa1096f95e359001909367453e6",
+        "proof_status": "complete",
+        "reporting_status": "reportable",
+        "rk_ohm": 0.529757800068,
+        "rx_ratio": 0.1,
+        "sk_mva": 2500.0,
+        "tb_s": 0.1,
+        "tb_zrodlo": {
+          "ib_z_udzialem_maszyn": false,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "wartosc_s": 0.1,
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        },
+        "tk_s": 1.0,
+        "xk_ohm": 5.29757800068,
+        "xr_ratio": 10.0,
+        "zk_ohm": 5.324
+      }
     },
     {
-     "description": "Element z ostrzeżeniami walidacji",
-     "label": "Ostrzeżenie",
-     "severity": "WARNING"
+      "element_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+      "element_ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+      "element_type": "Bus",
+      "values": {
+        "analysis_type": "short_circuit_3f",
+        "dopuszczalnosc_raportowa": true,
+        "fault_type": "3F",
+        "i2t_ka2s": 92.30220231,
+        "i_dc_ka": 0.577374815632,
+        "ib_ka": 9.44754985947,
+        "ikss_ka": 9.44754985947,
+        "ip_ka": 23.328074388,
+        "ith_ka": 9.60740351552,
+        "proof_ref": "proof:short-circuit:833f1040f3631d4c04aca02bb68a3c213bf928169b7a3fae75e7c7aebaf06911",
+        "proof_status": "complete",
+        "reporting_status": "reportable",
+        "rk_ohm": 0.735774722316,
+        "rx_ratio": 0.1,
+        "sk_mva": 1800.0,
+        "tb_s": 0.1,
+        "tb_zrodlo": {
+          "ib_z_udzialem_maszyn": false,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "wartosc_s": 0.1,
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        },
+        "tk_s": 1.0,
+        "xk_ohm": 7.35774722316,
+        "xr_ratio": 10.0,
+        "zk_ohm": 7.39444444444
+      }
     },
     {
-     "description": "Element wymaga uwagi",
-     "label": "Ważne",
-     "severity": "IMPORTANT"
+      "element_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+      "element_ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+      "element_type": "Bus",
+      "values": {
+        "analysis_type": "short_circuit_3f",
+        "dopuszczalnosc_raportowa": true,
+        "fault_type": "3F",
+        "i2t_ka2s": 84.8826614338,
+        "i_dc_ka": 2.71325922266,
+        "ib_ka": 8.90794766409,
+        "ikss_ka": 8.90794766409,
+        "ip_ka": 23.5118231635,
+        "ith_ka": 9.2131786824,
+        "proof_ref": "proof:short-circuit:ae2bd9a8065c1883ed4f5b64c4076411f2454636db0c089bc61094515c834b59",
+        "proof_status": "complete",
+        "reporting_status": "reportable",
+        "rk_ohm": 0.0522023339243,
+        "rx_ratio": 0.0488722459065,
+        "sk_mva": 231.435269181,
+        "tb_s": 0.1,
+        "tb_zrodlo": {
+          "ib_z_udzialem_maszyn": false,
+          "jakosc": "ESTIMATED",
+          "opis_pl": "t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): żadne pole z wyłącznikiem przyłączone do szyny punktu zwarcia nie daje czasu wyłączenia z nastaw zabezpieczenia (pole Pole liniowe GPZ 1.1 — Aparat tego pola nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny). Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
+          "pochodzenie": "PROPOZYCJA",
+          "wartosc_robocza": true,
+          "wartosc_s": 0.1,
+          "zrodlo_pl": "węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)"
+        },
+        "tk_s": 1.0,
+        "xk_ohm": 1.0681386328,
+        "xr_ratio": 20.4615110571,
+        "zk_ohm": 1.06941349465
+      }
     },
     {
-     "description": "Element uniemożliwia poprawne obliczenia",
-     "label": "Blokujące",
-     "severity": "BLOCKER"
+      "element_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+      "element_ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+      "element_type": "Bus",
+      "values": {
+        "analysis_type": "short_circuit_3f",
+        "dopuszczalnosc_raportowa": false,
+        "fault_type": "3F",
+        "i2t_ka2s": null,
+        "i_dc_ka": null,
+        "ib_ka": null,
+        "ikss_ka": null,
+        "ip_ka": null,
+        "ith_ka": null,
+        "proof_ref": "proof:short-circuit:e4a75c92c81eea9dc3c14722f655dd5eb3c8d8c4122a509bdac5493c63d1e52e",
+        "proof_status": "partial",
+        "reporting_status": "not_reportable",
+        "rk_ohm": null,
+        "rx_ratio": null,
+        "sk_mva": null,
+        "tb_s": null,
+        "tk_s": 1.0,
+        "xk_ohm": null,
+        "xr_ratio": null,
+        "zk_ohm": null
+      }
     }
-   ],
-   "title": "Legenda wyników"
+  ],
+  "global_results": {
+    "analysis_type": "short_circuit_3f",
+    "count": 4,
+    "proof_status": "complete",
+    "reporting_status": "reportable",
+    "short_circuit_type": "3F"
   },
-  "warnings": [
-   {
-    "code": "E065",
-    "element_ref": null,
-    "message": "Sekcja GPZ bez zasilania: sekcja „Sekcja SN B” (GPZ „GPZ H5 110/15 kV”) nie ma własnego równoważnika sieci, a sprzęgło „Sprzęgło sekcji GPZ 1-2” jest otwarte — szyny sekcji i zasilane z niej odpływy są odcięte od źródła. Rozpływ mocy i zwarcia liczą część zasilaną; sekcja odcięta jest w wynikach bez napięcia.",
-    "severity": "IMPORTANT"
-   },
-   {
-    "code": "I001",
-    "element_ref": null,
-    "message": "Łącznik „Sprzęgło sekcji GPZ 1-2” jest otwarty wbrew pozycji normalnej (zamkniętej) — odcina część sieci.",
-    "severity": "INFO"
-   },
-   {
-    "code": "I001",
-    "element_ref": null,
-    "message": "Łącznik „Łącznik szyn 110 kV GPZ 1-2” jest łącznikiem szyn 110 kV normalnie otwartym — sekcje 110 kV pracują osobno, to podział wewnątrz rozdzielni, nie punkt podziału sieci.",
-    "severity": "INFO"
-   },
-   {
-    "code": "I001",
-    "element_ref": null,
-    "message": "Łącznik „Wyłącznik pola SN TR2 (rezerwa jawna)” jest łącznikiem pola transformatorowego normalnie otwartym — transformator jest odstawiony (rezerwa), to nie jest punkt podziału sieci.",
-    "severity": "INFO"
-   },
-   {
-    "code": "I004",
-    "element_ref": null,
-    "message": "Magistrala „Magistrala 01” nie ma odcinków.",
-    "severity": "INFO"
-   }
-  ]
- },
- "run_finished_at": "2026-10-22T16:48:27.836587+00:00",
- "run_id": "c4532dbe-9de8-43a4-a9b2-a10f5bc12759",
- "solver_input_hash": "8cdf91f594938281e2b2ba090d317d8b2e15ba3da5a884f8e8ba018483d0b802"
+  "overlay_payload": {
+    "elements": {
+      "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn": {
+        "badges": [],
+        "kind": "bus",
+        "metrics": {
+          "IK_3F_A": {
+            "code": "IK_3F_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 13.121597027
+          },
+          "IP_A": {
+            "code": "IP_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 32.4001033167
+          },
+          "ITH_A": {
+            "code": "ITH_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 13.3436159938
+          },
+          "SK_MVA": {
+            "code": "SK_MVA",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "MVA",
+            "value": 2500.0
+          }
+        },
+        "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
+        "severity": "INFO"
+      },
+      "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn": {
+        "badges": [],
+        "kind": "bus",
+        "metrics": {
+          "IK_3F_A": {
+            "code": "IK_3F_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 9.44754985947
+          },
+          "IP_A": {
+            "code": "IP_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 23.328074388
+          },
+          "ITH_A": {
+            "code": "ITH_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 9.60740351552
+          },
+          "SK_MVA": {
+            "code": "SK_MVA",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "MVA",
+            "value": 1800.0
+          }
+        },
+        "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/002/bus_wn",
+        "severity": "INFO"
+      },
+      "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn": {
+        "badges": [],
+        "kind": "bus",
+        "metrics": {
+          "IK_3F_A": {
+            "code": "IK_3F_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 8.90794766409
+          },
+          "IP_A": {
+            "code": "IP_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 23.5118231635
+          },
+          "ITH_A": {
+            "code": "ITH_A",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "kA",
+            "value": 9.2131786824
+          },
+          "SK_MVA": {
+            "code": "SK_MVA",
+            "format_hint": "fixed2",
+            "source": "solver",
+            "unit": "MVA",
+            "value": 231.435269181
+          }
+        },
+        "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/001/bus_sn",
+        "severity": "INFO"
+      },
+      "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn": {
+        "badges": [],
+        "kind": "bus",
+        "metrics": {},
+        "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
+        "severity": "INFO"
+      }
+    },
+    "legend": {
+      "entries": [
+        {
+          "description": "Element poprawny, wyniki dostępne",
+          "label": "Poprawne",
+          "severity": "INFO"
+        },
+        {
+          "description": "Element z ostrzeżeniami walidacji",
+          "label": "Ostrzeżenie",
+          "severity": "WARNING"
+        },
+        {
+          "description": "Element wymaga uwagi",
+          "label": "Ważne",
+          "severity": "IMPORTANT"
+        },
+        {
+          "description": "Element uniemożliwia poprawne obliczenia",
+          "label": "Blokujące",
+          "severity": "BLOCKER"
+        }
+      ],
+      "title": "Legenda wyników"
+    },
+    "warnings": [
+      {
+        "code": "E065",
+        "element_ref": null,
+        "message": "Sekcja GPZ bez zasilania: sekcja „Sekcja SN B” (GPZ „GPZ H5 110/15 kV”) nie ma własnego równoważnika sieci, a sprzęgło „Sprzęgło sekcji GPZ 1-2” jest otwarte — szyny sekcji i zasilane z niej odpływy są odcięte od źródła. Rozpływ mocy i zwarcia liczą część zasilaną; sekcja odcięta jest w wynikach bez napięcia.",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "I001",
+        "element_ref": null,
+        "message": "Łącznik „Sprzęgło sekcji GPZ 1-2” jest otwarty wbrew pozycji normalnej (zamkniętej) — odcina część sieci.",
+        "severity": "INFO"
+      },
+      {
+        "code": "I001",
+        "element_ref": null,
+        "message": "Łącznik „Łącznik szyn 110 kV GPZ 1-2” jest łącznikiem szyn 110 kV normalnie otwartym — sekcje 110 kV pracują osobno, to podział wewnątrz rozdzielni, nie punkt podziału sieci.",
+        "severity": "INFO"
+      },
+      {
+        "code": "I001",
+        "element_ref": null,
+        "message": "Łącznik „Wyłącznik pola SN TR2 (rezerwa jawna)” jest łącznikiem pola transformatorowego normalnie otwartym — transformator jest odstawiony (rezerwa), to nie jest punkt podziału sieci.",
+        "severity": "INFO"
+      },
+      {
+        "code": "I004",
+        "element_ref": null,
+        "message": "Magistrala „Magistrala 01” nie ma odcinków.",
+        "severity": "INFO"
+      }
+    ]
+  },
+  "run_finished_at": "2026-09-25T00:00:00+00:00",
+  "run_id": "b6d0cd4d-3fe0-51f0-9691-c93500e9ac28",
+  "solver_input_hash": "3c7a809d4e0328a880d00396a87763d56463ef798192942d85158c461e8a9f87"
 }

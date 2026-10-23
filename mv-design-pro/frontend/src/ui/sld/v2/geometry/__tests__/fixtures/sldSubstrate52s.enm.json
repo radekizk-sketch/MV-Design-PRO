@@ -1,7 +1,7 @@
 {
   "_meta": {
     "branch_count": 89,
-    "builder_snapshot_hash": "876d17645973050e128dd893d787594ea696e69eab886f31cde0d12abafb1ff9",
+    "builder_snapshot_hash": "88d00b7df59d5762e581a4320cf7ad043df22219c796beb00d674db7eac99cdc",
     "der_count": 20,
     "der_types": [
       "bess",
@@ -44270,7 +44270,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "876d17645973050e128dd893d787594ea696e69eab886f31cde0d12abafb1ff9",
+      "hash_sha256": "88d00b7df59d5762e581a4320cf7ad043df22219c796beb00d674db7eac99cdc",
       "name": "SLD Substrate 52 stacji",
       "revision": 0,
       "updated_at": "2026-05-29T00:00:00Z"
@@ -49808,7 +49808,7 @@
           "source_id": "GPZ Referencyjny 110 kV"
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

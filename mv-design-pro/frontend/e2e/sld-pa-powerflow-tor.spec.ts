@@ -113,11 +113,13 @@ function loadEnmFull(): EnergyNetworkModel {
  *  and the product overlay (`SupplyPathHighlighter`: „zacisk pola pod napięciem to część
  *  stacji pod napięciem, także przy otwartym aparacie pola") both use it. This helper
  *  used `bus_refs` alone — a SECOND membership rule that agreed with the render only
- *  while no station had a live field terminal behind an open field breaker. Since the
- *  maintenance scenario isolates its station by opening the station's OWN field breakers
- *  (POLA-W-TORZE), the incoming-field terminal stays live from the ring cable, so that
- *  station is correctly NOT dimmed; the station(s) behind it lose every bus and ARE
- *  dimmed. The helper now imports the render's own rule instead of re-implementing it. */
+ *  while no station had a live field terminal behind an open field breaker. The helper
+ *  now imports the render's own rule instead of re-implementing it. The backend picker
+ *  and its solver check use the SAME rule (`szyny_stacji`): the maintenance scenario
+ *  takes out of service the branches on the station's BOUNDARY (the feeders landing on
+ *  its field terminals), so EVERY bus of the target station loses supply and the
+ *  station IS dimmed (merge GPZ-MODEL: opening only the station's own field breakers
+ *  left the incoming-field terminal live from the ring cable — nothing dimmed). */
 function expectedDimmedStations(companion: Companion, enm: EnmMembership): Set<string> {
   const deEnergized = new Set(companion.de_energized_bus_refs);
   const dimmed = new Set<string>();

@@ -1831,7 +1831,7 @@
       },
       "description": null,
       "enm_version": "1.0",
-      "hash_sha256": "5e46c95c5f8a12c809cc4c3a88443ba79cb51e195c9c5cffaf342671cd0491e9",
+      "hash_sha256": "3d7f8320b9fab451192da9abd20448bb777f528944d47d8334dad97ffa10413a",
       "name": "GPZ — ścieżka danych (pola, CT, zabezpieczenia)",
       "revision": 8,
       "updated_at": "2026-09-25T00:00:00Z"
@@ -2128,7 +2128,7 @@
           "source_id": null
         },
         "model": "short_circuit_power",
-        "name": "Linia 110 kV zasilająca (Stacja zasilająca — przykładowe dane przypadku testowego)",
+        "name": "Linia 110 kV zasilająca",
         "neutral_grounding": null,
         "overrides": [],
         "parameter_source": "MANUAL_EQUIVALENT",

@@ -9,7 +9,7 @@
  * napis (y 232 zamiast 272, nad szyną SN 256), więc objazd tras i odsuwanie podpisów
  * omijały miejsce, w którym napisu nie było, a tam, gdzie był, nie widziały przeszkody.
  *
- * Iloczyn cech: sieć {H5 2×2, H5 1×3, sieć referencyjna z rekordami aparatów} × origin
+ * Iloczyn cech: sieć {H5 2×2, sieć referencyjna z rekordami aparatów} × origin
  * {(0, 0) — translacja końcowa > 0, (0, 400), (160, 96)}. Wyrocznia: liczba pasm = liczba
  * obróconych etykiet `#designation` pól sekcji; prostokąt rozwiązanej etykiety (`resolveLabels`) leży
  * w całości w swoim paśmie; pasmo zaczyna się pod szyną swojej sekcji.
@@ -27,7 +27,6 @@ import { composeGpz } from '../gpz';
 const SCENA = resolve(__dirname, '..', '..', 'scene', '__tests__', 'fixtures');
 const SIECI: Readonly<Record<string, string>> = {
   gpzH5_2x2: resolve(SCENA, 'gpzH5_2x2.enm.json'),
-  gpzH5_1x3: resolve(SCENA, 'gpzH5_1x3.enm.json'),
   sldSubstrate52s: resolve(__dirname, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json'),
 };
 const ORIGINY = [

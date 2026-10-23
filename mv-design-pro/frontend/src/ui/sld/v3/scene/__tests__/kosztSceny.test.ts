@@ -581,87 +581,101 @@ interface OdciskiLod {
  * także jego kopia `…01ab/switch`) niesie teraz `pozycjaNormalna: 'open'` przy stanie
  * `open` (bez odstępstwa). Pomiar sondą: odcisk sceny z wyjętym polem `pozycjaNormalna`
  * symboli = poprzedni pin na wszystkich 6 scenach; declutter (6) i plany (42) bez zmian.
+ *
+ * AKTUALIZACJA ŚWIADOMA (GPZ-H5-INTEGRACJA, 2026-10-22) — przeliczone WSZYSTKIE 54 wpisy.
+ * Przyczyna: etykietą źródła 110 kV jest nazwa źródła z modelu (`Source.name`), nie tożsamość
+ * GPZ `meta.source_id` (`enmToCanonicalGpzAdapter.ts`, decyzja architekta), a nazwa źródła
+ * to nazwa toru (`add_grid_source_sn`). Na tej fiksturze tabliczka źródła z „GPZ Referencyjny
+ * 110 kV" + „Tor zasilania: Linia 110 kV zasilająca" + „kier. …" staje się „Linia 110 kV
+ * zasilająca" + „kier. …" (wiersz toru znika, bo tor = nazwa). DOWÓD (sonda 2×2): kod sprzed
+ * zmiany odczytu na fiksturze sprzed i po regeneracji — 8/8 testów pliku zielone na starych
+ * pinach (sama zmiana nazwy w fiksturze nie rusza sceny, gdy etykietą był `meta.source_id`);
+ * kod po zmianie: scena z nazwą = `meta.source_id` vs nazwą toru, symbole/odcinki/etykiety
+ * parami w tej samej kolejności — CAŁY świat pod tabliczką przesunięty o jednakowy wektor
+ * (0, −16) (L1: 380 z 381 symboli, 1380 z 1381 punktów odcinków, 518 z 519 etykiet poza
+ * tabliczką; jedyny symbol i punkt w miejscu to glif źródła), etykiet 523 → 522 (L1),
+ * 917 → 916 (L2), L0 55 bez zmian liczby.
  */
 const ODCISKI_BAZOWE: Readonly<Record<'referencyjna' | 'podwojona', readonly OdciskiLod[]>> = {
   referencyjna: [
     {
-      scena: 'ecfa7f2f49d6ce6566534c7c4ec4e31d',
-      declutter: '872b77e3e55b9c4dd550638f3b7a53d7',
+      scena: '27905963a7a791b09fa771290e7b16da',
+      declutter: '1b26bb304ec7e9bf58358708a80ab2c2',
       plany: [
-        'a81b30326217f10e3e5e242a41f693dd',
-        'ddd7c1cac15c6557050eeec9e394a307',
-        '0712b292f0db9b7caab97c3a82cac172',
-        '62d4a95a3f4c35d75a6511cc46deca75',
-        '02430d6840410105c862608935b1baa9',
-        '610526d5a185e82773fd9a4e70ddfbf7',
-        '610526d5a185e82773fd9a4e70ddfbf7',
+        '926a2d090e65e811e55a88f75e392bc8',
+        'f84a6d4d1ab3cb178f06baeabca30d8a',
+        '4754e422039b3d8792c1755fd5ec9dc6',
+        '8b5b0bc59801c68682ffeaea6e20cd32',
+        '652e71741f4e892f53ab706628133f4b',
+        'c4083c19ffbcaa76767f57d51e128467',
+        'c4083c19ffbcaa76767f57d51e128467',
       ],
     },
     {
-      scena: '2526b2575c320f0434a4a44c00d7dd11',
-      declutter: '01c01dbf141c5938bcd0310ad56b5585',
+      scena: '45b9fc27e7e9b1f31d6ee280fa667da3',
+      declutter: '3d3fcb99b9d069923c790af4f363c55a',
       plany: [
-        'cb4fc2e467a06e7dc0d6e326dad27ac4',
-        'bd6b1de3a5e23ebc41e49f9b241cd93a',
-        '99f87308c83e79637c0aeb6afb6f66b7',
-        '5662e651c05b2c734e21674255115708',
-        '6f7d26282215821dcbf6f1be9b07d432',
-        '6d6f66f0637e76a43ae91f9127cf120f',
-        '6d6f66f0637e76a43ae91f9127cf120f',
+        'a13fe841fc8435c10dee107a7cd3ef4c',
+        '9ff5ac0d5bdb82b7f976fc7187706a55',
+        '9afbe1ea4a75191506fc532764340973',
+        'cff0574536ba790d286bdf333865ebbf',
+        '5f2385a6a2af17a93bebc76664f52915',
+        '62c3297539aaba90981f3eab7684fafe',
+        '62c3297539aaba90981f3eab7684fafe',
       ],
     },
     {
-      scena: 'a0735dc47f9e9c09ce8b384e4e3e5644',
-      declutter: 'e1c47070c70c559861e4894075409c9f',
+      scena: 'aa41804c259f292b4a979e76e284c61b',
+      declutter: 'cb6ddfbba8489228ec559042cd242e5d',
       plany: [
-        '596eaea68897f422126b678e13f77cb6',
-        'fb90b92baf6f987a460c8b3a21024124',
-        '7b50685861b2146997f9fb4ae4afe5d9',
-        '8bb1f41a05bd65d3228d218b65ab5bef',
-        'fc402257cc13ce220c59de401e131aac',
-        '034559153bd2154dfbf7c5ff74e024c9',
-        '034559153bd2154dfbf7c5ff74e024c9',
+        '08f5ccfc750aaee6b9380cb58b9b81fe',
+        'f01c24a8f858a59eeed1387a6d75a820',
+        'c3a390a079d432b4affdf6d071588e9c',
+        'a80d8e3e0085052b0a4d83e9e44de278',
+        'ccc59dd1b9f3aad1e532269639ce4491',
+        'a98e690d487758148798455296fb3633',
+        'a98e690d487758148798455296fb3633',
       ],
     },
   ],
   podwojona: [
     {
-      scena: '0dd40a29056b3ad05ffa158e55ae31e9',
-      declutter: 'a8d2747823de68c3850c954ffec5b367',
+      scena: '2581f2992833f9d05298c7f45d42b99e',
+      declutter: '5db586bfc0f69e05d11cd93c43628ddb',
       plany: [
-        '0c99c6b801c12b2dbd8e3408430a60c8',
-        '809c3b57a6a0016af9b67a7bd1969adf',
-        '75b25f79701f2f2886fc1d868ef30e95',
-        'd63efeec5046562ecc78d0d4b2317cb4',
-        'a8c64e4b8c1868f36ce88090b98ccba1',
-        'e80f755ed4969db42c7e3c532e955d6f',
-        'e80f755ed4969db42c7e3c532e955d6f',
+        '7893da6ccf0af84d9e7567fa84972d48',
+        'd164931453c692bd07853d5ffcba244e',
+        '3fc47fbfa1eb816890c4a677ceaf7c73',
+        '6058a8e9be1015c6dfcb1a1bed6d201c',
+        '7fa16bda5436501453fcbd8457806eaa',
+        '2644d61ebaa5c82e0104c92bfa4e3477',
+        '2644d61ebaa5c82e0104c92bfa4e3477',
       ],
     },
     {
-      scena: '0eafeddeaf1c359797fce33b9faa75a0',
-      declutter: '03a509e4b8c47a59009004b07cd5e1d0',
+      scena: '5195ccbc06223cb93be82bd9051959b5',
+      declutter: 'b13ffb5d550f80eac88843012b63553e',
       plany: [
-        '0d3511983ca449f8098a1e68ef85e230',
-        '90875a16724b4c3fbc12d23fb606e3da',
-        '41260b1fdd1e6e6a125517f3dc0f5fda',
-        '7b5f43c2bf452864933bfc106383eaa6',
-        'cee11e8d0f5899c26fa4e70dc34f6fb4',
-        '9f7bdab536ab87db363ec990abf371d9',
-        '9f7bdab536ab87db363ec990abf371d9',
+        'ab8317ff23137c3acabda809253010ff',
+        'df8d2a042bb9c6762323412ef8f833ac',
+        'edc69aa14b8f6f3206410871fdf35e09',
+        'fa51dfa479df09112a300a388cda0d7d',
+        'c1926862b897867f4b59c7b1622d572c',
+        '8941e74d66314d6acaeb010744e33b53',
+        '8941e74d66314d6acaeb010744e33b53',
       ],
     },
     {
-      scena: 'a7a969fa63776e793eb68d82977ff7c1',
-      declutter: '4ca04ac2ad65c9165a40dcd42849c5a9',
+      scena: '27807dc9f7278852f52abfb4ba69a58a',
+      declutter: '2dea48f3f0b00785def29d64ff2f365d',
       plany: [
-        '5328b55fadcc3acd55b097378aaac976',
-        '0c95562d17fef60b70fe12ddc8c61ee4',
-        'd9412a6177cdbfae04ac0db45457957c',
-        'e41d8c78b0a557d624118fa83e37566f',
-        '1977fb612a3b2615ae9c5b5cd524088f',
-        '430116fb48c1295df115dca171edaa45',
-        '430116fb48c1295df115dca171edaa45',
+        '994306aa2da3e2628655c7b27e27a03e',
+        'a5ba799b69b75796716a61cf0d300e57',
+        '52fa8e0210881b5fe4a0a18f9a390659',
+        'dbc2a83b34c26e2cb4ca668cdef0e620',
+        'ad4b579a9245123ada0a44b9415ecb2a',
+        '9208131f562ab59e4c430c18463a481d',
+        '9208131f562ab59e4c430c18463a481d',
       ],
     },
   ],

@@ -8,7 +8,7 @@
  * wachlarza maleje z odległością portu pola od osi bloku.
  *
  * Iloczyn cech: fikstura {GPZ z feederem, GPZ z zabezpieczeniami (pola po obu stronach
- * osi), H5 2×2, H5 1×3, H5 z równoważnikiem SN, sieć referencyjna 53 stacji} × L0.
+ * osi), H5 2×2, H5 z równoważnikiem SN, sieć referencyjna 53 stacji} × L0.
  * Wyrocznie na samych zejściach `#descent` bloku (tor od bloku do portu pola):
  *  - zero przecięć wnętrz (pion jednego zejścia × poziom innego);
  *  - zero współliniowych nakładek poziomów dwóch zejść (ten sam poziom, wspólny odcinek x);
@@ -29,7 +29,6 @@ const FIKSTURY: Readonly<Record<string, string>> = {
   gpzFeeder: resolve(here, 'fixtures', 'gpzFeeder.enm.json'),
   gpzProtectionDataPath: resolve(here, 'fixtures', 'gpzProtectionDataPath.enm.json'),
   gpzH5_2x2: resolve(here, 'fixtures', 'gpzH5_2x2.enm.json'),
-  gpzH5_1x3: resolve(here, 'fixtures', 'gpzH5_1x3.enm.json'),
   gpzRownowaznikSn2: resolve(here, 'fixtures', 'gpzRownowaznikSn2.enm.json'),
   sldSubstrate52s: resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json'),
 };

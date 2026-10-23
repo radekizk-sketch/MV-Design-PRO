@@ -5247,10 +5247,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             wpis_wn = hv_entries[idx]
             ref_zrodla = _make_id("gpz", seed, f"hv_section/{order:03d}/source")
             napiecie_szyny = float(rozstrzygniety["materialized_params"]["voltage_hv_kv"])
-            nazwa_zrodla = (
-                nazwa_nadana(wpis_wn["supply"].get("name"))
-                or f"{wpis_wn['line_name']} ({wpis_wn['supplying_station_name']})"
-            )
+            # Nazwa źródła = nazwa toru (linii 110 kV), np. „L1". Stacja zasilająca to osobne
+            # pole `supplying_station_name` (SLD rysuje je jako „kier. …"); sklejanie jej
+            # w nazwę dublowało dane i dawało tabliczce źródła tekst nie mieszczący się w kadrze.
+            nazwa_zrodla = nazwa_nadana(wpis_wn["supply"].get("name")) or wpis_wn["line_name"]
             sekcja_zrodla_id = None
         elif zasilanie_na_sekcje_sn:
             sekcja_toru = gpz_sections[idx]
