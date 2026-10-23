@@ -57,3 +57,50 @@ Pełnotekstowy lokalny indeks SQLite nie jest obecnie dostępny przez API serwer
 ## Ustalenie krytyczne: rewizja Z1
 
 W istniejącym `docs/audit/REFERENCE_ENGINE_RESEARCH_OSD_ENEA_2026-07-17.md` opisano Z1 w wersji **09.2021-2 (od 02.04.2024)**. Oficjalny indeks operatora odsyła jednak obecnie do **Z1 wersji 06.2024 obowiązującej od 01.01.2025** (plik ENEA media/683, str. 1/37). Zgodność pojedynczych wymagań (np. pola TR i 2–4 pola liniowe w §4.3.1, s. 12, parametry 24 kV / 630 A / 16 kA w §4.3.2) została zaobserwowana, ale nie jest pełnym audytem porównawczym. Przed uznaniem pakietu za aktualną podstawę bezwarunkowego zatwierdzania projektu należy zweryfikować **wszystkie zaimplementowane reguły** wobec pełnej wersji Z1 i innych zmienionych standardów. Nie przypisuj aktualności reguły na podstawie samego statusu pakietu.
+
+## Pytania o wymagania — warstwa dowodowa
+
+Użytkownik może zadać pytanie językiem naturalnym, np. „Czy dopuszczalne są nowe stacje słupowe z kablowym podejściem SN?”. System działa na dwóch źródłach:
+
+1. Zweryfikowane karty wymagań w pliku backend/src/reference_engine/packs/osd_enea/curated_requirements.json: źródło, wersja, numer punktu, numer strony, interpretacja, zakres i data weryfikacji. Nie są kopią treści PDF.
+2. Lokalny pełnotekstowy indeks search.sqlite3, kontrolowany sumą SHA-256: zwraca krótkie odniesienia i strony PDF. Nie generuje normatywnego nakazu z trafienia tekstowego.
+
+### API i ograniczenie dostępu
+
+GET /api/reference/enea/pytanie?pytanie=...&data=RRRR-MM-DD
+
+Odpowiedź zawiera status, werdykt (wyłącznie dla zweryfikowanej karty), wyjaśnienie, zakres, numer karty i dokumenty źródłowe z dokładną wersją, stroną PDF i odnośnikiem. Brak indeksu powoduje status BRAK_INDEKSU — nigdy fikcyjny brak przepisu. W przypadku trafienia tylko w pełnotekstowym indeksie wyświetlany jest wynik ZNALEZIONO_FRAGMENTY z informacją o konieczności interpretacji.
+
+Prywatna baza jest domyślnie niedostępna przez API. Dostęp uruchamia wyłącznie administrator serwera, ustawiając ENEA_KNOWLEDGE_ENABLED=1 oraz opcjonalnie ENEA_KNOWLEDGE_DATA_DIR. Na publicznie dostępnym serwerze wymagana jest decyzja o ochronie danych i dostępie do dokumentów. Plików PDF i bazy SQLite nie wolno publikować w repozytorium.
+
+### Sposób użycia
+
+~~~bash
+cd mv-design-pro
+python scripts/enea_knowledge.py ask "Czy można budować nową stację słupową z kablowym podejściem SN?"
+python scripts/enea_knowledge.py ask "Jakie napięcie znamionowe rozdzielnicy SN?" --date 2026-10-23
+~~~
+
+W aplikacji: istniejący wybór pakietu referencyjnego ENEA → Dokumenty źródłowe ENEA → Zapytaj o wymaganie ENEA.
+
+### Korzystanie w ChatGPT
+
+Pytanie można zadać bezpośrednio w ChatGPT, bez znajomości dokumentu. Asystent ma wtedy sprawdzać bieżący oficjalny PDF ENEA Operator, a pomocniczo odczytywać zweryfikowane karty dostępne w GitHub. ChatGPT nie ma automatycznego dostępu do prywatnej lokalnej bazy SQLite użytkownika. Jeżeli nie uzyska źródła, nie wolno twierdzić, że sprawdził pełną treść dokumentu.
+
+Format odpowiedzi:
+- **Werdykt:** WYMAGANE / DOPUSZCZONE / NIEDOPUSZCZONE / NIEZALECANE / BRAK POTWIERDZENIA W ZBADANYCH ŹRÓDŁACH / WYMAGA WERYFIKACJI.
+- **Podstawa:** oficjalny tytuł, wersja, data obowiązywania, numer punktu, numer strony drukowanej i numer strony PDF, aktywny adres źródła.
+- **Uzasadnienie:** krótkie streszczenie wymagania i zakres, bez dopowiadania warunków nieistniejących w tekście.
+- **Ograniczenia:** data oceny, rodzaj obiektu, inwestycja nowa/przebudowa/eksploatacja, ewentualne odstępstwa.
+- **Niepewność:** rozbieżność rewizji, nieczytelność pliku lub niekompletność zasobu → odmowa kategorycznego rozstrzygnięcia.
+
+Zasada bez wyjątków: brak trafienia wyszukiwania nie dowodzi, że w standardach ENEA nie ma takiego wymagania. Norma PN-EN, standard OSD, IRiESD i indywidualne warunki przyłączenia to odrębne podstawy; nie wolno ich mylić.
+
+### Kryteria odbioru pytań
+
+- Nowa stacja słupowa z podejściem kablowym → NIEDOPUSZCZONE, Zeszyt 3, §2, strona 3/14.
+- Nowa stacja słupowa bez wskazania podejścia → NIEZALECANE, a nie bezwzględny zakaz.
+- Liczba pól SN w kompaktowej stacji prefabrykowanej → 1 pole TR, 2–4 pola liniowe, Zeszyt 1, §4.3.1, s. 12/37.
+- Pomiary napięcia i prądu dla pola liniowego w telemechanice → Zeszyt telemechaniki, §6.4.1, s. 14/18.
+- Zagadnienie poza kartami i bez lokalnej kopii PDF → BRAK_INDEKSU oraz oficjalne dokumenty sugerowane do weryfikacji.
+- Data wcześniejsza niż wejście standardu w życie → brak stosowania karty jako obowiązującej w tamtej dacie.
