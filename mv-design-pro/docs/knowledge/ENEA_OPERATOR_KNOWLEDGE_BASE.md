@@ -27,7 +27,7 @@ python scripts/enea_knowledge.py index
 
 Domyślny prywatny magazyn: `~/.local/share/mv-design-pro/enea-knowledge/`. Można użyć `--data-dir /inna/sciezka` **przed** nazwą polecenia. Do pozyskania tekstu używany jest `pdftotext` (poppler), a przy jego braku PyMuPDF. Skany bez warstwy tekstowej nie są indeksowane i otrzymują jawny błąd — nie uruchamia się niezweryfikowanego OCR. Wyszukiwanie SQLite FTS5 zwraca identyfikator dokumentu, numer strony PDF, fragment oraz adres źródła.
 
-Pobranie sieciowe wymaga dostępu do `www.operator.enea.pl`. Pliki PDF są pobierane **na komputer uruchamiający skrypt**, z weryfikacją nagłówka PDF i SHA-256. Każda zmiana odnośnika w oficjalnym wykazie jest sygnalizowana i wymaga zatwierdzenia nowej wersji źródła. Indeks nie jest przesyłany do zewnętrznej usługi AI.
+Pobranie sieciowe wymaga dostępu do `www.operator.enea.pl`. Pliki PDF są pobierane **na komputer uruchamiający skrypt**, z weryfikacją nagłówka PDF i SHA-256. Każda zmiana odnośnika w oficjalnym wykazie jest sygnalizowana. Zmiana sumy SHA-256 powoduje zapis nowego PDF do katalogu `do_weryfikacji/` bez nadpisania wcześniej zaakceptowanej kopii; wymaga to ręcznej kontroli nowej wersji źródła. Indeks nie jest przesyłany do zewnętrznej usługi AI.
 
 ## Integracja z aplikacją
 
@@ -49,7 +49,7 @@ Pełnotekstowy lokalny indeks SQLite nie jest obecnie dostępny przez API serwer
 
 ## Kryteria odbioru
 
-1. Dla 25 standardów istnieją stabilne identyfikatory i daty ze strony operatora; nierozpoznany link jest oznaczony, nie zgadywany.
+1. Dla 25 standardów istnieją stabilne identyfikatory i daty ze strony operatora; adresy są powiązane z publicznym wykazem; każdy nowy odsyłacz wymaga sprawdzenia wersji.
 2. Metadane są dostępne na istniejącej trasie API i w istniejącym wyborze pakietów referencyjnych.
 3. Pobieranie i indeks nie przenoszą treści do repozytorium; plik ma sumę SHA-256, a wynik wyszukiwania numer strony PDF.
 4. Wszystkie testy offline przechodzą. Dla pełnego odbioru E2E należy dodatkowo uruchomić `sync` w środowisku z siecią, porównać liczbę udanych pobrań i zaindeksowanych stron, wykonać test UI w przeglądarce i sprawdzić prawa do lokalnego przechowywania kopii.
