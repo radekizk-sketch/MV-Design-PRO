@@ -132,8 +132,52 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
       ik_ka: null,
       icw_ka: null,
     },
+    {
+      // Odłącznik: zdolności wyłączania rodzaj nie ma — „nie dotyczy”, nie „brak danych”.
+      id: 'sw-ds-abb-ojs-12kv-630a',
+      name: 'ABB OJS 12 kV 630 A',
+      manufacturer: 'ABB',
+      equipment_kind: 'DISCONNECTOR',
+      un_kv: 12,
+      in_a: 630,
+      ik_ka: null,
+      icw_ka: 20,
+    },
+    {
+      // Bezpiecznik: prądu krótkotrwałego rodzaj nie ma — „nie dotyczy”.
+      id: 'sw-fuse-eti-vv-12kv-63a',
+      name: 'ETI VV 12 kV 63 A',
+      manufacturer: 'ETI',
+      equipment_kind: 'FUSE',
+      un_kv: 12,
+      in_a: 63,
+      ik_ka: 63,
+      icw_ka: null,
+    },
   ],
   MV_APPARATUS: [
+    {
+      // Projekcja odłącznika: zdolność wyłączania „nie dotyczy”, I_th z karty.
+      id: 'sw-ds-abb-ojs-12kv-630a',
+      name: 'ABB OJS 12 kV 630 A (aparat pola)',
+      manufacturer: 'ABB',
+      device_kind: 'ODLACZNIK',
+      u_n_kv: 12,
+      i_n_a: 630,
+      breaking_capacity_ka: null,
+      i_th_ka: 20,
+      i_th_duration_s: 1,
+    },
+    {
+      // Projekcja wyłącznika 110 kV bez danych karty: obie wielkości właściwe — „brak danych”.
+      id: 'sw-cb-110kv',
+      name: 'Wyłącznik 110 kV (aparat pola)',
+      device_kind: 'WYLACZNIK',
+      u_n_kv: 123,
+      i_n_a: 3150,
+      breaking_capacity_ka: null,
+      i_th_ka: null,
+    },
     {
       id: 'mv-app-001',
       name: 'Pole liniowe SN',
@@ -439,6 +483,46 @@ describe('TypeLibraryBrowser', () => {
     expect(szczegoly).toHaveTextContent('Prąd wyłączalny Ikbrak danych');
     expect(szczegoly).toHaveTextContent('Prąd wytrzymałości Icwbrak danych');
     expect(szczegoly).not.toHaveTextContent(/0[.,]0\s*kA/);
+  });
+
+  it('aparatura łączeniowa: „nie dotyczy” (rodzaj) odróżnione od „brak danych” w liście i szczegółach', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /Typy aparatury łączeniowej SN/i }));
+    expect(await screen.findByRole('cell', { name: '12 kV · 630 A · Ik nie dotyczy' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '12 kV · 63 A · Ik 63 kA' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '123 kV · 3150 A · Ik brak danych' })).toBeInTheDocument();
+
+    await user.click(screen.getByText('ABB OJS 12 kV 630 A'));
+    let szczegoly = screen.getByTestId('type-library-details-grid');
+    expect(szczegoly).toHaveTextContent('Prąd wyłączalny Iknie dotyczy');
+    expect(szczegoly).toHaveTextContent('Prąd wytrzymałości Icw20.0kA');
+
+    await user.click(screen.getByText('ETI VV 12 kV 63 A'));
+    szczegoly = screen.getByTestId('type-library-details-grid');
+    expect(szczegoly).toHaveTextContent('Prąd wyłączalny Ik63.0kA');
+    expect(szczegoly).toHaveTextContent('Prąd wytrzymałości Icwnie dotyczy');
+    expect(szczegoly).not.toHaveTextContent(/\b0[.,]0\s*kA/);
+  });
+
+  it('aparat SN: „nie dotyczy” (rodzaj) odróżnione od „brak danych” w liście i szczegółach', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(screen.getByRole('button', { name: /^◫?\s*Typy aparatury SN/i }));
+    expect(await screen.findByRole('cell', { name: '12 kV · 630 A · Ik nie dotyczy' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '123 kV · 3150 A · Ik brak danych' })).toBeInTheDocument();
+
+    await user.click(screen.getByText('ABB OJS 12 kV 630 A (aparat pola)'));
+    let szczegoly = screen.getByTestId('type-library-details-grid');
+    expect(szczegoly).toHaveTextContent('Zdolność wyłączalna [kA]nie dotyczy');
+    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale I_th [kA]20 kA');
+
+    await user.click(screen.getByText('Wyłącznik 110 kV (aparat pola)'));
+    szczegoly = screen.getByTestId('type-library-details-grid');
+    expect(szczegoly).toHaveTextContent('Zdolność wyłączalna [kA]brak danych');
+    expect(szczegoly).toHaveTextContent('Prąd wytrzymywany krótkotrwale I_th [kA]brak danych');
   });
 
   it('aparat SN: propozycje wartości roboczych w osobnej sekcji, nie jako dana karty (V12K-351)', async () => {

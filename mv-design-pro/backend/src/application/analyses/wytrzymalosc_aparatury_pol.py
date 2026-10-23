@@ -84,6 +84,7 @@ from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
     ocen_wytrzymalosc_aparatu,
 )
+from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
 from network_model.catalog.wartosci_robocze import (
     DOKUMENT_REJESTRU,
     PARAMETR_I_DYN,
@@ -359,6 +360,13 @@ def _znamiona_z_aparat_sn(aparat: AparatPola) -> tuple[dict[str, Any] | None, st
             ),
             "i_cu_nie_dotyczy": icu.i_cu_not_applicable,
             "bezpiecznik": icu.bezpiecznik,
+            # „Nie dotyczy” prądu krótkotrwałego i szczytowego wytrzymywanego (rozłącznik
+            # bezpiecznikowy, IEC 62271-105 § 4.5–4.6) rozstrzyga RODZAJ pozycji — ten sam
+            # predykat co bramka rekordu KAT-T-048; liczba podana przez projektanta wygrywa.
+            "i_th_nie_dotyczy": (
+                i_th.wartosc is None
+                and not wielkosc_zwarciowa_aparatu_sn_dotyczy(pozycja.device_kind, "i_th_ka")
+            ),
         },
         pozycja.name,
     )
@@ -388,6 +396,8 @@ def _znamiona_z_katalogu_wytrzymalosci(device_id: str) -> tuple[dict[str, Any] |
                 RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI.get(pozycja.device_type) is False
             ),
             "bezpiecznik": False,
+            # Katalog wytrzymałości niesie znamiona I_dyn/I_th każdej pozycji.
+            "i_th_nie_dotyczy": False,
         },
         pozycja.label_pl,
     )
@@ -602,6 +612,24 @@ def _przedmiot(
     )
 
 
+#: Powód „nie dotyczy” kryteriów wytrzymałości dynamicznej i cieplnej aparatu, którego rodzaj
+#: z definicji normy nie ma prądu krótkotrwałego ani szczytowego wytrzymywanego.
+_POWOD_WYTRZYMALOSC_NIE_DOTYCZY_PL = (
+    "rozłącznik bezpiecznikowy: wytrzymałość zwarciową zestawu wyznacza wkładka, która "
+    "ogranicza i przerywa prąd zwarcia — prąd krótkotrwały i szczytowy wytrzymywany nie są "
+    "zestawowi przypisywane (IEC 62271-105 § 4.5 i § 4.6); zestaw ocenia kryterium "
+    "wyłączania wkładki"
+)
+
+
+def _stosowalnosc_wytrzymalosci(znamiona: dict[str, Any], powod_pl: str) -> Stosowalnosc:
+    """Stosowalność kryterium dynamicznego/cieplnego — „nie dotyczy” wyłącznie z rodzaju
+    (``znamiona["i_th_nie_dotyczy"]``), nigdy z braku danej."""
+    if znamiona.get("i_th_nie_dotyczy"):
+        return Stosowalnosc(dotyczy=False, powod_pl=_POWOD_WYTRZYMALOSC_NIE_DOTYCZY_PL)
+    return Stosowalnosc(dotyczy=True, powod_pl=powod_pl)
+
+
 def _ocena_dynamiczna(
     *,
     kryterium_id: str,
@@ -625,6 +653,7 @@ def _ocena_dynamiczna(
     dane = _dane_przyjete([zapis_i_dyn, zapis_i_th], aparat_pl=przedmiot.nazwa_pl) + (
         _dane_pradow(prady)
     )
+    nie_dotyczy = bool(znamiona.get("i_th_nie_dotyczy"))
     braki: list[str] = []
     if prady.ip_ka is None and prady.powod_pl:
         braki.append(prady.powod_pl)
@@ -633,7 +662,7 @@ def _ocena_dynamiczna(
         limit = LimitKryterium(
             wartosc=Wielkosc(wartosc=float(i_dyn), jednostka="kA"), podstawa=podstawa_limitu
         )
-    else:
+    elif not nie_dotyczy:
         braki.append(
             f"pozycja katalogu „{etykieta}” nie niesie prądu szczytowego I_p (I_dyn), a "
             "propozycji wartości roboczej nie ma: "
@@ -662,14 +691,14 @@ def _ocena_dynamiczna(
             relacja="NIE_WIECEJ",
         ),
         podstawa=_PODSTAWA_DYNAMICZNA,
-        stosowalnosc=Stosowalnosc(
-            dotyczy=True,
-            powod_pl="aparat pola przewodzi prąd zwarcia w punkcie zabudowy pola",
+        stosowalnosc=_stosowalnosc_wytrzymalosci(
+            znamiona, "aparat pola przewodzi prąd zwarcia w punkcie zabudowy pola"
         ),
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
-        dowod=_dowod(run_id, dane),
+        # Rekord NIE_DOTYCZY niczego nie porównuje — nie stoi na żadnej danej przyjętej.
+        dowod=_dowod(run_id, () if nie_dotyczy else dane),
         zakres_waznosci=_zakres(prady),
         slad=(
             OdnosnikSladu(
@@ -711,16 +740,17 @@ def _ocena_cieplna(
         ],
         aparat_pl=przedmiot.nazwa_pl,
     ) + _dane_pradow(prady)
+    nie_dotyczy = bool(znamiona.get("i_th_nie_dotyczy"))
     braki: list[str] = []
     if prady.ith_ka is None and prady.powod_pl:
         braki.append(prady.powod_pl)
-    if znamiona["i_th_ka"] is None or znamiona["i_th_duration_s"] is None:
+    if not nie_dotyczy and (znamiona["i_th_ka"] is None or znamiona["i_th_duration_s"] is None):
         braki.append(
             f"pozycja katalogu „{etykieta}” nie niesie prądu krótkotrwałego I_th z czasem t_th, "
             "a propozycji wartości roboczej nie ma: "
             + str((zapis_i_th or {}).get("powod_braku_pl") or "brak uzasadnionego źródła")
         )
-    if t_k is None:
+    if t_k is None and not nie_dotyczy:
         braki.append(str(czas.get("powod_pl") or "czas wyłączenia zwarcia nie jest ustalony"))
     limit: LimitKryterium | None = None
     if limit_ka is not None and podstawa_limitu is not None and t_k is not None:
@@ -755,14 +785,13 @@ def _ocena_cieplna(
             relacja="NIE_WIECEJ",
         ),
         podstawa=_PODSTAWA_CIEPLNA,
-        stosowalnosc=Stosowalnosc(
-            dotyczy=True,
-            powod_pl="aparat pola nagrzewa się prądem zwarcia do chwili jego wyłączenia",
+        stosowalnosc=_stosowalnosc_wytrzymalosci(
+            znamiona, "aparat pola nagrzewa się prądem zwarcia do chwili jego wyłączenia"
         ),
         wynik=wynik,
         limit=limit,
         niepewnosc=_NIEPEWNOSC_POROWNANIA,
-        dowod=_dowod(run_id, dane),
+        dowod=_dowod(run_id, () if nie_dotyczy else dane),
         zakres_waznosci=_zakres(prady),
         slad=(
             OdnosnikSladu(
@@ -1021,16 +1050,22 @@ def _wiersz(
             "wytrzymałości zwarciowej nie da się sprawdzić."
         )
     else:
-        if znamiona["i_dyn_ka"] is None or znamiona["i_th_ka"] is None:
+        # „Nie dotyczy” (rodzaj) nie jest brakiem znamion — bez kodu gotowości.
+        if not znamiona.get("i_th_nie_dotyczy") and (
+            znamiona["i_dyn_ka"] is None or znamiona["i_th_ka"] is None
+        ):
             kody.append(READINESS_POZYCJA_BEZ_ZNAMION)
         kody.extend(k for k in czas.get("kody_gotowosci", []) if k not in kody)
-        if czas.get("t_clearing_s") is None:
+        # Czas wyłączenia służy wyłącznie kryterium cieplnemu — przy „nie dotyczy” nie brakuje.
+        if czas.get("t_clearing_s") is None and not znamiona.get("i_th_nie_dotyczy"):
             kody.append(READINESS_CZAS_NIEUSTALONY)
         if not znamiona["i_cu_nie_dotyczy"] and znamiona["i_cu_ka"] is None:
             kody.append(READINESS_BRAK_ZDOLNOSCI_WYLACZANIA)
         nazwa = etykieta or "pozycja katalogu aparatów bez nazwy"
         limit_cieplny_ka: float | None = None
-        if prady.ip_ka is not None and prady.ith_ka is not None:
+        if znamiona.get("i_th_nie_dotyczy"):
+            komunikat = f"NIE DOTYCZY: aparatura „{nazwa}” — {_POWOD_WYTRZYMALOSC_NIE_DOTYCZY_PL}."
+        elif prady.ip_ka is not None and prady.ith_ka is not None:
             werdykt = ocen_wytrzymalosc_aparatu(
                 etykieta_pl=nazwa,
                 i_dyn_ka=znamiona["i_dyn_ka"],

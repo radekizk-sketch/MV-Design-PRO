@@ -20,11 +20,13 @@ KONWENCJE:
 - in_a [A] — prad znamionowy ciaglej pracy
 - ik_ka [kA] — znamionowy prad zwarciowy laczeniowy (wylaczniki, reklozery, bezpieczniki)
 - icw_ka [kA] — prad wytrzymywany krotkotrwale 1s
-- ik_ka / icw_ka: ``None`` = brak danej z karty katalogowej, NIGDY 0.0 dla wielkosci
-  wlasciwej rodzajowi aparatu (bramka KAT-T-048 w `SwitchEquipmentType`). Zapis 0.0
-  wystepuje wylacznie w polu, ktorego rodzaj aparatu z definicji normy nie ma
-  (ik_ka rozlacznika/odlacznika/uziemnika, icw_ka bezpiecznika) — tam rozstrzyga rodzaj
-  (`RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA`, `RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO`).
+- ik_ka / icw_ka: ``None`` albo wartosc dodatnia, NIGDY 0.0 (bramka KAT-T-048 w
+  `SwitchEquipmentType` odrzuca zero w kazdej z tych wielkosci). ``None`` w polu, ktorego
+  rodzaj aparatu z definicji normy nie ma (ik_ka rozlacznika/odlacznika/uziemnika,
+  icw_ka bezpiecznika), znaczy „nie dotyczy" — rozstrzyga rodzaj z jednego zrodla
+  (`RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA`, `RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO`
+  w `rodzaje_aparatury.py`); ``None`` w polu wlasciwym rodzajowi znaczy „brak danej z karty
+  katalogowej".
 - medium — srodek gaszacy (SF6, VACUUM, AIR)
 - u_m_kv [kV] — napiecie najwyzsze urzadzenia U_m wg IEC 62271-1 (karta
   UM-ICU-KATALOG). Dla calej aparatury SN identyczne z un_kv — rodzina
@@ -66,6 +68,8 @@ TYPOSZEREG PRZEMYSLOWY (50 rekordow; pin: tests/network_model/catalog — szerok
 
 from collections import Counter
 from typing import Any
+
+from network_model.catalog.rodzaje_aparatury import RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA
 
 # =============================================================================
 # WYLACZNIKI SN (CIRCUIT_BREAKER) — prozniowe i SF6
@@ -324,7 +328,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 12.0,
             "in_a": 400.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 16.0,
             "medium": "SF6",
             "u_m_kv": 12.0,
@@ -343,7 +347,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 12.0,
             "in_a": 630.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": "SF6",
             "u_m_kv": 12.0,
@@ -363,7 +367,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 24.0,
             "in_a": 400.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 16.0,
             "medium": "SF6",
             "u_m_kv": 24.0,
@@ -382,7 +386,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 24.0,
             "in_a": 630.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": "SF6",
             "u_m_kv": 24.0,
@@ -402,7 +406,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": "Schneider Electric",
             "un_kv": 12.0,
             "in_a": 630.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": "SF6",
             "u_m_kv": 12.0,
@@ -422,7 +426,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": "Schneider Electric",
             "un_kv": 17.5,
             "in_a": 400.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 16.0,
             "medium": "SF6",
             "u_m_kv": 17.5,
@@ -442,7 +446,7 @@ SWITCH_LOAD_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": "Schneider Electric",
             "un_kv": 24.0,
             "in_a": 630.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": "SF6",
             "u_m_kv": 24.0,
@@ -470,7 +474,7 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 12.0,
             "in_a": 630.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": "AIR",
             "u_m_kv": 12.0,
@@ -489,7 +493,7 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 17.5,
             "in_a": 630.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": "AIR",
             "u_m_kv": 17.5,
@@ -508,7 +512,7 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "manufacturer": "ABB",
             "un_kv": 24.0,
             "in_a": 630.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": "AIR",
             "u_m_kv": 24.0,
@@ -527,7 +531,7 @@ SWITCH_DISCONNECTORS: list[dict[str, Any]] = [
             "manufacturer": "Elpo",
             "un_kv": 17.5,
             "in_a": 400.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 12.5,
             "medium": "AIR",
             "u_m_kv": 17.5,
@@ -678,7 +682,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "un_kv": 12.0,
             "in_a": 16.0,
             "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
-            "icw_ka": 0.0,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 12.0,
             "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
@@ -701,7 +705,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "un_kv": 12.0,
             "in_a": 40.0,
             "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
-            "icw_ka": 0.0,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 12.0,
             "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
@@ -724,7 +728,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "un_kv": 12.0,
             "in_a": 63.0,
             "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
-            "icw_ka": 0.0,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 12.0,
             "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
@@ -747,7 +751,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "un_kv": 12.0,
             "in_a": 100.0,
             "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
-            "icw_ka": 0.0,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 12.0,
             "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
@@ -770,7 +774,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "un_kv": 12.0,
             "in_a": 200.0,
             "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
-            "icw_ka": 0.0,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 12.0,
             "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
@@ -795,7 +799,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "un_kv": 17.5,
             "in_a": 63.0,
             "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
-            "icw_ka": 0.0,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 17.5,
             "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
@@ -818,7 +822,7 @@ SWITCH_FUSES: list[dict[str, Any]] = [
             "un_kv": 17.5,
             "in_a": 100.0,
             "ik_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
-            "icw_ka": 0.0,
+            "icw_ka": None,
             "medium": None,
             "u_m_kv": 17.5,
             "i_cu_ka": _ETI_VV_ZDOLNOSC_WYLACZANIA_KA,
@@ -849,7 +853,7 @@ SWITCH_EARTH_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": None,
             "un_kv": 12.0,
             "in_a": 0.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": None,
             "u_m_kv": 12.0,
@@ -868,7 +872,7 @@ SWITCH_EARTH_SWITCHES: list[dict[str, Any]] = [
             "manufacturer": None,
             "un_kv": 17.5,
             "in_a": 0.0,
-            "ik_ka": 0.0,
+            "ik_ka": None,
             "icw_ka": 20.0,
             "medium": None,
             "u_m_kv": 17.5,
@@ -1081,6 +1085,13 @@ def _polish_switch(
     # nie maja tej zdolnosci z definicji normy, wiec pole zostaje None
     # (NIE_DOTYCZY), nie zero i nie kopia icw_ka.
     i_cu_ka = ik_ka if equipment_kind == "CIRCUIT_BREAKER" else None
+    # KAT-T-048: I_k (zdolnosc wylaczania zwarc) jest wielkoscia wlasciwa wylacznie
+    # rodzajom z `RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA`; rozlacznik i odlacznik
+    # niosa ze zrodla tylko prad wytrzymywany krotkotrwale (``icw_ka``), a pole
+    # ``ik_ka`` jest dla nich ``None`` — „nie dotyczy" rozstrzyga rodzaj, nie wartosc.
+    ik_wylaczalny_ka = (
+        ik_ka if equipment_kind in RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA else None
+    )
     return {
         "id": item_id,
         "name": name,
@@ -1089,7 +1100,7 @@ def _polish_switch(
             "manufacturer": manufacturer,
             "un_kv": un_kv,
             "in_a": in_a,
-            "ik_ka": ik_ka,
+            "ik_ka": ik_wylaczalny_ka,
             "icw_ka": ik_ka,
             "medium": medium,
             "u_m_kv": un_kv,

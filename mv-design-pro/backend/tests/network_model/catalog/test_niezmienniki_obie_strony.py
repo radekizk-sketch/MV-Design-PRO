@@ -514,13 +514,14 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
     ),
     # Karta KATALOG-APARATURA-WN — `SwitchEquipmentType`: 0 kA jako „brak danej”.
     "KAT-T-048": (
-        lambda: _lacznik(equipment_kind="CIRCUIT_BREAKER", ik_ka=0.0, icw_ka=20.0),
-        # Brak danej (None) u wyłącznika i zero w polu, którego rodzaj nie ma (zdolność
+        # Zero odłącznika w polu, którego rodzaj nie ma — zero nie jest zapisem „nie dotyczy”.
+        lambda: _lacznik(equipment_kind="DISCONNECTOR", ik_ka=0.0, icw_ka=20.0),
+        # Brak danej (None) u wyłącznika i None w polu, którego rodzaj nie ma (zdolność
         # wyłączania odłącznika, I_cw bezpiecznika) — legalne.
         lambda: (
             _lacznik(equipment_kind="CIRCUIT_BREAKER", ik_ka=None, icw_ka=None),
-            _lacznik(equipment_kind="DISCONNECTOR", ik_ka=0.0, icw_ka=20.0),
-            _lacznik(equipment_kind="FUSE", ik_ka=63.0, icw_ka=0.0),
+            _lacznik(equipment_kind="DISCONNECTOR", ik_ka=None, icw_ka=20.0),
+            _lacznik(equipment_kind="FUSE", ik_ka=63.0, icw_ka=None, i_cu_ka=63.0),
         ),
     ),
 }

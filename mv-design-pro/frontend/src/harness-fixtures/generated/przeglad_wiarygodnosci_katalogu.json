@@ -31,9 +31,9 @@
       "pokrycie": [
         {
           "kod": "KAT-W-003",
-          "policzone": 28,
-          "pominiete": 22,
-          "powod_pominiecia": "aparat bez dodatniej zdolności wyłączania — odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego"
+          "policzone": 24,
+          "pominiete": 26,
+          "powod_pominiecia": "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze zdolnością wyłączania bez Icu albo bez I_th w karcie katalogowej"
         }
       ],
       "liczba_odstepstw": 0,
@@ -206,7 +206,7 @@
     },
     {
       "rodzina": "switch-equipment",
-      "powod": "Aparat łączeniowy pola bez znamion zwarciowych w kontrakcie typu — relacje Icw/Icu niesie rodzina aparatów SN."
+      "powod": "Aparat łączeniowy pola: relację Icw/Icu tych samych rekordów ocenia reguła KAT-W-003 na projekcji rodziny aparatów SN — druga ocena tej samej pary byłaby zdublowanym sygnałem."
     },
     {
       "rodzina": "switchgear-families",

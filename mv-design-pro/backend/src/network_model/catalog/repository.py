@@ -11,6 +11,7 @@ from network_model.pochodne import mva_na_kva, mw_na_kw
 
 from .karty_widmowe import karta_widmowa_z_rekordu
 from .mv_benchmark_catalog import jest_rekordem_benchmarku
+from .rodzaje_aparatury import RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA
 from .types import (
     POLA_KARTY_PROJEKCJI,
     BESSBatteryType,
@@ -143,23 +144,6 @@ def _certyfikat_ptpiree_z_memo(record: dict) -> PtpireeGeneratorCertificate:
 _ICW_CZAS_ODNIESIENIA_S = 1.0
 
 
-def _dodatnia(wartosc: object) -> float | None:
-    """Liczba dodatnia albo ``None`` — zero w katalogu znaczy „nie dotyczy”.
-
-    Bezpiecznik topikowy ma ``icw_ka = 0.0`` (nie ma wytrzymałości
-    krótkotrwałej — przepala się), a uziemnik ``ik_ka = 0.0`` (nie łączy
-    prądów zwarciowych). Przepisanie takiego zera jako znamiona dałoby werdykt
-    „nie wytrzymuje” tam, gdzie kryterium w ogóle nie istnieje.
-    """
-    if wartosc is None:
-        return None
-    try:
-        liczba = float(wartosc)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return None
-    return liczba if liczba > 0 else None
-
-
 #: Pole rekordu łącznika → pole projekcji ``MVApparatusType`` (te same wielkości, inne
 #: nazwy). Jakość danych pola (``card_field_status``) idzie za wielkością, nie za nazwą.
 _POLA_PROJEKCJI_APARATU: dict[str, str] = {
@@ -190,24 +174,22 @@ def _jakosc_pol_projekcji_aparatu(status: object) -> dict[str, object]:
 def _derive_mv_apparatus_records(
     switch_equipment_records: Iterable[dict],
 ) -> list[dict]:
-    kind_map = {
-        "CIRCUIT_BREAKER": "WYLACZNIK",
-        "LOAD_SWITCH": "ROZLACZNIK",
-        "DISCONNECTOR": "ODLACZNIK",
-        "EARTH_SWITCH": "UZIEMNIK",
-        "FUSE": "ROZLACZNIK_BEZPIECZNIKOWY",
-        "RECLOSER": "REKLOZER",
-    }
+    # Wielkości zwarciowe przechodzą BEZ przekształcenia: te same rekordy budują w
+    # ``from_records`` ``SwitchEquipmentType``, którego bramka KAT-T-048 gwarantuje
+    # ``ik_ka``/``icw_ka`` dodatnie albo ``None`` (zero odrzucone w każdej wielkości,
+    # wielkość niewłaściwa rodzajowi zawsze ``None``). Dawny filtr „zero → None” był
+    # drugą, cichą konwencją „nie dotyczy” — o „nie dotyczy” rozstrzyga rodzaj
+    # (``device_kind``), o „brak danej” — ``None`` przy wielkości właściwej rodzajowi.
     derived: list[dict] = []
     for record in switch_equipment_records:
         params = dict(record.get("params") or {})
-        icw_ka = _dodatnia(params.get("icw_ka"))
+        icw_ka = params.get("icw_ka")
         derived.append(
             {
                 "id": record.get("id"),
                 "name": record.get("name"),
                 "params": {
-                    "device_kind": kind_map.get(
+                    "device_kind": RODZAJ_APARATU_SN_Z_RODZAJU_LACZNIKA.get(
                         str(params.get("equipment_kind", "")).upper(),
                         "APARAT_SN",
                     ),

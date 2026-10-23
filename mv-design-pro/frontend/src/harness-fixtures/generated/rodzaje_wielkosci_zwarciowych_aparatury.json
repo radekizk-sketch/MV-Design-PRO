@@ -1,0 +1,73 @@
+{
+  "zrodlo": "network_model/catalog/rodzaje_aparatury.py",
+  "lacznik": {
+    "CIRCUIT_BREAKER": {
+      "ik_ka": true,
+      "icw_ka": true,
+      "i_cu_ka": true
+    },
+    "DISCONNECTOR": {
+      "ik_ka": false,
+      "icw_ka": true,
+      "i_cu_ka": false
+    },
+    "EARTH_SWITCH": {
+      "ik_ka": false,
+      "icw_ka": true,
+      "i_cu_ka": false
+    },
+    "FUSE": {
+      "ik_ka": true,
+      "icw_ka": false,
+      "i_cu_ka": true
+    },
+    "LOAD_SWITCH": {
+      "ik_ka": false,
+      "icw_ka": true,
+      "i_cu_ka": false
+    },
+    "RECLOSER": {
+      "ik_ka": true,
+      "icw_ka": true,
+      "i_cu_ka": true
+    }
+  },
+  "aparat_sn": {
+    "ODLACZNIK": {
+      "breaking_capacity_ka": false,
+      "making_capacity_ka": true,
+      "i_th_ka": true,
+      "i_dyn_ka": true
+    },
+    "REKLOZER": {
+      "breaking_capacity_ka": true,
+      "making_capacity_ka": true,
+      "i_th_ka": true,
+      "i_dyn_ka": true
+    },
+    "ROZLACZNIK": {
+      "breaking_capacity_ka": false,
+      "making_capacity_ka": true,
+      "i_th_ka": true,
+      "i_dyn_ka": true
+    },
+    "ROZLACZNIK_BEZPIECZNIKOWY": {
+      "breaking_capacity_ka": true,
+      "making_capacity_ka": true,
+      "i_th_ka": false,
+      "i_dyn_ka": true
+    },
+    "UZIEMNIK": {
+      "breaking_capacity_ka": false,
+      "making_capacity_ka": true,
+      "i_th_ka": true,
+      "i_dyn_ka": true
+    },
+    "WYLACZNIK": {
+      "breaking_capacity_ka": true,
+      "making_capacity_ka": true,
+      "i_th_ka": true,
+      "i_dyn_ka": true
+    }
+  }
+}

@@ -46,9 +46,11 @@ from network_model.catalog.audit2_catalogs import (
 from network_model.core.czas_wylaczenia import CzasWylaczeniaTb, czas_tb_roboczy
 
 # Pozycje REALNEGO katalogu APARAT_SN (nie fixture): wyłącznik z Icw 20 kA/1 s
-# i bezpiecznik, który wytrzymałości krótkotrwałej nie ma.
+# i bezpiecznik, któremu wytrzymałość krótkotrwała nie dotyczy (rodzaj).
 WYLACZNIK = "sw-cb-abb-vd4-12kv-630a"
 BEZPIECZNIK = "sw-fuse-eti-vv-12kv-63a"
+#: Wyłącznik, którego karta katalogowa nie podaje znamion zwarciowych (brak danych, nie zero).
+WYLACZNIK_BEZ_ZNAMION = "sw-cb-110kv"
 #: Pozycja katalogu WYTRZYMAŁOŚCI (ręczne wskazanie w konfiguracji stacji).
 APARAT_KONFIGURACJI = "wstd_breaker_vacuum_15_25"
 RUN = "bieg-zwarciowy-testu"
@@ -225,9 +227,13 @@ def test_zapisana_konfiguracja_ma_pierwszenstwo_i_jest_tak_oznaczona() -> None:
     assert drugie["zrodlo"] == ZRODLO_MODEL
 
 
-def test_pozycja_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny() -> None:
-    """Bezpiecznik bez Icw: brak podstawy do oceny, nie „nie wytrzymuje"."""
-    widok = _widok(enm=_enm(aparaty={"pole/in": BEZPIECZNIK}))
+def test_wylacznik_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny() -> None:
+    """Wyłącznik, którego karta nie podaje Icw: brak podstawy do oceny, nie „nie wytrzymuje".
+
+    Wielkość jest WŁAŚCIWA rodzajowi (wyłącznik ma prąd krótkotrwały wytrzymywany), więc brak
+    liczby to „brak danych” — z kodem gotowości i nazwanym brakiem (realna pozycja katalogu
+    wyłącznika 110 kV bez znamion zwarciowych, KAT-T-048: brak danej to None, nigdy 0)."""
+    widok = _widok(enm=_enm(aparaty={"pole/in": WYLACZNIK_BEZ_ZNAMION}))
     pole = widok["pola"][0]
 
     assert pole["znamiona"]["i_th_ka"] is None
@@ -239,8 +245,29 @@ def test_pozycja_bez_znamion_wytrzymalosci_daje_brak_podstawy_a_nie_negatywny() 
     assert {_ocena(pole, r)["status_maszynowy"] for r in ("dynamiczna", "cieplna")} == {
         "BRAK_PODSTAWY"
     }
+
+
+def test_bezpiecznik_wytrzymalosc_nie_dotyczy_a_nie_brak_danych_ani_negatywny() -> None:
+    """Bezpiecznik: prąd krótkotrwały wytrzymywany i szczytowy NIE DOTYCZĄ rodzaju.
+
+    Dawniej (przed decyzją architekta 2026-10-23) ten sam przypadek był „brakiem podstawy”
+    z kodem gotowości „pozycja bez znamion” — inżynier był wzywany do uzupełnienia danej,
+    której norma nie definiuje (IEC 62271-105 § 4.5–4.6, PN-EN 60282-1). Intencja zostaje:
+    nigdy „nie wytrzymuje”; teraz status NIE_DOTYCZY z przyczyną z rodzaju, bez kodu braku."""
+    widok = _widok(enm=_enm(aparaty={"pole/in": BEZPIECZNIK}))
+    pole = widok["pola"][0]
+
+    assert pole["znamiona"]["i_th_ka"] is None
+    assert pole["znamiona"]["i_dyn_ka"] is None
+    assert pole["werdykt"] is None
+    assert pole["komunikat_pl"].startswith("NIE DOTYCZY")
+    assert READINESS_POZYCJA_BEZ_ZNAMION not in pole["kody_gotowosci"]
+    for rodzaj in ("dynamiczna", "cieplna"):
+        ocena = _ocena(pole, rodzaj)
+        assert ocena["status_maszynowy"] == "NIE_DOTYCZY", ocena
+        assert "IEC 62271-105" in ocena["stosowalnosc"]["powod_pl"]
     # Karta SC-IB-ITH-ZRODLA: bezpiecznik MA zdolność wyłączania (63 kA) — jego kryterium
-    # wyłączania jest rozstrzygnięte wobec spodziewanego I″k mimo braku znamion wytrzymałości.
+    # wyłączania jest rozstrzygnięte wobec spodziewanego I″k.
     wylaczanie = _ocena(pole, "wylaczanie")
     assert wylaczanie["status_maszynowy"] == "SPELNIA"
     assert wylaczanie["wynik"]["symbol_latex"] == "I_k''"

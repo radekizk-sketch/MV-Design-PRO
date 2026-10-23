@@ -6,7 +6,12 @@ import {
   type CatalogListItem,
 } from './api';
 import { PozycjeDoPrzegladu } from './PozycjeDoPrzegladu';
-import { BRAK_DANYCH_PL, pradKaLubBrakDanych } from './pradZwarciowyKatalogu';
+import {
+  BRAK_DANYCH_PL,
+  pradAparatuSnKatalogu,
+  pradKaLubBrakDanych,
+  pradLacznikaKatalogu,
+} from './pradZwarciowyKatalogu';
 import type {
   CableType,
   LineType,
@@ -223,10 +228,11 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'TRANSFORMER':
       return `${formatDetailValue(record.rated_power_mva)} MVA · ${formatDetailValue(record.voltage_hv_kv)}/${formatDetailValue(record.voltage_lv_kv)} kV · uk=${formatDetailValue(record.uk_percent)}%`;
     case 'SWITCH_EQUIPMENT':
-      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · Ik ${pradKaLubBrakDanych(record.ik_ka)}`;
+      return `${formatDetailValue(record.un_kv)} kV · ${formatDetailValue(record.in_a)} A · Ik ${pradLacznikaKatalogu(record, 'ik_ka')}`;
     case 'SYSTEM_SOURCE':
       return `${formatDetailValue(record.voltage_rating_kv)} kV · Sk3=${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
     case 'MV_APPARATUS':
+      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik ${pradAparatuSnKatalogu(record, 'breaking_capacity_ka')}`;
     case 'LV_APPARATUS':
       return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik ${pradKaLubBrakDanych(record.breaking_capacity_ka)}`;
     case 'LV_RCD':
@@ -254,8 +260,21 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
   }
 }
 
-function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; value: string }> {
+/**
+ * Wielkości zwarciowe pozycji aparatu SN pokazywane ZAWSZE, także bez liczby: panel
+ * generyczny ukrywa pola `null`, a dla tych wielkości brak liczby niesie informację —
+ * „nie dotyczy” (rodzaj aparatu jej nie ma) albo „brak danych” (karta jej nie podaje).
+ */
+const WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE = ['breaking_capacity_ka', 'i_th_ka'] as const;
+
+function getGenericDetailEntries(
+  type: CatalogListItem,
+  category: TypeCategory,
+): Array<{ label: string; value: string }> {
   const record = type as unknown as Record<string, unknown>;
+  const zawsze: ReadonlySet<string> = new Set(
+    category === 'MV_APPARATUS' ? WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE : [],
+  );
   // CV-4.3 K7: sk3_min_mva/ik3_min_ka/rx_ratio_min ukryte tu — panel generyczny
   // UKRYWA pola null zamiast "brak danych" (K1), więc renderują się WYŁĄCZNIE
   // przez bespoke `renderSystemSourceMinParams` (etykiety PL + jawny brak danych,
@@ -271,7 +290,10 @@ function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; 
     // Propozycje wartości roboczych (V12K-351) mają własną sekcję — nie są daną karty.
     'wartosci_robocze',
   ]);
-  const presentKeys = Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== '');
+  const presentKeys = [
+    ...Object.keys(record).filter((key) => !hiddenKeys.has(key) && record[key] != null && record[key] !== ''),
+    ...[...zawsze].filter((key) => record[key] == null),
+  ];
   const orderedKeys = [
     ...GENERIC_FIELD_ORDER.filter((key) => presentKeys.includes(key)),
     ...presentKeys
@@ -281,7 +303,9 @@ function getGenericDetailEntries(type: CatalogListItem): Array<{ label: string; 
 
   return orderedKeys.map((key) => ({
     label: humanizeKey(key),
-    value: formatDetailValue(record[key]),
+    value: zawsze.has(key)
+      ? pradAparatuSnKatalogu(record, key as (typeof WIELKOSCI_ZWARCIOWE_APARATU_SN_ZAWSZE)[number])
+      : formatDetailValue(record[key]),
   }));
 }
 
@@ -555,7 +579,7 @@ function TypeDetailsPanel({
   type: CatalogListItem;
   category: TypeCategory;
 }) {
-  const genericEntries = useMemo(() => getGenericDetailEntries(type), [type]);
+  const genericEntries = useMemo(() => getGenericDetailEntries(type, category), [type, category]);
   const manufacturer = getCatalogManufacturer(type);
 
   return (
@@ -787,14 +811,16 @@ function renderSwitchParams(type: SwitchEquipmentType) {
       <DetailField label="Rodzaj aparatu" value={type.equipment_kind} />
       <DetailField label="Napięcie znamionowe" value={type.un_kv.toFixed(1)} unit="kV" />
       <DetailField label="Prąd znamionowy" value={type.in_a.toFixed(0)} unit="A" />
+      {/* Brak liczby: „nie dotyczy” (rodzaj aparatu tej wielkości nie ma) albo „brak danych”
+          (wielkość właściwa rodzajowi, karta jej nie podaje) — rozstrzyga rodzaj. */}
       <DetailField
         label="Prąd wyłączalny Ik"
-        value={type.ik_ka == null ? BRAK_DANYCH_PL : type.ik_ka.toFixed(1)}
+        value={type.ik_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'ik_ka') : type.ik_ka.toFixed(1)}
         unit={type.ik_ka == null ? undefined : 'kA'}
       />
       <DetailField
         label="Prąd wytrzymałości Icw"
-        value={type.icw_ka == null ? BRAK_DANYCH_PL : type.icw_ka.toFixed(1)}
+        value={type.icw_ka == null ? pradLacznikaKatalogu(type as unknown as Record<string, unknown>, 'icw_ka') : type.icw_ka.toFixed(1)}
         unit={type.icw_ka == null ? undefined : 'kA'}
       />
       <DetailField label="Ośrodek gaszący" value={type.medium ?? '—'} />

@@ -780,20 +780,22 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
     # Karta KATALOG-APARATURA-WN (poprawka architekta 2026-10-22) — `SwitchEquipmentType`.
     RegulaKatalogu(
         kod="KAT-T-048",
-        nazwa="Prąd zwarciowy łącznika właściwy jego rodzajowi dodatni albo brak danej",
+        nazwa="Prąd zwarciowy łącznika dodatni albo brak danej; „nie dotyczy” wg rodzaju",
         klasa=KlasaNiezmiennika.KONIECZNOSC_FIZYCZNA,
         podstawa=(
             "Definicja wielkości znamionowych aparatu łączeniowego (IEC 62271-1:2007 § 4.5 "
             "prąd krótkotrwały wytrzymywany, IEC 62271-100:2008 § 4.101 znamionowy prąd "
-            "wyłączalny zwarciowy) — wielkość znamionowa jest dodatnia"
+            "wyłączalny zwarciowy, IEC 60282-1 — bezpiecznik bez I_cw) — wielkość "
+            "znamionowa jest dodatnia i właściwa rodzajowi aparatu"
         ),
         uzasadnienie=(
             "Wyłącznik o zdolności wyłączania 0 kA albo odłącznik o prądzie krótkotrwałym "
-            "0 kA nie istnieje. Zero zapisane jako „brak danej” każdy konsument (dobór, "
-            "dowód wytrzymałości, eksport, raport, interfejs) czyta jako liczbę — brak danej "
-            "jest więc `None`. Wielkość, której rodzaj aparatu z definicji normy nie ma "
-            "(zdolność wyłączania rozłącznika, odłącznika i uziemnika, I_cw bezpiecznika), "
-            "bramce nie podlega: o „nie dotyczy” rozstrzyga rodzaj aparatu."
+            "0 kA nie istnieje. Zero zapisane jako „brak danej” albo „nie dotyczy” każdy "
+            "konsument (dobór, dowód wytrzymałości, eksport, raport, interfejs) czyta jako "
+            "liczbę — zero jest więc odrzucane w każdej wielkości. Wielkość, której rodzaj "
+            "aparatu z definicji normy nie ma (zdolność wyłączania rozłącznika, odłącznika "
+            "i uziemnika, I_cw bezpiecznika), jest zawsze `None` — o „nie dotyczy” "
+            "rozstrzyga rodzaj; `None` przy wielkości właściwej rodzajowi to brak danej."
         ),
     ),
     # -----------------------------------------------------------------------
@@ -1065,8 +1067,9 @@ RODZINY_PRZEGLADU: dict[str, SpecyfikacjaRodziny] = {
 #: pominieta milczeniem bylaby nierozroznialna od przeoczonej.
 RODZINY_BEZ_REGUL: dict[str, str] = {
     "switch-equipment": (
-        "Aparat łączeniowy pola bez znamion zwarciowych w kontrakcie typu — relacje "
-        "Icw/Icu niesie rodzina aparatów SN."
+        "Aparat łączeniowy pola: relację Icw/Icu tych samych rekordów ocenia reguła "
+        "KAT-W-003 na projekcji rodziny aparatów SN — druga ocena tej samej pary byłaby "
+        "zdublowanym sygnałem."
     ),
     "lv-breaker-mcb": (
         "Wyłącznik nadprądowy MCB: kontrakt niesie pasmo wyzwalania z IEC 60898-1, bez "
@@ -1189,17 +1192,17 @@ def _sprawdz_kat_w_002(pozycja: Any) -> _WynikReguly:
 
 
 def _sprawdz_kat_w_003(pozycja: Any) -> _WynikReguly:
-    """Icw <= Icu aparatu SN — TYLKO dla aparatu o dodatniej zdolnosci wylaczania.
+    """Icw <= Icu aparatu SN — TYLKO dla aparatu ze zdolnoscia wylaczania.
 
-    ZAKRES REGULY, NIE PODRASOWANIE DANYCH (pomiar 2026-09-17). Rodzina aparatow
-    SN niesie 13 pozycji z `breaking_capacity_ka = 0.0`: odlaczniki, rozlaczniki i
-    uziemniki. Zero nie jest tu brakiem danej ani bledem — jest DEKLARACJA, ze
-    aparat z definicji nie przerywa pradu zwarciowego (odlacznik lamie tylko prad
-    jalowy, uziemnik nie lamie nic). Zestawienie pradu krotkotrwalego
-    wytrzymywanego ze zdolnoscia wylaczania, ktorej aparat NIE MA, nie jest
-    sygnalem „do przegladu" tylko szumem — a 13 pozycji szumu wylaczyloby czujnosc
-    na pierwsze prawdziwe odstepstwo. Pozycje bez dodatniej Icu ida wiec do
-    `pominiete` z nazwanym powodem, a nie do odstepstw i nie do cichego zera.
+    ZAKRES REGULY, NIE PODRASOWANIE DANYCH. Rodzina aparatow SN niesie odlaczniki,
+    rozlaczniki i uziemniki z `breaking_capacity_ka = None`: aparat z definicji nie
+    przerywa pradu zwarciowego (odlacznik lamie tylko prad jalowy, uziemnik nie lamie
+    nic), wiec wielkosc „nie dotyczy” (KAT-T-048 — rozstrzyga rodzaj, nigdy zapis 0.0).
+    Zestawienie pradu krotkotrwalego wytrzymywanego ze zdolnoscia wylaczania, ktorej
+    aparat NIE MA, nie jest sygnalem „do przegladu" tylko szumem. Pozycje bez Icu ida
+    wiec do `pominiete` z nazwanym powodem, a nie do odstepstw i nie do cichego zera.
+    Warunek `icu <= 0.0` zostaje jako obrona rekordu spoza katalogu domyslnego
+    (zero nie przechodzi bramki typu, ale regula nie zaklada, skad pozycja przyszla).
     """
     icw = _pomiar(pozycja, "i_th_ka")
     icu = _pomiar(pozycja, "breaking_capacity_ka")
@@ -1262,8 +1265,9 @@ POWODY_POMINIECIA: dict[str, str] = {
     "KAT-W-001": "pozycja nie niesie rezystancji składowej zerowej (R0)",
     "KAT-W-002": "pozycja nie niesie strat jałowych (P0) albo obciążeniowych (Pk)",
     "KAT-W-003": (
-        "aparat bez dodatniej zdolności wyłączania — odłącznik, rozłącznik albo uziemnik "
-        "z definicji nie przerywa prądu zwarciowego"
+        "nie dotyczy: odłącznik, rozłącznik albo uziemnik z definicji nie przerywa prądu "
+        "zwarciowego (zdolność wyłączania None wg rodzaju); albo brak danych: aparat ze "
+        "zdolnością wyłączania bez Icu albo bez I_th w karcie katalogowej"
     ),
     "KAT-W-004": (
         "aparat bez dodatniej zdolności wyłączania Icu albo bez prądu krótkotrwałego Icw "

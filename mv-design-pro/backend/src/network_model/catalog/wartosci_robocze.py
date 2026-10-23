@@ -32,6 +32,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
+from network_model.catalog.rodzaje_aparatury import wielkosc_zwarciowa_aparatu_sn_dotyczy
 from network_model.core.voltage_factor import (
     ETYKIETA_TOLERANCJI_NN,
     TOLERANCJE_NAPIECIA_NN,
@@ -344,6 +345,14 @@ def _propozycja_czasu_wlasnego(
 
 
 def _propozycja_i_th(karta: KartaAparatuSN) -> tuple[PropozycjaWartosci | None, str | None]:
+    if not wielkosc_zwarciowa_aparatu_sn_dotyczy(karta.device_kind.strip().upper(), "i_th_ka"):
+        # „Nie dotyczy” (rodzaj), nie „brak danych”: wkładka bezpiecznikowa przepala się,
+        # PN-EN 60282-1 nie definiuje prądu krótkotrwałego wytrzymywanego (KAT-T-048).
+        return None, (
+            "prąd krótkotrwały wytrzymywany nie dotyczy tego rodzaju aparatu — w rozłączniku "
+            "bezpiecznikowym zwarcie przerywa wkładka, która przepala się, a nie przewodzi "
+            "prądu zwarciowego przez czas znamionowy (PN-EN 60282-1 nie definiuje I_cw)"
+        )
     icu = karta.breaking_capacity_ka
     if karta.device_kind.strip().upper() == RODZAJ_WYLACZNIK and icu is not None and icu > 0:
         return (

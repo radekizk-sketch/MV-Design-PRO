@@ -26,12 +26,19 @@ Usage:
 import math
 import re
 import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
 
 from network_model.catalog.niezmienniki_katalogu import odmowa_twarda
+from network_model.catalog.rodzaje_aparatury import (
+    WIELKOSCI_ZWARCIOWE_APARATU_SN,
+    WIELKOSCI_ZWARCIOWE_LACZNIKA,
+    wielkosc_zwarciowa_aparatu_sn_dotyczy,
+    wielkosc_zwarciowa_lacznika_dotyczy,
+)
 from network_model.catalog.wartosci_robocze import pochodzenie_danej_karty
 from network_model.ir_fields import (
     wymagany_float,
@@ -1474,49 +1481,38 @@ class TransformerType:
         )
 
 
-#: Komplet rodzajów aparatury łączeniowej (``SwitchEquipmentType.equipment_kind``).
-RODZAJE_APARATURY_LACZENIOWEJ: frozenset[str] = frozenset(
-    {"CIRCUIT_BREAKER", "LOAD_SWITCH", "DISCONNECTOR", "EARTH_SWITCH", "FUSE", "RECLOSER"}
-)
-#: Rodzaje aparatury łączeniowej SN ze ZNAMIONOWĄ zdolnością łączeniową zwarciową
-#: (``SwitchEquipmentType.ik_ka``): wyłącznik i reklozer (PN-EN 62271-100 / -111) oraz
-#: bezpiecznik (PN-EN 60282-1). Rozłącznik, odłącznik i uziemnik tej zdolności nie mają
-#: z definicji normy — JEDNO źródło dla bramki rekordu (KAT-T-048) i dla odczytu
-#: „nie dotyczy” zdolności wyłączania (``equipment_proof.catalog_bridge``).
-RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA: frozenset[str] = frozenset(
-    {"CIRCUIT_BREAKER", "RECLOSER", "FUSE"}
-)
-#: Rodzaje aparatury łączeniowej SN BEZ prądu krótkotrwałego wytrzymywanego
-#: (``SwitchEquipmentType.icw_ka``): wkładka bezpiecznikowa przepala się, nie
-#: przewodzi zwarcia przez czas znamionowy (PN-EN 60282-1 nie definiuje I_cw).
-RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO: frozenset[str] = frozenset({"FUSE"})
-
-
-def _sprawdz_prady_zwarciowe_lacznika(
-    item_id: str, equipment_kind: str, ik_ka: float | None, icw_ka: float | None
+def _sprawdz_wielkosci_zwarciowe(
+    item_id: str,
+    rodzaj: str,
+    wartosci: tuple[tuple[str, float | None], ...],
+    dotyczy: Callable[[str, str], bool],
 ) -> None:
-    """KAT-T-048: prąd zwarciowy łącznika dodatni albo ``None`` (brak danej z karty).
+    """KAT-T-048: wielkość zwarciowa aparatu dodatnia albo ``None`` — nigdy zero.
 
-    Zero NIE jest brakiem danej: 0 kA zdolności wyłączania wyłącznika albo prądu
-    krótkotrwałego odłącznika opisuje aparat, który nie istnieje, a każdy konsument
-    (dobór, dowód wytrzymałości, eksport, raport, interfejs) przeczytałby je jako
-    liczbę. Wielkość, której rodzaj aparatu z definicji normy NIE MA (zdolność
-    wyłączania rozłącznika/odłącznika/uziemnika, I_cw bezpiecznika), nie podlega
-    bramce — rodzaj rozstrzyga „nie dotyczy”, a historyczny zapis ``0.0`` tych pól
-    w katalogu jest odczytywany przez konsumentów właśnie po rodzaju.
+    Zero NIE jest ani brakiem danej, ani „nie dotyczy”: 0 kA zdolności wyłączania
+    wyłącznika albo prądu krótkotrwałego odłącznika opisuje aparat, który nie istnieje,
+    a każdy konsument (dobór, dowód wytrzymałości, eksport, raport, interfejs)
+    przeczytałby je jako liczbę. Wielkość, której rodzaj aparatu z definicji normy NIE
+    MA (zdolność wyłączania rozłącznika/odłącznika/uziemnika, I_cw bezpiecznika), jest
+    zawsze ``None`` — o „nie dotyczy” rozstrzyga rodzaj (``dotyczy(rodzaj, pole)``),
+    a ``None`` przy wielkości właściwej rodzajowi znaczy „brak danej z karty”.
     """
-    for pole, wartosc, dotyczy in (
-        ("ik_ka", ik_ka, equipment_kind in RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA),
-        ("icw_ka", icw_ka, equipment_kind not in RODZAJE_LACZNIKA_BEZ_PRADU_KROTKOTRWALEGO),
-    ):
+    for pole, wartosc in wartosci:
         if wartosc is None:
             continue
-        if not math.isfinite(wartosc) or wartosc < 0 or (dotyczy and wartosc == 0):
+        if not dotyczy(rodzaj, pole):
             odmowa_twarda(
                 "KAT-T-048",
-                f"Łącznik '{item_id}' ({equipment_kind}) ma {pole}={wartosc!r} kA — prąd "
-                "zwarciowy właściwy rodzajowi aparatu jest dodatni; brak danej z karty "
-                "zapisuje się jako None, nigdy jako 0.",
+                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — tej wielkości "
+                "rodzaj aparatu z definicji normy nie ma; „nie dotyczy” zapisuje się jako "
+                "None, rozstrzyga rodzaj.",
+            )
+        if not math.isfinite(wartosc) or wartosc <= 0:
+            odmowa_twarda(
+                "KAT-T-048",
+                f"Aparat '{item_id}' ({rodzaj}) ma {pole}={wartosc!r} kA — prąd zwarciowy "
+                "aparatu jest dodatni; brak danej z karty zapisuje się jako None, nigdy "
+                "jako 0.",
             )
 
 
@@ -1579,7 +1575,12 @@ class SwitchEquipmentType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        _sprawdz_prady_zwarciowe_lacznika(self.id, self.equipment_kind, self.ik_ka, self.icw_ka)
+        _sprawdz_wielkosci_zwarciowe(
+            self.id,
+            self.equipment_kind,
+            tuple((pole, getattr(self, pole)) for pole in WIELKOSCI_ZWARCIOWE_LACZNIKA),
+            wielkosc_zwarciowa_lacznika_dotyczy,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -3023,6 +3024,14 @@ class MVApparatusType:
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        _sprawdz_wielkosci_zwarciowe(
+            self.id,
+            self.device_kind,
+            tuple((pole, getattr(self, pole)) for pole in WIELKOSCI_ZWARCIOWE_APARATU_SN),
+            wielkosc_zwarciowa_aparatu_sn_dotyczy,
+        )
 
     def pochodzenie_i_th(self) -> str | None:
         """Skąd pochodzi I_th tej pozycji (``None`` = karta tej danej nie niesie)."""

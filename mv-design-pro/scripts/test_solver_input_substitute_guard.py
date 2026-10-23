@@ -2202,7 +2202,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Scalenie partii 9-13 z galezia UI/UX (2026-10-22): 580 programu + 6 plikow enm
         # (W5-B 3, GPZ-PARYTET 1, W5-C 3 − 1 skasowany) + 1 application (K6a) + 1 api (W5-C)
         # = 588. POMIAR guardem na drzewie scalonym i na obu rodzicach (577 / 580).
-        "Przeskanowano 588 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta KATALOG-APARATURA-WN (2026-10-23): 588 -> 589 (+1
+        # `network_model/catalog/rodzaje_aparatury.py` — jedno zrodlo rozstrzygniecia
+        # „nie dotyczy” wielkosci zwarciowych wg rodzaju aparatu; zero nowych nazw pol (4337 bez
+        # zmian), zero wpisow w zapadce i wykluczeniach). POMIAR guardem na drzewie karty.
+        "Przeskanowano 589 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2391,7 +2395,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
-        "  network_model: pliki_skanowane=186, dlug=10 plikow/suma 67, "
+        # Karta KATALOG-APARATURA-WN (2026-10-23): 186 -> 187 (+1
+        # `catalog/rodzaje_aparatury.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
+        "  network_model: pliki_skanowane=187, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

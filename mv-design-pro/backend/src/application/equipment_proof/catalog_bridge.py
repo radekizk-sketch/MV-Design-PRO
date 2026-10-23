@@ -27,16 +27,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
-from network_model.catalog.types import (
+from network_model.catalog.rodzaje_aparatury import (
     RODZAJE_APARATURY_LACZENIOWEJ,
     RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA,
 )
 
 #: Rodzaje aparatury SN BEZ zdolnosci wylaczania zwarc z definicji normy
 #: (rozlacznik/odlacznik/uziemnik) — I_cu jest dla nich NIE_DOTYCZY, nigdy
-#: brakiem danej. Wyprowadzone z JEDNEGO zrodla w `catalog.types` (to samo,
-#: z ktorego bramka rekordu KAT-T-048 rozstrzyga, czy zero zdolnosci wylaczania
-#: jest „nie dotyczy”, czy rekordem niemozliwym) — predykaty parami.
+#: brakiem danej. Wyprowadzone z JEDNEGO zrodla w `catalog.rodzaje_aparatury` (to samo,
+#: z ktorego bramka rekordu KAT-T-048 odrzuca liczbe w wielkosci niewlasciwej rodzajowi
+#: i zero w kazdej wielkosci) — predykaty parami.
 RODZAJE_SN_BEZ_ZDOLNOSCI_WYLACZANIA: frozenset[str] = (
     RODZAJE_APARATURY_LACZENIOWEJ - RODZAJE_LACZNIKA_ZE_ZDOLNOSCIA_WYLACZANIA
 )
