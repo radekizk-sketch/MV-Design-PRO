@@ -113,3 +113,77 @@
   border-radius: 4px;
   margin-bottom: 8px;
 }
+
+/* Pytanie do standardów — jedno źródło styli dla jasnego i ciemnego motywu. */
+.mvd-enea-question {
+  border-top: 1px solid var(--mvd-line);
+  margin-top: 12px;
+  padding: 12px 0 6px;
+}
+.mvd-enea-question h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+  color: var(--mvd-ink);
+}
+.mvd-enea-question form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  max-width: 620px;
+}
+.mvd-enea-question form label {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-enea-question textarea,
+.mvd-enea-question input {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px;
+  width: 100%;
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+}
+.mvd-enea-question input[type="date"] {
+  max-width: 220px;
+}
+.mvd-enea-question form button {
+  justify-self: start;
+  min-height: 32px;
+  padding: 6px 12px;
+}
+.mvd-enea-question form button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+.mvd-enea-answer {
+  margin-top: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 12px;
+  overflow-wrap: anywhere;
+  color: var(--mvd-ink);
+  font-size: 12.5px;
+}
+.mvd-enea-verdict {
+  font-weight: 700;
+  font-size: 14px;
+}
+.mvd-enea-evidence {
+  padding-left: 18px;
+}
+.mvd-enea-evidence li {
+  margin: 8px 0;
+}
+.mvd-enea-evidence a {
+  color: var(--mvd-ink);
+  text-decoration: underline;
+}
+.mvd-enea-note {
+  color: var(--mvd-muted);
+  font-size: 12px;
+  border-top: 1px solid var(--mvd-line);
+  padding-top: 8px;
+}
