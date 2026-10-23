@@ -123,6 +123,7 @@
  * wewnętrzne szyny/sekcje bez nakładki, znana luka adaptera (f6-1/f6-3,
  * rozszerzenie sectionId→busRef to zmiana adaptera poza zakresem F8b-1).
  */
+import type { ParaDanychPrzyjetych } from '../../../../ui2/wyniki/wzorzec/danePrzyjete';
 import type { StatusWerdyktu, WynikWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
 import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
@@ -322,9 +323,11 @@ export interface SwzOverlayEntry {
  * (karta P0.6/G-22, `build_swz_view`) — WYŁĄCZNIE pola czytane przez
  * budowniczy niżej (envelope pełny niesie też `fault_loop_min_scenario`/
  * `missing_data`/`reason_pl`, nieużywane tutaj — warstwa prezentacji SLD
- * potrzebuje wyłącznie gotowego werdyktu, nie śladu solvera pętli zwarcia).
+ * potrzebuje wyłącznie gotowego werdyktu, nie śladu solvera pętli zwarcia). Werdykt TN niesie
+ * addytywnie parę danych przyjętych (`swz/werdykt.py::SwzTnWynik.to_dict`), WYŁĄCZNIE gdy
+ * Ik₁min stoi na wartości roboczej — czyta ją karta obwodu nN (`KartaObwoduNn`).
  */
-export interface SwzTnVerdict {
+export interface SwzTnVerdict extends ParaDanychPrzyjetych {
   readonly status: SwzVerdictStatus;
   readonly przyczyna_pl: string;
   readonly ik1_min_a: number;

@@ -23,6 +23,7 @@ import wynikKoordynacjiSceny from '../../../../harness-fixtures/generated/koordy
 import wynikOcenySceny from '../../../../harness-fixtures/generated/koordynacja_scena_ocena.json';
 import { EkranKoordynacji } from '../EkranKoordynacji';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
+import { WARIANTY_LISTY, sprawdzDanePrzyjete } from '../../wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const DONE_SC_RUN = {
   id: 'run-sc-1',
@@ -296,6 +297,40 @@ describe('EkranKoordynacji — ocena zabezpieczeń na biegu zwarciowym', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  // Dane przyjęte oceny nadprądowej stoją w dowodzie rekordu werdyktu
+  // (`ocena.dowod.status_danych`) — wiersz pokazuje je wspólnym zapisem przy TEJ ocenie.
+  // Iloczyn: lista {pusta (stan ZWALIDOWANE), jeden wpis, wiele źródeł} × {zwinięty, rozwinięty};
+  // drugi wiersz bez wpisów nie pokazuje niczego.
+  it.each(WARIANTY_LISTY)('dane przyjęte w wierszu oceny — $nazwa', async ({ dane }) => {
+    const [pierwsza, ...reszta] = WYNIK_OCENY.evaluations;
+    const zDanymi = {
+      ...pierwsza,
+      ocena: {
+        ...pierwsza.ocena,
+        dowod: {
+          ...pierwsza.ocena.dowod,
+          status_danych:
+            dane.length > 0
+              ? { stan: 'UNVALIDATED_INPUT' as const, dane_przyjete: dane }
+              : { stan: 'ZWALIDOWANE' as const, dane_przyjete: [] },
+        },
+      },
+    };
+    const user = userEvent.setup();
+    kontekstOceny();
+    mockOceny({ wynik: { ...WYNIK_OCENY, evaluations: [zDanymi, ...reszta] } });
+    render(<EkranKoordynacji />);
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom')).not.toBeDisabled(),
+    );
+    await user.click(screen.getByTestId('mvd-ocena-zabezpieczen-uruchom'));
+    await screen.findByTestId('mvd-ocena-zabezpieczen-wynik');
+    const id = (o: typeof pierwsza) => `mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`;
+    await sprawdzDanePrzyjete(screen.getByTestId(id(pierwsza)), id(pierwsza), dane);
+    expect(reszta.length).toBeGreaterThan(0);
+    for (const o of reszta) await sprawdzDanePrzyjete(screen.getByTestId(id(o)), id(o), []);
   });
 
   it('bez biegu oceny: stan nazwany; klik „Oceń" tworzy i wykonuje bieg na biegu MAX i pokazuje oceny', async () => {

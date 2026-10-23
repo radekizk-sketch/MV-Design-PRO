@@ -310,8 +310,12 @@ def _zwarcia_sekcja(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
         # Karta TOLERANCJA-NN-WARTOSC-ROBOCZA: węzeł w sieci nN liczonej z wartością roboczą
         # tolerancji napięcia — prądy stoją na danej przyjętej; karta LINIA-110: tak samo
         # linie 110 kV z wartością roboczą geometrii w wyspie węzła. Addytywnie, WYŁĄCZNIE gdy są.
+        # Para kontraktu werdyktu §3: stan danych obok listy.
         **(
-            {"dane_przyjete": [d.model_dump(mode="json") for d in dane_przyjete]}
+            {
+                "status_danych": "UNVALIDATED_INPUT",
+                "dane_przyjete": [d.model_dump(mode="json") for d in dane_przyjete],
+            }
             if dane_przyjete
             else {}
         ),

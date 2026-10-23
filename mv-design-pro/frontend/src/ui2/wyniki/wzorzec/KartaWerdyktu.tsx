@@ -33,6 +33,7 @@
 import { useId, useState, type CSSProperties, type ReactNode } from 'react';
 
 import { MathInline } from '../../../ui/proof/MathRenderer';
+import { paraDanychDowodu, type ParaDanychPrzyjetych } from './danePrzyjete';
 import {
   jestWynikiemWymagania,
   type ClaimKind,
@@ -309,8 +310,7 @@ const TEKSTY = {
   poziom: 'poziom zdolności narzędzia',
   twierdzenie: 'rodzaj twierdzenia',
   statusModelu: 'walidacja modelu urządzenia',
-  statusDanych: 'stan danych wejściowych',
-  danePrzyjete: 'dane przyjęte',
+  dotyczyDanych: 'dotyczy',
   odniesienie: 'odniesienie do dowodu',
   domenaWalidacji: 'domena walidacji silnika',
   wDomenie: 'bieg w zadeklarowanej domenie walidacji',
@@ -508,35 +508,118 @@ function ListaDanych({
 }
 
 /**
- * Stan danych wejściowych i lista danych przyjętych (kontrakt werdyktu §3): nazwa wielkości,
- * wartość z jednostką, jakość danej i powód (źródło wartości). Ten sam zapis w dowodzie karty
- * werdyktu i w każdym wyniku, który niesie `status_danych` z listą `dane_przyjete` — np. wkłady
- * i rozpływ punktu zwarcia. Zero logiki: stan i lista przychodzą z backendu; stanu, którego
- * odpowiedź nie niesie (`null`), zapis nie dopowiada — pokazuje wtedy samą listę.
+ * Liczebnik „wartość robocza" w mianowniku po liczbie (1 wartość robocza · 2 wartości robocze ·
+ * 5 wartości roboczych · 22 wartości robocze · 12 wartości roboczych).
  */
-export function StanDanychWyniku({
-  stan,
-  dane,
+function liczebnikWartosciRoboczych(n: number): string {
+  if (n === 1) return '1 wartość robocza';
+  const jednosci = n % 10;
+  const setki = n % 100;
+  const robocze = jednosci >= 2 && jednosci <= 4 && !(setki >= 12 && setki <= 14);
+  return `${n} ${robocze ? 'wartości robocze' : 'wartości roboczych'}`;
+}
+
+/** Jeden wiersz danych przyjętych: zwarty (nazwa, wartość, jakość) + rozwijane uzasadnienie. */
+function WierszDanejPrzyjetej({
+  dana,
   testId,
 }: {
-  readonly stan: StanDanych | null;
-  readonly dane: readonly DanaPrzyjeta[];
+  readonly dana: DanaPrzyjeta;
   readonly testId: string;
 }) {
+  const [otwarty, setOtwarty] = useState(false);
+  const idSzczegolow = useId();
   return (
-    <>
-      {stan !== null && (
-        <Para nazwa={TEKSTY.statusDanych}>
-          <span data-testid={`${testId}-stan-danych`}>{NAZWA_STANU_DANYCH_PL[stan]}</span>
-        </Para>
-      )}
-      {dane.length > 0 && (
-        <div className="mvd-werdykt-podsekcja">
-          <span className="mvd-werdykt-para-nazwa">{TEKSTY.danePrzyjete}:</span>
-          <ListaDanych dane={dane} testId={`${testId}-dane-przyjete`} />
+    <li className="mvd-dane-przyjete-wiersz" data-testid={testId}>
+      <button
+        type="button"
+        className="mvd-dane-przyjete-przelacz"
+        aria-expanded={otwarty}
+        aria-controls={otwarty ? idSzczegolow : undefined}
+        data-testid={`${testId}-przelacz`}
+        onClick={() => setOtwarty((stan) => !stan)}
+      >
+        <span className="mvd-dane-przyjete-znacznik" aria-hidden="true">
+          {otwarty ? '▾' : '▸'}
+        </span>
+        <span className="mvd-dane-przyjete-nazwa">{dana.nazwa_pl}</span>
+        <span className="mvd-dane-przyjete-wartosc mvd-num">
+          {dana.wartosc === null ? TEKSTY.bezWartosci : wielkosc(dana.wartosc)}
+        </span>
+        {dana.jakosc !== null && (
+          <span className="mvd-dane-przyjete-jakosc">{NAZWA_JAKOSCI_PL[dana.jakosc]}</span>
+        )}
+      </button>
+      {otwarty && (
+        <div
+          id={idSzczegolow}
+          className="mvd-dane-przyjete-szczegoly"
+          data-testid={`${testId}-szczegoly`}
+        >
+          {dana.powod_pl}
         </div>
       )}
-    </>
+    </li>
+  );
+}
+
+/**
+ * DANE PRZYJĘTE WYNIKU (kontrakt werdyktu §3, ZASADA NR 4 pkt 4) — JEDEN zapis dla każdego
+ * miejsca, które pokazuje parę `status_danych` + `dane_przyjete`: dowód karty werdyktu,
+ * wkłady i rozpływ punktu zwarcia, widoki analiz jakości, OZE, wrażliwości, kontyngencji,
+ * nastaw, karty obwodu nN i doboru przekładników.
+ *
+ * DYSKRETNIE: domyślnie zwarta postać — jedna linia stanu („dane przyjęte bez walidacji ·
+ * N wartości roboczych”, opcjonalnie z przedmiotem, którego dotyczy) i lista wierszy: nazwa
+ * wielkości z elementem, wartość z jednostką, jakość danej. Uzasadnienie, źródło i wpływ
+ * (`powod_pl`) — dopiero po rozwinięciu wiersza (natywny przycisk z `aria-expanded`, klawiatura:
+ * Enter/Spacja). Bez roli `alert`, bez koloru ostrzeżenia.
+ *
+ * Zero logiki: stan i lista przychodzą z backendu. O tym, czy cokolwiek się pokazuje,
+ * rozstrzyga JEDNO źródło — niepusta lista `dane_przyjete`; przy pustej (albo nieobecnej)
+ * liście zapis nie renderuje niczego, także stanu danych. Stanu, którego odpowiedź nie niesie,
+ * zapis nie dopowiada — linia podaje wtedy samą liczbę wartości roboczych.
+ */
+export function StanDanychWyniku({
+  para,
+  testId,
+  dotyczy = null,
+}: {
+  readonly para: ParaDanychPrzyjetych;
+  readonly testId: string;
+  /** Nazwa wyniku/elementu, którego dotyczą dane — gdy zapis stoi przy wierszu zestawienia. */
+  readonly dotyczy?: string | null;
+}) {
+  const dane = para.dane_przyjete ?? [];
+  if (dane.length === 0) return null;
+  const stan = para.status_danych ?? null;
+  return (
+    <div className="mvd-dane-przyjete" data-testid={`${testId}-dane`}>
+      <span className="mvd-dane-przyjete-linia" data-testid={`${testId}-dane-podsumowanie`}>
+        {stan !== null && (
+          <>
+            <span data-testid={`${testId}-stan-danych`}>{NAZWA_STANU_DANYCH_PL[stan]}</span>
+            {' · '}
+          </>
+        )}
+        {liczebnikWartosciRoboczych(dane.length)}
+        {dotyczy !== null && (
+          <>
+            {' — '}
+            {TEKSTY.dotyczyDanych}: {dotyczy}
+          </>
+        )}
+      </span>
+      <ul className="mvd-dane-przyjete-lista" data-testid={`${testId}-dane-przyjete`}>
+        {dane.map((dana, indeks) => (
+          <WierszDanejPrzyjetej
+            key={`${indeks}-${dana.nazwa_pl}`}
+            dana={dana}
+            testId={`${testId}-dane-przyjete-${indeks}`}
+          />
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -780,11 +863,7 @@ function TrescDowodu({ dowod, testId }: { readonly dowod: StatusDowodu; readonly
       <Para nazwa={TEKSTY.statusModelu}>
         {nazwaStatusuModelu(dowod.status_modelu)}
       </Para>
-      <StanDanychWyniku
-        stan={dowod.status_danych.stan}
-        dane={dowod.status_danych.dane_przyjete}
-        testId={testId}
-      />
+      <StanDanychWyniku para={paraDanychDowodu(dowod)} testId={testId} />
       <Para nazwa={TEKSTY.domenaWalidacji}>
         {dowod.w_domenie_walidacji === null
           ? TEKSTY.domenaNieokreslona

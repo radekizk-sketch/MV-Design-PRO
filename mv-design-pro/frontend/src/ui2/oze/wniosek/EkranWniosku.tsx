@@ -30,6 +30,7 @@ import { selectBusOptions, useSnapshotStore } from '../../../ui/topology/snapsho
 import { etykietaPrzebieguWyniku } from '../../wyniki/wzorzec/strings';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { InformacjeAudytowe } from '../../wyniki/wzorzec/InformacjeAudytowe';
+import { StanDanychWyniku } from '../../wyniki/wzorzec/KartaWerdyktu';
 import { useNazwaObiektu } from '../../wyniki/wzorzec/useNazwaObiektu';
 import {
   BrakiWnioskuError,
@@ -552,6 +553,7 @@ function WynikWniosku({
             </tr>
           </tbody>
         </table>
+        <StanDanychWyniku para={zwarcia} testId="mvd-wniosek-zwarcia" />
       </div>
 
       {/* Sekcja 3 — zgodność NC RfG (sekcje modułów, rekordy wymagań — bez agregatu). */}

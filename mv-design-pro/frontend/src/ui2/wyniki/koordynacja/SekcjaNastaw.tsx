@@ -44,6 +44,7 @@ import {
   type ZaciskZabezpieczenia,
 } from './nastawyApi';
 import { KOORDYNACJA_STRINGS as T } from './strings';
+import { StanDanychWyniku } from '../wzorzec';
 
 type FazaKotwicy = 'szukanie' | 'brak' | 'gotowa' | 'blad';
 type FazaWyniku = 'idle' | 'liczenie' | 'gotowe' | 'blad';
@@ -90,6 +91,7 @@ function TabelaDopasowania({ dopasowanie }: { dopasowanie: DopasowanieAparatu })
       <p data-testid="mvd-koordynacja-dopasowanie-werdykt" data-tone={dopasowanie.compatible ? 'ok' : 'bad'}>
         {dopasowanie.compatible ? T.nastawyDopasowanieZgodny : T.nastawyDopasowanieNiezgodny}
       </p>
+      <StanDanychWyniku para={dopasowanie} testId="mvd-koordynacja-dopasowanie" />
       {dopasowanie.violations.length > 0 ? (
         <div>
           <h5>{T.nastawyDopasowanieNaruszenia}</h5>
@@ -516,6 +518,7 @@ export function SekcjaNastaw({ caseId }: { caseId: string }) {
                   {opisPodstawyCNastaw(odpowiedz.wejscie).wariantMin}
                 </dd>
               </dl>
+              <StanDanychWyniku para={odpowiedz} testId="mvd-koordynacja-nastawy" />
 
               <h4>{T.nastawySekcjaZwloczna}</h4>
               <table className="mvd-koordynacja-nastawy-tabela">

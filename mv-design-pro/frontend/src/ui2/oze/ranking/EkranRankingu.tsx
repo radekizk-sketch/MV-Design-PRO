@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './ranking.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy, InformacjeAudytowe } from '../../wyniki/wzorzec';
+import { EkranAnalizy, InformacjeAudytowe, StanDanychWyniku } from '../../wyniki/wzorzec';
 import type { WierszZalozenia } from '../../wyniki/wzorzec';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
@@ -284,6 +284,7 @@ function WynikRankingu({
         onWybierzWiersz={setWybranyBusRef}
         wybranyWiersz={wybranyBusRef}
       />
+      <StanDanychWyniku para={dane} testId="mvd-rank" />
 
       {wybranyWezel !== null ? (
         <SzczegolWezla

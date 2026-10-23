@@ -22,7 +22,13 @@
 import { useEffect, useState } from 'react';
 import './rozplyw.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy, useNazwaObiektu, usePoprawWModelu } from '../wzorzec';
+import {
+  EkranAnalizy,
+  StanDanychWyniku,
+  useNazwaObiektu,
+  usePoprawWModelu,
+  type ParaDanychPrzyjetych,
+} from '../wzorzec';
 import { fetchWalidacjaEnergetyczna } from '../jakosc/api';
 import { rodzajPrzekroczeniaWalidacji, typElementuWalidacji } from '../jakosc/jakoscModel';
 import { ROZPLYW_STRINGS } from './strings';
@@ -38,25 +44,35 @@ import {
   type PozycjaObciazenia,
 } from './adapters/rozplywAdapter';
 
+/** Walidacja obciążeń przebiegu: mapa pozycji i para danych przyjętych TEJ odpowiedzi. */
+export interface WalidacjaObciazen {
+  readonly mapa: ReadonlyMap<string, PozycjaObciazenia>;
+  /** Para danych przyjętych biegu (`build_energy_validation_view`) — przepływy i obciążenia
+   *  tego przebiegu stoją na tych samych wartościach roboczych gałęzi. */
+  readonly para: ParaDanychPrzyjetych;
+}
+
 /**
  * Pobiera walidację energetyczną przebiegu i buduje mapę `branch_id` → pozycja
- * obciążalności (R3-A). Uczciwe stany: brak `runId`, trwające pobieranie lub
- * błąd/brak odpowiedzi → `null` (kolumna „Obciążenie" pokazuje kreski, bez
- * werdyktu i bez przycisku decyzji). Błąd celowo NIE ustawia stanu — mapa
- * pozostaje `null` z inicjalizacji/resetu, a tabela działa jak przed kartą.
+ * obciążalności (R3-A) wraz z parą danych przyjętych odpowiedzi. Uczciwe stany: brak
+ * `runId`, trwające pobieranie lub błąd/brak odpowiedzi → `null` (kolumna „Obciążenie"
+ * pokazuje kreski, bez werdyktu i bez przycisku decyzji). Błąd celowo NIE ustawia stanu —
+ * wynik pozostaje `null` z inicjalizacji/resetu, a tabela działa jak przed kartą.
  */
-export function useWalidacjaObciazen(
-  runId: string | null,
-): ReadonlyMap<string, PozycjaObciazenia> | null {
-  const [mapa, setMapa] = useState<ReadonlyMap<string, PozycjaObciazenia> | null>(null);
+export function useWalidacjaObciazen(runId: string | null): WalidacjaObciazen | null {
+  const [walidacja, setWalidacja] = useState<WalidacjaObciazen | null>(null);
 
   useEffect(() => {
-    setMapa(null); // reset przy zmianie przebiegu (stale werdykty nie przeciekają)
+    setWalidacja(null); // reset przy zmianie przebiegu (stale werdykty nie przeciekają)
     if (!runId) return;
     let anulowane = false;
     fetchWalidacjaEnergetyczna(runId)
       .then((odpowiedz) => {
-        if (!anulowane) setMapa(naMapeObciazen(odpowiedz.items));
+        if (!anulowane)
+          setWalidacja({
+            mapa: naMapeObciazen(odpowiedz.items),
+            para: { status_danych: odpowiedz.status_danych, dane_przyjete: odpowiedz.dane_przyjete },
+          });
       })
       .catch(() => {
         // Brak odpowiedzi walidacji → uczciwie bez werdyktu (mapa pozostaje null).
@@ -66,7 +82,7 @@ export function useWalidacjaObciazen(
     };
   }, [runId]);
 
-  return mapa;
+  return walidacja;
 }
 
 export interface TabelaGaleziProps {
@@ -92,7 +108,8 @@ export function TabelaGalezi({
   const swiezosc = useSwiezoscNaglowka(runId);
   const poprawWModelu = usePoprawWModelu();
   const nazwaObiektu = useNazwaObiektu();
-  const obciazenia = useWalidacjaObciazen(runId);
+  const walidacja = useWalidacjaObciazen(runId);
+  const obciazenia = walidacja?.mapa ?? null;
 
   if (!wynik) {
     return (
@@ -149,6 +166,7 @@ export function TabelaGalezi({
           return poz ? rodzajPrzekroczeniaWalidacji(poz.checkType) ?? undefined : undefined;
         }}
       />
+      {walidacja && <StanDanychWyniku para={walidacja.para} testId="mvd-rozplyw-galezie" />}
       {suma && (
         <div className="mvd-rozplyw-suma-strat" data-testid="mvd-rozplyw-suma-strat">
           <span className="mvd-rozplyw-suma-etykieta">{ROZPLYW_STRINGS.sumaStrat}</span>

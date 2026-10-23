@@ -32,6 +32,7 @@ import {
   type TrybOdgromowych,
 } from './geometriaLiniiWn';
 import { EDYCJA_PARAMETROW_STRINGS as T } from './strings';
+import { StanDanychWyniku } from '../../wyniki/wzorzec/KartaWerdyktu';
 
 export interface SekcjaLiniiWnProps {
   formularz: FormularzLiniiWn;
@@ -255,6 +256,10 @@ export function SekcjaLiniiWn({
               ? T.liniaWnKompletnoscNiepelna
               : T.liniaWnKompletnoscPelna}
           </KreatorInfo>
+          <StanDanychWyniku
+            para={podglad.podglad.parametry}
+            testId="mvd-kreator-edycja-linia-wn-podglad"
+          />
           {podglad.podglad.pasma_wiarygodnosci.map((p) => (
             <div key={p.parametr} data-testid={`mvd-kreator-edycja-linia-wn-pasmo-${p.parametr}`}>
               <RzadWartosci

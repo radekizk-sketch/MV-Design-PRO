@@ -723,8 +723,9 @@ def test_design_verdict_endpoint_niesie_ocene_grupy_i_elementy_per_pozycja(app_c
         assert grupa["nazwa_pl"].strip()
 
     # Partia 2 integracji (karty LINIA-110 i PODSTAWA-Q razem): element oceny stojący na danej
-    # przyjętej niesie ADDYTYWNIE parę kluczy `dane_przyjete` + `kompletnosc_dowodu`
-    # (NIEPELNY, kontrakt werdyktu §3); element na danych projektu — dokładnie zbiór pinu.
+    # przyjętej niesie ADDYTYWNIE klucze `status_danych` (UNVALIDATED_INPUT) + `dane_przyjete` +
+    # `kompletnosc_dowodu` (NIEPELNY, kontrakt werdyktu §3; para stanu i listy czytana na ekranie
+    # oceny wspólnym zapisem danych przyjętych); element na danych projektu — dokładnie zbiór pinu.
     # Złota sieć ma generator synchroniczny bez tabliczki (x″d, cos φ_r i S_rG z propozycji
     # rejestru), więc I″k każdego punktu jej wyspy — a z nim wytrzymałość zwarciowa przewodów —
     # stoi na wartościach roboczych maszyny; ten fakt jest przypięty niżej.
@@ -737,12 +738,13 @@ def test_design_verdict_endpoint_niesie_ocene_grupy_i_elementy_per_pozycja(app_c
             co_najmniej_jeden_element = True
             dane = element.get("dane_przyjete")
             oczekiwane = _KLUCZE_OCENY_ELEMENTU | (
-                {"dane_przyjete", "kompletnosc_dowodu"} if dane else set()
+                {"status_danych", "dane_przyjete", "kompletnosc_dowodu"} if dane else set()
             )
             assert set(element.keys()) == oczekiwane, pozycja["kryterium_id"]
             assert element["wynik"] in ("SPELNIA", "NIE_SPELNIA", "BRAK_PODSTAW")
             if dane:
                 assert element["kompletnosc_dowodu"] == "NIEPELNY", pozycja["kryterium_id"]
+                assert element["status_danych"] == "UNVALIDATED_INPUT", pozycja["kryterium_id"]
                 assert all(d["jakosc"] == "ESTIMATED" for d in dane), pozycja["kryterium_id"]
                 assert all("„Generator synchroniczny”" in d["nazwa_pl"] for d in dane)
                 elementy_na_danych_przyjetych.add(pozycja["kryterium_id"])

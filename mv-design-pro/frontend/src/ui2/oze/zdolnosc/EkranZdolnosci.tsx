@@ -38,7 +38,7 @@ import {
   wybierzPrzebiegRozplywu,
 } from './zdolnoscModel';
 import { ZDOLNOSC_STRINGS, fmtMW } from './strings';
-import { InformacjeAudytowe, PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, PrzyciskAkcjiStanu, StanDanychWyniku } from '../../wyniki/wzorzec';
 import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_KROK_MW = 0.5;
@@ -215,6 +215,8 @@ function WynikZdolnosci({
           ))}
         </tbody>
       </table>
+
+      <StanDanychWyniku para={dane} testId="mvd-zdol" />
 
       <div className="mvd-zdol-wykres-blok">
         <WykresZdolnosciChart slupki={slupki} />

@@ -10,7 +10,7 @@ import { useState } from 'react';
 
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzSileSieci, type WpisSilyWezla } from '../api';
-import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, StanDanychWyniku, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { SladAnalizy } from './SladAnalizy';
 import { busRefModuluSily, wybierzPrzebiegZwarciowy } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
@@ -72,6 +72,7 @@ function WpisWezla({
         <span className="mvd-oze-num">{formatKv(wpis.nominal_kv)}</span>
       </div>
       <p style={{ margin: '4px 0 0' }}>{wpis.why_pl}</p>
+      <StanDanychWyniku para={wpis} testId={`mvd-oze-sila-wezel-${wpis.bus_ref}`} />
       {wpis.missing_data.length > 0 ? (
         <div className="mvd-oze-metryka">
           <span>{PULPIT_STRINGS.silaBrakDanych}</span>

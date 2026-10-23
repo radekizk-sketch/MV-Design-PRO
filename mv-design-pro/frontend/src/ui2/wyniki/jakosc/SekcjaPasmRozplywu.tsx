@@ -28,7 +28,7 @@
 
 import { useMemo, useState } from 'react';
 
-import { EkranAnalizy } from '../wzorzec';
+import { EkranAnalizy, StanDanychWyniku } from '../wzorzec';
 import type { DefinicjaKolumny, WierszTabeli, WierszZalozenia } from '../wzorzec';
 import {
   Chip,
@@ -338,6 +338,7 @@ export function SekcjaPasmRozplywu({
       <SzczegolObciazenia item={wybranaGalaz ? selektorObciazen.get(wybranaGalaz) ?? null : null} />
 
       <BlokStrat straty={dane.straty} />
+      <StanDanychWyniku para={dane} testId="mvd-jakosc-pasma-rozplywu" />
     </section>
   );
 }

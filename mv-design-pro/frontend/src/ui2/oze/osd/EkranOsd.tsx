@@ -25,6 +25,7 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
   InformacjeAudytowe,
+  StanDanychWyniku,
   TabelaWynikow,
   nazwaObiektuZMigawki,
 } from '../../wyniki/wzorzec';
@@ -142,6 +143,7 @@ function WynikOsd({
           <dd>{etykietaPoleceniaOsd(dane.parameters.command)}</dd>
         </div>
       </dl>
+      <StanDanychWyniku para={dane} testId="mvd-osd" />
 
       {/* Karta #145: identyfikator źródła, przebieg i odcisk wejścia wyłącznie w
           „Informacjach audytowych" (tryb ekspercki, zwinięte). */}

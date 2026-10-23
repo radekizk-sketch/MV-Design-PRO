@@ -100,6 +100,8 @@ def test_podglad_parametrow_linii(
     parametry = tresc["parametry"]
     assert parametry["kompletnosc_dowodu"] == kompletnosc
     assert [d["jakosc"] for d in parametry["dane_przyjete"]] == ["ESTIMATED"] * len(robocze)
+    # Para kontraktu werdyktu §3: stan danych wyłącznie obok niepustej listy (kreator czyta oba).
+    assert parametry.get("status_danych") == ("UNVALIDATED_INPUT" if robocze else None)
     skladowe = tresc["dane_linii"]["skladowe"]
     assert [s["parametr"] for s in skladowe if s["wartosc_robocza"]] == robocze
     assert all(s["propozycja"] is not None for s in skladowe if s["wartosc_robocza"])

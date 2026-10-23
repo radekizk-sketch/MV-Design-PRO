@@ -9,6 +9,8 @@
  * These types mirror backend catalog structures for UI consumption.
  */
 
+import type { ParaDanychPrzyjetych } from '../../ui2/wyniki/wzorzec/danePrzyjete';
+
 /**
  * Base type for all catalog types.
  */
@@ -117,7 +119,9 @@ export interface SkladowaDanychLiniiWn {
  */
 export interface PodgladParametrowLiniiWn {
   przewod: { oznaczenie: string | null; przekroj_mm2: number | null; zrodlo: string | null };
-  parametry: {
+  /** `ParametryLiniiNapowietrznej.to_dict` — `dane_przyjete` (zawsze lista, pusta przy danych
+   *  projektu) to wartości robocze, na których stoi wynik; bez `status_danych`. */
+  parametry: ParaDanychPrzyjetych & {
     metoda: string;
     wersja_metody: string;
     r1_ohm_per_km: number;

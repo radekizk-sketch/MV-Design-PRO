@@ -32,6 +32,11 @@ import {
   zadanieMacierzy,
   zadanieMagazynu,
 } from './fixtures';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 type Odpowiedz = 'widok' | 'braki' | 'blad';
 
@@ -261,5 +266,31 @@ describe('generacja — żądanie V2 i widok', () => {
     await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
     await screen.findByTestId('mvd-wniosek-wynik');
     expect(screen.queryByTestId('mvd-wniosek-odciski') !== null).toBe(widoczne);
+  });
+});
+
+describe('sekcja zwarć wniosku — dane przyjęte (lista × zwinięty/rozwinięty)', () => {
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    const widok = widokWnioskuFixture();
+    atrapaSieci([
+      { metoda: 'GET', sciezka: '/api/ncrfg-tests/catalog', odpowiedz: () => odpowiedzJson(200, katalogFixture()) },
+      {
+        metoda: 'POST',
+        sciezka: '/api/oze-analysis/osd-application',
+        odpowiedz: () =>
+          odpowiedzJson(200, {
+            ...widok,
+            zwarcia_punkt_przylaczenia: { ...widok.zwarcia_punkt_przylaczenia, ...paraDanych(dane) },
+          }),
+      },
+    ]);
+    zasiej(deryMagazynu(), przebiegiMagazynu());
+    const uzytkownik = userEvent.setup();
+    render(<EkranWniosku trybZaawansowania="basic" />);
+    await zbuduj(uzytkownik, zadanieMagazynu().bus_ref);
+    await screen.findByTestId('mvd-wniosek-wynik');
+    await sprawdzDanePrzyjete(screen.getByTestId('mvd-wniosek-zwarcia'), 'mvd-wniosek-zwarcia', dane);
+    // Wpisy zwarć nie przeciekają do bilansu ani zgodności.
+    await sprawdzDanePrzyjete(screen.getByTestId('mvd-wniosek-bilans'), 'mvd-wniosek-bilans', []);
   });
 });

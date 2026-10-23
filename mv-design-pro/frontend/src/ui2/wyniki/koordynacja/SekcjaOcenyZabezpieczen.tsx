@@ -20,7 +20,8 @@ import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStor
 import { fetchProtectionRuns } from '../../../ui/protection-comparison/api';
 import { WIARYGODNOSC_PL } from '../../../ui/protection-comparison/types';
 import { useBiegiKoordynacji } from '../../../ui/protection-coordination/biegiKoordynacji';
-import { EtykietaWerdyktu } from '../wzorzec/KartaWerdyktu';
+import { EtykietaWerdyktu, StanDanychWyniku } from '../wzorzec/KartaWerdyktu';
+import { paraDanychDowodu } from '../wzorzec/danePrzyjete';
 import {
   pobierzWynikOcenyZabezpieczen,
   uruchomOceneZabezpieczen,
@@ -196,6 +197,10 @@ export function SekcjaOcenyZabezpieczen({
                       <span className="mvd-koordynacja-ocena-zdanie">
                         {o.ocena.wyjasnienie.zdanie_pl}
                       </span>
+                      <StanDanychWyniku
+                        para={paraDanychDowodu(o.ocena.dowod)}
+                        testId={`mvd-ocena-zabezpieczen-wiersz-${o.device_id}-${o.fault_target_id}`}
+                      />
                     </td>
                   </tr>
                 ))}

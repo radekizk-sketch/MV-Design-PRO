@@ -28,6 +28,11 @@ import { EkranOceny } from '../EkranOceny';
 import type { OcenaElementu, OdpowiedzOceny, PozycjaOceny, ZrodloOceny } from '../api';
 import { grupyZWynikami, pozycjeBezPodstaw } from '../model';
 import { OCENA_STRINGS as T } from '../strings';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const FIXTURA_OCENA = ocenaScena as unknown as OdpowiedzOceny;
 const FIXTURA_PRZEKROCZENIA = przekroczeniaScena as unknown as OdpowiedzOceny;
@@ -525,5 +530,32 @@ describe('EkranOceny — powiązania (schemat, identyfikator w modelu, dowód ob
     await screen.findByTestId('mvd-ocena-podsumowanie');
     expect(tekstEkranu()).not.toContain(runId);
     expect(screen.queryAllByTestId('mvd-ocena-element-informacje-audytowe')).toHaveLength(0);
+  });
+});
+
+describe('EkranOceny — dane przyjęte przy elemencie oceny (lista × zwinięty/rozwinięty)', () => {
+  /** Element bez pary (pola addytywne: brak pary = brak danych przyjętych). */
+  function bezPary(element: OcenaElementu): OcenaElementu {
+    const { status_danych: _s, dane_przyjete: _d, ...reszta } = element;
+    return reszta;
+  }
+
+  it.each(WARIANTY_LISTY)('$nazwa — wpisy tylko w wierszu elementu, którego dotyczą', async ({ dane }) => {
+    const pozycja = FIXTURA_OCENA.pozycje.find((p) => p.elementy.length >= 2)!;
+    const [pierwszy, drugi, ...reszta] = pozycja.elementy;
+    const odpowiedz: OdpowiedzOceny = {
+      ...FIXTURA_OCENA,
+      pozycje: FIXTURA_OCENA.pozycje.map((p) =>
+        p === pozycja
+          ? { ...p, elementy: [{ ...bezPary(pierwszy), ...paraDanych(dane) }, bezPary(drugi), ...reszta] }
+          : p,
+      ),
+    };
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz));
+    render(<EkranOceny />);
+    await screen.findByTestId('mvd-ocena-podsumowanie');
+    const id = (e: OcenaElementu) => `mvd-ocena-element-${pozycja.kryterium_id}-${e.element_id ?? 'agregat'}`;
+    await sprawdzDanePrzyjete(screen.getByTestId(id(pierwszy)), id(pierwszy), dane);
+    await sprawdzDanePrzyjete(screen.getByTestId(id(drugi)), id(drugi), []);
   });
 });

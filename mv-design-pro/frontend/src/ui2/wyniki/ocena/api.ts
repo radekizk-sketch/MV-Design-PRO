@@ -16,6 +16,8 @@
  * (SPEŁNIA / NIE SPEŁNIA / WYNIK NIEJEDNOZNACZNY / BRAK PODSTAW) przychodzi z backendu.
  */
 
+import type { ParaDanychPrzyjetych } from '../wzorzec/danePrzyjete';
+
 /**
  * Stan kryterium (agregat pozycji = stan najgorszego elementu wg §2.3 kontraktu werdyktu:
  * NARUSZONE → NIEJEDNOZNACZNE → NIESPRAWDZONE → SPELNIONE). NIE_DOTYCZY nie zastępuje
@@ -43,8 +45,13 @@ export type WarunekKryterium = 'nie_wiecej_niz' | 'nie_mniej_niz' | 'w_pasmie' |
 /** Semantyka elementu wiodącego z domeny (`ELEMENT_*` backendu). */
 export type RodzajElementuOceny = 'szyna' | 'galaz_liniowa' | 'transformator' | 'zrodlo';
 
-/** Ocena jednego elementu wobec kryterium (`OcenaElementu.to_dict`). */
-export interface OcenaElementu {
+/**
+ * Ocena jednego elementu wobec kryterium (`OcenaElementu.to_dict`). `dane_przyjete` —
+ * addytywnie, WYŁĄCZNIE gdy liczba elementu stoi na wartości roboczej widoku dostawcy
+ * (tolerancja sieci nN, linia 110 kV z wartością roboczą geometrii); element nie niesie
+ * `status_danych` — zapis danych przyjętych pokazuje wtedy samą listę.
+ */
+export interface OcenaElementu extends ParaDanychPrzyjetych {
   readonly element_id: string | null;
   readonly element_nazwa: string | null;
   readonly element_rodzaj: RodzajElementuOceny | null;

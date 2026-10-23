@@ -19,6 +19,12 @@ import {
   widokOsdFixture,
 } from './fixtures';
 import { OSD_STRINGS } from '../strings';
+import userEvent from '@testing-library/user-event';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const pobierzOsd = vi.fn();
 vi.mock('../../api', () => ({
@@ -277,5 +283,18 @@ describe('EkranOsd — zapis trybu pracy źródła (K5-B / H-3 pkt 5)', () => {
     expect(await screen.findByTestId('mvd-osd-tryb-blad')).toHaveTextContent(
       OSD_STRINGS.trybBrakPrzypadku,
     );
+  });
+});
+
+describe('EkranOsd — dane przyjęte wyniku (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    pobierzOsd.mockResolvedValue({ ...widokOsdFixture(), ...paraDanych(dane) });
+    render(<EkranOsd trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    const uzytkownik = userEvent.setup();
+    await uzytkownik.selectOptions(screen.getByTestId('mvd-osd-zrodlo'), 'gen_sync');
+    await uzytkownik.click(screen.getByTestId('mvd-osd-oblicz'));
+    await sprawdzDanePrzyjete(await screen.findByTestId('mvd-osd-wynik'), 'mvd-osd', dane);
   });
 });

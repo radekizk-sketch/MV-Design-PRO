@@ -12,6 +12,11 @@ import { SekcjaSilySieci } from '../SekcjaSilySieci';
 import { BRAKI_DANYCH_SILY } from '../strings';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { przebiegFixture, silaSieciFixture } from './analizyFixtures';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const pobierzSileSieci = vi.fn();
 vi.mock('../../api', () => ({
@@ -124,5 +129,31 @@ describe('SekcjaSilySieci — wyróżnienie moduł→węzeł (P47b)', () => {
     await screen.findByTestId('mvd-oze-sila-wynik');
     expect(screen.queryByTestId('mvd-oze-sila-wyroznienie-wezel')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-sila-wyroznienie-brak')).not.toBeInTheDocument();
+  });
+});
+
+describe('SekcjaSilySieci — dane przyjęte przy węźle (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(() => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'sc-run', analysis_type: 'SC_3F', status: 'DONE' })],
+      activeRunId: 'sc-run',
+    });
+  });
+
+  it.each(WARIANTY_LISTY)('$nazwa — wpisy tylko przy węźle, którego dotyczą', async ({ dane }) => {
+    const widok = silaSieciFixture();
+    const [pierwszy, ...reszta] = widok.entries;
+    pobierzSileSieci.mockResolvedValue({
+      ...widok,
+      entries: [{ ...pierwszy, ...paraDanych(dane) }, ...reszta],
+    });
+    render(<SekcjaSilySieci trybEkspercki={false} />);
+    await screen.findByTestId('mvd-oze-sila-wynik');
+    const wezel = `mvd-oze-sila-wezel-${pierwszy.bus_ref}`;
+    await sprawdzDanePrzyjete(screen.getByTestId(wezel), wezel, dane);
+    for (const inny of reszta) {
+      const id = `mvd-oze-sila-wezel-${inny.bus_ref}`;
+      await sprawdzDanePrzyjete(screen.getByTestId(id), id, []);
+    }
   });
 });

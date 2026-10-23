@@ -27,6 +27,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 
 import { buildSwzOverlayFromResponses, type SwzOverlayEntry } from '../canvas/overlay';
 import { KartaObwoduNn } from './KartaObwoduNn';
+import { StanDanychWyniku } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import { CadSymbol } from '../cad/CadSymbol';
@@ -601,6 +602,28 @@ export function LvDomainView(props: LvDomainViewProps): JSX.Element {
       </header>
       <div data-testid="lv-domain-overlay-status" style={{ padding: '0 16px 4px', fontSize: 11, color: paleta.kreskaWygaszona }}>
         {overlayStatus}
+      </div>
+      {/* Dane przyjęte wyników tej domeny (kontrakt werdyktu §3): równoważnik sieci SN kotwicy
+          (zawsze widoczny na schemacie) i profil napięć (przy nakładce spadków napięcia). */}
+      <div data-testid="lv-domain-dane-przyjete" style={{ padding: '0 16px' }}>
+        {projection.upstream_equivalents.map((rownowaznik, indeks) => (
+          <StanDanychWyniku
+            key={rownowaznik.transformer_ref ?? `kotwica-${indeks}`}
+            para={rownowaznik}
+            testId={`lv-domain-kotwica-${rownowaznik.transformer_ref ?? indeks}`}
+            dotyczy={`równoważnik sieci SN — ${
+              projection.graph.transformers.find((t) => t.ref_id === rownowaznik.transformer_ref)?.name
+              ?? 'transformator spoza projekcji'
+            }`}
+          />
+        ))}
+        {activeOverlay === 'voltageDrop' && projection.result_snapshot.voltage_profile ? (
+          <StanDanychWyniku
+            para={projection.result_snapshot.voltage_profile}
+            testId="lv-domain-profil-napiec"
+            dotyczy="profil napięć"
+          />
+        ) : null}
       </div>
       {ctx.widoczne('znacznikSwiezosciWyniku') ? (
         <div

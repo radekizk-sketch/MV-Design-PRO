@@ -12,7 +12,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { OcenaNiewykonana } from '../../wzorzec/OcenaNiewykonana';
 import type { RekordOcenyNiewykonanej } from '../../wzorzec/OcenaNiewykonana';
@@ -34,13 +35,19 @@ describe.each(REKORDY.map((r) => [r.kryterium_id, r] as const))('rekord %s', (_i
     }
   });
 
-  it('model niezwalidowany i dane przyjęte z profilu typowego nazwane wprost', () => {
+  it('model niezwalidowany i dane przyjęte z profilu typowego nazwane wprost', async () => {
+    const uzytkownik = userEvent.setup();
     render(<OcenaNiewykonana ocena={rekord} testid="ocena" />);
     expect(rekord.dowod.status_modelu).toBe('UNVALIDATED_MODEL');
     expect(rekord.dowod.status_danych.stan).toBe('UNVALIDATED_INPUT');
     const karta = `mvd-werdykt-${rekord.kryterium_id}`;
     const dane = screen.getByTestId(`${karta}-dowod-dane-przyjete`);
     expect(dane).toHaveTextContent('Farma PV Zachód');
+    // Źródło wartości (profil katalogowy) stoi w uzasadnieniu wiersza — po rozwinięciu.
+    expect(dane).not.toHaveTextContent('profilu katalogowego');
+    for (const przelacznik of within(dane).getAllByRole('button')) {
+      await uzytkownik.click(przelacznik);
+    }
     expect(dane).toHaveTextContent('profilu katalogowego');
   });
 });

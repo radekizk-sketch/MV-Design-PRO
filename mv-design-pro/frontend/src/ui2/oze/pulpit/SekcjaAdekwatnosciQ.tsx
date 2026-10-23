@@ -10,7 +10,7 @@ import { useState } from 'react';
 
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { pobierzAdekwatnoscQ, type WpisZrodlaQ } from '../api';
-import { InformacjeAudytowe, useNazwaObiektu } from '../../wyniki/wzorzec';
+import { InformacjeAudytowe, StanDanychWyniku, useNazwaObiektu } from '../../wyniki/wzorzec';
 import { SladAnalizy } from './SladAnalizy';
 import { busRefModuluQ, wybierzPrzebiegRozplywu } from './pulpitModel';
 import { useAnaliza } from './useAnaliza';
@@ -169,6 +169,7 @@ export function SekcjaAdekwatnosciQ({
           </div>
 
           <p style={{ margin: '4px 0 0' }}>{stan.dane.why_pl}</p>
+          <StanDanychWyniku para={stan.dane} testId="mvd-oze-adekw" />
 
           {stan.dane.provenance ? (
             <div className="mvd-oze-metryka" data-testid="mvd-oze-adekw-proweniencja">

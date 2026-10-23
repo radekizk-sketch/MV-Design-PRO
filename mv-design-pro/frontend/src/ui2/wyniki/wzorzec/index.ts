@@ -32,6 +32,7 @@ export type { NazwaObiektu } from './useNazwaObiektu';
 export type { WierszInformacjiAudytowych, InformacjeAudytoweProps } from './InformacjeAudytowe';
 export { KartaWerdyktu, StanDanychWyniku, type KartaWerdyktuProps } from './KartaWerdyktu';
 export type { DanaPrzyjeta, StanDanych } from './werdykt';
+export type { ParaDanychPrzyjetych } from './danePrzyjete';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';
 export type { RodzajPrzekroczenia, AkcjaNaprawcza, CelAkcjiNaprawczej } from './akcjeNaprawcze';

@@ -13,6 +13,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { wyczyscRejestrGotowosci } from '../../../../ui2/kryteria';
 import { DoborPrzekladnikowSekcja } from '../DoborPrzekladnikowSekcja';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../../ui2/wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const ODPOWIEDZ = {
   generator_ref: 'DER-1',
@@ -324,5 +329,20 @@ describe('DoborPrzekladnikowSekcja — karta W3-B: kody gotowości i ślad jądr
 
     await screen.findByTestId('kryterium-ct.przekladnia');
     expect(screen.queryByTestId('kryterium-slad-ct.przekladnia')).toBeNull();
+  });
+});
+
+describe('DoborPrzekladnikowSekcja — dane przyjęte wejść doboru (lista × zwinięty/rozwinięty)', () => {
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.restoreAllMocks();
+    wyczyscRejestrGotowosci();
+  });
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    zamontujZRejestrem({ ...ODPOWIEDZ, ...paraDanych(dane) });
+    render(<DoborPrzekladnikowSekcja derId="DER-1" projectId="PRJ-1" caseId="CASE-1" />);
+    await screen.findByTestId('dobor-wejscia');
+    await sprawdzDanePrzyjete(screen.getByTestId('dobor-przekladnikow-sekcja'), 'dobor-wejscia', dane);
   });
 });

@@ -18,7 +18,13 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 import { MathInline } from '../../../proof/MathRenderer';
-import { EtykietaWerdyktu, KartaWerdyktu, NAZWA_STANU_ZRODLA_PL, wielkoscPl } from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
+import {
+  EtykietaWerdyktu,
+  KartaWerdyktu,
+  NAZWA_STANU_ZRODLA_PL,
+  StanDanychWyniku,
+  wielkoscPl,
+} from '../../../../ui2/wyniki/wzorzec/KartaWerdyktu';
 import { InformacjeAudytowe } from '../../../../ui2/wyniki/wzorzec/InformacjeAudytowe';
 import type { OcenaKryterium, PodstawaWymagania } from '../../../../ui2/wyniki/wzorzec/werdykt';
 import { useShellStore } from '../../../../ui2/shell/useShellStore';
@@ -264,6 +270,7 @@ function SekcjaSwzTn({ swz, paleta }: { readonly swz: SwzTnVerdict; readonly pal
         ]}
       />
       <div style={{ marginTop: 4, fontSize: 10, color: paleta.kreskaWygaszona }}>{swz.przyczyna_pl}</div>
+      <StanDanychWyniku para={swz} testId="lv-domain-feeder-swz-tn" />
     </div>
   );
 }

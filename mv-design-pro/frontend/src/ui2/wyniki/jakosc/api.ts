@@ -34,6 +34,7 @@
  */
 
 import type { TraceStep } from '../../../ui/results-inspector/types';
+import type { ParaDanychPrzyjetych } from '../wzorzec/danePrzyjete';
 
 // ---------------------------------------------------------------------------
 // Wiarygodność zwarciowa (sanity-bounds)
@@ -52,7 +53,12 @@ export interface KontekstJakosci {
 }
 
 /** Pojedyncza ocena wiarygodności Ik'' w węźle (verdict + identyfikacja węzła). */
-export interface WiarygodnoscItem {
+/**
+ * Pozycja wiarygodności Ik″ węzła; para danych przyjętych (`sanity_bounds.py::
+ * build_sanity_bounds_view`) WYŁĄCZNIE, gdy Ik″ węzła stoi na wartości roboczej (tolerancja nN,
+ * impedancja gałęzi z wartością roboczą).
+ */
+export interface WiarygodnoscItem extends ParaDanychPrzyjetych {
   readonly target_id: string;
   readonly element_id: string | null;
   readonly target_name: string | null;
@@ -148,8 +154,12 @@ export interface StratyPasmoWerdykt {
   readonly why_pl: string;
 }
 
-/** Pełna odpowiedź `GET /api/quality/sanity-bounds` dla przebiegu PF. */
-export interface PasmaRozplywuResponse {
+/**
+ * Pełna odpowiedź `GET /api/quality/sanity-bounds` dla przebiegu PF.
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na wartości roboczej
+ * gałęzi biegu (`build_power_flow_sanity_bounds_view` → `pola_danych_przyjetych_biegu`).
+ */
+export interface PasmaRozplywuResponse extends ParaDanychPrzyjetych {
   readonly analysis_id: string;
   readonly context: KontekstJakosci | null;
   /** Bieg NIEZBIEŻNY ⇒ wszystkie pozycje niżej mają status „dane niekompletne". */
@@ -235,8 +245,12 @@ export interface WalidacjaSummary {
   readonly worst_item_margin_pct: number | null;
 }
 
-/** Pełna odpowiedź `GET /api/quality/energy-validation`. */
-export interface WalidacjaResponse {
+/**
+ * Pełna odpowiedź `GET /api/quality/energy-validation`.
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na wartości roboczej
+ * gałęzi biegu (`build_energy_validation_view` → `pola_danych_przyjetych_biegu`).
+ */
+export interface WalidacjaResponse extends ParaDanychPrzyjetych {
   readonly context: KontekstJakosci | null;
   readonly config: WalidacjaConfig;
   readonly items: readonly WalidacjaItem[];
@@ -304,8 +318,12 @@ export interface ModulMigotania {
   readonly white_box: readonly KrokMigotania[];
 }
 
-/** Ocena migotania i szybkiej zmiany napięcia w pojedynczym węźle przyłączenia. */
-export interface WezelMigotania {
+/**
+ * Ocena migotania i szybkiej zmiany napięcia w pojedynczym węźle przyłączenia.
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na wartości roboczej
+ * Sk″ węzła (`build_migotanie_view` → `pola_danych_przyjetych_wiersza`).
+ */
+export interface WezelMigotania extends ParaDanychPrzyjetych {
   readonly bus_ref: string;
   /** Nazwa węzła przyłączenia z modelu albo opis rodzaju (nigdy `bus_ref`). */
   readonly bus_name: string;
@@ -389,8 +407,12 @@ export interface KrokArcFlash {
   readonly table_ref: string | null;
 }
 
-/** Wynik Arc Flash dla jednego punktu (szyny/rozdzielnicy). */
-export interface WynikArcFlash {
+/**
+ * Wynik Arc Flash dla jednego punktu (szyny/rozdzielnicy).
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na wartości roboczej
+ * I_bf punktu (`build_arc_flash_view`: tolerancja nN, gałęzie, maszyny).
+ */
+export interface WynikArcFlash extends ParaDanychPrzyjetych {
   readonly bus_ref: string;
   /** Nazwa szyny z modelu albo opis rodzaju (nigdy identyfikator węzła `bus_ref`). */
   readonly bus_name: string;
@@ -538,8 +560,12 @@ export interface OcenaWarunkow {
   readonly zalozenia: readonly string[];
 }
 
-/** Pełna odpowiedź `GET /api/quality/connection-conditions`. */
-export interface WarunkiPrzylaczeniaResponse {
+/**
+ * Pełna odpowiedź `GET /api/quality/connection-conditions`.
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na wartości roboczej
+ * gałęzi biegu (`build_warunki_przylaczenia_view` → `pola_danych_przyjetych_biegu`).
+ */
+export interface WarunkiPrzylaczeniaResponse extends ParaDanychPrzyjetych {
   readonly run_id: string;
   readonly case_id: string;
   readonly analysis_type: string;
@@ -724,8 +750,12 @@ export interface PodsumowanieCieplne {
   readonly unavailable_count: number;
 }
 
-/** Pełna odpowiedź `GET /api/quality/conductor-thermal-withstand`. */
-export interface WytrzymaloscCieplnaResponse {
+/**
+ * Pełna odpowiedź `GET /api/quality/conductor-thermal-withstand`.
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na wartości roboczej
+ * prądu zwarciowego (`wytrzymalosc_cieplna_przewodow.py::_dane_przyjete_biegu`).
+ */
+export interface WytrzymaloscCieplnaResponse extends ParaDanychPrzyjetych {
   readonly run_id: string;
   readonly case_id: string;
   readonly analysis_type: string;

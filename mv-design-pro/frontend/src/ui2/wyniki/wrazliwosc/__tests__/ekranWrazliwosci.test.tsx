@@ -15,6 +15,11 @@ import type { WrazliwoscResponse } from '../api';
 import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../wzorzec/__tests__/danePrzyjeteIloczyn';
 
 function przebieg(
   id: string,
@@ -200,5 +205,15 @@ describe('EkranWrazliwosci — wynik', () => {
     render(<EkranWrazliwosci trybZaawansowania="expert" />);
     await waitFor(() => expect(screen.getByTestId('mvd-wrazliwosc-lf')).toBeTruthy());
     expect(screen.queryAllByText('wezel-a')).toHaveLength(0);
+  });
+});
+
+describe('EkranWrazliwosci — dane przyjęte wyniku (lista × zwinięty/rozwinięty)', () => {
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    mockFetchTrasowany({ ...ODPOWIEDZ, ...paraDanych(dane) });
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: null });
+    render(<EkranWrazliwosci trybZaawansowania="basic" />);
+    await screen.findByTestId('mvd-wrazliwosc-lf');
+    await sprawdzDanePrzyjete(screen.getByTestId('mvd-wrazliwosc-ekran'), 'mvd-wrazliwosc', dane);
   });
 });

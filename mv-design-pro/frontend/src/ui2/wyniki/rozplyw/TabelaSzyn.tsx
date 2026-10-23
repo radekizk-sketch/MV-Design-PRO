@@ -12,11 +12,13 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import {
   EkranAnalizy,
   PrzyciskAkcjiStanu,
+  StanDanychWyniku,
   useAkcjaUruchomObliczenie,
   useNazwaObiektu,
   usePoprawWModelu,
 } from '../wzorzec';
 import { ProfilNapiecChart } from './ProfilNapiecChart';
+import { useWalidacjaObciazen } from './TabelaGalezi';
 import { ROZPLYW_STRINGS } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
 import {
@@ -54,6 +56,9 @@ export function TabelaSzyn({
   // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku rozpływu prowadzi
   // WPROST do uruchomienia przebiegu rozpływu (ten sam tor co „Oblicz").
   const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
+  // Dane przyjęte biegu (kontrakt werdyktu §3): napięcia stoją na tych samych wartościach
+  // roboczych gałęzi co przepływy — para z odpowiedzi walidacji energetycznej TEGO biegu.
+  const walidacja = useWalidacjaObciazen(wynik ? runId : null);
 
   if (!wynik) {
     return (
@@ -93,6 +98,7 @@ export function TabelaSzyn({
         // K1 / F-E6.3: werdykt tej tabeli = napięcie poza zakresem → rodzaj 'napiecie'.
         onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', nazwaObiektu(ref), 'napiecie')}
       />
+      {walidacja && <StanDanychWyniku para={walidacja.para} testId="mvd-rozplyw-szyny" />}
     </div>
   );
 }

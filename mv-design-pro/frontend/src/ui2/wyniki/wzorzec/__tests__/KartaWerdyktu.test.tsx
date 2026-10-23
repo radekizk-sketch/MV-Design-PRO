@@ -26,6 +26,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { EtykietaWerdyktu, KartaWerdyktu, SEMANTYKA_KOLOR } from '../KartaWerdyktu';
+import { WARIANTY_LISTY, sprawdzDanePrzyjete } from './danePrzyjeteIloczyn';
 import type {
   DanaPrzyjeta,
   Etykieta,
@@ -853,13 +854,20 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
       'Kompletność dowodu',
     ]);
     const przyciski = within(artykul).getAllByRole('button');
-    expect(przyciski.map((p) => p.textContent).slice(0, 2)).toEqual([
+    // Pierwszy przycisk: zwinięty wiersz danej przyjętej w dowodzie (StanDanychWyniku —
+    // uzasadnienie po rozwinięciu), potem sekcje rozwijane zakresu i śladu.
+    expect(przyciski[0]).toHaveAttribute(
+      'data-testid',
+      'mvd-werdykt-frt.czas_aktywacji_iq-dowod-dane-przyjete-0-przelacz',
+    );
+    expect(przyciski[0]).toHaveAttribute('aria-expanded', 'false');
+    expect(przyciski.map((p) => p.textContent).slice(1, 3)).toEqual([
       'Zakres ważnościRozwiń',
       'Ślad obliczeńRozwiń',
     ]);
     // Surowe identyfikatory rekordu — w zwiniętej wspólnej sekcji audytowej (ostatni przycisk).
-    expect(przyciski).toHaveLength(3);
-    expect(przyciski[2]).toHaveTextContent(/^Informacje audytowe\d+$/);
+    expect(przyciski).toHaveLength(4);
+    expect(przyciski[3]).toHaveTextContent(/^Informacje audytowe\d+$/);
     expect(artykul).toHaveAttribute('data-poziom', 'K');
   });
 
@@ -897,7 +905,7 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     expect(podstawaKryterium).toHaveTextContent('rodzaj: procedura PTPiREE');
   });
 
-  it('dowód: metoda, poziom EvidenceTier etykietą PL, rodzaj twierdzenia, status modelu, status danych z listą danych przyjętych; kompletność z powodami', () => {
+  it('dowód: metoda, poziom EvidenceTier etykietą PL, rodzaj twierdzenia, status modelu, status danych z listą danych przyjętych; kompletność z powodami', async () => {
     render(<KartaWerdyktu rekord={ocenaCzasuAktywacjiSpelniona()} />);
     const id = 'mvd-werdykt-frt.czas_aktywacji_iq';
     const dowod = karta(`${id}-dowod`);
@@ -907,7 +915,10 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     expect(dowod).toHaveTextContent(
       'walidacja modelu urządzenia: model urządzenia zwalidowany wynikiem testu',
     );
-    expect(dowod).toHaveTextContent('stan danych wejściowych: dane przyjęte bez walidacji');
+    // Zwarta linia stanu (StanDanychWyniku): stan z rekordu i liczba wartości roboczych.
+    expect(karta(`${id}-dowod-dane-podsumowanie`)).toHaveTextContent(
+      'dane przyjęte bez walidacji · 1 wartość robocza',
+    );
     // Kody osi dowodu (lustro enumów backendu) nie stoją w pierwszym planie karty.
     for (const kod of ['VALIDATED_SIMULATION', 'VALIDATED_AGAINST_TEST', 'UNVALIDATED_INPUT', 'ESTIMATED']) {
       expect(dowod).not.toHaveTextContent(kod);
@@ -915,8 +926,10 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     const dane = karta(`${id}-dowod-dane-przyjete`);
     expect(dane.tagName).toBe('UL');
     expect(within(dane).getAllByRole('listitem')).toHaveLength(1);
-    expect(dane).toHaveTextContent('moc zwarciowa sieci S_k″: 120 MVA');
-    expect(dane).toHaveTextContent('jakość danej: oszacowane');
+    // Wiersz zwarty: nazwa, wartość z jednostką, jakość; uzasadnienie dopiero po rozwinięciu.
+    expect(dane).toHaveTextContent('moc zwarciowa sieci S_k″120 MVAoszacowane');
+    expect(dane).not.toHaveTextContent('założona do czasu otrzymania warunków przyłączenia');
+    await userEvent.setup().click(karta(`${id}-dowod-dane-przyjete-0-przelacz`));
     expect(dane).toHaveTextContent('założona do czasu otrzymania warunków przyłączenia');
     // Karta #145: odniesienie do dowodu (bieg z identyfikatorem) jest metadaną —
     // wyłącznie w „Informacjach audytowych" karty, nie w sekcji dowodu.
@@ -927,6 +940,25 @@ describe('KartaWerdyktu — pełny rekord kryterium (poziom K)', () => {
     const powody = karta(`${id}-kompletnosc-powody`);
     expect(within(powody).getAllByRole('listitem')).toHaveLength(1);
     expect(powody).toHaveTextContent('Dana przyjęta bez walidacji: moc zwarciowa sieci S_k″ = 120 MVA');
+  });
+
+  // Iloczyn cech zapisu danych przyjętych dowodu: lista {pusta (ZWALIDOWANE), jeden wpis, wiele
+  // źródeł} × {zwinięty, rozwinięty}. Pusta lista → karta nie pokazuje linii stanu danych.
+  it.each(WARIANTY_LISTY)('dowód: dane przyjęte — $nazwa', async ({ dane }) => {
+    const wzor = ocenaCzasuAktywacjiSpelniona();
+    const rekord = {
+      ...wzor,
+      dowod: {
+        ...wzor.dowod,
+        status_danych:
+          dane.length > 0
+            ? { stan: 'UNVALIDATED_INPUT' as const, dane_przyjete: dane }
+            : { stan: 'ZWALIDOWANE' as const, dane_przyjete: [] },
+      },
+    };
+    render(<KartaWerdyktu rekord={rekord} />);
+    const id = 'mvd-werdykt-frt.czas_aktywacji_iq-dowod';
+    await sprawdzDanePrzyjete(karta(id), id, dane);
   });
 
   it('zdanie wyjaśnienia jest WIDOCZNE bez żadnej interakcji — nie w dymku, nie za rozwijaniem', () => {
@@ -1133,10 +1165,22 @@ describe('KartaWerdyktu — sekcje rozwijane (zakres ważności, ślad) — naty
     expect(screen.queryByTestId(`${id}-zakres`)).toBeNull();
   });
 
-  it('klawiatura: Tab dochodzi do przełącznika zakresu, Enter rozwija; Tab do śladu, Spacja rozwija', async () => {
+  it('klawiatura: Tab do wiersza danej przyjętej (Enter rozwija uzasadnienie), Tab do zakresu, Enter rozwija; Tab do śladu, Spacja rozwija', async () => {
     const uzytkownik = userEvent.setup();
     render(<KartaWerdyktu rekord={ocenaCzasuAktywacjiSpelniona()} />);
     const id = 'mvd-werdykt-frt.czas_aktywacji_iq';
+
+    // Dowód stoi przed sekcjami rozwijanymi: pierwszy w kolejności Tab jest zwinięty wiersz
+    // danej przyjętej; Enter pokazuje jego uzasadnienie (źródło i powód).
+    await uzytkownik.tab();
+    const wierszDanej = karta(`${id}-dowod-dane-przyjete-0-przelacz`);
+    expect(wierszDanej).toHaveFocus();
+    expect(screen.queryByTestId(`${id}-dowod-dane-przyjete-0-szczegoly`)).not.toBeInTheDocument();
+    await uzytkownik.keyboard('{Enter}');
+    expect(wierszDanej).toHaveAttribute('aria-expanded', 'true');
+    expect(karta(`${id}-dowod-dane-przyjete-0-szczegoly`)).toHaveTextContent(
+      'założona do czasu otrzymania warunków przyłączenia',
+    );
 
     await uzytkownik.tab();
     expect(karta(`${id}-zakres-przelacz`)).toHaveFocus();

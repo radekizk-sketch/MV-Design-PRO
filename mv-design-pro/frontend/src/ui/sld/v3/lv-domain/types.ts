@@ -19,6 +19,7 @@
 
 import type { RawOverlayElement } from '../../../sld-overlay/rawResultOverlayStore';
 import type { SwzApiResponse } from '../canvas/overlay';
+import type { ParaDanychPrzyjetych } from '../../../../ui2/wyniki/wzorzec/danePrzyjete';
 
 /** Stan energizacji ZACISKU / ODCINKA / WYSPY — jedna zamknięta lista (§5/§6). */
 export type LvEnergizationState = 'ENERGIZED' | 'DEENERGIZED' | 'UNKNOWN' | 'CONFLICT' | 'MULTISOURCE';
@@ -307,7 +308,9 @@ export interface LvDomainGraphView {
 
 /** Kotwica SN (werdykt: sourceNodeId/voltageLevelId/Uth/Sk″/Z1/Z0/R×X/…) +
  *  tożsamość zasilania §10/§11. */
-export interface UpstreamEquivalentSnapshot {
+/** Równoważnik sieci SN w punkcie HV transformatora; para danych przyjętych kotwicy
+ *  (`upstream_equivalent.py::_dane_przyjete_kotwicy`) — addytywnie, WYŁĄCZNIE gdy są. */
+export interface UpstreamEquivalentSnapshot extends ParaDanychPrzyjetych {
   readonly status: 'OK' | 'brak danych';
   readonly case_id: string;
   readonly station_ref: string;
@@ -377,10 +380,12 @@ export interface LvDomainResultSnapshotV1 {
     readonly legend: unknown;
     readonly warnings: readonly unknown[];
   } | null;
-  readonly voltage_profile: {
+  /** Profil napięć biegu PF (`build_voltage_profile_view`) — z parą danych przyjętych biegu
+   *  (`pola_danych_przyjetych_biegu`), addytywnie, WYŁĄCZNIE gdy bieg stoi na wartości roboczej. */
+  readonly voltage_profile: (ParaDanychPrzyjetych & {
     readonly rows: readonly LvDomainVoltageProfileRow[];
     readonly [key: string]: unknown;
-  } | null;
+  }) | null;
 }
 
 export interface LvDomainFaultLoopPointV1 {

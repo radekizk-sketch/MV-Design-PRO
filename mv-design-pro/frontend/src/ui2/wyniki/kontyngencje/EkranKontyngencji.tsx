@@ -29,7 +29,12 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSwiezoscNaglowka } from '../../freshness';
-import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import {
+  EkranAnalizy,
+  PrzyciskAkcjiStanu,
+  StanDanychWyniku,
+  useAkcjaUruchomObliczenie,
+} from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import {
   fetchMacierzN1,
@@ -619,6 +624,7 @@ export function EkranKontyngencji({ trybZaawansowania, onOtworzDowod }: EkranKon
         <>
           {/* N-0 ZAWSZE nad rankingiem — patrz nagłówek modułu. */}
           <PanelBazowy bazowy={daneMacierzy.przypadek_bazowy} />
+          <StanDanychWyniku para={daneMacierzy} testId="mvd-n1" />
 
           <section className="mvd-n1-ranking" data-testid="mvd-n1-ranking">
             {daneMacierzy.ranking.length === 0 ? (

@@ -12,6 +12,11 @@ import { SekcjaAdekwatnosciQ } from '../SekcjaAdekwatnosciQ';
 import { BRAKI_DANYCH_Q, WERDYKTY_ADEKWATNOSCI_Q } from '../strings';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { adekwatnoscQFixture, przebiegFixture } from './analizyFixtures';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const pobierzAdekwatnoscQ = vi.fn();
 vi.mock('../../api', () => ({
@@ -139,5 +144,20 @@ describe('SekcjaAdekwatnosciQ — wyróżnienie moduł→węzeł (P47b)', () => 
       'nieodnaleziony',
     );
     expect(screen.getByTestId('mvd-oze-adekw-zrodlo-src-1')).not.toHaveAttribute('data-wyrozniony');
+  });
+});
+
+describe('SekcjaAdekwatnosciQ — dane przyjęte wyniku (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(() => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'lf-run', analysis_type: 'LOAD_FLOW', status: 'DONE' })],
+      activeRunId: 'lf-run',
+    });
+  });
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    pobierzAdekwatnoscQ.mockResolvedValue({ ...adekwatnoscQFixture(), ...paraDanych(dane) });
+    render(<SekcjaAdekwatnosciQ trybEkspercki={false} />);
+    await sprawdzDanePrzyjete(await screen.findByTestId('mvd-oze-adekw-wynik'), 'mvd-oze-adekw', dane);
   });
 });

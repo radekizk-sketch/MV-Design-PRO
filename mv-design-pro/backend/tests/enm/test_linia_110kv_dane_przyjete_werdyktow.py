@@ -240,10 +240,11 @@ def test_werdykt_projektowy_kompletnosc_dowodu_z_obu_zrodel(
             assert pozycja["kompletnosc_dowodu"] == "NIEPELNY", kryterium
             for element in pozycja["elementy"]:
                 assert element["kompletnosc_dowodu"] == "NIEPELNY"
-                _sprawdz_dane(element["dane_przyjete"], True)
+                # Para stanu i listy (kontrakt werdyktu §3) — ekran oceny czyta oba pola.
+                _sprawdz_dane(_dane_widoku(element), True)
         else:
             assert "kompletnosc_dowodu" not in pozycja, kryterium
-            assert all("dane_przyjete" not in e for e in pozycja["elementy"])
+            assert all(_dane_widoku(e) == [] for e in pozycja["elementy"])
     if przyjeta:
         assert werdykt["kompletnosc_dowodu"] == "NIEPELNY"
     else:
@@ -342,7 +343,7 @@ def test_konsumenci_pradow_punktu_wniosek_osd_generatory_nastawy(
     migawka = _migawka(geometria)
     bieg = _bieg(migawka, "short_circuit_sn", _opcje_zwarcia("B"))
     assert bieg.status == "FINISHED", bieg.error_message
-    _sprawdz_dane(list(_zwarcia_sekcja(bieg, "B").get("dane_przyjete") or []), przyjeta)
+    _sprawdz_dane(_dane_widoku(_zwarcia_sekcja(bieg, "B")), przyjeta)
     ik, _ip, run_id, _tolerancja, dane_galezi, _maszyny = _prady_zwarciowe_szyny("linia-110", "B")
     assert ik is not None and run_id == str(bieg.id)
     _sprawdz_dane([d.model_dump(mode="json") for d in dane_galezi], przyjeta)

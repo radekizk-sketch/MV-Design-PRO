@@ -550,9 +550,11 @@ class OcenaElementu:
             "wniosek_pl": self.wniosek_pl,
             "dowod": self.dowod,
             # Addytywnie, WYŁĄCZNIE przy danych przyjętych — element na danych projektu
-            # ma słownik bit w bit jak przed kartą LINIA-110.
+            # ma słownik bit w bit jak przed kartą LINIA-110. Para kontraktu werdyktu §3:
+            # stan danych stoi obok listy (wspólny zapis frontu czyta oba pola).
             **(
                 {
+                    "status_danych": "UNVALIDATED_INPUT",
                     "dane_przyjete": [dict(d) for d in self.dane_przyjete],
                     "kompletnosc_dowodu": KOMPLETNOSC_NIEPELNA,
                 }

@@ -13,6 +13,8 @@
  * Wzór pobierania: `ui2/wyniki/jakosc/api.ts`.
  */
 
+import type { ParaDanychPrzyjetych } from '../wzorzec/danePrzyjete';
+
 /** Kontekst przebiegu (pochodzenie wyniku) — koperta `zbuduj_kontekst_widoku`. */
 export interface KontekstWrazliwosci {
   readonly project_name: string | null;
@@ -84,8 +86,11 @@ export interface WezelWrazliwosci {
   readonly u_nom_kv: number | null;
 }
 
-/** Pełna odpowiedź `GET /api/insights/sensitivity`. */
-export interface WrazliwoscResponse {
+/**
+ * Pełna odpowiedź `GET /api/insights/sensitivity`. Para danych przyjętych — addytywnie,
+ * WYŁĄCZNIE gdy bieg rozpływu stoi na wartości roboczej gałęzi (`pola_danych_przyjetych_biegu`).
+ */
+export interface WrazliwoscResponse extends ParaDanychPrzyjetych {
   readonly analysis_id: string;
   readonly context: KontekstWrazliwosci | null;
   readonly lf: WidokLf;

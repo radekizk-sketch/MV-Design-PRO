@@ -13,6 +13,12 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { EkranZdolnosci } from '../EkranZdolnosci';
 import { przebiegFixture, snapshotFixture, widokZdolnosciFixture } from './fixtures';
+import userEvent from '@testing-library/user-event';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const pobierz = vi.fn();
 vi.mock('../../api', () => ({
@@ -195,5 +201,16 @@ describe('EkranZdolnosci — pętla wynik → model (K5-B / H-3 pkt 1)', () => {
     useNetworkBuildStore.getState().closeOperationForm();
     useShellStore.getState().setActiveSpace('projekt');
     window.location.hash = '';
+  });
+});
+
+describe('EkranZdolnosci — dane przyjęte wyniku (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    pobierz.mockResolvedValue({ ...widokZdolnosciFixture(), ...paraDanych(dane) });
+    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    await userEvent.setup().click(screen.getByTestId('mvd-zdol-oblicz'));
+    await sprawdzDanePrzyjete(await screen.findByTestId('mvd-zdol-wynik'), 'mvd-zdol', dane);
   });
 });

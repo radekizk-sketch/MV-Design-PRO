@@ -23,7 +23,12 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSwiezoscNaglowka } from '../../freshness';
-import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import {
+  EkranAnalizy,
+  PrzyciskAkcjiStanu,
+  StanDanychWyniku,
+  useAkcjaUruchomObliczenie,
+} from '../wzorzec';
 import type { AkcjaStanuZerowego } from '../wzorzec';
 import { fetchWrazliwosc, type WrazliwoscResponse } from './api';
 import {
@@ -155,6 +160,7 @@ export function EkranWrazliwosci({ trybZaawansowania }: EkranWrazliwosciProps) {
       )}
       {stan.rodzaj === 'gotowe' && (
         <>
+          <StanDanychWyniku para={stan.dane} testId="mvd-wrazliwosc" />
           <section className="mvd-wrazliwosc-sekcja" data-testid="mvd-wrazliwosc-lf">
             <EkranAnalizy
               naglowek={{

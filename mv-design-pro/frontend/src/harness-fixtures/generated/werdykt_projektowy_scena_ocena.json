@@ -534,6 +534,7 @@
             "run_id": "run-sc-scena-ocena",
             "element_id": "9d39ac30-f6b6-56bb-b1fe-3841951e2a85"
           },
+          "status_danych": "UNVALIDATED_INPUT",
           "dane_przyjete": [
             {
               "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",
@@ -585,6 +586,7 @@
             "run_id": "run-sc-scena-ocena",
             "element_id": "39aa2231-26fb-59c4-87e3-39a81c06367c"
           },
+          "status_danych": "UNVALIDATED_INPUT",
           "dane_przyjete": [
             {
               "nazwa_pl": "moc pozorna znamionowa jednej maszyny S_rG maszyny „Generator synchroniczny”",

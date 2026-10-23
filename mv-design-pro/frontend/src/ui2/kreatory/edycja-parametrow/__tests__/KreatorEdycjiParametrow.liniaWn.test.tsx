@@ -13,6 +13,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorEdycjiParametrow } from '../KreatorEdycjiParametrow';
+import type { ParaDanychPrzyjetych } from '../../../wyniki/wzorzec/danePrzyjete';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
@@ -113,10 +119,13 @@ function model(galaz: Record<string, unknown>, napiecieKv = 110) {
   };
 }
 
+/** Para danych przyjętych parametrów podglądu (`parametry_linii_napowietrznej.py`); domyślnie brak. */
+let paraPodgladu: ParaDanychPrzyjetych = {};
+
 const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
   const adres = String(input);
   const tresc = adres.endsWith('/parametry-linii')
-    ? PODGLAD
+    ? { ...PODGLAD, parametry: { ...PODGLAD.parametry, ...paraPodgladu } }
     : adres.endsWith('/api/catalog/overhead-conductor-types')
       ? KATALOG
       : [];
@@ -138,6 +147,7 @@ describe('KreatorEdycjiParametrow — linia napowietrzna 110 kV', () => {
     executeDomainOperationMock.mockReset();
     executeDomainOperationMock.mockResolvedValue({ error: null });
     fetchMock.mockClear();
+    paraPodgladu = {};
     vi.stubGlobal('fetch', fetchMock);
   });
   afterEach(() => {
@@ -252,6 +262,17 @@ describe('KreatorEdycjiParametrow — linia napowietrzna 110 kV', () => {
     expect(screen.getByTestId(S)).toHaveTextContent('wszystkich trzech faz');
     expect(screen.getByTestId('mvd-kreator-edycja-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+
+  // Dane przyjęte parametrów linii stoją przy wyniku podglądu (kontrakt werdyktu §3).
+  // Iloczyn: lista {pusta, jeden wpis, wiele źródeł} × {zwinięty, rozwinięty}.
+  it.each(WARIANTY_LISTY)('podgląd: dane przyjęte parametrów — $nazwa', async ({ dane }) => {
+    paraPodgladu = paraDanych(dane);
+    render(<KreatorEdycjiParametrow />);
+    await screen.findByTestId(`${S}-przewod`);
+    await userEvent.click(screen.getByTestId(`${S}-podglad`));
+    const wynik = await screen.findByTestId(`${S}-podglad-wynik`);
+    await sprawdzDanePrzyjete(wynik, `${S}-podglad`, dane);
   });
 
   it('podgląd: geometria i częstotliwość modelu idą do backendu; wynik z kompletnością i pasmem', async () => {

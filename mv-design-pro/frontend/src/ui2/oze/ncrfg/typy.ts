@@ -27,6 +27,7 @@ import type {
   StanZrodla,
   WynikWymagania,
 } from '../../wyniki/wzorzec/werdykt';
+import type { ParaDanychPrzyjetych } from '../../wyniki/wzorzec/danePrzyjete';
 
 // =============================================================================
 // Słowniki (Literal backendu)
@@ -530,8 +531,12 @@ export interface SekcjaBilansuWniosku {
   readonly podsumowanie_walidacji: PodsumowanieWalidacjiWniosku;
 }
 
-/** `wniosek_osd._zwarcia_sekcja`. */
-export interface SekcjaZwarciaWniosku {
+/**
+ * `wniosek_osd._zwarcia_sekcja`. `dane_przyjete` — addytywnie, WYŁĄCZNIE gdy prądy węzła stoją
+ * na wartości roboczej (tolerancja nN, linia 110 kV, parametr maszyny); sekcja nie niesie
+ * `status_danych` — zapis danych przyjętych pokazuje wtedy samą listę.
+ */
+export interface SekcjaZwarciaWniosku extends ParaDanychPrzyjetych {
   readonly bus_ref: string;
   readonly nazwa_wezla: string;
   readonly ik_ss_ka: number | null;

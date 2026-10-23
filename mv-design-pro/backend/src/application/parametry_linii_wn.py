@@ -57,7 +57,12 @@ def _odpowiedz(
             "r20_dc_ohm_per_km": tabliczka.get("r20_dc_ohm_per_km"),
             "zrodlo": tabliczka.get("source_reference"),
         },
-        "parametry": wynik.to_dict(),
+        # Para kontraktu werdyktu §3: wynik solvera niesie listę danych przyjętych, stan danych
+        # stoi obok niej wyłącznie przy liście niepustej (pole addytywne).
+        "parametry": {
+            **wynik.to_dict(),
+            **({"status_danych": "UNVALIDATED_INPUT"} if wynik.dane_przyjete else {}),
+        },
         "dane_linii": dane.to_dict(),
         "pasma_wiarygodnosci": [
             ocena.to_dict()

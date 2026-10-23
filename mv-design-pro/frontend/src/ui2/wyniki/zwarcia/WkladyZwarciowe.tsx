@@ -19,7 +19,6 @@
 
 import { useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
-import type { DanePrzyjeteWyniku } from './api';
 import {
   SladSekcyjny,
   SladWywodu,
@@ -28,6 +27,7 @@ import {
   useNazwaObiektu,
   type KrokWywodu,
   type PozycjaWalidacji,
+  type ParaDanychPrzyjetych,
   type SekcjaWywodu,
 } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
@@ -69,7 +69,7 @@ export interface WkladyZwarcioweProps {
    * wartości robocze, na których stoi I″k punktu i jego rozkład na źródła. `null`/brak =
    * wynik na danych projektu — sekcja nie pokazuje nic.
    */
-  danePrzyjete?: DanePrzyjeteWyniku | null;
+  danePrzyjete?: ParaDanychPrzyjetych | null;
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
 }
@@ -200,15 +200,7 @@ export function WkladyZwarciowe({
             />
           )}
           {wybrany && <SzczegolWkladuPanel wklad={wybrany} />}
-          {danePrzyjete && (
-            <div className="mvd-zwarcia-dane-przyjete" data-testid="mvd-zwarcia-wklady-dane">
-              <StanDanychWyniku
-                stan={danePrzyjete.stan}
-                dane={danePrzyjete.dane}
-                testId="mvd-zwarcia-wklady"
-              />
-            </div>
-          )}
+          {danePrzyjete && <StanDanychWyniku para={danePrzyjete} testId="mvd-zwarcia-wklady" />}
           <WykresUdzialowChart slupki={naSlupkiUdzialow(wklady)} />
           {/* Scalenie F2+F3: wywod sekcyjny (z checklista walidacji IEC) ma
               pierwszenstwo; plaski SladWywodu = fallback starszych odpowiedzi. */}

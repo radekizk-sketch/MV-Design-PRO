@@ -24,6 +24,12 @@ import {
   widokKompensacjiFixture,
   widokNocFixture,
 } from './fixtures';
+import userEvent from '@testing-library/user-event';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const pobierzDobor = vi.fn();
 vi.mock('../../api', () => ({
@@ -386,5 +392,18 @@ describe('EkranKompensacji — pre-selekcja węzła z deep-linku (R2-B)', () => 
       />,
     );
     expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('bus-a');
+  });
+});
+
+describe('EkranKompensacji — dane przyjęte wyniku (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    pobierzDobor.mockResolvedValue({ ...widokKompensacjiFixture(), ...paraDanych(dane) });
+    render(<EkranKompensacji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    const uzytkownik = userEvent.setup();
+    await uzytkownik.selectOptions(screen.getByTestId('mvd-komp-wezel'), 'bus-a');
+    await uzytkownik.click(screen.getByTestId('mvd-komp-oblicz'));
+    await sprawdzDanePrzyjete(await screen.findByTestId('mvd-komp-wynik'), 'mvd-komp', dane);
   });
 });

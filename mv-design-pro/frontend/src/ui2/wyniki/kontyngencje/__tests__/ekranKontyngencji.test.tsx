@@ -26,6 +26,11 @@ import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSelectionStore } from '../../../../ui/selection/store';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../wzorzec/__tests__/danePrzyjeteIloczyn';
 
 function przebieg(
   id: string,
@@ -420,5 +425,20 @@ describe('EkranKontyngencji — odczyt macierzy', () => {
     const zrodlo = readFileSync(join(__dirname, '..', 'EkranKontyngencji.tsx'), 'utf-8');
     expect(zrodlo).not.toMatch(/onOtworzDowod=\{\s*\(\)\s*=>\s*(undefined|\{\s*\})\s*\}/);
     expect(zrodlo).toMatch(/onOtworzDowod=\{onOtworzDowod\}/);
+  });
+});
+
+describe('EkranKontyngencji — dane przyjęte macierzy (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(() => {
+    useExecutionRunsStore.setState({ runs: [przebieg('pf-1', 'LOAD_FLOW')], activeRunId: 'pf-1' });
+  });
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    mockFetch({ ...MACIERZ, ...paraDanych(dane) });
+    render(<EkranKontyngencji trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    await zakresGotowy();
+    await userEvent.setup().click(screen.getByTestId('mvd-n1-policz'));
+    await screen.findByTestId('mvd-n1-ranking');
+    await sprawdzDanePrzyjete(screen.getByTestId('mvd-n1-ekran'), 'mvd-n1', dane);
   });
 });

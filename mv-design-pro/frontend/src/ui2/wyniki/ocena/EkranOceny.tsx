@@ -51,6 +51,7 @@ import { OCENA_STRINGS as T } from './strings';
 import {
   InformacjeAudytowe,
   PrzyciskAkcjiStanu,
+  StanDanychWyniku,
   akcjaNaprawcza,
   useAkcjaPrzejdzDoPrzypadkow,
   useNazwaObiektu,
@@ -241,6 +242,10 @@ function WierszElementu({
         {(element.wynik === 'BRAK_PODSTAW' || element.wynik === 'NIEJEDNOZNACZNY') && element.uzasadnienie_pl && (
           <span className="mvd-ocena-uwaga">{element.uzasadnienie_pl}</span>
         )}
+        <StanDanychWyniku
+          para={element}
+          testId={`mvd-ocena-element-${pozycja.kryterium_id}-${element.element_id ?? 'agregat'}`}
+        />
       </td>
       <td className="mvd-ocena-dzialania">
         {naSchemacie && typ !== null && element.element_id !== null && (

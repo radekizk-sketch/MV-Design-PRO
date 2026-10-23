@@ -16,6 +16,12 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { odpowiedzKlasyfikacji } from '../../ncrfg/__tests__/atrapaKlasyfikacji';
 import { EkranRankingu } from '../EkranRankingu';
 import { przebiegFixture, snapshotFixture, widokRankinguFixture } from './fixtures';
+import userEvent from '@testing-library/user-event';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const pobierz = vi.fn();
 vi.mock('../../api', () => ({
@@ -200,5 +206,16 @@ describe('EkranRankingu — tryb ekspercki (identyfikatory)', () => {
     // Karta #145: identyfikator przebiegu wyłącznie w „Informacjach audytowych" (zwinięte).
     fireEvent.click(screen.getByTestId('mvd-wyn-informacje-audytowe-przelacz'));
     expect(screen.getByTestId('mvd-wyn-informacje-audytowe-lista')).toHaveTextContent('lf-run');
+  });
+});
+
+describe('EkranRankingu — dane przyjęte wyniku (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    pobierz.mockResolvedValue({ ...widokRankinguFixture(), ...paraDanych(dane) });
+    render(<EkranRankingu trybZaawansowania="basic" />);
+    await userEvent.setup().click(screen.getByTestId('mvd-rank-oblicz'));
+    await sprawdzDanePrzyjete(await screen.findByTestId('mvd-rank-wynik'), 'mvd-rank', dane);
   });
 });

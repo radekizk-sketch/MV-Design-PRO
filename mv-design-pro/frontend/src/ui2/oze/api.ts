@@ -21,6 +21,7 @@ import type {
   TypModulu,
 } from './ncrfg/typy';
 import type { RekordOcenyNiewykonanej } from '../wyniki/wzorzec/OcenaNiewykonana';
+import type { ParaDanychPrzyjetych } from '../wyniki/wzorzec/danePrzyjete';
 import type {
   Etykieta,
   OcenaKryterium,
@@ -96,7 +97,11 @@ export type WerdyktAdekwatnosciQ =
   | 'rezerwa Q wyczerpana'
   | 'dane niekompletne';
 
-export interface WpisSilyWezla {
+/**
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na
+ * wartości roboczej S_sc″ węzła (`grid_strength.py::_dane_przyjete_by_bus`).
+ */
+export interface WpisSilyWezla extends ParaDanychPrzyjetych {
   readonly bus_ref: string;
   readonly nominal_kv: number | null;
   readonly s_sc_mva: number | null;
@@ -212,7 +217,11 @@ export interface ProweniencjaQ {
 }
 
 /** Widok analizy adekwatności mocy biernej (odpowiedź reactive-adequacy). */
-export interface WidokAdekwatnosciQ {
+/**
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na
+ * wartości roboczej gałęzi biegu rozpływu (`pola_danych_przyjetych_biegu`).
+ */
+export interface WidokAdekwatnosciQ extends ParaDanychPrzyjetych {
   readonly analysis_id: string;
   readonly context: KontekstSily | null;
   readonly saturation_tol_mvar: number;
@@ -362,7 +371,11 @@ export interface ParametryZdolnosci {
 }
 
 /** Widok zdolności przyłączeniowej (odpowiedź hosting-capacity). */
-export interface WidokZdolnosci {
+/**
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na
+ * wartości roboczej gałęzi biegu rozpływu (`pola_danych_przyjetych_biegu`).
+ */
+export interface WidokZdolnosci extends ParaDanychPrzyjetych {
   readonly analysis: string;
   readonly context: KontekstZdolnosci;
   readonly parameters: ParametryZdolnosci;
@@ -559,7 +572,11 @@ export interface GeneracjaIstniejacaPQ {
 }
 
 /** Widok obszaru bezpiecznej pracy P–Q (odpowiedź pq-area, 1:1 z `build_pq_area_view`). */
-export interface WidokObszaruPQ {
+/**
+ * Para danych przyjętych (`ParaDanychPrzyjetych`) — addytywnie, WYŁĄCZNIE gdy wynik stoi na
+ * wartości roboczej gałęzi biegu rozpływu (`pola_danych_przyjetych_biegu`).
+ */
+export interface WidokObszaruPQ extends ParaDanychPrzyjetych {
   readonly analysis: string;
   readonly context: KontekstObszaruPQ;
   readonly parameters: ParametryObszaruPQ;
@@ -879,9 +896,10 @@ export interface SladOsd {
 
 /**
  * Widok symulacji odpowiedzi źródła na polecenie OSD (odpowiedź osd-response,
- * 1:1 z `build_osd_response_view`).
+ * 1:1 z `build_osd_response_view`). Para danych przyjętych — addytywnie, WYŁĄCZNIE gdy bieg
+ * stoi na wartości roboczej gałęzi (`pola_danych_przyjetych_biegu`).
  */
-export interface WidokOdpowiedziOsd {
+export interface WidokOdpowiedziOsd extends ParaDanychPrzyjetych {
   readonly analysis: string;
   readonly context: KontekstOsd;
   readonly parameters: ParametryOsd;
@@ -1511,9 +1529,10 @@ export interface WhiteboxKompensacji {
 /**
  * Widok doboru kompensacji (odpowiedź compensation-sizing, 1:1 z
  * `build_compensation_sizing_view`). `dobor` = pierwszy kandydat spełniający lub
- * `null` z uczciwym `powod_braku` (PL).
+ * `null` z uczciwym `powod_braku` (PL). Para danych przyjętych — addytywnie, WYŁĄCZNIE gdy bieg
+ * stoi na wartości roboczej gałęzi (`pola_danych_przyjetych_biegu`).
  */
-export interface WidokDoboruKompensacji {
+export interface WidokDoboruKompensacji extends ParaDanychPrzyjetych {
   readonly analysis: string;
   readonly context: KontekstKompensacji;
   readonly parameters: ParametryKompensacji;

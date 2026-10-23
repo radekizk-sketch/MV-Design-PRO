@@ -25,6 +25,7 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import {
   EkranAnalizy,
   InformacjeAudytowe,
+  StanDanychWyniku,
   useAkcjaUruchomObliczenie,
   useNazwaObiektu,
   usePoprawWModelu,
@@ -370,6 +371,7 @@ function SzczegolWiarygodnosci({
         </div>
       </dl>
       <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      <StanDanychWyniku para={item} testId="mvd-jakosc-wiarygodnosc-szczegol" />
     </section>
   );
 }
@@ -489,6 +491,7 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
         <Chip etykieta={JAKOSC_STRINGS.podsumPrzekroczenia} wartosc={summary.fail_count} istotnosc="err" />
         <Chip etykieta={JAKOSC_STRINGS.podsumNieobliczone} wartosc={summary.not_computed_count} istotnosc="neutral" />
       </div>
+      <StanDanychWyniku para={dane} testId="mvd-jakosc-walidacja" />
       <SzczegolWalidacji item={wybranyItem} trybZaawansowania={trybZaawansowania} />
     </section>
   );
@@ -683,6 +686,7 @@ function SzczegolMigotania({
           </dd>
         </div>
       </dl>
+      <StanDanychWyniku para={wezel} testId="mvd-jakosc-migotanie-szczegol" />
 
       <p className="mvd-jakosc-szczegol-sekcja-tytul">{JAKOSC_STRINGS.szczegolModuly}</p>
       {wezel.modules.length === 0 ? (
@@ -920,6 +924,7 @@ function SzczegolArcFlash({
         </div>
       </dl>
       <p className="mvd-jakosc-szczegol-why">{wynik.why_pl}</p>
+      <StanDanychWyniku para={wynik} testId="mvd-jakosc-af-szczegol" />
       {wynik.missing_data.length > 0 && (
         <p className="mvd-jakosc-szczegol-brak" data-testid="mvd-jakosc-af-braki">
           {JAKOSC_STRINGS.szczegolBrakDanych}: {wynik.missing_data.join(', ')}
@@ -1383,6 +1388,7 @@ export function SekcjaWarunkowPrzylaczenia({
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
       />
+      <StanDanychWyniku para={dane} testId="mvd-jakosc-warunki" />
     </section>
   );
 }
@@ -1509,6 +1515,7 @@ export function SekcjaWytrzymaloscCieplna({
           poprawWModelu(klucz, 'LineBranch', nazwaObiektu(klucz, pozycja?.branch_name));
         }}
       />
+      <StanDanychWyniku para={dane} testId="mvd-jakosc-cieplna" />
       <DowodCieplnyGalezi
         runId={runId}
         branchId={wybrany}

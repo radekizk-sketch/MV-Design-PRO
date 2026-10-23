@@ -32,7 +32,12 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
-import { InformacjeAudytowe, TabelaWynikow, useNazwaObiektu } from '../../wyniki/wzorzec';
+import {
+  InformacjeAudytowe,
+  StanDanychWyniku,
+  TabelaWynikow,
+  useNazwaObiektu,
+} from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w notach/komentarzach renderuje TekstZWzorami (MathInline).
 import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
@@ -185,6 +190,7 @@ function WynikKompensacji({
           <dd className="mvd-num">{dane.whitebox.candidate_count}</dd>
         </div>
       </dl>
+      <StanDanychWyniku para={dane} testId="mvd-komp" />
 
       <InformacjeAudytowe
         trybEkspercki={trybEkspercki}

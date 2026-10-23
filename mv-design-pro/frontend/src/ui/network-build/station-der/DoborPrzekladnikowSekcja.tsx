@@ -29,6 +29,7 @@ import {
   pobierzRejestrGotowosci,
   type WpisRejestruGotowosci,
 } from '../../../ui2/kryteria';
+import { StanDanychWyniku, type ParaDanychPrzyjetych } from '../../../ui2/wyniki/wzorzec';
 
 export type WerdyktKryterium = 'spelnione' | 'niespelnione' | 'informacja' | 'brak_danych';
 
@@ -72,7 +73,12 @@ export interface GniazdoPrzekladnika {
   readonly wynik: WynikDoboru | null;
 }
 
-export interface DoborPrzekladnikow {
+/**
+ * Odpowiedź doboru przekładników (`api/generators.py::get_der_instrument_transformers`). Para
+ * danych przyjętych — addytywnie, WYŁĄCZNIE gdy Ik″/ip szyny pola stoją na wartości roboczej
+ * (tolerancja nN, linia 110 kV, parametr maszyny wirującej).
+ */
+export interface DoborPrzekladnikow extends ParaDanychPrzyjetych {
   readonly wejscia: {
     readonly napiecie_sieci_v: number | null;
     readonly prad_roboczy_a: number | null;
@@ -417,6 +423,7 @@ export function DoborPrzekladnikowSekcja({
               : 'prądy zwarciowe: brak zakończonego przebiegu',
           ].join(' · ')}
         </p>
+        <StanDanychWyniku para={dane} testId="dobor-wejscia" />
       </div>
 
       <Gniazdo

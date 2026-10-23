@@ -16,6 +16,11 @@ import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import { SekcjaNastaw } from '../SekcjaNastaw';
 import { KOORDYNACJA_STRINGS as T } from '../strings';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const RUN_SC_MAX = {
   id: 'run-sc-max',
@@ -505,5 +510,52 @@ describe('SekcjaNastaw — dopasowanie do aparatu', () => {
     expect(screen.getByTestId('mvd-koordynacja-dopasowanie-werdykt').textContent).toBe(
       T.nastawyDopasowanieZgodny,
     );
+  });
+});
+
+describe('SekcjaNastaw — dane przyjęte (miejsce × lista × zwinięty/rozwinięty)', () => {
+  const MIEJSCA = [
+    { nazwa: 'wynik nastaw', klucz: 'nastawy' as const, testId: 'mvd-koordynacja-nastawy' },
+    { nazwa: 'dopasowanie do aparatu', klucz: 'dopasowanie' as const, testId: 'mvd-koordynacja-dopasowanie' },
+  ];
+  const PRZYPADKI = MIEJSCA.flatMap((miejsce) => WARIANTY_LISTY.map((wariant) => ({ miejsce, wariant })));
+
+  it.each(PRZYPADKI)('$miejsce.nazwa × $wariant.nazwa', async ({ miejsce, wariant }) => {
+    const nastawy = miejsce.klucz === 'nastawy' ? paraDanych(wariant.dane) : {};
+    const dopasowanie = miejsce.klucz === 'dopasowanie' ? paraDanych(wariant.dane) : {};
+    ustawKontekst();
+    useExecutionRunsStore.setState({ runs: [RUN_SC_MAX] });
+    fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const json = (tresc: unknown) => ({ ok: true, status: 200, json: async () => tresc }) as Response;
+      if (url.includes('/pakiet-dowodowy-nastaw/dostepnosc')) return json(DOSTEPNOSC_OK);
+      if (url.includes('/nastawy/dopasowanie')) return json({ ...DOPASOWANIE_ZGODNE, ...dopasowanie });
+      if (url.includes('/nastawy')) return json({ ...WYNIK_NASTAW, ...nastawy });
+      if (url.includes('/api/catalog/protection/device-types')) return json(APARATY);
+      throw new Error(`Niespodziewane wywołanie fetch: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const user = userEvent.setup();
+    render(<SekcjaNastaw caseId="case-1" />);
+    await waitFor(() => expect(screen.getByTestId('mvd-koordynacja-nastawy')).toBeInTheDocument());
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-linia'), 'ln1');
+    await user.click(screen.getByLabelText('Zacisk początkowy — szyna GPZ SN'));
+    await user.selectOptions(screen.getByTestId('mvd-koordynacja-nastawy-select-szyna'), 'b_b');
+    await user.click(screen.getByTestId('mvd-koordynacja-nastawy-policz'));
+    await screen.findByTestId('mvd-koordynacja-nastawy-wynik');
+    await user.selectOptions(
+      await screen.findByTestId('mvd-koordynacja-dopasowanie-select-aparat'),
+      'ABB_REF601',
+    );
+    await screen.findByTestId('mvd-koordynacja-dopasowanie-wynik');
+
+    const inne = MIEJSCA.find((m) => m.klucz !== miejsce.klucz)!;
+    // Wpisy stoją przy wyniku, którego dotyczą — drugie miejsce nie pokazuje niczego.
+    expect(screen.queryByTestId(`${inne.testId}-dane`)).not.toBeInTheDocument();
+    const kontener =
+      miejsce.klucz === 'nastawy'
+        ? screen.getByTestId('mvd-koordynacja-nastawy-wynik')
+        : screen.getByTestId('mvd-koordynacja-dopasowanie-wynik');
+    await sprawdzDanePrzyjete(kontener, miejsce.testId, wariant.dane);
   });
 });

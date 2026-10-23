@@ -17,6 +17,7 @@
  */
 
 import type { CFactorBiegu } from '../../../ui/results-inspector/types';
+import type { ParaDanychPrzyjetych } from '../wzorzec/danePrzyjete';
 
 /** Zacisk chronionej linii, przy którym stoi zabezpieczenie (decyzja O-51). */
 export type ZaciskZabezpieczenia = 'od' | 'do';
@@ -146,7 +147,11 @@ export interface ProweniencjaNastaw {
   readonly engine_input: Record<string, number | string>;
 }
 
-export interface OdpowiedzNastaw {
+/**
+ * Odpowiedź nastaw. Para danych przyjętych — addytywnie, WYŁĄCZNIE gdy prądy wejścia stoją
+ * na wartości roboczej tolerancji sieci nN (`pakiet_nastaw.py::_dane_przyjete_odpowiedzi`).
+ */
+export interface OdpowiedzNastaw extends ParaDanychPrzyjetych {
   readonly wynik: WynikNastaw;
   readonly wejscie: ProweniencjaNastaw;
   readonly dostepnosc_pakietu: boolean;
@@ -187,7 +192,8 @@ export interface WymaganieAparatu {
   readonly i_inst_50n_a: number | null;
 }
 
-export interface DopasowanieAparatu {
+/** Dopasowanie aparatu; para danych przyjętych jak w `OdpowiedzNastaw` (ta sama funkcja). */
+export interface DopasowanieAparatu extends ParaDanychPrzyjetych {
   readonly status: string;
   readonly compatible: boolean;
   readonly violations: readonly string[];

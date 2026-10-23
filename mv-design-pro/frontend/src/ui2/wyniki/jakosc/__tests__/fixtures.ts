@@ -9,7 +9,7 @@
 import type {
   ExecutionRun,
 } from '../../../../ui/study-cases/types';
-import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse,
+import type { ArcFlashResponse, MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse,
   PasmaRozplywuResponse,
   WarunkiPrzylaczeniaResponse,
   WytrzymaloscCieplnaResponse,
@@ -591,4 +591,47 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
     ],
     summary: { pass_count: 1, fail_count: 0, unavailable_count: 0 },
   },
+};
+
+/** Odpowiedź łuku elektrycznego (jedna szyna SN, IEEE 1584-2018). */
+export const ARC_FLASH_FIXTURE: ArcFlashResponse = {
+  analysis_id: 'af-1',
+  context: null,
+  status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
+  status_label_pl: 'obliczony (IEEE 1584 open-source)',
+  results: [
+    {
+      bus_ref: 'bus-1',
+      bus_name: 'Szyna SN stacji S01',
+      status: 'COMPUTED_IEEE_1584_OPEN_SOURCE',
+      status_label_pl: 'obliczony (IEEE 1584 open-source)',
+      method: 'IEEE_1584_2018',
+      electrode_config: 'VCB',
+      i_bf_ka: 12.5,
+      voltage_kv: 15.0,
+      arc_time_s: 0.2,
+      conductor_gap_mm: 152,
+      working_distance_mm: 455,
+      i_arc_ka: 11.8,
+      incident_energy_cal_cm2: 8.42,
+      incident_energy_joule_cm2: 35.2,
+      arc_flash_boundary_mm: 1320,
+      ppe_category: '2',
+      ppe_table_provenance: null,
+      provenance: 'ARC_FLASH_OPEN_SOURCE_PROVENANCE',
+      provenance_caveat_pl: 'Wynik na współczynnikach open-source — wymaga weryfikacji z normą.',
+      why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.',
+      missing_data: [],
+      white_box: [
+        {
+          symbol: 'E',
+          formula_latex: 'E = 1.2 \\cdot ...',
+          substitution_pl: 'E = 1.2 · …',
+          result_pl: 'E = 8,42 cal/cm²',
+          unit_check_pl: '[cal/cm²]',
+          table_ref: 'IEEE_1584_VCB',
+        },
+      ],
+    },
+  ],
 };

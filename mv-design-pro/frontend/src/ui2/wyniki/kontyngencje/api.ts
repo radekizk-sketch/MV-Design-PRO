@@ -22,6 +22,8 @@
  * start przy pustym zaznaczeniu — ta sama reguła po obu stronach).
  */
 
+import type { ParaDanychPrzyjetych } from '../wzorzec/danePrzyjete';
+
 /** Kontekst przebiegu (pochodzenie wyniku) — koperta `zbuduj_kontekst_widoku`. */
 export interface KontekstKontyngencji {
   readonly run_id: string | null;
@@ -215,8 +217,11 @@ export interface PodsumowanieMacierzy {
   readonly z_odbiorami_bez_zasilania: number;
 }
 
-/** Pełna odpowiedź `GET /api/insights/n-1-contingency`. */
-export interface MacierzResponse {
+/**
+ * Pełna odpowiedź `GET /api/insights/n-1-contingency`. Para danych przyjętych — addytywnie,
+ * WYŁĄCZNIE gdy bieg rozpływu stoi na wartości roboczej gałęzi (`pola_danych_przyjetych_biegu`).
+ */
+export interface MacierzResponse extends ParaDanychPrzyjetych {
   readonly analysis: string;
   readonly context: KontekstKontyngencji | null;
   readonly parameters: {

@@ -20,6 +20,12 @@ import {
   widokObszaruFixture,
 } from './fixtures';
 import { OBSZAR_STRINGS } from '../strings';
+import userEvent from '@testing-library/user-event';
+import {
+  WARIANTY_LISTY,
+  paraDanych,
+  sprawdzDanePrzyjete,
+} from '../../../wyniki/wzorzec/__tests__/danePrzyjeteIloczyn';
 
 const pobierzObszar = vi.fn();
 const pobierzKonwertery = vi.fn();
@@ -289,5 +295,18 @@ describe('EkranObszaruPQ — zapis ograniczeń Q generatora (K5-B / H-3 pkt 3)',
       'Element fizyczny wymaga przypiętego katalogu.',
     );
     useAppStateStore.setState({ activeCaseId: null } as never);
+  });
+});
+
+describe('EkranObszaruPQ — dane przyjęte wyniku (lista × zwinięty/rozwinięty)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it.each(WARIANTY_LISTY)('$nazwa', async ({ dane }) => {
+    pobierzObszar.mockResolvedValue({ ...widokObszaruFixture(), ...paraDanych(dane) });
+    render(<EkranObszaruPQ trybZaawansowania="basic" onOtworzDowod={vi.fn()} />);
+    const uzytkownik = userEvent.setup();
+    await uzytkownik.selectOptions(screen.getByTestId('mvd-obszar-wezel'), 'bus-a');
+    await uzytkownik.click(screen.getByTestId('mvd-obszar-oblicz'));
+    await sprawdzDanePrzyjete(await screen.findByTestId('mvd-obszar-wynik'), 'mvd-obszar', dane);
   });
 });
