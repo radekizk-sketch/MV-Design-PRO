@@ -104,3 +104,44 @@ Zasada bez wyjątków: brak trafienia wyszukiwania nie dowodzi, że w standardac
 - Pomiary napięcia i prądu dla pola liniowego w telemechanice → Zeszyt telemechaniki, §6.4.1, s. 14/18.
 - Zagadnienie poza kartami i bez lokalnej kopii PDF → BRAK_INDEKSU oraz oficjalne dokumenty sugerowane do weryfikacji.
 - Data wcześniejsza niż wejście standardu w życie → brak stosowania karty jako obowiązującej w tamtej dacie.
+
+## Pełne indeksowanie 25 standardów — protokół operacyjny
+
+Pobieranie i indeksowanie wykonuje narzędzie scripts/enea_knowledge.py z oficjalnymi adresami operatora. Skrypty zapisują PDF, manifest SHA-256, bazę SQLite FTS5 i raport audytu **wyłącznie na lokalnym wolumenie**. Wyniki zdalne nie są automatycznie przesyłane do ChatGPT.
+
+### Wymagania środowiska
+
+Serwer Linux: Python 3.11+, pakiety poppler-utils, tesseract-ocr, tesseract-ocr-pol, tesseract-ocr-eng. Skrypt rozpoznaje każdą stronę, która nie posiada warstwy tekstowej (lub ma mniej niż 25 znaków literowych), osobno; praca na skanach jest dłuższa niż na cyfrowych PDF-ach. Otrzymane znaki ze skanu wymagają kontroli szczególnie przy wartościach liczbowych, tabelach, indeksach górnych/dolnych i schematach. OCR nie zastępuje odczytu rysunku.
+
+### Pierwsze uruchomienie
+
+~~~bash
+cd mv-design-pro
+python scripts/enea_knowledge.py catalog
+python scripts/enea_knowledge.py sync
+python scripts/enea_knowledge.py audit
+python scripts/enea_knowledge.py ask "Czy można budować nową stację słupową z kablowym podejściem SN?"
+~~~
+
+Wynik komendy audit zapisuje się jako audit.json w prywatnym magazynie i kończy kodem 0 wyłącznie przy pobraniu i kompletności indeksu wszystkich **25 standardów oraz obu ujętych dokumentów IRiESD**. Raport podaje dla każdego źródła status, sumę SHA-256, liczbę stron, liczbę zaindeksowanych stron i liczbę stron z tekstem. Status PASS oznacza **techniczną integralność zbioru**, a nie 100% poprawność OCR lub pełne opracowanie każdego wymagania.
+
+Po zatwierdzeniu praw do lokalnego przetwarzania PDF, administrator serwera aplikacji włącza odczyt z lokalnego indeksu:
+
+~~~bash
+export ENEA_KNOWLEDGE_ENABLED=1
+export ENEA_KNOWLEDGE_DATA_DIR="$HOME/.local/share/mv-design-pro/enea-knowledge"
+~~~
+
+Nie włączać indeksu PDF na ogólnodostępnym serwerze bez autoryzacji. Domyślne API pozostaje bezpiecznie ograniczone do publicznych kart wymagań.
+
+### Audyt sieciowy
+
+GitHub Actions: .github/workflows/enea-knowledge-acceptance.yml. Automatyczna kontrola w środowisku GitHub runner pobiera oficjalne źródła (przy dostępie do Internetu), instaluje polski OCR, indeksuje pełny zasób, a do artifacts przekazuje wyłącznie raport **metadanych** audit.json. Surowe PDF-y i baza pełnotekstowa nie są publikowane. Dodatkowo raz w tygodniu przewidziano kontrolę, uruchamianą po włączeniu tej ścieżki na domyślnej gałęzi repo.
+
+Bramka odbiorowa: 25/25 standardów i 27/27 skatalogowanych źródeł muszą mieć prawidłowy PDF, sumę SHA-256, numerację i indeks. Gdy któraś pozycja nie jest dostępna, FAIL. Zmiana sumy dokumentu nie nadpisuje starszej kopii bez kontroli rewizji, tylko trafia do do_weryfikacji/.
+
+### Ograniczenia
+
+- Skan może zostać poprawnie pobrany i technicznie zaindeksowany, lecz OCR może pomylić wartość liczbową. Werdykt normatywny jest wydawany dopiero po przypisaniu do ręcznie zweryfikowanego wymagania lub kontroli oryginału przez inżyniera.
+- Modyfikacja liczby plików w urzędowym wykazie wymaga aktualizacji katalogu metadanych; skrypt nie zgaduje, czy nowy PDF zastąpił poprzedni.
+- Tylko 12 kart wymagań jest obecnie oznaczonych jako zweryfikowane. Indeks pełnotekstowy obejmuje całą zawartość, ale nie jest równoważny pełnej ekstrakcji i akceptacji wszystkich reguł projektowych.
