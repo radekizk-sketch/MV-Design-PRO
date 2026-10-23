@@ -611,3 +611,169 @@ describe('Skład PV/BESS szablonu hybrydowego — kreator i podgląd', () => {
     expect(override.der_total_count).toBe(5);
   });
 });
+
+/**
+ * Karta GPZ-H5-APARATURA: podgląd szablonu GPZ pokazuje skład pól z backendu
+ * (`effective_config.gpz_bays`, `apply.py::podglad_pol_gpz_szablonu`) — te same wiersze składu,
+ * co karta pola. Pole 110 kV (granica zasilania sieci SN) nie ma szablonu standardu, a jego
+ * łącznik pola ma stan „brak typu”. Iloczyn: {podgląd GPZ, podgląd bez pól GPZ} × {pole SN
+ * z szablonem, pole 110 kV bez szablonu}.
+ */
+describe('StationTemplateWizard — skład pól GPZ w podglądzie', () => {
+  function podglad(gpzBays: unknown): unknown {
+    return {
+      template_id: 'tpl_sn_nn_630kva',
+      template_name_pl: 'Stacja SN/nN 630 kVA',
+      category: 'typowa_sn_nn',
+      wchodzi_w_segment: true,
+      nc_rfg_type: null,
+      station_type: 'inline',
+      catalog_profile_applied: 'ZPUE_WLOSZCZOWA',
+      effective_config: {
+        transformer_ref: 'tr-sn-nn-15-04-630kva-dyn11',
+        transformer_count: 1,
+        sn_bays_count: 3,
+        sn_bay_roles: ['IN', 'OUT', 'TR'],
+        sn_manufacturer: 'ZPUE_WLOSZCZOWA',
+        nn_feeders_count: 4,
+        nn_feeder_cb_ref: 'cb_nn_400a',
+        protection_relay_ref: 'EM_E2TANGO_600',
+        der_total_count: 0,
+        der_mix: [],
+        gpz_bays: gpzBays,
+      },
+      estimated_elements_count: 12,
+    };
+  }
+
+  function wiersz(over: Record<string, unknown>): Record<string, unknown> {
+    return {
+      gniazdo_ref: null,
+      gniazdo_nazwa_pl: null,
+      rodzaj: 'CB',
+      rodzaj_pl: 'wyłącznik',
+      device_ref: null,
+      linked_ref: null,
+      catalog_ref: null,
+      catalog_namespace: null,
+      status: 'ZAPROJEKTOWANE',
+      opis_pl: 'opis',
+      podstawa_pl: null,
+      interpretacja_pl: null,
+      wymagania: [],
+      ...over,
+    };
+  }
+
+  async function doPodgladu(gpzBays: unknown): Promise<void> {
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/station-templates/categories') {
+        return Promise.resolve(_mockResponse(MOCK_CATEGORIES));
+      }
+      if (url === '/api/station-templates?category=typowa_sn_nn') {
+        return Promise.resolve(_mockResponse(MOCK_TEMPLATES_TYPOWE));
+      }
+      if (url === '/api/station-templates/tpl_sn_nn_630kva') {
+        return Promise.resolve(_mockResponse(MOCK_TEMPLATE_FULL));
+      }
+      if (url === '/api/station-templates/tpl_sn_nn_630kva/preview' && init?.method === 'POST') {
+        return Promise.resolve(_mockResponse(podglad(gpzBays)));
+      }
+      return Promise.resolve({
+        ok: false,
+        status: 404,
+        json: async () => ({ detail: 'Not found' }),
+      } as unknown as Response);
+    });
+    render(
+      <StationTemplateWizard
+        caseId="00000000-0000-0000-0000-000000000001"
+        targetSegmentRef="seg/abc/segment"
+      />,
+    );
+    await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-location'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-profile'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-preview'));
+  }
+
+  it('podgląd GPZ: pole SN z szablonem i gniazdami, pole 110 kV bez szablonu z „brak typu”', async () => {
+    await doPodgladu([
+      {
+        bay_ref: 'pole/wn/l1',
+        name: 'Pole liniowe 110 kV L1',
+        bay_role: 'IN',
+        bus_name: 'Szyna 110 kV sekcja 1',
+        voltage_kv: 110,
+        szablon_standardu_ref: null,
+        szablon_standardu_nazwa_pl: null,
+        sklad: [
+          wiersz({
+            status: 'BRAK_TYPU_GRANICA_WN',
+            opis_pl: 'Łącznik pola 110 kV (wyłącznik) — brak typu',
+          }),
+        ],
+      },
+      {
+        bay_ref: 'pole/sn/out1',
+        name: 'Pole liniowe SN 1',
+        bay_role: 'OUT',
+        bus_name: 'Szyna SN sekcja 1',
+        voltage_kv: 15,
+        szablon_standardu_ref: 'ENEA_SN_LINIA',
+        szablon_standardu_nazwa_pl: 'Pole liniowe wyjściowe SN',
+        sklad: [
+          wiersz({
+            gniazdo_ref: 'Q0',
+            gniazdo_nazwa_pl: 'Wyłącznik pola (Q0)',
+            catalog_ref: 'cb-sn',
+          }),
+        ],
+      },
+    ]);
+    await waitFor(() => screen.getByTestId('preview-pola-gpz'));
+    // Pole GPZ zastępuje linię ról pól SN (jedno źródło składu w podglądzie).
+    expect(screen.queryByTestId('preview-pola-sn')).toBeNull();
+    const wn = screen.getByTestId('preview-pole-gpz-pole/wn/l1');
+    expect(screen.getByTestId('preview-pole-gpz-pole/wn/l1-szablon').textContent).toBe(
+      'bez szablonu pola standardu',
+    );
+    expect(wn.textContent).toContain(
+      'wyłącznik — brak typu — łącznik pola 110 kV (granica zasilania sieci SN)',
+    );
+    expect(wn.textContent).not.toContain('?');
+    expect(wn.textContent).not.toContain('BRAK_TYPU_GRANICA_WN');
+    const sn = screen.getByTestId('preview-pole-gpz-pole/sn/out1');
+    expect(screen.getByTestId('preview-pole-gpz-pole/sn/out1-szablon').textContent).toBe(
+      'Pole liniowe wyjściowe SN',
+    );
+    expect(sn.textContent).toContain('Wyłącznik pola (Q0) — ');
+    expect(sn.textContent).not.toContain('ZAPROJEKTOWANE');
+    // Kolejność rozdzielni z backendu zachowana.
+    const pola = screen.getByTestId('preview-pola-gpz').querySelectorAll('[data-testid^="preview-pole-gpz-"][data-testid$="l1"], [data-testid^="preview-pole-gpz-"][data-testid$="out1"]');
+    expect(Array.from(pola).map((e) => e.getAttribute('data-testid'))).toEqual([
+      'preview-pole-gpz-pole/wn/l1',
+      'preview-pole-gpz-pole/sn/out1',
+    ]);
+  });
+
+  it('podgląd bez pól GPZ: linia ról pól SN słowami, nie kodami', async () => {
+    await doPodgladu(null);
+    await waitFor(() => screen.getByTestId('preview-pola-sn'));
+    expect(screen.queryByTestId('preview-pola-gpz')).toBeNull();
+    const linia = screen.getByTestId('preview-pola-sn').textContent ?? '';
+    expect(linia).toContain('Pole liniowe wejściowe');
+    expect(linia).toContain('Pole liniowe wyjściowe');
+    expect(linia.split(' → ')).toHaveLength(3);
+    expect(linia).not.toMatch(/\b(IN|OUT|TR)\b/);
+  });
+});

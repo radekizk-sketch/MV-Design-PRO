@@ -36,6 +36,8 @@ WARTOSCI: dict[str, Any] = {
     "wybor_bloku": {"factory_configuration_ref": "blok", "factory_unit_index": 1},
     "metadane_pochodzenia": {"bay_kind": "liniowe_doplywowe"},
     "surge_arresters": [{"device_ref": "ogr"}],
+    # Karta GPZ-H5-APARATURA: szablon pola standardu ENEA (gniazda aparatury).
+    "szablon_standardu_ref": "ENEA_SN_LINIOWE",
 }
 
 

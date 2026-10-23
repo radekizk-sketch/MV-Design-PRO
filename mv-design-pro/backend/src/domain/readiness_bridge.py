@@ -109,6 +109,11 @@ ODWZOROWANIE_WALIDATOR_NA_KANON: dict[str, str] = {
     # warunek, ktory assembler rozplywu niesymetrycznego zglasza jako odmowe nazwana
     # (`enm/assembler.py::diagnoza_niesymetrii`) i ktory blokuje zwarcia 1F/2F-Z.
     "W001": "branch.zero_sequence_missing",
+    # Karta GPZ-H5-APARATURA: warunki dawnego walidatora semantycznego w walidatorze modelu.
+    # „Odcinek o długości ≤ 0 km" == „Nieprawidłowa długość odcinka (musi być > 0)".
+    "E011": "trunk.segment_length_invalid",
+    # „Odbiór z P = 0 MW i Q = 0 Mvar" == „Moc czynna i bierna odbioru wynoszą 0".
+    "W013": "load.power_zero",
     # W5-A (jedna reprezentacja uziemienia): transformator SN/nN bez ukladu sieci nN
     # (`lv_earthing_system`) == ten sam fakt, ktory gotowosc petli zwarcia zglasza jako
     # ELIG_FLNN_MISSING_EARTHING_SYSTEM (jeden predykat `enm/uklad_sieci_nn.py`).
@@ -145,6 +150,19 @@ KODY_WALIDATORA_BEZ_KANONU: dict[str, str] = {
     "E023": (
         "Kanon nie ma kodu dla napięcia znamionowego strony transformatora w innym paśmie "
         "napięć niż szyna, do której ta strona jest przyłączona."
+    ),
+    "E012": (
+        "Kanon nie ma kodu dla odwróconej polaryzacji transformatora (szyna strony górnej "
+        "o niższym napięciu niż szyna strony dolnej)."
+    ),
+    "W011": (
+        "Kanon nie ma kodu dla wytwórcy stojącego w polu o roli, która źródła nie przyjmuje "
+        "(`station.element_bypasses_field` mówi o pominięciu pola, nie o roli pola)."
+    ),
+    "W012": (
+        "Kanon ma `source.voltage_invalid` (napięcie NIEPRAWIDŁOWE), a warunek mówi o "
+        "napięciu odniesienia danych zwarciowych innym niż napięcie szyny przyłączenia — "
+        "obie wartości mogą być poprawne, sprzeczne jest ich zestawienie."
     ),
     "E028": "Kanon nie ma kodu dla braku danych DER wymaganych przez walidację D1.",
     "E029": "Kanon nie ma kodu dla niespójności parametrów falownika.",
@@ -309,7 +327,6 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "apparatus.sn_catalog_missing": "Brak emitera: walidacja aparatury SN po stronie ENM nierozpoczęta.",
     "import.catalog_mapping_required": "Emiter w torze importu — tor nieaktywny w tej wersji.",
     "load.catalog_missing": "Brak emitera: walidacja katalogu odbioru nie zgłasza tego kodu.",
-    "load.power_zero": "Brak emitera: walidacja mocy odbioru nie zgłasza tego kodu.",
     "nn.cable_catalog_missing": "Brak emitera: walidacja kabla nN nie zgłasza tego kodu.",
     "nn.main_breaker_missing": "Brak emitera: wymóg wyłącznika głównego nN nie jest sprawdzany.",
     "oze.bess_no_transformer": "Warunek sprawdzany w kaskadzie D1 pod innym kodem błędu operacji.",
@@ -351,7 +368,6 @@ KODY_KANONU_ZAREZERWOWANE: dict[str, str] = {
     "station.type_invalid": "Brak emitera: typ stacji walidowany kontraktem operacji, nie kodem gotowości.",
     "study_case.missing_base_snapshot": "Brak emitera: warunek pilnowany wyjątkiem warstwy przypadku.",
     "transformer.connection_missing": "Brak emitera: połączenie transformatora walidowane kontraktem operacji.",
-    "trunk.segment_length_invalid": "Brak emitera: długość walidowana kontraktem operacji.",
     "trunk.terminal_missing": "Brak emitera: terminal magistrali walidowany kontraktem operacji.",
     "trunk.segment_missing": "Emiter przez odwzorowanie kodu walidatora I004.",
     "source.grid_supply_missing": "Emiter przez odwzorowanie kodu walidatora E001.",

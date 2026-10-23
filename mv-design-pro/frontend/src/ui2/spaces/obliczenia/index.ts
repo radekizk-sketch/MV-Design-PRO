@@ -4,6 +4,7 @@ export { PorownanieKonfiguracji } from './PorownanieKonfiguracji';
 export { NowyPrzypadek } from './NowyPrzypadek';
 export { UruchomObliczenie } from './UruchomObliczenie';
 export { PanelScenariuszy } from './scenariusze/PanelScenariuszy';
+export { PanelScenariuszyLaczeniowych } from './scenariuszeLaczeniowe';
 export {
   uruchomObliczenie,
   uruchomScenariuszZwarciowy,

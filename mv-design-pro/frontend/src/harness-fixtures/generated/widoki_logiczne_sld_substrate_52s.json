@@ -2,2416 +2,2434 @@
   "branches": [],
   "line_fields": [
     {
-      "attachment_bus_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/section/001/bus_sn",
+      "attachment_bus_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/section/001/bus_sn",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/bay/001/001",
+      "field_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/bay/001/001",
       "occupied": true,
       "segment_refs": [
-        "seg/2ec2ba470da273e10727da26c98c81ec/segment"
+        "seg/54dc691a53f49565ede52bce73484c97/segment"
       ],
-      "station_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/substation"
+      "station_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/substation"
     },
     {
-      "attachment_bus_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/hv_section/001/bus_wn",
+      "attachment_bus_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/hv_section/001/bus_wn",
+      "bay_role": "COUPLER",
+      "corridor_refs": [],
+      "field_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/hv_coupler/001/bay",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/substation"
+    },
+    {
+      "attachment_bus_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/hv_section/001/terminal_line",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/hv_section/001/bay_line",
+      "field_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/hv_section/001/bay_line",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/substation"
+      "station_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/substation"
     },
     {
-      "attachment_bus_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/section/001/bus_sn",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/transformer/001/bay_sn",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/substation"
-    },
-    {
-      "attachment_bus_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/hv_section/001/bus_wn",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/transformer/001/bay_wn",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/substation"
-    },
-    {
-      "attachment_bus_ref": "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/000",
+      "attachment_bus_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/hv_section/002/terminal_line",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/02b1351946124030c7642ed7e5b68a32/sn_field/000",
+      "field_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/hv_section/002/bay_line",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/substation"
+    },
+    {
+      "attachment_bus_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/transformer/001/terminal_sn",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/transformer/001/bay_sn",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/substation"
+    },
+    {
+      "attachment_bus_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/hv_section/001/bus_wn",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/transformer/001/bay_wn",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/substation"
+    },
+    {
+      "attachment_bus_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_L"
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_L"
       ],
-      "station_ref": "stn/02b1351946124030c7642ed7e5b68a32/station"
+      "station_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/station"
     },
     {
-      "attachment_bus_ref": "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/02b1351946124030c7642ed7e5b68a32/sn_field/001",
+      "field_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_L"
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_L"
       ],
-      "station_ref": "stn/02b1351946124030c7642ed7e5b68a32/station"
+      "station_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/station"
     },
     {
-      "attachment_bus_ref": "stn/02b1351946124030c7642ed7e5b68a32/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/02b1351946124030c7642ed7e5b68a32/sn_field/002",
+      "field_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/02b1351946124030c7642ed7e5b68a32/station"
+      "station_ref": "stn/0864afba56ad3bba1dec04b0d3ea7b22/station"
     },
     {
-      "attachment_bus_ref": "stn/053dcd3b5c74e47a2146137104241ce0/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/053dcd3b5c74e47a2146137104241ce0/sn_field/000",
+      "field_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_L"
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/053dcd3b5c74e47a2146137104241ce0/station"
+      "station_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/station"
     },
     {
-      "attachment_bus_ref": "stn/053dcd3b5c74e47a2146137104241ce0/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/053dcd3b5c74e47a2146137104241ce0/sn_field/001",
+      "field_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_L"
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_R_R"
       ],
-      "station_ref": "stn/053dcd3b5c74e47a2146137104241ce0/station"
+      "station_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/station"
     },
     {
-      "attachment_bus_ref": "stn/053dcd3b5c74e47a2146137104241ce0/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/053dcd3b5c74e47a2146137104241ce0/sn_field/002",
+      "field_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/053dcd3b5c74e47a2146137104241ce0/station"
+      "station_ref": "stn/08b7cae185b3419a91ea992cc5787e1a/station"
     },
     {
-      "attachment_bus_ref": "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/08b9c50d823cc6d099401d94473cec62/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/0573d774e9f81f0a009d57054d319976/sn_field/000",
+      "field_ref": "stn/08b9c50d823cc6d099401d94473cec62/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SR"
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_L"
       ],
-      "station_ref": "stn/0573d774e9f81f0a009d57054d319976/station"
+      "station_ref": "stn/08b9c50d823cc6d099401d94473cec62/station"
     },
     {
-      "attachment_bus_ref": "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/08b9c50d823cc6d099401d94473cec62/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/0573d774e9f81f0a009d57054d319976/sn_field/001",
+      "field_ref": "stn/08b9c50d823cc6d099401d94473cec62/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_R"
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_L"
       ],
-      "station_ref": "stn/0573d774e9f81f0a009d57054d319976/station"
+      "station_ref": "stn/08b9c50d823cc6d099401d94473cec62/station"
     },
     {
-      "attachment_bus_ref": "stn/0573d774e9f81f0a009d57054d319976/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/08b9c50d823cc6d099401d94473cec62/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/0573d774e9f81f0a009d57054d319976/sn_field/002",
+      "field_ref": "stn/08b9c50d823cc6d099401d94473cec62/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/0573d774e9f81f0a009d57054d319976/station"
+      "station_ref": "stn/08b9c50d823cc6d099401d94473cec62/station"
     },
     {
-      "attachment_bus_ref": "stn/098d411f7c758b4941061c36f6be4c20/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/098d411f7c758b4941061c36f6be4c20/sn_field/000",
+      "field_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_L"
       ],
-      "station_ref": "stn/098d411f7c758b4941061c36f6be4c20/station"
+      "station_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/station"
     },
     {
-      "attachment_bus_ref": "stn/098d411f7c758b4941061c36f6be4c20/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/098d411f7c758b4941061c36f6be4c20/sn_field/001",
+      "field_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_L"
       ],
-      "station_ref": "stn/098d411f7c758b4941061c36f6be4c20/station"
+      "station_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/station"
     },
     {
-      "attachment_bus_ref": "stn/098d411f7c758b4941061c36f6be4c20/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/098d411f7c758b4941061c36f6be4c20/sn_field/002",
+      "field_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/098d411f7c758b4941061c36f6be4c20/station"
+      "station_ref": "stn/0a93557d51e5b7f1e0bfc4ff9f0dc885/station"
     },
     {
-      "attachment_bus_ref": "stn/10bb626464b28151525fba6135de1bcf/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/10bb626464b28151525fba6135de1bcf/sn_field/000",
+      "field_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_R_L"
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_L"
       ],
-      "station_ref": "stn/10bb626464b28151525fba6135de1bcf/station"
+      "station_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/station"
     },
     {
-      "attachment_bus_ref": "stn/10bb626464b28151525fba6135de1bcf/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/10bb626464b28151525fba6135de1bcf/sn_field/001",
+      "field_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_R_R"
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_L"
       ],
-      "station_ref": "stn/10bb626464b28151525fba6135de1bcf/station"
+      "station_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/station"
     },
     {
-      "attachment_bus_ref": "stn/10bb626464b28151525fba6135de1bcf/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/10bb626464b28151525fba6135de1bcf/sn_field/002",
+      "field_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/10bb626464b28151525fba6135de1bcf/station"
+      "station_ref": "stn/0d91f2b1a2ac3039354d48f511910ab2/station"
     },
     {
-      "attachment_bus_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/1048e2e01003845e71ada25465616255/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/sn_field/000",
+      "field_ref": "stn/1048e2e01003845e71ada25465616255/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_R_L"
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_L"
       ],
-      "station_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/station"
+      "station_ref": "stn/1048e2e01003845e71ada25465616255/station"
     },
     {
-      "attachment_bus_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/1048e2e01003845e71ada25465616255/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/sn_field/001",
+      "field_ref": "stn/1048e2e01003845e71ada25465616255/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_R_R"
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/station"
+      "station_ref": "stn/1048e2e01003845e71ada25465616255/station"
     },
     {
-      "attachment_bus_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/1048e2e01003845e71ada25465616255/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/sn_field/002",
+      "field_ref": "stn/1048e2e01003845e71ada25465616255/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/13b4732b19f0abe541e975ad2e51aa4a/station"
+      "station_ref": "stn/1048e2e01003845e71ada25465616255/station"
     },
     {
-      "attachment_bus_ref": "stn/199aea15573df8c6e10afef70f5606e0/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/199aea15573df8c6e10afef70f5606e0/sn_field/000",
+      "field_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_L"
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_L"
       ],
-      "station_ref": "stn/199aea15573df8c6e10afef70f5606e0/station"
+      "station_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/station"
     },
     {
-      "attachment_bus_ref": "stn/199aea15573df8c6e10afef70f5606e0/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/199aea15573df8c6e10afef70f5606e0/sn_field/001",
+      "field_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_L"
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_L"
       ],
-      "station_ref": "stn/199aea15573df8c6e10afef70f5606e0/station"
+      "station_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/station"
     },
     {
-      "attachment_bus_ref": "stn/199aea15573df8c6e10afef70f5606e0/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/199aea15573df8c6e10afef70f5606e0/sn_field/002",
+      "field_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/199aea15573df8c6e10afef70f5606e0/station"
+      "station_ref": "stn/17c8f2078127f7d7535a63b94ba1c12e/station"
     },
     {
-      "attachment_bus_ref": "stn/1d08e739167359e6834dbe01a50e763d/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/1d08e739167359e6834dbe01a50e763d/sn_field/000",
+      "field_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_L"
+        "seg/7cdc7a7a8e1444a67bd00e3850cda36d/segment_L"
       ],
-      "station_ref": "stn/1d08e739167359e6834dbe01a50e763d/station"
+      "station_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/station"
     },
     {
-      "attachment_bus_ref": "stn/1d08e739167359e6834dbe01a50e763d/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/1d08e739167359e6834dbe01a50e763d/sn_field/001",
+      "field_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_L"
+        "seg/7cdc7a7a8e1444a67bd00e3850cda36d/segment_R"
       ],
-      "station_ref": "stn/1d08e739167359e6834dbe01a50e763d/station"
+      "station_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/station"
     },
     {
-      "attachment_bus_ref": "stn/1d08e739167359e6834dbe01a50e763d/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/1d08e739167359e6834dbe01a50e763d/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/1d08e739167359e6834dbe01a50e763d/station"
-    },
-    {
-      "attachment_bus_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/station"
-    },
-    {
-      "attachment_bus_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_R_L"
-      ],
-      "station_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/station"
-    },
-    {
-      "attachment_bus_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/209d222d3ef486a38405b143b2a8bd2f/station"
-    },
-    {
-      "attachment_bus_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_L"
-      ],
-      "station_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/station"
-    },
-    {
-      "attachment_bus_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/station"
-    },
-    {
-      "attachment_bus_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/274ce2a4c815bf4ee55eb7b54c984f5c/station"
-    },
-    {
-      "attachment_bus_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/station"
-    },
-    {
-      "attachment_bus_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_R_L"
-      ],
-      "station_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/station"
-    },
-    {
-      "attachment_bus_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/2a9cbede8553a66e2df7577f4003b0c3/station"
-    },
-    {
-      "attachment_bus_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_L"
-      ],
-      "station_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/station"
-    },
-    {
-      "attachment_bus_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/station"
-    },
-    {
-      "attachment_bus_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/2b382e7fa4da25af35ed0a9c0bb36bce/station"
-    },
-    {
-      "attachment_bus_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_L"
-      ],
-      "station_ref": "stn/389e2390b89310177d9cc376b244718e/station"
-    },
-    {
-      "attachment_bus_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_L"
-      ],
-      "station_ref": "stn/389e2390b89310177d9cc376b244718e/station"
-    },
-    {
-      "attachment_bus_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field/002",
+      "field_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_L"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_L"
       ],
-      "station_ref": "stn/389e2390b89310177d9cc376b244718e/station"
+      "station_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/station"
     },
     {
-      "attachment_bus_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/389e2390b89310177d9cc376b244718e/sn_field/003",
+      "field_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/389e2390b89310177d9cc376b244718e/station"
+      "station_ref": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/station"
     },
     {
-      "attachment_bus_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field/000",
+      "field_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_L"
       ],
-      "station_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/station"
+      "station_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/station"
     },
     {
-      "attachment_bus_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field/001",
+      "field_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/station"
+      "station_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/station"
     },
     {
-      "attachment_bus_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/sn_field/002",
+      "field_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/3eaf230f5fbe34b70f7e1f02fc24ee5a/station"
+      "station_ref": "stn/1d9af452efe4d284e73e22d1aba5a4d0/station"
     },
     {
-      "attachment_bus_ref": "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/43a200de2c89436544c441ec5c7e3285/sn_field/000",
+      "field_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_L"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_L"
       ],
-      "station_ref": "stn/43a200de2c89436544c441ec5c7e3285/station"
+      "station_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/station"
     },
     {
-      "attachment_bus_ref": "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/43a200de2c89436544c441ec5c7e3285/sn_field/001",
+      "field_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_R"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_R_L_SL"
       ],
-      "station_ref": "stn/43a200de2c89436544c441ec5c7e3285/station"
+      "station_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/station"
     },
     {
-      "attachment_bus_ref": "stn/43a200de2c89436544c441ec5c7e3285/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/43a200de2c89436544c441ec5c7e3285/sn_field/002",
+      "field_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/43a200de2c89436544c441ec5c7e3285/station"
+      "station_ref": "stn/1ec18fe7c7b3062ff4506fac88469077/station"
     },
     {
-      "attachment_bus_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/23c19c013fd9c998be0d612b75870ae7/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field/000",
+      "field_ref": "stn/23c19c013fd9c998be0d612b75870ae7/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/563eb02750e1f8121d97164d7a247407/segment_L"
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_L"
       ],
-      "station_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/station"
+      "station_ref": "stn/23c19c013fd9c998be0d612b75870ae7/station"
     },
     {
-      "attachment_bus_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/23c19c013fd9c998be0d612b75870ae7/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field/001",
+      "field_ref": "stn/23c19c013fd9c998be0d612b75870ae7/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/563eb02750e1f8121d97164d7a247407/segment_R"
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_L"
       ],
-      "station_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/station"
+      "station_ref": "stn/23c19c013fd9c998be0d612b75870ae7/station"
     },
     {
-      "attachment_bus_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/23c19c013fd9c998be0d612b75870ae7/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/23c19c013fd9c998be0d612b75870ae7/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/23c19c013fd9c998be0d612b75870ae7/station"
+    },
+    {
+      "attachment_bus_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/bdc5c6a7113e406aad6ec22227599a19/segment_L"
+      ],
+      "station_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/station"
+    },
+    {
+      "attachment_bus_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/bdc5c6a7113e406aad6ec22227599a19/segment_R"
+      ],
+      "station_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/station"
+    },
+    {
+      "attachment_bus_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field/002",
+      "field_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_L"
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_L"
       ],
-      "station_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/station"
+      "station_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/station"
     },
     {
-      "attachment_bus_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field/003",
+      "field_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/44aa0ee35fd2315876056bcc68a3980d/station"
+      "station_ref": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/station"
     },
     {
-      "attachment_bus_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/sn_field/000",
+      "field_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_R_L"
       ],
-      "station_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/station"
+      "station_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/station"
     },
     {
-      "attachment_bus_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/sn_field/001",
+      "field_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_R_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_R_R"
       ],
-      "station_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/station"
+      "station_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/station"
     },
     {
-      "attachment_bus_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/sn_field/002",
+      "field_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/4553d3b4d1ff4bb93dd7423e9d77a4ff/station"
+      "station_ref": "stn/29559d020f3a2a71ed4412a6e99ad068/station"
     },
     {
-      "attachment_bus_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/sn_field/000",
+      "field_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_R_L"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_L"
       ],
-      "station_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/station"
+      "station_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/station"
     },
     {
-      "attachment_bus_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/sn_field/001",
+      "field_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_R_R"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/station"
+      "station_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/station"
     },
     {
-      "attachment_bus_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/sn_field/002",
+      "field_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/46ee7338cba2c8c5aff9dbb7ce5adb97/station"
+      "station_ref": "stn/2b100e5b157a7c9ebb7cdfd9c1cf2950/station"
     },
     {
-      "attachment_bus_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/384a91239d5a1503126112334c902294/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/sn_field/000",
+      "field_ref": "stn/384a91239d5a1503126112334c902294/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/station"
+      "station_ref": "stn/384a91239d5a1503126112334c902294/station"
     },
     {
-      "attachment_bus_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/384a91239d5a1503126112334c902294/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/sn_field/001",
+      "field_ref": "stn/384a91239d5a1503126112334c902294/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_R_L"
       ],
-      "station_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/station"
+      "station_ref": "stn/384a91239d5a1503126112334c902294/station"
     },
     {
-      "attachment_bus_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/384a91239d5a1503126112334c902294/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/sn_field/002",
+      "field_ref": "stn/384a91239d5a1503126112334c902294/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/4b7118514fa4bb71f540a6a888eef43a/station"
+      "station_ref": "stn/384a91239d5a1503126112334c902294/station"
     },
     {
-      "attachment_bus_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field/000",
+      "field_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_L"
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_R_L"
       ],
-      "station_ref": "stn/4c555f183c75c8f826be5744222698ff/station"
+      "station_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/station"
     },
     {
-      "attachment_bus_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field/001",
+      "field_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_L"
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_R_R"
       ],
-      "station_ref": "stn/4c555f183c75c8f826be5744222698ff/station"
+      "station_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/station"
     },
     {
-      "attachment_bus_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/3bb53103592b6f88cae6cbbc3e4406fe/station"
+    },
+    {
+      "attachment_bus_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/11f4669e1bd53ddc72a1318bf7b09fdb/segment_L"
+      ],
+      "station_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/station"
+    },
+    {
+      "attachment_bus_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/11f4669e1bd53ddc72a1318bf7b09fdb/segment_R"
+      ],
+      "station_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/station"
+    },
+    {
+      "attachment_bus_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field/002",
+      "field_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_L"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_L"
       ],
-      "station_ref": "stn/4c555f183c75c8f826be5744222698ff/station"
+      "station_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/station"
     },
     {
-      "attachment_bus_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/4c555f183c75c8f826be5744222698ff/sn_field/003",
+      "field_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/4c555f183c75c8f826be5744222698ff/station"
+      "station_ref": "stn/3bb7aef08b90b29501fbc64e53bf2628/station"
     },
     {
-      "attachment_bus_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field/000",
+      "field_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_L"
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_R_L"
       ],
-      "station_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/station"
+      "station_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/station"
     },
     {
-      "attachment_bus_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field/001",
+      "field_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_R"
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_R_R"
       ],
-      "station_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/station"
+      "station_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/station"
     },
     {
-      "attachment_bus_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/3d4c5dbe09a8ea2c850558b6300f75ba/station"
+    },
+    {
+      "attachment_bus_ref": "stn/423e4f73c79e84fcd64d496639985197/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/423e4f73c79e84fcd64d496639985197/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_L"
+      ],
+      "station_ref": "stn/423e4f73c79e84fcd64d496639985197/station"
+    },
+    {
+      "attachment_bus_ref": "stn/423e4f73c79e84fcd64d496639985197/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/423e4f73c79e84fcd64d496639985197/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_R_L"
+      ],
+      "station_ref": "stn/423e4f73c79e84fcd64d496639985197/station"
+    },
+    {
+      "attachment_bus_ref": "stn/423e4f73c79e84fcd64d496639985197/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/423e4f73c79e84fcd64d496639985197/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/423e4f73c79e84fcd64d496639985197/station"
+    },
+    {
+      "attachment_bus_ref": "stn/482b1678453d99b569cea9b670b2278f/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/482b1678453d99b569cea9b670b2278f/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_L"
+      ],
+      "station_ref": "stn/482b1678453d99b569cea9b670b2278f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/482b1678453d99b569cea9b670b2278f/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/482b1678453d99b569cea9b670b2278f/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_L"
+      ],
+      "station_ref": "stn/482b1678453d99b569cea9b670b2278f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/482b1678453d99b569cea9b670b2278f/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/482b1678453d99b569cea9b670b2278f/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/482b1678453d99b569cea9b670b2278f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_L"
+      ],
+      "station_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_L"
+      ],
+      "station_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/4c9e75f4bfb0de885ec486237a3e5b4f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_L"
+      ],
+      "station_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/station"
+    },
+    {
+      "attachment_bus_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_R_L"
+      ],
+      "station_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/station"
+    },
+    {
+      "attachment_bus_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field/002",
+      "field_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_L"
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_L"
       ],
-      "station_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/station"
+      "station_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/station"
     },
     {
-      "attachment_bus_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field/003",
+      "field_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/4d03c5a21ffa5638b2e4627626a835a5/station"
+      "station_ref": "stn/4d6bade3fc44728c3bbfbcf461d9be24/station"
     },
     {
-      "attachment_bus_ref": "stn/4d4b5352c95f46f436cff0b78e578357/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/4eba2fdf8c2851f9222465db82079aef/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/4d4b5352c95f46f436cff0b78e578357/sn_field/000",
+      "field_ref": "stn/4eba2fdf8c2851f9222465db82079aef/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_L"
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_L"
       ],
-      "station_ref": "stn/4d4b5352c95f46f436cff0b78e578357/station"
+      "station_ref": "stn/4eba2fdf8c2851f9222465db82079aef/station"
     },
     {
-      "attachment_bus_ref": "stn/4d4b5352c95f46f436cff0b78e578357/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/4eba2fdf8c2851f9222465db82079aef/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/4d4b5352c95f46f436cff0b78e578357/sn_field/001",
+      "field_ref": "stn/4eba2fdf8c2851f9222465db82079aef/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_L"
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/4d4b5352c95f46f436cff0b78e578357/station"
+      "station_ref": "stn/4eba2fdf8c2851f9222465db82079aef/station"
     },
     {
-      "attachment_bus_ref": "stn/4d4b5352c95f46f436cff0b78e578357/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/4eba2fdf8c2851f9222465db82079aef/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/4d4b5352c95f46f436cff0b78e578357/sn_field/002",
+      "field_ref": "stn/4eba2fdf8c2851f9222465db82079aef/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/4d4b5352c95f46f436cff0b78e578357/station"
+      "station_ref": "stn/4eba2fdf8c2851f9222465db82079aef/station"
     },
     {
-      "attachment_bus_ref": "stn/526d751d4c6b988f3884ca3854deee2e/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/526d751d4c6b988f3884ca3854deee2e/sn_field/000",
+      "field_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_R_L"
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_L"
       ],
-      "station_ref": "stn/526d751d4c6b988f3884ca3854deee2e/station"
+      "station_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/station"
     },
     {
-      "attachment_bus_ref": "stn/526d751d4c6b988f3884ca3854deee2e/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/526d751d4c6b988f3884ca3854deee2e/sn_field/001",
+      "field_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_R_R"
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/526d751d4c6b988f3884ca3854deee2e/station"
+      "station_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/station"
     },
     {
-      "attachment_bus_ref": "stn/526d751d4c6b988f3884ca3854deee2e/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/526d751d4c6b988f3884ca3854deee2e/sn_field/002",
+      "field_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/526d751d4c6b988f3884ca3854deee2e/station"
+      "station_ref": "stn/50a0bb4a6c78796afa44e930e2b7d2b5/station"
     },
     {
-      "attachment_bus_ref": "stn/5b70068942fde50b62c9b6de84be940e/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/5b70068942fde50b62c9b6de84be940e/sn_field/000",
+      "field_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_L"
+        "seg/ccfb1bfbb0ffdd8bfccf505014fcc9ec/segment_L_R"
       ],
-      "station_ref": "stn/5b70068942fde50b62c9b6de84be940e/station"
+      "station_ref": "stn/5917fc095df1cece5a9c793c3b269cff/station"
     },
     {
-      "attachment_bus_ref": "stn/5b70068942fde50b62c9b6de84be940e/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/5b70068942fde50b62c9b6de84be940e/sn_field/001",
+      "field_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_R_L"
+        "seg/ccfb1bfbb0ffdd8bfccf505014fcc9ec/segment_R"
       ],
-      "station_ref": "stn/5b70068942fde50b62c9b6de84be940e/station"
+      "station_ref": "stn/5917fc095df1cece5a9c793c3b269cff/station"
     },
     {
-      "attachment_bus_ref": "stn/5b70068942fde50b62c9b6de84be940e/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/5b70068942fde50b62c9b6de84be940e/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/5b70068942fde50b62c9b6de84be940e/station"
-    },
-    {
-      "attachment_bus_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_L_R"
-      ],
-      "station_ref": "stn/5def7b80c06af702b176f0dee0d4392c/station"
-    },
-    {
-      "attachment_bus_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_R"
-      ],
-      "station_ref": "stn/5def7b80c06af702b176f0dee0d4392c/station"
-    },
-    {
-      "attachment_bus_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field/002",
+      "field_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_L"
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_L"
       ],
-      "station_ref": "stn/5def7b80c06af702b176f0dee0d4392c/station"
+      "station_ref": "stn/5917fc095df1cece5a9c793c3b269cff/station"
     },
     {
-      "attachment_bus_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field/003",
+      "field_ref": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/5def7b80c06af702b176f0dee0d4392c/station"
+      "station_ref": "stn/5917fc095df1cece5a9c793c3b269cff/station"
     },
     {
-      "attachment_bus_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/5f86853709895b7faa798f583c878432/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field/000",
+      "field_ref": "stn/5f86853709895b7faa798f583c878432/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_R"
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_L"
       ],
-      "station_ref": "stn/5e584c708e66035fcdef69cd25087291/station"
+      "station_ref": "stn/5f86853709895b7faa798f583c878432/station"
     },
     {
-      "attachment_bus_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/5f86853709895b7faa798f583c878432/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field/001",
+      "field_ref": "stn/5f86853709895b7faa798f583c878432/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_R"
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/5e584c708e66035fcdef69cd25087291/station"
+      "station_ref": "stn/5f86853709895b7faa798f583c878432/station"
     },
     {
-      "attachment_bus_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/5f86853709895b7faa798f583c878432/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/5f86853709895b7faa798f583c878432/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/5f86853709895b7faa798f583c878432/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_R_L"
+      ],
+      "station_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_R_R"
+      ],
+      "station_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/6124e35bc17e8a56b5d6f55302a0501c/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_L"
+      ],
+      "station_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_L"
+      ],
+      "station_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/6aa8cbd14ad78e08570d8345e95124f5/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/ccfb1bfbb0ffdd8bfccf505014fcc9ec/segment_L_L"
+      ],
+      "station_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/ccfb1bfbb0ffdd8bfccf505014fcc9ec/segment_L_R"
+      ],
+      "station_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/station"
+    },
+    {
+      "attachment_bus_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field/002",
+      "field_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_L"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_L"
       ],
-      "station_ref": "stn/5e584c708e66035fcdef69cd25087291/station"
+      "station_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/station"
     },
     {
-      "attachment_bus_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/5e584c708e66035fcdef69cd25087291/sn_field/003",
+      "field_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/5e584c708e66035fcdef69cd25087291/station"
+      "station_ref": "stn/6ae0beef1651f0d2d1511c19e658e919/station"
     },
     {
-      "attachment_bus_ref": "stn/5f12674f6820409599760dbb1534ed2b/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/5f12674f6820409599760dbb1534ed2b/sn_field/000",
+      "field_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_L"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_L"
       ],
-      "station_ref": "stn/5f12674f6820409599760dbb1534ed2b/station"
+      "station_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/station"
     },
     {
-      "attachment_bus_ref": "stn/5f12674f6820409599760dbb1534ed2b/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/5f12674f6820409599760dbb1534ed2b/sn_field/001",
+      "field_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_L"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_L"
       ],
-      "station_ref": "stn/5f12674f6820409599760dbb1534ed2b/station"
+      "station_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/station"
     },
     {
-      "attachment_bus_ref": "stn/5f12674f6820409599760dbb1534ed2b/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/5f12674f6820409599760dbb1534ed2b/sn_field/002",
+      "field_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/5f12674f6820409599760dbb1534ed2b/station"
+      "station_ref": "stn/6d3f090cc84f6ba8890ffee1718743be/station"
     },
     {
-      "attachment_bus_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/sn_field/000",
+      "field_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_R_L"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_R_L_SR"
       ],
-      "station_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/station"
+      "station_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/station"
     },
     {
-      "attachment_bus_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/sn_field/001",
+      "field_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_R_R"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_R_R"
       ],
-      "station_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/station"
+      "station_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/station"
     },
     {
-      "attachment_bus_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/sn_field/002",
+      "field_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/5f9af052d72ebfe1de155ea37bf59a78/station"
+      "station_ref": "stn/7d3b542889a0ce6f3c50fefceec73ec3/station"
     },
     {
-      "attachment_bus_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field/000",
+      "field_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_R"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/60da521b2b332de1de50adcaebeb4202/station"
+      "station_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/station"
     },
     {
-      "attachment_bus_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field/001",
+      "field_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_R"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_R_L"
       ],
-      "station_ref": "stn/60da521b2b332de1de50adcaebeb4202/station"
+      "station_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/station"
     },
     {
-      "attachment_bus_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/7f8ea2a16791a09e714bcca7bd012ce5/station"
+    },
+    {
+      "attachment_bus_ref": "stn/85ac653835b82367e9d7e081d14d0fed/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/85ac653835b82367e9d7e081d14d0fed/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_R_L"
+      ],
+      "station_ref": "stn/85ac653835b82367e9d7e081d14d0fed/station"
+    },
+    {
+      "attachment_bus_ref": "stn/85ac653835b82367e9d7e081d14d0fed/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/85ac653835b82367e9d7e081d14d0fed/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_R_R"
+      ],
+      "station_ref": "stn/85ac653835b82367e9d7e081d14d0fed/station"
+    },
+    {
+      "attachment_bus_ref": "stn/85ac653835b82367e9d7e081d14d0fed/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/85ac653835b82367e9d7e081d14d0fed/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/85ac653835b82367e9d7e081d14d0fed/station"
+    },
+    {
+      "attachment_bus_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_L"
+      ],
+      "station_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/station"
+    },
+    {
+      "attachment_bus_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_L"
+      ],
+      "station_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/station"
+    },
+    {
+      "attachment_bus_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/88b2c9b68281b35b9d6dda63bc3b6815/station"
+    },
+    {
+      "attachment_bus_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_R_R"
+      ],
+      "station_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/station"
+    },
+    {
+      "attachment_bus_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_R"
+      ],
+      "station_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/station"
+    },
+    {
+      "attachment_bus_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field/002",
+      "field_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_L"
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_L"
       ],
-      "station_ref": "stn/60da521b2b332de1de50adcaebeb4202/station"
+      "station_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/station"
     },
     {
-      "attachment_bus_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/60da521b2b332de1de50adcaebeb4202/sn_field/003",
+      "field_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/60da521b2b332de1de50adcaebeb4202/station"
+      "station_ref": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/station"
     },
     {
-      "attachment_bus_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/9897612f22538eeb61eb0728cc396e75/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/sn_field/000",
+      "field_ref": "stn/9897612f22538eeb61eb0728cc396e75/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_L"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_L"
       ],
-      "station_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/station"
+      "station_ref": "stn/9897612f22538eeb61eb0728cc396e75/station"
     },
     {
-      "attachment_bus_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/9897612f22538eeb61eb0728cc396e75/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/sn_field/001",
+      "field_ref": "stn/9897612f22538eeb61eb0728cc396e75/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_R_L"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_L"
       ],
-      "station_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/station"
+      "station_ref": "stn/9897612f22538eeb61eb0728cc396e75/station"
     },
     {
-      "attachment_bus_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/9897612f22538eeb61eb0728cc396e75/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/sn_field/002",
+      "field_ref": "stn/9897612f22538eeb61eb0728cc396e75/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/6639cf33bef64e78f931bf1442f9fb3f/station"
+      "station_ref": "stn/9897612f22538eeb61eb0728cc396e75/station"
     },
     {
-      "attachment_bus_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/ac7487e8b6f51861edac320fd8613c24/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/sn_field/000",
+      "field_ref": "stn/ac7487e8b6f51861edac320fd8613c24/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_L"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_L"
       ],
-      "station_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/station"
+      "station_ref": "stn/ac7487e8b6f51861edac320fd8613c24/station"
     },
     {
-      "attachment_bus_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/ac7487e8b6f51861edac320fd8613c24/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/sn_field/001",
+      "field_ref": "stn/ac7487e8b6f51861edac320fd8613c24/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_L"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/station"
+      "station_ref": "stn/ac7487e8b6f51861edac320fd8613c24/station"
     },
     {
-      "attachment_bus_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/ac7487e8b6f51861edac320fd8613c24/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/sn_field/002",
+      "field_ref": "stn/ac7487e8b6f51861edac320fd8613c24/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/6a58a6a78548361dbcb721ce575b9d2a/station"
+      "station_ref": "stn/ac7487e8b6f51861edac320fd8613c24/station"
     },
     {
-      "attachment_bus_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/sn_field/000",
+      "field_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_R_L"
+        "seg/4ee0cd71b0926b346f575cd5b77665de/segment_L"
       ],
-      "station_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/station"
+      "station_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/station"
     },
     {
-      "attachment_bus_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/sn_field/001",
+      "field_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_R_R"
+        "seg/4ee0cd71b0926b346f575cd5b77665de/segment_R"
       ],
-      "station_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/station"
+      "station_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/station"
     },
     {
-      "attachment_bus_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/7140ac8547c9c31018c60c64a3ba3e48/station"
-    },
-    {
-      "attachment_bus_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_L"
-      ],
-      "station_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/station"
-    },
-    {
-      "attachment_bus_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_R"
-      ],
-      "station_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/station"
-    },
-    {
-      "attachment_bus_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field/002",
+      "field_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_L"
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_L"
       ],
-      "station_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/station"
+      "station_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/station"
     },
     {
-      "attachment_bus_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field/003",
+      "field_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/station"
+      "station_ref": "stn/b371a68e1f71f4d4fbe41424228ca954/station"
     },
     {
-      "attachment_bus_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/sn_field/000",
+      "field_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_R_L"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_R_L"
       ],
-      "station_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/station"
+      "station_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/station"
     },
     {
-      "attachment_bus_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/sn_field/001",
+      "field_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_R_R"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_R_R"
       ],
-      "station_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/station"
+      "station_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/station"
     },
     {
-      "attachment_bus_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/sn_field/002",
+      "field_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/79b1cd3c74d1d83a2aa36130db12f8e2/station"
+      "station_ref": "stn/bd39a61b0e22ce32a1273b2ef3ab2e1a/station"
     },
     {
-      "attachment_bus_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field/000",
+      "field_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_L"
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_R_R"
       ],
-      "station_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/station"
+      "station_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/station"
     },
     {
-      "attachment_bus_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field/001",
+      "field_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_R_L"
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_R"
       ],
-      "station_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/station"
+      "station_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/station"
     },
     {
-      "attachment_bus_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/7ce13a3c23d4de7463601005e3318e7f/station"
-    },
-    {
-      "attachment_bus_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_L"
-      ],
-      "station_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/station"
-    },
-    {
-      "attachment_bus_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/station"
-    },
-    {
-      "attachment_bus_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/7cea11943e0f42d6bbf418b8a618b64a/station"
-    },
-    {
-      "attachment_bus_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_L"
-      ],
-      "station_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/station"
-    },
-    {
-      "attachment_bus_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_L"
-      ],
-      "station_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/station"
-    },
-    {
-      "attachment_bus_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/96b2dc6257a9b86ef54b529a9bd814e0/station"
-    },
-    {
-      "attachment_bus_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/station"
-    },
-    {
-      "attachment_bus_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_R_L"
-      ],
-      "station_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/station"
-    },
-    {
-      "attachment_bus_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/9cbe3f75e29f32b1a63bbd8e952e20b3/station"
-    },
-    {
-      "attachment_bus_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/e19d826bebb3ebd7677a94977f873952/segment_L"
-      ],
-      "station_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/station"
-    },
-    {
-      "attachment_bus_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/e19d826bebb3ebd7677a94977f873952/segment_R"
-      ],
-      "station_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/station"
-    },
-    {
-      "attachment_bus_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field/002",
+      "field_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_L"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_L"
       ],
-      "station_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/station"
+      "station_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/station"
     },
     {
-      "attachment_bus_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field/003",
+      "field_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/station"
+      "station_ref": "stn/c6095c43801d52fb743c2dbf74c6a9fd/station"
     },
     {
-      "attachment_bus_ref": "stn/b7d195695733564f67265edfd5058e2f/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/c86f8459e4c92389886860704f6a30de/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/b7d195695733564f67265edfd5058e2f/sn_field/000",
+      "field_ref": "stn/c86f8459e4c92389886860704f6a30de/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_L"
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/b7d195695733564f67265edfd5058e2f/station"
+      "station_ref": "stn/c86f8459e4c92389886860704f6a30de/station"
     },
     {
-      "attachment_bus_ref": "stn/b7d195695733564f67265edfd5058e2f/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/c86f8459e4c92389886860704f6a30de/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/b7d195695733564f67265edfd5058e2f/sn_field/001",
+      "field_ref": "stn/c86f8459e4c92389886860704f6a30de/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SL"
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_R_R"
       ],
-      "station_ref": "stn/b7d195695733564f67265edfd5058e2f/station"
+      "station_ref": "stn/c86f8459e4c92389886860704f6a30de/station"
     },
     {
-      "attachment_bus_ref": "stn/b7d195695733564f67265edfd5058e2f/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/c86f8459e4c92389886860704f6a30de/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/b7d195695733564f67265edfd5058e2f/sn_field/002",
+      "field_ref": "stn/c86f8459e4c92389886860704f6a30de/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/b7d195695733564f67265edfd5058e2f/station"
+      "station_ref": "stn/c86f8459e4c92389886860704f6a30de/station"
     },
     {
-      "attachment_bus_ref": "stn/be62dca499a53468061996c609632547/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/be62dca499a53468061996c609632547/sn_field/000",
+      "field_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_L"
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_L"
       ],
-      "station_ref": "stn/be62dca499a53468061996c609632547/station"
+      "station_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/station"
     },
     {
-      "attachment_bus_ref": "stn/be62dca499a53468061996c609632547/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/be62dca499a53468061996c609632547/sn_field/001",
+      "field_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_R_L"
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_R_L"
       ],
-      "station_ref": "stn/be62dca499a53468061996c609632547/station"
+      "station_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/station"
     },
     {
-      "attachment_bus_ref": "stn/be62dca499a53468061996c609632547/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/be62dca499a53468061996c609632547/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/be62dca499a53468061996c609632547/station"
-    },
-    {
-      "attachment_bus_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/station"
-    },
-    {
-      "attachment_bus_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_R_R"
-      ],
-      "station_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/station"
-    },
-    {
-      "attachment_bus_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/c5740accd6ac7011ba046df27d5ba8c4/station"
-    },
-    {
-      "attachment_bus_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_L"
-      ],
-      "station_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/station"
-    },
-    {
-      "attachment_bus_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/station"
-    },
-    {
-      "attachment_bus_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/c9b56cb35ad4450bc8fd580a0b1f4480/station"
-    },
-    {
-      "attachment_bus_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_L"
-      ],
-      "station_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/station"
-    },
-    {
-      "attachment_bus_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/station"
-    },
-    {
-      "attachment_bus_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/cff3a38dfcb94f4333a801a69f69dd15/station"
-    },
-    {
-      "attachment_bus_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/de7a6d04d37ac11d4f25d63857daed65/segment_L"
-      ],
-      "station_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/station"
-    },
-    {
-      "attachment_bus_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/de7a6d04d37ac11d4f25d63857daed65/segment_R"
-      ],
-      "station_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/station"
-    },
-    {
-      "attachment_bus_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field/002",
+      "field_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_L"
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_L"
       ],
-      "station_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/station"
+      "station_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/station"
     },
     {
-      "attachment_bus_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field/003",
+      "field_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/d0e271c1dd839192f0b167509c8eb75e/station"
+      "station_ref": "stn/c926389e5b7dc031db8b291f8019bcb8/station"
     },
     {
-      "attachment_bus_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/sn_field/000",
+      "field_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_L"
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_L"
       ],
-      "station_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/station"
+      "station_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/station"
     },
     {
-      "attachment_bus_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/sn_field/001",
+      "field_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_L"
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/station"
+      "station_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/station"
     },
     {
-      "attachment_bus_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/sn_field/002",
+      "field_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/d356206e0d4ab4c292613bd61fb0ab67/station"
+      "station_ref": "stn/d611a82be28c1c8b2efc23a7cf72726c/station"
     },
     {
-      "attachment_bus_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/d64a5da81f808932e7e6e26722921d97/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field/000",
+      "field_ref": "stn/d64a5da81f808932e7e6e26722921d97/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_L"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/station"
+      "station_ref": "stn/d64a5da81f808932e7e6e26722921d97/station"
     },
     {
-      "attachment_bus_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/d64a5da81f808932e7e6e26722921d97/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field/001",
+      "field_ref": "stn/d64a5da81f808932e7e6e26722921d97/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_R"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_R_R"
       ],
-      "station_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/station"
+      "station_ref": "stn/d64a5da81f808932e7e6e26722921d97/station"
     },
     {
-      "attachment_bus_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/d64a5da81f808932e7e6e26722921d97/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/d64a5da81f808932e7e6e26722921d97/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/d64a5da81f808932e7e6e26722921d97/station"
+    },
+    {
+      "attachment_bus_ref": "stn/d80e769371bb6a6c86ef3459f95087af/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/d80e769371bb6a6c86ef3459f95087af/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_L"
+      ],
+      "station_ref": "stn/d80e769371bb6a6c86ef3459f95087af/station"
+    },
+    {
+      "attachment_bus_ref": "stn/d80e769371bb6a6c86ef3459f95087af/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/d80e769371bb6a6c86ef3459f95087af/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_R_L"
+      ],
+      "station_ref": "stn/d80e769371bb6a6c86ef3459f95087af/station"
+    },
+    {
+      "attachment_bus_ref": "stn/d80e769371bb6a6c86ef3459f95087af/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/d80e769371bb6a6c86ef3459f95087af/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/d80e769371bb6a6c86ef3459f95087af/station"
+    },
+    {
+      "attachment_bus_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_L"
+      ],
+      "station_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/station"
+    },
+    {
+      "attachment_bus_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_R_L"
+      ],
+      "station_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/station"
+    },
+    {
+      "attachment_bus_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/de0e5547b65d60a9a58f5239c1f2ebd6/station"
+    },
+    {
+      "attachment_bus_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_L"
+      ],
+      "station_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/station"
+    },
+    {
+      "attachment_bus_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_L"
+      ],
+      "station_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/station"
+    },
+    {
+      "attachment_bus_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/df5a5b5828e6f5638405a26c1dc16929/station"
+    },
+    {
+      "attachment_bus_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_R_L"
+      ],
+      "station_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_R_R"
+      ],
+      "station_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/station"
+    },
+    {
+      "attachment_bus_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field/002",
+      "field_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_L"
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_L"
       ],
-      "station_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/station"
+      "station_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/station"
     },
     {
-      "attachment_bus_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field/003",
+      "field_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/d83d6fed2c76a53f44c0b91ef5984179/station"
+      "station_ref": "stn/e002a5d464d388df7a39366b6ff52d7f/station"
     },
     {
-      "attachment_bus_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/e4890c767765a62958ff77e62c12a77e/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/sn_field/000",
+      "field_ref": "stn/e4890c767765a62958ff77e62c12a77e/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_L"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_L"
       ],
-      "station_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/station"
+      "station_ref": "stn/e4890c767765a62958ff77e62c12a77e/station"
     },
     {
-      "attachment_bus_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/e4890c767765a62958ff77e62c12a77e/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/sn_field/001",
+      "field_ref": "stn/e4890c767765a62958ff77e62c12a77e/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_L"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_L"
       ],
-      "station_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/station"
+      "station_ref": "stn/e4890c767765a62958ff77e62c12a77e/station"
     },
     {
-      "attachment_bus_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/e4890c767765a62958ff77e62c12a77e/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/sn_field/002",
+      "field_ref": "stn/e4890c767765a62958ff77e62c12a77e/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/dad7c97b3dbb96dd1156d76ece9454bf/station"
+      "station_ref": "stn/e4890c767765a62958ff77e62c12a77e/station"
     },
     {
-      "attachment_bus_ref": "stn/e3c5062ec50150c24ed55158c066b51e/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/e3c5062ec50150c24ed55158c066b51e/sn_field/000",
+      "field_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_L"
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_R_L"
       ],
-      "station_ref": "stn/e3c5062ec50150c24ed55158c066b51e/station"
+      "station_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/station"
     },
     {
-      "attachment_bus_ref": "stn/e3c5062ec50150c24ed55158c066b51e/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/e3c5062ec50150c24ed55158c066b51e/sn_field/001",
+      "field_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_L"
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_R_R"
       ],
-      "station_ref": "stn/e3c5062ec50150c24ed55158c066b51e/station"
+      "station_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/station"
     },
     {
-      "attachment_bus_ref": "stn/e3c5062ec50150c24ed55158c066b51e/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/e3c5062ec50150c24ed55158c066b51e/sn_field/002",
+      "field_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/e3c5062ec50150c24ed55158c066b51e/station"
+      "station_ref": "stn/edd5068b41cb5ae16a532c5b7cb7500f/station"
     },
     {
-      "attachment_bus_ref": "stn/fba1104aa9c32b57119b2796470a20b8/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/f0c875f0056f4208d504bc23528695aa/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/fba1104aa9c32b57119b2796470a20b8/sn_field/000",
+      "field_ref": "stn/f0c875f0056f4208d504bc23528695aa/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_L"
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_L"
       ],
-      "station_ref": "stn/fba1104aa9c32b57119b2796470a20b8/station"
+      "station_ref": "stn/f0c875f0056f4208d504bc23528695aa/station"
     },
     {
-      "attachment_bus_ref": "stn/fba1104aa9c32b57119b2796470a20b8/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/f0c875f0056f4208d504bc23528695aa/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/fba1104aa9c32b57119b2796470a20b8/sn_field/001",
+      "field_ref": "stn/f0c875f0056f4208d504bc23528695aa/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_L"
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/fba1104aa9c32b57119b2796470a20b8/station"
+      "station_ref": "stn/f0c875f0056f4208d504bc23528695aa/station"
     },
     {
-      "attachment_bus_ref": "stn/fba1104aa9c32b57119b2796470a20b8/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/f0c875f0056f4208d504bc23528695aa/sn_field_terminal/002",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/fba1104aa9c32b57119b2796470a20b8/sn_field/002",
+      "field_ref": "stn/f0c875f0056f4208d504bc23528695aa/sn_field/002",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/fba1104aa9c32b57119b2796470a20b8/station"
+      "station_ref": "stn/f0c875f0056f4208d504bc23528695aa/station"
     },
     {
-      "attachment_bus_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field_terminal/000",
+      "attachment_bus_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/sn_field_terminal/000",
       "bay_role": "IN",
       "corridor_refs": [],
-      "field_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field/000",
+      "field_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/sn_field/000",
       "occupied": true,
       "segment_refs": [
-        "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_L_L"
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_R_L"
       ],
-      "station_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/station"
+      "station_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/station"
     },
     {
-      "attachment_bus_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field_terminal/001",
+      "attachment_bus_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/sn_field_terminal/001",
       "bay_role": "OUT",
       "corridor_refs": [],
-      "field_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field/001",
+      "field_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/sn_field/001",
       "occupied": true,
       "segment_refs": [
-        "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_L_R"
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_R_R"
       ],
-      "station_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/station"
+      "station_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/station"
     },
     {
-      "attachment_bus_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field_terminal/002",
+      "attachment_bus_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/sn_field_terminal/002",
+      "bay_role": "TR",
+      "corridor_refs": [],
+      "field_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/sn_field/002",
+      "occupied": false,
+      "segment_refs": [],
+      "station_ref": "stn/f9cbdc1bd5999350ebd942a5b819e19d/station"
+    },
+    {
+      "attachment_bus_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field_terminal/000",
+      "bay_role": "IN",
+      "corridor_refs": [],
+      "field_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field/000",
+      "occupied": true,
+      "segment_refs": [
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_R_L"
+      ],
+      "station_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/station"
+    },
+    {
+      "attachment_bus_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field_terminal/001",
+      "bay_role": "OUT",
+      "corridor_refs": [],
+      "field_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field/001",
+      "occupied": true,
+      "segment_refs": [
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_R_R"
+      ],
+      "station_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/station"
+    },
+    {
+      "attachment_bus_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field_terminal/002",
       "bay_role": "FEEDER",
       "corridor_refs": [],
-      "field_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field/002",
+      "field_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field/002",
       "occupied": true,
       "segment_refs": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_L"
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_L"
       ],
-      "station_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/station"
+      "station_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/station"
     },
     {
-      "attachment_bus_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field_terminal/003",
+      "attachment_bus_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field_terminal/003",
       "bay_role": "TR",
       "corridor_refs": [],
-      "field_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field/003",
+      "field_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field/003",
       "occupied": false,
       "segment_refs": [],
-      "station_ref": "stn/fbb7640354e032dc2a807c55b9b552d6/station"
-    },
-    {
-      "attachment_bus_ref": "stn/fddfa5d016ab9d19567a169741078cf9/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/fddfa5d016ab9d19567a169741078cf9/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_R_L"
-      ],
-      "station_ref": "stn/fddfa5d016ab9d19567a169741078cf9/station"
-    },
-    {
-      "attachment_bus_ref": "stn/fddfa5d016ab9d19567a169741078cf9/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/fddfa5d016ab9d19567a169741078cf9/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_R_R"
-      ],
-      "station_ref": "stn/fddfa5d016ab9d19567a169741078cf9/station"
-    },
-    {
-      "attachment_bus_ref": "stn/fddfa5d016ab9d19567a169741078cf9/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/fddfa5d016ab9d19567a169741078cf9/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/fddfa5d016ab9d19567a169741078cf9/station"
-    },
-    {
-      "attachment_bus_ref": "stn/ff236ebd7c982151f0a145edfd600f05/sn_field_terminal/000",
-      "bay_role": "IN",
-      "corridor_refs": [],
-      "field_ref": "stn/ff236ebd7c982151f0a145edfd600f05/sn_field/000",
-      "occupied": true,
-      "segment_refs": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_R_L"
-      ],
-      "station_ref": "stn/ff236ebd7c982151f0a145edfd600f05/station"
-    },
-    {
-      "attachment_bus_ref": "stn/ff236ebd7c982151f0a145edfd600f05/sn_field_terminal/001",
-      "bay_role": "OUT",
-      "corridor_refs": [],
-      "field_ref": "stn/ff236ebd7c982151f0a145edfd600f05/sn_field/001",
-      "occupied": true,
-      "segment_refs": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_R_R"
-      ],
-      "station_ref": "stn/ff236ebd7c982151f0a145edfd600f05/station"
-    },
-    {
-      "attachment_bus_ref": "stn/ff236ebd7c982151f0a145edfd600f05/sn_field_terminal/002",
-      "bay_role": "TR",
-      "corridor_refs": [],
-      "field_ref": "stn/ff236ebd7c982151f0a145edfd600f05/sn_field/002",
-      "occupied": false,
-      "segment_refs": [],
-      "station_ref": "stn/ff236ebd7c982151f0a145edfd600f05/station"
+      "station_ref": "stn/fd5425dbe4149bd2f73379ce982d1448/station"
     }
   ],
   "secondary_connectors": [
     {
-      "connector_id": "seg/2b3424aa8d475accca2a800e6abb1bab/ring_closure",
-      "from_element_id": "bus/dc7c52e8ce1615ad43b590566dca4327/branch_end",
-      "segment_ref": "seg/2b3424aa8d475accca2a800e6abb1bab/ring_closure",
-      "to_element_id": "bus/6039588111f915478e7d040ee1da842f/branch_end"
+      "connector_id": "seg/444cdb27ede555aebbc86c2d27b345c2/ring_closure",
+      "from_element_id": "bus/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_end",
+      "segment_ref": "seg/444cdb27ede555aebbc86c2d27b345c2/ring_closure",
+      "to_element_id": "bus/5b74d290b1b352be6a570aecffbf2fb7/branch_end"
     }
   ],
   "terminals": [
     {
       "branch_id": null,
-      "element_id": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field_terminal/002",
+      "element_id": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/00e3f9335e37dad57a9061c8392253c8/branch"
+      "trunk_id": "corridor/1d7d1b614cecf85c373566e66cda6cc8/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/22d031c1d461d3f80e5f9ca5f2d953a0/branch_end",
+      "element_id": "bus/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_end",
+      "port_id": "trunk_end",
+      "status": "ZAJETY",
+      "trunk_id": "corridor/1d7d1b614cecf85c373566e66cda6cc8/branch"
+    },
+    {
+      "branch_id": null,
+      "element_id": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field_terminal/002",
+      "port_id": "trunk_start",
+      "status": "ZAJETY",
+      "trunk_id": "corridor/373a4a25a6751b08b3239d8a9e35a1b4/branch"
+    },
+    {
+      "branch_id": null,
+      "element_id": "bus/3bc50b8f5e431d8cd47c0fa93dd77143/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/00e3f9335e37dad57a9061c8392253c8/branch"
+      "trunk_id": "corridor/373a4a25a6751b08b3239d8a9e35a1b4/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field_terminal/002",
+      "element_id": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/33a332073a36e64e955aadb0e43f1c23/branch"
+      "trunk_id": "corridor/495c9143fe80ef7cfc1540aa6f148bd6/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/87d421bc76e660ddd86f3581ccc082d5/branch_end",
+      "element_id": "bus/5b74d290b1b352be6a570aecffbf2fb7/branch_end",
+      "port_id": "trunk_end",
+      "status": "ZAJETY",
+      "trunk_id": "corridor/495c9143fe80ef7cfc1540aa6f148bd6/branch"
+    },
+    {
+      "branch_id": null,
+      "element_id": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field_terminal/002",
+      "port_id": "trunk_start",
+      "status": "ZAJETY",
+      "trunk_id": "corridor/4ff8c954f52c313454aa1b4841ae3653/branch"
+    },
+    {
+      "branch_id": null,
+      "element_id": "bus/e0399e76b01c303a1bf8af55ebb5b369/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/33a332073a36e64e955aadb0e43f1c23/branch"
+      "trunk_id": "corridor/4ff8c954f52c313454aa1b4841ae3653/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field_terminal/002",
+      "element_id": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/440fb44db4f4c8d97340e3ccc814cd85/branch"
+      "trunk_id": "corridor/5549d178e3b4f7ee20bbf850a081143b/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/dc7c52e8ce1615ad43b590566dca4327/branch_end",
-      "port_id": "trunk_end",
-      "status": "ZAJETY",
-      "trunk_id": "corridor/440fb44db4f4c8d97340e3ccc814cd85/branch"
-    },
-    {
-      "branch_id": null,
-      "element_id": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field_terminal/002",
-      "port_id": "trunk_start",
-      "status": "ZAJETY",
-      "trunk_id": "corridor/8397f949482206734179d463e9c879de/branch"
-    },
-    {
-      "branch_id": null,
-      "element_id": "bus/2fd0c100c20c59abd097932a943714e0/branch_end",
+      "element_id": "bus/b20009b5f80a6870a6279a0106d2a006/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/8397f949482206734179d463e9c879de/branch"
+      "trunk_id": "corridor/5549d178e3b4f7ee20bbf850a081143b/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field_terminal/002",
+      "element_id": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/839e4796a7be83becbc8355120ae57e2/branch"
+      "trunk_id": "corridor/657968762d9ae083d0e489267b8e7681/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/ebb62f9676a8be36737f129155247300/branch_end",
+      "element_id": "bus/a6b2be466ea3de5882aac108c55dc327/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/839e4796a7be83becbc8355120ae57e2/branch"
+      "trunk_id": "corridor/657968762d9ae083d0e489267b8e7681/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field_terminal/002",
+      "element_id": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/ae60314891034853b9056c2fadef4e7c/branch"
+      "trunk_id": "corridor/7c5eb1fae0e79e68b9ef3d547f044529/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/072fac6a9f01d32ef787b499f771958f/branch_end",
+      "element_id": "bus/84d03d8b864f2c1aa877c4d615f25e8d/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/ae60314891034853b9056c2fadef4e7c/branch"
+      "trunk_id": "corridor/7c5eb1fae0e79e68b9ef3d547f044529/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/389e2390b89310177d9cc376b244718e/sn_field_terminal/002",
+      "element_id": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/b35ce43f43b3d477b135feb79ac40dae/branch"
+      "trunk_id": "corridor/9dd390176dea47a9feb1a84291f026d6/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/372764b24140e78c9355f43b144d4539/branch_end",
+      "element_id": "bus/da93805f1fade50d0185d211b1ded1ef/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/b35ce43f43b3d477b135feb79ac40dae/branch"
+      "trunk_id": "corridor/9dd390176dea47a9feb1a84291f026d6/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/60da521b2b332de1de50adcaebeb4202/sn_field_terminal/002",
+      "element_id": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/c1d5806ee6a33aaae251c1b8d6f6487d/branch"
+      "trunk_id": "corridor/c0963fb8a927a916ab276d1986e12a34/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/6039588111f915478e7d040ee1da842f/branch_end",
-      "port_id": "trunk_end",
-      "status": "ZAJETY",
-      "trunk_id": "corridor/c1d5806ee6a33aaae251c1b8d6f6487d/branch"
-    },
-    {
-      "branch_id": null,
-      "element_id": "stn/4c555f183c75c8f826be5744222698ff/sn_field_terminal/002",
-      "port_id": "trunk_start",
-      "status": "ZAJETY",
-      "trunk_id": "corridor/ddd1ffcff4e8b30832cfc9df7fbd98b9/branch"
-    },
-    {
-      "branch_id": null,
-      "element_id": "bus/2ff8b1e58bef01d760e56b88fc41f5ce/branch_end",
+      "element_id": "bus/372c518e786ac9c2d52820a8d8cafe7b/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/ddd1ffcff4e8b30832cfc9df7fbd98b9/branch"
+      "trunk_id": "corridor/c0963fb8a927a916ab276d1986e12a34/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/5e584c708e66035fcdef69cd25087291/sn_field_terminal/002",
+      "element_id": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/e3864141b5b4c8e351851e98706bdeef/branch"
+      "trunk_id": "corridor/c32e4021e9a2d76943fa9c0b193ae40f/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/ab7e8efcb29f7ab2aae694d7be6e283e/branch_end",
+      "element_id": "bus/712f24a22106ce085d05b2a99b904f7a/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/e3864141b5b4c8e351851e98706bdeef/branch"
+      "trunk_id": "corridor/c32e4021e9a2d76943fa9c0b193ae40f/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field_terminal/002",
+      "element_id": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/f6edb4063a8537dc4bc680e8b33f0928/branch"
+      "trunk_id": "corridor/d8192c2d13f649840c7dd3449802d836/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/12d03d5305a6dee385a65b5c43fcdf19/branch_end",
+      "element_id": "bus/40a3f71622fcb2c7521028d473715e3b/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/f6edb4063a8537dc4bc680e8b33f0928/branch"
+      "trunk_id": "corridor/d8192c2d13f649840c7dd3449802d836/branch"
     },
     {
       "branch_id": null,
-      "element_id": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field_terminal/002",
+      "element_id": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field_terminal/002",
       "port_id": "trunk_start",
       "status": "ZAJETY",
-      "trunk_id": "corridor/f7ee2abf88de0805c5fb2e0db9d3a9ca/branch"
+      "trunk_id": "corridor/f69fb9612468548c5b7a94cad8149364/branch"
     },
     {
       "branch_id": null,
-      "element_id": "bus/ffd220e981890cbcfb47a63cf3ea9f58/branch_end",
+      "element_id": "bus/1f74c5fb69dccd15a33bebe59a24beb0/branch_end",
       "port_id": "trunk_end",
       "status": "OTWARTY",
-      "trunk_id": "corridor/f7ee2abf88de0805c5fb2e0db9d3a9ca/branch"
+      "trunk_id": "corridor/f69fb9612468548c5b7a94cad8149364/branch"
     },
     {
       "branch_id": null,
-      "element_id": "gpz/986490b1a9f1f0a019566e0e578f45d8/section/001/bus_sn",
+      "element_id": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/section/001/bus_sn",
       "port_id": "trunk_start",
       "status": "ZAREZERWOWANY_DLA_RINGU",
-      "trunk_id": "gpz/986490b1a9f1f0a019566e0e578f45d8/corridor_01"
+      "trunk_id": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/corridor_01"
     },
     {
       "branch_id": null,
-      "element_id": "bus/e19d826bebb3ebd7677a94977f873952/downstream",
+      "element_id": "bus/7cdc7a7a8e1444a67bd00e3850cda36d/downstream",
       "port_id": "trunk_end",
       "status": "ZAREZERWOWANY_DLA_RINGU",
-      "trunk_id": "gpz/986490b1a9f1f0a019566e0e578f45d8/corridor_01"
+      "trunk_id": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/corridor_01"
     }
   ],
   "trunks": [
     {
-      "corridor_ref": "corridor/00e3f9335e37dad57a9061c8392253c8/branch",
-      "corridor_type": "radial",
-      "embedded_objects": [],
-      "no_point_refs": [],
-      "segments": [
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_L",
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_L",
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_R_L",
-        "seg/22d031c1d461d3f80e5f9ca5f2d953a0/branch_segment_R_R_R"
-      ],
-      "terminals": [
-        {
-          "branch_id": null,
-          "element_id": "stn/fbb7640354e032dc2a807c55b9b552d6/sn_field_terminal/002",
-          "port_id": "trunk_start",
-          "status": "ZAJETY",
-          "trunk_id": "corridor/00e3f9335e37dad57a9061c8392253c8/branch"
-        },
-        {
-          "branch_id": null,
-          "element_id": "bus/22d031c1d461d3f80e5f9ca5f2d953a0/branch_end",
-          "port_id": "trunk_end",
-          "status": "OTWARTY",
-          "trunk_id": "corridor/00e3f9335e37dad57a9061c8392253c8/branch"
-        }
-      ]
-    },
-    {
-      "corridor_ref": "corridor/33a332073a36e64e955aadb0e43f1c23/branch",
-      "corridor_type": "radial",
-      "embedded_objects": [],
-      "no_point_refs": [],
-      "segments": [
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_L",
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_L",
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_L",
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_R_L",
-        "seg/87d421bc76e660ddd86f3581ccc082d5/branch_segment_R_R_R_R"
-      ],
-      "terminals": [
-        {
-          "branch_id": null,
-          "element_id": "stn/44aa0ee35fd2315876056bcc68a3980d/sn_field_terminal/002",
-          "port_id": "trunk_start",
-          "status": "ZAJETY",
-          "trunk_id": "corridor/33a332073a36e64e955aadb0e43f1c23/branch"
-        },
-        {
-          "branch_id": null,
-          "element_id": "bus/87d421bc76e660ddd86f3581ccc082d5/branch_end",
-          "port_id": "trunk_end",
-          "status": "OTWARTY",
-          "trunk_id": "corridor/33a332073a36e64e955aadb0e43f1c23/branch"
-        }
-      ]
-    },
-    {
-      "corridor_ref": "corridor/440fb44db4f4c8d97340e3ccc814cd85/branch",
+      "corridor_ref": "corridor/1d7d1b614cecf85c373566e66cda6cc8/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [
-        "sw/8ffea56f3960688408a09bc3a6181d5d/switch"
+        "sw/0675891ea8ee05eefbc6dee74c296344/switch"
       ],
       "segments": [
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_L",
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_L",
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_L",
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_R_L",
-        "seg/dc7c52e8ce1615ad43b590566dca4327/branch_segment_R_R_R_R"
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_L",
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_L",
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_L",
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_R_L",
+        "seg/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_segment_R_R_R_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "stn/b0aee9e635b8d5d342e5f7ab48a5a9d5/sn_field_terminal/002",
+          "element_id": "stn/1ad0941aa0a9dc81b8a408a4eecc23f6/sn_field_terminal/002",
           "port_id": "trunk_start",
           "status": "ZAJETY",
-          "trunk_id": "corridor/440fb44db4f4c8d97340e3ccc814cd85/branch"
+          "trunk_id": "corridor/1d7d1b614cecf85c373566e66cda6cc8/branch"
         },
         {
           "branch_id": null,
-          "element_id": "bus/dc7c52e8ce1615ad43b590566dca4327/branch_end",
+          "element_id": "bus/0f74cdff2f5006d8c7f8b621eeb24d6a/branch_end",
           "port_id": "trunk_end",
           "status": "ZAJETY",
-          "trunk_id": "corridor/440fb44db4f4c8d97340e3ccc814cd85/branch"
+          "trunk_id": "corridor/1d7d1b614cecf85c373566e66cda6cc8/branch"
         }
       ]
     },
     {
-      "corridor_ref": "corridor/8397f949482206734179d463e9c879de/branch",
+      "corridor_ref": "corridor/373a4a25a6751b08b3239d8a9e35a1b4/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [],
       "segments": [
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_L",
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_L",
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_R_L",
-        "seg/2fd0c100c20c59abd097932a943714e0/branch_segment_R_R_R"
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_L",
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_L",
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_R_L",
+        "seg/3bc50b8f5e431d8cd47c0fa93dd77143/branch_segment_R_R_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "stn/d83d6fed2c76a53f44c0b91ef5984179/sn_field_terminal/002",
+          "element_id": "stn/b371a68e1f71f4d4fbe41424228ca954/sn_field_terminal/002",
           "port_id": "trunk_start",
           "status": "ZAJETY",
-          "trunk_id": "corridor/8397f949482206734179d463e9c879de/branch"
+          "trunk_id": "corridor/373a4a25a6751b08b3239d8a9e35a1b4/branch"
         },
         {
           "branch_id": null,
-          "element_id": "bus/2fd0c100c20c59abd097932a943714e0/branch_end",
+          "element_id": "bus/3bc50b8f5e431d8cd47c0fa93dd77143/branch_end",
           "port_id": "trunk_end",
           "status": "OTWARTY",
-          "trunk_id": "corridor/8397f949482206734179d463e9c879de/branch"
+          "trunk_id": "corridor/373a4a25a6751b08b3239d8a9e35a1b4/branch"
         }
       ]
     },
     {
-      "corridor_ref": "corridor/839e4796a7be83becbc8355120ae57e2/branch",
-      "corridor_type": "radial",
-      "embedded_objects": [],
-      "no_point_refs": [],
-      "segments": [
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_L",
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_L",
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_R_L",
-        "seg/ebb62f9676a8be36737f129155247300/branch_segment_R_R_R"
-      ],
-      "terminals": [
-        {
-          "branch_id": null,
-          "element_id": "stn/d0e271c1dd839192f0b167509c8eb75e/sn_field_terminal/002",
-          "port_id": "trunk_start",
-          "status": "ZAJETY",
-          "trunk_id": "corridor/839e4796a7be83becbc8355120ae57e2/branch"
-        },
-        {
-          "branch_id": null,
-          "element_id": "bus/ebb62f9676a8be36737f129155247300/branch_end",
-          "port_id": "trunk_end",
-          "status": "OTWARTY",
-          "trunk_id": "corridor/839e4796a7be83becbc8355120ae57e2/branch"
-        }
-      ]
-    },
-    {
-      "corridor_ref": "corridor/ae60314891034853b9056c2fadef4e7c/branch",
-      "corridor_type": "radial",
-      "embedded_objects": [],
-      "no_point_refs": [],
-      "segments": [
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_L",
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_L",
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_L",
-        "seg/072fac6a9f01d32ef787b499f771958f/branch_segment_R_R_R"
-      ],
-      "terminals": [
-        {
-          "branch_id": null,
-          "element_id": "stn/5def7b80c06af702b176f0dee0d4392c/sn_field_terminal/002",
-          "port_id": "trunk_start",
-          "status": "ZAJETY",
-          "trunk_id": "corridor/ae60314891034853b9056c2fadef4e7c/branch"
-        },
-        {
-          "branch_id": null,
-          "element_id": "bus/072fac6a9f01d32ef787b499f771958f/branch_end",
-          "port_id": "trunk_end",
-          "status": "OTWARTY",
-          "trunk_id": "corridor/ae60314891034853b9056c2fadef4e7c/branch"
-        }
-      ]
-    },
-    {
-      "corridor_ref": "corridor/b35ce43f43b3d477b135feb79ac40dae/branch",
-      "corridor_type": "radial",
-      "embedded_objects": [],
-      "no_point_refs": [],
-      "segments": [
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_L",
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_L",
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_L",
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_R_L",
-        "seg/372764b24140e78c9355f43b144d4539/branch_segment_R_R_R_R"
-      ],
-      "terminals": [
-        {
-          "branch_id": null,
-          "element_id": "stn/389e2390b89310177d9cc376b244718e/sn_field_terminal/002",
-          "port_id": "trunk_start",
-          "status": "ZAJETY",
-          "trunk_id": "corridor/b35ce43f43b3d477b135feb79ac40dae/branch"
-        },
-        {
-          "branch_id": null,
-          "element_id": "bus/372764b24140e78c9355f43b144d4539/branch_end",
-          "port_id": "trunk_end",
-          "status": "OTWARTY",
-          "trunk_id": "corridor/b35ce43f43b3d477b135feb79ac40dae/branch"
-        }
-      ]
-    },
-    {
-      "corridor_ref": "corridor/c1d5806ee6a33aaae251c1b8d6f6487d/branch",
+      "corridor_ref": "corridor/495c9143fe80ef7cfc1540aa6f148bd6/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [
-        "sw/8ffea56f3960688408a09bc3a6181d5d/switch"
+        "sw/0675891ea8ee05eefbc6dee74c296344/switch"
       ],
       "segments": [
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_L",
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_L",
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SL",
-        "sw/8ffea56f3960688408a09bc3a6181d5d/switch",
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_L_SR",
-        "seg/6039588111f915478e7d040ee1da842f/branch_segment_R_R_R"
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_L",
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_L",
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_R_L_SL",
+        "sw/0675891ea8ee05eefbc6dee74c296344/switch",
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_R_L_SR",
+        "seg/5b74d290b1b352be6a570aecffbf2fb7/branch_segment_R_R_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "stn/60da521b2b332de1de50adcaebeb4202/sn_field_terminal/002",
+          "element_id": "stn/c6095c43801d52fb743c2dbf74c6a9fd/sn_field_terminal/002",
           "port_id": "trunk_start",
           "status": "ZAJETY",
-          "trunk_id": "corridor/c1d5806ee6a33aaae251c1b8d6f6487d/branch"
+          "trunk_id": "corridor/495c9143fe80ef7cfc1540aa6f148bd6/branch"
         },
         {
           "branch_id": null,
-          "element_id": "bus/6039588111f915478e7d040ee1da842f/branch_end",
+          "element_id": "bus/5b74d290b1b352be6a570aecffbf2fb7/branch_end",
           "port_id": "trunk_end",
           "status": "ZAJETY",
-          "trunk_id": "corridor/c1d5806ee6a33aaae251c1b8d6f6487d/branch"
+          "trunk_id": "corridor/495c9143fe80ef7cfc1540aa6f148bd6/branch"
         }
       ]
     },
     {
-      "corridor_ref": "corridor/ddd1ffcff4e8b30832cfc9df7fbd98b9/branch",
+      "corridor_ref": "corridor/4ff8c954f52c313454aa1b4841ae3653/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [],
       "segments": [
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_L",
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_L",
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_R_L",
-        "seg/2ff8b1e58bef01d760e56b88fc41f5ce/branch_segment_R_R_R"
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_L",
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_L",
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_L",
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_R_L",
+        "seg/e0399e76b01c303a1bf8af55ebb5b369/branch_segment_R_R_R_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "stn/4c555f183c75c8f826be5744222698ff/sn_field_terminal/002",
+          "element_id": "stn/976a0bd4ab3b1f3102c0c3c31bcf1093/sn_field_terminal/002",
           "port_id": "trunk_start",
           "status": "ZAJETY",
-          "trunk_id": "corridor/ddd1ffcff4e8b30832cfc9df7fbd98b9/branch"
+          "trunk_id": "corridor/4ff8c954f52c313454aa1b4841ae3653/branch"
         },
         {
           "branch_id": null,
-          "element_id": "bus/2ff8b1e58bef01d760e56b88fc41f5ce/branch_end",
+          "element_id": "bus/e0399e76b01c303a1bf8af55ebb5b369/branch_end",
           "port_id": "trunk_end",
           "status": "OTWARTY",
-          "trunk_id": "corridor/ddd1ffcff4e8b30832cfc9df7fbd98b9/branch"
+          "trunk_id": "corridor/4ff8c954f52c313454aa1b4841ae3653/branch"
         }
       ]
     },
     {
-      "corridor_ref": "corridor/e3864141b5b4c8e351851e98706bdeef/branch",
+      "corridor_ref": "corridor/5549d178e3b4f7ee20bbf850a081143b/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [],
       "segments": [
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_L",
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_L",
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_L",
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_R_L",
-        "seg/ab7e8efcb29f7ab2aae694d7be6e283e/branch_segment_R_R_R_R"
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_L",
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_L",
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_L",
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_R_L",
+        "seg/b20009b5f80a6870a6279a0106d2a006/branch_segment_R_R_R_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "stn/5e584c708e66035fcdef69cd25087291/sn_field_terminal/002",
+          "element_id": "stn/e002a5d464d388df7a39366b6ff52d7f/sn_field_terminal/002",
           "port_id": "trunk_start",
           "status": "ZAJETY",
-          "trunk_id": "corridor/e3864141b5b4c8e351851e98706bdeef/branch"
+          "trunk_id": "corridor/5549d178e3b4f7ee20bbf850a081143b/branch"
         },
         {
           "branch_id": null,
-          "element_id": "bus/ab7e8efcb29f7ab2aae694d7be6e283e/branch_end",
+          "element_id": "bus/b20009b5f80a6870a6279a0106d2a006/branch_end",
           "port_id": "trunk_end",
           "status": "OTWARTY",
-          "trunk_id": "corridor/e3864141b5b4c8e351851e98706bdeef/branch"
+          "trunk_id": "corridor/5549d178e3b4f7ee20bbf850a081143b/branch"
         }
       ]
     },
     {
-      "corridor_ref": "corridor/f6edb4063a8537dc4bc680e8b33f0928/branch",
+      "corridor_ref": "corridor/657968762d9ae083d0e489267b8e7681/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [],
       "segments": [
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_L",
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_L",
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_L",
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_R_L",
-        "seg/12d03d5305a6dee385a65b5c43fcdf19/branch_segment_R_R_R_R"
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_L",
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_L",
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_L",
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_R_L",
+        "seg/a6b2be466ea3de5882aac108c55dc327/branch_segment_R_R_R_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "stn/72ee4bf2fecf5b43ec645c10fa12e46e/sn_field_terminal/002",
+          "element_id": "stn/3bb7aef08b90b29501fbc64e53bf2628/sn_field_terminal/002",
           "port_id": "trunk_start",
           "status": "ZAJETY",
-          "trunk_id": "corridor/f6edb4063a8537dc4bc680e8b33f0928/branch"
+          "trunk_id": "corridor/657968762d9ae083d0e489267b8e7681/branch"
         },
         {
           "branch_id": null,
-          "element_id": "bus/12d03d5305a6dee385a65b5c43fcdf19/branch_end",
+          "element_id": "bus/a6b2be466ea3de5882aac108c55dc327/branch_end",
           "port_id": "trunk_end",
           "status": "OTWARTY",
-          "trunk_id": "corridor/f6edb4063a8537dc4bc680e8b33f0928/branch"
+          "trunk_id": "corridor/657968762d9ae083d0e489267b8e7681/branch"
         }
       ]
     },
     {
-      "corridor_ref": "corridor/f7ee2abf88de0805c5fb2e0db9d3a9ca/branch",
+      "corridor_ref": "corridor/7c5eb1fae0e79e68b9ef3d547f044529/branch",
       "corridor_type": "radial",
       "embedded_objects": [],
       "no_point_refs": [],
       "segments": [
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_L",
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_L",
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_R_L",
-        "seg/ffd220e981890cbcfb47a63cf3ea9f58/branch_segment_R_R_R"
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_L",
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_L",
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_R_L",
+        "seg/84d03d8b864f2c1aa877c4d615f25e8d/branch_segment_R_R_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "stn/4d03c5a21ffa5638b2e4627626a835a5/sn_field_terminal/002",
+          "element_id": "stn/6ae0beef1651f0d2d1511c19e658e919/sn_field_terminal/002",
           "port_id": "trunk_start",
           "status": "ZAJETY",
-          "trunk_id": "corridor/f7ee2abf88de0805c5fb2e0db9d3a9ca/branch"
+          "trunk_id": "corridor/7c5eb1fae0e79e68b9ef3d547f044529/branch"
         },
         {
           "branch_id": null,
-          "element_id": "bus/ffd220e981890cbcfb47a63cf3ea9f58/branch_end",
+          "element_id": "bus/84d03d8b864f2c1aa877c4d615f25e8d/branch_end",
           "port_id": "trunk_end",
           "status": "OTWARTY",
-          "trunk_id": "corridor/f7ee2abf88de0805c5fb2e0db9d3a9ca/branch"
+          "trunk_id": "corridor/7c5eb1fae0e79e68b9ef3d547f044529/branch"
         }
       ]
     },
     {
-      "corridor_ref": "gpz/986490b1a9f1f0a019566e0e578f45d8/corridor_01",
+      "corridor_ref": "corridor/9dd390176dea47a9feb1a84291f026d6/branch",
+      "corridor_type": "radial",
+      "embedded_objects": [],
+      "no_point_refs": [],
+      "segments": [
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_L",
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_L",
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_L",
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_R_L",
+        "seg/da93805f1fade50d0185d211b1ded1ef/branch_segment_R_R_R_R"
+      ],
+      "terminals": [
+        {
+          "branch_id": null,
+          "element_id": "stn/4d6bade3fc44728c3bbfbcf461d9be24/sn_field_terminal/002",
+          "port_id": "trunk_start",
+          "status": "ZAJETY",
+          "trunk_id": "corridor/9dd390176dea47a9feb1a84291f026d6/branch"
+        },
+        {
+          "branch_id": null,
+          "element_id": "bus/da93805f1fade50d0185d211b1ded1ef/branch_end",
+          "port_id": "trunk_end",
+          "status": "OTWARTY",
+          "trunk_id": "corridor/9dd390176dea47a9feb1a84291f026d6/branch"
+        }
+      ]
+    },
+    {
+      "corridor_ref": "corridor/c0963fb8a927a916ab276d1986e12a34/branch",
+      "corridor_type": "radial",
+      "embedded_objects": [],
+      "no_point_refs": [],
+      "segments": [
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_L",
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_L",
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_R_L",
+        "seg/372c518e786ac9c2d52820a8d8cafe7b/branch_segment_R_R_R"
+      ],
+      "terminals": [
+        {
+          "branch_id": null,
+          "element_id": "stn/5917fc095df1cece5a9c793c3b269cff/sn_field_terminal/002",
+          "port_id": "trunk_start",
+          "status": "ZAJETY",
+          "trunk_id": "corridor/c0963fb8a927a916ab276d1986e12a34/branch"
+        },
+        {
+          "branch_id": null,
+          "element_id": "bus/372c518e786ac9c2d52820a8d8cafe7b/branch_end",
+          "port_id": "trunk_end",
+          "status": "OTWARTY",
+          "trunk_id": "corridor/c0963fb8a927a916ab276d1986e12a34/branch"
+        }
+      ]
+    },
+    {
+      "corridor_ref": "corridor/c32e4021e9a2d76943fa9c0b193ae40f/branch",
+      "corridor_type": "radial",
+      "embedded_objects": [],
+      "no_point_refs": [],
+      "segments": [
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_L",
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_L",
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_R_L",
+        "seg/712f24a22106ce085d05b2a99b904f7a/branch_segment_R_R_R"
+      ],
+      "terminals": [
+        {
+          "branch_id": null,
+          "element_id": "stn/2870aba8d0dce9ef7d1ba3a3c1efe7b2/sn_field_terminal/002",
+          "port_id": "trunk_start",
+          "status": "ZAJETY",
+          "trunk_id": "corridor/c32e4021e9a2d76943fa9c0b193ae40f/branch"
+        },
+        {
+          "branch_id": null,
+          "element_id": "bus/712f24a22106ce085d05b2a99b904f7a/branch_end",
+          "port_id": "trunk_end",
+          "status": "OTWARTY",
+          "trunk_id": "corridor/c32e4021e9a2d76943fa9c0b193ae40f/branch"
+        }
+      ]
+    },
+    {
+      "corridor_ref": "corridor/d8192c2d13f649840c7dd3449802d836/branch",
+      "corridor_type": "radial",
+      "embedded_objects": [],
+      "no_point_refs": [],
+      "segments": [
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_L",
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_L",
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_R_L",
+        "seg/40a3f71622fcb2c7521028d473715e3b/branch_segment_R_R_R"
+      ],
+      "terminals": [
+        {
+          "branch_id": null,
+          "element_id": "stn/fd5425dbe4149bd2f73379ce982d1448/sn_field_terminal/002",
+          "port_id": "trunk_start",
+          "status": "ZAJETY",
+          "trunk_id": "corridor/d8192c2d13f649840c7dd3449802d836/branch"
+        },
+        {
+          "branch_id": null,
+          "element_id": "bus/40a3f71622fcb2c7521028d473715e3b/branch_end",
+          "port_id": "trunk_end",
+          "status": "OTWARTY",
+          "trunk_id": "corridor/d8192c2d13f649840c7dd3449802d836/branch"
+        }
+      ]
+    },
+    {
+      "corridor_ref": "corridor/f69fb9612468548c5b7a94cad8149364/branch",
+      "corridor_type": "radial",
+      "embedded_objects": [],
+      "no_point_refs": [],
+      "segments": [
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_L",
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_L",
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_R_L",
+        "seg/1f74c5fb69dccd15a33bebe59a24beb0/branch_segment_R_R_R"
+      ],
+      "terminals": [
+        {
+          "branch_id": null,
+          "element_id": "stn/c926389e5b7dc031db8b291f8019bcb8/sn_field_terminal/002",
+          "port_id": "trunk_start",
+          "status": "ZAJETY",
+          "trunk_id": "corridor/f69fb9612468548c5b7a94cad8149364/branch"
+        },
+        {
+          "branch_id": null,
+          "element_id": "bus/1f74c5fb69dccd15a33bebe59a24beb0/branch_end",
+          "port_id": "trunk_end",
+          "status": "OTWARTY",
+          "trunk_id": "corridor/f69fb9612468548c5b7a94cad8149364/branch"
+        }
+      ]
+    },
+    {
+      "corridor_ref": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/corridor_01",
       "corridor_type": "ring",
       "embedded_objects": [],
       "no_point_refs": [
-        "sw/8ffea56f3960688408a09bc3a6181d5d/switch"
+        "sw/0675891ea8ee05eefbc6dee74c296344/switch"
       ],
       "segments": [
-        "seg/2ec2ba470da273e10727da26c98c81ec/segment",
-        "seg/de7a6d04d37ac11d4f25d63857daed65/segment_L",
-        "seg/de7a6d04d37ac11d4f25d63857daed65/segment_R",
-        "seg/da4134e04226616ae359781eb6dc6ede/segment",
-        "seg/3cc1115e4eb07821116c79e63484af6f/segment",
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_L",
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_L",
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_L_R_R",
-        "seg/4ae6f3d5558e32f6ceaf548b4e5f0b5e/segment_R",
-        "seg/bfc3eab24f562e0c73fa3532e13901af/segment",
-        "seg/0a8f86f4d162097c6ad29d043bd7727b/segment",
-        "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_L",
-        "seg/8701f14be90d6cff19d8fdc1fb30717e/segment_R",
-        "seg/f80649eb0ebcd51053e495aadd8f23ba/segment",
-        "seg/7e0bea911929f6fc06e9c44fbacd8982/segment",
-        "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_L_L",
-        "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_L_R",
-        "seg/4c14a3acf07ec85f3497bc10ea43a0f3/segment_R",
-        "seg/ee8a08abb41839ecdc85952e29b849aa/segment",
-        "seg/8ab308e583a2baa7f210b6631714dc16/segment",
-        "seg/32778e828e7bab1aa2d1ec63d9f06c9a/segment",
-        "seg/563eb02750e1f8121d97164d7a247407/segment_L",
-        "seg/563eb02750e1f8121d97164d7a247407/segment_R",
-        "seg/c30119c67bdded9a2739b59ee352ad4a/segment",
-        "seg/14d83d0f888886761b63920739f9aa6c/segment",
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_L",
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_L",
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_L_R_R",
-        "seg/a9deadfcbcdc4f531d5c5ecce05b79ec/segment_R",
-        "seg/eff8654b34e4be952c445b2d8550d323/segment",
-        "seg/3fe5b3abb7bd029721b57663ae926ec3/segment",
-        "seg/4420f909f3c07510c4bd8646d70322c1/segment",
-        "seg/e19d826bebb3ebd7677a94977f873952/segment_L",
-        "seg/e19d826bebb3ebd7677a94977f873952/segment_R"
+        "seg/54dc691a53f49565ede52bce73484c97/segment",
+        "seg/4ee0cd71b0926b346f575cd5b77665de/segment_L",
+        "seg/4ee0cd71b0926b346f575cd5b77665de/segment_R",
+        "seg/650b21e2f4dec9ba384aecbfb90cd0df/segment",
+        "seg/de3993cd6a569043983085cbaca93362/segment",
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_L",
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_R_L",
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_L_R_R",
+        "seg/180b8b77ee0eb797c08ed3b224a19269/segment_R",
+        "seg/a94fac500580bf5d99defa7909eea832/segment",
+        "seg/0d0cc6a5cd41028042b32e73a790a3d3/segment",
+        "seg/bdc5c6a7113e406aad6ec22227599a19/segment_L",
+        "seg/bdc5c6a7113e406aad6ec22227599a19/segment_R",
+        "seg/6a2afa88d6b95cf42e82d3e3ef49454c/segment",
+        "seg/b9dc9541cba37aded1061abef130bd6f/segment",
+        "seg/ccfb1bfbb0ffdd8bfccf505014fcc9ec/segment_L_L",
+        "seg/ccfb1bfbb0ffdd8bfccf505014fcc9ec/segment_L_R",
+        "seg/ccfb1bfbb0ffdd8bfccf505014fcc9ec/segment_R",
+        "seg/7d5adb46963d937bf9c593f9d50e7a7f/segment",
+        "seg/59600e55fd30286b92f41cd22fd430f6/segment",
+        "seg/bc244d57a357a618d298188337864a94/segment",
+        "seg/11f4669e1bd53ddc72a1318bf7b09fdb/segment_L",
+        "seg/11f4669e1bd53ddc72a1318bf7b09fdb/segment_R",
+        "seg/ed37aa9e512dc63804fe815c9a3b9368/segment",
+        "seg/a8008388b361ba06f560c417ed601977/segment",
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_L",
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_R_L",
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_L_R_R",
+        "seg/1f3391b19c56525a6df4e5b65c797cfa/segment_R",
+        "seg/17c151331e91dc537e8f7f9572a6e0bf/segment",
+        "seg/b9581ed3d3981b4666a98ce64041dc9f/segment",
+        "seg/84bffd34ffa96b399ea728620e32cbee/segment",
+        "seg/7cdc7a7a8e1444a67bd00e3850cda36d/segment_L",
+        "seg/7cdc7a7a8e1444a67bd00e3850cda36d/segment_R"
       ],
       "terminals": [
         {
           "branch_id": null,
-          "element_id": "gpz/986490b1a9f1f0a019566e0e578f45d8/section/001/bus_sn",
+          "element_id": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/section/001/bus_sn",
           "port_id": "trunk_start",
           "status": "ZAREZERWOWANY_DLA_RINGU",
-          "trunk_id": "gpz/986490b1a9f1f0a019566e0e578f45d8/corridor_01"
+          "trunk_id": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/corridor_01"
         },
         {
           "branch_id": null,
-          "element_id": "bus/e19d826bebb3ebd7677a94977f873952/downstream",
+          "element_id": "bus/7cdc7a7a8e1444a67bd00e3850cda36d/downstream",
           "port_id": "trunk_end",
           "status": "ZAREZERWOWANY_DLA_RINGU",
-          "trunk_id": "gpz/986490b1a9f1f0a019566e0e578f45d8/corridor_01"
+          "trunk_id": "gpz/f0157c4fb81685f62acc529d7a1fd4e9/corridor_01"
         }
       ]
     }

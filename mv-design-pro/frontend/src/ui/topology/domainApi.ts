@@ -209,9 +209,6 @@ function normalizeResponse(
       layout_hash: '',
       layout_version: 'unknown',
     },
-    semantic_issues:
-      (response as { semantic_issues?: DomainOpResponseV1['semantic_issues'] }).semantic_issues
-      ?? [],
     error: response.error,
     error_code: response.error_code,
   };

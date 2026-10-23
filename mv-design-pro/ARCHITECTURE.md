@@ -150,7 +150,7 @@ ENM ──> enm/validator.py (walidator ENM) ──> CalculationReadinessService
                                                                             ──> kod gotowości z akcją naprawczą → bieg zablokowany
 ```
 
-Implementation: `enm/validator.py` + `application/readiness` (`CalculationReadinessService`), wywoływane przez `enm/canonical_analysis` (ADR-025 ACCEPTED 2026-09-30, O-65). Legacy `network_model/validation/validator.py` (`NetworkValidator`) has 0 production consumers (the only import outside the package is `enm/domain_operations.py:11959` `validate_semantic_as_dicts`) and is removed by card GOTOWOSC-JEDEN-REJESTR after a rule-code identity test; the rules listed below migrate to the ENM validator with identical codes.
+Implementation: `enm/validator.py` + `application/readiness` (`CalculationReadinessService`), wywoływane przez `enm/canonical_analysis` (ADR-025 ACCEPTED 2026-09-30, O-65). Legacy `network_model/validation/validator.py` (`NetworkValidator`) has 0 production consumers (the former semantic post-hook `network_model/validation/semantic_rules.py` + `semantic_validator.py`, imported by `enm/domain_operations.py` as `validate_semantic_as_dicts`, was deleted by card GPZ-H5-APARATURA 2026-10-22 — its conditions live in `enm/validator.py` as E011/E012/W011/W012/W013 and in the operation readiness block) and is removed by card GOTOWOSC-JEDEN-REJESTR after a rule-code identity test; the rules listed below migrate to the ENM validator with identical codes.
 
 13 industrial-grade rules with suggested_fix diagnostics:
 1. Empty network check

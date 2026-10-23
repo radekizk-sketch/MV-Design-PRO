@@ -142,7 +142,14 @@ def _model(krzywa: str, *, projektant: bool = False) -> EnergyNetworkModel:
             )
         )
         pola.append(
-            Bay(ref_id=pole, name=f"P-0{nr}", bay_role="OUT", substation_ref="stn", bus_ref=szyna)
+            Bay(
+                ref_id=pole,
+                name=f"P-0{nr}",
+                bay_role="OUT",
+                substation_ref="stn",
+                bus_ref=szyna,
+                equipment_refs=[f"aparat/{nr}"],
+            )
         )
     return EnergyNetworkModel(
         header=ENMHeader(name="t", defaults=ENMDefaults(sn_nominal_kv=15.0)),

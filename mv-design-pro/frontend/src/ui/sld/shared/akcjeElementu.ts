@@ -13,12 +13,13 @@
 import type { SldMenuContext } from '../../context-menu/SldContextMenuController';
 import type { ResultStatus } from '../../types';
 import type { EnergyNetworkModel, LogicalViewsV1 } from '../../../types/enm';
-import { wPasmieNn } from '../../../ui2/model/pasmaNapieciowe';
+import { wPasmieNn, wPasmieWn } from '../../../ui2/model/pasmaNapieciowe';
 import {
   getMenuActions,
   type SldMenuAction,
   type StanLacznikaMenu,
 } from '../v2/command/SldCommandService';
+import { czyPoleWn } from '../../shared/polaStacji';
 import {
   czyLacznikZPozycjaNormalna,
   czyPunktPodzialu,
@@ -65,12 +66,16 @@ export function kontekstDostepnosciAkcji(
   const lacznik = temat.menuKind === 'bay' || temat.menuKind === 'apparatus'
     ? stanLacznikaMenu(snapshot, temat.modelRef)
     : undefined;
+  const granicaWn = temat.menuKind === 'bay' || temat.menuKind === 'apparatus'
+    ? czyObiektGranicyWn(snapshot, temat.modelRef)
+    : false;
   const wspolne: SldMenuContext = {
     trunkStartAvailable,
     branchStartAvailable,
     hasResults,
     ...(apparatusKind === undefined ? {} : { apparatusKind }),
     ...(lacznik === undefined ? {} : { lacznik }),
+    ...(granicaWn ? { granicaWn } : {}),
   };
   if (temat.kotwica !== 'stacja') return wspolne;
   const station = (snapshot?.substations ?? []).find(
@@ -84,6 +89,24 @@ export function kontekstDostepnosciAkcji(
     return bus != null && wPasmieNn(bus.voltage_kv);
   });
   return { ...wspolne, stationHasNnBus };
+}
+
+/**
+ * Karta GPZ-H5-SCALENIE-APARATURY: czy obiekt menu pola/aparatu leży na stronie 110 kV —
+ * lustro bram backendu dla tego samego obiektu: rekord pola (także z kompozytu
+ * `⟨pole⟩#⟨rodzaj⟩`) na szynie w paśmie WN (`czyPoleWn`, brama `bay_equipment.bay_hv_boundary`)
+ * albo gałąź łączeniowa z końcem w paśmie WN (`_odmowa_granicy_wn`: wystarczy jeden koniec).
+ * Brak migawki albo obiekt spoza pól i gałęzi = NIE granica (brak pomiaru bez blokady).
+ */
+export function czyObiektGranicyWn(snapshot: EnergyNetworkModel | null, modelRef: string): boolean {
+  if (!snapshot) return false;
+  const refPola = parseGpzApparatusSelectionId(modelRef)?.bayRef ?? modelRef;
+  const pole = (snapshot.bays ?? []).find((bay) => bay.ref_id === refPola);
+  if (pole) return czyPoleWn(snapshot, pole);
+  const galaz = (snapshot.branches ?? []).find((branch) => branch.ref_id === modelRef);
+  if (!galaz) return false;
+  const napiecie = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus.voltage_kv] as const));
+  return [galaz.from_bus_ref, galaz.to_bus_ref].some((szyna) => wPasmieWn(napiecie.get(szyna)));
 }
 
 /** W5-C: stan łącznika obiektu menu; `undefined` = brak migawki (brak pomiaru). */

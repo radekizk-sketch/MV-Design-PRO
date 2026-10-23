@@ -92,6 +92,7 @@ export const TEST_BUS_RESULTS = {
       u_pu: 0.9864,
       angle_deg: 0,
       flags: [],
+      flags_pl: [],
     },
     {
       bus_id: 'bus-002',
@@ -101,6 +102,7 @@ export const TEST_BUS_RESULTS = {
       u_pu: 0.99,
       angle_deg: -2.5,
       flags: [],
+      flags_pl: [],
     },
   ],
 };
@@ -118,6 +120,7 @@ export const TEST_BRANCH_RESULTS = {
       s_mva: 12.9,
       loading_pct: 45.2,
       flags: [],
+      flags_pl: [],
     },
   ],
 };

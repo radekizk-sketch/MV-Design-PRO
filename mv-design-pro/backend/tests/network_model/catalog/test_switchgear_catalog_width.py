@@ -9,11 +9,13 @@ from network_model.catalog.mv_switch_catalog import (
 
 
 def test_switchgear_catalog_has_industrial_series_width() -> None:
-    """K30-22: 36 baseline + 12 Polish (ZPUE Rotoblok + Elektrometal E2 Alpha) = 48."""
+    """K30-22: 36 baseline + 12 Polish (ZPUE Rotoblok + Elektrometal E2 Alpha) = 48; karta
+    GPZ-H5-APARATURA: + 4 pozycje WYMAGAŃ standardu ENEA (odłączniki trójpołożeniowe SN
+    630/1250/2000 A i uziemnik pola SN 24 kV 16 kA/3 s, `mv_wymagania_enea_catalog`) = 52."""
     stats = get_switch_catalog_statistics()
     all_types = get_all_switch_equipment_types()
 
-    assert stats["liczba_aparatury_ogolem"] == 48
+    assert stats["liczba_aparatury_ogolem"] == 52
     # CB: 12 baseline + 8 Polish (4 ZPUE + 4 Elektrometal) = 20
     assert stats["liczba_wylacznikow"] == 20
     # LS: 7 baseline + 2 ZPUE NAL = 9
@@ -22,10 +24,13 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert stats["liczba_odlacznikow"] == 6
     assert stats["liczba_reklozerow"] == 4
     assert stats["liczba_bezpiecznikow"] == 7
-    assert stats["liczba_uziemnikow"] == 2
+    # ES: 2 generyczne + 1 wymaganie ENEA; DS_ES: 3 wymagania ENEA (630/1250/2000 A).
+    assert stats["liczba_uziemnikow"] == 3
+    assert stats["liczba_odlacznikow_trojpolozeniowych"] == 3
     assert stats["rodzaje"] == [
         "CIRCUIT_BREAKER",
         "DISCONNECTOR",
+        "DISCONNECTOR_EARTH_SWITCH",
         "EARTH_SWITCH",
         "FUSE",
         "LOAD_SWITCH",
@@ -39,18 +44,21 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert stats["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
         "NIEWERYFIKOWANY",
+        "REFERENCYJNY",
         "ZWERYFIKOWANY",
     ]
     assert stats["statusy_katalogowe"] == [
         "PRODUKCYJNY_V1",
         "REFERENCYJNY_V1",
+        "WYMAGANIE_STANDARDU_V1",
     ]
     # 33 pozycje bazowe zweryfikowane; 12 polskich ma źródło wyłącznie deklarowane
     # (dokument nie jest w repozytorium), więc są NIEWERYFIKOWANY.
     assert stats["liczba_zweryfikowanych"] == 33
     assert stats["liczba_czesciowo_zweryfikowanych"] == 3
     assert stats["liczba_nieweryfikowanych"] == 12
-    assert stats["liczba_referencyjnych"] == 0
+    # Wartości odniesienia = 4 pozycje wymagań standardu ENEA (progi wymagań, nie wyrób).
+    assert stats["liczba_referencyjnych"] == 4
     assert len({item["params"]["un_kv"] for item in all_types}) == 4
     # 7 baseline + 2 Polish = 9 manufacturers
     assert (
@@ -94,11 +102,20 @@ def test_switchgear_catalog_has_explicit_quality_metadata() -> None:
             "ZWERYFIKOWANY",
             "CZESCIOWO_ZWERYFIKOWANY",
             "NIEWERYFIKOWANY",
+            "REFERENCYJNY",
         }
         assert params["catalog_status"] in {
             "PRODUKCYJNY_V1",
             "REFERENCYJNY_V1",
+            "WYMAGANIE_STANDARDU_V1",
         }
+        # Para predykatów z JEDNEGO źródła (karta GPZ-H5-APARATURA): pozycja wymagania
+        # standardu ⇔ wartości odniesienia bez producenta, ze źródłem w standardzie ENEA.
+        wymaganie = params["catalog_status"] == "WYMAGANIE_STANDARDU_V1"
+        assert wymaganie == (params["verification_status"] == "REFERENCYJNY"), item["id"]
+        if wymaganie:
+            assert params["manufacturer"] is None, item["id"]
+            assert params["source_reference"].startswith("ENEA Operator"), item["id"]
         assert params["contract_version"] == "2.0"
         assert isinstance(params["source_reference"], str)
         assert params["source_reference"].strip()

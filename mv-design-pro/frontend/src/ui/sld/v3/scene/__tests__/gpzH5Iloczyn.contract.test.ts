@@ -28,6 +28,7 @@ import { buildResultLabelsFromScene } from '../../canvas/resultLabels';
 import { KIERUNEK_MOCY_TRANSFORMATORA_PL } from '../../canvas/resultLabelTemplates';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3, type SceneV3 } from '../buildScene';
+import { sekcjeSnTransformatorowGpz, toryZasilaniaSekcjiWnGpz } from '../../../../shared/stanLacznika';
 
 const SIECI = ['gpzH5_2x2', 'gpzRownowaznikSn2'] as const;
 type Stan = 'open' | 'closed';
@@ -209,17 +210,28 @@ describe('GPZ z sekcjami — iloczyn sieć × łącznik 110 kV × łącznik SN �
         const zrodla = enm.sources ?? [];
         const narysowane = scene.symbols.filter((s) => s.symbolId === 'gridSource').map((s) => s.meta?.ownerRef);
         expect(narysowane.sort()).toEqual(zrodla.map((s) => s.ref_id).sort());
+        // Szyna sekcji źródła z rekordów modelu: tor zasilania sekcji 110 kV (źródło na zacisku
+        // pola liniowego za łącznikiem pola — karta GPZ-H5-APARATURA) albo szyna źródła.
+        const sekcjaToru = new Map(
+          [...toryZasilaniaSekcjiWnGpz(enm)].flatMap(([szyna, tory]) => tory.map((t) => [t.zrodloRef, szyna] as const)),
+        );
         for (const zr of zrodla) {
-          const przedzialy = szynyWn.some((p) => p.busRef === zr.bus_ref) ? szynyWn : szynySn;
-          expect(sekcjaPodX(przedzialy, srodekSymbolu(scene, zr.ref_id)), `źródło ${zr.ref_id}`).toBe(zr.bus_ref);
+          const szyna = sekcjaToru.get(zr.ref_id) ?? zr.bus_ref;
+          const przedzialy = szynyWn.some((p) => p.busRef === szyna) ? szynyWn : szynySn;
+          expect(sekcjaPodX(przedzialy, srodekSymbolu(scene, zr.ref_id)), `źródło ${zr.ref_id}`).toBe(szyna);
         }
       });
 
       it('transformator pod swoją sekcją 110 kV i nad swoją sekcją SN', () => {
+        // Sekcja SN transformatora z rekordów modelu: strona dolna na zacisku pola SN za
+        // łącznikiem pola (karta GPZ-H5-APARATURA) — `lv_bus_ref` wskazuje zacisk, nie szynę.
+        const sekcjeSnTr = sekcjeSnTransformatorowGpz(enm);
         for (const t of enm.transformers ?? []) {
           const x = srodekSymbolu(scene, t.ref_id);
           expect(sekcjaPodX(szynyWn, x), `TR ${t.ref_id} — sekcja 110 kV`).toBe(t.hv_bus_ref);
-          expect(sekcjaPodX(szynySn, x), `TR ${t.ref_id} — sekcja SN`).toBe(t.lv_bus_ref);
+          expect(sekcjaPodX(szynySn, x), `TR ${t.ref_id} — sekcja SN`).toBe(
+            sekcjeSnTr.get(t.ref_id)?.szynaSekcji ?? t.lv_bus_ref,
+          );
         }
       });
 

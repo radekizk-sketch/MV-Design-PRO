@@ -721,18 +721,10 @@ WYKLUCZENIA_SKANERA: dict[str, dict[str, int]] = {
     # zeszla razem z plikiem w W1, 2026-09-09), WSZYSTKIE odslonione
     # przez forme H (nosnik lokalny), zero fizyki w kazdej.
     #
-    # (e) REGULA WALIDACJI (nie solver), ktora CELOWO traktuje BRAK mocy
-    # odbioru jak jej JAWNE zero — `rule_zero_power_load` (docstring wprost:
-    # „najprawdopodobniej placeholder LUB BRAK MATERIALIZACJI KATALOGU")
-    # ostrzega w OBU przypadkach identycznie, bo dla warstwy Validation
-    # (ARCHITECTURE.md: „NO physics calculations") skutek jest ten sam:
-    # element nie wplywa na rozplyw. Wartosc `p`/`q` liczona tu SLUZY
-    # WYLACZNIE progowi `abs(p) < 1e-9 and abs(q) < 1e-9` decydujacemu o
-    # emisji komunikatu WARNING — nigdy nie wchodzi do zadnego solvera.
-    "network_model/validation/semantic_rules.py": {
-        "H:local:load.p_kw": 1,
-        "H:local:load.q_kvar": 1,
-    },
+    # (e) `network_model/validation/semantic_rules.py` (reguła walidacji traktująca brak mocy
+    # odbioru jak jawne zero, `H:local:load.p_kw/q_kvar`) — skasowana kartą GPZ-H5-APARATURA
+    # (2026-10-22) razem z `semantic_validator.py` i banerem `SemanticIssuesBanner`: zero
+    # konsumentów produkcyjnych (jeden walidator modelu: `enm/validator.py`, ADR-025).
     # `application/reference_networks/similarity_matcher.py` (wpis (f),
     # zawezenie typu dla type-checkera na galezi strukturalnie martwej) —
     # skasowany karta K2 (2026-09-09) razem z cala tracka reference-networks

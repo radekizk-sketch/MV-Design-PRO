@@ -62,6 +62,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from application.analyses.aparaty_pol import (
+    NAMESPACE_CT,
+    PRZESTRZENIE_WYTRZYMALOSCI,
     AparatPola,
     aparaty_pol_stacji,
     dana_przyjeta,
@@ -79,11 +81,24 @@ from enm.models import Bay, EnergyNetworkModel
 from enm.nazwy_elementow import nazwa_elementu
 from enm.pola import pola_stacji as pola_stacji_modelu
 from enm.rola_pola_sn import nazwa_roli_pola_sn
+from enm.sklad_pola import (
+    RODZAJE_Z_GALEZIA,
+    ZgodnoscUm,
+    dane_pozycji_aparatu,
+    indeks_modelu_pola,
+    napiecie_szyny_pola,
+    pole_granicy_wn,
+    sklad_pola,
+    zgodnosc_um_w_gniezdzie,
+)
 from enm.tor_pola import szyna_raportowa
+from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
     ocen_wytrzymalosc_aparatu,
 )
+from network_model.catalog.gniazda_pol_enea import szablon_pola_standardu
+from network_model.catalog.types import CatalogStatus
 from network_model.catalog.wartosci_robocze import (
     DOKUMENT_REJESTRU,
     PARAMETR_I_DYN,
@@ -96,7 +111,9 @@ from network_model.catalog.wartosci_robocze import (
 from network_model.nazwy import nazwa_nadana, opis_rodzaju_i_nazwy
 from solver_input.provenance import classify_dynamic_capability
 from werdykt import (
+    ClaimKind,
     DanaPrzyjeta,
+    EvidenceTier,
     FieldQuality,
     Kryterium,
     LimitKryterium,
@@ -127,6 +144,13 @@ READINESS_CZAS_NIEUSTALONY = "aparatura.czas_wylaczenia_nieustalony"
 #: Aparat, który z definicji normy przerywa prąd zwarciowy (wyłącznik, reklozer, bezpiecznik),
 #: bez znamionowej zdolności wyłączania w katalogu — kryterium wyłączania bez limitu.
 READINESS_BRAK_ZDOLNOSCI_WYLACZANIA = "aparatura.brak_zdolnosci_wylaczania"
+#: Karta GPZ-H5-APARATURA: gniazdo standardu w torze prądu zwarcia (łącznik, przekładnik
+#: prądowy) bez pozycji katalogu — wytrzymałości tego aparatu nie da się ocenić; widok
+#: wymienia gniazdo (``gniazda_bez_pozycji``) zamiast go przemilczeć.
+READINESS_GNIAZDO_BEZ_POZYCJI = "aparatura.gniazdo_standardu_bez_pozycji"
+#: Karta GPZ-H5-APARATURA: pozycja nie podaje U_m albo szyna pola nie ma napięcia — kryterium
+#: izolacji (U_m aparatu wobec sieci) nie jest rozstrzygnięte.
+READINESS_IZOLACJA_NIEUSTALONA = "aparatura.izolacja_nieustalona"
 
 #: Rodzaje pozycji KATALOGU WYTRZYMAŁOŚCI (ręczne wskazanie w konfiguracji stacji) wobec
 #: zdolności wyłączania zwarć. Katalog wytrzymałości niesie znamiona I_dyn/I_th, a nie
@@ -322,12 +346,27 @@ def _pochodzenie_znamienia(wartosc: WartoscRozstrzygnieta) -> str | None:
     return None
 
 
+#: Pochodzenie znamienia pozycji WYMAGANIA STANDARDU (status ``WYMAGANIE_STANDARDU_V1``): próg
+#: wymagania operatora, nie dana wyrobu — podstawa limitu cytuje standard (rodzaj ``OSD``).
+POCHODZENIE_WYMAGANIE_STANDARDU = "wymaganie_standardu"
+
+
+def _pochodzenie_pozycji(wartosc: WartoscRozstrzygnieta, wymaganie_standardu: bool) -> str | None:
+    pochodzenie = _pochodzenie_znamienia(wartosc)
+    if wymaganie_standardu and wartosc.pochodzenie == "KATALOG":
+        return POCHODZENIE_WYMAGANIE_STANDARDU
+    return pochodzenie
+
+
 def _znamiona_z_aparat_sn(aparat: AparatPola) -> tuple[dict[str, Any] | None, str | None]:
     """Znamiona wytrzymałości aparatu pola z JEDNEGO rozstrzygnięcia + etykieta pozycji.
 
     ``(None, None)`` = pozycji nie ma w katalogu (aparat spoza katalogu). Każda liczba niesie
     pochodzenie; ``wartosci`` — pełne rozstrzygnięcie (wartość, pochodzenie, propozycja ze
-    źródłem i wpływem) trzech znamion, z którego biorą się dane przyjęte werdyktu.
+    źródłem i wpływem) trzech znamion, z którego biorą się dane przyjęte werdyktu. Przekładnik
+    prądowy (przestrzeń ``CT``) nie przerywa zwarcia — zdolność wyłączania go nie dotyczy;
+    jego znamiona to I_th (1 s) i I_dyn wg IEC 61869-2. Pozycja wymagania standardu niesie
+    pochodzenie ``wymaganie_standardu`` i cytat źródła (``wymaganie_standardu_pl``).
     """
     pozycja, parametry = parametry_aparatu(aparat)
     if pozycja is None:
@@ -337,28 +376,39 @@ def _znamiona_z_aparat_sn(aparat: AparatPola) -> tuple[dict[str, Any] | None, st
         parametry[PARAMETR_T_TH],
         parametry[PARAMETR_I_DYN],
     )
-    # Zdolność wyłączania z TEGO SAMEGO odczytu katalogu co dowód doboru aparatury
-    # (`resolve_um_icu_from_catalog`): I_cu, „nie dotyczy" rozłącznika/odłącznika/uziemnika
-    # i znacznik bezpiecznika — jedna reguła klasy aparatu dla obu torów.
-    icu = resolve_um_icu_from_catalog(aparat.catalog_ref)
-    i_cu_ka = icu.i_cu_ka if icu.i_cu_ka is not None and icu.i_cu_ka > 0 else None
+    wymaganie = pozycja.catalog_status == CatalogStatus.WYMAGANIE_STANDARDU_V1.value
+    przekladnik = aparat.przestrzen == NAMESPACE_CT
+    if przekladnik:
+        i_cu_ka: float | None = None
+        i_cu_nie_dotyczy, bezpiecznik = True, False
+    else:
+        # Zdolność wyłączania z TEGO SAMEGO odczytu katalogu co dowód doboru aparatury
+        # (`resolve_um_icu_from_catalog`): I_cu, „nie dotyczy" rozłącznika/odłącznika/uziemnika
+        # i znacznik bezpiecznika — jedna reguła klasy aparatu dla obu torów.
+        icu = resolve_um_icu_from_catalog(aparat.catalog_ref)
+        i_cu_ka = icu.i_cu_ka if icu.i_cu_ka is not None and icu.i_cu_ka > 0 else None
+        i_cu_nie_dotyczy, bezpiecznik = icu.i_cu_not_applicable, icu.bezpiecznik
+    if i_cu_ka is None:
+        i_cu_pochodzenie = None
+    elif wymaganie:
+        i_cu_pochodzenie = POCHODZENIE_WYMAGANIE_STANDARDU
+    else:
+        i_cu_pochodzenie = "producent" if pozycja.manufacturer else "referencyjny"
     return (
         {
             "i_dyn_ka": i_dyn.wartosc,
-            "i_dyn_pochodzenie": _pochodzenie_znamienia(i_dyn),
+            "i_dyn_pochodzenie": _pochodzenie_pozycji(i_dyn, wymaganie),
             "i_th_ka": i_th.wartosc,
             "i_th_duration_s": t_th.wartosc,
-            "i_th_pochodzenie": _pochodzenie_znamienia(i_th),
-            "i_th_duration_pochodzenie": _pochodzenie_znamienia(t_th),
+            "i_th_pochodzenie": _pochodzenie_pozycji(i_th, wymaganie),
+            "i_th_duration_pochodzenie": _pochodzenie_pozycji(t_th, wymaganie),
             "wartosci": {w.parametr: w.to_dict() for w in (i_th, t_th, i_dyn)},
             "i_cu_ka": i_cu_ka,
-            "i_cu_pochodzenie": (
-                None
-                if i_cu_ka is None
-                else ("producent" if pozycja.manufacturer else "referencyjny")
-            ),
-            "i_cu_nie_dotyczy": icu.i_cu_not_applicable,
-            "bezpiecznik": icu.bezpiecznik,
+            "i_cu_pochodzenie": i_cu_pochodzenie,
+            "i_cu_nie_dotyczy": i_cu_nie_dotyczy,
+            "bezpiecznik": bezpiecznik,
+            "przestrzen": aparat.przestrzen,
+            "wymaganie_standardu_pl": pozycja.source_reference if wymaganie else None,
         },
         pozycja.name,
     )
@@ -388,6 +438,8 @@ def _znamiona_z_katalogu_wytrzymalosci(device_id: str) -> tuple[dict[str, Any] |
                 RODZAJ_WYLACZANIA_KATALOGU_WYTRZYMALOSCI.get(pozycja.device_type) is False
             ),
             "bezpiecznik": False,
+            "przestrzen": None,
+            "wymaganie_standardu_pl": None,
         },
         pozycja.label_pl,
     )
@@ -399,6 +451,11 @@ def _znamiona_z_katalogu_wytrzymalosci(device_id: str) -> tuple[dict[str, Any] |
 
 _IEC_62271_1 = "IEC 62271-1 (PN-EN 62271-1) Wysokonapięciowa aparatura rozdzielcza i sterownicza"
 _IEC_62271_1_WYDANIE = "2007"
+_IEC_61869_2 = (
+    "IEC 61869-2 (PN-EN 61869-2) Przekładniki — Część 2: Wymagania szczegółowe dotyczące "
+    "przekładników prądowych"
+)
+_IEC_61869_2_WYDANIE = "2012"
 _IEC_60865_1 = "IEC 60865-1 (PN-EN 60865-1) Prądy zwarciowe — obliczanie skutków"
 _IEC_60865_1_WYDANIE = "2011"
 
@@ -411,6 +468,23 @@ _PARAGRAF_ZNAMIENIA = {
         "znamionowy prąd wyłączalny zwarciowy I_sc)"
     ),
 }
+
+#: Wielkości znamionowe przekładnika prądowego (IEC 61869-2) — znamiona wytrzymałości
+#: zwarciowej uzwojenia pierwotnego.
+_ZNAMIE_PRZEKLADNIKA = {
+    "i_dyn": "znamionowy prąd dynamiczny I_dyn",
+    "i_th": "znamionowy prąd cieplny krótkotrwały I_th odniesiony do 1 s",
+}
+
+
+def _norma_znamienia(znamiona: Mapping[str, Any] | None, wielkosc: str) -> tuple[str, str, str]:
+    """``(dokument, wydanie, jednostka redakcyjna)`` normy znamienia aparatu: przekładnik prądowy
+    — IEC 61869-2, łącznik — IEC 62271-1 (z normą zdolności wyłączania)."""
+    przekladnik = znamiona is not None and znamiona.get("przestrzen") == NAMESPACE_CT
+    if przekladnik and wielkosc in _ZNAMIE_PRZEKLADNIKA:
+        return _IEC_61869_2, _IEC_61869_2_WYDANIE, _ZNAMIE_PRZEKLADNIKA[wielkosc]
+    return _IEC_62271_1, _IEC_62271_1_WYDANIE, _PARAGRAF_ZNAMIENIA[wielkosc]
+
 
 _PODSTAWA_DYNAMICZNA = PodstawaWymagania(
     rodzaj="NORMA",
@@ -450,7 +524,10 @@ _NIEPEWNOSC_POROWNANIA = Niepewnosc(
 
 
 def _podstawa_wartosci_roboczej(
-    zapis: dict[str, Any], etykieta: str, wielkosc: str
+    zapis: dict[str, Any],
+    etykieta: str,
+    wielkosc: str,
+    znamiona: Mapping[str, Any] | None = None,
 ) -> PodstawaWymagania:
     """Podstawa LIMITU opartego na wartości roboczej — nigdy ``KATALOG_PRODUCENTA`` (§3c pkt 4).
 
@@ -461,11 +538,18 @@ def _podstawa_wartosci_roboczej(
     propozycja = zapis.get("propozycja")
     if zapis.get("pochodzenie") == "PROPOZYCJA" and isinstance(propozycja, dict):
         if propozycja["rodzaj_zrodla"] == "NORMA":
+            przekladnik = znamiona is not None and znamiona.get("przestrzen") == NAMESPACE_CT
             return PodstawaWymagania(
                 rodzaj="NORMA",
-                dokument=_IEC_62271_1,
-                wydanie="2017",
-                jednostka_redakcyjna=str(propozycja["odniesienie"]),
+                # Relacja I_p = 2,5·I_k dla 50 Hz: aparatura łączeniowa IEC 62271-1 p. 5.7,
+                # przekładnik prądowy — standardowa wartość I_dyn = 2,5·I_th wg IEC 61869-2.
+                dokument=_IEC_61869_2 if przekladnik else _IEC_62271_1,
+                wydanie=_IEC_61869_2_WYDANIE if przekladnik else "2017",
+                jednostka_redakcyjna=(
+                    _ZNAMIE_PRZEKLADNIKA[wielkosc]
+                    if przekladnik and wielkosc in _ZNAMIE_PRZEKLADNIKA
+                    else str(propozycja["odniesienie"])
+                ),
                 status="WSKAZANE",
                 uwagi_pl=(
                     f"wartość robocza pozycji „{etykieta}” (karta jej nie podaje): "
@@ -487,7 +571,7 @@ def _podstawa_wartosci_roboczej(
         rodzaj="ZALOZENIE_PROJEKTOWE",
         dokument=f"wartość nadana przez projektanta na elemencie modelu (aparat „{etykieta}”)",
         wydanie="bieżący stan modelu sieci",
-        jednostka_redakcyjna=f"{zapis['nazwa_pl']} — {_PARAGRAF_ZNAMIENIA[wielkosc]}",
+        jednostka_redakcyjna=f"{zapis['nazwa_pl']} — {_norma_znamienia(znamiona, wielkosc)[2]}",
         status="WSKAZANE",
         uwagi_pl=zapis.get("powod_projektanta_pl") or "wartość robocza projektanta bez dokumentu",
     )
@@ -498,24 +582,47 @@ def _podstawa_znamienia(
     etykieta: str,
     wielkosc: str,
     zapis_roboczy: dict[str, Any] | None = None,
+    *,
+    znamiona: Mapping[str, Any] | None = None,
 ) -> PodstawaWymagania | None:
-    """Podstawa LIMITU — skąd pochodzi znamię aparatu (``None`` = znamienia nie ma)."""
+    """Podstawa LIMITU — skąd pochodzi znamię aparatu (``None`` = znamienia nie ma).
+
+    Pozycja wymagania standardu (``wymaganie_standardu``) — rodzaj ``OSD``: limit jest progiem
+    wymagania operatora z cytowanym punktem, a ocena mówi, czy aparat spełniający minimum
+    standardu wytrzymuje prąd zwarcia w punkcie zabudowy (dobór wykonawczy zastępuje pozycję
+    wymagania pozycją producenta)."""
     if zapis_roboczy is not None and zapis_roboczy.get("wartosc_robocza"):
-        return _podstawa_wartosci_roboczej(zapis_roboczy, etykieta, wielkosc)
+        return _podstawa_wartosci_roboczej(zapis_roboczy, etykieta, wielkosc, znamiona)
+    dokument_normy, wydanie_normy, jednostka_normy = _norma_znamienia(znamiona, wielkosc)
+    if pochodzenie == POCHODZENIE_WYMAGANIE_STANDARDU:
+        zrodlo = str((znamiona or {}).get("wymaganie_standardu_pl") or "")
+        dokument, _, punkt = zrodlo.partition(": ")
+        return PodstawaWymagania(
+            rodzaj="OSD",
+            dokument=dokument or f"standard operatora pozycji „{etykieta}”",
+            wydanie="wersja przywołana w dokumencie",
+            jednostka_redakcyjna=punkt or jednostka_normy,
+            status="WSKAZANE",
+            uwagi_pl=(
+                f"pozycja „{etykieta}” jest WYMAGANIEM STANDARDU bez producenta — limit to próg "
+                f"wymagania ({jednostka_normy}), nie znamię wyrobu; dobór wykonawczy wymaga "
+                "pozycji producenta spełniającej ten próg"
+            ),
+        )
     if pochodzenie == "producent":
         return PodstawaWymagania(
             rodzaj="KATALOG_PRODUCENTA",
             dokument=f"karta katalogowa producenta pozycji „{etykieta}”",
             wydanie="pozycja katalogu aparatów SN programu",
-            jednostka_redakcyjna=_PARAGRAF_ZNAMIENIA[wielkosc],
+            jednostka_redakcyjna=jednostka_normy,
             status="WSKAZANE",
         )
     if pochodzenie == "referencyjny":
         return PodstawaWymagania(
             rodzaj="NORMA",
-            dokument=_IEC_62271_1,
-            wydanie=_IEC_62271_1_WYDANIE,
-            jednostka_redakcyjna=_PARAGRAF_ZNAMIENIA[wielkosc],
+            dokument=dokument_normy,
+            wydanie=wydanie_normy,
+            jednostka_redakcyjna=jednostka_normy,
             status="WSKAZANE",
             uwagi_pl=(
                 f"pozycja generyczna „{etykieta}” bez producenta — wartość z szeregu "
@@ -614,7 +721,7 @@ def _ocena_dynamiczna(
     i_dyn = znamiona["i_dyn_ka"]
     zapis_i_dyn = _zapis_roboczy(znamiona, PARAMETR_I_DYN)
     podstawa_limitu = _podstawa_znamienia(
-        znamiona["i_dyn_pochodzenie"], etykieta, "i_dyn", zapis_i_dyn
+        znamiona["i_dyn_pochodzenie"], etykieta, "i_dyn", zapis_i_dyn, znamiona=znamiona
     )
     # Prąd szczytowy z relacji normowej niesie też prąd krótkotrwały, z którego wynika.
     zapis_i_th = (
@@ -700,7 +807,7 @@ def _ocena_cieplna(
     zapis_i_th = _zapis_roboczy(znamiona, PARAMETR_I_TH)
     zapis_t_th = _zapis_roboczy(znamiona, PARAMETR_T_TH)
     podstawa_limitu = _podstawa_znamienia(
-        znamiona["i_th_pochodzenie"], etykieta, "i_th", zapis_i_th
+        znamiona["i_th_pochodzenie"], etykieta, "i_th", zapis_i_th, znamiona=znamiona
     )
     zapis_czasu_wlasnego = czas.get("czas_wlasny") if t_k is not None else None
     dane = _dane_przyjete(
@@ -853,7 +960,9 @@ def _ocena_wylaczania(
                 f"wiersz biegu nie niesie wielkości {wielkosc.nazwa_pl} w punkcie zabudowy pola "
                 "— przelicz bieg zwarciowy"
             )
-    podstawa_limitu = _podstawa_znamienia(znamiona.get("i_cu_pochodzenie"), etykieta, "i_cu")
+    podstawa_limitu = _podstawa_znamienia(
+        znamiona.get("i_cu_pochodzenie"), etykieta, "i_cu", znamiona=znamiona
+    )
     limit: LimitKryterium | None = None
     if not nie_dotyczy:
         if i_cu is not None and podstawa_limitu is not None:
@@ -908,7 +1017,8 @@ def _ocena_wylaczania(
                 dotyczy=False,
                 powod_pl=(
                     "aparat nie przerywa prądu zwarciowego z definicji normy (rozłącznik, "
-                    "odłącznik, uziemnik, tor szynowy) — kryterium wyłączania go nie dotyczy"
+                    "odłącznik, uziemnik, tor szynowy, przekładnik prądowy) — kryterium "
+                    "wyłączania go nie dotyczy"
                 ),
             )
             if nie_dotyczy
@@ -934,6 +1044,167 @@ def _ocena_wylaczania(
                     f"U_n = {prady.un_kv} kV); I_cu = {i_cu} kA; t_b = {tb_txt}; składowa "
                     f"nieokresowa i_DC(t_b) = {idc_txt} — informacyjnie (IEC 60909-0 "
                     "rozdz. 10), katalog nie niesie znamionowej składowej nieokresowej"
+                ),
+            ),
+        ),
+        braki_dodatkowe=braki,
+    )
+
+
+_IEC_60038 = "IEC 60038 (PN-EN 60038) Napięcia znormalizowane CENELEC"
+_IEC_60038_WYDANIE = "2011"
+
+_PODSTAWA_IZOLACJI = PodstawaWymagania(
+    rodzaj="NORMA",
+    dokument=_IEC_60038,
+    wydanie=_IEC_60038_WYDANIE,
+    jednostka_redakcyjna=(
+        "tabela 3 (sieci 1–35 kV: urządzenia U_m ≤ 40,5 kV) i tabela 4 (sieci > 35 kV: U_m "
+        "52–245 kV) — napięcie najwyższe urządzenia U_m"
+    ),
+    status="WSKAZANE",
+    uwagi_pl=(
+        "napięcie znamionowe aparatu U_r jest napięciem najwyższym urządzenia U_m (IEC 62271-1 "
+        "p. 5.2, IEC 61869-1); szereg U_n → U_m sieci wg ENEA Zeszyt 1 tabela 5 i IEC 60038"
+    ),
+)
+
+
+@dataclass(frozen=True)
+class IzolacjaAparatu:
+    """Dane kryterium izolacji aparatu: U_m pozycji, napięcie szyny pola i JEDEN predykat
+    zgodności (``enm.sklad_pola.zgodnosc_um_w_gniezdzie`` — ten sam, którym operacja zapisu
+    wyposażenia odmawia aparatu o złym U_m)."""
+
+    u_m_aparatu_kv: float | None
+    u_n_szyny_kv: float | None
+    gniazdo_nazwa_pl: str | None
+    punkt_neutralny: bool
+    zgodnosc: ZgodnoscUm
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "u_m_aparatu_kv": self.u_m_aparatu_kv,
+            "u_m_sieci_kv": self.zgodnosc.u_m_sieci_kv,
+            "u_n_szyny_kv": self.u_n_szyny_kv,
+            "gniazdo_nazwa_pl": self.gniazdo_nazwa_pl,
+            "punkt_neutralny": self.punkt_neutralny,
+            "zgodna": self.zgodnosc.zgodna,
+            "przyczyna_pl": self.zgodnosc.przyczyna_pl,
+        }
+
+
+def _izolacja_rozstrzygnieta(izolacja: IzolacjaAparatu) -> bool:
+    """Kryterium izolacji ma wynik: predykat odmówił (wynik 0) albo zna obie strony porównania
+    (U_m aparatu i U_m wymagane — sieci albo gniazda punktu neutralnego)."""
+    if not izolacja.zgodnosc.zgodna:
+        return True
+    return izolacja.u_m_aparatu_kv is not None and izolacja.zgodnosc.u_m_sieci_kv is not None
+
+
+def _ocena_izolacji(
+    *,
+    kryterium_id: str,
+    przedmiot: Przedmiot,
+    izolacja: IzolacjaAparatu,
+    etykieta: str,
+    run_id: str,
+) -> OcenaKryterium:
+    """Rekord K izolacji: U_m aparatu odpowiada miejscu w polu (kryterium logiczne jednego
+    predykatu). Gniazdo izolacji sieci — ta sama tabela IEC 60038 i U_m aparatu ≥ U_m sieci;
+    gniazdo punktu neutralnego transformatora — wyłącznie wymaganie U_m gniazda. Brak U_m
+    pozycji albo napięcia szyny = brak wyniku z nazwaną przyczyną, nigdy ``SPELNIA``."""
+    zgodnosc = izolacja.zgodnosc
+    braki: list[str] = []
+    wynik: WynikKryterium | None = None
+    if _izolacja_rozstrzygnieta(izolacja):
+        opis = (
+            f"U_m aparatu {izolacja.u_m_aparatu_kv} kV, wymagane U_m {zgodnosc.u_m_sieci_kv} kV"
+            f" (szyna pola U_n = {izolacja.u_n_szyny_kv} kV"
+            + (
+                f", gniazdo „{izolacja.gniazdo_nazwa_pl}”"
+                if izolacja.gniazdo_nazwa_pl is not None
+                else ""
+            )
+            + ")"
+            + (f": {zgodnosc.przyczyna_pl}" if zgodnosc.przyczyna_pl else "")
+        )
+        wynik = WynikKryterium(
+            wielkosc_pl="zgodność napięcia najwyższego urządzenia z miejscem zabudowy",
+            symbol_latex=r"U_{m}",
+            wartosc=Wielkosc(wartosc=1.0 if zgodnosc.zgodna else 0.0, jednostka="1"),
+            punkt_krytyczny_pl=opis,
+            metoda="DEKLARACJA",
+        )
+    elif izolacja.u_m_aparatu_kv is None:
+        braki.append(f"pozycja katalogu „{etykieta}” nie podaje napięcia najwyższego U_m")
+    elif izolacja.punkt_neutralny:
+        braki.append(
+            "aparat punktu neutralnego transformatora bez wymagania U_m gniazda standardu — "
+            "izolację stopniowaną punktu neutralnego określa transformator (IEC 60076-3), "
+            "napięcia sieci szyny pola się do niej nie porównuje"
+        )
+    else:
+        braki.append(
+            "napięcie najwyższe sieci szyny pola nie jest ustalone — szyna bez napięcia "
+            "znamionowego albo napięcie spoza szeregu IEC 60038"
+            + (f" ({izolacja.u_n_szyny_kv} kV)" if izolacja.u_n_szyny_kv else "")
+        )
+    warunek = (
+        r"U_{m,ap} \ge U_{m,gn}"
+        if izolacja.punkt_neutralny
+        else r"U_{m,ap} \in T(U_n) \wedge U_{m,ap} \ge U_{m,s}(U_n)"
+    )
+    return ocen_kryterium(
+        kryterium_id=f"{kryterium_id}.izolacja",
+        przedmiot=przedmiot,
+        kryterium=Kryterium(
+            opis_pl=(
+                "Napięcie najwyższe urządzenia aparatu odpowiada wymaganiu gniazda punktu "
+                "neutralnego transformatora"
+                if izolacja.punkt_neutralny
+                else "Napięcie najwyższe urządzenia aparatu należy do tabeli napięć sieci szyny "
+                "pola (IEC 60038) i nie jest niższe od napięcia najwyższego tej sieci"
+            ),
+            warunek_latex=warunek,
+            relacja="LOGICZNE",
+        ),
+        podstawa=_PODSTAWA_IZOLACJI,
+        stosowalnosc=Stosowalnosc(
+            dotyczy=True,
+            powod_pl="izolacja aparatu pola pracuje na napięciu miejsca zabudowy",
+        ),
+        wynik=wynik,
+        limit=None,
+        niepewnosc=Niepewnosc(
+            nie_dotyczy=True,
+            powod_pl="porównanie wartości znamionowych z szeregu normy — bez niepewności",
+        ),
+        # Porównanie wartości ZADEKLAROWANYCH (znamię pozycji katalogu, napięcie szyny modelu)
+        # — fakt konfiguracji, nie wynik biegu.
+        dowod=StatusDowodu(
+            metoda="DEKLARACJA",
+            poziom=EvidenceTier.DECLARATION,
+            rodzaj_twierdzenia=ClaimKind.DECLARED_CONFIGURATION,
+            status_modelu="NIE_DOTYCZY",
+            status_danych=StatusDanych(stan="ZWALIDOWANE"),
+            odniesienie=f"pozycja katalogu „{etykieta}” i napięcie znamionowe szyny pola w modelu",
+        ),
+        zakres_waznosci=ZakresWaznosci(
+            opis_pl=(
+                "Izolacja główna aparatu wobec napięcia najwyższego sieci szyny pola; poziomy "
+                "izolacji udarowej (BIL) ocenia koordynacja izolacji, nie ten rekord."
+            ),
+            wykluczenia=("koordynacja izolacji udarowej (BIL, ograniczniki przepięć)",),
+        ),
+        slad=(
+            OdnosnikSladu(
+                run_id=run_id,
+                krok=f"{kryterium_id}:izolacja",
+                opis_pl=(
+                    f"U_m aparatu = {izolacja.u_m_aparatu_kv} kV (pozycja katalogu); "
+                    f"U_n szyny = {izolacja.u_n_szyny_kv} kV; U_m wymagane = "
+                    f"{zgodnosc.u_m_sieci_kv} kV; zgodność: {zgodnosc.zgodna}"
                 ),
             ),
         ),
@@ -1008,6 +1279,9 @@ def _wiersz(
     czas: dict[str, Any],
     prady: PradyPola,
     run_id: str,
+    izolacja: IzolacjaAparatu | None = None,
+    gniazdo_ref: str | None = None,
+    wartosci_edytowalne: bool = False,
 ) -> dict[str, Any]:
     kody: list[str] = list(prady.kody_gotowosci)
     werdykt: dict[str, Any] | None = None
@@ -1044,6 +1318,10 @@ def _wiersz(
             komunikat = str(werdykt["message_pl"]) + _dopisek_wartosci_roboczych(znamiona, czas)
         else:
             komunikat = f"NIEUSTALONE: aparatura „{nazwa}” — {prady.powod_pl or 'brak prądu pola'}"
+        if izolacja is not None and not izolacja.zgodnosc.zgodna:
+            komunikat += f" Izolacja aparatu niezgodna z miejscem zabudowy: {izolacja.zgodnosc.przyczyna_pl}."
+        elif izolacja is not None and not _izolacja_rozstrzygnieta(izolacja):
+            kody.append(READINESS_IZOLACJA_NIEUSTALONA)
         kryterium_id = f"aparatura.{pole_ref or oznaczenie}.{aparat_ref or catalog_ref}"
         przedmiot = _przedmiot(
             oznaczenie=oznaczenie,
@@ -1079,6 +1357,16 @@ def _wiersz(
                 run_id=run_id,
             ).model_dump(mode="json"),
         ]
+        if izolacja is not None:
+            oceny.append(
+                _ocena_izolacji(
+                    kryterium_id=kryterium_id,
+                    przedmiot=przedmiot,
+                    izolacja=izolacja,
+                    etykieta=nazwa,
+                    run_id=run_id,
+                ).model_dump(mode="json")
+            )
 
     return {
         "pole": oznaczenie,
@@ -1092,6 +1380,11 @@ def _wiersz(
         "aparat_nazwa": aparat_nazwa,
         "aparat_catalog_ref": catalog_ref,
         "aparat_etykieta": etykieta,
+        "gniazdo_ref": gniazdo_ref,
+        # Wartości projektanta (czas własny, znamiona) nadaje się na gałęzi łącznikowej modelu
+        # — wiersz przekładnika i aparatu gniazda bez gałęzi akcji „Zmień wartość" nie ma.
+        "wartosci_projektanta_edytowalne": wartosci_edytowalne,
+        "izolacja": izolacja.to_dict() if izolacja is not None else None,
         "znamiona": znamiona,
         "prady_pola": prady.to_dict(),
         "czas_wylaczenia": czas,
@@ -1137,6 +1430,36 @@ _PRADY_WPISU_OSIEROCONEGO = _brak_pradow(
 )
 
 
+_PRADY_PUNKTU_NEUTRALNEGO = _brak_pradow(
+    None,
+    "Aparat punktu neutralnego transformatora przewodzi prąd ziemnozwarciowy (3·I₀) — ocena "
+    "wymaga rozpływu składowej zerowej w biegu zwarcia doziemnego, a widok porównuje prądy "
+    "zwarcia trójfazowego szyny pola.",
+)
+
+#: Rodzaje aparatów w torze prądu zwarcia pola — gniazdo takiego rodzaju bez pozycji katalogu
+#: jest brakiem oceny wytrzymałości (``gniazda_bez_pozycji``).
+_RODZAJE_W_TORZE_ZWARCIA: frozenset[str] = RODZAJE_Z_GALEZIA | {"ES", "CT"}
+
+
+def _gniazda_bez_pozycji(indeks: Any, bay: Bay, oznaczenie: str) -> list[dict[str, Any]]:
+    """Gniazda standardu pola w torze prądu zwarcia bez pozycji katalogu — z tego samego
+    składu pola co read-model (``sklad_pola``: status ``WYMAGANE_STANDARDEM_BRAK``)."""
+    return [
+        {
+            "pole": oznaczenie,
+            "pole_ref": bay.ref_id,
+            "gniazdo_ref": wiersz.gniazdo_ref,
+            "gniazdo_nazwa_pl": wiersz.gniazdo_nazwa_pl,
+            "rodzaj": wiersz.rodzaj,
+            "rodzaj_pl": wiersz.rodzaj_pl,
+            "opis_pl": wiersz.opis_pl,
+        }
+        for wiersz in sklad_pola(indeks, bay)
+        if wiersz.status == "WYMAGANE_STANDARDEM_BRAK" and wiersz.rodzaj in _RODZAJE_W_TORZE_ZWARCIA
+    ]
+
+
 def zbuduj_widok_wytrzymalosci_aparatury(
     *,
     enm: EnergyNetworkModel,
@@ -1172,6 +1495,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             "status": "brak danych",
             "bieg_zwarciowy_ref": run_id,
             "pola": [],
+            "gniazda_bez_pozycji": [],
             "kody_gotowosci": [READINESS_STACJA_NIEZNANA],
         }
 
@@ -1181,13 +1505,26 @@ def zbuduj_widok_wytrzymalosci_aparatury(
         if isinstance(wartosc, dict)
     }
     czasy = dict(czasy_pol or {})
-    aparaty = aparaty_pol_stacji(enm, stacja)
+    aparaty = aparaty_pol_stacji(enm, stacja, przestrzenie=PRZESTRZENIE_WYTRZYMALOSCI)
+    katalog = get_default_mv_catalog()
+    indeks = indeks_modelu_pola(enm)
     # Pola stacji z rekordów `bays` (jedyny nośnik pól, karta W5-B) — te same, które widzi
-    # read-model pola, w kolejności identyfikatorów.
-    pola_stacji = sorted(pola_stacji_modelu(enm, stacja.ref_id), key=lambda b: b.ref_id)
+    # read-model pola, w kolejności identyfikatorów. Pole strony 110 kV (granica zasilania
+    # sieci SN, decyzja właściciela 2026-10-22; predykat `pole_granicy_wn`) nie ma aparatury
+    # do oceny: jego łącznik nie ma typu, a do obliczeń wchodzi wyłącznie stan łącznika.
+    pola_stacji = sorted(
+        (
+            bay
+            for bay in pola_stacji_modelu(enm, stacja.ref_id)
+            if not pole_granicy_wn(napiecie_szyny_pola(indeks, bay))
+        ),
+        key=lambda b: b.ref_id,
+    )
 
     wiersze: list[dict[str, Any]] = []
     zuzyte_klucze_konfiguracji: set[str] = set()
+
+    gniazda_bez_pozycji: list[dict[str, Any]] = []
 
     for bay in pola_stacji:
         oznaczenie = _oznaczenie_glowne(bay)
@@ -1197,6 +1534,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
         klucz_konfiguracji = next(
             (nazwa for nazwa in _oznaczenia_pola(bay) if nazwa in konfiguracja), None
         )
+        gniazda_bez_pozycji.extend(_gniazda_bez_pozycji(indeks, bay, oznaczenie))
 
         if klucz_konfiguracji is not None:
             # KONFIGURACJA NADRZĘDNA: inżynier wskazał aparat ręcznie.
@@ -1222,8 +1560,28 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             )
             continue
 
+        u_n_szyny = napiecie_szyny_pola(indeks, bay)
+        szablon = szablon_pola_standardu(bay.szablon_standardu_ref)
         for aparat in aparaty.get(bay.ref_id, []):
             znamiona, etykieta = _znamiona_z_aparat_sn(aparat)
+            gniazdo = (
+                szablon.gniazdo(aparat.gniazdo_ref) if szablon and aparat.gniazdo_ref else None
+            )
+            u_m_aparatu = dane_pozycji_aparatu(
+                katalog, aparat.przestrzen, aparat.catalog_ref
+            ).u_m_kv
+            izolacja = IzolacjaAparatu(
+                u_m_aparatu_kv=u_m_aparatu,
+                u_n_szyny_kv=u_n_szyny,
+                gniazdo_nazwa_pl=gniazdo.nazwa_pl if gniazdo is not None else None,
+                punkt_neutralny=aparat.punkt_neutralny,
+                zgodnosc=(
+                    ZgodnoscUm(True, u_m_aparatu, None, u_n_szyny)
+                    if aparat.punkt_neutralny
+                    and (gniazdo is None or gniazdo.izolacja != "PUNKT_NEUTRALNY")
+                    else zgodnosc_um_w_gniezdzie(u_m_aparatu, u_n_szyny, gniazdo)
+                ),
+            )
             wiersze.append(
                 _wiersz(
                     oznaczenie=oznaczenie,
@@ -1236,8 +1594,14 @@ def zbuduj_widok_wytrzymalosci_aparatury(
                     znamiona=znamiona,
                     etykieta=etykieta,
                     czas=czasy.get(bay.ref_id, _CZAS_NIEUSTALONY),
-                    prady=prady,
+                    # Aparat punktu neutralnego przewodzi prąd ziemnozwarciowy (3·I₀), nie
+                    # prąd zwarcia trójfazowego szyny pola — prądu z wiersza 3F mu się nie
+                    # przypisuje (byłby cudzą wielkością, w dodatku nie górnym oszacowaniem).
+                    prady=_PRADY_PUNKTU_NEUTRALNEGO if aparat.punkt_neutralny else prady,
                     run_id=run_id,
+                    izolacja=izolacja,
+                    gniazdo_ref=aparat.gniazdo_ref,
+                    wartosci_edytowalne=aparat.galaz_modelu,
                 )
             )
 
@@ -1265,11 +1629,15 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             )
         )
 
-    wiersze.sort(key=lambda w: (str(w["pole"]), str(w["aparat_catalog_ref"])))
+    wiersze.sort(
+        key=lambda w: (str(w["pole"]), str(w["aparat_catalog_ref"]), str(w["aparat_ref"] or ""))
+    )
 
     kody: list[str] = []
     if not wiersze:
         kody.append(READINESS_BRAK_POL_Z_APARATEM)
+    if gniazda_bez_pozycji:
+        kody.append(READINESS_GNIAZDO_BEZ_POZYCJI)
 
     return {
         "stacja_ref": stacja.ref_id,
@@ -1277,6 +1645,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
         "status": "OK" if wiersze else "brak danych",
         "bieg_zwarciowy_ref": run_id,
         "pola": wiersze,
+        "gniazda_bez_pozycji": gniazda_bez_pozycji,
         "kody_gotowosci": kody,
     }
 

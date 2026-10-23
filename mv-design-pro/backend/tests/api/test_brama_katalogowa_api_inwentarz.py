@@ -200,6 +200,7 @@ def _payload_gpz_wn(*, transformator: dict[str, Any], **nadpisania: Any) -> dict
         "hv_sections": [{"supply": _tor_110("L1", 2500.0)}, {"supply": _tor_110("L2", 1800.0)}],
         "hv_coupler": {"normal_state": "open"},
         "reserve_mode": "hidden",
+        "line_fields_per_section": 1,
         "transformers": [
             {"hv_section": 1, "sn_section": 1, **copy.deepcopy(transformator)},
             {"hv_section": 2, "sn_section": 2, **copy.deepcopy(transformator)},

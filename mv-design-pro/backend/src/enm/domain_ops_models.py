@@ -806,7 +806,7 @@ class AddGridSourceSNPayload(_FrozenBase):
     110 kV stan normalny wynika z `reserve_mode`."""
 
     hv_sections: list[dict[str, Any]] | None = None
-    """Karta GPZ-H5: sekcje szyn 110 kV (1–4), każda z torem `supply`: `line_name`,
+    """Karta GPZ-H5: sekcje szyn 110 kV (dokładnie dwie — układ H5, ENEA Zeszyt 1 §11.1), każda z torem `supply`: `line_name`,
     `supplying_station_name`, `manual_equivalent` (Sk″ max/min, R/X, Z0/Z1 albo R0/X0,
     `hv_voltage_kv`). Brak danych = odmowa nazwana, nigdy wartość domyślna."""
 
@@ -830,10 +830,14 @@ class AddGridSourceSNPayload(_FrozenBase):
     """Wyłącznik pola SN transformatora rezerwowego z katalogu (`catalog_ref` albo
     `catalog_binding`) — normalnie otwarty."""
 
-    hv_bay_apparatus_proposal: dict[str, Any] | None = None
-    """Propozycja szablonu składu aparatów pól 110 kV (`basis`, `line`, `transformer`,
-    `coupler` — listy oznaczeń), zapisywana w `meta.apparatus_proposal` pola z
-    `modelled: False` — NIE są to aparaty modelu."""
+    earthing_bay_template: str | None = None
+    """Wariant pola zespołu uziemiającego SN (ENEA Zeszyt 1 §16, zał. Z.13–Z.15):
+    `ENEA_SN_ZU_REZYSTOR`, `ENEA_SN_ZU_DLAWIK`, `ENEA_SN_ZU_DLAWIK_REZYSTOR` — wymagany w GPZ
+    ze stroną 110 kV, gdy sekcja SN ma pole zespołu uziemiającego."""
+
+    bay_apparatus: Literal["wymagania_standardu"] | None = None
+    """Obsadzenie gniazd pól standardu GPZ ze stroną 110 kV pozycjami wymagań standardu ENEA
+    (do zastąpienia doborem producenta); bez tej danej gniazda czekają na dobór aparatu."""
 
 
 class SegmentSpec(_FrozenBase):

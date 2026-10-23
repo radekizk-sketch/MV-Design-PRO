@@ -192,6 +192,9 @@ class TestSwitchCatalog:
             "FUSE",
             "RECLOSER",
             "EARTH_SWITCH",
+            # Karta GPZ-H5-APARATURA: odłącznik trójpołożeniowy (zamknięty / otwarty /
+            # uziemiony) — gniazdo pola SN standardu ENEA (`mv_switch_catalog`, docstring).
+            "DISCONNECTOR_EARTH_SWITCH",
         }
         for t in get_all_switch_equipment_types():
             kind = t["params"]["equipment_kind"]

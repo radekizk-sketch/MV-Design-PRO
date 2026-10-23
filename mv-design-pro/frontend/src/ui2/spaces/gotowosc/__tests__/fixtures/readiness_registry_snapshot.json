@@ -264,6 +264,14 @@
     },
     {
       "area": "CATALOGS",
+      "code": "catalog.switch_hv_boundary",
+      "fix_navigation": {
+        "panel": "analizy",
+        "tab": "scenariusze_laczeniowe"
+      }
+    },
+    {
+      "area": "CATALOGS",
       "code": "catalog.type_incomplete",
       "fix_navigation": {
         "modal": "CatalogPicker",
@@ -616,7 +624,7 @@
       "area": "CATALOGS",
       "code": "load.power_zero",
       "fix_navigation": {
-        "focus": "p_kw",
+        "focus": "p_mw",
         "panel": "inspector",
         "tab": "parametry"
       }
@@ -1310,7 +1318,7 @@
       "area": "TOPOLOGY",
       "code": "trunk.segment_length_invalid",
       "fix_navigation": {
-        "focus": "length_m",
+        "focus": "length_km",
         "panel": "inspector",
         "tab": "parametry"
       }
@@ -1319,7 +1327,7 @@
       "area": "TOPOLOGY",
       "code": "trunk.segment_length_missing",
       "fix_navigation": {
-        "focus": "length_m",
+        "focus": "length_km",
         "panel": "inspector",
         "tab": "parametry"
       }
@@ -1403,7 +1411,7 @@
       }
     }
   ],
-  "count": 165,
+  "count": 166,
   "emitery_akcji": [
     {
       "action_type": "ADD_MISSING_DEVICE",
@@ -1448,6 +1456,11 @@
     {
       "action_type": "OPEN_MODAL",
       "modal_type": "GeneratorModal",
+      "panel": null
+    },
+    {
+      "action_type": "OPEN_MODAL",
+      "modal_type": "LoadModal",
       "panel": null
     },
     {
@@ -1532,6 +1545,7 @@
     "E-W5-03": "transformer.neutral_grounding_not_accessible",
     "E001": "source.grid_supply_missing",
     "E009": "catalog.binding_missing",
+    "E011": "trunk.segment_length_invalid",
     "E021": "station.required_field_missing",
     "E022": "station.line_field_multiple_segments",
     "E063": "transformer.lv_earthing_system_missing",
@@ -1543,6 +1557,7 @@
     "W-W5-01": "cable.screen_bonding_reference_mismatch",
     "W001": "branch.zero_sequence_missing",
     "W010": "inverter.k_sc_missing",
+    "W013": "load.power_zero",
     "W041": "transformer.bay_missing",
     "W042": "station.element_bypasses_field",
     "W043": "station.kind_mismatch",

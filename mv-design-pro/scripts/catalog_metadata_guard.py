@@ -68,7 +68,16 @@ def _groups() -> dict[str, list[object]]:
         # rekordu co każda grupa. BEZ wpisu w INDUSTRIAL_MIN_WIDTH: 0 kart (pomiar
         # 2026-09-23) to brak danych producenta, nie defekt szerokości katalogu.
         "KARTA_WIDMOWA": repo.list_karty_widmowe(),
+        "OGRANICZNIK_SN": repo.list_surge_arrester_types(),
+        # Karta GPZ-H5-APARATURA: wyposażenie pól SN — wyłącznie pozycje wymagań standardu
+        # ENEA (bez wpisu w INDUSTRIAL_MIN_WIDTH: szerokość przemysłowa liczy pozycje wyrobów).
+        "ELEMENT_POLA_SN": repo.list_element_pola_types(),
     }
+
+
+#: Statusy, które NIE liczą się do szerokości przemysłowej: rekord testowy i pozycja wymagań
+#: standardu (progi operatora bez wyrobu — karta GPZ-H5-APARATURA).
+STATUSY_POZA_SZEROKOSCIA = frozenset({"TESTOWY", "WYMAGANIE_STANDARDU_V1"})
 
 
 def _industrial_width_errors() -> list[str]:
@@ -77,7 +86,11 @@ def _industrial_width_errors() -> list[str]:
         minimum = INDUSTRIAL_MIN_WIDTH.get(group)
         if minimum is None:
             continue
-        active_count = sum(1 for item in items if item.to_dict().get("catalog_status") != "TESTOWY")
+        active_count = sum(
+            1
+            for item in items
+            if item.to_dict().get("catalog_status") not in STATUSY_POZA_SZEROKOSCIA
+        )
         if active_count < minimum:
             errors.append(f"{group}: rekordow={active_count} < minimum={minimum}")
     return errors
@@ -110,6 +123,16 @@ def main() -> int:
             ):
                 errors.append(
                     f"{group}: rekord {data.get('id')} jest PRODUKCYJNY_V1 i NIEWERYFIKOWANY"
+                )
+
+            # Pozycja wymagań standardu nie jest wyrobem: producent nieznany z definicji, a
+            # nota weryfikacji mówi, że dobór wykonawczy wymaga pozycji producenta.
+            if data.get("catalog_status") == "WYMAGANIE_STANDARDU_V1" and (
+                data.get("manufacturer") is not None or not data.get("verification_note")
+            ):
+                errors.append(
+                    f"{group}: rekord {data.get('id')} WYMAGANIE_STANDARDU_V1 musi mieć "
+                    "manufacturer=None i notę weryfikacji"
                 )
 
             if group not in analytical_groups and data.get("catalog_status") == "ANALITYCZNY_V1":

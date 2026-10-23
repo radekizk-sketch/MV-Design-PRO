@@ -106,6 +106,11 @@ class CatalogNamespace(Enum):
     #: (`network_model/catalog/karty_widmowe/`); karta projektu żyje w modelu
     #: (`EnergyNetworkModel.katalog_projektu.karty_widmowe`).
     KARTA_WIDMOWA = "KARTA_WIDMOWA"
+    #: Karta GPZ-H5-APARATURA: elementy pól SN bez osobnego elementu fizyki w modelu —
+    #: stacjonarny wskaźnik obecności napięcia, transformator uziemiający, dławik gaszący,
+    #: rezystor uziemiający punktu neutralnego i bateria kondensatorów pola BKR jako
+    #: wyposażenie pola (`ElementPolaType`; ENEA Zeszyt 1 §13, §16, §17).
+    ELEMENT_POLA_SN = "ELEMENT_POLA_SN"
 
 
 #: Kategoria katalogu → nazwa grupy katalogu w treści dla projektanta (karta #142).
@@ -139,6 +144,7 @@ NAZWY_KATEGORII_KATALOGU_PL: dict[str, str] = {
     "CONVERTER": "Typy konwerterów",
     "GENERATOR_SN": "Typy generatorów synchronicznych SN",
     "KARTA_WIDMOWA": "Karty widmowe urządzeń",
+    "ELEMENT_POLA_SN": "Typy elementów wyposażenia pól SN",
     "mv_branch_points": "Typy punktów rozgałęzienia SN",
 }
 
@@ -173,6 +179,11 @@ class CatalogStatus(Enum):
     #: producenckiego (arkusz XLSX), ważna w obrębie modelu, który ją niesie
     #: (`enm/katalog_projektu.py`); nigdy w modułach katalogu statycznego.
     PROJEKTOWY_V1 = "PROJEKTOWY_V1"
+    #: Karta GPZ-H5-APARATURA: pozycja WYMAGANIA STANDARDU operatora (ENEA Zeszyt 1) — wartości
+    #: są progami wymagań z cytowaną podstawą (punkt, tabela, rysunek), nie danymi wyrobu;
+    #: producent nieznany (`manufacturer = None`), parametr, którego standard nie podaje, jest
+    #: polem nieobecnym (`None`). Dobór wykonawczy zastępuje ją pozycją producenta.
+    WYMAGANIE_STANDARDU_V1 = "WYMAGANIE_STANDARDU_V1"
 
 
 def _normalize_verification_status(
@@ -1486,7 +1497,8 @@ class SwitchEquipmentType:
         id: Unique identifier.
         name: Type name (e.g., "ABB VD4 12kV").
         manufacturer: Manufacturer name (optional).
-        equipment_kind: Equipment kind (CIRCUIT_BREAKER, DISCONNECTOR, EARTH_SWITCH).
+        equipment_kind: Equipment kind (CIRCUIT_BREAKER, DISCONNECTOR, EARTH_SWITCH,
+            DISCONNECTOR_EARTH_SWITCH — odłącznik trójpołożeniowy, LOAD_SWITCH, FUSE, RECLOSER).
         un_kv: Rated voltage [kV].
         in_a: Rated current [A].
         ik_ka: Short-circuit breaking current [kA] (for breakers).
@@ -1516,6 +1528,13 @@ class SwitchEquipmentType:
     medium: str | None = None
     u_m_kv: float | None = None
     i_cu_ka: float | None = None
+    #: Czas odniesienia ``icw_ka`` [s]; ``None`` = konwencja katalogu 1 s (nagłówek
+    #: `mv_switch_catalog.py`). Karta GPZ-H5-APARATURA: wymaganie rozdzielnicy SN ENEA §9.2
+    #: to 16 kA przez 3 s.
+    icw_duration_s: float | None = None
+    #: Napęd aparatu (opis wymagania albo karty), np. „jeden wspólny napęd dla trzech faz"
+    #: uziemnika pola SN (ENEA Zeszyt 1 §13). ``None`` = dana nieobecna.
+    naped: str | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
@@ -1536,6 +1555,8 @@ class SwitchEquipmentType:
             "medium": self.medium,
             "u_m_kv": self.u_m_kv,
             "i_cu_ka": self.i_cu_ka,
+            "icw_duration_s": self.icw_duration_s,
+            "naped": self.naped,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1560,6 +1581,10 @@ class SwitchEquipmentType:
             medium=data.get("medium"),
             u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
             i_cu_ka=(float(data["i_cu_ka"]) if data.get("i_cu_ka") is not None else None),
+            icw_duration_s=(
+                float(data["icw_duration_s"]) if data.get("icw_duration_s") is not None else None
+            ),
+            naped=data.get("naped"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury MV-DESIGN-PRO / karty katalogowe producentów",
@@ -2936,6 +2961,13 @@ class MVApparatusType:
     i_th_ka: float | None = None
     i_th_duration_s: float | None = None
     i_dyn_ka: float | None = None
+    #: Karta GPZ-H5-APARATURA: napięcie najwyższe urządzenia U_m [kV] (IEC 62271-1) — z
+    #: pozycji aparatury łączeniowej; ``None`` = karta tej danej nie niesie. Czyta je
+    #: sprawdzenie zgodności z szyną pola (`enm.sklad_pola.zgodnosc_um_aparatu`) i kryterium
+    #: U_m dowodu wytrzymałości aparatury pól.
+    u_m_kv: float | None = None
+    #: Napęd aparatu (z pozycji aparatury łączeniowej).
+    naped: str | None = None
     #: KD-6 poz. 3 — CZAS WŁASNY aparatu [s] (rated break time, IEC 62271-100
     #: § 3.7.145: od pobudzenia wyzwalacza do przerwania łuku we wszystkich
     #: biegunach). Składnik czasu wyłączenia zwarcia obok członu nastawczego
@@ -2978,6 +3010,8 @@ class MVApparatusType:
             "i_th_pochodzenie": self.pochodzenie_i_th(),
             "i_dyn_ka": self.i_dyn_ka,
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
+            "u_m_kv": self.u_m_kv,
+            "naped": self.naped,
             "break_time_s": self.break_time_s,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
@@ -3014,6 +3048,8 @@ class MVApparatusType:
                 float(data["i_th_duration_s"]) if data.get("i_th_duration_s") is not None else None
             ),
             i_dyn_ka=(float(data["i_dyn_ka"]) if data.get("i_dyn_ka") is not None else None),
+            u_m_kv=(float(data["u_m_kv"]) if data.get("u_m_kv") is not None else None),
+            naped=data.get("naped"),
             break_time_s=(
                 float(data["break_time_s"]) if data.get("break_time_s") is not None else None
             ),
@@ -3654,6 +3690,10 @@ class CTType:
     #: normowego. `None` znaczy „karta producenta jeszcze nie wczytana"; kryterium
     #: nasycenia liczy sie wtedy z obciazalnosci znamionowej (VA), nie z rezystancji.
     rct_ohm: float | None = None
+    #: Karta GPZ-H5-APARATURA: odmiana konstrukcyjna — ``FERRANTI`` (przekładnik
+    #: ziemnozwarciowy nakładany na kabel w przedziale kablowym pola liniowego SN, ENEA
+    #: Zeszyt 1 §13, rys. Z.10; nie leży w torze prądu zwarciowego). ``None`` = zwykły.
+    odmiana: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog CT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -3682,6 +3722,7 @@ class CTType:
             "rct_ohm": self.rct_ohm,
             "application": rdzen_ct_z_klasy(self.accuracy_class),
             "accuracy_limit_factor": alf_ct_z_klasy(self.accuracy_class),
+            "odmiana": self.odmiana,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3715,6 +3756,7 @@ class CTType:
                 else None
             ),
             rct_ohm=(float(data["rct_ohm"]) if data.get("rct_ohm") is not None else None),
+            odmiana=data.get("odmiana"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog CT MV-DESIGN-PRO / dane referencyjne",
@@ -3871,6 +3913,167 @@ class VTType:
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog VT MV-DESIGN-PRO / dane referencyjne",
+                default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
+                default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
+            ),
+        )
+
+
+# =============================================================================
+# ELEMENT POLA SN (ELEMENT_POLA_SN) — wyposażenie pól SN bez elementu fizyki
+# =============================================================================
+
+#: Rodzaje pozycji przestrzeni ELEMENT_POLA_SN (``ElementPolaType.rodzaj``).
+RODZAJE_ELEMENTU_POLA_SN: tuple[str, ...] = (
+    "WSKAZNIK_NAPIECIA",
+    "TRANSFORMATOR_UZIEMIAJACY",
+    "DLAWIK_GASZACY",
+    "REZYSTOR_UZIEMIAJACY",
+    "REZYSTOR_WYMUSZAJACY",
+    "BATERIA_KONDENSATOROW",
+)
+
+
+@dataclass(frozen=True)
+class ElementPolaType:
+    """Pozycja wyposażenia pola SN (karta GPZ-H5-APARATURA, ENEA Zeszyt 1 §13, §16, §17).
+
+    Elementy, które pole SN niesie jako APARATURĘ, a które nie są (w tym modelu) elementem
+    fizyki rozpływu ani zwarcia: stacjonarny wskaźnik obecności napięcia, transformator
+    uziemiający z uzwojeniem potrzeb własnych nn, dławik gaszący, rezystor uziemiający punktu
+    neutralnego, rezystor wymuszający AWSC i bateria kondensatorów pola BKR (jako skład pola;
+    bateria jako element rozpływu to ``KOMPENSATOR_SN``). Pola są opcjonalne według rodzaju —
+    pozycja niesie wyłącznie dane ze źródła; ``None`` = źródło tej danej nie podaje.
+    """
+
+    id: str
+    name: str
+    rodzaj: str
+    u_m_kv: float | None = None
+    manufacturer: str | None = None
+    #: Wskaźnik napięcia: współpraca z urządzeniami do uzgadniania faz (§13).
+    uzgadnianie_faz: bool | None = None
+    #: Transformator uziemiający: układ połączeń, regulacja, chłodzenie, uzwojenie nn.
+    grupa_polaczen: str | None = None
+    regulacja_pl: str | None = None
+    chlodzenie: str | None = None
+    u_nn_v: float | None = None
+    s_nn_kva_min: float | None = None
+    #: Dławik gaszący: zakres prądu, regulacja, uzwojenie wtórne, przekładnik, tryb pracy.
+    prad_zakres_min_a: float | None = None
+    prad_zakres_max_a: float | None = None
+    regulacja_zakres_pl: str | None = None
+    uzwojenie_wtorne_pl: str | None = None
+    przekladnik_pl: str | None = None
+    tryb_pracy_pl: str | None = None
+    #: Rezystor wymuszający AWSC: prąd wymuszany po stronie pierwotnej [A].
+    prad_wymuszany_min_a: float | None = None
+    prad_wymuszany_max_a: float | None = None
+    #: Rezystor uziemiający: wykonanie obudowy.
+    obudowa_pl: str | None = None
+    #: Bateria kondensatorów: układ, moc ogniwa, jednostki, przekładnik niezrównoważenia.
+    uklad: str | None = None
+    q_ogniwa_min_kvar: float | None = None
+    jednostki_pl: str | None = None
+    przekladnik_niezrownowazenia: bool | None = None
+    verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
+    source_reference: str = "Katalog elementów pól SN MV-DESIGN-PRO"
+    catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
+    contract_version: str = CATALOG_CONTRACT_VERSION
+    verification_note: str | None = None
+
+    _POLA_LICZBOWE = (
+        "u_m_kv",
+        "u_nn_v",
+        "s_nn_kva_min",
+        "prad_zakres_min_a",
+        "prad_zakres_max_a",
+        "prad_wymuszany_min_a",
+        "prad_wymuszany_max_a",
+        "q_ogniwa_min_kvar",
+    )
+    _POLA_TEKSTOWE = (
+        "manufacturer",
+        "grupa_polaczen",
+        "regulacja_pl",
+        "chlodzenie",
+        "regulacja_zakres_pl",
+        "uzwojenie_wtorne_pl",
+        "przekladnik_pl",
+        "tryb_pracy_pl",
+        "obudowa_pl",
+        "uklad",
+        "jednostki_pl",
+    )
+    _POLA_LOGICZNE = ("uzgadnianie_faz", "przekladnik_niezrownowazenia")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "rodzaj": self.rodzaj,
+            **{k: getattr(self, k) for k in self._POLA_LICZBOWE},
+            **{k: getattr(self, k) for k in self._POLA_TEKSTOWE},
+            **{k: getattr(self, k) for k in self._POLA_LOGICZNE},
+            **_catalog_metadata_to_dict(
+                verification_status=self.verification_status,
+                source_reference=self.source_reference,
+                catalog_status=self.catalog_status,
+                contract_version=self.contract_version,
+                verification_note=self.verification_note,
+            ),
+        }
+
+    def __post_init__(self) -> None:
+        if self.rodzaj not in RODZAJE_ELEMENTU_POLA_SN:
+            odmowa_twarda(
+                "KAT-T-048",
+                f"Nierozpoznany rodzaj elementu pola SN: {self.rodzaj!r}. Dozwolone: "
+                f"{', '.join(RODZAJE_ELEMENTU_POLA_SN)}.",
+            )
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "ElementPolaType":
+        """Pozycja z rekordu katalogu — identyfikator i rodzaj są WYMAGANE (bez losowego
+        identyfikatora zastępczego: ta sama pozycja ma zawsze ten sam identyfikator)."""
+
+        def liczba(klucz: str) -> float | None:
+            return float(data[klucz]) if data.get(klucz) is not None else None
+
+        def tekst(klucz: str) -> str | None:
+            return str(data[klucz]) if data.get(klucz) is not None else None
+
+        def logiczna(klucz: str) -> bool | None:
+            return bool(data[klucz]) if data.get(klucz) is not None else None
+
+        return cls(
+            id=wymagany_str(data, "id", context="ElementPolaType"),
+            name=str(data.get("name", "")),
+            rodzaj=wymagany_str(data, "rodzaj", context="ElementPolaType"),
+            u_m_kv=liczba("u_m_kv"),
+            manufacturer=tekst("manufacturer"),
+            uzgadnianie_faz=logiczna("uzgadnianie_faz"),
+            grupa_polaczen=tekst("grupa_polaczen"),
+            regulacja_pl=tekst("regulacja_pl"),
+            chlodzenie=tekst("chlodzenie"),
+            u_nn_v=liczba("u_nn_v"),
+            s_nn_kva_min=liczba("s_nn_kva_min"),
+            prad_zakres_min_a=liczba("prad_zakres_min_a"),
+            prad_zakres_max_a=liczba("prad_zakres_max_a"),
+            regulacja_zakres_pl=tekst("regulacja_zakres_pl"),
+            uzwojenie_wtorne_pl=tekst("uzwojenie_wtorne_pl"),
+            przekladnik_pl=tekst("przekladnik_pl"),
+            tryb_pracy_pl=tekst("tryb_pracy_pl"),
+            prad_wymuszany_min_a=liczba("prad_wymuszany_min_a"),
+            prad_wymuszany_max_a=liczba("prad_wymuszany_max_a"),
+            obudowa_pl=tekst("obudowa_pl"),
+            uklad=tekst("uklad"),
+            q_ogniwa_min_kvar=liczba("q_ogniwa_min_kvar"),
+            jednostki_pl=tekst("jednostki_pl"),
+            przekladnik_niezrownowazenia=logiczna("przekladnik_niezrownowazenia"),
+            **_catalog_metadata_kwargs(
+                data,
+                default_source_reference="Katalog elementów pól SN MV-DESIGN-PRO",
                 default_verification_status=CatalogVerificationStatus.REFERENCYJNY,
                 default_catalog_status=CatalogStatus.REFERENCYJNY_V1,
             ),
@@ -4608,6 +4811,25 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("tov_10s_kv", "TOV 10 s [kV]", "kV"),
             ("bil_protected_kv", "BIL chronione [kV]", "kV"),
         ),
+    ),
+    # Karta GPZ-H5-APARATURA: wyposażenie pól SN — rodzaj i napięcie najwyższe (sprawdzenie
+    # U_m wobec szyny pola, `enm.sklad_pola.zgodnosc_um_aparatu`); reszta to dane tabliczki.
+    CatalogNamespace.ELEMENT_POLA_SN.value: MaterializationContract(
+        namespace=CatalogNamespace.ELEMENT_POLA_SN.value,
+        solver_fields=("rodzaj", "u_m_kv"),
+        ui_fields=(
+            ("rodzaj", "Rodzaj elementu", ""),
+            ("u_m_kv", "Um [kV]", "kV"),
+            ("grupa_polaczen", "Grupa połączeń", ""),
+            ("u_nn_v", "Un nn [V]", "V"),
+            ("s_nn_kva_min", "Sn nn min [kVA]", "kVA"),
+            ("prad_zakres_min_a", "I min [A]", "A"),
+            ("prad_zakres_max_a", "I max [A]", "A"),
+            ("prad_wymuszany_min_a", "I wymuszany min [A]", "A"),
+            ("prad_wymuszany_max_a", "I wymuszany max [A]", "A"),
+            ("q_ogniwa_min_kvar", "Q ogniwa min [kvar]", "kvar"),
+        ),
+        pola_opcjonalne=("u_m_kv",),
     ),
     CatalogNamespace.OBCIAZENIE.value: MaterializationContract(
         namespace=CatalogNamespace.OBCIAZENIE.value,

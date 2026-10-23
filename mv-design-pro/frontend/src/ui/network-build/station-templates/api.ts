@@ -5,6 +5,8 @@
  * templates across 10 categories with fully editable schemas.
  */
 
+import type { WierszSkladuPola } from '../../../types/enm';
+
 const API_BASE = '/api/station-templates';
 
 async function handleResponse<T>(response: Response): Promise<T> {
@@ -72,6 +74,34 @@ export interface ProtectionRelaySpec {
  * z podpowiedzią i podstawą, bez wartości domyślnej. Backend:
  * `schema.py::DanaProjektuSzablonu` (`_dana_projektu_to_dict`).
  */
+/**
+ * Typ wartości danej projektu — postać, w jakiej formularz wysyła wartość
+ * (`schema.py::TypWartosciDanejProjektu`): `wybor` — tekst z `wartosci`; `liczba_calkowita` —
+ * liczba (lista `wartosci` niesie dozwolone liczby zapisane tekstem); `tekst` — tekst
+ * niepusty; `pozycja_katalogu` — `{ catalog_ref }` aparatu SN; `tory_zasilania_110kv` — lista
+ * torów zasilania sekcji 110 kV.
+ */
+export type TypWartosciDanejProjektu =
+  | 'wybor'
+  | 'liczba_calkowita'
+  | 'tekst'
+  | 'pozycja_katalogu'
+  | 'tory_zasilania_110kv';
+
+/** Wymagalność danej wyprowadzona przez backend z warunku maszynowego. */
+export type WymagalnoscDanejProjektu = 'zawsze' | 'warunkowo' | 'opcjonalnie';
+
+/**
+ * Składnik koniunkcji warunku wymagalności (`schema.py::WarunekWymagalnosci`): dana
+ * (ścieżka z kropką) równa `rowna` albo parametr szablonu co najmniej `co_najmniej`;
+ * dokładnie jedno z dwóch pól nie jest `null`.
+ */
+export interface WarunekWymagalnosci {
+  klucz: string;
+  rowna: string | null;
+  co_najmniej: number | null;
+}
+
 export interface DanaProjektuSzablonu {
   /** Ścieżka pola ładunku operacji (np. `hv_coupler.normal_state`). */
   klucz: string;
@@ -79,9 +109,13 @@ export interface DanaProjektuSzablonu {
   label_pl: string;
   podpowiedz_pl: string;
   podstawa_pl: string;
-  /** Dozwolone wartości z nazwą; pusta lista — dana złożona albo tekst. */
+  typ_wartosci: TypWartosciDanejProjektu;
+  /** Dozwolone wartości z nazwą; pusta lista — dana złożona, tekst albo pozycja katalogu. */
   wartosci: readonly { wartosc: string; label_pl: string }[];
-  /** Kiedy dana jest wymagana; pusty — zawsze. */
+  wymagalnosc: WymagalnoscDanejProjektu;
+  /** Koniunkcja warunków wymagalności; pusta przy `zawsze` i `opcjonalnie`. */
+  wymagana_gdy: readonly WarunekWymagalnosci[];
+  /** Zdanie wymagalności wyprowadzone z warunku; pusty — zawsze wymagana. */
   warunek_pl: string;
 }
 
@@ -282,8 +316,24 @@ export interface PreviewTemplateResult {
       mv_cable_ref: string | null;
       mv_field_apparatus_ref: string | null;
     }[];
+    /** Szablon GPZ: skład pól rozdzielni z operacji `add_grid_source_sn` wykonanej na pustym
+     *  modelu (kolejność zał. Z.1/Z.2); `null` dla stacji wstawianej w odcinek. */
+    gpz_bays?: readonly PodgladPolaGpz[] | null;
   };
   estimated_elements_count: number;
+}
+
+/** Pole GPZ w podglądzie szablonu — skład pola to te same wiersze, co na karcie pola
+ *  (`backend/src/enm/sklad_pola.py::sklad_pola`). */
+export interface PodgladPolaGpz {
+  readonly bay_ref: string;
+  readonly name: string | null;
+  readonly bay_role: string;
+  readonly bus_name: string | null;
+  readonly voltage_kv: number | null;
+  readonly szablon_standardu_ref: string | null;
+  readonly szablon_standardu_nazwa_pl: string | null;
+  readonly sklad: readonly WierszSkladuPola[];
 }
 
 export async function previewStationTemplate(

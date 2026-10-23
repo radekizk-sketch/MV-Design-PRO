@@ -1216,10 +1216,10 @@ def apply_scenario(
                 if ref_id in scenariusz.out_of_service
                 else "nie istnieje w modelu sieci"
             )
-            raise ScenariuszNieprzystajeError(scenariusz.scenario_id, ref_id, powod)
+            raise _nieprzystaje(scenariusz, snapshot, ref_id, powod)
         if galaz.get("type") not in TYPY_LACZNIKOW_ENM:
-            raise ScenariuszNieprzystajeError(
-                scenariusz.scenario_id, ref_id, "element nie jest łącznikiem ani bezpiecznikiem"
+            raise _nieprzystaje(
+                scenariusz, snapshot, ref_id, "element nie jest łącznikiem ani bezpiecznikiem"
             )
         przed = galaz.get("status") or "closed"
         if przed == stan:

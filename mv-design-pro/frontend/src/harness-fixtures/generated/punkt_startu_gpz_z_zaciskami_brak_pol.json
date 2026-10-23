@@ -61,6 +61,7 @@
         "substation_ref": "gpz/932941e1af4fa138bff8eda563f23b74/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "gpz_sn_coupler_field"
         ],

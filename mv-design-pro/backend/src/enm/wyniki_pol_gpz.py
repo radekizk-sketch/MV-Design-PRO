@@ -59,6 +59,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from domain.result_contract_v1 import ZNACZNIK_PRZECIAZENIE
 from enm.assembler import _graph_id_from_ref
 from enm.pola import czy_pole_nn, pola_stacji, poziom_pol, punkt_przylaczenia_pola, stacje_gpz
 from enm.topology import PodzialKrawedzi, podziel_krawedzie
@@ -69,8 +70,9 @@ from network_model.core.topologia import scal_wezly
 #: Role pól, które zasilają odcinek terenowy (pole liniowe w szerokim sensie).
 ROLE_POL_LINIOWYCH: frozenset[str] = frozenset({"IN", "OUT", "FEEDER", "OZE"})
 
-#: Flaga wiersza gałęzi oznaczająca przeciążenie (``build_branch_results``).
-FLAGA_PRZECIAZENIA = "OVERLOADED"
+#: Flaga wiersza gałęzi oznaczająca przeciążenie (``build_branch_results``) — kod z kontraktu
+#: wyników, jedno źródło z wierszem gałęzi (karta GPZ-H5-APARATURA).
+FLAGA_PRZECIAZENIA = ZNACZNIK_PRZECIAZENIE
 
 
 def _napis(wartosc: object) -> str | None:

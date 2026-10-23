@@ -33,6 +33,7 @@ export function wierszSc(over: Partial<ShortCircuitRow> = {}): ShortCircuitRow {
     sk_mva: 200.0,
     fault_type: '3F',
     flags: [],
+    flags_pl: [],
     ...over,
   };
 }

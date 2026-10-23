@@ -34,4 +34,4 @@ export type {
 } from './types';
 
 // Constants
-export { INSPECTOR_SECTION_LABELS, FLAG_LABELS } from './types';
+export { INSPECTOR_SECTION_LABELS } from './types';

@@ -243,12 +243,17 @@ async function zakonczBieg(run: ExecutionRun): Promise<boolean> {
  * jako `solver_input` (pole `options` po stronie backendu, `enm/canonical_analysis.py`).
  * Brak = pusty obiekt, tak jak dotychczas (kontrakt `CreateRunRequest.solver_input`
  * ma domyślną wartość `{}` po stronie backendu).
+ * `scenarioId` (opcjonalny, karta GPZ-H5-APARATURA) — scenariusz łączeniowy nazwany
+ * projektu: bieg liczy migawkę efektywną scenariusza (ADR-017; stany łączników, elementy
+ * wyłączone z eksploatacji), model bazowy bez zmian. Brak = stan normalny modelu i ciało
+ * żądania bez pola `scenario_id` (jak dotąd).
  * Zwraca `true`, gdy przebieg zakończył się wynikiem (status DONE bez awarii).
  */
 export async function uruchomObliczenie(
   analysisType: ExecutionAnalysisType,
   solverInput?: Record<string, unknown>,
   onBieg?: (bieg: ExecutionRun) => void,
+  scenarioId?: string | null,
 ): Promise<boolean> {
   const stanAplikacji = useAppStateStore.getState();
   const activeCaseId = stanAplikacji.activeCaseId;
@@ -277,6 +282,7 @@ export async function uruchomObliczenie(
     const createdRun = await przebiegi.createAndExecuteRun(caseIdForRun, {
       analysis_type: analysisType,
       ...(solverInput !== undefined ? { solver_input: solverInput } : {}),
+      ...(scenarioId ? { scenario_id: scenarioId } : {}),
     });
     // Karta DYNAMIKA-W-TLE: bieg zlecony (202, QUEUED) — wołający zna jego identyfikator,
     // żeby móc go anulować w trakcie odpytywania.
@@ -330,7 +336,11 @@ export async function uruchomScenariuszZwarciowy(scenarioId: string): Promise<bo
  * wykonanie → odpytywanie), bo store kończy `isExecutingRun` przed pollingiem.
  */
 export function useUruchomObliczenie(): {
-  uruchom: (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => void;
+  uruchom: (
+    analysisType: ExecutionAnalysisType,
+    solverInput?: Record<string, unknown>,
+    scenarioId?: string | null,
+  ) => void;
   /** Anuluj bieg w toku (karta DYNAMIKA-W-TLE): z kolejki od razu, w toku — w punkcie przerwania. */
   anuluj: () => void;
   wToku: boolean;
@@ -340,15 +350,22 @@ export function useUruchomObliczenie(): {
   const [wToku, setWToku] = useState(false);
   const [biegId, setBiegId] = useState<string | null>(null);
   const uruchom = useCallback(
-    (analysisType: ExecutionAnalysisType, solverInput?: Record<string, unknown>) => {
+    (
+      analysisType: ExecutionAnalysisType,
+      solverInput?: Record<string, unknown>,
+      scenarioId?: string | null,
+    ) => {
       setWToku(true);
       setBiegId(null);
-      void uruchomObliczenie(analysisType, solverInput, (bieg) => setBiegId(bieg.id)).finally(
-        () => {
-          setWToku(false);
-          setBiegId(null);
-        },
-      );
+      void uruchomObliczenie(
+        analysisType,
+        solverInput,
+        (bieg) => setBiegId(bieg.id),
+        scenarioId,
+      ).finally(() => {
+        setWToku(false);
+        setBiegId(null);
+      });
     },
     [],
   );

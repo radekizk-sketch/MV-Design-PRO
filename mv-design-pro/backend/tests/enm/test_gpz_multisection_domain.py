@@ -4,6 +4,7 @@ import pytest
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_stacji
+from enm.topology import sekcje_sn_transformatorow_gpz
 
 from tests.reference_networks.gpz_h5 import ladunek_gpz_110kv
 
@@ -200,7 +201,8 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
 
 
 def test_add_grid_source_sn_manual_hv_short_circuit_anchors_source_on_110kv_bus():
-    """Karta GPZ-H5: każdy tor 110 kV ma WŁASNĄ sekcję szyn 110 kV z równoważnikiem; każdy
+    """Karta GPZ-H5: każdy tor 110 kV ma WŁASNĄ sekcję szyn 110 kV, do której przez wyłącznik
+    pola liniowego dochodzi równoważnik linii (na zacisku pola); każdy
     transformator łączy wskazaną sekcję 110 kV ze wskazaną sekcją SN (bez wspólnej szyny WN
     i bez przydziału z liczby transformatorów)."""
     ladunek = _gpz_110kv(2)
@@ -235,7 +237,19 @@ def test_add_grid_source_sn_manual_hv_short_circuit_anchors_source_on_110kv_bus(
     assert len(sources) == 2
     for sekcja in sekcje_wn:
         source = sources[sekcja["incoming_source_ref"]]
-        assert source["bus_ref"] == sekcja["bus_ref"]
+        # Równoważnik linii stoi na zacisku pola liniowego 110 kV; jedyny łącznik pola
+        # (wyłącznik z gałęzią modelu) łączy zacisk z szyną sekcji — granica zasilania.
+        assert source["bus_ref"] != sekcja["bus_ref"]
+        (wylacznik_linii,) = (
+            g
+            for g in snapshot["branches"]
+            if source["bus_ref"] in (g["from_bus_ref"], g["to_bus_ref"])
+        )
+        assert wylacznik_linii["type"] == "breaker"
+        assert {wylacznik_linii["from_bus_ref"], wylacznik_linii["to_bus_ref"]} == {
+            sekcja["bus_ref"],
+            source["bus_ref"],
+        }
         assert source["source_side"] == "HV_110"
         assert source["voltage_hv_kv"] == 110.0
         assert source["sk3_hv_mva"] == 3000.0
@@ -256,9 +270,16 @@ def test_add_grid_source_sn_manual_hv_short_circuit_anchors_source_on_110kv_bus(
         assert transformer["materialized_params"]["catalog_item_id"] == (
             "tr-wn-sn-110-15-25mva-yd11"
         )
-        # Przydział sekcja 110 kV → sekcja SN niesie WYŁĄCZNIE topologia (szyny zacisków);
-        # meta transformatora nie powiela numeru sekcji (jedno źródło prawdy).
-        assert transformer["lv_bus_ref"] == sections[index]["bus_ref"]
+        # Przydział sekcja 110 kV → sekcja SN niesie WYŁĄCZNIE topologia: zacisk SN
+        # transformatora łączy z szyną sekcji wyłącznik pola SN (gniazdo W, gałąź modelu),
+        # a sekcję czyta jedna funkcja `sekcje_sn_transformatorow_gpz`; meta transformatora
+        # nie powiela numeru sekcji (jedno źródło prawdy).
+        sekcja_sn = sekcje_sn_transformatorow_gpz(EnergyNetworkModel.model_validate(snapshot))[
+            transformer_ref
+        ]
+        assert sekcja_sn.szyna_sekcji == sections[index]["bus_ref"]
+        assert sekcja_sn.wylacznik_ref is not None
+        assert transformer["lv_bus_ref"] != sections[index]["bus_ref"]
         assert "gpz_section_id" not in transformer["meta"]
         assert transformer["meta"]["catalog_role"] == "TRANSFORMATOR_WN_SN"
 
@@ -466,6 +487,12 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
 
     sections = snapshot["substations"][0]["gpz_sections"]
     section_buses = {s["bus_ref"] for s in sections}
+    # Karta GPZ-H5-APARATURA: transformator stoi za wyłącznikiem pola SN (zacisk pola ≠
+    # szyna sekcji) — sekcję zasilaną czyta ta sama funkcja co walidator i ocena stacji.
+    from enm.models import EnergyNetworkModel as _Enm
+    from enm.topology import sekcje_sn_transformatorow_gpz
+
+    sekcje_tr = sekcje_sn_transformatorow_gpz(_Enm.model_validate(snapshot))
 
     for trafo in transformers:
         tc = trafo["tap_changer"]
@@ -480,9 +507,12 @@ def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
         assert tc["delay_seconds"] == 30.0
         assert tc["line_drop_compensation"]["enabled"] is True
         assert tc["catalog_ref"] == "tc_oltc_110sn_19_125"
-        # Each transformer regulates its own SN busbar (section LV bus).
-        assert tc["controlled_bus_ref"] == trafo["lv_bus_ref"]
-        assert trafo["lv_bus_ref"] in section_buses
+        # Each transformer regulates its own SN busbar (the section it feeds).
+        sekcja = sekcje_tr[trafo["ref_id"]]
+        assert sekcja.wylacznik_ref is not None
+        assert tc["controlled_bus_ref"] == sekcja.szyna_sekcji
+        assert sekcja.szyna_sekcji in section_buses
+        assert trafo["lv_bus_ref"] not in section_buses
 
     # Flows end-to-end: ENM -> domain graph -> canonical TapChanger visible.
     from enm.mapping import map_enm_to_network_graph

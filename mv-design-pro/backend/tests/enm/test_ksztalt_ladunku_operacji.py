@@ -265,14 +265,17 @@ def test_blad_programu_w_handlerze_wybucha_zamiast_odpowiedzi_200(
         execute_domain_operation(_pusty(), "add_grid_source_sn", {})
 
 
-def test_blad_walidatora_semantyki_wybucha(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Dawne ciche `semantic_issues = []` meldowało „brak naruszeń semantyki"."""
-    import network_model.validation as walidacja
+def test_blad_walidatora_modelu_wybucha(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Wyjątek walidatora modelu przy budowie gotowości odpowiedzi jest błędem programu
+    i wybucha — nigdy „gotowe, zero uwag" (karta #151). Od karty GPZ-H5-APARATURA to jedyny
+    walidator odpowiedzi operacji: dawny post-hook `semantic_issues` (druga ścieżka
+    walidacji) skasowany, jego warunki są kodami walidatora modelu."""
+    from enm.validator import ENMValidator
 
-    def _zepsuty(enm: dict[str, Any]) -> list[dict[str, Any]]:
+    def _zepsuty(self: ENMValidator, enm: Any) -> Any:
         raise KeyError("brak klucza")
 
-    monkeypatch.setattr(walidacja, "validate_semantic_as_dicts", _zepsuty)
+    monkeypatch.setattr(ENMValidator, "validate", _zepsuty)
     with pytest.raises(KeyError, match="brak klucza"):
         execute_domain_operation(
             _pusty(), "add_grid_source_sn", gpz_payload(voltage_kv=15.0, sk3_mva=250.0)

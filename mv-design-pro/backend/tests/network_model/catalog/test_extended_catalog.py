@@ -56,6 +56,7 @@ class TestCatalogNamespace:
             "KOMPENSATOR_SN",
             "PTPIREE_CERTYFIKAT_GENERATORA",
             "KARTA_WIDMOWA",  # karta AB-H0 §0.7 — karta widmowa urządzenia (osobny rekord)
+            "ELEMENT_POLA_SN",  # karta GPZ-H5-APARATURA — wyposażenie pól SN standardu ENEA
         }
         actual = {ns.value for ns in CatalogNamespace}
         assert actual == expected

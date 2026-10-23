@@ -3,9 +3,17 @@
  * zasilania (GPZ / rozdzielnia SN)". Przebudowa od zera wg audytu eksperckiego
  * `docs/uiux/AUDYT_KREATOR_ZRODLA_2026-07.md` (V12K-043): układ dwukolumnowy
  * (kroki+pola | stała kolumna: podsumowanie backendu + kontrola gotowości),
- * KOMPLET opcji z kontraktu `add_grid_source_sn` (katalog / ręczny ekwiwalent,
- * strona SN/110 kV, Sk″/impedancja, składowa zerowa, uziemienie R/X, per-sekcja,
- * transformatory, aparaty, parametry normowe).
+ * KOMPLET opcji z kontraktu `add_grid_source_sn` dla GPZ z równoważnikiem sieci na
+ * szynach SN (katalog / ręczny ekwiwalent, Sk″/impedancja, składowa zerowa, uziemienie
+ * R/X, per-sekcja, aparaty, parametry normowe).
+ *
+ * GPZ ze stroną 110 kV (tory zasilania 110 kV, transformatory 110/SN w modelu, łącznik
+ * szyn 110 kV, rezerwa — układ H5, ENEA Zeszyt 1 §11.1) buduje szablon stacji z galerii
+ * „Szablony stacji” (`StationTemplateWizard`, dane projektu z podstawą). Karta
+ * GPZ-H5-APARATURA usunęła stąd dawny tryb „równoważnik po stronie 110 kV”: wysyłał
+ * `transformer_count` / `hv_voltage_kv`, które operacja H5 odmawia (`hv_sections` +
+ * `transformers`), więc każdy zapis w tym trybie kończył się odmową. Krok
+ * „Transformatory” mówi to wprost i prowadzi do galerii jednym klikiem.
  *
  * ZERO fizyki w UI: Sk″/Ik″/κ/ip/Ith/Z1/Z0 liczy backend (fetchGridSourcePreview,
  * IEC 60909). ZERO fabrykacji: każda opcja mapuje na realne pole payloadu.
@@ -20,19 +28,12 @@ import {
   fetchMvApparatusTypes,
   fetchSourceSystemTypes,
   fetchSwitchgearFamilies,
-  fetchTapChangers,
-  fetchTransformerTypes,
   getCatalogErrorMessage,
 } from '../../../ui/catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import { rodzinaObslugujeNapiecie } from '../stacja/konfiguratorRozdzielnicy';
-import type {
-  MVApparatusType,
-  SourceSystemCatalogType,
-  TapChangerCatalogType,
-  TransformerType,
-} from '../../../ui/catalog/types';
+import type { MVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { catalogRefFromInput } from '../../../ui/network-build/forms/catalogPayload';
 import type { TypPunktuNeutralnego } from '../../../types/uziemienie';
@@ -75,9 +76,7 @@ import {
   opisUziemienia,
   pasujeRodzajAparatu,
   scalDanePoczatkowe,
-  transformatoryWModelu,
   trybParametruZwarciowego,
-  typyUziemieniaDozwolone,
   walidujFormularz,
   wierszeGotowosci,
   zbudujOznaczenieGpz,
@@ -90,7 +89,8 @@ import {
 } from './zrodloModel';
 import { ZRODLO_STRINGS as T } from './strings';
 import { WykresSztywnosci } from './WykresSztywnosci';
-import { wPasmieWn } from '../../model/pasmaNapieciowe';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
+import { useZadanieZakladkiModelu } from '../../spaces/model/zadanieZakladkiModelu';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'identyfikacja', tytul: T.krokIdentyfikacja },
@@ -116,13 +116,11 @@ function daneZKontekstu(context: Record<string, unknown> | null): Partial<GridSo
   const voltageKv = readNumber(context.sn_voltage_kv) ?? readNumber(context.voltage_kv);
   const catalogRef = catalogRefFromInput(context.catalog_ref) ?? catalogRefFromInput(context.catalog_binding);
   const sectionsCount = readNumber(context.sections_count);
-  const transformerCount = readNumber(context.transformer_count);
   const lineFieldsPerSection = readNumber(context.line_fields_per_section);
   if (sourceName) initial.source_name = sourceName;
   if (voltageKv !== null) initial.sn_voltage_kv = voltageKv;
   if (catalogRef) initial.catalog_ref = catalogRef;
   if (sectionsCount !== null) initial.sections_count = sectionsCount;
-  if (transformerCount !== null) initial.transformer_count = transformerCount;
   if (lineFieldsPerSection !== null) initial.line_fields_per_section = lineFieldsPerSection;
   return initial;
 }
@@ -153,12 +151,6 @@ export function KreatorZrodloZasilania() {
   const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
   const [bladRodzin, setBladRodzin] = useState<string | null>(null);
   const [szablonyPol, setSzablonyPol] = useState<CompleteMvBayTemplateSummary[]>([]);
-
-  const [transformatory, setTransformatory] = useState<TransformerType[]>([]);
-  const [bladTransformatorow, setBladTransformatorow] = useState<string | null>(null);
-
-  const [tapChangery, setTapChangery] = useState<TapChangerCatalogType[]>([]);
-  const [bladTapChangerow, setBladTapChangerow] = useState<string | null>(null);
 
   const [podglad, setPodglad] = useState<GridSourcePreviewResponse | null>(null);
   const [statusPodgladu, setStatusPodgladu] = useState<StatusPobrania>('idle');
@@ -253,94 +245,12 @@ export function KreatorZrodloZasilania() {
     return () => { cancelled = true; };
   }, [dane.manufacturer_ref]);
 
-  // Katalog transformatorów 110/SN.
-  useEffect(() => {
-    let cancelled = false;
-    setBladTransformatorow(null);
-    fetchTransformerTypes()
-      .then((items) => {
-        if (cancelled) return;
-        setTransformatory(Array.isArray(items) ? items : []);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setTransformatory([]);
-        setBladTransformatorow(getCatalogErrorMessage(error));
-      });
-    return () => { cancelled = true; };
-  }, []);
-
-  // Katalog przełączników zaczepów (OLTC/DETC) — V12K-045.
-  useEffect(() => {
-    let cancelled = false;
-    setBladTapChangerow(null);
-    fetchTapChangers()
-      .then((items) => {
-        if (cancelled) return;
-        setTapChangery(Array.isArray(items) ? items : []);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setTapChangery([]);
-        setBladTapChangerow(getCatalogErrorMessage(error));
-      });
-    return () => { cancelled = true; };
-  }, []);
-
   const filtrowaneAparaty = useMemo(
     () => aparaty.filter((item) => pasujeRodzajAparatu(item, dane.gpz_line_field_apparatus_kind)),
     [aparaty, dane.gpz_line_field_apparatus_kind],
   );
 
   const napiecieSn = dane.sn_voltage_kv ?? 0;
-  const filtrowaneTransformatory = useMemo(
-    () => transformatory.filter((t) =>
-      (!napiecieSn || Math.abs(t.voltage_lv_kv - napiecieSn) <= 6)
-      && wPasmieWn(t.voltage_hv_kv)),
-    [transformatory, napiecieSn],
-  );
-  const opcjeTransformatorow = useMemo(
-    () => filtrowaneTransformatory.map((t) => ({
-      id: t.id,
-      etykieta: `${t.name} · ${t.rated_power_mva} MVA · ${t.voltage_hv_kv}/${t.voltage_lv_kv} kV · ${t.vector_group}`,
-    })),
-    [filtrowaneTransformatory],
-  );
-  const wybierzTransformator = useCallback((catalogRef: string | null) => {
-    const t = transformatory.find((item) => item.id === catalogRef) ?? null;
-    setDane((p) => ({
-      ...p,
-      transformer_catalog_ref: catalogRef,
-      transformer_sn_mva: t?.rated_power_mva ?? null,
-      transformer_uk_percent: t?.uk_percent ?? null,
-      transformer_vector_group: t?.vector_group ?? null,
-    }));
-  }, [transformatory]);
-
-  const opcjeTapChangerow = useMemo(
-    () => tapChangery.map((tc) => ({ id: tc.id, etykieta: tc.label_pl })),
-    [tapChangery],
-  );
-  // Wybór przełącznika z katalogu zasiewa nastawy (reużycie TapChangerItem).
-  const wybierzTapChanger = useCallback((catalogRef: string | null) => {
-    const tc = tapChangery.find((item) => item.id === catalogRef) ?? null;
-    setDane((p) => {
-      if (!tc) return { ...p, oltc_tap_changer_catalog_ref: catalogRef };
-      const half = Math.floor((tc.tap_count - 1) / 2);
-      return {
-        ...p,
-        oltc_tap_changer_catalog_ref: catalogRef,
-        oltc_regulation_type: tc.type === 'oltc' ? 'OLTC' : 'DETC',
-        oltc_regulated_winding: tc.regulated_side === 'hv' ? 'HV' : 'LV',
-        oltc_neutral_position: tc.neutral_position,
-        oltc_current_position: tc.neutral_position,
-        oltc_min_position: tc.neutral_position - half,
-        oltc_max_position: tc.neutral_position + half,
-        oltc_step_percent: tc.step_percent,
-        oltc_control_mode: tc.type === 'oltc' && tc.supports_avr ? 'AUTOMATIC' : 'MANUAL',
-      };
-    });
-  }, [tapChangery]);
   // Dobór rodziny do napięcia szyny idzie regułą KATALOGU (wspólny predykat
   // `rodzinaObslugujeNapiecie` — lustro walidatora backendu), a nie dawnym
   // oknem „±6 kV". Tamten próg był zmyślony w UI: przepuszczał rodzinę 12 kV do
@@ -375,36 +285,6 @@ export function KreatorZrodloZasilania() {
       gpz_line_field_apparatus_catalog_ref: filtrowaneAparaty[0].id,
     }));
   }, [filtrowaneAparaty, dane.gpz_line_field_apparatus_catalog_ref]);
-
-  // Karta FAB-G: transformator 110/SN GPZ jest teraz WYMAGANY (zero fabrykacji
-  // mocy/napiecia po stronie backendu) — reuzycie wzorca auto-doboru aparatu
-  // pola powyzej, zeby projektant nie utknal na pustym, obowiazkowym polu.
-  useEffect(() => {
-    if (dane.transformer_catalog_ref || filtrowaneTransformatory.length === 0) return;
-    setDane((p) => (p.transformer_catalog_ref ? p : {
-      ...p,
-      transformer_catalog_ref: filtrowaneTransformatory[0].id,
-      transformer_sn_mva: filtrowaneTransformatory[0].rated_power_mva,
-      transformer_uk_percent: filtrowaneTransformatory[0].uk_percent,
-      transformer_vector_group: filtrowaneTransformatory[0].vector_group,
-    }));
-  }, [filtrowaneTransformatory, dane.transformer_catalog_ref]);
-
-  // Karta GPZ-MODEL: przy równoważniku 110 kV punkt neutralny SN wynika z grupy
-  // połączeń transformatora 110/SN — kreator opisuje go zgodnie z modelem, zamiast
-  // pozwolić na opis, którego zwarcie 1F nie przeczyta (backend: E-W5-01).
-  const dozwoloneUziemienia = useMemo(() => typyUziemieniaDozwolone(dane), [dane]);
-  useEffect(() => {
-    if (dozwoloneUziemienia === null || dozwoloneUziemienia.length !== 1) return;
-    const [jedyny] = dozwoloneUziemienia;
-    setDane((p) => (p.grounding_type === jedyny ? p : { ...p, grounding_type: jedyny }));
-  }, [dozwoloneUziemienia]);
-  const opcjeUziemienia = useMemo(
-    () => (dozwoloneUziemienia === null
-      ? T.typyUziemienia
-      : T.typyUziemienia.filter((o) => dozwoloneUziemienia.includes(o.id as TypPunktuNeutralnego))),
-    [dozwoloneUziemienia],
-  );
 
   const zadaniePodgladu = useMemo(() => zbudujZadaniePodgladu(dane), [dane]);
   useEffect(() => {
@@ -522,9 +402,14 @@ export function KreatorZrodloZasilania() {
   const opcjeAparatow = filtrowaneAparaty.map((item) => ({ id: item.id, etykieta: etykietaAparatu(item) }));
 
   const indeksKroku = Math.max(0, KROKI.findIndex((k) => k.id === krok));
-  const hv = dane.manual_mode && dane.short_circuit_input_side === 'HV_110';
   const impedancja = trybParametruZwarciowego(dane) === 'IMPEDANCE';
-  const zTransformatorami = transformatoryWModelu(dane);
+  // GPZ ze stroną 110 kV → galeria szablonów stacji (przestrzeń „Model sieci”).
+  const otworzSzablonyStacji = useCallback(() => {
+    collapseSurfaceStackTo(null);
+    closeForm();
+    useZadanieZakladkiModelu.getState().zglos('szablony');
+    przejdzDoPrzestrzeni('model');
+  }, [collapseSurfaceStackTo, closeForm]);
 
   const etykietaIk1 = statusPodgladu === 'loading'
     ? 'obliczanie…'
@@ -708,29 +593,14 @@ export function KreatorZrodloZasilania() {
           ) : (
             <KreatorSekcja tytul={T.zwarcieTytul} testid="mvd-kreator-zrodlo-reczny">
               <PolePrzelacznik
-                etykieta={T.stronaTytul}
-                testid="mvd-kreator-zrodlo-strona"
-                wartosc={dane.short_circuit_input_side}
-                opcje={[{ id: 'SN', etykieta: T.stronaSn }, { id: 'HV_110', etykieta: T.stronaHv }]}
-                onZmiana={(id) => zmien('short_circuit_input_side', id as GridSourceFormData['short_circuit_input_side'])}
+                etykieta={T.trybParamTytul}
+                testid="mvd-kreator-zrodlo-trybparam"
+                wartosc={dane.short_circuit_mode}
+                opcje={[{ id: 'SHORT_CIRCUIT_POWER', etykieta: T.trybMoc }, { id: 'IMPEDANCE', etykieta: T.trybImpedancja }]}
+                onZmiana={(id) => zmien('short_circuit_mode', id as GridSourceFormData['short_circuit_mode'])}
               />
-              {!hv ? (
-                <PolePrzelacznik
-                  etykieta={T.trybParamTytul}
-                  testid="mvd-kreator-zrodlo-trybparam"
-                  wartosc={dane.short_circuit_mode}
-                  opcje={[{ id: 'SHORT_CIRCUIT_POWER', etykieta: T.trybMoc }, { id: 'IMPEDANCE', etykieta: T.trybImpedancja }]}
-                  onZmiana={(id) => zmien('short_circuit_mode', id as GridSourceFormData['short_circuit_mode'])}
-                />
-              ) : null}
               <KreatorSiatka kolumny={3}>
-                {hv ? (
-                  <>
-                    <PoleLiczbowe etykieta={T.napiecieHv} jednostka="kV" wartosc={dane.hv_voltage_kv} onZmiana={(v) => zmien('hv_voltage_kv', v)} wymagane blad={bladDlaPola('hv_voltage_kv')} testid="mvd-kreator-zrodlo-hv-napiecie" />
-                    <PoleLiczbowe etykieta={T.sk3Hv} jednostka="MVA" wartosc={dane.sk3_hv_mva} onZmiana={(v) => zmien('sk3_hv_mva', v)} pomoc={T.sk3Pomoc} wymagane blad={bladDlaPola('sk3_hv_mva')} testid="mvd-kreator-zrodlo-sk3hv" />
-                    <PoleLiczbowe etykieta={T.rx} wartosc={dane.rx_ratio} onZmiana={(v) => zmien('rx_ratio', v)} krok={0.01} pomoc={T.rxPomoc} wymagane blad={bladDlaPola('rx_ratio')} testid="mvd-kreator-zrodlo-rx" />
-                  </>
-                ) : impedancja ? (
+                {impedancja ? (
                   <>
                     <PoleLiczbowe etykieta={T.rOhm} jednostka="Ω" wartosc={dane.r_ohm} onZmiana={(v) => zmien('r_ohm', v)} krok={0.01} wymagane blad={bladDlaPola('r_ohm')} testid="mvd-kreator-zrodlo-rohm" />
                     <PoleLiczbowe etykieta={T.xOhm} jednostka="Ω" wartosc={dane.x_ohm} onZmiana={(v) => zmien('x_ohm', v)} krok={0.01} wymagane blad={bladDlaPola('x_ohm')} testid="mvd-kreator-zrodlo-xohm" />
@@ -743,10 +613,10 @@ export function KreatorZrodloZasilania() {
                 )}
               </KreatorSiatka>
 
-              {/* CV-4.3 K7c: napięcie zadane szyny bilansującej — WSPÓLNE dla obu stron
-                  (SN/110 kV) i obu postaci (moc zwarciowa/impedancja); backend czyta je
+              {/* CV-4.3 K7c: napięcie zadane szyny bilansującej — WSPÓLNE dla obu
+                  postaci (moc zwarciowa/impedancja); backend czyta je
                   bezwarunkowo w `_resolve_manual_source_equivalent` (przed rozgałęzieniem
-                  na tryb), więc pole renderuje się niezależnie od `hv`/`impedancja`. Puste
+                  na tryb), więc pole renderuje się niezależnie od `impedancja`. Puste
                   = znamionowe (1,0 p.u.) — zero fabrykacji. */}
               <PoleLiczbowe
                 etykieta={T.uSetPu}
@@ -831,119 +701,19 @@ export function KreatorZrodloZasilania() {
         </>
       ) : null}
 
-      {krok === 'transformatory' && !zTransformatorami ? (
+      {krok === 'transformatory' ? (
         <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
           <KreatorInfo testid="mvd-kreator-zrodlo-transformatory-poza-modelem">{T.transformatoryPozaModelem}</KreatorInfo>
+          <KreatorInfo testid="mvd-kreator-zrodlo-gpz-110-szablon">{T.gpz110Szablon}</KreatorInfo>
+          <button
+            type="button"
+            className="mvd-btn"
+            onClick={otworzSzablonyStacji}
+            data-testid="mvd-kreator-zrodlo-gpz-110-szablon-akcja"
+          >
+            {T.gpz110SzablonAkcja}
+          </button>
         </KreatorSekcja>
-      ) : null}
-
-      {krok === 'transformatory' && zTransformatorami ? (
-        <>
-        <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
-          <KreatorInfo>{T.transformatoryOpis}</KreatorInfo>
-          <PoleWyboru
-            etykieta={T.liczbaTrafo}
-            wartosc={String(dane.transformer_count)}
-            onZmiana={(v) => zmien('transformer_count', Number(v))}
-            opcje={T.liczby1do4}
-            blad={bladDlaPola('transformer_count')}
-            testid="mvd-kreator-zrodlo-liczba-trafo"
-          />
-          <PoleKatalogu
-            etykieta={T.transformatorKatalog}
-            wartosc={dane.transformer_catalog_ref}
-            onZmiana={wybierzTransformator}
-            opcje={opcjeTransformatorow}
-            status={bladTransformatorow ? 'error' : 'ready'}
-            placeholder={T.transformatorPlaceholder}
-            komunikatBledu={bladTransformatorow ?? T.transformatorBlad}
-            wymagane
-            blad={bladDlaPola('transformer_catalog_ref')}
-            testid="mvd-kreator-zrodlo-transformator-katalog"
-          />
-          {dane.transformer_catalog_ref ? (
-            <KreatorSiatka kolumny={3}>
-              <RzadWartosci etykieta={T.transformatorSn} wartosc={dane.transformer_sn_mva != null ? `${dane.transformer_sn_mva} MVA` : '—'} />
-              <RzadWartosci etykieta={T.transformatorUk} wartosc={dane.transformer_uk_percent != null ? `${dane.transformer_uk_percent} %` : '—'} />
-              <RzadWartosci etykieta={T.transformatorGrupa} wartosc={dane.transformer_vector_group ?? '—'} />
-            </KreatorSiatka>
-          ) : null}
-        </KreatorSekcja>
-
-        <KreatorSekcja tytul={T.oltcTytul} testid="mvd-kreator-zrodlo-oltc">
-          <KreatorInfo>{T.oltcOpis}</KreatorInfo>
-          <KreatorSiatka kolumny={2}>
-            <PoleWyboru
-              etykieta={T.oltcTyp}
-              wartosc={dane.oltc_regulation_type}
-              onZmiana={(v) => zmien('oltc_regulation_type', v as GridSourceFormData['oltc_regulation_type'])}
-              opcje={T.oltcTypy}
-              testid="mvd-kreator-zrodlo-oltc-typ"
-            />
-            {dane.oltc_regulation_type !== 'NONE' ? (
-              <PoleKatalogu
-                etykieta={T.oltcKatalog}
-                wartosc={dane.oltc_tap_changer_catalog_ref}
-                onZmiana={wybierzTapChanger}
-                opcje={opcjeTapChangerow}
-                status={bladTapChangerow ? 'error' : 'ready'}
-                placeholder={T.oltcKatalogPlaceholder}
-                komunikatBledu={bladTapChangerow ?? T.oltcKatalogBlad}
-                testid="mvd-kreator-zrodlo-oltc-katalog"
-              />
-            ) : null}
-          </KreatorSiatka>
-
-          {dane.oltc_regulation_type !== 'NONE' ? (
-            <>
-              <KreatorSiatka kolumny={3}>
-                <PoleWyboru
-                  etykieta={T.oltcUzwojenie}
-                  wartosc={dane.oltc_regulated_winding}
-                  onZmiana={(v) => zmien('oltc_regulated_winding', v as GridSourceFormData['oltc_regulated_winding'])}
-                  opcje={T.oltcUzwojenia}
-                  testid="mvd-kreator-zrodlo-oltc-uzwojenie"
-                />
-                <PoleLiczbowe etykieta={T.oltcKrok} jednostka="%" wartosc={dane.oltc_step_percent} onZmiana={(v) => zmien('oltc_step_percent', v)} krok={0.05} wymagane blad={bladDlaPola('oltc_step_percent')} testid="mvd-kreator-zrodlo-oltc-krok" />
-                <PoleLiczbowe etykieta={T.oltcNeutral} wartosc={dane.oltc_neutral_position} onZmiana={(v) => zmien('oltc_neutral_position', v)} blad={bladDlaPola('oltc_neutral_position')} testid="mvd-kreator-zrodlo-oltc-neutral" />
-                <PoleLiczbowe etykieta={T.oltcMin} wartosc={dane.oltc_min_position} onZmiana={(v) => zmien('oltc_min_position', v)} blad={bladDlaPola('oltc_min_position')} testid="mvd-kreator-zrodlo-oltc-min" />
-                <PoleLiczbowe etykieta={T.oltcBiezaca} wartosc={dane.oltc_current_position} onZmiana={(v) => zmien('oltc_current_position', v)} blad={bladDlaPola('oltc_current_position')} testid="mvd-kreator-zrodlo-oltc-biezaca" />
-                <PoleLiczbowe etykieta={T.oltcMax} wartosc={dane.oltc_max_position} onZmiana={(v) => zmien('oltc_max_position', v)} blad={bladDlaPola('oltc_max_position')} testid="mvd-kreator-zrodlo-oltc-max" />
-              </KreatorSiatka>
-
-              {dane.oltc_regulation_type === 'OLTC' ? (
-                <>
-                  <PoleWyboru
-                    etykieta={T.oltcTryb}
-                    wartosc={dane.oltc_control_mode}
-                    onZmiana={(v) => zmien('oltc_control_mode', v as GridSourceFormData['oltc_control_mode'])}
-                    opcje={T.oltcTryby}
-                    pomoc={T.oltcTrybAutoInfo}
-                    testid="mvd-kreator-zrodlo-oltc-tryb"
-                  />
-                  <KreatorSiatka kolumny={3}>
-                    <PoleLiczbowe etykieta={T.oltcSetpoint} jednostka="kV" wartosc={dane.oltc_voltage_setpoint_kv} onZmiana={(v) => zmien('oltc_voltage_setpoint_kv', v)} krok={0.1} wymagane blad={bladDlaPola('oltc_voltage_setpoint_kv')} testid="mvd-kreator-zrodlo-oltc-setpoint" />
-                    <PoleLiczbowe etykieta={T.oltcDeadband} jednostka="kV" wartosc={dane.oltc_deadband_kv} onZmiana={(v) => zmien('oltc_deadband_kv', v)} krok={0.05} blad={bladDlaPola('oltc_deadband_kv')} testid="mvd-kreator-zrodlo-oltc-deadband" />
-                    <PoleLiczbowe etykieta={T.oltcOpoznienie} jednostka="s" wartosc={dane.oltc_delay_seconds} onZmiana={(v) => zmien('oltc_delay_seconds', v)} krok={1} testid="mvd-kreator-zrodlo-oltc-opoznienie" />
-                  </KreatorSiatka>
-                  <PolePrzelacznikBinarny
-                    etykieta={T.oltcLdc}
-                    wlaczone={dane.oltc_ldc_enabled}
-                    onZmiana={(v) => zmien('oltc_ldc_enabled', v)}
-                    testid="mvd-kreator-zrodlo-oltc-ldc"
-                  />
-                  {dane.oltc_ldc_enabled ? (
-                    <KreatorSiatka kolumny={2}>
-                      <PoleLiczbowe etykieta={T.oltcLdcR} jednostka="Ω" wartosc={dane.oltc_ldc_r_ohm} onZmiana={(v) => zmien('oltc_ldc_r_ohm', v)} krok={0.1} blad={bladDlaPola('oltc_ldc_r_ohm')} testid="mvd-kreator-zrodlo-oltc-ldc-r" />
-                      <PoleLiczbowe etykieta={T.oltcLdcX} jednostka="Ω" wartosc={dane.oltc_ldc_x_ohm} onZmiana={(v) => zmien('oltc_ldc_x_ohm', v)} krok={0.1} blad={bladDlaPola('oltc_ldc_x_ohm')} testid="mvd-kreator-zrodlo-oltc-ldc-x" />
-                    </KreatorSiatka>
-                  ) : null}
-                </>
-              ) : null}
-            </>
-          ) : null}
-        </KreatorSekcja>
-        </>
       ) : null}
 
       {krok === 'rozdzielnia' ? (
@@ -961,17 +731,12 @@ export function KreatorZrodloZasilania() {
               etykieta={T.uziemienie}
               wartosc={dane.grounding_type}
               onZmiana={(v) => zmien('grounding_type', v as TypPunktuNeutralnego)}
-              opcje={opcjeUziemienia}
+              opcje={T.typyUziemienia}
               pomoc={opisUziemienia(dane.grounding_type)}
               blad={bladDlaPola('grounding_type')}
               testid="mvd-kreator-zrodlo-uziemienie"
             />
           </KreatorSiatka>
-          {dozwoloneUziemienia !== null ? (
-            <KreatorInfo testid="mvd-kreator-zrodlo-uziemienie-z-transformatora">
-              {T.uziemienieZTransformatora(dane.transformer_vector_group)}
-            </KreatorInfo>
-          ) : null}
           {(dane.grounding_type === 'resistor_grounded' || dane.grounding_type === 'petersen_coil') ? (
             <PoleLiczbowe
               etykieta={dane.grounding_type === 'petersen_coil' ? T.uziemienieX : T.uziemienieR}
@@ -1092,7 +857,7 @@ export function KreatorZrodloZasilania() {
           <RzadWartosci etykieta={T.liczbaSekcji} wartosc={String(dane.sections_count)} />
           <RzadWartosci
             etykieta={T.liczbaTrafo}
-            wartosc={zTransformatorami ? String(dane.transformer_count) : T.transformatoryPozaModelemKrotko}
+            wartosc={T.transformatoryPozaModelemKrotko}
             testid="mvd-kreator-zrodlo-przeglad-trafo"
           />
           <RzadWartosci etykieta={T.uziemienie} wartosc={T.typyUziemienia.find((o) => o.id === dane.grounding_type)?.etykieta ?? dane.grounding_type} />

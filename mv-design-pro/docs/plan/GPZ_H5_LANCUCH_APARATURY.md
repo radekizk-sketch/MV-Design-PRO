@@ -104,3 +104,113 @@ Uwaga: `enm/hash.py` (odcisk modelu) i `schemas/openapi_snapshot.json` — nowe 
 4. Dwa źródła „aparat w polu”: aparaty_pol.py:118-142 (gałęzie) vs `Bay.primary_devices` (models.py:1366); CT: `Measurement` (models.py:854) vs `BayPrimaryDevice(kind=CT)`.
 5. Szablony ról EARTHING/CAPACITOR i pól 110 kV nie istnieją: bay_templates.py:211-218, 338-352; pola funkcyjne bez aparatów domain_operations.py:5651-5668.
 6. Kreator źródła niezgodny z H5: zrodloModel.ts:743-760 vs domain_operations.py:778-793; 1×3 osiągalny: zrodloModel.ts:36, domain_operations.py:4346-4363.
+
+## 7. STAN PO KARCIE GPZ-H5-APARATURA (2026-10-22)
+
+Sekcje 1–6 i „Najważniejsze luki” są inwentarzem WEJŚCIOWYM karty (stan bazy `88557ceb7`). Stan
+po karcie:
+
+**Rozstrzygnięcia.** A1: `DS_ES` = odłącznik trójpołożeniowy (zamknięty / otwarty / uziemiony) —
+interpretacja rysunku ENEA (odłącznik z trzpieniem uziemiającym); symbolu PN-EN 60617 nie
+potwierdzono (brak dostępu do normy). A3: układ rozdzielnicy SN wg zał. Z.2, wyposażenie
+i kolejność gniazd wg rysunków pól (Z.7, Z.10–Z.17) z torem elektrycznym. Decyzja właściciela
+2026-10-22: strona 110 kV jest WYŁĄCZNIE funkcjonalną granicą zasilania sieci SN — tory L1 i L2,
+dwa pola zasilające jako przyłącza z łącznikiem pola (gałąź modelu, stan wchodzi do obliczeń
+przez scenariusz łączeniowy), transformatory 110/SN i łącznik szyn 110 kV ze stanem; bez szablonów
+gniazd pól 110 kV, pozycji wymagań ENEA 110 kV, katalogu aparatury 110 kV, statusu „wymagane
+standardem” i oceny wytrzymałości aparatury 110 kV (A2 bezprzedmiotowe). Propozycja aparatów pól
+110 kV (`hv_bay_apparatus_proposal`, `meta.apparatus_proposal`) skasowana bez zastępstwa.
+
+**Jeden predykat granicy:** `enm.sklad_pola.pole_granicy_wn` (pasmo WN, Uₙ ≥ 110 kV; lustro frontu
+`ui/shared/polaStacji.ts::czyPoleWn`). Czytają go: status składu `BRAK_TYPU_GRANICA_WN` (łącznik pola
+110 kV „brak typu”, bez „?”), odmowa operacji wyposażenia pola `bay_equipment.bay_hv_boundary`
+(każdy tryb), pominięcie pól 110 kV w analizie wytrzymałości aparatury, odmowa przypisania
+katalogu łącznikowi strony 110 kV `catalog.switch_hv_boundary` (operacja przypisania i zmiana
+parametrów) oraz helper `domain_operations._odmowa_granicy_wn` — kody `{prefiks}.bus_hv_boundary`:
+`ct`, `vt`, `sn` (pole SN i pole z katalogu rozdzielnic), `spd` (ogranicznik), `station.append` (stacja na końcu ciągu), `station.insert` (stacja w odcinku),
+`switch` (łącznik sekcyjny), `branch_point` (ZKSN, słup rozgałęźny). Testy:
+`backend/tests/enm/test_granica_zasilania_110kv.py` (iloczyn operacja × strona 110 kV / para 15 kV).
+
+**Tor zasilania 110 kV:** jedno źródło `enm.topology.tory_zasilania_sekcji_wn_gpz`; rola łącznika
+`LACZNIK_POLA_ZASILAJACEGO_WN` (`enm.topology.role_lacznikow`, lustro `ui/shared/stanLacznika.ts`,
+tabela parytetu `backend/schemas/role_lacznikow_parytet_v1.json`); I001 dla normalnie otwartego
+łącznika pola liniowego 110 kV („tor zasilania 110 kV odstawiony, to nie jest punkt podziału”);
+W063 sprawdza tor pod napięciem w stanie normalnym; E065 wskazuje każdy otwarty łącznik na
+granicy odciętej sekcji (sprzęgło, łącznik pola liniowego 110 kV, łącznik pola TR).
+
+**Typ pola SN → gniazda → podstawa** (`network_model/catalog/gniazda_pol_enea.py`; „[poz. wymagań]”
+— gniazdo z pozycją wymagań standardu `mv_wymagania_enea_catalog.POZYCJE_WYMAGAN_GNIAZD`):
+
+| Szablon — nazwa | Role pola | Gniazda (rodzaj) | Podstawa |
+|---|---|---|---|
+| ENEA_SN_LS — Pole sprzęgła SN — łącznik szyn w jednej celi | COUPLER | VI_A (VOLTAGE_INDICATOR) [poz. wymagań], DS_ES_A (DS_ES), W (CB), CT (CT), DS_ES_B (DS_ES), VI_B (VOLTAGE_INDICATOR) [poz. wymagań] | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §13 (łącznik szyn w jednej celce), zał. Z.12 |
+| ENEA_SN_LS_CELA_SPRZEGLA — Pole sprzęgła SN — cela przy sekcji A, bez wyłącznika | COUPLER | VI_SZ (VOLTAGE_INDICATOR) [poz. wymagań], DS_ES (DS_ES) | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §13 (łącznik szyn w dwóch celkach), zał. Z.2 (pola 1/2), zał. Z.12 |
+| ENEA_SN_LS_CELA_WYLACZNIKOWA — Pole sprzęgła SN — cela wyłącznikowa przy sekcji B | COUPLER | VI_SZ (VOLTAGE_INDICATOR) [poz. wymagań], DS_ES (DS_ES), CT (CT), W (CB) | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §13 (łącznik szyn w dwóch celkach), zał. Z.2 (pola 1/2), zał. Z.12 |
+| ENEA_SN_BKR — Pole baterii kondensatorów SN — baterie równoległe (BKR) | CAPACITOR | DS_ES (DS_ES) [poz. wymagań], W (CB), CT (CT), VI_KB (VOLTAGE_INDICATOR) [poz. wymagań], OGR (SURGE_ARRESTER), VT_L1L2 (VT), VT_L2L3 (VT), BK (CAPACITOR_BANK) [poz. wymagań], CT_N (CT) | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §17, zał. Z.2 (pola 3/4), zał. Z.16 |
+| ENEA_SN_ZU_DLAWIK — Pole zespołu uziemiającego SN — dławik z regulacją nadążną (sieć skompensowana) | EARTHING | DS_ES (DS_ES) [poz. wymagań], W (CB), CT (CT), OGR (SURGE_ARRESTER), TU (EARTHING_TRANSFORMER) [poz. wymagań], N_OGR (SURGE_ARRESTER), DS_DL (DS), DL (NEUTRAL_REACTOR) [poz. wymagań], CT_DL (CT), AWSC (NEUTRAL_RESISTOR) [poz. wymagań] | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §16 (sieć kablowo-napowietrzna: punkt neutralny przez dławik), zał. Z.13 |
+| ENEA_SN_ZU_DLAWIK_REZYSTOR — Pole zespołu uziemiającego SN — układ równoległy dławik ‖ rezystor | EARTHING | DS_ES (DS_ES) [poz. wymagań], W (CB), CT (CT), OGR (SURGE_ARRESTER), TU (EARTHING_TRANSFORMER) [poz. wymagań], N_OGR (SURGE_ARRESTER), DS_DL (DS), DL (NEUTRAL_REACTOR) [poz. wymagań], DS_RZ (DS), RZ (NEUTRAL_RESISTOR) [poz. wymagań], CT_RZ (CT) | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §16 (uzasadnione przypadki: układ równoległy rezystor–dławik), zał. Z.14 |
+| ENEA_SN_ZU_REZYSTOR — Pole zespołu uziemiającego SN — rezystor (sieć kablowa) | EARTHING | DS_ES (DS_ES) [poz. wymagań], W (CB), CT (CT), OGR (SURGE_ARRESTER), TU (EARTHING_TRANSFORMER) [poz. wymagań], N_OGR (SURGE_ARRESTER), DS_RZ (DS), RZ (NEUTRAL_RESISTOR) [poz. wymagań], CT_RZ (CT) | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §16 (sieć kablowa: punkt neutralny przez rezystor), zał. Z.15 |
+| ENEA_SN_TR — Pole transformatorowe SN | TR | VI_SZ (VOLTAGE_INDICATOR) [poz. wymagań], DS_ES (DS_ES), W (CB), ES (ES) [poz. wymagań], VT (VT), CT (CT), VI_KB (VOLTAGE_INDICATOR) [poz. wymagań], OGR (SURGE_ARRESTER) | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §13, zał. Z.2 (pola 7/8), zał. Z.7 |
+| ENEA_SN_POMIAR — Pole pomiarowe SN — pomiar napięcia szyn | MEASUREMENT | DS_ES (DS_ES) [poz. wymagań], VI (VOLTAGE_INDICATOR) [poz. wymagań], VT (VT) | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), §13 (pole pomiaru napięcia w każdej sekcji), zał. Z.2 (pola 9/10), zał. Z.17 |
+| ENEA_SN_LINIA_POMIAR_ROZLICZENIOWY — Pole liniowe wyjściowe SN z pomiarem energii rozliczeniowym (LINIA*) | OUT/FEEDER | VI_SZ (VOLTAGE_INDICATOR) [poz. wymagań], DS_ES (DS_ES) [poz. wymagań], W (CB), ES (ES) [poz. wymagań], VT (VT), CT (CT), VI_KB (VOLTAGE_INDICATOR) [poz. wymagań], CT_F (CT) [poz. wymagań] | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), zał. Z.2 (pola 11/12), zał. Z.11 |
+| ENEA_SN_LINIA_POMIAR_NAPIECIA — Pole liniowe wyjściowe SN z pomiarem napięcia zwrotnego (LINIA**) | OUT/FEEDER | VI_SZ (VOLTAGE_INDICATOR) [poz. wymagań], DS_ES (DS_ES) [poz. wymagań], W (CB), ES (ES) [poz. wymagań], VT (VT), CT (CT), VI_KB (VOLTAGE_INDICATOR) [poz. wymagań], CT_F (CT) [poz. wymagań] | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), zał. Z.2 (pola 13/14), zał. Z.11.1 |
+| ENEA_SN_LINIA — Pole liniowe wyjściowe SN | OUT/FEEDER | DS_ES (DS_ES) [poz. wymagań], W (CB), ES (ES) [poz. wymagań], CT (CT), VI_KB (VOLTAGE_INDICATOR) [poz. wymagań], CT_F (CT) [poz. wymagań] | ENEA Operator, Stacje elektroenergetyczne 110 kV, Zeszyt 1 — stacje dwutransformatorowe 110 kV/SN (wersja 02.2023-2), zał. Z.2 (pola 15–32), zał. Z.10 |
+
+Pole 110 kV (pole liniowe L1/L2, pole łącznika szyn 110 kV): jeden wiersz składu — łącznik
+pola z gałęzią modelu, „brak typu — łącznik pola 110 kV (granica zasilania sieci SN)”; pole
+transformatora 110 kV: jeden wiersz transformatora z katalogu. Brak szablonu i gniazd.
+
+**Świadomie poza bramą granicy:** odbiór i źródło na szynie 110 kV (`add_load_sn`,
+`add_generator_sn`, `add_converter_source`) — to elementy sieci, nie aparatura pola SN (sieci
+odniesienia WN mają odbiory na szynach WN); transformator SN/nN na szynie 110 kV
+(`add_transformer_sn_nn`) i zabezpieczenie (`add_relay`) — odmowa przechodnia (brak wolnego pola
+TR / brak przekładnika na stronie 110 kV); bateria SN (`add_shunt_compensator_sn`) — odmowa
+`shunt.voltage_mismatch`; odcinek magistrali i odgałęzienia z szyny/zacisku 110 kV — odmowa
+reguły punktu startu (`trunk.source_*`, `branch_connection.source_not_branch_capable`, test
+przypięty); odcinek linii/kabla (`continue_trunk_segment_sn`, `connect_secondary_ring_sn`) — element
+sieci dowolnego napięcia: import XLSX i kompilator sieci odniesienia (`enm/kompilator_grafu.py`)
+budują nimi linie sieci WN (rejestr złotych sieci, np. IEEE 4-bus, czerwienieje przy bramie na
+powiązaniu pierścieniowym — zmierzone).
+
+**Katalog — odcisk, rodzaje, propozycje.** Odcisk katalogu zmienia się WYŁĄCZNIE przez dane karty
+(dowód liść po liściu przypięty w `tests/network_model/catalog/test_odcisk_katalogu_karty_widmowe.py`,
+`ODCISK_PO_GPZ_H5`): nowa przestrzeń `element_pola_types` (7 pozycji), +1 CT (Ferranti 100/1),
++4 pozycje aparatury łączeniowej (odłączniki trójpołożeniowe 630/1250/2000 A, uziemnik pola SN)
+w `switch_equipment_types` i `mv_apparatus_types` oraz klucz `u_m_kv` w 48 istniejących pozycjach
+projekcji aparatury SN; puste nowe pola (`icw_duration_s`, `naped`, `odmiana`) są poza odciskiem
+(`network_model/catalog/odcisk.py::_POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE`). Rodzaj
+`DISCONNECTOR_EARTH_SWITCH` należy do rodzajów bez zdolności wyłączania zwarć
+(`application/equipment_proof/catalog_bridge.py::RODZAJE_SN_BEZ_ZDOLNOSCI_WYLACZANIA`, I_cu =
+nie dotyczy). Uziemnik (`mv_switch_catalog.RODZAJE_BEZ_PRADU_CIAGLEGO`) w propozycjach aparatury
+(`POST /api/catalog/auto-populate/switch`) ma „prąd ciągły nie dotyczy (uziemnik)”, nie „0 A”,
+i nie przechodzi filtru prądu roboczego; pozycja bez producenta jest „bez producenta”, nie
+„(None)”; napięcie 17,5 kV nie jest obcinane do „17 kV” (iloczyn rodzaj × producent × filtr prądu
+w `tests/api/test_catalog_auto_populate.py`). Rodzina `field-element` jest objęta miernikiem
+gotowości katalogów (`backend/scripts/inwentarz_katalogow.py`, tabela w
+`docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md`).
+
+**Fikstury i złote skróty — przyczyny zmian (pomiar 2026-10-23, baza `88557ceb7` wobec karty).**
+(1) Odcisk katalogu `8c015912…` → `8a27a1a0…` wyłącznie przez dane karty (akapit wyżej) — stąd
+`catalog_fingerprint` i skróty nad nim (`semantic_fingerprint` porównania biegów) w fiksturach
+harnessu. (2) Przyczyna nieraportowalności wiersza zwarcia z topologii zamiast ogólnego „wynik
+niefizyczny” (`enm/canonical_analysis.py`, `POWOD_WEZEL_BEZ_DROGI_ZEROWEJ`,
+`POWOD_WEZEL_BEZ_ODNIESIENIA`) oraz addytywne pola wiersza `flags_pl`, `non_physical_reason`,
+`non_physical_fields`: w parytecie assemblera (`tests/golden/parytet_assemblera`) poza siecią
+substratu JEDYNE zmiany szkieletu to kody ograniczeń raportowych (902 × „bez drogi składowej
+zerowej”, 340 × „bez odniesienia”, 20 list biegu z dwoma przyczynami zamiast jednej ogólnej),
+zero zmian liczb ponad tolerancję parytetu. (3) Substrat 52 stacji
+(`tests/reference_networks/sld_substrate_52s.py`) przechodzi na układ H5 z dwoma torami 110 kV
+(jeden tor jest odmawiany kodem `source.invalid_hv_sections_count`, ENEA Zeszyt 1 §11.1):
+4 nowe węzły (zaciski pól liniowych L1/L2, szyna sekcji 110 kV S2, zacisk pola SN TR1)
+i 4 nowe łączniki (wyłączniki pól liniowych, łącznik szyn 110 kV normalnie otwarty, wyłącznik
+pola SN TR1); ziarno identyfikatorów GPZ obejmuje strukturę 110 kV, więc identyfikatory
+elementów substratu są nowe, a sieć 53 stacji (`sldNetwork53.ts`) jest TA SAMA co do nazw stacji,
+krawędzi i punktu podziału (sprawdzone porównaniem po nazwach; zmienia się tylko numeracja
+S01…S53 wynikająca z porządku identyfikatorów). Rozpływ substratu zmienia się o straty łączników
+zamkniętych (R = X = 1·10⁻⁴ Ω na własnym poziomie napięcia, rdzeń NR, B-01): moc bilansująca
+−2,69848 → −2,69847 MW; nowy punkt zwarcia (szyna 110 kV S2) i druga wyspa rozpływu (sekcja
+110 kV S2 przy otwartym łączniku szyn). (4) Szum numeryczny między maszynami (np. część
+rzeczywista Z₀ złotej sieci 5,1·10⁻¹³ wobec 1,27·10⁻⁹ Ω przy urojonej −10 162,6 Ω —
+`tests/ci/tolerancja_fikstur.py::PASMO_ZERA_FIXTUR`) wchodzi do pliku fikstury harnessu tylko
+wtedy, gdy plik zmienia się z przyczyn (1)–(3) — kotwica w szumie działa na cały plik; w złotych
+skrótach parytetu liczby różniące się wyłącznie w tolerancji zostały zakotwiczone na bazie.

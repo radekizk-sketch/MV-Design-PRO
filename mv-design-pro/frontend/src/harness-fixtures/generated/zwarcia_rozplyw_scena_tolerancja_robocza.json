@@ -22,7 +22,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 1.53761679266e-18,
+        "i_ka": 2.4892878141e-18,
         "direction": "brak"
       },
       {
@@ -44,7 +44,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 1.80468203243e-18,
+        "i_ka": 5.36421761928e-19,
         "direction": "brak"
       },
       {
@@ -55,7 +55,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 1.4595910161e-16,
+        "i_ka": 6.95236712289e-17,
         "direction": "brak"
       },
       {
@@ -192,8 +192,8 @@
         "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0315238-j0.13383| * 8953.06",
         "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0315238 - j 0.13383\\right)\\right| \\cdot 8953.06",
         "result": {
-          "fraction": 1.63027024659e-17,
-          "i_contrib_a": 1.4595910161e-13,
+          "fraction": 7.76535148466e-18,
+          "i_contrib_a": 6.95236712289e-14,
           "direction": "to_from"
         },
         "notes": null
@@ -274,7 +274,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+        "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -342,7 +342,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 1.37524004808e-17,
+        "i_ka": 1.66772352318e-18,
         "direction": "brak"
       },
       {
@@ -479,9 +479,9 @@
         "substitution": "|(-0.00406752-j0.0383379 - -0.00406752-j0.0383379) * 0.0315238-j0.13383| * 13984.5",
         "substitution_latex": "\\left| \\left(\\left(-0.00406752 - j 0.0383379\\right) - \\left(-0.00406752 - j 0.0383379\\right)\\right) \\cdot \\left(0.0315238 - j 0.13383\\right)\\right| \\cdot 13984.5",
         "result": {
-          "fraction": 9.83405529973e-19,
-          "i_contrib_a": 1.37524004808e-14,
-          "direction": "to_from"
+          "fraction": 1.19255437438e-19,
+          "i_contrib_a": 1.66772352318e-15,
+          "direction": "from_to"
         },
         "notes": null
       },
@@ -561,7 +561,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+        "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -815,7 +815,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+        "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -850,7 +850,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_sn_c",
         "to_node_name": "Stacja C SN",
-        "i_ka": 1.53761679266e-18,
+        "i_ka": 2.4892878141e-18,
         "direction": "brak"
       },
       {
@@ -872,7 +872,7 @@
         "from_node_name": "GPZ 110 kV",
         "to_node_id": "bus_sn_main",
         "to_node_name": "Szyna SN",
-        "i_ka": 1.80468203243e-18,
+        "i_ka": 5.36421761928e-19,
         "direction": "brak"
       },
       {
@@ -883,7 +883,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 1.4595910161e-16,
+        "i_ka": 6.95236712289e-17,
         "direction": "brak"
       },
       {
@@ -1020,8 +1020,8 @@
         "substitution": "|(-0.0240621-j0.472287 - -0.0240621-j0.472287) * 0.0315238-j0.13383| * 8953.06",
         "substitution_latex": "\\left| \\left(\\left(-0.0240621 - j 0.472287\\right) - \\left(-0.0240621 - j 0.472287\\right)\\right) \\cdot \\left(0.0315238 - j 0.13383\\right)\\right| \\cdot 8953.06",
         "result": {
-          "fraction": 1.63027024659e-17,
-          "i_contrib_a": 1.4595910161e-13,
+          "fraction": 7.76535148466e-18,
+          "i_contrib_a": 6.95236712289e-14,
           "direction": "to_from"
         },
         "notes": null
@@ -1102,7 +1102,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+        "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
@@ -1170,7 +1170,7 @@
         "from_node_name": "Stacja B SN",
         "to_node_id": "bus_nn",
         "to_node_name": "Szyna nN",
-        "i_ka": 4.39191247301e-17,
+        "i_ka": 4.04476794007e-17,
         "direction": "brak"
       },
       {
@@ -1307,9 +1307,9 @@
         "substitution": "|(0.00352986-j0.436354 - 0.00352986-j0.436354) * 0.0315238-j0.13383| * 4603.47",
         "substitution_latex": "\\left| \\left(\\left(0.00352986 - j 0.436354\\right) - \\left(0.00352986 - j 0.436354\\right)\\right) \\cdot \\left(0.0315238 - j 0.13383\\right)\\right| \\cdot 4603.47",
         "result": {
-          "fraction": 9.54043499505e-18,
-          "i_contrib_a": 4.39191247301e-14,
-          "direction": "to_from"
+          "fraction": 8.78634213214e-18,
+          "i_contrib_a": 4.04476794007e-14,
+          "direction": "from_to"
         },
         "notes": null
       },
@@ -1389,7 +1389,7 @@
         "catalog_materialization_status": "not_materialized",
         "catalog_materialization_contract_version": "catalog_materialization_v1",
         "catalog_schema_version": null,
-        "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+        "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
         "model_revision": 1,
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",

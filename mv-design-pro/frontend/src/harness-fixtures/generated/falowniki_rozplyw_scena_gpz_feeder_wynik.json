@@ -1,26 +1,26 @@
 {
   "run_id": "run-sc-scena-rozplyw-gpz-feeder",
   "fault_type": "3F",
-  "fault_element_ref": "stn/24c226faa61d1fc38c2277dd93d9de9c/station",
+  "fault_element_ref": "stn/a6b1515aef96aadc13e83ee9ed8e3c76/station",
   "flows": [
     {
-      "branch_id": "seg/2dc43318d14e55486ccca0a3a3cd0f4f/segment_L",
+      "branch_id": "seg/52968739e414414c3532c502d1b3f939/segment_L",
       "branch_name": "F1 (1)",
       "source_id": "THEVENIN_GRID",
-      "from_node_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+      "from_node_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
       "from_node_name": "Szyna GPZ S1 15 kV",
-      "to_node_id": "stn/24c226faa61d1fc38c2277dd93d9de9c/sn_field_terminal/000",
+      "to_node_id": "stn/a6b1515aef96aadc13e83ee9ed8e3c76/sn_field_terminal/000",
       "to_node_name": "Zacisk techniczny pola SN 1",
       "i_ka": 8.6419740689,
       "direction": "from_to"
     },
     {
-      "branch_id": "seg/6faba1e8d1e1852c956428a2f526a7d3/branch_segment_L",
+      "branch_id": "seg/70cf6374c35d35a731d518ef8176955c/branch_segment_L",
       "branch_name": "Odgałęzienie (1)",
       "source_id": "gen_pv_s02",
-      "from_node_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+      "from_node_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
       "from_node_name": "Szyna GPZ S1 15 kV",
-      "to_node_id": "stn/ed2ea901eb81393c8ddbe0023f54676b/sn_field_terminal/000",
+      "to_node_id": "stn/c38894f130080d2ffa1367b5181d3cbf/sn_field_terminal/000",
       "to_node_name": "Zacisk techniczny pola SN 1",
       "i_ka": 0.0161785003478,
       "direction": "to_from"

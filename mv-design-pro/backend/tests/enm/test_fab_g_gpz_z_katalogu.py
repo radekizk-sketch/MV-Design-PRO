@@ -56,22 +56,26 @@ def _base_payload(
     żądanie jest odmawiane). Kontrakt karty GPZ-H5: równoważnik 110 kV opisuje tor zasilania
     sekcji szyn 110 kV (`hv_sections[].supply`), a typ transformatora (`transformer_*` ze
     `wpis`) należy do JAWNEGO wpisu `transformers[]` — po jednym transformatorze na sekcję
-    SN, wszystkie z jednej sekcji 110 kV."""
+    SN; układ H5 (ENEA Zeszyt 1 §11.1): dwa tory 110 kV, transformator n w sekcji 110 kV n,
+    jedno pole liniowe na sekcję SN (dana projektu, zał. Z.2)."""
     payload: dict[str, object] = {
         "voltage_kv": voltage_kv,
         "sections_count": sekcje,
+        "line_fields_per_section": 1,
         "hv_sections": [
             {
                 "supply": {
-                    "line_name": "Linia 110 kV zasilająca",
+                    "line_name": f"Linia 110 kV zasilająca L{tor}",
                     "supplying_station_name": (
-                        "Stacja zasilająca — przykładowe dane przypadku testowego"
+                        f"Stacja zasilająca {tor} — przykładowe dane przypadku testowego"
                     ),
                     "manual_equivalent": manual_equivalent or _rownowaznik_110(110.0),
                 }
             }
+            for tor in (1, 2)
         ],
-        "transformers": [{"hv_section": 1, "sn_section": n, **wpis} for n in range(1, sekcje + 1)],
+        "hv_coupler": {"normal_state": "open"},
+        "transformers": [{"hv_section": n, "sn_section": n, **wpis} for n in range(1, sekcje + 1)],
     }
     if sekcje >= 2:
         payload["reserve_mode"] = "hidden"

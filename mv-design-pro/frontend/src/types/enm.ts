@@ -1023,7 +1023,8 @@ export interface KartaWidmowa {
     | 'REFERENCYJNY_V1'
     | 'ANALITYCZNY_V1'
     | 'TESTOWY'
-    | 'PROJEKTOWY_V1';
+    | 'PROJEKTOWY_V1'
+    | 'WYMAGANIE_STANDARDU_V1';
   contract_version: string;
 }
 
@@ -1228,6 +1229,9 @@ export interface Bay extends ENMElement {
   primary_devices?: BayPrimaryDevice[];
   /** V12K-230: szablon pola producenta, z ktorego pole zostalo zlozone. */
   bay_template_ref?: string | null;
+  /** GPZ-H5-APARATURA: szablon pola standardu operatora (np. `ENEA_SN_LINIA`) — lustro
+   *  `backend/src/enm/models.py::Bay.szablon_standardu_ref`. `null`/brak = pole bez standardu. */
+  szablon_standardu_ref?: string | null;
   /** Jawne porty pola (kontrakt topologii). */
   ports?: Port[] | null;
 }
@@ -1236,7 +1240,6 @@ import type {
   FixActionSurfaceDescriptor,
   WizardSurfaceStepId,
 } from './fixActionSurface';
-import type { SemanticIssue } from './domainOps';
 
 // ---------------------------------------------------------------------------
 // Bay canonical model V10 (read-model contract)
@@ -1311,7 +1314,15 @@ export type BayPrimaryDeviceKind =
   | 'BATTERY'
   // F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
   // WYŁĄCZNIE gdy pochodzi z danych (mirror `backend/src/enm/models.py`).
-  | 'SURGE_ARRESTER';
+  | 'SURGE_ARRESTER'
+  // GPZ-H5-APARATURA (ENEA Zeszyt 1 §13, §16, §17): rodzaje gniazd szablonów pól standardu
+  // (`backend/src/network_model/catalog/gniazda_pol_enea.py`).
+  | 'DS_ES'
+  | 'VOLTAGE_INDICATOR'
+  | 'EARTHING_TRANSFORMER'
+  | 'NEUTRAL_REACTOR'
+  | 'NEUTRAL_RESISTOR'
+  | 'CAPACITOR_BANK';
 
 export type BayPrimaryPlacement =
   | 'UPSTREAM'
@@ -1343,6 +1354,9 @@ export interface BayPrimaryDevice {
    *  `backend/src/enm/models.py::BayPrimaryDevice.earthing_role`. `null`/brak
    *  = dana niedostarczona (generyczny uziemnik, zero domysłu). */
   earthing_role?: RolaUziemnika | null;
+  /** GPZ-H5-APARATURA: gniazdo szablonu pola standardu obsadzane przez aparat
+   *  (`GniazdoPola.id`). `null`/brak = aparat spoza gniazd standardu. */
+  gniazdo_ref?: string | null;
 }
 
 export interface BayMeasurements {
@@ -1592,10 +1606,12 @@ export interface BayBaseModel {
   bay_template_ref?: string | null;
   /** Rodzina rozdzielnicy producenta (Reference Engine). Optional/additive. */
   switchgear_family_ref?: string | null;
-  /** W5-C: stan danych wyposażenia z rekordu pola (`Bay.primary_devices`). */
-  equipment_data_state: StanDanychWyposazenia;
-  /** W5-C: aparaty przyjęte jako wartość robocza (jakość ESTIMATED). */
-  equipment_assumed_data: DanaPrzyjetaWyposazenia[];
+  /** GPZ-H5-APARATURA: szablon pola standardu i jego nazwa dla projektanta. */
+  szablon_standardu_ref?: string | null;
+  szablon_standardu_nazwa_pl?: string | null;
+  /** GPZ-H5-APARATURA: skład pola — gniazda standardu ze statusem i aparaty spoza gniazd
+   *  (JEDNA funkcja `backend/src/enm/sklad_pola.py::sklad_pola`). */
+  sklad: WierszSkladuPola[];
 }
 
 export interface BayShortCircuitSourceContribution {
@@ -2353,32 +2369,56 @@ export interface DomainOpResponseV1 {
   domain_events: DomainEvent[];
   materialized_params: MaterializedParams;
   layout: LayoutInfo;
-  /** Wynik post-hooka validate_semantic (semantic_rules). Puste = brak problemów. */
-  semantic_issues?: SemanticIssue[];
-  /** W5-C: wynik `set_bay_equipment` — stan danych wyposażenia i dane przyjęte. */
+  /** W5-C / GPZ-H5-APARATURA: wynik `set_bay_equipment` — skład pola po zapisie. */
   wyposazenie_pola?: WyposazeniePolaOdpowiedz;
   /** Present only on error responses. */
   error?: string;
   error_code?: string;
 }
 
-/** Stan danych wyposażenia pola SN (`enm/wyposazenie_pola.py`). */
-export type StanDanychWyposazenia = 'MODEL' | 'PROPOZYCJA' | 'BRAK_DANYCH';
+/** Status wiersza składu pola (`backend/src/enm/models.py::StatusSkladuPola`). Status maszynowy
+ *  ZAWSZE idzie z wyjaśnieniem `opis_pl` wiersza (kontrakt werdyktu wyjaśnialnego). */
+export type StatusSkladuPola =
+  | 'ZAPROJEKTOWANE'
+  | 'WYMAGANE_STANDARDEM_BRAK'
+  | 'BRAK_POZYCJI_KATALOGU'
+  | 'RODZAJ_BEZ_KATALOGU'
+  | 'BRAK_TYPU_GRANICA_WN';
 
-/** Dana przyjęta bez pełnej walidacji (kontrakt werdyktu wyjaśnialnego). */
-export interface DanaPrzyjetaWyposazenia {
+/** Wymaganie gniazda standardu (`network_model/catalog/gniazda_pol_enea.py::WymaganieGniazda`). */
+export interface WymaganieGniazdaPola {
+  parametr: string;
   nazwa_pl: string;
-  wartosc: unknown;
-  powod_pl: string;
-  jakosc: string;
+  relacja: 'CO_NAJMNIEJ' | 'CO_NAJWYZEJ' | 'ROWNE';
+  wartosc: number | string | boolean;
+  jednostka: string | null;
+  podstawa_pl: string;
+  warunek_pl: string | null;
+  interpretacja_pl: string | null;
+}
+
+/** Wiersz składu pola (`backend/src/enm/models.py::WierszSkladuPola`). */
+export interface WierszSkladuPola {
+  gniazdo_ref: string | null;
+  gniazdo_nazwa_pl: string | null;
+  rodzaj: string;
+  rodzaj_pl: string;
+  device_ref: string | null;
+  linked_ref: string | null;
+  catalog_ref: string | null;
+  catalog_namespace: string | null;
+  status: StatusSkladuPola;
+  opis_pl: string;
+  podstawa_pl: string | null;
+  interpretacja_pl: string | null;
+  wymagania: WymaganieGniazdaPola[];
 }
 
 /** Wynik `set_bay_equipment` (klucz `wyposazenie_pola` odpowiedzi operacji). */
 export interface WyposazeniePolaOdpowiedz {
   bay_ref: string;
-  stan_danych: StanDanychWyposazenia;
-  aparaty: Array<{ device_ref: string; stan_danych: Exclude<StanDanychWyposazenia, 'BRAK_DANYCH'> }>;
-  dane_przyjete: DanaPrzyjetaWyposazenia[];
+  szablon_standardu_ref: string | null;
+  sklad: WierszSkladuPola[];
 }
 
 // ---------------------------------------------------------------------------

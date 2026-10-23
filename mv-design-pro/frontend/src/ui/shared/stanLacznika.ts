@@ -17,7 +17,10 @@
  * łącznika punktem podziału sieci. Rozstrzyga ROLA łącznika — `roleLacznikow` jest lustrem
  * `enm/topology.py::role_lacznikow` (parytet: `backend/schemas/role_lacznikow_parytet_v1.json`,
  * pytest + vitest). Łącznik szyn stacji (ŁS-110, ŁS-SN, sprzęgło nN) i łącznik pola
- * transformatorowego normalnie otwarte są podziałem wewnątrz rozdzielni.
+ * transformatorowego normalnie otwarte są podziałem wewnątrz rozdzielni. Karta
+ * GPZ-H5-APARATURA: łącznik pola liniowego 110 kV (tor L1/L2 — szyna sekcji 110 kV ↔ zacisk
+ * linii z równoważnikiem, lustro `tory_zasilania_sekcji_wn_gpz`) normalnie otwarty odstawia tor
+ * zasilania — nie jest punktem podziału sieci ani kandydatem na punkt.
  */
 import type { Branch, EnergyNetworkModel, FuseBranch, SwitchBranch } from '../../types/enm';
 import { isFuseBranch, isSwitchBranch } from '../../types/enm';
@@ -49,11 +52,12 @@ export type RolaLacznika =
   | 'LACZNIK_SZYN_SN'
   | 'LACZNIK_SZYN_NN'
   | 'LACZNIK_POLA_TRANSFORMATOROWEGO'
+  | 'LACZNIK_POLA_ZASILAJACEGO_WN'
   | 'PUNKT_PODZIALU';
 
 /** Migawka wystarczająca do wyprowadzenia ról (kolekcje opcjonalne poza gałęziami). */
 export type MigawkaRolLacznikow = Pick<EnergyNetworkModel, 'branches'> &
-  Partial<Pick<EnergyNetworkModel, 'buses' | 'substations' | 'transformers'>>;
+  Partial<Pick<EnergyNetworkModel, 'buses' | 'substations' | 'transformers' | 'sources'>>;
 
 const ROLA_WG_PASMA: Readonly<Record<Pasmo, RolaLacznika>> = {
   WN: 'LACZNIK_SZYN_WN',
@@ -90,6 +94,145 @@ function szynyStacji(snapshot: MigawkaRolLacznikow): Map<string, Set<string>> {
   return wynik;
 }
 
+/** Szyny sekcji GPZ z jawnego rejestru stacji `station_type === 'gpz'` — lustro
+ *  `szyny_sekcji_gpz` (`gpz_sections`, SN) i `szyny_sekcji_wn_gpz` (`gpz_hv_sections`, 110 kV). */
+function szynySekcjiGpz(
+  snapshot: MigawkaRolLacznikow,
+  rejestr: 'gpz_sections' | 'gpz_hv_sections',
+): Set<string> {
+  const wynik = new Set<string>();
+  for (const stacja of snapshot.substations ?? []) {
+    if (stacja.station_type !== 'gpz') continue;
+    for (const sekcja of stacja[rejestr] ?? []) {
+      if (sekcja.bus_ref) wynik.add(sekcja.bus_ref);
+    }
+  }
+  return wynik;
+}
+
+/** Droga „zacisk pola → sekcja”: łącznik i szyna sekcji po jego drugiej stronie. */
+interface DrogaZaciskuDoSekcji {
+  readonly lacznikRef: string;
+  readonly szynaSekcji: string;
+}
+
+/**
+ * Zacisk pola → drogi do sekcji — lustro `enm/topology.py::_laczniki_zaciskow_pol`: łączniki
+ * (`TYPY_LACZNIKOW_ENM`) między szyną sekcji a szyną spoza rejestru sekcji, NIEZALEŻNIE od
+ * położenia, w kolejności `ref_id` łącznika. Jedno źródło drogi dla strony SN transformatora
+ * 110/SN (`sekcjeSnTransformatorowGpz`) i torów zasilania 110 kV (`toryZasilaniaSekcjiWnGpz`).
+ */
+function lacznikiZaciskowPol(
+  snapshot: MigawkaRolLacznikow,
+  szynySekcji: ReadonlySet<string>,
+): Map<string, DrogaZaciskuDoSekcji[]> {
+  const wynik = new Map<string, DrogaZaciskuDoSekcji[]>();
+  const galezie = [...(snapshot.branches ?? [])].sort((x, y) =>
+    x.ref_id < y.ref_id ? -1 : x.ref_id > y.ref_id ? 1 : 0,
+  );
+  for (const galaz of galezie) {
+    if (!czyLacznik(galaz)) continue;
+    const a = galaz.from_bus_ref;
+    const b = galaz.to_bus_ref;
+    for (const [zacisk, sekcja] of [[a, b], [b, a]] as const) {
+      if (szynySekcji.has(sekcja) && !szynySekcji.has(zacisk)) {
+        const drogi = wynik.get(zacisk) ?? [];
+        drogi.push({ lacznikRef: galaz.ref_id, szynaSekcji: sekcja });
+        wynik.set(zacisk, drogi);
+      }
+    }
+  }
+  return wynik;
+}
+
+/** Sekcja SN, na którą pracuje transformator 110/SN GPZ, i łącznik pola SN między nimi
+ *  (`null` = strona dolna wprost na szynie sekcji). */
+export interface SekcjaSnTransformatoraGpz {
+  readonly szynaSekcji: string;
+  readonly wylacznikRef: string | null;
+}
+
+/**
+ * `ref_id` transformatora → sekcja SN GPZ, którą zasila — lustro
+ * `enm/topology.py::sekcje_sn_transformatorow_gpz` (karta GPZ-H5, gniazdo „W” pola
+ * transformatorowego SN): strona dolna na szynie sekcji — sekcja wprost; strona dolna na
+ * zacisku pola — sekcja po drugiej stronie łącznika zacisku (pierwszy wg `ref_id`),
+ * NIEZALEŻNIE od jego położenia. Transformator bez żadnej z tych dróg nie ma wpisu.
+ * Parytet: `backend/schemas/role_lacznikow_parytet_v1.json` (`sekcje_sn_transformatorow`).
+ */
+export function sekcjeSnTransformatorowGpz(
+  snapshot: MigawkaRolLacznikow | null | undefined,
+): ReadonlyMap<string, SekcjaSnTransformatoraGpz> {
+  const wynik = new Map<string, SekcjaSnTransformatoraGpz>();
+  if (!snapshot) return wynik;
+  const szynySekcji = szynySekcjiGpz(snapshot, 'gpz_sections');
+  const drogi = lacznikiZaciskowPol(snapshot, szynySekcji);
+  const trafa = [...(snapshot.transformers ?? [])].sort((x, y) =>
+    x.ref_id < y.ref_id ? -1 : x.ref_id > y.ref_id ? 1 : 0,
+  );
+  for (const trafo of trafa) {
+    const dolna = trafo.lv_bus_ref;
+    if (szynySekcji.has(dolna)) {
+      wynik.set(trafo.ref_id, { szynaSekcji: dolna, wylacznikRef: null });
+      continue;
+    }
+    const droga = drogi.get(dolna)?.[0];
+    if (droga) wynik.set(trafo.ref_id, { szynaSekcji: droga.szynaSekcji, wylacznikRef: droga.lacznikRef });
+  }
+  return wynik;
+}
+
+/** Tor zasilania sekcji 110 kV GPZ: równoważnik linii i łącznik pola liniowego
+ *  (`null` = źródło wprost na szynie sekcji). */
+export interface TorZasilaniaSekcjiWnGpz {
+  readonly zrodloRef: string;
+  readonly wylacznikRef: string | null;
+}
+
+/**
+ * Szyna sekcji 110 kV GPZ → tory zasilania — lustro
+ * `enm/topology.py::tory_zasilania_sekcji_wn_gpz`: źródło na szynie sekcji — tor wprost;
+ * źródło na zacisku pola — tor przez łącznik zacisku (ta sama droga co strona SN
+ * transformatora), NIEZALEŻNIE od położenia. Kolejność: szyna sekcji, w niej `ref_id` źródła.
+ * Parytet: `backend/schemas/role_lacznikow_parytet_v1.json` (`tory_zasilania_wn`).
+ */
+export function toryZasilaniaSekcjiWnGpz(
+  snapshot: MigawkaRolLacznikow | null | undefined,
+): ReadonlyMap<string, readonly TorZasilaniaSekcjiWnGpz[]> {
+  const wynik = new Map<string, TorZasilaniaSekcjiWnGpz[]>();
+  if (!snapshot) return wynik;
+  const szynySekcji = szynySekcjiGpz(snapshot, 'gpz_hv_sections');
+  const drogi = lacznikiZaciskowPol(snapshot, szynySekcji);
+  const zrodla = [...(snapshot.sources ?? [])].sort((x, y) =>
+    x.ref_id < y.ref_id ? -1 : x.ref_id > y.ref_id ? 1 : 0,
+  );
+  const dopisz = (szyna: string, tor: TorZasilaniaSekcjiWnGpz): void => {
+    const tory = wynik.get(szyna) ?? [];
+    tory.push(tor);
+    wynik.set(szyna, tory);
+  };
+  for (const zrodlo of zrodla) {
+    const szyna = zrodlo.bus_ref;
+    if (szynySekcji.has(szyna)) {
+      dopisz(szyna, { zrodloRef: zrodlo.ref_id, wylacznikRef: null });
+      continue;
+    }
+    const droga = drogi.get(szyna)?.[0];
+    if (droga) dopisz(droga.szynaSekcji, { zrodloRef: zrodlo.ref_id, wylacznikRef: droga.lacznikRef });
+  }
+  return new Map([...wynik].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+}
+
+/** Łączniki pól liniowych 110 kV — łączniki torów zasilania z `toryZasilaniaSekcjiWnGpz`
+ *  (jedno źródło drogi; źródło wprost na szynie sekcji nie ma łącznika toru). */
+function lacznikiTorowZasilaniaWn(snapshot: MigawkaRolLacznikow): Set<string> {
+  const wynik = new Set<string>();
+  for (const tory of toryZasilaniaSekcjiWnGpz(snapshot).values()) {
+    for (const tor of tory) if (tor.wylacznikRef !== null) wynik.add(tor.wylacznikRef);
+  }
+  return wynik;
+}
+
 function wspolneStacje(a: Set<string> | undefined, b: Set<string> | undefined): string[] {
   if (!a || !b) return [];
   return [...a].filter((stacja) => b.has(stacja));
@@ -102,7 +245,8 @@ function wspolneStacje(a: Set<string> | undefined, b: Set<string> | undefined): 
  * przy czym łącznik szyn SN tylko w stacji zasilającej (`station_type === 'gpz'`) — sprzęgło
  * stacji SN w magistrali leży w torze prądowym magistrali i normalnie otwarte jest punktem
  * podziału pierścienia; szyna stacji ↔ zacisk transformatora tej stacji spoza jej szyn → łącznik pola
- * transformatorowego; inny łącznik z `normal_state === 'open'` → punkt podziału; pozostałe
+ * transformatorowego; łącznik toru zasilania sekcji 110 kV → łącznik pola liniowego 110 kV;
+ * inny łącznik z `normal_state === 'open'` → punkt podziału; pozostałe
  * bez roli. Rola nie zależy od bieżącego położenia (`status`).
  */
 export function roleLacznikow(
@@ -127,6 +271,7 @@ export function roleLacznikow(
       }
     }
   }
+  const lacznikiTorowWn = lacznikiTorowZasilaniaWn(snapshot);
   const napiecie = new Map((snapshot.buses ?? []).map((b) => [b.ref_id, b.voltage_kv] as const));
   const galezie = [...(snapshot.branches ?? [])].sort((x, y) =>
     x.ref_id < y.ref_id ? -1 : x.ref_id > y.ref_id ? 1 : 0,
@@ -146,6 +291,10 @@ export function roleLacznikow(
     }
     if (zaciskiPolTr.has(`${a}\u0000${b}`) || zaciskiPolTr.has(`${b}\u0000${a}`)) {
       wynik.set(galaz.ref_id, 'LACZNIK_POLA_TRANSFORMATOROWEGO');
+      continue;
+    }
+    if (lacznikiTorowWn.has(galaz.ref_id)) {
+      wynik.set(galaz.ref_id, 'LACZNIK_POLA_ZASILAJACEGO_WN');
       continue;
     }
     if (galaz.normal_state === 'open') wynik.set(galaz.ref_id, 'PUNKT_PODZIALU');
@@ -223,6 +372,7 @@ const ZNACZENIE_OTWARCIA_PL: Readonly<Record<RolaLacznika, string>> = {
   LACZNIK_SZYN_SN: 'łącznik szyn SN, sekcje pracują osobno',
   LACZNIK_SZYN_NN: 'łącznik szyn nN, sekcje pracują osobno',
   LACZNIK_POLA_TRANSFORMATOROWEGO: 'pole transformatora odstawione',
+  LACZNIK_POLA_ZASILAJACEGO_WN: 'tor zasilania 110 kV odstawiony',
 };
 
 /**

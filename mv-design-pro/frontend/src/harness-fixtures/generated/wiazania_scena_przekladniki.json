@@ -28,6 +28,7 @@
       "rct_ohm": null,
       "application": "protection",
       "accuracy_limit_factor": 10.0,
+      "odmiana": null,
       "verification_status": "REFERENCYJNY",
       "source_reference": "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzeń, ALF, Idyn=2,5·Ith, Fs) / IEC 62271-200 (szereg wytrzymałości rozdzielnicy SN)",
       "catalog_status": "REFERENCYJNY_V1",

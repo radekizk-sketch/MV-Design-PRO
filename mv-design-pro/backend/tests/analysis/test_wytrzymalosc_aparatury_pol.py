@@ -59,7 +59,11 @@ def _enm(*, aparaty: dict[str, str] | None = None) -> EnergyNetworkModel:
     przypisania = aparaty if aparaty is not None else {"pole/in": WYLACZNIK, "pole/tr": WYLACZNIK}
     szyna_pola = {"pole/in": "sn1", "pole/tr": "sn2"}
     branches: list[SwitchBranch] = []
+    # Aparat pola należy do pola przez `equipment_refs` (jedna prawda składu pola,
+    # `enm.sklad_pola.aparaty_pola` — tak zapisują go operacje domenowe).
+    aparaty_pol: dict[str, list[str]] = {"pole/in": [], "pole/tr": []}
     for indeks, (pole_ref, catalog_ref) in enumerate(sorted(przypisania.items())):
+        aparaty_pol[pole_ref].append(f"aparat/{indeks:02d}")
         branches.append(
             SwitchBranch(
                 ref_id=f"aparat/{indeks:02d}",
@@ -89,8 +93,22 @@ def _enm(*, aparaty: dict[str, str] | None = None) -> EnergyNetworkModel:
         ],
         # Karta W5-B: pola stacji są rekordami `bays` (jedyny nośnik pól).
         bays=[
-            Bay(ref_id="pole/in", name="P-01", bay_role="IN", substation_ref="stn", bus_ref="sn1"),
-            Bay(ref_id="pole/tr", name="P-02", bay_role="TR", substation_ref="stn", bus_ref="sn2"),
+            Bay(
+                ref_id="pole/in",
+                name="P-01",
+                bay_role="IN",
+                substation_ref="stn",
+                bus_ref="sn1",
+                equipment_refs=aparaty_pol["pole/in"],
+            ),
+            Bay(
+                ref_id="pole/tr",
+                name="P-02",
+                bay_role="TR",
+                substation_ref="stn",
+                bus_ref="sn2",
+                equipment_refs=aparaty_pol["pole/tr"],
+            ),
         ],
     )
 
@@ -268,7 +286,11 @@ def test_pole_bez_pradu_w_biegu_ma_nazwany_brak_a_nie_cudzy_prad() -> None:
     assert drugie["werdykt"] is None
     assert READINESS_BRAK_PRADU_POLA in drugie["kody_gotowosci"]
     assert drugie["prady_pola"]["ip_ka"] is None
-    assert {o["status_maszynowy"] for o in drugie["oceny"]} == {"NIE_OCENIONO"}
+    # Kryteria PORÓWNUJĄCE PRĄD pola (dynamiczne, cieplne, wyłączania) nie mają prądu; rekord
+    # izolacji (U_m aparatu wobec szyny pola) prądu nie porównuje — rozstrzyga się bez biegu.
+    pradowe = [o for o in drugie["oceny"] if not o["kryterium_id"].endswith(".izolacja")]
+    assert len(pradowe) == 3
+    assert {o["status_maszynowy"] for o in pradowe} == {"NIE_OCENIONO"}
     assert "NIEUSTALONE" in drugie["komunikat_pl"]
 
 

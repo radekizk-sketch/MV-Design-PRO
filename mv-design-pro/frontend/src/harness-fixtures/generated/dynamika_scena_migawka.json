@@ -37,6 +37,7 @@
       "substation_ref": "gpz/4d22d81bf80bf7bc8aa37963f8d45e2f/substation",
       "surge_arresters": [],
       "switchgear_family_ref": null,
+      "szablon_standardu_ref": null,
       "tags": [
         "gpz_line_field"
       ],
@@ -78,6 +79,7 @@
       "substation_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/station",
       "surge_arresters": [],
       "switchgear_family_ref": null,
+      "szablon_standardu_ref": null,
       "tags": [
         "nn_source_field"
       ],
@@ -119,6 +121,7 @@
       "substation_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/station",
       "surge_arresters": [],
       "switchgear_family_ref": null,
+      "szablon_standardu_ref": null,
       "tags": [
         "nn_main_breaker"
       ],
@@ -165,6 +168,7 @@
       "substation_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/station",
       "surge_arresters": [],
       "switchgear_family_ref": null,
+      "szablon_standardu_ref": null,
       "tags": [
         "station_sn_field"
       ],
@@ -212,6 +216,7 @@
       "substation_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/station",
       "surge_arresters": [],
       "switchgear_family_ref": null,
+      "szablon_standardu_ref": null,
       "tags": [
         "station_sn_field"
       ],
@@ -259,6 +264,7 @@
       "substation_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/station",
       "surge_arresters": [],
       "switchgear_family_ref": null,
+      "szablon_standardu_ref": null,
       "tags": [
         "station_sn_field"
       ],
@@ -310,6 +316,7 @@
       "substation_ref": "stn/6e0f3c95dd298f0e3c3774b5c0c955e1/station",
       "surge_arresters": [],
       "switchgear_family_ref": null,
+      "szablon_standardu_ref": null,
       "tags": [
         "station_sn_field"
       ],

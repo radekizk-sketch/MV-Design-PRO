@@ -1318,7 +1318,7 @@ def get_all_lv_fuse_link_types() -> list[dict]:
     return records
 
 
-def get_all_ct_types() -> list[dict]:
+def _ct_types_katalogu() -> list[dict]:
     def _quality_meta(
         *,
         verification_status: str,
@@ -2449,3 +2449,12 @@ def get_all_lv_rcd_types() -> list[dict]:
                         }
                     )
     return records
+
+
+def get_all_ct_types() -> list[dict]:
+    """Przekładniki prądowe katalogu: pozycje katalogu i pozycje wymagań standardu ENEA
+    (``mv_wymagania_enea_catalog``, status ``WYMAGANIE_STANDARDU_V1``) — jedno miejsce sklejenia,
+    które czytają repozytorium i wszyscy konsumenci surowej listy."""
+    from .mv_wymagania_enea_catalog import get_enea_ct_requirement_types
+
+    return _ct_types_katalogu() + get_enea_ct_requirement_types()

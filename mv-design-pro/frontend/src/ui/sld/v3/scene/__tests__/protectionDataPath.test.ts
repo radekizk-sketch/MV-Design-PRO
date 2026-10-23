@@ -87,24 +87,46 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
   //   polskim literałem → `linked_ref` CT na Measurement → `protection_ref` pola
   //   na ProtectionAssignment.
   it('ogniwa łańcucha danych są kompletne (każde brakujące dawało ciche zero)', () => {
-    // Karta W5-B: `bays` niesie WSZYSTKIE pola modelu (także pola stacji i pola GPZ bez
-    // aparatów pierwotnych). Ścieżka danych = pola z aparatami pierwotnymi; każde ogniwo
-    // sprawdzamy na każdym z nich.
-    const pola = (SCIEZKA_DANYCH.bays as {
-      protection_ref?: string;
-      primary_devices?: { kind: string; switch_state?: { actual_state?: string }; linked_ref?: string }[];
-    }[]).filter((pole) => (pole.primary_devices ?? []).length > 0) as {
-      protection_ref?: string;
-      primary_devices: { kind: string; switch_state?: { actual_state?: string }; linked_ref?: string }[];
-    }[];
+    // Karta GPZ-H5-SCALENIE-APARATURY: od karty GPZ-H5-APARATURA KAŻDE pole SN GPZ ma gniazda
+    // szablonu standardu ENEA (`primary_devices` z `gniazdo_ref`), także pola bez
+    // zabezpieczenia — „pole z aparatami" nie wyznacza już ścieżki danych. Ścieżka danych =
+    // pola z przypisanym zabezpieczeniem (`protection_ref`): pole TR wyposażone operacjami
+    // (`set_bay_equipment` + `add_relay`, wyłącznik pola jako gałąź modelu) i dwa pola
+    // liniowe dopisane w modelu (generator `fikstury_enm_sld._gpz_protection_data_path`).
+    type Aparat = { kind: string; switch_state?: { actual_state?: string } | null; linked_ref?: string | null; device_ref: string };
+    type Pole = { ref_id: string; protection_ref?: string | null; primary_devices?: Aparat[] };
+    const galezie = new Map(
+      (SCIEZKA_DANYCH.branches as { ref_id: string; status?: string }[]).map((g) => [g.ref_id, g]),
+    );
+    const przekladniki = new Set((SCIEZKA_DANYCH.measurements as { ref_id: string }[]).map((m) => m.ref_id));
+    const przypisania = new Map(
+      (SCIEZKA_DANYCH.protection_assignments as { ref_id: string; breaker_ref: string; ct_ref: string }[]).map((p) => [p.ref_id, p]),
+    );
+    const pola = (SCIEZKA_DANYCH.bays as Pole[]).filter((pole) => Boolean(pole.protection_ref));
     expect(pola.length).toBeGreaterThanOrEqual(3);
     for (const pole of pola) {
-      expect(pole.protection_ref).toBeTruthy();
-      const laczniki = pole.primary_devices.filter((d) => ['CB', 'DS', 'ES'].includes(d.kind));
-      for (const l of laczniki) expect(l.switch_state?.actual_state).toBeTruthy();
-      for (const ct of pole.primary_devices.filter((d) => d.kind === 'CT')) {
-        expect(ct.linked_ref).toBeTruthy();
+      const aparaty = pole.primary_devices ?? [];
+      const przypisanie = przypisania.get(pole.protection_ref!);
+      expect(przypisanie, `${pole.ref_id}: przypisanie zabezpieczenia istnieje`).toBeDefined();
+      // Wyłącznik wykonawczy zabezpieczenia jest aparatem TEGO pola (rekord albo gałąź, którą
+      // rekord wskazuje), a przekładnik zabezpieczenia — przekładnikiem tego pola.
+      const wylaczniki = aparaty.filter((d) => d.kind === 'CB');
+      expect(
+        wylaczniki.some((d) => d.device_ref === przypisanie!.breaker_ref || d.linked_ref === przypisanie!.breaker_ref),
+        `${pole.ref_id}: wyłącznik zabezpieczenia w polu`,
+      ).toBe(true);
+      // Stan łącznika pochodzi z modelu: z rekordu aparatu albo z gałęzi, którą aparat wskazuje.
+      for (const cb of wylaczniki) {
+        const stan = cb.switch_state?.actual_state ?? (cb.linked_ref ? galezie.get(cb.linked_ref)?.status : undefined);
+        expect(stan, `${pole.ref_id}: stan wyłącznika ${cb.device_ref}`).toBeTruthy();
       }
+      for (const l of aparaty.filter((d) => ['DS', 'ES'].includes(d.kind) && d.switch_state)) {
+        expect(l.switch_state?.actual_state, `${pole.ref_id}: stan ${l.device_ref}`).toBeTruthy();
+      }
+      const ct = aparaty.filter((d) => d.kind === 'CT' && d.linked_ref);
+      expect(ct.length, `${pole.ref_id}: przekładnik powiązany z rekordem Measurement`).toBeGreaterThan(0);
+      for (const c of ct) expect(przekladniki.has(c.linked_ref!), `${pole.ref_id}: ${c.linked_ref}`).toBe(true);
+      expect(ct.some((c) => c.linked_ref === przypisanie!.ct_ref), `${pole.ref_id}: CT zabezpieczenia w polu`).toBe(true);
     }
   });
 

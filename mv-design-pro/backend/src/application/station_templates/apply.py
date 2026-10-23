@@ -43,16 +43,22 @@ from application.station_templates.schema import (
 from application.station_templates.templates.gpz_110_sn import (
     CELE_LACZNIKA_SN_H5,
     POLA_FUNKCYJNE_SEKCJI_H5,
-    PROPOZYCJA_APARATOW_110_H5,
 )
 from enm.domain_operations import execute_domain_operation, nazwa_roli_pola_sn
-from enm.models import EnergyNetworkModel
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 from enm.pola import pola_nn_stacji, pola_sn_stacji
 from enm.rodzaj_stacji import rodzaj_ze_skladu_pol
 from enm.rola_pola_sn import kanoniczna_rola_pola_sn
-from enm.slownik_komunikatow import nazwa_rodzaju_galezi, opis_obiektu, opis_pozycji_katalogu
+from enm.sklad_pola import indeks_modelu_pola, sklad_pola
+from enm.slownik_komunikatow import (
+    nazwa_rodzaju_galezi,
+    opis_obiektu,
+    opis_pozycji_katalogu,
+    pole,
+)
 from enm.store import BLEDY_ZAPISU_MODELU, blokada_twin
 from enm.tor_pola import pola_do_domkniecia
+from network_model.catalog.gniazda_pol_enea import szablon_pola_standardu
 from network_model.pochodne.pasma_napieciowe import pasmo_napieciowe
 
 logger = logging.getLogger(__name__)
@@ -232,17 +238,20 @@ def _ladunek_gpz_h5(
 
     Struktura z szablonu (jawna, bez cyklu): dwie sekcje 110 kV, dwie sekcje SN,
     transformator n: sekcja 110 kV n → sekcja SN n (n = 1..`transformer_count`), pola
-    funkcyjne sekcji SN, łącznik szyn SN w dwóch celach, propozycja aparatów pól 110 kV.
-    Dane projektu (tory L1/L2, stan normalny łącznika szyn 110 kV, tryb rezerwy) — wyłącznie
-    z `params_override`; ENEA Zeszyt 1 §11.1 nie dopuszcza stacji z jedną linią 110 kV."""
+    funkcyjne sekcji SN, łącznik szyn SN w dwóch celach; skład pól z szablonów pól standardu
+    ENEA buduje operacja. Dane projektu (tory L1/L2, stan normalny łącznika szyn 110 kV, tryb
+    rezerwy, liczba pól liniowych na sekcję SN, wariant pola zespołu uziemiającego,
+    obsadzenie gniazd) — wyłącznie z `params_override`; ENEA Zeszyt 1 §11.1 nie dopuszcza
+    stacji z jedną linią 110 kV."""
     tory = overrides.get("hv_sections")
     if not isinstance(tory, list) or len(tory) != _GPZ_SECTIONS_COUNT:
         raise TemplateApplyError(
             code="template.gpz_h5_supply_tracks_required",
             message_pl=(
                 f"Szablon „{template.name_pl}”: układ H5 ma dwie linie zasilające 110 kV — "
-                "podaj dla każdej z dwóch sekcji szyn 110 kV tor zasilania (nazwa linii, "
-                "stacja zasilająca, równoważnik sieci z warunków przyłączenia). Stacja z "
+                f"podaj w polu {pole('hv_sections', 'add_grid_source_sn')} dla każdej z dwóch "
+                "sekcji szyn 110 kV tor zasilania (nazwa linii, stacja zasilająca, "
+                "równoważnik sieci z warunków przyłączenia). Stacja z "
                 "jedną linią 110 kV nie jest dopuszczona (ENEA Operator, Zeszyt 1 §11.1)."
             ),
         )
@@ -275,7 +284,6 @@ def _ladunek_gpz_h5(
             {
                 "order": indeks,
                 "name": f"Sekcja SN {indeks + 1}",
-                "line_fields_count": parametry.sn_bays_count,
                 "function_bays": list(POLA_FUNKCYJNE_SEKCJI_H5),
             }
             for indeks in range(_GPZ_SECTIONS_COUNT)
@@ -287,7 +295,6 @@ def _ladunek_gpz_h5(
         ],
         "sn_coupler": {"cells": CELE_LACZNIKA_SN_H5},
         "gpz_line_field_apparatus": aparat_pol,
-        "hv_bay_apparatus_proposal": PROPOZYCJA_APARATOW_110_H5,
     }
     # Dane projektu (stan normalny łącznika szyn 110 kV, tryb rezerwy, transformator
     # rezerwowy) — WYŁĄCZNIE klucze zadeklarowane w `schema.dane_projektu` szablonu (jedno
@@ -297,6 +304,70 @@ def _ladunek_gpz_h5(
         if klucz != "hv_sections" and overrides.get(klucz) is not None:
             payload[klucz] = overrides[klucz]
     return payload
+
+
+def ladunek_gpz_szablonu(
+    template: StationTemplate,
+    overrides: Mapping[str, Any],
+    parametry: ParametrySzablonu,
+    catalog_profile: str | None,
+) -> dict[str, Any]:
+    """Ładunek `add_grid_source_sn` szablonu GPZ — JEDNA funkcja dla zastosowania szablonu
+    i podglądu kreatora (`podglad_pol_gpz_szablonu`)."""
+    apparatus_ref = overrides.get("sn_bay_apparatus_ref") or _cascade_manufacturer_choice(
+        template.schema.sn_bay_apparatus_options, catalog_profile
+    )
+    if not apparatus_ref:
+        raise TemplateApplyError(
+            code="template.sn_bay_apparatus_missing",
+            message_pl=f"Szablon „{template.name_pl}” nie wskazuje aparatu pól liniowych GPZ.",
+        )
+    aparat_pol = {"catalog_ref": apparatus_ref, "apparatus_kind": "BREAKER"}
+    if template.schema.gpz_uklad == GPZ_UKLAD_H5:
+        return _ladunek_gpz_h5(template, overrides, parametry, aparat_pol)
+    return _ladunek_gpz_rownowaznik_sn(template, overrides, parametry, catalog_profile, aparat_pol)
+
+
+def podglad_pol_gpz_szablonu(
+    template: StationTemplate,
+    overrides: Mapping[str, Any],
+    parametry: ParametrySzablonu,
+    catalog_profile: str | None,
+) -> tuple[list[dict[str, Any]], int]:
+    """(pola, liczba elementów utworzonych) — podgląd składu pól GPZ z szablonu: TA SAMA operacja `add_grid_source_sn`, co
+    zastosowanie, wykonana na pustym modelu (bez zapisu). Kolejność pól = kolejność
+    rozdzielni (ENEA Zeszyt 1, zał. Z.1 i Z.2); skład każdego pola to TE SAME wiersze, co na
+    karcie pola (``enm.sklad_pola.sklad_pola``): pole SN — gniazda szablonu pola standardu ze
+    statusem, pole strony 110 kV (granica zasilania sieci SN) — łącznik pola z gałęzią modelu
+    ze stanem „brak typu” albo transformator. Brak danej projektu = odmowa operacji
+    z podstawą (ta sama, co przy zastosowaniu), nie podgląd z wartością domyślną."""
+    payload = ladunek_gpz_szablonu(template, overrides, parametry, catalog_profile)
+    pusty = EnergyNetworkModel(
+        header=ENMHeader(name=template.name_pl, defaults=ENMDefaults())
+    ).model_dump(mode="json")
+    wynik = execute_domain_operation(enm_dict=pusty, op_name="add_grid_source_sn", payload=payload)
+    if wynik.get("error"):
+        raise TemplateApplyError(code=wynik["error_code"], message_pl=wynik["error"])
+    model = EnergyNetworkModel.model_validate(wynik["snapshot"])
+    indeks = indeks_modelu_pola(model)
+    szyny = {b.ref_id: b for b in model.buses}
+    pola: list[dict[str, Any]] = []
+    for rekord_pola in model.bays:
+        szablon = szablon_pola_standardu(rekord_pola.szablon_standardu_ref)
+        szyna = szyny.get(rekord_pola.bus_ref)
+        pola.append(
+            {
+                "bay_ref": rekord_pola.ref_id,
+                "name": rekord_pola.name,
+                "bay_role": rekord_pola.bay_role,
+                "bus_name": szyna.name if szyna else None,
+                "voltage_kv": szyna.voltage_kv if szyna else None,
+                "szablon_standardu_ref": rekord_pola.szablon_standardu_ref,
+                "szablon_standardu_nazwa_pl": szablon.nazwa_pl if szablon else None,
+                "sklad": [w.model_dump(mode="json") for w in sklad_pola(indeks, rekord_pola)],
+            }
+        )
+    return pola, len((wynik.get("changes") or {}).get("created_element_ids") or [])
 
 
 def _zastosuj_gpz_pod_blokada(
@@ -322,21 +393,7 @@ def _zastosuj_gpz_pod_blokada(
     enm = _get_enm(klucz)
     enm_dict: dict[str, Any] = enm.model_dump(mode="json")
 
-    apparatus_ref = overrides.get("sn_bay_apparatus_ref") or _cascade_manufacturer_choice(
-        template.schema.sn_bay_apparatus_options, catalog_profile
-    )
-    if not apparatus_ref:
-        raise TemplateApplyError(
-            code="template.sn_bay_apparatus_missing",
-            message_pl=f"Szablon „{template.name_pl}” nie wskazuje aparatu pól liniowych GPZ.",
-        )
-    aparat_pol = {"catalog_ref": apparatus_ref, "apparatus_kind": "BREAKER"}
-    if template.schema.gpz_uklad == GPZ_UKLAD_H5:
-        payload = _ladunek_gpz_h5(template, overrides, parametry, aparat_pol)
-    else:
-        payload = _ladunek_gpz_rownowaznik_sn(
-            template, overrides, parametry, catalog_profile, aparat_pol
-        )
+    payload = ladunek_gpz_szablonu(template, overrides, parametry, catalog_profile)
     result = execute_domain_operation(
         enm_dict=enm_dict, op_name="add_grid_source_sn", payload=payload
     )

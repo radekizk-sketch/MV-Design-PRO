@@ -44,6 +44,7 @@ from network_model.catalog.types import (
     BESSBatteryType,
     ConverterKind,
     ConverterType,
+    ElementPolaType,
     LVFuseLinkType,
     LVRcdType,
     _normalize_catalog_status,
@@ -510,6 +511,12 @@ PRZYPADKI: dict[str, tuple[Callable[[], object], Callable[[], object]]] = {
     "KAT-T-047": (
         lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5),
         lambda: _rcd(selective=True, i_delta_n_a=0.3, t_a_s=0.5, t_nieczuly_min_s=0.13),
+    ),
+    # Rodzaj elementu pola SN spoza słownika (np. dawny „człon wysuwny”) nie obsadza żadnego
+    # gniazda pola — odmowa; rodzaj ze słownika (dławik gaszący) przechodzi.
+    "KAT-T-048": (
+        lambda: ElementPolaType(id="ep_test", name="Element testowy", rodzaj="CZLON_WYSUWNY"),
+        lambda: ElementPolaType(id="ep_test", name="Element testowy", rodzaj="DLAWIK_GASZACY"),
     ),
 }
 

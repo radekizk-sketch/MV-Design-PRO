@@ -534,9 +534,10 @@ function buildWorkspaceProofCandidateRefs(
   return refs;
 }
 
-function formatFlags(flags: readonly string[] | null | undefined): string {
-  const normalized = (flags ?? []).map((flag) => flag.trim()).filter(Boolean);
-  return normalized.length > 0 ? `uwagi: ${normalized.join(', ')}` : 'wynik obliczony';
+/** Uwagi wiersza z etykiet PL znaczników nadanych przez backend (`flags_pl`); ekran nie
+ * pokazuje kodu znacznika (karta GPZ-H5-APARATURA: „BEZ_NAPIECIA" trafiało na ekran). */
+function formatFlags(etykiety: readonly string[]): string {
+  return etykiety.length > 0 ? `uwagi: ${etykiety.join(', ')}` : 'wynik obliczony';
 }
 
 function formatNullableResult(
@@ -569,7 +570,7 @@ function buildShortCircuitAnalysisRows(rows: readonly ShortCircuitRow[]): Analys
       input: 'IEC 60909; dane z wyniku serwerowego',
       resultA: `${formatNullableResult("Ik''", row.ikss_ka, 'kA', 2)}; ${formatNullableResult('ip', row.ip_ka, 'kA', 2)}`,
       resultB: `${formatNullableResult('Ith', row.ith_ka, 'kA', 2)}; ${formatNullableResult("Sk''", row.sk_mva, 'MVA', 3)}`,
-      status: complete ? `${formatFlags(row.flags)}; uzasadnienie dostępne` : 'wynik częściowy: brak kompletu wartości',
+      status: complete ? `${formatFlags(row.flags_pl)}; uzasadnienie dostępne` : 'wynik częściowy: brak kompletu wartości',
     };
   });
 }
@@ -583,7 +584,7 @@ function buildBusResultAnalysisRows(rows: readonly BusResultRow[]): AnalysisTabl
     input: 'Rozpływ mocy; dane z wyniku serwerowego',
     resultA: `${formatNullableResult('U', row.u_kv, 'kV', 3)}; ${formatNullableResult('u', row.u_pu, 'pu', 4)}`,
     resultB: formatNullableResult('kąt', row.angle_deg, '°', 2),
-    status: formatFlags(row.flags),
+    status: formatFlags(row.flags_pl),
   }));
 }
 
@@ -611,8 +612,8 @@ function buildBranchResultAnalysisRows(
     resultB: `${formatNullableResult('P', row.p_mw, 'MW', 3)}; ${formatNullableResult('Q', row.q_mvar, 'MVAr', 3)}; ${formatNullableResult('S', row.s_mva, 'MVA', 3)}`,
     status:
       row.loading_pct === null && row.loading_powod_braku_pl
-        ? `${formatFlags(row.flags)}; obciążenie: ${row.loading_powod_braku_pl}`
-        : formatFlags(row.flags),
+        ? `${formatFlags(row.flags_pl)}; obciążenie: ${row.loading_powod_braku_pl}`
+        : formatFlags(row.flags_pl),
   }));
 }
 

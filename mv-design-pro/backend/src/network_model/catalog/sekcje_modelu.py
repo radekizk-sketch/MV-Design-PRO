@@ -369,6 +369,11 @@ PRZESTRZENIE_BEZ_SEKCJI: Mapping[str, str] = MappingProxyType(
             "ogranicznik przepięć — domena przebiegów chwilowych (koordynacja izolacji), "
             "poza sześcioma dziedzinami produktu"
         ),
+        "ELEMENT_POLA_SN": (
+            "wyposażenie pola SN (wskaźnik napięcia, transformator uziemiający, dławik, "
+            "rezystor, bateria pola BKR) — pozycje wymagań standardu z wymaganiami doboru, "
+            "bez modelu fizycznego w dziedzinach produktu"
+        ),
         "ZABEZPIECZENIE": "urządzenie zabezpieczeniowe — logika zadziałania, nie model obwodu",
         "NASTAWY_ZABEZPIECZEN": "szablon nastaw — parametry logiki, nie model obwodu",
         "PTPIREE_CERTYFIKAT_GENERATORA": (

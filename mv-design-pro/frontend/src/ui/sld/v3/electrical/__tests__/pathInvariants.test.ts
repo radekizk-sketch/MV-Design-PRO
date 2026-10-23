@@ -43,11 +43,27 @@ describe('P0.12(a) — ścieżka SOURCE→…→T1→…→Odbiór-1 z DOKŁADNI
     return sekcja;
   }
 
-  it('źródło stoi na szynie WN GPZ, a GPZ ma dokładnie jeden transformator WN/SN do sekcji SN', () => {
-    const zrodlo = graphBazowy.nodes.get(sourceBusRef());
-    expect(zrodlo?.voltageKv).toBe(110);
-    const trGpz = (enmBazowy.transformers ?? []).filter((t) => t.hv_bus_ref === sourceBusRef());
-    expect(trGpz.map((t) => t.lv_bus_ref)).toEqual([szynaSnGpz()]);
+  // Karta GPZ-H5-APARATURA (topologia H5, ENEA Zeszyt 1 §11.1): równoważnik sieci stoi na
+  // ZACISKU pola liniowego 110 kV (`hv_section/…/terminal_line`), a do szyny sekcji 110 kV
+  // prowadzi wyłącznik pola liniowego (`breaker_line`); transformator WN/SN wychodzi z szyny
+  // sekcji 110 kV na zacisk pola SN (`terminal_sn`), który wyłącznik pola SN (`breaker_sn`)
+  // łączy z szyną sekcji SN. Wszystkie te ogniwa są gałęziami modelu, nie konwencją rysunku.
+  it('źródło stoi na zacisku pola liniowego 110 kV GPZ, a GPZ ma dokładnie jeden transformator WN/SN do sekcji SN', () => {
+    const zacisk = sourceBusRef();
+    expect(graphBazowy.nodes.get(zacisk)?.voltageKv).toBe(110);
+    const gpz = enmBazowy.substations.find((s) => s.station_type === 'gpz')!;
+    const zrodlo = (enmBazowy.sources ?? []).find((src) => src.bus_ref === zacisk)!;
+    const sekcjaWn = (gpz.gpz_hv_sections ?? []).find((s) => s.incoming_source_ref === zrodlo.ref_id)!;
+    expect(sekcjaWn, 'sekcja 110 kV toru tego źródła').toBeDefined();
+    const laczy = (a: string, b: string): boolean =>
+      (enmBazowy.branches ?? []).some(
+        (g) => g.type === 'breaker' && g.status === 'closed'
+          && ((g.from_bus_ref === a && g.to_bus_ref === b) || (g.from_bus_ref === b && g.to_bus_ref === a)),
+      );
+    expect(laczy(zacisk, sekcjaWn.bus_ref), 'wyłącznik pola liniowego 110 kV zamknięty').toBe(true);
+    const trGpz = (enmBazowy.transformers ?? []).filter((t) => t.hv_bus_ref === sekcjaWn.bus_ref);
+    expect(trGpz).toHaveLength(1);
+    expect(laczy(trGpz[0].lv_bus_ref, szynaSnGpz()), 'wyłącznik pola SN transformatora zamknięty').toBe(true);
   });
 
   it('minimalna liczba przejść transformatorowych szyna SN GPZ→Odbiór-1 wynosi dokładnie 1 (T1)', () => {

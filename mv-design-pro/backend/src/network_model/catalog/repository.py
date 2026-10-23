@@ -19,6 +19,7 @@ from .types import (
     ConverterKind,
     ConverterType,
     CTType,
+    ElementPolaType,
     LineType,
     LoadType,
     LVApparatusType,
@@ -168,6 +169,7 @@ def _derive_mv_apparatus_records(
         "LOAD_SWITCH": "ROZLACZNIK",
         "DISCONNECTOR": "ODLACZNIK",
         "EARTH_SWITCH": "UZIEMNIK",
+        "DISCONNECTOR_EARTH_SWITCH": "ODLACZNIK_TROJPOLOZENIOWY",
         "FUSE": "ROZLACZNIK_BEZPIECZNIKOWY",
         "RECLOSER": "REKLOZER",
     }
@@ -197,7 +199,15 @@ def _derive_mv_apparatus_records(
                     # brak danej jest uczciwszy niż dana o cudzym znaczeniu.
                     "making_capacity_ka": None,
                     "i_th_ka": icw_ka,
-                    "i_th_duration_s": (_ICW_CZAS_ODNIESIENIA_S if icw_ka is not None else None),
+                    # Czas odniesienia z rekordu, gdy go niesie (wymaganie ENEA rozdzielnicy SN:
+                    # 3 s — §9.2); inaczej czas odniesienia katalogu producentów.
+                    "i_th_duration_s": (
+                        None
+                        if icw_ka is None
+                        else _dodatnia(params.get("icw_duration_s")) or _ICW_CZAS_ODNIESIENIA_S
+                    ),
+                    "u_m_kv": _dodatnia(params.get("u_m_kv")),
+                    "naped": params.get("naped"),
                     "manufacturer": params.get("manufacturer"),
                     **_copy_catalog_quality(record),
                 },
@@ -303,6 +313,9 @@ class CatalogRepository:
     bess_inverter_types: dict[str, BESSInverterType] = field(default_factory=dict)
     bess_battery_types: dict[str, BESSBatteryType] = field(default_factory=dict)
     surge_arrester_types: dict[str, SurgeArresterType] = field(default_factory=dict)
+    #: Karta GPZ-H5-APARATURA: wyposażenie pól SN (ELEMENT_POLA_SN) — wskaźnik napięcia,
+    #: transformator uziemiający, dławik gaszący, rezystory, bateria kondensatorów pola BKR.
+    element_pola_types: dict[str, ElementPolaType] = field(default_factory=dict)
     shunt_capacitor_types: dict[str, ShuntCapacitorType] = field(default_factory=dict)
     #: CV-4.3 K1: generatory synchroniczne SN/WN (GENERATOR_SN) — patrz
     #: `network_model/catalog/types.py::SynchronousGeneratorType`.
@@ -342,6 +355,7 @@ class CatalogRepository:
         bess_inverter_types: Iterable[dict] | None = None,
         bess_battery_types: Iterable[dict] | None = None,
         surge_arrester_types: Iterable[dict] | None = None,
+        element_pola_types: Iterable[dict] | None = None,
         shunt_capacitor_types: Iterable[dict] | None = None,
         synchronous_generator_types: Iterable[dict] | None = None,
         ptpiree_generator_certificates: Iterable[dict] | None = None,
@@ -457,6 +471,11 @@ class CatalogRepository:
             data.update(record.get("params") or {})
             return SurgeArresterType.from_dict(data)
 
+        def _build_element_pola_type(record: dict) -> ElementPolaType:
+            data = {"id": record.get("id"), "name": record.get("name")}
+            data.update(record.get("params") or {})
+            return ElementPolaType.from_dict(data)
+
         def _build_shunt_capacitor_type(record: dict) -> ShuntCapacitorType:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
@@ -555,6 +574,10 @@ class CatalogRepository:
             surge_arrester_types={
                 str(item.id): item
                 for item in map(_build_surge_arrester_type, list(surge_arrester_types or []))
+            },
+            element_pola_types={
+                str(item.id): item
+                for item in map(_build_element_pola_type, list(element_pola_types or []))
             },
             shunt_capacitor_types={
                 str(item.id): item
@@ -716,6 +739,12 @@ class CatalogRepository:
     def get_surge_arrester_type(self, type_id: str) -> SurgeArresterType | None:
         return self.surge_arrester_types.get(str(type_id))
 
+    def list_element_pola_types(self) -> list[ElementPolaType]:
+        return self._sorted(self.element_pola_types.values())
+
+    def get_element_pola_type(self, type_id: str) -> ElementPolaType | None:
+        return self.element_pola_types.get(str(type_id))
+
     def list_shunt_capacitor_types(self) -> list[ShuntCapacitorType]:
         return self._sorted(self._bez_benchmarkow(self.shunt_capacitor_types.values()))
 
@@ -844,6 +873,7 @@ def get_default_mv_catalog() -> CatalogRepository:
     from .mv_surge_arrester_catalog import get_all_surge_arrester_types
     from .mv_switch_catalog import get_all_switch_equipment_types
     from .mv_transformer_catalog import get_all_transformer_types
+    from .mv_wymagania_enea_catalog import get_enea_field_element_types
 
     return CatalogRepository.from_records(
         # CV-4.3 K1: benchmarki IEEE/CIGRE/MATPOWER/pandapower/IEC 60909 wchodza
@@ -869,6 +899,7 @@ def get_default_mv_catalog() -> CatalogRepository:
         vt_types=get_all_vt_types(),
         source_system_types=get_all_source_system_types(),
         surge_arrester_types=get_all_surge_arrester_types(),
+        element_pola_types=get_enea_field_element_types(),
         shunt_capacitor_types=get_all_shunt_capacitor_records()
         + get_all_benchmark_shunt_capacitor_records(),
         synchronous_generator_types=get_all_benchmark_synchronous_generator_records(),

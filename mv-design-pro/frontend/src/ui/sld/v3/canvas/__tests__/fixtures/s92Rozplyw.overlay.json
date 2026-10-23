@@ -1,7 +1,7 @@
 {
   "analysis_type": "LOAD_FLOW",
   "elements": {
-    "bus/1725d53687a76f51e67f10463d7a05ff/downstream": {
+    "bus/370b8c0f086318561aa9b227267571f5/downstream": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -10,20 +10,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9375651331
+          "value": 29.9375606667
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9934919831
+          "value": 14.9934897417
         }
       },
-      "ref_id": "bus/1725d53687a76f51e67f10463d7a05ff/downstream",
+      "ref_id": "bus/370b8c0f086318561aa9b227267571f5/downstream",
       "severity": "INFO"
     },
-    "bus/d80a52f498166b0cef6bbbdff43d7039/downstream": {
+    "bus/dea9b95dfadfe08daf2665d8f442a9e4/downstream": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -32,20 +32,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9374950293
+          "value": 29.9374905629
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9932006946
+          "value": 14.9931984532
         }
       },
-      "ref_id": "bus/d80a52f498166b0cef6bbbdff43d7039/downstream",
+      "ref_id": "bus/dea9b95dfadfe08daf2665d8f442a9e4/downstream",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/bay/001/001": {
       "badges": [],
       "kind": "bay",
       "metrics": {
@@ -54,41 +54,41 @@
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.1191404758
+          "value": 10.1191420001
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 4.41655680754
+          "value": 4.41655746823
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250673381349
+          "value": 0.250673380812
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0789058932356
+          "value": 0.0789058959612
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9940640192
+          "value": 14.9940617779
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/bay/001/001",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/bay/001/001",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bay_line": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_coupler/001/bay": {
       "badges": [],
       "kind": "bay",
       "metrics": {
@@ -97,13 +97,86 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 110.0
+          "value": 109.9999997
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bay_line",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_coupler/001/bay",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bay_line": {
+      "badges": [],
+      "kind": "bay",
+      "metrics": {
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 109.9999997
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bay_line",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bus_wn": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": -8.11975280797e-08
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 109.9999997
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/bus_wn",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/source": {
+      "badges": [],
+      "kind": "generator",
+      "metrics": {
+        "COS_PHI": {
+          "code": "COS_PHI",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "",
+          "value": 0.9535328547
+        },
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.250686658546
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.0792097998783
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.262903010956
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/source",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/terminal_line": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -122,46 +195,25 @@
           "value": 110.0
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/bus_wn",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/001/terminal_line",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/source": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bay_line": {
       "badges": [],
-      "kind": "generator",
+      "kind": "bay",
       "metrics": {
-        "COS_PHI": {
-          "code": "COS_PHI",
+        "U_kV": {
+          "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
-          "unit": "",
-          "value": 0.953532887669
-        },
-        "P_MW": {
-          "code": "P_MW",
-          "format_hint": "fixed4",
-          "source": "solver",
-          "unit": "MW",
-          "value": 0.250686634468
-        },
-        "Q_Mvar": {
-          "code": "Q_Mvar",
-          "format_hint": "fixed4",
-          "source": "solver",
-          "unit": "Mvar",
-          "value": 0.0792097620994
-        },
-        "S_MVA": {
-          "code": "S_MVA",
-          "format_hint": "fixed2",
-          "source": "solver",
-          "unit": "MVA",
-          "value": 0.262902976615
+          "unit": "kV",
+          "value": 110.0
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/hv_section/001/source",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bay_line",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bus_wn": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -170,20 +222,93 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9377084457
+          "value": 0.0
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9940640192
+          "value": 110.0
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/section/001/bus_sn",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/bus_wn",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/source": {
+      "badges": [],
+      "kind": "generator",
+      "metrics": {
+        "P_MW": {
+          "code": "P_MW",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "MW",
+          "value": 0.0
+        },
+        "Q_Mvar": {
+          "code": "Q_Mvar",
+          "format_hint": "fixed4",
+          "source": "solver",
+          "unit": "Mvar",
+          "value": 0.0
+        },
+        "S_MVA": {
+          "code": "S_MVA",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "MVA",
+          "value": 0.0
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/source",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/terminal_line": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 0.0
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 110.0
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/hv_section/002/terminal_line",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.9377039794
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.9940617779
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/section/001/bus_sn",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation": {
       "badges": [],
       "kind": "substation",
       "metrics": {
@@ -199,34 +324,34 @@
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250673381349
+          "value": 0.250673380812
         },
         "P_SUPPLY_MW": {
           "code": "P_SUPPLY_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250686634468
+          "value": 0.250686658546
         },
         "Q_FEEDERS_Mvar": {
           "code": "Q_FEEDERS_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0789058932356
+          "value": 0.0789058959612
         },
         "Q_SUPPLY_Mvar": {
           "code": "Q_SUPPLY_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0792097620994
+          "value": 0.0792097998783
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/substation",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/substation",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_sn": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/bay_sn": {
       "badges": [],
       "kind": "bay",
       "metrics": {
@@ -235,41 +360,41 @@
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.1191402879
+          "value": 10.1191418182
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 1.05161190646
+          "value": 1.05161206549
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": -0.250673363817
+          "value": -0.250673394171
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.0789059326883
+          "value": -0.0789059660954
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9940640192
+          "value": 14.9940617779
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_sn",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/bay_sn",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_wn": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/bay_wn": {
       "badges": [],
       "kind": "bay",
       "metrics": {
@@ -278,41 +403,63 @@
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 1.37988276654
+          "value": 1.37988297521
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 1.05161190646
+          "value": 1.05161206549
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250686634468
+          "value": 0.250686664826
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0792097620993
+          "value": 0.0792097955984
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 110.0
+          "value": 109.9999997
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/bay_wn",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/bay_wn",
       "severity": "INFO"
     },
-    "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/wn_sn": {
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/terminal_sn": {
+      "badges": [],
+      "kind": "bus",
+      "metrics": {
+        "ANGLE_DEG": {
+          "code": "ANGLE_DEG",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "°",
+          "value": 29.9377083569
+        },
+        "U_kV": {
+          "code": "U_kV",
+          "format_hint": "fixed2",
+          "source": "solver",
+          "unit": "kV",
+          "value": 14.994063976
+        }
+      },
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/terminal_sn",
+      "severity": "INFO"
+    },
+    "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/wn_sn": {
       "badges": [],
       "kind": "branch",
       "metrics": {
@@ -321,69 +468,69 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.953532887669
+          "value": 0.953532861545
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": 0.0395732051984
+          "value": 0.0395732206005
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 1.37988276654
+          "value": 1.37988297521
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 1.05161190646
+          "value": 1.05161206549
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 1.32706512151e-05
+          "value": 1.32706552237e-05
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.000303829411022
+          "value": 0.000303829502916
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250686634468
+          "value": 0.250686664826
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0792097620993
+          "value": 0.0792097955984
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.262902976615
+          "value": 0.262903015655
         }
       },
-      "ref_id": "gpz/ad4f81bde4ded02dd6659eeacd7bb80f/transformer/001/wn_sn",
+      "ref_id": "gpz/e7b9607ece78ddcf8d362bc0582084a7/transformer/001/wn_sn",
       "severity": "INFO"
     },
-    "nn/2fdfe8a9306be12e95b5437a5ecbf2c5/feeder_bus": {
+    "nn/07daf827dce1fd39dcf7dbb1ed53f571/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -392,20 +539,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 59.2899000224
+          "value": 59.2898953612
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397260169125
+          "value": 0.397260108959
         }
       },
-      "ref_id": "nn/2fdfe8a9306be12e95b5437a5ecbf2c5/feeder_bus",
+      "ref_id": "nn/07daf827dce1fd39dcf7dbb1ed53f571/feeder_bus",
       "severity": "INFO"
     },
-    "nn/3c59062a875015b22113504e8baab6e2/feeder_bus": {
+    "nn/40c3def10d0650fb7fdf675bcb471c63/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -414,20 +561,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 59.2972098926
+          "value": 59.2898953612
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397360510857
+          "value": 0.397260108959
         }
       },
-      "ref_id": "nn/3c59062a875015b22113504e8baab6e2/feeder_bus",
+      "ref_id": "nn/40c3def10d0650fb7fdf675bcb471c63/feeder_bus",
       "severity": "INFO"
     },
-    "nn/6f229c1ec51188c92f48976d7c5b3b35/feeder_bus": {
+    "nn/73f11a0731de8d3c260b6c6593f63862/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -436,20 +583,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 59.2899000224
+          "value": 59.2898953612
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397260169125
+          "value": 0.397260108959
         }
       },
-      "ref_id": "nn/6f229c1ec51188c92f48976d7c5b3b35/feeder_bus",
+      "ref_id": "nn/73f11a0731de8d3c260b6c6593f63862/feeder_bus",
       "severity": "INFO"
     },
-    "nn/7880279508c9e4ef31e4ea2e1465c65e/feeder_bus": {
+    "nn/94375a5e6bdd7273be1f8750141df7a8/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -458,20 +605,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 59.2899000224
+          "value": 59.2972052336
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397260169125
+          "value": 0.397360450707
         }
       },
-      "ref_id": "nn/7880279508c9e4ef31e4ea2e1465c65e/feeder_bus",
+      "ref_id": "nn/94375a5e6bdd7273be1f8750141df7a8/feeder_bus",
       "severity": "INFO"
     },
-    "nn/da05a8f833a5ad57d3f0f71d2462853b/feeder_bus": {
+    "nn/a3a6d63cbe6bf099158aaac22c682a74/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -480,20 +627,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 59.2899000224
+          "value": 59.2898953612
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397260169125
+          "value": 0.397260108959
         }
       },
-      "ref_id": "nn/da05a8f833a5ad57d3f0f71d2462853b/feeder_bus",
+      "ref_id": "nn/a3a6d63cbe6bf099158aaac22c682a74/feeder_bus",
       "severity": "INFO"
     },
-    "nn/f560a9ed80c09b8168bf2952ea129767/feeder_bus": {
+    "nn/fe10a335a08f9e8f59508220e6ae3c80/feeder_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -502,20 +649,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 59.2899000224
+          "value": 59.2898953612
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397260169125
+          "value": 0.397260108959
         }
       },
-      "ref_id": "nn/f560a9ed80c09b8168bf2952ea129767/feeder_bus",
+      "ref_id": "nn/fe10a335a08f9e8f59508220e6ae3c80/feeder_bus",
       "severity": "INFO"
     },
-    "seg/1725d53687a76f51e67f10463d7a05ff/segment": {
+    "seg/370b8c0f086318561aa9b227267571f5/segment": {
       "badges": [],
       "kind": "branch",
       "metrics": {
@@ -524,76 +671,76 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.953859932237
+          "value": 0.953859929082
         },
         "DELTA_U_KV": {
           "code": "DELTA_U_KV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.000572036156337
+          "value": 0.000572036242538
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": 0.00381357437557
+          "value": 0.00381357495025
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.1191404758
+          "value": 10.1191420001
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 4.41655680754
+          "value": 4.41655746823
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 9.36190941614e-06
+          "value": 9.36191222706e-06
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.00330165287835
+          "value": -0.00330165188905
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250673381349
+          "value": 0.250673380812
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0789058932356
+          "value": 0.0789058959612
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.262798942358
+          "value": 0.262798942664
         }
       },
-      "ref_id": "seg/1725d53687a76f51e67f10463d7a05ff/segment",
+      "ref_id": "seg/370b8c0f086318561aa9b227267571f5/segment",
       "severity": "INFO"
     },
-    "seg/d80a52f498166b0cef6bbbdff43d7039/segment_L": {
+    "seg/dea9b95dfadfe08daf2665d8f442a9e4/segment_L": {
       "badges": [],
       "kind": "branch",
       "metrics": {
@@ -602,76 +749,76 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.950204152474
+          "value": 0.950204150323
         },
         "DELTA_U_KV": {
           "code": "DELTA_U_KV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.00028940457425
+          "value": 0.000289404617567
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": 0.00192936382835
+          "value": 0.00192936411711
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.1580806946
+          "value": 10.1580822142
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 4.42533014868
+          "value": 4.42533080825
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 4.74765183395e-06
+          "value": 4.74765325187e-06
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.00166447663991
+          "value": -0.00166447614114
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250664020736
+          "value": 0.250664020197
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0822075452653
+          "value": 0.082207547005
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.263800173977
+          "value": 0.263800174006
         }
       },
-      "ref_id": "seg/d80a52f498166b0cef6bbbdff43d7039/segment_L",
+      "ref_id": "seg/dea9b95dfadfe08daf2665d8f442a9e4/segment_L",
       "severity": "INFO"
     },
-    "seg/d80a52f498166b0cef6bbbdff43d7039/segment_R": {
+    "seg/dea9b95dfadfe08daf2665d8f442a9e4/segment_R": {
       "badges": [],
       "kind": "branch",
       "metrics": {
@@ -680,76 +827,76 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 2.34549972647e-08
+          "value": 2.47930966691e-08
         },
         "DELTA_U_KV": {
           "code": "DELTA_U_KV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": -3.36193688e-07
+          "value": -3.36193634709e-07
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": -2.24129125259e-06
+          "value": -2.24129089732e-06
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 0.0641657936013
+          "value": 0.0641657841448
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 0.027898171131
+          "value": 0.0278981670195
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 4.72655042833e-11
+          "value": 4.7265490507e-11
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.00166632054306
+          "value": -0.00166632004485
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 3.90835431916e-11
+          "value": 4.13132334197e-11
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": -0.00166632051799
+          "value": -0.00166632002331
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.00166632051799
+          "value": 0.00166632002331
         }
       },
-      "ref_id": "seg/d80a52f498166b0cef6bbbdff43d7039/segment_R",
+      "ref_id": "seg/dea9b95dfadfe08daf2665d8f442a9e4/segment_R",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/nn_bus": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/nn_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -758,20 +905,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 59.2911185904
+          "value": 59.2911139296
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 0.397276892298
+          "value": 0.397276832135
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/nn_bus",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/nn_bus",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/sn_bus": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/sn_bus": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -780,20 +927,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9374983221
+          "value": 29.9374938558
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9932003473
+          "value": 14.9931981059
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_bus",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/sn_bus",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/000": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/000": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -802,20 +949,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9375025732
+          "value": 29.9374981068
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9932025785
+          "value": 14.9932003371
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/000",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/000",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/001": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/001": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -824,20 +971,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9374982797
+          "value": 29.9374938133
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9932003584
+          "value": 14.993198117
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/001",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/001",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/002": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/002": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -846,20 +993,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9374941135
+          "value": 29.9374896472
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9931981049
+          "value": 14.9931958635
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/002",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/002",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/003": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/003": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -868,20 +1015,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9374983221
+          "value": 29.9374938558
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9932003473
+          "value": 14.9931981059
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/003",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/003",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/004": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/004": {
       "badges": [],
       "kind": "bus",
       "metrics": {
@@ -890,20 +1037,20 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "°",
-          "value": 29.9374983221
+          "value": 29.9374938558
         },
         "U_kV": {
           "code": "U_kV",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "kV",
-          "value": 14.9932003473
+          "value": 14.9931981059
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/sn_field_terminal/004",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/sn_field_terminal/004",
       "severity": "INFO"
     },
-    "stn/13b784d7c258af49d492d46a1d1fd09b/transformer": {
+    "stn/206df2efd9cb13ac92b87692d0f65761/transformer": {
       "badges": [],
       "kind": "branch",
       "metrics": {
@@ -912,66 +1059,66 @@
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "",
-          "value": 0.946410368414
+          "value": 0.946410367322
         },
         "DELTA_U_PCT": {
           "code": "DELTA_U_PCT",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "%",
-          "value": 0.614526318666
+          "value": 0.614526413581
         },
         "I_A": {
           "code": "I_A",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "A",
-          "value": 10.1987953567
+          "value": 10.1987969004
         },
         "LOADING_PCT": {
           "code": "LOADING_PCT",
           "format_hint": "fixed1",
           "source": "solver",
           "unit": "%",
-          "value": 21.1977980805
+          "value": 21.1978012891
         },
         "LOSSES_P_MW": {
           "code": "LOSSES_P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.000606617968672
+          "value": 0.000606618152312
         },
         "LOSSES_Q_Mvar": {
           "code": "LOSSES_Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.00331505467181
+          "value": 0.00331505567535
         },
         "P_MW": {
           "code": "P_MW",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "MW",
-          "value": 0.250658983332
+          "value": 0.25065898351
         },
         "Q_Mvar": {
           "code": "Q_Mvar",
           "format_hint": "fixed4",
           "source": "solver",
           "unit": "Mvar",
-          "value": 0.0855384496685
+          "value": 0.0855384506758
         },
         "S_MVA": {
           "code": "S_MVA",
           "format_hint": "fixed2",
           "source": "solver",
           "unit": "MVA",
-          "value": 0.264852321675
+          "value": 0.264852322169
         }
       },
-      "ref_id": "stn/13b784d7c258af49d492d46a1d1fd09b/transformer",
+      "ref_id": "stn/206df2efd9cb13ac92b87692d0f65761/transformer",
       "severity": "INFO"
     }
   },

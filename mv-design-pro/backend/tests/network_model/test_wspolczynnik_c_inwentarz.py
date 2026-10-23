@@ -70,8 +70,14 @@ _SPIS: dict[tuple[str, str], tuple[int, str]] = {
         "k_bth — współczynnik cieplny nastaw zabezpieczeń (Hoppel), nie c",
     ),
     ("api/catalog.py", "if rated_i < req.expected_current_a * 0.9:"): (
-        2,
+        1,
         "tolerancja 10 % dopasowania prądu w wyszukiwarce katalogu",
+    ),
+    # Karta GPZ-H5-APARATURA: dobór łączników pomija prąd ciągły rodzajów bez prądu ciągłego
+    # (uziemnik, odłącznik trójpołożeniowy) — ta sama tolerancja dopasowania, nie c.
+    ("api/catalog.py", "if bez_pradu_ciaglego or rated_i < req.expected_current_a * 0.9:"): (
+        1,
+        "tolerancja 10 % dopasowania prądu w wyszukiwarce katalogu (łączniki)",
     ),
     ("application/analyses/migotanie.py", "PLANNING_LEVEL_PST_MV = 0.9"): (
         1,

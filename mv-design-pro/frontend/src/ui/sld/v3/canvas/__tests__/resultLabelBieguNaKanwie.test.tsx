@@ -134,12 +134,13 @@ describe('S9-2 — bieg ZWARCIOWY na kanwie (ścieżka natywna)', () => {
     const uzytkownik = userEvent.setup();
     const container = renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
-    // 4 z 10: trzy szyny schematu SN i szyna WN GPZ (karta GPZ-MODEL: równoważnik 110 kV
+    // 5 z 11 (karta GPZ-H5-APARATURA: dwa tory 110 kV, druga szyna sekcji 110 kV z etykietą;
+    // dawniej 4 z 10): trzy szyny schematu SN i szyny WN GPZ (karta GPZ-MODEL: równoważnik 110 kV
     // z transformatorem WN/SN, więc w modelu jest realna szyna WN, a solver liczy w niej
     // zwarcie) mają etykietę, sześć punktów to szyny odpływów nN stacji (promocja pól nN
     // do modelu) — panel NAZYWA ten powód, nie „gubi" punktów.
     expect(screen.getByTestId('sld-v3-result-coverage-liczby').textContent).toBe(
-      'Etykiety: 4 z 10 punktów wyniku',
+      'Etykiety: 5 z 11 punktów wyniku',
     );
     const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
     expect(braki).toContain('6 w rozdzielnicach nN stacji (poza schematem SN)');
@@ -173,7 +174,7 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
     expect(container.querySelectorAll('[data-testid^="sld-v3-flow-arrow-"]').length).toBeGreaterThan(0);
   });
 
-  it('POKRYCIE w panelu: 10 z 28 punktów + 5 w karcie GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
+  it('POKRYCIE w panelu: 12 z 35 punktów + 7 w karcie GPZ + jawny powód braku pozostałych (model ich nie rysuje / rozdzielnica nN)', async () => {
     const uzytkownik = userEvent.setup();
     renderKanwe(2);
     await uzytkownik.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
@@ -181,13 +182,16 @@ describe('S9-2 — bieg ROZPŁYWOWY na kanwie (ścieżka natywna)', () => {
       // GPZ-H5-SLD etap 3: 25 → 28 — backend H5 (scalenie 88557ceb7) zakłada pole liniowe
       // 110 kV sekcji WN oraz pola TR po obu stronach transformatora (`bay_wn`, `bay_sn`);
       // każde z nich niesie wiersz rozpływu i trafia do karty GPZ (2 → 5), etykiet bez zmian.
-      'Etykiety: 10 z 28 punktów wyniku',
+      // Karta GPZ-H5-APARATURA: 28 → 35 — drugi tor 110 kV (szyna sekcji i równoważnik z
+      // etykietą: 10 → 12; pole liniowe 110 kV 2 i pole łącznika szyn 110 kV w karcie GPZ:
+      // 5 → 7; zaciski pól liniowych L1/L2 i pola SN transformatora nierysowane: 7 → 10).
+      'Etykiety: 12 z 35 punktów wyniku',
     );
     expect(screen.getByTestId('sld-v3-result-coverage-gpz').textContent).toBe(
-      'W karcie GPZ (kliknij nagłówek GPZ): 5 punktów wyniku (pola i bilans GPZ)',
+      'W karcie GPZ (kliknij nagłówek GPZ): 7 punktów wyniku (pola i bilans GPZ)',
     );
     const braki = screen.getByTestId('sld-v3-result-coverage-braki').textContent;
-    expect(braki).toContain('7 nierysowanych w modelu');
+    expect(braki).toContain('10 nierysowanych w modelu');
     expect(braki).toContain('6 w rozdzielnicach nN stacji (poza schematem SN)');
     expect(braki).toContain('0 bez elementu na schemacie');
   });

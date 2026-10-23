@@ -8,7 +8,7 @@
  * z preselekcją szablonu wskazanego w przeglądarce (E3.2 — prop
  * `initialTemplateId`, kreator startuje z pominiętym krokiem wyboru).
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { EnmInspectorPage } from '../../../ui/enm-inspector';
 import { StationTemplateWizard } from '../../../ui/network-build/station-templates';
@@ -16,6 +16,7 @@ import { SldCanvasV3Workspace } from '../../../ui/sld/v3/canvas/SldCanvasV3Works
 import { useAppStateStore } from '../../../ui/app-state';
 import { useShellStore } from '../../shell/useShellStore';
 import { PrzegladarkaSzablonow } from './szablony';
+import { useZadanieZakladkiModelu } from './zadanieZakladkiModelu';
 import { WlasciwosciModelu } from './WlasciwosciModelu';
 import { KatalogPanel } from './katalog';
 import type { ElementUzycia } from './katalog';
@@ -75,6 +76,14 @@ export function ModelWarsztat() {
   const [kreatorOtwarty, setKreatorOtwarty] = useState(false);
   const [wybranySzablonId, setWybranySzablonId] = useState<string | null>(null);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  // Zakładka zgłoszona spoza przestrzeni (kreator źródła → „Szablony stacji”, GPZ H5).
+  const zadanaZakladka = useZadanieZakladkiModelu((s) => s.zadanie);
+  const zuzyjZadanie = useZadanieZakladkiModelu((s) => s.zuzyj);
+  useEffect(() => {
+    if (zadanaZakladka === null) return;
+    setZakladka(zadanaZakladka);
+    zuzyjZadanie();
+  }, [zadanaZakladka, zuzyjZadanie]);
 
   return (
     <div className="mvd-model-warsztat" data-testid="mvd-model-warsztat">

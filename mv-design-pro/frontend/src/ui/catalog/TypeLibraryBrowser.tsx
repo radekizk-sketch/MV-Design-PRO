@@ -29,7 +29,8 @@ const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'SYSTEM_SOURCE', label: 'Typy zasilania systemowego SN', icon: '⚡' },
   { id: 'TRANSFORMER', label: 'Typy transformatorów SN/nN', icon: '⬍' },
   { id: 'SWITCH_EQUIPMENT', label: 'Typy aparatury łączeniowej SN', icon: '⎆' },
-  { id: 'MV_APPARATUS', label: 'Typy aparatury SN', icon: '◫' },
+  { id: 'MV_APPARATUS', label: 'Typy aparatury SN i 110 kV', icon: '◫' },
+  { id: 'FIELD_ELEMENT', label: 'Typy elementów wyposażenia pól SN', icon: '⏚' },
   { id: 'LV_APPARATUS', label: 'Typy aparatury nN', icon: '▥' },
   { id: 'LV_RCD', label: 'Typy wyłączników różnicowoprądowych nN', icon: '⊜' },
   { id: 'LV_CABLE', label: 'Typy kabli nN', icon: '⟃' },
@@ -179,6 +180,16 @@ function formatNumber(value: number): string {
   return value.toFixed(3).replace(/\.?0+$/, '');
 }
 
+/** Rodzaj elementu wyposażenia pola SN (`ElementPolaType.rodzaj`) — nazwa dla projektanta. */
+const RODZAJ_ELEMENTU_POLA_PL: Readonly<Record<string, string>> = {
+  WSKAZNIK_NAPIECIA: 'Wskaźnik obecności napięcia',
+  TRANSFORMATOR_UZIEMIAJACY: 'Transformator uziemiający',
+  DLAWIK_GASZACY: 'Dławik gaszący',
+  REZYSTOR_UZIEMIAJACY: 'Rezystor uziemiający',
+  REZYSTOR_WYMUSZAJACY: 'Rezystor wymuszający AWSC',
+  BATERIA_KONDENSATOROW: 'Bateria kondensatorów',
+};
+
 function formatDetailValue(value: unknown): string {
   if (Array.isArray(value)) {
     return value.map((entry) => formatDetailValue(entry)).join(', ');
@@ -228,6 +239,11 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'MV_APPARATUS':
     case 'LV_APPARATUS':
       return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik=${formatDetailValue(record.breaking_capacity_ka)} kA`;
+    case 'FIELD_ELEMENT': {
+      const rodzaj = RODZAJ_ELEMENTU_POLA_PL[String(record.rodzaj)] ?? 'element pola';
+      // U_m tylko, gdy źródło pozycji je podaje (brak = standard go nie podaje, nie zero).
+      return typeof record.u_m_kv === 'number' ? `${rodzaj} · Um=${formatDetailValue(record.u_m_kv)} kV` : rodzaj;
+    }
     case 'LV_RCD':
       return `IΔn=${formatDetailValue(record.i_delta_n_a)} A · typ ${formatDetailValue(record.rcd_type)} · In=${formatDetailValue(record.in_a)} A · ta=${formatDetailValue(record.t_a_s)} s`;
     case 'LV_CABLE':

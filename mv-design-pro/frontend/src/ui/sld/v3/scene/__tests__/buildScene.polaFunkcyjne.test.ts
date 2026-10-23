@@ -11,7 +11,8 @@
  * ILOCZYN CECH (reguła KLASA §2): rola modelu (9 wartości `Bay.bay_role`) × ścieżka
  * (blok GPZ / blok stacji SN) × rekordy aparatów (brak / są) × numer pola (jest / brak) × LOD
  * (1 / 2). Baza GPZ to migawka backendu H5 (`gpz_h5_przypadek_odbiorowy.json`, eksport
- * `backend/scripts/eksport_fixtur_harnessu.py`: pola funkcyjne obu sekcji SN bez aparatów);
+ * `backend/scripts/eksport_fixtur_harnessu.py`: pola funkcyjne obu sekcji SN z gniazdami szablonu
+ * standardu ENEA — karta GPZ-H5-APARATURA);
  * ścieżka stacji — migawka backendu `gpzFeeder.enm.json` z polem SN o podmienionej roli
  * (backend nie zakłada pól funkcyjnych w stacji SN, więc ta kombinacja jest kontrolą
  * wyczerpującego odwzorowania, nie scenariuszem operacji).
@@ -83,10 +84,19 @@ function wariantGpz(zAparatem: boolean, zNazwa: boolean): EnergyNetworkModel {
 }
 
 describe('pola funkcyjne GPZ × aparaty × numer pola × LOD — blok GPZ (migawka backendu H5)', () => {
-  it('kontrola wejścia: migawka niesie po dwa pola każdej roli funkcyjnej, bez aparatów', () => {
+  // Karta GPZ-H5-APARATURA: operacja `add_grid_source_sn` zakłada pola funkcyjne Z GNIAZDAMI
+  // szablonu standardu ENEA (`network_model/catalog/gniazda_pol_enea.py`, wiersze
+  // `primary_devices` z `gniazdo_ref`) — wejście nie jest już „bez aparatów". Iloczyn niżej nie
+  // zależy od tego stanu wejścia: `wariantGpz` nadpisuje `primary_devices` w obu wariantach.
+  it('kontrola wejścia: migawka niesie po dwa pola każdej roli funkcyjnej, z gniazdami szablonu standardu', () => {
     for (const rola of ROLE_FUNKCYJNE) {
       expect(polaFunkcyjneGpz(rola)).toHaveLength(2);
-      expect(polaFunkcyjneGpz(rola).every((b) => (b.primary_devices ?? []).length === 0)).toBe(true);
+      for (const pole of polaFunkcyjneGpz(rola)) {
+        expect(pole.szablon_standardu_ref, `${pole.ref_id} szablon standardu`).toBeTruthy();
+        const aparaty = pole.primary_devices ?? [];
+        expect(aparaty.length, `${pole.ref_id} gniazda`).toBeGreaterThan(0);
+        expect(aparaty.every((d) => Boolean(d.gniazdo_ref)), `${pole.ref_id} gniazdo_ref`).toBe(true);
+      }
     }
   });
 

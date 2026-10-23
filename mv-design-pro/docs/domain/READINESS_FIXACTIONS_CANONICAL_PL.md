@@ -54,7 +54,7 @@ Sekcje **"Kompletny słownik kodów gotowości"** i **"Podsumowanie statystyczne
 
 ## Kompletny słownik kodów gotowości
 
-Wszystkie **165** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
+Wszystkie **166** kody z `domain/canonical_operations.py::READINESS_CODES`, posortowane po obszarze, priorytecie i kodzie. Kolumny odpowiadają polom `ReadinessCodeSpec` 1:1 — brak tu żadnej wartości spoza rejestru.
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Nawigacja naprawcza |
 |-----|--------|-----------|--------|--------------|----------------------|
@@ -81,8 +81,8 @@ Wszystkie **165** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `trunk.segment_missing` | TOPOLOGY | 2 | BLOCKER | Magistrala nie ma żadnego segmentu | panel: `sld` |
 | `trunk.terminal_missing` | TOPOLOGY | 2 | BLOCKER | Magistrala nie ma terminala końcowego | panel: `sld` |
 | `ring.nop_required` | TOPOLOGY | 3 | BLOCKER | Pierścień SN wymaga punktu normalnie otwartego (NOP) | panel: `sld`, modal: `set_normal_open_point` |
-| `trunk.segment_length_invalid` | TOPOLOGY | 3 | BLOCKER | Nieprawidłowa długość odcinka (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `length_m` |
-| `trunk.segment_length_missing` | TOPOLOGY | 3 | BLOCKER | Odcinek nie ma zdefiniowanej długości | panel: `inspector`, tab: `parametry`, focus: `length_m` |
+| `trunk.segment_length_invalid` | TOPOLOGY | 3 | BLOCKER | Nieprawidłowa długość odcinka (musi być > 0) | panel: `inspector`, tab: `parametry`, focus: `length_km` |
+| `trunk.segment_length_missing` | TOPOLOGY | 3 | BLOCKER | Odcinek nie ma zdefiniowanej długości | panel: `inspector`, tab: `parametry`, focus: `length_km` |
 | `catalog.binding_invalid` | CATALOGS | 1 | BLOCKER | Wiązanie katalogowe ma niewłaściwą postać albo nie niesie identyfikatora pozycji katalogowej | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.binding_required` | CATALOGS | 1 | BLOCKER | Element techniczny wymaga wiązania z katalogiem | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `catalog.binding_version_missing` | CATALOGS | 1 | BLOCKER | Brak wersji katalogu w wiązaniu elementu obliczeniowego | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
@@ -98,6 +98,7 @@ Wszystkie **165** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `catalog.namespace_required` | CATALOGS | 1 | BLOCKER | Nie da się ustalić kategorii katalogu dla elementu — bez kategorii nie ma czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia katalogowego | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.ref_missing` | CATALOGS | 1 | BLOCKER | Element nie ma wskazanej referencji katalogowej | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.ref_required` | CATALOGS | 1 | BLOCKER | Segment lub transformator wymaga referencji katalogowej przed utworzeniem | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
+| `catalog.switch_hv_boundary` | CATALOGS | 1 | BLOCKER | Łącznik strony 110 kV nie przyjmuje pozycji katalogu aparatury — strona 110 kV jest granicą zasilania sieci SN: łącznik pola 110 kV zostaje bez typu, a do obliczeń wchodzi jego stan ustawiany w scenariuszach łączeniowych przypadku | panel: `analizy`, tab: `scenariusze_laczeniowe` |
 | `catalog.type_incomplete` | CATALOGS | 1 | BLOCKER | Rekord przekształtnika w katalogu nie niesie wymaganej wielkości znamionowej (moc pozorna, moc czynna maksymalna albo pojemność energetyczna) — typu falownika nie wyprowadzono; uzupełnij rekord z karty producenta | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `catalog.unknown_namespace` | CATALOGS | 1 | BLOCKER | Nieznana kategoria katalogu — brama nie dobiera kategorii za projektanta; wskaż kategorię, która istnieje w katalogu | panel: `inspector`, tab: `katalog`, modal: `CatalogPicker` |
 | `import.catalog_mapping_required` | CATALOGS | 1 | BLOCKER | Import wymaga mapowania katalogowego: elementy bez przypisanego katalogu muszą zostać zmapowane przed dalszą edycją | panel: `catalog_mapper`, modal: `IMPORT_CATALOG_MAPPING` |
@@ -122,7 +123,7 @@ Wszystkie **165** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 | `ct.accuracy_limit_missing` | CATALOGS | 3 | WARNING | Klasa przekładnika prądowego nie niesie współczynnika granicznego (rdzeń pomiarowy albo klasa nierozpoznana) — kryterium nasycenia nie ma zastosowania | panel: `katalog`, tab: `ct`, focus: `accuracy_class` |
 | `ct.winding_resistance_missing` | CATALOGS | 3 | WARNING | Brak rezystancji uzwojenia wtórnego przekładnika — współczynnik graniczny policzono wariantem uproszczonym (wynik optymistyczny) | panel: `katalog`, tab: `ct`, focus: `rct_ohm` |
 | `load.catalog_missing` | CATALOGS | 3 | WARNING | Obciążenie nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
-| `load.power_zero` | CATALOGS | 3 | WARNING | Moc czynna obciążenia wynosi 0 kW | panel: `inspector`, tab: `parametry`, focus: `p_kw` |
+| `load.power_zero` | CATALOGS | 3 | WARNING | Moc czynna i bierna odbioru wynoszą 0 | panel: `inspector`, tab: `parametry`, focus: `p_mw` |
 | `nn.cable_catalog_missing` | CATALOGS | 3 | WARNING | Kabel nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `nn.switch.catalog_ref_missing` | CATALOGS | 3 | WARNING | Aparat łączeniowy pola nN nie ma przypisanego katalogu | panel: `inspector`, tab: `katalog`, modal: `MODAL_ZMIEN_TYP_Z_KATALOGU` |
 | `protection.curve_library_missing` | CATALOGS | 3 | WARNING | Ta pozycja katalogowa zabezpieczenia nie ma odpowiednika w bibliotece charakterystyk czasowo-prądowych — koordynacja wymaga wyrobu z biblioteki | panel: `katalog`, tab: `zabezpieczenia` |
@@ -228,21 +229,21 @@ Wszystkie **165** kody z `domain/canonical_operations.py::READINESS_CODES`, poso
 
 | Poziom | Liczba kodów |
 |--------|---------------|
-| BLOCKER | 104 |
+| BLOCKER | 105 |
 | WARNING | 58 |
 | INFO | 3 |
-| **Razem** | **165** |
+| **Razem** | **166** |
 
 | Obszar | Liczba kodów |
 |--------|---------------|
 | SOURCES | 19 |
 | TOPOLOGY | 6 |
-| CATALOGS | 49 |
+| CATALOGS | 50 |
 | STATIONS | 25 |
 | GENERATORS | 26 |
 | PROTECTION | 13 |
 | ANALYSIS | 27 |
-| **Razem** | **165** |
+| **Razem** | **166** |
 
 <!-- GENEROWANE: slownik kodow gotowosci — koniec -->
 

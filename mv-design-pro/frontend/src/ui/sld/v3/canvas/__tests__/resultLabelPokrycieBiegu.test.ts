@@ -32,6 +32,12 @@
  *     WN/SN ma pola po obu stronach (`transformer/001/bay_wn`, `bay_sn`); trzy nowe pola
  *     niosą wiersze rozpływu i — jak pole SN — trafiają do karty GPZ inspektora (2 → 5).
  *     Źródło zmieniło ref (`source/main` → `hv_section/001/source`), liczba bez zmian.
+ *   * karta GPZ-H5-APARATURA (topologia H5, ENEA Zeszyt 1 §11.1 — dwa tory 110 kV, aparatura
+ *     pól jako gałęzie modelu): zwarcie 10 → 11 punktów (+ szyna sekcji 110 kV 2, rysowana
+ *     w kolumnie WN, więc schemat ma 5 punktów z etykietą); rozpływ 28 → 35 punktów
+ *     (+ szyna sekcji 110 kV 2 i jej równoważnik sieci — oba z etykietą, + pole liniowe 110 kV 2
+ *     i pole łącznika szyn 110 kV — karta GPZ (5 → 7), + zaciski pól liniowych L1/L2 i zacisk
+ *     pola SN transformatora — węzły nierysowane w modelu (7 → 10)).
  *   * zwarcie 9 → 10 punktów (karta GPZ-MODEL): GPZ fikstury ma równoważnik sieci
  *     110 kV i transformator WN/SN (tryb A), więc w modelu jest realna szyna WN GPZ
  *     (`gpz/…/hv_section/001/bus_wn`), a solver liczy zwarcie także w niej. Szyna WN
@@ -90,15 +96,15 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
 
   const punktySchematuSn = Object.keys(zwarcie.elements).filter((ref) => !nnBoard.has(ref));
 
-  it('kontrola wejścia: nakładka biegu niesie 10 punktów zwarcia, wszystkie klasy „bus" (3 schematu SN + szyna WN GPZ + 6 szyn odpływów nN)', () => {
-    expect(Object.keys(zwarcie.elements)).toHaveLength(10);
+  it('kontrola wejścia: nakładka biegu niesie 11 punktów zwarcia, wszystkie klasy „bus" (3 schematu SN + 2 szyny sekcji 110 kV GPZ + 6 szyn odpływów nN)', () => {
+    expect(Object.keys(zwarcie.elements)).toHaveLength(11);
     expect(Object.values(zwarcie.elements).every((element) => element.kind === 'bus')).toBe(true);
-    expect(punktySchematuSn).toHaveLength(4);
-    expect(punktySchematuSn.filter((ref) => ref.includes('/hv_section/'))).toHaveLength(1);
+    expect(punktySchematuSn).toHaveLength(5);
+    expect(punktySchematuSn.filter((ref) => ref.includes('/hv_section/'))).toHaveLength(2);
     expect(Object.keys(zwarcie.elements).filter((ref) => nnBoard.has(ref))).toHaveLength(6);
   });
 
-  it('ODBIÓR: liczba etykiet > 0 i RÓWNA liczbie punktów wyniku schematu (4 = 4)', () => {
+  it('ODBIÓR: liczba etykiet > 0 i RÓWNA liczbie punktów wyniku schematu (5 = 5)', () => {
     const pokryte = pokrytePunkty(entries);
     expect(pokryte.size).toBeGreaterThan(0);
     expect([...pokryte].sort()).toEqual([...punktySchematuSn].sort());
@@ -107,8 +113,8 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
   it('rachunek pokrycia: schemat SN oznakowany w całości, szyny odpływów nN nazwane, zero punktów bez elementu rysunku', () => {
     const coverage = summarizeResultPointCoverage(zwarcie, entries, hidden, nnBoard, gpzTabela);
     expect(coverage).toEqual({
-      total: 10,
-      labelled: 4,
+      total: 11,
+      labelled: 5,
       hiddenByModel: 0,
       inGpzPanel: 0,
       withoutTemplate: 0,
@@ -139,8 +145,8 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg zwarciowy)', () => 
 describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () => {
   const entries = buildResultLabelsForSnapshot(enm, rozplyw);
 
-  it('kontrola wejścia: nakładka biegu niesie 28 punktów (szyny, gałęzie, transformatory, źródło, pole i bilans GPZ)', () => {
-    expect(Object.keys(rozplyw.elements)).toHaveLength(28);
+  it('kontrola wejścia: nakładka biegu niesie 35 punktów (szyny, gałęzie, transformatory, źródła, pola i bilans GPZ)', () => {
+    expect(Object.keys(rozplyw.elements)).toHaveLength(35);
     expect(new Set(Object.values(rozplyw.elements).map((element) => element.kind))).toEqual(
       new Set(['bus', 'branch', 'generator', 'bay', 'substation']),
     );
@@ -149,28 +155,32 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
   it('GPZ-PARYTET: wiersze pola i bilansu GPZ liczą się jako opisane w karcie GPZ inspektora (nie „bez wielkości dla tej analizy")', () => {
     const gpz = (enm.substations ?? []).find((s) => s.station_type === 'gpz')!;
     const wierszeGpz = Object.keys(rozplyw.elements).filter((ref) => ['bay', 'substation'].includes(rozplyw.elements[ref].kind));
-    // 4 pola (SN liniowe, liniowe 110 kV, TR po stronie WN i SN) + bilans stacji.
-    expect(wierszeGpz).toHaveLength(5);
+    // 6 pól (SN liniowe, dwa liniowe 110 kV, łącznika szyn 110 kV, TR po stronie WN i SN)
+    // + bilans stacji.
+    expect(wierszeGpz).toHaveLength(7);
     expect(wierszeGpz).toContain(gpz.ref_id);
-    expect(wierszeGpz.filter((ref) => rozplyw.elements[ref].kind === 'bay')).toHaveLength(4);
+    expect(wierszeGpz.filter((ref) => rozplyw.elements[ref].kind === 'bay')).toHaveLength(6);
     expect(wierszeGpz.every((ref) => gpzTabela.has(ref))).toBe(true);
     const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
-    expect(coverage.inGpzPanel).toBe(5);
+    expect(coverage.inGpzPanel).toBe(7);
     expect(coverage.withoutTemplate).toBe(0);
     // Bez zbioru karty GPZ te same wiersze spadają do „bez wielkości" (kategoria
     // nie jest pusta z definicji — predykat realnie rozstrzyga).
     const bezTabeli = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, new Set());
     expect(bezTabeli.inGpzPanel).toBe(0);
-    expect(bezTabeli.withoutTemplate).toBe(5);
+    expect(bezTabeli.withoutTemplate).toBe(7);
     // L0: blok GPZ zwinięty, adnotacji nie ma — zbiór pusty.
     expect(resultPointsInGpzPanel(buildSceneV3(enm, 0)).size).toBe(0);
   });
 
-  it('model DEKLARUJE 7 punktów jako nierysowane (2 mufy ciągu + 5 zacisków pól RMU) — to nie jest brak warstwy', () => {
+  it('model DEKLARUJE 10 punktów jako nierysowane (2 mufy ciągu + 5 zacisków pól RMU + 3 zaciski pól GPZ) — to nie jest brak warstwy', () => {
     const nierysowane = Object.keys(rozplyw.elements).filter((ref) => hidden.has(ref));
-    expect(nierysowane).toHaveLength(7);
+    expect(nierysowane).toHaveLength(10);
     expect(nierysowane.filter((ref) => ref.endsWith('/downstream'))).toHaveLength(2);
     expect(nierysowane.filter((ref) => ref.includes('/sn_field_terminal/'))).toHaveLength(5);
+    // Karta GPZ-H5-APARATURA: zaciski pól liniowych 110 kV L1/L2 i zacisk pola SN transformatora.
+    expect(nierysowane.filter((ref) => ref.endsWith('/terminal_line'))).toHaveLength(2);
+    expect(nierysowane.filter((ref) => ref.endsWith('/terminal_sn'))).toHaveLength(1);
   });
 
   it('szyny odpływów nN: 6 punktów, każdy to szyna za aparatem pola nN TEJ stacji', () => {
@@ -183,17 +193,17 @@ describe('S9-2 — pokrycie punktów wyniku etykietami (bieg rozpływowy)', () =
 
   it('ODBIÓR: INWARIANT SUMY sześciu kategorii === total, przy withoutAnchor = 0', () => {
     const coverage = summarizeResultPointCoverage(rozplyw, entries, hidden, nnBoard, gpzTabela);
-    expect(coverage.total).toBe(28);
+    expect(coverage.total).toBe(35);
     expect(coverage.labelled).toBeGreaterThan(0);
     expect(
       coverage.labelled + coverage.hiddenByModel + coverage.inGpzPanel + coverage.withoutTemplate
         + coverage.inStationNnBoard + coverage.withoutAnchor,
     ).toBe(coverage.total);
     expect(coverage.withoutAnchorRefs).toEqual([]);
-    expect(coverage.labelled).toBe(10);
-    expect(coverage.hiddenByModel).toBe(7);
+    expect(coverage.labelled).toBe(12);
+    expect(coverage.hiddenByModel).toBe(10);
     expect(coverage.inStationNnBoard).toBe(6);
-    expect(coverage.inGpzPanel).toBe(5);
+    expect(coverage.inGpzPanel).toBe(7);
   });
 
   it('bez predykatu rozdzielnicy nN te same szyny spadają do „bez elementu na schemacie" (kategoria nie jest pusta z definicji)', () => {

@@ -108,6 +108,7 @@ function wynikZwarciowyFixture(): ShortCircuitResults {
         sk_mva: 325.0,
         fault_type: '3F',
         flags: [],
+        flags_pl: [],
       },
     ],
   };

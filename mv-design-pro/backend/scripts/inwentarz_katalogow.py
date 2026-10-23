@@ -119,6 +119,9 @@ RODZINY_MIERNIKA: dict[str, str] = {
     # supraharmonic typu przekształtnika (katalog statyczny: wyłącznie z wyciągiem
     # dokumentu producenta).
     "spectral-card": "karty_widmowe",
+    # Karta GPZ-H5-APARATURA: wyposażenie pól SN (wskaźnik napięcia, transformator
+    # uziemiający, dławik gaszący, rezystory, bateria pola BKR) — pozycje wymagań ENEA.
+    "field-element": "element_pola_types",
 }
 
 #: Rodziny, które w żywym katalogu legalnie NIE MAJĄ pozycji — z powodem (pomiar, nie

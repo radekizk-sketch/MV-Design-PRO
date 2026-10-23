@@ -21,7 +21,7 @@ class DeviceRating:
     meta: dict[str, Any] = field(default_factory=dict)
     #: KARTA UM-ICU-KATALOG (2a): True gdy aparat NIE MA zdolnosci wylaczania
     #: zwarc z definicji normy (rozlacznik/odlacznik/uziemnik — equipment_kind
-    #: LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH). Rozstrzyga, czy brak i_cu_ka w
+    #: LOAD_SWITCH/DISCONNECTOR/EARTH_SWITCH/DISCONNECTOR_EARTH_SWITCH). Rozstrzyga, czy brak i_cu_ka w
     #: dowodzie jest stanem "NIE_DOTYCZY" (jawny, nie FAIL) czy "brak danej"
     #: (FAIL — aparat POWINIEN miec te zdolnosc, ale karta jej nie wniosla).
     i_cu_not_applicable: bool = False

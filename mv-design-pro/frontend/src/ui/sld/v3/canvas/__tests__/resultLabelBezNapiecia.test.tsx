@@ -13,9 +13,11 @@
  * Ścieżka natywna: `fetch` zaślepiony odpowiedzią serwera → `pobierzWynikBiegu` →
  * `payloadNakladki` → magazyn nakładki → kanwa (`SldCanvasV3Workspace`) → DOM.
  *
- * Iloczyn cech: rodzaj biegu (rozpływ — wiersz niesie znacznik × zwarcie — `element_results`
- * zwarcia znacznika nie niesie) × szyna (odcięta × zasilana) × poziom szczegółu (LOD 1 —
- * jedna linia × LOD 2 — linia przyczyny).
+ * Iloczyn cech: rodzaj biegu (rozpływ × zwarcie — od karty GPZ-H5-APARATURA oba wiersze
+ * `element_results` niosą znacznik stanu z jednej reguły backendu
+ * `enm.canonical_analysis.znaczniki_wiersza`, a nakładka odznakę o dotkliwości WARNING
+ * z `domain.result_contract_v1.ZNACZNIKI_STANU_NAKLADKI`) × szyna (odcięta × zasilana) × poziom
+ * szczegółu (LOD 1 — jedna linia × LOD 2 — linia przyczyny).
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -64,8 +66,19 @@ function etykietaPunktu(container: HTMLElement, ref: string): SVGGElement | null
   return container.querySelector(`g[data-testid^="sld-v3-result-label-"][data-result-ref="${ref}"]`);
 }
 
+/** Linie TREŚCI etykiety (bez znacznika dotkliwości „⚠" w rogu bloku — ten ma własny test). */
 function linie(etykieta: SVGGElement | null): string[] {
-  return Array.from(etykieta?.querySelectorAll('text') ?? []).map((t) => t.textContent ?? '');
+  return Array.from(etykieta?.querySelectorAll('text[data-testid^="sld-v3-result-line-"]') ?? []).map(
+    (t) => t.textContent ?? '',
+  );
+}
+
+/** Znacznik dotkliwości z nakładki backendu: atrybut bloku i glif „⚠" (sygnał nie-kolorowy). */
+function znacznikDotkliwosci(etykieta: SVGGElement | null): { severity: string | null; glif: boolean } {
+  return {
+    severity: etykieta?.getAttribute('data-result-severity') ?? null,
+    glif: etykieta?.querySelector('text[data-testid^="sld-v3-result-exceedance-"]') != null,
+  };
 }
 
 beforeEach(() => {
@@ -88,17 +101,18 @@ afterEach(() => {
 });
 
 describe('Znacznik BEZ_NAPIECIA z wyniku backendu', () => {
-  it('odczyt results/v1: rozpływ — szyna odcięta i jej zacisk pola; zwarcie — brak znacznika w element_results', async () => {
+  it('odczyt results/v1: rozpływ — szyna odcięta i jej zacisk pola; zwarcie — szyna odcięta', async () => {
     const rozplyw = await wczytaj(ROZPLYW);
     expect(rozplyw.szynyBezNapiecia).toContain(SZYNA_SN_2);
     expect(rozplyw.szynyBezNapiecia).not.toContain(SZYNA_SN_1);
     expect([...rozplyw.szynyBezNapiecia]).toEqual([...rozplyw.szynyBezNapiecia].sort());
     expect(payloadNakladki(rozplyw).bez_napiecia_refs).toEqual(rozplyw.szynyBezNapiecia);
-    // Zwarcie: `element_results` biegu zwarciowego NIE niesie pola `flags` (znacznik jest
-    // tylko w wierszach `GET /api/analysis-runs/{id}/results/short-circuit`) — front nie
-    // dopowiada stanu z braku liczby (meldunek: luka kontraktu backendu).
+    // Zwarcie: luka kontraktu zgłoszona przez kartę GPZ-H5-SLD (d) domknięta kartą
+    // GPZ-H5-APARATURA — wiersz zwarcia węzła bez impedancji do odniesienia niesie znacznik
+    // z przyczyny nieraportowalności (`znaczniki_wiersza_zwarcia`), więc `element_results`
+    // zwarcia też go niesie. Front nadal nie dopowiada stanu z braku liczby — czyta znacznik.
     const zwarcie = await wczytaj(ZWARCIE);
-    expect(zwarcie.szynyBezNapiecia).toEqual([]);
+    expect(zwarcie.szynyBezNapiecia).toEqual([SZYNA_SN_2]);
   });
 
   it('kształty wejścia: brak listy, wiersz bez flag, flagi obce, powtórzenia', () => {
@@ -127,17 +141,22 @@ describe('Szyna bez napięcia na kanwie (rozpływ × LOD)', () => {
     const odcieta = linie(etykietaPunktu(container, SZYNA_SN_2));
     const oczekiwane = LINIE_BEZ_NAPIECIA.slice(0, lod === 2 ? 2 : 1).map((l) => l.text);
     expect(odcieta).toEqual(oczekiwane);
+    expect(znacznikDotkliwosci(etykietaPunktu(container, SZYNA_SN_2))).toEqual({ severity: 'WARNING', glif: true });
+    expect(znacznikDotkliwosci(etykietaPunktu(container, SZYNA_SN_1)).glif).toBe(false);
     const zasilana = linie(etykietaPunktu(container, SZYNA_SN_1));
     expect(zasilana.length).toBeGreaterThan(0);
     expect(zasilana.join(' ')).not.toContain('bez napięcia');
     expect(zasilana[0]).toMatch(/^U /);
   });
 
-  it('zwarcie tego samego scenariusza: sekcja odcięta bez etykiety (bez liczby i bez dopowiedzianego stanu)', async () => {
+  it('zwarcie tego samego scenariusza: sekcja odcięta „bez napięcia” ze znacznika backendu, bez liczby', async () => {
     const wynik = await wczytaj(ZWARCIE);
     useRawResultOverlayStore.getState().setPayload(payloadNakladki(wynik));
     const { container } = render(<SldCanvasV3Workspace width={1600} height={1000} lodOverride={2} />);
-    expect(etykietaPunktu(container, SZYNA_SN_2)).toBeNull();
+    const odcieta = etykietaPunktu(container, SZYNA_SN_2);
+    expect(linie(odcieta)).toEqual(LINIE_BEZ_NAPIECIA.map((l) => l.text));
+    expect(linie(odcieta).join(' ')).not.toContain('Ik″');
+    expect(znacznikDotkliwosci(odcieta)).toEqual({ severity: 'WARNING', glif: true });
     expect(linie(etykietaPunktu(container, SZYNA_SN_1))[0]).toBe('Ik″ 8,9 kA');
   });
 });

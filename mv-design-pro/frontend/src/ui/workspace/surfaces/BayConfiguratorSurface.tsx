@@ -12,6 +12,9 @@
  * jedyny dostawca operacji `set_bay_equipment` (katalog / szablon pola / usunięcie), ze
  * stanem danych i danymi przyjętymi z modelu odczytu pola. Pole nN ma własne operacje
  * rozdzielnicy nN — edytora SN dla niego nie ma (backend odmówiłby `bay_equipment.bay_not_mv`).
+ * Pole na szynie 110 kV (pasmo WN) też go nie ma: strona 110 kV jest granicą zasilania sieci SN
+ * (decyzja właściciela 2026-10-22), pole niesie wyłącznie łącznik pola z gałęzią modelu, a jego
+ * stan zmienia scenariusz łączeniowy (backend odmówiłby `bay_equipment.bay_hv_boundary`).
  *
  * Korekta 2026-10-15: dawna powierzchnia renderowała pusty szkielet ośmiu zakładek z tekstem
  * zastępczym i oceniała pole regułami frontu na kontekście DOPISANYM w przeglądarce (rola
@@ -26,7 +29,7 @@ import { useFieldReadModel } from '../../field/useFieldReadModel';
 import { useKatalogPola } from '../../field/useKatalogPola';
 import { buildBaySections, SectionBlock } from '../../network-build/InspectorEngineeringView';
 import { useAppStateStore } from '../../app-state';
-import { czyPoleNn } from '../../shared/polaStacji';
+import { czyPoleNn, czyPoleWn } from '../../shared/polaStacji';
 import { fieldRoleLabelOrNullPl } from '../../sld/v2/station-rozdzielnia/contract';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useProblemyGotowosci } from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
@@ -120,13 +123,22 @@ export function BayConfiguratorSurface({ surface }: BayConfiguratorSurfaceProps)
                 executeDomainOperation={executeDomainOperation}
               />
             ))}
-            {bayInModel && !czyPoleNn(snapshot, bayInModel) ? (
+            {bayInModel && czyPoleWn(snapshot, bayInModel) ? (
+              <p
+                data-testid="bay-card-granica-wn"
+                className="m-3 rounded border border-scada-border bg-scada-surface p-3 text-[length:var(--mvd-font-size-data)] text-scada-text"
+              >
+                Pole 110 kV jest granicą zasilania sieci SN: jego skład to łącznik pola z gałęzią
+                modelu, bez wyposażenia z katalogu. Stan łącznika zmień w panelu „Scenariusze
+                łączeniowe” przypadku obliczeniowego.
+              </p>
+            ) : bayInModel && !czyPoleNn(snapshot, bayInModel) ? (
               <EdytorWyposazeniaPola
                 key={bayInModel.ref_id}
                 bay={bayInModel}
                 snapshot={snapshot}
-                stanDanych={item?.canonical_model.base_model.equipment_data_state ?? null}
-                danePrzyjete={item?.canonical_model.base_model.equipment_assumed_data ?? []}
+                sklad={item?.canonical_model.base_model.sklad ?? null}
+                szablonStandarduNazwa={item?.canonical_model.base_model.szablon_standardu_nazwa_pl ?? null}
                 activeCaseId={activeCaseId}
                 executeDomainOperation={executeDomainOperation}
                 bladStore={() => useSnapshotStore.getState().error}

@@ -777,6 +777,20 @@ REGULY_KATALOGU: dict[str, RegulaKatalogu] = _rejestr(
             "która ją definiuje."
         ),
     ),
+    RegulaKatalogu(
+        kod="KAT-T-048",
+        nazwa="Rodzaj elementu pola SN z zamkniętego słownika",
+        klasa=KlasaNiezmiennika.OGRANICZENIE_ZAKRESU_PRODUKTU,
+        podstawa=(
+            "Kontrakt przestrzeni ELEMENT_POLA_SN (karta GPZ-H5-APARATURA): rodzaj pozycji "
+            "wyznacza gniazdo pola, które pozycja może obsadzić (ENEA Zeszyt 1 §13, §16, §17)"
+        ),
+        uzasadnienie=(
+            "Rodzaj spoza słownika nie odpowiada żadnemu gniazdu pola — pozycja nie dałaby się "
+            "wskazać w żadnym polu, a brama zgodności rodzaju aparatu z pozycją katalogu "
+            "przepuszczałaby ją bez kryterium."
+        ),
+    ),
     # -----------------------------------------------------------------------
     # REGULY WIARYGODNOSCI — sygnal do przegladu, NIGDY odmowa
     # -----------------------------------------------------------------------

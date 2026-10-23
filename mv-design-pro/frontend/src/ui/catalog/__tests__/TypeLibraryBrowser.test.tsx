@@ -14,7 +14,8 @@ const TAB_LABELS = [
   'Typy zasilania systemowego SN',
   'Typy transformatorów SN/nN',
   'Typy aparatury łączeniowej SN',
-  'Typy aparatury SN',
+  'Typy aparatury SN i 110 kV',
+  'Typy elementów wyposażenia pól SN',
   'Typy aparatury nN',
   'Typy wyłączników różnicowoprądowych nN',
   'Typy kabli nN',
@@ -319,6 +320,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   // wymaga wpisu dla KAŻDEJ TypeCategory, więc pusta lista jest uczciwym
   // stanem (nikt nie klika tych zakładek w tym pliku testów), nie fikcją.
   SURGE_ARRESTER: [],
+  FIELD_ELEMENT: [],
   SHUNT_CAPACITOR: [],
   BRANCH_POLE: [],
   ZKSN: [],
@@ -354,7 +356,7 @@ describe('TypeLibraryBrowser', () => {
     });
 
     expect(screen.getByText('Biblioteka typów')).toBeInTheDocument();
-    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('Typy'))).toHaveLength(17);
+    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('Typy'))).toHaveLength(18);
     for (const label of TAB_LABELS) {
       expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument();
     }

@@ -23,7 +23,7 @@
  * `pola`).
  */
 import type { Bay, BayCanonicalRole } from '../../types/enm';
-import { wPasmieNn } from '../../ui2/model/pasmaNapieciowe';
+import { wPasmieNn, wPasmieWn } from '../../ui2/model/pasmaNapieciowe';
 import { canonicalFieldRole } from '../sld/v2/station-rozdzielnia/contract';
 
 /** Minimalny kształt rekordu pola czytany przez reguły (pełny rekord to `Bay`; wyrocznie
@@ -184,6 +184,23 @@ export function czyPoleNn(
   const szyna = napis(rekord.bus_ref);
   if (!szyna) return false;
   return wPasmieNn(napiecia.get(szyna));
+}
+
+/**
+ * Czy pole leży na szynie w paśmie WN — lustro bramy `bay_equipment.bay_hv_boundary` operacji
+ * `set_bay_equipment` (`enm/wyposazenie_pola.py`, ten sam predykat pasma `wPasmieWn`). Strona
+ * 110 kV GPZ jest granicą zasilania sieci SN (decyzja właściciela 2026-10-22): pole ma tylko
+ * łącznik pola z gałęzią modelu, wyposażenia pola się mu nie ustawia. Szyna nieznana albo bez
+ * napięcia = NIE WN.
+ */
+export function czyPoleWn(
+  model: Pick<ModelPol<RekordPola>, 'buses'> | null | undefined,
+  rekord: Pick<Bay, 'bus_ref'>,
+  napiecia: ReadonlyMap<string, number | null> = napieciaSzyn(model),
+): boolean {
+  const szyna = napis(rekord.bus_ref);
+  if (!szyna) return false;
+  return wPasmieWn(napiecia.get(szyna));
 }
 
 /** Pola SN stacji (kolejność zapisu) — lustro `enm.pola.pola_sn_stacji`. */

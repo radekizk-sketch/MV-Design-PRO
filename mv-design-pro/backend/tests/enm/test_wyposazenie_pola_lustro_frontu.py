@@ -1,4 +1,4 @@
-"""Lustro frontu reguł wyposażenia pola SN i stanu łącznika (karta W5-C).
+"""Lustro frontu reguł wyposażenia pola SN i stanu łącznika (karty W5-C, GPZ-H5-APARATURA).
 
 Po co: formularz wyposażenia pola (``frontend/src/ui/field/wyposazeniePola.ts``) KSZTAŁTUJE
 wiersze aparatów wg tablic backendu (który rodzaj ma katalog i jaką przestrzeń, który wskazuje
@@ -19,7 +19,8 @@ import re
 import typing
 from pathlib import Path
 
-from enm.models import BayBaseModel, BayPrimaryDevice
+from enm.models import BayBaseModel, BayPrimaryDevice, WierszSkladuPola
+from enm.sklad_pola import NAZWY_STATUSOW_SKLADU_PL
 from enm.stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
 from enm.topology import TYPY_LACZNIKOW_ENM
 from enm.wyposazenie_pola import (
@@ -84,10 +85,16 @@ def test_rodzaje_z_galezia_i_z_rola_uziemienia_sa_lustrem() -> None:
 
 
 def test_rodzaje_pola_sn_i_nazwy_sa_lustrem() -> None:
-    rodzaje_backendu = frozenset(NAZWY_RODZAJOW_APARATU_POLA_PL)
+    # Rodzaje formularza = rodzaje przyjmowane przez operację zapisu (z katalogiem i bez);
+    # słownik nazw backendu jest szerszy (aparaty wyprowadzone z wytwórców pola — PV, BESS,
+    # przekształtnik), ale nazwy rodzajów formularza są TYMI SAMYMI słowami.
+    rodzaje_backendu = frozenset(PRZESTRZEN_KATALOGU_APARATU) | RODZAJE_BEZ_KATALOGU_SN
+    assert rodzaje_backendu <= frozenset(NAZWY_RODZAJOW_APARATU_POLA_PL)
     assert _lista("RODZAJE_APARATU_POLA_SN") == rodzaje_backendu
     assert _unia("RodzajAparatuPolaSn", _WYPOSAZENIE_TS) == rodzaje_backendu
-    assert _slownik_napisow("NAZWA_RODZAJU_APARATU_PL") == NAZWY_RODZAJOW_APARATU_POLA_PL
+    assert _slownik_napisow("NAZWA_RODZAJU_APARATU_PL") == {
+        rodzaj: NAZWY_RODZAJOW_APARATU_POLA_PL[rodzaj] for rodzaj in rodzaje_backendu
+    }
     # Każdy rodzaj pola SN jest rodzajem aparatu pola kontraktu (``BayPrimaryDevice.kind``).
     rodzaje_kontraktu = frozenset(typing.get_args(BayPrimaryDevice.model_fields["kind"].annotation))
     assert rodzaje_backendu <= rodzaje_kontraktu
@@ -100,12 +107,16 @@ def test_umiejscowienia_sa_lustrem_kontraktu() -> None:
     assert _unia("BayPrimaryPlacement", _ENM_TS) == kontrakt
 
 
-def test_stan_danych_wyposazenia_jest_lustrem_kontraktu() -> None:
-    kontrakt = frozenset(
-        typing.get_args(BayBaseModel.model_fields["equipment_data_state"].annotation)
-    )
-    assert _unia("StanDanychWyposazenia", _ENM_TS) == kontrakt
-    assert frozenset(_slownik_napisow("STAN_DANYCH_WYPOSAZENIA_PL")) == kontrakt
+def test_status_skladu_pola_jest_lustrem_kontraktu() -> None:
+    """Status wiersza składu pola (``WierszSkladuPola.status``, karta GPZ-H5-APARATURA) — unia
+    frontu i etykiety statusów są lustrem kontraktu i słownika backendu (te same słowa)."""
+    kontrakt = frozenset(typing.get_args(WierszSkladuPola.model_fields["status"].annotation))
+    assert kontrakt == frozenset(NAZWY_STATUSOW_SKLADU_PL)
+    assert _unia("StatusSkladuPola", _ENM_TS) == kontrakt
+    assert _slownik_napisow("STATUS_SKLADU_POLA_PL") == NAZWY_STATUSOW_SKLADU_PL
+    # Odczyt pola niesie skład (nie dawny stan danych) — pole kontraktu istnieje.
+    assert "sklad" in BayBaseModel.model_fields
+    assert "equipment_data_state" not in BayBaseModel.model_fields
 
 
 def _typy_predykatu(nazwa: str) -> frozenset[str]:

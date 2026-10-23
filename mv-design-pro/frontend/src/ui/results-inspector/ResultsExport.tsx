@@ -14,9 +14,6 @@ import type {
   RunHeader,
   ShortCircuitRow,
 } from './types';
-// Jedno źródło etykiet flag wiersza wyniku (dawniej lokalna kopia bez polskich znaków,
-// która rozjechała się ze słownikiem tabel przy pierwszej nowej fladze).
-import { FLAG_LABELS } from './types';
 
 interface ExportData {
   activeTab: ResultsInspectorTab;
@@ -72,7 +69,6 @@ const TAB_LABELS: Record<ResultsInspectorTab, string> = {
   TRACE: 'Slad obliczen',
 };
 
-
 type ReportProfile = 'standardowy' | 'audytowy';
 type ReportDetail = 'skrocony' | 'pelny';
 type ReportScope = 'whole_run' | 'active_table';
@@ -101,11 +97,9 @@ function formatNumber(value: number | null | undefined, decimals = 3): string {
   });
 }
 
-function formatFlags(flags: string[]): string {
-  if (!flags || flags.length === 0) {
-    return '';
-  }
-  return flags.map((flag) => FLAG_LABELS[flag] ?? flag).join(', ');
+/** Etykiety PL znaczników wiersza nadaje backend (`flags_pl`) — eksport nie ma słownika. */
+function formatFlags(etykiety: readonly string[]): string {
+  return etykiety.join(', ');
 }
 
 function formatDate(isoDate: string): string {
@@ -133,7 +127,7 @@ function generateBusCSV(rows: BusResultRow[]): string {
       formatNumber(row.u_kv, 3),
       formatNumber(row.u_pu, 4),
       formatNumber(row.angle_deg, 2),
-      escapeCSVField(formatFlags(row.flags)),
+      escapeCSVField(formatFlags(row.flags_pl)),
     ].join(';'),
   );
   return [header, ...dataRows].join('\n');
@@ -152,7 +146,7 @@ function generateBranchCSV(rows: BranchResultRow[]): string {
       formatNumber(row.q_mvar, 3),
       formatNumber(row.s_mva, 3),
       formatNumber(row.loading_pct, 1),
-      escapeCSVField(formatFlags(row.flags)),
+      escapeCSVField(formatFlags(row.flags_pl)),
     ].join(';'),
   );
   return [header, ...dataRows].join('\n');

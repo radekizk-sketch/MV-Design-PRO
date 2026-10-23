@@ -127,17 +127,17 @@
         "fault_node_id": "63203cbc-ac91-5100-a0ee-a275d24514ff",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 5.11590769747e-13,
+          "re": 1.2745363594e-09,
           "im": -10162.601626
         }
       },
-      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 0.108279252032,
+          "re": 0.108279253306,
           "im": -10160.476333
         },
-        "r_ohm": 0.108279252032,
+        "r_ohm": 0.108279253306,
         "x_ohm": -10160.476333,
         "z_equiv_abs_ohm": 10160.4763336
       },
@@ -216,9 +216,9 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 0.108279252032,
+        "r_ohm": 0.108279253306,
         "x_ohm": -10160.476333,
-        "rx_ratio": -1.06569070665e-05
+        "rx_ratio": -1.06569071918e-05
       },
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
@@ -339,9 +339,9 @@
       "inputs": {
         "ikss_a": 2.81274591728,
         "tb_s": 0.1,
-        "rx_ratio": -1.06569070665e-05,
+        "rx_ratio": -1.06569071918e-05,
         "f_hz": 50.0,
-        "wykladnik": -0.0003347966095,
+        "wykladnik": -0.000334796613439,
         "wspolczynnik_zaniku": 1.00033485266,
         "tb_zrodlo": {
           "wartosc_s": 0.1,
@@ -354,7 +354,7 @@
       },
       "substitution_latex": "\\sqrt{2} \\cdot 2.81275 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot -1.06569e-05}",
       "result": {
-        "i_dc_a": 3.97915540849
+        "i_dc_a": 3.9791554085
       },
       "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "step": 8,
@@ -390,12 +390,12 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "m_factor": 2.00627937257,
+        "m_factor": 2.00627937265,
         "n_factor": 1.0
       },
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
-        "ith_a": 4.8769148332
+        "ith_a": 4.87691483326
       },
       "notes": null,
       "step": 9,
@@ -1513,17 +1513,17 @@
         "fault_node_id": "d93618a6-23da-5d59-ae10-a7242961b790",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 5.11590769747e-13,
+          "re": 1.2745363594e-09,
           "im": -10162.601626
         }
       },
-      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(5.11591e-13 - j 10162.6\\right)",
+      "substitution_latex": "\\left(0.0541396 + j 1.06265\\right) + \\left(0.0541396 + j 1.06265\\right) + \\left(1.27454e-09 - j 10162.6\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 0.108279252032,
+          "re": 0.108279253306,
           "im": -10160.476333
         },
-        "r_ohm": 0.108279252032,
+        "r_ohm": 0.108279253306,
         "x_ohm": -10160.476333,
         "z_equiv_abs_ohm": 10160.4763336
       },
@@ -1602,9 +1602,9 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 0.108279252032,
+        "r_ohm": 0.108279253306,
         "x_ohm": -10160.476333,
-        "rx_ratio": -1.06569070665e-05
+        "rx_ratio": -1.06569071918e-05
       },
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -1.06569e-05}",
       "result": {
@@ -1725,9 +1725,9 @@
       "inputs": {
         "ikss_a": 2.81274591728,
         "tb_s": 0.1,
-        "rx_ratio": -1.06569070665e-05,
+        "rx_ratio": -1.06569071918e-05,
         "f_hz": 50.0,
-        "wykladnik": -0.0003347966095,
+        "wykladnik": -0.000334796613439,
         "wspolczynnik_zaniku": 1.00033485266,
         "tb_zrodlo": {
           "wartosc_s": 0.1,
@@ -1740,7 +1740,7 @@
       },
       "substitution_latex": "\\sqrt{2} \\cdot 2.81275 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot -1.06569e-05}",
       "result": {
-        "i_dc_a": 3.97915540849
+        "i_dc_a": 3.9791554085
       },
       "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "step": 38,
@@ -1776,12 +1776,12 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.81274591728,
-        "m_factor": 2.00627937257,
+        "m_factor": 2.00627937265,
         "n_factor": 1.0
       },
       "substitution_latex": "2.81275 \\cdot \\sqrt{2.00628 + 1}",
       "result": {
-        "ith_a": 4.8769148332
+        "ith_a": 4.87691483326
       },
       "notes": null,
       "step": 39,
@@ -1975,17 +1975,17 @@
         "fault_node_id": "e22c09ea-bf55-54b7-8c57-88efc2eb8989",
         "short_circuit_type": "1F",
         "z0_ohm": {
-          "re": 1.426,
+          "re": 1.42600000127,
           "im": -10158.881626
         }
       },
       "substitution_latex": "\\left(0.755726 + j 1.92644\\right) + \\left(0.755726 + j 1.92644\\right) + \\left(1.426 - j 10158.9\\right)",
       "result": {
         "z_equiv_ohm": {
-          "re": 2.93745101618,
+          "re": 2.93745101745,
           "im": -10155.0287494
         },
-        "r_ohm": 2.93745101618,
+        "r_ohm": 2.93745101745,
         "x_ohm": -10155.0287494,
         "z_equiv_abs_ohm": 10155.0291742
       },
@@ -2064,9 +2064,9 @@
       "title": "Współczynnik udaru",
       "formula_latex": "\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
       "inputs": {
-        "r_ohm": 2.93745101618,
+        "r_ohm": 2.93745101745,
         "x_ohm": -10155.0287494,
-        "rx_ratio": -0.000289260728717
+        "rx_ratio": -0.000289260728842
       },
       "substitution_latex": "1.02 + 0.98 \\cdot e^{-3 \\cdot -0.000289261}",
       "result": {
@@ -2187,10 +2187,10 @@
       "inputs": {
         "ikss_a": 2.81425467467,
         "tb_s": 0.1,
-        "rx_ratio": -0.000289260728717,
+        "rx_ratio": -0.000289260728842,
         "f_hz": 50.0,
-        "wykladnik": -0.00908739380308,
-        "wspolczynnik_zaniku": 1.00912880952,
+        "wykladnik": -0.00908739380702,
+        "wspolczynnik_zaniku": 1.00912880953,
         "tb_zrodlo": {
           "wartosc_s": 0.1,
           "pochodzenie": "PROPOZYCJA",
@@ -2202,7 +2202,7 @@
       },
       "substitution_latex": "\\sqrt{2} \\cdot 2.81425 \\cdot e^{-2 \\pi \\cdot 50 \\cdot 0.1 \\cdot -0.000289261}",
       "result": {
-        "i_dc_a": 4.01628939943
+        "i_dc_a": 4.01628939945
       },
       "notes": "Ik'' części sieci niosącej składową nieokresową (sieć zasilająca i maszyny wirujące); źródła przekształtnikowe nie mają składowej nieokresowej (IEC 60909-0:2016). R/X — ten sam stosunek pętli zwarcia co we współczynniku κ. Czas wyłączenia: t_b = 0,1 s — wartość robocza (węzeł tablicy μ IEC 60909-0:2016 (rys. 16 / wzory (70)–(73), t_min = 0,1 s)): do szyny punktu zwarcia nie jest przyłączone żadne pole stacji z aparatem z katalogu. Wpływ: I_b z udziałem maszyn wirujących i składowa i_DC policzone przy założonym t_b; dłuższy rzeczywisty czas wyłączenia daje mniejsze I_b i i_DC (ocena zachowawcza), krótszy — większe. Zmień t_b w scenariuszu zwarciowym, aby przeliczyć na wartości projektowej.",
       "step": 48,
@@ -2238,12 +2238,12 @@
       "formula_latex": "I_{th} = I_{k}'' \\cdot \\sqrt{m + n}",
       "inputs": {
         "ikss_a": 2.81425467467,
-        "m_factor": 2.18015435326,
+        "m_factor": 2.18015435334,
         "n_factor": 1.0
       },
       "substitution_latex": "2.81425 \\cdot \\sqrt{2.18015 + 1}",
       "result": {
-        "ith_a": 5.01865678158
+        "ith_a": 5.01865678164
       },
       "notes": null,
       "step": 49,
@@ -2683,7 +2683,7 @@
       "formula_set_version": "iec60909_v1",
       "standard_basis_ref": "IEC_60909",
       "input_hash": "f0aae8969e8b8e69527374d715c3e13ec3fa49f10f46661a205f5b60d746cd69",
-      "result_hash": "54f244ddf89a3fb6d00dbbefd7e047deac933b854c55b68e87fece3eae5784a3",
+      "result_hash": "0553c6830ec78e813bc2be23c5e9e37f53871daff8843464045ff3301628c98a",
       "domain_model_version": "1.0",
       "bay_contract_version": "V12.5",
       "results_contract_version": "V12.5",
@@ -2694,7 +2694,7 @@
       "catalog_materialization_status": "not_materialized",
       "catalog_materialization_contract_version": "catalog_materialization_v1",
       "catalog_schema_version": null,
-      "catalog_fingerprint": "8c015912b79ab48425c27e8d1efeb733b60341cb4c03b88eac4fc9da8dcb7ce8",
+      "catalog_fingerprint": "8a27a1a038f230dcaaa58e03ce6a83d8c3978ace15cdd822f1a275e5bef827a8",
       "model_revision": 1,
       "tolerance_policy_ref": "solver_tolerance/default",
       "rounding_policy_ref": "rounding/default",

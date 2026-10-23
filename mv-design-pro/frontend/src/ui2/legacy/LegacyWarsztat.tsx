@@ -27,11 +27,8 @@ import { featureFlags } from '../../ui/config/featureFlags';
 import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from '../../ui/workspace/surfaces/ProjectDashboardSurface';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
-import { SemanticIssuesBanner } from '../../ui/tech-card/SemanticIssuesBanner';
 import { useAppStateStore } from '../../ui/app-state';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
-import { useSnapshotStore } from '../../ui/topology/snapshotStore';
-import { useSelectionStore } from '../../ui/selection/store';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
 import { LegacySurface } from './LegacySurface';
@@ -185,19 +182,13 @@ export function useWidokKanwySchematu(route: string, space: SpaceId): boolean {
 }
 
 export function LegacyWarsztat(props: LegacyWarsztatProps) {
-  const semanticIssues = useSnapshotStore((state) => state.lastSemanticIssues);
-  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const mainSurfaceExpanded = useRozwinietaPowierzchnia(props.space);
 
   return (
     <div className="mvd-legacy-host">
-      {/* Walidacja semantyczna — globalny baner nad warsztatem (dawny AppShellV12). */}
-      {(semanticIssues?.length ?? 0) > 0 && (
-        <SemanticIssuesBanner
-          issues={semanticIssues}
-          onSelectElement={(ref) => centerSldOnElement(ref)}
-        />
-      )}
+      {/* Walidacja na żywo: gotowość odpowiedzi operacji na pasku stanu powłoki (jeden
+          walidator modelu); dawny baner drugiej ścieżki walidacji skasowany (karta
+          GPZ-H5-APARATURA). */}
       <div className="mvd-legacy-warsztat-tresc">
         {mainSurfaceExpanded ? <WorkspaceSurfaceRouter region="main" /> : <TrasaLubPrzestrzen {...props} />}
       </div>

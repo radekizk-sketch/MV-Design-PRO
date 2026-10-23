@@ -79,6 +79,18 @@ ODCISK_SPRZED_KARTY = "1a8bcd4ba4a73c5dfb14a1f0315f82492a820cbb785226991432f8636
 #: `ODCISK_SPRZED_KARTY` (żadna inna przestrzeń ani liść nie zmieniły się), a z nią — wartość
 #: poniżej (przeliczona na drzewie partii 9, po katalogu z proweniencją i torze V112).
 ODCISK_PO_W5E_TTIT = "e83ee88bce1a45b0ef7e57931612c100764968c4fcd42281b133215fc3b1c062"
+#: Karta GPZ-H5-APARATURA (2026-10-22): pozycje WYMAGAŃ standardu ENEA dla pól SN
+#: (`mv_wymagania_enea_catalog`). Dowód liść po liściu (zrzut kanoniczny z wyciętymi polami
+#: karty projekcji, baza `88557ceb7` vs drzewo karty): nowa przestrzeń `element_pola_types`
+#: (7 pozycji); ct_types +1 (Ferranti 100/1); switch_equipment_types +4 i mv_apparatus_types
+#: +4 (trzy odłączniki trójpołożeniowe 630/1250/2000 A i uziemnik pola SN 24 kV 16 kA/3 s);
+#: mv_apparatus_types 48 zmienionych WYŁĄCZNIE nowym kluczem `u_m_kv` (12,0 × 21, 15,0 × 1,
+#: 17,5 × 11, 24,0 × 15 — projekcja U_m istniejącej już pozycji aparatury łączeniowej); nowe
+#: pola `icw_duration_s`, `naped`, `odmiana` są poza odciskiem, gdy puste
+#: (`odcisk._POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE`). Żadna liczba ani identyfikator
+#: istniejącej pozycji nie zmieniły się — przypina to `bez_gpz_h5` poniżej.
+ODCISK_PO_GPZ_H5 = "75b595a56d05484fa942f82ec46944bb7706ad2a1481062e8196a4c503eb0462"
+PREFIKS_WYMAGAN_ENEA = "enea-wym-"
 PROJEKCJE = ("pv_inverter_types", "bess_inverter_types")
 
 
@@ -116,9 +128,25 @@ def test_zmiana_odcisku_wylacznie_z_pol_karty_projekcji() -> None:
         "conv-pv-nn-sma-stp10p0-3av-40-0p4kv",
         "conv-pv-nn-sma-stp8p0-3av-40-0p4kv",
     ]
-    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_W5E_TTIT
+    assert _odcisk_zrzutu(zrzut) == ODCISK_PO_GPZ_H5
+    bez_gpz_h5 = {
+        przestrzen: {
+            typ_id: {
+                k: v
+                for k, v in postac.items()
+                if przestrzen != "mv_apparatus_types" or k != "u_m_kv"
+            }
+            for typ_id, postac in pozycje.items()  # type: ignore[attr-defined]
+            if not typ_id.startswith(PREFIKS_WYMAGAN_ENEA)
+        }
+        for przestrzen, pozycje in zrzut.items()
+        if przestrzen != "element_pola_types"
+    }
+    assert _odcisk_zrzutu(bez_gpz_h5) == ODCISK_PO_W5E_TTIT
     bez_rcd = {
-        przestrzen: postac for przestrzen, postac in zrzut.items() if przestrzen != "lv_rcd_types"
+        przestrzen: postac
+        for przestrzen, postac in bez_gpz_h5.items()
+        if przestrzen != "lv_rcd_types"
     }
     assert _odcisk_zrzutu(bez_rcd) == ODCISK_SPRZED_KARTY
 

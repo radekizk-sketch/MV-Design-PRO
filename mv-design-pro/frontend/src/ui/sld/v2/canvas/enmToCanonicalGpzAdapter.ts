@@ -61,6 +61,7 @@ import { szynyStacji, type ModelSzyn } from '../../../shared/szynyStacji';
 import { polaStacji } from '../../../shared/polaStacji';
 import { transformatoryNalezaceDoStacji } from '../../../shared/transformatoryStacji';
 import { czyPoleRezerwowe, czyPoleWolne } from '../../../shared/rodzajStacji';
+import { sekcjeSnTransformatorowGpz } from '../../../shared/stanLacznika';
 
 /* =============================================================================
    Public API
@@ -162,8 +163,10 @@ export function buildCanonicalGpzProps(
   const polaSekcji = allBays.filter((bay) => !polaWToruTransformatora.has(bay.ref_id) && !polaSprzegiel.has(bay.ref_id));
 
   const lvSections = buildLvSections(substation, polaSekcji, enm.buses ?? [], protectionCtx);
-  // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
-  // przypisania TR do sekcji wg `lv_bus_ref`.
+  // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — sekcja SN transformatora
+  // to szyna sekcji z `sekcjeSnTransformatorowGpz` (lustro `sekcje_sn_transformatorow_gpz`:
+  // strona dolna wprost na szynie sekcji ALBO na zacisku pola SN za łącznikiem pola, karta
+  // GPZ-H5-APARATURA — `lv_bus_ref` wskazuje wtedy zacisk `terminal_sn`, nie szynę sekcji).
   const sectionIdByLvBusRef = new Map<string, string>();
   for (const sec of substation.gpz_sections ?? []) {
     if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
@@ -177,7 +180,12 @@ export function buildCanonicalGpzProps(
     if (sec.bus_ref) sectionIdByHvBusRef.set(sec.bus_ref, sec.section_id);
   }
 
-  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef, sectionIdByHvBusRef, (tr) => ({
+  const sekcjeSn = sekcjeSnTransformatorowGpz(enm);
+  const sekcjaSnTransformatora = (tr: Transformer): string | null => {
+    const szyna = sekcjeSn.get(tr.ref_id)?.szynaSekcji;
+    return szyna !== undefined ? sectionIdByLvBusRef.get(szyna) ?? null : null;
+  };
+  const transformers = buildTransformers(allTransformers, sekcjaSnTransformatora, sectionIdByHvBusRef, (tr) => ({
     poleTr: polaTrSn.has(tr.ref_id) ? buildBay(polaTrSn.get(tr.ref_id)!, protectionCtx) : null,
     poleWn: polaTrWn.has(tr.ref_id) ? buildBay(polaTrWn.get(tr.ref_id)!, protectionCtx) : null,
   }));
@@ -384,7 +392,7 @@ function przypiszPolaTr(
 
 function buildTransformers(
   transformers: readonly Transformer[],
-  sectionIdByLvBusRef: ReadonlyMap<string, string>,
+  sekcjaSnTransformatora: (tr: Transformer) => string | null,
   sectionIdByHvBusRef: ReadonlyMap<string, string>,
   polaToru: (tr: Transformer) => Pick<CanonicalGpzTransformer, 'poleTr' | 'poleWn'>,
 ): CanonicalGpzTransformer[] {
@@ -403,7 +411,7 @@ function buildTransformers(
       // niekompletna, mimo że model je NIÓSŁ.
       ukPercent: tr.uk_percent ?? null,
       pkKw: tr.pk_kw ?? null,
-      lvSectionId: sectionIdByLvBusRef.get(tr.lv_bus_ref) ?? null,
+      lvSectionId: sekcjaSnTransformatora(tr),
       hvBusRef: tr.hv_bus_ref ?? null,
       hvSectionId: sectionIdByHvBusRef.get(tr.hv_bus_ref) ?? null,
       // SLD-02 (V12K-091): adnotacja OLTC/DETC z kanonicznego tap_changer

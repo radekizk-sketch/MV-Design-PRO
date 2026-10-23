@@ -136,6 +136,24 @@ def przypnij_identyfikatory_zrzutu(enm: dict[str, Any]) -> None:
 _LICZBA_JSON = re.compile(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?")
 
 
+def _szkielet(tresc: str, pola_skrotow: frozenset[str]) -> str:
+    """Szkielet tekstu bez liczb i bez wartości SKRÓTÓW nad liczbami nieprzenośnymi.
+
+    Skrót nad wynikiem solvera (``deterministic_signature``, ``result_hash`` … —
+    ``tests.ci.tolerancja_fikstur.POLA_SKROTOW_NIEPRZENOSNYCH``) jest napisem
+    szesnastkowym: szum BLAS w ostatniej cyfrze wyniku zmienia go w całości, a litery
+    skrótu przechodziły przez maskę liczb. Kotwica uznawała wtedy szkielet za zmieniony
+    i przepuszczała świeżą treść, choć ``roznice_z_tolerancja`` (ten sam predykat co
+    porównanie) wyłącza te pola — fikstura wyniku zależała od liczby wątków BLAS
+    (pomiar karty GPZ-H5-SCALENIE-APARATURY: ``gpzH5RezerwaJawnaBezLsSn.rozplyw`` —
+    jeden wątek ≠ wiele wątków wyłącznie szumem 1e-12 i skrótem). Maska obejmuje
+    WYŁĄCZNIE napisowe wartości kluczy z tej listy; skróty nad wejściem zostają w
+    szkielecie (dryf danych wejściowych to realna zmiana)."""
+    klucze = "|".join(re.escape(k) for k in sorted(pola_skrotow))
+    bez_skrotow = re.sub(rf'("(?:{klucze})":\s*)"[^"]*"', r'\1"#"', tresc)
+    return _LICZBA_JSON.sub("#", bez_skrotow)
+
+
 def tresc_z_kotwica(plik: Path, tresc: str) -> str:
     """Treść, którą generator fikstury JSON zapisuje pod ``plik`` — KOTWICA W SZUMIE.
 
@@ -151,14 +169,17 @@ def tresc_z_kotwica(plik: Path, tresc: str) -> str:
     na_dysku = plik.read_text(encoding="utf-8")
     if na_dysku == tresc:
         return tresc
-    if _LICZBA_JSON.sub("#", na_dysku) != _LICZBA_JSON.sub("#", tresc):
+    # Import leniwy: moduł tolerancji żyje w ``tests/ci`` (współdzielony z harnessem).
+    from tests.ci.tolerancja_fikstur import POLA_SKROTOW_NIEPRZENOSNYCH, roznice_z_tolerancja
+
+    if _szkielet(na_dysku, POLA_SKROTOW_NIEPRZENOSNYCH) != _szkielet(
+        tresc, POLA_SKROTOW_NIEPRZENOSNYCH
+    ):
         return tresc
     try:
         zapisane = json.loads(na_dysku)
         swieze = json.loads(tresc)
     except ValueError:
         return tresc
-    # Import leniwy: moduł tolerancji żyje w ``tests/ci`` (współdzielony z harnessem).
-    from tests.ci.tolerancja_fikstur import roznice_z_tolerancja
 
     return na_dysku if not roznice_z_tolerancja(zapisane, swieze) else tresc

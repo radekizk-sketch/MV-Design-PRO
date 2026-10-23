@@ -31,6 +31,7 @@ EXIT CODES:
 
 from __future__ import annotations
 
+import ast
 import re
 import sys
 from pathlib import Path
@@ -72,9 +73,47 @@ def _kody_emitowane() -> set[str]:
     return emitowane
 
 
+def kody_emitowane_w_tresci(tresc: str) -> set[str]:
+    """Kody, które moduł walidatora emituje argumentem ``code=`` — literałem napisu albo
+    STAŁĄ modułu (``KOD_X = "W012"`` … ``code=KOD_X``).
+
+    Dawne wyszukiwanie wyłącznie literału ``code="…"`` nie widziało kodów emitowanych przez
+    nazwane stałe (karta GPZ-H5-APARATURA wprowadziła ``KOD_POLARYZACJA_TRANSFORMATORA_
+    ODWROCONA``, ``KOD_WYTWORCA_W_POLU_BEZ_ZRODLA``, ``KOD_NAPIECIE_ODNIESIENIA_ZRODLA_INNE_
+    NIZ_SZYNY``): wpis ``KODY_WALIDATORA_BEZ_KANONU`` realnie emitowanego kodu meldowano jako
+    sierotę (c), a kod bez rozstrzygnięcia (b) przechodził niezauważony. Stała to przypisanie
+    najwyższego poziomu modułu nazwy do literału napisu; wartość ``code=`` innej postaci
+    (zmienna lokalna, wyrażenie) nie jest rozstrzygana — walidator jej nie używa."""
+    drzewo = ast.parse(tresc)
+    stale: dict[str, str] = {}
+    for wezel in drzewo.body:
+        cel: ast.expr | None = None
+        wartosc: ast.expr | None = None
+        if isinstance(wezel, ast.Assign) and len(wezel.targets) == 1:
+            cel, wartosc = wezel.targets[0], wezel.value
+        elif isinstance(wezel, ast.AnnAssign):
+            cel, wartosc = wezel.target, wezel.value
+        if (
+            isinstance(cel, ast.Name)
+            and isinstance(wartosc, ast.Constant)
+            and isinstance(wartosc.value, str)
+        ):
+            stale[cel.id] = wartosc.value
+    kody: set[str] = set()
+    for wezel in ast.walk(drzewo):
+        if not (isinstance(wezel, ast.keyword) and wezel.arg == "code"):
+            continue
+        if isinstance(wezel.value, ast.Constant) and isinstance(wezel.value.value, str):
+            kody.add(wezel.value.value)
+        elif isinstance(wezel.value, ast.Name) and wezel.value.id in stale:
+            kody.add(stale[wezel.value.id])
+    return kody
+
+
 def _kody_walidatora() -> set[str]:
-    tresc = VALIDATOR.read_text(encoding="utf-8", errors="replace")
-    return set(re.findall(r'code="([^"]+)"', tresc))
+    return kody_emitowane_w_tresci(
+        VALIDATOR.read_text(encoding="utf-8", errors="replace")
+    )
 
 
 # Rejestry gotowosci w froncie, ktorych nie da sie usunac w jednej karcie — z POWODEM
@@ -155,12 +194,16 @@ def main() -> int:
     # (c) odwzorowanie bez sierot
     for kod_v, kod_k in sorted(ODWZOROWANIE_WALIDATOR_NA_KANON.items()):
         if kod_k not in READINESS_CODES:
-            naruszenia.append(f"(c) odwzorowanie {kod_v} -> {kod_k}: cel nie istnieje w kanonie.")
+            naruszenia.append(
+                f"(c) odwzorowanie {kod_v} -> {kod_k}: cel nie istnieje w kanonie."
+            )
 
     # (c2) rezerwacje bez kodu w kanonie (rejestr rezerwacji musi opisywac realne kody)
     for kod in sorted(KODY_KANONU_ZAREZERWOWANE):
         if kod not in READINESS_CODES:
-            naruszenia.append(f"(c) rezerwacja opisuje kod, ktorego nie ma w kanonie: {kod}")
+            naruszenia.append(
+                f"(c) rezerwacja opisuje kod, ktorego nie ma w kanonie: {kod}"
+            )
 
     # (c3) wpisy „bez kanonu" musza dotyczyc realnych kodow walidatora
     for kod in sorted(KODY_WALIDATORA_BEZ_KANONU):

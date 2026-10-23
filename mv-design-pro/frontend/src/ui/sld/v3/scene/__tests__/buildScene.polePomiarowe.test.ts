@@ -87,7 +87,23 @@ describe('pole pomiarowe — przekładnik napięciowy z oznacznikiem TV (V12K-32
     const polePomiarowe = surowa.bays.find((b) => b.bay_role === 'MEASUREMENT')!;
     const symbolePola = scene.symbols.filter((s) => s.meta?.ownerRef === polePomiarowe.ref_id);
     expect(symbolePola.map((s) => s.symbolId)).toEqual(['breaker']);
-    expect(scene.symbols.some((s) => s.symbolId === 'voltageTransformer')).toBe(false);
+    // Przekładnik napięciowy rysuje się WYŁĄCZNIE z rekordu modelu — w CAŁEJ scenie, nie tylko
+    // w tej stacji: każdy symbol VT należy do pola z rekordem VT. Karta GPZ-H5-APARATURA: pole
+    // transformatorowe SN GPZ ma z szablonu standardu ENEA gniazdo VT (rekord w modelu), więc
+    // scena niesie przekładnik GPZ — dawne „zero VT w scenie” mierzyło brak GPZ, nie regułę.
+    const polaZRekordemVt = new Set(
+      surowa.bays
+        .filter((b) => (b.primary_devices ?? []).some((d) => d.kind === 'VT'))
+        .map((b) => b.ref_id),
+    );
+    const symboleVt = scene.symbols.filter((s) => s.symbolId === 'voltageTransformer');
+    for (const vt of symboleVt) {
+      expect(polaZRekordemVt.has(vt.meta?.ownerRef ?? ''), `VT ${vt.meta?.ownerRef} z rekordu pola`).toBe(true);
+    }
+    const polaStacji = new Set(
+      surowa.bays.filter((b) => b.substation_ref === polePomiarowe.substation_ref).map((b) => b.ref_id),
+    );
+    expect(symboleVt.filter((s) => polaStacji.has(s.meta?.ownerRef ?? ''))).toEqual([]);
   });
 
   it('determinizm: dwa wywołania ⇒ identyczny JSON sceny (L2)', () => {

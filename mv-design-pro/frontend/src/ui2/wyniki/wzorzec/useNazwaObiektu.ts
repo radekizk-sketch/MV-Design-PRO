@@ -134,6 +134,10 @@ export const NAZWY_SEGMENTOW: Readonly<Record<string, string>> = {
   // rezerwowego (rezerwa jawna).
   hv_coupler: 'łącznik szyn WN',
   bay_line: 'pole liniowe',
+  // Karta GPZ-H5-APARATURA: pole liniowe 110 kV jako przyłącze toru zasilania — zacisk pola
+  // (na nim równoważnik sieci zasilającej) i wyłącznik pola (gałąź modelu, stan w obliczeniach).
+  terminal_line: 'zacisk pola liniowego',
+  breaker_line: 'wyłącznik pola liniowego',
   bay_wn: 'pole strony WN',
   bay_sn: 'pole strony SN',
   bay_cell: 'cela',

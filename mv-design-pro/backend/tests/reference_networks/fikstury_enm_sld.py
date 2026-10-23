@@ -62,6 +62,7 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
+from enm.nastawy_zabezpieczen import bledy_nastaw
 from fastapi.testclient import TestClient
 
 from tests.golden.zapis_fikstur import json_fikstury, tresc_z_kotwica, zaokraglij_liczby
@@ -69,6 +70,7 @@ from tests.reference_networks.budowa_przez_api import (
     APARAT_POLA_SN,
     TRANSFORMATOR_630,
     ZRODLO_GPZ,
+    BladBudowy,
     KlientBudowy,
     normalizuj_migawke,
     pole_gpz,
@@ -156,6 +158,11 @@ def _aparat(
     return aparat
 
 
+#: Pozycje katalogu ścieżki danych zabezpieczeń (dobór fizyczny w docstringu niżej).
+_CT_POLA_TR = "ct_1000_5_5p20_20va_abb"
+_PRZEKAZNIK_POLA = "REF-OC-200"
+
+
 def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
     """``gpzFeeder`` + ścieżka DANYCH zabezpieczeń (karta V12K-220, Z7).
 
@@ -163,132 +170,138 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
     wynik obliczeń): pole TR — I_n = 25 MVA/(√3·15 kV) = 962 A → CT 1000/5, 51 na
     1,15·I_n = 1100 A, TMS 0,25; pola liniowe — CT 400/5, 51 na 360 A, TMS 0,15
     (selektywność czasowa wobec pola TR); 51N na 20 A (prąd doziemny ≈ 150 A przy
-    rezystorze 57,7 Ω — k = 7,5 ≥ 1,5). Pola GPZ z aparatami pierwotnymi, przekładniki i
-    przypisania zabezpieczeń są dopisane W MODELU (walidacja Pydantic w
-    ``normalizuj_migawke``) — żadna operacja domenowa nie buduje pola GPZ z listą aparatów
-    pierwotnych, a tę ścieżkę danych kontrakty SLD muszą mieć na czym sprawdzić.
+    rezystorze 57,7 Ω — k = 7,5 ≥ 1,5).
+
+    POLE TR — OPERACJAMI DOMENOWYMI (karta GPZ-H5-SCALENIE-APARATURY). Pole transformatorowe SN
+    GPZ H5 (``transformer/001/bay_sn``) powstaje w ``add_grid_source_sn`` z gniazdami szablonu
+    standardu ENEA (``ENEA_SN_TR``) i z wyłącznikiem pola SN jako gałęzią modelu
+    (``breaker_sn``). Ścieżka danych wyposaża TO pole: ``set_bay_equipment`` (tryb ``katalog``
+    — gniazda bez zmian, gniazdo W wskazuje gałąź wyłącznika, gniazdo CT dostaje pozycję
+    katalogu, więc przekładnik powstaje jako ``Measurement`` pola) i ``add_relay`` (nastawy
+    przez regułę zapisu ``bledy_nastaw``). Dawny ręcznie dopisany drugi rekord „Pole
+    transformatorowe" obok pola TR operacji był fikcją — dwa pola jednego transformatora.
+
+    POLA LINIOWE — W MODELU, z nazwanym powodem. Pole liniowe SN GPZ nie ma w modelu gałęzi
+    wyłącznika (kabel magistrali wychodzi wprost z szyny sekcji SN), więc ``add_relay`` odmawia
+    mu zabezpieczenia (``relay.breaker_missing``) — żadna operacja domenowa nie zbuduje
+    zabezpieczenia pola liniowego GPZ. Kontrakty SLD warstwy zabezpieczeń muszą mieć
+    przypadek z polami liniowymi, więc dwa pola liniowe z aparatami, przekładnikami
+    i przypisaniami są dopisane W MODELU (walidacja Pydantic w ``normalizuj_migawke``); nastawy
+    spełniają tę samą regułę zapisu, co operacja (jednostka progu, czas niezależny bez TMS).
     """
     enm = _gpz_feeder(b)
     gpz = next(s for s in enm["substations"] if s.get("station_type") == "gpz")
+    (pole_tr,) = (
+        p
+        for p in enm["bays"]
+        if p.get("substation_ref") == gpz["ref_id"]
+        and p.get("bay_role") == "TR"
+        and p.get("szablon_standardu_ref") == "ENEA_SN_TR"
+    )
+    wylaczniki_pola_tr = [
+        g["ref_id"]
+        for g in enm["branches"]
+        if g["ref_id"] in (pole_tr.get("equipment_refs") or []) and g.get("type") == "breaker"
+    ]
+    (wylacznik_pola_tr,) = wylaczniki_pola_tr
+    aparaty_tr: list[dict[str, Any]] = []
+    for aparat in pole_tr["primary_devices"]:
+        wpis = {
+            klucz: aparat[klucz]
+            for klucz in ("kind", "gniazdo_ref", "placement", "earthing_role")
+            if aparat.get(klucz) is not None
+        }
+        if aparat["gniazdo_ref"] == "W":
+            wpis["linked_ref"] = wylacznik_pola_tr
+        if aparat["gniazdo_ref"] == "CT":
+            wpis["catalog_ref"] = _CT_POLA_TR
+        aparaty_tr.append(wpis)
+    b.operacja(
+        "set_bay_equipment",
+        {"bay_ref": pole_tr["ref_id"], "mode": "katalog", "devices": aparaty_tr},
+    )
+    b.operacja(
+        "add_relay",
+        {
+            "bay_ref": pole_tr["ref_id"],
+            "relay_type": "NADPRADOWY",
+            "catalog_ref": _PRZEKAZNIK_POLA,
+            "name": "Zabezpieczenie pola TR",
+            "settings": [
+                {
+                    "function_type": "overcurrent_51",
+                    "threshold_a": 1100,
+                    "threshold_unit": "A_PIERWOTNY",
+                    "curve_type": "IEC_SI",
+                    "time_multiplier": 0.25,
+                },
+                {
+                    "function_type": "overcurrent_50",
+                    "threshold_a": 7700,
+                    "threshold_unit": "A_PIERWOTNY",
+                    "curve_type": "DT",
+                    "time_delay_s": 0.1,
+                },
+            ],
+        },
+    )
+    enm = b.migawka()
     seed = gpz["ref_id"].split("/")[1]
     sekcja = f"gpz/{seed}/section/001"
     szyna = f"{sekcja}/bus_sn"
     zamkniety = {"actual_state": "zamkniety"}
     otwarty = {"actual_state": "otwarty"}
-    #: (kod pola, nazwa, rola, kody zabezpieczeń, opis przekładnika i zabezpieczeń,
-    #:  przekładnia CT, obciążenie CT [VA], próg 51 [A], TMS, próg 50 [A], zwłoka 50 [s])
+    #: (kod pola, nazwa, opis przekładnika i zabezpieczeń)
     pola = (
-        (
-            "tr01",
-            "Pole transformatorowe",
-            "TR",
-            ["51", "50"],
-            "pola TR",
-            1000,
-            15,
-            1100,
-            0.25,
-            7700,
-            0.1,
-        ),
-        (
-            "line01",
-            "Pole liniowe — Magistrala 01",
-            "OUT",
-            ["51", "50", "51N"],
-            "Magistrala 01",
-            400,
-            10,
-            360,
-            0.15,
-            4000,
-            0.05,
-        ),
-        (
-            "line02",
-            "Pole liniowe — Magistrala 02",
-            "OUT",
-            ["51", "50", "51N"],
-            "Magistrala 02",
-            400,
-            10,
-            360,
-            0.15,
-            4000,
-            0.05,
-        ),
+        ("line01", "Pole liniowe — Magistrala 01", "Magistrala 01"),
+        ("line02", "Pole liniowe — Magistrala 02", "Magistrala 02"),
     )
     enm["bays"] = list(enm.get("bays", []))
     enm["measurements"] = list(enm.get("measurements", []))
     enm["protection_assignments"] = list(enm.get("protection_assignments", []))
-    for (
-        kod,
-        nazwa,
-        rola,
-        kody,
-        opis,
-        przekladnia,
-        obciazenie,
-        prog51,
-        tms,
-        prog50,
-        zwloka50,
-    ) in pola:
+    for kod, nazwa, opis in pola:
         pole = f"{sekcja}/bay/{kod}"
-        cb = _aparat(
-            pole,
-            "cb",
-            "breaker",
-            "CB",
-            "MIDSTREAM",
-            "Q1",
-            switch_state=zamkniety,
-            is_controllable=True,
-        )
-        ct = _aparat(
-            pole, "ct", "currentTransformer", "CT", "MIDSTREAM", "T1", linked_ref=f"{pole}/ct"
-        )
-        es = _aparat(
-            pole,
-            "es",
-            "earthSwitch",
-            "ES",
-            "DOWNSTREAM",
-            "QE1",
-            switch_state=otwarty,
-            earthing_role="field_earth",
-        )
-        if rola == "TR":
-            aparaty = [
-                _aparat(
-                    pole, "ds", "disconnector", "DS", "UPSTREAM", "Q11", switch_state=zamkniety
-                ),
-                cb,
-                ct,
-                es,
-            ]
-        else:
-            aparaty = [
-                _aparat(
-                    pole, "ds_bus", "disconnector", "DS", "UPSTREAM", "Q11", switch_state=zamkniety
-                ),
-                cb,
-                ct,
-                _aparat(
-                    pole, "ds_lin", "disconnector", "DS", "MIDSTREAM", "Q12", switch_state=zamkniety
-                ),
-                es,
-                _aparat(pole, "head", "cableHead", "CABLE_HEAD", "DOWNSTREAM", None),
-            ]
+        aparaty = [
+            _aparat(
+                pole, "ds_bus", "disconnector", "DS", "UPSTREAM", "Q11", switch_state=zamkniety
+            ),
+            _aparat(
+                pole,
+                "cb",
+                "breaker",
+                "CB",
+                "MIDSTREAM",
+                "Q1",
+                switch_state=zamkniety,
+                is_controllable=True,
+            ),
+            _aparat(
+                pole, "ct", "currentTransformer", "CT", "MIDSTREAM", "T1", linked_ref=f"{pole}/ct"
+            ),
+            _aparat(
+                pole, "ds_lin", "disconnector", "DS", "MIDSTREAM", "Q12", switch_state=zamkniety
+            ),
+            _aparat(
+                pole,
+                "es",
+                "earthSwitch",
+                "ES",
+                "DOWNSTREAM",
+                "QE1",
+                switch_state=otwarty,
+                earthing_role="field_earth",
+            ),
+            _aparat(pole, "head", "cableHead", "CABLE_HEAD", "DOWNSTREAM", None),
+        ]
         enm["bays"].append(
             {
                 "ref_id": pole,
                 "name": nazwa,
-                "bay_role": rola,
+                "bay_role": "OUT",
                 "substation_ref": gpz["ref_id"],
                 "bus_ref": szyna,
                 "gpz_section_id": sekcja,
-                "protection_codes": kody,
+                "protection_codes": ["51", "50", "51N"],
                 "primary_devices": aparaty,
                 "protection_ref": f"{pole}/prot",
             }
@@ -301,10 +314,10 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
                 "bus_ref": szyna,
                 "bay_ref": pole,
                 "rating": {
-                    "ratio_primary": przekladnia,
+                    "ratio_primary": 400,
                     "ratio_secondary": 5,
                     "accuracy_class": "5P20",
-                    "burden_va": obciazenie,
+                    "burden_va": 10,
                 },
                 "purpose": "protection",
                 "ct_arrangement": "3xCT",
@@ -320,31 +333,45 @@ def _gpz_protection_data_path(b: KlientBudowy) -> dict[str, Any]:
                 "settings": [
                     {
                         "function_type": "overcurrent_51",
-                        "threshold_a": prog51,
+                        "threshold_a": 360,
+                        "threshold_unit": "A_PIERWOTNY",
                         "curve_type": "IEC_SI",
-                        "time_multiplier": tms,
+                        "time_multiplier": 0.15,
                     },
                     {
                         "function_type": "overcurrent_50",
-                        "threshold_a": prog50,
-                        "time_delay_s": zwloka50,
+                        "threshold_a": 4000,
+                        "threshold_unit": "A_PIERWOTNY",
+                        "curve_type": "DT",
+                        "time_delay_s": 0.05,
                     },
                 ],
             }
         )
-        if rola == "OUT":
-            enm["protection_assignments"].append(
-                {
-                    "ref_id": f"{pole}/prot_n",
-                    "name": f"Ziemnozwarciowe {opis}",
-                    "breaker_ref": f"{pole}/cb",
-                    "ct_ref": f"{pole}/ct",
-                    "device_type": "earth_fault",
-                    "settings": [
-                        {"function_type": "earth_fault_51N", "threshold_a": 20, "time_delay_s": 0.3}
-                    ],
-                }
-            )
+        enm["protection_assignments"].append(
+            {
+                "ref_id": f"{pole}/prot_n",
+                "name": f"Ziemnozwarciowe {opis}",
+                "breaker_ref": f"{pole}/cb",
+                "ct_ref": f"{pole}/ct",
+                "device_type": "earth_fault",
+                "settings": [
+                    {
+                        "function_type": "earth_fault_51N",
+                        "threshold_a": 20,
+                        "threshold_unit": "A_PIERWOTNY",
+                        "curve_type": "DT",
+                        "time_delay_s": 0.3,
+                    }
+                ],
+            }
+        )
+    # Reguła zapisu nastaw operacji (`enm.nastawy_zabezpieczen.bledy_nastaw`) obowiązuje też
+    # przypisania dopisane w modelu — fikstura nie niesie nastaw, których produkt by nie przyjął.
+    for przypisanie in enm["protection_assignments"]:
+        bledy = bledy_nastaw(przypisanie["settings"])
+        if bledy:
+            raise BladBudowy(f"nastawy {przypisanie['ref_id']!r} sprzeczne: {bledy}")
     return enm
 
 

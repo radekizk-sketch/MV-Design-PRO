@@ -86,11 +86,19 @@ describe('mapujWierszZwarcia — projekcja ShortCircuitRow → wiersz wzorca (fi
     expect(w.ikss.dowodRef).toBe('BUS-GPZ');
   });
 
-  // Karta #145 (zmiana kanonu): flaga spoza słownika nie trafia na ekran jako kod —
-  // intencja „nie zgadujemy nazwy" zostaje, zamiast kodu stoi uczciwe zdanie.
-  it('flags niepuste → tagi PL (znane tłumaczone, nieznane jako uczciwe zdanie, nie kod)', () => {
-    const w = mapujWierszZwarcia(shortCircuitRowFixture({ flags: ['SLACK', 'NIEZNANA_FLAGA'] }), NAZWA);
-    expect(w.uwagi.wartosc).toBe(`Węzeł bilansujący, ${WZORZEC_STRINGS.wartoscSpozaSlownika}`);
+  // Karta #145 → karta GPZ-H5-APARATURA (zmiana kanonu): kod znacznika nie trafia na
+  // ekran, a etykietę nadaje BACKEND (`flags_pl`, `znaczniki_wiersza`) — ekran nie ma
+  // słownika, więc nowy znacznik backendu („bez napięcia") nie może wyjść jako kod.
+  it('flags niepuste → uwagi z etykiet PL backendu (flags_pl), nigdy kod znacznika', () => {
+    const w = mapujWierszZwarcia(
+      shortCircuitRowFixture({
+        flags: ['BEZ_NAPIECIA'],
+        flags_pl: ['bez napięcia'],
+      }),
+      NAZWA,
+    );
+    expect(w.uwagi.wartosc).toBe('bez napięcia');
+    expect(w.uwagi.wartosc).not.toContain('BEZ_NAPIECIA');
   });
 
   it('jest deterministyczne: to samo wejście → identyczne wyjście', () => {
@@ -129,8 +137,10 @@ describe('uwagiZwarciaPL — flagi na tekst uwag', () => {
   it('pusta lista → „—"', () => {
     expect(uwagiZwarciaPL([])).toBe(ZWARCIA_STRINGS.kreska);
   });
-  it('łączy przetłumaczone etykiety przecinkiem', () => {
-    expect(uwagiZwarciaPL(['SYNTHETIC'])).toBe('Węzeł syntetyczny');
+  it('łączy etykiety PL backendu przecinkiem', () => {
+    expect(uwagiZwarciaPL(['bez napięcia', 'brak drogi składowej zerowej do ziemi'])).toBe(
+      'bez napięcia, brak drogi składowej zerowej do ziemi',
+    );
   });
 });
 

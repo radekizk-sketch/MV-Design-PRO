@@ -86,3 +86,45 @@ def test_kotwica_metryki_nakladki_cos_phi_w_pasmie_bezwymiarowym(tmp_path: Path)
     assert tresc_z_kotwica(plik, szum) == plik.read_text(encoding="utf-8")
     realna = json_fikstury({"metrics": {"COS_PHI": {**metryka, "value": 1.0e-6}}})
     assert tresc_z_kotwica(plik, realna) == realna
+
+
+_WYNIK = {
+    "deterministic_signature": "b86ce821901de7b06c1f46fb6a5977c8d959ef580ce9dd616df54274411daec1",
+    "snapshot_hash": "aa11",
+    "p_mw": 6.00786070987,
+}
+
+
+@pytest.mark.parametrize(
+    ("zmiana", "zostaje_plik"),
+    [
+        # Szum BLAS (1 wątek ≠ wiele wątków): liczba w tolerancji + inny skrót nad wynikiem.
+        (
+            {
+                "deterministic_signature": "3cdbb78f7a22cf512b05d7e99c811c1423d4b1bd17c15849174a70660899c606",
+                "p_mw": 6.00786070981,
+            },
+            True,
+        ),
+        # Skrót nad wynikiem przy liczbie ponad tolerancję — realna zmiana wyniku.
+        (
+            {
+                "deterministic_signature": "3cdbb78f7a22cf512b05d7e99c811c1423d4b1bd17c15849174a70660899c606",
+                "p_mw": 6.1,
+            },
+            False,
+        ),
+        # Skrót nad WEJŚCIEM (poza listą nieprzenośnych) — dryf danych wejściowych.
+        ({"snapshot_hash": "bb22", "p_mw": 6.00786070981}, False),
+    ],
+)
+def test_kotwica_skrot_nad_wynikiem_jest_szumem_skrot_nad_wejsciem_nie(
+    tmp_path: Path, zmiana: dict[str, object], zostaje_plik: bool
+) -> None:
+    """Karta GPZ-H5-SCALENIE-APARATURY: iloczyn {skrót nad wynikiem, skrót nad wejściem} ×
+    {liczby w tolerancji, liczba ponad tolerancję}. Skrót nad wynikiem solvera zmienia się
+    razem z szumem liczb — kotwica zostawia plik; skrót nad wejściem — nigdy."""
+    plik = _plik(tmp_path, _WYNIK)
+    swieze = json_fikstury({**_WYNIK, **zmiana})
+    oczekiwane = plik.read_text(encoding="utf-8") if zostaje_plik else swieze
+    assert tresc_z_kotwica(plik, swieze) == oczekiwane

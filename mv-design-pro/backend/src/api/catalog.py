@@ -31,6 +31,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.der_dynamic import get_profile, list_all_profile_ids
 from network_model.catalog.der_dynamic.models import WindTurbineDynamicProfile
+from network_model.catalog.gniazda_pol_enea import SZABLONY_POL_STANDARDU
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
@@ -299,6 +300,27 @@ def list_vt_types() -> list[dict[str, Any]]:
 def list_surge_arrester_types() -> list[dict[str, Any]]:
     """List all MV surge arrester types from the canonical MV catalog."""
     return [item.to_dict() for item in get_default_mv_catalog().list_surge_arrester_types()]
+
+
+@router.get("/field-element-types")
+def list_field_element_types() -> list[dict[str, Any]]:
+    """Wyposażenie pól SN (przestrzeń ELEMENT_POLA_SN): wskaźnik napięcia, transformator
+    uziemiający, dławik gaszący, rezystory, bateria kondensatorów pola BKR."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_element_pola_types()]
+
+
+@router.get("/bay-standard-templates")
+def list_bay_standard_templates() -> list[dict[str, Any]]:
+    """Szablony pól SN standardu operatora (ENEA Zeszyt 1, karta GPZ-H5-APARATURA): pola
+    liniowe, transformatorowe, łącznika szyn (także w dwóch celach), ZU, BKR i pomiaru napięcia
+    — gniazda aparatury w kolejności od szyny, wymagania gniazd z jednostką i podstawą (punkt
+    standardu). Strona 110 kV nie ma szablonów (granica zasilania, decyzja właściciela
+    2026-10-22). Tryb „z szablonu pola standardu" operacji
+    ``set_bay_equipment`` przyjmuje ``szablon_standardu_ref`` z tej listy."""
+    return [
+        szablon.to_dict()
+        for _, szablon in sorted(SZABLONY_POL_STANDARDU.items(), key=lambda pozycja: pozycja[0])
+    ]
 
 
 @router.get("/shunt-capacitor-types")
@@ -1158,7 +1180,10 @@ def _auto_populate_cables(req: AutoPopulateRequest) -> AutoPopulateResponse:
 
 
 def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoPopulateResponse:
-    from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
+    from network_model.catalog.mv_switch_catalog import (
+        RODZAJE_BEZ_PRADU_CIAGLEGO,
+        get_all_switch_equipment_types,
+    )
 
     all_types = get_all_switch_equipment_types()
     suggestions: list[AutoPopulateSuggestion] = []
@@ -1176,15 +1201,22 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
         rated_i = _liczba_z_katalogu(entry, "in_a")
         if v_kv is None or rated_i is None:
             continue
-        manufacturer = params.get("manufacturer", "")
+        manufacturer = params.get("manufacturer") or ""
         is_ptpire = bool(params.get("ptpire_certified", False))
+        # Uziemnik: prąd ciągły nie przysługuje z definicji (`in_a = 0,0` = „nie dotyczy”) —
+        # nigdy nie jest pokazywany jako „0 A” ani porównywany z prądem roboczym.
+        bez_pradu_ciaglego = params.get("equipment_kind") in RODZAJE_BEZ_PRADU_CIAGLEGO
 
         if req.voltage_kv is not None:
             if abs(v_kv - req.voltage_kv) > req.voltage_kv * 0.3:
                 continue
         if req.expected_current_a is not None:
-            if rated_i < req.expected_current_a * 0.9:
+            if bez_pradu_ciaglego or rated_i < req.expected_current_a * 0.9:
                 continue
+        prad_pl = (
+            "prąd ciągły nie dotyczy (uziemnik)" if bez_pradu_ciaglego else f"{int(rated_i)} A"
+        )
+        producent_pl = manufacturer or "bez producenta"
 
         dopasowanie: Dopasowanie = "CZESCIOWE"
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
@@ -1198,7 +1230,7 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
                 dopasowanie=dopasowanie,
                 certyfikat_ptpiree=is_ptpire,
                 badge_pl="PTPiRE" if is_ptpire else None,
-                rationale_pl=(f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"),
+                rationale_pl=f"{v_kv:g} kV / {prad_pl} ({producent_pl})",
             )
         )
 
@@ -1267,6 +1299,11 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
     )
 
 
+def _kv_albo_brak(wartosc: float | None) -> str:
+    """Napięcie [kV] pozycji katalogu albo jawny brak danej źródła (bez podstawiania liczby)."""
+    return "brak w źródle" if wartosc is None else f"{wartosc:g} kV"
+
+
 def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResponse:
     catalog = get_default_mv_catalog()
     suggestions: list[AutoPopulateSuggestion] = []
@@ -1275,7 +1312,9 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
         v_kv = item.u_m_kv
         manufacturer = item.manufacturer or ""
         if req.voltage_kv is not None:
-            if abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
+            # Pozycja bez U_m (ogranicznik punktu neutralnego) nie ma napięcia do porównania
+            # z napięciem sieci — nie jest kandydatem doboru po napięciu.
+            if v_kv is None or abs(v_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
                 continue
 
         dopasowanie: Dopasowanie = "CZESCIOWE"
@@ -1291,11 +1330,15 @@ def _auto_populate_surge_arresters(req: AutoPopulateRequest) -> AutoPopulateResp
                 # Katalog ograniczników nie niesie statusu certyfikatu PTPiREE
                 # (namespace OGRANICZNIK_SN — brak pola w rekordzie źródłowym).
                 certyfikat_ptpiree=False,
-                badge_pl=f"IEC 60099-4, klasa {item.energy_class}",
+                badge_pl=(
+                    f"IEC 60099-4, klasa {item.energy_class}"
+                    if item.energy_class is not None
+                    else "IEC 60099-4, klasa nieokreślona w źródle"
+                ),
                 rationale_pl=(
-                    f"Um={item.u_m_kv:g} kV, MCOV={item.mcov_kv:g} kV, "
+                    f"Um={_kv_albo_brak(item.u_m_kv)}, MCOV={item.mcov_kv:g} kV, "
                     f"Ures10kA={item.u_residual_at_10ka_kv:g} kV, "
-                    f"BIL={item.bil_protected_kv:g} kV"
+                    f"BIL={_kv_albo_brak(item.bil_protected_kv)}"
                 ),
             )
         )

@@ -9,7 +9,11 @@ from enm.nazwy_elementow import nazwa_elementu
 from enm.tor_pola import szyny_stacji
 from network_model.odmowa_pakietu import RekordBrakuPakietu, brak_karty_producenta
 from network_model.pochodne import kva_na_mva, prad_roboczy_a
-from network_model.pochodne.pasma_napieciowe import powyzej_pasma_nn
+from network_model.pochodne.pasma_napieciowe import (
+    NAPIECIE_NAJWYZSZE_SIECI_KV,
+    napiecie_najwyzsze_sieci_kv,
+    powyzej_pasma_nn,
+)
 from pydantic import BaseModel, Field
 from solver_input.moc_bierna_wytworcy import moc_bierna_wytworcy
 
@@ -203,19 +207,29 @@ class V126RunRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
-_STANDARD_UM_KV: tuple[float, ...] = (12.0, 17.5, 24.0, 36.0)
+#: Dziedzina koordynacji izolacji solvera V12.6 (rdzeń B-01, ``_insulation``): tablica poziomów
+#: izolacji IEC 60071-1 solvera kończy się na U_m = 36 kV, a powyżej solver podstawia wartości
+#: dla 36 kV. Miejsce z U_m sieci powyżej tej granicy (szyna WN, sieć 35 kV) NIE dostaje
+#: wiersza wejścia — trafia do ``ograniczniki_poza_dziedzina_koordynacji`` (warunek gotowości
+#: nazwany), zamiast wyniku liczonego wobec poziomu izolacji sieci SN.
+UM_MAX_DZIEDZINY_KOORDYNACJI_KV = 36.0
 
 
 def _nearest_standard_um_kv(nominal_kv: float) -> float:
-    """Najbliższe znormalizowane napięcie najwyższe urządzenia U_m ≥ napięcie znamionowe szyny.
+    """Napięcie najwyższe sieci U_m dla napięcia znamionowego szyny (PN-EN 60038).
 
-    IEC 60071-1 typoszereg SN. Nie fabrykuje danych ogranicznika — jedynie
-    przypisuje poziom izolacji do poziomu napięcia szyny (mapowanie normowe).
+    Napięcie z szeregu → wartość z tablicy ``NAPIECIE_NAJWYZSZE_SIECI_KV`` (jedno źródło
+    szeregu Uₙ → U_m, ``pochodne/pasma_napieciowe.py``); napięcie spoza szeregu → najmniejsze
+    U_m szeregu nie mniejsze od napięcia szyny. Nie fabrykuje danych ogranicznika — jedynie
+    przypisuje napięcie najwyższe do napięcia szyny (mapowanie normowe). Przed kartą
+    GPZ-H5-APARATURA funkcja trzymała własny szereg 12/17,5/24/36 kV (6 kV → 12 kV zamiast
+    7,2 kV, 110 kV → 36 kV).
     """
-    for u_m in _STANDARD_UM_KV:
-        if nominal_kv <= u_m:
-            return u_m
-    return _STANDARD_UM_KV[-1]
+    z_szeregu = napiecie_najwyzsze_sieci_kv(nominal_kv)
+    if z_szeregu is not None:
+        return z_szeregu
+    kandydaci = sorted(u_m for u_m in NAPIECIE_NAJWYZSZE_SIECI_KV.values() if u_m >= nominal_kv)
+    return kandydaci[0] if kandydaci else max(NAPIECIE_NAJWYZSZE_SIECI_KV.values())
 
 
 def _grounding_type_to_network_neutral(grounding_type: str | None) -> str | None:
@@ -267,6 +281,14 @@ def ograniczniki_bez_uziemienia_sieci(enm: EnergyNetworkModel) -> tuple[str, ...
     return _wejscia_izolacji(enm)[1]
 
 
+def ograniczniki_poza_dziedzina_koordynacji(enm: EnergyNetworkModel) -> tuple[str, ...]:
+    """``ref_id`` szyn z ogranicznikiem przepięć, których napięcie najwyższe sieci przekracza
+    dziedzinę koordynacji izolacji solvera (``UM_MAX_DZIEDZINY_KOORDYNACJI_KV``) — wejście
+    NIE jest dla nich budowane (karta GPZ-H5-APARATURA: ogranicznik SN na szynie sieci o U_m
+    powyżej 36 kV nie dostaje oceny wobec poziomu izolacji sieci SN)."""
+    return _wejscia_izolacji(enm)[2]
+
+
 def braki_poziomu_izolacji(
     enm: EnergyNetworkModel, wiersze: list[V126InsulationInput]
 ) -> list[RekordBrakuPakietu]:
@@ -311,7 +333,7 @@ def braki_poziomu_izolacji(
 
 def _wejscia_izolacji(
     enm: EnergyNetworkModel,
-) -> tuple[list[V126InsulationInput], tuple[str, ...]]:
+) -> tuple[list[V126InsulationInput], tuple[str, ...], tuple[str, ...]]:
     from network_model.catalog.mv_surge_arrester_catalog import get_all_surge_arrester_types
 
     catalog: dict[str, dict[str, Any]] = {
@@ -319,6 +341,7 @@ def _wejscia_izolacji(
     }
     bus_by_ref = {bus.ref_id: bus for bus in enm.buses}
     bez_uziemienia: list[str] = []
+    poza_dziedzina: list[str] = []
 
     def _stacja_szyny(bus_ref: str) -> str | None:
         # POLA-W-TORZE: ogranicznik na zacisku pola należy do stacji tego pola.
@@ -367,6 +390,10 @@ def _wejscia_izolacji(
             # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
             return
         seen.add(dedup_key)
+        if _nearest_standard_um_kv(bus.voltage_kv) > UM_MAX_DZIEDZINY_KOORDYNACJI_KV:
+            if bus_ref not in poza_dziedzina:
+                poza_dziedzina.append(bus_ref)
+            return
         neutral = _resolve_network_neutral(bus_ref)
         if neutral is None:
             # W5-D p. 12: brak uziemienia w modelu = brak wiersza, nie „isolated".
@@ -400,15 +427,17 @@ def _wejscia_izolacji(
     # `add_surge_arrester_sn`, G-STK-8; ten sam rekord czyta read-model pola — glif SLD).
     # Deduplikacja wspólna (`_emit`); kolejność: najpierw aparaty pierwotne wszystkich pól,
     # potem listy ograniczników (kolejność wierszy jak przed kartą W5-B).
+    # Ogranicznik punktu neutralnego transformatora (gniazdo standardu, rola uziemienia
+    # `neutral_point`) nie stoi na szynie pola — koordynacja izolacji szyny go nie obejmuje.
     for bay in enm.bays:
         for device in bay.primary_devices:
-            if device.kind == "SURGE_ARRESTER":
+            if device.kind == "SURGE_ARRESTER" and device.earthing_role != "neutral_point":
                 _emit(bay.bus_ref, device.catalog_ref)
     for bay in enm.bays:
         for ogranicznik in bay.surge_arresters:
             _emit(bay.bus_ref, ogranicznik.catalog_ref)
 
-    return rows, tuple(bez_uziemienia)
+    return rows, tuple(bez_uziemienia), tuple(poza_dziedzina)
 
 
 #: Aparat łączeniowy jest elementem SKUPIONYM: jego impedancja styku to omy, a nie

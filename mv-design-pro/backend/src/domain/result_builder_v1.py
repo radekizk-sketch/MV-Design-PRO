@@ -28,6 +28,7 @@ from typing import Any
 
 from domain.result_contract_v1 import (
     RESULT_CONTRACT_VERSION,
+    ZNACZNIKI_STANU_NAKLADKI,
     ElementResultV1,
     OverlayBadgeV1,
     OverlayElementKind,
@@ -296,6 +297,27 @@ METRYKI_ELEMENTOW_WYNIKU: dict[str, tuple[str, str, str]] = {
 }
 
 
+def _odznaki_stanu_elementu(values: dict[str, Any]) -> list[OverlayBadgeV1]:
+    """Odznaki nakładki ze znaczników STANU wiersza wyniku (`flags` + `flags_pl`).
+
+    Jedna reguła dla każdego rodzaju biegu (karta GPZ-H5-APARATURA): znacznik i jego etykieta
+    PL pochodzą z wiersza wyniku (`enm.canonical_analysis.znaczniki_wiersza`) — nakładka nie
+    ma własnego słownika i nie zgaduje etykiety. Rozjazd długości list to błąd kontraktu
+    wiersza i wybucha. Wiersz stanu fazowego niesie pod `flags` słownik flag fazowych
+    (`FlagsPhaseState`, inny kontrakt) — to nie są znaczniki stanu wiersza i odznaki nie dają.
+    """
+    surowe = values.get("flags")
+    if not isinstance(surowe, list) or not surowe:
+        return []
+    znaczniki = [str(z) for z in surowe]
+    etykiety = [str(e) for e in values.get("flags_pl") or []]
+    return [
+        OverlayBadgeV1(label=etykieta, severity=ZNACZNIKI_STANU_NAKLADKI[znacznik], code=znacznik)
+        for znacznik, etykieta in zip(znaczniki, etykiety, strict=True)
+        if znacznik in ZNACZNIKI_STANU_NAKLADKI
+    ]
+
+
 def _extract_element_metrics(
     element_ref: str,
     element_type: str,
@@ -433,6 +455,7 @@ def build_resultset_v1(
                 element_values = er.values
                 break
 
+        badges.extend(_odznaki_stanu_elementu(element_values))
         metrics = _extract_element_metrics(ref_id, element_type, element_values)
         severity = _compute_aggregate_severity(badges)
 

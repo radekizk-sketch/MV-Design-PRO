@@ -66,7 +66,11 @@ import {
 import { PanelGotowosci } from './spaces/gotowosc';
 import { wykonajAkcjeNaprawcza } from './spaces/gotowosc/akcjeNaprawcze';
 import { ModelWarsztat } from './spaces/model';
-import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
+import {
+  MenedzerPrzypadkow,
+  PanelScenariuszy,
+  PanelScenariuszyLaczeniowych,
+} from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
 import { SeriePanel } from './spaces/obliczenia/serie';
 import { PanelDiagnozy } from './spaces/obliczenia/diagnoza';
@@ -415,6 +419,10 @@ export function AppRoot() {
                   do tej karty zdolność żyła wyłącznie na trasie mostu, do
                   której nie prowadziło ŻADNE wejście produkcyjne. */}
               <PanelScenariuszy />
+              {/* Karta GPZ-H5-APARATURA (defekt 5): scenariusze łączeniowe — stany
+                  łączników i wyłączenia elementów (SC-02 utrata linii, SC-03 utrata
+                  transformatora); bieg ze scenariuszem wybierany w „Uruchom obliczenie". */}
+              <PanelScenariuszyLaczeniowych />
               {/* Karta BATCH-ROUTER: seria przebiegów nad scenariuszami —
                   wejście w wyniki pojedynczego biegu tym samym lądowiskiem K3. */}
               <SeriePanel

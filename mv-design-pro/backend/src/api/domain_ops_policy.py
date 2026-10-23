@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from enm.sklad_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
 from enm.slownik_komunikatow import opis_operacji, pole
-from enm.wyposazenie_pola import NAZWY_RODZAJOW_APARATU_POLA_PL, PRZESTRZEN_KATALOGU_APARATU
 from enm.zrodlo_zwarcie import (
     STRONA_ROWNOWAZNIKA_WN,
     klucz_mocy_zwarciowej,
@@ -746,7 +746,10 @@ API_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyApi, ...] = (
     PozycjaBramyApi("add_nn_distribution_board", "supply.catalog_binding", "KABEL_NN", True),
     # W5-C: wyposażenie pola SN — przestrzeń z rodzaju aparatu wpisu listy (tryb `katalog`).
     PozycjaBramyApi(
-        "set_bay_equipment", "devices[].catalog_ref", "APARAT_SN|CT|VT|OGRANICZNIK_SN", True
+        "set_bay_equipment",
+        "devices[].catalog_ref",
+        "APARAT_SN|CT|VT|OGRANICZNIK_SN|ELEMENT_POLA_SN",
+        True,
     ),
     # --- Źródło przekształtnikowe: tor nN i tor DER-SN (V2) ------------------
     PozycjaBramyApi(
@@ -1174,9 +1177,11 @@ def _referencje_dodatkowe(
 
     if operation == "set_bay_equipment" and payload.get("mode") == "katalog":
         # LUSTRO `enm.wyposazenie_pola._sprawdz_aparat`: wyłącznie tryb `katalog` czyta
-        # `devices`, a pozycję sprawdza w przestrzeni RODZAJU aparatu. Rodzaj bez
-        # katalogu SN z podaną referencją odrzuca warstwa domenowa własnym kodem
-        # (`bay_equipment.catalog_not_applicable`) — nie ma tu przestrzeni do pytania.
+        # `devices`, a pozycję sprawdza w przestrzeni RODZAJU aparatu (tablica
+        # `enm.sklad_pola.PRZESTRZEN_KATALOGU_APARATU`). Rodzaj bez katalogu z podaną
+        # referencją odrzuca warstwa domenowa własnym kodem
+        # (`bay_equipment.catalog_not_applicable`) — nie ma tu przestrzeni do pytania;
+        # aparat gniazda standardu bez wyboru (`catalog_ref` nieobecne) nie ma czego pytać.
         aparaty = payload.get("devices")
         for numer, aparat in enumerate(aparaty if isinstance(aparaty, list) else [], start=1):
             if not isinstance(aparat, dict):

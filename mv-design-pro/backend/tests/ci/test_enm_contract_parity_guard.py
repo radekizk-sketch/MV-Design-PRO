@@ -115,7 +115,13 @@ def test_guard_liczy_pola_literalowe_dziedziczone_z_branchbase(capsys) -> None:
     z lustrem w `types/enm.ts`: `Substation.gpz_reserve_mode` (`'hidden' | 'explicit'` — tryb
     rezerwy transformatorowej GPZ, ENEA Zeszyt 1 §26.10.5); rozszerzenie wartosci
     `bay_role` (EARTHING, CAPACITOR) nie zmienia liczby pol; licznik 125 -> 126 (pomiar guardem
-    na drzewie karty)."""
+    na drzewie karty). Karta GPZ-H5-APARATURA (2026-10-22) kasuje `BayBaseModel.equipment_data_state`
+    (trzy stany danych MODEL/PROPOZYCJA/BRAK_DANYCH — zastąpione składem pola) i dodaje encję
+    lustra `WierszSkladuPola` z JEDNYM polem Literal `status` (`StatusSkladuPola` w `types/enm.ts`:
+    ZAPROJEKTOWANE / WYMAGANE_STANDARDEM_BRAK / BRAK_POZYCJI_KATALOGU / RODZAJ_BEZ_KATALOGU);
+    rozszerzenie wartości `BayPrimaryDevice.kind` (DS_ES, VOLTAGE_INDICATOR, EARTHING_TRANSFORMER,
+    NEUTRAL_REACTOR, NEUTRAL_RESISTOR, CAPACITOR_BANK) nie zmienia liczby pól; netto 126 -> 126
+    (pomiar guardem na drzewie karty: 125 bez encji `WierszSkladuPola`, 126 z nią)."""
     guard.main()
     wyjscie = capsys.readouterr().out
     import re

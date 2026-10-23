@@ -350,8 +350,14 @@ def test_wytrzymalosc_aparatury_dana_przyjeta_per_pole(oznaczona: str) -> None:
     )
     for wpis in widok["pola"]:
         oznaczone = wpis["prady_pola"]["punkt_ref"] == oznaczona
-        # Każda ocena pola (dynamiczna, cieplna, wyłączalność) stoi na tym samym prądzie.
-        assert all((_ile(o) > 0) is oznaczone for o in wpis["oceny"]), wpis["oceny"]
+        # Każda ocena pola PORÓWNUJĄCA PRĄD (dynamiczna, cieplna, wyłączalność) stoi na tym
+        # samym prądzie; rekord izolacji (U_m wobec szyny) prądu nie porównuje — bez danej
+        # przyjętej tolerancji w każdym wariancie.
+        pradowe = [o for o in wpis["oceny"] if not o["kryterium_id"].endswith(".izolacja")]
+        assert len(pradowe) == 3
+        assert all((_ile(o) > 0) is oznaczone for o in pradowe), pradowe
+        izolacja = [o for o in wpis["oceny"] if o["kryterium_id"].endswith(".izolacja")]
+        assert [_ile(o) for o in izolacja] == [0]
 
 
 # =============================================================================

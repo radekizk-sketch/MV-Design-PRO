@@ -23,10 +23,13 @@ Dwa układy (karta GPZ-H5, `TemplateSchema.gpz_uklad`):
    ograniczona do jednego — §11.1). Tryb rezerwy transformatorowej (§26.10.5: ukryta albo
    jawna) jest wyborem projektanta, nie domyślną szablonu. Na każdej sekcji SN pola
    funkcyjne (§13, zał. Z.2): zespołu uziemiającego, baterii kondensatorów i pomiaru
-   napięcia — BEZ aparatów i bez elementów (element powstaje wyłącznie z danych); łącznik
-   szyn SN w dwóch celach (zał. Z.2). Skład aparatów pól 110 kV z §11.1 trafia do modelu
-   jako PROPOZYCJA szablonu (`meta.apparatus_proposal`, `modelled: False`), nie jako
-   aparaty modelu.
+   napięcia — bez elementów (zespół uziemiający i bateria powstają wyłącznie z danych);
+   łącznik szyn SN w dwóch celach (zał. Z.2). Każde pole ma skład z szablonu pola
+   standardu ENEA (`network_model/catalog/gniazda_pol_enea.py`): gniazda aparatury
+   w kolejności od szyny, z wymaganiami i podstawą; pola zapisane w kolejności rozdzielni
+   (zał. Z.1 i Z.2). Dane projektu: liczba pól liniowych na sekcję SN (zał. Z.2 — „dostosowana
+   do potrzeb”), wariant pola zespołu uziemiającego (§16) i obsadzenie gniazd pozycjami
+   wymagań standardu (opcjonalne; bez niego gniazda czekają na dobór aparatu).
 2. **Równoważnik sieci na szynach SN** (`GPZ_UKLAD_ROWNOWAZNIK_SN`): granica modelu = szyny
    SN (karta GPZ-MODEL). Każda sekcja SN ma WŁASNY równoważnik z katalogu (warunki
    przyłączenia OSD — Sk3 widziana z szyn sekcji, zawiera impedancję transformatora
@@ -62,6 +65,12 @@ from application.station_templates.schema import (
     TemplateParamFloat,
     TemplateParamInt,
     TemplateSchema,
+    WarunekWymagalnosci,
+)
+from enm.domain_operations import (
+    MAX_GPZ_LINE_FIELDS_PER_SECTION,
+    OBSADZENIE_WYMAGANIAMI_STANDARDU,
+    PODSTAWA_WARIANTU_ZU_PL,
 )
 from enm.rezerwa_gpz import (
     NAZWA_TRYBU_REZERWY_PL,
@@ -72,6 +81,7 @@ from enm.rezerwa_gpz import (
     TRYB_REZERWY_JAWNEJ,
     TRYBY_REZERWY,
 )
+from network_model.catalog.gniazda_pol_enea import SZABLONY_POL_STANDARDU, SZABLONY_POL_ZU_SN
 
 #: Pola funkcyjne każdej sekcji SN GPZ H5 (ENEA Zeszyt 1 §13, zał. Z.2) — role operacji
 #: `add_grid_source_sn` (`gpz_sections[].function_bays`).
@@ -83,6 +93,17 @@ CELE_LACZNIKA_SN_H5 = 2
 #: Dane projektu szablonu H5 — pola wejścia z podpowiedzią i podstawą, bez wartości domyślnej
 #: (wpis 7 koordynacji pkt 6). `apply.py::_ladunek_gpz_h5` przekazuje do operacji WYŁĄCZNIE
 #: klucze tej listy (`klucz_ladunku`) — deklaracja i przekazanie z jednego źródła.
+#: Maksymalna liczba transformatorów 110/SN układu H5 (ENEA Zeszyt 1 §11.1: dwa pola
+#: transformatorowe) — zakres parametru `transformer_count` i numerów transformatora
+#: rezerwowego z JEDNEJ stałej.
+MAX_TRANSFORMATOROW_H5 = 2
+#: Transformator rezerwowy (numer i wyłącznik pola SN) — wymagany przy rezerwie jawnej
+#: z co najmniej dwoma transformatorami (ta sama koniunkcja, co odmowa `add_grid_source_sn`).
+WARUNEK_TRANSFORMATORA_REZERWOWEGO: tuple[WarunekWymagalnosci, ...] = (
+    WarunekWymagalnosci(klucz="reserve_mode", rowna=TRYB_REZERWY_JAWNEJ),
+    WarunekWymagalnosci(klucz="transformer_count", co_najmniej=2),
+)
+
 DANE_PROJEKTU_H5: tuple[DanaProjektuSzablonu, ...] = (
     DanaProjektuSzablonu(
         klucz="hv_sections",
@@ -95,30 +116,38 @@ DANE_PROJEKTU_H5: tuple[DanaProjektuSzablonu, ...] = (
             "Wymagania techniczne ENEA Operator, Zeszyt 1, §11.1 — układ H5 ma dwie linie "
             "zasilające 110 kV, stacja z jedną linią 110 kV nie jest dopuszczona"
         ),
+        typ_wartosci="tory_zasilania_110kv",
     ),
     DanaProjektuSzablonu(
         klucz="hv_coupler.normal_state",
         podpowiedz_pl=PODPOWIEDZ_STANU_LACZNIKA_SZYN_WN_PL,
         podstawa_pl=PODSTAWA_STANU_LACZNIKA_SZYN_WN_PL,
+        typ_wartosci="wybor",
         wartosci=(("open", "otwarty"), ("closed", "zamknięty")),
     ),
     DanaProjektuSzablonu(
         klucz="hv_coupler.justification",
         podpowiedz_pl="Dlaczego łącznik szyn 110 kV pracuje normalnie zamknięty",
         podstawa_pl=PODSTAWA_STANU_LACZNIKA_SZYN_WN_PL,
-        warunek_pl="wymagane przy stanie normalnym „zamknięty”",
+        typ_wartosci="tekst",
+        wymagana_gdy=(WarunekWymagalnosci(klucz="hv_coupler.normal_state", rowna="closed"),),
     ),
     DanaProjektuSzablonu(
         klucz="reserve_mode",
         podpowiedz_pl=PODPOWIEDZ_TRYBU_REZERWY_PL,
         podstawa_pl=PODSTAWA_TRYBU_REZERWY_PL,
+        typ_wartosci="wybor",
         wartosci=tuple((tryb, NAZWA_TRYBU_REZERWY_PL[tryb]) for tryb in TRYBY_REZERWY),
     ),
     DanaProjektuSzablonu(
         klucz="reserve_transformer",
         podpowiedz_pl="Numer transformatora rezerwowego (nieobciążonego w normalnej pracy)",
         podstawa_pl=PODSTAWA_TRYBU_REZERWY_PL,
-        warunek_pl=f"wymagane przy trybie „{NAZWA_TRYBU_REZERWY_PL[TRYB_REZERWY_JAWNEJ]}”",
+        typ_wartosci="liczba_calkowita",
+        wartosci=tuple(
+            (str(n), f"transformator {n}") for n in range(1, MAX_TRANSFORMATOROW_H5 + 1)
+        ),
+        wymagana_gdy=WARUNEK_TRANSFORMATORA_REZERWOWEGO,
     ),
     DanaProjektuSzablonu(
         klucz="reserve_transformer_apparatus",
@@ -126,20 +155,51 @@ DANE_PROJEKTU_H5: tuple[DanaProjektuSzablonu, ...] = (
             "Wyłącznik pola SN transformatora rezerwowego z katalogu — normalnie otwarty"
         ),
         podstawa_pl=PODSTAWA_TRYBU_REZERWY_PL,
-        warunek_pl=f"wymagane przy trybie „{NAZWA_TRYBU_REZERWY_PL[TRYB_REZERWY_JAWNEJ]}”",
+        typ_wartosci="pozycja_katalogu",
+        wymagana_gdy=WARUNEK_TRANSFORMATORA_REZERWOWEGO,
+    ),
+    DanaProjektuSzablonu(
+        klucz="line_fields_per_section",
+        podpowiedz_pl="Liczba pól liniowych na każdej sekcji SN (odpływy magistral)",
+        podstawa_pl=(
+            "ENEA Operator, Zeszyt 1, zał. Z.2 — liczba pól liniowych dostosowana do potrzeb "
+            "(rysunek pokazuje 11 pól liniowych na sekcję); §13 — rozdzielnica na co najmniej "
+            "32 pola docelowo"
+        ),
+        typ_wartosci="liczba_calkowita",
+        wartosci=tuple((str(n), str(n)) for n in range(1, MAX_GPZ_LINE_FIELDS_PER_SECTION + 1)),
+    ),
+    DanaProjektuSzablonu(
+        klucz="earthing_bay_template",
+        podpowiedz_pl=(
+            "Sposób uziemienia punktu neutralnego sieci SN — wynik analizy projektu stacji; "
+            "wyznacza wariant pola zespołu uziemiającego obu sekcji"
+        ),
+        podstawa_pl=PODSTAWA_WARIANTU_ZU_PL,
+        typ_wartosci="wybor",
+        wartosci=tuple((ref, SZABLONY_POL_STANDARDU[ref].nazwa_pl) for ref in SZABLONY_POL_ZU_SN),
+    ),
+    DanaProjektuSzablonu(
+        klucz="bay_apparatus",
+        podpowiedz_pl=(
+            "Obsadzenie gniazd pól pozycjami wymagań standardu ENEA (progi wymagań z podstawą, "
+            "bez producenta) — do zastąpienia doborem producenta"
+        ),
+        podstawa_pl=(
+            "ENEA Operator, Zeszyt 1 — §9.1, §9.2, §11.1, §13, §16, §17, §19, tabele 2–5, "
+            "rys. Z.1–Z.17 (wymagania aparatury pól)"
+        ),
+        typ_wartosci="wybor",
+        wartosci=(
+            (
+                OBSADZENIE_WYMAGANIAMI_STANDARDU,
+                "pozycje wymagań standardu ENEA w gniazdach",
+            ),
+        ),
+        opcjonalna=True,
+        skutek_braku_pl="bez wyboru gniazda czekają na dobór aparatu",
     ),
 )
-
-#: Propozycja składu aparatów pól 110 kV (ENEA Zeszyt 1 §11.1) — oznaczenia aparatów:
-#: OSZ(U) odłącznik szynowy (z uziemnikiem), W wyłącznik, PIU przekładnik prądowy,
-#: OL(U) odłącznik liniowy (z uziemnikiem), OGR ogranicznik przepięć, OS(U) odłącznik
-#: sekcyjny (z uziemnikiem). Propozycja szablonu, NIE aparaty modelu.
-PROPOZYCJA_APARATOW_110_H5: dict[str, object] = {
-    "basis": "ENEA Operator, Zeszyt 1 „Stacje 110 kV” §11.1 (układ H5)",
-    "line": ["OSZ(U)", "W", "PIU", "OL(U)", "OGR"],
-    "transformer": ["OSZ(U)", "W", "PIU", "OGR"],
-    "coupler": ["OS(U)", "W", "PIU", "(U)OS"],
-}
 
 
 def _gpz_rownowaznik_sn(
@@ -205,7 +265,6 @@ def _gpz_h5(
     *,
     transformer_options: tuple[CatalogChoice, ...],
     apparatus_options: tuple[CatalogChoice, ...],
-    line_fields_per_section: int,
     use_case: str,
 ) -> StationTemplate:
     return StationTemplate(
@@ -225,14 +284,17 @@ def _gpz_h5(
             transformer_count=TemplateParamInt(
                 default=2,
                 min_value=1,
-                max_value=2,
+                max_value=MAX_TRANSFORMATOROW_H5,
                 label_pl="Liczba transformatorów 110/SN (pola transformatorowe H5)",
             ),
+            # Liczba pól liniowych na sekcję SN jest DANĄ PROJEKTU (`line_fields_per_section`
+            # w `dane_projektu`, zał. Z.2) — parametr szablonu bez zakresu, by formularz nie
+            # miał drugiej kontrolki tej samej danej.
             sn_bays_count=TemplateParamInt(
-                default=line_fields_per_section,
-                min_value=1,
-                max_value=12,
-                label_pl="Liczba pól liniowych na sekcję SN",
+                default=0,
+                min_value=0,
+                max_value=0,
+                label_pl="Liczba pól liniowych na sekcję SN — dana projektu",
             ),
             sn_bay_roles=(
                 BayRoleSpec(role="TR", okreslenie_pl="(sekcja 1)"),
@@ -272,7 +334,6 @@ GPZ_110_SN_TEMPLATES = (
         "sekcji SN pola zespołu uziemiającego, baterii kondensatorów i pomiaru napięcia.",
         transformer_options=TR_WN_SN_OPTIONS_15,
         apparatus_options=SN_APPARATUS_OPTIONS,
-        line_fields_per_section=4,
         use_case="Typowa stacja 110/15 kV OSD z dwoma liniami zasilającymi 110 kV "
         "i rezerwą transformatorową.",
     ),
@@ -286,7 +347,6 @@ GPZ_110_SN_TEMPLATES = (
         "sekcji SN pola zespołu uziemiającego, baterii kondensatorów i pomiaru napięcia.",
         transformer_options=TR_WN_SN_OPTIONS_20,
         apparatus_options=SN_APPARATUS_OPTIONS_24KV,
-        line_fields_per_section=4,
         use_case="Typowa stacja 110/20 kV OSD z dwoma liniami zasilającymi 110 kV "
         "i rezerwą transformatorową.",
     ),

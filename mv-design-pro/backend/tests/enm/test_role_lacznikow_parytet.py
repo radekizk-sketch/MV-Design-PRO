@@ -9,7 +9,8 @@ wyprowadza JEDNA funkcja (``enm.topology.role_lacznikow``) i jej lustro
 
 Iloczyn cech: rodzaj łącznika {łącznik szyn 110 kV GPZ (ŁS-110), łącznik szyn SN GPZ (ŁS-SN),
 łącznik sekcyjny magistrali, sprzęgło stacji SN w magistrali (stacja sekcyjna), sprzęgło
-sekcji rozdzielnicy nN, łącznik pola transformatorowego (rezerwa jawna)} × pozycja normalna
+sekcji rozdzielnicy nN, łącznik pola transformatorowego (rezerwa jawna), łącznik pola
+liniowego 110 kV (tor L1 — karta GPZ-H5-APARATURA)} × pozycja normalna
 {open, closed} × strona {backend (ten plik), TS (``roleLacznikowParytet.test.ts``)}. Wspólna
 tablica: ``backend/schemas/role_lacznikow_parytet_v1.json`` (migawki przycięte do pól, które
 czyta reguła, i oczekiwane role, punkty podziału, kandydaci). Każda pozycja normalna powstaje
@@ -38,12 +39,15 @@ from enm.models import EnergyNetworkModel
 from enm.stan_normalny import TYPY_LACZNIKOW_ZE_STANEM_NORMALNYM
 from enm.topology import (
     ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
+    ROLA_LACZNIK_POLA_ZASILAJACEGO_WN,
     ROLA_LACZNIK_SZYN_NN,
     ROLA_LACZNIK_SZYN_SN,
     ROLA_LACZNIK_SZYN_WN,
     ROLA_PUNKT_PODZIALU,
     punkty_podzialu,
     role_lacznikow,
+    sekcje_sn_transformatorow_gpz,
+    tory_zasilania_sekcji_wn_gpz,
 )
 from enm.validator import ENMValidator
 
@@ -110,6 +114,11 @@ def _przytnij(enm: dict[str, Any]) -> dict[str, Any]:
                 "lv_bus_ref": t.get("lv_bus_ref"),
             }
             for t in sorted(enm.get("transformers", []), key=lambda t: t["ref_id"])
+        ],
+        # Tor zasilania sekcji 110 kV (`tory_zasilania_sekcji_wn_gpz`) czyta szynę źródła.
+        "sources": [
+            {"ref_id": z["ref_id"], "bus_ref": z.get("bus_ref")}
+            for z in sorted(enm.get("sources", []), key=lambda z: z["ref_id"])
         ],
     }
 
@@ -217,6 +226,16 @@ def przypadki() -> list[dict[str, Any]]:
     zamknieta = copy.deepcopy(jawna)
     _galaz(zamknieta, wylacznik).update(normal_state="closed", status="closed")
     dodaj("pole_tr_closed", "POLE_TR", "closed", zamknieta, wylacznik)
+    # Łącznik pola liniowego 110 kV (tor L1): operacja tworzenia GPZ zapisuje go normalnie
+    # zamkniętym; pozycja „otwarty” (tor odstawiony, sekcja 110 kV zasilana przez zamknięty
+    # łącznik szyn 110 kV) nie ma pola wejścia operacji, więc wariant otwarty jest kopią
+    # z pozycją zmienioną — reguła roli nie czyta pozycji tego łącznika, co przypadek przypina.
+    h5 = _h5("open")
+    tor_l1 = refy(h5).wylacznik_l1
+    dodaj("pole_zasilajace_wn_closed", "POLE_ZASILAJACE_WN", "closed", h5, tor_l1)
+    odstawiony = copy.deepcopy(h5)
+    _galaz(odstawiony, tor_l1).update(normal_state="open", status="open")
+    dodaj("pole_zasilajace_wn_open", "POLE_ZASILAJACE_WN", "open", odstawiony, tor_l1)
     # Łącznik sekcyjny magistrali: operacja wstawienia zapisuje go BEZ pozycji normalnej
     # (niezadeklarowana); `set_normal_open_point` w pierścieniu otwiera wskazany łącznik
     # i zamyka poprzedni punkt podziału — jedna migawka daje oba stany.
@@ -271,7 +290,66 @@ def _oczekiwane(enm: dict[str, Any]) -> dict[str, Any]:
         "role": dict(sorted(role.items())),
         "punkty_podzialu": list(punkty_podzialu(enm)),
         "kandydaci": kandydaci,
+        **_sekcje_sn_i_tory(enm),
     }
+
+
+def _sekcje_sn_i_tory(enm: dict[str, Any]) -> dict[str, Any]:
+    """Droga „zacisk pola → sekcja” w postaci tablicy (klucze w kolejności backendu)."""
+    return {
+        "sekcje_sn_transformatorow": {
+            tr: {"szyna_sekcji": s.szyna_sekcji, "wylacznik_ref": s.wylacznik_ref}
+            for tr, s in sekcje_sn_transformatorow_gpz(enm).items()
+        },
+        "tory_zasilania_wn": {
+            szyna: [{"zrodlo_ref": t.zrodlo_ref, "wylacznik_ref": t.wylacznik_ref} for t in tory]
+            for szyna, tory in tory_zasilania_sekcji_wn_gpz(enm).items()
+        },
+    }
+
+
+def drogi_zacisku() -> list[dict[str, Any]]:
+    """Iloczyn drogi „zacisk pola → sekcja” (karta GPZ-H5-SCALENIE-APARATURY): strona
+    {transformator 110/SN (strona SN), tor zasilania 110 kV} × droga {przez łącznik pola,
+    wprost na szynie sekcji, dwa łączniki zacisku — pierwszy wg ``ref_id``}.
+
+    Droga przez łącznik pola powstaje operacją tworzenia GPZ (H5). Dróg „wprost” i „dwa
+    łączniki” żadna operacja domenowa dziś nie zapisuje (kreator GPZ zawsze stawia zacisk
+    i łącznik pola), a reguła czyta je z danych importu — warianty są kopiami H5 ze
+    zmienionym końcem gałęzi albo dopisanym łącznikiem, nazwanymi przy przypadku."""
+    h5 = _h5("open")
+    (stacja,) = (s for s in h5["substations"] if s.get("gpz_hv_sections"))
+    sekcje_sn = [s["bus_ref"] for s in stacja["gpz_sections"]]
+    sekcje_wn = [s["bus_ref"] for s in stacja["gpz_hv_sections"]]
+    trafo = sorted(h5["transformers"], key=lambda t: t["ref_id"])[0]
+    zrodlo = sorted(h5["sources"], key=lambda z: z["ref_id"])[0]
+
+    wprost = copy.deepcopy(h5)
+    next(t for t in wprost["transformers"] if t["ref_id"] == trafo["ref_id"])["lv_bus_ref"] = (
+        sekcje_sn[0]
+    )
+    next(z for z in wprost["sources"] if z["ref_id"] == zrodlo["ref_id"])["bus_ref"] = sekcje_wn[0]
+
+    dwa = copy.deepcopy(h5)
+    for ref, z, do in (
+        ("!dodatkowy-lacznik-sn", trafo["lv_bus_ref"], sekcje_sn[1]),
+        ("!dodatkowy-lacznik-wn", zrodlo["bus_ref"], sekcje_wn[1]),
+    ):
+        dwa["branches"].append(
+            {
+                "ref_id": ref,
+                "name": ref,
+                "type": "bus_coupler",
+                "from_bus_ref": z,
+                "to_bus_ref": do,
+                "status": "open",
+            }
+        )
+    return [
+        {"nazwa": "przez_lacznik_pola", "migawka": h5},
+        {"nazwa": "wprost_na_szynie_sekcji", "migawka": wprost},
+        {"nazwa": "dwa_laczniki_zacisku", "migawka": dwa},
+    ]
 
 
 def tablica() -> dict[str, Any]:
@@ -293,6 +371,14 @@ def tablica() -> dict[str, Any]:
             }
             for p in przypadki()
         ],
+        "drogi_zacisku_pol": [
+            {
+                "nazwa": d["nazwa"],
+                "migawka": _przytnij(d["migawka"]),
+                **_sekcje_sn_i_tory(d["migawka"]),
+            }
+            for d in drogi_zacisku()
+        ],
     }
 
 
@@ -313,6 +399,8 @@ ROLA_RODZAJU: dict[tuple[str, str | None], str | None] = {
     ("LS_SN", "closed"): ROLA_LACZNIK_SZYN_SN,
     ("POLE_TR", "open"): ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
     ("POLE_TR", "closed"): ROLA_LACZNIK_POLA_TRANSFORMATOROWEGO,
+    ("POLE_ZASILAJACE_WN", "open"): ROLA_LACZNIK_POLA_ZASILAJACEGO_WN,
+    ("POLE_ZASILAJACE_WN", "closed"): ROLA_LACZNIK_POLA_ZASILAJACEGO_WN,
     ("MAGISTRALA", "open"): ROLA_PUNKT_PODZIALU,
     ("MAGISTRALA", "closed"): None,
     ("MAGISTRALA", None): None,
@@ -329,6 +417,7 @@ I001_RODZAJU: dict[str, str] = {
     "LS_110": "jest łącznikiem szyn 110 kV normalnie otwartym",
     "LS_SN": "jest łącznikiem szyn SN normalnie otwartym",
     "POLE_TR": "jest łącznikiem pola transformatorowego normalnie otwartym",
+    "POLE_ZASILAJACE_WN": "jest łącznikiem pola liniowego 110 kV normalnie otwartym",
     "MAGISTRALA": "jest punktem normalnie otwartym — dzieli sieć",
     "STACJA_SEKCYJNA": "jest punktem normalnie otwartym — dzieli sieć",
     "SPRZEGLO_NN": "jest łącznikiem szyn nN normalnie otwartym",
@@ -349,6 +438,20 @@ def test_rola_i_punkt_podzialu(zbior: list[dict[str, Any]], rodzaj: str, stan: s
     assert (ref in punkty_podzialu(enm)) is jest_punktem
     # Rola z migawki przyciętej = rola z pełnej (reguła czyta wyłącznie pola tablicy).
     assert role_lacznikow(_przytnij(enm)) == role_lacznikow(enm)
+    # Droga „zacisk pola → sekcja” z migawki przyciętej = z pełnej (lustro frontu czyta tablicę).
+    assert sekcje_sn_transformatorow_gpz(_przytnij(enm)) == sekcje_sn_transformatorow_gpz(enm)
+    assert tory_zasilania_sekcji_wn_gpz(_przytnij(enm)) == tory_zasilania_sekcji_wn_gpz(enm)
+    if rodzaj in {"LS_110", "LS_SN", "POLE_TR", "POLE_ZASILAJACE_WN"}:
+        # Układ H5 (karta GPZ-H5-APARATURA): każdy transformator 110/SN dochodzi do sekcji SN
+        # przez łącznik pola SN, każda sekcja 110 kV ma tor zasilania przez łącznik pola
+        # liniowego — strona dolna i źródło stoją na zaciskach pól, nie na szynach sekcji.
+        (stacja,) = (s for s in enm["substations"] if s.get("gpz_hv_sections"))
+        sekcje = sekcje_sn_transformatorow_gpz(enm)
+        assert set(sekcje) == set(stacja["transformer_refs"])
+        assert all(s.wylacznik_ref is not None for s in sekcje.values())
+        tory = tory_zasilania_sekcji_wn_gpz(enm)
+        assert set(tory) == {s["bus_ref"] for s in stacja["gpz_hv_sections"]}
+        assert all(t.wylacznik_ref is not None for lista in tory.values() for t in lista)
     # I001: łącznik normalnie otwarty nazwany wg roli; I005 (pierścień bez punktu podziału)
     # nigdy nie wskazuje łącznika szyn jako brakującego punktu.
     raport = ENMValidator().validate(EnergyNetworkModel.model_validate(enm))
@@ -382,6 +485,48 @@ def test_lacznik_szyn_gpz_normalnie_otwarty_nie_jest_punktem_podzialu(
     assert _galaz(p["enm"], r.lacznik_wn)["normal_state"] == "open"
     assert _galaz(p["enm"], r.lacznik_sn)["normal_state"] == "open"
     assert punkty_podzialu(p["enm"]) == ()
+
+
+def test_droga_zacisku_pola_do_sekcji() -> None:
+    """Oczekiwania z cech wariantu, nie z funkcji pod testem: przez łącznik — sekcja po drugiej
+    stronie łącznika pola; wprost — szyna sekcji bez łącznika; dwa łączniki — pierwszy wg
+    ``ref_id`` (``!`` sortuje się przed ``gpz/``)."""
+    warianty = {d["nazwa"]: d["migawka"] for d in drogi_zacisku()}
+    h5 = warianty["przez_lacznik_pola"]
+    (stacja,) = (s for s in h5["substations"] if s.get("gpz_hv_sections"))
+    sekcje_sn = [s["bus_ref"] for s in stacja["gpz_sections"]]
+    sekcje_wn = [s["bus_ref"] for s in stacja["gpz_hv_sections"]]
+    trafo = sorted(h5["transformers"], key=lambda t: t["ref_id"])[0]["ref_id"]
+    zrodlo = sorted(h5["sources"], key=lambda z: z["ref_id"])[0]["ref_id"]
+
+    przez = sekcje_sn_transformatorow_gpz(h5)[trafo]
+    assert przez.szyna_sekcji == sekcje_sn[0] and przez.wylacznik_ref is not None
+    assert przez.wylacznik_ref.endswith("breaker_sn")
+    (tor,) = tory_zasilania_sekcji_wn_gpz(h5)[sekcje_wn[0]]
+    assert tor.zrodlo_ref == zrodlo and tor.wylacznik_ref is not None
+    assert tor.wylacznik_ref.endswith("breaker_line")
+
+    wprost = warianty["wprost_na_szynie_sekcji"]
+    assert sekcje_sn_transformatorow_gpz(wprost)[trafo].wylacznik_ref is None
+    (tor,) = tory_zasilania_sekcji_wn_gpz(wprost)[sekcje_wn[0]]
+    assert (tor.zrodlo_ref, tor.wylacznik_ref) == (zrodlo, None)
+
+    dwa = warianty["dwa_laczniki_zacisku"]
+    pierwszy = sekcje_sn_transformatorow_gpz(dwa)[trafo]
+    assert (pierwszy.szyna_sekcji, pierwszy.wylacznik_ref) == (
+        sekcje_sn[1],
+        "!dodatkowy-lacznik-sn",
+    )
+    (tor,) = (t for t in tory_zasilania_sekcji_wn_gpz(dwa)[sekcje_wn[1]] if t.zrodlo_ref == zrodlo)
+    assert tor.wylacznik_ref == "!dodatkowy-lacznik-wn"
+    assert sekcje_wn[0] not in tory_zasilania_sekcji_wn_gpz(dwa)
+    for migawka in warianty.values():
+        assert sekcje_sn_transformatorow_gpz(_przytnij(migawka)) == sekcje_sn_transformatorow_gpz(
+            migawka
+        )
+        assert tory_zasilania_sekcji_wn_gpz(_przytnij(migawka)) == tory_zasilania_sekcji_wn_gpz(
+            migawka
+        )
 
 
 def test_tablica_parytetu_aktualna_i_deterministyczna() -> None:

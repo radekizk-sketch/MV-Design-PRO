@@ -3,7 +3,7 @@
  * otwarcie kreatora zastosowania szablonu, dostępność.
  * Przeglądarka i kreator legacy atrapowane — testujemy integrację, nie ich wnętrza.
  */
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { act, render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../szablony', () => ({
@@ -33,6 +33,7 @@ vi.mock('../../../../ui/network-build/station-templates', () => ({
 }));
 
 import { ModelWarsztat } from '../ModelWarsztat';
+import { useZadanieZakladkiModelu } from '../zadanieZakladkiModelu';
 
 describe('U2 #2 — warsztat przestrzeni Model', () => {
   afterEach(() => cleanup());
@@ -88,5 +89,27 @@ describe('U2 #2 — warsztat przestrzeni Model', () => {
     expect(screen.getByRole('tablist')).toBeTruthy();
     const schemat = screen.getByTestId('mvd-model-zakladka-schemat');
     expect(schemat.getAttribute('aria-selected')).toBe('true');
+  });
+
+  /* Karta GPZ-H5-APARATURA: żądanie zakładki spoza przestrzeni (akcja kreatora źródła
+     „Szablony stacji”). Iloczyn cech: {żądanie zgłoszone przed montażem, po montażu} —
+     w obu warsztat otwiera galerię i zużywa żądanie (ponowny montaż wraca do schematu). */
+  it('żądanie zakładki zgłoszone PRZED montażem otwiera galerię i jest zużywane', () => {
+    useZadanieZakladkiModelu.getState().zglos('szablony');
+    render(<ModelWarsztat />);
+    expect(screen.getByTestId('atrapa-przegladarka')).toBeTruthy();
+    expect(screen.getByTestId('mvd-model-zakladka-szablony').getAttribute('aria-selected')).toBe('true');
+    expect(useZadanieZakladkiModelu.getState().zadanie).toBeNull();
+    cleanup();
+    render(<ModelWarsztat />);
+    expect(screen.getByTestId('atrapa-schemat')).toBeTruthy();
+  });
+
+  it('żądanie zakładki zgłoszone PO montażu przełącza zamontowany warsztat', () => {
+    render(<ModelWarsztat />);
+    expect(screen.getByTestId('atrapa-schemat')).toBeTruthy();
+    act(() => useZadanieZakladkiModelu.getState().zglos('szablony'));
+    expect(screen.getByTestId('atrapa-przegladarka')).toBeTruthy();
+    expect(useZadanieZakladkiModelu.getState().zadanie).toBeNull();
   });
 });

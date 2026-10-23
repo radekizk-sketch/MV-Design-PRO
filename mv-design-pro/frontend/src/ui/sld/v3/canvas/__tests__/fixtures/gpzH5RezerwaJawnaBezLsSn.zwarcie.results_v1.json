@@ -2,7 +2,7 @@
   "analysis_type": "SC_3F",
   "contract_version": "1.0",
   "created_at": "2026-09-25T00:00:00Z",
-  "deterministic_signature": "7d79dc6cc6a637a8ed38ae155c3a0e55caf6b80959b506e7dfc10a3ba9992ab4",
+  "deterministic_signature": "05b6f49920409ee021f9411711402a46aec83f9228d815611f545fc7567f93fb",
   "element_results": [
     {
       "element_ref": "gpz/9a68495b5e3a139b18e847aa4a817c20/hv_section/001/bus_wn",
@@ -12,14 +12,19 @@
         "analysis_type": "short_circuit_3f",
         "dopuszczalnosc_raportowa": true,
         "fault_type": "3F",
+        "flags": [],
+        "flags_pl": [],
         "i2t_ka2s": 178.052087789,
         "i_dc_ka": 0.801909466156,
         "ib_ka": 13.121597027,
         "ikss_ka": 13.121597027,
         "ip_ka": 32.4001033167,
         "ith_ka": 13.3436159938,
-        "proof_ref": "proof:short-circuit:3fc4bf85918c02b54633206dfaf7c6629a157fa1096f95e359001909367453e6",
+        "non_physical_reason": null,
+        "proof_ref": "proof:short-circuit:610729bec30ea80beb105a99228b53769bfca6f9dc05df1ed8928b989d5912d8",
         "proof_status": "complete",
+        "reporting_limitations": [],
+        "reporting_limitations_pl": [],
         "reporting_status": "reportable",
         "rk_ohm": 0.529757800068,
         "rx_ratio": 0.1,
@@ -48,14 +53,19 @@
         "analysis_type": "short_circuit_3f",
         "dopuszczalnosc_raportowa": true,
         "fault_type": "3F",
+        "flags": [],
+        "flags_pl": [],
         "i2t_ka2s": 92.30220231,
         "i_dc_ka": 0.577374815632,
         "ib_ka": 9.44754985947,
         "ikss_ka": 9.44754985947,
         "ip_ka": 23.328074388,
         "ith_ka": 9.60740351552,
-        "proof_ref": "proof:short-circuit:833f1040f3631d4c04aca02bb68a3c213bf928169b7a3fae75e7c7aebaf06911",
+        "non_physical_reason": null,
+        "proof_ref": "proof:short-circuit:66ae7a3e1df7c4c3fbd341a737fb074091d04a4f3ce1e2e10059e4cf377d695f",
         "proof_status": "complete",
+        "reporting_limitations": [],
+        "reporting_limitations_pl": [],
         "reporting_status": "reportable",
         "rk_ohm": 0.735774722316,
         "rx_ratio": 0.1,
@@ -84,14 +94,19 @@
         "analysis_type": "short_circuit_3f",
         "dopuszczalnosc_raportowa": true,
         "fault_type": "3F",
+        "flags": [],
+        "flags_pl": [],
         "i2t_ka2s": 84.8826614338,
         "i_dc_ka": 2.71325922266,
         "ib_ka": 8.90794766409,
         "ikss_ka": 8.90794766409,
         "ip_ka": 23.5118231635,
         "ith_ka": 9.2131786824,
-        "proof_ref": "proof:short-circuit:ae2bd9a8065c1883ed4f5b64c4076411f2454636db0c089bc61094515c834b59",
+        "non_physical_reason": null,
+        "proof_ref": "proof:short-circuit:b19e5b7076eaf65bdbc6dadd87f9d918ebdd90cac144a6fa85d7ea8903049c68",
         "proof_status": "complete",
+        "reporting_limitations": [],
+        "reporting_limitations_pl": [],
         "reporting_status": "reportable",
         "rk_ohm": 0.0522023339243,
         "rx_ratio": 0.0488722459065,
@@ -120,14 +135,27 @@
         "analysis_type": "short_circuit_3f",
         "dopuszczalnosc_raportowa": false,
         "fault_type": "3F",
+        "flags": [
+          "BEZ_NAPIECIA"
+        ],
+        "flags_pl": [
+          "bez napięcia"
+        ],
         "i2t_ka2s": null,
         "i_dc_ka": null,
         "ib_ka": null,
         "ikss_ka": null,
         "ip_ka": null,
         "ith_ka": null,
-        "proof_ref": "proof:short-circuit:e4a75c92c81eea9dc3c14722f655dd5eb3c8d8c4122a509bdac5493c63d1e52e",
+        "non_physical_reason": "fault_node_without_reference_impedance",
+        "proof_ref": "proof:short-circuit:6ea2200593cc0c1dfecceda6feb3379e166aa31c3ceaaa4be1b544020a5651d7",
         "proof_status": "partial",
+        "reporting_limitations": [
+          "fault_node_without_reference_impedance"
+        ],
+        "reporting_limitations_pl": [
+          "Węzeł zwarcia leży w części sieci odciętej od źródeł zasilania (szyna bez napięcia) — impedancja zwarciowa do odniesienia nie istnieje, prądu zwarciowego nie liczono. To stan łączeniowy sieci, nie błąd obliczenia."
+        ],
         "reporting_status": "not_reportable",
         "rk_ohm": null,
         "rx_ratio": null,
@@ -258,11 +286,17 @@
         "severity": "INFO"
       },
       "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn": {
-        "badges": [],
+        "badges": [
+          {
+            "code": "BEZ_NAPIECIA",
+            "label": "bez napięcia",
+            "severity": "WARNING"
+          }
+        ],
         "kind": "bus",
         "metrics": {},
         "ref_id": "gpz/9a68495b5e3a139b18e847aa4a817c20/section/002/bus_sn",
-        "severity": "INFO"
+        "severity": "WARNING"
       }
     },
     "legend": {
@@ -294,7 +328,103 @@
       {
         "code": "E065",
         "element_ref": null,
-        "message": "Sekcja GPZ bez zasilania: sekcja „Sekcja SN B” (GPZ „GPZ H5 110/15 kV”) nie ma własnego równoważnika sieci, a sprzęgło „Sprzęgło sekcji GPZ 1-2” jest otwarte — szyny sekcji i zasilane z niej odpływy są odcięte od źródła. Rozpływ mocy i zwarcia liczą część zasilaną; sekcja odcięta jest w wynikach bez napięcia.",
+        "message": "Sekcja GPZ bez zasilania: sekcja „Sekcja SN B” (GPZ „GPZ H5 110/15 kV”) nie ma zamkniętej drogi do równoważnika sieci — sprzęgło „Sprzęgło sekcji GPZ 1-2” i łącznik pola transformatorowego „Wyłącznik pola SN TR2 (rezerwa jawna)” są otwarte; szyny sekcji i zasilane z niej odpływy są odcięte od źródła. Rozpływ mocy i zwarcia liczą część zasilaną; sekcja odcięta jest w wynikach bez napięcia.",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.apparatus_order_mismatch",
+        "element_ref": null,
+        "message": "Pole „Pole liniowe GPZ 1.1”: Błędna kolejność aparatów toru głównego: Wyłącznik → Przekładnik prądowy → Przekładnik prądowy (kanon od szyny w dół: Odłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik → Głowica kablowa).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.apparatus_order_mismatch",
+        "element_ref": null,
+        "message": "Pole „Pole liniowe GPZ 2.1”: Błędna kolejność aparatów toru głównego: Wyłącznik → Przekładnik prądowy → Przekładnik prądowy (kanon od szyny w dół: Odłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik → Głowica kablowa).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.apparatus_order_mismatch",
+        "element_ref": null,
+        "message": "Pole „Pole sprzęgła Sprzęgło sekcji GPZ 1-2 — cela 2”: Błędna kolejność aparatów toru głównego: Przekładnik prądowy → Wyłącznik (kanon od szyny w dół: Odłącznik → Wyłącznik → Przekładnik prądowy → Odłącznik).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole liniowe GPZ 1.1”: Brak wymaganego aparatu: Głowica kablowa (profil „Pole liniowe wyłącznikowe (GPZ / rozdzielnice wyłącznikowe)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole liniowe GPZ 1.1”: Brak wymaganego aparatu: Odłącznik (profil „Pole liniowe wyłącznikowe (GPZ / rozdzielnice wyłącznikowe)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole liniowe GPZ 2.1”: Brak wymaganego aparatu: Głowica kablowa (profil „Pole liniowe wyłącznikowe (GPZ / rozdzielnice wyłącznikowe)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole liniowe GPZ 2.1”: Brak wymaganego aparatu: Odłącznik (profil „Pole liniowe wyłącznikowe (GPZ / rozdzielnice wyłącznikowe)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole sprzęgła Sprzęgło sekcji GPZ 1-2 — cela 1”: Brak wymaganego aparatu: Odłącznik (profil „Pole sprzęgła (sprzęgło sekcyjne)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole sprzęgła Sprzęgło sekcji GPZ 1-2 — cela 1”: Brak wymaganego aparatu: Wyłącznik (profil „Pole sprzęgła (sprzęgło sekcyjne)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole sprzęgła Sprzęgło sekcji GPZ 1-2 — cela 2”: Brak wymaganego aparatu: Odłącznik (profil „Pole sprzęgła (sprzęgło sekcyjne)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole pomiarowe Sekcja SN A”: Brak wymaganego aparatu: Odłącznik (profil „Pole pomiarowe”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole pomiarowe Sekcja SN B”: Brak wymaganego aparatu: Odłącznik (profil „Pole pomiarowe”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole transformatorowe SN TR1 110/15 kV”: Brak wymaganego aparatu: Odłącznik (profil „Pole transformatorowe wyłącznikowe (GPZ)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole transformatorowe SN TR1 110/15 kV”: Brak wymaganego aparatu: Transformator dwuuzwojeniowy (profil „Pole transformatorowe wyłącznikowe (GPZ)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole transformatorowe SN TR2 110/15 kV”: Brak wymaganego aparatu: Odłącznik (profil „Pole transformatorowe wyłącznikowe (GPZ)”).",
+        "severity": "IMPORTANT"
+      },
+      {
+        "code": "reference.bays.missing_required_apparatus",
+        "element_ref": null,
+        "message": "Pole „Pole transformatorowe SN TR2 110/15 kV”: Brak wymaganego aparatu: Transformator dwuuzwojeniowy (profil „Pole transformatorowe wyłącznikowe (GPZ)”).",
         "severity": "IMPORTANT"
       },
       {
@@ -325,5 +455,5 @@
   },
   "run_finished_at": "2026-09-25T00:00:00+00:00",
   "run_id": "b6d0cd4d-3fe0-51f0-9691-c93500e9ac28",
-  "solver_input_hash": "3c7a809d4e0328a880d00396a87763d56463ef798192942d85158c461e8a9f87"
+  "solver_input_hash": "877bf893fb530dbe0b4a6d6555f29bfcbaa0d62870d23526062692643493c480"
 }

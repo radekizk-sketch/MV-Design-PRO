@@ -33,7 +33,12 @@ import {
   resolveGpzTrunkStartFieldRef,
   resolveTrunkStartAvailability,
 } from '../../../shared/sldActionExecutor';
-import { getMenuActions, powodBrakuStartuCiagu } from '../../../v2/command/SldCommandService';
+import {
+  getMenuActions,
+  powodBrakuStartuCiagu,
+  POZYCJE_APARATURY_SN_POZA_GRANICA_WN,
+} from '../../../v2/command/SldCommandService';
+import { czyObiektGranicyWn } from '../../../shared/akcjeElementu';
 import { buildSceneV3, sceneObstacleRects, type SceneLod } from '../../scene/buildScene';
 import { resultRefForSegment } from '../resultLabels';
 import type { DerSourceKind } from '../../compose/sourceKind';
@@ -227,6 +232,15 @@ const MENU_WG_KOTWICY: Record<string, { readonly naglowek: string; readonly rozs
   'galaz/line_overhead': { naglowek: 'Odcinek linii napowietrznej SN', rozstrzygajaca: 'insert-pole' },
   'galaz/breaker': { naglowek: 'Aparat pola SN', rozstrzygajaca: 'configure-cts-vts' },
   'galaz/switch': { naglowek: 'Aparat pola SN', rozstrzygajaca: 'configure-cts-vts' },
+  // Karta GPZ-H5-SCALENIE-APARATURY: łącznik szyn (110 kV GPZ H5 i sprzęgło SN) — aparat
+  // łącznikowy, ta sama kategoria co wyłącznik i łącznik (`SLD_MENU_REGISTRY.apparatus`).
+  'galaz/bus_coupler': { naglowek: 'Aparat pola SN', rozstrzygajaca: 'configure-cts-vts' },
+};
+
+/** Nagłówek obiektu na stronie 110 kV (granica zasilania sieci SN) — obiekt nie należy do
+ *  rozdzielnicy SN, więc nagłówek nie może mówić „SN” (karta GPZ-H5-SCALENIE-APARATURY). */
+const NAGLOWEK_GRANICY_WN: Readonly<Record<string, string>> = {
+  'Aparat pola SN': 'Aparat pola 110 kV',
 };
 
 /** Klucz oczekiwania dla tematu (gałąź rozstrzyga się dodatkowo rodziną). */
@@ -267,8 +281,14 @@ describe('S9-5 A — inwentarz: menu zależy od TRAFIONEGO obiektu', () => {
         expect(oczekiwane, `kotwica ${kluczKotwicy} ma zadeklarowane oczekiwanie menu`).toBeTruthy();
         const menu = await prawyKlik(kanwa, area.testId);
         expect(menu, `prawy klik w ${klucz} otwiera menu`).toBeTruthy();
-        expect(menu!.textContent, `nagłówek menu dla ${klucz}`).toContain(oczekiwane.naglowek);
+        // Strona 110 kV z napięć szyn modelu (pole: szyna pola; gałąź: którykolwiek koniec).
+        const granicaWn = czyObiektGranicyWn(enm, tematObiektu(kanwa, area)!.modelRef);
+        const naglowek = granicaWn ? NAGLOWEK_GRANICY_WN[oczekiwane.naglowek] ?? oczekiwane.naglowek : oczekiwane.naglowek;
+        expect(menu!.textContent, `nagłówek menu dla ${klucz}`).toContain(naglowek);
         expect(pozycjeMenu(menu!), `pozycja rozstrzygająca dla ${klucz}`).toContain(oczekiwane.rozstrzygajaca);
+        if (granicaWn && POZYCJE_APARATURY_SN_POZA_GRANICA_WN.has(oczekiwane.rozstrzygajaca)) {
+          expect(pozycjaAktywna(menu!, oczekiwane.rozstrzygajaca), `${klucz}: aparatura SN na granicy 110 kV zablokowana`).toBe(false);
+        }
         await zamknijMenu();
       }
     },

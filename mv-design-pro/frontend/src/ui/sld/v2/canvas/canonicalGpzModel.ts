@@ -207,9 +207,11 @@ export interface CanonicalGpzTransformer {
   /** Napięcie zwarcia uk% i straty obciążeniowe Pk [kW] z ENM. */
   readonly ukPercent?: number | null;
   readonly pkKw?: number | null;
-  /** Sekcja SN, której szyną jest szyna strony SN transformatora w modelu
-   *  (`Transformer.lv_bus_ref`); `null` = szyna SN transformatora nie jest szyną
-   *  żadnej sekcji GPZ (wieża bez zejścia do szyny SN i wpis braku danych). */
+  /** Sekcja SN, którą zasila transformator (`ui/shared/stanLacznika.ts::
+   *  sekcjeSnTransformatorowGpz`, lustro `sekcje_sn_transformatorow_gpz`): strona SN
+   *  (`Transformer.lv_bus_ref`) wprost na szynie sekcji albo na zacisku pola SN za łącznikiem
+   *  pola; `null` = strona SN nie dochodzi do żadnej sekcji GPZ (wieża bez zejścia do szyny SN
+   *  i wpis braku danych). */
   readonly lvSectionId: string | null;
   /** Ref szyny WN (110 kV) z `Transformer.hv_bus_ref`. */
   readonly hvBusRef?: string | null;

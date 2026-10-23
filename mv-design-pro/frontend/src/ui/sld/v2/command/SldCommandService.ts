@@ -70,6 +70,29 @@ export function powodBlokadyStanuLacznika(
   return null;
 }
 
+/**
+ * Karta GPZ-H5-SCALENIE-APARATURY: pozycje aparatury i budowy sieci SN, których operacje
+ * odmawiają na stronie 110 kV (decyzja właściciela 2026-10-22 — strona 110 kV jest wyłącznie
+ * funkcjonalną granicą zasilania sieci SN): wyposażenie pola `set_bay_equipment`
+ * (`bay_equipment.bay_hv_boundary`), przekładniki, zabezpieczenia i ogranicznik
+ * (`*.bus_hv_boundary`), ciąg i odgałęzienie SN z pola 110 kV. Pole 110 kV ma wyłącznie
+ * łącznik pola z gałęzią modelu — pozycje stanu łącznika i karta pola zostają aktywne.
+ */
+export const POZYCJE_APARATURY_SN_POZA_GRANICA_WN: ReadonlySet<string> = new Set([
+  'configure-equipment',
+  'configure-cts-vts',
+  'configure-protection',
+  'add-arrester',
+  'extend-trunk',
+  'start-branch',
+  'append-station-on-endpoint',
+]);
+
+export const POWOD_GRANICY_WN_PL =
+  'Strona 110 kV jest granicą zasilania sieci SN — pole 110 kV ma wyłącznie łącznik pola z gałęzią '
+  + 'modelu, bez aparatury z katalogu; jego stan zmień w panelu „Scenariusze łączeniowe” przypadku '
+  + 'obliczeniowego.';
+
 export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly SldMenuAction[]>> = {
   background: [
     { id: 'insert-gpz', labelPl: 'Wstaw główny punkt zasilania', group: 'budowa' },
@@ -307,12 +330,18 @@ export function getMenuActions(
     /** W5-C: stan łącznika obiektu (pozycje otwórz/zamknij/punkt podziału);
      *  brak klucza = brak pomiaru (bez blokady). */
     readonly lacznik?: StanLacznikaMenu;
+    /** Obiekt na stronie 110 kV (granica zasilania sieci SN) — pozycje
+     *  `POZYCJE_APARATURY_SN_POZA_GRANICA_WN` zablokowane z powodem. */
+    readonly granicaWn?: boolean;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
   const ctx = context ?? {};
 
   return baseActions.map((a) => {
+    if (ctx.granicaWn === true && POZYCJE_APARATURY_SN_POZA_GRANICA_WN.has(a.id)) {
+      return { ...a, disabled: true, disabledReasonPl: POWOD_GRANICY_WN_PL };
+    }
     if (ctx.lacznik && POZYCJE_STANU_LACZNIKA.some((pozycja) => pozycja.id === a.id)) {
       const powod = powodBlokadyStanuLacznika(a.id, ctx.lacznik);
       return powod ? { ...a, disabled: true, disabledReasonPl: powod } : a;

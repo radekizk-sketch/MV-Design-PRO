@@ -38,6 +38,7 @@
         "substation_ref": "gpz/3263c637633b69c320522e52f22a2339/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "gpz_line_field"
         ],
@@ -81,6 +82,7 @@
         "substation_ref": "gpz/3263c637633b69c320522e52f22a2339/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "gpz_line_field"
         ],
@@ -120,6 +122,7 @@
         "substation_ref": "gpz/3263c637633b69c320522e52f22a2339/substation",
         "surge_arresters": [],
         "switchgear_family_ref": null,
+        "szablon_standardu_ref": null,
         "tags": [
           "gpz_sn_coupler_field"
         ],

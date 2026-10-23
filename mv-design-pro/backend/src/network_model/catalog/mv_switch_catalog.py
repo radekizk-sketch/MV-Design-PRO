@@ -29,7 +29,7 @@ KONWENCJE:
 - i_cu_ka [kA] — znamionowa zdolnosc wylaczalna zwarciowa I_cu wg
   IEC 62271-100. WYLACZNIE dla aparatow zdolnych wylaczac prady zwarciowe
   (CIRCUIT_BREAKER, RECLOSER, FUSE). Dla LOAD_SWITCH/DISCONNECTOR/
-  EARTH_SWITCH pole jest ZAWSZE None — te rodzaje aparatury NIE MAJA
+  EARTH_SWITCH/DISCONNECTOR_EARTH_SWITCH pole jest ZAWSZE None — te rodzaje aparatury NIE MAJA
   zdolnosci wylaczania zwarc z definicji normy (rozlacznik/odlacznik/
   uziemnik), a nie brakuje im danej. Generator equipment_proof zwraca dla
   nich werdykt NIE_DOTYCZY, nigdy pozorny FAIL.
@@ -40,7 +40,9 @@ TYPY APARATURY:
 - LOAD_SWITCH — rozlacznik (obciazeniowy, bez zwarciowy)
 - FUSE — bezpiecznik topikowy
 - RECLOSER — reklozer (automatyczne ponowne zalaczenie)
-- EARTH_SWITCH — uziemnik
+- EARTH_SWITCH — uziemnik (prad ciagly nie przysluguje: in_a = 0,0 z definicji)
+- DISCONNECTOR_EARTH_SWITCH — odlacznik trojpolozeniowy (zamkniety / otwarty /
+  uziemiony; pozycje wymagan standardu ENEA, ``mv_wymagania_enea_catalog``)
 
 METADATA:
 - Aparatura z deklaracją producenta: ZWERYFIKOWANY / PRODUKCYJNY_V1
@@ -53,10 +55,18 @@ TYPOSZEREG PRZEMYSLOWY (36 rekordow):
   RECLOSER:         4 rekordy  (ABB/NOJA/Schneider)
   FUSE:             7 rekordow (ETI, 12+17.5 kV, 16-200A)
   EARTH_SWITCH:     2 rekordy  (generyczne)
+Do tego 12 pozycji polskich producentow (K30-22) i 4 pozycje WYMAGAN standardu ENEA
+(karta GPZ-H5-APARATURA: 3 odlaczniki trojpolozeniowe + 1 uziemnik pola SN) = 52.
 """
 
 from collections import Counter
 from typing import Any
+
+#: Rodzaje aparatury, którym prąd znamionowy ciągły NIE przysługuje z definicji normy —
+#: uziemnik nie prowadzi prądu roboczego (IEC 62271-102), więc jego ``in_a = 0,0`` znaczy
+#: „nie dotyczy", nigdy „0 A". Odłącznik trójpołożeniowy (DISCONNECTOR_EARTH_SWITCH)
+#: prowadzi prąd roboczy w położeniu zamkniętym, więc ma prąd ciągły i tu nie należy.
+RODZAJE_BEZ_PRADU_CIAGLEGO: frozenset[str] = frozenset({"EARTH_SWITCH"})
 
 # =============================================================================
 # WYLACZNIKI SN (CIRCUIT_BREAKER) — prozniowe i SF6
@@ -879,7 +889,11 @@ SWITCH_EARTH_SWITCHES: list[dict[str, Any]] = [
 
 
 def get_all_switch_equipment_types() -> list[dict[str, Any]]:
-    """Zwraca wszystkie typy aparatury laczeniowej w katalogu (48 rekordow po K30-22)."""
+    """Zwraca wszystkie typy aparatury laczeniowej w katalogu: pozycje producentów i
+    referencyjne oraz pozycje WYMAGAŃ standardu ENEA (odłącznik trójpołożeniowy i uziemnik pola
+    SN, ``mv_wymagania_enea_catalog``) — jedno miejsce sklejenia."""
+    from .mv_wymagania_enea_catalog import get_enea_switch_requirement_types
+
     return (
         SWITCH_CIRCUIT_BREAKERS
         + SWITCH_LOAD_SWITCHES
@@ -888,6 +902,7 @@ def get_all_switch_equipment_types() -> list[dict[str, Any]]:
         + SWITCH_FUSES
         + SWITCH_EARTH_SWITCHES
         + SWITCH_POLISH_PTPIRE  # K30-22 Polish ZPUE + Elektrometal expansion
+        + get_enea_switch_requirement_types()
     )
 
 
@@ -947,6 +962,7 @@ def get_switch_catalog_statistics() -> dict[str, Any]:
         "liczba_reklozerow": by_kind.get("RECLOSER", 0),
         "liczba_bezpiecznikow": by_kind.get("FUSE", 0),
         "liczba_uziemnikow": by_kind.get("EARTH_SWITCH", 0),
+        "liczba_odlacznikow_trojpolozeniowych": by_kind.get("DISCONNECTOR_EARTH_SWITCH", 0),
         "rodzaje": kinds,
         **quality,
     }

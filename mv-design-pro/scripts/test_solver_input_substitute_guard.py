@@ -1948,7 +1948,28 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # odslonilo zastane `payload.get("sections_count", ...) or 1` (zadane 0 -> po cichu jedna
     # sekcja) — naprawione u zrodla (odmowa zakresu), nie dopisane do budzetu. PASS
     # niezmieniony (zero podstawien).
-    assert "Pol kontraktow wejsciowych: 4355." in wyjscie, wyjscie
+    # Karta GPZ-H5-APARATURA (2026-10-22): 4355 -> 4405 — POMIAR `contract_fields()` na bazie
+    # karty `88557ceb7` (`git archive`: 4355, pin zgodny) i na drzewie karty (4405). Roznica
+    # zbiorow +53, -3. Minus: `hv_bay_apparatus_proposal` (propozycja aparatow pol 110 kV
+    # skasowana decyzja wlasciciela — strona 110 kV jest granica zasilania SN),
+    # `equipment_data_state`, `equipment_assumed_data` (stan danych wyposazenia pola zastapiony
+    # skladem pola). Plus: sklad pola ze szablonu gniazd standardu ENEA (`sklad`, `gniazda`,
+    # `gniazdo_ref`, `gniazdo_nazwa_pl`, `szablon_standardu_ref`, `szablon_standardu_nazwa_pl`,
+    # `galaz_modelu`, `rodzaj_pozycji`, `role_pola`, `przekladniki_pola`), dane projektu GPZ
+    # (`bay_apparatus`, `earthing_bay_template`, `typ_wartosci`, `wymagana_gdy`, `opcjonalna`,
+    # `jednostki_pl`, `skutek_braku_pl`, `istnieje`, `rowna`, `co_najmniej`), przestrzen
+    # katalogu elementow pola SN (`element_pola_types`, `rodzaj_pl`, `obudowa_pl`,
+    # `tryb_pracy_pl`, `regulacja_pl`, `regulacja_zakres_pl`, `prad_zakres_min_a`,
+    # `prad_zakres_max_a`, `prad_wymuszany_min_a`, `prad_wymuszany_max_a`, `q_ogniwa_min_kvar`,
+    # `s_nn_kva_min`, `u_nn_v`, `grupa_polaczen`, `chlodzenie`, `przekladnik_niezrownowazenia`,
+    # `przekladnik_pl`, `uzwojenie_wtorne_pl`, `uzgadnianie_faz`, `naped`, `odmiana`,
+    # `icw_duration_s`, `interpretacja_pl`), zgodnosc U_m aparatu w gniezdzie (`zgodnosc`,
+    # `zgodna`, `u_m_aparatu_kv`, `u_m_sieci_kv`, `u_n_szyny_kv`) i odczyt szyn pola dla
+    # wytrzymalosci (`napiecia_szyn`, `szyna_sekcji`, `transformatory_szyny`,
+    # `wytworcy_szyny`, `punkt_neutralny`). Skasowanie `semantic_rules.py` zdjelo wpis (e)
+    # WYKLUCZENIA_SKANERA; `aparaty_pol.karta_przekladnika` nie podstawia juz `0.0` za
+    # nieznane U_m (pole bez konsumenta usuniete). PASS niezmieniony (zero podstawien).
+    assert "Pol kontraktow wejsciowych: 4405." in wyjscie, wyjscie
     assert (
         # PERF-SC-50: 596 plikow (595 + `enm/wartosci_niefinitowe.py`, mechanika NaN/inf
         # w jednym miejscu), enm 40 — pomiar guarda na drzewie karty.
@@ -2217,7 +2238,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Karta GPZ-H5-BACKEND (2026-10-22): 588 -> 590 (+2 enm: `enm/rezerwa_gpz.py` — tryb
         # rezerwy i stany normalne łączników szyn GPZ, `enm/czyszczenie_odwolan.py` — jedno
         # czyszczenie odwołań kasowanego elementu); pomiar guardem na drzewie karty.
-        "Przeskanowano 590 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta GPZ-H5-APARATURA (2026-10-22): 590 -> 591 (+1 enm `enm/sklad_pola.py` — skład
+        # pola z gniazd standardu; network_model +2 `catalog/gniazda_pol_enea.py`,
+        # `catalog/mv_wymagania_enea_catalog.py` −2 `validation/semantic_rules.py`,
+        # `validation/semantic_validator.py` skasowane = 186 bez zmiany). POMIAR guardem.
+        "Przeskanowano 591 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2295,7 +2320,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
     # wypada; krotnosc 0 za niefizyczny prad znamionowy -> odmowa). POMIAR guardem na drzewie
     # karty.
     assert "Zapadka dlugu (fizyczne): 47 plikow, suma 225." in wyjscie, wyjscie
-    assert "Wykluczenia skanera (niefizyczne): 10 plikow, suma 25." in wyjscie, wyjscie
+    # Karta GPZ-H5-APARATURA (2026-10-22): wykluczenia 10/25 -> 9/23 — wpis (e)
+    # `network_model/validation/semantic_rules.py` (`H:local:load.p_kw/q_kvar`) zdjety razem
+    # ze skasowanym plikiem (zero konsumentow). POMIAR guardem na drzewie karty.
+    assert "Wykluczenia skanera (niefizyczne): 9 plikow, suma 23." in wyjscie, wyjscie
     per_korzen = [
         # Karta S-2 AUTORYTET (2026-09-16): network_model 137 -> 141 (+4 nowe pliki
         # `network_model/core/{wklad_zwarciowy_przeksztaltnika,zdolnosci_wkladu_
@@ -2406,8 +2434,11 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `catalog/wartosci_robocze.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Scalenie partii 13: 184 bazy + 1 karty Ib + 1 karty wartosci roboczych = 186; dlug
         # 10/67 (zdjecie wpisu karty Ib). POMIAR.
+        # Karta GPZ-H5-APARATURA (2026-10-22): network_model 186 (+2 dane standardu ENEA,
+        # −2 skasowane `validation/semantic_*`); wykluczenia 1/2 -> 0/0 (wpis (e)
+        # `semantic_rules.py` zdjety razem z plikiem). POMIAR guardem.
         "  network_model: pliki_skanowane=186, dlug=10 plikow/suma 67, "
-        "wykluczenia=1 plikow/suma 2",
+        "wykluczenia=0 plikow/suma 0",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;
         # plik skasowany w karcie AB-1a Pakiet C — wpis nizej).
@@ -2482,7 +2513,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # = 71; dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie scalonym.
         # Karta GPZ-H5-BACKEND (2026-10-22): enm 71 -> 73 (+2 `rezerwa_gpz.py`,
         # `czyszczenie_odwolan.py`); dlug/wykluczenia BEZ ZMIANY. POMIAR guardem na drzewie karty.
-        "  enm: pliki_skanowane=73, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
+        # Karta GPZ-H5-APARATURA (2026-10-22): enm 73 -> 74 (+1 `sklad_pola.py`); dlug/wykluczenia
+        # BEZ ZMIANY. POMIAR guardem na drzewie karty.
+        "  enm: pliki_skanowane=74, dlug=7 plikow/suma 67, wykluczenia=0 plikow/suma 0",
         # B-02 / W3-E (2026-09-10): application 234 -> 236 (+2 moduly gotowosci/katalogu V12.6).
         # Odbior fali 3 W3 (2026-09-10): application 236 -> 229 plikow (-8 TRACE-V2, +1 W3-G1),
         # dlug 31/93 -> 30/91 (protection_emitter.py skasowany razem z wpisem zapadki).

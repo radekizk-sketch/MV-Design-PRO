@@ -42,6 +42,12 @@ _POLA_ADDYTYWNE_POZA_ODCISKIEM_GDY_NONE: dict[str, tuple[str, ...]] = {
     # Karta KATALOG-TURBINY-TOR-V112: tor maszyny turbiny — pozycja bez niego ma odcisk
     # sprzed karty.
     "ConverterType": POLA_TORU_MASZYNY,
+    # Karta GPZ-H5-APARATURA: znamiona aparatów pól standardu ENEA — czas prądu
+    # wytrzymywanego krótkotrwale, napęd, odmiana konstrukcyjna przekładnika (Ferranti) oraz
+    # U_m w projekcji aparatury SN. Pozycja, która ich nie niesie, ma odcisk sprzed karty.
+    "SwitchEquipmentType": ("icw_duration_s", "naped"),
+    "MVApparatusType": ("u_m_kv", "naped"),
+    "CTType": ("odmiana",),
 }
 #: Pola SKASOWANE z typów, które odcisk ZACHOWUJE jako `null` (wzorzec W5-A z
 #: `enm/hash.py::_POLA_SKASOWANE_W_ODCISKU`). `ConverterType.harmonic_spectrum_percent`

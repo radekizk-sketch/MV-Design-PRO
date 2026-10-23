@@ -58,6 +58,11 @@ export interface SldMenuContext {
   /** W5-C: stan łącznika obiektu (`akcjeElementu.ts::stanLacznikaMenu`) — ten sam
    *  resolver (`lacznikTematu`) wybiera łącznik dla wykonawcy akcji. */
   readonly lacznik?: StanLacznikaMenu;
+  /** Karta GPZ-H5-SCALENIE-APARATURY: obiekt (pole, aparat pola, gałąź łączeniowa) leży na
+   *  stronie 110 kV — granicy zasilania sieci SN (`akcjeElementu.ts::czyObiektGranicyWn`,
+   *  lustro bram `bay_equipment.bay_hv_boundary` / `*.bus_hv_boundary`). `true` blokuje
+   *  pozycje aparatury i budowy SN z powodem i nazywa obiekt „110 kV” w nagłówku. */
+  readonly granicaWn?: boolean;
 }
 
 export interface SldContextMenuControllerProps {
@@ -94,6 +99,17 @@ const KIND_HEADER_PL: Readonly<Record<SldElementKindForMenu, string>> = {
 };
 
 /** Mapowanie SldElementKindForMenu → ElementType (używane wyłącznie do nagłówka fallback). */
+/** Nagłówek pola i aparatu na stronie 110 kV — obiekt nie należy do rozdzielnicy SN. */
+const KIND_HEADER_GRANICY_WN_PL: Readonly<Partial<Record<SldElementKindForMenu, string>>> = {
+  bay: 'Pole 110 kV',
+  apparatus: 'Aparat pola 110 kV',
+};
+
+/** Nagłówek rodzaju obiektu z kontekstem granicy 110 kV. */
+export function naglowekRodzajuMenu(kind: SldElementKindForMenu, context?: SldMenuContext): string {
+  return (context?.granicaWn ? KIND_HEADER_GRANICY_WN_PL[kind] : undefined) ?? KIND_HEADER_PL[kind];
+}
+
 const KIND_TO_ELEMENT_TYPE: Readonly<Record<SldElementKindForMenu, ElementType>> = {
   background: 'Bus',
   gpz: 'Source',
@@ -168,12 +184,13 @@ export function SldContextMenuController(
   }
 
   const elementType = KIND_TO_ELEMENT_TYPE[request.kind];
+  const naglowek = naglowekRodzajuMenu(request.kind, context);
   const publicElementName = elementName
-    ? publicTechnicalLabel(elementName, KIND_HEADER_PL[request.kind])
+    ? publicTechnicalLabel(elementName, naglowek)
     : null;
-  const headerText = publicElementName && publicElementName !== KIND_HEADER_PL[request.kind]
-    ? `${KIND_HEADER_PL[request.kind]} — ${publicElementName}`
-    : KIND_HEADER_PL[request.kind];
+  const headerText = publicElementName && publicElementName !== naglowek
+    ? `${naglowek} — ${publicElementName}`
+    : naglowek;
 
   return (
     <ContextMenu
@@ -181,7 +198,7 @@ export function SldContextMenuController(
       x={request.clientX}
       y={request.clientY}
       elementType={elementType}
-      elementName={publicElementName ?? KIND_HEADER_PL[request.kind]}
+      elementName={publicElementName ?? naglowek}
       headerText={headerText}
       mode={mode}
       actions={actions}

@@ -275,6 +275,8 @@ const KOD_Z_REJESTRU_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'catalog.type_incomplete': 'wspolne',
   'catalog.duplicate_id': 'wspolne',
   'catalog.ref_missing': 'wspolne',
+  // Karta GPZ-H5-APARATURA: łącznik strony 110 kV bez katalogu aparatury (granica zasilania SN).
+  'catalog.switch_hv_boundary': 'wspolne',
   'catalog.item_missing': 'wspolne',
   'catalog.item_id_missing': 'wspolne',
   'catalog.binding_required': 'wspolne',

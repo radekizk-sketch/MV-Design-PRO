@@ -29,11 +29,12 @@ from dataclasses import dataclass
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 
 #: Rodzaje aparatury SN BEZ zdolnosci wylaczania zwarc z definicji normy
-#: (rozlacznik/odlacznik/uziemnik) — I_cu jest dla nich NIE_DOTYCZY, nigdy
+#: (rozlacznik/odlacznik/uziemnik, takze odlacznik trojpolozeniowy — odlacznik z
+#: uziemnikiem, IEC 62271-102) — I_cu jest dla nich NIE_DOTYCZY, nigdy
 #: brakiem danej. Wylaczniki, reklozery i bezpieczniki (CIRCUIT_BREAKER,
 #: RECLOSER, FUSE) MAJA te zdolnosc, wiec nie trafiaja na te liste.
 RODZAJE_SN_BEZ_ZDOLNOSCI_WYLACZANIA: frozenset[str] = frozenset(
-    {"LOAD_SWITCH", "DISCONNECTOR", "EARTH_SWITCH"}
+    {"LOAD_SWITCH", "DISCONNECTOR", "EARTH_SWITCH", "DISCONNECTOR_EARTH_SWITCH"}
 )
 
 

@@ -35,9 +35,9 @@ from network_model.solvers.power_flow_newton import solve_power_flow_physics
 
 from tests.golden.sld_substrate_power_flow import (
     _PREFIKS_SCENARIUSZA_KONSERWACJI,
-    _build_power_flow_input,
     compute_substrate_power_flow,
     compute_substrate_power_flow_maintenance,
+    rozwiaz_rozplyw,
     select_ring_maintenance_scenario,
 )
 from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
@@ -198,8 +198,8 @@ def test_direction_matches_solver_sign(companion: dict, substrate: dict) -> None
     reversed-sign bug as production (`p_mw=float(node.active_power or 0.0)`
     without the gen->load conversion) — so the test was self-consistent WITH
     the bug and blind to it (both sides negated twice, cancelling out). It now
-    reuses the single production input builder (`_build_power_flow_input`,
-    already fixed at the PQSpec construction boundary in F9.8) instead of a
+    reuses the single production path (`rozwiaz_rozplyw`: the product assembler
+    `zloz_wejscie_rozplywu` per supplied island — karta GPZ-H5-APARATURA) instead of a
     second hand-rolled copy of the sign convention, so this test verifies
     wiring fidelity (does `compute_substrate_power_flow`'s direction/threshold
     logic match a raw re-solve of the SAME correct input) rather than
@@ -220,8 +220,7 @@ def test_direction_matches_solver_sign(companion: dict, substrate: dict) -> None
     samego ENM zamiast z dwoch osobnych, "powinny byc rowne" kopii.
     """
     enm = EnergyNetworkModel.model_validate(substrate["enm"])
-    pf_input, _slack = _build_power_flow_input(enm)
-    solution = solve_power_flow_physics(pf_input)
+    _wejscie, solution = rozwiaz_rozplyw(enm)
     eps = 1.0e-3
     for branch in enm.branches:
         graph_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, branch.ref_id))
@@ -258,19 +257,21 @@ def test_determinism(companion: dict) -> None:
 # ---- defekt A1: blizniaczy budowniczy nie moze zgubic generacji --------------
 
 
-def test_zip_split_is_carried_by_the_twin_builder() -> None:
-    """Ten budowniczy jest BLIZNIAKIEM `enm.canonical_analysis._execute_power_flow`.
+def test_zip_split_is_carried_by_the_companion_path() -> None:
+    """Towarzysz SLD liczy TOREM produktu (`rozwiaz_rozplyw` → assembler
+    `zloz_wejscie_rozplywu`); karta GPZ-H5-APARATURA usunęła dawnego bliźniaczego
+    budowniczego wejścia (druga ścieżka tej samej fizyki).
 
-    Rozdzielenie ZIP (baza odbiorowa + czesc stala) musi przechodzic tak samo w
-    obu, inaczej ten sam model policzy sie inaczej w rozplywie kanonicznym i w
-    towarzyszu SLD. Defekt A1 (przeglad fali 2026-08-01) gubil CALA generacje na
-    szynie z odbiorem zaleznym wylacznie od czestotliwosci; kontrakt jest tu
-    przypiety na PQSpec, zeby blizniak nie mogl sie cicho rozjechac.
+    Intencja bez zmian: rozdzielenie ZIP (baza odbiorowa + część stała) musi dotrzeć do
+    wejścia solvera towarzysza tak samo jak w rozpływie kanonicznym. Defekt A1 (przegląd
+    fali 2026-08-01) gubił CAŁĄ generację na szynie z odbiorem zależnym wyłącznie od
+    częstotliwości; kontrakt jest przypięty na PQSpec.
     """
     from tests.enm.test_zip_generation_split import _payload_freq_only
 
     enm = EnergyNetworkModel.model_validate(_payload_freq_only("Blizniak SLD", p_gen_mw=2.0))
-    pf_input, _slack = _build_power_flow_input(enm)
+    wejscie, _rozwiazanie = rozwiaz_rozplyw(enm)
+    pf_input = wejscie.pf_input
     zip_specs = [s for s in pf_input.pq if s.zip_coeffs is not None]
     assert zip_specs, "szyna ZIP musi trafic do wejscia rozplywu"
     spec = zip_specs[0]
