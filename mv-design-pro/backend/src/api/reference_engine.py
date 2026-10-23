@@ -10,8 +10,8 @@ REFERENCE_ENGINE_SPEC_V1.md §9 (V12K-060):
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
-
 from typing import Any
 
 from api.klucz_twin_dep import KluczTwin
@@ -19,6 +19,7 @@ from enm.store import get_enm as _get_enm
 from fastapi import APIRouter, HTTPException, Query
 from network_model.brak_zasobu import BrakZasobuError
 from reference_engine import evaluate_enm, get_reference_pack, list_reference_packs
+from reference_engine.enea_questions import answer_question
 
 router = APIRouter(prefix="/api", tags=["reference-engine"])
 
@@ -56,6 +57,31 @@ async def get_pack(pack_id: str) -> dict[str, Any]:
         # Dokumenty są metadanymi źródeł, nie nowymi regułami walidacyjnymi.
         payload["source_catalog"] = json.loads(catalog_path.read_text(encoding="utf-8"))
     return payload
+
+
+@router.get("/reference/enea/pytanie")
+def pytanie_o_standard_enea(
+    pytanie: str = Query(min_length=3, max_length=600),
+    data: str | None = Query(
+        default=None,
+        description="Data oceny wersji dokumentów, RRRR-MM-DD; domyślnie dzisiaj.",
+    ),
+) -> dict[str, Any]:
+    """Pytania o ENEA: potwierdzone karty lub lokalne dowody, nigdy domysł.
+
+    Pełnotekstowy indeks jest dostępny wyłącznie po świadomym ustawieniu
+    ENEA_KNOWLEDGE_ENABLED=1 na serwerze. Bez tego dostępne są wyłącznie
+    publiczne, zweryfikowane karty wymagań (zero ujawniania lokalnych PDF).
+    """
+    enabled = os.getenv("ENEA_KNOWLEDGE_ENABLED") == "1"
+    default = Path.home() / ".local/share/mv-design-pro/enea-knowledge"
+    data_dir = Path(os.getenv("ENEA_KNOWLEDGE_DATA_DIR", str(default))) if enabled else (
+        Path("/__mv_design_pro_enea_index_disabled__")
+    )
+    try:
+        return answer_question(pytanie, data_dir=data_dir, as_of=data)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/cases/{case_id}/reference/compliance")
