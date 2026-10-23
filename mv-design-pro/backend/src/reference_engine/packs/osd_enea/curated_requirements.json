@@ -1,0 +1,228 @@
+{
+  "schema_version": 1,
+  "notice_pl": "Karty wymagań zweryfikowano względem wskazanego fragmentu oryginalnego dokumentu. Nie zastępują analizy całego standardu ani zasad stosowania odstępstw.",
+  "requirements": [
+    {
+      "id": "ENEA-ST3-002-A",
+      "source_id": "ENEA-SN-Z3",
+      "edition": "06.2021-2",
+      "effective_from": "2024-04-02",
+      "verified_on": "2026-10-23",
+      "source_section": "2. Zakres opracowania",
+      "source_pdf_page": 3,
+      "source_printed_page": "3/14",
+      "verdict": "NIEDOPUSZCZONE",
+      "answer_pl": "Standard stanowi, że nowej stacji transformatorowej słupowej SN/nN z kablowym podejściem SN nie należy stosować.",
+      "scope_pl": "Budowa nowych stacji słupowych SN/nN z kablowym podejściem SN; nie jest to automatyczna ocena każdego istniejącego obiektu.",
+      "required_roots": [
+        "slup",
+        "kabl",
+        "now"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-ST3-002-B",
+      "source_id": "ENEA-SN-Z3",
+      "edition": "06.2021-2",
+      "effective_from": "2024-04-02",
+      "verified_on": "2026-10-23",
+      "source_section": "2. Zakres opracowania",
+      "source_pdf_page": 3,
+      "source_printed_page": "3/14",
+      "verdict": "NIEZALECANE",
+      "answer_pl": "Standard nie zaleca budowy nowych stacji słupowych SN/nN; jako podstawowe rozwiązanie wskazuje prefabrykowane stacje kompaktowe.",
+      "scope_pl": "Budowa nowych stacji SN/nN; rozróżnić zalecenie od bezwzględnego zakazu.",
+      "required_roots": [
+        "slup",
+        "now"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-ST3-002-C",
+      "source_id": "ENEA-SN-Z3",
+      "edition": "06.2021-2",
+      "effective_from": "2024-04-02",
+      "verified_on": "2026-10-23",
+      "source_section": "2. Zakres opracowania",
+      "source_pdf_page": 3,
+      "source_printed_page": "3/14",
+      "verdict": "ROZWIAZANIE_PODSTAWOWE",
+      "answer_pl": "Dla budowy nowego układu pracy sieci lub przebudowy układu ze stacją transformatorową SN/nN standard wskazuje jako podstawowe rozwiązanie stację kompaktową prefabrykowaną.",
+      "scope_pl": "Budowa i przebudowa układów ze stacjami SN/nN; stosować zgodnie z zakresem dokumentu.",
+      "required_roots": [
+        "stac",
+        "kompakt"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-ST1-0431",
+      "source_id": "ENEA-SN-Z1",
+      "edition": "06.2024",
+      "effective_from": "2025-01-01",
+      "verified_on": "2026-10-23",
+      "source_section": "4.3.1 Wyposażenie strony SN",
+      "source_pdf_page": 12,
+      "source_printed_page": "12/37",
+      "verdict": "WYMAGANE",
+      "answer_pl": "W stacji kompaktowej prefabrykowanej SN/nN do 630 kVA rozdzielnica SN powinna mieć jedno pole transformatorowe i od dwóch do czterech pól liniowych.",
+      "scope_pl": "Dotyczy określonej konstrukcji stacji według Zeszytu 1, nie każdej rozdzielnicy SN.",
+      "required_roots": [
+        "kompakt",
+        "lini"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-ST1-0432",
+      "source_id": "ENEA-SN-Z1",
+      "edition": "06.2024",
+      "effective_from": "2025-01-01",
+      "verified_on": "2026-10-23",
+      "source_section": "4.3.2 Parametry rozdzielnicy SN",
+      "source_pdf_page": 12,
+      "source_printed_page": "12/37",
+      "verdict": "WYMAGANE_MINIMA",
+      "answer_pl": "Wymagane parametry nie gorsze niż: 24 kV; prąd ciągły szyn zbiorczych 630 A; prąd krótkotrwały 16 kA; prąd szczytowy 40 kA; odporność na łuk wewnętrzny 16 kA przez 1 s.",
+      "scope_pl": "Dotyczy rozdzielnicy SN w stacji kompaktowej zgodnej z Zeszytem 1, nie uniwersalnego poziomu zwarciowego każdej stacji SN.",
+      "required_roots": [
+        "rozdziel",
+        "parametr"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-ST1-0432-UN",
+      "source_id": "ENEA-SN-Z1",
+      "edition": "06.2024",
+      "effective_from": "2025-01-01",
+      "verified_on": "2026-10-23",
+      "source_section": "4.3.2 a) Parametry rozdzielnicy SN",
+      "source_pdf_page": 12,
+      "source_printed_page": "12/37",
+      "verdict": "MINIMUM_24_KV",
+      "answer_pl": "Dla rozdzielnicy SN w standardowej stacji kompaktowej do 630 kVA standard wskazuje napięcie znamionowe 24 kV.",
+      "scope_pl": "Parametr aparatury rozdzielnicy SN; nie jest to napięcie robocze całej sieci.",
+      "required_roots": [
+        "napie",
+        "znam",
+        "rozdziel"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-ST1-0433",
+      "source_id": "ENEA-SN-Z1",
+      "edition": "06.2024",
+      "effective_from": "2025-01-01",
+      "verified_on": "2026-10-23",
+      "source_section": "4.3.3 Pole transformatorowe",
+      "source_pdf_page": 12,
+      "source_printed_page": "12/37",
+      "verdict": "DOPUSZCZONO_ALTERNATYWY",
+      "answer_pl": "Pole transformatorowe może mieć rozłącznik trzypołożeniowy z bezpiecznikami albo opcjonalnie wyłącznik próżniowy z odłączniko-uziemnikiem i autonomicznym przekaźnikiem zabezpieczeniowym.",
+      "scope_pl": "Dotyczy wyposażenia pola transformatorowego stacji kompaktowej; wariant z wyłącznikiem wskazano dla transformatorów 160–630 kVA.",
+      "required_roots": [
+        "transformator",
+        "bezpiecz"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-TELE-0641-U",
+      "source_id": "ENEA-SN-TELE",
+      "edition": "12.2025",
+      "effective_from": "2026-02-01",
+      "verified_on": "2026-10-23",
+      "source_section": "6.4.1 Pomiary",
+      "source_pdf_page": 14,
+      "source_printed_page": "14/18",
+      "verdict": "WYMAGANE",
+      "answer_pl": "W objętych standardem układach telemechaniki pomiar napięcia jest wymagany dla każdego pola liniowego i łącznika napowietrznego SN.",
+      "scope_pl": "Zagadnienie dotyczy projektowania telemechaniki na obiektach określonych w rozdziale 2; nie przesądza, które wszystkie obiekty należy zdalnie sterować.",
+      "required_roots": [
+        "pomiar",
+        "napie",
+        "lini"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-TELE-0641-I",
+      "source_id": "ENEA-SN-TELE",
+      "edition": "12.2025",
+      "effective_from": "2026-02-01",
+      "verified_on": "2026-10-23",
+      "source_section": "6.4.1 Pomiary",
+      "source_pdf_page": 14,
+      "source_printed_page": "14/18",
+      "verdict": "WYMAGANE",
+      "answer_pl": "W objętych standardem układach telemechaniki pomiar prądu jest wymagany dla każdego pola liniowego i łącznika napowietrznego SN.",
+      "scope_pl": "Zagadnienie dotyczy telemechaniki; nie stanowi samodzielnego kryterium kwalifikacji obiektu do telemechanizacji.",
+      "required_roots": [
+        "pomiar",
+        "prad",
+        "lini"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-TELE-0641-U-I",
+      "source_id": "ENEA-SN-TELE",
+      "edition": "12.2025",
+      "effective_from": "2026-02-01",
+      "verified_on": "2026-10-23",
+      "source_section": "6.4.1 Pomiary",
+      "source_pdf_page": 14,
+      "source_printed_page": "14/18",
+      "verdict": "WYMAGANE",
+      "answer_pl": "Standard telemechaniki wymaga zarówno pomiaru napięcia, jak i pomiaru prądu dla każdego pola liniowego i łącznika napowietrznego SN w zakresie jego stosowania.",
+      "scope_pl": "Pomiar w systemie telemechaniki nie jest tożsamy z układem pomiarowo-rozliczeniowym energii.",
+      "required_roots": [
+        "pomiar",
+        "napie",
+        "prad",
+        "lini"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-TELE-0642",
+      "source_id": "ENEA-SN-TELE",
+      "edition": "12.2025",
+      "effective_from": "2026-02-01",
+      "verified_on": "2026-10-23",
+      "source_section": "6.4.2 Napędy",
+      "source_pdf_page": 14,
+      "source_printed_page": "14/18",
+      "verdict": "ZASILANIE_24_V_DC",
+      "answer_pl": "Napędy łączników objęte standardem telemechaniki powinny być zasilane napięciem 24 V DC; sygnalizacja ich położenia powinna być dwubitowa.",
+      "scope_pl": "Dotyczy napędów i sygnalizacji w układach telemechaniki określonych zakresem standardu.",
+      "required_roots": [
+        "naped",
+        "zasil"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    },
+    {
+      "id": "ENEA-TELE-0643",
+      "source_id": "ENEA-SN-TELE",
+      "edition": "12.2025",
+      "effective_from": "2026-02-01",
+      "verified_on": "2026-10-23",
+      "source_section": "6.4.3 Blokady",
+      "source_pdf_page": 14,
+      "source_printed_page": "14/18",
+      "verdict": "WYMAGANE",
+      "answer_pl": "Pole liniowe albo łącznik napowietrzny objęty telemechaniką powinien mieć blokadę sterowania zdalnego, którą można wyłączyć wyłącznie lokalnie.",
+      "scope_pl": "Dotyczy blokady sterowania w układzie telemechaniki, a nie wszystkich możliwych blokad technicznych.",
+      "required_roots": [
+        "blokad",
+        "sterowan"
+      ],
+      "confidence": "zweryfikowane_bezposrednio"
+    }
+  ]
+}
