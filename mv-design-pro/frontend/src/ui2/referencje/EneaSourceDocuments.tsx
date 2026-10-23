@@ -3,6 +3,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { fetchReferencePack, type EneaSourceCatalog } from './api';
+import { EneaQuestionPanel } from './EneaQuestionPanel';
 
 type Group = 'sn' | 'nn' | 'gpz' | 'iriesd';
 const GROUP_LABELS: Record<Group, string> = {
@@ -53,6 +54,7 @@ export function EneaSourceDocuments(): JSX.Element {
           </p>
           {error && <p role="alert">Nie udało się pobrać katalogu. Sprawdź połączenie z serwerem.</p>}
           {!catalog && !error && <p>Wczytywanie katalogu dokumentów…</p>}
+          <EneaQuestionPanel />
           {catalog && (
             <>
               <p className="mvd-refwybor-stan">Wykaz zweryfikowano: {catalog.as_of}.
