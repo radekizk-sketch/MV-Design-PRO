@@ -9,6 +9,9 @@ REFERENCE_ENGINE_SPEC_V1.md §9 (V12K-060):
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from typing import Any
 
 from api.klucz_twin_dep import KluczTwin
@@ -44,7 +47,15 @@ async def get_pack(pack_id: str) -> dict[str, Any]:
         pack = get_reference_pack(pack_id)
     except BrakZasobuError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return pack.model_dump(mode="json")
+    payload = pack.model_dump(mode="json")
+    if pack_id == "osd_enea":
+        catalog_path = (
+            Path(__file__).resolve().parents[1]
+            / "reference_engine/packs/osd_enea/source_catalog.json"
+        )
+        # Dokumenty są metadanymi źródeł, nie nowymi regułami walidacyjnymi.
+        payload["source_catalog"] = json.loads(catalog_path.read_text(encoding="utf-8"))
+    return payload
 
 
 @router.get("/cases/{case_id}/reference/compliance")
