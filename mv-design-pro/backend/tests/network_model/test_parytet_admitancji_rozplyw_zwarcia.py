@@ -494,7 +494,7 @@ def test_r6_mutacja_b_polowa_w_sieci_zwarciowej(monkeypatch: pytest.MonkeyPatch)
 
     oryginal = AdmittanceMatrixBuilder.build
 
-    def build_z_b_polowa(self: AdmittanceMatrixBuilder, *, siec_zwarciowa: bool = True) -> Any:
+    def build_z_b_polowa(self: AdmittanceMatrixBuilder, *, siec_zwarciowa: bool) -> Any:
         y = oryginal(self, siec_zwarciowa=siec_zwarciowa)
         if siec_zwarciowa:
             for galaz, polowa_pu in self.admitancje_poprzeczne_pominiete():

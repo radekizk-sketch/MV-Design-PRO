@@ -2,6 +2,7 @@
 Testy jednostkowe dla AdmittanceMatrixBuilder (Y-bus).
 """
 
+import inspect
 import math
 
 import numpy as np
@@ -104,6 +105,18 @@ def test_ybus_single_line_between_two_nodes():
     )
 
     np.testing.assert_allclose(y_bus, expected)
+
+
+def test_build_wymaga_jawnej_reprezentacji() -> None:
+    """``siec_zwarciowa`` bez wartości domyślnej: wołający, który nie nazwie reprezentacji
+    (sieć zwarciowa IEC 60909 czy model π), dostaje błąd, nie cichą sieć zwarciową."""
+    parametr = inspect.signature(AdmittanceMatrixBuilder.build).parameters["siec_zwarciowa"]
+    assert parametr.default is inspect.Parameter.empty
+    assert parametr.kind is inspect.Parameter.KEYWORD_ONLY
+    graph = NetworkGraph()
+    graph.add_node(create_pq_node("A"))
+    with pytest.raises(TypeError, match="siec_zwarciowa"):
+        AdmittanceMatrixBuilder(graph).build()  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize("b_us_per_km", [0.0, 5.0, 250.0])
@@ -214,7 +227,7 @@ def test_ybus_includes_isolated_node_in_matrix_size():
     graph.add_branch(line)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
 
     assert y_bus.shape == (3, 3)
 
@@ -360,7 +373,7 @@ def test_transformer_stamping_between_two_nodes():
     graph.add_branch(transformer)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
 
     # IEC 60909-0 §3.3.3: the SC/Z-bus network stamps the K_T-corrected network
     # transformer impedance Z_TK = K_T·(R_T + jX_T), not the nominal impedance.
@@ -403,7 +416,7 @@ def test_transformer_stamping_uses_bus_voltage_base_and_off_nominal_ratio():
     )
     graph.add_branch(transformer)
 
-    y_bus = AdmittanceMatrixBuilder(graph).build()
+    y_bus = AdmittanceMatrixBuilder(graph).build(siec_zwarciowa=True)
 
     v_scale = 20.0 / 21.0
     z_pu_base = (
@@ -452,7 +465,7 @@ def test_transformer_stamping_follows_tap_position():
         tr.tap_position = tap
         tr.tap_step_percent = 1.5
         graph.add_branch(tr)
-        return AdmittanceMatrixBuilder(graph).build()
+        return AdmittanceMatrixBuilder(graph).build(siec_zwarciowa=True)
 
     y0 = build(0)
     y5 = build(5)
@@ -483,7 +496,7 @@ def test_transformer_ignored_when_out_of_service():
     graph.add_branch(transformer)
 
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(siec_zwarciowa=True)
 
     expected = np.zeros((2, 2), dtype=complex)
     np.testing.assert_allclose(y_bus, expected)

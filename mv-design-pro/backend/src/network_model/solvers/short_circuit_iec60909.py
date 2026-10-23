@@ -14,6 +14,7 @@ from network_model.core.impedancja_przejscia import (
     kod_odmowy_impedancji,
 )
 from network_model.core.inverter import InverterSource
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.nazwy import jest_nazwa
 from network_model.odmowa_danych import (
     RODZAJ_GALAZ,
@@ -47,7 +48,9 @@ from network_model.solvers.short_circuit_contributions import (
     WkladZrodla,
     admitancje_zrodel_macierzy,
     boczniki_zrodel,
+    fazor_do_tekstu_sladu,
     jest_wkladem_pominietym,
+    prad_do_tekstu_sladu,
     tolerancja_bilansu_a,
     wyspy_macierzy,
     zaokraglij_cyfry_znaczace,
@@ -675,6 +678,53 @@ class ShortCircuitIEC60909Solver:
         return czas_tb.to_dict()
 
     @staticmethod
+    def _tekst_bilansu_wkladow(
+        *,
+        suma_fazorowa: complex,
+        prad_czlonow: complex,
+        suma_bilansu: complex,
+        ik_thevenin_a: float,
+        reszta_a: float,
+        tolerancja_a: float,
+        bilans_domkniety: bool,
+    ) -> tuple[str, str]:
+        """Tekst podstawienia kroku ``wklady_zrodel_bilans`` (zwykły i LaTeX).
+
+        Jedna reguła: fazory przez `fazor_do_tekstu_sladu` (część poniżej progu wkładu
+        pomijalnego = 0); reszta — przez TEN SAM predykat ``bilans_domkniety`` co pole wyniku
+        kroku: domknięta → „reszta ≤ dopuszczalnej …", niedomknięta → wartość reszty
+        („reszta … A > dopuszczalna … A"). Tekst nie zależy więc od szumu poniżej progu,
+        a reszta ponad dopuszczalną jest zawsze widoczna liczbą."""
+        fmt = ShortCircuitIEC60909Solver._format_float
+        fmt_c = ShortCircuitIEC60909Solver._format_complex
+        fmt_cl = ShortCircuitIEC60909Solver._format_complex_latex
+        suma, czlony, razem = (
+            fazor_do_tekstu_sladu(suma_fazorowa),
+            fazor_do_tekstu_sladu(prad_czlonow),
+            fazor_do_tekstu_sladu(suma_bilansu),
+        )
+        if bilans_domkniety:
+            reszta = f"reszta ≤ dopuszczalnej {fmt(tolerancja_a)} A"
+            reszta_latex = f"\\left| \\Delta \\right| \\le {fmt(tolerancja_a)}\\,\\mathrm{{A}}"
+        else:
+            reszta = f"reszta {fmt(reszta_a)} A > dopuszczalna {fmt(tolerancja_a)} A"
+            reszta_latex = (
+                f"\\left| \\Delta \\right| = {fmt(reszta_a)}\\,\\mathrm{{A}} > "
+                f"{fmt(tolerancja_a)}\\,\\mathrm{{A}}"
+            )
+        tekst = (
+            f"Suma fazorowa wkładów źródeł {fmt_c(suma)} A, prąd członów poprzecznych gałęzi "
+            f"{fmt_c(czlony)} A, razem {fmt_c(razem)} A wobec I_k''(Th) = "
+            f"{fmt(ik_thevenin_a)} A; {reszta}."
+        )
+        tekst_latex = (
+            f"{fmt_cl(suma)} + {fmt_cl(czlony)} = {fmt_cl(razem)}"
+            f"\\,\\mathrm{{A}} \\approx {fmt(ik_thevenin_a)}\\,\\mathrm{{A}}, \\quad "
+            f"{reszta_latex}"
+        )
+        return tekst, tekst_latex
+
+    @staticmethod
     def _format_complex(value: complex) -> str:
         real = f"{value.real:.6g}"
         imag = f"{abs(value.imag):.6g}"
@@ -823,7 +873,7 @@ class ShortCircuitIEC60909Solver:
         if graph is not None:
             ShortCircuitIEC60909Solver._append_transformer_kt_trace(tracer, graph)
             ShortCircuitIEC60909Solver._append_admitancje_poprzeczne_trace(tracer, graph)
-        z_equiv_abs = abs(z_equiv)
+        z_equiv_abs = modul_zespolony(z_equiv)
         voltage_factor = voltage_factor_for_fault(short_circuit_type)
         if z_f is not None:
             ShortCircuitIEC60909Solver._append_impedancja_przejscia_trace(
@@ -1160,7 +1210,11 @@ class ShortCircuitIEC60909Solver:
             },
             substitution=ShortCircuitIEC60909Solver._format_complex(z_f),
             substitution_latex=ShortCircuitIEC60909Solver._format_complex_latex(z_f),
-            result={"z_f_ohm": z_f, "z_f_abs_ohm": abs(z_f), "poza_zakresem_iec60909": True},
+            result={
+                "z_f_ohm": z_f,
+                "z_f_abs_ohm": modul_zespolony(z_f),
+                "poza_zakresem_iec60909": True,
+            },
             notes=(
                 "Norma IEC 60909 definiuje prąd zwarciowy dla zwarcia metalicznego (Z_f = 0). "
                 "Wynik ze zwarcia przez impedancję przejścia jest poza zakresem normy: nie jest "
@@ -1317,7 +1371,7 @@ class ShortCircuitIEC60909Solver:
             if source_index is None or node is None or node.voltage_level <= 0:
                 continue
             z_kj = z_bus[fault_index, source_index]
-            factors[source.id] = abs(z_kj / z_kk) * (node.voltage_level / un_k)
+            factors[source.id] = modul_zespolony(z_kj / z_kk) * (node.voltage_level / un_k)
         return factors
 
     @staticmethod
@@ -1529,7 +1583,7 @@ class ShortCircuitIEC60909Solver:
                 # Prąd po stronie `from` w modelu z przekładnią poza-znamionową
                 # (V12K-186); dla a = 1 redukuje się do (V_from − V_to)·y.
                 i_branch = (v_from / (ratio * ratio) - v_to / ratio) * y_series * i_contrib
-                i_mag = abs(i_branch)
+                i_mag = modul_zespolony(i_branch)
                 if jest_wkladem_pominietym(i_mag):
                     pominiete.append(
                         WkladPominiety.z_wartosci(
@@ -1541,7 +1595,9 @@ class ShortCircuitIEC60909Solver:
                         )
                     )
                     continue
-                direction = "from_to" if abs(v_from) >= abs(v_to) else "to_from"
+                direction = (
+                    "from_to" if modul_zespolony(v_from) >= modul_zespolony(v_to) else "to_from"
+                )
                 contributions.append(
                     ShortCircuitBranchContribution(
                         source_id=source.id,
@@ -1673,7 +1729,7 @@ class ShortCircuitIEC60909Solver:
             v_to = v_nodes[to_index]
             # Jak wyżej (V12K-186): prąd strony `from` przy przekładni a.
             fraction = (v_from / (ratio * ratio) - v_to / ratio) * y_series_pu
-            f_mag = float(abs(fraction))
+            f_mag = modul_zespolony(fraction)
             i_a = f_mag * ik_thevenin_a
             if jest_wkladem_pominietym(i_a):
                 pominiete.append(
@@ -1690,7 +1746,7 @@ class ShortCircuitIEC60909Solver:
             # jednostkowej |V| rośnie w stronę zwarcia (największe |V| = węzeł
             # zwarcia), więc prąd płynie do węzła o większym |V|: "from_to" gdy
             # koniec "to" jest bliżej zwarcia (|V_to| >= |V_from|).
-            direction = "from_to" if abs(v_to) >= abs(v_from) else "to_from"
+            direction = "from_to" if modul_zespolony(v_to) >= modul_zespolony(v_from) else "to_from"
             # Bilans KCL: licz udział gałęzi WCHODZĄCEJ do węzła zwarcia.
             if branch.to_node_id == fault_node_id and direction == "from_to":
                 fraction_sum_into_fault += f_mag
@@ -1944,7 +2000,7 @@ class ShortCircuitIEC60909Solver:
             z_kf = complex(z_bus[bocznik.indeks, fault_index])
             wspolczynnik = complex(bocznik.y_pu) * z_kf
             fazor_a = wspolczynnik * ik_thevenin_a
-            i_a = abs(wspolczynnik) * ik_thevenin_a
+            i_a = modul_zespolony(wspolczynnik) * ik_thevenin_a
             suma_fazorowa += fazor_a
             suma_modulow += i_a
             pominiety = jest_wkladem_pominietym(i_a)
@@ -1997,11 +2053,12 @@ class ShortCircuitIEC60909Solver:
                 },
                 substitution=(
                     f"I = |({fmt_c(complex(bocznik.y_pu))}) * ({fmt_c(z_kf)})| * "
-                    f"{fmt(ik_thevenin_a)} A = {fmt(i_a)} A"
+                    f"{fmt(ik_thevenin_a)} A = {fmt(prad_do_tekstu_sladu(i_a))} A"
                 ),
                 substitution_latex=(
                     f"\\left| {fmt_cl(complex(bocznik.y_pu))} \\cdot {fmt_cl(z_kf)} \\right| "
-                    f"\\cdot {fmt(ik_thevenin_a)}\\,\\mathrm{{A}} = {fmt(i_a)}\\,\\mathrm{{A}}"
+                    f"\\cdot {fmt(ik_thevenin_a)}\\,\\mathrm{{A}} = "
+                    f"{fmt(prad_do_tekstu_sladu(i_a))}\\,\\mathrm{{A}}"
                 ),
                 result={
                     "wspolczynnik_pu": wspolczynnik,
@@ -2016,8 +2073,18 @@ class ShortCircuitIEC60909Solver:
         wspolczynnik_czlonow = complex(czlony @ z_bus[:, fault_index])
         prad_czlonow = wspolczynnik_czlonow * ik_thevenin_a
         suma_bilansu = suma_fazorowa + prad_czlonow
-        reszta_a = float(abs(suma_bilansu - ik_thevenin_a))
+        reszta_a = modul_zespolony(suma_bilansu - ik_thevenin_a)
         tolerancja_a = tolerancja_bilansu_a(ik_thevenin_a)
+        bilans_domkniety = reszta_a <= tolerancja_a
+        tekst_bilansu, tekst_bilansu_latex = ShortCircuitIEC60909Solver._tekst_bilansu_wkladow(
+            suma_fazorowa=suma_fazorowa,
+            prad_czlonow=prad_czlonow,
+            suma_bilansu=suma_bilansu,
+            ik_thevenin_a=ik_thevenin_a,
+            reszta_a=reszta_a,
+            tolerancja_a=tolerancja_a,
+            bilans_domkniety=bilans_domkniety,
+        )
         ik_inverters_a = ik_total_a - ik_thevenin_a
         tracer.add(
             key="wklady_zrodel_bilans",
@@ -2036,16 +2103,8 @@ class ShortCircuitIEC60909Solver:
                 "tolerancja_wzgledna": TOLERANCJA_WZGLEDNA_BILANSU,
                 "prog_wkladu_pominietego_a": PROG_WKLADU_POMIJALNEGO_A,
             },
-            substitution=(
-                f"Suma fazorowa wkładów źródeł {fmt_c(suma_fazorowa)} A, prąd członów "
-                f"poprzecznych gałęzi {fmt_c(prad_czlonow)} A, razem {fmt_c(suma_bilansu)} A "
-                f"wobec I_k''(Th) = {fmt(ik_thevenin_a)} A; reszta {fmt(reszta_a)} A, "
-                f"dopuszczalna {fmt(tolerancja_a)} A."
-            ),
-            substitution_latex=(
-                f"{fmt_cl(suma_fazorowa)} + {fmt_cl(prad_czlonow)} = {fmt_cl(suma_bilansu)}"
-                f"\\,\\mathrm{{A}} \\approx {fmt(ik_thevenin_a)}\\,\\mathrm{{A}}"
-            ),
+            substitution=tekst_bilansu,
+            substitution_latex=tekst_bilansu_latex,
             result={
                 "suma_fazorowa_zrodel_a": suma_fazorowa,
                 "suma_modulow_zrodel_a": suma_modulow,
@@ -2053,11 +2112,16 @@ class ShortCircuitIEC60909Solver:
                 "suma_bilansu_a": suma_bilansu,
                 "reszta_a": reszta_a,
                 "tolerancja_a": tolerancja_a,
-                "bilans_domkniety": reszta_a <= tolerancja_a,
+                "bilans_domkniety": bilans_domkniety,
             },
             notes=(
                 "Kryterium: |Σ wkładów źródeł (z pominiętymi) + prąd członów poprzecznych − "
-                "I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Człony poprzeczne gałęzi to suma "
+                "I_k''(Th)| ≤ max(1e-9·I_k''(Th), 1e-6 A). Tekst podstawienia: część fazora "
+                "o module poniżej progu wkładu pomijalnego (1e-6 A) wypisana jako 0 — to szum "
+                "arytmetyki zależny od maszyny; reszta bilansu domkniętego wypisana względem "
+                "dopuszczalnej („reszta ≤ dopuszczalnej”), reszta ponad dopuszczalną — "
+                "wartością. Pełne liczby (także reszta) stoją w polach wyniku kroku. "
+                "Człony poprzeczne gałęzi to suma "
                 "kolumnowa macierzy Y sieci zwarciowej minus admitancja źródeł węzła: "
                 "wyłącznie przekładnia poza-znamionowa transformatorów (y·(1 − 1/a)²) — "
                 "admitancje poprzeczne linii i kabli nie wchodzą do sieci zwarciowej (krok "
@@ -2196,7 +2260,9 @@ class ShortCircuitIEC60909Solver:
         tlumienie_petli: float | None = None
         ikss_metaliczny_a: float | None = None
         if core.z_equiv_metaliczne is not None:
-            tlumienie_petli = abs(core.z_equiv_metaliczne) / abs(core.z_equiv)
+            tlumienie_petli = modul_zespolony(core.z_equiv_metaliczne) / modul_zespolony(
+                core.z_equiv
+            )
             ikss_metaliczny_a = compute_ikss(
                 un_v=un_v,
                 c_factor=c_factor,

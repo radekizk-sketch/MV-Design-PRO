@@ -499,7 +499,9 @@ def _assemble_zero_sequence_y0(
     )
 
     builder = AdmittanceMatrixBuilder(graph)
-    builder.build()
+    # Sieć zwarciowa składowej zgodnej: z niej bierze się mapa węzłów scalonych, na której
+    # składa się Y0 — te same indeksy co w Z_1/Z_2 tego samego biegu zwarciowego.
+    builder.build(siec_zwarciowa=True)
     node_index = builder.node_id_to_index
     size = len(set(node_index.values()))
     y0_bus = np.zeros((size, size), dtype=complex)

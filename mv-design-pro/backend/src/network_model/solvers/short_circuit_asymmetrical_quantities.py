@@ -45,6 +45,7 @@ from network_model.core.impedancja_przejscia import (
     impedancja_przejscia_obliczeniowa,
     kod_odmowy_impedancji,
 )
+from network_model.core.modul_zespolony import modul_zespolony
 from network_model.odmowa_danych import OdmowaDanychError, OdmowaNazwana
 from network_model.solvers.short_circuit_core import (
     ShortCircuitType,
@@ -214,7 +215,7 @@ def _compute_ikss(
     - 2F:   I″k2 = c·Un / |Z_k|       (eq. 23)
     - 2F-Z: I″k2E = c·Un / |Z_k|
     """
-    z_abs = abs(z_equiv)
+    z_abs = modul_zespolony(z_equiv)
     if z_abs == 0:
         raise OdmowaDanychError(
             "Impedancja zastępcza pętli zwarcia jest równa zeru — prądu I″k nie da się "

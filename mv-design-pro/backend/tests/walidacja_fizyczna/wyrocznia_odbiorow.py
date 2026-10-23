@@ -111,6 +111,13 @@ class OdbiorWyroczni:
 
 # --------------------------------------------------------------------------- D-23
 
+#: Tolerancja WZGLEDNA granicy `|V| = U_min` wyroczni ukladu dwuwezlowego. Szum, ktory ma
+#: pokryc, to kilka ulp modulu napiecia (1 ulp ~ 1,1e-16 wzglednie; zmierzony rozjazd libm
+#: `hypot` miedzy wariantami glibc — 1 ulp); 1e-12 jest o cztery rzedy ponad szumem, a przy
+#: `U_min` = 0,7 pu (7e-13 pu) ponad dwa rzedy ponizej progu bledu napiecia bramki G23
+#: (`G23_blad_napiecia_pu` = 1e-10 pu w `bramki.py`).
+TOLERANCJA_GRANICY_U_MIN: float = 1e-12
+
 
 def napiecie_dwuwezlowe(
     sem: complex,
@@ -125,6 +132,15 @@ def napiecie_dwuwezlowe(
     y_eq = odbior.admitancja_impedancyjna(f_hz)
     liniowe = admitancja * sem / (admitancja + admitancja_zwarcia + y_eq)
     if odbior.u_min_pu is None or abs(liniowe) < odbior.u_min_pu:
+        return liniowe
+    if math.isclose(abs(liniowe), odbior.u_min_pu, rel_tol=TOLERANCJA_GRANICY_U_MIN):
+        # Punkt DOKLADNIE na granicy `|V| = U_min` (bramka G23 wybiera go celowo,
+        # `skala_admitancji_granicznej`): obie galezie daja tam te sama moc, wiec rozwiazanie
+        # liniowe JEST pierwiastkiem galezi charakterystyki w samym `U_min`. Strona porownania
+        # `|liniowe| < U_min` i znak `g(U_min)` sa tu szumem ostatniego bitu — `abs()` liczby
+        # zespolonej to `hypot` z libm, a glibc amd64v3 (runner CI `ubuntu-26.04`) daje
+        # `g(U_min) = +4.4e-16` zamiast 0, przez co przeszukanie siatki nie widzialo zmiany
+        # znaku i wyrocznia odmawiala ukladu, ktory ma rozwiazanie.
         return liniowe
     suma = admitancja + admitancja_zwarcia
 

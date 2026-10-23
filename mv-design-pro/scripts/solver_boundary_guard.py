@@ -184,6 +184,14 @@ SANCTIONED_CHANGES = {
         "wezla normy - wynik i slad bit w bit; zero zmian liczb (sonda korpusu golden). Testy "
         "tests/network_model/solvers/test_zalozenia_zaniku_werdykt.py. Wpis do usuniecia po "
         "scaleniu do main."
+        " NAPRAWA CI PARTII ZWARC (2026-10-22, runner ubuntu-26.04 z glibc amd64v3, B-01 do "
+        "przyjecia przez architekta): modul liczby zespolonej przez jedno zrodlo "
+        "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
+        "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
+        "tests/network_model/test_modul_zespolony_platformy.py."
+        " Tekst kroku wklady_zrodel_bilans i wkladu zrodla: czesc fazora ponizej "
+        "PROG_WKLADU_POMIJALNEGO_A = 0, reszta wzgledem dopuszczalnej (decyzja architekta); "
+        "pola liczbowe pelne; test tests/network_model/solvers/test_tekst_bilansu_wkladow.py."
     ),
     "backend/src/network_model/solvers/short_circuit_contributions.py": (
         "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
@@ -202,6 +210,13 @@ SANCTIONED_CHANGES = {
         "`tolerancja_bilansu_a` (kontrakt bilansu rel 1e-9, nie mniej niz "
         "PROG_WKLADU_POMIJALNEGO_A). Istniejace dataclassy i prog bez zmian. Wpis do usuniecia "
         "po scaleniu do main."
+        " NAPRAWA CI PARTII ZWARC (2026-10-22, runner ubuntu-26.04 z glibc amd64v3, B-01 do "
+        "przyjecia przez architekta): modul liczby zespolonej przez jedno zrodlo "
+        "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
+        "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
+        "tests/network_model/test_modul_zespolony_platformy.py."
+        " Funkcje tekstu sladu prad_do_tekstu_sladu/fazor_do_tekstu_sladu (ten sam predykat "
+        "co jest_wkladem_pominietym)."
     ),
     "backend/src/network_model/solvers/short_circuit_core.py": (
         "Decyzja B-01 partii integracji 9 (delegacja O-59, klasa par. 12.2 (k)): jadro "
@@ -227,6 +242,11 @@ SANCTIONED_CHANGES = {
         " (i przeciwna, Z_2 = Z_1) w trybie `siec_zwarciowa=True` budowniczego — bez B/2 linii"
         " i kabli (IEC 60909-0:2016 pkt 5.2 f) i 5.3.1). Jedyne wejscie sieci zgodnej wszystkich"
         " sciezek zwarciowych. Wpis do usuniecia po scaleniu do main."
+        " NAPRAWA CI PARTII ZWARC (2026-10-22, runner ubuntu-26.04 z glibc amd64v3, B-01 do "
+        "przyjecia przez architekta): modul liczby zespolonej przez jedno zrodlo "
+        "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
+        "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
+        "tests/network_model/test_modul_zespolony_platformy.py."
     ),
     "backend/src/network_model/core/ybus.py": (
         "Zgoda B-01 architekta (karta BEZ-POJEMNOSCI): jeden predykat `siec_zwarciowa` w"
@@ -241,6 +261,13 @@ SANCTIONED_CHANGES = {
         " skladowej zerowej (mala impedancja uziemienia, wspolczynnik zwarcia doziemnego > 1,4),"
         " metoda skladowych pkt 5.3.2, uczciwy stan B0 (dzis bezwarunkowo). Zmienia sie tylko"
         " tekst `notes` kroku sladu; liczby bez zmian."
+        " NAPRAWA CI PARTII ZWARC (2026-10-22, runner ubuntu-26.04 z glibc amd64v3, B-01 do "
+        "przyjecia przez architekta): modul liczby zespolonej przez jedno zrodlo "
+        "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
+        "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
+        "tests/network_model/test_modul_zespolony_platformy.py."
+        " Argument `siec_zwarciowa` obowiazkowy (bez wartosci domyslnej); pin "
+        "test_ybus.py::test_build_wymaga_jawnej_reprezentacji."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
@@ -299,6 +326,11 @@ SANCTIONED_CHANGES = {
         "SC1; I_b zwarc niesymetrycznych = I_k'' (IEC 60909-0 rozdz. 9). Goldeny "
         "tests/golden/sc_asymmetrical/* przeliczone (n = 1, m z kappa; kappa bez zmian). "
         "Wpis do usuniecia po scaleniu do main."
+        " NAPRAWA CI PARTII ZWARC (2026-10-22, runner ubuntu-26.04 z glibc amd64v3, B-01 do "
+        "przyjecia przez architekta): modul liczby zespolonej przez jedno zrodlo "
+        "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
+        "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
+        "tests/network_model/test_modul_zespolony_platformy.py."
     ),
     "backend/src/network_model/solvers/fault_loop_iec60364.py": (
         "W5-E-TTIT (O-59 OD-25, D-11-fault_loop-TT-IT): kasacja NotImplementedError dla "
@@ -308,6 +340,11 @@ SANCTIONED_CHANGES = {
         "(to_dict dopisuje `tt_it` tylko gdy obecne). Dowod bit-identycznosci TN: "
         "tests/test_petla_tn_tozsamosc_w5e_ttit.py (18 przypadkow, sha256 to_dict przed/po). "
         "Wpis do usuniecia po scaleniu do main."
+        " NAPRAWA CI PARTII ZWARC (2026-10-22, runner ubuntu-26.04 z glibc amd64v3, B-01 do "
+        "przyjecia przez architekta): modul liczby zespolonej przez jedno zrodlo "
+        "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
+        "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
+        "tests/network_model/test_modul_zespolony_platformy.py."
     ),
     "backend/src/network_model/solvers/petla_zwarcia_tt_it.py": (
         "W5-E-TTIT (O-59 OD-25): NOWY modul pętli doziemnej TT (I_d przez R_A+R_B, "
@@ -317,6 +354,11 @@ SANCTIONED_CHANGES = {
         "pol w tresci (symbol i opis wielkosci z jednej mapy OPISY_DANYCH_TT_IT), odmowa "
         "danych odcinka IT jako rekord strukturalny (kod + odwolanie do galezi, tresc PL bez "
         "identyfikatora). Zero zmian liczb. Wpis do usuniecia po scaleniu do main."
+        " NAPRAWA CI PARTII ZWARC (2026-10-22, runner ubuntu-26.04 z glibc amd64v3, B-01 do "
+        "przyjecia przez architekta): modul liczby zespolonej przez jedno zrodlo "
+        "`network_model/core/modul_zespolony.py` (math.hypot zamiast "
+        "hypot z libm — 1 ulp roznicy na runnerze); pin zamknietej listy abs(): "
+        "tests/network_model/test_modul_zespolony_platformy.py."
     ),
     "backend/src/network_model/solvers/protection_iec60255.py": (
         "O-59 OD-15(e) (karta PROT-LTI, 2026-09-30): krzywa 120/(M-1) nazywala sie "
