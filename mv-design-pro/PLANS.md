@@ -117,6 +117,9 @@ Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty 
 > i kryteria UX-01…UX-06, **nie osobny program ani kolejka**. Historyczne plany SLD
 > i W1–W12 są technicznymi specyfikacjami / mapą zdolności produktu; AB zachowuje
 > własną fizykę i dowody, ale ekrany/UI prowadzi program Opusa.
+> **P0: UX-04 obejmuje również rundę H5: przebudowa SLD wg rysunków ENEA,
+> symbole PN-EN 60617, układ aparatów/pól SN, czytelność i B-02.**
+> Granica 110 kV tylko niezbędna dla modelu SN, bez rozwijania WN.
 > **P0:** inteligentny znak „+” na SLD, automatyczne operacje ENM, wspólny
 > inspektor, walidacja, motywy, White Box i pełny tor E2E.
 > **GIS: P3/STOP. B-02: ODRZUCONE.**
