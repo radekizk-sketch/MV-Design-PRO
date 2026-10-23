@@ -192,6 +192,12 @@ SANCTIONED_CHANGES = {
         " Tekst kroku wklady_zrodel_bilans i wkladu zrodla: czesc fazora ponizej "
         "PROG_WKLADU_POMIJALNEGO_A = 0, reszta wzgledem dopuszczalnej (decyzja architekta); "
         "pola liczbowe pelne; test tests/network_model/solvers/test_tekst_bilansu_wkladow.py."
+        " KARTA KAT-WKLADU-POMINIETEGO (2026-10-23, B-01 do przyjecia przez architekta): kat "
+        "fazora wkladu pominietego nieokreslony — `kat_fazora_wkladu_deg` (ten sam predykat "
+        "jest_wkladem_pominietym) daje None dla wpisu zestawienia i wkladu zrodla POMINIETY, "
+        "przyczyna PRZYCZYNA_KATA_NIEOKRESLONEGO w notatce kroku i polu przyczyna; krok "
+        "wklady_pominiete bez sumy fazorowej. Liczby wkladow publikowanych bez zmian; testy "
+        "tests/network_model/solvers/test_kat_wkladu_pominietego.py."
     ),
     "backend/src/network_model/solvers/short_circuit_contributions.py": (
         "Warunkowa zgoda B-01 wlasciciela z 2026-10-21 (karta PROG-ZERA-WKLADOW, WYLACZNIE "
@@ -217,6 +223,12 @@ SANCTIONED_CHANGES = {
         "tests/network_model/test_modul_zespolony_platformy.py."
         " Funkcje tekstu sladu prad_do_tekstu_sladu/fazor_do_tekstu_sladu (ten sam predykat "
         "co jest_wkladem_pominietym)."
+        " KARTA KAT-WKLADU-POMINIETEGO (2026-10-23, B-01 do przyjecia przez architekta): kat "
+        "fazora wkladu pominietego nieokreslony — `kat_fazora_wkladu_deg` (ten sam predykat "
+        "jest_wkladem_pominietym) daje None dla wpisu zestawienia i wkladu zrodla POMINIETY, "
+        "przyczyna PRZYCZYNA_KATA_NIEOKRESLONEGO w notatce kroku i polu przyczyna; krok "
+        "wklady_pominiete bez sumy fazorowej. Liczby wkladow publikowanych bez zmian; testy "
+        "tests/network_model/solvers/test_kat_wkladu_pominietego.py."
     ),
     "backend/src/network_model/solvers/short_circuit_core.py": (
         "Decyzja B-01 partii integracji 9 (delegacja O-59, klasa par. 12.2 (k)): jadro "

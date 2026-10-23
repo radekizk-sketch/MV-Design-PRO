@@ -147,10 +147,10 @@ export const ZWARCIA_STRINGS = {
   // nazwa 1:1 z rdzenia (`NAZWA_WKLADU_POMINIETEGO`), próg wyłącznie z odpowiedzi.
   rozplywPominieteTytul: 'Wkłady pominięte na podstawie tolerancji numerycznej',
   rozplywPominieteOpis:
-    'Pary źródło × gałąź policzone przez solver, których moduł prądu jest poniżej progu tolerancji numerycznej. To nie jest zero i nie jest wkład z tabeli powyżej: wpisy nie wchodzą do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Moduł |I| obcięty do 3 cyfr znaczących w stronę zera.',
+    'Pary źródło × gałąź policzone przez solver, których moduł prądu jest poniżej progu tolerancji numerycznej. To nie jest zero i nie jest wkład z tabeli powyżej: wpisy nie wchodzą do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Moduł |I| obcięty do 3 cyfr znaczących w stronę zera. Kąt fazora nie jest określony: poniżej progu fazor jest resztą arytmetyki zmiennoprzecinkowej, a jego kąt zależy od maszyny, nie od sieci.',
+  katNieokreslony: 'nie określono',
   rozplywKolTor: 'Tor obliczenia',
   rozplywKolKat: 'Kąt fazora',
-  jednStopnie: '°',
 
   // Sekcja śladu WHITE BOX podziału prądu zwarciowego (karta WB-ROZPLYW, TH-1)
   sladRozplywuTytul: 'Podział prądu zwarciowego — ślad obliczeń',

@@ -5,9 +5,11 @@ Próg wkładu pomijalnego (karta PROG-ZERA-WKLADOW, warunkowa zgoda B-01 właśc
 z 2026-10-21): wkład gałęziowy rozpływu prądu zwarciowego o module |I| < 1e-6 A NIE jest
 publikowany na liście wkładów (`branch_contributions`) ani w krokach śladu podziału prądu
 (`branch_flow_trace`). Taki wpis to „wkład pominięty na podstawie tolerancji numerycznej
-(|I| < 1e-6 A)” — NIE zero: jego surowa wartość (3 cyfry znaczące) i kąt fazora trafiają do
-zestawienia `wklady_pominiete` wyniku, a bilans pominiętych (liczba, suma modułów, suma
-fazorowa per tor źródła) do kroku śladu `wklady_pominiete`. Próg i predykat mają JEDNĄ
+(|I| < 1e-6 A)” — NIE zero: jego surowy moduł (3 cyfry znaczące) trafia do zestawienia
+`wklady_pominiete` wyniku, a bilans pominiętych (liczba i suma modułów per tor źródła) do
+kroku śladu `wklady_pominiete`. Kąt fazora wkładu pominiętego NIE jest określony
+(`PRZYCZYNA_KATA_NIEOKRESLONEGO`, karta KAT-WKLADU-POMINIETEGO): fazor o module poniżej
+progu to reszta arytmetyki, której kąt zależy od maszyny. Próg i predykat mają JEDNĄ
 definicję — tę niżej; rdzeń IEC 60909 (oba tory: superpozycja falownikowa i rozpływ
 Thevenina) i warstwy nad nim czytają ją stąd.
 
@@ -49,8 +51,8 @@ if TYPE_CHECKING:
 #: trafiała na listę na jednej maszynie, a na drugiej nie.
 PROG_WKLADU_POMIJALNEGO_A: float = 1e-6
 
-#: Liczba cyfr znaczących surowej wartości |I| i kąta fazora w zestawieniu wkładów
-#: pominiętych (zapis deterministyczny: bity poniżej trzeciej cyfry nie wchodzą do wyniku).
+#: Liczba cyfr znaczących surowej wartości |I| w zestawieniu wkładów pominiętych (zapis
+#: deterministyczny: bity poniżej trzeciej cyfry nie wchodzą do wyniku).
 CYFRY_ZNACZACE_WKLADU_POMINIETEGO: int = 3
 
 #: Tory źródła wkładu gałęziowego (pole `tor` wpisu zestawienia i klucze bilansu w śladzie).
@@ -67,6 +69,24 @@ def jest_wkladem_pominietym(prad_a: float) -> bool:
     znika jako „pomijalny".
     """
     return abs(prad_a) < PROG_WKLADU_POMIJALNEGO_A
+
+
+def kat_fazora_wkladu_deg(prad_a: float, fazor: complex) -> float | None:
+    """Kąt [°] fazora wkładu o module ``prad_a`` [A]; ``None``, gdy kąt nie jest określony.
+
+    Kąt NIE jest określony dla wkładu pominiętego (`jest_wkladem_pominietym` — ten sam
+    predykat, który odkłada wpis do zestawienia; przyczyna `PRZYCZYNA_KATA_NIEOKRESLONEGO`)
+    ani dla fazora zerowego. Fazor o module poniżej `PROG_WKLADU_POMIJALNEGO_A` to reszta
+    arytmetyki zmiennoprzecinkowej: jego kąt jest funkcją kolejności sumowania jądra BLAS,
+    nie fizyki (pomiar karty KAT-WKLADU-POMINIETEGO: ten sam wpis zestawienia
+    o |I| ≈ 1e-13 A ma kąt 166,0° na jednym jądrze OpenBLAS i −177,0° na drugim) —
+    publikowanie go byłoby fabrykacją. ``fazor`` może być współczynnikiem podziału
+    o tym samym kącie (fazor wkładu = współczynnik · prąd rzeczywisty dodatni); kąt wkładu
+    publikowanego bez zaokrąglenia.
+    """
+    if jest_wkladem_pominietym(prad_a) or fazor == 0:
+        return None
+    return math.degrees(cmath.phase(fazor))
 
 
 def zaokraglij_cyfry_znaczace(wartosc: float) -> float:
@@ -103,6 +123,15 @@ OPIS_PROGU_WKLADU_POMIJALNEGO_LATEX: str = (
 #: Nazwa wpisu zestawienia — dosłownie wg decyzji właściciela z 2026-10-21.
 NAZWA_WKLADU_POMINIETEGO: str = (
     f"wkład pominięty na podstawie tolerancji numerycznej ({OPIS_PROGU_WKLADU_POMIJALNEGO})"
+)
+#: Przyczyna braku kąta fazora wkładu pominiętego (karta KAT-WKLADU-POMINIETEGO) —
+#: WYPROWADZONA z progu: notatka kroku śladu ``wklady_pominiete`` i pole ``przyczyna``
+#: wpisu `WkladZrodla` klasy `KLASA_WKLADU_ZRODLA_POMINIETY`.
+PRZYCZYNA_KATA_NIEOKRESLONEGO: str = (
+    "kąt fazora nie jest określony poniżej progu wkładu pomijalnego "
+    f"({OPIS_PROGU_WKLADU_POMIJALNEGO}): fazor tej wielkości to reszta arytmetyki "
+    "zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, "
+    "a nie od fizyki sieci"
 )
 
 
@@ -183,53 +212,55 @@ class WkladPominiety:
 
     Wpis zestawienia ``ShortCircuitResult.wklady_pominiete``: gałąź, której wkład od
     jednego źródła spełnił `jest_wkladem_pominietym`, więc nie wszedł do listy wkładów
-    (`branch_contributions`) ani do kroków śladu podziału prądu. Surowa wartość jest
-    zachowana do audytu w zapisie deterministycznym (``CYFRY_ZNACZACE_WKLADU_POMINIETEGO``
+    (`branch_contributions`) ani do kroków śladu podziału prądu. Surowy moduł jest
+    zachowany do audytu w zapisie deterministycznym (``CYFRY_ZNACZACE_WKLADU_POMINIETEGO``
     cyfr znaczących): bity poniżej trzeciej cyfry to szum arytmetyki zależny od maszyny
-    (BLAS/CPU), więc nie wchodzą do wyniku ani do jego skrótów.
+    (BLAS/CPU), więc nie wchodzą do wyniku ani do jego skrótów. Kąt fazora NIE jest
+    określony (`PRZYCZYNA_KATA_NIEOKRESLONEGO`): pole ``kat_deg`` wpisu JSON jest zawsze
+    ``null`` — kontrakt pola (liczba albo ``null``) bez zmian, wpis nie ma atrybutu kąta,
+    więc nie da się go opublikować.
 
     Attributes:
         tor: tor źródła — ``TOR_THEVENIN`` (sieć zastępcza) albo ``TOR_FALOWNIK``
         source_id: identyfikator źródła wkładu
         branch_id: identyfikator gałęzi
         i_a: surowy moduł prądu gałęzi |I| [A], 3 cyfry znaczące (w stronę zera)
-        kat_deg: kąt fazora prądu gałęzi (strona ``from``) względem prądu źródła [°],
-            3 cyfry znaczące (w stronę zera); ``None`` dla |I| = 0 (kąt nieokreślony)
     """
 
     tor: str
     source_id: str
     branch_id: str
     i_a: float
-    kat_deg: float | None
 
     @classmethod
-    def z_wartosci(
-        cls, *, tor: str, source_id: str, branch_id: str, i_a: float, fazor_a: complex
-    ) -> WkladPominiety:
+    def z_wartosci(cls, *, tor: str, source_id: str, branch_id: str, i_a: float) -> WkladPominiety:
         """Wpis z surowego modułu ``i_a`` [A] — tej wartości, którą sklasyfikował predykat
-        `jest_wkladem_pominietym` — i fazora prądu gałęzi [A] (kąt), w zapisie
-        deterministycznym (`zaokraglij_cyfry_znaczace`)."""
+        `jest_wkladem_pominietym` — w zapisie deterministycznym (`zaokraglij_cyfry_znaczace`).
+
+        Raises:
+            ValueError: ``i_a`` nie spełnia `jest_wkladem_pominietym` — wkład publikowany
+                nie jest wpisem zestawienia pominiętych (jeden predykat po obu stronach).
+        """
+        if not jest_wkladem_pominietym(i_a):
+            raise ValueError(
+                f"Wkład |I| = {i_a!r} A nie jest pominięty ({OPIS_PROGU_WKLADU_POMIJALNEGO})."
+            )
         return cls(
             tor=tor,
             source_id=source_id,
             branch_id=branch_id,
             i_a=zaokraglij_cyfry_znaczace(float(i_a)),
-            kat_deg=(
-                None
-                if fazor_a == 0
-                else zaokraglij_cyfry_znaczace(math.degrees(cmath.phase(fazor_a)))
-            ),
         )
 
     def to_dict(self) -> dict:
-        """Zwraca wpis jako dict z czystymi typami JSON."""
+        """Zwraca wpis jako dict z czystymi typami JSON (``kat_deg`` = ``None`` — kąt
+        nieokreślony, `PRZYCZYNA_KATA_NIEOKRESLONEGO`)."""
         return {
             "tor": self.tor,
             "source_id": self.source_id,
             "branch_id": self.branch_id,
             "i_a": float(self.i_a),
-            "kat_deg": None if self.kat_deg is None else float(self.kat_deg),
+            "kat_deg": None,
         }
 
 
@@ -327,7 +358,9 @@ class WkladZrodla:
             Σ I_Q,k = I_k''^(Th); wpis pominięty — 3 cyfry znaczące w stronę zera.
         i_zaciski_a: ten sam prąd na zaciskach źródła, w poziomie napięcia jego węzła [A]
             (I_Q,k · U_n,f / U_n,k).
-        kat_deg: kąt fazora wkładu względem I_k''^(Th) [°]; ``None`` dla wkładu zerowego.
+        kat_deg: kąt fazora wkładu względem I_k''^(Th) [°]; ``None``, gdy kąt nie jest
+            określony (`kat_fazora_wkladu_deg`): wkład pominięty
+            (`PRZYCZYNA_KATA_NIEOKRESLONEGO`), wkład zerowy i źródło w innej wyspie.
         udzial: i_a / I_k'' (prąd całkowity z falownikami) [-] — ta sama podstawa co
             ``share`` listy ``contributions``.
         przyczyna: wyjaśnienie wpisu pominiętego albo zerowego; ``None`` dla wkładu.

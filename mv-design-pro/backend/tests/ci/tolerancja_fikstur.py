@@ -227,22 +227,6 @@ def _klucz_wielkosci(rodzic: dict[str, object], klucz: str) -> str:
     return klucz
 
 
-#: Pola wpisu zestawienia ``wklady_pominiete`` (karta PROG-ZERA-WKLADOW) poza porównaniem
-#: międzymaszynowym. Lista ZAMKNIĘTA — pin: `test_kat_wkladu_pominietego_poza_porownaniem`.
-#: POWÓD, NIE WYGODA: wpis zestawienia to „wkład pominięty na podstawie tolerancji
-#: numerycznej (|I| < 1e-6 A)” — jego moduł leży z definicji poniżej jedynego progu
-#: (`PROG_WKLADU_POMIJALNEGO_A` = 1e-6 A = 1e-9 kA, czyli wewnątrz `PASMO_ZERA_FIXTUR`,
-#: pin relacji w teście), więc `i_ka` porównuje się dalej pasmem zera. KĄT fazora o module
-#: rzędu reszty zmiennoprzecinkowej jest funkcją tej reszty: ta sama gałąź daje na jednej
-#: maszynie fazor DOKŁADNIE 0 (kąt `None`), na drugiej 1,4e-17 kA (kąt dowolny). SKŁAD
-#: zestawienia (gałąź, źródło, tor, kolejność) i długość listy porównuje się ŚCIŚLE — to
-#: nie jest pasmo na długość listy (dawne obejście `POLA_LIST_WPISOW_ROZPLYWU` usunięte
-#: wraz z naprawą u źródła).
-POLA_KATA_WKLADU_POMINIETEGO: frozenset[str] = frozenset({"kat_deg"})
-#: Klucz listy zestawienia wkładów pominiętych w odpowiedzi rozpływu.
-KLUCZ_ZESTAWIENIA_POMINIETYCH = "wklady_pominiete"
-
-
 def roznice_z_tolerancja(
     zloty: object, teraz: object, sciezka: str = "$", klucz: str | None = None
 ) -> list[str]:
@@ -264,7 +248,6 @@ def roznice_z_tolerancja(
         return [
             r
             for k in zloty
-            if not (klucz == KLUCZ_ZESTAWIENIA_POMINIETYCH and k in POLA_KATA_WKLADU_POMINIETEGO)
             for r in roznice_z_tolerancja(
                 zloty[k], teraz[k], f"{sciezka}.{k}", _klucz_wielkosci(zloty, k)
             )

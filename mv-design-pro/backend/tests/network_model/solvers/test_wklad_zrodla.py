@@ -52,6 +52,7 @@ from network_model.solvers.short_circuit_contributions import (
     KLASA_WKLADU_ZRODLA_POMINIETY,
     NAZWA_WKLADU_POMINIETEGO,
     PROG_WKLADU_POMIJALNEGO_A,
+    PRZYCZYNA_KATA_NIEOKRESLONEGO,
     PRZYCZYNA_WKLADU_INNA_WYSPA,
     RODZAJ_BOCZNIKA_MASZYNA_SYNCHRONICZNA,
     RODZAJ_BOCZNIKA_SIEC,
@@ -160,6 +161,9 @@ def test_bilans_wkladow_zrodel_iloczyn_cech(
         surowy = krok["result"]["i_a"]
         assert (wpis.klasa == KLASA_WKLADU_ZRODLA_POMINIETY) is jest_wkladem_pominietym(surowy)
         assert wpis.klasa in {KLASA_WKLADU_ZRODLA, KLASA_WKLADU_ZRODLA_POMINIETY}
+        # Ten sam predykat rozstrzyga o kącie (karta KAT-WKLADU-POMINIETEGO).
+        assert (wpis.kat_deg is None) is jest_wkladem_pominietym(surowy)
+        assert krok["result"]["kat_deg"] == wpis.kat_deg
 
     # Źródło z innej wyspy: wyłącznie w układzie H5 z otwartymi łącznikami — i tylko L2
     # (węzły zwarcia leżą w sekcji A); w pozostałych układach każde źródło ma drogę.
@@ -479,12 +483,17 @@ def test_prog_wkladu_zrodla_jeden_predykat(cel_a: float) -> None:
     if jest_wkladem_pominietym(reczny):
         assert reczny < PROG_WKLADU_POMIJALNEGO_A
         assert q2.klasa == KLASA_WKLADU_ZRODLA_POMINIETY
-        assert q2.przyczyna == NAZWA_WKLADU_POMINIETEGO
+        assert q2.przyczyna == f"{NAZWA_WKLADU_POMINIETEGO}; {PRZYCZYNA_KATA_NIEOKRESLONEGO}"
         assert q2.i_a == pytest.approx(reczny, rel=1e-2)
+        # Karta KAT-WKLADU-POMINIETEGO: kąt nieokreślony we wpisie i w kroku śladu.
+        assert q2.kat_deg is None
+        assert _krok(wynik, "wklad_zrodla_Q2")["result"]["kat_deg"] is None
     else:
         assert q2.klasa == KLASA_WKLADU_ZRODLA
         assert q2.przyczyna is None
         assert q2.i_a == surowy
+        wspolczynnik = _krok(wynik, "wklad_zrodla_Q2")["result"]["wspolczynnik_pu"]
+        assert q2.kat_deg == math.degrees(cmath.phase(wspolczynnik))
     # Wkład pominięty nadal wchodzi do bilansu (karta §0 pkt 4).
     assert _krok(wynik, "wklady_zrodel_bilans")["result"]["bilans_domkniety"] is True
 

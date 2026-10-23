@@ -2240,7 +2240,10 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # Partia 2 integracji po scaleniu naprawy CI partii zwarc (2026-10-23): 588 -> 589 =
         # +8 kart partii 2 opisane wyzej (588 wzgledem 580) +1 `core/modul_zespolony.py`. POMIAR
         # guardem na drzewie scalonym (589); dlug i wykluczenia BEZ ZMIAN.
-        "Przeskanowano 589 plikow w zakresie: network_model, solver_input, enm, "
+        # Karta DETERMINIZM-HISTORII-PROCESU (2026-10-23): +1 `network_model/watki_blas.py`
+        # (jedna polityka watkow BLAS procesu). Partia 2 po scaleniu programu `d543faf3c`:
+        # 589 + 1 = 590. POMIAR guardem na drzewie scalonym; dlug i wykluczenia BEZ ZMIAN.
+        "Przeskanowano 590 plikow w zakresie: network_model, solver_input, enm, "
         "application, api." in wyjscie
     ), wyjscie
     # W2 pkt 1 (2026-09-09): kasacja fabrykacji stabilnosci dynamicznej zdjela 6 zastepnikow
@@ -2430,7 +2433,9 @@ def test_biezacy_stan_repozytorium_jest_zielony_i_przypiety_per_korzen(capsys) -
         # `core/modul_zespolony.py`); dlug i wykluczenia BEZ ZMIAN. POMIAR guardem.
         # Partia 2 po scaleniu naprawy CI partii zwarc: 186 + 2 (LINIA-110) + 1
         # (`core/modul_zespolony.py`) = 189. POMIAR guardem.
-        "  network_model: pliki_skanowane=189, dlug=10 plikow/suma 67, "
+        # Karta DETERMINIZM-HISTORII-PROCESU: +1 `watki_blas.py`; partia 2 po scaleniu
+        # programu `d543faf3c`: 189 + 1 = 190. POMIAR guardem.
+        "  network_model: pliki_skanowane=190, dlug=10 plikow/suma 67, "
         "wykluczenia=1 plikow/suma 2",
         # Karta S-1/S-4 (W6-0): solver_input 10 -> 11 (+1 `dowod_ncrfg.py`, zero
         # dlugu/wykluczen — czysta interpretacja rejestru dowodowego, zero fizyki;

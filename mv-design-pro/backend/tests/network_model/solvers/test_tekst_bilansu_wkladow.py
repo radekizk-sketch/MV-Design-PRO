@@ -31,6 +31,7 @@ import pytest
 from network_model.solvers.short_circuit_contributions import (
     NAZWA_WKLADU_POMINIETEGO,
     PROG_WKLADU_POMIJALNEGO_A,
+    PRZYCZYNA_KATA_NIEOKRESLONEGO,
     fazor_do_tekstu_sladu,
     jest_wkladem_pominietym,
     prad_do_tekstu_sladu,
@@ -192,4 +193,4 @@ def test_tekst_wkladu_zrodla_ta_sama_regula_progu(cel_a: float) -> None:
     assert krok["substitution_latex"].endswith(f"= {oczekiwany}\\,\\mathrm{{A}}")
     assert surowy > 0.0
     if jest_wkladem_pominietym(surowy):
-        assert krok["notes"] == NAZWA_WKLADU_POMINIETEGO
+        assert krok["notes"] == f"{NAZWA_WKLADU_POMINIETEGO}; {PRZYCZYNA_KATA_NIEOKRESLONEGO}"

@@ -14,7 +14,9 @@
  *  - nota liczy DOKŁADNIE wpisy `wklady_pominiete`, a próg czyta z odpowiedzi — ten sam
  *    zapis co tytuł kroku śladu `wklady_pominiete` (frontend nie ma własnej stałej),
  *  - liczby kroku `wklady_pominiete` (per tor) sumują się do liczby wpisów zestawienia,
- *  - zestawienie (tryb ekspercki) nie pokazuje fałszywego zera „0,000".
+ *  - zestawienie (tryb ekspercki) nie pokazuje fałszywego zera „0,000",
+ *  - kąt fazora każdego wpisu zestawienia to „nie określono" (karta KAT-WKLADU-POMINIETEGO:
+ *    rdzeń podaje `null`, bo poniżej progu kąt jest resztą arytmetyki), nigdy liczba.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
@@ -94,6 +96,10 @@ describe('Wkłady pominięte — ten sam zbiór gałęzi w tabeli, śladzie i ze
     expect(wszystkie.some((o) => (o.wklady_pominiete ?? []).length > 0)).toBe(true);
     expect(wszystkie.some((o) => (o.wklady_pominiete ?? []).length === 0)).toBe(true);
     for (const o of wszystkie) expect(typeof o.prog_wkladu_pominietego_a).toBe('number');
+    // Kąt fazora wpisu pominiętego nie jest określony — fixtura z liczbą to regresja rdzenia.
+    const katy = wszystkie.flatMap((o) => (o.wklady_pominiete ?? []).map((w) => w.kat_deg));
+    expect(katy.length).toBeGreaterThan(0);
+    expect(katy.filter((k) => k !== null)).toEqual([]);
   });
 
   it.each(PRZYPADKI)(
@@ -174,7 +180,10 @@ describe('Wkłady pominięte — ten sam zbiór gałęzi w tabeli, śladzie i ze
       expect(tabelaPominietych).not.toBeNull();
       const wierszePominietych = within(tabelaPominietych!).getAllByTestId('mvd-wyn-wiersz');
       expect(wierszePominietych).toHaveLength(pominiete.length);
-      for (const w of wierszePominietych) expect(w.textContent).not.toContain('0,000');
+      for (const w of wierszePominietych) {
+        expect(w.textContent).not.toContain('0,000');
+        expect(w.textContent).toContain('nie określono');
+      }
     },
   );
 });

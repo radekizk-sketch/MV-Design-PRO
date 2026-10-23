@@ -138,9 +138,15 @@ test.describe('zwarcia-rozplyw:screenshot', () => {
       await expect(sekcja.getByTestId('mvd-zwarcia-rozplyw-pominiete-nota')).toContainText(
         `(|I| < ${(prog as number).toExponential()} A): ${pominiete.length}.`,
       );
-      await expect(
-        sekcja.getByTestId('mvd-zwarcia-rozplyw-pominiete-tabela').getByTestId('mvd-wyn-wiersz'),
-      ).toHaveCount(pominiete.length);
+      const wierszePominietych = sekcja
+        .getByTestId('mvd-zwarcia-rozplyw-pominiete-tabela')
+        .getByTestId('mvd-wyn-wiersz');
+      await expect(wierszePominietych).toHaveCount(pominiete.length);
+      // Kąt fazora wkładu pominiętego nie jest określony (karta KAT-WKLADU-POMINIETEGO):
+      // każdy wiersz zestawienia pokazuje „nie określono", nigdy liczbę stopni.
+      for (let i = 0; i < pominiete.length; i += 1) {
+        await expect(wierszePominietych.nth(i)).toContainText('nie określono');
+      }
 
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);

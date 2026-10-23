@@ -186,8 +186,10 @@ export interface ShortCircuitBranchFlow {
  * PROG-ZERA-WKLADOW) — para źródło×gałąź, której |I| jest poniżej progu rdzenia
  * (`PROG_WKLADU_POMIJALNEGO_A`, odbicie w `prog_wkladu_pominietego_a` odpowiedzi
  * rozpływu). Projekcja `_sc_wklady_pominiete` (`enm/canonical_analysis.py`): surowe
- * |I| obcięte do 3 cyfr znaczących w stronę zera (kA), kąt fazora (°, `null` dla
- * fazora zerowego). To NIE jest zero ani wkład z listy — tabela rozpływu go nie
+ * |I| obcięte do 3 cyfr znaczących w stronę zera (kA); kąt fazora ZAWSZE `null` — poniżej
+ * progu kąt nie jest określony (fazor to reszta arytmetyki zależna od maszyny, karta
+ * KAT-WKLADU-POMINIETEGO; przyczyna w notatce kroku śladu `wklady_pominiete`), więc
+ * prezentacja pokazuje „nie określono", nigdy liczbę. To NIE jest zero ani wkład z listy — tabela rozpływu go nie
  * pokazuje; zestawienie stoi osobno.
  */
 export interface WkladPominietyRozplywu {
@@ -197,7 +199,8 @@ export interface WkladPominietyRozplywu {
   /** Tor rdzenia, którym policzono wkład: sieć zastępcza albo superpozycja falownikowa. */
   tor: 'thevenin' | 'falownik';
   i_ka: number;
-  kat_deg: number | null;
+  /** Kąt fazora nieokreślony poniżej progu — rdzeń nie publikuje liczby. */
+  kat_deg: null;
 }
 
 /**
@@ -738,7 +741,6 @@ export const TRACE_VALUE_LABELS: Record<string, string> = {
   liczba_pominietych_falownik: 'Liczba wkładów pominiętych — źródła falownikowe',
   suma_modulow_pominietych_thevenin_a: 'Suma modułów wkładów pominiętych — sieć zastępcza',
   suma_modulow_pominietych_falownik_a: 'Suma modułów wkładów pominiętych — źródła falownikowe',
-  suma_fazorowa_pominietych_thevenin_a: 'Suma fazorowa wkładów pominiętych — sieć zastępcza',
   s_rt_mva: 'Moc znamionowa transformatora SrT',
   u_rt_hv_kv: 'Napięcie znamionowe strony górnej UrTHV',
   u_rt_lv_kv: 'Napięcie znamionowe strony dolnej UrTLV',
@@ -793,7 +795,6 @@ export const TRACE_VALUE_UNITS: Record<string, string> = {
   prog_a: 'A',
   suma_modulow_pominietych_thevenin_a: 'A',
   suma_modulow_pominietych_falownik_a: 'A',
-  suma_fazorowa_pominietych_thevenin_a: 'A',
   v_nodes_pu: 'j.w.',
   v_from_pu: 'j.w.',
   v_to_pu: 'j.w.',

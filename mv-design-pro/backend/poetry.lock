@@ -2589,6 +2589,18 @@ anyio = ">=3.4.0,<5"
 full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart (>=0.0.7)", "pyyaml"]
 
 [[package]]
+name = "threadpoolctl"
+version = "3.7.0"
+description = "threadpoolctl"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "threadpoolctl-3.7.0-py3-none-any.whl", hash = "sha256:cd8b60b5641b45c67bbf73c64c843235fc2d8a480c87389f52f5dbee893b86be"},
+    {file = "threadpoolctl-3.7.0.tar.gz", hash = "sha256:61348cfb77d53b9242e0017029244b559b810c142ced65b4e21eeca1843959a7"},
+]
+
+[[package]]
 name = "types-pyyaml"
 version = "6.0.12.20260724"
 description = "Typing stubs for PyYAML"
@@ -2959,4 +2971,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "0e505b5c5325f5773df65062ba40d2ecd6618b359491c0fedb591b628849fb18"
+content-hash = "d486742a0c43ad3b756406aaf34a8f2f8d427808ed656ac763aef6a5c3b17be3"

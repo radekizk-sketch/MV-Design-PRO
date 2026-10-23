@@ -162,14 +162,10 @@
         "result": {
           "liczba_pominietych_thevenin": 1,
           "suma_modulow_pominietych_thevenin_a": 7.15e-14,
-          "suma_fazorowa_pominietych_thevenin_a": {
-            "re": -6.93e-14,
-            "im": -1.72e-14
-          },
           "liczba_pominietych_falownik": 3,
           "suma_modulow_pominietych_falownik_a": 3.63e-15
         },
-        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
     ],
     "wklady_pominiete": [
@@ -195,7 +191,7 @@
         "source_id": "gen_pv",
         "tor": "falownik",
         "i_ka": 3.63e-18,
-        "kat_deg": -12.7
+        "kat_deg": null
       },
       {
         "branch_id": "tr_sn_nn",
@@ -203,7 +199,7 @@
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
         "i_ka": 7.15e-17,
-        "kat_deg": -166.0
+        "kat_deg": null
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
@@ -627,14 +623,10 @@
         "result": {
           "liczba_pominietych_thevenin": 1,
           "suma_modulow_pominietych_thevenin_a": 3.2e-14,
-          "suma_fazorowa_pominietych_thevenin_a": {
-            "re": -3.06e-14,
-            "im": 9.35e-15
-          },
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
         },
-        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
     ],
     "wklady_pominiete": [
@@ -652,7 +644,7 @@
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
         "i_ka": 3.2e-17,
-        "kat_deg": 163.0
+        "kat_deg": null
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
@@ -1474,14 +1466,10 @@
         "result": {
           "liczba_pominietych_thevenin": 1,
           "suma_modulow_pominietych_thevenin_a": 7.15e-14,
-          "suma_fazorowa_pominietych_thevenin_a": {
-            "re": -6.93e-14,
-            "im": -1.72e-14
-          },
           "liczba_pominietych_falownik": 3,
           "suma_modulow_pominietych_falownik_a": 3.63e-15
         },
-        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
     ],
     "wklady_pominiete": [
@@ -1507,7 +1495,7 @@
         "source_id": "gen_pv",
         "tor": "falownik",
         "i_ka": 3.63e-18,
-        "kat_deg": -12.7
+        "kat_deg": null
       },
       {
         "branch_id": "tr_sn_nn",
@@ -1515,7 +1503,7 @@
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
         "i_ka": 7.15e-17,
-        "kat_deg": -166.0
+        "kat_deg": null
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,
@@ -1939,14 +1927,10 @@
         "result": {
           "liczba_pominietych_thevenin": 1,
           "suma_modulow_pominietych_thevenin_a": 1.23e-13,
-          "suma_fazorowa_pominietych_thevenin_a": {
-            "re": -1.19e-13,
-            "im": 2.97e-14
-          },
           "liczba_pominietych_falownik": 1,
           "suma_modulow_pominietych_falownik_a": 0.0
         },
-        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia."
+        "notes": "Każdy taki wpis to wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A) — nie zero: surowy moduł prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: kąt fazora nie jest określony poniżej progu wkładu pomijalnego (|I| < 1e-6 A): fazor tej wielkości to reszta arytmetyki zmiennoprzecinkowej, której kąt zależy od kolejności sumowania na danej maszynie, a nie od fizyki sieci — pole kąta wpisu jest puste."
       }
     ],
     "wklady_pominiete": [
@@ -1964,7 +1948,7 @@
         "source_id": "THEVENIN_GRID",
         "tor": "thevenin",
         "i_ka": 1.23e-16,
-        "kat_deg": 166.0
+        "kat_deg": null
       }
     ],
     "prog_wkladu_pominietego_a": 1e-06,

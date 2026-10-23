@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import cmath
 import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -37,6 +36,7 @@ from network_model.solvers.short_circuit_contributions import (
     OPIS_PROGU_WKLADU_POMIJALNEGO,
     OPIS_PROGU_WKLADU_POMIJALNEGO_LATEX,
     PROG_WKLADU_POMIJALNEGO_A,
+    PRZYCZYNA_KATA_NIEOKRESLONEGO,
     PRZYCZYNA_WKLADU_INNA_WYSPA,
     TOLERANCJA_WZGLEDNA_BILANSU,
     TOR_FALOWNIK,
@@ -50,6 +50,7 @@ from network_model.solvers.short_circuit_contributions import (
     boczniki_zrodel,
     fazor_do_tekstu_sladu,
     jest_wkladem_pominietym,
+    kat_fazora_wkladu_deg,
     prad_do_tekstu_sladu,
     tolerancja_bilansu_a,
     wyspy_macierzy,
@@ -291,7 +292,8 @@ class ShortCircuitResult:
     tb_zrodlo: dict[str, Any] | None = None
     # Karta PROG-ZERA-WKLADOW (zgoda B-01 z 2026-10-21, addytywnie): wkłady gałęziowe
     # pominięte na podstawie tolerancji numerycznej (|I| < 1e-6 A) — NIE zera; surowe |I|
-    # i kąt fazora w zapisie deterministycznym. None = wkładów nie liczono albo żaden nie
+    # w zapisie deterministycznym, kąt fazora nieokreślony (karta KAT-WKLADU-POMINIETEGO,
+    # `PRZYCZYNA_KATA_NIEOKRESLONEGO`). None = wkładów nie liczono albo żaden nie
     # był pominięty (payload bez klucza, bajt w bajt jak przed kartą).
     wklady_pominiete: list[WkladPominiety] | None = None
     # Karta WKLAD-ZRODLA (zgoda B-01 architekta z 2026-10-22, addytywnie): wkład per źródło
@@ -1513,8 +1515,8 @@ class ShortCircuitIEC60909Solver:
         Klasyfikacja wkładu (karta PROG-ZERA-WKLADOW, zgoda B-01 z 2026-10-21) — JEDEN
         predykat `jest_wkladem_pominietym` (|I| < 1e-6 A): wkład gałęzi o takim prądzie to
         „wkład pominięty na podstawie tolerancji numerycznej (|I| < 1e-6 A)” — nie trafia
-        do listy wkładów, tylko do zwracanego zestawienia wkładów pominiętych (surowe |I|
-        i kąt fazora). Ten sam predykat na wkładzie przeniesionym źródła: źródło, którego
+        do listy wkładów, tylko do zwracanego zestawienia wkładów pominiętych (surowe |I|;
+        kąt nieokreślony, `PRZYCZYNA_KATA_NIEOKRESLONEGO`). Ten sam predykat na wkładzie przeniesionym źródła: źródło, którego
         wkład do zwarcia jest pomijalny, nie rozprowadza prądu po gałęziach (surowa wartość
         stoi w `contributions` wyniku). Zwraca (wkłady, wkłady pominięte).
         """
@@ -1591,7 +1593,6 @@ class ShortCircuitIEC60909Solver:
                             source_id=source.id,
                             branch_id=branch_id,
                             i_a=float(i_mag),
-                            fazor_a=complex(i_branch),
                         )
                     )
                     continue
@@ -1665,7 +1666,7 @@ class ShortCircuitIEC60909Solver:
         gałąź o takim prądzie to „wkład pominięty na podstawie tolerancji numerycznej
         (|I| < 1e-6 A)” — bez wpisu na liście wkładów i bez kroku śladu
         ``thevenin_flow_<gałąź>``, z wpisem w zwracanym zestawieniu wkładów pominiętych
-        (surowe |I| i kąt fazora). Suma kontrolna KCL obejmuje gałęzie OPUBLIKOWANE — ten
+        (surowe |I|; kąt nieokreślony, `PRZYCZYNA_KATA_NIEOKRESLONEGO`). Suma kontrolna KCL obejmuje gałęzie OPUBLIKOWANE — ten
         sam zbiór co lista wkładów i kroki śladu.
 
         Zwraca (wkłady per gałąź, ślad WHITE BOX, wkłady pominięte). Pomijalny
@@ -1738,7 +1739,6 @@ class ShortCircuitIEC60909Solver:
                         source_id=THEVENIN_GRID_SOURCE_ID,
                         branch_id=branch_id,
                         i_a=i_a,
-                        fazor_a=complex(fraction) * ik_thevenin_a,
                     )
                 )
                 continue
@@ -2004,7 +2004,9 @@ class ShortCircuitIEC60909Solver:
             suma_fazorowa += fazor_a
             suma_modulow += i_a
             pominiety = jest_wkladem_pominietym(i_a)
-            kat = None if wspolczynnik == 0 else math.degrees(cmath.phase(wspolczynnik))
+            # Kąt wkładu z JEDNEGO predykatu z klasyfikacją wpisu: dla wkładu pominiętego
+            # nieokreślony (``None``, `PRZYCZYNA_KATA_NIEOKRESLONEGO`) — także w kroku śladu.
+            kat = kat_fazora_wkladu_deg(i_a, wspolczynnik)
             i_zaciski_a = i_a * un_f_kv / un_k_kv
             udzial = i_a / ik_total_a if ik_total_a > 0 else 0.0
             if pominiety:
@@ -2016,9 +2018,9 @@ class ShortCircuitIEC60909Solver:
                     klasa=KLASA_WKLADU_ZRODLA_POMINIETY,
                     i_a=zaokraglij_cyfry_znaczace(i_a),
                     i_zaciski_a=zaokraglij_cyfry_znaczace(i_zaciski_a),
-                    kat_deg=None if kat is None else zaokraglij_cyfry_znaczace(kat),
+                    kat_deg=kat,
                     udzial=zaokraglij_cyfry_znaczace(udzial),
-                    przyczyna=NAZWA_WKLADU_POMINIETEGO,
+                    przyczyna=f"{NAZWA_WKLADU_POMINIETEGO}; {PRZYCZYNA_KATA_NIEOKRESLONEGO}",
                 )
             else:
                 wpis = WkladZrodla(
@@ -2143,12 +2145,11 @@ class ShortCircuitIEC60909Solver:
 
         Bilans per tor źródła z wartości zestawienia (te same 3 cyfry znaczące co wpisy,
         więc krok jest funkcją zestawienia, nie szumu poniżej trzeciej cyfry): liczba
-        wpisów i suma modułów (górne ograniczenie prądu pominiętego); dla toru sieci
-        zastępczej także suma fazorowa — wszystkie jej wpisy odnoszą kąt do JEDNEGO prądu
-        I_k''(Th). Toru falowników nie sumuje się fazorowo: kąt wpisu jest odniesiony do
-        prądu WŁASNEGO źródła (rdzeń przenosi wkład falownika jako moduł), więc suma
-        fazorów różnych źródeł nie miałaby treści fizycznej. Zestawienie wpisów (gałąź,
-        surowe |I|, kąt, tor) stoi w polu wyniku ``wklady_pominiete``.
+        wpisów i suma modułów (górne ograniczenie prądu pominiętego). Sumy fazorowej
+        pominiętych krok nie podaje: kąt fazora wkładu pominiętego nie jest określony
+        (`PRZYCZYNA_KATA_NIEOKRESLONEGO`, karta KAT-WKLADU-POMINIETEGO), więc suma fazorów
+        nie miałaby treści — górnym ograniczeniem jej modułu jest suma modułów. Zestawienie
+        wpisów (gałąź, surowe |I|, tor) stoi w polu wyniku ``wklady_pominiete``.
         """
         wejscie: dict[str, Any] = {"prog_a": PROG_WKLADU_POMIJALNEGO_A}
         wynik: dict[str, Any] = {}
@@ -2161,17 +2162,6 @@ class ShortCircuitIEC60909Solver:
             wynik[f"suma_modulow_pominietych_{tor}_a"] = zaokraglij_cyfry_znaczace(
                 float(sum(w.i_a for w in wpisy))
             )
-            if tor == TOR_THEVENIN:
-                suma_fazorowa = complex(
-                    sum(
-                        0j if w.kat_deg is None else cmath.rect(w.i_a, math.radians(w.kat_deg))
-                        for w in wpisy
-                    )
-                )
-                wynik[f"suma_fazorowa_pominietych_{tor}_a"] = complex(
-                    zaokraglij_cyfry_znaczace(suma_fazorowa.real),
-                    zaokraglij_cyfry_znaczace(suma_fazorowa.imag),
-                )
             opisy.append(
                 f"{'sieć zastępcza' if tor == TOR_THEVENIN else 'falowniki'}: {len(wpisy)}"
             )
@@ -2191,9 +2181,10 @@ class ShortCircuitIEC60909Solver:
             result=wynik,
             notes=(
                 f"Każdy taki wpis to {NAZWA_WKLADU_POMINIETEGO} — nie zero: surowy moduł "
-                "prądu i kąt fazora (3 cyfry znaczące, w stronę zera) są w zestawieniu "
-                "wkładów pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych "
-                "ani do sumy kontrolnej bilansu w węźle zwarcia."
+                "prądu (3 cyfry znaczące, w stronę zera) jest w zestawieniu wkładów "
+                "pominiętych wyniku. Wpis nie wchodzi do listy wkładów gałęziowych ani do "
+                f"sumy kontrolnej bilansu w węźle zwarcia. Kąt wpisu: "
+                f"{PRZYCZYNA_KATA_NIEOKRESLONEGO} — pole kąta wpisu jest puste."
             ),
         )
         return tracer.to_list()[0]
