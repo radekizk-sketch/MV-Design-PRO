@@ -409,9 +409,13 @@ przepisane do wierszy rejestru planu A/B §7):
    jednym wątku i load average 9–12, 6 130,7 ms w łańcuchu p5 (ten sam `backend/src`; obciążenia
    wtedy nie mierzono). Naprawa w backendzie e2e — `9cc212b9` (`playwright.config.ts`: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1` dla backendu e2e); biegi testów integratora i wykonawców —
    `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1` (reguła biegów weryfikacyjnych, `KARTY_OTWARTE_2026-09.md`);
-   polityka wątków obrazu Dockera — z pomiaru PERF-DYN-0 w karcie DYNAMIKA-W-TLE (wykonany 2026-09-30: 1 wątek 42,1 s, domyślne 40,5 s na sieci złotej 52 stacji, 10 s symulacji — różnica w szumie; obraz i compose: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`). Wyniki od liczby wątków
-   i od jądra OpenBLAS nie zależą W TOLERANCJI KOMPARATORA FIKSTUR (DETERMINIZM-KATA-FAZORA,
-   PRZENOSNOSC-NIEPEWNOSCI); ostatnie cyfry wartości zależą od kolejności sumowania. Korekta 2026-09-30:
+   polityka wątków obrazu Dockera — z pomiaru PERF-DYN-0 w karcie DYNAMIKA-W-TLE (wykonany 2026-09-30: 1 wątek 42,1 s, domyślne 40,5 s na sieci złotej 52 stacji, 10 s symulacji — różnica w szumie; obraz i compose: `OPENBLAS_NUM_THREADS=1`, `OMP_NUM_THREADS=1`). Od liczby wątków wynik
+   nie zależy BIT W BIT od karty DETERMINIZM-HISTORII-PROCESU (2026-10-23): `network_model/watki_blas.py`
+   liczy każdą bibliotekę BLAS procesu jednym wątkiem niezależnie od zmiennych otoczenia (wcześniej
+   Z_bus, krok Newtona i macierz wzmocnienia WLS miały inne ostatnie bity przy 1, 2 i 4 wątkach); zmienne
+   otoczenia oszczędzają już tylko pulę wątków. Od jądra OpenBLAS (procesor maszyny) wynik nie zależy
+   W TOLERANCJI KOMPARATORA FIKSTUR (DETERMINIZM-KATA-FAZORA, PRZENOSNOSC-NIEPEWNOSCI); ostatnie cyfry
+   zależą od kolejności sumowania jądra. Korekta 2026-09-30:
    dawne zdanie „wyniki od liczby wątków nie zależą” było za mocne — test obu liczb wątków biegł na
    jednym jądrze, a runner CI (inne jądro) dał `u_f_est_hz` próbki 0 różne o 0,38–0,57 %.
 6. **Migawki WIP** (A.3) pochodzą z ~01:10 UTC 2026-09-30; wykonawcy pracowali dalej — przy wznowieniu

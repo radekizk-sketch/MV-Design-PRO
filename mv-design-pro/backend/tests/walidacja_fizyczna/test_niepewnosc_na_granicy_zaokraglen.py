@@ -544,3 +544,9 @@ def test_scena_dynamiki_nie_zalezy_od_jadra_i_liczby_watkow_blas() -> None:
     for klucz, wariant in reszta:
         roznice = roznice_z_tolerancja(wzorzec, wariant)
         assert roznice == [], f"{wzorzec_klucz} wobec {klucz}:\n" + "\n".join(roznice[:20])
+    # W obrebie JEDNEGO jadra liczba watkow nie zmienia ani jednego bitu: polityka procesu
+    # `network_model/watki_blas.py` liczy kazda biblioteke BLAS jednym watkiem niezaleznie od
+    # `OPENBLAS_NUM_THREADS` (karta DETERMINIZM-HISTORII-PROCESU). Tolerancja wyzej zostaje
+    # dla osi jadra — inny procesor to inne jadro OpenBLAS i inne ostatnie bity.
+    for jadro in JADRA_OPENBLAS:
+        assert warianty[(jadro, 1)] == warianty[(jadro, 2)], f"jadro {jadro}: 1 wobec 2 watkow"

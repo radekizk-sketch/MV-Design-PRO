@@ -16,11 +16,14 @@ Dwie sieci:
   izolacją w 0,15 s (X_f = 2 Ω); horyzont z argumentu (domyślnie 10 s), krok stały 0,002 s (nastawy
   sceny harnessu).
 
-Liczba wątków BLAS jest cechą PROCESU: ustaw `OPENBLAS_NUM_THREADS`/`OMP_NUM_THREADS`
-PRZED uruchomieniem (skrypt tylko raportuje wartości z otoczenia). Wynik: JSON na stdout.
+Liczba wątków BLAS NIE jest już cechą otoczenia: `network_model/watki_blas.py` liczy każdą
+bibliotekę BLAS procesu jednym wątkiem niezależnie od `OPENBLAS_NUM_THREADS` (karta
+DETERMINIZM-HISTORII-PROCESU — inna liczba wątków dawała inne ostatnie bity wyniku). Skrypt
+raportuje zmienne otoczenia i liczbę wątków, którą biblioteki naprawdę liczą. Wynik: JSON na
+stdout.
 
 Uruchomienie (z katalogu `backend`):
-    OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=src:. python scripts/perf_dyn_0.py
+    PYTHONPATH=src:. python scripts/perf_dyn_0.py
     PYTHONPATH=src:. python scripts/perf_dyn_0.py --siec zlota --horyzont-s 10
 """
 
@@ -61,6 +64,7 @@ from enm.scenariusze import (  # noqa: E402
     zapisz_scenariusz,
 )
 from enm.store import reset_enm_store, set_enm  # noqa: E402
+from network_model.watki_blas import biblioteki_blas  # noqa: E402
 
 CASE_ID = "perf-dyn-0"
 PROFIL_PV = "default_pv_gfl"
@@ -240,6 +244,9 @@ def _otoczenie() -> dict[str, Any]:
         "OPENBLAS_NUM_THREADS": os.environ.get("OPENBLAS_NUM_THREADS"),
         "OMP_NUM_THREADS": os.environ.get("OMP_NUM_THREADS"),
         "MKL_NUM_THREADS": os.environ.get("MKL_NUM_THREADS"),
+        "watki_bibliotek_blas": {
+            str(biblioteka["prefix"]): biblioteka["num_threads"] for biblioteka in biblioteki_blas()
+        },
         "obciazenie_1_5_15_min": obciazenie,
     }
 

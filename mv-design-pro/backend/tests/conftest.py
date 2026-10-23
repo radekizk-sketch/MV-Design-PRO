@@ -23,11 +23,14 @@ import pytest
 # OpenBLAS startuje w KAZDYM procesie numpy tyle watkow, ile rdzeni: cztery workery na
 # czterech rdzeniach to 16 watkow liczacych, ktore czekaja na siebie nawzajem (pomiar karty
 # WATKI-BLAS-E2E: odwrocenie macierzy 800x800 x6 pod obcym obciazeniem — watki domyslne
-# 17,6 s, jeden watek 3,9 s), a testy budzetu czasu i biegi wrazliwe na kolejnosc sumowania
-# dostaja wynik zalezny od obciazenia maszyny. Zmienne musza byc ustawione PRZED pierwszym
-# importem numpy w procesie — ten modul importuje go dopiero posrednio, nizej. Wartosc
-# wskazana z zewnatrz wygrywa (`setdefault`). Rzeczywista liczbe watkow biblioteki w
-# procesie przypina `tests/ci/test_izolacja_procesow_testowych.py`.
+# 17,6 s, jeden watek 3,9 s), a testy budzetu czasu dostaja czas zalezny od obciazenia
+# maszyny. Zmienne musza byc ustawione PRZED pierwszym importem numpy w procesie — ten modul
+# importuje go dopiero posrednio, nizej. Wartosc wskazana z zewnatrz wygrywa (`setdefault`).
+# WYNIK solvera od tej zmiennej nie zalezy: liczbe watkow KAZDEJ biblioteki BLAS procesu
+# ustala `network_model/watki_blas.py` przy imporcie pakietu (karta
+# DETERMINIZM-HISTORII-PROCESU) — zmienna oszczedza tylko utworzenie puli watkow, ktorej
+# polityka i tak nie uzyje. Rzeczywista liczbe watkow biblioteki w procesie przypina
+# `tests/ci/test_izolacja_procesow_testowych.py`.
 if "PYTEST_XDIST_WORKER" in os.environ:
     for _zmienna_watkow in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS"):
         os.environ.setdefault(_zmienna_watkow, "1")
