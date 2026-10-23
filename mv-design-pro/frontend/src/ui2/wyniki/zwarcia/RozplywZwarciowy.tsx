@@ -29,7 +29,8 @@ import type {
   WkladPominietyRozplywu,
 } from '../../../ui/results-inspector/types';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { TabelaWynikow, useNazwaObiektu } from '../wzorzec';
+import { StanDanychWyniku, TabelaWynikow, useNazwaObiektu } from '../wzorzec';
+import type { DanePrzyjeteWyniku } from './api';
 import { ZWARCIA_STRINGS, notaWkladowPominietych } from './strings';
 import {
   KLUCZ_POMINIETY,
@@ -56,6 +57,11 @@ export interface RozplywZwarciowyProps {
   blad: boolean;
   /** Pobieranie danych punktu w toku — osobno od „brak danych" i od błędu. */
   ladowanie: boolean;
+  /**
+   * Dane przyjęte I″k punktu z TEJ SAMEJ odpowiedzi co `flows` (zasada nr 4, kontrakt werdyktu
+   * §3); `null`/brak = wynik na danych projektu — sekcja nie pokazuje nic.
+   */
+  danePrzyjete?: DanePrzyjeteWyniku | null;
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
 }
@@ -67,6 +73,7 @@ export function RozplywZwarciowy({
   progA,
   blad,
   ladowanie,
+  danePrzyjete = null,
   trybZaawansowania,
   onOtworzDowod,
 }: RozplywZwarciowyProps) {
@@ -138,6 +145,15 @@ export function RozplywZwarciowy({
           </div>
           {zestawienie}
         </>
+      )}
+      {!blad && !ladowanie && danePrzyjete && (
+        <div className="mvd-zwarcia-dane-przyjete" data-testid="mvd-zwarcia-rozplyw-dane">
+          <StanDanychWyniku
+            stan={danePrzyjete.stan}
+            dane={danePrzyjete.dane}
+            testId="mvd-zwarcia-rozplyw"
+          />
+        </div>
       )}
     </section>
   );

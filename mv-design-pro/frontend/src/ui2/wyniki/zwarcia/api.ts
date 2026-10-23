@@ -24,7 +24,13 @@ import type {
   WkladZrodlaRozplywu,
 } from '../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import type { KrokWywodu, PozycjaWalidacji, SekcjaWywodu } from '../wzorzec';
+import type {
+  DanaPrzyjeta,
+  KrokWywodu,
+  PozycjaWalidacji,
+  SekcjaWywodu,
+  StanDanych,
+} from '../wzorzec';
 import type { WkladZwarciowy } from './zwarciaModel';
 
 /** Kształt 1:1 pozycji odpowiedzi backendu (`MachinePartialContribution.to_dict`). */
@@ -47,8 +53,45 @@ export interface WkladZrodlaOdpowiedz {
   readonly wywod?: readonly KrokWywodu[];
 }
 
+/**
+ * Dane przyjęte wyniku punktu zwarcia — pola addytywne odpowiedzi wkładów
+ * (`api/proof_pack.py::_dane_przyjete_wkladow`) i rozpływu punktu
+ * (`enm/canonical_analysis.py::_dane_przyjete_punktu_rozplywu`), obecne WYŁĄCZNIE, gdy prąd
+ * punktu stoi na wartości roboczej: tolerancji sieci nN, impedancji gałęzi (linia 110 kV bez
+ * geometrii słupa projektu) albo parametru maszyny wirującej. Elementy listy to rekord
+ * `DanaPrzyjeta` kontraktu werdyktu (`werdykt/kontrakt.py`, lustro `wzorzec/werdykt.ts`);
+ * `status_danych` = `UNVALIDATED_INPUT` ⇔ lista niepusta (kontrakt werdyktu §3).
+ */
+export interface DanePrzyjeteOdpowiedzi {
+  readonly status_danych?: StanDanych;
+  readonly dane_przyjete?: readonly DanaPrzyjeta[];
+}
+
+/**
+ * Dane przyjęte wyniku po projekcji — niepusta lista i stan danych z odpowiedzi (`null`, gdy
+ * odpowiedź go nie niesie; frontend stanu nie wylicza).
+ */
+export interface DanePrzyjeteWyniku {
+  readonly stan: StanDanych | null;
+  readonly dane: readonly DanaPrzyjeta[];
+}
+
+/**
+ * Projekcja danych przyjętych odpowiedzi: `null`, gdy lista jest pusta albo nieobecna (backend
+ * nie wysyła wtedy żadnego z pól — wynik na danych projektu, sekcja nie pokazuje nic). O tym, czy
+ * cokolwiek się pokazuje, rozstrzyga JEDNO źródło — lista wpisów; sam status bez wpisów niczego
+ * nie wyświetla. Stan danych wyłącznie z odpowiedzi (backend wysyła parę razem, kontrakt
+ * werdyktu §3); gdyby go zabrakło przy niepustej liście, wpisy nadal się pokazują, a stanu
+ * frontend nie dopowiada (zero logiki decyzyjnej, jak lustro `wzorzec/werdykt.ts`).
+ */
+export function naDanePrzyjete(odpowiedz: DanePrzyjeteOdpowiedzi): DanePrzyjeteWyniku | null {
+  const dane = odpowiedz.dane_przyjete ?? [];
+  if (dane.length === 0) return null;
+  return { stan: odpowiedz.status_danych ?? null, dane };
+}
+
 /** Kształt 1:1 odpowiedzi (`MachineShortCircuitResult.to_dict`, pola konsumowane). */
-export interface WkladyOdpowiedz {
+export interface WkladyOdpowiedz extends DanePrzyjeteOdpowiedzi {
   readonly contributions: readonly WkladZrodlaOdpowiedz[];
   /** Wywód prezentacyjny {tekst, latex} z backendu (zasada KaTeX; addytywny). */
   readonly wywod?: readonly KrokWywodu[];
@@ -64,6 +107,8 @@ export interface WkladyZWywodem {
   readonly wywod: readonly KrokWywodu[];
   readonly wywodSekcje: readonly SekcjaWywodu[];
   readonly walidacjaIec: readonly PozycjaWalidacji[];
+  /** Dane przyjęte wkładów punktu (`naDanePrzyjete`); `null` = wynik na danych projektu. */
+  readonly danePrzyjete: DanePrzyjeteWyniku | null;
 }
 
 /**
@@ -228,6 +273,7 @@ export function useWkladyZwarciowe(
               wywod: odpowiedz.wywod ?? [],
               wywodSekcje: odpowiedz.wywod_sekcje ?? [],
               walidacjaIec: odpowiedz.walidacja_iec ?? [],
+              danePrzyjete: naDanePrzyjete(odpowiedz),
             },
           }));
       })
@@ -279,7 +325,7 @@ export function kluczWkladow(punkt: string, parametry: ParametryWkladowBiegu): s
  * falownikowa nie ma śladu, więc `branch_contributions` bywa niepusty przy
  * `branch_flow_trace: []`, gdy punkt nie ma wkładu sieci zastępczej).
  */
-export interface RozplywOdpowiedz {
+export interface RozplywOdpowiedz extends DanePrzyjeteOdpowiedzi {
   readonly run_id: string;
   readonly target_id: string;
   readonly branch_contributions: readonly ShortCircuitBranchFlow[] | null;
@@ -325,6 +371,7 @@ interface WpisRozplywu {
   readonly trace: TraceStep[] | null;
   readonly pominiete: WkladPominietyRozplywu[];
   readonly progA: number | null;
+  readonly danePrzyjete: DanePrzyjeteWyniku | null;
 }
 
 /**
@@ -344,6 +391,11 @@ export interface RozplywZeSladem {
   readonly pominiete: WkladPominietyRozplywu[] | null;
   /** Próg z odpowiedzi (odbicie definicji rdzenia, A); `null` = brak danych. */
   readonly progA: number | null;
+  /**
+   * Dane przyjęte I″k punktu z TEJ SAMEJ odpowiedzi (`naDanePrzyjete`); `null` = wynik na
+   * danych projektu albo brak odpowiedzi (wiersz inline, pobieranie, błąd).
+   */
+  readonly danePrzyjete: DanePrzyjeteWyniku | null;
   /** Błąd pobrania (HTTP/sieć) rozpoznany OSOBNO od „brak danych" — uczciwy stan, nie cisza. */
   readonly blad: boolean;
   /** Pobieranie danych punktu w toku — stan ODRĘBNY od „starszy wynik bez danych" i od błędu. */
@@ -396,6 +448,7 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
               trace: odpowiedz.branch_flow_trace ? [...odpowiedz.branch_flow_trace] : null,
               pominiete: [...(odpowiedz.wklady_pominiete ?? [])],
               progA: odpowiedz.prog_wkladu_pominietego_a ?? null,
+              danePrzyjete: naDanePrzyjete(odpowiedz),
             },
           }));
       })
@@ -409,7 +462,7 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
     };
   }, [runId, punkt, inline, dostepny, cache]);
 
-  const bezZestawienia = { pominiete: null, progA: null } as const;
+  const bezZestawienia = { pominiete: null, progA: null, danePrzyjete: null } as const;
   if (inline !== null)
     return { flows: inline, trace: null, ...bezZestawienia, blad: false, ladowanie: false };
   if (!punkt || !dostepny)
@@ -424,6 +477,7 @@ export function useRozplywZwarciowy(runId: string | null, row: ShortCircuitRow |
     trace: wpis.trace,
     pominiete: wpis.pominiete,
     progA: wpis.progA,
+    danePrzyjete: wpis.danePrzyjete,
     blad: false,
     ladowanie: false,
   };
