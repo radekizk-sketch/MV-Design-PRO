@@ -91,3 +91,11 @@ i snapshot OpenAPI przegenerowane; 38 nowych testów, 6 iniekcji czerwonych). Do
 (wystartowało 2026-10-23 06:39 UTC, w kolejce) → przy pełnej zieleni fast-forward programu:
 `git merge-base --is-ancestor origin/claude/mv-design-pro-twin-audit-u4lhy0 db1c688a5 &&
 git push origin db1c688a5:claude/mv-design-pro-twin-audit-u4lhy0` (bez force).
+
+## Aktualizacja: plan A/B i prompt kontynuacji
+
+Czubek `-partia-2` to teraz `0e7a5e7d6` (= `db1c688a5` + aktualizacja planu A/B §7 i §14.4 oraz
+`docs/prompts/PROMPT_KONTYNUACJI_2026-10-23.md`; tylko dokumenty, guardy dokumentów zielone).
+Fast-forward programu robisz na `0e7a5e7d6` po pełnej zieleni CI na tym commicie. Nowa sesja
+zaczyna od promptu z `docs/prompts/PROMPT_KONTYNUACJI_2026-10-23.md` (część A — wątek prowadzący,
+część B — wątek UI/UX); do czasu fast-forwardu plik jest na gałęzi `-partia-2`.
