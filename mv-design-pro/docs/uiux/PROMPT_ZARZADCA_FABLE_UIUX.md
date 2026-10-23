@@ -15,6 +15,11 @@ Do wklejenia jako pierwsza wiadomość nowej sesji agenta prowadzącego.
 > U0/U1 i historyczne karty nie są nowymi zadaniami; nie ponawiaj ich bez stwierdzonej
 > regresji. Opus rozpoczyna od weryfikacji UX-00 i realizacji P0 UX-01…UX-06,
 > bez proszenia o nowy plan i bez zatrzymania prac inżynierskich W/A-B.
+> **P0: UX-04 obejmuje wprost raport H5 i rysunki/symbole ENEA, nie tylko kolory.**
+> Obowiązuje tabela H5-01…H5-05 z `PROGRAM_UIUX_2026-07.md` §12.5a:
+> role pól SN, kolejność aparatów, głowice i porty, proporcje i zgodna symbolika IEC 60617.
+> Rewizja GPZ/110 kV wyłącznie w zakresie granicy zasilania SN. B-02 odrzucone.
+> Brak źródłowych rysunków ENEA = BRAK DOWODU, nie wymyślaj ich zawartości.
 > Pakiet [SEL Blueframe](../research/sel-blueframe/README.md) dostarcza ekrany, filmy,
 > 32 funkcje i testy „+”; **GIS P3, nie wdrażać**. B-02 pozostaje ODRZUCONE.
 > Wykonawcy pomocniczy realizują wyłącznie rozłączne wycinki zatwierdzonych kart;
