@@ -1,5 +1,12 @@
 # SEL Blueframe DMS / PSM → MV-DESIGN PRO — pakiet źródeł dla Opusa
 
+> **STATUS PO KONSOLIDACJI (2026-10-23): MATERIAŁY ŹRÓDŁOWE, NIE ODDZIELNY PLAN.**
+> Programem i jego wykonaniem zarządza Claude Opus 5.5; **jedyne źródło priorytetów i statusu UI/UX**:
+> [`docs/uiux/PROGRAM_UIUX_2026-07.md` §12](../../uiux/PROGRAM_UIUX_2026-07.md#12-zintegrowana-kolejka-wykonawcza--uiux-przemyslowy-decyzja-wlasciciela-2026-10-23).
+> SEL „+” = **UX-01/UX-02**, inspektor i walidacja = UX-03, wygląd = UX-04, wyniki i E2E = UX-05/UX-06.
+> **GIS P3 / STOP**, bez implementacji. Ten katalog nie posiada własnego harmonogramu i nie wymaga
+> zgody na ponowne „rozpoczęcie” programu — Opus kontynuuje jeden istniejący plan.
+
 **Data przeglądu:** 2026-10-23  
 **Baza techniczna:** PR #489, commit `0e7a5e7d698a8812ca20bcb83d0cc9edf02eeb5f`  
 **Status:** dokumentacja referencyjna, NIE implementacja, NIE odbiór B-02.  
