@@ -148,28 +148,74 @@ def _save_pdf(path: Path, data: bytes) -> str:
     return digest
 
 
-def pdf_pages(path: Path) -> list[str]:
+def _ocr_page(path: Path, page_number: int) -> str:
+    """OCR pojedynczej strony bez wcześniejszego tekstu; PDF zostaje lokalnie.
+
+    Wymaga poppler-utils, tesseract-ocr i pakietu tesseract-ocr-pol.
+    Przekroczenie czasu albo brak zasobów nie powodują fikcyjnego wyniku.
+    """
+    if not shutil.which("pdftoppm") or not shutil.which("tesseract"):
+        raise RuntimeError("Brak pdftoppm lub tesseract; nie można rozpoznać stron skanowanych")
+    with tempfile.TemporaryDirectory(prefix="enea-ocr-") as directory:
+        base = Path(directory) / "strona"
+        render = subprocess.run(
+            ["pdftoppm", "-f", str(page_number), "-l", str(page_number),
+             "-singlefile", "-scale-to", "2200", "-png", str(path), str(base)],
+            capture_output=True, text=True, check=False, timeout=60,
+        )
+        if render.returncode:
+            raise RuntimeError("Nie udało się wyrenderować strony PDF do OCR: " + render.stderr[:180])
+        langs = subprocess.run(
+            ["tesseract", "--list-langs"], capture_output=True, text=True,
+            check=False, timeout=10,
+        ).stdout
+        if "pol" not in langs.split():
+            raise RuntimeError("Brak języka pol w Tesseract — wymagany pakiet tesseract-ocr-pol")
+        recognized = subprocess.run(
+            ["tesseract", str(base) + ".png", "stdout", "-l", "pol+eng", "--psm", "3"],
+            capture_output=True, text=True, check=False, timeout=90,
+        )
+        if recognized.returncode:
+            raise RuntimeError("Błąd OCR Tesseract: " + recognized.stderr[:180])
+        return recognized.stdout.strip()
+
+
+def pdf_pages(path: Path, *, enable_ocr: bool = True) -> list[str]:
+    """Każda pozycja ma TEN SAM numer co strona PDF (bez przesunięć).
+
+    Zeszyt 4 AMI jest skanem; bez rozpoznawania stron jego indeks byłby pusty.
+    Strony z samą grafiką mogą pozostać bez tekstu: audyt pokazuje je jawnie.
+    """
     if shutil.which("pdftotext"):
         process = subprocess.run(
             ["pdftotext", "-layout", "-enc", "UTF-8", str(path), "-"],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, check=False, timeout=90,
         )
         if process.returncode:
             raise RuntimeError("pdftotext: " + process.stderr.strip()[:250])
-        text = process.stdout
-        pages = text.split("\f")
-        # Zachowaj strony bez warstwy tekstowej, aby numer PDF pozostał dokładny.
+        pages = process.stdout.split("\f")
         if pages and not pages[-1].strip():
             pages.pop()
     else:
         try:
             import fitz
         except ImportError as exc:
-            raise RuntimeError("Zainstaluj pdftotext (poppler) lub PyMuPDF") from exc
-        with fitz.open(path) as doc:
-            pages = [p.get_text(sort=True) for p in doc]
+            raise RuntimeError("Zainstaluj poppler-utils lub PyMuPDF") from exc
+        with fitz.open(path) as pdf:
+            pages = [page.get_text(sort=True) for page in pdf]
+    if enable_ocr:
+        for i, text in enumerate(pages):
+            # Poniżej 25 liter nie ma wiarygodnej warstwy tekstowej.
+            # Dotyczy także pojedynczych skanowanych załączników do PDF.
+            if len(re.findall(r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż]", text)) < 25:
+                try:
+                    recovered = _ocr_page(path, i + 1)
+                except (RuntimeError, OSError, subprocess.TimeoutExpired) as exc:
+                    raise RuntimeError(f"Nie udało się rozpoznać strony {i + 1}: {exc}") from exc
+                if len(recovered.strip()) > len(text.strip()):
+                    pages[i] = recovered
     if not any(page.strip() for page in pages):
-        raise RuntimeError("PDF nie ma warstwy tekstowej; wymaga osobnego OCR i kontroli")
+        raise RuntimeError("PDF nie ma tekstu po ekstrakcji i OCR")
     return pages
 
 
