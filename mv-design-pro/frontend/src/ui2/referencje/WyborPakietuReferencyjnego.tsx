@@ -26,6 +26,7 @@ import {
   type ReferencePackSummary,
 } from './api';
 import { useWyborPakietu } from './wyborPakietu';
+import { EneaSourceDocuments } from './EneaSourceDocuments';
 import './referencje.css';
 
 export const WYBOR_PAKIETU_TEKSTY = {
@@ -150,6 +151,7 @@ export function WyborPakietuReferencyjnego({
           </option>
         ))}
       </select>
+      {pakietId === 'osd_enea' && <EneaSourceDocuments />}
       {wycofany && (
         <p className="mvd-refwybor-stan" data-testid="mvd-ref-wybor-wycofany">
           {WYBOR_PAKIETU_TEKSTY.wycofany}
