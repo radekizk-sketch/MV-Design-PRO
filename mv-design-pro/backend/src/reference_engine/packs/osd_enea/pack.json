@@ -1,15 +1,37 @@
 {
   "pack_id": "osd_enea",
   "kind": "osd",
-  "name_pl": "Enea Operator — standardy w sieci dystrybucyjnej (stacje SN/nN + telemechanika)",
-  "version": "2026-02",
+  "name_pl": "ENEA Operator — standardy techniczne sieci dystrybucyjnej i IRiESD",
+  "version": "2026-10 (rejestr dokumentów)",
   "status": "repo_verified",
   "source_document_refs": [
-    "Stacje elektroenergetyczne średniego napięcia. Zeszyt 1. Stacje transformatorowe kompaktowe prefabrykowane SN/nn do 630 kVA oraz złącza/szafy kablowe SN — wersja 09.2021-2, obowiązuje od 02.04.2024: https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/STACJE~2.PDF",
-    "Stacje elektroenergetyczne średniego napięcia. Zeszyt 2. Stacje transformatorowe kompaktowe prefabrykowane SN/nn do 400 kVA uproszczone — wersja 06.2024, obowiązuje od 01.01.2025: https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/19.12.2024/Stacje%20elektroenergetyczne%20%C5%9Bredniego%20napi%C4%99cia.%20Zeszyt%202.%20Stacje%20transformatorowe%20kompaktowe%20prefabrykowane%20SNnn%20do%20400%20kVA%20uproszczone%20%20obowi%C4%85zuje%20od%2001.01..pdf",
-    "Stacje elektroenergetyczne średniego napięcia. Zeszyt 3. Stacje transformatorowe słupowe SN/nn — wersja 06.2021-2, obowiązuje od 02.04.2024: https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/21.03.2024_1/Stacje%20elektroenergetyczne%20%C5%9Bredniego%20napi%C4%99cia.%20Zeszyt%203.%20Stacje%20transformatorowe%20s%C5%82upowe%20SNnn%20-%20obowi%C4%85zuje%20od%2002.04.2024.pdf",
-    "Linie i stacje elektroenergetyczne średniego napięcia. Telemechanika — wersja 12.2025, obowiązuje od 01.02.2026 (zastępuje Zeszyt 5): https://www.operator.enea.pl/media/3463/uslugi-dystrybucyjne/linie-i-stacje-elektroenergetyczne-sredniego-napiecia-telemechanika",
-    "Strona indeksowa standardów: https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji"
+    "Stacje 110 kV — zeszyt 1: dwutransformatorowe 110 kV/SN [2024-04-02]: https://www.operator.enea.pl/media/675/stacje-elektroenergetyczne-110-kv-zeszyt-1-stacje-dwutransformatorowe-110-kvsn-obowiazuje",
+    "Stacje 110 kV — zeszyt 2: jednotransformatorowe 110 kV/SN [2023-01-01]: https://www.operator.enea.pl/media/676/0204stacje-elektroenergetyczne-110-kv-zeszyt-2-stacje-jednotransformatorowe-110-kvsn",
+    "Stacje 110 kV — zeszyt 3: rozdzielnie sieciowe [2023-01-01]: https://www.operator.enea.pl/media/677/0303stacje-elektroenergetyczne-110-kv-zeszyt-3-rozdzielnie-sieciowe-110-kv-obowiazuje-od",
+    "Stacje 110 kV — zeszyt 7: rozwiązania konstrukcyjno-budowlane [2025-01-01]: https://www.operator.enea.pl/media/678/stacje-elektroenergetyczne-110-kv-zeszyt-7-rozwiazania-konstrukcyjno-budowlane-obowiazuje",
+    "Napowietrzna aparatura WN prądu przemiennego [2024-04-02]: https://www.operator.enea.pl/media/679/napowietrzna-aparatura-wn-pradu-przemiennego-obowiazuje-od-02042024pdf.pdf",
+    "Linie napowietrzne i kablowe 110 kV — wersja historyczna [2024-07-01–2026-09-30]: https://www.operator.enea.pl/media/680/linie-napowietrzne-i-kablowe-110-kv-obowiazuje-od-01072024pdf.pdf",
+    "Linie napowietrzne i kablowe 110 kV [2026-10-01]: https://www.operator.enea.pl/media/5143/elektroenegetyczne-linie-napowietrzne-i-kablowe-110-kv-obowiazuje-od-01102026pdf.pdf",
+    "Pomiary i diagnostyka linii kablowych WN/SN [2026-07-01]: https://www.operator.enea.pl/media/4771/uslugi-dystrybucyjne/pomiary-i-diagnostyka-lk-wn-i-sn-wersja-022026pdf.pdf",
+    "Stacje SN — zeszyt 1: kompaktowe prefabrykowane SN/nN do 630 kVA i złącza SN [2025-01-01]: https://www.operator.enea.pl/media/683/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-1-stacje-transformatorowe-kompaktowe",
+    "Stacje SN — zeszyt 2: kompaktowe uproszczone SN/nN do 400 kVA [2025-01-01]: https://www.operator.enea.pl/media/684/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-2-stacje-transformatorowe-kompaktowe",
+    "Stacje SN — zeszyt 3: transformatorowe słupowe SN/nN [2024-04-02]: https://www.operator.enea.pl/media/685/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-3-stacje-transformatorowe-slupowe",
+    "Stacje SN — zeszyt 4: moduł bilansujący AMI [2021-11-30]: https://www.operator.enea.pl/media/686/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-4modul-bilansujacy-systemu-ami",
+    "Linie i stacje SN — telemechanika [2026-02-01]: https://www.operator.enea.pl/media/3463/uslugi-dystrybucyjne/linie-i-stacje-elektroenergetyczne-sredniego-napiecia-telemechanika",
+    "Stacje SN — zeszyt 6: stacje wnętrzowe w budynkach [2024-03-01]: https://www.operator.enea.pl/media/688/stacje-elektroenergetyczne-sredniego-napiecia-zeszyt-6-wytyczne-projektowania-i-budowy",
+    "Elektroenergetyczne linie napowietrzne SN [2026-03-16]: https://www.operator.enea.pl/media/4183/uslugi-dystrybucyjne/elektroenergetyczne-linie-napowietrzne-sredniego-napiecia",
+    "Elektroenergetyczne linie kablowe SN [2026-07-01]: https://www.operator.enea.pl/media/4774/uslugi-dystrybucyjne/elektroenergetyczne-linie-kablowe-sn-obowiazuje-od-01072026pdf.pdf",
+    "Elektroenergetyczne linie napowietrzne nN [2026-04-01]: https://www.operator.enea.pl/media/4033/elektroenergetyczne-linie-napowietrzne-niskiego-napiecia-obowiazuje-od-01042026pdf.pdf",
+    "Szafy i złącza kablowe nN z pomiarem rozliczeniowym [2024-02-01]: https://www.operator.enea.pl/media/693/szafy-kablowe-oraz-zlacza-kablowe-nn-z-ukladem-pomiarowo-rozliczeniowym-energii",
+    "Sieć kablowa nN 0,4 kV — projektowanie i budowa [2022-07-01]: https://www.operator.enea.pl/uploads-ev2/Operator/us%C5%82ugidystrybucyjne/instrukcjeistandardysieci/standardywsieci/17.03_elektroenergetyczna-siec-kablowa-nn-0-4kv---wytyczne-projektowania-i-budowy---obowiazuje-od-01.07.2022.pdf",
+    "Tablice i znaki bezpieczeństwa oraz tablice identyfikacyjne [2022-07-01]: https://www.operator.enea.pl/uslugi-dystrybucyjne/instrukcje-i-standardy/standardy-w-sieci-dystrybucji",
+    "Katalog sygnałów, pomiarów i sterowań telemechaniki obiektowej [bez daty na stronie]: https://www.operator.enea.pl/media/696/katalog-standardowych-sygnalow-pomiarow-04052022pdf.pdf",
+    "Układy pomiarowe energii elektrycznej [2024-04-02]: https://www.operator.enea.pl/media/698/uklady-pomiarowe-energii-elektrycznej-obowiazuje-od-02042024pdf.pdf",
+    "Elektroenergetyczne linie kablowe nN [2025-10-01]: https://www.operator.enea.pl/media/2710/elektroenergetyczne-linie-kablowe-niskiego-napiecia-obowiazuje-od-01102025pdf.pdf",
+    "Ochrona przed porażeniem prądem elektrycznym w sieci SN [2025-10-01]: https://www.operator.enea.pl/media/2713/ochrona-przed-porazeniem-pradem-elektrycznym-w-sieci-sn-obowiazuje-od-01102025pdf.pdf",
+    "Budowa układów uziomowych w sieci dystrybucyjnej [2025-10-01]: https://www.operator.enea.pl/media/2716/budowa-ukladow-uziomowych-w-sieci-dystrybucyjnej-obowiazuje-od-01102025pdf.pdf",
+    "IRiESD — tekst ujednolicony od 19.10.2026 [2026-10-19]: https://www.operator.enea.pl/media/5188/iriesdtj-od-19102026pdf.pdf",
+    "IRiESD — karta aktualizacji 45/2026 [2026-10-05]: https://www.operator.enea.pl/media/5134/iriesdenedka45202610pdf.pdf"
   ],
   "station_rules": [
     {
@@ -58,5 +80,5 @@
       "implemented": true
     }
   ],
-  "notes_pl": "Dane z PEŁNEJ lektury 4 publicznych dokumentów standardu Enea Operator (research 2026-07-17, cytowania ze stronami wg stopki dokumentu; raport researchu z propozycjami reguł ENEA-ST-001..021: docs/audit/REFERENCE_ENGINE_RESEARCH_OSD_ENEA_2026-07-17.md). Semantyka wymagań standardu: „powinien/należy” = „musi/wymaga się” (Z1 rozdz. 3 s. 8). Status repo_verified — publiczne dokumenty OSD; status verified wymaga zatwierdzenia w PR (kanon SLD_MV_BAY_TEMPLATE_SOURCE_POLICY)."
+  "notes_pl": "Dane z PEŁNEJ lektury 4 publicznych dokumentów standardu Enea Operator (research 2026-07-17, cytowania ze stronami wg stopki dokumentu; raport researchu z propozycjami reguł ENEA-ST-001..021: docs/audit/REFERENCE_ENGINE_RESEARCH_OSD_ENEA_2026-07-17.md). Semantyka wymagań standardu: „powinien/należy” = „musi/wymaga się” (Z1 rozdz. 3 s. 8). Status repo_verified — publiczne dokumenty OSD; status verified wymaga zatwierdzenia w PR (kanon SLD_MV_BAY_TEMPLATE_SOURCE_POLICY). Rejestr 25 standardów i bieżącej IRiESD rozszerza BIBLIOGRAFIĘ, a NIE zbiór zatwierdzonych automatycznych reguł: reguły zaimplementowane wynikają wyłącznie z poprzedniej analizy 4 dokumentów. Lokalny pełnotekstowy indeks wymaga osobnego uruchomienia skryptu scripts/enea_knowledge.py; nie jest dostępny z serwera."
 }
