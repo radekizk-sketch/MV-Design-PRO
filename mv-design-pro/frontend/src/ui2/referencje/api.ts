@@ -102,3 +102,54 @@ export async function fetchReferencePack(packId: string): Promise<ReferencePackF
   }
   return (await response.json()) as ReferencePackFull;
 }
+
+/** Dowód konkretnego punktu dokumentu, z datą i adresem oryginału. */
+export interface EneaQuestionSource {
+  source_id: string;
+  title: string;
+  section: string | null;
+  page_pdf: number;
+  page_printed: string | null;
+  edition: string | null;
+  effective_from: string | null;
+  url: string;
+  excerpt: string | null;
+  sha256: string | null;
+  provenance: 'indeks_lokalny_pdf' | 'karta_wymagania_zweryfikowana';
+  verified_on?: string;
+  needs_manual_interpretation: boolean;
+}
+
+export interface EneaQuestionAnswer {
+  question: string;
+  as_of: string;
+  status: 'POTWIERDZONE_W_KARCIE' | 'ZNALEZIONO_FRAGMENTY' | 'BRAK_INDEKSU' | 'BRAK_POTWIERDZENIA';
+  verdict: string | null;
+  answer_pl: string;
+  scope_pl: string;
+  rule_id: string | null;
+  sources: EneaQuestionSource[];
+  suggested_documents: Array<{
+    source_id: string;
+    title: string;
+    url: string;
+    effective_from: string | null;
+  }>;
+  indexed_documents: number;
+  catalog_documents: number;
+  requires_review: boolean;
+}
+
+/** Pytanie kieruje do referencji, NIE do modelu generatywnego. */
+export async function askEneaQuestion(
+  question: string,
+  asOf?: string,
+): Promise<EneaQuestionAnswer> {
+  const params = new URLSearchParams({ pytanie: question });
+  if (asOf) params.set('data', asOf);
+  const response = await fetch(API_BASE + '/reference/enea/pytanie?' + params.toString());
+  if (!response.ok) {
+    throw new Error('Błąd wyszukiwania wymagań ENEA: ' + response.status);
+  }
+  return (await response.json()) as EneaQuestionAnswer;
+}
