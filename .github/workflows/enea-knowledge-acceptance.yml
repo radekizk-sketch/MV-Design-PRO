@@ -1,0 +1,82 @@
+name: ENEA — pełny audyt źródeł i indeksu
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'mv-design-pro/scripts/enea_knowledge.py'
+      - 'mv-design-pro/backend/src/reference_engine/**'
+      - 'mv-design-pro/backend/tests/reference_engine/**'
+      - '.github/workflows/enea-knowledge-acceptance.yml'
+  schedule:
+    - cron: '15 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enea-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Narzędzia ekstrakcji i OCR po polsku
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-pol tesseract-ocr-eng
+      - name: Weryfikacja katalogu źródeł
+        working-directory: mv-design-pro
+        run: python scripts/enea_knowledge.py catalog
+      - name: Pobranie i indeksowanie 25 standardów oraz IRiESD
+        id: pobierz
+        continue-on-error: true
+        working-directory: mv-design-pro
+        env:
+          DATA_DIR: ${{ runner.temp }}/enea-knowledge
+        run: |
+          python scripts/enea_knowledge.py --data-dir "$DATA_DIR" sync
+      - name: Niezależna bramka kompletności indeksu
+        id: audyt
+        if: always()
+        continue-on-error: true
+        working-directory: mv-design-pro
+        env:
+          DATA_DIR: ${{ runner.temp }}/enea-knowledge
+        run: |
+          python scripts/enea_knowledge.py --data-dir "$DATA_DIR" audit > "$RUNNER_TEMP/enea-audit-result.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          data=json.loads((Path(os.environ["RUNNER_TEMP"]) / "enea-audit-result.json").read_text())
+          print("STANDARDY:", data["standards_complete"], "/", data["standard_count"])
+          print("DOKUMENTY:", data["all_documents_complete"], "/", data["all_documents_count"])
+          print("ODBIÓR:",data["acceptance"])
+          for row in data["documents"]:
+              if row["errors"]:
+                  print(row["id"], ", ".join(row["errors"]))
+          PY
+      - name: Zapis raportu — bez PDF i bez tekstu norm
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enea-audyt-metadanych
+          path: |
+            ${{ runner.temp }}/enea-audit-result.json
+            ${{ runner.temp }}/enea-knowledge/audit.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Bramka: wszystkie źródła muszą przejść
+        if: always()
+        env:
+          POBRANIE: ${{ steps.pobierz.outcome }}
+          AUDYT: ${{ steps.audyt.outcome }}
+        run: |
+          test "$POBRANIE" = success && test "$AUDYT" = success
