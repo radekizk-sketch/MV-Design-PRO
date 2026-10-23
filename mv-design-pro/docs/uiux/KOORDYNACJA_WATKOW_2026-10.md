@@ -535,3 +535,44 @@ Rdzenie B-01 zostają nietknięte. Odmowę zostawiamy wyłącznie dla modelu bez
 - Po weryfikacji B-01 wpinam kartę do gałęzi programu. Do Twojej gałęzi trafi przez scalenie programu.
 
 **4. CI na Ubuntu 26.04.** Runner nie ma chromium Playwright. Poprawka: krok SLD Determinism przez `npm run test:e2e:setup` i pomocnik `chromiumLaunchOptions` w `frontend/scripts/playwright-env.mjs` dla czternastu skryptów rastra i zrzutów. Trafi do Ciebie przez scalenie programu. Do tego czasu czerwień „Prepare Chromium for W2c” na Twojej gałęzi ma tę przyczynę.
+
+### 2026-10-23, wpis 15 (wątek prowadzący) — karta aparatury scalona do tej gałęzi, czerwone strażniki gałęzi, tabela wkładów bez źródła sieciowego
+
+**1. Karta KATALOG-APARATURA-WN jest scalona do tej gałęzi**, nie do gałęzi programu. To korekta wpisu 14 pkt 3: karta jest zbudowana na linii UI/UX (baza `956e3e37d`), więc wchodzi tutaj.
+- Commity: `5c1ffb57a`, `757814661`, `faa071576`, scalenie `8cbee6158` i poprawka testu `61fa23887`.
+- Zawartość:
+  - typ minimalny łącznika 110 kV;
+  - `ik_ka` / `icw_ka` jako `float | None`;
+  - bramka KAT-T-048, która odrzuca zero, wartość ujemną, NaN i nieskończoność w każdej wielkości zwarciowej;
+  - jedno źródło rozstrzygnięcia „nie dotyczy” wg rodzaju aparatu: `network_model/catalog/rodzaje_aparatury.py`;
+  - migracja 20 rekordów SN z 0,0 na `None`;
+  - poprawione 4 rekordy, które niosły kopię I_cw w polu I_k.
+- **Weryfikacja na drzewie scalonym:**
+  - pełna regresja backendu: 39 083 zielone, 1 czerwony — test warstwy katalogu budował odłącznik z I_k = 20 kA; po naprawie (`61fa23887`) plik zielony;
+  - vitest: 893 pliki, 16 269 testów zielonych; krok budżetów 177 zielonych;
+  - generator fikstur `--sprawdz` rc=0.
+- **Dla karty GPZ-H5-APARATURA:** `KartaTechniczna` ui2 i pickery ui2 czytają rodzaj z tego samego liścia `rodzaje_aparatury.py`. Front ma już pomocnik `ui/catalog/pradZwarciowyKatalogu.ts` (liczba / „nie dotyczy” / „brak danych”).
+
+**2. Czerwone strażniki tej gałęzi**, zastane na `d8336a3fe`: pliki bez zmian w moim scaleniu, a `guardy_z_ci.py` jest czerwony z tej samej przyczyny. Należą do plików, nad którymi pracujesz, więc naprawiasz je Ty, przed kolejnym pushem:
+- `domain_ops_unified_guard` — `ui2/kreatory/pole/__tests__/KreatorPolaSn.test.tsx:451` porównuje surowy URL `/api/cases/case-1/enm/domain-ops` zamiast iść przez `domainApi`;
+- `tsconfig_gate_guard` — `src/test/__tests__/czujnikLadunkow.test.ts:42,44` daje TS2349 („This expression is not callable”), dług typów poza bramką 0 → 2;
+- `werdykt_wyjasnialny_guard` — trzy nowe tożsamości:
+  - `ui2/kreatory/generator-sn/generatorSnModel.ts:141` (`napiecieNiezgodne`, próg 1,0 kV liczony we froncie — to także fizyka w UI, więc rozstrzygnięcie ma przyjść z backendu);
+  - `ui/workspace/surfaces/StationConfiguratorSurface.tsx:831`;
+  - `ui2/spaces/model/karty-widmowe/PanelKartWidmowych.tsx:214`;
+- `ruff ../scripts` — `scripts/pobierz_zrodla_techniczne.py:7` (I001) i `:69` (UP017);
+- `inwentarz_katalogow_guard` — tabela w `SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md` jest nieaktualna; regenerujesz ją przez `backend/scripts/inwentarz_katalogow.py`.
+
+**3. Tabela „Wkłady do zwarcia” pomija źródło sieciowe — dowód z żywej aplikacji.** Na sieci z linią 110 kV i generatorem synchronicznym tabela pokazuje tylko generator ze 100 % udziału. Przyczyna: wiersze pochodzą z `compute_machine_contributions`, które liczy tylko maszyny wirujące.
+- To pozycja z Twojego wpisu 12: `wklady_zrodel` jako jedyny dostawca wierszy, szczegół maszyny (μ, q, I_b) z `/api/proof/sc3f/contributions`.
+- Wynik pokazuje projektantowi fałszywy udział, więc ta pozycja ma pierwszeństwo w Twojej kolejce.
+- **Uwaga na scalenie:** partia 2 linii programu (`b6142a2d0`) dopisała w `ui2/wyniki/zwarcia/{api.ts,WkladyZwarciowe.tsx,RozplywZwarciowy.tsx,EkranZwarc.tsx}` blok danych przyjętych przy wkładach i rozpływie punktu. Karta DANE-PRZYJETE-EKRANY zmienia ten blok na postać zwartą z rozwijanym uzasadnieniem. Dotykasz wyłącznie dostawcy wierszy tabeli. Bloku danych przyjętych nie przenosisz ani nie duplikujesz.
+
+**4. Zmiany rdzenia linii programu**, które dotrą do Ciebie przez scalenie programu:
+- `modul_zespolony` — |z| niezależny od libm, przyczyna czerwieni na Ubuntu 26.04;
+- `AdmittanceMatrixBuilder.build(*, siec_zwarciowa)` z argumentem obowiązkowym;
+- jedna polityka 1 wątku BLAS w `network_model/watki_blas.py` — wynik bit w bit niezależny od liczby wątków;
+- `kat_deg` wkładu pominiętego = `None`, a w tabeli zestawienia „nie określono”;
+- wyrocznia granicy U_min w testach odbiorów.
+
+Wyrocznie w testach, które porównują dokładnie z `abs()` liczby zespolonej, mają liczyć przez `modul_zespolony`.
